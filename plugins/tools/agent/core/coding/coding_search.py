@@ -10,13 +10,11 @@ from typing import Any, Callable
 
 from apps.backend.core.config import config as _global_config
 
-from plugins.tools.agent.core.coding.coding_common import (
-    coding_root,
-    is_probably_text,
-    validate_coding_path,
-    _disabled_error,
-    _no_root_error,
-)
+
+def is_probably_text(data: bytes) -> bool:
+    if not data:
+        return True
+    return b"\x00" not in data[:8192]
 
 __version__ = "1.0.0"
 TOOL_ID = "coding_search"
@@ -35,24 +33,21 @@ MAX_MATCHES = _global_config.WORKSPACE_MAX_SEARCH_MATCHES
 MAX_FILE_BYTES = _global_config.WORKSPACE_SEARCH_MAX_FILE_BYTES
 
 
-def coding_search(arguments: dict[str, Any]) -> str:
+def coding_search(arguments: dict[str, Any], context: dict | None = None) -> str:
+    if not context or "workspace" not in context:
+        return json.dumps({"ok": False, "error": "No workspace in context - agent must inject workspace"}, ensure_ascii=False)
+    ws = context["workspace"]
+    root = Path(ws["path"])
+    
     query = arguments.get("query")
     if query is None or str(query).strip() == "":
         return json.dumps({"ok": False, "error": "query is required"}, ensure_ascii=False)
     use_regex = bool(arguments.get("regex", False))
     path_prefix = str(arguments.get("path_prefix") or "").strip()
-    root = coding_root()
-    if root is None:
-        return _no_root_error()
-    if not _global_config.CODING_ENABLED:
-        return _disabled_error()
     search_root = root.resolve()
     rel_root = ""
     if path_prefix:
-        sr, err = validate_coding_path(path_prefix)
-        if err:
-            return err
-        assert sr is not None
+        sr = (root / path_prefix).resolve()
         if not sr.is_dir():
             return json.dumps(
                 {"ok": False, "error": "path_prefix must be a directory"},

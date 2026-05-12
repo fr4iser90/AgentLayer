@@ -17,8 +17,14 @@ from typing import Any
 from apps.backend.domain.plugin_system.tools import run_tool
 
 
-def execute_tool(name: str, arguments: dict[str, Any] | None = None) -> str:
+def execute_tool(name: str, arguments: dict[str, Any] | None = None, context: dict[str, Any] | None = None) -> str:
     """
     Run a registered tool handler with operator policy, identity, and DB logging (via ``run_tool``).
+    
+    Args:
+        name: Tool name
+        arguments: Tool arguments dict
+        context: Context dict with workspace, user - PASSED TO TOOL, NOT IMPORTED!
+                 Format: {"workspace": workspace_obj, "user": user_obj}
     """
-    return run_tool((name or "").strip(), dict(arguments or {}))
+    return run_tool((name or "").strip(), dict(arguments or {}), context=context)

@@ -9,14 +9,6 @@ from typing import Any, Callable
 
 from apps.backend.core.config import config as _global_config
 
-from plugins.tools.agent.core.coding.coding_common import (
-    coding_root,
-    is_probably_text,
-    validate_coding_path,
-    _disabled_error,
-    _no_root_error,
-)
-
 __version__ = "1.0.0"
 TOOL_ID = "coding_glob"
 TOOL_BUCKET = "files"
@@ -32,7 +24,12 @@ TOOL_DESCRIPTION = (
 MAX_FILES = _global_config.WORKSPACE_MAX_GLOB_FILES
 
 
-def coding_glob(arguments: dict[str, Any]) -> str:
+def coding_glob(arguments: dict[str, Any], context: dict | None = None) -> str:
+    if not context or "workspace" not in context:
+        return json.dumps({"ok": False, "error": "No workspace in context - agent must inject workspace"}, ensure_ascii=False)
+    ws = context["workspace"]
+    root = Path(ws["path"])
+    
     pattern = (arguments.get("pattern") or "").strip()
     if not pattern:
         path_given = arguments.get("path")
@@ -43,16 +40,11 @@ def coding_glob(arguments: dict[str, Any]) -> str:
                 "ok": False,
                 "error": "pattern is required. Use glob like **/*.py"
             }, ensure_ascii=False)
-    root = coding_root()
-    if root is None:
-        return _no_root_error()
-    if not _global_config.CODING_ENABLED:
-        return _disabled_error()
     path_rel = (arguments.get("path") or "").strip() or "."
-    resolved, err = validate_coding_path(path_rel)
-    if err:
-        return err
-    assert resolved is not None
+    if path_rel == ".":
+        resolved = root
+    else:
+        resolved = (root / path_rel).resolve()
     if not resolved.is_dir():
         return json.dumps(
             {"ok": False, "error": "path must be a directory"},

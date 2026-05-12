@@ -1087,35 +1087,55 @@ async def chat_completion(
     if isinstance(agent_id, str):
         agent_id = agent_id.strip() or None
     
-    from apps.backend.domain.identity import set_workspace
+    from apps.backend.domain.identity import set_workspace, get_identity
     workspace_id = body.pop("workspace_id", None)
     workspace = None
     workspace_token = None
-    if workspace_id:
+    
+    # Get user from identity context (tenant_id, user_id)
+    tenant_id, user_id = get_identity()
+    
+    if workspace_id and user_id:
+        try:
+            from apps.backend.infrastructure.workspace_service import ensure_workspace
+            from apps.backend.infrastructure.db import db
+            
+            # Create a minimal user-like object for workspace service
+            class UserLike:
+                def __init__(self, uid):
+                    self.id = uid
+                    self.role = "admin"  # Default to admin for now
+            
+            user_obj = UserLike(user_id)
+            workspace = ensure_workspace(workspace_id, user_obj)
+            logger.debug("resolved workspace: %s", workspace.get("name") if workspace else None)
+        except Exception as e:
+            logger.warning("failed to resolve workspace: %s", e)
+    workspace_token = set_workspace(workspace)
+    
+    # Create user object for context
+    user_obj = None
+    if user_id:
         try:
             from apps.backend.infrastructure.db import db
-            from apps.backend.api.workspaces_api import _get_workspace_base_path
             with db.pool().connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute(
-                        "SELECT id, name, path, source, git_url, git_branch, access_role, owner_user_id FROM project_workspaces WHERE id = %s",
-                        (str(workspace_id),),
-                    )
+                    cur.execute("SELECT id, role FROM users WHERE id = %s", (user_id,))
                     row = cur.fetchone()
                     if row:
-                        workspace = {
-                            "id": str(row[0]),
-                            "name": row[1],
-                            "path": row[2],
-                            "source": row[3],
-                            "git_url": row[4],
-                            "git_branch": row[5],
-                            "access_role": row[6],
-                            "owner_user_id": str(row[7]),
-                        }
+                        class UserObj:
+                            def __init__(self, uid, role):
+                                self.id = uid
+                                self.role = role
+                        user_obj = UserObj(user_id, row[1])
         except Exception:
             pass
-    workspace_token = set_workspace(workspace)
+    
+    # Prepare context dict for tools (DDD-style, with real objects)
+    tool_context = {
+        "workspace": workspace,
+        "user": user_obj,
+    }
     
     try:
 
@@ -1655,7 +1675,7 @@ async def chat_completion(
                     )
                 tctx = set_tool_invocation_messages(list(messages))
                 try:
-                    result = execute_tool(name, args)
+                    result = execute_tool(name, args, context=tool_context)
                 finally:
                     reset_tool_invocation_messages(tctx)
                 if event_emit:

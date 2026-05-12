@@ -6,11 +6,17 @@ import hashlib
 import importlib.util
 import json
 import logging
+import os
 import re
 import sys
 import threading
 from pathlib import Path
 from typing import Any, Callable
+
+# Ensure apps.backend is in Python path for plugin imports
+_backend_path = Path(__file__).parents[2] / "apps" / "backend"
+if str(_backend_path) not in sys.path:
+    sys.path.insert(0, str(_backend_path))
 
 from apps.backend.core.config import config
 from apps.backend.infrastructure.db import db
@@ -604,14 +610,21 @@ class ToolRegistry:
                     return dict(entry)
         return None
 
-    def run_tool(self, name: str, arguments: dict[str, Any]) -> str:
+    def run_tool(self, name: str, arguments: dict[str, Any], context: dict | None = None) -> str:
         with self._lock:
             handler = self._handlers.get(name)
         if not handler:
             return json.dumps({"ok": False, "error": f"unknown tool: {name}"})
         ok = True
         try:
-            out = handler(dict(arguments or {}))
+            # Check if handler supports context parameter
+            import inspect
+            sig = inspect.signature(handler) if hasattr(handler, '__call__') else None
+            if sig and 'context' in sig.parameters:
+                out = handler(dict(arguments or {}), context=context)
+            else:
+                # Backward compatibility - call without context
+                out = handler(dict(arguments or {}))
             payload = json.loads(out) if out else {}
             if isinstance(payload, dict) and payload.get("ok") is False:
                 ok = False

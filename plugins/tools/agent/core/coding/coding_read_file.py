@@ -9,10 +9,11 @@ from typing import Any, Callable
 
 from apps.backend.core.config import config
 
-from plugins.tools.agent.core.coding.coding_common import (
-    is_probably_text,
-    validate_coding_path,
-)
+
+def is_probably_text(data: bytes) -> bool:
+    if not data:
+        return True
+    return b"\x00" not in data[:8192]
 
 __version__ = "1.0.0"
 TOOL_ID = "coding_read"
@@ -30,14 +31,16 @@ MAX_BYTES = config.CODING_MAX_FILE_BYTES
 MAX_LINES = config.WORKSPACE_MAX_READ_LINES
 
 
-def coding_read_file(arguments: dict[str, Any]) -> str:
+def coding_read_file(arguments: dict[str, Any], context: dict | None = None) -> str:
+    if not context or "workspace" not in context:
+        return json.dumps({"ok": False, "error": "No workspace in context - agent must inject workspace"}, ensure_ascii=False)
+    ws = context["workspace"]
+    root = Path(ws["path"])
+    
     rel = (arguments.get("path") or "").strip()
     if not rel:
         return json.dumps({"ok": False, "error": "path is required"}, ensure_ascii=False)
-    resolved, err = validate_coding_path(rel)
-    if err:
-        return err
-    assert resolved is not None
+    resolved = (root / rel).resolve()
     if not resolved.is_file():
         return json.dumps(
             {"ok": False, "error": "not a regular file", "path": rel},

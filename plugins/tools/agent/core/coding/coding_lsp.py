@@ -13,7 +13,6 @@ from typing import Any, Callable
 
 from apps.backend.core.config import config
 
-from plugins.tools.agent.core.coding.coding_common import validate_coding_path
 from plugins.tools.agent.core.coding.coding_lsp_client import (
     Language,
     _ext_to_language,
@@ -47,9 +46,11 @@ def _resolve_language(file_path: Path) -> Language | None:
     return _ext_to_language(ext)
 
 
-def coding_lsp(arguments: dict[str, Any]) -> str:
-    if not config.CODING_ENABLED:
-        return json.dumps({"ok": False, "error": "coding tools are disabled"}, ensure_ascii=False)
+def coding_lsp(arguments: dict[str, Any], context: dict | None = None) -> str:
+    if not context or "workspace" not in context:
+        return json.dumps({"ok": False, "error": "No workspace in context - agent must inject workspace"}, ensure_ascii=False)
+    ws = context["workspace"]
+    root = Path(ws["path"])
 
     operation = (arguments.get("operation") or "").strip()
     valid_ops = {
@@ -72,11 +73,8 @@ def coding_lsp(arguments: dict[str, Any]) -> str:
     resolved: Path | None = None
     root_hint: Path | None = None
     if rel:
-        resolved, err = validate_coding_path(rel)
-        if err:
-            return err
-        assert resolved is not None
-        root_hint = config.CODING_ROOT
+        resolved = (root / rel).resolve()
+        root_hint = root
         if root_hint:
             root_hint = root_hint.resolve()
 

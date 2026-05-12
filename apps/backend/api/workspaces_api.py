@@ -156,7 +156,8 @@ def _ensure_self_workspace(user) -> dict[str, Any] | None:
 
 
 def _get_self_workspace(user) -> dict[str, Any] | None:
-    return _ensure_self_workspace(user)
+    from apps.backend.infrastructure.workspace_service import ensure_workspace
+    return ensure_workspace("__agentlayer_self__", user)
 
 
 class WorkspaceCreateBody(BaseModel):
@@ -209,7 +210,9 @@ async def list_workspaces(request: Request):
 
     self_ws = _get_self_workspace(user)
     if self_ws:
-        workspaces.insert(0, self_ws)
+        existing_ids = {ws.get("id") for ws in workspaces}
+        if self_ws.get("id") not in existing_ids:
+            workspaces.insert(0, self_ws)
 
     return {"workspaces": workspaces}
 

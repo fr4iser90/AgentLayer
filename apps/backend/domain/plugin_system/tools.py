@@ -24,10 +24,15 @@ def _max_chain_depth() -> int:
     return max(1, min(256, n))
 
 
-def run_tool(name: str, arguments: dict) -> str:
+def run_tool(name: str, arguments: dict, context: dict | None = None) -> str:
     """
     Run a registered handler. Nested calls (plugin → other tool) increment a context
     depth counter; exceeding :envvar:`AGENT_TOOL_CHAIN_MAX_DEPTH` returns JSON error.
+    
+    Args:
+        name: Tool name
+        arguments: Tool arguments
+        context: Context dict passed to tool (NOT imported by tool!)
     """
     depth = _chain_depth.get()
     limit = _max_chain_depth()
@@ -94,7 +99,7 @@ def run_tool(name: str, arguments: dict) -> str:
             gate_err = capability_gate_error_json(nm, meta)
             if gate_err:
                 return gate_err
-        return reg.run_tool(name, arguments)
+        return reg.run_tool(name, arguments, context=context)
     finally:
         if token is not None:
             _chain_depth.reset(token)

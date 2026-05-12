@@ -10,10 +10,10 @@ from typing import Any, Callable
 
 from apps.backend.core.config import config
 
-from plugins.tools.agent.core.coding.coding_common import (
-    is_probably_text,
-    validate_coding_path,
-)
+def is_probably_text(data: bytes) -> bool:
+    if not data:
+        return True
+    return b"\x00" not in data[:8192]
 
 __version__ = "1.0.0"
 TOOL_ID = "coding_apply_patch"
@@ -138,34 +138,23 @@ def _generate_diff(old: str, new: str, path: str) -> str:
     ))
 
 
-def coding_apply_patch(arguments: dict[str, Any]) -> str:
+def coding_apply_patch(arguments: dict[str, Any], context: dict | None = None) -> str:
+    if not context or "workspace" not in context:
+        return json.dumps({"ok": False, "error": "No workspace in context - agent must inject workspace"}, ensure_ascii=False)
+    ws = context["workspace"]
+    root = Path(ws["path"])
+    
     patch_text = (arguments.get("patch_text") or arguments.get("patch") or "").strip()
     if not patch_text:
         return json.dumps({"ok": False, "error": "patch_text is required"}, ensure_ascii=False)
     files = _parse_patch(patch_text)
     if not files:
         return json.dumps({"ok": False, "error": "no valid hunks found in patch"}, ensure_ascii=False)
-    root = config.CODING_ROOT
-    if root is None:
-        return json.dumps(
-            {"ok": False, "error": "coding root not configured"},
-            ensure_ascii=False,
-        )
-    if not config.CODING_ENABLED:
-        return json.dumps(
-            {"ok": False, "error": "coding tools are disabled"},
-            ensure_ascii=False,
-        )
     results: list[dict[str, Any]] = []
     all_ok = True
     for file_info in files:
         fpath = file_info["path"]
-        resolved, err = validate_coding_path(fpath)
-        if err:
-            results.append({"path": fpath, "ok": False, "error": err})
-            all_ok = False
-            continue
-        assert resolved is not None
+        resolved = (root / fpath).resolve()
         is_new = not resolved.exists()
         if not is_new:
             if not resolved.is_file():

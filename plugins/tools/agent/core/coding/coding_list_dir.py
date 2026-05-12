@@ -9,8 +9,6 @@ from typing import Any, Callable
 
 from apps.backend.core.config import config
 
-from plugins.tools.agent.core.coding.coding_common import validate_coding_path
-
 __version__ = "1.0.0"
 TOOL_ID = "coding_list"
 TOOL_BUCKET = "files"
@@ -26,12 +24,17 @@ TOOL_DESCRIPTION = (
 MAX_ENTRIES = config.WORKSPACE_MAX_LIST_ENTRIES
 
 
-def coding_list_dir(arguments: dict[str, Any]) -> str:
+def coding_list_dir(arguments: dict[str, Any], context: dict | None = None) -> str:
+    if not context or "workspace" not in context:
+        return json.dumps({"ok": False, "error": "No workspace in context - agent must inject workspace"}, ensure_ascii=False)
+    ws = context["workspace"]
+    root = Path(ws["path"])
+    
     rel = (arguments.get("path") or "").strip() or "."
-    resolved, err = validate_coding_path(rel)
-    if err:
-        return err
-    assert resolved is not None
+    if rel == ".":
+        resolved = root
+    else:
+        resolved = (root / rel).resolve()
     if not resolved.is_dir():
         return json.dumps(
             {"ok": False, "error": "not a directory", "path": rel},

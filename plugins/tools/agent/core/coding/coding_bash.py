@@ -9,15 +9,6 @@ import subprocess
 from pathlib import Path
 from typing import Any, Callable
 
-from apps.backend.core.config import config as _global_config
-
-from plugins.tools.agent.core.coding.coding_common import (
-    coding_root,
-    validate_coding_path,
-    _disabled_error,
-    _no_root_error,
-)
-
 __version__ = "1.0.0"
 TOOL_ID = "coding_bash"
 TOOL_BUCKET = "files"
@@ -116,25 +107,25 @@ def _tail(text: str, max_bytes: int, max_lines: int = 200) -> tuple[str, bool]:
     return "\n".join(out), True
 
 
-def coding_bash(arguments: dict[str, Any]) -> str:
+def coding_bash(arguments: dict[str, Any], context: dict | None = None) -> str:
+    if not context or "workspace" not in context:
+        return json.dumps({"ok": False, "error": "No workspace in context - agent must inject workspace"}, ensure_ascii=False)
+    ws = context["workspace"]
+    root = Path(ws["path"])
+    
     command = (arguments.get("command") or "").strip()
     if not command:
         return json.dumps({"ok": False, "error": "command is required"}, ensure_ascii=False)
     blocked = _is_blocked(command)
     if blocked:
         return json.dumps({"ok": False, "error": blocked}, ensure_ascii=False)
-    root = coding_root()
-    if root is None:
-        return _no_root_error()
-    if not _global_config.CODING_ENABLED:
-        return _disabled_error()
+    
     workdir_rel = (arguments.get("workdir") or "").strip()
     if workdir_rel:
-        resolved_wd, err = validate_coding_path(workdir_rel)
-        if err:
-            return err
-        assert resolved_wd is not None
-        cwd = str(resolved_wd)
+        workdir_path = Path(workdir_rel)
+        if workdir_path.is_absolute():
+            raise ValueError(f"workdir must be relative, not absolute: {workdir_rel}")
+        cwd = str((root / workdir_path).resolve())
     else:
         cwd = str(root.resolve())
     try:

@@ -4,10 +4,8 @@ from __future__ import annotations
 
 import json
 import time
+from pathlib import Path
 from typing import Any, Callable
-
-from apps.backend.core.config import config
-from apps.backend.domain.identity import get_identity
 
 from plugins.tools.agent.core.coding.coding_index_lib import (
     _HAS_TS,
@@ -20,8 +18,6 @@ try:
     _HAS_QDRANT = True
 except ImportError:
     _HAS_QDRANT = False
-
-from plugins.tools.agent.core.coding.coding_common import coding_root
 
 __version__ = "1.0.0"
 TOOL_ID = "coding_index"
@@ -41,7 +37,7 @@ TOOL_DESCRIPTION = (
 _DEFAULT_MAX_FILES = 5000
 
 
-def coding_index(arguments: dict[str, Any]) -> str:
+def coding_index(arguments: dict[str, Any], context: dict | None = None) -> str:
     if not _HAS_TS:
         return json.dumps(
             {
@@ -50,22 +46,16 @@ def coding_index(arguments: dict[str, Any]) -> str:
             },
             ensure_ascii=False,
         )
-    root = coding_root()
-    if root is None:
-        if not config.CODING_ENABLED:
-            return json.dumps(
-                {"ok": False, "error": "coding tools are disabled"},
-                ensure_ascii=False,
-            )
+    if not context or "workspace" not in context:
         return json.dumps(
-            {"ok": False, "error": "coding root not found"},
+            {"ok": False, "error": "No workspace in context - agent must inject workspace"},
             ensure_ascii=False,
         )
+    ws = context["workspace"]
+    workspace_id = str(ws.get("id"))
+    root = Path(ws["path"])
     max_files = int(arguments.get("max_files", _DEFAULT_MAX_FILES))
     max_files = max(100, min(max_files, 20000))
-
-    ident = get_identity()
-    workspace_id = str(ident[0]) if ident and ident[0] else "startup"
 
     idx = get_index()
     t0 = time.time()

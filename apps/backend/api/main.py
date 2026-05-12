@@ -166,21 +166,8 @@ async def lifespan(_app: FastAPI):
     except Exception:
         logger.exception("RAG docs startup ingest failed (Ollama unreachable?)")
     
-    # Deferred code index on startup (run after indexer is ready)
-    def _run_startup_index() -> None:
-        try:
-            from plugins.tools.agent.core.coding.coding_index_lib import get_index
-            from plugins.tools.agent.core.coding.coding_common import coding_root
-            
-            root = coding_root()
-            idx = get_index()
-            stats = idx.scan(root, max_files=5000) if root and root.exists() else None
-            if stats:
-                logger.info("Indexed %d files, %d symbols", idx.file_count, idx.symbol_count)
-        except Exception:
-            logger.exception("failed")
-    
-    threading.Thread(target=_run_startup_index, daemon=True).start()
+    # Deferred code index on startup - REMOVED
+    # Workspace is now per-user from DB, not hardcoded. Indexing happens per-workspace on demand.
     
     start_cron_scheduler()
     try:

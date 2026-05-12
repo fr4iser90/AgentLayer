@@ -8,11 +8,16 @@ from pathlib import Path
 from typing import Any, Callable
 
 from apps.backend.core.config import config
+from typing import Any
 
-from plugins.tools.agent.core.coding.coding_common import (
-    coalesce_content,
-    validate_coding_path,
-)
+
+def coalesce_content(arguments: dict[str, Any]) -> tuple[str, str | None]:
+    for key in ("content", "text", "source"):
+        v = arguments.get(key)
+        if v is not None:
+            s = str(v)
+            return s, None
+    return "", "content is required (use 'content', 'text', or 'source' key)"
 
 __version__ = "1.0.0"
 TOOL_ID = "coding_write"
@@ -30,14 +35,16 @@ TOOL_DESCRIPTION = (
 MAX_BYTES = config.CODING_MAX_FILE_BYTES
 
 
-def coding_write_file(arguments: dict[str, Any]) -> str:
+def coding_write_file(arguments: dict[str, Any], context: dict | None = None) -> str:
+    if not context or "workspace" not in context:
+        return json.dumps({"ok": False, "error": "No workspace in context - agent must inject workspace"}, ensure_ascii=False)
+    ws = context["workspace"]
+    root = Path(ws["path"])
+    
     rel = (arguments.get("path") or "").strip()
     if not rel:
         return json.dumps({"ok": False, "error": "path is required"}, ensure_ascii=False)
-    resolved, err = validate_coding_path(rel)
-    if err:
-        return err
-    assert resolved is not None
+    resolved = (root / rel).resolve()
     content, cerr = coalesce_content(arguments)
     if cerr:
         return json.dumps({"ok": False, "error": cerr}, ensure_ascii=False)

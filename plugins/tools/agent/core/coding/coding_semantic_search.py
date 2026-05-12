@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any, Callable
-
-from apps.backend.core.config import config
-from apps.backend.domain.identity import get_identity
 
 try:
     from apps.backend.infrastructure.code_index_qdrant import get_code_index
@@ -32,26 +30,13 @@ TOOL_DESCRIPTION = (
 _DEFAULT_LIMIT = 20
 
 
-def _get_workspace_id() -> str:
-    ident = get_identity()
-    if ident is None:
-        return "default"
-    tenant_id, _user_id = ident
-    return str(tenant_id)
-
-
-def coding_semantic_search(arguments: dict[str, Any]) -> str:
+def coding_semantic_search(arguments: dict[str, Any], context: dict | None = None) -> str:
     if not _HAS_QDRANT:
         return json.dumps(
             {
                 "ok": False,
                 "error": "Qdrant not available. Set QDRANT_URL in environment.",
             },
-            ensure_ascii=False,
-        )
-    if not config.CODING_ENABLED:
-        return json.dumps(
-            {"ok": False, "error": "coding tools are disabled"},
             ensure_ascii=False,
         )
     query = arguments.get("query")
@@ -64,9 +49,14 @@ def coding_semantic_search(arguments: dict[str, Any]) -> str:
     limit = int(arguments.get("limit", _DEFAULT_LIMIT))
     limit = max(1, min(limit, 100))
 
-    workspace_id = _get_workspace_id()
-    if not workspace_id:
-        workspace_id = "startup"
+    if not context or "workspace" not in context:
+        return json.dumps(
+            {"ok": False, "error": "No workspace in context - agent must inject workspace"},
+            ensure_ascii=False,
+        )
+    ws = context["workspace"]
+    workspace_id = str(ws.get("id"))
+    root = Path(ws["path"])
 
     try:
         code_index = get_code_index()
