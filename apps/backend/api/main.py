@@ -771,12 +771,89 @@ def health():
 
 @app.get("/v1/models")
 async def models_proxy():
-    """Passthrough so UIs can list Ollama models."""
+    """
+    OpenAI-style model list: Ollama + optional llama.cpp (env/operator_settings).
+
+    Ollama errors do not fail the whole response so UIs still show llama.cpp models and status text.
+    """
     url = f"{config.OLLAMA_BASE_URL}/v1/models"
-    status, text, data = await asyncio.to_thread(ollama_get_json, url, timeout=60.0)
-    if status != 200:
-        raise HTTPException(status_code=status, detail=text)
-    return data
+    status, text, data = await asyncio.to_thread(ollama_get_json, url, timeout=15.0)
+    ollama_rows: list[dict[str, Any]] = []
+    ollama_reachable = False
+    ollama_detail: str | None = None
+    if status == 200 and isinstance(data, dict):
+        ollama_reachable = True
+        for item in data.get("data") or []:
+            if not isinstance(item, dict):
+                continue
+            mid = item.get("id")
+            if not isinstance(mid, str) or not mid.strip():
+                continue
+            row = {
+                "id": mid.strip(),
+                "object": item.get("object") if isinstance(item.get("object"), str) else "model",
+                "owned_by": "ollama",
+            }
+            ollama_rows.append(row)
+    else:
+        tag = "timeout" if status == 408 else "connect_error" if status == 503 else f"http_{status}"
+        ollama_detail = (text or "").strip() or tag
+
+    l_rows: list[dict[str, Any]] = []
+    l_reachable = False
+    l_detail: str | None = "not_configured"
+    l_configured = False
+    try:
+        from apps.backend.infrastructure import llamacpp_provider
+
+        l_configured = llamacpp_provider.enabled()
+        if l_configured:
+            l_ok, l_err, l_rows = await asyncio.to_thread(llamacpp_provider.fetch_openai_models_list, 15.0)
+            l_reachable = l_ok
+            l_detail = l_err
+        else:
+            l_detail = "not_configured"
+            l_rows = []
+    except Exception:
+        l_detail = "import_or_config_error"
+        l_rows = []
+
+    seen: set[str] = set()
+    merged: list[dict[str, Any]] = []
+    for row in (*ollama_rows, *l_rows):
+        rid = str(row.get("id") or "").strip()
+        if not rid or rid in seen:
+            continue
+        seen.add(rid)
+        merged.append(row)
+
+    agentlayer: dict[str, Any] = {
+        "ollama": {
+            "reachable": ollama_reachable,
+            "base_url": config.OLLAMA_BASE_URL,
+            "detail": ollama_detail,
+        },
+        "llama_cpp": {
+            "configured": l_configured,
+            "reachable": l_reachable,
+            "detail": l_detail,
+        },
+    }
+    if l_configured:
+        try:
+            from apps.backend.infrastructure import llamacpp_provider as _lcp
+
+            meta = _lcp.catalog_auth_meta()
+            if meta:
+                cast = agentlayer["llama_cpp"]
+                assert isinstance(cast, dict)
+                cast.update(meta)
+                hint = _lcp.models_list_auth_hint(l_detail if not l_reachable else None)
+                if hint:
+                    cast["auth_hint"] = hint
+        except Exception:
+            pass
+    return {"object": "list", "data": merged, "agentlayer": agentlayer}
 
 
 def _completion_to_sse_lines(completion: dict[str, Any]) -> bytes:

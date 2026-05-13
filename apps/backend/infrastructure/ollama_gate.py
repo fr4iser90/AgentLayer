@@ -87,9 +87,14 @@ def ollama_get_json(
     timeout: float = 60.0,
 ) -> tuple[int, str, Any | None]:
     """GET; returns ``(status, text_on_error, json_or_none)``."""
-    with OLLAMA_HTTP_LOCK:
-        with httpx.Client(timeout=timeout) as client:
-            r = client.get(url)
-            if r.status_code != 200:
-                return r.status_code, r.text, None
-            return 200, "", r.json()
+    try:
+        with OLLAMA_HTTP_LOCK:
+            with httpx.Client(timeout=timeout) as client:
+                r = client.get(url)
+                if r.status_code != 200:
+                    return r.status_code, r.text, None
+                return 200, "", r.json()
+    except httpx.TimeoutException:
+        return 408, "timeout", None
+    except httpx.RequestError as e:
+        return 503, str(e)[:500], None

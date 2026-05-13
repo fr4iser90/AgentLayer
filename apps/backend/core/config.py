@@ -50,6 +50,22 @@ def _env_int(key: str, default: int) -> int:
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://ollama:11434").rstrip("/")
 OLLAMA_DEFAULT_MODEL = (os.environ.get("OLLAMA_DEFAULT_MODEL") or "nemotron-3-nano:4b").strip()
 
+# Optional OpenAI-compatible llama.cpp server (same names as typical compose .env).
+# When ``LLAMA_CPP_BASE_URL`` is set and ``LLAMA_CPP_ENABLED`` is true, :mod:`llamacpp_provider` uses these
+# before ``operator_settings`` (Admin → Interfaces), if present.
+LLAMA_CPP_BASE_URL = (os.environ.get("LLAMA_CPP_BASE_URL") or "").strip().rstrip("/")
+LLAMA_CPP_ENABLED = _env_bool("LLAMA_CPP_ENABLED", True)
+# Secret for ``Authorization: Bearer`` or for the header named ``LLAMA_CPP_API_HEADER_NAME`` (same OpenCode header value).
+_LLAMA_SECRET_RAW = (os.environ.get("LLAMA_CPP_API_HEADER_VALUE") or "").strip()
+LLAMA_CPP_API_HEADER_VALUE = _LLAMA_SECRET_RAW or None
+_LLAMA_HDR_RAW = (os.environ.get("LLAMA_CPP_API_HEADER_NAME") or "").strip()
+LLAMA_CPP_API_HEADER_NAME = _LLAMA_HDR_RAW or None
+LLAMA_CPP_ROUTER_MODEL = (os.environ.get("LLAMA_CPP_ROUTER_MODEL") or "").strip() or None
+LLAMA_CPP_MODEL_DEFAULT = (os.environ.get("LLAMA_CPP_MODEL_DEFAULT") or "").strip() or None
+LLAMA_CPP_MODEL_VLM = (os.environ.get("LLAMA_CPP_MODEL_VLM") or "").strip() or None
+LLAMA_CPP_MODEL_AGENT = (os.environ.get("LLAMA_CPP_MODEL_AGENT") or "").strip() or None
+LLAMA_CPP_MODEL_CODING = (os.environ.get("LLAMA_CPP_MODEL_CODING") or "").strip() or None
+
 # Hybrid model routing: per-profile defaults (empty = fall back to OLLAMA_DEFAULT_MODEL).
 AGENT_MODEL_PROFILE_DEFAULT = (os.environ.get("AGENT_MODEL_PROFILE_DEFAULT") or "").strip() or None
 AGENT_MODEL_PROFILE_VLM = (os.environ.get("AGENT_MODEL_PROFILE_VLM") or "").strip() or None

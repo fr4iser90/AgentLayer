@@ -28,6 +28,12 @@ import {
   type ProposalOption,
 } from "../lib/proposalParser";
 import { apiFetch } from "../lib/api";
+import {
+  fetchModelCatalog,
+  formatModelCatalogHint,
+  modelOptionLabel,
+  type ModelRow,
+} from "../lib/modelCatalog";
 
 type Workspace = {
   id: string;
@@ -247,7 +253,9 @@ export function CodingAgentPage() {
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [models, setModels] = useState<string[]>([]);
+  const [modelRows, setModelRows] = useState<ModelRow[]>([]);
+  const [modelsCatalogReady, setModelsCatalogReady] = useState(false);
+  const [modelsCatalogHint, setModelsCatalogHint] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [selectedOptions, setSelectedOptions] = useState<Map<string, { proposal: Proposal; option: ProposalOption }>>(new Map());
 
@@ -279,6 +287,7 @@ export function CodingAgentPage() {
 
   const messages = activeThread?.messages ?? [];
   const agentLog: AgentTimelineEntry[] = activeThread?.agentLog ?? [];
+  const models = useMemo(() => modelRows.map((r) => r.id), [modelRows]);
   const defaultModel = models[0] ?? "";
 
   useEffect(() => {
@@ -289,14 +298,17 @@ export function CodingAgentPage() {
     let cancelled = false;
     void (async () => {
       try {
-        const r = await fetch("/v1/models");
-        if (!r.ok) return;
-        const d = (await r.json()) as { data?: Array<{ id?: string }> };
-        const ids = (d.data ?? []).map((x) => x.id).filter(Boolean) as string[];
+        const { rows, agentlayer } = await fetchModelCatalog();
         if (cancelled) return;
-        setModels(ids);
+        setModelRows(rows);
+        setModelsCatalogHint(formatModelCatalogHint(agentlayer));
       } catch {
-        /* ignore */
+        if (!cancelled) {
+          setModelRows([]);
+          setModelsCatalogHint("Could not load model catalog.");
+        }
+      } finally {
+        if (!cancelled) setModelsCatalogReady(true);
       }
     })();
     return () => { cancelled = true; };
@@ -845,16 +857,23 @@ export function CodingAgentPage() {
                   className="mt-1 rounded-lg border border-surface-border bg-[#1a1a1a] px-3 py-2 text-sm text-neutral-100"
                   value={activeThread.model || defaultModel}
                   onChange={(e) => setModel(e.target.value)}
-                  disabled={!models.length}
+                  disabled={!modelsCatalogReady || modelRows.length === 0}
                 >
-                  {!models.length ? (
-                    <option>Loading models…</option>
+                  {!modelsCatalogReady ? (
+                    <option value="">Loading models…</option>
+                  ) : modelRows.length === 0 ? (
+                    <option value="">{modelsCatalogHint ?? "No models available."}</option>
                   ) : (
-                    models.map((id) => (
-                      <option key={id} value={id}>{id}</option>
+                    modelRows.map((row) => (
+                      <option key={`${row.owned_by ?? "ollama"}:${row.id}`} value={row.id}>
+                        {modelOptionLabel(row)}
+                      </option>
                     ))
                   )}
                 </select>
+                {modelsCatalogReady && modelsCatalogHint ? (
+                  <p className="mt-1 text-xs text-amber-300/90">{modelsCatalogHint}</p>
+                ) : null}
               </div>
             </div>
 

@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
+import {
+  fetchModelCatalog,
+  formatModelCatalogHint,
+  modelOptionLabel,
+  type ModelRow,
+} from "../../lib/modelCatalog";
 import type { ChatThread } from "../chat/chatThreadStorage";
 import {
   createConversation,
@@ -83,7 +89,9 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
   const auth = useAuth();
   const { accessToken } = auth;
   const [open, setOpen] = useState(true);
-  const [models, setModels] = useState<string[]>([]);
+  const [modelRows, setModelRows] = useState<ModelRow[]>([]);
+  const [modelsCatalogReady, setModelsCatalogReady] = useState(false);
+  const [modelsCatalogHint, setModelsCatalogHint] = useState<string | null>(null);
   const [thread, setThread] = useState<ChatThread | null>(null);
   const [initErr, setInitErr] = useState<string | null>(null);
   const [initLoading, setInitLoading] = useState(true);
@@ -96,6 +104,8 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
   const endRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const models = useMemo(() => modelRows.map((r) => r.id), [modelRows]);
+
   const payloadBase = useMemo(
     () => ({
       agent_dashboard_context: { dashboard_id: dashboardId },
@@ -107,14 +117,17 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
     let cancelled = false;
     void (async () => {
       try {
-        const r = await fetch("/v1/models");
-        if (!r.ok) return;
-        const d = (await r.json()) as { data?: Array<{ id?: string }> };
-        const ids = (d.data ?? []).map((x) => x.id).filter(Boolean) as string[];
+        const { rows, agentlayer } = await fetchModelCatalog();
         if (cancelled) return;
-        setModels(ids);
+        setModelRows(rows);
+        setModelsCatalogHint(formatModelCatalogHint(agentlayer));
       } catch {
-        /* ignore */
+        if (!cancelled) {
+          setModelRows([]);
+          setModelsCatalogHint("Could not load model catalog.");
+        }
+      } finally {
+        if (!cancelled) setModelsCatalogReady(true);
       }
     })();
     return () => {
@@ -375,18 +388,23 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
                       setModelBeforeFirstSend(v);
                     }
                   }}
-                  disabled={readOnly || !models.length}
+                  disabled={readOnly || !modelsCatalogReady || modelRows.length === 0}
                 >
-                  {!models.length ? (
-                    <option>Loading…</option>
+                  {!modelsCatalogReady ? (
+                    <option value="">Loading…</option>
+                  ) : modelRows.length === 0 ? (
+                    <option value="">{modelsCatalogHint ?? "No models."}</option>
                   ) : (
-                    models.map((id) => (
-                      <option key={id} value={id}>
-                        {id}
+                    modelRows.map((row) => (
+                      <option key={`${row.owned_by ?? "ollama"}:${row.id}`} value={row.id}>
+                        {modelOptionLabel(row)}
                       </option>
                     ))
                   )}
                 </select>
+                {modelsCatalogReady && modelsCatalogHint ? (
+                  <p className="mt-1 text-[10px] leading-snug text-amber-300/90">{modelsCatalogHint}</p>
+                ) : null}
               </div>
               {sendErr ? (
                 <div className="mx-3 mt-2 rounded border border-red-500/40 bg-red-950/30 px-2 py-1.5 text-xs text-red-200">

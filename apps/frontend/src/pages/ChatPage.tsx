@@ -3,6 +3,12 @@ import { NavLink, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { apiFetch, fetchAgents, type AgentDefinition } from "../lib/api";
 import {
+  fetchModelCatalog,
+  formatModelCatalogHint,
+  modelOptionLabel,
+  type ModelRow,
+} from "../lib/modelCatalog";
+import {
   NEW_CHAT_TITLE,
   type AgentTimelineEntry,
   type ChatThread,
@@ -155,7 +161,9 @@ export function ChatPage() {
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [models, setModels] = useState<string[]>([]);
+  const [modelRows, setModelRows] = useState<ModelRow[]>([]);
+  const [modelsCatalogReady, setModelsCatalogReady] = useState(false);
+  const [modelsCatalogHint, setModelsCatalogHint] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [composerDragActive, setComposerDragActive] = useState(false);
   const [dashboardTitles, setDashboardTitles] = useState<Record<string, string>>({});
@@ -198,6 +206,7 @@ export function ChatPage() {
   const model = activeThread?.model ?? "";
   const agentLog: AgentTimelineEntry[] = activeThread?.agentLog ?? [];
 
+  const models = useMemo(() => modelRows.map((r) => r.id), [modelRows]);
   const defaultModel = models[0] ?? "";
 
   useEffect(() => {
@@ -208,14 +217,17 @@ export function ChatPage() {
     let cancelled = false;
     void (async () => {
       try {
-        const r = await fetch("/v1/models");
-        if (!r.ok) return;
-        const d = (await r.json()) as { data?: Array<{ id?: string }> };
-        const ids = (d.data ?? []).map((x) => x.id).filter(Boolean) as string[];
+        const { rows, agentlayer } = await fetchModelCatalog();
         if (cancelled) return;
-        setModels(ids);
+        setModelRows(rows);
+        setModelsCatalogHint(formatModelCatalogHint(agentlayer));
       } catch {
-        /* ignore */
+        if (!cancelled) {
+          setModelRows([]);
+          setModelsCatalogHint("Could not load model catalog.");
+        }
+      } finally {
+        if (!cancelled) setModelsCatalogReady(true);
       }
     })();
     return () => {
@@ -1048,18 +1060,23 @@ export function ChatPage() {
               className="mt-1 rounded-lg border border-surface-border bg-[#1a1a1a] px-3 py-2 text-sm text-neutral-100"
               value={model || defaultModel}
               onChange={(e) => setModel(e.target.value)}
-              disabled={!models.length}
+              disabled={!modelsCatalogReady || modelRows.length === 0}
             >
-              {!models.length ? (
-                <option>Loading models…</option>
+              {!modelsCatalogReady ? (
+                <option value="">Loading models…</option>
+              ) : modelRows.length === 0 ? (
+                <option value="">{modelsCatalogHint ?? "No models available."}</option>
               ) : (
-                models.map((id) => (
-                  <option key={id} value={id}>
-                    {id}
+                modelRows.map((row) => (
+                  <option key={`${row.owned_by ?? "ollama"}:${row.id}`} value={row.id}>
+                    {modelOptionLabel(row)}
                   </option>
                 ))
               )}
             </select>
+            {modelsCatalogReady && modelsCatalogHint ? (
+              <p className="mt-1 text-xs text-amber-300/90">{modelsCatalogHint}</p>
+            ) : null}
             <p className="mt-1 text-xs text-surface-muted">
               Titles from the first message. Open a shared chat: URL query <code className="text-neutral-500">?c=&lt;id&gt;</code>
               . From Dashboards: <code className="text-neutral-500">?dashboard=&lt;uuid&gt;</code> sends{" "}
