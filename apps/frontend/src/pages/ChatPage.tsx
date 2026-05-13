@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { NavLink, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { apiFetch, fetchAgents, type AgentDefinition } from "../lib/api";
 import {
@@ -162,6 +162,15 @@ export function ChatPage() {
   const [agents, setAgents] = useState<AgentDefinition[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("general");
 
+  const isAdminUser = (user?.role ?? "").toLowerCase() === "admin";
+  const visibleAgents = useMemo(
+    () =>
+      agents.filter(
+        (a) => (a.min_role ?? "user").toLowerCase() !== "admin" || isAdminUser
+      ),
+    [agents, isAdminUser]
+  );
+
   const [workspaces, setWorkspaces] = useState<{ id: string; name: string; path: string }[]>([]);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
 
@@ -236,12 +245,20 @@ export function ChatPage() {
   }, [auth]);
 
   useEffect(() => {
+    if (!visibleAgents.length) return;
+    if (!visibleAgents.some((a) => a.id === selectedAgentId)) {
+      const g = visibleAgents.find((a) => a.id === "general");
+      setSelectedAgentId(g ? g.id : visibleAgents[0].id);
+    }
+  }, [visibleAgents, selectedAgentId]);
+
+  useEffect(() => {
     if (!selectedAgentId || !accessToken) {
       setWorkspaces([]);
       setSelectedWorkspaceId(null);
       return;
     }
-    const agent = agents.find((a) => a.id === selectedAgentId);
+    const agent = visibleAgents.find((a) => a.id === selectedAgentId);
     if (!agent?.requires_workspace) {
       setWorkspaces([]);
       setSelectedWorkspaceId(null);
@@ -265,7 +282,7 @@ export function ChatPage() {
     return () => {
       cancelled = true;
     };
-  }, [selectedAgentId, accessToken, auth, agents]);
+  }, [selectedAgentId, accessToken, auth, visibleAgents]);
 
   useEffect(() => {
     if (!dashboardChatId || !accessToken) {
@@ -726,7 +743,6 @@ export function ChatPage() {
     try {
       const ws = await ensureAgentWs();
       const disabledTools = getDisabledToolNames();
-      const agent = agents.find((a) => a.id === selectedAgentId);
       ws.send(
         JSON.stringify({
           type: "chat",
@@ -757,7 +773,7 @@ export function ChatPage() {
     auth,
     selectedAgentId,
     selectedWorkspaceId,
-    agents,
+    visibleAgents,
   ]);
 
   const onSend = () => {
@@ -980,12 +996,12 @@ export function ChatPage() {
               className="mt-1 rounded-lg border border-surface-border bg-[#1a1a1a] px-3 py-2 text-sm text-neutral-100"
               value={selectedAgentId}
               onChange={(e) => setSelectedAgentId(e.target.value)}
-              disabled={!agents.length}
+              disabled={!visibleAgents.length}
             >
-              {!agents.length ? (
+              {!visibleAgents.length ? (
                 <option>Loading agents…</option>
               ) : (
-                agents.map((ag) => (
+                visibleAgents.map((ag) => (
                   <option key={ag.id} value={ag.id}>
                     {ag.icon} {ag.name}
                   </option>
@@ -993,27 +1009,37 @@ export function ChatPage() {
               )}
             </select>
             {(() => {
-              const agent = agents.find((a) => a.id === selectedAgentId);
+              const agent = visibleAgents.find((a) => a.id === selectedAgentId);
               if (!agent?.requires_workspace) return null;
               return (
                 <>
                   <label className="mt-2 block text-xs text-surface-muted">Workspace</label>
-                  <select
-                    className="mt-1 rounded-lg border border-surface-border bg-[#1a1a1a] px-3 py-2 text-sm text-neutral-100"
-                    value={selectedWorkspaceId ?? ""}
-                    onChange={(e) => setSelectedWorkspaceId(e.target.value || null)}
-                    disabled={!workspaces.length}
-                  >
-                    {!workspaces.length ? (
-                      <option>No workspaces</option>
-                    ) : (
-                      workspaces.map((ws) => (
+                  {workspaces.length === 0 ? (
+                    <div className="mt-2 rounded-lg border border-surface-border bg-black/25 px-3 py-2.5">
+                      <p className="text-xs leading-snug text-surface-muted">
+                        No workspace yet. Create one on the Coding Agent page (manual folder or Git), then return here
+                        and pick it from the list.
+                      </p>
+                      <NavLink
+                        to="/coding-agent"
+                        className="mt-2 inline-flex items-center justify-center rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
+                      >
+                        Open Coding Agent
+                      </NavLink>
+                    </div>
+                  ) : (
+                    <select
+                      className="mt-1 rounded-lg border border-surface-border bg-[#1a1a1a] px-3 py-2 text-sm text-neutral-100"
+                      value={selectedWorkspaceId ?? ""}
+                      onChange={(e) => setSelectedWorkspaceId(e.target.value || null)}
+                    >
+                      {workspaces.map((ws) => (
                         <option key={ws.id} value={ws.id}>
                           {ws.name}
                         </option>
-                      ))
-                    )}
-                  </select>
+                      ))}
+                    </select>
+                  )}
                 </>
               );
             })()}

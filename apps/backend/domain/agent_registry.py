@@ -32,6 +32,18 @@ AGENT_TOOL_MAP = {
         "get_tool_help",
         "project_explain",
     ],
+    "operator": [
+        "list_tools",
+        "list_available_tools",
+        "list_tool_categories",
+        "list_tools_in_category",
+        "get_tool_help",
+        "read_tool",
+        "rag_search",
+        "schedule_job_list",
+        "schedule_job_create",
+        "schedule_job_set_enabled",
+    ],
 }
 
 

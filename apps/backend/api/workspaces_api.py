@@ -5,17 +5,14 @@ from __future__ import annotations
 import logging
 import os
 import shutil
-import uuid
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from apps.backend.core.config import config
 from apps.backend.infrastructure.auth import get_current_user
 from apps.backend.infrastructure.db import db
-from apps.backend.infrastructure.operator_settings import public_dict
 
 router = APIRouter(prefix="/v1/workspaces", tags=["workspaces"])
 
@@ -26,138 +23,6 @@ def _get_workspace_base_path() -> Path:
 
 
 logger = logging.getLogger(__name__)
-
-
-def _is_self_editing_allowed() -> bool:
-    try:
-        settings = public_dict()
-        allowed = bool(settings.get("workspace_allow_self_editing", False))
-        logger.debug("workspace_allow_self_editing = %s", allowed)
-        return allowed
-    except Exception as e:
-        logger.warning("failed to check workspace_allow_self_editing: %s", e)
-        return False
-
-
-def _user_can_access_self_workspace(user) -> bool:
-    if user.role == "admin":
-        logger.debug("user %s is admin, self workspace allowed", user.id)
-        return True
-    with db.pool().connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT COALESCE(workspace_self_allowed, false) FROM users WHERE id = %s",
-                (user.id,),
-            )
-            row = cur.fetchone()
-            allowed = bool(row[0]) if row else False
-            logger.debug("user %s workspace_self_allowed = %s", user.id, allowed)
-            return allowed
-
-
-def _is_git_repo(path: Path) -> bool:
-    return (path / ".git").is_dir()
-
-
-def _clone_source_repo() -> Path | None:
-    # 1. Local mount bevorzugt
-    local_path = Path("/workspace/AgentLayer")
-    if _is_git_repo(local_path):
-        logger.info("using local mount /workspace/AgentLayer as source")
-        return local_path
-    
-    # 2. Container /app fallback
-    app_path = Path("/app")
-    if _is_git_repo(app_path):
-        logger.info("using container /app as source")
-        return app_path
-    
-    # 3. Remote fallback (from operator settings)
-    try:
-        settings = public_dict()
-        remote_url = settings.get("agentlayer_git_repo_url")
-        if remote_url:
-            logger.info("would use remote %s (not implemented yet)", remote_url)
-    except Exception:
-        pass
-    
-    logger.warning("no git source found (tried: /workspace/AgentLayer, /app)")
-    return None
-
-
-def _ensure_self_workspace(user) -> dict[str, Any] | None:
-    logger.info("checking self workspace for user %s", user.id)
-    
-    if not _is_self_editing_allowed():
-        logger.info("self workspace: _is_self_editing_allowed() = False")
-        return None
-    
-    if not _user_can_access_self_workspace(user):
-        logger.info("self workspace: _user_can_access_self_workspace() = False")
-        return None
-
-    source_path = Path("/workspace/AgentLayer")
-    if not source_path.exists():
-        logger.warning("self workspace: source path does not exist: %s", source_path)
-        return None
-
-    base_path = _get_workspace_base_path()
-    target_path = base_path / str(user.id) / "agentlayer-self"
-    
-    if not target_path.exists():
-        logger.info("self workspace: copying local repo to %s", target_path)
-        target_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copytree(source_path, target_path)
-        logger.info("self workspace: copy complete")
-
-    with db.pool().connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT id, name, path, source, git_url, git_branch, access_role, created_at, updated_at
-                FROM project_workspaces 
-                WHERE owner_user_id = %s AND name = %s
-                """,
-                (user.id, "agentlayer-self"),
-            )
-            row = cur.fetchone()
-
-            if not row:
-                cur.execute(
-                    """
-                    INSERT INTO project_workspaces (owner_user_id, name, path, source, git_url, git_branch, access_role)
-                    VALUES (%s, %s, %s, %s, %s, %s, 'editor')
-                    RETURNING id, owner_user_id, name, path, source, git_url, git_branch, access_role, created_at, updated_at
-                    """,
-                    (
-                        user.id,
-                        "agentlayer-self",
-                        str(target_path),
-                        "manual",
-                        None,
-                        "main",
-                    ),
-                )
-                row = cur.fetchone()
-            conn.commit()
-
-    return {
-        "id": str(row[0]),
-        "owner_user_id": str(row[1]),
-        "name": row[2],
-        "path": row[3],
-        "source": row[4],
-        "git_url": row[5],
-        "git_branch": row[6],
-        "access_role": row[7],
-        "created_at": row[8].isoformat() if row[8] else None,
-        "updated_at": row[9].isoformat() if row[9] else None,
-    }
-
-
-def _get_self_workspace(user) -> dict[str, Any] | None:
-    from apps.backend.infrastructure.workspace_service import ensure_workspace
-    return ensure_workspace("__agentlayer_self__", user)
 
 
 class WorkspaceCreateBody(BaseModel):
@@ -187,11 +52,39 @@ def _row_to_workspace(row: tuple) -> dict[str, Any]:
     }
 
 
+def _get_self_workspace(user) -> dict[str, Any] | None:
+    """List/API shape for agentlayer-self (ADR 0005); ``None`` if disabled or seed missing."""
+    from apps.backend.infrastructure.workspace_service import ensure_workspace, self_editing_allowed
+
+    if not self_editing_allowed(user):
+        return None
+    ws_int = ensure_workspace("__agentlayer_self__", user)
+    if not ws_int:
+        return None
+    wid = ws_int.get("id")
+    if not wid:
+        return None
+    with db.pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, owner_user_id, name, path, source, git_url, git_branch, access_role, created_at, updated_at
+                FROM project_workspaces
+                WHERE id = %s AND owner_user_id = %s
+                """,
+                (wid, user.id),
+            )
+            row = cur.fetchone()
+    if not row:
+        return None
+    return _row_to_workspace(row)
+
+
 @router.get("")
 async def list_workspaces(request: Request):
     """List all workspaces for the current user, including built-in AgentLayer workspace if enabled."""
     user = await get_current_user(request)
-    tid = db.user_tenant_id(user.id)
+    from apps.backend.infrastructure.workspace_service import AGENTLAYER_SELF_NAME, self_editing_allowed
 
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
@@ -207,6 +100,8 @@ async def list_workspaces(request: Request):
             rows = cur.fetchall()
 
     workspaces = [_row_to_workspace(r) for r in rows]
+    if not self_editing_allowed(user):
+        workspaces = [w for w in workspaces if (w.get("name") or "").strip() != AGENTLAYER_SELF_NAME]
 
     self_ws = _get_self_workspace(user)
     if self_ws:
@@ -221,7 +116,6 @@ async def list_workspaces(request: Request):
 async def create_workspace(request: Request, body: WorkspaceCreateBody):
     """Create a new workspace (manual folder or git clone)."""
     user = await get_current_user(request)
-    tid = db.user_tenant_id(user.id)
 
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
@@ -244,6 +138,14 @@ async def create_workspace(request: Request, body: WorkspaceCreateBody):
         raise HTTPException(
             status_code=403,
             detail=f"Workspace quota exceeded ({quota} max). Delete some workspaces first.",
+        )
+
+    from apps.backend.infrastructure.workspace_service import AGENTLAYER_SELF_NAME
+
+    if body.name.strip() == AGENTLAYER_SELF_NAME:
+        raise HTTPException(
+            status_code=400,
+            detail="Reserved workspace name. Use the AgentLayer self workspace when self-editing is enabled.",
         )
 
     base_path = _get_workspace_base_path()
@@ -302,6 +204,11 @@ async def get_workspace(request: Request, workspace_id: str):
     if not row:
         raise HTTPException(status_code=404, detail="Workspace not found")
 
+    from apps.backend.infrastructure.workspace_service import AGENTLAYER_SELF_NAME, self_editing_allowed
+
+    if (row[2] or "").strip() == AGENTLAYER_SELF_NAME and not self_editing_allowed(user):
+        raise HTTPException(status_code=404, detail="Workspace not found")
+
     return {"workspace": _row_to_workspace(row)}
 
 
@@ -323,6 +230,11 @@ async def update_workspace(request: Request, workspace_id: str, body: WorkspaceU
             row = cur.fetchone()
 
     if not row:
+        raise HTTPException(status_code=404, detail="Workspace not found or no edit permission")
+
+    from apps.backend.infrastructure.workspace_service import AGENTLAYER_SELF_NAME, self_editing_allowed
+
+    if (row[2] or "").strip() == AGENTLAYER_SELF_NAME and not self_editing_allowed(user):
         raise HTTPException(status_code=404, detail="Workspace not found or no edit permission")
 
     updates = []
@@ -364,10 +276,12 @@ async def delete_workspace(request: Request, workspace_id: str):
     """Delete a workspace (owner only)."""
     user = await get_current_user(request)
 
+    from apps.backend.infrastructure.workspace_service import AGENTLAYER_SELF_NAME, self_editing_allowed
+
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT path FROM project_workspaces WHERE id = %s AND owner_user_id = %s AND access_role = 'owner'",
+                "SELECT path, name FROM project_workspaces WHERE id = %s AND owner_user_id = %s AND access_role = 'owner'",
                 (workspace_id, user.id),
             )
             row = cur.fetchone()
@@ -375,7 +289,8 @@ async def delete_workspace(request: Request, workspace_id: str):
     if not row:
         raise HTTPException(status_code=404, detail="Workspace not found or no delete permission")
 
-    import shutil
+    if (row[1] or "").strip() == AGENTLAYER_SELF_NAME and not self_editing_allowed(user):
+        raise HTTPException(status_code=404, detail="Workspace not found or no delete permission")
 
     workspace_path = Path(row[0])
     if workspace_path.exists():
@@ -394,15 +309,20 @@ async def validate_workspace_path(request: Request, workspace_id: str):
     """Check if workspace path exists and is accessible."""
     user = await get_current_user(request)
 
+    from apps.backend.infrastructure.workspace_service import AGENTLAYER_SELF_NAME, self_editing_allowed
+
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT path FROM project_workspaces WHERE id = %s AND owner_user_id = %s",
+                "SELECT path, name FROM project_workspaces WHERE id = %s AND owner_user_id = %s",
                 (workspace_id, user.id),
             )
             row = cur.fetchone()
 
     if not row:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+
+    if (row[1] or "").strip() == AGENTLAYER_SELF_NAME and not self_editing_allowed(user):
         raise HTTPException(status_code=404, detail="Workspace not found")
 
     workspace_path = Path(row[0])

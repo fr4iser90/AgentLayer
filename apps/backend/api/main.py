@@ -641,7 +641,7 @@ if _agent_index.is_file():
     @app.get("/app/studio")
     @app.get("/app/ide-agent")
     @app.get("/app/admin")
-    @app.get("/app/admin/ide-agent")
+    @app.get("/app/admin/ide-integration")
     @app.get("/app/admin/interfaces")
     @app.get("/app/admin/tools")
     @app.get("/app/admin/users")
@@ -651,13 +651,10 @@ if _agent_index.is_file():
         """Serve SPA index for client-side routes (must register before mount /app)."""
         return FileResponse(_agent_index)
 
-    @app.get("/app/admin/ide-agents/{ide}")
-    @app.get("/app/admin/ide-agents/{ide}/control-center")
-    @app.get("/app/admin/ide-agents/{ide}/settings")
-    @app.get("/app/admin/ide-agents/{ide}/dom-analyzer")
-    async def agent_ui_spa_shell_ide_agents(ide: str):
-        """IDE Agents admin subtree (client-side routes: overview, control center, settings, DOM analyzer)."""
-        _ = ide
+    @app.get("/app/admin/ide-agents/{full_path:path}")
+    async def agent_ui_spa_shell_legacy_ide_agents(full_path: str):
+        """Legacy PIDEA admin URLs; SPA redirects to IDE integration placeholder."""
+        _ = full_path
         return FileResponse(_agent_index)
 
     app.mount(

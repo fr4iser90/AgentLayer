@@ -164,11 +164,7 @@ export function AdminInterfaces() {
   const [schedulerPackages, setSchedulerPackages] = useState("");
   const [schedulerLlmBackend, setSchedulerLlmBackend] = useState("inherit");
   const [schedulerToolsMode, setSchedulerToolsMode] = useState("none");
-  const [schedulerPidea, setSchedulerPidea] = useState(false);
   const [schedulerInstructions, setSchedulerInstructions] = useState("");
-  const [schedulerJobsWorkerEnabled, setSchedulerJobsWorkerEnabled] = useState(true);
-  const [schedulerJobsIdePideaEnabled, setSchedulerJobsIdePideaEnabled] = useState(true);
-  const [schedulerJobsIdePideaTimeout, setSchedulerJobsIdePideaTimeout] = useState("300");
   const [workspaceAllowSelfEditing, setWorkspaceAllowSelfEditing] = useState(false);
   const [adminUsers, setAdminUsers] = useState<Array<{ id: string; email?: string | null; display_name?: string | null }>>([]);
   const [extLlmModelIds, setExtLlmModelIds] = useState<string[]>([]);
@@ -324,16 +320,8 @@ export function AdminInterfaces() {
           ? op.scheduler_tools_mode
           : "none"
       );
-      setSchedulerPidea(!!op.scheduler_pidea_enabled);
       setSchedulerInstructions((op.scheduler_instructions ?? "").trim());
       setSchedulerJobsWorkerEnabled(op.scheduler_jobs_worker_enabled !== false);
-      setSchedulerJobsIdePideaEnabled(op.scheduler_jobs_ide_pidea_enabled !== false);
-      setSchedulerJobsIdePideaTimeout(
-        op.scheduler_jobs_ide_pidea_timeout_sec != null &&
-          Number.isFinite(Number(op.scheduler_jobs_ide_pidea_timeout_sec))
-          ? String(Math.round(Number(op.scheduler_jobs_ide_pidea_timeout_sec)))
-          : "300"
-      );
       setWorkspaceAllowSelfEditing(!!op.workspace_allow_self_editing);
 
       if (uRes.ok) {
@@ -598,19 +586,11 @@ export function AdminInterfaces() {
       patch.scheduler_allowed_tool_packages = schedulerPackages.trim() || null;
       patch.scheduler_llm_backend = schedulerLlmBackend;
       patch.scheduler_tools_mode = schedulerToolsMode;
-      patch.scheduler_pidea_enabled = schedulerPidea;
+      patch.scheduler_pidea_enabled = false;
       patch.scheduler_instructions = schedulerInstructions.trim() || null;
-      const sjTimeout = Number(schedulerJobsIdePideaTimeout.trim());
-      if (!Number.isFinite(sjTimeout) || sjTimeout < 30 || sjTimeout > 900) {
-        setSaveMsg({
-          ok: false,
-          text: "Persistierte Jobs: Timeout (Sekunden) muss zwischen 30 und 900 liegen.",
-        });
-        return;
-      }
       patch.scheduler_jobs_worker_enabled = schedulerJobsWorkerEnabled;
-      patch.scheduler_jobs_ide_pidea_enabled = schedulerJobsIdePideaEnabled;
-      patch.scheduler_jobs_ide_pidea_timeout_sec = sjTimeout;
+      patch.scheduler_jobs_ide_pidea_enabled = false;
+      patch.scheduler_jobs_ide_pidea_timeout_sec = 300;
       patch.workspace_allow_self_editing = workspaceAllowSelfEditing;
       const mgHops = Number(memGraphMaxHops.trim());
       const mgScore = Number(memGraphMinScore.trim());
@@ -1655,8 +1635,7 @@ export function AdminInterfaces() {
             <h2 className="text-sm font-medium text-white">Scheduler (Agent)</h2>
             <p className="mt-2 text-xs text-surface-muted">
               Periodischer Hintergrund-Check per <span className="font-mono text-neutral-400">chat_completion</span> als
-              gewählter User. Bei Bedarf Telegram an dieselbe verknüpfte User-ID — Tageslimit gegen Spam.{" "}
-              <span className="font-mono text-neutral-400">scheduler_pidea_enabled</span> ist MVP noch ohne Wirkung.
+              gewählter User. Bei Bedarf Telegram an dieselbe verknüpfte User-ID — Tageslimit gegen Spam.
             </p>
             <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-white">
               <input
@@ -1776,15 +1755,12 @@ export function AdminInterfaces() {
               <option value="allowlist">allowlist — nur Packages oben</option>
               <option value="full">full — alle erlaubten Tools (Policy)</option>
             </select>
-            <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-white">
-              <input
-                type="checkbox"
-                className="rounded border-surface-border"
-                checked={schedulerPidea}
-                onChange={(e) => setSchedulerPidea(e.target.checked)}
-              />
-              PIDEA/IDE (noch nicht implementiert)
-            </label>
+            <p className="mt-4 rounded-md border border-white/10 bg-black/20 px-3 py-2 text-xs text-surface-muted">
+              Server-side IDE/PIDEA (Playwright, CDP, persisted <span className="font-mono">ide_agent</span>{" "}
+              execution) ist entfernt. Persistierte Jobs nutzen nur noch{" "}
+              <span className="font-mono text-neutral-400">server_periodic</span> zuverlässig; ein späterer externer
+              Connector kann wieder angebunden werden. Beim Speichern werden PIDEA-Flags in der DB auf aus gesetzt.
+            </p>
             <label className="mt-4 block text-xs text-surface-muted" htmlFor="hb-instr">
               Anweisungen (Prompt)
             </label>
@@ -1800,8 +1776,8 @@ export function AdminInterfaces() {
               Persistierte Jobs (<span className="font-mono">scheduler_jobs</span>)
             </p>
             <p className="mt-1 text-xs text-surface-muted">
-              Hintergrund-Thread für gespeicherte Jobs (Server-LLM und optional IDE/PIDEA). Einstellungen
-              liegen in der Datenbank (hier), nicht in Umgebungsvariablen.
+              Hintergrund-Thread für gespeicherte Jobs (<span className="font-mono">server_periodic</span>).
+              Einstellungen liegen in der Datenbank (hier), nicht in Umgebungsvariablen.
             </p>
             <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-white">
               <input
@@ -1812,31 +1788,6 @@ export function AdminInterfaces() {
               />
               Worker aktiv (Hintergrund-Thread)
             </label>
-            <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-white">
-              <input
-                type="checkbox"
-                className="rounded border-surface-border"
-                checked={schedulerJobsIdePideaEnabled}
-                onChange={(e) => setSchedulerJobsIdePideaEnabled(e.target.checked)}
-                disabled={!schedulerJobsWorkerEnabled}
-              />
-              IDE-Agent-Jobs über PIDEA ausführen (nur Admin,{" "}
-              <span className="font-mono">execution_user_id</span>)
-            </label>
-            <label className="mt-3 block text-xs text-surface-muted" htmlFor="sj-pidea-timeout">
-              PIDEA-Antwort-Timeout (Sekunden, 30–900)
-            </label>
-            <input
-              id="sj-pidea-timeout"
-              type="number"
-              min={30}
-              max={900}
-              step={1}
-              className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white disabled:opacity-50"
-              value={schedulerJobsIdePideaTimeout}
-              onChange={(e) => setSchedulerJobsIdePideaTimeout(e.target.value)}
-              disabled={!schedulerJobsWorkerEnabled || !schedulerJobsIdePideaEnabled}
-            />
           </section>
 
           <section className="mt-6 rounded-lg border border-surface-border p-4">

@@ -1,5 +1,7 @@
 # Auto tool backups (AGENT_TOOLS_BACKUP_DIR=/data/tools/.tool_backups on host)
 plugins/tools/agent/agent_created/.tool_backups/
+# Generated local Playwright bundles (export_local_playwright_bundle)
+plugins/tools/agent/core/output/
 # Cache
 __pycache__/
 

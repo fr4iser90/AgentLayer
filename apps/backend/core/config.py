@@ -109,6 +109,14 @@ AGENT_TOOLS_DENYLIST = frozenset(
     for x in (os.environ.get("AGENT_TOOLS_DENYLIST") or "").split(",")
     if x.strip()
 )
+# Tool Ranking (Semantic Search based)
+AGENT_TOOLS_RANKING_ENABLED = _env_bool("AGENT_TOOLS_RANKING_ENABLED", True)
+AGENT_TOOLS_MAX_RANKING = max(1, int(os.environ.get("AGENT_TOOLS_MAX_RANKING", "10")))
+AGENT_TOOLS_SEMANTIC_WEIGHT = max(0.0, float(os.environ.get("AGENT_TOOLS_SEMANTIC_WEIGHT", "1.0")))
+AGENT_TOOLS_TRIGGER_BOOST = max(0.0, min(1.0, float(os.environ.get("AGENT_TOOLS_TRIGGER_BOOST", "0.1"))))
+AGENT_TOOLS_CONTEXT_BOOST = max(0.0, min(1.0, float(os.environ.get("AGENT_TOOLS_CONTEXT_BOOST", "0.05"))))
+AGENT_TOOLS_MIN_SCORE_THRESHOLD = max(0.0, min(1.0, float(os.environ.get("AGENT_TOOLS_MIN_SCORE_THRESHOLD", "0.1"))))
+AGENT_TOOLS_RANKING_FALLBACK_ALL = _env_bool("AGENT_TOOLS_RANKING_FALLBACK_ALL", True)
 
 
 def _resolve_database_url() -> str:

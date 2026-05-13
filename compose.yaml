@@ -62,16 +62,18 @@ services:
       # Nur Playwright-Install (Web-UI): Pfade auf Named Volumes — kein PIDEA_CDP_* (CDP = Admin → IDE Agent / DB).
       PIDEA_PLAYWRIGHT_PIP_TARGET: /data/pidea/playwright-site-packages
       PLAYWRIGHT_BROWSERS_PATH: /data/pidea/ms-playwright
+      # DB-backed project workspaces (manual/git/agentlayer-self). Separate from /workspace/AgentLayer (read-only seed).
+      # See docs/runbooks/workspace-persistence.md
+      AGENTLAYER_WORKSPACE_PATH: /data/project_workspaces
     volumes:
       # create_tool / Default AGENT_TOOLS_EXTRA_DIR=/data/tools — ohne Mount existiert der Pfad nicht.
       - ./plugins/tools/agent/agent_created:/data/tools:rw
-      - pidea_playwright_site:/data/pidea/playwright-site-packages
-      - pidea_playwright_browsers:/data/pidea/ms-playwright
-      - pidea_pip_cache:/root/.cache/pip
       # Coding workspace -> mount the actual source code
       - .:/code:ro
       # Self-editing workspace (Hybrid: local bevorzugt)
       - .:/workspace/AgentLayer:ro
+      # Writable per-user project dirs (survives container recreate). Matches AGENTLAYER_WORKSPACE_PATH above.
+      - agent_project_workspaces:/data/project_workspaces:rw
       # Backups (replace_tool/update_tool): Default /data/tool_backups liegt NICHT auf diesem Mount →
       # in .env setzen: AGENT_TOOLS_BACKUP_DIR=/data/tools/.tool_backups (Ordner erscheint unter ./plugins/tools/agent/agent_created/.tool_backups)
     # Optional read-only:  - ./plugins/tools/agent/agent_created:/data/tools:ro
@@ -81,9 +83,7 @@ services:
 volumes:
   agent_pg_data:
   agent_qdrant_data:
-  pidea_playwright_site:
-  pidea_playwright_browsers:
-  pidea_pip_cache:
+  agent_project_workspaces:
 networks:
   ai-net:
     external: true

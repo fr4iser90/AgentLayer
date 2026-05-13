@@ -1,21 +1,10 @@
-"""Parse ``ide_workflow`` on ``scheduler_jobs`` and optional git step before PIDEA."""
+"""Parse ``ide_workflow`` on ``scheduler_jobs`` (metadata; server-side PIDEA execution removed)."""
 
 from __future__ import annotations
 
 import json
 import logging
-from pathlib import Path
 from typing import Any
-
-# from apps.backend.integrations.pidea.content_library_prompts import (
-#     DEFAULT_TASK_MANAGEMENT_PHASE_PATHS,
-# )
-# from apps.backend.integrations.pidea.workflow.git_ops import (
-#     git_create_branch,
-#     is_git_work_tree,
-#     resolve_branch_name_template,
-#     validate_branch_name,
-# )
 
 logger = logging.getLogger(__name__)
 
@@ -98,18 +87,9 @@ def normalize_ide_workflow(raw: Any) -> dict[str, Any]:
 
     wf_name_in = raw.get("pidea_workflow_name")
     if wf_name_in is not None and str(wf_name_in).strip():
-        from apps.backend.integrations.pidea.pidea_workflow_json import (
-            load_workflow_registry,
-            workflow_exists,
+        raise ValueError(
+            "pidea_workflow_name is not supported (server-side PIDEA removed; external IDE connector TBD)"
         )
-
-        wn = str(wf_name_in).strip()
-        load_workflow_registry()
-        if not workflow_exists(wn):
-            raise ValueError(
-                f"pidea_workflow_name unknown: {wn!r} (use an id from PIDEA task-workflows.json)"
-            )
-        out["pidea_workflow_name"] = wn
 
     paths_in = raw.get("phase_prompt_paths")
     use_default = bool(raw.get("use_pidea_task_management_phases"))
@@ -128,32 +108,13 @@ def normalize_ide_workflow(raw: Any) -> dict[str, Any]:
             cleaned.append(s)
         out["phase_prompt_paths"] = cleaned
     elif use_default:
-        out["use_pidea_task_management_phases"] = True
-        out["phase_prompt_paths"] = list(DEFAULT_TASK_MANAGEMENT_PHASE_PATHS)
-
-    if out.get("pidea_workflow_name") and (
-        raw.get("use_pidea_task_management_phases")
-        or raw.get("phase_prompt_paths") is not None
-    ):
         raise ValueError(
-            "ide_workflow: use pidea_workflow_name alone, or phase_prompt_paths / "
-            "use_pidea_task_management_phases — not both"
+            "use_pidea_task_management_phases is not supported (server-side PIDEA removed)"
         )
 
-    if "use_pidea_scheduler_pipeline" in raw:
-        out["use_pidea_scheduler_pipeline"] = bool(raw.get("use_pidea_scheduler_pipeline"))
-    if out.get("use_pidea_scheduler_pipeline"):
-        out["scheduler_pipeline_include_review"] = bool(
-            raw.get("scheduler_pipeline_include_review", False)
-        )
-    if out.get("use_pidea_scheduler_pipeline") and (
-        raw.get("pidea_workflow_name")
-        or raw.get("use_pidea_task_management_phases")
-        or raw.get("phase_prompt_paths") is not None
-    ):
+    if "use_pidea_scheduler_pipeline" in raw and bool(raw.get("use_pidea_scheduler_pipeline")):
         raise ValueError(
-            "ide_workflow: use_pidea_scheduler_pipeline excludes pidea_workflow_name, "
-            "phase_prompt_paths, and use_pidea_task_management_phases"
+            "use_pidea_scheduler_pipeline is not supported (server-side PIDEA removed)"
         )
 
     if "attach_task_plans_to_execute" in raw:
@@ -185,7 +146,7 @@ def normalize_ide_workflow(raw: Any) -> dict[str, Any]:
 
 
 def job_context_footer(row: dict[str, Any]) -> str:
-    """Block mit Job-Metadaten + Zusatzinstruktionen (unter den PIDEA-Prompt-Dateien)."""
+    """Block with job metadata and extra instructions (for scheduler / IDE workflow context)."""
     lines: list[str] = ["---", "[Scheduler job context]"]
     t = (str(row.get("title") or "").strip()) or None
     if t:
@@ -231,53 +192,16 @@ def run_optional_git_branch(
     job_id_str: str,
 ) -> tuple[bool, str | None]:
     """
-    If ``git_branch_template`` and ``git_repo_path`` are set, create branch.
+    Legacy hook for creating a git branch from ``ide_workflow``.
 
-    Returns:
-        ``(True, None)`` on success or when git step skipped.
-        ``(False, error)`` on failure (caller should not advance last_run_at).
+    Server-side automation no longer runs git here; callers treat skip as success so rows are not wedged.
     """
+    _ = row, job_id_str
     tmpl = (wf.get("git_branch_template") or "").strip()
     repo_s = (wf.get("git_repo_path") or wf.get("project_path") or "").strip()
     if not tmpl and not repo_s:
         return True, None
-    if not tmpl or not repo_s:
-        logger.warning(
-            "scheduler_jobs ide_workflow: git_branch_template and git_repo_path must both be set — skipping git"
-        )
-        return True, None
-
-    try:
-        root = Path(repo_s).expanduser().resolve(strict=True)
-    except OSError as e:
-        return False, f"git_repo_path not usable: {e}"
-
-    if not root.is_dir():
-        return False, "git_repo_path is not a directory"
-
-    if not is_git_work_tree(root):
-        return False, "git_repo_path is not a git repository"
-
-    title = (str(row.get("title") or "").strip()) or None
-    branch_raw = resolve_branch_name_template(
-        tmpl,
-        task_id=job_id_str,
-        task_title=title,
-    )
-    try:
-        validate_branch_name(branch_raw)
-    except ValueError as e:
-        return False, f"invalid branch name after template: {e}"
-
-    src = (wf.get("git_source_branch") or "").strip() or None
-    r = git_create_branch(root, branch_raw, source_branch=src, timeout_sec=180.0)
-    if not r.get("ok"):
-        err = r.get("error") or r.get("stderr") or "git_create_branch failed"
-        return False, str(err)[:2000]
-
-    logger.info(
-        "scheduler_jobs: created git branch %s in %s",
-        r.get("branch"),
-        root,
+    logger.warning(
+        "ide_workflow: git branch step skipped (server-side IDE/git automation disabled; remove git_* fields if unused)"
     )
     return True, None

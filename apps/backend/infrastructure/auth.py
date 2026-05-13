@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 
 from apps.backend.infrastructure.db import db
 from apps.backend.domain.identity import set_identity, reset_identity
+from apps.backend.dashboard.db import ensure_default_dashboard_for_new_user
 
 
 # JWT Configuration
@@ -345,6 +346,7 @@ def create_user(email: str, password: str, role: str = "user", tenant_id: int = 
         with conn.cursor() as cur:
             user = insert_user_with_cursor(cur, email, password, role, tenant_id=tenant_id)
             conn.commit()
+    ensure_default_dashboard_for_new_user(user.id, tenant_id)
     return user
 
 

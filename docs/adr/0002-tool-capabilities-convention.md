@@ -30,6 +30,8 @@ Accepted — complements ADR 0001.
 | `knowledge.retrieve` | Semantic / RAG retrieval over indexed content. |
 | `image.edit` | Image-to-image or inpainting generation. |
 | `creative.web.build` | Iterative HTML/asset build workflows. |
+| `automation.browser.validate` | Validate a structured local-browser automation plan (no writes). |
+| `automation.browser.package` | Generate downloadable Playwright bundle + ZIP for user-local execution. |
 | `debug.echo` | Sample / smoke-test only. |
 | `recreation.fishing.advise` | Heuristic fishing advice (domain demos). |
 | `recreation.hunting.advise` | Heuristic hunting advice. |

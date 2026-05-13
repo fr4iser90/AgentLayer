@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import datetime
 from typing import Any, Literal, NamedTuple
@@ -13,6 +14,8 @@ from apps.backend.core.config import config
 from apps.backend.infrastructure.db import db
 from apps.backend.dashboard import file_storage, files_db
 from apps.backend.dashboard.defaults import defaults_for_kind
+
+logger = logging.getLogger(__name__)
 
 AccessRole = Literal["owner", "co_owner", "editor", "viewer"]
 
@@ -317,6 +320,50 @@ def dashboard_create(
     r = _row_dict(dict(row) if row else {})
     r["access_role"] = "owner"
     return r
+
+
+def ensure_default_dashboard_for_new_user(user_id: uuid.UUID, tenant_id: int) -> None:
+    """
+    When ``user_dashboards`` exists, create one dashboard if this user owns none.
+
+    Uses ``personal_dashboard`` when that bundle template is on disk; otherwise ``custom``.
+    Skips silently if the dashboard schema is not installed yet. Logs and swallows errors so
+    user signup still succeeds.
+    """
+    from apps.backend.dashboard.bootstrap import dashboard_tables_exist
+    from apps.backend.dashboard.bundle import template_path_for_kind
+
+    if not dashboard_tables_exist():
+        return
+    with db.pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT COUNT(*) FROM user_dashboards
+                WHERE owner_user_id = %s AND tenant_id = %s
+                """,
+                (user_id, tenant_id),
+            )
+            row = cur.fetchone()
+        conn.commit()
+    n = int(row[0]) if row and row[0] is not None else 0
+    if n > 0:
+        return
+    preferred = "personal_dashboard"
+    kind = preferred if template_path_for_kind(preferred) is not None else "custom"
+    try:
+        dashboard_create(
+            user_id,
+            tenant_id,
+            kind=kind,
+            title="Personal dashboard",
+        )
+    except Exception:
+        logger.exception(
+            "ensure_default_dashboard_for_new_user failed (user_id=%s tenant_id=%s)",
+            user_id,
+            tenant_id,
+        )
 
 
 def dashboard_list(user_id: uuid.UUID, tenant_id: int, limit: int = 200) -> list[dict[str, Any]]:

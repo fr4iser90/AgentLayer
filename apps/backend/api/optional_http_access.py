@@ -99,7 +99,6 @@ def public_http_auth_policy() -> dict[str, Any]:
         },
         "admin_routes": [
             "GET/PUT/PATCH /v1/admin/operator-settings",
-            "POST /v1/admin/experimental/install-playwright",
             "POST /v1/admin/external-llm/models",
             "GET/PUT /v1/admin/interfaces",
             "GET/POST /v1/admin/tenants",

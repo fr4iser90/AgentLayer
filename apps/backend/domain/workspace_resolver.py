@@ -19,80 +19,24 @@ class WorkspaceState:
 
 def resolve_workspace(workspace_id: str | None, user) -> dict[str, Any] | None:
     """
-    Resolve workspace by ID.
-    
+    Resolve workspace by ID from ``project_workspaces``.
+
     Returns workspace dict with:
-    - type: "self" or "db"
+    - type: ``db``
     - state: CREATED/CLONING/READY/ERROR
-    - source: "local" or "remote" or None
-    - path: absolute filesystem path
-    - repo_path: path to git repo (if applicable)
-    
+    - source, path, repo_path, name, id, …
+
+    AgentLayer self-workspace (``agentlayer-self``) uses the same shape; use
+    ``workspace_service.ensure_workspace`` (including legacy ``__agentlayer_self__`` alias).
+
     Returns None if workspace not found or not ready.
     """
     if not workspace_id:
         logger.debug("no workspace_id provided")
         return None
-    
-    # Check for self-workspace special ID
-    if workspace_id == "__agentlayer_self__":
-        return resolve_self_workspace(user)
-    
-    # Resolve from DB
+
+    # ``__agentlayer_self__`` is handled only in ``workspace_service.ensure_workspace`` (ADR 0005).
     return resolve_db_workspace(workspace_id, user)
-
-
-def resolve_self_workspace(user) -> dict[str, Any] | None:
-    """
-    Resolve AgentLayer self-workspace.
-    
-    Self-workspace comes from local mount, not DB entry.
-    """
-    from apps.backend.infrastructure.operator_settings import public_dict
-    from apps.backend.infrastructure.db import db
-    
-    # Check if self-editing is allowed
-    try:
-        settings = public_dict()
-        if not settings.get("workspace_allow_self_editing", False):
-            logger.debug("self-editing not allowed in operator settings")
-            return None
-    except Exception:
-        logger.warning("failed to check operator settings")
-        return None
-    
-    # Check if user can access self-workspace
-    if user.role != "admin":
-        try:
-            with db.pool().connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        "SELECT COALESCE(workspace_self_allowed, false) FROM users WHERE id = %s",
-                        (user.id,),
-                    )
-                    row = cur.fetchone()
-                    if not row or not row[0]:
-                        logger.debug("user %s not allowed for self-workspace", user.id)
-                        return None
-        except Exception as e:
-            logger.warning("failed to check user self-workspace permission: %s", e)
-            return None
-    
-    # Self-workspace uses the mounted directory directly
-    workspace_path = Path("/workspace/AgentLayer")
-    if not workspace_path.exists():
-        logger.warning("self-workspace mount not found: %s", workspace_path)
-        return None
-    
-    return {
-        "type": "self",
-        "state": WorkspaceState.READY,
-        "source": "local",
-        "path": str(workspace_path),
-        "repo_path": str(workspace_path / "repo"),
-        "name": "AgentLayer (self)",
-        "id": "__agentlayer_self__",
-    }
 
 
 def resolve_db_workspace(workspace_id: str, user) -> dict[str, Any] | None:
@@ -143,14 +87,7 @@ def resolve_source(workspace: dict[str, Any]) -> dict[str, Any]:
     - path: source path or URL
     """
     ws_type = workspace.get("type")
-    
-    if ws_type == "self":
-        # Self uses local mount
-        return {
-            "type": "local",
-            "path": workspace.get("path"),
-        }
-    
+
     if ws_type == "db":
         source = workspace.get("source")
         if source == "git" and workspace.get("git_url"):

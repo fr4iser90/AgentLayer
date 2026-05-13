@@ -1,4 +1,4 @@
-"""Discover dashboard domains under ``dashboard/`` via ``dashboard.kind.json`` (no central manifest, no env)."""
+"""Discover dashboard domains under ``plugins/dashboards/*/`` via ``dashboard.kind.json``."""
 
 from __future__ import annotations
 

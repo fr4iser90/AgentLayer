@@ -9,6 +9,7 @@ import os
 from apps.backend.core.config import AGENT_INITIAL_ADMIN_EMAIL, AGENT_INITIAL_ADMIN_PASSWORD
 from apps.backend.infrastructure.db import db
 from apps.backend.infrastructure.auth import insert_user_with_cursor
+from apps.backend.dashboard.db import ensure_default_dashboard_for_new_user
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +45,7 @@ def try_create_initial_admin_from_env() -> bool:
             if cur.fetchone()[0] > 0:
                 conn.rollback()
                 return False
-            insert_user_with_cursor(cur, email, password, role="admin")
+            new_admin = insert_user_with_cursor(cur, email, password, role="admin")
             cur.execute("DELETE FROM admin_claim_otp")
         conn.commit()
 
@@ -52,6 +53,8 @@ def try_create_initial_admin_from_env() -> bool:
         "First admin created from AGENT_INITIAL_ADMIN_EMAIL. "
         "Remove AGENT_INITIAL_ADMIN_* from the environment and change the password after login."
     )
+    # tenant_id=1 matches insert_user_with_cursor default for first admin
+    ensure_default_dashboard_for_new_user(new_admin.id, 1)
     return True
 
 

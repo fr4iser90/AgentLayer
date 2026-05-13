@@ -15,6 +15,10 @@ This folder is written for **humans** and for **RAG ingestion**.
 - **Concrete anchors**: always include file paths, function names, and endpoint paths.
 - **Examples**: include short JSON examples for data contracts.
 
+### Planning
+
+- **Coding agent roadmap & backlog** (guardrails, epics, Git phases): [`docs/planning/coding-agent-roadmap.md`](./planning/coding-agent-roadmap.md)
+
 ### Start here
 
 - **Architecture**: [`docs/architecture/overview.md`](./architecture/overview.md)
@@ -25,6 +29,7 @@ This folder is written for **humans** and for **RAG ingestion**.
 - **Discord**: [`docs/features/discord.md`](./features/discord.md)
 - **HTTP API**: [`docs/api/http.md`](./api/http.md)
 - **Ops runbooks**: [`docs/runbooks/`](./runbooks/)
+- **Workspace persistence (Docker)**: [`docs/runbooks/workspace-persistence.md`](./runbooks/workspace-persistence.md)
 - **Glossary**: [`docs/glossary.md`](./glossary.md)
 
 ### ADRs (decisions)
@@ -34,4 +39,6 @@ You already have ADRs under [`docs/adr/`](./adr/):
 - [`0001-tool-and-agent-architecture.md`](./adr/0001-tool-and-agent-architecture.md)
 - [`0002-tool-capabilities-convention.md`](./adr/0002-tool-capabilities-convention.md)
 - [`0003-capability-governance.md`](./adr/0003-capability-governance.md)
+- [`0004-scheduler-data-model.md`](./adr/0004-scheduler-data-model.md)
+- [`0005-agentlayer-self-workspace-contract.md`](./adr/0005-agentlayer-self-workspace-contract.md)
 

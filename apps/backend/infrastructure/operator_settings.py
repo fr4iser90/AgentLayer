@@ -802,10 +802,11 @@ class OperatorSettingsPatch(BaseModel):
 
 
 def scheduler_jobs_worker_settings() -> tuple[bool, bool, float]:
-    """Persisted ``scheduler_jobs`` worker: enabled, IDE/PIDEA branch, reply timeout (30–900 s)."""
+    """Persisted ``scheduler_jobs`` worker: enabled, IDE branch (disabled), reply timeout (30–900 s)."""
     r = fetch_operator_settings_row()
     w = bool(r.get("scheduler_jobs_worker_enabled", True))
-    ide = bool(r.get("scheduler_jobs_ide_pidea_enabled", True))
+    # Server-side PIDEA/Playwright IDE driving removed — keep column reads for future connector only.
+    ide = False
     t = _bound_float(r.get("scheduler_jobs_ide_pidea_timeout_sec"), 300.0, 30.0, 900.0)
     return w, ide, t
 

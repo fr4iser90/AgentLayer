@@ -20,16 +20,8 @@ import { ConnectionsSettings } from "./pages/settings/ConnectionsSettings";
 import { ProfileSettings } from "./pages/settings/ProfileSettings";
 import { ToolsSettings } from "./pages/settings/ToolsSettings";
 import SharesSettings from "./pages/settings/SharesSettings";
-import { AdminIdeAgent } from "./pages/admin/AdminIdeAgent";
-import {
-  IdeAgentIdeControlCenterPage,
-  IdeAgentIdeOverviewPage,
-  IdeAgentIdeSettingsPage,
-} from "./pages/admin/ide-agents/IdeAgentIdePages";
-import { IdeAgentToolsGate } from "./pages/admin/ide-agents/IdeAgentToolsGate";
-import { DomAnalyzerPage } from "./pages/admin/ide-agents/DomAnalyzerPage";
 import { StudioPage } from "./pages/StudioPage";
-import { IdeAgentPage } from "./pages/IdeAgentPage";
+import { IdeIntegrationPlaceholder } from "./pages/IdeIntegrationPlaceholder";
 import { DashboardPage } from "./pages/DashboardPage";
 import { LoginPage } from "./pages/LoginPage";
 import { MySchedulesPage } from "./pages/MySchedulesPage";
@@ -38,70 +30,50 @@ export function App() {
   return (
     <BrowserRouter basename="/app">
       <AuthProvider>
-      <Routes>
-        <Route element={<AppLayout />}>
-          <Route path="login" element={<LoginPage />} />
-          <Route element={<RequireSession />}>
-            <Route path="/" element={<HomePage />} />
-            <Route path="chat" element={<ChatPage />} />
-            <Route path="ide-agent" element={<IdeAgentPage />} />
-            <Route path="studio" element={<StudioPage />} />
-            <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="schedules" element={<MySchedulesPage />} />
-            <Route path="docs" element={<DocsPage />} />
-            <Route path="settings" element={<SettingsLayout />}>
-              <Route index element={<Navigate to="/settings/profile" replace />} />
-              <Route path="friends" element={<FriendsSettings />} />
-              <Route path="profile" element={<ProfileSettings />} />
-              <Route path="connections" element={<ConnectionsSettings />} />
-              <Route path="tools" element={<ToolsSettings />} />
-            <Route path="agent" element={<AgentSettings />} />
-            <Route path="shares" element={<SharesSettings />} />
-            <Route path="experimental" element={<Navigate to="/admin/ide-agent" replace />} />
-            </Route>
-            <Route path="admin" element={<RequireAdmin />}>
-              <Route element={<AdminLayout />}>
-                <Route index element={<AdminDashboard />} />
-                <Route path="interfaces" element={<AdminInterfaces />} />
-                <Route path="discord" element={<Navigate to="../interfaces" replace />} />
-                <Route path="telegram" element={<Navigate to="../interfaces" replace />} />
-                <Route path="tools" element={<AdminTools />} />
-                <Route path="users" element={<AdminUsers />} />
-                <Route path="scheduled-jobs" element={<AdminScheduledJobs />} />
-                <Route path="schedules" element={<AdminSchedules />} />
-                <Route path="ide-agent" element={<AdminIdeAgent />} />
-                <Route
-                  path="ide-agents/:ide/control-center"
-                  element={
-                    <IdeAgentToolsGate>
-                      <IdeAgentIdeControlCenterPage />
-                    </IdeAgentToolsGate>
-                  }
-                />
-                <Route
-                  path="ide-agents/:ide/settings"
-                  element={
-                    <IdeAgentToolsGate>
-                      <IdeAgentIdeSettingsPage />
-                    </IdeAgentToolsGate>
-                  }
-                />
-                <Route
-                  path="ide-agents/:ide/dom-analyzer"
-                  element={
-                    <IdeAgentToolsGate>
-                      <DomAnalyzerPage />
-                    </IdeAgentToolsGate>
-                  }
-                />
-                <Route path="ide-agents/:ide" element={<IdeAgentIdeOverviewPage />} />
-                <Route path="workflows" element={<Navigate to="../scheduled-jobs" replace />} />
+        <Routes>
+          <Route element={<AppLayout />}>
+            <Route path="login" element={<LoginPage />} />
+            <Route element={<RequireSession />}>
+              <Route path="/" element={<HomePage />} />
+              <Route path="chat" element={<ChatPage />} />
+              <Route path="ide-agent" element={<IdeIntegrationPlaceholder variant="app" />} />
+              <Route path="studio" element={<StudioPage />} />
+              <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="schedules" element={<MySchedulesPage />} />
+              <Route path="docs" element={<DocsPage />} />
+              <Route path="settings" element={<SettingsLayout />}>
+                <Route index element={<Navigate to="/settings/profile" replace />} />
+                <Route path="friends" element={<FriendsSettings />} />
+                <Route path="profile" element={<ProfileSettings />} />
+                <Route path="connections" element={<ConnectionsSettings />} />
+                <Route path="tools" element={<ToolsSettings />} />
+                <Route path="agent" element={<AgentSettings />} />
+                <Route path="shares" element={<SharesSettings />} />
+                <Route path="experimental" element={<Navigate to="/admin/ide-integration" replace />} />
+              </Route>
+              <Route path="admin" element={<RequireAdmin />}>
+                <Route element={<AdminLayout />}>
+                  <Route index element={<AdminDashboard />} />
+                  <Route path="interfaces" element={<AdminInterfaces />} />
+                  <Route path="discord" element={<Navigate to="../interfaces" replace />} />
+                  <Route path="telegram" element={<Navigate to="../interfaces" replace />} />
+                  <Route path="tools" element={<AdminTools />} />
+                  <Route path="users" element={<AdminUsers />} />
+                  <Route path="scheduled-jobs" element={<AdminScheduledJobs />} />
+                  <Route path="schedules" element={<AdminSchedules />} />
+                  <Route path="ide-agent" element={<Navigate to="/admin/ide-integration" replace />} />
+                  <Route
+                    path="ide-integration"
+                    element={<IdeIntegrationPlaceholder variant="admin" />}
+                  />
+                  <Route path="ide-agents/*" element={<Navigate to="/admin/ide-integration" replace />} />
+                  <Route path="workflows" element={<Navigate to="../scheduled-jobs" replace />} />
+                </Route>
               </Route>
             </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-      </Routes>
+        </Routes>
       </AuthProvider>
     </BrowserRouter>
   );

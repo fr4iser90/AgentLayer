@@ -53,6 +53,155 @@ from apps.backend.infrastructure.operator_settings import (
 
 logger = logging.getLogger(__name__)
 
+# =============================================================================
+# Tool Ranking System (Phase 1: Semantic Search based)
+# =============================================================================
+
+# Tool Embedding Cache (computed once, cached in memory)
+_tool_embedding_cache: dict[str, list[float]] = {}
+_tool_embedding_loaded = False
+
+
+def _cosine_similarity(a: list[float], b: list[float]) -> float:
+    """Calculate cosine similarity between two vectors."""
+    if not a or not b or len(a) != len(b):
+        return 0.0
+    dot = sum(x * y for x, y in zip(a, b))
+    norm_a = sum(x * x for x in a) ** 0.5
+    norm_b = sum(x * x for x in b) ** 0.5
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+    return dot / (norm_a * norm_b)
+
+
+def _get_tool_description(tool_spec: dict[str, Any]) -> str:
+    """Extract description from tool spec."""
+    func = tool_spec.get("function", {})
+    return func.get("description", "") or ""
+
+
+def _rank_tools_by_user_input(
+    tools: list[dict[str, Any]], 
+    user_input: str,
+    tool_triggers: dict[str, tuple[str, ...]],
+) -> list[dict[str, Any]]:
+    """
+    Rank tools by semantic similarity to user input + trigger boost + context boost.
+    Returns sorted tools (highest score first).
+    """
+    from apps.backend.api.rag import ollama_embed_one
+    
+    if not config.AGENT_TOOLS_RANKING_ENABLED:
+        return tools
+    
+    if not user_input or not tools:
+        return tools
+    
+    max_tools = config.AGENT_TOOLS_MAX_RANKING
+    min_threshold = config.AGENT_TOOLS_MIN_SCORE_THRESHOLD
+    fallback_all = config.AGENT_TOOLS_RANKING_FALLBACK_ALL
+    
+    try:
+        # 1. Get user input embedding
+        user_emb = ollama_embed_one(user_input)
+    except Exception as e:
+        logger.warning(f"Tool ranking: failed to get user embedding: {e}")
+        return tools
+    
+    # 2. Ensure tool embeddings are cached (lazy load)
+    global _tool_embedding_loaded
+    tools_to_embed = []
+    
+    for tool in tools:
+        tool_id = tool.get("function", {}).get("name", "")
+        if tool_id and tool_id not in _tool_embedding_cache:
+            desc = _get_tool_description(tool)
+            if desc:
+                tools_to_embed.append((tool_id, desc))
+    
+    # Lazy load missing embeddings
+    user_emb_dim = len(user_emb) if user_emb else 768
+    if tools_to_embed:
+        for tool_id, desc in tools_to_embed:
+            try:
+                emb = ollama_embed_one(desc[:2000])  # Truncate long descriptions
+                _tool_embedding_cache[tool_id] = emb
+            except Exception as e:
+                logger.debug(f"Tool ranking: failed to embed tool {tool_id}: {e}")
+                _tool_embedding_cache[tool_id] = [0.0] * user_emb_dim  # Fallback
+    
+    _tool_embedding_loaded = True
+    
+    # 3. Calculate scores for ALL tools
+    all_scores: list[tuple[int, float]] = []
+    
+    for idx, tool in enumerate(tools):
+        tool_id = tool.get("function", {}).get("name", "")
+        
+        # Semantic similarity score
+        tool_emb = _tool_embedding_cache.get(tool_id)
+        semantic_score = 0.0
+        if tool_emb is not None:
+            semantic_score = _cosine_similarity(user_emb, tool_emb)
+        
+        # Normalize by semantic weight
+        semantic_score = semantic_score * config.AGENT_TOOLS_SEMANTIC_WEIGHT
+        
+        # Trigger boost
+        trigger_score = 0.0
+        triggers = tool_triggers.get(tool_id, ())
+        if triggers:
+            user_input_lower = user_input.lower()
+            for trigger in triggers:
+                if trigger.lower() in user_input_lower:
+                    trigger_score = config.AGENT_TOOLS_TRIGGER_BOOST
+                    break
+        
+        # Context boost (workspace check - optional, vorerst deaktiviert)
+        context_score = 0.0
+        
+        # Final score
+        final_score = semantic_score + trigger_score + context_score
+        all_scores.append((idx, final_score))
+        
+        # Debug logging (top 5)
+        if idx < 5:
+            logger.debug(
+                f"Tool ranking: {tool_id}: semantic={semantic_score:.3f}, "
+                f"trigger={trigger_score:.3f}, context={context_score:.3f}, final={final_score:.3f}"
+            )
+    
+    # 4. Sort by score (highest first)
+    all_scores.sort(key=lambda x: x[1], reverse=True)
+    
+    # 5. Check if scores are too low (fallback)
+    if all_scores:
+        max_score = all_scores[0][1]
+        if max_score < min_threshold:
+            if fallback_all:
+                logger.info(
+                    f"Tool ranking: max score {max_score:.3f} below threshold {min_threshold}, "
+                    f"falling back to all tools"
+                )
+                return tools
+            else:
+                # Still limit to max_tools even with low scores
+                top_indices = [s[0] for s in all_scores[:max_tools]]
+                return [tools[i] for i in top_indices]
+    
+    # 6. Return top N tools
+    top_indices = [s[0] for s in all_scores[:max_tools]]
+    ranked_tools = [tools[i] for i in top_indices]
+    
+    logger.info(
+        f"Tool ranking: ranked {len(tools)} tools to top {len(ranked_tools)} "
+        f"(max_score={all_scores[0][1]:.3f})"
+    )
+    
+    return ranked_tools
+
+
+# =============================================================================
 # Extra system text from ``dashboard.data._agentlayer`` (see dashboard settings UI).
 _MAX_DASHBOARD_AGENT_INSTRUCTIONS_CHARS = 8000
 
@@ -1091,45 +1240,59 @@ async def chat_completion(
     workspace_id = body.pop("workspace_id", None)
     workspace = None
     workspace_token = None
-    
+
     # Get user from identity context (tenant_id, user_id)
     tenant_id, user_id = get_identity()
-    
-    if workspace_id and user_id:
-        try:
-            from apps.backend.infrastructure.workspace_service import ensure_workspace
-            from apps.backend.infrastructure.db import db
-            
-            # Create a minimal user-like object for workspace service
-            class UserLike:
-                def __init__(self, uid):
-                    self.id = uid
-                    self.role = "admin"  # Default to admin for now
-            
-            user_obj = UserLike(user_id)
-            workspace = ensure_workspace(workspace_id, user_obj)
-            logger.debug("resolved workspace: %s", workspace.get("name") if workspace else None)
-        except Exception as e:
-            logger.warning("failed to resolve workspace: %s", e)
-    workspace_token = set_workspace(workspace)
-    
-    # Create user object for context
+
+    # Load DB user first so workspace resolution (e.g. agentlayer-self gates) sees real role.
     user_obj = None
     if user_id:
         try:
             from apps.backend.infrastructure.db import db
+
             with db.pool().connection() as conn:
                 with conn.cursor() as cur:
                     cur.execute("SELECT id, role FROM users WHERE id = %s", (user_id,))
                     row = cur.fetchone()
                     if row:
+
                         class UserObj:
                             def __init__(self, uid, role):
                                 self.id = uid
                                 self.role = role
+
                         user_obj = UserObj(user_id, row[1])
         except Exception:
             pass
+
+    if agent_id:
+        ag_def = get_agent_registry().get_agent(agent_id)
+        if ag_def:
+            min_r = str(ag_def.get("min_role") or "user").strip().lower()
+            if min_r == "admin":
+                from apps.backend.infrastructure.db import db as _role_db
+
+                if _role_db.user_role(user_id) != "admin":
+                    raise ValueError("This agent is only available to admin users.")
+
+    if workspace_id and user_id:
+        try:
+            from apps.backend.infrastructure.workspace_service import ensure_workspace
+
+            u = user_obj
+            if u is None:
+
+                class UserLike:
+                    def __init__(self, uid):
+                        self.id = uid
+                        self.role = "user"
+
+                u = UserLike(user_id)
+            workspace = ensure_workspace(workspace_id, u)
+            logger.debug("resolved workspace: %s", workspace.get("name") if workspace else None)
+        except Exception as e:
+            logger.warning("failed to resolve workspace: %s", e)
+    workspace_token = set_workspace(workspace)
     
     # Prepare context dict for tools (DDD-style, with real objects)
     tool_context = {
@@ -1299,6 +1462,28 @@ async def chat_completion(
                 for t in tools_for_request
                 if (n := _tool_spec_name(t)) is None or n not in deny
             ]
+
+        # Tool Ranking: sort by semantic similarity to user input (Phase 1)
+        if config.AGENT_TOOLS_RANKING_ENABLED and tools_for_request:
+            try:
+                # Get last user message for ranking
+                last_user_text = None
+                for msg in reversed(body.get("messages", [])):
+                    if msg.get("role") == "user":
+                        last_user_text = msg.get("content")
+                        break
+                if last_user_text:
+                    # Get tool triggers from registry
+                    reg = get_registry()
+                    tool_triggers: dict[str, tuple[str, ...]] = {}
+                    # For now, use empty triggers - will be enhanced in Phase 2
+                    tools_for_request = _rank_tools_by_user_input(
+                        tools_for_request,
+                        last_user_text,
+                        tool_triggers,
+                    )
+            except Exception as e:
+                logger.warning(f"Tool ranking failed, using unranked tools: {e}")
 
         if tools_for_request:
             names = [n for t in tools_for_request if (n := _tool_spec_name(t))]
