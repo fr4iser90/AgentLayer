@@ -9,8 +9,10 @@ Optional **llama.cpp server** (OpenAI-compatible) for local chat completions.
    ``LLAMA_CPP_API_HEADER_VALUE`` (same string OpenCode puts in ``headers["X-API-KEY"]``).
 2. Else **Admin → Interfaces** (``operator_settings``) when ``llama_cpp_enabled`` and base URL are set.
 
-When active and ``llm_primary_backend`` is Ollama, :func:`llm_chat_transport` and the smart-router use
-this endpoint instead of ``OLLAMA_BASE_URL`` for **chat** only. Embeddings still use ``OLLAMA_BASE_URL``.
+When the client sends ``agent_model_catalog_owned_by: "llama_cpp"`` (from GET ``/v1/models`` row ``owned_by``),
+:func:`llm_chat_transport` uses this OpenAI-compatible endpoint for **chat** with the exact ``model`` string from the
+request — no substitution from ``llm_primary_backend``. Embeddings and other Ollama-only paths still use
+``OLLAMA_BASE_URL`` unless configured separately.
 
 ``GET /v1/models`` (see :mod:`apps.backend.api.main`) returns **separate** Ollama and Llama.cpp model lists
 (``agentlayer`` + ``owned_by`` on each row) — no silent cross-backend substitution.

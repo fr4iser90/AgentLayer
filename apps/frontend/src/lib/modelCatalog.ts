@@ -1,4 +1,7 @@
-/** GET /v1/models — merged Ollama + llama.cpp; ``agentlayer`` status from backend. */
+/**
+ * GET /v1/models — merged model rows; ``owned_by`` identifies the serving stack (opaque string from API).
+ * Chat sends ``agent_model_catalog_owned_by`` with the same token so the backend can route when ids overlap.
+ */
 
 export type ModelCatalogAgentlayer = {
   ollama?: { reachable?: boolean; detail?: string | null; base_url?: string };
@@ -70,5 +73,35 @@ export function formatModelCatalogHint(agentlayer: ModelCatalogAgentlayer | null
 }
 
 export function modelOptionLabel(row: ModelRow): string {
-  return row.owned_by === "llama_cpp" ? `${row.id} (llama.cpp)` : row.id;
+  const raw = row.owned_by?.trim();
+  if (!raw) return row.id;
+  const ob = raw.toLowerCase();
+  if (ob === "ollama") return row.id;
+  if (ob === "llama_cpp") return `${row.id} (llama.cpp)`;
+  return `${row.id} (${raw})`;
+}
+
+const ROUTING_TOKEN_MAX = 64;
+
+/** Safe token for ``agent_model_catalog_owned_by`` (must stay in sync with backend). */
+export function normalizeCatalogRoutingToken(raw: string): string | undefined {
+  const t = raw
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, "")
+    .slice(0, ROUTING_TOKEN_MAX);
+  return t || undefined;
+}
+
+/**
+ * ``owned_by`` from the catalog row for this model id (after normalization), or undefined if unknown.
+ * Does not invent a default provider — missing ``owned_by`` means the client omits the routing hint.
+ */
+export function catalogOwnedByForModel(rows: ModelRow[], modelId: string): string | undefined {
+  const id = modelId.trim();
+  if (!id) return undefined;
+  const hit = rows.find((r) => r.id === id);
+  const ob = hit?.owned_by;
+  if (typeof ob !== "string" || !ob.trim()) return undefined;
+  return normalizeCatalogRoutingToken(ob);
 }

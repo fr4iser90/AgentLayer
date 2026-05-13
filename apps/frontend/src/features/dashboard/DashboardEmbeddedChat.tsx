@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import {
+  catalogOwnedByForModel,
   fetchModelCatalog,
   formatModelCatalogHint,
   modelOptionLabel,
@@ -274,6 +275,7 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
     }
     try {
       const disabledTools = getDisabledToolNames();
+      const catOb = catalogOwnedByForModel(modelRows, mdl);
       const res = await apiFetch("/v1/chat/completions", auth, {
         method: "POST",
         body: JSON.stringify({
@@ -285,6 +287,7 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
           stream: false,
           ...payloadBase,
           ...(disabledTools.length ? { agent_disabled_tools: disabledTools } : {}),
+          ...(catOb ? { agent_model_catalog_owned_by: catOb } : {}),
         }),
       });
       const data = await res.json();
@@ -318,6 +321,7 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
     draft,
     modelValue,
     pendingAttachments,
+    modelRows,
     payloadBase,
     readOnly,
     sendLoading,

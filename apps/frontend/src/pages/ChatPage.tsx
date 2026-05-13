@@ -3,6 +3,7 @@ import { NavLink, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { apiFetch, fetchAgents, type AgentDefinition } from "../lib/api";
 import {
+  catalogOwnedByForModel,
   fetchModelCatalog,
   formatModelCatalogHint,
   modelOptionLabel,
@@ -527,7 +528,8 @@ export function ChatPage() {
     if (!accessToken || !activeThreadId) return;
     const tid = activeThreadId;
     const t = threads.find((x) => x.id === tid);
-    if (!t || !t.model.trim()) return;
+    const effectiveModel = (t?.model || defaultModel).trim();
+    if (!t || !effectiveModel) return;
 
     const userContent = buildUserMessageContent(draft, pendingAttachments);
     if (!userContent) return;
@@ -537,20 +539,22 @@ export function ChatPage() {
     const firstUser = t.messages.length === 0;
     const nextMessages: UiMessage[] = [...t.messages, { role: "user", content: userContent }];
     const nextTitle = firstUser ? titleFromFirstMessage(userContent) : t.title;
-    patchThread(tid, { messages: nextMessages, title: nextTitle });
+    patchThread(tid, { messages: nextMessages, title: nextTitle, model: effectiveModel });
     setDraft("");
     setPendingAttachments([]);
 
     try {
       const disabledTools = getDisabledToolNames();
+      const catOb = catalogOwnedByForModel(modelRows, effectiveModel);
       const res = await apiFetch("/v1/chat/completions", auth, {
         method: "POST",
         body: JSON.stringify({
-          model: t.model,
+          model: effectiveModel,
           messages: nextMessages.map((m) => ({ role: m.role, content: toApiContent(m.content) })),
           stream: false,
           ...agentDashboardPayload,
           ...(disabledTools.length ? { agent_disabled_tools: disabledTools } : {}),
+          ...(catOb ? { agent_model_catalog_owned_by: catOb } : {}),
         }),
       });
       const data = await res.json();
@@ -578,7 +582,7 @@ export function ChatPage() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, activeThreadId, agentDashboardPayload, auth, draft, pendingAttachments, patchThread, threads]);
+  }, [accessToken, activeThreadId, agentDashboardPayload, auth, defaultModel, draft, modelRows, pendingAttachments, patchThread, threads]);
 
   const ensureAgentWs = useCallback((): Promise<WebSocket> => {
     return new Promise((resolve, reject) => {
@@ -613,7 +617,8 @@ export function ChatPage() {
     if (!accessToken || !activeThreadId) return;
     const tid = activeThreadId;
     const t = threads.find((x) => x.id === tid);
-    if (!t || !t.model.trim()) return;
+    const effectiveModel = (t?.model || defaultModel).trim();
+    if (!t || !effectiveModel) return;
 
     const userContent = buildUserMessageContent(draft, pendingAttachments);
     if (!userContent) return;
@@ -623,7 +628,7 @@ export function ChatPage() {
     const firstUser = t.messages.length === 0;
     const nextMessages: UiMessage[] = [...t.messages, { role: "user", content: userContent }];
     const nextTitle = firstUser ? titleFromFirstMessage(userContent) : t.title;
-    patchThread(tid, { messages: nextMessages, agentLog: [], title: nextTitle });
+    patchThread(tid, { messages: nextMessages, agentLog: [], title: nextTitle, model: effectiveModel });
     setDraft("");
     setPendingAttachments([]);
 
@@ -755,16 +760,18 @@ export function ChatPage() {
     try {
       const ws = await ensureAgentWs();
       const disabledTools = getDisabledToolNames();
+      const catOb = catalogOwnedByForModel(modelRows, effectiveModel);
       ws.send(
         JSON.stringify({
           type: "chat",
           body: {
-            model: t.model,
+            model: effectiveModel,
             messages: nextMessages.map((m) => ({ role: m.role, content: toApiContent(m.content) })),
             agent_id: selectedAgentId,
             ...(selectedWorkspaceId ? { workspace_id: selectedWorkspaceId } : {}),
             ...agentDashboardPayload,
             ...(disabledTools.length ? { agent_disabled_tools: disabledTools } : {}),
+            ...(catOb ? { agent_model_catalog_owned_by: catOb } : {}),
           },
         })
       );
@@ -777,14 +784,16 @@ export function ChatPage() {
     activeThreadId,
     agentDashboardPayload,
     appendAgentLine,
-    draft,
-    pendingAttachments,
-    ensureAgentWs,
-    patchThread,
-    threads,
     auth,
+    defaultModel,
+    draft,
+    ensureAgentWs,
+    modelRows,
+    patchThread,
+    pendingAttachments,
     selectedAgentId,
     selectedWorkspaceId,
+    threads,
     visibleAgents,
   ]);
 

@@ -29,6 +29,7 @@ import {
 } from "../lib/proposalParser";
 import { apiFetch } from "../lib/api";
 import {
+  catalogOwnedByForModel,
   fetchModelCatalog,
   formatModelCatalogHint,
   modelOptionLabel,
@@ -398,7 +399,8 @@ export function CodingAgentPage() {
     if (!accessToken || !activeThreadId) return;
     const tid = activeThreadId;
     const t = threads.find((x) => x.id === tid);
-    if (!t || !t.model.trim()) return;
+    const effectiveModel = (t?.model || defaultModel).trim();
+    if (!t || !effectiveModel) return;
 
     const userContent = buildUserMessageContent(draft, []);
     if (!userContent) return;
@@ -411,7 +413,7 @@ export function CodingAgentPage() {
     setThreads((prev) =>
       prev.map((th) =>
         th.id === tid
-          ? { ...th, messages: nextMessages, agentLog: [], title: nextTitle, updatedAt: Date.now() }
+          ? { ...th, messages: nextMessages, agentLog: [], title: nextTitle, model: effectiveModel, updatedAt: Date.now() }
           : th
       )
     );
@@ -513,18 +515,20 @@ export function CodingAgentPage() {
       const ws = await ensureAgentWs();
       const disabledTools = getDisabledToolNames();
       const enabledCodingTools = CODING_TOOLS.filter((t) => !disabledTools.includes(t));
+      const catOb = catalogOwnedByForModel(modelRows, effectiveModel);
 
       ws.send(
         JSON.stringify({
           type: "chat",
           body: {
-            model: t.model,
+            model: effectiveModel,
             messages: nextMessages.map((m) => ({ role: m.role, content: toApiContent(m.content) })),
             TOOL_DOMAIN: "coding",
             ...(selectedWorkspaceId ? { workspace_id: selectedWorkspaceId } : {}),
             ...(enabledCodingTools.length < CODING_TOOLS.length
               ? { agent_disabled_tools: disabledTools }
               : {}),
+            ...(catOb ? { agent_model_catalog_owned_by: catOb } : {}),
           },
         })
       );
@@ -532,7 +536,7 @@ export function CodingAgentPage() {
       setError(e instanceof Error ? e.message : String(e));
       setLoading(false);
     }
-  }, [accessToken, activeThreadId, appendAgentLine, draft, ensureAgentWs, threads, auth, selectedWorkspaceId]);
+  }, [accessToken, activeThreadId, appendAgentLine, auth, defaultModel, draft, ensureAgentWs, modelRows, selectedWorkspaceId, threads]);
 
   const onSend = () => { void runAgentWs(); };
 

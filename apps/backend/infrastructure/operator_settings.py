@@ -527,28 +527,45 @@ def external_llm_should_failover(http_status: int) -> bool:
     return http_status in (401, 403, 408, 429, 500, 502, 503, 504)
 
 
-def llm_chat_transport(
-    model_from_resolution: str,
+# Tokens the UI may send as ``agent_model_catalog_owned_by`` (GET /v1/models ``owned_by``, normalized).
+# Add new providers here + a branch in :func:`llm_chat_transport` when they appear in the catalog.
+_SUPPORTED_MODEL_CATALOG_OWNED_BY = frozenset({"ollama", "llama_cpp", "external"})
+
+
+def normalize_model_catalog_owned_by(raw: Any) -> str | None:
+    """
+    Optional hint from the UI: ``GET /v1/models`` row ``owned_by`` (normalized ``[a-z0-9_-]+``, max 64).
+
+    Unknown tokens are logged and ignored (same as omitting the hint) until routing support exists.
+    """
+    if raw is None:
+        return None
+    s = str(raw).strip().lower()
+    t = "".join(c for c in s if c.isalnum() or c in "_-")[:64]
+    if not t:
+        return None
+    if t == "llamacpp":
+        t = "llama_cpp"
+    if t not in _SUPPORTED_MODEL_CATALOG_OWNED_BY:
+        logger.warning(
+            "llm: unsupported agent_model_catalog_owned_by token %r (normalized %r); ignoring — "
+            "supported: %s",
+            raw,
+            t,
+            ", ".join(sorted(_SUPPORTED_MODEL_CATALOG_OWNED_BY)),
+        )
+        return None
+    return t
+
+
+def _external_llm_chat_attempts(
     profile_key: str,
     is_override: bool,
-    *,
-    backend_override: Literal["ollama", "external"] | None = None,
-) -> tuple[list[tuple[str, dict[str, str], str]], Literal["ollama", "external"]]:
-    ollama_base = (getattr(config, "OLLAMA_BASE_URL", None) or "http://ollama:11434").strip().rstrip("/")
-    ollama_url = f"{ollama_base}/v1/chat/completions"
-    ollama_headers: dict[str, str] = {"Content-Type": "application/json"}
-
-    primary: Literal["ollama", "external"] = (
-        backend_override if backend_override is not None else resolved_primary_llm_backend()
-    )
-
-    if primary == "ollama":
-        return [(ollama_url, ollama_headers, model_from_resolution)], "ollama"
-
+    model_from_resolution: str,
+) -> list[tuple[str, dict[str, str], str]]:
     pk = (profile_key or "default").strip().lower()
     if pk not in ("default", "vlm", "agent", "coding"):
         pk = "default"
-
     attempts: list[tuple[str, dict[str, str], str]] = []
     for row in db.external_llm_endpoints_enabled_ordered():
         bu = normalize_external_llm_base_url(_strip_opt(row.get("base_url")))
@@ -559,6 +576,61 @@ def llm_chat_transport(
         chat_url = external_chat_completions_url(bu)
         headers = external_api_headers(bu, key)
         attempts.append((chat_url, headers, ext_model))
+    return attempts
+
+
+def llm_chat_transport(
+    model_from_resolution: str,
+    profile_key: str,
+    is_override: bool,
+    *,
+    backend_override: Literal["ollama", "external"] | None = None,
+    catalog_owned_by: str | None = None,
+) -> tuple[
+    list[tuple[str, dict[str, str], str]],
+    Literal["ollama", "external", "llama_cpp"],
+]:
+    ollama_base = (getattr(config, "OLLAMA_BASE_URL", None) or "http://ollama:11434").strip().rstrip("/")
+    ollama_url = f"{ollama_base}/v1/chat/completions"
+    ollama_headers: dict[str, str] = {"Content-Type": "application/json"}
+
+    primary: Literal["ollama", "external"] = (
+        backend_override if backend_override is not None else resolved_primary_llm_backend()
+    )
+
+    if catalog_owned_by == "llama_cpp":
+        try:
+            from apps.backend.infrastructure import llamacpp_provider
+        except Exception:
+            logger.exception("llm: failed to import llamacpp_provider")
+            raise ValueError(
+                "A llama.cpp catalog model was selected, but the llama.cpp module failed to load."
+            ) from None
+        le = llamacpp_provider.local_chat_endpoint()
+        if le is None:
+            raise ValueError(
+                "A llama.cpp catalog model was selected, but llama.cpp is not configured "
+                "(LLAMA_CPP_BASE_URL + LLAMA_CPP_API_HEADER_* in .env or Admin → Interfaces)."
+            )
+        l_url, l_headers = le
+        return [(l_url, l_headers, model_from_resolution)], "llama_cpp"
+
+    if catalog_owned_by == "ollama":
+        return [(ollama_url, ollama_headers, model_from_resolution)], "ollama"
+
+    if catalog_owned_by == "external":
+        attempts = _external_llm_chat_attempts(profile_key, is_override, model_from_resolution)
+        if not attempts:
+            raise ValueError(
+                "An external-LLM catalog model was selected, but no enabled external LLM endpoints "
+                "are configured (Admin → Interfaces)."
+            )
+        return attempts, "external"
+
+    if primary == "ollama":
+        return [(ollama_url, ollama_headers, model_from_resolution)], "ollama"
+
+    attempts = _external_llm_chat_attempts(profile_key, is_override, model_from_resolution)
 
     if not attempts:
         logger.warning(

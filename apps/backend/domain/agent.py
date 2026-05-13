@@ -48,6 +48,7 @@ from apps.backend.domain.user_persona import apply_user_persona_system
 from apps.backend.infrastructure.operator_settings import (
     external_llm_should_failover,
     llm_chat_transport,
+    normalize_model_catalog_owned_by,
     smart_llm_routing_enabled,
 )
 
@@ -1231,6 +1232,8 @@ async def chat_completion(
     dashboard_ctx = body.pop("agent_dashboard_context", None)
     _raw_max_rounds = body.pop("agent_max_tool_rounds", None)
     _raw_llm_be = body.pop("agent_llm_backend", None)
+    _raw_catalog_owned = body.pop("agent_model_catalog_owned_by", None)
+    catalog_owned_by = normalize_model_catalog_owned_by(_raw_catalog_owned)
     _raw_tool_allow = body.pop("agent_tool_name_allowlist", None)
     agent_id = body.pop("agent_id", None)
     if isinstance(agent_id, str):
@@ -1346,6 +1349,7 @@ async def chat_completion(
             profile_key,
             model_is_override,
             backend_override=backend_override,
+            catalog_owned_by=catalog_owned_by,
         )
 
         if plain_completion:
@@ -1466,20 +1470,21 @@ async def chat_completion(
         # Tool Ranking: sort by semantic similarity to user input (Phase 1)
         if config.AGENT_TOOLS_RANKING_ENABLED and tools_for_request:
             try:
-                # Get last user message for ranking
-                last_user_text = None
+                # Get last user message for ranking (do not name this ``last_user_text`` — shadows imported helper).
+                ranking_user_text: str | None = None
                 for msg in reversed(body.get("messages", [])):
                     if msg.get("role") == "user":
-                        last_user_text = msg.get("content")
+                        c = msg.get("content")
+                        ranking_user_text = c if isinstance(c, str) else None
                         break
-                if last_user_text:
+                if ranking_user_text:
                     # Get tool triggers from registry
                     reg = get_registry()
                     tool_triggers: dict[str, tuple[str, ...]] = {}
                     # For now, use empty triggers - will be enhanced in Phase 2
                     tools_for_request = _rank_tools_by_user_input(
                         tools_for_request,
-                        last_user_text,
+                        ranking_user_text,
                         tool_triggers,
                     )
             except Exception as e:
@@ -1646,11 +1651,13 @@ async def chat_completion(
                 payload_base["tools"] = tools_for_round
 
             last_failover: httpx.HTTPStatusError | None = None
+            last_transport_error: httpx.RequestError | None = None
             chosen: tuple[str, dict[str, str], str] | None = None
             data: dict[str, Any] = {}
             tools_omitted = False
             while True:
                 last_failover = None
+                last_transport_error = None
                 for b_url, b_headers, b_model in attempts:
                     pl = dict(payload_base)
                     pl["model"] = b_model
@@ -1665,6 +1672,16 @@ async def chat_completion(
                         chosen = (b_url, b_headers, b_model)
                         model = b_model
                         break
+                    except httpx.RequestError as e:
+                        last_transport_error = e
+                        logger.warning(
+                            "LLM chat/completions transport error (%s) url=%s model=%s: %s",
+                            llm_backend,
+                            b_url,
+                            b_model,
+                            e,
+                        )
+                        continue
                     except httpx.HTTPStatusError as e:
                         last_failover = e
                         if llm_backend == "external" and external_llm_should_failover(
@@ -1701,6 +1718,7 @@ async def chat_completion(
                                 profile_key,
                                 False,
                                 backend_override="ollama",
+                                catalog_owned_by=None,
                             )
                             model = local_model
                             logger.warning(
@@ -1715,6 +1733,8 @@ async def chat_completion(
                             err_body,
                         )
                         raise last_failover
+                    if last_transport_error is not None:
+                        raise last_transport_error
                     raise RuntimeError("LLM: no chat/completions attempts")
                 break
 

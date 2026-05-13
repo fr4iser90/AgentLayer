@@ -10,6 +10,9 @@ Client → server JSON:
   - ``{"type":"continue_step"}`` → after ``agent.step_wait``, resume the tool/LLM loop (see ``agent_pause_between_rounds`` in chat body)
   - ``{"type":"chat","body":{...},"router_categories_header":"?","tool_domain_header":"?","model_profile_header":"?","model_override_header":"?"}``
         body = OpenAI-style chat completion request (``stream`` ignored).
+        Optional ``body.agent_model_catalog_owned_by``: normalized ``GET /v1/models`` row ``owned_by``
+        (e.g. ``ollama``, ``llama_cpp``, ``external``) so chat uses the same stack as the dropdown. Unsupported
+        values are ignored server-side until routing exists.
         Optional model routing: per-frame ``model_profile_header`` / ``model_override_header`` (or WebSocket handshake headers ``X-Agent-Model-Profile`` / ``X-Agent-Model-Override``).
 
 Server → client JSON events (subset):
