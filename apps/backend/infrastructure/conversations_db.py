@@ -89,7 +89,12 @@ def _row_to_list_item(
     if wid is not None:
         ws_out = str(wid) if isinstance(wid, uuid.UUID) else str(uuid.UUID(str(wid)))
     shared = bool(r[7])
-    bridge_provider = r[8]
+    pref_agent = r[8]
+    pref_ws = r[9]
+    bridge_provider = r[10]
+    pref_ws_out: str | None = None
+    if pref_ws is not None:
+        pref_ws_out = str(pref_ws) if isinstance(pref_ws, uuid.UUID) else str(uuid.UUID(str(pref_ws)))
     return {
         "id": str(cid),
         "title": r[1] or "",
@@ -99,6 +104,8 @@ def _row_to_list_item(
         "message_count": int(r[5] or 0),
         "dashboard_id": ws_out,
         "shared": shared,
+        "agent_id": str(pref_agent).strip() if pref_agent else None,
+        "workspace_id": pref_ws_out,
         "source": _conversation_source_from_bridge(bridge_provider),
     }
 
@@ -115,6 +122,7 @@ def conversations_list(
                     SELECT c.id, c.title, c.mode, c.model, c.updated_at,
                       (SELECT COUNT(*)::int FROM chat_messages m WHERE m.conversation_id = c.id),
                       c.dashboard_id, c.shared,
+                      c.pref_agent_id, c.pref_workspace_id,
                       (SELECT b.provider FROM bridge_agent_sessions b
                        WHERE b.conversation_id = c.id LIMIT 1)
                     FROM chat_conversations c
@@ -139,6 +147,7 @@ def conversations_list(
                     SELECT c.id, c.title, c.mode, c.model, c.updated_at,
                       (SELECT COUNT(*)::int FROM chat_messages m WHERE m.conversation_id = c.id),
                       c.dashboard_id, c.shared,
+                      c.pref_agent_id, c.pref_workspace_id,
                       (SELECT b.provider FROM bridge_agent_sessions b
                        WHERE b.conversation_id = c.id LIMIT 1)
                     FROM chat_conversations c
@@ -170,6 +179,14 @@ def conversations_list(
     return [_row_to_list_item(r) for r in rows]
 
 
+def _pref_workspace_allowed(cur: Any, user_id: uuid.UUID, wid: uuid.UUID) -> bool:
+    cur.execute(
+        "SELECT 1 FROM project_workspaces WHERE id = %s AND owner_user_id = %s",
+        (wid, user_id),
+    )
+    return cur.fetchone() is not None
+
+
 def _fetch_messages(cur: Any, conversation_id: uuid.UUID) -> list[dict[str, Any]]:
     cur.execute(
         """
@@ -191,7 +208,7 @@ def conversation_get(user_id: uuid.UUID, conversation_id: uuid.UUID) -> dict[str
             cur.execute(
                 """
                 SELECT id, title, mode, model, agent_log, updated_at, created_at, dashboard_id,
-                       user_id, tenant_id, shared
+                       user_id, tenant_id, shared, pref_agent_id, pref_workspace_id
                 FROM chat_conversations
                 WHERE id = %s
                 """,
@@ -205,6 +222,8 @@ def conversation_get(user_id: uuid.UUID, conversation_id: uuid.UUID) -> dict[str
             row_user = crow[8]
             tenant_id = int(crow[9])
             shared = bool(crow[10])
+            pref_agent_raw = crow[11]
+            pref_ws_raw = crow[12]
             if shared and wid is not None:
                 if not dashboard_db.dashboard_has_full_access(user_id, tenant_id, wid):
                     return None
@@ -232,6 +251,16 @@ def conversation_get(user_id: uuid.UUID, conversation_id: uuid.UUID) -> dict[str
     ws_out: str | None = None
     if wid is not None:
         ws_out = str(wid) if isinstance(wid, uuid.UUID) else str(uuid.UUID(str(wid)))
+    pref_ws_out: str | None = None
+    if pref_ws_raw is not None:
+        pref_ws_out = (
+            str(pref_ws_raw)
+            if isinstance(pref_ws_raw, uuid.UUID)
+            else str(uuid.UUID(str(pref_ws_raw)))
+        )
+    pref_agent_out = (
+        str(pref_agent_raw).strip() if pref_agent_raw and str(pref_agent_raw).strip() else None
+    )
     return {
         "id": str(cid if isinstance(cid, uuid.UUID) else uuid.UUID(str(cid))),
         "title": crow[1] or "",
@@ -243,6 +272,8 @@ def conversation_get(user_id: uuid.UUID, conversation_id: uuid.UUID) -> dict[str
         "created_at": crow[6].isoformat() if isinstance(crow[6], datetime) else str(crow[6]),
         "dashboard_id": ws_out,
         "shared": shared,
+        "agent_id": pref_agent_out,
+        "workspace_id": pref_ws_out,
         "source": _conversation_source_from_bridge(bridge_provider),
     }
 
@@ -257,10 +288,20 @@ def conversation_create(
     agent_log: list[Any],
     dashboard_id: uuid.UUID | None = None,
     shared: bool = False,
+    agent_id: str | None = None,
+    workspace_id: uuid.UUID | None = None,
 ) -> dict[str, Any]:
     tenant_id = _user_tenant_id(user_id)
     messages = _ingress_conversation_messages_if_enabled(messages, user_id=user_id, tenant_id=tenant_id)
+    pref_agent: str | None = None
+    if isinstance(agent_id, str) and agent_id.strip():
+        pref_agent = agent_id.strip()[:128]
+    pref_ws: uuid.UUID | None = None
+    if workspace_id is not None:
+        pref_ws = workspace_id if isinstance(workspace_id, uuid.UUID) else uuid.UUID(str(workspace_id))
     if shared:
+        pref_agent = None
+        pref_ws = None
         if dashboard_id is None:
             raise ValueError("shared conversation requires dashboard_id")
         if not _shared_chat_can_write(user_id, tenant_id, dashboard_id):
@@ -339,14 +380,29 @@ def conversation_create(
     conv_id = uuid.uuid4()
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
+            ws_bind: uuid.UUID | None = pref_ws
+            if ws_bind is not None and not _pref_workspace_allowed(cur, user_id, ws_bind):
+                ws_bind = None
             cur.execute(
                 """
                 INSERT INTO chat_conversations (
-                  id, user_id, tenant_id, dashboard_id, title, mode, model, agent_log, shared
+                  id, user_id, tenant_id, dashboard_id, title, mode, model, agent_log, shared,
+                  pref_agent_id, pref_workspace_id
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb, false)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb, false, %s, %s)
                 """,
-                (conv_id, user_id, tenant_id, dashboard_id, title, mode, model, Json(agent_log)),
+                (
+                    conv_id,
+                    user_id,
+                    tenant_id,
+                    dashboard_id,
+                    title,
+                    mode,
+                    model,
+                    Json(agent_log),
+                    pref_agent,
+                    ws_bind,
+                ),
             )
             for i, m in enumerate(messages):
                 role = m.get("role") or "user"
@@ -376,6 +432,7 @@ def conversation_replace(
     model: str | None,
     messages: list[dict[str, Any]] | None,
     agent_log: list[Any] | None,
+    composer_prefs: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
@@ -414,6 +471,33 @@ def conversation_replace(
             if agent_log is not None:
                 parts.append("agent_log = %s::jsonb")
                 args.append(Json(agent_log))
+            if composer_prefs is not None and not shared:
+                if "agent_id" in composer_prefs:
+                    raw_a = composer_prefs.get("agent_id")
+                    if raw_a is None or (isinstance(raw_a, str) and not str(raw_a).strip()):
+                        parts.append("pref_agent_id = NULL")
+                    elif isinstance(raw_a, str):
+                        parts.append("pref_agent_id = %s")
+                        args.append(raw_a.strip()[:128])
+                if "workspace_id" in composer_prefs:
+                    raw_w = composer_prefs.get("workspace_id")
+                    if raw_w is None:
+                        parts.append("pref_workspace_id = NULL")
+                    else:
+                        try:
+                            wid = (
+                                raw_w
+                                if isinstance(raw_w, uuid.UUID)
+                                else uuid.UUID(str(raw_w))
+                            )
+                        except (ValueError, TypeError):
+                            parts.append("pref_workspace_id = NULL")
+                        else:
+                            if _pref_workspace_allowed(cur, user_id, wid):
+                                parts.append("pref_workspace_id = %s")
+                                args.append(wid)
+                            else:
+                                parts.append("pref_workspace_id = NULL")
             parts.append("updated_at = now()")
             if shared:
                 args.append(conversation_id)

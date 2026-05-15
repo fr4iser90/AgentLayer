@@ -36,6 +36,8 @@ class ConversationCreateBody(BaseModel):
     dashboard_id: uuid.UUID | None = None
     """When true with ``dashboard_id``, creates the one shared thread per dashboard (all members see it)."""
     shared: bool = False
+    agent_id: str | None = Field(default=None, max_length=128)
+    workspace_id: uuid.UUID | None = None
 
 
 class ConversationUpdateBody(BaseModel):
@@ -44,6 +46,8 @@ class ConversationUpdateBody(BaseModel):
     model: str | None = Field(default=None, max_length=512)
     messages: list[MessageItem] | None = None
     agent_log: list[Any] | None = None
+    agent_id: str | None = Field(default=None, max_length=128)
+    workspace_id: uuid.UUID | None = None
 
 
 @router.get("")
@@ -79,6 +83,8 @@ async def create_conversation(request: Request, body: ConversationCreateBody):
             agent_log=body.agent_log,
             dashboard_id=ws_id,
             shared=body.shared,
+            agent_id=body.agent_id,
+            workspace_id=body.workspace_id,
         )
     except PermissionError:
         raise HTTPException(status_code=403, detail="not allowed to create this conversation") from None
@@ -104,6 +110,14 @@ async def put_conversation(
     msgs = None
     if body.messages is not None:
         msgs = [m.model_dump() for m in body.messages]
+    prefs: dict[str, Any] | None = None
+    fs = body.model_fields_set
+    if "agent_id" in fs or "workspace_id" in fs:
+        prefs = {}
+        if "agent_id" in fs:
+            prefs["agent_id"] = body.agent_id
+        if "workspace_id" in fs:
+            prefs["workspace_id"] = body.workspace_id
     data = conversation_replace(
         user.id,
         conversation_id,
@@ -112,6 +126,7 @@ async def put_conversation(
         model=body.model,
         messages=msgs,
         agent_log=body.agent_log,
+        composer_prefs=prefs,
     )
     if not data:
         raise HTTPException(status_code=404, detail="conversation not found")

@@ -45,6 +45,16 @@ export function mapListItemToThread(item: Record<string, unknown>): ChatThread {
     shared: typeof item.shared === "boolean" ? item.shared : undefined,
     source: src,
     messageCount: typeof item.message_count === "number" ? item.message_count : undefined,
+    ...(typeof item.agent_id === "string" && item.agent_id.trim()
+      ? { agentId: item.agent_id.trim() }
+      : item.agent_id === null
+        ? { agentId: null as string | null }
+        : {}),
+    ...(typeof item.workspace_id === "string" && item.workspace_id.trim()
+      ? { workspaceId: item.workspace_id.trim() }
+      : item.workspace_id === null
+        ? { workspaceId: null as string | null }
+        : {}),
   };
 }
 
@@ -75,6 +85,16 @@ export function mapServerToThread(raw: Record<string, unknown>): ChatThread {
     shared: typeof raw.shared === "boolean" ? raw.shared : undefined,
     source: src,
     messageCount: messages.length,
+    ...(typeof raw.agent_id === "string" && raw.agent_id.trim()
+      ? { agentId: raw.agent_id.trim() }
+      : raw.agent_id === null
+        ? { agentId: null as string | null }
+        : {}),
+    ...(typeof raw.workspace_id === "string" && raw.workspace_id.trim()
+      ? { workspaceId: raw.workspace_id.trim() }
+      : raw.workspace_id === null
+        ? { workspaceId: null as string | null }
+        : {}),
   };
 }
 
@@ -113,6 +133,8 @@ export async function createConversation(
     dashboard_id?: string;
     /** One shared thread per dashboard; all members with access see the same messages. */
     shared?: boolean;
+    agent_id?: string | null;
+    workspace_id?: string | null;
   }
 ) {
   const r = await apiFetch("/v1/user/conversations", auth, {
@@ -125,6 +147,8 @@ export async function createConversation(
       agent_log: body.agent_log,
       ...(body.dashboard_id ? { dashboard_id: body.dashboard_id } : {}),
       ...(body.shared ? { shared: true } : {}),
+      ...(body.agent_id !== undefined ? { agent_id: body.agent_id } : {}),
+      ...(body.workspace_id !== undefined ? { workspace_id: body.workspace_id } : {}),
     }),
   });
   const data = (await r.json()) as { conversation?: Record<string, unknown> };
@@ -147,6 +171,8 @@ export async function putConversation(
         content: serializeMessageContent(m.content),
       })),
       agent_log: thread.agentLog ?? [],
+      ...(thread.agentId !== undefined ? { agent_id: thread.agentId } : {}),
+      ...(thread.workspaceId !== undefined ? { workspace_id: thread.workspaceId } : {}),
     }),
   });
   if (!r.ok) {

@@ -566,6 +566,8 @@ CREATE TABLE chat_conversations (
   model TEXT NOT NULL DEFAULT '',
   agent_log JSONB NOT NULL DEFAULT '[]'::jsonb,
   shared BOOLEAN NOT NULL DEFAULT false,
+  pref_agent_id TEXT,
+  pref_workspace_id UUID REFERENCES project_workspaces(id) ON DELETE SET NULL,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

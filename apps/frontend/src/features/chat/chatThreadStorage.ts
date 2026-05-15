@@ -24,6 +24,10 @@ export type ChatThread = {
   shared?: boolean;
   /** Origin: first-party ``web`` or bridge provider id. */
   source?: ChatSource;
+  /** Last composer agent (registry id); persisted with conversation. */
+  agentId?: string | null;
+  /** Last composer workspace (project_workspaces id); persisted with conversation. */
+  workspaceId?: string | null;
   /** Server list field ``message_count``; falls back to ``messages.length`` when loaded. */
   messageCount?: number;
 };

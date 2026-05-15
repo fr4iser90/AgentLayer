@@ -19,6 +19,7 @@ import {
   toApiContent,
 } from "../features/chat/messageFormat";
 import { getDisabledToolNames } from "../features/settings/toolPrefs";
+import { getAgentStreamLlm, setAgentStreamLlm } from "../features/settings/agentStreamPrefs";
 import { buildSidebarGroups } from "../features/chat/groupThreadsForSidebar";
 import {
   extractProposals,
@@ -417,6 +418,7 @@ export function CodingAgentPage() {
   const [newWorkspaceGitUrl, setNewWorkspaceGitUrl] = useState("");
   const [creatingWorkspace, setCreatingWorkspace] = useState(false);
   const [sessionMode, setSessionMode] = useState<CodingSessionMode>("build");
+  const [agentStreamLlmUi, setAgentStreamLlmUi] = useState(() => getAgentStreamLlm());
   const [permAsk, setPermAsk] = useState<PermAskGate | null>(null);
   const [implBranchPreference, setImplBranchPreferenceState] = useState<ImplBranchPreference>("ask");
   const [sessionRuntime, setSessionRuntime] = useState<SessionRuntimePayload | null>(null);
@@ -461,8 +463,19 @@ export function CodingAgentPage() {
       if (userId && activeThreadId) {
         localStorage.setItem(codingModeStorageKey(userId, activeThreadId), m);
       }
+      const aid = m === "plan" ? "coding_plan" : "coding";
+      if (activeThreadId) {
+        setThreads((prev) => {
+          const next = prev.map((t) =>
+            t.id === activeThreadId ? { ...t, agentId: aid, updatedAt: Date.now() } : t
+          );
+          const th = next.find((x) => x.id === activeThreadId);
+          if (th) void putConversation(auth, th).catch(() => {});
+          return next;
+        });
+      }
     },
-    [userId, activeThreadId]
+    [userId, activeThreadId, auth]
   );
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -484,6 +497,30 @@ export function CodingAgentPage() {
     () => threads.find((t) => t.id === activeThreadId) ?? null,
     [threads, activeThreadId]
   );
+
+  const selectCodingSession = useCallback(
+    async (id: string) => {
+      setActiveThreadId(id);
+      setError(null);
+      try {
+        const full = await fetchConversationDetail(auth, id);
+        setThreads((prev) => prev.map((th) => (th.id === id ? full : th)));
+      } catch {
+        /* keep list row */
+      }
+    },
+    [auth]
+  );
+
+  useEffect(() => {
+    if (!activeThreadId || !workspaces.length) return;
+    const t = threads.find((x) => x.id === activeThreadId);
+    if (!t) return;
+    const wid = typeof t.workspaceId === "string" && t.workspaceId.trim() ? t.workspaceId.trim() : null;
+    if (wid && workspaces.some((w) => w.id === wid)) {
+      setSelectedWorkspaceId(wid);
+    }
+  }, [activeThreadId, threads, workspaces]);
 
   const messages = activeThread?.messages ?? [];
   const agentLog: AgentTimelineEntry[] = activeThread?.agentLog ?? [];
@@ -524,15 +561,16 @@ export function CodingAgentPage() {
         const ws = await fetchWorkspaces(auth);
         if (cancelled) return;
         setWorkspaces(ws);
-        if (ws.length > 0 && !selectedWorkspaceId) {
-          setSelectedWorkspaceId(ws[0].id);
-        }
+        setSelectedWorkspaceId((prev) => {
+          if (prev && ws.some((w) => w.id === prev)) return prev;
+          return ws[0]?.id ?? null;
+        });
       } catch {
         /* ignore */
       }
     })();
     return () => { cancelled = true; };
-  }, [accessToken, userId, auth, selectedWorkspaceId]);
+  }, [accessToken, userId, auth]);
 
   useEffect(() => {
     if (!accessToken || !userId) return;
@@ -684,6 +722,8 @@ export function CodingAgentPage() {
     const userContent = preamble ? preamble + userContentRaw : userContentRaw;
     if (!userContent) return;
 
+    const agentId = sessionMode === "plan" ? "coding_plan" : "coding";
+
     setError(null);
     setLoading(true);
     setTokenUsage(emptyTokenUsage());
@@ -693,7 +733,16 @@ export function CodingAgentPage() {
     setThreads((prev) =>
       prev.map((th) =>
         th.id === tid
-          ? { ...th, messages: nextMessages, agentLog: [], title: nextTitle, model: effectiveModel, updatedAt: Date.now() }
+          ? {
+              ...th,
+              messages: nextMessages,
+              agentLog: [],
+              title: nextTitle,
+              model: effectiveModel,
+              agentId: agentId,
+              workspaceId: selectedWorkspaceId,
+              updatedAt: Date.now(),
+            }
           : th
       )
     );
@@ -819,7 +868,6 @@ export function CodingAgentPage() {
       const toolBucket = sessionMode === "plan" ? CODING_PLAN_TOOL_NAMES : CODING_TOOLS;
       const enabledTools = toolBucket.filter((x) => !disabledTools.includes(x));
       const catOb = catalogOwnedByForModel(modelRows, effectiveModel);
-      const agentId = sessionMode === "plan" ? "coding_plan" : "coding";
 
       ws.send(
         JSON.stringify({
@@ -835,6 +883,7 @@ export function CodingAgentPage() {
               : {}),
             ...(catOb ? { agent_model_catalog_owned_by: catOb } : {}),
             agent_permission_ask: true,
+            ...(getAgentStreamLlm() ? { agent_stream_llm: true } : {}),
           },
         })
       );
@@ -870,6 +919,8 @@ export function CodingAgentPage() {
         model: defaultModel,
         messages: [],
         agent_log: [],
+        agent_id: sessionMode === "plan" ? "coding_plan" : "coding",
+        workspace_id: selectedWorkspaceId,
       });
       if (userId) {
         localStorage.setItem(codingModeStorageKey(userId, t.id), sessionMode);
@@ -956,6 +1007,25 @@ export function CodingAgentPage() {
       });
     },
     [activeThreadId, auth]
+  );
+
+  const persistWorkspaceToThread = useCallback(
+    (wsId: string | null) => {
+      setSelectedWorkspaceId(wsId);
+      if (!activeThreadId) return;
+      const aid = sessionMode === "plan" ? "coding_plan" : "coding";
+      setThreads((prev) => {
+        const next = prev.map((t) =>
+          t.id === activeThreadId
+            ? { ...t, workspaceId: wsId, agentId: aid, updatedAt: Date.now() }
+            : t
+        );
+        const th = next.find((x) => x.id === activeThreadId);
+        if (th) void putConversation(auth, th).catch(() => {});
+        return next;
+      });
+    },
+    [activeThreadId, auth, sessionMode]
   );
 
   const sidebarThreads = useMemo(
@@ -1098,7 +1168,7 @@ export function CodingAgentPage() {
             <select
               className="mt-2 w-full rounded-lg border border-surface-border bg-black/30 px-2 py-1.5 text-xs text-neutral-200"
               value={selectedWorkspaceId ?? ""}
-              onChange={(e) => setSelectedWorkspaceId(e.target.value || null)}
+              onChange={(e) => persistWorkspaceToThread(e.target.value || null)}
             >
               {workspaces.map((ws) => (
                 <option key={ws.id} value={ws.id}>
@@ -1184,7 +1254,7 @@ export function CodingAgentPage() {
                         <button
                           type="button"
                           className="min-w-0 flex-1 text-left text-sm text-neutral-200"
-                          onClick={() => setActiveThreadId(t.id)}
+                          onClick={() => void selectCodingSession(t.id)}
                         >
                           <span className="line-clamp-2 min-w-0 flex-1 text-left">{t.title}</span>
                           <span className="mt-0.5 block text-[10px] text-surface-muted">
@@ -1301,6 +1371,22 @@ export function CodingAgentPage() {
                       ) : null
                     }
                   />
+                  <div className="w-full">
+                    <label className="flex cursor-pointer items-center gap-2 text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+                      <input
+                        type="checkbox"
+                        className="rounded border-surface-border bg-[#1a1a1a] text-sky-500"
+                        checked={agentStreamLlmUi}
+                        onChange={(e) => {
+                          const on = e.target.checked;
+                          setAgentStreamLlm(on);
+                          setAgentStreamLlmUi(on);
+                        }}
+                        title="Stream LLM tokens per round when the provider supports it."
+                      />
+                      <span>LLM stream</span>
+                    </label>
+                  </div>
                   <div className="w-full">
                     <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
                       Model

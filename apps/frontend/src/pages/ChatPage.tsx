@@ -223,6 +223,34 @@ export function ChatPage() {
     [threads, activeThreadId]
   );
 
+  const threadComposerAgentId = activeThread?.agentId;
+  const threadComposerWorkspaceId = activeThread?.workspaceId;
+
+  useEffect(() => {
+    if (!activeThreadId || !visibleAgents.length) return;
+    const aid =
+      typeof threadComposerAgentId === "string" && threadComposerAgentId.trim()
+        ? threadComposerAgentId.trim()
+        : null;
+    if (aid && visibleAgents.some((a) => a.id === aid)) {
+      setSelectedAgentId(aid);
+    } else {
+      const g = visibleAgents.find((a) => a.id === "general");
+      if (g) setSelectedAgentId(g.id);
+      else if (visibleAgents[0]) setSelectedAgentId(visibleAgents[0].id);
+    }
+    const wid =
+      typeof threadComposerWorkspaceId === "string" && threadComposerWorkspaceId.trim()
+        ? threadComposerWorkspaceId.trim()
+        : null;
+    setSelectedWorkspaceId(wid || null);
+  }, [
+    activeThreadId,
+    visibleAgents,
+    threadComposerAgentId,
+    threadComposerWorkspaceId,
+  ]);
+
   const messages = activeThread?.messages ?? [];
   const mode: ChatMode = activeThread?.mode ?? "agent";
   const model = activeThread?.model ?? "";
@@ -266,11 +294,12 @@ export function ChatPage() {
         const ags = await fetchAgents(auth);
         if (cancelled) return;
         setAgents(ags);
-        if (ags.length > 0) {
+        if (ags.length === 0) return;
+        setSelectedAgentId((prev) => {
+          if (ags.some((a) => a.id === prev)) return prev;
           const general = ags.find((a) => a.id === "general");
-          if (general) setSelectedAgentId("general");
-          else setSelectedAgentId(ags[0].id);
-        }
+          return general ? general.id : ags[0].id;
+        });
       } catch {
         /* ignore */
       }
@@ -322,9 +351,11 @@ export function ChatPage() {
         const j = (await r.json()) as { workspaces?: WorkspaceApiRecord[] };
         if (cancelled) return;
         setWorkspaces(j.workspaces ?? []);
-        if ((j.workspaces?.length ?? 0) > 0) {
-          setSelectedWorkspaceId(j.workspaces![0].id);
-        }
+        setSelectedWorkspaceId((prev) => {
+          const list = j.workspaces ?? [];
+          if (prev && list.some((w: WorkspaceApiRecord) => w.id === prev)) return prev;
+          return list[0]?.id ?? null;
+        });
       } catch {
         /* ignore */
       }
@@ -537,6 +568,38 @@ export function ChatPage() {
       setThreads((prev) => {
         const next = prev.map((t) =>
           t.id === activeThreadId ? { ...t, model: m, updatedAt: Date.now() } : t
+        );
+        const th = next.find((x) => x.id === activeThreadId);
+        if (th) void putConversation(auth, th).catch(() => {});
+        return next;
+      });
+    },
+    [activeThreadId, auth]
+  );
+
+  const setComposerAgent = useCallback(
+    (agentId: string) => {
+      if (!activeThreadId) return;
+      setSelectedAgentId(agentId);
+      setThreads((prev) => {
+        const next = prev.map((t) =>
+          t.id === activeThreadId ? { ...t, agentId, updatedAt: Date.now() } : t
+        );
+        const th = next.find((x) => x.id === activeThreadId);
+        if (th) void putConversation(auth, th).catch(() => {});
+        return next;
+      });
+    },
+    [activeThreadId, auth]
+  );
+
+  const setComposerWorkspace = useCallback(
+    (wsId: string | null) => {
+      if (!activeThreadId) return;
+      setSelectedWorkspaceId(wsId);
+      setThreads((prev) => {
+        const next = prev.map((t) =>
+          t.id === activeThreadId ? { ...t, workspaceId: wsId, updatedAt: Date.now() } : t
         );
         const th = next.find((x) => x.id === activeThreadId);
         if (th) void putConversation(auth, th).catch(() => {});
@@ -803,11 +866,37 @@ export function ChatPage() {
           appendAgentLine("session", [em && `model: ${em}`, mr && `(${mr})`].filter(Boolean).join(" "));
           if (msg.agent_auto_routed === true && msg.effective_agent_id != null) {
             const aid = String(msg.effective_agent_id).trim();
-            if (aid) setSelectedAgentId(aid);
+            if (aid) {
+              setSelectedAgentId(aid);
+              const tid = activeThreadIdRef.current;
+              if (tid) {
+                setThreads((prev) => {
+                  const next = prev.map((th) =>
+                    th.id === tid ? { ...th, agentId: aid, updatedAt: Date.now() } : th
+                  );
+                  const th = next.find((x) => x.id === tid);
+                  if (th) void putConversation(auth, th).catch(() => {});
+                  return next;
+                });
+              }
+            }
           }
           if (msg.workspace_auto_created === true && msg.workspace_id != null) {
             const wid = String(msg.workspace_id).trim();
-            if (wid) setSelectedWorkspaceId(wid);
+            if (wid) {
+              setSelectedWorkspaceId(wid);
+              const tid = activeThreadIdRef.current;
+              if (tid) {
+                setThreads((prev) => {
+                  const next = prev.map((th) =>
+                    th.id === tid ? { ...th, workspaceId: wid, updatedAt: Date.now() } : th
+                  );
+                  const th = next.find((x) => x.id === tid);
+                  if (th) void putConversation(auth, th).catch(() => {});
+                  return next;
+                });
+              }
+            }
           }
           return;
         }
@@ -1191,7 +1280,7 @@ export function ChatPage() {
                   <select
                     className="mt-0.5 w-full rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100 disabled:opacity-50"
                     value={selectedAgentId}
-                    onChange={(e) => setSelectedAgentId(e.target.value)}
+                    onChange={(e) => setComposerAgent(e.target.value)}
                     disabled={!visibleAgents.length || mode === "chat"}
                     title={
                       mode === "chat"
@@ -1222,7 +1311,7 @@ export function ChatPage() {
                       <select
                         className="mt-0.5 w-full rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100"
                         value={selectedWorkspaceId ?? ""}
-                        onChange={(e) => setSelectedWorkspaceId(e.target.value || null)}
+                        onChange={(e) => setComposerWorkspace(e.target.value || null)}
                       >
                         {workspaces.map((ws) => (
                           <option key={ws.id} value={ws.id}>
