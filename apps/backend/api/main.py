@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 import logging
 import os
@@ -1143,6 +1144,7 @@ async def chat_completions(request: Request):
             model_profile_header=model_prof,
             model_override_header=model_ovr,
             bearer_user_role=_bearer_user_role_from_request(request),
+            stream_requested=want_stream,
         )
     except WorkspaceAccessDenied as e:
         raise HTTPException(status_code=403, detail=str(e)) from e
@@ -1159,6 +1161,11 @@ async def chat_completions(request: Request):
         reset_identity(id_token)
 
     if want_stream:
+        if inspect.isasyncgen(result):
+            return StreamingResponse(
+                result,
+                media_type="text/event-stream",
+            )
         return StreamingResponse(
             iter([_completion_to_sse_lines(result)]),
             media_type="text/event-stream",

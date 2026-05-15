@@ -13,7 +13,7 @@ import json
 import logging
 import re
 import uuid
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from json import JSONDecoder
 from pathlib import Path
 from typing import Any, Literal
@@ -25,6 +25,7 @@ from apps.backend.domain.identity import get_identity
 from apps.backend.api import memory as memory_api
 from apps.backend.domain.agent_registry import get_agent_registry
 from apps.backend.infrastructure.openai_compat_http import http_post_chat_completions
+from apps.backend.infrastructure.openai_stream_aggregate import stream_chat_completions_aggregate
 from apps.backend.domain.plugin_system.registry import get_registry
 from apps.backend.dashboard import db as dashboard_db
 from apps.backend.domain.plugin_system.capability_governance import parse_user_capability_confirm
@@ -713,6 +714,7 @@ _BODY_KEYS_STRIP_FROM_OLLAMA = frozenset(
         "agent_id",
         "agent_parent_run_id",
         "agent_permission_ask",
+        "agent_stream_llm",
     }
 )
 
@@ -1886,6 +1888,103 @@ def _format_workspace_verify_recap(tool_result_json: str) -> str | None:
     return "\n".join(parts)
 
 
+async def _async_iter_chat_completion_sse(
+    attempts_seq: list[tuple[str, dict[str, str], str]],
+    payload_base: dict[str, Any],
+    *,
+    llm_backend: str,
+    profile_key: str,
+    timeout: float = 600.0,
+) -> AsyncIterator[bytes]:
+    """
+    OpenAI-compatible POST with ``stream: true``; yield raw response bytes (typically SSE) from the first
+    successful endpoint, with the same external failover / Ollama 429 fallback behaviour as blocking calls.
+    """
+    attempts_local = list(attempts_seq)
+    lb = llm_backend
+    outer_profile = profile_key
+    timeout_cfg = httpx.Timeout(timeout, connect=120.0)
+    while True:
+        last_http: tuple[int, str, str] | None = None  # status, body, url
+        last_trans: httpx.RequestError | None = None
+        async with httpx.AsyncClient(timeout=timeout_cfg) as client:
+            for b_url, b_headers, b_model in attempts_local:
+                pl: dict[str, Any] = dict(payload_base)
+                pl["stream"] = True
+                pl["model"] = b_model
+                h = dict(b_headers) if b_headers else {"Content-Type": "application/json"}
+                try:
+                    async with client.stream("POST", b_url, json=pl, headers=h) as resp:
+                        if resp.status_code >= 400:
+                            err_body = (await resp.aread()).decode("utf-8", errors="replace")
+                            if lb == "external" and external_llm_should_failover(resp.status_code):
+                                logger.warning(
+                                    "LLM stream: external status=%s; trying next endpoint url=%s",
+                                    resp.status_code,
+                                    b_url,
+                                )
+                                last_http = (resp.status_code, err_body, b_url)
+                                continue
+                            err_red = _redact_provider_error_text_for_log(err_body, max_len=600)
+                            logger.error(
+                                "LLM stream failed (%s): status=%s url=%s body=%s",
+                                lb,
+                                resp.status_code,
+                                b_url,
+                                err_red,
+                            )
+                            resp.raise_for_status()
+                        async for chunk in resp.aiter_raw():
+                            if chunk:
+                                yield chunk
+                    return
+                except httpx.HTTPStatusError:
+                    raise
+                except httpx.RequestError as e:
+                    last_trans = e
+                    logger.warning(
+                        "LLM stream transport error (%s) url=%s model=%s: %s",
+                        lb,
+                        b_url,
+                        b_model,
+                        e,
+                    )
+                    continue
+        if last_trans is not None and last_http is None:
+            raise last_trans
+        if last_http is not None:
+            st, txt, url = last_http
+            if st == 429 and lb == "external":
+                local_model = ollama_model_for_profile(outer_profile)
+                attempts_local, lb = llm_chat_transport(
+                    local_model,
+                    outer_profile,
+                    False,
+                    backend_override="ollama",
+                    catalog_owned_by=None,
+                )
+                logger.warning(
+                    "LLM stream: external 429; falling back to Ollama llm_model_id=%s",
+                    local_model,
+                )
+                continue
+            err_red = _redact_provider_error_text_for_log(txt, max_len=600)
+            logger.error(
+                "LLM stream failed (%s): status=%s url=%s body=%s",
+                lb,
+                st,
+                url,
+                err_red,
+            )
+            req = httpx.Request("POST", url)
+            raise httpx.HTTPStatusError(
+                f"HTTP {st}",
+                request=req,
+                response=httpx.Response(st, request=req, text=txt[:8000]),
+            )
+        raise RuntimeError("LLM stream: no chat/completions attempts")
+
+
 async def chat_completion(
     body: dict[str, Any],
     *,
@@ -1897,11 +1996,14 @@ async def chat_completion(
     event_emit: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
     control_queue: asyncio.Queue | None = None,
     cancel_event: asyncio.Event | None = None,
-) -> dict[str, Any]:
-    # stream flag is ignored here; Ollama always gets stream=false. Caller may wrap JSON as SSE.
+    stream_requested: bool = False,
+) -> dict[str, Any] | AsyncIterator[bytes]:
+    # Without ``stream_requested`` + plain completion, the tool loop uses blocking HTTP; HTTP callers may
+    # wrap the final JSON as SSE. True streaming is returned as an async byte iterator (upstream SSE passthrough).
     body.pop("agent_tool_mode", None)
     body.pop("agent_mode", None)
     plain_completion = _coerce_body_bool(body.pop("agent_plain_completion", None), False)
+    stream_llm_ws = _coerce_body_bool(body.pop("agent_stream_llm", None), False)
     extra_cats_body = _parse_router_categories_value(body.pop("agent_router_categories", None))
     extra_cats_hdr = _parse_router_category_tokens(router_categories_header)
     cap_hints = _parse_capability_hints(body.pop("agent_capability_hints", None))
@@ -2352,6 +2454,25 @@ async def chat_completion(
             if k not in ("messages", "model", "tools", "stream", *_BODY_KEYS_STRIP_FROM_OLLAMA)
         }
 
+        if (
+            stream_requested
+            and plain_completion
+            and not pause_between_rounds
+            and control_queue is None
+        ):
+            payload_stream_base: dict[str, Any] = {"messages": messages, **options}
+
+            async def _sse_stream() -> AsyncIterator[bytes]:
+                async for chunk in _async_iter_chat_completion_sse(
+                    attempts,
+                    payload_stream_base,
+                    llm_backend=llm_backend,
+                    profile_key=profile_key,
+                ):
+                    yield chunk
+
+            return _sse_stream()
+
         def merge_add_tools_from_message(names: list[Any]) -> None:
             existing = {
                 x for x in (_tool_spec_name(s) for s in tools_for_request) if x
@@ -2536,11 +2657,32 @@ async def chat_completion(
                     }
                 )
 
+            use_llm_stream = bool(stream_llm_ws and event_emit is not None)
+            round_no = round_i + 1
+
+            async def _emit_llm_token_delta(s: str) -> None:
+                if not s or event_emit is None:
+                    return
+                await event_emit(
+                    {
+                        "type": "agent.llm_delta",
+                        "agent_run_id": agent_run_id,
+                        "round": round_no,
+                        "delta": s,
+                    }
+                )
+
             payload_base: dict[str, Any] = {
                 "messages": messages,
                 "stream": False,
                 **options,
             }
+            if use_llm_stream:
+                so = payload_base.get("stream_options")
+                if not isinstance(so, dict):
+                    payload_base["stream_options"] = {"include_usage": True}
+                elif so.get("include_usage") is not True:
+                    payload_base["stream_options"] = {**so, "include_usage": True}
             if tools_for_round:
                 payload_base["tools"] = tools_for_round
 
@@ -2552,6 +2694,25 @@ async def chat_completion(
             while True:
                 last_failover = None
                 last_transport_error = None
+                if use_llm_stream:
+                    try:
+                        data, tools_omitted, chosen_t = await stream_chat_completions_aggregate(
+                            attempts,
+                            dict(payload_base),
+                            llm_backend=llm_backend,
+                            profile_key=profile_key,
+                            on_text_delta=_emit_llm_token_delta,
+                            cancel_event=cancel_event,
+                        )
+                    except AgentChatCancelled:
+                        raise
+                    except httpx.HTTPStatusError:
+                        raise
+                    except httpx.RequestError:
+                        raise
+                    chosen = chosen_t
+                    model = chosen[2]
+                    break
                 for b_url, b_headers, b_model in attempts:
                     pl = dict(payload_base)
                     pl["model"] = b_model
@@ -2668,13 +2829,25 @@ async def chat_completion(
                 payload_retry["model"] = chosen[2]
                 payload_retry["tool_choice"] = "required"
                 try:
-                    data_r, tools_omitted_r = await asyncio.to_thread(
-                        http_post_chat_completions,
-                        chosen[0],
-                        payload_retry,
-                        headers=chosen[1],
-                        timeout=600.0,
-                    )
+                    if use_llm_stream:
+                        data_r, tools_omitted_r, chosen_r = await stream_chat_completions_aggregate(
+                            attempts,
+                            dict(payload_retry),
+                            llm_backend=llm_backend,
+                            profile_key=profile_key,
+                            on_text_delta=_emit_llm_token_delta,
+                            cancel_event=cancel_event,
+                        )
+                        chosen = chosen_r
+                        model = chosen[2]
+                    else:
+                        data_r, tools_omitted_r = await asyncio.to_thread(
+                            http_post_chat_completions,
+                            chosen[0],
+                            payload_retry,
+                            headers=chosen[1],
+                            timeout=600.0,
+                        )
                 except httpx.HTTPStatusError as e:
                     if e.response.status_code in (400, 422):
                         logger.warning(

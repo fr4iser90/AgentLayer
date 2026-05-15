@@ -17,10 +17,11 @@ Client → server JSON:
         values are ignored server-side until routing exists.
         Optional ``body.agent_permission_ask`` (bool): when true and the agent definition has ``coding_tools_permission_ask`` (from ``AGENT_CODING_TOOLS_PERMISSION_ASK`` on the plugin), the server may emit
         ``agent.permission_ask`` before executing gated workspace tools (bash, writes, edits); the client must answer with
-        ``permission_reply``. Ignored when there is no WebSocket ``control_queue`` (HTTP chat): tools run without an ask.
+        Optional ``body.agent_stream_llm`` (bool): when true, each LLM round uses HTTP streaming where supported and
+        the server emits ``agent.llm_delta`` events (``delta`` text chunks) before ``agent.llm_round`` / tools.
 
 Server → client JSON events (subset):
-  - ``agent.session``, ``agent.llm_round_start``, ``agent.llm_round`` (optional ``usage`` when the LLM returns OpenAI-style token counts), ``agent.tool_start``,
+  - ``agent.session``, ``agent.llm_round_start``, ``agent.llm_delta`` (token chunks when ``agent_stream_llm``), ``agent.llm_round`` (optional ``usage`` when the LLM returns OpenAI-style token counts), ``agent.tool_start``,
     ``agent.tool_done``, ``agent.permission_ask``, ``agent.done``, ``agent.cancelled``
   - ``chat.completion`` — final OpenAI-shaped response (or error payload on failure)
 """

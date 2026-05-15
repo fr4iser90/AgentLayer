@@ -15,6 +15,7 @@ import {
 import {
   NEW_CHAT_TITLE,
   type AgentTimelineEntry,
+  type ChatMode,
   type ChatThread,
   type UiMessage,
   exportThreadJson,
@@ -60,9 +61,11 @@ import {
   type PendingAttachment,
 } from "../features/chat/messageFormat";
 import { getDisabledToolNames } from "../features/settings/toolPrefs";
+import { getAgentStreamLlm, setAgentStreamLlm } from "../features/settings/agentStreamPrefs";
 import { buildSidebarGroups } from "../features/chat/groupThreadsForSidebar";
 import { SessionRuntimeBar } from "../features/chat/SessionRuntimeBar";
 import { WorkspaceMcpModal } from "../features/workspace/WorkspaceMcpModal";
+import { streamOpenAiChatChunks } from "../features/chat/openaiSseStream";
 
 const SUGGESTED = [
   "Show me a code snippet of a website's sticky header",
@@ -198,6 +201,10 @@ export function ChatPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const toolStartTimesRef = useRef<Map<string, number>>(new Map());
+  const agentTurnBaselineRef = useRef<UiMessage[] | null>(null);
+  const streamDeltaAccRef = useRef("");
+  const agentStreamEnabledThisTurnRef = useRef(false);
+  const [agentStreamLlmUi, setAgentStreamLlmUi] = useState(() => getAgentStreamLlm());
   activeThreadIdRef.current = activeThreadId;
 
   const displayName = useMemo(() => {
@@ -577,22 +584,75 @@ export function ChatPage() {
     try {
       const disabledTools = getDisabledToolNames();
       const catOb = catalogOwnedByForModel(modelRows, effectiveModel);
+      const payload = {
+        model: effectiveModel,
+        messages: nextMessages.map((m) => ({ role: m.role, content: toApiContent(m.content) })),
+        stream: true,
+        agent_plain_completion: true,
+        stream_options: { include_usage: true },
+        ...agentDashboardPayload,
+        ...(disabledTools.length ? { agent_disabled_tools: disabledTools } : {}),
+        ...(catOb ? { agent_model_catalog_owned_by: catOb } : {}),
+      };
       const res = await apiFetch("/v1/chat/completions", auth, {
         method: "POST",
-        body: JSON.stringify({
-          model: effectiveModel,
-          messages: nextMessages.map((m) => ({ role: m.role, content: toApiContent(m.content) })),
-          stream: false,
-          ...agentDashboardPayload,
-          ...(disabledTools.length ? { agent_disabled_tools: disabledTools } : {}),
-          ...(catOb ? { agent_model_catalog_owned_by: catOb } : {}),
-        }),
+        body: JSON.stringify(payload),
       });
-      const data = await res.json();
       if (!res.ok) {
-        setError(String((data as { detail?: unknown }).detail ?? res.statusText));
+        let detail = res.statusText;
+        try {
+          const errBody = (await res.json()) as { detail?: unknown };
+          if (errBody.detail != null) detail = String(errBody.detail);
+        } catch {
+          /* ignore */
+        }
+        setError(detail);
         return;
       }
+      const ctype = (res.headers.get("content-type") || "").toLowerCase();
+      if (ctype.includes("text/event-stream")) {
+        let acc = "";
+        try {
+          for await (const chunk of streamOpenAiChatChunks(res)) {
+            if (chunk.kind === "usage") {
+              setTokenUsage((prev) => addUsageTotals(prev, chunk.usage));
+              continue;
+            }
+            acc += chunk.text;
+            setThreads((prev) =>
+              prev.map((th) => {
+                if (th.id !== tid) return th;
+                return {
+                  ...th,
+                  messages: [...nextMessages, { role: "assistant", content: acc }],
+                  messageCount: nextMessages.length + 1,
+                  updatedAt: Date.now(),
+                };
+              })
+            );
+          }
+        } catch (streamErr) {
+          setError(streamErr instanceof Error ? streamErr.message : String(streamErr));
+          return;
+        }
+        const reply = acc.trim() || "(empty)";
+        setThreads((prev) => {
+          const next = prev.map((th) => {
+            if (th.id !== tid) return th;
+            const updated: ChatThread = {
+              ...th,
+              messages: [...nextMessages, { role: "assistant", content: reply }],
+              messageCount: nextMessages.length + 1,
+              updatedAt: Date.now(),
+            };
+            void putConversation(auth, updated).catch(() => {});
+            return updated;
+          });
+          return next;
+        });
+        return;
+      }
+      const data = await res.json();
       if (data && typeof data === "object" && "usage" in data) {
         setTokenUsage((prev) => addUsageTotals(prev, (data as { usage?: unknown }).usage));
       }
@@ -664,6 +724,9 @@ export function ChatPage() {
     const nextMessages: UiMessage[] = [...t.messages, { role: "user", content: userContent }];
     const nextTitle = firstUser ? titleFromFirstMessage(userContent) : t.title;
     patchThread(tid, { messages: nextMessages, agentLog: [], title: nextTitle, model: effectiveModel });
+    agentTurnBaselineRef.current = nextMessages;
+    streamDeltaAccRef.current = "";
+    agentStreamEnabledThisTurnRef.current = getAgentStreamLlm();
     setDraft("");
     setPendingAttachments([]);
 
@@ -702,16 +765,27 @@ export function ChatPage() {
           if (data && typeof data === "object" && "usage" in data) {
             setTokenUsage((prev) => addUsageTotals(prev, (data as { usage?: unknown }).usage));
           }
-          const content = assistantFromCompletion(data);
+          const acc = streamDeltaAccRef.current.trim();
+          const fromApi = assistantFromCompletion(data);
+          const content =
+            agentStreamEnabledThisTurnRef.current && acc.length > 0 ? acc : fromApi;
           const id = activeThreadIdRef.current;
           if (id && content) {
             setThreads((prev) => {
               const next = prev.map((th) => {
                 if (th.id !== id) return th;
+                const prevMsgs = th.messages;
+                const last = prevMsgs[prevMsgs.length - 1];
+                const replaceLastAssistant =
+                  agentStreamEnabledThisTurnRef.current &&
+                  last?.role === "assistant";
+                const messages: UiMessage[] = replaceLastAssistant
+                  ? [...prevMsgs.slice(0, -1), { role: "assistant", content }]
+                  : [...prevMsgs, { role: "assistant", content }];
                 const updated: ChatThread = {
                   ...th,
-                  messages: [...th.messages, { role: "assistant", content }],
-                  messageCount: th.messages.length + 1,
+                  messages,
+                  messageCount: messages.length,
                   updatedAt: Date.now(),
                 };
                 void putConversation(auth, updated).catch(() => {});
@@ -738,8 +812,49 @@ export function ChatPage() {
           return;
         }
         if (typ === "agent.llm_round_start") {
-          const r = msg.round != null ? `round ${msg.round}` : "round";
-          appendAgentLine("llm", `${r} (start)`);
+          const r = msg.round != null ? Number(msg.round) : 0;
+          if (agentStreamEnabledThisTurnRef.current && r > 1) {
+            streamDeltaAccRef.current += "\n\n";
+            const tid0 = activeThreadIdRef.current;
+            const base0 = agentTurnBaselineRef.current;
+            if (tid0 && base0) {
+              setThreads((prev) =>
+                prev.map((th) =>
+                  th.id === tid0
+                    ? {
+                        ...th,
+                        messages: [...base0, { role: "assistant", content: streamDeltaAccRef.current }],
+                        messageCount: base0.length + 1,
+                        updatedAt: Date.now(),
+                      }
+                    : th
+                )
+              );
+            }
+          }
+          const rLabel = msg.round != null ? `round ${msg.round}` : "round";
+          appendAgentLine("llm", `${rLabel} (start)`);
+          return;
+        }
+        if (typ === "agent.llm_delta") {
+          const tid0 = activeThreadIdRef.current;
+          const base0 = agentTurnBaselineRef.current;
+          if (!tid0 || !base0 || !agentStreamEnabledThisTurnRef.current) return;
+          const d = msg.delta != null ? String(msg.delta) : "";
+          if (!d) return;
+          streamDeltaAccRef.current += d;
+          setThreads((prev) =>
+            prev.map((th) =>
+              th.id === tid0
+                ? {
+                    ...th,
+                    messages: [...base0, { role: "assistant", content: streamDeltaAccRef.current }],
+                    messageCount: base0.length + 1,
+                    updatedAt: Date.now(),
+                  }
+                : th
+            )
+          );
           return;
         }
         if (typ === "agent.llm_round") {
@@ -826,6 +941,7 @@ export function ChatPage() {
             ...agentDashboardPayload,
             ...(disabledTools.length ? { agent_disabled_tools: disabledTools } : {}),
             ...(catOb ? { agent_model_catalog_owned_by: catOb } : {}),
+            ...(getAgentStreamLlm() ? { agent_stream_llm: true } : {}),
           },
         })
       );
@@ -852,7 +968,7 @@ export function ChatPage() {
   ]);
 
   const onSend = () => {
-    void runAgentWs();
+    void (mode === "chat" ? runChatHttp() : runAgentWs());
   };
 
   const startNewChat = async () => {
@@ -1073,10 +1189,15 @@ export function ChatPage() {
                     Agent
                   </label>
                   <select
-                    className="mt-0.5 w-full rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100"
+                    className="mt-0.5 w-full rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100 disabled:opacity-50"
                     value={selectedAgentId}
                     onChange={(e) => setSelectedAgentId(e.target.value)}
-                    disabled={!visibleAgents.length}
+                    disabled={!visibleAgents.length || mode === "chat"}
+                    title={
+                      mode === "chat"
+                        ? "Chat mode uses plain completion without tools; switch to Agent mode to use this agent."
+                        : undefined
+                    }
                   >
                     {!visibleAgents.length ? (
                       <option>Loading agents…</option>
@@ -1176,6 +1297,49 @@ export function ChatPage() {
                 }
               />
               <div className="w-full">
+                <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+                  Reply mode
+                </label>
+                <select
+                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100"
+                  value={mode}
+                  onChange={(e) => setMode(e.target.value as ChatMode)}
+                  title="Agent: tools + multi-round WebSocket. Chat: single streamed assistant message (HTTP)."
+                >
+                  <option value="agent">Agent (tools, WebSocket)</option>
+                  <option value="chat">Chat (streamed HTTP)</option>
+                </select>
+                <p className="mt-1 text-[10px] leading-snug text-surface-muted">
+                  Chat mode sends <code className="text-neutral-500">agent_plain_completion</code> so tokens stream when
+                  the model supports it.
+                </p>
+              </div>
+              <div className="w-full">
+                <label className="flex cursor-pointer items-center gap-2 text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+                  <input
+                    type="checkbox"
+                    className="rounded border-surface-border bg-[#1a1a1a] text-sky-500"
+                    checked={agentStreamLlmUi}
+                    disabled={mode === "chat"}
+                    onChange={(e) => {
+                      const on = e.target.checked;
+                      setAgentStreamLlm(on);
+                      setAgentStreamLlmUi(on);
+                    }}
+                    title={
+                      mode === "chat"
+                        ? "Nur im Agent-Modus (WebSocket): LLM-Streaming pro Runde."
+                        : "LLM-Antwort pro Runde streamen (wenn der Provider es unterstützt). Aus = bisheriges Verhalten."
+                    }
+                  />
+                  <span>Agent: LLM-Stream</span>
+                </label>
+                <p className="mt-1 pl-6 text-[10px] leading-snug text-surface-muted">
+                  Schaltet <code className="text-neutral-500">agent_stream_llm</code> ein. Bei Tools: sichtbarer Text bis
+                  zum Tool-Call; weitere Runden folgen.
+                </p>
+              </div>
+              <div className="w-full">
                 <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">Model</label>
                 <select
                   className="mt-0.5 w-full rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100"
@@ -1262,7 +1426,8 @@ export function ChatPage() {
                   Hello, {displayName}
                 </h1>
                 <p className="mt-2 max-w-md text-sm text-surface-muted">
-                  Agent: WebSocket with multiple rounds; activity on the right.
+                  Agent mode: WebSocket with tools and activity on the right. Chat mode: streamed plain replies over HTTP
+                  (no tools).
                 </p>
               </div>
             ) : (

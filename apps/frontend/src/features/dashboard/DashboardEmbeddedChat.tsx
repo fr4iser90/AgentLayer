@@ -23,6 +23,7 @@ import {
   parseContentParts,
   toApiContent,
 } from "../chat/messageFormat";
+import { streamOpenAiChatChunks } from "../chat/openaiSseStream";
 
 function assistantFromCompletion(data: unknown): string {
   if (!data || typeof data !== "object") return "";
@@ -276,37 +277,77 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
     try {
       const disabledTools = getDisabledToolNames();
       const catOb = catalogOwnedByForModel(modelRows, mdl);
+      const payload = {
+        model: mdl,
+        messages: nextMessages.map((x) => ({
+          role: x.role,
+          content: toApiContent(x.content),
+        })),
+        stream: true,
+        agent_plain_completion: true,
+        stream_options: { include_usage: true },
+        ...payloadBase,
+        ...(disabledTools.length ? { agent_disabled_tools: disabledTools } : {}),
+        ...(catOb ? { agent_model_catalog_owned_by: catOb } : {}),
+      };
       const res = await apiFetch("/v1/chat/completions", auth, {
         method: "POST",
-        body: JSON.stringify({
-          model: mdl,
-          messages: nextMessages.map((x) => ({
-            role: x.role,
-            content: toApiContent(x.content),
-          })),
-          stream: false,
-          ...payloadBase,
-          ...(disabledTools.length ? { agent_disabled_tools: disabledTools } : {}),
-          ...(catOb ? { agent_model_catalog_owned_by: catOb } : {}),
-        }),
+        body: JSON.stringify(payload),
       });
-      const data = await res.json();
       if (!res.ok) {
-        setSendErr(String((data as { detail?: unknown }).detail ?? res.statusText));
+        let detail = res.statusText;
+        try {
+          const errBody = (await res.json()) as { detail?: unknown };
+          if (errBody.detail != null) detail = String(errBody.detail);
+        } catch {
+          /* */
+        }
+        setSendErr(detail);
         setThread(nextThread);
         setDraft(draftSnap);
         setPendingAttachments(attachSnap);
         setSendLoading(false);
         return;
       }
-      const content = assistantFromCompletion(data) || "(empty)";
-      const withAssistant: ChatThread = {
-        ...nextThread,
-        messages: [...nextMessages, { role: "assistant", content }],
-        updatedAt: Date.now(),
-      };
-      setThread(withAssistant);
-      await putConversation(auth, withAssistant);
+      const ctype = (res.headers.get("content-type") || "").toLowerCase();
+      if (ctype.includes("text/event-stream")) {
+        let acc = "";
+        try {
+          for await (const chunk of streamOpenAiChatChunks(res)) {
+            if (chunk.kind === "usage") continue;
+            acc += chunk.text;
+            setThread({
+              ...nextThread,
+              messages: [...nextMessages, { role: "assistant", content: acc }],
+              updatedAt: Date.now(),
+            });
+          }
+        } catch (streamErr) {
+          setSendErr(streamErr instanceof Error ? streamErr.message : String(streamErr));
+          setThread(nextThread);
+          setDraft(draftSnap);
+          setPendingAttachments(attachSnap);
+          setSendLoading(false);
+          return;
+        }
+        const withAssistant: ChatThread = {
+          ...nextThread,
+          messages: [...nextMessages, { role: "assistant", content: acc.trim() || "(empty)" }],
+          updatedAt: Date.now(),
+        };
+        setThread(withAssistant);
+        await putConversation(auth, withAssistant);
+      } else {
+        const data = await res.json();
+        const content = assistantFromCompletion(data) || "(empty)";
+        const withAssistant: ChatThread = {
+          ...nextThread,
+          messages: [...nextMessages, { role: "assistant", content }],
+          updatedAt: Date.now(),
+        };
+        setThread(withAssistant);
+        await putConversation(auth, withAssistant);
+      }
     } catch (e) {
       setSendErr(e instanceof Error ? e.message : String(e));
       setThread(nextThread);
