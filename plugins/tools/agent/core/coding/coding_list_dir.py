@@ -9,6 +9,11 @@ from typing import Any, Callable
 
 from apps.backend.core.config import config
 
+from plugins.tools.agent.core.coding.coding_common import (
+    json_workspace_missing_error,
+    workspace_binding_from_context,
+)
+
 __version__ = "1.0.0"
 TOOL_ID = "coding_list"
 TOOL_BUCKET = "files"
@@ -25,9 +30,9 @@ MAX_ENTRIES = config.WORKSPACE_MAX_LIST_ENTRIES
 
 
 def coding_list_dir(arguments: dict[str, Any], context: dict | None = None) -> str:
-    if not context or "workspace" not in context:
-        return json.dumps({"ok": False, "error": "No workspace in context - agent must inject workspace"}, ensure_ascii=False)
-    ws = context["workspace"]
+    ws = workspace_binding_from_context(context)
+    if ws is None:
+        return json_workspace_missing_error()
     root = Path(ws["path"])
     
     rel = (arguments.get("path") or "").strip() or "."

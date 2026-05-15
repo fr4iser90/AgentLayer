@@ -48,7 +48,8 @@ def resolve_db_workspace(workspace_id: str, user) -> dict[str, Any] | None:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT id, name, path, source, git_url, git_branch, access_role, owner_user_id
+                    SELECT id, name, path, source, git_url, git_branch, access_role, owner_user_id,
+                           verify_command, verify_required
                     FROM project_workspaces 
                     WHERE id = %s AND (owner_user_id = %s OR access_role IN ('editor', 'viewer'))
                     """,
@@ -72,6 +73,8 @@ def resolve_db_workspace(workspace_id: str, user) -> dict[str, Any] | None:
                     "id": str(row[0]),
                     "owner_user_id": str(row[7]),
                     "access_role": row[6],
+                    "verify_command": row[8],
+                    "verify_required": bool(row[9]) if row[9] is not None else False,
                 }
     except Exception as e:
         logger.error("failed to resolve workspace from DB: %s", e)

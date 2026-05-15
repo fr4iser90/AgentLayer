@@ -18,11 +18,35 @@ except ImportError:
 
 def get_workspace_from_context(context: dict | None = None) -> Path | None:
     """Get workspace path from context - the CORRECT way."""
-    if context and "workspace" in context:
-        ws = context["workspace"]
-        if ws and ws.get("path"):
-            return Path(ws["path"])
+    ws = workspace_binding_from_context(context)
+    if ws is None:
+        return None
+    return Path(ws["path"])
+
+
+def workspace_binding_from_context(context: dict | None) -> dict[str, Any] | None:
+    """Return workspace dict if ``context`` has a usable ``workspace`` with ``path`` (not ``None``)."""
+    if not context:
+        return None
+    ws = context.get("workspace")
+    if isinstance(ws, dict):
+        p = ws.get("path")
+        if isinstance(p, str) and p.strip():
+            return ws
     return None
+
+
+def json_workspace_missing_error() -> str:
+    return json.dumps(
+        {
+            "ok": False,
+            "error": (
+                "No coding workspace bound. Select a workspace in the UI (workspace_id on the request), "
+                "or send a Git HTTPS URL as an admin user to auto-create a cloned workspace for this chat."
+            ),
+        },
+        ensure_ascii=False,
+    )
 
 
 def require_workspace(context: dict | None = None) -> Path:

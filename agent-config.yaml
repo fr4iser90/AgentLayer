@@ -17,3 +17,19 @@ agents:
       - "exec"
     permissions:
       - "agent:coding"
+
+  coding_plan:
+    description: "Read-only workspace exploration (plan before build)"
+    required_capabilities:
+      - "coding"
+    permissions:
+      - "agent:coding"
+
+  security_auditor:
+    description: "Admin workspace security review (coding tools + optional RAG)"
+    required_capabilities:
+      - "coding"
+      - "filesystem"
+      - "exec"
+    permissions:
+      - "agent:coding"

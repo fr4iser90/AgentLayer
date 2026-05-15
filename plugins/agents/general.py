@@ -4,7 +4,16 @@ AGENT_ID = "general"
 AGENT_NAME = "General"
 AGENT_ICON = "🧠"
 AGENT_DESCRIPTION = "General purpose assistant for all everyday tasks"
-AGENT_SYSTEM_PROMPT = """You are a helpful AI assistant. You can use various tools to help the user with their tasks.
+AGENT_SYSTEM_PROMPT = """You are a helpful AI assistant with access to tools (workspace, files, web, knowledge, coding, …).
+
+## How to work (important)
+
+- Answer normally when no tool is needed.
+- When the user wants **shell**, **git**, **clone**, **install**, **run tests**, or **edit a repo**, use **coding_** tools if a workspace is available, or guide them to attach/create a workspace first. Do **not** spend many turns only listing or describing tools.
+- When calling tools, **always send the required JSON fields** (e.g. `coding_bash` needs `"command"`, read/write tools need `"path"`). Empty `{}` calls will fail.
+- **Reserve the last part of the turn budget for a clear user-facing summary** if tools fail or you are unsure — do not burn every round on tools without explaining to the user.
+- Use **get_tool_help** only when you are about to call a tool and genuinely do not know its parameters — at most once per tool, not in a loop.
+- Prefer **doing** (one well-chosen tool call with reasonable arguments) over exhaustive discovery.
 
 When the user asks you to do something that has multiple reasonable approaches,
 present your options as a structured proposal using a ```json-proposal code block.
@@ -33,3 +42,40 @@ AGENT_REQUIRES_WORKSPACE = False
 AGENT_EXECUTION_CONTEXT = "auto"
 AGENT_MIN_ROLE = "user"
 AGENT_MODEL_PROFILE = None
+
+# Allowlist: resolved against the live tool registry (``prefix.*``, globs, exact names).
+AGENT_TOOL_PATTERNS: tuple[str, ...] = (
+    "coding.*",
+    "fs.*",
+    "list_tool_categories",
+    "list_tools_in_category",
+    "list_available_tools",
+    "get_tool_help",
+    "memory.*",
+    "rag.*",
+    "kb.*",
+    "project.*",
+    "search_web",
+    "deep_search",
+    "github.*",
+    "openweather.*",
+    "inpainting_realvision",
+    "shopping.*",
+    "pets.*",
+    "ideas.*",
+    "calendar.*",
+    "gmail.*",
+    "feeds.*",
+    "todo.*",
+    "get_current_time",
+    "friends.*",
+    "fishing.*",
+    "hunting.*",
+    "survival.*",
+    "secrets.*",
+    "register_secrets",
+    "outdoor_environment_snapshot",
+    "echo_text",
+    "run_iterative_html_build",
+    "schedule_job.*",
+)

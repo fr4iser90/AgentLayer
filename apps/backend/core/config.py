@@ -55,7 +55,7 @@ OLLAMA_DEFAULT_MODEL = (os.environ.get("OLLAMA_DEFAULT_MODEL") or "nemotron-3-na
 # before ``operator_settings`` (Admin → Interfaces), if present.
 LLAMA_CPP_BASE_URL = (os.environ.get("LLAMA_CPP_BASE_URL") or "").strip().rstrip("/")
 LLAMA_CPP_ENABLED = _env_bool("LLAMA_CPP_ENABLED", True)
-# Secret for ``Authorization: Bearer`` or for the header named ``LLAMA_CPP_API_HEADER_NAME`` (same OpenCode header value).
+# Secret for ``Authorization: Bearer`` or for the header named ``LLAMA_CPP_API_HEADER_NAME`` (must match what the gateway expects).
 _LLAMA_SECRET_RAW = (os.environ.get("LLAMA_CPP_API_HEADER_VALUE") or "").strip()
 LLAMA_CPP_API_HEADER_VALUE = _LLAMA_SECRET_RAW or None
 _LLAMA_HDR_RAW = (os.environ.get("LLAMA_CPP_API_HEADER_NAME") or "").strip()
@@ -82,14 +82,63 @@ AGENT_MODEL_OVERRIDE_ROLES = frozenset(
 # If true, unauthenticated optional-route callers may still set model / override header.
 AGENT_MODEL_OVERRIDE_ANONYMOUS = _env_bool("AGENT_MODEL_OVERRIDE_ANONYMOUS", False)
 
-MAX_TOOL_ROUNDS = _env_int("AGENT_MAX_TOOL_ROUNDS", 8)
+MAX_TOOL_ROUNDS_CAP = max(256, _env_int("AGENT_MAX_TOOL_ROUNDS_CAP", 16384))
+
+
+def _resolve_max_tool_rounds() -> int:
+    """``AGENT_MAX_TOOL_ROUNDS``: positive = limit (capped at ``MAX_TOOL_ROUNDS_CAP``); 0 or negative = use cap (\"practical unlimited\" for local runs)."""
+    raw = (os.environ.get("AGENT_MAX_TOOL_ROUNDS") or "").strip()
+    if not raw:
+        return 8
+    try:
+        v = int(raw)
+    except ValueError:
+        logger.warning("invalid AGENT_MAX_TOOL_ROUNDS %r — using default 8", raw)
+        return 8
+    if v <= 0:
+        logger.info(
+            "AGENT_MAX_TOOL_ROUNDS=%s → using high cap %s tool rounds (override with AGENT_MAX_TOOL_ROUNDS_CAP)",
+            raw,
+            MAX_TOOL_ROUNDS_CAP,
+        )
+        return MAX_TOOL_ROUNDS_CAP
+    return max(1, min(v, MAX_TOOL_ROUNDS_CAP))
+
+
+MAX_TOOL_ROUNDS = _resolve_max_tool_rounds()
+# Phase 1 (coding-agent-roadmap): break identical tool failure loops (e.g. empty JSON / same parameter error).
+AGENT_TOOL_THRASH_ENABLED = _env_bool("AGENT_TOOL_THRASH_ENABLED", True)
+AGENT_TOOL_THRASH_STREAK_MAX = max(2, _env_int("AGENT_TOOL_THRASH_STREAK_MAX", 3))
+# Doom loop guard: same tool + same arguments repeated (any result). Default streak 3 is a common industry default.
+AGENT_TOOL_DOOM_LOOP_ENABLED = _env_bool("AGENT_TOOL_DOOM_LOOP_ENABLED", True)
+AGENT_TOOL_DOOM_LOOP_STREAK_MAX = max(2, _env_int("AGENT_TOOL_DOOM_LOOP_STREAK_MAX", 3))
+# Comma-separated tool names that do **not** participate in the doom-loop counter (idempotent reads / search).
+# Set to a single ``-`` to disable this exclusion (all tools count). Empty env = use the default list below.
+_DOOM_EXCL_ENV = os.environ.get("AGENT_TOOL_DOOM_LOOP_EXCLUDE")
+if _DOOM_EXCL_ENV is None:
+    _DOOM_EXCL_PARTS = (
+        "coding_read_file,coding_list_dir,coding_glob,coding_search,coding_semantic_search,"
+        "coding_symbols,coding_lsp,coding_index,coding_git_read,project_explain"
+    ).split(",")
+elif _DOOM_EXCL_ENV.strip() == "-":
+    _DOOM_EXCL_PARTS = []
+else:
+    _DOOM_EXCL_PARTS = _DOOM_EXCL_ENV.split(",")
+AGENT_TOOL_DOOM_LOOP_EXCLUDE = frozenset(x.strip() for x in _DOOM_EXCL_PARTS if x.strip())
+# Phase 4 (roadmap): one-line recap after each tool batch; workspace .agentlayer.json hints.
+AGENT_SESSION_TOOL_RECAP_ENABLED = _env_bool("AGENT_SESSION_TOOL_RECAP_ENABLED", True)
+AGENT_SESSION_TOOL_RECAP_MAX = max(1, _env_int("AGENT_SESSION_TOOL_RECAP_MAX", 12))
+# Max wall time for ``coding_workspace_verify`` (runs ``verify_command`` from ``.agentlayer.json`` only).
+AGENT_WORKSPACE_VERIFY_TIMEOUT_SEC = max(30, min(_env_int("AGENT_WORKSPACE_VERIFY_TIMEOUT_SEC", 600), 3600))
 DATA_DIR = os.environ.get("AGENT_DATA_DIR", "/data")
 # Before replace_tool / update_tool / create_tool overwrite, copy prior .py here (UTC timestamp prefix).
 TOOLS_BACKUP_ENABLED = _env_bool("AGENT_TOOLS_BACKUP_ENABLED", True)
 SYSTEM_PROMPT_EXTRA = os.environ.get("AGENT_SYSTEM_PROMPT", "").strip()
 
 # If Ollama returns no tool_calls but JSON tool intent in message content (e.g. Nemotron), parse and run.
-CONTENT_TOOL_FALLBACK = _env_bool("AGENT_CONTENT_TOOL_FALLBACK", True)
+# Optional legacy: infer tool calls from assistant message text when the backend sends no wire-format
+# ``tool_calls``. Off by default — prefer models that emit native tool_calls.
+CONTENT_TOOL_FALLBACK = _env_bool("AGENT_CONTENT_TOOL_FALLBACK", False)
 
 # If the first completion (planner round 0 only) returns text but no tool_calls while tools[] was
 # sent, retry once with tool_choice=required (OpenAI-compatible). Later rounds are not retried.
@@ -229,6 +278,39 @@ def tool_scan_directories() -> list[Path]:
     return out
 
 
+def skill_scan_directories() -> list[Path]:
+    """
+    Skill plugin **roots** to scan **recursively** for ``*.py`` (same layout idea as ``plugins/tools``).
+
+    If ``AGENT_SKILL_DIRS`` is set (comma-separated), only those paths are used (must exist).
+    Otherwise: ``plugins/skills`` under :data:`PLUGINS_DIR`.
+    """
+    out: list[Path] = []
+    seen: set[str] = set()
+
+    def add(p: Path) -> None:
+        try:
+            r = p.resolve()
+        except OSError:
+            logger.warning("skill directory not resolvable: %s", p)
+            return
+        if not r.is_dir():
+            return
+        key = str(r)
+        if key not in seen:
+            seen.add(key)
+            out.append(r)
+
+    raw = (os.environ.get("AGENT_SKILL_DIRS") or "").strip()
+    if raw:
+        for part in raw.split(","):
+            add(Path(part.strip()).expanduser())
+        return out
+
+    add(PLUGINS_DIR / "skills")
+    return out
+
+
 # Comma-separated SHA256 hex digests (64 chars). If set, each extra *.py must match one entry.
 # Read on each extra-tool scan (reload) so container env updates take effect without code change.
 
@@ -253,6 +335,10 @@ WORKSPACE_MAX_SEARCH_MATCHES = _env_int("AGENT_WORKSPACE_MAX_SEARCH_MATCHES", 10
 WORKSPACE_SEARCH_MAX_FILE_BYTES = _env_int("AGENT_WORKSPACE_SEARCH_MAX_FILE_BYTES", 400_000)
 WORKSPACE_MAX_GLOB_FILES = _env_int("AGENT_WORKSPACE_MAX_GLOB_FILES", 2000)
 WORKSPACE_MAX_READ_LINES = _env_int("AGENT_WORKSPACE_MAX_READ_LINES", 8000)
+# coding_search literal mode: prefer ``rg`` when installed (override path with AGENT_RIPGREP_PATH).
+AGENT_CODING_SEARCH_USE_RIPGREP = _env_bool("AGENT_CODING_SEARCH_USE_RIPGREP", True)
+AGENT_RIPGREP_PATH = (os.environ.get("AGENT_RIPGREP_PATH") or "").strip() or None
+AGENT_RIPGREP_TIMEOUT_SEC = max(15, min(_env_int("AGENT_RIPGREP_TIMEOUT_SEC", 120), 600))
 
 # Dashboard UI: binary uploads (e.g. gallery). Operator may override max MB / MIME in DB.
 WORKSPACE_UPLOAD_MAX_FILE_MB = max(1, min(_env_int("AGENT_WORKSPACE_UPLOAD_MAX_MB", 10), 512))
@@ -323,10 +409,54 @@ PIDEA_DEFAULT_TIMEOUT_MS = _env_int("PIDEA_DEFAULT_TIMEOUT_MS", 30_000)
 # ``operator_settings`` (Admin → Interfaces), not environment variables.
 
 
+# --- MCP (Model Context Protocol, stdio servers; optional) ---
+AGENT_MCP_ENABLED = _env_bool("AGENT_MCP_ENABLED", False)
+AGENT_MCP_SERVERS_JSON = (os.environ.get("AGENT_MCP_SERVERS_JSON") or "").strip()
+AGENT_MCP_SERVERS_FILE = (os.environ.get("AGENT_MCP_SERVERS_FILE") or "").strip()
+AGENT_MCP_LIST_TIMEOUT_SEC = max(5, min(_env_int("AGENT_MCP_LIST_TIMEOUT_SEC", 45), 600))
+AGENT_MCP_CALL_TIMEOUT_SEC = max(5, min(_env_int("AGENT_MCP_CALL_TIMEOUT_SEC", 120), 3600))
+AGENT_MCP_MAX_TOOLS = max(1, min(_env_int("AGENT_MCP_MAX_TOOLS", 32), 256))
+
+
+def _parse_mcp_agent_ids() -> frozenset[str]:
+    raw = (os.environ.get("AGENT_MCP_AGENT_IDS") or "coding,coding_plan").strip()
+    if not raw:
+        return frozenset()
+    return frozenset(x.strip() for x in raw.split(",") if x.strip())
+
+
+AGENT_MCP_AGENT_IDS = _parse_mcp_agent_ids()
+
+# Optional: append one markdown/text file to the system message (plain-text operator “skills” snippet).
+AGENT_SKILLS_PROMPT_FILE = (os.environ.get("AGENT_SKILLS_PROMPT_FILE") or "").strip()
+
+
+def _parse_skills_prompt_agent_ids() -> frozenset[str]:
+    raw = (os.environ.get("AGENT_SKILLS_PROMPT_AGENT_IDS") or "coding,coding_plan").strip()
+    if not raw:
+        return frozenset()
+    return frozenset(x.strip() for x in raw.split(",") if x.strip())
+
+
+AGENT_SKILLS_PROMPT_AGENT_IDS = _parse_skills_prompt_agent_ids()
+
+# Max combined characters for plugin skills + optional operator file snippet (per chat request).
+AGENT_SKILLS_MAX_TOTAL_CHARS = max(512, min(_env_int("AGENT_SKILLS_MAX_TOTAL_CHARS", 48_000), 200_000))
+
+
 def tool_log_redact_keys() -> frozenset[str]:
     """Argument names to redact in tool_invocations logging (comma-separated env)."""
     raw = (os.environ.get("AGENT_TOOL_LOG_REDACT_KEYS") or "source").strip()
     return frozenset(k.strip() for k in raw.split(",") if k.strip())
+
+
+# Chat secret ingress (ADR 0006): requires Fernet key; see .env.example.
+CHAT_SECRET_INGRESS_ENABLED = _env_bool("CHAT_SECRET_INGRESS_ENABLED", False)
+# Best-effort regex redaction of common token shapes in user text before LLM (no vault).
+# Default off: typical for self-hosted LLM; set true when sending chat to a third-party API.
+CHAT_SECRET_HEURISTIC_REDACT_ENABLED = _env_bool("CHAT_SECRET_HEURISTIC_REDACT_ENABLED", False)
+CHAT_SECRET_VAULT_TTL_MINUTES = max(5, _env_int("CHAT_SECRET_VAULT_TTL_MINUTES", 30))
+CHAT_SECRET_VAULT_FERNET_KEY = (os.environ.get("CHAT_SECRET_VAULT_FERNET_KEY") or "").strip() or None
 
 
 def tools_allowed_sha256() -> frozenset[str] | None:

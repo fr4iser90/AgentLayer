@@ -1,7 +1,10 @@
-"""Serialize HTTP calls to Ollama (one in flight) for small GPUs / Jetson.
+"""Serialized HTTP helpers for **OpenAI-compatible** LLM endpoints.
 
-Async handlers must not hold threading.Lock across await — use
-``await asyncio.to_thread(ollama_post_json, ...)`` (see ``domain.agent``).
+Used for ``/v1/chat/completions`` and related POST/GET regardless of vendor: **Ollama**,
+**llama.cpp** (OpenAI server), operator-configured **external** APIs, etc.
+
+A single process-wide lock limits concurrent blocking HTTP (small GPUs / shared hosts).
+Async call sites should use ``await asyncio.to_thread(http_post_json, ...)`` (see ``domain.agent``).
 """
 
 from __future__ import annotations
@@ -15,13 +18,13 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-OLLAMA_HTTP_LOCK = threading.Lock()
+LLM_HTTP_SERIALIZE_LOCK = threading.Lock()
 
 
 def _openai_strict_tools(obj: Any) -> Any:
     """
-    Ollama tolerates extra JSON-Schema keys like ``TOOL_DESCRIPTION`` on tools; strict OpenAI-compatible
-    APIs (e.g. Google Gemini) reject unknown field names. Map ``TOOL_DESCRIPTION`` → ``description``.
+    Some servers tolerate extra JSON-Schema keys like ``TOOL_DESCRIPTION`` on tools; strict
+    OpenAI-shaped APIs reject unknown field names. Map ``TOOL_DESCRIPTION`` → ``description``.
     """
     if isinstance(obj, dict):
         has_desc = "description" in obj
@@ -38,7 +41,7 @@ def _openai_strict_tools(obj: Any) -> Any:
     return obj
 
 
-def ollama_post_json(
+def http_post_json(
     url: str,
     json_body: dict[str, Any],
     *,
@@ -46,14 +49,14 @@ def ollama_post_json(
     timeout: float = 600.0,
 ) -> dict[str, Any]:
     h = headers or {"Content-Type": "application/json"}
-    with OLLAMA_HTTP_LOCK:
+    with LLM_HTTP_SERIALIZE_LOCK:
         with httpx.Client(timeout=timeout) as client:
             resp = client.post(url, json=json_body, headers=h)
             resp.raise_for_status()
             return resp.json()
 
 
-def ollama_post_chat_completions(
+def http_post_chat_completions(
     url: str,
     json_body: dict[str, Any],
     *,
@@ -63,9 +66,7 @@ def ollama_post_chat_completions(
     """
     POST to OpenAI-compatible ``…/chat/completions``.
 
-    Normalizes ``tools[]`` so strict backends accept them: Ollama allows non-standard JSON-Schema
-    keys such as ``TOOL_DESCRIPTION``; OpenAI-shaped APIs (e.g. Google Gemini) require standard
-    ``description`` fields instead.
+    Normalizes ``tools[]`` for strict backends (maps ``TOOL_DESCRIPTION`` → ``description``).
 
     Returns ``(response_json, tools_omitted)`` — ``tools_omitted`` is always ``False`` (reserved).
     """
@@ -74,21 +75,21 @@ def ollama_post_chat_completions(
     if "tools" in json_body:
         body = copy.deepcopy(json_body)
         body["tools"] = _openai_strict_tools(body["tools"])
-    with OLLAMA_HTTP_LOCK:
+    with LLM_HTTP_SERIALIZE_LOCK:
         with httpx.Client(timeout=timeout) as client:
             resp = client.post(url, json=body, headers=h)
             resp.raise_for_status()
             return resp.json(), False
 
 
-def ollama_get_json(
+def http_get_json(
     url: str,
     *,
     timeout: float = 60.0,
 ) -> tuple[int, str, Any | None]:
     """GET; returns ``(status, text_on_error, json_or_none)``."""
     try:
-        with OLLAMA_HTTP_LOCK:
+        with LLM_HTTP_SERIALIZE_LOCK:
             with httpx.Client(timeout=timeout) as client:
                 r = client.get(url)
                 if r.status_code != 200:

@@ -23,6 +23,15 @@ Hard rules:
 When multiple approaches exist, you may use the standard ```json-proposal block (same format as other agents).
 """
 AGENT_TOOL_DOMAIN = None
+# Union of tools whose effective capability matches any of these (see ``plugins/tools/*/TOOL_CAPABILITIES``).
+AGENT_TOOL_CAPABILITY_ANY: tuple[str, ...] = (
+    "operator.console",
+    "knowledge.retrieve",
+    "scheduler.job.read",
+    "scheduler.job.write",
+    "meta.discover",
+    "meta.inspect",
+)
 AGENT_REQUIRES_WORKSPACE = False
 AGENT_EXECUTION_CONTEXT = "auto"
 AGENT_MIN_ROLE = "admin"

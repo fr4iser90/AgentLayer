@@ -18,6 +18,13 @@ This folder is written for **humans** and for **RAG ingestion**.
 ### Planning
 
 - **Coding agent roadmap & backlog** (guardrails, epics, Git phases): [`docs/planning/coding-agent-roadmap.md`](./planning/coding-agent-roadmap.md)
+- **Coding agent vs. external reference (gap analysis):** [`docs/planning/coding-agent-external-gap-analysis.md`](./planning/coding-agent-external-gap-analysis.md)
+- **Chat secret ingress — where to hook in code:** [`docs/planning/chat-secret-ingress-integration-analysis.md`](./planning/chat-secret-ingress-integration-analysis.md)
+
+### Agents (product)
+
+- **Operator agent (admin-only, current tools, planned tools):** [`docs/features/operator-agent.md`](./features/operator-agent.md)
+- **Agent plugins + tool allowlists (`TOOL_DOMAIN`, capabilities, patterns):** [`docs/features/agent-registry-and-allowlists.md`](./features/agent-registry-and-allowlists.md)
 
 ### Start here
 
@@ -41,4 +48,5 @@ You already have ADRs under [`docs/adr/`](./adr/):
 - [`0003-capability-governance.md`](./adr/0003-capability-governance.md)
 - [`0004-scheduler-data-model.md`](./adr/0004-scheduler-data-model.md)
 - [`0005-agentlayer-self-workspace-contract.md`](./adr/0005-agentlayer-self-workspace-contract.md)
+- [`0006-chat-secret-ingress-pipeline.md`](./adr/0006-chat-secret-ingress-pipeline.md) — chat → vault → placeholders → operator apply (proposed)
 

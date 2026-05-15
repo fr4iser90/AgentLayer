@@ -689,6 +689,14 @@ export function ChatPage() {
           const em = msg.effective_model != null ? String(msg.effective_model) : "";
           const mr = msg.model_resolution != null ? String(msg.model_resolution) : "";
           appendAgentLine("session", [em && `model: ${em}`, mr && `(${mr})`].filter(Boolean).join(" "));
+          if (msg.agent_auto_routed === true && msg.effective_agent_id != null) {
+            const aid = String(msg.effective_agent_id).trim();
+            if (aid) setSelectedAgentId(aid);
+          }
+          if (msg.workspace_auto_created === true && msg.workspace_id != null) {
+            const wid = String(msg.workspace_id).trim();
+            if (wid) setSelectedWorkspaceId(wid);
+          }
           return;
         }
         if (typ === "agent.llm_round_start" || typ === "agent.llm_round") {
@@ -1064,6 +1072,21 @@ export function ChatPage() {
                 </>
               );
             })()}
+            {selectedAgentId === "coding" ? (
+              <p className="mt-2 max-w-xl text-[11px] leading-snug text-sky-300/85">
+                Tip: the model can call{" "}
+                <code className="rounded bg-black/30 px-1 text-neutral-300">coding_task</code> with{" "}
+                <code className="rounded bg-black/30 px-1 text-neutral-300">run_plan_subagent: true</code> to run a
+                short read-only <span className="text-neutral-200">coding_plan</span> pass on this workspace; the
+                tool JSON includes <code className="rounded bg-black/30 px-1 text-neutral-300">assistant_excerpt</code>.
+              </p>
+            ) : null}
+            {selectedAgentId === "coding_plan" ? (
+              <p className="mt-2 max-w-xl text-[11px] leading-snug text-amber-200/90">
+                Read-only agent: no write, shell, or patch tools. Choose <span className="text-neutral-200">Coding</span>{" "}
+                to apply changes.
+              </p>
+            ) : null}
             <label className="mt-2 block text-xs text-surface-muted">Model</label>
             <select
               className="mt-1 rounded-lg border border-surface-border bg-[#1a1a1a] px-3 py-2 text-sm text-neutral-100"

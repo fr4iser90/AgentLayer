@@ -28,6 +28,7 @@ import {
   type ProposalOption,
 } from "../lib/proposalParser";
 import { apiFetch } from "../lib/api";
+import { CodingWorkspacePanels } from "../features/workspace/CodingWorkspacePanels";
 import {
   catalogOwnedByForModel,
   fetchModelCatalog,
@@ -83,6 +84,31 @@ async function deleteWorkspace(auth: ReturnType<typeof useAuth>, workspaceId: st
   return true;
 }
 
+async function createImplementationBranchApi(
+  auth: ReturnType<typeof useAuth>,
+  workspaceId: string,
+  body: { base_branch?: string; implementation_run_id?: string }
+): Promise<{ branch: string; base_branch?: string; head_summary?: string }> {
+  const r = await apiFetch(`/v1/workspaces/${workspaceId}/git/implementation-branch`, auth, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  const j = (await r.json().catch(() => ({}))) as {
+    branch?: string;
+    base_branch?: string;
+    head_summary?: string;
+    detail?: string;
+  };
+  if (!r.ok) {
+    const d = typeof j.detail === "string" ? j.detail : `HTTP ${r.status}`;
+    throw new Error(d);
+  }
+  if (!j.branch) {
+    throw new Error("Branch creation returned no branch name");
+  }
+  return { branch: j.branch, base_branch: j.base_branch, head_summary: j.head_summary };
+}
+
 const CODING_SUGGESTED = [
   "Explain the structure of this project",
   "Find and fix all linting errors",
@@ -98,12 +124,14 @@ function wsUrl(token: string): string {
 function assistantFromCompletion(data: unknown): string {
   if (!data || typeof data !== "object") return "";
   const d = data as {
-    choices?: Array<{ message?: { content?: unknown } }>;
+    choices?: Array<{ message?: { content?: unknown; tool_calls?: unknown } }>;
   };
-  const c = d.choices?.[0]?.message?.content;
-  if (typeof c === "string") return c;
-  if (Array.isArray(c)) {
-    return c
+  const msg0 = d.choices?.[0]?.message;
+  const c = msg0?.content;
+  let text = "";
+  if (typeof c === "string") text = c;
+  else if (Array.isArray(c)) {
+    text = c
       .map((part: unknown) => {
         if (part && typeof part === "object" && "text" in part) {
           return String((part as { text?: string }).text ?? "");
@@ -111,6 +139,14 @@ function assistantFromCompletion(data: unknown): string {
         return "";
       })
       .join("");
+  }
+  if (text.trim()) return text;
+  const tcs = msg0?.tool_calls;
+  if (Array.isArray(tcs) && tcs.length > 0) {
+    return (
+      "(No assistant text in the final response — only tool_calls. " +
+      "See **Agent activity** for tool runs, or retry if the model should have answered in prose.)"
+    );
   }
   return "";
 }
@@ -238,11 +274,123 @@ function ProposalCard({
 }
 
 const CODING_TOOLS = [
-  "coding_read_file", "coding_write_file", "coding_edit", "coding_list_dir",
-  "coding_glob", "coding_search", "coding_bash", "coding_apply_patch",
-  "coding_replace", "coding_lsp", "coding_index", "coding_symbols",
-  "coding_todo", "coding_task",
+  "coding_apply_patch",
+  "coding_bash",
+  "coding_edit",
+  "coding_git_read",
+  "coding_glob",
+  "coding_index",
+  "coding_list_dir",
+  "coding_lsp",
+  "coding_read_file",
+  "coding_replace",
+  "coding_search",
+  "coding_semantic_search",
+  "coding_symbols",
+  "coding_task",
+  "coding_todo",
+  "coding_workspace_verify",
+  "coding_write_file",
+  "project_explain",
 ];
+
+/** Plan tab uses the same coding tool names as Build; server + WebSocket handle permission ask. */
+const CODING_PLAN_TOOL_NAMES = CODING_TOOLS;
+
+type CodingSessionMode = "build" | "plan";
+
+/** When switching Plan → Build with a transcript: how to handle `agent/impl-…` on the server. */
+type ImplBranchPreference = "ask" | "always" | "never";
+
+type PermAskGate = { requestId: string; toolName: string; argsPreview: string };
+
+function codingModeStorageKey(userId: string, threadId: string): string {
+  return `agentlayer.coding.mode.v1:${userId}:${threadId}`;
+}
+
+function implBranchPrefStorageKey(userId: string): string {
+  return `agentlayer.coding.implBranch.v1:${userId}`;
+}
+
+function parseImplBranchPref(raw: string | null): ImplBranchPreference {
+  if (raw === "always" || raw === "never") return raw;
+  return "ask";
+}
+
+function ImplementationBranchSetting({
+  value,
+  onChange,
+  className = "",
+}: {
+  value: ImplBranchPreference;
+  onChange: (v: ImplBranchPreference) => void;
+  className?: string;
+}) {
+  return (
+    <div className={`mt-2 flex flex-col gap-1 text-left ${className}`}>
+      <label
+        className="text-[10px] font-medium uppercase tracking-wide text-surface-muted"
+        htmlFor="impl-branch-pref"
+      >
+        Plan → Build: implementation branch
+      </label>
+      <select
+        id="impl-branch-pref"
+        className="max-w-xs rounded-lg border border-surface-border bg-black/30 px-2 py-1.5 text-xs text-neutral-200"
+        value={value}
+        onChange={(e) => onChange(e.target.value as ImplBranchPreference)}
+      >
+        <option value="ask">Ask each time</option>
+        <option value="always">Always create agent/impl-…</option>
+        <option value="never">Never (switch mode only)</option>
+      </select>
+      <p className="text-[10px] leading-snug text-surface-muted">
+        When switching from Plan to Build and this session already has messages. Saved per account in this browser.
+      </p>
+    </div>
+  );
+}
+
+function CodingBuildPlanToggle({
+  mode,
+  onChange,
+  helper,
+  className = "",
+}: {
+  mode: CodingSessionMode;
+  onChange: (m: CodingSessionMode) => void;
+  helper?: string;
+  className?: string;
+}) {
+  return (
+    <div className={`flex flex-col gap-2 ${className}`}>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[10px] font-medium uppercase tracking-wide text-surface-muted">Mode</span>
+        <div className="inline-flex rounded-lg border border-surface-border bg-black/40 p-0.5">
+          <button
+            type="button"
+            onClick={() => onChange("build")}
+            className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+              mode === "build" ? "bg-sky-600 text-white shadow" : "text-surface-muted hover:text-white"
+            }`}
+          >
+            Build
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange("plan")}
+            className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+              mode === "plan" ? "bg-amber-600 text-white shadow" : "text-surface-muted hover:text-white"
+            }`}
+          >
+            Plan
+          </button>
+        </div>
+      </div>
+      {helper ? <p className="text-[10px] leading-snug text-surface-muted">{helper}</p> : null}
+    </div>
+  );
+}
 
 export function CodingAgentPage() {
   const auth = useAuth();
@@ -267,10 +415,46 @@ export function CodingAgentPage() {
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
   const [newWorkspaceGitUrl, setNewWorkspaceGitUrl] = useState("");
   const [creatingWorkspace, setCreatingWorkspace] = useState(false);
+  const [sessionMode, setSessionMode] = useState<CodingSessionMode>("build");
+  const [permAsk, setPermAsk] = useState<PermAskGate | null>(null);
+  const [implBranchPreference, setImplBranchPreferenceState] = useState<ImplBranchPreference>("ask");
+
+  const setImplBranchPreference = useCallback(
+    (v: ImplBranchPreference) => {
+      setImplBranchPreferenceState(v);
+      if (userId) {
+        localStorage.setItem(implBranchPrefStorageKey(userId), v);
+      }
+    },
+    [userId]
+  );
+
+  useEffect(() => {
+    if (!userId) return;
+    setImplBranchPreferenceState(parseImplBranchPref(localStorage.getItem(implBranchPrefStorageKey(userId))));
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId || !activeThreadId) return;
+    const raw = localStorage.getItem(codingModeStorageKey(userId, activeThreadId));
+    setSessionMode(raw === "plan" ? "plan" : "build");
+  }, [userId, activeThreadId]);
+
+  const applyCodingSessionMode = useCallback(
+    (m: CodingSessionMode) => {
+      setSessionMode(m);
+      if (userId && activeThreadId) {
+        localStorage.setItem(codingModeStorageKey(userId, activeThreadId), m);
+      }
+    },
+    [userId, activeThreadId]
+  );
 
   const wsRef = useRef<WebSocket | null>(null);
   const agentHandlerRef = useRef<(ev: MessageEvent) => void>(() => {});
   const activeThreadIdRef = useRef<string | null>(null);
+  /** Prepended to the next user message after Plan→Build + server implementation-branch creation. */
+  const implementationBranchPreambleRef = useRef<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const toolStartTimesRef = useRef<Map<string, number>>(new Map());
   activeThreadIdRef.current = activeThreadId;
@@ -381,6 +565,76 @@ export function CodingAgentPage() {
     );
   }, []);
 
+  const handleCodingSessionModeChange = useCallback(
+    async (m: CodingSessionMode) => {
+      if (
+        m === "build" &&
+        sessionMode === "plan" &&
+        activeThreadId &&
+        selectedWorkspaceId
+      ) {
+        const t = threads.find((x) => x.id === activeThreadId);
+        const hasTranscript = (t?.messages.length ?? 0) > 0;
+        if (hasTranscript) {
+          const ws = workspaces.find((w) => w.id === selectedWorkspaceId);
+          const baseHint = (ws?.git_branch ?? "main").trim() || "main";
+          let shouldCreate = false;
+          if (implBranchPreference === "always") {
+            shouldCreate = true;
+          } else if (implBranchPreference === "never") {
+            shouldCreate = false;
+          } else {
+            shouldCreate = window.confirm(
+              "Switch to **Build**: create an implementation git branch `agent/impl-…` on the server?\n\n" +
+                `Base: **${baseHint}** (workspace default branch; override via PATCH /v1/workspaces if needed).\n\n` +
+                "OK = create branch and switch to Build\n" +
+                "Cancel = switch to Build without creating a branch"
+            );
+          }
+          if (shouldCreate) {
+            setError(null);
+            try {
+              const runId =
+                typeof crypto !== "undefined" && "randomUUID" in crypto
+                  ? crypto.randomUUID()
+                  : `${Date.now()}`;
+              const j = await createImplementationBranchApi(auth, selectedWorkspaceId, {
+                base_branch: baseHint,
+                implementation_run_id: runId,
+              });
+              implementationBranchPreambleRef.current =
+                `[Implementation: you are on a new git branch \`${j.branch}\` (created from \`${j.base_branch ?? baseHint}\`). ` +
+                "Implement the agreed plan from this thread; keep commits on this branch.]\n\n";
+              appendAgentLine(
+                "session",
+                `Git implementation branch: ${j.branch} ← ${j.base_branch ?? baseHint}`
+              );
+            } catch (e) {
+              const msg = e instanceof Error ? e.message : String(e);
+              setError(msg);
+              const still = window.confirm(
+                "Could not create the implementation branch (see error banner). Switch to Build anyway?"
+              );
+              if (!still) return;
+            }
+          }
+        }
+      }
+      applyCodingSessionMode(m);
+    },
+    [
+      implBranchPreference,
+      activeThreadId,
+      appendAgentLine,
+      applyCodingSessionMode,
+      auth,
+      selectedWorkspaceId,
+      sessionMode,
+      threads,
+      workspaces,
+    ]
+  );
+
   const ensureAgentWs = useCallback((): Promise<WebSocket> => {
     return new Promise((resolve, reject) => {
       const tok = accessToken;
@@ -402,7 +656,15 @@ export function CodingAgentPage() {
     const effectiveModel = (t?.model || defaultModel).trim();
     if (!t || !effectiveModel) return;
 
-    const userContent = buildUserMessageContent(draft, []);
+    if (!selectedWorkspaceId) {
+      setError("Select a workspace before sending (required for Coding and Plan).");
+      return;
+    }
+
+    const preamble = implementationBranchPreambleRef.current;
+    if (preamble) implementationBranchPreambleRef.current = null;
+    const userContentRaw = buildUserMessageContent(draft, []);
+    const userContent = preamble ? preamble + userContentRaw : userContentRaw;
     if (!userContent) return;
 
     setError(null);
@@ -424,6 +686,7 @@ export function CodingAgentPage() {
       if (finished) return;
       finished = true;
       setLoading(false);
+      setPermAsk(null);
       const id = activeThreadIdRef.current;
       if (id) {
         setThreads((prev) => {
@@ -466,6 +729,16 @@ export function CodingAgentPage() {
         if (typ === "agent.session") {
           const em = msg.effective_model != null ? String(msg.effective_model) : "";
           appendAgentLine("session", em ? `model: ${em}` : "");
+          return;
+        }
+        if (typ === "agent.permission_ask") {
+          const requestId = String(msg.request_id ?? "");
+          const toolName = String(msg.tool_name ?? "tool");
+          const argsPreview = String(msg.args_preview ?? "");
+          if (requestId) {
+            setPermAsk({ requestId, toolName, argsPreview });
+            appendAgentLine("permission", `Waiting for approval: ${toolName}`);
+          }
           return;
         }
         if (typ === "agent.llm_round_start" || typ === "agent.llm_round") {
@@ -514,8 +787,10 @@ export function CodingAgentPage() {
     try {
       const ws = await ensureAgentWs();
       const disabledTools = getDisabledToolNames();
-      const enabledCodingTools = CODING_TOOLS.filter((t) => !disabledTools.includes(t));
+      const toolBucket = sessionMode === "plan" ? CODING_PLAN_TOOL_NAMES : CODING_TOOLS;
+      const enabledTools = toolBucket.filter((x) => !disabledTools.includes(x));
       const catOb = catalogOwnedByForModel(modelRows, effectiveModel);
+      const agentId = sessionMode === "plan" ? "coding_plan" : "coding";
 
       ws.send(
         JSON.stringify({
@@ -523,12 +798,14 @@ export function CodingAgentPage() {
           body: {
             model: effectiveModel,
             messages: nextMessages.map((m) => ({ role: m.role, content: toApiContent(m.content) })),
+            agent_id: agentId,
             TOOL_DOMAIN: "coding",
-            ...(selectedWorkspaceId ? { workspace_id: selectedWorkspaceId } : {}),
-            ...(enabledCodingTools.length < CODING_TOOLS.length
+            workspace_id: selectedWorkspaceId,
+            ...(enabledTools.length < toolBucket.length
               ? { agent_disabled_tools: disabledTools }
               : {}),
             ...(catOb ? { agent_model_catalog_owned_by: catOb } : {}),
+            agent_permission_ask: true,
           },
         })
       );
@@ -536,7 +813,7 @@ export function CodingAgentPage() {
       setError(e instanceof Error ? e.message : String(e));
       setLoading(false);
     }
-  }, [accessToken, activeThreadId, appendAgentLine, auth, defaultModel, draft, ensureAgentWs, modelRows, selectedWorkspaceId, threads]);
+  }, [accessToken, activeThreadId, appendAgentLine, auth, defaultModel, draft, ensureAgentWs, modelRows, selectedWorkspaceId, sessionMode, threads]);
 
   const onSend = () => { void runAgentWs(); };
 
@@ -565,6 +842,9 @@ export function CodingAgentPage() {
         messages: [],
         agent_log: [],
       });
+      if (userId) {
+        localStorage.setItem(codingModeStorageKey(userId, t.id), sessionMode);
+      }
       setThreads((prev) => [t, ...prev]);
       setActiveThreadId(t.id);
       setDraft("");
@@ -659,10 +939,12 @@ export function CodingAgentPage() {
     [sidebarThreads]
   );
 
+  const activeToolBucket = sessionMode === "plan" ? CODING_PLAN_TOOL_NAMES : CODING_TOOLS;
   const codingToolCount = useMemo(() => {
     const disabled = getDisabledToolNames();
-    return CODING_TOOLS.filter((t) => !disabled.includes(t)).length;
-  }, []);
+    const bucket = sessionMode === "plan" ? CODING_PLAN_TOOL_NAMES : CODING_TOOLS;
+    return bucket.filter((x) => !disabled.includes(x)).length;
+  }, [sessionMode]);
 
   if (!hydrated || !userId) {
     return (
@@ -674,6 +956,78 @@ export function CodingAgentPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-surface">
+      {permAsk ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-8"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="perm-ask-title"
+        >
+          <div className="max-h-[85vh] w-full max-w-lg overflow-hidden rounded-2xl border border-amber-700/40 bg-[#141414] shadow-2xl">
+            <div className="border-b border-surface-border px-5 py-4">
+              <h2 id="perm-ask-title" className="text-base font-semibold text-white">
+                Allow tool execution?
+              </h2>
+              <p className="mt-1 text-xs text-surface-muted">
+                Plan or Build may ask before shell and file-changing tools (permission **ask**).
+              </p>
+            </div>
+            <div className="max-h-[50vh] overflow-y-auto px-5 py-3">
+              <p className="text-sm font-medium text-amber-200/90">{permAsk.toolName}</p>
+              <pre className="mt-2 whitespace-pre-wrap break-words rounded-lg border border-white/10 bg-black/40 p-3 text-[11px] leading-relaxed text-neutral-300">
+                {permAsk.argsPreview || "(no args preview)"}
+              </pre>
+            </div>
+            <div className="flex flex-wrap gap-2 border-t border-surface-border px-5 py-4">
+              <button
+                type="button"
+                className="rounded-lg bg-emerald-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-600"
+                onClick={() => {
+                  const w = wsRef.current;
+                  if (!w || w.readyState !== WebSocket.OPEN) {
+                    setPermAsk(null);
+                    return;
+                  }
+                  w.send(JSON.stringify({ type: "permission_reply", request_id: permAsk.requestId, reply: "once" }));
+                  setPermAsk(null);
+                }}
+              >
+                Allow once
+              </button>
+              <button
+                type="button"
+                className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-medium text-white hover:bg-sky-600"
+                onClick={() => {
+                  const w = wsRef.current;
+                  if (!w || w.readyState !== WebSocket.OPEN) {
+                    setPermAsk(null);
+                    return;
+                  }
+                  w.send(JSON.stringify({ type: "permission_reply", request_id: permAsk.requestId, reply: "always" }));
+                  setPermAsk(null);
+                }}
+              >
+                Always (this run)
+              </button>
+              <button
+                type="button"
+                className="rounded-lg border border-red-800/60 bg-red-950/40 px-3 py-2 text-sm font-medium text-red-200 hover:bg-red-950/70"
+                onClick={() => {
+                  const w = wsRef.current;
+                  if (!w || w.readyState !== WebSocket.OPEN) {
+                    setPermAsk(null);
+                    return;
+                  }
+                  w.send(JSON.stringify({ type: "permission_reply", request_id: permAsk.requestId, reply: "reject" }));
+                  setPermAsk(null);
+                }}
+              >
+                Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <aside className="flex h-full min-h-0 w-[260px] shrink-0 flex-col border-r border-surface-border bg-[#0d0d0d]">
         <div className="shrink-0 border-b border-surface-border p-3">
           <button
@@ -684,7 +1038,17 @@ export function CodingAgentPage() {
             + New coding session
           </button>
           <p className="mt-2 text-[10px] leading-snug text-surface-muted">
-            Coding agent auto-selects {codingToolCount}/{CODING_TOOLS.length} coding tools.
+            Mode:{" "}
+            <span className="text-neutral-300">{sessionMode === "plan" ? "Plan (ask on risky tools)" : "Build (full tools)"}</span>
+            {" · "}
+            {codingToolCount}/{activeToolBucket.length} tools enabled for this mode.
+          </p>
+          <p className="mt-2 text-[10px] leading-snug text-sky-300/80">
+            Optional: ask the model to use{" "}
+            <code className="rounded bg-black/40 px-0.5 text-neutral-300">coding_task</code> with{" "}
+            <code className="rounded bg-black/40 px-0.5 text-neutral-300">run_plan_subagent: true</code> for a bounded
+            embedded read-only planner (no approval UI in that thread); results in{" "}
+            <code className="text-neutral-400">assistant_excerpt</code>.
           </p>
         </div>
 
@@ -841,6 +1205,23 @@ export function CodingAgentPage() {
             <p className="max-w-md text-sm text-surface-muted">
               Give coding instructions. The agent reads, writes, and edits files using dashboard-scoped tools.
             </p>
+            <CodingBuildPlanToggle
+              mode={sessionMode}
+              onChange={handleCodingSessionModeChange}
+              helper={
+                sessionMode === "plan"
+                  ? "Plan: same tools as Build; bash/writes may ask in the UI. Choice is saved per session."
+                  : "Build: same tool surface; risky tools may ask when enabled."
+              }
+              className="max-w-md items-start"
+            />
+            {userId ? (
+              <ImplementationBranchSetting
+                className="max-w-md"
+                value={implBranchPreference}
+                onChange={setImplBranchPreference}
+              />
+            ) : null}
             <button
               type="button"
               onClick={() => void startNewChat()}
@@ -851,15 +1232,32 @@ export function CodingAgentPage() {
           </div>
         ) : (
           <>
-            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-surface-border px-6 py-4">
+            <div className="flex shrink-0 flex-col gap-2 border-b border-surface-border px-6 py-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-white">
                   {activeThread?.title ?? "Coding session"}
                 </p>
-                <label className="mt-2 block text-xs text-surface-muted">Model</label>
+                <div className="mt-3">
+                  <CodingBuildPlanToggle
+                    mode={sessionMode}
+                    onChange={handleCodingSessionModeChange}
+                    helper={
+                      sessionMode === "plan"
+                        ? "Plan: same tools as Build; bash/writes ask in the UI when enabled. Prefer a written handoff before big edits."
+                        : "Full coding tools on the selected workspace."
+                    }
+                  />
+                  {userId ? (
+                    <ImplementationBranchSetting
+                      value={implBranchPreference}
+                      onChange={setImplBranchPreference}
+                    />
+                  ) : null}
+                </div>
+                <label className="mt-3 block text-xs text-surface-muted">Model</label>
                 <select
                   className="mt-1 rounded-lg border border-surface-border bg-[#1a1a1a] px-3 py-2 text-sm text-neutral-100"
-                  value={activeThread.model || defaultModel}
+                  value={activeThread?.model || defaultModel}
                   onChange={(e) => setModel(e.target.value)}
                   disabled={!modelsCatalogReady || modelRows.length === 0}
                 >
@@ -888,110 +1286,118 @@ export function CodingAgentPage() {
             ) : null}
 
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-              <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-6 py-6">
-                {messages.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full border border-surface-border bg-white/5 text-lg font-semibold text-neutral-300">
-                      {"</>"}
+              <CodingWorkspacePanels auth={auth} workspaceId={selectedWorkspaceId} />
+
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 lg:px-6 lg:py-6">
+                  {messages.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-full border border-surface-border bg-white/5 text-lg font-semibold text-neutral-300">
+                        {"</>"}
+                      </div>
+                      <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white">
+                        Hello, {displayName}
+                      </h1>
+                      <p className="mt-2 max-w-md text-sm text-surface-muted">
+                        What would you like to build or fix?
+                      </p>
                     </div>
-                    <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white">
-                      Hello, {displayName}
-                    </h1>
-                    <p className="mt-2 max-w-md text-sm text-surface-muted">
-                      What would you like to build or fix?
-                    </p>
-                  </div>
-                ) : (
-                  <ul className="mx-auto flex w-full max-w-3xl flex-col gap-3">
-                    {messages.map((m, i) => {
-                      const proposals = m.role === "assistant" ? extractProposals(m.content) : [];
-                      return (
-                        <li
-                          key={`${i}-${m.role}-${m.content.slice(0, 24)}`}
-                          className={`flex w-full ${m.role === "user" ? "justify-start" : "justify-end"}`}
-                        >
-                          <div
-                            className={`max-w-[min(100%,42rem)] rounded-2xl px-4 py-3 text-sm shadow-sm ${
-                              m.role === "user"
-                                ? "border border-sky-900/40 bg-[#1a2a3d] text-neutral-100"
-                                : "border border-white/10 bg-[#1e1e1e] text-neutral-200"
-                            }`}
+                  ) : (
+                    <ul className="mx-auto flex w-full max-w-3xl flex-col gap-3">
+                      {messages.map((m, i) => {
+                        const proposals = m.role === "assistant" ? extractProposals(m.content) : [];
+                        return (
+                          <li
+                            key={`${i}-${m.role}-${m.content.slice(0, 24)}`}
+                            className={`flex w-full ${m.role === "user" ? "justify-start" : "justify-end"}`}
                           >
-                            <span className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
-                              {m.role === "user" ? "You" : "Agent"}
-                            </span>
-                            {m.role === "user" ? (
-                              <MessageBody content={m.content} />
-                            ) : proposals.length > 0 ? (
-                              <div className="space-y-2">
-                                <div className="whitespace-pre-wrap">
-                                  {stripProposalBlocks(m.content)}
+                            <div
+                              className={`max-w-[min(100%,42rem)] rounded-2xl px-4 py-3 text-sm shadow-sm ${
+                                m.role === "user"
+                                  ? "border border-sky-900/40 bg-[#1a2a3d] text-neutral-100"
+                                  : "border border-white/10 bg-[#1e1e1e] text-neutral-200"
+                              }`}
+                            >
+                              <span className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+                                {m.role === "user" ? "You" : "Agent"}
+                              </span>
+                              {m.role === "user" ? (
+                                <MessageBody content={m.content} />
+                              ) : proposals.length > 0 ? (
+                                <div className="space-y-2">
+                                  <div className="whitespace-pre-wrap">
+                                    {stripProposalBlocks(m.content)}
+                                  </div>
+                                  {proposals.map((p) => (
+                                    <ProposalCard
+                                      key={p.id}
+                                      proposal={p}
+                                      selected={
+                                        selectedOptions.get(p.id)?.option.id ?? null
+                                      }
+                                      onSelect={(opt) => handleSelectOption(p, opt)}
+                                    />
+                                  ))}
                                 </div>
-                                {proposals.map((p) => (
-                                  <ProposalCard
-                                    key={p.id}
-                                    proposal={p}
-                                    selected={
-                                      selectedOptions.get(p.id)?.option.id ?? null
-                                    }
-                                    onSelect={(opt) => handleSelectOption(p, opt)}
-                                  />
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="whitespace-pre-wrap">{m.content}</div>
-                            )}
+                              ) : (
+                                <div className="whitespace-pre-wrap">{m.content}</div>
+                              )}
+                            </div>
+                          </li>
+                        );
+                      })}
+                      {loading ? (
+                        <li className="flex w-full justify-end">
+                          <div className="max-w-[min(100%,42rem)] rounded-2xl border border-sky-900/50 bg-sky-950/25 px-4 py-3 text-sm text-sky-100/90 shadow-sm">
+                            <span className="mb-1 flex items-center gap-2 text-[10px] font-medium uppercase tracking-wide text-sky-300/80">
+                              <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-sky-400" />
+                              Agent
+                            </span>
+                            <p className="text-neutral-300">
+                              {sessionMode === "plan"
+                                ? "Plan agent running (may prompt before edits/shell)…"
+                                : "Coding agent running…"}
+                            </p>
                           </div>
                         </li>
-                      );
-                    })}
-                    {loading ? (
-                      <li className="flex w-full justify-end">
-                        <div className="max-w-[min(100%,42rem)] rounded-2xl border border-sky-900/50 bg-sky-950/25 px-4 py-3 text-sm text-sky-100/90 shadow-sm">
-                          <span className="mb-1 flex items-center gap-2 text-[10px] font-medium uppercase tracking-wide text-sky-300/80">
-                            <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-sky-400" />
-                            Agent
-                          </span>
-                          <p className="text-neutral-300">Coding agent running…</p>
-                        </div>
-                      </li>
-                    ) : null}
-                  </ul>
-                )}
-                <div ref={messagesEndRef} className="h-px w-full shrink-0" aria-hidden />
-              </div>
-
-              <div className="flex min-h-0 w-full shrink-0 flex-col border-t border-surface-border bg-black/20 lg:w-[300px] lg:border-l lg:border-t-0">
-                <div className="shrink-0 border-b border-surface-border px-3 py-2 text-xs font-medium uppercase tracking-wide text-surface-muted">
-                  Agent activity
+                      ) : null}
+                    </ul>
+                  )}
+                  <div ref={messagesEndRef} className="h-px w-full shrink-0" aria-hidden />
                 </div>
-                {agentLog.length > 0 ? (
-                  <ul className="min-h-0 flex-1 overflow-y-auto px-3 py-2 text-xs">
-                    {agentLog.map((e) => (
-                      <li
-                        key={e.id}
-                        className={`mb-1.5 border-l-2 pl-2 text-neutral-400 ${
-                          e.kind === "tool_start"
-                            ? "border-sky-500/40"
-                            : e.kind === "tool_done"
-                            ? "border-emerald-500/40"
-                            : e.kind === "llm"
-                            ? "border-violet-500/40"
-                            : "border-surface-border"
-                        }`}
-                      >
-                        <span className="text-[10px] text-surface-muted">{e.kind}</span>
-                        <div className="whitespace-pre-wrap text-neutral-300">{e.text}</div>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="px-3 py-4 text-xs text-surface-muted">No activity yet</p>
-                )}
-              </div>
-            </div>
 
-            <div className="shrink-0 border-t border-surface-border bg-[#0c0c0c] px-6 py-4">
+                <div className="flex max-h-36 min-h-0 shrink-0 flex-col border-t border-surface-border bg-black/25">
+                  <div className="shrink-0 px-3 py-1.5 text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+                    Agent activity
+                  </div>
+                  {agentLog.length > 0 ? (
+                    <ul className="min-h-0 flex-1 overflow-y-auto px-3 pb-2 text-[11px]">
+                      {agentLog.map((e) => (
+                        <li
+                          key={e.id}
+                          className={`mb-1 border-l-2 pl-2 text-neutral-400 ${
+                            e.kind === "tool_start"
+                              ? "border-sky-500/40"
+                              : e.kind === "tool_done"
+                              ? "border-emerald-500/40"
+                              : e.kind === "llm"
+                              ? "border-violet-500/40"
+                              : e.kind === "permission"
+                              ? "border-amber-500/50"
+                              : "border-surface-border"
+                          }`}
+                        >
+                          <span className="text-[9px] text-surface-muted">{e.kind}</span>
+                          <div className="whitespace-pre-wrap text-neutral-300">{e.text}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="px-3 pb-2 text-[11px] text-surface-muted">No activity yet</p>
+                  )}
+                </div>
+
+                <div className="shrink-0 border-t border-surface-border bg-[#0c0c0c] px-4 py-3 lg:px-6 lg:py-4">
               <div className="relative mx-auto max-w-3xl">
                 <div className="rounded-2xl border border-surface-border bg-[#141414] p-3 shadow-xl">
                   <textarea
@@ -1004,14 +1410,14 @@ export function CodingAgentPage() {
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();
-                        if (draft.trim() && !loading) onSend();
+                        if (draft.trim() && !loading && selectedWorkspaceId) onSend();
                       }
                     }}
                   />
                   <div className="mt-2 flex items-center justify-end gap-2">
                     <button
                       type="button"
-                      disabled={!draft.trim() || loading}
+                      disabled={!draft.trim() || loading || !selectedWorkspaceId}
                       className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-40"
                       onClick={() => onSend()}
                     >
@@ -1040,6 +1446,8 @@ export function CodingAgentPage() {
                     </ul>
                   </div>
                 ) : null}
+              </div>
+                </div>
               </div>
             </div>
           </>

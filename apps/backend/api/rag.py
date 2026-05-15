@@ -11,7 +11,7 @@ import httpx
 
 from apps.backend.core.config import config
 from apps.backend.infrastructure import operator_settings
-from apps.backend.infrastructure.ollama_gate import ollama_post_json
+from apps.backend.infrastructure.openai_compat_http import http_post_json
 from apps.backend.infrastructure.db import db
 from apps.backend.domain.identity import get_identity
 
@@ -78,7 +78,7 @@ def ollama_embed_one(text: str) -> list[float]:
     last: Exception | None = None
     for url, body in attempts:
         try:
-            data = ollama_post_json(url, body, timeout=timeout)
+            data = http_post_json(url, body, timeout=timeout)
         except httpx.HTTPStatusError as e:
             last = e
             if e.response.status_code == 404:

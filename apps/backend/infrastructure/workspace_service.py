@@ -9,7 +9,10 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import shutil
+import subprocess
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -217,7 +220,7 @@ def create_db_workspace(workspace_id: str, user) -> dict[str, Any] | None:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT id, name, path, source, git_url, git_branch
+                    SELECT id, name, path, source, git_url, git_branch, verify_command, verify_required
                     FROM project_workspaces
                     WHERE id = %s AND (owner_user_id = %s OR access_role IN ('editor', 'viewer'))
                     """,
@@ -274,6 +277,8 @@ def create_db_workspace(workspace_id: str, user) -> dict[str, Any] | None:
                     "id": str(row[0]),
                     "git_url": ws_git_url,
                     "git_branch": ws_branch,
+                    "verify_command": row[6],
+                    "verify_required": bool(row[7]) if row[7] is not None else False,
                 }
     except Exception as e:
         logger.error("failed to create workspace: %s", e)
@@ -303,6 +308,270 @@ def checkout_branch(workspace: dict[str, Any], branch: str) -> bool:
     except Exception as e:
         logger.error("failed to checkout branch: %s", e)
         return False
+
+
+def _sanitize_implementation_branch_slug(raw: str | None) -> str:
+    t = re.sub(r"[^a-zA-Z0-9._-]+", "-", (raw or "").strip())[:40].strip("-_.")
+    return t or uuid.uuid4().hex[:8]
+
+
+def _git_run(repo: Path, args: list[str], *, timeout: int = 60) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", "-C", str(repo.resolve()), *args],
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        check=False,
+    )
+
+
+def create_implementation_git_branch(
+    user,
+    workspace_id: str,
+    *,
+    base_branch: str | None = None,
+    implementation_run_id: str | None = None,
+) -> dict[str, Any]:
+    """
+    Create ``agent/impl-<slug>`` at the resolved base ref, then ``git checkout`` it.
+
+    Owner/editor only. Requires a git checkout under the workspace path. Does not fetch remotes.
+    """
+    from apps.backend.infrastructure.db import db
+
+    wid = str(workspace_id).strip()
+    if not wid:
+        return {"ok": False, "error": "workspace_id is required"}
+
+    try:
+        with db.pool().connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT path, name, git_branch, source
+                    FROM project_workspaces
+                    WHERE id = %s AND owner_user_id = %s AND access_role IN ('owner', 'editor')
+                    """,
+                    (wid, user.id),
+                )
+                row = cur.fetchone()
+    except Exception as e:
+        logger.exception("create_implementation_git_branch: db: %s", e)
+        return {"ok": False, "error": "database error"}
+
+    if not row:
+        return {"ok": False, "error": "workspace not found or no permission to modify"}
+
+    repo_path = Path(str(row[0])).resolve()
+    ws_name = str(row[1] or "")
+    default_base = (str(row[2] or "main").strip() or "main") if row[3] == "git" else "main"
+    base = (base_branch or "").strip() or default_base
+
+    if ws_name == AGENTLAYER_SELF_NAME and not self_editing_allowed(user):
+        return {"ok": False, "error": "agentlayer-self workspace is not enabled for this user"}
+
+    if not shutil.which("git"):
+        return {"ok": False, "error": "git binary not found on server"}
+
+    if not repo_path.is_dir() or not (repo_path / ".git").exists():
+        return {"ok": False, "error": "workspace path is not a git repository (no .git)"}
+
+    slug = _sanitize_implementation_branch_slug(implementation_run_id)
+    new_branch = f"agent/impl-{slug}"
+
+    show_ref = _git_run(repo_path, ["show-ref", "--verify", "--quiet", f"refs/heads/{new_branch}"])
+    if show_ref.returncode == 0:
+        return {
+            "ok": False,
+            "error": f"branch {new_branch!r} already exists; pick another implementation_run_id or delete the branch",
+        }
+
+    def _rev_ok(ref: str) -> tuple[str | None, str]:
+        r = _git_run(repo_path, ["rev-parse", "--verify", f"{ref}^{{commit}}"])
+        if r.returncode == 0 and (r.stdout or "").strip():
+            return (r.stdout.strip(), "")
+        return (None, (r.stderr or r.stdout or "rev-parse failed").strip())
+
+    start, err = _rev_ok(base)
+    if not start:
+        start, err2 = _rev_ok(f"origin/{base}")
+        if not start:
+            return {
+                "ok": False,
+                "error": f"could not resolve base branch {base!r} locally or as origin/{base}: {err or err2}",
+            }
+
+    br = _git_run(repo_path, ["branch", new_branch, start])
+    if br.returncode != 0:
+        msg = (br.stderr or br.stdout or "").strip() or "git branch failed"
+        return {"ok": False, "error": msg[:2000]}
+
+    co = _git_run(repo_path, ["checkout", new_branch])
+    if co.returncode != 0:
+        msg = (co.stderr or co.stdout or "").strip() or "git checkout failed"
+        _git_run(repo_path, ["branch", "-D", new_branch])
+        return {"ok": False, "error": msg[:2000]}
+
+    log = _git_run(repo_path, ["log", "-1", "--oneline"])
+    head_line = (log.stdout or "").strip()[:500]
+
+    return {
+        "ok": True,
+        "branch": new_branch,
+        "base_branch": base,
+        "start_commit": start,
+        "head_summary": head_line,
+    }
+
+
+class WorkspaceCreateError(Exception):
+    """Raised when :func:`create_project_workspace_for_user` cannot complete (quota, clone, DB)."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message
+
+
+def _workspace_base_path() -> Path:
+    return Path(os.environ.get("AGENTLAYER_WORKSPACE_PATH", "/workspace"))
+
+
+def slug_from_git_url(git_url: str) -> str:
+    t = (git_url or "").strip().rstrip("/")
+    if t.lower().endswith(".git"):
+        t = t[:-4]
+    seg = t.split("/")[-1] or "repo"
+    seg = re.sub(r"[^a-zA-Z0-9_.-]+", "-", seg).strip("-_.")[:48]
+    return seg or "repo"
+
+
+def create_project_workspace_for_user(
+    user,
+    *,
+    name: str,
+    source: str,
+    git_url: str | None = None,
+    git_branch: str = "main",
+) -> dict[str, Any]:
+    """
+    Create a row in ``project_workspaces`` and materialize on disk (same rules as ``POST /v1/workspaces``).
+
+    Returns API-shaped workspace dict (``id``, ``name``, ``path``, …).
+    Raises :class:`WorkspaceCreateError` on failure.
+    """
+    from apps.backend.infrastructure.db import db
+
+    nm = (name or "").strip()
+    if not nm:
+        raise WorkspaceCreateError("name is required")
+    if nm == AGENTLAYER_SELF_NAME:
+        raise WorkspaceCreateError(
+            "Reserved workspace name. Use the AgentLayer self workspace when self-editing is enabled."
+        )
+
+    src = (source or "manual").strip().lower()
+    if src not in ("manual", "git"):
+        raise WorkspaceCreateError("source must be manual or git")
+    if src == "git" and not (git_url or "").strip():
+        raise WorkspaceCreateError("git_url is required when source is git")
+
+    with db.pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT COALESCE(workspace_quota, 10) FROM users WHERE id = %s",
+                (user.id,),
+            )
+            row = cur.fetchone()
+            quota = row[0] if row else 10
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT COUNT(*) FROM project_workspaces WHERE owner_user_id = %s",
+                (user.id,),
+            )
+            row = cur.fetchone()
+            existing_count = row[0] if row else 0
+
+    if existing_count >= quota:
+        raise WorkspaceCreateError(
+            f"Workspace quota exceeded ({quota} max). Delete some workspaces first."
+        )
+
+    base = _workspace_base_path()
+    user_workspace_dir = base / str(user.id) / nm
+
+    if src == "git":
+        gu = git_url.strip()
+        user_workspace_dir.parent.mkdir(parents=True, exist_ok=True)
+        if user_workspace_dir.exists():
+            shutil.rmtree(user_workspace_dir, ignore_errors=True)
+        user_workspace_dir.mkdir(parents=True, exist_ok=True)
+        br = (git_branch or "main").strip() or "main"
+        result = subprocess.run(
+            [
+                "git",
+                "clone",
+                "--branch",
+                br,
+                "--depth",
+                "1",
+                gu,
+                str(user_workspace_dir),
+            ],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            shutil.rmtree(user_workspace_dir, ignore_errors=True)
+            err = (result.stderr or result.stdout or "").strip() or "git clone failed"
+            raise WorkspaceCreateError(f"Git clone failed: {err[:800]}")
+    else:
+        user_workspace_dir.mkdir(parents=True, exist_ok=True)
+
+    br_ins = (git_branch or "main").strip() or "main"
+    gu_ins = (git_url or "").strip() if src == "git" else None
+
+    try:
+        with db.pool().connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO project_workspaces (owner_user_id, name, path, source, git_url, git_branch, access_role)
+                    VALUES (%s, %s, %s, %s, %s, %s, 'owner')
+                    RETURNING id, owner_user_id, name, path, source, git_url, git_branch, access_role, created_at, updated_at,
+                              verify_command, verify_required
+                    """,
+                    (user.id, nm, str(user_workspace_dir), src, gu_ins, br_ins),
+                )
+                row = cur.fetchone()
+            conn.commit()
+        if not row:
+            raise WorkspaceCreateError("Failed to create workspace (no row returned)")
+        return {
+            "id": str(row[0]),
+            "owner_user_id": str(row[1]),
+            "name": row[2],
+            "path": row[3],
+            "source": row[4],
+            "git_url": row[5],
+            "git_branch": row[6],
+            "access_role": row[7],
+            "created_at": row[8].isoformat() if row[8] else None,
+            "updated_at": row[9].isoformat() if row[9] else None,
+            "verify_command": row[10],
+            "verify_required": bool(row[11]) if row[11] is not None else False,
+        }
+    except Exception as e:
+        from psycopg.errors import UniqueViolation
+
+        ex: BaseException | None = e
+        while ex is not None and not isinstance(ex, UniqueViolation):
+            ex = ex.__cause__ or ex.__context__
+        shutil.rmtree(user_workspace_dir, ignore_errors=True)
+        if isinstance(ex, UniqueViolation):
+            raise WorkspaceCreateError(
+                "Workspace name already exists for this user; pick a different name."
+            ) from e
+        raise WorkspaceCreateError(str(e)[:800]) from e
 
 
 def cleanup_workspace(workspace_id: str, user) -> bool:

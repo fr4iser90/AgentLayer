@@ -9,6 +9,11 @@ from typing import Any, Callable
 
 from apps.backend.core.config import config as _global_config
 
+from plugins.tools.agent.core.coding.coding_common import (
+    json_workspace_missing_error,
+    workspace_binding_from_context,
+)
+
 __version__ = "1.0.0"
 TOOL_ID = "coding_glob"
 TOOL_BUCKET = "files"
@@ -25,9 +30,9 @@ MAX_FILES = _global_config.WORKSPACE_MAX_GLOB_FILES
 
 
 def coding_glob(arguments: dict[str, Any], context: dict | None = None) -> str:
-    if not context or "workspace" not in context:
-        return json.dumps({"ok": False, "error": "No workspace in context - agent must inject workspace"}, ensure_ascii=False)
-    ws = context["workspace"]
+    ws = workspace_binding_from_context(context)
+    if ws is None:
+        return json_workspace_missing_error()
     root = Path(ws["path"])
     
     pattern = (arguments.get("pattern") or "").strip()
@@ -87,18 +92,24 @@ def coding_glob(arguments: dict[str, Any], context: dict | None = None) -> str:
     if truncated:
         matches = matches[:MAX_FILES]
     out = [m["path"] for m in matches]
-    return json.dumps(
-        {
-            "ok": True,
-            "pattern": pattern,
-            "path": path_rel.replace("\\", "/"),
-            "files": out,
-            "truncated": truncated,
-            "max_files": MAX_FILES,
-            "count": len(out),
-        },
-        ensure_ascii=False,
-    )
+    hint = None
+    if truncated:
+        hint = (
+            f"Results capped at {MAX_FILES} files (WORKSPACE_MAX_GLOB_FILES / config). "
+            "Use a narrower glob or a subdirectory `path`."
+        )
+    payload: dict[str, Any] = {
+        "ok": True,
+        "pattern": pattern,
+        "path": path_rel.replace("\\", "/"),
+        "files": out,
+        "truncated": truncated,
+        "max_files": MAX_FILES,
+        "count": len(out),
+    }
+    if hint:
+        payload["truncation_hint"] = hint
+    return json.dumps(payload, ensure_ascii=False)
 
 
 HANDLERS: dict[str, Callable[[dict[str, Any]], str]] = {

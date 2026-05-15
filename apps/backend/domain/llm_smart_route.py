@@ -26,7 +26,7 @@ from typing import Any, Literal
 from apps.backend.core.config import config
 from apps.backend.domain.model_routing import messages_contain_image_parts
 from apps.backend.domain.plugin_system.tool_routing import last_user_text
-from apps.backend.infrastructure.ollama_gate import ollama_post_chat_completions
+from apps.backend.infrastructure.openai_compat_http import http_post_chat_completions
 from apps.backend.infrastructure.operator_settings import smart_routing_params
 
 logger = logging.getLogger(__name__)
@@ -158,7 +158,7 @@ def _call_local_router_model(
     }
     timeout = float(p.get("router_timeout_sec") or 12.0)
     try:
-        data, _omitted = ollama_post_chat_completions(url, payload, timeout=timeout)
+        data, _omitted = http_post_chat_completions(url, payload, timeout=timeout)
     except Exception as e:
         logger.warning("smart route: router model call failed: %s", e)
         return None

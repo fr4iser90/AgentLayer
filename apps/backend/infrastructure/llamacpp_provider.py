@@ -6,7 +6,7 @@ Optional **llama.cpp server** (OpenAI-compatible) for local chat completions.
 1. **Environment** — same naming style as ``OLLAMA_*``: if ``LLAMA_CPP_BASE_URL`` is non-empty and
    ``LLAMA_CPP_ENABLED`` is true (default), use ``LLAMA_CPP_*`` from :mod:`apps.backend.core.config`.
    Pair **name + value** like HTTP headers: ``LLAMA_CPP_API_HEADER_NAME`` (e.g. ``X-API-KEY``) and
-   ``LLAMA_CPP_API_HEADER_VALUE`` (same string OpenCode puts in ``headers["X-API-KEY"]``).
+   ``LLAMA_CPP_API_HEADER_VALUE`` (the secret string sent in that header).
 2. Else **Admin → Interfaces** (``operator_settings``) when ``llama_cpp_enabled`` and base URL are set.
 
 When the client sends ``agent_model_catalog_owned_by: "llama_cpp"`` (from GET ``/v1/models`` row ``owned_by``),
@@ -58,7 +58,7 @@ def _coerce_llama_header_name_and_secret(header_name: str, secret: str) -> tuple
     if not key and hn:
         logger.warning(
             "llama_cpp: LLAMA_CPP_API_HEADER_NAME %r is not a valid header token — using it as secret with "
-            "header name X-API-KEY (OpenCode: headers.X-API-KEY).",
+            "header name X-API-KEY (common pattern for API-key gateways).",
             hn[:80] + ("…" if len(hn) > 80 else ""),
         )
         return "X-API-KEY", hn
@@ -237,11 +237,11 @@ def models_list_auth_hint(http_error_detail: str | None) -> str | None:
             )
         return (
             f"401/403 — no value for your custom header in this process. Set LLAMA_CPP_API_HEADER_VALUE to the same "
-            f"string as OpenCode's headers[{hn!r}] (with LLAMA_CPP_API_HEADER_NAME already set)."
+            f"string your gateway expects in headers[{hn!r}] (with LLAMA_CPP_API_HEADER_NAME already set)."
         )
     if bearer:
         return (
-            "401/403: using Authorization: Bearer. If your server expects a raw key header (e.g. OpenCode), "
+            "401/403: using Authorization: Bearer. If your server expects a raw key header (e.g. X-API-KEY), "
             "set LLAMA_CPP_API_HEADER_NAME=X-API-KEY and LLAMA_CPP_API_HEADER_VALUE=<secret>."
         )
     return (

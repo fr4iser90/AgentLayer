@@ -21,7 +21,7 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.staticfiles import StaticFiles
 
 from apps.backend.core.config import config
-from apps.backend.infrastructure.ollama_gate import ollama_get_json
+from apps.backend.infrastructure.openai_compat_http import http_get_json
 from apps.backend.infrastructure.db import db
 from apps.backend.infrastructure.auth import (
     get_current_user,
@@ -60,7 +60,8 @@ from apps.backend.api.optional_http_access import (
 )
 from apps.backend.domain.admin_setup import is_first_start, setup_admin_claim_if_needed
 from apps.backend.domain.rag_docs_file_ingest import run_startup_rag_docs_ingest
-from apps.backend.domain.agent import chat_completion
+from apps.backend.domain.agent import WorkspaceAccessDenied, chat_completion
+from apps.backend.infrastructure.llm_user_errors import user_visible_llm_transport_error
 from apps.backend.domain.http_identity import resolve_chat_identity
 from apps.backend.domain.identity import reset_identity, set_identity
 from apps.backend.domain.plugin_system.capability_governance import parse_user_capability_confirm
@@ -777,7 +778,7 @@ async def models_proxy():
     Ollama errors do not fail the whole response so UIs still show llama.cpp models and status text.
     """
     url = f"{config.OLLAMA_BASE_URL}/v1/models"
-    status, text, data = await asyncio.to_thread(ollama_get_json, url, timeout=15.0)
+    status, text, data = await asyncio.to_thread(http_get_json, url, timeout=15.0)
     ollama_rows: list[dict[str, Any]] = []
     ollama_reachable = False
     ollama_detail: str | None = None
@@ -1141,11 +1142,17 @@ async def chat_completions(request: Request):
             model_override_header=model_ovr,
             bearer_user_role=_bearer_user_role_from_request(request),
         )
+    except WorkspaceAccessDenied as e:
+        raise HTTPException(status_code=403, detail=str(e)) from e
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.exception("chat completion failed")
-        raise HTTPException(status_code=502, detail=str(e))
+        detail, log_exc = user_visible_llm_transport_error(e)
+        if log_exc:
+            logger.exception("chat completion failed")
+        else:
+            logger.warning("chat completion failed: %s (%s)", detail, e)
+        raise HTTPException(status_code=502, detail=detail) from e
     finally:
         reset_identity(id_token)
 

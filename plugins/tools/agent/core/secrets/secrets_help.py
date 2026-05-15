@@ -66,9 +66,9 @@ def secrets_help(arguments: dict[str, Any]) -> str:
                 "`register_secrets`. **`secrets_help` ruft das Backend nicht an** und erzeugt **kein** OTP."
             ),
             "when_backend_emits_otp_de": (
-                "Wenn dein Modell keine `tool_calls` sendet (Log z. B. „no tool_calls and content fallback missed“), "
-                "wird `register_secrets` nicht ausgeführt → **kein** OTP. Dann größeres Modell mit Tool-Calling nutzen oder "
-                "`AGENT_CONTENT_TOOL_FALLBACK`/Prompt anpassen."
+                "Wenn dein Modell keine nativen ``tool_calls`` sendet, wird ``register_secrets`` nicht ausgeführt → **kein** OTP. "
+                "Ein Modell/Build mit zuverlässigem Tool-Calling wählen. Nur in Ausnahmefällen ``AGENT_CONTENT_TOOL_FALLBACK=true`` "
+                "(liest Tool-Intent aus dem Assistant-Text; Standard ist **false**)."
             ),
             "gmail_save_use_this_tool": "register_secrets",
             "gmail_save_example_args": {"service_key_example": "gmail"},

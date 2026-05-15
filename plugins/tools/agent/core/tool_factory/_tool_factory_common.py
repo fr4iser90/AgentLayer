@@ -14,7 +14,7 @@ from typing import Any
 import httpx
 
 from apps.backend.core.config import config
-from apps.backend.infrastructure.ollama_gate import ollama_post_json
+from apps.backend.infrastructure.openai_compat_http import http_post_json
 from apps.backend.domain.plugin_system.tool_authoring import tool_authoring
 from apps.backend.domain.plugin_system.registry import get_registry, reload_registry
 from apps.backend.domain.plugin_system.tool_name_hints import suggest_tool_names
@@ -504,7 +504,7 @@ def ollama_generate_module(
         "temperature": 0.2,
     }
     try:
-        data = ollama_post_json(
+        data = http_post_json(
             url,
             payload,
             headers={"Content-Type": "application/json"},

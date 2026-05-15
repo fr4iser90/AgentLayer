@@ -9,6 +9,11 @@ from typing import Any, Callable
 
 from apps.backend.core.config import config
 
+from plugins.tools.agent.core.coding.coding_common import (
+    json_workspace_missing_error,
+    workspace_binding_from_context,
+)
+
 
 def is_probably_text(data: bytes) -> bool:
     if not data:
@@ -32,14 +37,23 @@ MAX_LINES = config.WORKSPACE_MAX_READ_LINES
 
 
 def coding_read_file(arguments: dict[str, Any], context: dict | None = None) -> str:
-    if not context or "workspace" not in context:
-        return json.dumps({"ok": False, "error": "No workspace in context - agent must inject workspace"}, ensure_ascii=False)
-    ws = context["workspace"]
+    ws = workspace_binding_from_context(context)
+    if ws is None:
+        return json_workspace_missing_error()
     root = Path(ws["path"])
     
     rel = (arguments.get("path") or "").strip()
     if not rel:
-        return json.dumps({"ok": False, "error": "path is required"}, ensure_ascii=False)
+        return json.dumps(
+            {
+                "ok": False,
+                "error": (
+                    "coding_read_file requires a non-empty string field \"path\" (file path relative to workspace root). "
+                    'Example: {"path": "README.md"} or {"path": "src/app.ts", "start_line": 1, "limit_lines": 80}'
+                ),
+            },
+            ensure_ascii=False,
+        )
     resolved = (root / rel).resolve()
     if not resolved.is_file():
         return json.dumps(

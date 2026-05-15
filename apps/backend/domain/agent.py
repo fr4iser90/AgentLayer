@@ -15,6 +15,7 @@ import re
 import uuid
 from collections.abc import Awaitable, Callable
 from json import JSONDecoder
+from pathlib import Path
 from typing import Any, Literal
 
 import httpx
@@ -23,7 +24,7 @@ from apps.backend.core.config import config
 from apps.backend.domain.identity import get_identity
 from apps.backend.api import memory as memory_api
 from apps.backend.domain.agent_registry import get_agent_registry
-from apps.backend.infrastructure.ollama_gate import ollama_post_chat_completions, ollama_post_json
+from apps.backend.infrastructure.openai_compat_http import http_post_chat_completions
 from apps.backend.domain.plugin_system.registry import get_registry
 from apps.backend.dashboard import db as dashboard_db
 from apps.backend.domain.plugin_system.capability_governance import parse_user_capability_confirm
@@ -44,7 +45,7 @@ from apps.backend.domain.tool_invocation_context import (
 )
 from apps.backend.domain.llm_smart_route import decide_smart_backend
 from apps.backend.domain.model_routing import ollama_model_for_profile, resolve_effective_model
-from apps.backend.domain.user_persona import apply_user_persona_system
+from apps.backend.domain.user_persona import _append_system_block, apply_user_persona_system
 from apps.backend.infrastructure.operator_settings import (
     external_llm_should_failover,
     llm_chat_transport,
@@ -293,6 +294,10 @@ class AgentChatCancelled(Exception):
     """Client aborted in-flight chat (e.g. WebSocket ``{"type":"cancel"}``)."""
 
 
+class WorkspaceAccessDenied(Exception):
+    """Raised when a named workspace cannot be bound for the current user (fail closed)."""
+
+
 def _registry_tool_spec_by_registered_name(name: str) -> dict[str, Any] | None:
     n = (name or "").strip()
     if not n:
@@ -349,6 +354,348 @@ def _http_error_recovery_hint(tool_name: str, result: str) -> str | None:
     )
 
 
+def _tool_parameter_recovery_hint(tool_name: str, result: str) -> str | None:
+    """Short system nudge when models emit tool_calls without required JSON fields (common on some GGUF builds)."""
+    if not result or len(result) > 800:
+        return None
+    rl = result.lower()
+    if tool_name == "coding_bash" and "command" in rl:
+        return (
+            "The last `coding_bash` call was missing or empty **command**. "
+            "You must pass a JSON object with a non-empty string **command** (one shell line). "
+            'Example: {"command": "git status"} or {"command": "ls -la", "workdir": ""}.'
+        )
+    if tool_name in (
+        "coding_read_file",
+        "coding_write_file",
+        "coding_replace",
+        "coding_edit",
+        "coding_apply_patch",
+    ) and "path" in rl:
+        return (
+            f"The last `{tool_name}` call was missing or empty **path**. "
+            'Pass {"path": "relative/path/from/workspace/root"} plus other required fields per the schema.'
+        )
+    if tool_name == "coding_task" and "description" in rl and "required" in rl:
+        return (
+            "The last `coding_task` call was missing **description** and/or **prompt**. "
+            r'Example: {"description": "Review README", "prompt": "Summarize README.md and propose edits."}'
+        )
+    return None
+
+
+def _infer_read_file_path_from_context(
+    assistant_msg: dict[str, Any],
+    messages: list[dict[str, Any]],
+    workspace_root: Path | None,
+) -> str | None:
+    """When models call coding_read_file with {{}}, map README / backtick paths to a real relative path."""
+    combined = last_user_text(messages) + "\n" + "\n".join(_text_blobs_from_message(assistant_msg))
+    cl = combined.lower()
+    if workspace_root and workspace_root.is_dir():
+        for m in re.finditer(r"`([^`\n]{1,240}?\.(?:md|rst|txt|yaml|yml|toml|json))`", combined, re.I):
+            cand = m.group(1).strip().lstrip("./")
+            if not cand or ".." in cand or cand.startswith("/"):
+                continue
+            try:
+                if (workspace_root / cand).is_file():
+                    return cand
+            except OSError:
+                continue
+        if "readme" in cl or "read me" in cl:
+            for candidate in (
+                "README.md",
+                "readme.md",
+                "Readme.md",
+                "README.rst",
+                "README.txt",
+                "readme.txt",
+                "docs/README.md",
+                "doc/README.md",
+            ):
+                try:
+                    if (workspace_root / candidate).is_file():
+                        return candidate
+                except OSError:
+                    continue
+            return "README.md"
+    return None
+
+
+def _infer_shell_command_from_assistant_message(assistant_msg: dict[str, Any]) -> str | None:
+    """When wire-format tool_calls have `{}` arguments, some GGUF models still describe the shell line in prose."""
+    blobs = _text_blobs_from_message(assistant_msg)
+    text = "\n".join(blobs)
+    if not text.strip():
+        return None
+    fence = re.search(r"```(?:bash|sh|shell|zsh)?\s*\n([\s\S]*?)```", text, re.IGNORECASE)
+    if fence:
+        for line in fence.group(1).splitlines():
+            s = line.strip()
+            if s and not s.startswith("#"):
+                return s
+    shell_prefixes = (
+        "git ",
+        "gh ",
+        "npm ",
+        "pnpm ",
+        "yarn ",
+        "bun ",
+        "npx ",
+        "cd ",
+        "ls ",
+        "pwd",
+        "cat ",
+        "head ",
+        "tail ",
+        "python ",
+        "python3 ",
+        "uv ",
+        "ruff ",
+        "pytest",
+        "mypy ",
+        "echo ",
+        "mkdir ",
+        "touch ",
+        "cp ",
+        "mv ",
+        "rm ",
+        "find ",
+        "grep ",
+        "sed ",
+        "awk ",
+        "curl ",
+        "wget ",
+        "docker ",
+        "kubectl ",
+        "make ",
+        "cargo ",
+        "go ",
+    )
+    for raw in text.splitlines():
+        s = raw.strip()
+        if not s or s.startswith("```"):
+            continue
+        if s.startswith(("- ", "* ", "• ")):
+            s = s[2:].strip()
+        sl = s.lower()
+        if sl in ("ls", "pwd"):
+            return s
+        if any(sl.startswith(p) for p in shell_prefixes):
+            return s
+    for m in re.finditer(r"`([^`]{3,500})`", text):
+        inner = m.group(1).strip()
+        sl = inner.lower()
+        if sl.startswith("git ") or sl.startswith(("npm ", "pnpm ", "yarn ", "python ", "docker ")):
+            return inner
+    m = re.search(r"\b(git\s+clone\b[^\n`'\"]{0,500})", text, re.IGNORECASE)
+    if m:
+        s = m.group(1).strip().rstrip(",.;:\"'")
+        if len(s) > 8:
+            return s
+    return None
+
+
+def _normalize_tool_call_arguments(
+    name: str,
+    args: dict[str, Any],
+    assistant_msg: dict[str, Any],
+    messages: list[dict[str, Any]],
+    tool_context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Repair empty / aliased tool JSON from sloppy OpenAI-compatible tool_calls (common with Qwen GGUF)."""
+    out = dict(args)
+    n = (name or "").strip()
+    ws = (tool_context or {}).get("workspace") if tool_context else None
+    root_p: Path | None = None
+    if isinstance(ws, dict):
+        rp = ws.get("path")
+        if isinstance(rp, str) and rp.strip():
+            root_p = Path(rp)
+    if n == "coding_bash":
+        if not str(out.get("command") or "").strip():
+            for alt in ("shell", "cmd", "bash", "bash_command", "script", "line", "input"):
+                v = out.get(alt)
+                if isinstance(v, str) and v.strip():
+                    out["command"] = v.strip()
+                    break
+        if not str(out.get("command") or "").strip():
+            inferred = _infer_shell_command_from_assistant_message(assistant_msg)
+            if inferred:
+                out["command"] = inferred
+    elif n == "coding_task":
+        if not str(out.get("description") or "").strip():
+            for alt in ("title", "name", "task", "summary", "label"):
+                v = out.get(alt)
+                if isinstance(v, str) and v.strip():
+                    out["description"] = v.strip()[:200]
+                    break
+        if not str(out.get("prompt") or "").strip():
+            for alt in ("instructions", "instruction", "body", "content", "task_prompt", "query"):
+                v = out.get(alt)
+                if isinstance(v, str) and v.strip():
+                    out["prompt"] = v.strip()
+                    break
+        if not str(out.get("description") or "").strip() or not str(out.get("prompt") or "").strip():
+            ut = last_user_text(messages)
+            if ut.strip():
+                if not str(out.get("description") or "").strip():
+                    u = ut.strip()
+                    out["description"] = u if len(u) <= 120 else u[:117] + "..."
+                if not str(out.get("prompt") or "").strip():
+                    out["prompt"] = ut.strip()
+    elif n == "coding_list_dir":
+        if not str(out.get("path") or "").strip():
+            out["path"] = "."
+    elif n == "coding_read_file":
+        if not str(out.get("path") or "").strip():
+            for alt in ("file", "filepath", "filename", "target", "rel_path", "relative_path"):
+                v = out.get(alt)
+                if isinstance(v, str) and v.strip():
+                    out["path"] = v.strip()
+                    break
+        if not str(out.get("path") or "").strip():
+            inferred = _infer_read_file_path_from_context(assistant_msg, messages, root_p)
+            if inferred:
+                out["path"] = inferred
+    elif n in ("coding_write_file", "coding_replace", "coding_edit"):
+        if not str(out.get("path") or "").strip():
+            for alt in ("file", "filepath", "filename", "target", "rel_path", "relative_path"):
+                v = out.get(alt)
+                if isinstance(v, str) and v.strip():
+                    out["path"] = v.strip()
+                    break
+    return out
+
+
+_AGENT_NEAR_MAX_TOOL_ROUNDS_REMINDER = (
+    "You are one step away from the server's **maximum tool rounds** for this reply. "
+    "On your **very next** assistant turn you must answer the user in **plain text only** (no tools): "
+    "summarize outcomes, quote brief tool errors if something failed, and say what to do next."
+)
+
+
+_AGENT_TOOL_THRASH_HINT = (
+    "Tool loop guard: the same tool has failed **repeatedly** with the **same error message**. "
+    "On the next assistant message you must either fix the JSON arguments (non-empty fields per schema) "
+    "or answer the user in **plain text** explaining what is wrong — do not repeat identical failing tool calls."
+)
+
+
+_AGENT_TOOL_THRASH_FORCE_TEXT = (
+    "Repeated identical tool failures were detected. **Tools are disabled for this round** — respond with a "
+    "normal assistant message only: summarize the error, quote it briefly, and state the exact JSON fields "
+    "required for the next successful call (e.g. coding_bash → `{\"command\": \"…\"}`)."
+)
+
+_AGENT_TOOL_DOOM_LOOP_HINT = (
+    "Loop guard: the **same tool** was called with the **same arguments** repeatedly. "
+    "Stop repeating that call: change parameters, try a different approach, or answer the user in **plain text** "
+    "with what you learned and what to do next. "
+    "If this is **read-only Plan** mode, synthesize your **handoff plan** now (markdown): proposed edits, files for Build, "
+    "checklist — do not call that tool again with the same args."
+)
+
+_AGENT_TOOL_DOOM_FORCE_TEXT = (
+    "Repeated identical tool calls were detected. **Tools are disabled for this assistant turn** — reply with a "
+    "normal message only: summarize what tool output you already have, then deliver a **complete plan** "
+    "(markdown): proposed changes, files/paths for the Build agent, ordered steps. "
+    "Ask at most one clarifying question if something essential is still unknown. "
+    "Do **not** emit fake `<tool_call>` / `</tool_call>` or XML tool markup — the chat API does not parse that from text."
+)
+
+
+def _agent_tool_doom_loop_tick(
+    doom_key: str | None,
+    doom_count: int,
+    *,
+    tool_name: str,
+    args: dict[str, Any],
+    max_streak: int,
+    exclude_names: frozenset[str],
+) -> tuple[str | None, int, str | None]:
+    """Detect repeated identical tool invocations (stuck doom-loop guard)."""
+    if max_streak < 2:
+        return doom_key, doom_count, None
+    if tool_name in exclude_names:
+        return doom_key, doom_count, None
+    try:
+        args_canon = json.dumps(dict(args), sort_keys=True, separators=(",", ":"), default=str)
+    except TypeError:
+        args_canon = str(args)
+    if len(args_canon) > 1200:
+        args_canon = args_canon[:1200] + "…"
+    dk = f"{tool_name}|{args_canon}"
+    if dk == doom_key:
+        n = doom_count + 1
+    else:
+        dk, n = dk, 1
+    if n >= max_streak:
+        return None, 0, _AGENT_TOOL_DOOM_LOOP_HINT
+    return dk, n, None
+
+
+def _tool_result_summary(result: str | None) -> tuple[bool | None, str | None]:
+    """Parse leading JSON object from a tool result string: (ok, error text) or (None, None) if unknown."""
+    if not result or not str(result).strip():
+        return None, None
+    s = result.strip()
+    if not s.startswith("{"):
+        return None, None
+    try:
+        o = json.loads(s)
+    except json.JSONDecodeError:
+        return None, None
+    if not isinstance(o, dict):
+        return None, None
+    if "ok" not in o:
+        return None, None
+    if o.get("ok") is True:
+        return True, None
+    err = o.get("error")
+    if isinstance(err, str) and err.strip():
+        return False, err.strip()
+    return False, None
+
+
+def _agent_tool_thrash_tick(
+    thrash_key: str | None,
+    thrash_count: int,
+    *,
+    tool_name: str,
+    ok_r: bool | None,
+    err_r: str | None,
+    max_streak: int,
+) -> tuple[str | None, int, str | None, bool]:
+    """
+    Advance thrash detector after one tool result.
+
+    Returns ``(new_key, new_count, optional_system_hint, force_text_only_next_round)``.
+    """
+    if max_streak < 2:
+        return thrash_key, thrash_count, None, False
+    if ok_r is True:
+        return None, 0, None, False
+    if ok_r is None:
+        return thrash_key, thrash_count, None, False
+    err_norm = (err_r or "(no error text)")[:200]
+    key = f"{tool_name}|{err_norm}"
+    if key == thrash_key:
+        n = thrash_count + 1
+    else:
+        n = 1
+    if n >= max_streak:
+        logger.warning(
+            "agent tool thrash: streak=%d tool=%s — forcing text-only next round",
+            n,
+            tool_name,
+        )
+        return None, 0, None, True
+    if n == max_streak - 1:
+        return key, n, _AGENT_TOOL_THRASH_HINT, False
+    return key, n, None, False
+
+
 # Client-only keys: never forward to Ollama (not in upstream Chat Completions request schema).
 _BODY_KEYS_STRIP_FROM_OLLAMA = frozenset(
     {
@@ -364,6 +711,20 @@ _BODY_KEYS_STRIP_FROM_OLLAMA = frozenset(
         "agent_llm_backend",
         "agent_tool_name_allowlist",
         "agent_id",
+        "agent_parent_run_id",
+        "agent_permission_ask",
+    }
+)
+
+
+# **Ask** before destructive workspace tools (Plan + Build on WebSocket when ``agent_permission_ask``).
+_CODING_TOOLS_PERMISSION_ASK = frozenset(
+    {
+        "coding_bash",
+        "coding_write_file",
+        "coding_edit",
+        "coding_apply_patch",
+        "coding_replace",
     }
 )
 
@@ -386,6 +747,65 @@ def _coerce_body_bool(value: Any, default: bool = False) -> bool:
     if not s:
         return default
     return s in ("1", "true", "yes", "on")
+
+
+def _permission_reply_user_message(m: dict[str, Any]) -> str | None:
+    raw = m.get("message")
+    if isinstance(raw, str):
+        t = raw.strip()
+        return t[:800] if t else None
+    return None
+
+
+async def _wait_for_tool_permission_reply(
+    *,
+    control_queue: asyncio.Queue,
+    cancel_event: asyncio.Event | None,
+    event_emit: Callable[[dict[str, Any]], Awaitable[None]] | None,
+    agent_run_id: str,
+    request_id: str,
+    tool_name: str,
+    args_preview: str,
+    round_i: int,
+    handle_control: Callable[[dict[str, Any]], bool],
+) -> tuple[str, str | None]:
+    """Block until client sends ``permission_reply`` for ``request_id``.
+
+    Returns ``(reply, optional_message)`` where ``reply`` is ``once``, ``always``, or ``reject``.
+    """
+    if event_emit:
+        await event_emit(
+            {
+                "type": "agent.permission_ask",
+                "agent_run_id": agent_run_id,
+                "request_id": request_id,
+                "tool_name": tool_name,
+                "args_preview": args_preview,
+                "round": round_i + 1,
+            }
+        )
+    while True:
+        m = await control_queue.get()
+        if not isinstance(m, dict):
+            continue
+        if m.get("type") == "permission_reply":
+            if str(m.get("request_id") or "") != request_id:
+                logger.debug("discarding permission_reply (stale request_id)")
+                continue
+            raw = str(m.get("reply") or "").strip().lower()
+            fb = _permission_reply_user_message(m)
+            if raw in ("once", "allow", "1", "yes", "ok"):
+                return "once", fb
+            if raw in ("always", "all"):
+                return "always", fb
+            if raw in ("reject", "deny", "no", "0"):
+                return "reject", fb
+            logger.debug("invalid permission_reply reply=%r; still waiting", raw)
+            continue
+        if handle_control(m):
+            raise AgentChatCancelled()
+        if cancel_event is not None and cancel_event.is_set():
+            raise AgentChatCancelled()
 
 
 def _parse_router_category_tokens(raw: str | None) -> frozenset[str]:
@@ -455,6 +875,89 @@ def _inject_system_prompt(messages: list[dict[str, Any]]) -> list[dict[str, Any]
         }
     else:
         out.insert(0, {"role": "system", "content": extra})
+    return out
+
+
+_TOOL_USAGE_DISCIPLINE = """## Tool usage (discipline)
+
+- The API **tools[]** list is a compact catalog; full JSON Schema for a tool is returned from **get_tool_help** when needed.
+- **Do not** loop on `list_tool_categories`, `list_tools_in_category`, `list_available_tools`, or `get_tool_help`. At most one short discovery pass if you truly do not know a tool name.
+- When intent is clear, **call the action tool first** (e.g. `git clone` / repo URL → `coding_bash`; read a file → `coding_read_file` or `fs_read_file`).
+- Use **get_tool_help at most once** per tool you are about to call with non-obvious arguments; do not repeat it every round for the same tool.
+- Prefer concrete workspace tools (`coding_bash`, `coding_read_file`, `fs_read_file`, GitHub-related tools) over plugin meta tools (`create_tool`, …) unless the user explicitly asks to build or install a plugin.
+"""
+
+_CODING_PLAN_TOOL_DISCIPLINE = """## **Plan** discipline (this stack)
+
+- Tool names follow the **permission groups** mapped in your system prompt: read/list/glob/grep → exploration; **edit** + **bash** + **task** + **lsp** → same ``coding_*`` names as Build; destructive steps may require UI approval (**ask**) when the client enables it.
+- Default stance: **analyze first**, then a markdown handoff; apply edits or shell only after approval or when the user clearly wants execution here.
+- Reuse existing tool results in the transcript — no identical tool+arguments spam.
+"""
+
+_SECURITY_AUDITOR_TOOL_DISCIPLINE = """## **Security auditor** discipline (this stack)
+
+- Same ``coding_*`` / ``project_*`` (and optional RAG) surface as in your system prompt; **edit** and **bash** may require UI approval (**ask**) when the client enables it — prefer read-only passes first.
+- Stay within **authorized scope** (workspace + user-named targets). No open-ended internet-wide scanning or replication-style objectives.
+- Reuse existing tool results in the transcript — no identical tool+arguments spam.
+"""
+
+_CODING_BUILD_TOOL_DISCIPLINE = """## **Build** discipline (this stack)
+
+- Use only ``coding_*`` / ``project_explain`` from **tools[]** — no registry meta tools.
+- Map work to permission groups (read, list, glob, grep, edit, bash, task, lsp) as in your system prompt; call with complete JSON.
+- Destructive tools may require UI approval when enabled — **ask** semantics for **edit** / **bash** when the client enables them.
+- Do not re-list or re-read the same path when that output is already in the transcript; proceed to edit, bash, or a new path.
+"""
+
+_TOOL_DISCIPLINE_BY_PRESET: dict[str, str] = {
+    "coding_plan": _CODING_PLAN_TOOL_DISCIPLINE,
+    "coding_build": _CODING_BUILD_TOOL_DISCIPLINE,
+    "security_auditor": _SECURITY_AUDITOR_TOOL_DISCIPLINE,
+}
+
+
+def _agent_behavior_flags(agent_id: str | None) -> dict[str, Any]:
+    """Resolved from the agent plugin registry — no hard-coded agent id lists for these flags."""
+    base: dict[str, Any] = {
+        "strict_workspace": False,
+        "coding_tools_permission_ask": False,
+        "dedupe_identical_tool_calls": False,
+        "tool_discipline_preset": None,
+    }
+    if not agent_id or not str(agent_id).strip():
+        return base
+    ag = get_agent_registry().get_agent(str(agent_id).strip())
+    if not ag:
+        return base
+    preset = ag.get("tool_discipline_preset")
+    preset_norm: str | None = None
+    if isinstance(preset, str) and preset.strip():
+        preset_norm = preset.strip().lower()
+    return {
+        "strict_workspace": bool(ag.get("strict_workspace")),
+        "coding_tools_permission_ask": bool(ag.get("coding_tools_permission_ask")),
+        "dedupe_identical_tool_calls": bool(ag.get("dedupe_identical_tool_calls")),
+        "tool_discipline_preset": preset_norm,
+    }
+
+
+def _append_tool_usage_discipline(
+    messages: list[dict[str, Any]], *, agent_id: str | None = None
+) -> list[dict[str, Any]]:
+    flags = _agent_behavior_flags(agent_id)
+    preset = flags.get("tool_discipline_preset")
+    if isinstance(preset, str) and preset in _TOOL_DISCIPLINE_BY_PRESET:
+        snippet = _TOOL_DISCIPLINE_BY_PRESET[preset].strip()
+    else:
+        snippet = _TOOL_USAGE_DISCIPLINE.strip()
+    if not snippet:
+        return messages
+    out = list(messages)
+    if out and out[0].get("role") == "system":
+        prev = str(out[0].get("content") or "")
+        out[0] = {**out[0], "content": (prev + "\n\n" + snippet).strip()}
+    else:
+        out.insert(0, {"role": "system", "content": snippet})
     return out
 
 
@@ -552,6 +1055,43 @@ def _inject_user_memory_context(messages: list[dict[str, Any]], raw_dashboard_ct
     return out
 
 
+def _inject_workspace_verify_hints(
+    messages: list[dict[str, Any]],
+    workspace: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    """Inject verify policy hints from workspace fields (DB-backed ``verify_command`` / ``verify_required``)."""
+    if not workspace or not isinstance(workspace, dict):
+        return messages
+    lines: list[str] = []
+    vc = workspace.get("verify_command")
+    if isinstance(vc, str) and vc.strip():
+        lines.append(
+            "This workspace has a **verify** command (stored server-side) — run it with the "
+            "`coding_workspace_verify` tool (same allowlisting as `coding_bash`) or manually: "
+            f"`{vc.strip()}`"
+        )
+    if workspace.get("verify_required"):
+        lines.append(
+            "Policy: **verify_required** is enabled — run `coding_workspace_verify` until it succeeds "
+            "(exit code 0) before you finish with a final user-facing answer."
+        )
+    if not lines:
+        return messages
+    snippet = "\n".join(lines)
+    out = list(messages)
+    if not out:
+        return [{"role": "system", "content": snippet}]
+    if out[0].get("role") == "system":
+        existing = out[0].get("content") or ""
+        out[0] = {
+            **out[0],
+            "content": (existing + "\n\n" + snippet).strip() if existing else snippet,
+        }
+    else:
+        out.insert(0, {"role": "system", "content": snippet})
+    return out
+
+
 def _tool_spec_name(entry: Any) -> str | None:
     if not isinstance(entry, dict):
         return None
@@ -594,8 +1134,8 @@ def _merge_tools(body_tools: list[Any] | None) -> list[Any]:
 
 
 _CATALOG_PARAM_HINT = (
-    "Full JSON parameter schema is not inlined here. Call get_tool_help with tool_name set to this "
-    "tool's name, then invoke with arguments matching that schema."
+    "Parameters may be abbreviated in this catalog. If you already know the arguments, call the tool "
+    "directly. Only use get_tool_help(tool_name) once when you need the full JSON Schema for that tool."
 )
 
 
@@ -626,6 +1166,16 @@ def _catalog_tool_function(name: str, fn: dict[str, Any]) -> dict[str, Any]:
             },
             "required": ["category"],
         }
+    elif name.startswith("mcp__"):
+        cand = fn.get("parameters")
+        if isinstance(cand, dict) and cand:
+            params = cand
+        else:
+            params = {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": True,
+            }
     else:
         params = {
             "type": "object",
@@ -937,6 +1487,19 @@ def _content_fallback_args_acceptable(name: str, params: dict[str, Any]) -> bool
         )
     if name == "get_tool_help":
         return bool(str(params.get("tool_name") or "").strip())
+    if name == "coding_bash":
+        return bool(str(params.get("command") or "").strip())
+    if name == "coding_task":
+        rps = params.get("run_plan_subagent")
+        if (isinstance(rps, bool) and rps) or (
+            isinstance(rps, str) and rps.strip().lower() in ("1", "true", "yes", "on")
+        ):
+            return bool(str(params.get("prompt") or "").strip())
+        return bool(str(params.get("description") or "").strip()) and bool(
+            str(params.get("prompt") or "").strip()
+        )
+    if name == "coding_read_file":
+        return bool(str(params.get("path") or "").strip())
     return True
 
 
@@ -977,6 +1540,7 @@ def _synthetic_tool_calls_from_message(
     *,
     allowed_tool_names: set[str] | None = None,
 ) -> list[dict[str, Any]] | None:
+    """When ``AGENT_CONTENT_TOOL_FALLBACK`` is true: build wire-format ``tool_calls`` from message body (JSON / ``name({...})`` prose)."""
     if not config.CONTENT_TOOL_FALLBACK:
         return None
     if msg.get("tool_calls"):
@@ -998,7 +1562,7 @@ def _synthetic_tool_calls_from_message(
             continue
         if not _content_fallback_args_acceptable(name, params):
             logger.info(
-                "content tool fallback: reject %s with insufficient args %r (avoid empty read_tool loop)",
+                "AGENT_CONTENT_TOOL_FALLBACK: reject %s with insufficient args %r",
                 name,
                 params,
             )
@@ -1009,13 +1573,13 @@ def _synthetic_tool_calls_from_message(
             "function": {"name": name, "arguments": json.dumps(params)},
         }
         logger.info(
-            "content tool fallback: synthetic tool_calls for %s(%s) (JSON or parenthesized prose)",
+            "AGENT_CONTENT_TOOL_FALLBACK: synthetic tool_calls for %s(%s) from message content",
             name,
             params,
         )
         return [tc]
     logger.debug(
-        "content tool fallback: no tool JSON found (message keys=%s, blobs=%d)",
+        "AGENT_CONTENT_TOOL_FALLBACK: no tool intent in message content (keys=%s, blobs=%d)",
         list(msg.keys()),
         len(blobs),
     )
@@ -1117,7 +1681,7 @@ def _redact_provider_error_text_for_log(raw: str | None, *, max_len: int = 500) 
     return s
 
 
-def _log_ollama_round(
+def _log_llm_completion_round(
     *,
     round_i: int,
     max_rounds_cap: int,
@@ -1142,7 +1706,7 @@ def _log_ollama_round(
         call_names = [(tc.get("function") or {}).get("name") or "?" for tc in tool_calls]
         logger.info(
             "llm round %d/%d llm_model_id=%s reply=TOOLS calls=%s content_json_fallback=%s "
-            "ctx_msgs=%d ctx_text_chars~=%d ollama_tool_defs=%d tool_names=%s%s",
+            "ctx_msgs=%d ctx_text_chars~=%d tools_forwarded_count=%d tool_names=%s%s",
             round_i + 1,
             max_rounds_cap,
             model,
@@ -1171,7 +1735,7 @@ def _log_ollama_round(
         logfn = logger.warning if rt_names else logger.info
         logfn(
             "llm round %d/%d llm_model_id=%s reply=EMPTY_NO_TOOLS content_json_fallback=%s "
-            "ctx_msgs=%d ctx_text_chars~=%d ollama_tool_defs=%d%s",
+            "ctx_msgs=%d ctx_text_chars~=%d tools_forwarded_count=%d%s",
             round_i + 1,
             max_rounds_cap,
             model,
@@ -1184,7 +1748,7 @@ def _log_ollama_round(
         return
     logger.info(
         "llm round %d/%d llm_model_id=%s reply=TEXT_NO_TOOLS content_json_fallback=%s "
-        "ctx_msgs=%d ctx_text_chars~=%d ollama_tool_defs=%d preview=%r%s",
+        "ctx_msgs=%d ctx_text_chars~=%d tools_forwarded_count=%d preview=%r%s",
         round_i + 1,
         max_rounds_cap,
         model,
@@ -1195,6 +1759,131 @@ def _log_ollama_round(
         preview,
         large,
     )
+
+
+_REPO_GIT_INTENT_RE = re.compile(
+    r"\b(?:git\s+)?clone\b|\brep(?:ository|os?)\b|\bcodebase\b|\b(?:pull\s+request|pr)\b|"
+    r"\bgit\s+init\b|\bgit\s+pull\b|\bgit\s+push\b|\bcommit(?:s)?\b|\bbranch\b|\bmerge\b|"
+    r"\b(?:fork|star)\s+(?:this\s+)?(?:repo|repository)\b|\bgithub\.com/",
+    re.IGNORECASE,
+)
+
+
+def _extract_https_git_url(text: str) -> str | None:
+    if not (text or "").strip():
+        return None
+    for m in re.finditer(r"https://[^\s\)\]\"'<>]+", text):
+        u = m.group(0).rstrip(").,;]")
+        low = u.lower()
+        if low.endswith(".git"):
+            return u
+        for marker in (
+            "github.com/",
+            "gitlab.com/",
+            "bitbucket.org/",
+            "codeberg.org/",
+        ):
+            if marker in low:
+                return u
+        if "/git/" in low or ".git" in low:
+            return u
+    return None
+
+
+def _coding_repo_intent(text: str) -> bool:
+    if _extract_https_git_url(text):
+        return True
+    return bool(text and _REPO_GIT_INTENT_RE.search(text))
+
+
+def _is_elevated_admin(
+    user_obj: Any,
+    bearer_user_role: str | None,
+    user_id: Any,
+) -> bool:
+    if (bearer_user_role or "").strip().lower() == "admin":
+        return True
+    if user_obj is not None and getattr(user_obj, "role", None) == "admin":
+        return True
+    if user_id:
+        try:
+            from apps.backend.infrastructure.db import db as _role_db
+
+            if _role_db.user_role(user_id) == "admin":
+                return True
+        except Exception:
+            pass
+    return False
+
+
+def _normalize_workspace_id_for_gate(workspace_id: Any) -> str | None:
+    if workspace_id is None:
+        return None
+    if isinstance(workspace_id, str):
+        s = workspace_id.strip()
+        return s or None
+    return str(workspace_id).strip() or None
+
+
+def _raise_if_workspace_inaccessible(
+    *,
+    workspace_id: Any,
+    user_id: Any,
+    workspace: dict[str, Any] | None,
+    agent_id: str | None,
+) -> None:
+    """Fail closed: never run coding tools with a client-supplied id we did not resolve."""
+    wid = _normalize_workspace_id_for_gate(workspace_id)
+    if wid and user_id and workspace is None:
+        raise WorkspaceAccessDenied(
+            "workspace_id is not available to this user (missing, not ready, or access denied)."
+        )
+    aid = (agent_id or "").strip() or None
+    strict = False
+    if aid:
+        ag = get_agent_registry().get_agent(aid)
+        if ag:
+            strict = bool(ag.get("strict_workspace"))
+    if strict and workspace is None:
+        raise WorkspaceAccessDenied(
+            f"{aid} requires a workspace_id that resolves to an accessible project workspace."
+        )
+
+
+def _completion_attach_agent_run_id(data: dict[str, Any], agent_run_id: str) -> dict[str, Any]:
+    if isinstance(data, dict) and agent_run_id:
+        data["agent_run_id"] = agent_run_id
+    return data
+
+
+def _format_workspace_verify_recap(tool_result_json: str) -> str | None:
+    """Build a short system snippet from ``coding_workspace_verify`` JSON output."""
+    try:
+        d = json.loads(tool_result_json)
+    except Exception:
+        return None
+    if not isinstance(d, dict):
+        return None
+    if "verify_command" not in d and "exit_code" not in d:
+        return None
+    parts: list[str] = ["[Workspace verify recap]"]
+    cmd = d.get("verify_command")
+    if isinstance(cmd, str) and cmd.strip():
+        parts.append(f"command: {cmd.strip()[:400]}")
+    if d.get("ok") is not None:
+        parts.append(f"ok: {bool(d.get('ok'))}")
+    if "exit_code" in d:
+        parts.append(f"exit_code: {d.get('exit_code')}")
+    out = d.get("output")
+    if isinstance(out, str) and out.strip():
+        sn = out.strip()
+        if len(sn) > 1200:
+            sn = sn[:1200] + "…"
+        parts.append("output:\n" + sn)
+    err = d.get("error")
+    if isinstance(err, str) and err.strip() and (not isinstance(out, str) or not out.strip()):
+        parts.append("error: " + err.strip()[:800])
+    return "\n".join(parts)
 
 
 async def chat_completion(
@@ -1238,11 +1927,24 @@ async def chat_completion(
     agent_id = body.pop("agent_id", None)
     if isinstance(agent_id, str):
         agent_id = agent_id.strip() or None
-    
+    parent_agent_run_id = body.pop("agent_parent_run_id", None)
+    if isinstance(parent_agent_run_id, str):
+        parent_agent_run_id = parent_agent_run_id.strip() or None
+    else:
+        parent_agent_run_id = None
+    permission_ask = _coerce_body_bool(body.pop("agent_permission_ask", None), False)
+    agent_require_workspace_verify = _coerce_body_bool(
+        body.pop("agent_require_workspace_verify", None), False
+    )
+
     from apps.backend.domain.identity import set_workspace, get_identity
     workspace_id = body.pop("workspace_id", None)
     workspace = None
     workspace_token = None
+    _bootstrap_messages = list(body.get("messages") or [])
+    _bootstrap_last_user = last_user_text(_bootstrap_messages)
+    agent_auto_routed = False
+    workspace_auto_created = False
 
     # Get user from identity context (tenant_id, user_id)
     tenant_id, user_id = get_identity()
@@ -1278,6 +1980,19 @@ async def chat_completion(
                 if _role_db.user_role(user_id) != "admin":
                     raise ValueError("This agent is only available to admin users.")
 
+    _is_admin = _is_elevated_admin(user_obj, bearer_user_role, user_id)
+    if (
+        agent_id == "general"
+        and _is_admin
+        and not workspace_id
+        and _coding_repo_intent(_bootstrap_last_user)
+    ):
+        logger.info(
+            "chat_completion: auto-routing agent general -> coding (admin, repo/git intent)"
+        )
+        agent_id = "coding"
+        agent_auto_routed = True
+
     if workspace_id and user_id:
         try:
             from apps.backend.infrastructure.workspace_service import ensure_workspace
@@ -1295,32 +2010,132 @@ async def chat_completion(
             logger.debug("resolved workspace: %s", workspace.get("name") if workspace else None)
         except Exception as e:
             logger.warning("failed to resolve workspace: %s", e)
+    elif (
+        agent_id == "coding"
+        and user_id
+        and not workspace_id
+        and _is_admin
+        and _extract_https_git_url(_bootstrap_last_user)
+    ):
+        u = user_obj
+        if u is None:
+
+            class UserLike:
+                def __init__(self, uid):
+                    self.id = uid
+                    self.role = "user"
+
+            u = UserLike(user_id)
+            try:
+                from apps.backend.infrastructure.db import db as _role_db2
+
+                u.role = _role_db2.user_role(user_id) or "user"
+            except Exception:
+                pass
+        gu = _extract_https_git_url(_bootstrap_last_user)
+        if gu and u is not None:
+            try:
+                from apps.backend.infrastructure.workspace_service import (
+                    WorkspaceCreateError,
+                    create_project_workspace_for_user,
+                    ensure_workspace as _ensure_ws,
+                    slug_from_git_url,
+                )
+
+                nm = f"{slug_from_git_url(gu)}-{uuid.uuid4().hex[:8]}"
+                created = create_project_workspace_for_user(
+                    u,
+                    name=nm,
+                    source="git",
+                    git_url=gu,
+                    git_branch="main",
+                )
+                wid = str(created["id"])
+                workspace = _ensure_ws(wid, u)
+                if workspace:
+                    workspace_auto_created = True
+                    logger.info(
+                        "chat_completion: auto-created workspace %s from Git URL in message",
+                        wid,
+                    )
+            except WorkspaceCreateError as e:
+                logger.warning("auto-create workspace failed: %s", e.message)
+            except Exception as e:
+                logger.warning("auto-create workspace failed: %s", e)
+
+    _raise_if_workspace_inaccessible(
+        workspace_id=workspace_id,
+        user_id=user_id,
+        workspace=workspace if isinstance(workspace, dict) else None,
+        agent_id=agent_id if isinstance(agent_id, str) else None,
+    )
+
     workspace_token = set_workspace(workspace)
-    
+
     # Prepare context dict for tools (DDD-style, with real objects)
-    tool_context = {
-        "workspace": workspace,
-        "user": user_obj,
-    }
-    
+    tool_context: dict[str, Any] = {"user": user_obj}
+    if workspace and isinstance(workspace, dict):
+        _p = workspace.get("path")
+        if isinstance(_p, str) and _p.strip():
+            tool_context["workspace"] = workspace
+    if cancel_event is not None:
+        tool_context["cancel_event"] = cancel_event
+
+    agent_run_id = str(uuid.uuid4())
+    tool_context["agent_run_id"] = agent_run_id
+    tool_context["workspace_verify_succeeded"] = False
+    tool_context["permission_always_allow_tools"] = set()
+    _abf = _agent_behavior_flags(agent_id if isinstance(agent_id, str) else None)
+    tool_context["agent_coding_tools_permission_ask"] = _abf["coding_tools_permission_ask"]
+    tool_context["agent_dedupe_identical_tool_calls"] = _abf["dedupe_identical_tool_calls"]
+    tool_context["_identical_tool_call_dedupe_keys"] = set()
+    logger.info(
+        "chat_completion start agent_run_id=%s parent_agent_run_id=%s agent_id=%r workspace_id=%s user_id=%s",
+        agent_run_id,
+        parent_agent_run_id,
+        agent_id,
+        _normalize_workspace_id_for_gate(workspace_id),
+        str(user_id) if user_id else None,
+    )
+
+    if agent_require_workspace_verify:
+        if not workspace or not isinstance(workspace, dict):
+            raise ValueError(
+                "agent_require_workspace_verify requires workspace_id to resolve to an accessible workspace."
+            )
+
     try:
 
         max_tool_rounds_eff = config.MAX_TOOL_ROUNDS
         if _raw_max_rounds is not None:
             try:
-                max_tool_rounds_eff = max(1, min(int(_raw_max_rounds), config.MAX_TOOL_ROUNDS))
+                client_v = int(_raw_max_rounds)
+                if client_v <= 0:
+                    max_tool_rounds_eff = config.MAX_TOOL_ROUNDS
+                else:
+                    max_tool_rounds_eff = max(1, min(client_v, config.MAX_TOOL_ROUNDS))
             except (TypeError, ValueError):
                 pass
 
         messages = _inject_system_prompt(list(body.get("messages") or []))
+        from apps.backend.infrastructure.chat_secret_ingress import ingress_openai_messages_inplace
+
+        ingress_openai_messages_inplace(messages, tenant_id=int(tenant_id), user_id=user_id)
         messages = _inject_dashboard_context(messages, dashboard_ctx)
         if agent_id:
             messages = _inject_agent_system_prompt(messages, agent_id)
+        if agent_id and agent_id in config.AGENT_SKILLS_PROMPT_AGENT_IDS:
+            from apps.backend.infrastructure.skills_prompt import load_combined_skills_prompt
+
+            skills_snip = load_combined_skills_prompt(agent_id)
+            if skills_snip:
+                messages = _append_system_block(messages, skills_snip)
         pf = body.get("tool_prefetch")
         if isinstance(pf, dict):
             _apply_tool_prefetch(messages, pf)
         messages = apply_user_persona_system(messages)
         messages = _inject_user_memory_context(messages, dashboard_ctx)
+        messages = _inject_workspace_verify_hints(messages, workspace)
 
         model, model_reason, profile_key, model_is_override = resolve_effective_model(
             messages=messages,
@@ -1457,6 +2272,32 @@ async def chat_completion(
                     sorted(wl)[:24],
                 )
 
+        if (
+            not plain_completion
+            and agent_id
+            and agent_id in config.AGENT_MCP_AGENT_IDS
+            and config.AGENT_MCP_ENABLED
+        ):
+            try:
+                from apps.backend.infrastructure.mcp_runtime import gather_mcp_chat_tool_specs_async
+
+                mcp_extra = await gather_mcp_chat_tool_specs_async()
+                if wl is not None and mcp_extra:
+                    mcp_extra = [
+                        t
+                        for t in mcp_extra
+                        if (nn := _tool_spec_name(t)) is None or nn in wl
+                    ]
+                if mcp_extra:
+                    merged_tools = merged_tools + mcp_extra
+                    logger.info(
+                        "MCP: attached %d tool specs for agent_id=%s",
+                        len(mcp_extra),
+                        agent_id,
+                    )
+            except Exception:
+                logger.warning("MCP tool discovery failed", exc_info=True)
+
         # Stufenweise Erkundung: tools[] immer nur Katalog — volles Schema nur via get_tool_help-Antwort.
         tools_for_request = _tools_for_chat_request(merged_tools)
         if config.AGENT_TOOLS_DENYLIST:
@@ -1500,6 +2341,8 @@ async def chat_completion(
                 names,
             )
         _log_tools_request_estimate("chat_completions", tools_for_request)
+        if not plain_completion and tools_for_request:
+            messages = _append_tool_usage_discipline(messages, agent_id=agent_id)
         pause_between_rounds = _coerce_body_bool(body.get("agent_pause_between_rounds"), False)
         if pause_between_rounds and control_queue is None:
             pause_between_rounds = False
@@ -1553,6 +2396,9 @@ async def chat_completion(
                 if m.get("type") == "continue_step":
                     logger.debug("discarding stray continue_step (not in agent.step_wait)")
                     continue
+                if m.get("type") == "permission_reply":
+                    logger.debug("discarding stray permission_reply (not waiting for permission)")
+                    continue
                 handle_control_dict(m)
 
         async def wait_for_continue_step_after_round(completed_round: int) -> None:
@@ -1562,6 +2408,7 @@ async def chat_completion(
                 await event_emit(
                     {
                         "type": "agent.step_wait",
+                        "agent_run_id": agent_run_id,
                         "after_round": completed_round,
                         "next_round": completed_round + 1,
                         "max_rounds": max_tool_rounds_eff,
@@ -1575,6 +2422,9 @@ async def chat_completion(
                 m = await control_queue.get()
                 if not isinstance(m, dict):
                     continue
+                if m.get("type") == "permission_reply":
+                    logger.debug("discarding permission_reply during step_wait")
+                    continue
                 if m.get("type") == "continue_step":
                     await drain_control_queue()
                     if cancel_event is not None and cancel_event.is_set():
@@ -1582,6 +2432,7 @@ async def chat_completion(
                             await event_emit(
                                 {
                                     "type": "agent.cancelled",
+                                    "agent_run_id": agent_run_id,
                                     "phase": "step_wait",
                                     "round": completed_round + 1,
                                 }
@@ -1593,6 +2444,7 @@ async def chat_completion(
                         await event_emit(
                             {
                                 "type": "agent.cancelled",
+                                "agent_run_id": agent_run_id,
                                 "phase": "step_wait",
                                 "round": completed_round + 1,
                             }
@@ -1604,6 +2456,7 @@ async def chat_completion(
             await event_emit(
                 {
                     "type": "agent.session",
+                    "agent_run_id": agent_run_id,
                     "routed_category": routed_category,
                     "router_categories": sorted(cats),
                     "forwarded_tools": forwarded_preview,
@@ -1611,9 +2464,22 @@ async def chat_completion(
                     "model_resolution": model_reason,
                     "llm_backend": llm_backend,
                     "smart_route_reason": smart_route_reason or None,
+                    "effective_agent_id": agent_id,
+                    "workspace_id": str(workspace["id"])
+                    if workspace and workspace.get("id")
+                    else None,
+                    "workspace_auto_created": workspace_auto_created,
+                    "agent_auto_routed": agent_auto_routed,
                 }
             )
 
+        chosen: tuple[str, dict[str, str], str] | None = None
+        thrash_key: str | None = None
+        thrash_count = 0
+        doom_key: str | None = None
+        doom_count = 0
+        force_no_tools_round = False
+        force_no_tools_reason: str | None = None  # "thrash" | "doom"
         for round_i in range(max_tool_rounds_eff):
             await drain_control_queue()
             if cancel_event is not None and cancel_event.is_set():
@@ -1621,19 +2487,48 @@ async def chat_completion(
                     await event_emit(
                         {
                             "type": "agent.cancelled",
+                            "agent_run_id": agent_run_id,
                             "phase": "before_llm",
                             "round": round_i + 1,
                         }
                     )
                 raise AgentChatCancelled()
 
-            tools_for_round = list(tools_for_request)
+            if force_no_tools_round:
+                _guard_reason = force_no_tools_reason or "thrash"
+                logger.info(
+                    "chat tool loop round %d/%d: forwarding 0 tools (reason=loop_guard_%s)",
+                    round_i + 1,
+                    max_tool_rounds_eff,
+                    _guard_reason,
+                )
+                tools_for_round = []
+                if force_no_tools_reason == "doom":
+                    messages.append({"role": "system", "content": _AGENT_TOOL_DOOM_FORCE_TEXT})
+                else:
+                    messages.append({"role": "system", "content": _AGENT_TOOL_THRASH_FORCE_TEXT})
+                force_no_tools_round = False
+                force_no_tools_reason = None
+            else:
+                tools_for_round = list(tools_for_request)
+                if max_tool_rounds_eff >= 3 and round_i == max_tool_rounds_eff - 2:
+                    messages.append(
+                        {"role": "system", "content": _AGENT_NEAR_MAX_TOOL_ROUNDS_REMINDER}
+                    )
+                if max_tool_rounds_eff >= 2 and round_i == max_tool_rounds_eff - 1:
+                    tools_for_round = []
+                    logger.info(
+                        "chat tool loop round %d/%d: forwarding 0 tools (reason=final_round_text_only_policy)",
+                        round_i + 1,
+                        max_tool_rounds_eff,
+                    )
             allowed_names = _names_from_tool_list(tools_for_round)
 
             if event_emit:
                 await event_emit(
                     {
                         "type": "agent.llm_round_start",
+                        "agent_run_id": agent_run_id,
                         "round": round_i + 1,
                         "max_rounds": max_tool_rounds_eff,
                         "forwarded_tool_names": [
@@ -1663,7 +2558,7 @@ async def chat_completion(
                     pl["model"] = b_model
                     try:
                         data, tools_omitted = await asyncio.to_thread(
-                            ollama_post_chat_completions,
+                            http_post_chat_completions,
                             b_url,
                             pl,
                             headers=b_headers,
@@ -1744,6 +2639,12 @@ async def chat_completion(
             if tools_omitted:
                 tools_for_round = []
                 allowed_names = set()
+                logger.warning(
+                    "chat tool loop round %d/%d: provider returned tools_omitted=True — treating this completion "
+                    "as text-only (no tools[] forwarded to model for this response)",
+                    round_i + 1,
+                    max_tool_rounds_eff,
+                )
 
             choice0, msg, tool_calls, had_native_tool_calls = (
                 _extract_tool_calls_from_completion_response(
@@ -1769,7 +2670,7 @@ async def chat_completion(
                 payload_retry["tool_choice"] = "required"
                 try:
                     data_r, tools_omitted_r = await asyncio.to_thread(
-                        ollama_post_chat_completions,
+                        http_post_chat_completions,
                         chosen[0],
                         payload_retry,
                         headers=chosen[1],
@@ -1818,7 +2719,7 @@ async def chat_completion(
                             model,
                         )
 
-            _log_ollama_round(
+            _log_llm_completion_round(
                 round_i=round_i,
                 max_rounds_cap=max_tool_rounds_eff,
                 model=model,
@@ -1839,6 +2740,7 @@ async def chat_completion(
                 await event_emit(
                     {
                         "type": "agent.llm_round",
+                        "agent_run_id": agent_run_id,
                         "round": round_i + 1,
                         "tool_calls": [str(x) for x in tc_names if x],
                         "had_native_tool_calls": had_native_tool_calls,
@@ -1851,47 +2753,256 @@ async def chat_completion(
                 )
 
             if not tool_calls:
+                need_verify = bool(
+                    workspace
+                    and isinstance(workspace, dict)
+                    and (
+                        bool(workspace.get("verify_required")) or agent_require_workspace_verify
+                    )
+                )
+                if need_verify:
+                    vcmd = workspace.get("verify_command") if isinstance(workspace, dict) else None
+                    has_cmd = isinstance(vcmd, str) and vcmd.strip()
+                    if bool(workspace.get("verify_required")) and not has_cmd:
+                        raise ValueError(
+                            "Workspace has verify_required=true but no verify_command; "
+                            "set verify_command via PATCH /v1/workspaces/{id}."
+                        )
+                    if agent_require_workspace_verify and not has_cmd:
+                        raise ValueError(
+                            "agent_require_workspace_verify was set but this workspace has no verify_command configured."
+                        )
+                    if not tool_context.get("workspace_verify_succeeded"):
+                        raise ValueError(
+                            "Workspace verify gate: run coding_workspace_verify successfully (exit 0) before "
+                            "finishing, or disable verify_required / agent_require_workspace_verify."
+                        )
                 if event_emit:
                     await event_emit(
                         {
                             "type": "agent.done",
+                            "agent_run_id": agent_run_id,
                             "kind": "final_text",
                             "round": round_i + 1,
                         }
                     )
-                return data
+                return _completion_attach_agent_run_id(data, agent_run_id)
 
             # Append assistant message (includes tool_calls, and content if any)
             messages.append(msg)
 
+            batch_recap: list[str] = []
+            verify_recap_line: str | None = None
             for tc in tool_calls:
                 fn = tc.get("function") or {}
                 name = fn.get("name") or ""
-                args = _parse_tool_arguments(fn.get("arguments"))
+                raw_args = fn.get("arguments")
+                if (
+                    raw_args in (None, "", "{}")
+                    or (isinstance(raw_args, dict) and not raw_args)
+                ) and tc.get("arguments") not in (None, ""):
+                    raw_args = tc.get("arguments")
+                args = _parse_tool_arguments(raw_args)
+                _prev_args = dict(args)
+                args = _normalize_tool_call_arguments(name, args, msg, messages, tool_context)
+                if args != _prev_args:
+                    logger.info(
+                        "tool args normalized round=%s tool=%s %r -> %r",
+                        round_i + 1,
+                        name,
+                        _prev_args,
+                        args,
+                    )
                 tool_call_id = tc.get("id") or ""
                 logger.info("tool round %s: %s(%s)", round_i + 1, name, args)
+                plan_dedupe_key: str | None = None
+                skipped_plan_duplicate = False
+                prebuilt_result: str | None = None
+                if tool_context.get("agent_dedupe_identical_tool_calls"):
+                    try:
+                        plan_dedupe_key = (
+                            f"{name}|"
+                            + json.dumps(
+                                dict(args),
+                                sort_keys=True,
+                                separators=(",", ":"),
+                                default=str,
+                            )
+                        )
+                    except TypeError:
+                        plan_dedupe_key = f"{name}|{args!r}"
+                    ps = tool_context.get("_identical_tool_call_dedupe_keys")
+                    if isinstance(ps, set) and plan_dedupe_key in ps:
+                        skipped_plan_duplicate = True
+                        prebuilt_result = json.dumps(
+                            {
+                                "ok": True,
+                                "deduplicated": True,
+                                "message": (
+                                    "Identical tool+arguments were already run earlier in this reply. "
+                                    "Use the previous tool message in the transcript and continue "
+                                    "(no repeat calls)."
+                                ),
+                            },
+                            ensure_ascii=False,
+                        )
+                if cancel_event is not None and cancel_event.is_set():
+                    if event_emit:
+                        await event_emit(
+                            {
+                                "type": "agent.cancelled",
+                                "agent_run_id": agent_run_id,
+                                "phase": "before_tool",
+                                "round": round_i + 1,
+                                "name": name,
+                            }
+                        )
+                    raise AgentChatCancelled()
                 if event_emit:
                     await event_emit(
                         {
                             "type": "agent.tool_start",
+                            "agent_run_id": agent_run_id,
                             "round": round_i + 1,
                             "name": name,
                         }
                     )
                 tctx = set_tool_invocation_messages(list(messages))
                 try:
-                    result = execute_tool(name, args, context=tool_context)
+                    perm_always = tool_context.get("permission_always_allow_tools")
+                    if not isinstance(perm_always, set):
+                        perm_always = set()
+                        tool_context["permission_always_allow_tools"] = perm_always
+                    result = ""
+                    if prebuilt_result is not None:
+                        result = prebuilt_result
+                    else:
+                        need_gate = (
+                            permission_ask
+                            and bool(tool_context.get("agent_coding_tools_permission_ask"))
+                            and name in _CODING_TOOLS_PERMISSION_ASK
+                            and name not in perm_always
+                        )
+                        if need_gate and control_queue is None:
+                            logger.info(
+                                "agent_permission_ask set but no control_queue; executing %s without approval",
+                                name,
+                            )
+                        if (
+                            need_gate
+                            and control_queue is not None
+                        ):
+                            preview = json.dumps(args, ensure_ascii=False, default=str)[:2000]
+                            rid = str(uuid.uuid4())
+                            rep, fb_msg = await _wait_for_tool_permission_reply(
+                                control_queue=control_queue,
+                                cancel_event=cancel_event,
+                                event_emit=event_emit,
+                                agent_run_id=agent_run_id,
+                                request_id=rid,
+                                tool_name=name,
+                                args_preview=preview,
+                                round_i=round_i,
+                                handle_control=handle_control_dict,
+                            )
+                            if rep == "reject":
+                                rej: dict[str, Any] = {
+                                    "ok": False,
+                                    "error": "User rejected permission for this tool call.",
+                                }
+                                if fb_msg:
+                                    rej["user_message"] = fb_msg
+                                result = json.dumps(rej, ensure_ascii=False)
+                            else:
+                                if rep == "always":
+                                    perm_always.add(name)
+                                result = execute_tool(name, args, context=tool_context)
+                        else:
+                            result = execute_tool(name, args, context=tool_context)
+                    if (
+                        tool_context.get("agent_dedupe_identical_tool_calls")
+                        and plan_dedupe_key
+                        and not skipped_plan_duplicate
+                    ):
+                        ps2 = tool_context.get("_identical_tool_call_dedupe_keys")
+                        if isinstance(ps2, set):
+                            ps2.add(plan_dedupe_key)
                 finally:
                     reset_tool_invocation_messages(tctx)
-                if event_emit:
-                    await event_emit(
-                        {
-                            "type": "agent.tool_done",
-                            "round": round_i + 1,
-                            "name": name,
-                            "result_chars": len(result or ""),
-                        }
+                ok_sum, err_sum = _tool_result_summary(result)
+                if name == "coding_workspace_verify":
+                    try:
+                        _vd = json.loads(result)
+                        if (
+                            isinstance(_vd, dict)
+                            and _vd.get("ok") is True
+                            and not _vd.get("deduplicated")
+                        ):
+                            tool_context["workspace_verify_succeeded"] = True
+                    except Exception:
+                        pass
+                    vr = _format_workspace_verify_recap(result)
+                    if vr:
+                        verify_recap_line = vr
+                if config.AGENT_TOOL_THRASH_ENABLED:
+                    nk, nc, thr_hint, force_next = _agent_tool_thrash_tick(
+                        thrash_key,
+                        thrash_count,
+                        tool_name=name,
+                        ok_r=ok_sum,
+                        err_r=err_sum,
+                        max_streak=config.AGENT_TOOL_THRASH_STREAK_MAX,
                     )
+                    thrash_key, thrash_count = nk, nc
+                    if thr_hint:
+                        messages.append({"role": "system", "content": thr_hint})
+                    if force_next:
+                        force_no_tools_round = True
+                        force_no_tools_reason = "thrash"
+                        logger.info(
+                            "tool loop guard: thrash streak reached for tool=%r — next LLM round will omit tools[]",
+                            name,
+                        )
+                if config.AGENT_TOOL_DOOM_LOOP_ENABLED:
+                    dk, dc, doom_hint = _agent_tool_doom_loop_tick(
+                        doom_key,
+                        doom_count,
+                        tool_name=name,
+                        args=args,
+                        max_streak=config.AGENT_TOOL_DOOM_LOOP_STREAK_MAX,
+                        exclude_names=config.AGENT_TOOL_DOOM_LOOP_EXCLUDE,
+                    )
+                    doom_key, doom_count = dk, dc
+                    if doom_hint:
+                        messages.append({"role": "system", "content": doom_hint})
+                        force_no_tools_round = True
+                        force_no_tools_reason = "doom"
+                        try:
+                            _args_preview = json.dumps(dict(args), sort_keys=True, separators=(",", ":"), default=str)
+                        except TypeError:
+                            _args_preview = str(args)
+                        if len(_args_preview) > 400:
+                            _args_preview = _args_preview[:400] + "…"
+                        logger.info(
+                            "tool loop guard: doom-loop streak reached (tool=%r args=%s max_streak=%d) — "
+                            "next LLM round will omit tools[]",
+                            name,
+                            _args_preview,
+                            config.AGENT_TOOL_DOOM_LOOP_STREAK_MAX,
+                        )
+                if event_emit:
+                    ev_done: dict[str, Any] = {
+                        "type": "agent.tool_done",
+                        "agent_run_id": agent_run_id,
+                        "round": round_i + 1,
+                        "name": name,
+                        "result_chars": len(result or ""),
+                    }
+                    if ok_sum is not None:
+                        ev_done["result_ok"] = ok_sum
+                    if err_sum:
+                        ev_done["result_error"] = err_sum[:500]
+                    await event_emit(ev_done)
                 messages.append(
                     {
                         "role": "tool",
@@ -1902,6 +3013,21 @@ async def chat_completion(
                 recovery = _http_error_recovery_hint(name, result)
                 if recovery:
                     messages.append({"role": "system", "content": recovery})
+                param_recovery = _tool_parameter_recovery_hint(name, result or "")
+                if param_recovery:
+                    messages.append({"role": "system", "content": param_recovery})
+                st = "ok" if ok_sum is True else ("err" if ok_sum is False else "?")
+                batch_recap.append(f"{name}:{st}")
+
+            if config.AGENT_SESSION_TOOL_RECAP_ENABLED and batch_recap:
+                cap = config.AGENT_SESSION_TOOL_RECAP_MAX
+                parts = batch_recap[:cap]
+                tail = f" (+{len(batch_recap) - cap} more)" if len(batch_recap) > cap else ""
+                recap_line = "[Session tool recap] " + ", ".join(parts) + tail
+                messages.append({"role": "system", "content": recap_line[:900]})
+
+            if verify_recap_line:
+                messages.append({"role": "system", "content": verify_recap_line[:2500]})
 
             if (
                 pause_between_rounds
@@ -1916,15 +3042,45 @@ async def chat_completion(
             len(messages),
             _approx_text_chars_in_messages(messages),
         )
+        rescue_data: dict[str, Any] | None = None
+        if not plain_completion and chosen is not None:
+            messages.append(
+                {
+                    "role": "system",
+                    "content": (
+                        "The tool-round limit for this reply has been reached. "
+                        "Respond to the user now with a **normal assistant message** (no tools): "
+                        "what was tried, what succeeded or failed (short error quotes), "
+                        "and concrete next steps. If tools failed for missing parameters, say exactly "
+                        "which JSON fields were required (e.g. coding_bash needs `command`)."
+                    ),
+                }
+            )
+            pl_final: dict[str, Any] = {"messages": messages, "stream": False, **options}
+            pl_final["model"] = chosen[2]
+            try:
+                rescue_data, _ = await asyncio.to_thread(
+                    http_post_chat_completions,
+                    chosen[0],
+                    pl_final,
+                    headers=chosen[1],
+                    timeout=600.0,
+                )
+            except Exception as e:
+                logger.warning("max_tool_rounds rescue completion failed: %s", e)
+        if rescue_data is not None:
+            data = rescue_data
         if event_emit:
             await event_emit(
                 {
                     "type": "agent.done",
+                    "agent_run_id": agent_run_id,
                     "kind": "max_tool_rounds",
                     "round": max_tool_rounds_eff,
+                    "rescue_completion": rescue_data is not None,
                 }
             )
-        return data
+        return _completion_attach_agent_run_id(data, agent_run_id)
     finally:
         reset_capability_confirmed(_cap_cf_tok)
         from apps.backend.domain.identity import reset_workspace

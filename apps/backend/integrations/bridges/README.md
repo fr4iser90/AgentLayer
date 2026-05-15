@@ -27,6 +27,8 @@ BRIDGE_SLACK = "slack"
 |------|-----------|
 | `scope_chat_id` | `int` — z. B. Telegram-`chat.id`, Discord-`channel.id` |
 | `scope_thread_id` | `int` oder `0`/`NULL`-Semantik — z. B. Telegram-Forum-Thread; sonst `None` |
+| `workspace_id` | (nach Migration `schema_044`) optional — gebundenes **Coding-/Security-Workspace** für diesen Chat |
+| `default_agent_id` | optional — Agent-Override (`/agent …`); sonst bei gesetztem Workspace Default **`coding`** |
 
 Der zusammengesetzte Schlüssel `(user_id, provider, scope_chat_id, scope_thread_id)` ist eindeutig. Passe deine Plattform-IDs so an, dass sie in **int** passen (Hash nur, wenn du weißt, was du tust).
 
@@ -34,17 +36,26 @@ Der zusammengesetzte Schlüssel `(user_id, provider, scope_chat_id, scope_thread
 
 Referenzimplementierungen (gleiches Muster):
 
-- `src/integrations/telegram_bridge.py` — `bridge_agent_conversation_ensure` → `messages_for_bridge_completion` → `chat_completion` → `conversation_append_message`
-- `src/integrations/discord_bridge.py` — dasselbe, ohne Forum-Threads
+- `apps/backend/integrations/telegram_bridge.py` — `bridge_agent_conversation_ensure` → `bridge_try_slash_command` (optional) → `messages_for_bridge_completion` → `work.update(bridge_chat_completion_extras(...))` → `chat_completion` → `conversation_append_message`
+- `apps/backend/integrations/discord_bridge.py` — dasselbe
 
 Ablauf:
 
 1. Externe User-ID → **AgentLayer** `user_id` + `tenant_id` (wie bei Telegram/Discord über Verknüpfung / DB).
 2. `conv_id = bridge_agent_conversation_ensure(user_id, tenant_id, provider=BRIDGE_…, scope_chat_id=…, scope_thread_id=…, model=…)`.
-3. `msg_list = messages_for_bridge_completion(user_id, conv_id, new_user_text=text)`.
-4. `set_identity` / `chat_completion` wie in den bestehenden Bridges (Rollen, Tools).
-5. Antwort mit `conversation_append_message` für `user` und `assistant` persistieren.
-6. Optional: **Clear**-Befehl mit `bridge_agent_session_reset(..., provider=..., scope_chat_id=..., scope_thread_id=...)`.
+3. Wenn `bridge_try_slash_command(...)` Text zurückgibt: an den Nutzer senden und **stop** (kein LLM-Round).
+4. `msg_list = messages_for_bridge_completion(user_id, conv_id, new_user_text=text)`.
+5. `work = { "model", "messages", "stream": false }` dann `work.update(bridge_chat_completion_extras(user_id, provider=…, scope_chat_id=…, scope_thread_id=…))` — setzt `workspace_id` / `agent_id` aus der Bridge-Session.
+6. `set_identity` / `chat_completion` wie in den bestehenden Bridges (Rollen, Tools).
+7. Antwort mit `conversation_append_message` für `user` und `assistant` persistieren.
+8. **Clear:** `bridge_agent_conversation_ensure` dann `bridge_agent_session_reset` — löscht nur **Nachrichten**, **nicht** Workspace-/Agent-Bindung.
+
+**Slash-Befehle (Telegram/Discord, Text nach Prefix):**
+
+- `/workspace list` — eigene Workspaces (UUID + Name)
+- `/workspace bind <uuid>` — Workspace an diesen Chat binden
+- `/workspace clear` — Bindung entfernen
+- `/agent list` / `/agent <id>` / `/agent clear` — Agent-Override (Admin-only Agents werden serverseitig abgewiesen)
 
 ### 4. Prozess / Lifecycle
 

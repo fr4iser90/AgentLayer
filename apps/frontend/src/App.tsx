@@ -13,6 +13,7 @@ import { AdminUsers } from "./pages/admin/AdminUsers";
 import { AdminScheduledJobs } from "./pages/admin/AdminScheduledJobs";
 import { AdminSchedules } from "./pages/admin/AdminSchedules";
 import { ChatPage } from "./pages/ChatPage";
+import { CodingAgentPage } from "./pages/CodingAgentPage";
 import { DocsPage } from "./pages/DocsPage";
 import { HomePage } from "./pages/HomePage";
 import { AgentSettings } from "./pages/settings/AgentSettings";
@@ -36,6 +37,7 @@ export function App() {
             <Route element={<RequireSession />}>
               <Route path="/" element={<HomePage />} />
               <Route path="chat" element={<ChatPage />} />
+              <Route path="coding-agent" element={<CodingAgentPage />} />
               <Route path="ide-agent" element={<IdeIntegrationPlaceholder variant="app" />} />
               <Route path="studio" element={<StudioPage />} />
               <Route path="dashboard" element={<DashboardPage />} />

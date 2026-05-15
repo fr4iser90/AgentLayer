@@ -8,13 +8,17 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+from apps.backend.core.config import config
 from apps.backend.infrastructure.auth import get_current_user
 from apps.backend.infrastructure.db import db
 
 router = APIRouter(prefix="/v1/workspaces", tags=["workspaces"])
+
+# Read-only HTTP browse: max bytes returned for a single file (text-ish).
+_WORKSPACE_FS_READ_MAX_BYTES = 512_000
 
 
 def _get_workspace_base_path() -> Path:
@@ -35,6 +39,31 @@ class WorkspaceCreateBody(BaseModel):
 class WorkspaceUpdateBody(BaseModel):
     name: str | None = None
     git_branch: str | None = None
+    verify_command: str | None = None
+    verify_required: bool | None = None
+
+
+class ImplementationBranchBody(BaseModel):
+    """Create ``agent/impl-<slug>`` from a resolvable base ref (local or ``origin/<name>``)."""
+
+    base_branch: str | None = Field(default=None, max_length=255)
+    implementation_run_id: str | None = Field(default=None, max_length=128)
+
+
+def safe_resolve_under_workspace(root: Path, rel: str | None) -> Path:
+    """Resolve ``rel`` under ``root``; reject absolute paths and escapes after ``resolve()``."""
+    root_r = root.resolve()
+    r = (rel or "").strip().replace("\\", "/")
+    if r in ("", "."):
+        return root_r
+    if r.startswith("/"):
+        raise ValueError("invalid path")
+    target = (root_r / r).resolve()
+    try:
+        target.relative_to(root_r)
+    except ValueError:
+        raise ValueError("path outside workspace") from None
+    return target
 
 
 def _row_to_workspace(row: tuple) -> dict[str, Any]:
@@ -49,6 +78,8 @@ def _row_to_workspace(row: tuple) -> dict[str, Any]:
         "access_role": row[7],
         "created_at": row[8].isoformat() if row[8] else None,
         "updated_at": row[9].isoformat() if row[9] else None,
+        "verify_command": row[10],
+        "verify_required": bool(row[11]) if row[11] is not None else False,
     }
 
 
@@ -68,7 +99,8 @@ def _get_self_workspace(user) -> dict[str, Any] | None:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, owner_user_id, name, path, source, git_url, git_branch, access_role, created_at, updated_at
+                SELECT id, owner_user_id, name, path, source, git_url, git_branch, access_role, created_at, updated_at,
+                       verify_command, verify_required
                 FROM project_workspaces
                 WHERE id = %s AND owner_user_id = %s
                 """,
@@ -90,7 +122,8 @@ async def list_workspaces(request: Request):
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, owner_user_id, name, path, source, git_url, git_branch, access_role, created_at, updated_at
+                SELECT id, owner_user_id, name, path, source, git_url, git_branch, access_role, created_at, updated_at,
+                       verify_command, verify_required
                 FROM project_workspaces
                 WHERE owner_user_id = %s
                 ORDER BY name ASC
@@ -112,76 +145,27 @@ async def list_workspaces(request: Request):
     return {"workspaces": workspaces}
 
 
+from apps.backend.infrastructure.workspace_service import (
+    WorkspaceCreateError,
+    create_project_workspace_for_user,
+)
+
+
 @router.post("")
 async def create_workspace(request: Request, body: WorkspaceCreateBody):
     """Create a new workspace (manual folder or git clone)."""
     user = await get_current_user(request)
-
-    with db.pool().connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT COALESCE(workspace_quota, 10) FROM users WHERE id = %s",
-                (user.id,),
-            )
-            row = cur.fetchone()
-            quota = row[0] if row else 10
-
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT COUNT(*) FROM project_workspaces WHERE owner_user_id = %s",
-                (user.id,),
-            )
-            row = cur.fetchone()
-            existing_count = row[0] if row else 0
-
-    if existing_count >= quota:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Workspace quota exceeded ({quota} max). Delete some workspaces first.",
+    try:
+        ws = create_project_workspace_for_user(
+            user,
+            name=body.name,
+            source=body.source,
+            git_url=body.git_url,
+            git_branch=body.git_branch or "main",
         )
-
-    from apps.backend.infrastructure.workspace_service import AGENTLAYER_SELF_NAME
-
-    if body.name.strip() == AGENTLAYER_SELF_NAME:
-        raise HTTPException(
-            status_code=400,
-            detail="Reserved workspace name. Use the AgentLayer self workspace when self-editing is enabled.",
-        )
-
-    base_path = _get_workspace_base_path()
-    user_workspace_dir = base_path / str(user.id) / body.name
-
-    if body.source == "git" and body.git_url:
-        user_workspace_dir.mkdir(parents=True, exist_ok=True)
-        import subprocess
-
-        result = subprocess.run(
-            ["git", "clone", "--branch", body.git_branch or "main", "--depth", "1", body.git_url, str(user_workspace_dir)],
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            raise HTTPException(status_code=400, detail=f"Git clone failed: {result.stderr}")
-    else:
-        user_workspace_dir.mkdir(parents=True, exist_ok=True)
-
-    with db.pool().connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO project_workspaces (owner_user_id, name, path, source, git_url, git_branch, access_role)
-                VALUES (%s, %s, %s, %s, %s, %s, 'owner')
-                RETURNING id, owner_user_id, name, path, source, git_url, git_branch, access_role, created_at, updated_at
-                """,
-                (user.id, body.name, str(user_workspace_dir), body.source, body.git_url, body.git_branch or "main"),
-            )
-            row = cur.fetchone()
-        conn.commit()
-
-    if not row:
-        raise HTTPException(status_code=500, detail="Failed to create workspace")
-
-    return {"workspace": _row_to_workspace(row)}
+    except WorkspaceCreateError as e:
+        raise HTTPException(status_code=400, detail=e.message)
+    return {"workspace": ws}
 
 
 @router.get("/{workspace_id}")
@@ -193,7 +177,8 @@ async def get_workspace(request: Request, workspace_id: str):
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, owner_user_id, name, path, source, git_url, git_branch, access_role, created_at, updated_at
+                SELECT id, owner_user_id, name, path, source, git_url, git_branch, access_role, created_at, updated_at,
+                       verify_command, verify_required
                 FROM project_workspaces
                 WHERE id = %s AND owner_user_id = %s
                 """,
@@ -212,6 +197,23 @@ async def get_workspace(request: Request, workspace_id: str):
     return {"workspace": _row_to_workspace(row)}
 
 
+@router.post("/{workspace_id}/git/implementation-branch")
+async def create_implementation_branch(request: Request, workspace_id: str, body: ImplementationBranchBody):
+    """Create ``agent/impl-<slug>`` from a local (or ``origin/<name>``) base ref; then check it out."""
+    user = await get_current_user(request)
+    from apps.backend.infrastructure.workspace_service import create_implementation_git_branch
+
+    result = create_implementation_git_branch(
+        user,
+        workspace_id,
+        base_branch=body.base_branch,
+        implementation_run_id=body.implementation_run_id,
+    )
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail=str(result.get("error") or "branch creation failed"))
+    return result
+
+
 @router.patch("/{workspace_id}")
 async def update_workspace(request: Request, workspace_id: str, body: WorkspaceUpdateBody):
     """Update workspace (rename, change branch)."""
@@ -221,7 +223,8 @@ async def update_workspace(request: Request, workspace_id: str, body: WorkspaceU
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, owner_user_id, name, path, source, git_url, git_branch, access_role, created_at, updated_at
+                SELECT id, owner_user_id, name, path, source, git_url, git_branch, access_role, created_at, updated_at,
+                       verify_command, verify_required
                 FROM project_workspaces
                 WHERE id = %s AND owner_user_id = %s AND access_role IN ('owner', 'editor')
                 """,
@@ -240,12 +243,19 @@ async def update_workspace(request: Request, workspace_id: str, body: WorkspaceU
     updates = []
     params = []
 
-    if body.name:
+    patch = body.model_dump(exclude_unset=True)
+    if "name" in patch and patch["name"] is not None:
         updates.append("name = %s")
-        params.append(body.name)
-    if body.git_branch:
+        params.append(patch["name"])
+    if "git_branch" in patch and patch["git_branch"] is not None:
         updates.append("git_branch = %s")
-        params.append(body.git_branch)
+        params.append(patch["git_branch"])
+    if "verify_command" in patch:
+        updates.append("verify_command = %s")
+        params.append(patch["verify_command"])
+    if "verify_required" in patch and patch["verify_required"] is not None:
+        updates.append("verify_required = %s")
+        params.append(bool(patch["verify_required"]))
 
     if updates:
         params.append(workspace_id)
@@ -261,7 +271,8 @@ async def update_workspace(request: Request, workspace_id: str, body: WorkspaceU
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, owner_user_id, name, path, source, git_url, git_branch, access_role, created_at, updated_at
+                SELECT id, owner_user_id, name, path, source, git_url, git_branch, access_role, created_at, updated_at,
+                       verify_command, verify_required
                 FROM project_workspaces WHERE id = %s
                 """,
                 (workspace_id,),
@@ -331,3 +342,135 @@ async def validate_workspace_path(request: Request, workspace_id: str):
         "path": str(workspace_path),
         "is_directory": workspace_path.is_dir() if workspace_path.exists() else False,
     }
+
+
+async def _workspace_root_path_row(request: Request, workspace_id: str) -> tuple[Path, tuple]:
+    """Filesystem root path and DB row (path, name) for workspace owned by user."""
+    user = await get_current_user(request)
+    from apps.backend.infrastructure.workspace_service import AGENTLAYER_SELF_NAME, self_editing_allowed
+
+    with db.pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT path, name FROM project_workspaces WHERE id = %s AND owner_user_id = %s",
+                (workspace_id, user.id),
+            )
+            row = cur.fetchone()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+
+    if (row[1] or "").strip() == AGENTLAYER_SELF_NAME and not self_editing_allowed(user):
+        raise HTTPException(status_code=404, detail="Workspace not found")
+
+    return Path(row[0]), row
+
+
+def _looks_textish(blob: bytes) -> bool:
+    return b"\x00" not in blob[:8192]
+
+
+@router.get("/{workspace_id}/fs/list")
+async def workspace_fs_list(
+    request: Request,
+    workspace_id: str,
+    path: str = Query("", max_length=4096, description="Directory path relative to workspace root"),
+):
+    """List files and subdirectories (read-only; same caps as coding_list_dir)."""
+    root_disk, _row = await _workspace_root_path_row(request, workspace_id)
+    try:
+        target = safe_resolve_under_workspace(root_disk, path)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid path") from None
+
+    if not target.exists():
+        raise HTTPException(status_code=404, detail="Path not found")
+    if not target.is_dir():
+        raise HTTPException(status_code=400, detail="Not a directory")
+
+    rel_base = ""
+    try:
+        rel_base = str(target.relative_to(root_disk.resolve())).replace("\\", "/")
+    except ValueError:
+        rel_base = ""
+
+    max_entries = config.WORKSPACE_MAX_LIST_ENTRIES
+    entries: list[dict[str, Any]] = []
+    try:
+        for name in sorted(os.listdir(target)):
+            if name in (".", ".."):
+                continue
+            fp = target / name
+            try:
+                is_dir = fp.is_dir()
+                is_link = fp.is_symlink()
+            except OSError:
+                continue
+            rel_child = f"{rel_base}/{name}".strip("/") if rel_base else name
+            entries.append(
+                {
+                    "name": name,
+                    "path": rel_child.replace("\\", "/"),
+                    "is_dir": is_dir,
+                    "is_symlink": is_link,
+                }
+            )
+            if len(entries) >= max_entries:
+                break
+    except OSError as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+    return {
+        "ok": True,
+        "path": rel_base or ".",
+        "entries": entries,
+        "truncated": len(entries) >= max_entries,
+        "max_entries": max_entries,
+    }
+
+
+@router.get("/{workspace_id}/fs/read")
+async def workspace_fs_read(
+    request: Request,
+    workspace_id: str,
+    path: str = Query(..., min_length=1, max_length=4096, description="File path relative to workspace root"),
+):
+    """Read a text-ish file from the workspace (read-only, size-capped)."""
+    root_disk, _row = await _workspace_root_path_row(request, workspace_id)
+    try:
+        target = safe_resolve_under_workspace(root_disk, path)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid path") from None
+
+    if not target.exists() or not target.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    try:
+        size = target.stat().st_size
+    except OSError as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+    if size > _WORKSPACE_FS_READ_MAX_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large for preview (max {_WORKSPACE_FS_READ_MAX_BYTES} bytes)",
+        )
+
+    try:
+        blob = target.read_bytes()
+    except OSError as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+    if not _looks_textish(blob):
+        raise HTTPException(status_code=415, detail="Binary file — preview not supported")
+
+    try:
+        text = blob.decode("utf-8")
+    except UnicodeDecodeError:
+        try:
+            text = blob.decode("utf-8", errors="replace")
+        except Exception:
+            raise HTTPException(status_code=415, detail="Could not decode file as text") from None
+
+    rel = str(target.relative_to(root_disk.resolve())).replace("\\", "/")
+    return {"ok": True, "path": rel, "content": text, "size": size}

@@ -48,6 +48,17 @@ def _user_tenant_id(user_id: uuid.UUID) -> int:
             return int(row[0])
 
 
+def _ingress_conversation_messages_if_enabled(
+    messages: list[dict[str, Any]],
+    *,
+    user_id: uuid.UUID,
+    tenant_id: int,
+) -> list[dict[str, Any]]:
+    from apps.backend.infrastructure.chat_secret_ingress import ingress_messages_list_copy
+
+    return ingress_messages_list_copy(messages, tenant_id=tenant_id, user_id=user_id)
+
+
 def _shared_chat_can_write(user_id: uuid.UUID, tenant_id: int, dashboard_id: uuid.UUID) -> bool:
     role = dashboard_db.dashboard_access(user_id, tenant_id, dashboard_id)
     return role is not None and role != "viewer"
@@ -248,6 +259,7 @@ def conversation_create(
     shared: bool = False,
 ) -> dict[str, Any]:
     tenant_id = _user_tenant_id(user_id)
+    messages = _ingress_conversation_messages_if_enabled(messages, user_id=user_id, tenant_id=tenant_id)
     if shared:
         if dashboard_id is None:
             raise ValueError("shared conversation requires dashboard_id")
@@ -422,11 +434,14 @@ def conversation_replace(
                     args,
                 )
             if messages is not None:
+                msgs_ing = _ingress_conversation_messages_if_enabled(
+                    messages, user_id=user_id, tenant_id=int(tenant_id)
+                )
                 cur.execute(
                     "DELETE FROM chat_messages WHERE conversation_id = %s",
                     (conversation_id,),
                 )
-                for i, m in enumerate(messages):
+                for i, m in enumerate(msgs_ing):
                     role = m.get("role") or "user"
                     content = _serialize_message_content(m.get("content"))
                     if role not in ("user", "assistant", "system"):

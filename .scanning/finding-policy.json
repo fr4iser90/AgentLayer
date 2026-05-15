@@ -243,9 +243,9 @@
             },
             {
                 "rule_id": "py/full-ssrf",
-                "path_regex": ".*/apps/backend/infrastructure/ollama_gate\\.py$",
+                "path_regex": ".*/apps/backend/infrastructure/openai_compat_http\\.py$",
                 "message_regex": "user-provided|URL",
-                "reason": "POST URL is supplied by server config (Ollama base URL, operator external LLM endpoints), not arbitrary per-request user URLs in the default deployment model."
+                "reason": "POST URL is supplied by server config (Ollama base URL, llama.cpp OpenAI server, operator external LLM endpoints), not arbitrary per-request user URLs in the default deployment model."
             },
             {
                 "rule_id": "py/incomplete-url-substring-sanitization",

@@ -12,6 +12,10 @@ from plugins.tools.agent.core.coding.coding_index_lib import (
     _SUPPORTED_LANGUAGES,
     get_index,
 )
+from plugins.tools.agent.core.coding.coding_common import (
+    json_workspace_missing_error,
+    workspace_binding_from_context,
+)
 
 try:
     from apps.backend.infrastructure.code_index_qdrant import get_code_index
@@ -46,13 +50,10 @@ def coding_index(arguments: dict[str, Any], context: dict | None = None) -> str:
             },
             ensure_ascii=False,
         )
-    if not context or "workspace" not in context:
-        return json.dumps(
-            {"ok": False, "error": "No workspace in context - agent must inject workspace"},
-            ensure_ascii=False,
-        )
-    ws = context["workspace"]
-    workspace_id = str(ws.get("id"))
+    ws = workspace_binding_from_context(context)
+    if ws is None:
+        return json_workspace_missing_error()
+    workspace_id = str(ws.get("id") or "")
     root = Path(ws["path"])
     max_files = int(arguments.get("max_files", _DEFAULT_MAX_FILES))
     max_files = max(100, min(max_files, 20000))

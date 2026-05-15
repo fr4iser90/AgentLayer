@@ -9,11 +9,29 @@ import subprocess
 from pathlib import Path
 from typing import Any, Callable
 
+from plugins.tools.agent.core.coding.coding_common import (
+    json_workspace_missing_error,
+    workspace_binding_from_context,
+)
+
 __version__ = "1.0.0"
 TOOL_ID = "coding_bash"
 TOOL_BUCKET = "files"
 TOOL_DOMAIN = "coding"
-TOOL_TRIGGERS = ("coding bash", "run command", "shell", "execute")
+TOOL_TRIGGERS = (
+    "coding bash",
+    "run command",
+    "shell",
+    "execute",
+    "git clone",
+    "git pull",
+    "git checkout",
+    "repository",
+    "repo",
+    "github.com",
+    "gitlab",
+    "clone",
+)
 TOOL_CAPABILITIES = ("coding.execute",)
 TOOL_LABEL = "Coding: Bash"
 TOOL_DESCRIPTION = (
@@ -108,14 +126,24 @@ def _tail(text: str, max_bytes: int, max_lines: int = 200) -> tuple[str, bool]:
 
 
 def coding_bash(arguments: dict[str, Any], context: dict | None = None) -> str:
-    if not context or "workspace" not in context:
-        return json.dumps({"ok": False, "error": "No workspace in context - agent must inject workspace"}, ensure_ascii=False)
-    ws = context["workspace"]
+    ws = workspace_binding_from_context(context)
+    if ws is None:
+        return json_workspace_missing_error()
     root = Path(ws["path"])
     
     command = (arguments.get("command") or "").strip()
     if not command:
-        return json.dumps({"ok": False, "error": "command is required"}, ensure_ascii=False)
+        return json.dumps(
+            {
+                "ok": False,
+                "error": (
+                    "coding_bash requires a non-empty string field \"command\" (the shell command to run). "
+                    'Example arguments: {"command": "git status"} or '
+                    '{"command": "git clone https://github.com/org/repo.git .", "timeout": 120}'
+                ),
+            },
+            ensure_ascii=False,
+        )
     blocked = _is_blocked(command)
     if blocked:
         return json.dumps({"ok": False, "error": blocked}, ensure_ascii=False)
@@ -203,7 +231,7 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "command": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "The shell command to execute",
+                        "TOOL_DESCRIPTION": "Required. Full shell command to run in the workspace (e.g. git status, ls -la). Never omit this field.",
                     },
                     "timeout": {
                         "type": "integer",

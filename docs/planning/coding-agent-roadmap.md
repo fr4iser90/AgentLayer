@@ -95,6 +95,14 @@ Ideas such as: idle time → model drafts **several** plans → user picks one �
 - **Done (ops):** `compose.yaml` uses named volume `agent_project_workspaces` + `AGENTLAYER_WORKSPACE_PATH=/data/project_workspaces`; runbook `docs/runbooks/workspace-persistence.md`.
 - After deploy, smoke-test: create workspace → write file → `docker compose restart agent-layer` → file still there.
 
+### G — Agentic coding parity (industry-style UX)
+
+**Goal:** match the *product* expectations of terminal-first coding agents: reliable tools, read→plan→act, strong search, optional subagents, observable runs. **Full checklist and phased plan:** [Agentic coding: checklist and phased plan](#agentic-coding-checklist-and-phased-plan) (end of this doc).
+
+### H — Subagents & delegation
+
+**Goal:** explore/search/plan in isolated context without polluting the main planner transcript; merge results back with citations. **Design options and milestones:** same anchor section under *Subagents*.
+
 ## ADRs: iterative, not a catalog upfront
 
 During a **“big rebuild + many ideas”** phase, **do not** try to write or “fix” a complete set of ADRs for every module before shipping. You risk spending weeks on documents that go stale or encode guesses.
@@ -125,3 +133,110 @@ Agent runtime, memory, tools, workflows/scheduler, permissions/security, multi-a
 - Prefer **porcelain commands** or a small library with structured output; avoid parsing fragile human-only text.
 - Never pass unchecked remote URLs or refspecs from the model straight to shell without validation.
 - Log **who** triggered **what** Git action on **which** workspace for audit trails.
+
+---
+
+## Agentic coding: checklist and phased plan
+
+Single backlog derived from “what agentic coding needs in general,” mapped to AgentLayer today and **ordered slices** (ship one vertical increment per PR where possible). Epics **G**/**H** in the table above point here.
+
+### Checklist (Baustein → Zweck → Stand AgentLayer)
+
+| Baustein | Zweck | AgentLayer (Stand / nächster Schritt) |
+|----------|--------|--------------------------------------|
+| **Workspace / Cwd** | Eindeutiger Baum für alle Coding-Tools | **Habt ihr:** `workspace_id`, Clone, `coding_*` mit Root. **Next:** UI immer sichtbarer Workspace-Pfad; Auth-Härtung (Epic A). |
+| **Zuverlässige Tool-JSON** | Keine Endlosschleifen (`coding_bash({})`) | **Teilweise:** Server-Normalisierung, Rescue-/letzte Text-Runde. **Next:** Circuit-Breaker (gleicher Tool-Name + gleiche leere Args 2× → System-Nudge oder Text-only); optional zweites LLM nur für Tool-JSON; weiter Modell-Routing-Docs. |
+| **Read → Plan → Act** | Weniger blindes Editieren | **Habt ihr:** `coding_plan` Agent + Registry-Allowlist (read/meta only); UI wählt Agent. **Next:** Auto-Routing erste N Runden optional. |
+| **Patch-first Editing** | Stabilere Edits | **Habt ihr:** `coding_apply_patch`, replace, edit. **Next:** Prompt/Default „prefer patch“; Metriken ob Patch vs. full write. |
+| **Schnelle Suche** | Repo ohne 20× `list_dir` | **Habt ihr:** `coding_search`, `coding_glob`, Index/Qdrant optional; bei Cap **`truncation_hint`** im JSON. **Next:** Ripgrep-Pfad in Container, Index-on-open optional. |
+| **LSP / Diags** | Echter Code-Intellekt | **Habt ihr:** `coding_lsp`. **Next:** Image/PATH-Doku, pro-Sprache Smoke, Fehler in Tool-Result klar surfaced. |
+| **Tests/Linter im Loop** | „Fertig“ definiert | **Teilweise:** optional `verify_command` / `note` in Workspace-Root **`.agentlayer.json`** (Hinweis im ersten System-Prompt; kein Auto-Run). **Next:** explizites Ausführen vor „done“; CI-Webhook (Epic E). |
+| **Budgets** | Tokens, Runden, Zeit | **Habt ihr:** `AGENT_MAX_TOOL_ROUNDS`, Rescue. **Next:** pro-Agent-Override, UI-Warnung bei niedrigem Budget. |
+| **User-Memory vs Thread** | Langzeit vs. Session | **Habt ihr:** Facts/Notes/Graph + `messages`; **Session tool recap** nach Tool-Blöcken (`AGENT_SESSION_TOOL_RECAP_*`). **Next:** komprimierte inhaltliche Zusammenfassung (nicht nur Tool-Namen). |
+| **Observability** | Debuggen | **Teilweise:** Logs, `agent.session`. **Next:** Trace-ID pro Run, strukturierte Tool-Fehler in Events, optional Export. |
+| **Subagents** | Explore/Plan isoliert | **Teilweise:** `coding_task` mit **`run_plan_subagent=true`** → gebundener `coding_plan`-Lauf im Side-Thread (`chat_completion`, gleiches `workspace_id`). **Next:** UI-Summary, Cancellation, Accounting. |
+
+### Phased rollout (recommended order)
+
+Each phase should end with **manual smoke** + **one paragraph** in this doc or ADR pointer if a security/tenancy boundary moved.
+
+#### Phase 1 — Tool reliability & loops (highest ROI)
+
+**Implemented (baseline):**
+
+- Circuit-breaker in `apps/backend/domain/agent.py`: identical JSON tool failures (`ok: false` + same `error` prefix per tool name) for `AGENT_TOOL_THRASH_STREAK_MAX` (default 3, min 2) → system hint one step before, then **one round without `tools[]`** (`AGENT_TOOL_THRASH_ENABLED`, `AGENT_TOOL_THRASH_STREAK_MAX` in `config.py` / `.env.example`).
+- `agent.tool_done` WebSocket events optionally include `result_ok` (bool) and `result_error` (truncated string) when the result parses as JSON with an `ok` field.
+
+**Still open / later slices:**
+
+- Expand normalization only where safe (document rules); avoid silent dangerous `git`.
+- Trace-ID pro Run; reichere strukturierte Events für die UI bei Bedarf.
+
+**Exit (Phase 1):** dieselbe Tool-Fehlermeldung N-mal hintereinander → Hinweis, dann eine **Text-only-Runde** ohne `tools[]` (entspricht dem früheren „`coding_bash({})`-Schleifen“-Ziel).
+
+#### Phase 2 — Plan vs Build (Read → Plan → Act)
+
+**Implemented (baseline):**
+
+- Agent **`coding_plan`**: Plugin `plugins/agents/coding_plan.py`, Eintrag in `agent-config.yaml`, Allowlist in `apps/backend/domain/agent_registry.py` (`AGENT_TOOL_MAP`) — read/meta coding tools only, **kein** `write` / `bash` / `apply_patch`.
+- Berechtigung: wie **`coding`** (`agent:coding`), damit bestehende Rollen nicht brechen.
+
+**Still open:** UI-Toggle bleibt Modellwahl; optionales Auto-Routing „erst N Runden Plan“.
+
+#### Phase 3 — Search / Index / LSP polish
+
+**Implemented (slice):**
+
+- `coding_glob` / `coding_search`: bei Cap ein Feld **`truncation_hint`** mit konkreter Anweisung (narrower glob, `path_prefix`, Limits in Config).
+
+**Still open:** Index-on-attach (Flag), LSP-Runbook pro Stack, optional Ripgrep.
+
+#### Phase 4 — Verify-in-the-loop & session working memory
+
+**Implemented (partial):**
+
+- Workspace-Hinweis: **`{workspace}/.agentlayer.json`** mit optional `verify_command`, `note` → in ersten System-Kontext gemerged (Hinweis only; **kein** automatisches Ausführen).
+- **Session tool recap:** nach Tool-Batches kurze `system`-Zeilen `[Session tool recap] …` (`AGENT_SESSION_TOOL_RECAP_ENABLED`, `AGENT_SESSION_TOOL_RECAP_MAX` in `config.py` / `.env.example`).
+
+**Still open:** Verify-Command wirklich ausführen + Ergebnis einspeisen; inhaltliche Session-Zusammenfassung (LLM/truncator).
+
+#### Phase 5 — Subagents & delegation (Epic H)
+
+**Ziel:** Unter-Agent mit eigenem Nachrichten-/Budget-Kontext; Rückgabe als strukturiertes JSON / Auszug an den Haupt-Planner.
+
+**Option A — Nested planner (gestartet)**  
+- **`coding_task`** mit **`run_plan_subagent: true`**: `ThreadPoolExecutor` + `asyncio.run(chat_completion(...))` mit **`agent_id: coding_plan`**, gleiches **`workspace_id`**, konfigurierbare **`max_rounds`** (1–8) / **`subagent_model`**. Ergebnis: `assistant_excerpt` + Metadaten (Timeout 600s).
+- Vorteil: wenig neue Infrastruktur. Nachteil: Kosten/Latenz; Cancellation/Accounting noch grob.
+
+**Option B / C:** unverändert später (Queue, Prozess-Isolation).
+
+**Milestone H1:** **teilweise erfüllt** (read-only Sub-Planner über Tool-Flag).  
+**Milestone H2/H3:** offen (UI, Logs, Queue/Isolation).
+
+### Memory & threading (explizit)
+
+- **Thread:** immer `messages` aus dem Client; kein Ersatz durch User-Memory.
+- **User memory:** nur wenn Operator `memory_enabled` und Inhalt in DB; Dashboard-ID für scoped Facts optional (`agent_dashboard_context`).
+- **Working memory (neu, Phase 4):** kurzlebige, servergenerierte Zusammenfassung der *aktuellen* Agent-Session — nicht dasselbe wie `user_memory_facts`.
+
+### Success metrics (pragmatisch)
+
+- **Tool thrash:** median `get_tool_help` pro User-Request ↓; 0× identische leere Tool-Calls in Folge.
+- **Task completion:** README-ähnliche Aufgaben enden mit `read_file` Erfolg oder erklärtem Blocker in ≤ X Runden (X messen, dann senken).
+- **User trust:** UI zeigt Workspace + letzte harte Tool-Fehler sichtbar.
+
+### Related code (jump table)
+
+| Thema | Wo |
+|--------|-----|
+| Planner / Runden / Rescue | `apps/backend/domain/agent.py` |
+| Tool args normalize | `apps/backend/domain/agent.py` |
+| Workspace / clone | `apps/backend/infrastructure/workspace_service.py`, `workspaces_api.py` |
+| Coding tools | `plugins/tools/agent/core/coding/` |
+| Memory inject | `apps/backend/domain/agent.py::_inject_user_memory_context`, `apps/backend/api/memory.py` |
+| Agent registry | `apps/backend/domain/agent_registry.py`, `plugins/agents/*.py` |
+| Subagent / plan delegation | `plugins/tools/agent/core/coding/coding_task.py` (`run_plan_subagent`) |
+
+---
+
+When this plan moves to implementation, split into **issues per phase**; keep security invariants from the top of this doc in every PR description.

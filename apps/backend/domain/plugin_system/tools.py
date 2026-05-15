@@ -49,6 +49,10 @@ def run_tool(name: str, arguments: dict, context: dict | None = None) -> str:
         token = _chain_depth.set(depth + 1)
         reg = get_registry()
         nm = (name or "").strip()
+        if nm.startswith("mcp__"):
+            from apps.backend.infrastructure.mcp_runtime import mcp_invoke_tool_sync
+
+            return mcp_invoke_tool_sync(nm, dict(arguments or {}))
         meta = reg.meta_entry_for_tool_name(nm) if nm else None
         if meta:
             from apps.backend.domain.identity import get_identity

@@ -11,7 +11,7 @@ from typing import Any
 from apps.backend.api.rag import ollama_embed_one
 from apps.backend.core.config import config
 from apps.backend.infrastructure.db import db
-from apps.backend.infrastructure.ollama_gate import ollama_post_chat_completions
+from apps.backend.infrastructure.openai_compat_http import http_post_chat_completions
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ def propose_graph_from_text(
             {"role": "user", "content": raw},
         ],
     }
-    data, _ = ollama_post_chat_completions(url, body, timeout=120.0)
+    data, _ = http_post_chat_completions(url, body, timeout=120.0)
     choice0 = (data.get("choices") or [{}])[0]
     msg = (choice0.get("message") or {}) if isinstance(choice0, dict) else {}
     content = msg.get("content") if isinstance(msg, dict) else None

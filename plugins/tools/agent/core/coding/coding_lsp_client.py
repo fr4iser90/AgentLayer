@@ -1,6 +1,6 @@
 """Full LSP (Language Server Protocol) client with proper JSON-RPC over stdio.
 
-Matches opencode's architecture:
+Matches coding's architecture:
 - Content-Length framed JSON-RPC messages
 - Initialize handshake with capability negotiation
 - Document synchronization (didOpen, didChange, didSave, willSave)

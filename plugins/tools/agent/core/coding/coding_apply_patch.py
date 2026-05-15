@@ -10,6 +10,11 @@ from typing import Any, Callable
 
 from apps.backend.core.config import config
 
+from plugins.tools.agent.core.coding.coding_common import (
+    json_workspace_missing_error,
+    workspace_binding_from_context,
+)
+
 def is_probably_text(data: bytes) -> bool:
     if not data:
         return True
@@ -139,9 +144,9 @@ def _generate_diff(old: str, new: str, path: str) -> str:
 
 
 def coding_apply_patch(arguments: dict[str, Any], context: dict | None = None) -> str:
-    if not context or "workspace" not in context:
-        return json.dumps({"ok": False, "error": "No workspace in context - agent must inject workspace"}, ensure_ascii=False)
-    ws = context["workspace"]
+    ws = workspace_binding_from_context(context)
+    if ws is None:
+        return json_workspace_missing_error()
     root = Path(ws["path"])
     
     patch_text = (arguments.get("patch_text") or arguments.get("patch") or "").strip()

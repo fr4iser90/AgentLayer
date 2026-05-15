@@ -8,16 +8,20 @@ Client → server JSON:
   - ``{"type":"cancel"}`` → aborts in-flight ``chat`` (sets cancel flag; next round raises)
   - ``{"type":"add_tools","names":["tool_fn_name",...]}`` → merge allowed tools before next LLM call
   - ``{"type":"continue_step"}`` → after ``agent.step_wait``, resume the tool/LLM loop (see ``agent_pause_between_rounds`` in chat body)
-  - ``{"type":"chat","body":{...},"router_categories_header":"?","tool_domain_header":"?","model_profile_header":"?","model_override_header":"?"}``
+  - ``{"type":"permission_reply","request_id":"…","reply":"once"|"always"|"reject","message":"?"}`` →
+        response to ``agent.permission_ask`` (``body.agent_permission_ask`` + agent plugins with ``AGENT_CODING_TOOLS_PERMISSION_ASK``) before a gated tool runs
+  - ``{"type":"chat","body":{...},...}``
         body = OpenAI-style chat completion request (``stream`` ignored).
         Optional ``body.agent_model_catalog_owned_by``: normalized ``GET /v1/models`` row ``owned_by``
         (e.g. ``ollama``, ``llama_cpp``, ``external``) so chat uses the same stack as the dropdown. Unsupported
         values are ignored server-side until routing exists.
-        Optional model routing: per-frame ``model_profile_header`` / ``model_override_header`` (or WebSocket handshake headers ``X-Agent-Model-Profile`` / ``X-Agent-Model-Override``).
+        Optional ``body.agent_permission_ask`` (bool): when true and the agent definition has ``coding_tools_permission_ask`` (from ``AGENT_CODING_TOOLS_PERMISSION_ASK`` on the plugin), the server may emit
+        ``agent.permission_ask`` before executing gated workspace tools (bash, writes, edits); the client must answer with
+        ``permission_reply``. Ignored when there is no WebSocket ``control_queue`` (HTTP chat): tools run without an ask.
 
 Server → client JSON events (subset):
   - ``agent.session``, ``agent.llm_round_start``, ``agent.llm_round``, ``agent.tool_start``,
-    ``agent.tool_done``, ``agent.done``, ``agent.cancelled``
+    ``agent.tool_done``, ``agent.permission_ask``, ``agent.done``, ``agent.cancelled``
   - ``chat.completion`` — final OpenAI-shaped response (or error payload on failure)
 """
 
@@ -30,10 +34,11 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 
-from apps.backend.domain.agent import AgentChatCancelled, chat_completion
+from apps.backend.domain.agent import AgentChatCancelled, WorkspaceAccessDenied, chat_completion
 from apps.backend.domain.http_identity import resolve_chat_identity_ws
 from apps.backend.domain.identity import reset_identity, set_identity
 from apps.backend.infrastructure.auth import get_user_for_bearer_token
+from apps.backend.infrastructure.llm_user_errors import user_visible_llm_transport_error
 
 logger = logging.getLogger(__name__)
 
@@ -177,11 +182,17 @@ async def chat_websocket(websocket: WebSocket) -> None:
                         "detail": "cancelled",
                     }
                 )
+            except WorkspaceAccessDenied as e:
+                await emit({"type": "error", "detail": str(e), "http_status": 403})
             except ValueError as e:
                 await emit({"type": "error", "detail": str(e)})
-            except Exception:
-                logger.exception("ws chat_completion failed")
-                await emit({"type": "error", "detail": "chat completion failed"})
+            except Exception as e:
+                detail, log_exc = user_visible_llm_transport_error(e)
+                if log_exc:
+                    logger.exception("ws chat_completion failed")
+                else:
+                    logger.warning("ws chat_completion failed: %s (%s)", detail, e)
+                await emit({"type": "error", "detail": detail})
             else:
                 await emit({"type": "chat.completion", "data": data})
             finally:

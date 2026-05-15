@@ -31,6 +31,8 @@ from apps.backend.infrastructure.bridge_agent_session import (
     MAX_CONTEXT_MESSAGES,
     bridge_agent_conversation_ensure,
     bridge_agent_session_reset,
+    bridge_chat_completion_extras,
+    bridge_try_slash_command,
     messages_for_bridge_completion,
 )
 from apps.backend.infrastructure.conversations_db import conversation_append_message
@@ -41,7 +43,7 @@ logger = logging.getLogger(__name__)
 _stop = threading.Event()
 _thread: threading.Thread | None = None
 _started = False
-_last_idle_log_m: float = 0.0
+_logged_idle_reason: str | None = None
 
 
 @dataclass
@@ -161,6 +163,17 @@ def _make_client(cfg: _BridgeCfg) -> discord.Client:
                         f"Add your question after `{cfg.prefix.strip()}`, e.g. `{cfg.prefix.strip()}What is 2+2?`"
                     )
                 return
+            author_id = str(message.author.id)
+            linked = db.user_id_tenant_for_discord_global(author_id)
+            if linked is None:
+                await message.reply(
+                    "Your Discord account is not linked in AgentLayer (or the link is ambiguous). "
+                    "Open the web app → **Settings → Connections** → save your numeric Discord user ID."
+                )
+                return
+            user_id, tenant_id = linked
+            _ch_id = int(message.channel.id)
+
             clear_tokens = frozenset(
                 {
                     "/clear",
@@ -173,34 +186,27 @@ def _make_client(cfg: _BridgeCfg) -> discord.Client:
                 }
             )
             if prompt.strip().lower() in clear_tokens:
-                author_id = str(message.author.id)
-                linked = db.user_id_tenant_for_discord_global(author_id)
-                if linked is None:
-                    await message.reply(
-                        "Your Discord account is not linked in AgentLayer (or the link is ambiguous). "
-                        "Open the web app → **Settings → Connections** → save your numeric Discord user ID."
-                    )
-                    return
-                user_id, _tenant_id = linked
+                bridge_agent_conversation_ensure(
+                    user_id,
+                    tenant_id,
+                    provider=BRIDGE_DISCORD,
+                    scope_chat_id=_ch_id,
+                    scope_thread_id=None,
+                    model=cfg.model,
+                )
                 ok = bridge_agent_session_reset(
                     user_id,
                     provider=BRIDGE_DISCORD,
-                    scope_chat_id=int(message.channel.id),
+                    scope_chat_id=_ch_id,
                     scope_thread_id=None,
                 )
                 await message.reply(
-                    "Konversationsverlauf für diesen Kanal geleert." if ok else "Es war kein gespeicherter Verlauf vorhanden."
+                    "Konversationsverlauf geleert (Workspace-/Agent-Bindung bleibt)."
+                    if ok
+                    else "Es war kein gespeicherter Verlauf vorhanden."
                 )
                 return
-            author_id = str(message.author.id)
-            linked = db.user_id_tenant_for_discord_global(author_id)
-            if linked is None:
-                await message.reply(
-                    "Your Discord account is not linked in AgentLayer (or the link is ambiguous). "
-                    "Open the web app → **Settings → Connections** → save your numeric Discord user ID."
-                )
-                return
-            user_id, tenant_id = linked
+
             logger.info(
                 "discord_bridge: chat request (discord_user_id=%s, agentlayer_user=%s, model=%s)",
                 author_id,
@@ -212,10 +218,24 @@ def _make_client(cfg: _BridgeCfg) -> discord.Client:
                 user_id,
                 tenant_id,
                 provider=BRIDGE_DISCORD,
-                scope_chat_id=int(message.channel.id),
+                scope_chat_id=_ch_id,
                 scope_thread_id=None,
                 model=cfg.model,
             )
+            slash_reply = bridge_try_slash_command(
+                prompt,
+                user_id=user_id,
+                provider=BRIDGE_DISCORD,
+                scope_chat_id=_ch_id,
+                scope_thread_id=None,
+            )
+            if slash_reply is not None:
+                parts_sl = _chunk_text(slash_reply, limit=1900)
+                await message.reply(parts_sl[0])
+                for part_sl in parts_sl[1:]:
+                    await message.channel.send(part_sl)
+                return
+
             msg_list = messages_for_bridge_completion(
                 user_id, conv_id, new_user_text=prompt
             )
@@ -230,6 +250,14 @@ def _make_client(cfg: _BridgeCfg) -> discord.Client:
                 "messages": msg_list,
                 "stream": False,
             }
+            work.update(
+                bridge_chat_completion_extras(
+                    user_id,
+                    provider=BRIDGE_DISCORD,
+                    scope_chat_id=_ch_id,
+                    scope_thread_id=None,
+                )
+            )
             role = db.user_role(user_id).lower()
             bearer_role = role if role in ("user", "admin") else None
             id_token = set_identity(tenant_id, user_id)
@@ -265,20 +293,19 @@ def _make_client(cfg: _BridgeCfg) -> discord.Client:
 
 
 def _worker() -> None:
-    global _last_idle_log_m
+    global _logged_idle_reason
     while not _stop.is_set():
         cfg, idle_reason = _load_bridge_cfg_with_reason()
         if cfg is None:
-            now = time.monotonic()
-            if now - _last_idle_log_m >= 60.0:
-                logger.warning(
+            if idle_reason != _logged_idle_reason:
+                logger.info(
                     "discord_bridge: not connecting to Discord — %s",
                     idle_reason,
                 )
-                _last_idle_log_m = now
+                _logged_idle_reason = idle_reason
             time.sleep(12)
             continue
-        _last_idle_log_m = 0.0
+        _logged_idle_reason = None
         logger.info(
             "discord_bridge: connecting to Discord (message prefix=%r, model=%s)",
             cfg.prefix,
