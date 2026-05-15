@@ -38,6 +38,8 @@ export type SessionRuntimePayload = {
     servers: McpServerRuntime[];
     config_error?: string;
     error?: string;
+    /** ``workspace`` when status used per-workspace MCP JSON from the DB row. */
+    scope?: "global" | "workspace";
   };
 };
 
@@ -73,11 +75,52 @@ export function addUsageTotals(prev: TokenUsageTotals, usage: unknown): TokenUsa
 }
 
 export async function fetchSessionRuntime(
-  auth: Pick<AuthContextValue, "accessToken" | "refresh">
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">,
+  workspaceId?: string | null
 ): Promise<SessionRuntimePayload | null> {
-  const r = await apiFetch("/v1/session/runtime", auth);
+  const wid = typeof workspaceId === "string" ? workspaceId.trim() : "";
+  const qs = wid ? `?workspace_id=${encodeURIComponent(wid)}` : "";
+  const r = await apiFetch(`/v1/session/runtime${qs}`, auth);
   if (!r.ok) return null;
   return r.json() as Promise<SessionRuntimePayload>;
+}
+
+export type WorkspaceApiRecord = {
+  id: string;
+  owner_user_id: string;
+  name: string;
+  path: string;
+  source: string;
+  git_url: string | null;
+  git_branch: string;
+  access_role: "owner" | "editor" | "viewer";
+  created_at: string | null;
+  updated_at: string | null;
+  verify_command?: string | null;
+  verify_required?: boolean;
+  mcp_stdio_servers?: Array<Record<string, unknown>> | null;
+};
+
+export async function patchWorkspace(
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">,
+  workspaceId: string,
+  body: Record<string, unknown>
+): Promise<{ ok: true; workspace: WorkspaceApiRecord } | { ok: false; error: string }> {
+  const r = await apiFetch(`/v1/workspaces/${encodeURIComponent(workspaceId)}`, auth, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) {
+    const j = (await r.json().catch(() => ({}))) as { detail?: unknown };
+    const d = j.detail;
+    const msg =
+      typeof d === "string" ? d : Array.isArray(d) && d[0] && typeof (d[0] as { msg?: string }).msg === "string"
+        ? (d[0] as { msg: string }).msg
+        : `HTTP ${r.status}`;
+    return { ok: false, error: msg };
+  }
+  const j = (await r.json()) as { workspace: WorkspaceApiRecord };
+  return { ok: true, workspace: j.workspace };
 }
 
 /**

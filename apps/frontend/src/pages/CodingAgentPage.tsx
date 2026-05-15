@@ -34,34 +34,26 @@ import {
   fetchSessionRuntime,
   type SessionRuntimePayload,
   type TokenUsageTotals,
+  type WorkspaceApiRecord,
 } from "../lib/api";
 import { SessionRuntimeBar } from "../features/chat/SessionRuntimeBar";
 import { CodingWorkspacePanels } from "../features/workspace/CodingWorkspacePanels";
+import { WorkspaceMcpModal } from "../features/workspace/WorkspaceMcpModal";
 import {
   catalogOwnedByForModel,
   fetchModelCatalog,
   formatModelCatalogHint,
+  catalogModelOptionUnreachableTitle,
+  isCatalogModelOptionDisabled,
   modelOptionLabel,
+  type ModelCatalogAgentlayer,
   type ModelRow,
 } from "../lib/modelCatalog";
 
-type Workspace = {
-  id: string;
-  owner_user_id: string;
-  name: string;
-  path: string;
-  source: "manual" | "git";
-  git_url: string | null;
-  git_branch: string;
-  access_role: "owner" | "editor" | "viewer";
-  created_at: string;
-  updated_at: string;
-};
-
-async function fetchWorkspaces(auth: ReturnType<typeof useAuth>) {
+async function fetchWorkspaces(auth: ReturnType<typeof useAuth>): Promise<WorkspaceApiRecord[]> {
   const r = await apiFetch("/v1/workspaces", auth);
   if (!r.ok) return [];
-  const j = (await r.json()) as { workspaces: Workspace[] };
+  const j = (await r.json()) as { workspaces: WorkspaceApiRecord[] };
   return j.workspaces ?? [];
 }
 
@@ -79,7 +71,7 @@ async function createWorkspace(auth: ReturnType<typeof useAuth>, name: string, g
     const err = (await r.json().catch(() => ({}))) as { detail?: string };
     throw new Error(err.detail ?? "Failed to create workspace");
   }
-  const j = (await r.json()) as { workspace: Workspace };
+  const j = (await r.json()) as { workspace: WorkspaceApiRecord };
   return j.workspace;
 }
 
@@ -413,10 +405,11 @@ export function CodingAgentPage() {
   const [modelRows, setModelRows] = useState<ModelRow[]>([]);
   const [modelsCatalogReady, setModelsCatalogReady] = useState(false);
   const [modelsCatalogHint, setModelsCatalogHint] = useState<string | null>(null);
+  const [modelCatalogAgentlayer, setModelCatalogAgentlayer] = useState<ModelCatalogAgentlayer | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [selectedOptions, setSelectedOptions] = useState<Map<string, { proposal: Proposal; option: ProposalOption }>>(new Map());
 
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [workspaces, setWorkspaces] = useState<WorkspaceApiRecord[]>([]);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
   const [workspacesLoading, setWorkspacesLoading] = useState(false);
   const [showCreateWorkspace, setShowCreateWorkspace] = useState(false);
@@ -428,6 +421,7 @@ export function CodingAgentPage() {
   const [implBranchPreference, setImplBranchPreferenceState] = useState<ImplBranchPreference>("ask");
   const [sessionRuntime, setSessionRuntime] = useState<SessionRuntimePayload | null>(null);
   const [tokenUsage, setTokenUsage] = useState<TokenUsageTotals>(() => emptyTokenUsage());
+  const [showWorkspaceMcpModal, setShowWorkspaceMcpModal] = useState(false);
 
   const setImplBranchPreference = useCallback(
     (v: ImplBranchPreference) => {
@@ -453,13 +447,13 @@ export function CodingAgentPage() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const r = await fetchSessionRuntime(auth);
+      const r = await fetchSessionRuntime(auth, selectedWorkspaceId);
       if (!cancelled) setSessionRuntime(r);
     })();
     return () => {
       cancelled = true;
     };
-  }, [auth]);
+  }, [auth, selectedWorkspaceId]);
 
   const applyCodingSessionMode = useCallback(
     (m: CodingSessionMode) => {
@@ -507,10 +501,12 @@ export function CodingAgentPage() {
         const { rows, agentlayer } = await fetchModelCatalog();
         if (cancelled) return;
         setModelRows(rows);
-        setModelsCatalogHint(formatModelCatalogHint(agentlayer));
+        setModelCatalogAgentlayer(agentlayer);
+        setModelsCatalogHint(formatModelCatalogHint(agentlayer, { excludeUnreachableProviderHints: true }));
       } catch {
         if (!cancelled) {
           setModelRows([]);
+          setModelCatalogAgentlayer(null);
           setModelsCatalogHint("Could not load model catalog.");
         }
       } finally {
@@ -1288,7 +1284,23 @@ export function CodingAgentPage() {
                   ) : null}
                 </div>
                 <div className="flex min-w-0 flex-col gap-2 lg:border-l lg:border-surface-border lg:pl-4">
-                  <SessionRuntimeBar runtime={sessionRuntime} usage={tokenUsage} className="w-full" />
+                  <SessionRuntimeBar
+                    runtime={sessionRuntime}
+                    usage={tokenUsage}
+                    className="w-full"
+                    mcpAddon={
+                      selectedWorkspaceId && selectedWorkspace && selectedWorkspace.access_role !== "viewer" ? (
+                        <button
+                          type="button"
+                          className="ml-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded border border-white/15 px-1 text-[11px] font-medium text-sky-300/95 hover:bg-white/10"
+                          title="Edit MCP servers for this workspace only"
+                          onClick={() => setShowWorkspaceMcpModal(true)}
+                        >
+                          +
+                        </button>
+                      ) : null
+                    }
+                  />
                   <div className="w-full">
                     <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
                       Model
@@ -1304,11 +1316,19 @@ export function CodingAgentPage() {
                       ) : modelRows.length === 0 ? (
                         <option value="">{modelsCatalogHint ?? "No models available."}</option>
                       ) : (
-                        modelRows.map((row) => (
-                          <option key={`${row.owned_by ?? "ollama"}:${row.id}`} value={row.id}>
-                            {modelOptionLabel(row)}
-                          </option>
-                        ))
+                        modelRows.map((row) => {
+                          const catalogDown = isCatalogModelOptionDisabled(row, modelCatalogAgentlayer);
+                          return (
+                            <option
+                              key={`${row.owned_by ?? "ollama"}:${row.id}`}
+                              value={row.id}
+                              disabled={catalogDown}
+                              title={catalogDown ? catalogModelOptionUnreachableTitle(row, modelCatalogAgentlayer) : undefined}
+                            >
+                              {modelOptionLabel(row)}
+                            </option>
+                          );
+                        })
                       )}
                     </select>
                     {modelsCatalogReady && modelsCatalogHint ? (
@@ -1493,6 +1513,26 @@ export function CodingAgentPage() {
           </>
         )}
       </main>
+      {showWorkspaceMcpModal && selectedWorkspaceId && selectedWorkspace ? (
+        <WorkspaceMcpModal
+          open={showWorkspaceMcpModal}
+          onClose={() => setShowWorkspaceMcpModal(false)}
+          auth={auth}
+          workspaceId={selectedWorkspaceId}
+          workspaceName={selectedWorkspace.name}
+          workspacePath={selectedWorkspace.path}
+          initialServers={selectedWorkspace.mcp_stdio_servers}
+          onSaved={async () => {
+            try {
+              const ws = await fetchWorkspaces(auth);
+              setWorkspaces(ws);
+              setSessionRuntime(await fetchSessionRuntime(auth, selectedWorkspaceId));
+            } catch {
+              /* ignore */
+            }
+          }}
+        />
+      ) : null}
     </div>
   );
 }

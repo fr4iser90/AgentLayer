@@ -1,18 +1,22 @@
+import type { ReactNode } from "react";
 import type { SessionRuntimePayload, TokenUsageTotals } from "../../lib/api";
 
 type Props = {
   runtime: SessionRuntimePayload | null;
   usage: TokenUsageTotals;
   className?: string;
+  /** e.g. a &quot;+&quot; control to edit workspace-scoped MCP (parent owns modal). */
+  mcpAddon?: ReactNode;
 };
 
-export function SessionRuntimeBar({ runtime, usage, className = "" }: Props) {
+export function SessionRuntimeBar({ runtime, usage, className = "", mcpAddon }: Props) {
   const mcp = runtime?.mcp;
   const hasUsage = usage.total > 0 || usage.rounds > 0;
   if (!mcp && !hasUsage) return null;
 
   const servers = mcp?.servers ?? [];
   const connected = servers.filter((s) => s.connected).length;
+  const scope = mcp?.scope;
 
   return (
     <div
@@ -20,6 +24,15 @@ export function SessionRuntimeBar({ runtime, usage, className = "" }: Props) {
     >
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
         <span className="font-semibold uppercase tracking-wide text-surface-muted">MCP</span>
+        {scope === "workspace" ? (
+          <span
+            className="rounded border border-sky-500/35 bg-sky-950/40 px-1 py-0.5 text-[9px] font-medium uppercase tracking-wide text-sky-200/90"
+            title="Using MCP servers stored on this workspace (not global env only)."
+          >
+            workspace
+          </span>
+        ) : null}
+        {mcpAddon ? <span className="flex items-center">{mcpAddon}</span> : null}
         {!mcp ? (
           <span className="text-neutral-500">—</span>
         ) : !mcp.enabled ? (

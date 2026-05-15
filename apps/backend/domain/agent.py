@@ -2276,7 +2276,6 @@ async def chat_completion(
             not plain_completion
             and agent_id
             and agent_id in config.AGENT_MCP_AGENT_IDS
-            and config.AGENT_MCP_ENABLED
         ):
             try:
                 from apps.backend.infrastructure.mcp_runtime import gather_mcp_chat_tool_specs_async

@@ -109,6 +109,37 @@ def load_mcp_stdio_servers() -> list[McpStdioServer]:
     return _parse_servers_payload(data)
 
 
+def _workspace_mcp_stdio_dicts() -> list[dict[str, Any]] | None:
+    """Non-empty list from :func:`apps.backend.domain.identity.get_workspace` → workspace-only MCP."""
+    from apps.backend.domain.identity import get_workspace
+
+    ws = get_workspace()
+    if not isinstance(ws, dict):
+        return None
+    raw = ws.get("mcp_stdio_servers")
+    if isinstance(raw, list) and len(raw) > 0:
+        return list(raw)
+    return None
+
+
+def _mcp_stdio_servers_effective() -> list[McpStdioServer]:
+    """Workspace JSON (non-empty) replaces global ``AGENT_MCP_*`` for the current chat identity."""
+    wr = _workspace_mcp_stdio_dicts()
+    if wr is not None:
+        try:
+            return _parse_servers_payload(wr)
+        except Exception as e:
+            logger.warning("workspace MCP config invalid: %s", e)
+            return []
+    if not _cfg.AGENT_MCP_ENABLED:
+        return []
+    try:
+        return load_mcp_stdio_servers()
+    except Exception as e:
+        logger.warning("MCP server config invalid: %s", e)
+        return []
+
+
 def _mcp_import_ok() -> bool:
     try:
         import mcp  # noqa: F401
@@ -193,22 +224,28 @@ async def _call_tool_on_server(
                 return _serialize_call_tool_result(result)
 
 
-async def mcp_runtime_status() -> dict[str, Any]:
+async def mcp_runtime_status(*, workspace_stdio: list[Any] | None = None) -> dict[str, Any]:
     """
     Lightweight status for HTTP/UI: whether MCP is configured, importable, and per-server health.
 
     ``connected`` means ``list_tools`` succeeded for that server (stdio subprocess came up).
+
+    When ``workspace_stdio`` is a non-empty list, health checks use only those servers (``scope`` = ``workspace``).
     """
+    has_ws = isinstance(workspace_stdio, list) and len(workspace_stdio) > 0
     out: dict[str, Any] = {
-        "enabled": bool(_cfg.AGENT_MCP_ENABLED),
+        "enabled": bool(_cfg.AGENT_MCP_ENABLED) or has_ws,
         "import_ok": _mcp_import_ok(),
         "agent_ids": list(_cfg.AGENT_MCP_AGENT_IDS),
         "servers": [],
+        "scope": "workspace" if has_ws else "global",
     }
-    if not out["enabled"] or not out["import_ok"]:
+    if not out["import_ok"]:
+        return out
+    if not has_ws and not _cfg.AGENT_MCP_ENABLED:
         return out
     try:
-        servers = load_mcp_stdio_servers()
+        servers = _parse_servers_payload(workspace_stdio) if has_ws else load_mcp_stdio_servers()
     except Exception as e:
         out["config_error"] = str(e)
         return out
@@ -233,13 +270,9 @@ async def mcp_runtime_status() -> dict[str, Any]:
 
 
 async def gather_mcp_chat_tool_specs_async() -> list[dict[str, Any]]:
-    if not _cfg.AGENT_MCP_ENABLED or not _mcp_import_ok():
+    if not _mcp_import_ok():
         return []
-    try:
-        servers = load_mcp_stdio_servers()
-    except Exception as e:
-        logger.warning("MCP server config invalid: %s", e)
-        return []
+    servers = _mcp_stdio_servers_effective()
     if not servers:
         return []
     max_tools = max(1, int(_cfg.AGENT_MCP_MAX_TOOLS))
@@ -286,10 +319,9 @@ async def _invoke_async(openai_fn_name: str, arguments: dict[str, Any]) -> str:
     if not parsed:
         return json.dumps({"ok": False, "error": "invalid MCP tool name"}, ensure_ascii=False)
     sid, tool_name = parsed
-    try:
-        servers = load_mcp_stdio_servers()
-    except Exception as e:
-        return json.dumps({"ok": False, "error": f"MCP config error: {e}"}, ensure_ascii=False)
+    servers = _mcp_stdio_servers_effective()
+    if not servers:
+        return json.dumps({"ok": False, "error": "MCP not configured"}, ensure_ascii=False)
     srv = next((s for s in servers if s.server_id == sid), None)
     if srv is None:
         return json.dumps(

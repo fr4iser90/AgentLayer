@@ -6,6 +6,7 @@ import logging
 import os
 import shutil
 from pathlib import Path
+import json
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -41,6 +42,7 @@ class WorkspaceUpdateBody(BaseModel):
     git_branch: str | None = None
     verify_command: str | None = None
     verify_required: bool | None = None
+    mcp_stdio_servers: list[dict[str, Any]] | None = None
 
 
 class ImplementationBranchBody(BaseModel):
@@ -67,6 +69,10 @@ def safe_resolve_under_workspace(root: Path, rel: str | None) -> Path:
 
 
 def _row_to_workspace(row: tuple) -> dict[str, Any]:
+    mcp_raw = row[12]
+    mcp_list: list[Any] | None = None
+    if isinstance(mcp_raw, list) and len(mcp_raw) > 0:
+        mcp_list = list(mcp_raw)
     return {
         "id": str(row[0]),
         "owner_user_id": str(row[1]),
@@ -80,6 +86,7 @@ def _row_to_workspace(row: tuple) -> dict[str, Any]:
         "updated_at": row[9].isoformat() if row[9] else None,
         "verify_command": row[10],
         "verify_required": bool(row[11]) if row[11] is not None else False,
+        "mcp_stdio_servers": mcp_list,
     }
 
 
@@ -100,7 +107,7 @@ def _get_self_workspace(user) -> dict[str, Any] | None:
             cur.execute(
                 """
                 SELECT id, owner_user_id, name, path, source, git_url, git_branch, access_role, created_at, updated_at,
-                       verify_command, verify_required
+                       verify_command, verify_required, mcp_stdio_servers_json
                 FROM project_workspaces
                 WHERE id = %s AND owner_user_id = %s
                 """,
@@ -123,7 +130,7 @@ async def list_workspaces(request: Request):
             cur.execute(
                 """
                 SELECT id, owner_user_id, name, path, source, git_url, git_branch, access_role, created_at, updated_at,
-                       verify_command, verify_required
+                       verify_command, verify_required, mcp_stdio_servers_json
                 FROM project_workspaces
                 WHERE owner_user_id = %s
                 ORDER BY name ASC
@@ -178,7 +185,7 @@ async def get_workspace(request: Request, workspace_id: str):
             cur.execute(
                 """
                 SELECT id, owner_user_id, name, path, source, git_url, git_branch, access_role, created_at, updated_at,
-                       verify_command, verify_required
+                       verify_command, verify_required, mcp_stdio_servers_json
                 FROM project_workspaces
                 WHERE id = %s AND owner_user_id = %s
                 """,
@@ -224,7 +231,7 @@ async def update_workspace(request: Request, workspace_id: str, body: WorkspaceU
             cur.execute(
                 """
                 SELECT id, owner_user_id, name, path, source, git_url, git_branch, access_role, created_at, updated_at,
-                       verify_command, verify_required
+                       verify_command, verify_required, mcp_stdio_servers_json
                 FROM project_workspaces
                 WHERE id = %s AND owner_user_id = %s AND access_role IN ('owner', 'editor')
                 """,
@@ -256,6 +263,21 @@ async def update_workspace(request: Request, workspace_id: str, body: WorkspaceU
     if "verify_required" in patch and patch["verify_required"] is not None:
         updates.append("verify_required = %s")
         params.append(bool(patch["verify_required"]))
+    if "mcp_stdio_servers" in patch:
+        from apps.backend.infrastructure.mcp_runtime import _parse_servers_payload
+
+        mcp_val = patch["mcp_stdio_servers"]
+        if mcp_val is None or mcp_val == []:
+            updates.append("mcp_stdio_servers_json = NULL")
+        else:
+            if not isinstance(mcp_val, list):
+                raise HTTPException(status_code=400, detail="mcp_stdio_servers must be a JSON array or null")
+            try:
+                _parse_servers_payload(mcp_val)
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail=str(e)) from e
+            updates.append("mcp_stdio_servers_json = %s::jsonb")
+            params.append(json.dumps(mcp_val))
 
     if updates:
         params.append(workspace_id)
@@ -272,7 +294,7 @@ async def update_workspace(request: Request, workspace_id: str, body: WorkspaceU
             cur.execute(
                 """
                 SELECT id, owner_user_id, name, path, source, git_url, git_branch, access_role, created_at, updated_at,
-                       verify_command, verify_required
+                       verify_command, verify_required, mcp_stdio_servers_json
                 FROM project_workspaces WHERE id = %s
                 """,
                 (workspace_id,),

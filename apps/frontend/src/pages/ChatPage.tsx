@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { apiFetch, addUsageTotals, emptyTokenUsage, fetchAgents, fetchSessionRuntime, type AgentDefinition, type SessionRuntimePayload, type TokenUsageTotals } from "../lib/api";
+import { apiFetch, addUsageTotals, emptyTokenUsage, fetchAgents, fetchSessionRuntime, type AgentDefinition, type SessionRuntimePayload, type TokenUsageTotals, type WorkspaceApiRecord } from "../lib/api";
 import {
   catalogOwnedByForModel,
   fetchModelCatalog,
   formatModelCatalogHint,
+  catalogModelOptionUnreachableTitle,
+  isCatalogModelOptionDisabled,
   modelOptionLabel,
+  type ModelCatalogAgentlayer,
   type ModelRow,
 } from "../lib/modelCatalog";
 import {
@@ -59,6 +62,7 @@ import {
 import { getDisabledToolNames } from "../features/settings/toolPrefs";
 import { buildSidebarGroups } from "../features/chat/groupThreadsForSidebar";
 import { SessionRuntimeBar } from "../features/chat/SessionRuntimeBar";
+import { WorkspaceMcpModal } from "../features/workspace/WorkspaceMcpModal";
 
 const SUGGESTED = [
   "Show me a code snippet of a website's sticky header",
@@ -166,6 +170,7 @@ export function ChatPage() {
   const [modelRows, setModelRows] = useState<ModelRow[]>([]);
   const [modelsCatalogReady, setModelsCatalogReady] = useState(false);
   const [modelsCatalogHint, setModelsCatalogHint] = useState<string | null>(null);
+  const [modelCatalogAgentlayer, setModelCatalogAgentlayer] = useState<ModelCatalogAgentlayer | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [composerDragActive, setComposerDragActive] = useState(false);
   const [dashboardTitles, setDashboardTitles] = useState<Record<string, string>>({});
@@ -183,8 +188,9 @@ export function ChatPage() {
     [agents, isAdminUser]
   );
 
-  const [workspaces, setWorkspaces] = useState<{ id: string; name: string; path: string }[]>([]);
+  const [workspaces, setWorkspaces] = useState<WorkspaceApiRecord[]>([]);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
+  const [showWorkspaceMcpModal, setShowWorkspaceMcpModal] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
   const agentHandlerRef = useRef<(ev: MessageEvent) => void>(() => {});
@@ -199,6 +205,11 @@ export function ChatPage() {
     if (!e) return "there";
     return e.split("@")[0] ?? "there";
   }, [user?.email]);
+
+  const selectedWorkspace = useMemo(
+    () => workspaces.find((w) => w.id === selectedWorkspaceId) ?? null,
+    [workspaces, selectedWorkspaceId]
+  );
 
   const activeThread = useMemo(
     () => threads.find((t) => t.id === activeThreadId) ?? null,
@@ -224,10 +235,12 @@ export function ChatPage() {
         const { rows, agentlayer } = await fetchModelCatalog();
         if (cancelled) return;
         setModelRows(rows);
-        setModelsCatalogHint(formatModelCatalogHint(agentlayer));
+        setModelCatalogAgentlayer(agentlayer);
+        setModelsCatalogHint(formatModelCatalogHint(agentlayer, { excludeUnreachableProviderHints: true }));
       } catch {
         if (!cancelled) {
           setModelRows([]);
+          setModelCatalogAgentlayer(null);
           setModelsCatalogHint("Could not load model catalog.");
         }
       } finally {
@@ -263,13 +276,16 @@ export function ChatPage() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const r = await fetchSessionRuntime(auth);
+      const agent = visibleAgents.find((a) => a.id === selectedAgentId);
+      const wsParam =
+        agent?.requires_workspace && selectedWorkspaceId ? selectedWorkspaceId : null;
+      const r = await fetchSessionRuntime(auth, wsParam);
       if (!cancelled) setSessionRuntime(r);
     })();
     return () => {
       cancelled = true;
     };
-  }, [auth]);
+  }, [auth, selectedAgentId, selectedWorkspaceId, visibleAgents]);
 
   useEffect(() => {
     if (!visibleAgents.length) return;
@@ -296,7 +312,7 @@ export function ChatPage() {
       try {
         const r = await apiFetch("/v1/workspaces", auth);
         if (!r.ok || cancelled) return;
-        const j = (await r.json()) as { workspaces?: { id: string; name: string; path: string }[] };
+        const j = (await r.json()) as { workspaces?: WorkspaceApiRecord[] };
         if (cancelled) return;
         setWorkspaces(j.workspaces ?? []);
         if ((j.workspaces?.length ?? 0) > 0) {
@@ -1139,7 +1155,26 @@ export function ChatPage() {
               </p>
             </div>
             <div className="flex min-w-0 flex-col gap-2 lg:border-l lg:border-surface-border lg:pl-4">
-              <SessionRuntimeBar runtime={sessionRuntime} usage={tokenUsage} className="w-full" />
+              <SessionRuntimeBar
+                runtime={sessionRuntime}
+                usage={tokenUsage}
+                className="w-full"
+                mcpAddon={
+                  selectedWorkspaceId &&
+                  visibleAgents.find((a) => a.id === selectedAgentId)?.requires_workspace &&
+                  selectedWorkspace &&
+                  selectedWorkspace.access_role !== "viewer" ? (
+                    <button
+                      type="button"
+                      className="ml-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded border border-white/15 px-1 text-[11px] font-medium text-sky-300/95 hover:bg-white/10"
+                      title="Edit MCP servers for this workspace only"
+                      onClick={() => setShowWorkspaceMcpModal(true)}
+                    >
+                      +
+                    </button>
+                  ) : null
+                }
+              />
               <div className="w-full">
                 <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">Model</label>
                 <select
@@ -1153,11 +1188,19 @@ export function ChatPage() {
                   ) : modelRows.length === 0 ? (
                     <option value="">{modelsCatalogHint ?? "No models available."}</option>
                   ) : (
-                    modelRows.map((row) => (
-                      <option key={`${row.owned_by ?? "ollama"}:${row.id}`} value={row.id}>
-                        {modelOptionLabel(row)}
-                      </option>
-                    ))
+                    modelRows.map((row) => {
+                      const catalogDown = isCatalogModelOptionDisabled(row, modelCatalogAgentlayer);
+                      return (
+                        <option
+                          key={`${row.owned_by ?? "ollama"}:${row.id}`}
+                          value={row.id}
+                          disabled={catalogDown}
+                          title={catalogDown ? catalogModelOptionUnreachableTitle(row, modelCatalogAgentlayer) : undefined}
+                        >
+                          {modelOptionLabel(row)}
+                        </option>
+                      );
+                    })
                   )}
                 </select>
                 {modelsCatalogReady && modelsCatalogHint ? (
@@ -1424,6 +1467,32 @@ export function ChatPage() {
           </>
         )}
       </main>
+      {showWorkspaceMcpModal && selectedWorkspaceId && selectedWorkspace ? (
+        <WorkspaceMcpModal
+          open={showWorkspaceMcpModal}
+          onClose={() => setShowWorkspaceMcpModal(false)}
+          auth={auth}
+          workspaceId={selectedWorkspaceId}
+          workspaceName={selectedWorkspace.name}
+          workspacePath={selectedWorkspace.path}
+          initialServers={selectedWorkspace.mcp_stdio_servers}
+          onSaved={async () => {
+            try {
+              const r = await apiFetch("/v1/workspaces", auth);
+              if (r.ok) {
+                const j = (await r.json()) as { workspaces?: WorkspaceApiRecord[] };
+                setWorkspaces(j.workspaces ?? []);
+              }
+              const agent = visibleAgents.find((a) => a.id === selectedAgentId);
+              const wsParam =
+                agent?.requires_workspace && selectedWorkspaceId ? selectedWorkspaceId : null;
+              setSessionRuntime(await fetchSessionRuntime(auth, wsParam));
+            } catch {
+              /* ignore */
+            }
+          }}
+        />
+      ) : null}
     </div>
   );
 }
