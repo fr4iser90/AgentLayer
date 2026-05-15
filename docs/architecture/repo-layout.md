@@ -7,7 +7,7 @@ This repo uses a single tree with two roles:
 - **`apps/backend/`** — FastAPI service, domain logic, DB, integrations **code** (Python package `apps.backend.*`). This is what you ship, version, and deploy; it is not optional “content”.
 - **`apps/frontend/`** — Vite/React SPA built to `apps/frontend/dist`, served at `/app`.
 
-Set **`PYTHONPATH`** to the **repository root** (Docker: `/app`). Tool modules under **`plugins/tools/`** use explicit imports such as `from plugins.tools.agent…` (package `plugins` lives next to `apps` at the repo root).
+Set **`PYTHONPATH`** to the **repository root** (Docker: `/app`). Tool modules under **`plugins/tools/`** use explicit imports such as `from plugins.tools.capabilities…` / `from plugins.tools.integrations…` (package `plugins` lives next to `apps` at the repo root).
 
 ## Plug-and-play **content** (data & extensions)
 
@@ -26,4 +26,4 @@ These directories hold **bundles** you can add, fork, or omit without changing c
 ## Operations
 
 - **Docker** copies `apps/` and `plugins/` into the image; the UI build is copied to `apps/frontend/dist`.
-- **Compose** volume for user-created tools: `plugins/tools/agent/agent_created` → `/data/tools` by default (see `compose.yaml`).
+- **Compose** volume for user-created tools: `plugins/tools/agent_created` → `/data/tools` by default (see `compose.yaml`).

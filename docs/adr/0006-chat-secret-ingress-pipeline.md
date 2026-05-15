@@ -152,7 +152,7 @@ Implementation should touch (non-exhaustive):
 | Chat entry | `apps/backend/domain/agent.py` (`chat_completion`), WebSocket chat path in `apps/backend/api/chat_websocket.py` (or equivalent). |
 | Persistence | `apps/backend/infrastructure/conversations_db.py` — store **rewritten** user content for LLM replay; optional parallel `raw_digest` for audit if legally required (default: avoid storing raw). |
 | Tool logging | `apps/backend/infrastructure/db/db.py` (`log_tool_invocation`) — ensure placeholder args are logged; extend `tool_log_redact_keys` for any new key names. |
-| Operator apply | `plugins/tools/agent/core/operator_admin.py` — new resolver or extend `operator_settings_patch` to accept handles **instead of** raw strings when feature flag on. |
+| Operator apply | `plugins/tools/capabilities/platform/operator_admin.py` — new resolver or extend `operator_settings_patch` to accept handles **instead of** raw strings when feature flag on. |
 
 ### 9) Feature flags
 

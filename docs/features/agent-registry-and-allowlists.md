@@ -63,7 +63,7 @@ So: **declare domain + capabilities on the tool once**; agents and future orches
 ## Current built-in examples
 
 - **Coding / Coding (plan) / Security auditor:** `AGENT_TOOL_DOMAINS = ("coding", "project")` (+ optional `AGENT_TOOL_CAPABILITY_ANY`); plan and security auditor set `AGENT_STRICT_WORKSPACE`, `AGENT_CODING_TOOLS_PERMISSION_ASK`, `AGENT_DEDUPE_IDENTICAL_TOOL_CALLS`, and `AGENT_TOOL_DISCIPLINE_PRESET` as needed (see table above).
-- **Operator:** `AGENT_TOOL_CAPABILITY_ANY` in `plugins/agents/operator.py`; admin handlers live in `plugins/tools/agent/core/operator_admin.py` with `TOOL_DOMAIN = "operator"` and `operator.console` on each function.
+- **Operator:** `AGENT_TOOL_CAPABILITY_ANY` in `plugins/agents/operator.py`; admin handlers live in `plugins/tools/capabilities/platform/operator_admin.py` with `TOOL_DOMAIN = "operator"` and `operator.console` on each function.
 - **General:** `AGENT_TOOL_PATTERNS` in `plugins/agents/general.py` (broad catalog; domain-only would mix unrelated `meta` tools without finer splits).
 
 ## See also

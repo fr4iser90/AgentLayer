@@ -49,11 +49,11 @@ The Agent Layer loads Python tools from disk, exposes them to chat (Ollama-compa
 
 ### 5. Folder layout (convention)
 
-- `tools/agent/core/` — platform helpers (filesystem, secrets, tool factory).
-- `tools/agent/productivity/` — cross-cutting connectors (mail, calendar, todos).
-- `tools/agent/external/` — third-party HTTP APIs.
-- `tools/agent/knowledge/` — KB/RAG.
-- `tools/agent/domains/` — vertical demos; not generic “provider” connectors.
+- `plugins/tools/capabilities/` — coding, filesystem, knowledge, browser, platform (operator, scheduler, secrets, tool_factory, …), creative.
+- `plugins/tools/integrations/` — third-party HTTP APIs (GitHub, Gmail, weather, web search, …).
+- `plugins/tools/productivity/` — calendar, todos, shopping list, RSS, ideas, pets, ….
+- `plugins/tools/domains/` — vertical demos; not generic “provider” connectors.
+- `plugins/tools/agent_created/` — optional mount for dynamically created tools (`AGENT_TOOLS_EXTRA_DIR`).
 
 New connectors follow the same manifest fields; prefer **one generic IMAP** (presets) over N copy-paste modules when the protocol is identical.
 

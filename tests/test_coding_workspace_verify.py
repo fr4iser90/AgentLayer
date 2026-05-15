@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from plugins.tools.agent.core.coding.coding_workspace_verify import coding_workspace_verify
+from plugins.tools.capabilities.coding.coding_workspace_verify import coding_workspace_verify
 from apps.backend.domain.agent import _format_workspace_verify_recap
 
 

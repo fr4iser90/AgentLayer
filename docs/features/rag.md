@@ -19,7 +19,7 @@ The domain **`agentlayer_docs`** is **tenant-wide**: after an admin ingests docu
 
 - Service: `src/api/rag.py`
 - API router: `src/api/rag_api.py`
-- Tool: `tools/agent/knowledge/rag/rag.py` (search only)
+- Tool: `plugins/tools/capabilities/knowledge/rag/rag.py` (search only)
 - Tables: `rag_documents`, `rag_chunks` (`src/infrastructure/db/migrations/sql/schema.sql`)
 
 ## Config

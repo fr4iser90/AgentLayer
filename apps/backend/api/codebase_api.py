@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from apps.backend.core.config import config
 from apps.backend.infrastructure.auth import get_current_user, require_admin
 from apps.backend.infrastructure.code_index_qdrant import get_code_index
-from plugins.tools.agent.core.coding.coding_index_lib import (
+from plugins.tools.capabilities.coding.coding_index_lib import (
     _HAS_TS,
     _SUPPORTED_LANGUAGES,
     CodeIndex,

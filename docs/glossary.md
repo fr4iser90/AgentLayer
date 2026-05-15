@@ -13,7 +13,7 @@ tags: [glossary]
 
 ### Tool / Package / Handler
 
-- **Tool package**: one Python module folder under `tools/agent/**/<tool_id>/` exporting `TOOLS` + `HANDLERS`.
+- **Tool package**: one Python module (typically under `plugins/tools/**`) exporting `TOOLS` + `HANDLERS`.
 - **Handler**: Python function used to execute a specific tool call (name matches the `TOOLS[].function.name`).
 
 ### Capability

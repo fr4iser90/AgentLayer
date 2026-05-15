@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from plugins.tools.agent.core.coding.coding_search import coding_search
+from plugins.tools.capabilities.coding.coding_search import coding_search
 
 
 class TestCodingSearchEngines(unittest.TestCase):
@@ -18,7 +18,7 @@ class TestCodingSearchEngines(unittest.TestCase):
             (root / "a.py").write_text("hello_unique_marker_99\n", encoding="utf-8")
             ctx = {"workspace": {"id": "00000000-0000-0000-0000-000000000099", "path": str(root)}}
             with patch(
-                "plugins.tools.agent.core.coding.coding_search._global_config.AGENT_CODING_SEARCH_USE_RIPGREP",
+                "plugins.tools.capabilities.coding.coding_search._global_config.AGENT_CODING_SEARCH_USE_RIPGREP",
                 False,
             ):
                 out = coding_search({"query": "hello_unique_marker_99"}, context=ctx)

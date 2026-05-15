@@ -15,30 +15,18 @@ Tools are Python modules loaded from disk and exposed to the chat model in an Ol
 - Executor: `src/domain/tool_executor.py`
 - Tool runtime/policy: `src/domain/plugin_system/tools.py`
 
-Tool packages live under:
+Tool packages live under `plugins/tools/` (recursive scan), grouped for humans, for example:
 
-- `tools/agent/core/`
-- `tools/agent/productivity/`
-- `tools/agent/knowledge/`
-- `tools/agent/external/`
-- `tools/agent/domains/`
-
-## Tool package contract
-
-Each tool package exports:
-
-- `__version__`
-- `TOOL_ID`, `TOOL_DOMAIN`, `TOOL_LABEL`, `TOOL_DESCRIPTION`
-- `TOOL_TRIGGERS` (keywords)
-- `TOOL_CAPABILITIES` (capability strings, see ADR 0002)
-- `HANDLERS`: mapping `tool_name -> callable`
-- `TOOLS`: list of OpenAI-style tool specs
+- `plugins/tools/capabilities/` — coding, filesystem, knowledge, browser, platform, creative
+- `plugins/tools/integrations/` — GitHub, Gmail, OpenWeather, web search, …
+- `plugins/tools/productivity/` — calendar, todos, shopping list, …
+- `plugins/tools/domains/` — fishing, survival, work, …
 
 Examples:
 
-- `tools/agent/knowledge/kb/kb.py`
-- `tools/agent/knowledge/rag/rag.py`
-- `tools/agent/knowledge/memory/memory.py`
+- `plugins/tools/capabilities/knowledge/kb/kb.py`
+- `plugins/tools/capabilities/knowledge/rag/rag.py`
+- `plugins/tools/capabilities/knowledge/memory/memory.py`
 
 ## Capabilities (routing + governance)
 

@@ -35,7 +35,7 @@ The model does not “own” memory: all data lives in Postgres, and retrieval i
 - Service:
   - `src/api/memory.py`
 - Tool:
-  - `tools/agent/knowledge/memory/memory.py`
+  - `plugins/tools/capabilities/knowledge/memory/memory.py`
 - Injection into chat:
   - `src/domain/agent.py` (`_inject_user_memory_context`)
 

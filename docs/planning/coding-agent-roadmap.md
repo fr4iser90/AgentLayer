@@ -232,10 +232,10 @@ Each phase should end with **manual smoke** + **one paragraph** in this doc or A
 | Planner / Runden / Rescue | `apps/backend/domain/agent.py` |
 | Tool args normalize | `apps/backend/domain/agent.py` |
 | Workspace / clone | `apps/backend/infrastructure/workspace_service.py`, `workspaces_api.py` |
-| Coding tools | `plugins/tools/agent/core/coding/` |
+| Coding tools | `plugins/tools/capabilities/coding/` |
 | Memory inject | `apps/backend/domain/agent.py::_inject_user_memory_context`, `apps/backend/api/memory.py` |
 | Agent registry | `apps/backend/domain/agent_registry.py`, `plugins/agents/*.py` |
-| Subagent / plan delegation | `plugins/tools/agent/core/coding/coding_task.py` (`run_plan_subagent`) |
+| Subagent / plan delegation | `plugins/tools/capabilities/coding/coding_task.py` (`run_plan_subagent`) |
 
 ---
 

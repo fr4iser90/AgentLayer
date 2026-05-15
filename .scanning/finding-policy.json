@@ -95,13 +95,13 @@
             },
             {
                 "rule_id": "B101",
-                "path_regex": ".*/(plugins/interfaces/discord/bot\\.py|apps/backend/integrations/discord_bridge\\.py|plugins/tools/agent/core/tool_factory/[^/]+\\.py)$",
+                "path_regex": ".*/(plugins/interfaces/discord/bot\\.py|apps/backend/integrations/discord_bridge\\.py|plugins/tools/capabilities/platform/tool_factory/[^/]+\\.py)$",
                 "message_regex": "Use of assert detected",
                 "reason": "Internal invariants or operator-only tool paths; not a production security boundary under python -O."
             },
             {
                 "rule_id": "B110",
-                "path_regex": ".*/(apps/backend/api/(chat_websocket|main)\\.py|apps/backend/domain/plugin_system/tool_policy\\.py|plugins/tools/agent/external/web_search/web_search\\.py|plugins/tools/agent/productivity/calendar/calendar_ics\\.py|plugins/tools/agent/productivity/gmail/gmail\\.py)$",
+                "path_regex": ".*/(apps/backend/api/(chat_websocket|main)\\.py|apps/backend/domain/plugin_system/tool_policy\\.py|plugins/tools/integrations/web_search/web_search\\.py|plugins/tools/productivity/calendar/calendar_ics\\.py|plugins/tools/integrations/gmail/gmail\\.py)$",
                 "message_regex": "Try, Except, Pass detected",
                 "reason": "Optional shutdown (incl. lifespan / bridge stop), best-effort parsing, or non-fatal cleanup; failures are logged where relevant or impact is benign."
             },
@@ -113,7 +113,7 @@
             },
             {
                 "rule_id": "B112",
-                "path_regex": ".*/plugins/tools/agent/productivity/gmail/gmail\\.py$",
+                "path_regex": ".*/plugins/tools/integrations/gmail/gmail\\.py$",
                 "message_regex": "Try, Except, Continue detected",
                 "reason": "Message iteration skips malformed parts; bounded IMAP parsing."
             },
@@ -137,13 +137,13 @@
             },
             {
                 "rule_id": "B105",
-                "path_regex": ".*/plugins/tools/agent/external/github/github\\.py$",
+                "path_regex": ".*/plugins/tools/integrations/github/github\\.py$",
                 "message_regex": "github_pat",
                 "reason": "User secret service_key name for stored PAT, not an embedded credential."
             },
             {
                 "rule_id": "B105",
-                "path_regex": ".*/plugins/tools/agent/productivity/gmail/gmail\\.py$",
+                "path_regex": ".*/plugins/tools/integrations/gmail/gmail\\.py$",
                 "message_regex": "gmail",
                 "reason": "Service key / tool domain identifier, not a password string."
             },
@@ -213,7 +213,7 @@
         "accepted_findings": [
             {
                 "rule_id": "py/path-injection",
-                "path_regex": ".*/plugins/tools/agent/core/tool_factory/(create_tool|_tool_factory_common)\\.py$",
+                "path_regex": ".*/plugins/tools/capabilities/platform/tool_factory/(create_tool|_tool_factory_common)\\.py$",
                 "message_regex": "user-provided|path depends",
                 "reason": "Paths resolved under configured tool roots (AGENT_TOOLS_EXTRA_DIR / image tools); authenticated admin/tool-governed surface, not arbitrary anonymous FS write."
             },
@@ -249,7 +249,7 @@
             },
             {
                 "rule_id": "py/incomplete-url-substring-sanitization",
-                "path_regex": ".*/plugins/tools/agent/productivity/calendar/calendar_ics\\.py$",
+                "path_regex": ".*/plugins/tools/productivity/calendar/calendar_ics\\.py$",
                 "message_regex": "calendar\\.google\\.com|substring",
                 "reason": "Allowlist-style host checks for ICS fetch policy; documented residual heuristic limitation."
             },

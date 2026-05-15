@@ -149,7 +149,7 @@ Names are **indicative**; align with `TOOL_ID` / plugin layout when implementing
 
 ## Tools today (allowlist)
 
-The operator’s tool surface is resolved from `plugins/agents/operator.py` (`AGENT_TOOL_CAPABILITY_ANY`, …) and `apps/backend/domain/agent_registry.py` (`get_agent`); admin handlers live in `plugins/tools/agent/core/operator_admin.py`:
+The operator’s tool surface is resolved from `plugins/agents/operator.py` (`AGENT_TOOL_CAPABILITY_ANY`, …) and `apps/backend/domain/agent_registry.py` (`get_agent`); admin handlers live in `plugins/tools/capabilities/platform/operator_admin.py`:
 
 | Tool | Role |
 |------|------|
@@ -166,9 +166,9 @@ The operator’s tool surface is resolved from `plugins/agents/operator.py` (`AG
 
 Implementation pointers:
 
-- Scheduler tools: `plugins/tools/agent/core/scheduler_jobs/scheduler_jobs.py`
-- RAG tool: `plugins/tools/agent/knowledge/rag/rag.py` (uses `operator_settings` for enable/top_k, etc.)
-- **Operator admin console:** `plugins/tools/agent/core/operator_admin.py` — `TOOL_MIN_ROLE = "admin"`, capability `operator.console`. Allowlist patterns: `operator_settings_*`, `operator_interfaces_*`, `operator_external_llm_*`, `admin_*`.
+- Scheduler tools: `plugins/tools/capabilities/platform/scheduler_jobs/scheduler_jobs.py`
+- RAG tool: `plugins/tools/capabilities/knowledge/rag/rag.py` (uses `operator_settings` for enable/top_k, etc.)
+- **Operator admin console:** `plugins/tools/capabilities/platform/operator_admin.py` — `TOOL_MIN_ROLE = "admin"`, capability `operator.console`. Allowlist patterns: `operator_settings_*`, `operator_interfaces_*`, `operator_external_llm_*`, `admin_*`.
 
 ### Operator admin console (implemented)
 
@@ -239,5 +239,5 @@ Optional later: per-integration narrow tools (`discord_bridge_set_enabled`, `tel
 - **Initial:** Documented current operator tools and planned tiers for Web-UI parity and secret-safe flows.
 - **Scope:** Clarified operator vs personal user settings (`/v1/user/profile`, `/v1/user/persona`) and recommended build order (tools vs UI vs personal).
 - **Admin audit:** Full `require_admin` HTTP inventory + `OperatorSettingsPatch` field groups + suggested Operator tool bundle mapping.
-- **Shipped:** `operator_admin` plugin module (`plugins/tools/agent/core/operator_admin.py`) with 26 tools; operator agent allowlist via capabilities (`plugins/agents/operator.py`).
+- **Shipped:** `operator_admin` plugin module (`plugins/tools/capabilities/platform/operator_admin.py`) with 26 tools; operator agent allowlist via capabilities (`plugins/agents/operator.py`).
 - **Proposed:** Chat secret ingress — [`docs/adr/0006-chat-secret-ingress-pipeline.md`](../adr/0006-chat-secret-ingress-pipeline.md).

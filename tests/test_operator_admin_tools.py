@@ -1,4 +1,4 @@
-"""Smoke tests for ``plugins/tools/agent/core/operator_admin.py``."""
+"""Smoke tests for ``plugins/tools/capabilities/platform/operator_admin.py``."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ def admin_uid() -> uuid.UUID:
 
 
 def test_operator_settings_get_requires_admin_identity(admin_uid: uuid.UUID) -> None:
-    from plugins.tools.agent.core import operator_admin as oa
+    from plugins.tools.capabilities.platform import operator_admin as oa
 
     with patch.object(oa, "get_identity", return_value=(1, admin_uid)):
         with patch.object(oa.db, "user_role", return_value="user"):
@@ -27,7 +27,7 @@ def test_operator_settings_get_requires_admin_identity(admin_uid: uuid.UUID) -> 
 
 
 def test_operator_settings_get_ok_when_admin(admin_uid: uuid.UUID) -> None:
-    from plugins.tools.agent.core import operator_admin as oa
+    from plugins.tools.capabilities.platform import operator_admin as oa
 
     fake_settings = {"discord_bot_enabled": False}
     fake_if = {"agent_mode": "sandbox"}

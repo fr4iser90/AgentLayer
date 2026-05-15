@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from plugins.tools.agent.core.coding.coding_git_read import coding_git_read
+from plugins.tools.capabilities.coding.coding_git_read import coding_git_read
 
 
 def _have_git() -> bool:
