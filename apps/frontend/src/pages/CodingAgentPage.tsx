@@ -27,7 +27,15 @@ import {
   type Proposal,
   type ProposalOption,
 } from "../lib/proposalParser";
-import { apiFetch } from "../lib/api";
+import {
+  addUsageTotals,
+  apiFetch,
+  emptyTokenUsage,
+  fetchSessionRuntime,
+  type SessionRuntimePayload,
+  type TokenUsageTotals,
+} from "../lib/api";
+import { SessionRuntimeBar } from "../features/chat/SessionRuntimeBar";
 import { CodingWorkspacePanels } from "../features/workspace/CodingWorkspacePanels";
 import {
   catalogOwnedByForModel,
@@ -418,6 +426,8 @@ export function CodingAgentPage() {
   const [sessionMode, setSessionMode] = useState<CodingSessionMode>("build");
   const [permAsk, setPermAsk] = useState<PermAskGate | null>(null);
   const [implBranchPreference, setImplBranchPreferenceState] = useState<ImplBranchPreference>("ask");
+  const [sessionRuntime, setSessionRuntime] = useState<SessionRuntimePayload | null>(null);
+  const [tokenUsage, setTokenUsage] = useState<TokenUsageTotals>(() => emptyTokenUsage());
 
   const setImplBranchPreference = useCallback(
     (v: ImplBranchPreference) => {
@@ -439,6 +449,17 @@ export function CodingAgentPage() {
     const raw = localStorage.getItem(codingModeStorageKey(userId, activeThreadId));
     setSessionMode(raw === "plan" ? "plan" : "build");
   }, [userId, activeThreadId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const r = await fetchSessionRuntime(auth);
+      if (!cancelled) setSessionRuntime(r);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [auth]);
 
   const applyCodingSessionMode = useCallback(
     (m: CodingSessionMode) => {
@@ -669,6 +690,7 @@ export function CodingAgentPage() {
 
     setError(null);
     setLoading(true);
+    setTokenUsage(emptyTokenUsage());
     const firstUser = t.messages.length === 0;
     const nextMessages: UiMessage[] = [...t.messages, { role: "user", content: userContent }];
     const nextTitle = firstUser ? draft.slice(0, 52) : t.title;
@@ -705,7 +727,11 @@ export function CodingAgentPage() {
         if (typ === "error") { setError(typeof msg.detail === "string" ? msg.detail : "Agent error"); finish(); return; }
         if (typ === "chat.completion") {
           if (msg.error) { setError(typeof msg.detail === "string" ? msg.detail : "Cancelled or failed"); finish(); return; }
-          const content = assistantFromCompletion(msg.data);
+          const data = msg.data;
+          if (data && typeof data === "object" && "usage" in data) {
+            setTokenUsage((prev) => addUsageTotals(prev, (data as { usage?: unknown }).usage));
+          }
+          const content = assistantFromCompletion(data);
           const id = activeThreadIdRef.current;
           if (id && content) {
             setThreads((prev) => {
@@ -741,8 +767,15 @@ export function CodingAgentPage() {
           }
           return;
         }
-        if (typ === "agent.llm_round_start" || typ === "agent.llm_round") {
+        if (typ === "agent.llm_round_start") {
+          appendAgentLine("llm", msg.round != null ? `round ${msg.round} (start)` : "round (start)");
+          return;
+        }
+        if (typ === "agent.llm_round") {
           appendAgentLine("llm", msg.round != null ? `round ${msg.round}` : "round");
+          if (msg.usage != null) {
+            setTokenUsage((prev) => addUsageTotals(prev, msg.usage));
+          }
           return;
         }
         if (typ === "agent.tool_start") {
@@ -1232,12 +1265,12 @@ export function CodingAgentPage() {
           </div>
         ) : (
           <>
-            <div className="flex shrink-0 flex-col gap-2 border-b border-surface-border px-6 py-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-white">
-                  {activeThread?.title ?? "Coding session"}
-                </p>
-                <div className="mt-3">
+            <div className="shrink-0 border-b border-surface-border px-4 py-3 sm:px-6">
+              <p className="mb-2 truncate text-sm font-medium text-white">
+                {activeThread?.title ?? "Coding session"}
+              </p>
+              <div className="grid gap-3 lg:grid-cols-[1fr,17.5rem] lg:items-start">
+                <div className="min-w-0 space-y-2">
                   <CodingBuildPlanToggle
                     mode={sessionMode}
                     onChange={handleCodingSessionModeChange}
@@ -1254,28 +1287,35 @@ export function CodingAgentPage() {
                     />
                   ) : null}
                 </div>
-                <label className="mt-3 block text-xs text-surface-muted">Model</label>
-                <select
-                  className="mt-1 rounded-lg border border-surface-border bg-[#1a1a1a] px-3 py-2 text-sm text-neutral-100"
-                  value={activeThread?.model || defaultModel}
-                  onChange={(e) => setModel(e.target.value)}
-                  disabled={!modelsCatalogReady || modelRows.length === 0}
-                >
-                  {!modelsCatalogReady ? (
-                    <option value="">Loading models…</option>
-                  ) : modelRows.length === 0 ? (
-                    <option value="">{modelsCatalogHint ?? "No models available."}</option>
-                  ) : (
-                    modelRows.map((row) => (
-                      <option key={`${row.owned_by ?? "ollama"}:${row.id}`} value={row.id}>
-                        {modelOptionLabel(row)}
-                      </option>
-                    ))
-                  )}
-                </select>
-                {modelsCatalogReady && modelsCatalogHint ? (
-                  <p className="mt-1 text-xs text-amber-300/90">{modelsCatalogHint}</p>
-                ) : null}
+                <div className="flex min-w-0 flex-col gap-2 lg:border-l lg:border-surface-border lg:pl-4">
+                  <SessionRuntimeBar runtime={sessionRuntime} usage={tokenUsage} className="w-full" />
+                  <div className="w-full">
+                    <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+                      Model
+                    </label>
+                    <select
+                      className="mt-0.5 w-full rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100"
+                      value={activeThread?.model || defaultModel}
+                      onChange={(e) => setModel(e.target.value)}
+                      disabled={!modelsCatalogReady || modelRows.length === 0}
+                    >
+                      {!modelsCatalogReady ? (
+                        <option value="">Loading models…</option>
+                      ) : modelRows.length === 0 ? (
+                        <option value="">{modelsCatalogHint ?? "No models available."}</option>
+                      ) : (
+                        modelRows.map((row) => (
+                          <option key={`${row.owned_by ?? "ollama"}:${row.id}`} value={row.id}>
+                            {modelOptionLabel(row)}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                    {modelsCatalogReady && modelsCatalogHint ? (
+                      <p className="mt-1 text-xs text-amber-300/90">{modelsCatalogHint}</p>
+                    ) : null}
+                  </div>
+                </div>
               </div>
             </div>
 

@@ -93,6 +93,7 @@ from apps.backend.api.friends_api import router as friends_router
 from apps.backend.api.shares_api import router as shares_router
 from apps.backend.api.workspaces_api import router as workspaces_router
 from apps.backend.api.agents_api import router as agents_router
+from apps.backend.api.session_runtime_api import router as session_runtime_router
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"))
 install_log_redaction_filters()
@@ -235,6 +236,7 @@ app.include_router(studio_router)
 # app.include_router(scheduler_job_presets_user_router)
 app.include_router(project_runs_router)
 app.include_router(agents_router)
+app.include_router(session_runtime_router)
 app.include_router(friends_router)
 app.include_router(shares_router)
 app.include_router(workspaces_router)

@@ -2737,6 +2737,8 @@ async def chat_completion(
                     for tc in (tool_calls or [])
                     if isinstance(tc, dict)
                 ]
+                usage_raw = data.get("usage") if isinstance(data, dict) else None
+                usage_out = usage_raw if isinstance(usage_raw, dict) else None
                 await event_emit(
                     {
                         "type": "agent.llm_round",
@@ -2749,6 +2751,7 @@ async def chat_completion(
                             if isinstance(msg.get("content"), str)
                             else ""
                         ),
+                        **({"usage": usage_out} if usage_out is not None else {}),
                     }
                 )
 

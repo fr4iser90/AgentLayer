@@ -193,6 +193,45 @@ async def _call_tool_on_server(
                 return _serialize_call_tool_result(result)
 
 
+async def mcp_runtime_status() -> dict[str, Any]:
+    """
+    Lightweight status for HTTP/UI: whether MCP is configured, importable, and per-server health.
+
+    ``connected`` means ``list_tools`` succeeded for that server (stdio subprocess came up).
+    """
+    out: dict[str, Any] = {
+        "enabled": bool(_cfg.AGENT_MCP_ENABLED),
+        "import_ok": _mcp_import_ok(),
+        "agent_ids": list(_cfg.AGENT_MCP_AGENT_IDS),
+        "servers": [],
+    }
+    if not out["enabled"] or not out["import_ok"]:
+        return out
+    try:
+        servers = load_mcp_stdio_servers()
+    except Exception as e:
+        out["config_error"] = str(e)
+        return out
+    for srv in servers:
+        row: dict[str, Any] = {
+            "id": srv.server_id,
+            "command": srv.command,
+            "args": list(srv.args),
+            "cwd": srv.cwd,
+        }
+        try:
+            tools = await _list_tools_for_server(srv)
+            row["connected"] = True
+            row["tool_count"] = len(tools)
+            row["error"] = None
+        except Exception as e:
+            row["connected"] = False
+            row["tool_count"] = 0
+            row["error"] = str(e)[:500]
+        out["servers"].append(row)
+    return out
+
+
 async def gather_mcp_chat_tool_specs_async() -> list[dict[str, Any]]:
     if not _cfg.AGENT_MCP_ENABLED or not _mcp_import_ok():
         return []

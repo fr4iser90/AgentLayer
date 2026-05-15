@@ -20,6 +20,66 @@ export async function fetchAgents(auth: Pick<AuthContextValue, "accessToken" | "
   return r.json() as Promise<AgentDefinition[]>;
 }
 
+export type McpServerRuntime = {
+  id: string;
+  command: string;
+  args: string[];
+  cwd: string | null;
+  connected: boolean;
+  tool_count: number;
+  error: string | null;
+};
+
+export type SessionRuntimePayload = {
+  mcp: {
+    enabled: boolean;
+    import_ok: boolean;
+    agent_ids: string[];
+    servers: McpServerRuntime[];
+    config_error?: string;
+    error?: string;
+  };
+};
+
+export type TokenUsageTotals = {
+  prompt: number;
+  completion: number;
+  total: number;
+  rounds: number;
+};
+
+export const emptyTokenUsage = (): TokenUsageTotals => ({
+  prompt: 0,
+  completion: 0,
+  total: 0,
+  rounds: 0,
+});
+
+/** Merge OpenAI-style ``usage`` objects from ``agent.llm_round`` / ``chat.completion`` events. */
+export function addUsageTotals(prev: TokenUsageTotals, usage: unknown): TokenUsageTotals {
+  if (!usage || typeof usage !== "object") return prev;
+  const u = usage as Record<string, unknown>;
+  const p = Number(u.prompt_tokens ?? u.prompt ?? 0) || 0;
+  const c = Number(u.completion_tokens ?? u.completion ?? 0) || 0;
+  const stated = Number(u.total_tokens ?? u.total ?? 0) || 0;
+  const lineTotal = stated > 0 ? stated : p + c;
+  const bump = p > 0 || c > 0 || stated > 0;
+  return {
+    prompt: prev.prompt + p,
+    completion: prev.completion + c,
+    total: prev.total + lineTotal,
+    rounds: prev.rounds + (bump ? 1 : 0),
+  };
+}
+
+export async function fetchSessionRuntime(
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">
+): Promise<SessionRuntimePayload | null> {
+  const r = await apiFetch("/v1/session/runtime", auth);
+  if (!r.ok) return null;
+  return r.json() as Promise<SessionRuntimePayload>;
+}
+
 /**
  * Authenticated fetch with one retry after POST /auth/refresh on 401.
  */

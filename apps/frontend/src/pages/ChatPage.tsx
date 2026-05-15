@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { apiFetch, fetchAgents, type AgentDefinition } from "../lib/api";
+import { apiFetch, addUsageTotals, emptyTokenUsage, fetchAgents, fetchSessionRuntime, type AgentDefinition, type SessionRuntimePayload, type TokenUsageTotals } from "../lib/api";
 import {
   catalogOwnedByForModel,
   fetchModelCatalog,
@@ -58,6 +58,7 @@ import {
 } from "../features/chat/messageFormat";
 import { getDisabledToolNames } from "../features/settings/toolPrefs";
 import { buildSidebarGroups } from "../features/chat/groupThreadsForSidebar";
+import { SessionRuntimeBar } from "../features/chat/SessionRuntimeBar";
 
 const SUGGESTED = [
   "Show me a code snippet of a website's sticky header",
@@ -170,6 +171,8 @@ export function ChatPage() {
   const [dashboardTitles, setDashboardTitles] = useState<Record<string, string>>({});
   const [agents, setAgents] = useState<AgentDefinition[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("general");
+  const [sessionRuntime, setSessionRuntime] = useState<SessionRuntimePayload | null>(null);
+  const [tokenUsage, setTokenUsage] = useState<TokenUsageTotals>(() => emptyTokenUsage());
 
   const isAdminUser = (user?.role ?? "").toLowerCase() === "admin";
   const visibleAgents = useMemo(
@@ -251,6 +254,17 @@ export function ChatPage() {
       } catch {
         /* ignore */
       }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [auth]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const r = await fetchSessionRuntime(auth);
+      if (!cancelled) setSessionRuntime(r);
     })();
     return () => {
       cancelled = true;
@@ -536,6 +550,7 @@ export function ChatPage() {
 
     setError(null);
     setLoading(true);
+    setTokenUsage(emptyTokenUsage());
     const firstUser = t.messages.length === 0;
     const nextMessages: UiMessage[] = [...t.messages, { role: "user", content: userContent }];
     const nextTitle = firstUser ? titleFromFirstMessage(userContent) : t.title;
@@ -561,6 +576,9 @@ export function ChatPage() {
       if (!res.ok) {
         setError(String((data as { detail?: unknown }).detail ?? res.statusText));
         return;
+      }
+      if (data && typeof data === "object" && "usage" in data) {
+        setTokenUsage((prev) => addUsageTotals(prev, (data as { usage?: unknown }).usage));
       }
       const content = assistantFromCompletion(data);
       setThreads((prev) => {
@@ -625,6 +643,7 @@ export function ChatPage() {
 
     setError(null);
     setLoading(true);
+    setTokenUsage(emptyTokenUsage());
     const firstUser = t.messages.length === 0;
     const nextMessages: UiMessage[] = [...t.messages, { role: "user", content: userContent }];
     const nextTitle = firstUser ? titleFromFirstMessage(userContent) : t.title;
@@ -664,6 +683,9 @@ export function ChatPage() {
             return;
           }
           const data = msg.data;
+          if (data && typeof data === "object" && "usage" in data) {
+            setTokenUsage((prev) => addUsageTotals(prev, (data as { usage?: unknown }).usage));
+          }
           const content = assistantFromCompletion(data);
           const id = activeThreadIdRef.current;
           if (id && content) {
@@ -699,11 +721,19 @@ export function ChatPage() {
           }
           return;
         }
-        if (typ === "agent.llm_round_start" || typ === "agent.llm_round") {
+        if (typ === "agent.llm_round_start") {
+          const r = msg.round != null ? `round ${msg.round}` : "round";
+          appendAgentLine("llm", `${r} (start)`);
+          return;
+        }
+        if (typ === "agent.llm_round") {
           const r = msg.round != null ? `round ${msg.round}` : "round";
           const ex =
             msg.content_excerpt != null ? String(msg.content_excerpt).slice(0, 200) : "";
           appendAgentLine("llm", `${r}${ex ? ` — ${ex}` : ""}`);
+          if (msg.usage != null) {
+            setTokenUsage((prev) => addUsageTotals(prev, msg.usage));
+          }
           return;
         }
         if (typ === "agent.tool_start") {
@@ -1014,106 +1044,127 @@ export function ChatPage() {
           </div>
         ) : (
           <>
-        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-surface-border px-6 py-4">
-          <div className="min-w-0 flex-1">
-            <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <p className="truncate text-sm font-medium text-white">{activeThread?.title ?? "Chat"}</p>
-              {activeThread ? <DashboardChatVisibilityBadge thread={activeThread} /> : null}
-            </div>
-            <label className="mt-2 block text-xs text-surface-muted">Agent</label>
-            <select
-              className="mt-1 rounded-lg border border-surface-border bg-[#1a1a1a] px-3 py-2 text-sm text-neutral-100"
-              value={selectedAgentId}
-              onChange={(e) => setSelectedAgentId(e.target.value)}
-              disabled={!visibleAgents.length}
-            >
-              {!visibleAgents.length ? (
-                <option>Loading agents…</option>
-              ) : (
-                visibleAgents.map((ag) => (
-                  <option key={ag.id} value={ag.id}>
-                    {ag.icon} {ag.name}
-                  </option>
-                ))
-              )}
-            </select>
-            {(() => {
-              const agent = visibleAgents.find((a) => a.id === selectedAgentId);
-              if (!agent?.requires_workspace) return null;
-              return (
-                <>
-                  <label className="mt-2 block text-xs text-surface-muted">Workspace</label>
-                  {workspaces.length === 0 ? (
-                    <div className="mt-2 rounded-lg border border-surface-border bg-black/25 px-3 py-2.5">
-                      <p className="text-xs leading-snug text-surface-muted">
-                        No workspace yet. Create one on the Coding Agent page (manual folder or Git), then return here
-                        and pick it from the list.
-                      </p>
-                      <NavLink
-                        to="/coding-agent"
-                        className="mt-2 inline-flex items-center justify-center rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
-                      >
-                        Open Coding Agent
-                      </NavLink>
-                    </div>
-                  ) : (
-                    <select
-                      className="mt-1 rounded-lg border border-surface-border bg-[#1a1a1a] px-3 py-2 text-sm text-neutral-100"
-                      value={selectedWorkspaceId ?? ""}
-                      onChange={(e) => setSelectedWorkspaceId(e.target.value || null)}
-                    >
-                      {workspaces.map((ws) => (
-                        <option key={ws.id} value={ws.id}>
-                          {ws.name}
+        <div className="shrink-0 border-b border-surface-border px-4 py-3 sm:px-6">
+          <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
+            <p className="truncate text-sm font-medium text-white">{activeThread?.title ?? "Chat"}</p>
+            {activeThread ? <DashboardChatVisibilityBadge thread={activeThread} /> : null}
+          </div>
+          <div className="grid gap-3 lg:grid-cols-[1fr,17.5rem] lg:items-start">
+            <div className="min-w-0 space-y-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
+                <div className="min-w-0 flex-1 sm:min-w-[10rem] sm:max-w-[20rem]">
+                  <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+                    Agent
+                  </label>
+                  <select
+                    className="mt-0.5 w-full rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100"
+                    value={selectedAgentId}
+                    onChange={(e) => setSelectedAgentId(e.target.value)}
+                    disabled={!visibleAgents.length}
+                  >
+                    {!visibleAgents.length ? (
+                      <option>Loading agents…</option>
+                    ) : (
+                      visibleAgents.map((ag) => (
+                        <option key={ag.id} value={ag.id}>
+                          {ag.icon} {ag.name}
                         </option>
-                      ))}
-                    </select>
+                      ))
+                    )}
+                  </select>
+                </div>
+                {(() => {
+                  const agent = visibleAgents.find((a) => a.id === selectedAgentId);
+                  if (!agent?.requires_workspace) return null;
+                  if (workspaces.length === 0) return null;
+                  return (
+                    <div className="min-w-0 flex-1 sm:min-w-[10rem] sm:max-w-[20rem]">
+                      <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+                        Workspace
+                      </label>
+                      <select
+                        className="mt-0.5 w-full rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100"
+                        value={selectedWorkspaceId ?? ""}
+                        onChange={(e) => setSelectedWorkspaceId(e.target.value || null)}
+                      >
+                        {workspaces.map((ws) => (
+                          <option key={ws.id} value={ws.id}>
+                            {ws.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                })()}
+              </div>
+              {(() => {
+                const agent = visibleAgents.find((a) => a.id === selectedAgentId);
+                if (!agent?.requires_workspace) return null;
+                if (workspaces.length > 0) return null;
+                return (
+                  <div className="rounded-lg border border-surface-border bg-black/25 px-3 py-2">
+                    <p className="text-xs leading-snug text-surface-muted">
+                      No workspace yet. Create one on the Coding Agent page (manual folder or Git), then return here and
+                      pick it from the list.
+                    </p>
+                    <NavLink
+                      to="/coding-agent"
+                      className="mt-2 inline-flex items-center justify-center rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
+                    >
+                      Open Coding Agent
+                    </NavLink>
+                  </div>
+                );
+              })()}
+              {selectedAgentId === "coding" ? (
+                <p className="max-w-xl text-[11px] leading-snug text-sky-300/85">
+                  Tip: the model can call{" "}
+                  <code className="rounded bg-black/30 px-1 text-neutral-300">coding_task</code> with{" "}
+                  <code className="rounded bg-black/30 px-1 text-neutral-300">run_plan_subagent: true</code> to run a
+                  short read-only <span className="text-neutral-200">coding_plan</span> pass on this workspace; the
+                  tool JSON includes <code className="rounded bg-black/30 px-1 text-neutral-300">assistant_excerpt</code>.
+                </p>
+              ) : null}
+              {selectedAgentId === "coding_plan" ? (
+                <p className="max-w-xl text-[11px] leading-snug text-amber-200/90">
+                  Read-only agent: no write, shell, or patch tools. Choose{" "}
+                  <span className="text-neutral-200">Coding</span> to apply changes.
+                </p>
+              ) : null}
+              <p className="text-[10px] leading-snug text-surface-muted">
+                Titles from the first message. Open a shared chat: URL query{" "}
+                <code className="text-neutral-500">?c=&lt;id&gt;</code>. From Dashboards:{" "}
+                <code className="text-neutral-500">?dashboard=&lt;uuid&gt;</code> sends{" "}
+                <code className="text-neutral-500">agent_dashboard_context</code> to the agent.
+              </p>
+            </div>
+            <div className="flex min-w-0 flex-col gap-2 lg:border-l lg:border-surface-border lg:pl-4">
+              <SessionRuntimeBar runtime={sessionRuntime} usage={tokenUsage} className="w-full" />
+              <div className="w-full">
+                <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">Model</label>
+                <select
+                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100"
+                  value={model || defaultModel}
+                  onChange={(e) => setModel(e.target.value)}
+                  disabled={!modelsCatalogReady || modelRows.length === 0}
+                >
+                  {!modelsCatalogReady ? (
+                    <option value="">Loading models…</option>
+                  ) : modelRows.length === 0 ? (
+                    <option value="">{modelsCatalogHint ?? "No models available."}</option>
+                  ) : (
+                    modelRows.map((row) => (
+                      <option key={`${row.owned_by ?? "ollama"}:${row.id}`} value={row.id}>
+                        {modelOptionLabel(row)}
+                      </option>
+                    ))
                   )}
-                </>
-              );
-            })()}
-            {selectedAgentId === "coding" ? (
-              <p className="mt-2 max-w-xl text-[11px] leading-snug text-sky-300/85">
-                Tip: the model can call{" "}
-                <code className="rounded bg-black/30 px-1 text-neutral-300">coding_task</code> with{" "}
-                <code className="rounded bg-black/30 px-1 text-neutral-300">run_plan_subagent: true</code> to run a
-                short read-only <span className="text-neutral-200">coding_plan</span> pass on this workspace; the
-                tool JSON includes <code className="rounded bg-black/30 px-1 text-neutral-300">assistant_excerpt</code>.
-              </p>
-            ) : null}
-            {selectedAgentId === "coding_plan" ? (
-              <p className="mt-2 max-w-xl text-[11px] leading-snug text-amber-200/90">
-                Read-only agent: no write, shell, or patch tools. Choose <span className="text-neutral-200">Coding</span>{" "}
-                to apply changes.
-              </p>
-            ) : null}
-            <label className="mt-2 block text-xs text-surface-muted">Model</label>
-            <select
-              className="mt-1 rounded-lg border border-surface-border bg-[#1a1a1a] px-3 py-2 text-sm text-neutral-100"
-              value={model || defaultModel}
-              onChange={(e) => setModel(e.target.value)}
-              disabled={!modelsCatalogReady || modelRows.length === 0}
-            >
-              {!modelsCatalogReady ? (
-                <option value="">Loading models…</option>
-              ) : modelRows.length === 0 ? (
-                <option value="">{modelsCatalogHint ?? "No models available."}</option>
-              ) : (
-                modelRows.map((row) => (
-                  <option key={`${row.owned_by ?? "ollama"}:${row.id}`} value={row.id}>
-                    {modelOptionLabel(row)}
-                  </option>
-                ))
-              )}
-            </select>
-            {modelsCatalogReady && modelsCatalogHint ? (
-              <p className="mt-1 text-xs text-amber-300/90">{modelsCatalogHint}</p>
-            ) : null}
-            <p className="mt-1 text-xs text-surface-muted">
-              Titles from the first message. Open a shared chat: URL query <code className="text-neutral-500">?c=&lt;id&gt;</code>
-              . From Dashboards: <code className="text-neutral-500">?dashboard=&lt;uuid&gt;</code> sends{" "}
-              <code className="text-neutral-500">agent_dashboard_context</code> to the agent.
-            </p>
+                </select>
+                {modelsCatalogReady && modelsCatalogHint ? (
+                  <p className="mt-1 text-xs text-amber-300/90">{modelsCatalogHint}</p>
+                ) : null}
+              </div>
+            </div>
           </div>
         </div>
 

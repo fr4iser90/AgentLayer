@@ -20,7 +20,7 @@ Client → server JSON:
         ``permission_reply``. Ignored when there is no WebSocket ``control_queue`` (HTTP chat): tools run without an ask.
 
 Server → client JSON events (subset):
-  - ``agent.session``, ``agent.llm_round_start``, ``agent.llm_round``, ``agent.tool_start``,
+  - ``agent.session``, ``agent.llm_round_start``, ``agent.llm_round`` (optional ``usage`` when the LLM returns OpenAI-style token counts), ``agent.tool_start``,
     ``agent.tool_done``, ``agent.permission_ask``, ``agent.done``, ``agent.cancelled``
   - ``chat.completion`` — final OpenAI-shaped response (or error payload on failure)
 """
