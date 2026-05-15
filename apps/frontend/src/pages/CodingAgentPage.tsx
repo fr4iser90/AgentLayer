@@ -481,6 +481,8 @@ export function CodingAgentPage() {
 
   const wsRef = useRef<WebSocket | null>(null);
   const agentHandlerRef = useRef<(ev: MessageEvent) => void>(() => {});
+  /** User cancelled before the chat frame was sent (e.g. while WebSocket connects). */
+  const cancelAgentTurnRef = useRef(false);
   const activeThreadIdRef = useRef<string | null>(null);
   /** Prepended to the next user message after Plan→Build + server implementation-branch creation. */
   const implementationBranchPreambleRef = useRef<string | null>(null);
@@ -749,6 +751,8 @@ export function CodingAgentPage() {
     );
     setDraft("");
 
+    cancelAgentTurnRef.current = false;
+
     let finished = false;
     const finish = () => {
       if (finished) return;
@@ -865,6 +869,11 @@ export function CodingAgentPage() {
 
     try {
       const ws = await ensureAgentWs();
+      if (cancelAgentTurnRef.current) {
+        cancelAgentTurnRef.current = false;
+        finish();
+        return;
+      }
       const disabledTools = getDisabledToolNames();
       const toolBucket = sessionMode === "plan" ? CODING_PLAN_TOOL_NAMES : CODING_TOOLS;
       const enabledTools = toolBucket.filter((x) => !disabledTools.includes(x));
@@ -894,7 +903,21 @@ export function CodingAgentPage() {
     }
   }, [accessToken, activeThreadId, appendAgentLine, auth, defaultModel, draft, ensureAgentWs, modelRows, selectedWorkspaceId, sessionMode, threads]);
 
-  const onSend = () => { void runAgentWs(); };
+  const onSend = () => {
+    void runAgentWs();
+  };
+
+  const onCancelInFlight = useCallback(() => {
+    cancelAgentTurnRef.current = true;
+    const w = wsRef.current;
+    if (w?.readyState === WebSocket.OPEN) {
+      try {
+        w.send(JSON.stringify({ type: "cancel" }));
+      } catch {
+        /* ignore */
+      }
+    }
+  }, []);
 
   const handleSelectOption = useCallback(
     (proposal: Proposal, option: ProposalOption) => {
@@ -1562,14 +1585,24 @@ export function CodingAgentPage() {
                     }}
                   />
                   <div className="mt-2 flex items-center justify-end gap-2">
-                    <button
-                      type="button"
-                      disabled={!draft.trim() || loading || !selectedWorkspaceId}
-                      className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-40"
-                      onClick={() => onSend()}
-                    >
-                      {loading ? "…" : "Send"}
-                    </button>
+                    {loading ? (
+                      <button
+                        type="button"
+                        className="rounded-lg border border-amber-500/60 bg-amber-950/50 px-4 py-2 text-sm font-medium text-amber-100 hover:bg-amber-900/40"
+                        onClick={() => onCancelInFlight()}
+                      >
+                        Cancel
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={!draft.trim() || !selectedWorkspaceId}
+                        className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-40"
+                        onClick={() => onSend()}
+                      >
+                        Send
+                      </button>
+                    )}
                   </div>
                 </div>
 

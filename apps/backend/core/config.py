@@ -108,10 +108,10 @@ def _resolve_max_tool_rounds() -> int:
 MAX_TOOL_ROUNDS = _resolve_max_tool_rounds()
 # Phase 1 (coding-agent-roadmap): break identical tool failure loops (e.g. empty JSON / same parameter error).
 AGENT_TOOL_THRASH_ENABLED = _env_bool("AGENT_TOOL_THRASH_ENABLED", True)
-AGENT_TOOL_THRASH_STREAK_MAX = max(2, _env_int("AGENT_TOOL_THRASH_STREAK_MAX", 3))
-# Doom loop guard: same tool + same arguments repeated (any result). Default streak 3 is a common industry default.
+AGENT_TOOL_THRASH_STREAK_MAX = max(2, _env_int("AGENT_TOOL_THRASH_STREAK_MAX", 10))
+# Doom loop guard: same tool + same arguments repeated (any result). Default streak 10 is a common industry default.
 AGENT_TOOL_DOOM_LOOP_ENABLED = _env_bool("AGENT_TOOL_DOOM_LOOP_ENABLED", True)
-AGENT_TOOL_DOOM_LOOP_STREAK_MAX = max(2, _env_int("AGENT_TOOL_DOOM_LOOP_STREAK_MAX", 3))
+AGENT_TOOL_DOOM_LOOP_STREAK_MAX = max(2, _env_int("AGENT_TOOL_DOOM_LOOP_STREAK_MAX", 10))
 # Comma-separated tool names that do **not** participate in the doom-loop counter (idempotent reads / search).
 # Set to a single ``-`` to disable this exclusion (all tools count). Empty env = use the default list below.
 _DOOM_EXCL_ENV = os.environ.get("AGENT_TOOL_DOOM_LOOP_EXCLUDE")

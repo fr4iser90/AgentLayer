@@ -197,6 +197,10 @@ export function ChatPage() {
 
   const wsRef = useRef<WebSocket | null>(null);
   const agentHandlerRef = useRef<(ev: MessageEvent) => void>(() => {});
+  /** User cancelled before the chat frame was sent (e.g. while WebSocket connects). */
+  const cancelAgentTurnRef = useRef(false);
+  /** In-flight HTTP chat completion (stream or JSON). */
+  const chatAbortControllerRef = useRef<AbortController | null>(null);
   const activeThreadIdRef = useRef<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -644,6 +648,10 @@ export function ChatPage() {
     setDraft("");
     setPendingAttachments([]);
 
+    chatAbortControllerRef.current?.abort();
+    const chatAbort = new AbortController();
+    chatAbortControllerRef.current = chatAbort;
+
     try {
       const disabledTools = getDisabledToolNames();
       const catOb = catalogOwnedByForModel(modelRows, effectiveModel);
@@ -660,6 +668,7 @@ export function ChatPage() {
       const res = await apiFetch("/v1/chat/completions", auth, {
         method: "POST",
         body: JSON.stringify(payload),
+        signal: chatAbort.signal,
       });
       if (!res.ok) {
         let detail = res.statusText;
@@ -695,7 +704,11 @@ export function ChatPage() {
             );
           }
         } catch (streamErr) {
-          setError(streamErr instanceof Error ? streamErr.message : String(streamErr));
+          const aborted =
+            streamErr instanceof DOMException && streamErr.name === "AbortError";
+          if (!aborted) {
+            setError(streamErr instanceof Error ? streamErr.message : String(streamErr));
+          }
           return;
         }
         const reply = acc.trim() || "(empty)";
@@ -735,8 +748,14 @@ export function ChatPage() {
         return next;
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      const aborted = e instanceof DOMException && e.name === "AbortError";
+      if (!aborted) {
+        setError(e instanceof Error ? e.message : String(e));
+      }
     } finally {
+      if (chatAbortControllerRef.current === chatAbort) {
+        chatAbortControllerRef.current = null;
+      }
       setLoading(false);
     }
   }, [accessToken, activeThreadId, agentDashboardPayload, auth, defaultModel, draft, modelRows, pendingAttachments, patchThread, threads]);
@@ -792,6 +811,8 @@ export function ChatPage() {
     agentStreamEnabledThisTurnRef.current = getAgentStreamLlm();
     setDraft("");
     setPendingAttachments([]);
+
+    cancelAgentTurnRef.current = false;
 
     let finished = false;
     const finish = () => {
@@ -1017,6 +1038,11 @@ export function ChatPage() {
 
     try {
       const ws = await ensureAgentWs();
+      if (cancelAgentTurnRef.current) {
+        cancelAgentTurnRef.current = false;
+        finish();
+        return;
+      }
       const disabledTools = getDisabledToolNames();
       const catOb = catalogOwnedByForModel(modelRows, effectiveModel);
       ws.send(
@@ -1059,6 +1085,22 @@ export function ChatPage() {
   const onSend = () => {
     void (mode === "chat" ? runChatHttp() : runAgentWs());
   };
+
+  const onCancelInFlight = useCallback(() => {
+    if (mode === "chat") {
+      chatAbortControllerRef.current?.abort();
+      return;
+    }
+    cancelAgentTurnRef.current = true;
+    const w = wsRef.current;
+    if (w?.readyState === WebSocket.OPEN) {
+      try {
+        w.send(JSON.stringify({ type: "cancel" }));
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [mode]);
 
   const startNewChat = async () => {
     try {
@@ -1685,14 +1727,24 @@ export function ChatPage() {
                     <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
                   </svg>
                 </button>
-                <button
-                  type="button"
-                  disabled={!canSend}
-                  className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-40"
-                  onClick={() => onSend()}
-                >
-                  {loading ? "…" : "Send"}
-                </button>
+                {loading ? (
+                  <button
+                    type="button"
+                    className="rounded-lg border border-amber-500/60 bg-amber-950/50 px-4 py-2 text-sm font-medium text-amber-100 hover:bg-amber-900/40"
+                    onClick={() => onCancelInFlight()}
+                  >
+                    Cancel
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={!canSend}
+                    className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-40"
+                    onClick={() => onSend()}
+                  >
+                    Send
+                  </button>
+                )}
               </div>
             </div>
 

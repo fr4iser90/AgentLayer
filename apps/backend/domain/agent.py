@@ -635,11 +635,494 @@ def _normalize_tool_call_arguments(
     return out
 
 
-_AGENT_NEAR_MAX_TOOL_ROUNDS_REMINDER = (
-    "You are one step away from the server's **maximum tool rounds** for this reply. "
-    "On your **very next** assistant turn you must answer the user in **plain text only** (no tools): "
-    "summarize outcomes, quote brief tool errors if something failed, and say what to do next."
-)
+def _agent_tool_budget_system_message(max_rounds: int) -> str:
+    """Injected once per agent tool-loop request so models know the exact server cap."""
+    n = max(1, int(max_rounds))
+    if n <= 1:
+        return (
+            "## Tool-loop budget (server)\n\n"
+            "This reply allows **only one** tool-loop LLM round (one completion; optional tool_calls). "
+            "Use tools only if needed, then answer — the user can continue in a **new message** if more rounds are required."
+        )
+    return (
+        "## Tool-loop budget (server)\n\n"
+        f"- The server allows **at most {n}** tool-loop LLM rounds for this assistant reply (counting this completion).\n"
+        f"- **Round {n}** is **text-only**: the API omits `tools[]` — respond with **natural language only** "
+        "(no `tool_calls`). Either **summarize** prior tool outputs from the transcript **or** say clearly that "
+        "more exploration is needed and ask the user to send a **follow-up message** (new tool budget).\n"
+        f"- **Round {n - 1}** is the last round that receives tool definitions; plan tool use before then.\n"
+        "- Avoid empty `{}` tool JSON (often normalizes to identical calls and can trigger loop guards).\n\n"
+        "If work is unfinished, say so explicitly — the user may send a follow-up message."
+    )
+
+
+def _agent_near_max_tool_rounds_reminder(current_round: int, max_rounds: int) -> str:
+    """Shown the round before the final text-only round (requires max_rounds >= 3)."""
+    return (
+        f"You are in **LLM tool-loop round {current_round} of {max_rounds}**. "
+        f"The **next** round ({current_round + 1}) is the **last**; it will be **text-only** (no tools in the API). "
+        "Finish critical tool calls **this** round if you still need them, or prepare a complete plain-text "
+        "wrap-up on the next turn."
+    )
+
+
+def _agent_final_round_text_only_hint(current_round: int, max_rounds: int) -> str:
+    """Shown immediately before the final LLM call (no tools[])."""
+    return (
+        f"**Round {current_round} of {max_rounds}** — final tool-loop round: **no** `tools[]` will be sent. "
+        "Reply with **plain Markdown only** — the API **never** runs tools from prose. "
+        "**Never** write `<tool_call>`, `</tool_call>`, `<function=…>`, or similar XML.\n\n"
+        "**You must do exactly one of:**\n"
+        "(A) **Synthesize** everything useful from **existing** `tool` messages above (findings, errors, paths, "
+        "open questions, next steps for the user); **or**\n"
+        "(B) If the transcript is **not** enough to answer, say that plainly and tell the user to send **one new "
+        "message** to continue (a new request gets a fresh tool budget — you cannot call more tools in this reply).\n\n"
+        "Do not stall with vague intent to explore — either recap what you already have, or ask for a follow-up."
+    )
+
+
+def _assistant_plain_text_from_message(msg: dict[str, Any]) -> str:
+    return "\n".join(_text_blobs_from_message(msg)).strip()
+
+
+_TOOL_RECAP_HEADER = "## Tool transcript (server-extracted)"
+_ROUNDS_DIGEST_HEADER = "## LLM tool rounds (server-extracted)"
+
+
+def _tool_call_id_to_name_map(messages: list[dict[str, Any]]) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for m in messages:
+        if m.get("role") != "assistant":
+            continue
+        tcs = m.get("tool_calls")
+        if not isinstance(tcs, list):
+            continue
+        for tc in tcs:
+            if not isinstance(tc, dict):
+                continue
+            tid = str(tc.get("id") or "").strip()
+            fn = tc.get("function") or {}
+            nm = str(fn.get("name") or "").strip() if isinstance(fn, dict) else ""
+            if tid and nm:
+                out[tid] = nm
+    return out
+
+
+def _tool_call_id_to_args_recap_line(messages: list[dict[str, Any]], *, max_len: int = 400) -> dict[str, str]:
+    """Short, human-readable args from prior assistant ``tool_calls`` (by ``tool_call_id``).
+
+    Uses the same :func:`_normalize_tool_call_arguments` as execution so defaults (e.g.
+    ``coding_list_dir`` → ``path=.``) show up, and empty ``coding_glob`` shows
+    ``pattern=<missing>``.
+    """
+    out: dict[str, str] = {}
+    for m in messages:
+        if m.get("role") != "assistant":
+            continue
+        tcs = m.get("tool_calls")
+        if not isinstance(tcs, list):
+            continue
+        for tc in tcs:
+            if not isinstance(tc, dict):
+                continue
+            tid = str(tc.get("id") or "").strip()
+            fn = tc.get("function") if isinstance(tc.get("function"), dict) else {}
+            if not isinstance(fn, dict) or not tid:
+                continue
+            name = str(fn.get("name") or "").strip()
+            raw = fn.get("arguments")
+            if raw in (None, "", "{}") or (isinstance(raw, dict) and not raw):
+                if isinstance(tc.get("arguments"), (str, dict)) and tc.get("arguments") not in (None, ""):
+                    raw = tc.get("arguments")
+            args0 = _parse_tool_arguments(raw)
+            norm = _normalize_tool_call_arguments(name, dict(args0), m, messages, None)
+            out[tid] = _format_normalized_tool_args_for_recap(name, norm, max_len=max_len)
+    return out
+
+
+def _summarize_tool_json_body(raw: str, *, max_body: int) -> str:
+    s = (raw or "").strip()
+    if not s:
+        return "(empty)"
+    if not s.startswith("{"):
+        return s[:max_body] + ("…" if len(s) > max_body else "")
+
+    try:
+        o = json.loads(s)
+    except json.JSONDecodeError:
+        return s[:max_body] + ("…" if len(s) > max_body else "")
+    if not isinstance(o, dict):
+        return s[:max_body] + ("…" if len(s) > max_body else "")
+
+    meta: list[str] = []
+    if "ok" in o:
+        meta.append(f"ok={bool(o.get('ok'))}")
+    for key in ("path", "pattern", "query", "path_prefix", "operation", "search_engine"):
+        val = o.get(key)
+        if isinstance(val, str) and val.strip():
+            u = val.strip().replace("\n", " ")
+            if len(u) > 220:
+                u = u[:220] + "…"
+            meta.append(f"{key}={u}")
+    if "regex" in o and isinstance(o.get("regex"), bool):
+        meta.append(f"regex={bool(o.get('regex'))}")
+    ec = o.get("exit_code")
+    if isinstance(ec, int) or (isinstance(ec, str) and str(ec).strip().isdigit()):
+        meta.append(f"exit_code={ec}")
+    if isinstance(o.get("count"), int):
+        meta.append(f"count={o['count']}")
+    if isinstance(o.get("files_scanned"), int):
+        meta.append(f"files_scanned={o['files_scanned']}")
+    if isinstance(o.get("line_count_total"), int):
+        meta.append(f"line_count_total={o['line_count_total']}")
+    if o.get("truncated") is True or o.get("truncated_lines") is True:
+        meta.append("truncated=true")
+    if o.get("truncated_matches") is True:
+        meta.append("truncated_matches=true")
+    if o.get("truncated_scan") is True:
+        meta.append("truncated_scan=true")
+    err = o.get("error")
+    if isinstance(err, str) and err.strip():
+        meta.append("error=" + err.strip()[:480])
+    th = o.get("truncation_hint")
+    if isinstance(th, str) and th.strip():
+        u = th.strip().replace("\n", " ")
+        meta.append("hint=" + (u[:300] + "…" if len(u) > 300 else u))
+    if o.get("deduplicated") is True:
+        meta.append("deduplicated=true")
+    srv_note = o.get("message")
+    u = (srv_note if isinstance(srv_note, str) else "").strip()
+    dedup = o.get("deduplicated") is True
+    if dedup:
+        # Avoid repeating the same long boilerplate for every skipped parallel/loop call.
+        if u.startswith("Identical tool+arguments"):
+            previews_note = (
+                "server_note: _(skipped — identical tool+args; use the earlier matching result "
+                "in this transcript)_"
+            )
+        elif u:
+            previews_note = "server_note:\n" + (u if len(u) <= 400 else u[:400] + "…")
+        else:
+            previews_note = "server_note: _(skipped — identical tool+args)_"
+    elif u:
+        previews_note = "server_note:\n" + (u if len(u) <= 900 else u[:900] + "…")
+    else:
+        previews_note = ""
+
+    previews: list[str] = []
+    if previews_note:
+        previews.append(previews_note)
+
+    files = o.get("files")
+    if isinstance(files, list) and files:
+        names = [str(x).replace("\n", " ") for x in files[:45] if x is not None]
+        if names:
+            tail = len(files) - len(names)
+            head = ", ".join(names)
+            if tail > 0:
+                head += f" …(+{tail} more in payload)"
+            previews.append(f"files ({len(files)}): {head}")
+
+    entries = o.get("entries")
+    if isinstance(entries, list) and entries:
+        bits: list[str] = []
+        for ent in entries[:35]:
+            if not isinstance(ent, dict):
+                continue
+            p = str(ent.get("path") or ent.get("name") or "").strip()
+            if not p:
+                continue
+            suf = "/" if ent.get("is_dir") else ""
+            bits.append(p + suf)
+        if bits:
+            tail = len(entries) - len(bits)
+            line = ", ".join(bits)
+            if tail > 0:
+                line += f" …(+{tail} more entries)"
+            previews.append(f"listing: {line}")
+
+    matches = o.get("matches")
+    if isinstance(matches, list) and matches:
+        mlines: list[str] = []
+        for m in matches[:14]:
+            if not isinstance(m, dict):
+                continue
+            pth = str(m.get("path") or "").strip()
+            ln = m.get("line")
+            tx = m.get("text")
+            ts = tx.strip()[:180] + ("…" if isinstance(tx, str) and len(tx.strip()) > 180 else "") if isinstance(tx, str) else ""
+            if pth and isinstance(ln, int):
+                mlines.append(f"  {pth}:{ln}: {ts}".rstrip())
+            elif pth:
+                mlines.append(f"  {pth}: {ts}".rstrip())
+        if mlines:
+            tail = len(matches) - len(mlines)
+            block = "matches:\n" + "\n".join(mlines)
+            if tail > 0:
+                block += f"\n  …(+{tail} more matches)"
+            previews.append(block)
+
+    out_text = o.get("output")
+    if isinstance(out_text, str) and out_text.strip():
+        u = out_text.strip()
+        previews.append("output:\n" + (u if len(u) <= max_body - 80 else u[: max_body - 80] + "…"))
+
+    content = o.get("content")
+    if isinstance(content, str) and content.strip() and "path" in o:
+        u = content.strip()
+        cap = min(1600, max(200, max_body - 120))
+        previews.append(
+            "file_content:\n"
+            + (u if len(u) <= cap else u[:cap] + "…")
+        )
+
+    body = " | ".join(meta) if meta else ""
+    for p in previews:
+        if not p.strip():
+            continue
+        sep = "\n" if body else ""
+        if len(body) + len(sep) + len(p) > max_body:
+            room = max_body - len(body) - len(sep) - 1
+            if room > 40:
+                body += sep + p[:room] + "…"
+            else:
+                body += "\n…[preview truncated]"
+            break
+        body += sep + p
+
+    if not body.strip():
+        return s[:max_body] + ("…" if len(s) > max_body else "")
+    if len(body) > max_body:
+        return body[:max_body] + "…"
+    return body
+
+
+def _build_tool_transcript_recap(
+    messages: list[dict[str, Any]],
+    *,
+    max_entries: int = 32,
+    max_body_chars: int = 2200,
+) -> str:
+    """Deterministic markdown from ``role: tool`` payloads (JSON-aware)."""
+    id_to_name = _tool_call_id_to_name_map(messages)
+    id_to_args = _tool_call_id_to_args_recap_line(messages, max_len=400)
+    lines: list[str] = []
+    n = 0
+    for m in messages:
+        if m.get("role") != "tool":
+            continue
+        n += 1
+        if n > max_entries:
+            lines.append(f"\n_…{n - max_entries} more tool message(s) omitted._\n")
+            break
+        tid = str(m.get("tool_call_id") or "").strip()
+        name = id_to_name.get(tid, "tool")
+        body = m.get("content")
+        text = body if isinstance(body, str) else str(body)
+        summ = _summarize_tool_json_body(text, max_body=max_body_chars)
+        req = (id_to_args.get(tid) or "").strip()
+        if req:
+            req_safe = req.replace("`", "'")
+            lines.append(f"### {n}. `{name}`\n**Tool args:** `{req_safe}`\n{summ}\n")
+        else:
+            lines.append(f"### {n}. `{name}`\n{summ}\n")
+    if not lines:
+        return f"{_TOOL_RECAP_HEADER}\n\n_No tool messages in this reply._\n"
+    return f"{_TOOL_RECAP_HEADER}\n\n" + "\n".join(lines)
+
+
+def _build_llm_tool_rounds_digest(
+    messages: list[dict[str, Any]],
+    *,
+    max_rounds_shown: int = 32,
+    max_calls_per_round: int = 24,
+    max_args_len: int = 320,
+) -> str:
+    """Per-assistant-turn list of tool names + normalized args (what the model *requested*)."""
+    blocks: list[str] = []
+    r = 0
+    for m in messages:
+        if m.get("role") != "assistant":
+            continue
+        tcs = m.get("tool_calls")
+        if not isinstance(tcs, list) or not tcs:
+            continue
+        r += 1
+        if r > max_rounds_shown:
+            blocks.append(f"_…{r - max_rounds_shown} more LLM tool round(s) omitted._")
+            break
+        lines: list[str] = [f"### Round {r}"]
+        n_call = 0
+        for tc in tcs:
+            if not isinstance(tc, dict):
+                continue
+            n_call += 1
+            if n_call > max_calls_per_round:
+                rest = len(tcs) - max_calls_per_round
+                lines.append(f"- _…{rest} more tool_call(s) in this round._")
+                break
+            fn = tc.get("function") if isinstance(tc.get("function"), dict) else {}
+            if not isinstance(fn, dict):
+                continue
+            name = str(fn.get("name") or "").strip() or "tool"
+            raw = fn.get("arguments")
+            if raw in (None, "", "{}") or (isinstance(raw, dict) and not raw):
+                if isinstance(tc.get("arguments"), (str, dict)) and tc.get("arguments") not in (None, ""):
+                    raw = tc.get("arguments")
+            args0 = _parse_tool_arguments(raw)
+            norm = _normalize_tool_call_arguments(name, dict(args0), m, messages, None)
+            arg_line = _format_normalized_tool_args_for_recap(name, norm, max_len=max_args_len)
+            lines.append(f"- `{name}`: {arg_line}")
+        blocks.append("\n".join(lines))
+    if not blocks:
+        return ""
+    return f"{_ROUNDS_DIGEST_HEADER}\n\n" + "\n\n".join(blocks)
+
+
+def _build_client_tool_context_markdown(messages: list[dict[str, Any]]) -> str:
+    """LLM tool rounds (requests) plus tool transcript (results) for the client-facing reply."""
+    digest = _build_llm_tool_rounds_digest(messages).strip()
+    recap = _build_tool_transcript_recap(messages).strip()
+    if digest and recap:
+        return digest + "\n\n" + recap
+    return digest or recap
+
+
+def _client_reply_is_only_server_tool_context_prefix(tail: str) -> bool:
+    t = (tail or "").strip()
+    if not t:
+        return True
+    return t.startswith(_TOOL_RECAP_HEADER) or t.startswith(_ROUNDS_DIGEST_HEADER)
+
+
+def _merge_deterministic_tool_recap_into_final_completion(
+    data: dict[str, Any],
+    messages: list[dict[str, Any]],
+    *,
+    round_i: int,
+    max_rounds: int,
+    plain_completion: bool,
+) -> bool:
+    """Prefix assistant content with server recap on the last tool-loop round (mutates ``data``)."""
+    if plain_completion or max_rounds < 1 or round_i != max_rounds - 1:
+        return False
+    try:
+        recap = _build_client_tool_context_markdown(messages)
+        if not recap.strip():
+            return False
+        cap = 18_000
+        recap_use = recap if len(recap) <= cap else recap[:cap] + "\n\n…[truncated]"
+        ch_list = data.get("choices")
+        if not isinstance(ch_list, list) or not ch_list:
+            return False
+        ch0 = ch_list[0]
+        if not isinstance(ch0, dict):
+            return False
+        msg0 = ch0.get("message")
+        if not isinstance(msg0, dict):
+            return False
+        ex = msg0.get("content")
+        if not isinstance(ex, str):
+            return False
+        tail = ex.strip()
+        sep = "\n\n---\n\n### Model reply\n\n"
+        if not tail or _client_reply_is_only_server_tool_context_prefix(tail):
+            msg0["content"] = recap_use.strip()[:80_000]
+        else:
+            merged = (recap_use.rstrip() + sep + tail).strip()
+            if len(merged) > 80_000:
+                merged = merged[:80_000] + "…"
+            msg0["content"] = merged
+        msg0.pop("tool_calls", None)
+        ch0["message"] = msg0
+        ch_list[0] = ch0
+        return True
+    except (TypeError, KeyError, IndexError):
+        return False
+
+
+def _agent_final_text_looks_like_placeholder_tool_markup(text: str) -> bool:
+    """GGUF models often emit fake XML tool blocks when tools[] is omitted."""
+    if not (text or "").strip():
+        return True
+    tl = text.lower()
+    if "<tool_call" in tl or "</tool_call>" in tl:
+        return True
+    if "<function=" in tl or "</function>" in tl:
+        return True
+    return False
+
+
+def _strip_prose_fake_tool_markup(text: str) -> str:
+    """Remove non-executable tool-like XML some models print when no tools[] are sent."""
+    if not text:
+        return text
+    out = text
+    out = re.sub(r"<tool_call\b[^>]*>[\s\S]*?</tool_call>", "", out, flags=re.IGNORECASE)
+    out = re.sub(r"</?tool_call\b[^>]*>", "", out, flags=re.IGNORECASE)
+    out = re.sub(r"<function\s*=[^>]*>\s*</function>", "", out, flags=re.IGNORECASE)
+    out = re.sub(r"<function[^>]*>", "", out, flags=re.IGNORECASE)
+    out = re.sub(r"</function>", "", out, flags=re.IGNORECASE)
+    out = re.sub(r"\n{3,}", "\n\n", out).strip()
+    return out
+
+
+def _sanitize_final_completion_assistant_content(data: dict[str, Any]) -> bool:
+    """Strip fake tool XML from ``choices[0].message.content`` when present (mutates ``data``)."""
+    try:
+        ch_list = data.get("choices")
+        if not isinstance(ch_list, list) or not ch_list:
+            return False
+        ch0 = ch_list[0]
+        if not isinstance(ch0, dict):
+            return False
+        msg = ch0.get("message")
+        if not isinstance(msg, dict):
+            return False
+        raw = msg.get("content")
+        if not isinstance(raw, str) or not raw.strip():
+            return False
+        if not _agent_final_text_looks_like_placeholder_tool_markup(raw):
+            return False
+        stripped = _strip_prose_fake_tool_markup(raw)
+        if stripped.strip() and not _agent_final_text_looks_like_placeholder_tool_markup(stripped):
+            msg["content"] = stripped
+        else:
+            msg["content"] = (
+                "_The model printed **invalid tool markup** in plain text (for example `<tool_call>`). "
+                "The API does **not** run tools from prose — only real `tool_calls` from earlier rounds executed._\n\n"
+                "Check **Agent activity** for tool runs. For a written recap, send a short follow-up asking to "
+                "summarize the tool results in this thread._"
+            )
+        msg.pop("tool_calls", None)
+        ch0["message"] = msg
+        ch_list[0] = ch0
+        return True
+    except (TypeError, KeyError, IndexError):
+        return False
+
+
+def _synthetic_final_llm_http_error_completion(*, status: int, model_id: str) -> dict[str, Any]:
+    """Minimal OpenAI-shaped completion when the last LLM call fails (proxy 502, etc.)."""
+    mid = model_id if isinstance(model_id, str) and model_id.strip() else "unknown"
+    return {
+        "choices": [
+            {
+                "message": {
+                    "role": "assistant",
+                    "content": (
+                        f"_(The language model server returned **HTTP {status}** on the **final summary** round "
+                        f"(model `{mid}`) — no generated answer was returned.)_\n\n"
+                        "**What you can do:** wait a moment and **retry**; check **Agent activity** for outputs from "
+                        "earlier tool rounds in this reply; send a **new message** asking to summarize those results "
+                        "or to keep exploring (that starts a fresh tool budget)._"
+                    ),
+                },
+                "finish_reason": "stop",
+            }
+        ],
+        "model": mid,
+    }
 
 
 _AGENT_TOOL_THRASH_HINT = (
@@ -1324,6 +1807,58 @@ def _parse_tool_arguments(raw: str | dict | None) -> dict[str, Any]:
     except json.JSONDecodeError:
         logger.warning("invalid tool arguments JSON: %s", raw[:200])
         return {}
+
+
+def _format_normalized_tool_args_for_recap(
+    name: str, norm: dict[str, Any], *, max_len: int = 400
+) -> str:
+    """Single-line summary of normalized tool arguments (shared by round digest + tool recap)."""
+    bits: list[str] = []
+    for key in (
+        "command",
+        "pattern",
+        "path",
+        "path_prefix",
+        "query",
+        "prompt",
+        "operation",
+        "rel",
+        "glob",
+        "patch_text",
+        "old_string",
+        "new_string",
+        "include_files",
+        "include_directories",
+    ):
+        if key not in norm:
+            continue
+        val = norm.get(key)
+        if isinstance(val, str):
+            u = val.strip().replace("\n", "\\n")
+            if not u:
+                continue
+            if len(u) > 140:
+                u = u[:140] + "…"
+            bits.append(f"{key}={u}")
+        elif isinstance(val, (bool, int, float)):
+            bits.append(f"{key}={val}")
+    nl = (name or "").lower()
+    if nl == "coding_glob" and not str(norm.get("pattern") or "").strip():
+        bits.insert(0, "pattern=<missing>")
+    if nl == "coding_search" and not str(norm.get("query") or "").strip():
+        bits.insert(0, "query=<missing>")
+    if bits:
+        line = " ".join(bits)
+    else:
+        try:
+            compact = json.dumps(norm, ensure_ascii=False, sort_keys=True, default=str)
+        except TypeError:
+            compact = repr(norm)
+        line = compact if compact.strip() not in ("{}", "") else "(empty)"
+    line = line.replace("\n", " ")
+    if len(line) > max_len:
+        line = line[:max_len] + "…"
+    return line
 
 
 def _unwrap_fenced_json(text: str) -> str:
@@ -2261,6 +2796,7 @@ async def chat_completion(
     tool_context["agent_coding_tools_permission_ask"] = _abf["coding_tools_permission_ask"]
     tool_context["agent_dedupe_identical_tool_calls"] = _abf["dedupe_identical_tool_calls"]
     tool_context["_identical_tool_call_dedupe_keys"] = set()
+    tool_context["_identical_tool_call_result_by_key"] = {}
     logger.info(
         "chat_completion start agent_run_id=%s parent_agent_run_id=%s agent_id=%r workspace_id=%s user_id=%s",
         agent_run_id,
@@ -2670,6 +3206,13 @@ async def chat_completion(
         doom_count = 0
         force_no_tools_round = False
         force_no_tools_reason: str | None = None  # "thrash" | "doom"
+        if not plain_completion and tools_for_request:
+            messages.append(
+                {
+                    "role": "system",
+                    "content": _agent_tool_budget_system_message(max_tool_rounds_eff),
+                }
+            )
         for round_i in range(max_tool_rounds_eff):
             await drain_control_queue()
             if cancel_event is not None and cancel_event.is_set():
@@ -2703,10 +3246,40 @@ async def chat_completion(
                 tools_for_round = list(tools_for_request)
                 if max_tool_rounds_eff >= 3 and round_i == max_tool_rounds_eff - 2:
                     messages.append(
-                        {"role": "system", "content": _AGENT_NEAR_MAX_TOOL_ROUNDS_REMINDER}
+                        {
+                            "role": "system",
+                            "content": _agent_near_max_tool_rounds_reminder(
+                                round_i + 1, max_tool_rounds_eff
+                            ),
+                        }
                     )
                 if max_tool_rounds_eff >= 2 and round_i == max_tool_rounds_eff - 1:
                     tools_for_round = []
+                    recap_blob = _build_client_tool_context_markdown(messages)
+                    cap = 10_000
+                    if recap_blob.strip():
+                        if len(recap_blob) > cap:
+                            recap_blob = recap_blob[:cap] + "\n\n…[truncated]"
+                        messages.append(
+                            {
+                                "role": "system",
+                                "content": (
+                                    "Below is **server-extracted** context for this reply: (1) each LLM tool "
+                                    "round — which tools were **requested** and with which (normalized) arguments; "
+                                    "(2) each tool **result** payload. Your final answer **must** be consistent "
+                                    "with this material (do not invent file paths or outcomes not supported there).\n\n"
+                                    + recap_blob
+                                ),
+                            }
+                        )
+                    messages.append(
+                        {
+                            "role": "system",
+                            "content": _agent_final_round_text_only_hint(
+                                round_i + 1, max_tool_rounds_eff
+                            ),
+                        }
+                    )
                     logger.info(
                         "chat tool loop round %d/%d: forwarding 0 tools (reason=final_round_text_only_policy)",
                         round_i + 1,
@@ -2728,6 +3301,10 @@ async def chat_completion(
                 )
 
             use_llm_stream = bool(stream_llm_ws and event_emit is not None)
+            _last_llm_round = round_i == max_tool_rounds_eff - 1
+            if use_llm_stream and _last_llm_round:
+                # Final round often has the largest context; streaming through some proxies returns 502.
+                use_llm_stream = False
             round_no = round_i + 1
 
             async def _emit_llm_token_delta(s: str) -> None:
@@ -2809,21 +3386,34 @@ async def chat_completion(
                         continue
                     except httpx.HTTPStatusError as e:
                         last_failover = e
-                        if llm_backend == "external" and external_llm_should_failover(
-                            e.response.status_code
-                        ):
+                        sc = e.response.status_code
+                        if llm_backend == "external" and external_llm_should_failover(sc):
                             logger.warning(
                                 "LLM external attempt failed (status=%s); trying next endpoint",
-                                e.response.status_code,
+                                sc,
                             )
                             continue
+                        if (
+                            not plain_completion
+                            and round_i == max_tool_rounds_eff - 1
+                            and sc in (502, 503, 504)
+                        ):
+                            logger.warning(
+                                "LLM http %s on final tool-loop round (model=%s) — synthetic assistant fallback",
+                                sc,
+                                b_model,
+                            )
+                            data = _synthetic_final_llm_http_error_completion(status=sc, model_id=b_model)
+                            chosen = (b_url, b_headers, b_model)
+                            model = b_model
+                            break
                         err_body = _redact_provider_error_text_for_log(
                             e.response.text, max_len=600
                         )
                         logger.error(
                             "LLM chat/completions failed (%s): status=%s llm_model_id=%s body=%s",
                             llm_backend,
-                            e.response.status_code,
+                            sc,
                             b_model,
                             err_body,
                         )
@@ -2961,6 +3551,33 @@ async def chat_completion(
                             model,
                         )
 
+            if not tools_for_round and tool_calls:
+                n_disc = len(tool_calls) if isinstance(tool_calls, list) else 0
+                logger.warning(
+                    "chat tool loop round %d/%d: discarding %d tool_call(s) (no tools[] this round)",
+                    round_i + 1,
+                    max_tool_rounds_eff,
+                    n_disc,
+                )
+                messages.append(
+                    {
+                        "role": "system",
+                        "content": (
+                            "This round did not include tool definitions in the API request. Any `tool_calls` "
+                            "you produced are **discarded**. Reply with **plain text only**: merge findings from "
+                            "earlier tool messages, note errors briefly, and state next steps."
+                        ),
+                    }
+                )
+                msg = dict(msg)
+                msg.pop("tool_calls", None)
+                choice0["message"] = msg
+                ch_list = data.get("choices")
+                if isinstance(ch_list, list) and ch_list and isinstance(ch_list[0], dict):
+                    ch_list[0]["message"] = msg
+                tool_calls = None
+                had_native_tool_calls = False
+
             _log_llm_completion_round(
                 round_i=round_i,
                 max_rounds_cap=max_tool_rounds_eff,
@@ -3022,6 +3639,66 @@ async def chat_completion(
                             "Workspace verify gate: run coding_workspace_verify successfully (exit 0) before "
                             "finishing, or disable verify_required / agent_require_workspace_verify."
                         )
+                if (
+                    not plain_completion
+                    and chosen is not None
+                    and max_tool_rounds_eff >= 2
+                    and round_i == max_tool_rounds_eff - 1
+                ):
+                    fin_text = _assistant_plain_text_from_message(msg)
+                    if _agent_final_text_looks_like_placeholder_tool_markup(fin_text):
+                        messages.append(dict(msg))
+                        messages.append(
+                            {
+                                "role": "system",
+                                "content": (
+                                    "Your last assistant turn was unusable: **fake tool XML in plain text** "
+                                    "(or empty body), but this stack **never** runs tools from prose — only real "
+                                    "`tool_calls` from earlier rounds executed. "
+                                    "Write **one** replacement answer in Markdown: what **existing** tool messages "
+                                    "in the transcript actually contain; what failed (short quotes); gaps; "
+                                    "actionable next steps for the user. "
+                                    "Do **not** use `<tool_call>`, `</tool_call>`, or `<function=`."
+                                ),
+                            }
+                        )
+                        pl_fix: dict[str, Any] = {"messages": messages, "stream": False, **options}
+                        pl_fix["model"] = chosen[2]
+                        try:
+                            data_fix, _ = await asyncio.to_thread(
+                                http_post_chat_completions,
+                                chosen[0],
+                                pl_fix,
+                                headers=chosen[1],
+                                timeout=600.0,
+                            )
+                            if isinstance(data_fix, dict) and (data_fix.get("choices") or []):
+                                data = data_fix
+                                logger.info(
+                                    "agent: final-round text recovery applied (round %s/%s)",
+                                    round_i + 1,
+                                    max_tool_rounds_eff,
+                                )
+                        except Exception as e:
+                            logger.warning("agent: final-round text recovery failed: %s", e)
+                if _sanitize_final_completion_assistant_content(data):
+                    logger.info(
+                        "agent: sanitized fake tool markup in final chat.completion (round %s/%s)",
+                        round_i + 1,
+                        max_tool_rounds_eff,
+                    )
+                if _merge_deterministic_tool_recap_into_final_completion(
+                    data,
+                    messages,
+                    round_i=round_i,
+                    max_rounds=max_tool_rounds_eff,
+                    plain_completion=plain_completion,
+                ):
+                    logger.info(
+                        "agent: merged deterministic tool recap into final chat.completion (round %s/%s)",
+                        round_i + 1,
+                        max_tool_rounds_eff,
+                    )
                 if event_emit:
                     await event_emit(
                         {
@@ -3079,18 +3756,28 @@ async def chat_completion(
                     ps = tool_context.get("_identical_tool_call_dedupe_keys")
                     if isinstance(ps, set) and plan_dedupe_key in ps:
                         skipped_plan_duplicate = True
-                        prebuilt_result = json.dumps(
-                            {
-                                "ok": True,
-                                "deduplicated": True,
-                                "message": (
-                                    "Identical tool+arguments were already run earlier in this reply. "
-                                    "Use the previous tool message in the transcript and continue "
-                                    "(no repeat calls)."
-                                ),
-                            },
-                            ensure_ascii=False,
-                        )
+                        cache = tool_context.get("_identical_tool_call_result_by_key")
+                        prev = cache.get(plan_dedupe_key) if isinstance(cache, dict) else None
+                        if isinstance(prev, str) and prev.strip():
+                            prebuilt_result = prev
+                            logger.info(
+                                "tool dedupe: replaying prior tool payload (chars=%s tool=%s)",
+                                len(prev),
+                                name,
+                            )
+                        else:
+                            prebuilt_result = json.dumps(
+                                {
+                                    "ok": True,
+                                    "deduplicated": True,
+                                    "message": (
+                                        "Identical tool+arguments were already run earlier in this reply. "
+                                        "Use the previous tool message in the transcript and continue "
+                                        "(no repeat calls)."
+                                    ),
+                                },
+                                ensure_ascii=False,
+                            )
                 if cancel_event is not None and cancel_event.is_set():
                     if event_emit:
                         await event_emit(
@@ -3172,6 +3859,11 @@ async def chat_completion(
                         ps2 = tool_context.get("_identical_tool_call_dedupe_keys")
                         if isinstance(ps2, set):
                             ps2.add(plan_dedupe_key)
+                        rcache = tool_context.get("_identical_tool_call_result_by_key")
+                        if not isinstance(rcache, dict):
+                            rcache = {}
+                            tool_context["_identical_tool_call_result_by_key"] = rcache
+                        rcache[plan_dedupe_key] = result
                 finally:
                     reset_tool_invocation_messages(tctx)
                 ok_sum, err_sum = _tool_result_summary(result)
@@ -3293,11 +3985,12 @@ async def chat_completion(
                 {
                     "role": "system",
                     "content": (
-                        "The tool-round limit for this reply has been reached. "
+                        f"The tool-round limit for this reply has been reached (**{max_tool_rounds_eff}** rounds). "
                         "Respond to the user now with a **normal assistant message** (no tools): "
                         "what was tried, what succeeded or failed (short error quotes), "
                         "and concrete next steps. If tools failed for missing parameters, say exactly "
-                        "which JSON fields were required (e.g. coding_bash needs `command`)."
+                        "which JSON fields were required (e.g. coding_bash needs `command`). "
+                        "Offer how the user can continue with a follow-up message if work remains."
                     ),
                 }
             )
