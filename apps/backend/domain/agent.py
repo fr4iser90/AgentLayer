@@ -497,6 +497,68 @@ def _infer_shell_command_from_assistant_message(assistant_msg: dict[str, Any]) -
     return None
 
 
+def _infer_shell_command_from_user_text(user_text: str) -> str | None:
+    """Infer a shell one-liner from the latest user message when models emit empty ``coding_bash`` JSON (GGUF)."""
+    if not (user_text or "").strip():
+        return None
+    ut = user_text.strip()
+    ul = ut.lower()
+    fence = re.search(r"```(?:bash|sh|shell|zsh)?\s*\n([\s\S]*?)```", ut, re.IGNORECASE)
+    if fence:
+        for line in fence.group(1).splitlines():
+            s = line.strip()
+            if not s or s.startswith("#"):
+                continue
+            sl = s.lower()
+            if sl.startswith(("git ", "gh ", "npm ", "pnpm ", "yarn ", "docker ", "curl ", "wget ")):
+                return s
+    if re.search(r"\bgit\s+pull\b", ul):
+        m2 = re.search(r"(git\s+pull[^\n`]{0,200})", ut, re.IGNORECASE)
+        return (m2.group(1).strip().rstrip(",.;") if m2 else "git pull")
+    if re.search(r"\bgit\s+fetch\b", ul):
+        m2 = re.search(r"(git\s+fetch[^\n`]{0,200})", ut, re.IGNORECASE)
+        return (m2.group(1).strip().rstrip(",.;") if m2 else "git fetch")
+    if re.search(r"\bgit\s+status\b", ul):
+        return "git status"
+    if re.search(r"\bgit\s+log\b", ul):
+        m2 = re.search(r"(git\s+log[^\n`]{0,160})", ut, re.IGNORECASE)
+        return m2.group(1).strip() if m2 else "git log -n 10 --oneline"
+    update_cues = (
+        "git pull",
+        "up to date",
+        "up-to-date",
+        "nicht up to date",
+        "geupdatet",
+        "updaten",
+        " aktualisi",
+        "pullen",
+        "pull machen",
+        "remote holen",
+        "neueste version",
+        "auf den stand",
+        "ein pull",
+        "was pull",
+    )
+    ctx_cues = (
+        "git",
+        "repo",
+        "repository",
+        "workspace",
+        "projekt",
+        "project",
+        "branch",
+        "remote",
+        "klonen",
+        "clone",
+    )
+    if any(c in ul for c in update_cues) and any(c in ul for c in ctx_cues):
+        return "git pull"
+    if re.search(r"\bpull\b", ul) and "git" in ul:
+        m2 = re.search(r"(git\s+pull[^\n`]{0,200})", ut, re.IGNORECASE)
+        return (m2.group(1).strip().rstrip(",.;") if m2 else "git pull")
+    return None
+
+
 def _normalize_tool_call_arguments(
     name: str,
     args: dict[str, Any],
@@ -524,6 +586,10 @@ def _normalize_tool_call_arguments(
             inferred = _infer_shell_command_from_assistant_message(assistant_msg)
             if inferred:
                 out["command"] = inferred
+        if not str(out.get("command") or "").strip():
+            inferred_u = _infer_shell_command_from_user_text(last_user_text(messages))
+            if inferred_u:
+                out["command"] = inferred_u
     elif n == "coding_task":
         if not str(out.get("description") or "").strip():
             for alt in ("title", "name", "task", "summary", "label"):
@@ -723,6 +789,7 @@ _BODY_KEYS_STRIP_FROM_OLLAMA = frozenset(
 _CODING_TOOLS_PERMISSION_ASK = frozenset(
     {
         "coding_bash",
+        "coding_git_sync",
         "coding_write_file",
         "coding_edit",
         "coding_apply_patch",
@@ -884,9 +951,9 @@ _TOOL_USAGE_DISCIPLINE = """## Tool usage (discipline)
 
 - The API **tools[]** list is a compact catalog; full JSON Schema for a tool is returned from **get_tool_help** when needed.
 - **Do not** loop on `list_tool_categories`, `list_tools_in_category`, `list_available_tools`, or `get_tool_help`. At most one short discovery pass if you truly do not know a tool name.
-- When intent is clear, **call the action tool first** (e.g. `git clone` / repo URL → `coding_bash`; read a file → `coding_read_file` or `fs_read_file`).
+- When intent is clear, **call the action tool first** (e.g. **git pull / sync repo** → `coding_git_sync` or `coding_bash` with `{"command":"git pull"}`; `git clone` / repo URL → `coding_bash`; read a file → `coding_read_file` or `fs_read_file`).
 - Use **get_tool_help at most once** per tool you are about to call with non-obvious arguments; do not repeat it every round for the same tool.
-- Prefer concrete workspace tools (`coding_bash`, `coding_read_file`, `fs_read_file`, GitHub-related tools) over plugin meta tools (`create_tool`, …) unless the user explicitly asks to build or install a plugin.
+- Prefer concrete workspace tools (`coding_git_sync`, `coding_bash`, `coding_read_file`, `fs_read_file`, GitHub-related tools) over plugin meta tools (`create_tool`, …) unless the user explicitly asks to build or install a plugin.
 """
 
 _CODING_PLAN_TOOL_DISCIPLINE = """## **Plan** discipline (this stack)
@@ -1502,6 +1569,9 @@ def _content_fallback_args_acceptable(name: str, params: dict[str, Any]) -> bool
         )
     if name == "coding_read_file":
         return bool(str(params.get("path") or "").strip())
+    if name == "coding_git_sync":
+        op = str(params.get("operation") or "pull").strip().lower()
+        return op in ("pull", "fetch")
     return True
 
 

@@ -25,6 +25,7 @@ Use **only** names that appear in **tools[]** for this request. Typical mental m
 | **grep** | ``coding_search`` (text search); also ``coding_semantic_search`` / ``coding_symbols`` when offered |
 | **edit** | ``coding_write_file``, ``coding_edit``, ``coding_replace``, ``coding_apply_patch`` |
 | **bash** | ``coding_bash`` |
+| **git sync** | ``coding_git_sync`` (non-interactive ``git pull`` / ``git fetch`` in workspace root; prefer over empty ``coding_bash`` for updates) |
 | **task** | ``coding_task`` (delegate / sub-planner when offered) |
 | **lsp** | ``coding_lsp`` |
 | *(extra)* | ``coding_git_read``, ``coding_index``, ``coding_todo``, ``coding_workspace_verify``, ``project_explain`` when listed |
@@ -48,7 +49,7 @@ Do **not** fire many parallel calls with the same tool name and **empty ``{}``**
 ## How to work
 
 1. **Orient** — ``coding_list_dir`` / ``coding_read_file`` / ``coding_search`` or ``coding_glob`` as needed; use ``coding_index`` / ``coding_symbols`` / ``coding_lsp`` when the tree is unfamiliar.
-2. **Implement** — edits via the appropriate ``coding_*`` write/edit/patch tools; shell via ``coding_bash`` with explicit commands.
+2. **Implement** — edits via the appropriate ``coding_*`` write/edit/patch tools; shell via ``coding_bash`` with explicit commands; for **git pull/fetch** use ``coding_git_sync`` when available.
 3. **Verify** — if the workspace has a **server-side** ``verify_command`` (see workspace settings / API), prefer ``coding_workspace_verify`` over ad-hoc shell for that check; otherwise run sensible checks (tests, linters) before claiming success.
 4. **Close** — if tool rounds run low, answer in plain text: what worked, what failed (short error quotes), next steps.
 

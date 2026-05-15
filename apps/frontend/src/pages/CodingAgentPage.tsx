@@ -279,6 +279,7 @@ const CODING_TOOLS = [
   "coding_bash",
   "coding_edit",
   "coding_git_read",
+  "coding_git_sync",
   "coding_glob",
   "coding_index",
   "coding_list_dir",
