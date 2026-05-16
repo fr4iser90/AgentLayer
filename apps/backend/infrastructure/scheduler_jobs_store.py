@@ -46,9 +46,9 @@ def insert_job(
     instructions: str,
     interval_minutes: int,
     enabled: bool = True,
-    ide_workflow: dict[str, Any] | None = None,
+    coding_workflow: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    wf = ide_workflow if ide_workflow is not None else {}
+    wf = coding_workflow if coding_workflow is not None else {}
     with db.pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
@@ -56,12 +56,12 @@ def insert_job(
                 INSERT INTO scheduler_jobs (
                   tenant_id, created_by_user_id, execution_user_id, dashboard_id,
                   execution_target, title, instructions, interval_minutes, enabled,
-                  ide_workflow, updated_at
+                  coding_workflow, updated_at
                 )
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now())
                 RETURNING id, tenant_id, created_by_user_id, execution_user_id, dashboard_id,
                           execution_target, title, instructions, interval_minutes, enabled,
-                          ide_workflow, last_run_at, created_at, updated_at
+                          coding_workflow, last_run_at, created_at, updated_at
                 """,
                 (
                     tenant_id,
@@ -106,7 +106,7 @@ def list_jobs_for_user(
                 f"""
                 SELECT j.id, j.tenant_id, j.created_by_user_id, j.execution_user_id, j.dashboard_id,
                        j.execution_target, j.title, j.instructions, j.interval_minutes, j.enabled,
-                       j.ide_workflow, j.last_run_at, j.created_at, j.updated_at
+                       j.coding_workflow, j.last_run_at, j.created_at, j.updated_at
                 FROM scheduler_jobs j
                 WHERE j.tenant_id = %s
                   AND j.deleted_at IS NULL
@@ -171,7 +171,7 @@ def list_jobs_for_tenant(
                 f"""
                 SELECT j.id, j.tenant_id, j.created_by_user_id, j.execution_user_id, j.dashboard_id,
                        j.execution_target, j.title, j.instructions, j.interval_minutes, j.enabled,
-                       j.ide_workflow, j.last_run_at, j.deleted_at, j.created_at, j.updated_at
+                       j.coding_workflow, j.last_run_at, j.deleted_at, j.created_at, j.updated_at
                 FROM scheduler_jobs j
                 {where}
                 ORDER BY j.created_at DESC
@@ -191,7 +191,7 @@ def get_job(job_id: uuid.UUID, tenant_id: int) -> dict[str, Any] | None:
                 """
                 SELECT id, tenant_id, created_by_user_id, execution_user_id, dashboard_id,
                        execution_target, title, instructions, interval_minutes, enabled,
-                       ide_workflow, last_run_at, deleted_at, created_at, updated_at
+                       coding_workflow, last_run_at, deleted_at, created_at, updated_at
                 FROM scheduler_jobs
                 WHERE id = %s AND tenant_id = %s
                 """,
@@ -226,7 +226,7 @@ def set_enabled(
                 WHERE id = %s AND tenant_id = %s
                 RETURNING id, tenant_id, created_by_user_id, execution_user_id, dashboard_id,
                           execution_target, title, instructions, interval_minutes, enabled,
-                          ide_workflow, last_run_at, created_at, updated_at
+                          coding_workflow, last_run_at, created_at, updated_at
                 """,
                 (enabled, now, job_id, tenant_id),
             )
@@ -244,7 +244,7 @@ def update_job(
     title: str | None,
     instructions: str | None,
     interval_minutes: int | None,
-    ide_workflow: dict[str, Any] | None,
+    coding_workflow: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
     job = get_job(job_id, tenant_id)
     if not job:
@@ -257,7 +257,7 @@ def update_job(
     new_title = job.get("title") if title is None else title
     new_instr = job.get("instructions") if instructions is None else instructions
     new_interval = job.get("interval_minutes") if interval_minutes is None else interval_minutes
-    new_wf = job.get("ide_workflow") if ide_workflow is None else ide_workflow
+    new_wf = job.get("coding_workflow") if coding_workflow is None else coding_workflow
     with db.pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
@@ -266,12 +266,12 @@ def update_job(
                 SET title = %s,
                     instructions = %s,
                     interval_minutes = %s,
-                    ide_workflow = %s,
+                    coding_workflow = %s,
                     updated_at = %s
                 WHERE id = %s AND tenant_id = %s
                 RETURNING id, tenant_id, created_by_user_id, execution_user_id, dashboard_id,
                           execution_target, title, instructions, interval_minutes, enabled,
-                          ide_workflow, last_run_at, deleted_at, created_at, updated_at
+                          coding_workflow, last_run_at, deleted_at, created_at, updated_at
                 """,
                 (
                     new_title,
@@ -361,9 +361,10 @@ def fetch_due_jobs_server_periodic(*, limit: int = 10) -> list[dict[str, Any]]:
                 """
                 SELECT id, tenant_id, created_by_user_id, execution_user_id, dashboard_id,
                        execution_target, title, instructions, interval_minutes, enabled,
-                       ide_workflow, last_run_at, created_at, updated_at
+                       coding_workflow, last_run_at, created_at, updated_at
                 FROM scheduler_jobs
                 WHERE enabled = true
+                  AND deleted_at IS NULL
                   AND execution_target = 'server_periodic'
                   AND COALESCE(last_run_at, created_at)
                       + (interval '1 minute' * interval_minutes) <= now()
@@ -377,60 +378,26 @@ def fetch_due_jobs_server_periodic(*, limit: int = 10) -> list[dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
-def fetch_due_jobs_ide_agent_for_pidea(*, limit: int = 5) -> list[dict[str, Any]]:
-    """
-    Due ``ide_agent`` jobs whose ``execution_user_id`` is an **admin** (PIDEA may only drive IDE for admins).
-
-    Used by the background worker to run Playwright against the IDE composer.
-    """
-    lim = max(1, min(20, limit))
-    with db.pool().connection() as conn:
-        with conn.cursor(row_factory=dict_row) as cur:
-            cur.execute(
-                """
-                SELECT j.id, j.tenant_id, j.created_by_user_id, j.execution_user_id, j.dashboard_id,
-                       j.execution_target, j.title, j.instructions, j.interval_minutes, j.enabled,
-                       j.ide_workflow, j.last_run_at, j.created_at, j.updated_at
-                FROM scheduler_jobs j
-                INNER JOIN users u ON u.id = j.execution_user_id
-                WHERE j.enabled = true
-                  AND j.execution_target = 'ide_agent'
-                  AND lower(trim(u.role)) = 'admin'
-                  AND COALESCE(j.last_run_at, j.created_at)
-                      + (interval '1 minute' * j.interval_minutes) <= now()
-                ORDER BY j.created_at ASC
-                LIMIT %s
-                """,
-                (lim,),
-            )
-            rows = cur.fetchall()
-        conn.commit()
-    return [dict(r) for r in rows]
-
-
-def fetch_due_jobs_ide_for_user(
-    *, tenant_id: int, execution_user_id: uuid.UUID, limit: int = 20
-) -> list[dict[str, Any]]:
-    """IDE client: due jobs targeting this execution user."""
-    lim = max(1, min(100, limit))
+def fetch_due_jobs_coding_agent(*, limit: int = 10) -> list[dict[str, Any]]:
+    """Due ``coding_agent`` jobs (interval elapsed)."""
+    lim = max(1, min(50, limit))
     with db.pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
                 """
                 SELECT id, tenant_id, created_by_user_id, execution_user_id, dashboard_id,
                        execution_target, title, instructions, interval_minutes, enabled,
-                       ide_workflow, last_run_at, created_at, updated_at
+                       coding_workflow, last_run_at, created_at, updated_at
                 FROM scheduler_jobs
-                WHERE tenant_id = %s
-                  AND execution_user_id = %s
-                  AND enabled = true
-                  AND execution_target = 'ide_agent'
+                WHERE enabled = true
+                  AND deleted_at IS NULL
+                  AND execution_target = 'coding_agent'
                   AND COALESCE(last_run_at, created_at)
                       + (interval '1 minute' * interval_minutes) <= now()
                 ORDER BY created_at ASC
                 LIMIT %s
                 """,
-                (tenant_id, execution_user_id, lim),
+                (lim,),
             )
             rows = cur.fetchall()
         conn.commit()
@@ -452,39 +419,6 @@ def mark_job_last_run(*, job_id: uuid.UUID, tenant_id: int) -> bool:
             n = cur.rowcount
         conn.commit()
     return n > 0
-
-
-def ack_job_run_for_user(
-    *,
-    job_id: uuid.UUID,
-    tenant_id: int,
-    actor_user_id: uuid.UUID,
-    actor_is_admin: bool,
-) -> dict[str, Any] | None:
-    """Set last_run_at after IDE executed the job (creator or execution user or admin)."""
-    job = get_job(job_id, tenant_id)
-    if not job:
-        return None
-    exec_u = _uuid(job.get("execution_user_id"))
-    if not actor_is_admin and actor_user_id != exec_u:
-        return None
-    now = datetime.now(UTC)
-    with db.pool().connection() as conn:
-        with conn.cursor(row_factory=dict_row) as cur:
-            cur.execute(
-                """
-                UPDATE scheduler_jobs
-                SET last_run_at = %s, updated_at = %s
-                WHERE id = %s AND tenant_id = %s
-                RETURNING id, tenant_id, created_by_user_id, execution_user_id, dashboard_id,
-                          execution_target, title, instructions, interval_minutes, enabled,
-                          ide_workflow, last_run_at, created_at, updated_at
-                """,
-                (now, now, job_id, tenant_id),
-            )
-            row = cur.fetchone()
-        conn.commit()
-    return dict(row) if row else None
 
 
 def row_to_public(row: dict[str, Any]) -> dict[str, Any]:

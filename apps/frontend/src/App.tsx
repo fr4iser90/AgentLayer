@@ -22,7 +22,6 @@ import { ProfileSettings } from "./pages/settings/ProfileSettings";
 import { ToolsSettings } from "./pages/settings/ToolsSettings";
 import SharesSettings from "./pages/settings/SharesSettings";
 import { StudioPage } from "./pages/StudioPage";
-import { IdeIntegrationPlaceholder } from "./pages/IdeIntegrationPlaceholder";
 import { DashboardPage } from "./pages/DashboardPage";
 import { LoginPage } from "./pages/LoginPage";
 import { MySchedulesPage } from "./pages/MySchedulesPage";
@@ -38,7 +37,6 @@ export function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="chat" element={<ChatPage />} />
               <Route path="coding-agent" element={<CodingAgentPage />} />
-              <Route path="ide-agent" element={<IdeIntegrationPlaceholder variant="app" />} />
               <Route path="studio" element={<StudioPage />} />
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="schedules" element={<MySchedulesPage />} />
@@ -51,7 +49,7 @@ export function App() {
                 <Route path="tools" element={<ToolsSettings />} />
                 <Route path="agent" element={<AgentSettings />} />
                 <Route path="shares" element={<SharesSettings />} />
-                <Route path="experimental" element={<Navigate to="/admin/ide-integration" replace />} />
+                <Route path="experimental" element={<Navigate to="/settings/profile" replace />} />
               </Route>
               <Route path="admin" element={<RequireAdmin />}>
                 <Route element={<AdminLayout />}>
@@ -63,12 +61,6 @@ export function App() {
                   <Route path="users" element={<AdminUsers />} />
                   <Route path="scheduled-jobs" element={<AdminScheduledJobs />} />
                   <Route path="schedules" element={<AdminSchedules />} />
-                  <Route path="ide-agent" element={<Navigate to="/admin/ide-integration" replace />} />
-                  <Route
-                    path="ide-integration"
-                    element={<IdeIntegrationPlaceholder variant="admin" />}
-                  />
-                  <Route path="ide-agents/*" element={<Navigate to="/admin/ide-integration" replace />} />
                   <Route path="workflows" element={<Navigate to="../scheduled-jobs" replace />} />
                 </Route>
               </Route>

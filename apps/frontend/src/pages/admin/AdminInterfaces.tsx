@@ -1779,10 +1779,10 @@ export function AdminInterfaces() {
               <option value="full">full — alle erlaubten Tools (Policy)</option>
             </select>
             <p className="mt-4 rounded-md border border-white/10 bg-black/20 px-3 py-2 text-xs text-surface-muted">
-              Server-side IDE/PIDEA (Playwright, CDP, persisted <span className="font-mono">ide_agent</span>{" "}
-              execution) ist entfernt. Persistierte Jobs nutzen nur noch{" "}
-              <span className="font-mono text-neutral-400">server_periodic</span> zuverlässig; ein späterer externer
-              Connector kann wieder angebunden werden. Beim Speichern werden PIDEA-Flags in der DB auf aus gesetzt.
+              Legacy IDE/PIDEA ist entfernt. Persistierte Jobs:{" "}
+              <span className="font-mono text-neutral-400">server_periodic</span> (Chat) und{" "}
+              <span className="font-mono text-neutral-400">coding_agent</span> (Coding Agent auf Workspace,{" "}
+              <span className="font-mono">workspace_id</span> erforderlich). Worker-Timeout gilt für beide Ziele.
             </p>
             <label className="mt-4 block text-xs text-surface-muted" htmlFor="hb-instr">
               Anweisungen (Prompt)
@@ -1799,7 +1799,8 @@ export function AdminInterfaces() {
               Persistierte Jobs (<span className="font-mono">scheduler_jobs</span>)
             </p>
             <p className="mt-1 text-xs text-surface-muted">
-              Hintergrund-Thread für gespeicherte Jobs (<span className="font-mono">server_periodic</span>).
+              Hintergrund-Thread für gespeicherte Jobs (<span className="font-mono">server_periodic</span> +{" "}
+              <span className="font-mono">coding_agent</span>).
               Einstellungen liegen in der Datenbank (hier), nicht in Umgebungsvariablen.
             </p>
             <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-white">

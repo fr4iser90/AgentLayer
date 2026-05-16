@@ -10,6 +10,7 @@ from apps.backend.infrastructure import operator_settings
 from plugins.tools.capabilities.coding.coding_common import (
     json_workspace_missing_error,
     workspace_binding_from_context,
+    workspace_retrieval_flags,
 )
 from plugins.tools.capabilities.coding.coding_search import coding_search
 from plugins.tools.capabilities.coding.coding_semantic_search import coding_semantic_search
@@ -180,6 +181,18 @@ def retrieve_context(arguments: dict[str, Any], context: dict | None = None) -> 
     if needs_workspace and workspace_binding_from_context(context) is None:
         return json_workspace_missing_error()
 
+    sem_on, ret_on = workspace_retrieval_flags(context)
+    if not ret_on:
+        return json.dumps(
+            {
+                "ok": False,
+                "skipped": True,
+                "reason": "retrieval_disabled",
+                "hint": "Enable the retrieval layer on this workspace in the Coding Agent header.",
+            },
+            ensure_ascii=False,
+        )
+
     out: dict[str, Any] = {
         "ok": True,
         "query": query,
@@ -192,7 +205,10 @@ def retrieve_context(arguments: dict[str, Any], context: dict | None = None) -> 
         out["code_grep"] = {"skipped": True, "reason": "not_requested"}
 
     if "code_semantic" in sources:
-        out["code_semantic"] = _run_code_semantic(query, context, semantic_limit)
+        if sem_on:
+            out["code_semantic"] = _run_code_semantic(query, context, semantic_limit)
+        else:
+            out["code_semantic"] = {"skipped": True, "reason": "semantic_index_disabled"}
     else:
         out["code_semantic"] = {"skipped": True, "reason": "not_requested"}
 

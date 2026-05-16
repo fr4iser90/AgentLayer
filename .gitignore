@@ -20,3 +20,4 @@ compose.traefik.yaml
 
 # Full upstream PIDEA checkout (optional local copy); prompts live under integrations/pidea/content-library/
 apps/backend/integrations/pidea/PIDEA/
+

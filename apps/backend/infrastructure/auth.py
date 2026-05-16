@@ -33,10 +33,6 @@ class User(BaseModel):
     role: str
     created_at: datetime
     password_hash: str | None = Field(default=None, exclude=True)
-    ide_agent_allowed: bool = Field(
-        default=False,
-        description="Legacy DB column; ignored for access control. PIDEA / IDE Agent is admin-only.",
-    )
 
     class Config:
         from_attributes = True
@@ -131,7 +127,7 @@ def get_user_by_email(email: str) -> Optional[User]:
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT id, email, role, created_at, password_hash, ide_agent_allowed
+                SELECT id, email, role, created_at, password_hash
                 FROM users
                 WHERE email = %s
             """, (email,))
@@ -144,7 +140,6 @@ def get_user_by_email(email: str) -> Optional[User]:
                 role=row[2],
                 created_at=row[3],
                 password_hash=row[4],
-                ide_agent_allowed=bool(row[5]) if row[5] is not None else False,
             )
 
 
@@ -210,7 +205,7 @@ def get_user_by_id(user_id: uuid.UUID) -> Optional[User]:
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT id, email, role, created_at, ide_agent_allowed
+                SELECT id, email, role, created_at
                 FROM users
                 WHERE id = %s
             """, (user_id,))
@@ -222,7 +217,6 @@ def get_user_by_id(user_id: uuid.UUID) -> Optional[User]:
                 email=row[1],
                 role=row[2],
                 created_at=row[3],
-                ide_agent_allowed=bool(row[4]) if row[4] is not None else False,
             )
 
 
@@ -336,7 +330,6 @@ def insert_user_with_cursor(cur, email: str, password: str, role: str = "user", 
         email=email,
         role=role,
         created_at=created_at,
-        ide_agent_allowed=False,
     )
 
 
@@ -348,28 +341,6 @@ def create_user(email: str, password: str, role: str = "user", tenant_id: int = 
             conn.commit()
     ensure_default_dashboard_for_new_user(user.id, tenant_id)
     return user
-
-
-# def ide_agent_access_for_user(user: User) -> bool:
-#     """True when PIDEA is globally on and the user is **admin** (direct IDE / Playwright control)."""
-#     from apps.backend.infrastructure import operator_settings
-
-#     if not operator_settings.pidea_effective_enabled():
-#         return False
-#     return (user.role or "").strip().lower() == "admin"
-
-
-def update_user_ide_agent_allowed(user_id: uuid.UUID, allowed: bool) -> bool:
-    """Set ``users.ide_agent_allowed`` (legacy column; **not** used for PIDEA access — admin-only)."""
-    with db.pool().connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "UPDATE users SET ide_agent_allowed = %s WHERE id = %s",
-                (allowed, user_id),
-            )
-            n = cur.rowcount or 0
-            conn.commit()
-    return n > 0
 
 
 def update_user_tenant(user_id: uuid.UUID, tenant_id: int) -> bool:

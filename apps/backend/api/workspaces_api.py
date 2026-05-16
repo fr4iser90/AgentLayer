@@ -15,6 +15,8 @@ from pydantic import BaseModel, Field
 from apps.backend.core.config import config
 from apps.backend.infrastructure.auth import get_current_user
 from apps.backend.infrastructure.db import db
+from apps.backend.infrastructure.workspace_columns import WORKSPACE_SELECT_SQL, workspace_row_to_api
+from apps.backend.infrastructure import workspace_retrieval
 
 router = APIRouter(prefix="/v1/workspaces", tags=["workspaces"])
 
@@ -43,6 +45,12 @@ class WorkspaceUpdateBody(BaseModel):
     verify_command: str | None = None
     verify_required: bool | None = None
     mcp_stdio_servers: list[dict[str, Any]] | None = None
+    semantic_index_enabled: bool | None = None
+    retrieval_enabled: bool | None = None
+
+
+class WorkspaceIndexBody(BaseModel):
+    max_files: int = Field(default=5000, ge=100, le=20000)
 
 
 class ImplementationBranchBody(BaseModel):
@@ -69,25 +77,7 @@ def safe_resolve_under_workspace(root: Path, rel: str | None) -> Path:
 
 
 def _row_to_workspace(row: tuple) -> dict[str, Any]:
-    mcp_raw = row[12]
-    mcp_list: list[Any] | None = None
-    if isinstance(mcp_raw, list) and len(mcp_raw) > 0:
-        mcp_list = list(mcp_raw)
-    return {
-        "id": str(row[0]),
-        "owner_user_id": str(row[1]),
-        "name": row[2],
-        "path": row[3],
-        "source": row[4],
-        "git_url": row[5],
-        "git_branch": row[6],
-        "access_role": row[7],
-        "created_at": row[8].isoformat() if row[8] else None,
-        "updated_at": row[9].isoformat() if row[9] else None,
-        "verify_command": row[10],
-        "verify_required": bool(row[11]) if row[11] is not None else False,
-        "mcp_stdio_servers": mcp_list,
-    }
+    return workspace_row_to_api(row)
 
 
 def _get_self_workspace(user) -> dict[str, Any] | None:
@@ -105,9 +95,8 @@ def _get_self_workspace(user) -> dict[str, Any] | None:
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """
-                SELECT id, owner_user_id, name, path, source, git_url, git_branch, access_role, created_at, updated_at,
-                       verify_command, verify_required, mcp_stdio_servers_json
+                f"""
+                SELECT {WORKSPACE_SELECT_SQL}
                 FROM project_workspaces
                 WHERE id = %s AND owner_user_id = %s
                 """,
@@ -128,9 +117,8 @@ async def list_workspaces(request: Request):
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """
-                SELECT id, owner_user_id, name, path, source, git_url, git_branch, access_role, created_at, updated_at,
-                       verify_command, verify_required, mcp_stdio_servers_json
+                f"""
+                SELECT {WORKSPACE_SELECT_SQL}
                 FROM project_workspaces
                 WHERE owner_user_id = %s
                 ORDER BY name ASC
@@ -183,9 +171,8 @@ async def get_workspace(request: Request, workspace_id: str):
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """
-                SELECT id, owner_user_id, name, path, source, git_url, git_branch, access_role, created_at, updated_at,
-                       verify_command, verify_required, mcp_stdio_servers_json
+                f"""
+                SELECT {WORKSPACE_SELECT_SQL}
                 FROM project_workspaces
                 WHERE id = %s AND owner_user_id = %s
                 """,
@@ -202,6 +189,57 @@ async def get_workspace(request: Request, workspace_id: str):
         raise HTTPException(status_code=404, detail="Workspace not found")
 
     return {"workspace": _row_to_workspace(row)}
+
+
+@router.get("/{workspace_id}/index/status")
+async def workspace_index_status(request: Request, workspace_id: str) -> dict[str, Any]:
+    """Semantic index / retrieval layer status for this workspace."""
+    user = await get_current_user(request)
+    row = workspace_retrieval.fetch_workspace_row_shared(workspace_id, user.id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    from apps.backend.infrastructure.workspace_service import AGENTLAYER_SELF_NAME, self_editing_allowed
+
+    if (row[2] or "").strip() == AGENTLAYER_SELF_NAME and not self_editing_allowed(user):
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    return workspace_retrieval.index_status_payload(row)
+
+
+@router.post("/{workspace_id}/index")
+async def workspace_run_index(
+    request: Request, workspace_id: str, body: WorkspaceIndexBody | None = None
+) -> dict[str, Any]:
+    """Build or refresh the Qdrant symbol index for this workspace."""
+    user = await get_current_user(request)
+    with db.pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT {WORKSPACE_SELECT_SQL}
+                FROM project_workspaces
+                WHERE id = %s AND owner_user_id = %s AND access_role IN ('owner', 'editor')
+                """,
+                (workspace_id, user.id),
+            )
+            row = cur.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Workspace not found or no edit permission")
+
+    from apps.backend.infrastructure.workspace_service import AGENTLAYER_SELF_NAME, self_editing_allowed
+
+    if (row[2] or "").strip() == AGENTLAYER_SELF_NAME and not self_editing_allowed(user):
+        raise HTTPException(status_code=404, detail="Workspace not found or no edit permission")
+
+    sem, _ret = workspace_retrieval._row_flags(row)
+    if not sem:
+        raise HTTPException(status_code=400, detail="semantic_index_enabled is off for this workspace")
+
+    max_files = body.max_files if body else 5000
+    result = workspace_retrieval.run_semantic_index(workspace_id, row[3], max_files=max_files)
+    status = workspace_retrieval.index_status_payload(
+        workspace_retrieval.fetch_workspace_row(workspace_id, user.id)
+    )
+    return {"ok": bool(result.get("ok")), "index": result, "status": status}
 
 
 @router.post("/{workspace_id}/git/implementation-branch")
@@ -229,9 +267,8 @@ async def update_workspace(request: Request, workspace_id: str, body: WorkspaceU
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """
-                SELECT id, owner_user_id, name, path, source, git_url, git_branch, access_role, created_at, updated_at,
-                       verify_command, verify_required, mcp_stdio_servers_json
+                f"""
+                SELECT {WORKSPACE_SELECT_SQL}
                 FROM project_workspaces
                 WHERE id = %s AND owner_user_id = %s AND access_role IN ('owner', 'editor')
                 """,
@@ -278,6 +315,12 @@ async def update_workspace(request: Request, workspace_id: str, body: WorkspaceU
                 raise HTTPException(status_code=400, detail=str(e)) from e
             updates.append("mcp_stdio_servers_json = %s::jsonb")
             params.append(json.dumps(mcp_val))
+    if "semantic_index_enabled" in patch and patch["semantic_index_enabled"] is not None:
+        updates.append("semantic_index_enabled = %s")
+        params.append(bool(patch["semantic_index_enabled"]))
+    if "retrieval_enabled" in patch and patch["retrieval_enabled"] is not None:
+        updates.append("retrieval_enabled = %s")
+        params.append(bool(patch["retrieval_enabled"]))
 
     if updates:
         params.append(workspace_id)
@@ -292,9 +335,8 @@ async def update_workspace(request: Request, workspace_id: str, body: WorkspaceU
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """
-                SELECT id, owner_user_id, name, path, source, git_url, git_branch, access_role, created_at, updated_at,
-                       verify_command, verify_required, mcp_stdio_servers_json
+                f"""
+                SELECT {WORKSPACE_SELECT_SQL}
                 FROM project_workspaces WHERE id = %s
                 """,
                 (workspace_id,),

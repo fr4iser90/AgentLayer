@@ -8,6 +8,7 @@ from typing import Any, Callable
 from plugins.tools.capabilities.coding.coding_common import (
     json_workspace_missing_error,
     workspace_binding_from_context,
+    workspace_retrieval_flags,
 )
 
 try:
@@ -56,6 +57,17 @@ def coding_semantic_search(arguments: dict[str, Any], context: dict | None = Non
     ws = workspace_binding_from_context(context)
     if ws is None:
         return json_workspace_missing_error()
+    sem_on, _ = workspace_retrieval_flags(context)
+    if not sem_on:
+        return json.dumps(
+            {
+                "ok": False,
+                "skipped": True,
+                "reason": "semantic_index_disabled",
+                "results": [],
+            },
+            ensure_ascii=False,
+        )
     workspace_id = str(ws.get("id") or "")
 
     try:

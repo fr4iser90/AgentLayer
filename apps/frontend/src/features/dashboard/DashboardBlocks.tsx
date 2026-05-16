@@ -961,6 +961,8 @@ function BlockView(props: {
     const cols = block.props.columns || [];
     const enableRowDetail = block.props.enableRowDetail === true;
     const enableRunNow = block.props.enableRunNow === true;
+    const defaultWorkspaceId =
+      typeof block.props.workspaceId === "string" ? block.props.workspaceId.trim() : "";
     const searchEnabled = block.props.enableSearch === true;
     const searchPlaceholder =
       typeof block.props.searchPlaceholder === "string" && block.props.searchPlaceholder.trim()
@@ -979,6 +981,7 @@ function BlockView(props: {
     const [query, setQuery] = useState("");
     const [detailRowId, setDetailRowId] = useState<string | null>(null);
     const [runNowInstructions, setRunNowInstructions] = useState<string>("");
+    const [runNowWorkspaceId, setRunNowWorkspaceId] = useState<string>(defaultWorkspaceId);
     const [runNowBusy, setRunNowBusy] = useState(false);
     const [runNowMsg, setRunNowMsg] = useState<string | null>(null);
     const [recentRuns, setRecentRuns] = useState<any[] | null>(null);
@@ -1227,7 +1230,11 @@ function BlockView(props: {
                     </div>
                     <button
                       type="button"
-                      disabled={runNowBusy || !runNowInstructions.trim()}
+                      disabled={
+                        runNowBusy ||
+                        !runNowInstructions.trim() ||
+                        !runNowWorkspaceId.trim()
+                      }
                       className="rounded-md bg-violet-600/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60"
                       onClick={async () => {
                         setRunNowBusy(true);
@@ -1238,7 +1245,8 @@ function BlockView(props: {
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
                               instructions: runNowInstructions,
-                              ide_workflow: {},
+                              workspace_id: runNowWorkspaceId.trim(),
+                              coding_workflow: {},
                               dashboard_id: dashboardId,
                               project_row_id: String((detailRow as any)?.id ?? ""),
                               project_title: String((detailRow as any)?.title ?? ""),
@@ -1263,6 +1271,15 @@ function BlockView(props: {
                       {runNowBusy ? "Queueing…" : "Queue run"}
                     </button>
                   </div>
+                  <label className="mb-2 block text-[11px] text-surface-muted">
+                    Workspace id (UUID)
+                    <input
+                      value={runNowWorkspaceId}
+                      onChange={(e) => setRunNowWorkspaceId(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-surface-border bg-black/30 px-3 py-1.5 font-mono text-xs text-neutral-100 outline-none focus:border-violet-400/60"
+                      placeholder="coding workspace UUID"
+                    />
+                  </label>
                   <textarea
                     value={runNowInstructions}
                     onChange={(e) => setRunNowInstructions(e.target.value)}
@@ -1351,7 +1368,7 @@ function BlockView(props: {
     const scope = scopeRaw === "both" || scopeRaw === "global" || scopeRaw === "dashboard" ? scopeRaw : "dashboard";
     const targetRaw = String(block.props.executionTarget ?? "all").trim().toLowerCase();
     const executionTarget =
-      targetRaw === "ide_agent" || targetRaw === "server_periodic" ? targetRaw : "all";
+      targetRaw === "coding_agent" || targetRaw === "server_periodic" ? targetRaw : "all";
     const [jobs, setJobs] = useState<SchedulerJobRowLite[] | null>(null);
     const [loading, setLoading] = useState(false);
     const [err, setErr] = useState<string | null>(null);

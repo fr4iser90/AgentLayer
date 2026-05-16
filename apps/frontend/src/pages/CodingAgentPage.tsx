@@ -52,6 +52,7 @@ import {
 import { SessionRuntimeBar } from "../features/chat/SessionRuntimeBar";
 import { CodingWorkspacePanels } from "../features/workspace/CodingWorkspacePanels";
 import { WorkspaceMcpModal } from "../features/workspace/WorkspaceMcpModal";
+import { WorkspaceRetrievalBar } from "../features/workspace/WorkspaceRetrievalBar";
 import {
   applyModelCatalogSelection,
   defaultModelCatalogSelectValue,
@@ -1698,6 +1699,17 @@ export function CodingAgentPage() {
                       ) : null
                     }
                   />
+                  {selectedWorkspace ? (
+                    <WorkspaceRetrievalBar
+                      auth={auth}
+                      workspace={selectedWorkspace}
+                      canEdit={selectedWorkspace.access_role !== "viewer"}
+                      onWorkspaceUpdated={(ws) => {
+                        setWorkspaces((prev) => prev.map((w) => (w.id === ws.id ? ws : w)));
+                      }}
+                      className="w-full"
+                    />
+                  ) : null}
                   <div className="w-full">
                     <label className="flex cursor-pointer items-center gap-2 text-[10px] font-medium uppercase tracking-wide text-surface-muted">
                       <input

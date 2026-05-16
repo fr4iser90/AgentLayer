@@ -841,14 +841,12 @@ class OperatorSettingsPatch(BaseModel):
     workspace_allow_self_editing: bool | None = None
 
 
-def scheduler_jobs_worker_settings() -> tuple[bool, bool, float]:
-    """Persisted ``scheduler_jobs`` worker: enabled, IDE branch (disabled), reply timeout (30–900 s)."""
+def scheduler_jobs_worker_settings() -> tuple[bool, float]:
+    """Persisted ``scheduler_jobs`` + ``project_runs`` worker: enabled, run timeout hint (30–900 s)."""
     r = fetch_operator_settings_row()
     w = bool(r.get("scheduler_jobs_worker_enabled", True))
-    # Server-side PIDEA/Playwright IDE driving removed — keep column reads for future connector only.
-    ide = False
     t = _bound_float(r.get("scheduler_jobs_ide_pidea_timeout_sec"), 300.0, 30.0, 900.0)
-    return w, ide, t
+    return w, t
 
 
 def interface_hints_public() -> dict[str, Any]:

@@ -558,8 +558,8 @@ def admin_scheduler_job_list(arguments: dict[str, Any]) -> str:
     include_archived = bool(arguments.get("include_archived", False))
     tgt_raw = arguments.get("execution_target")
     tgt = str(tgt_raw).strip().lower() or None if tgt_raw is not None else None
-    if tgt is not None and tgt not in ("server_periodic", "ide_agent"):
-        return _err("execution_target must be server_periodic or ide_agent")
+    if tgt is not None and tgt not in ("server_periodic", "coding_agent"):
+        return _err("execution_target must be server_periodic or coding_agent")
     en_raw = arguments.get("enabled")
     enabled = bool(en_raw) if isinstance(en_raw, bool) else None
     try:
@@ -585,8 +585,8 @@ def admin_scheduler_job_create(arguments: dict[str, Any]) -> str:
     _tid, uid = g_adm
     tenant_id = db.user_tenant_id(uid)
     tgt = str(arguments.get("execution_target") or "").strip().lower()
-    if tgt not in ("server_periodic", "ide_agent"):
-        return _err("execution_target must be server_periodic or ide_agent")
+    if tgt not in ("server_periodic", "coding_agent"):
+        return _err("execution_target must be server_periodic or coding_agent")
     instructions = str(arguments.get("instructions") or "").strip()
     if not instructions:
         return _err("instructions is required")
@@ -603,18 +603,22 @@ def admin_scheduler_job_create(arguments: dict[str, Any]) -> str:
     ws = _parse_uuid(arguments.get("dashboard_id"), field="dashboard_id")
     if arguments.get("dashboard_id") is not None and str(arguments.get("dashboard_id")).strip() and ws is None:
         return _err("invalid dashboard_id UUID")
-    ide_wf: dict[str, Any] = {}
-    if arguments.get("ide_workflow") is not None:
-        try:
-            from apps.backend.infrastructure.scheduler_jobs_workflow import normalize_ide_workflow
+    from apps.backend.infrastructure.coding_workflow import normalize_coding_workflow
 
-            ide_wf = normalize_ide_workflow(arguments.get("ide_workflow"))
-        except (ValueError, TypeError) as e:
-            return _err(str(e))
-    elif tgt == "ide_agent":
-        from apps.backend.infrastructure.scheduler_jobs_workflow import normalize_ide_workflow
-
-        ide_wf = normalize_ide_workflow({"use_pidea_scheduler_pipeline": True})
+    wf_raw: dict[str, Any] = {}
+    if arguments.get("coding_workflow") is not None:
+        if not isinstance(arguments.get("coding_workflow"), dict):
+            return _err("coding_workflow must be an object")
+        wf_raw = dict(arguments["coding_workflow"])
+    ws_arg = arguments.get("workspace_id")
+    if ws_arg is not None and str(ws_arg).strip():
+        wf_raw.setdefault("workspace_id", str(ws_arg).strip())
+    try:
+        coding_wf = normalize_coding_workflow(
+            wf_raw, require_workspace=(tgt == "coding_agent")
+        )
+    except (ValueError, TypeError) as e:
+        return _err(str(e))
     row = scheduler_jobs_store.insert_job(
         tenant_id=tenant_id,
         created_by_user_id=uid,
@@ -625,7 +629,7 @@ def admin_scheduler_job_create(arguments: dict[str, Any]) -> str:
         instructions=instructions,
         interval_minutes=interval_m,
         enabled=bool(arguments.get("enabled", True)),
-        ide_workflow=ide_wf,
+        coding_workflow=coding_wf,
     )
     if not row:
         return _err("failed to create job")
@@ -650,13 +654,13 @@ def admin_scheduler_job_patch(arguments: dict[str, Any]) -> str:
             iv = int(interval)
         except (TypeError, ValueError):
             return _err("interval_minutes must be integer")
-    wf = arguments.get("ide_workflow")
+    wf = arguments.get("coding_workflow")
     wf_norm: dict[str, Any] | None = None
     if wf is not None:
         try:
-            from apps.backend.infrastructure.scheduler_jobs_workflow import normalize_ide_workflow
+            from apps.backend.infrastructure.coding_workflow import normalize_coding_workflow
 
-            wf_norm = normalize_ide_workflow(wf)
+            wf_norm = normalize_coding_workflow(wf)
         except (ValueError, TypeError) as e:
             return _err(str(e))
     row = scheduler_jobs_store.update_job(
@@ -667,7 +671,7 @@ def admin_scheduler_job_patch(arguments: dict[str, Any]) -> str:
         title=str(title).strip() if isinstance(title, str) else None,
         instructions=str(instr).strip() if isinstance(instr, str) else None,
         interval_minutes=iv,
-        ide_workflow=wf_norm,
+        coding_workflow=wf_norm,
     )
     if not row:
         return _err("job not found")
@@ -804,7 +808,18 @@ def admin_project_run_create(arguments: dict[str, Any]) -> str:
     ws = _parse_uuid(arguments.get("dashboard_id"), field="dashboard_id")
     if arguments.get("dashboard_id") is not None and str(arguments.get("dashboard_id")).strip() and ws is None:
         return _err("invalid dashboard_id UUID")
-    ide_wf = arguments.get("ide_workflow") if isinstance(arguments.get("ide_workflow"), dict) else {}
+    from apps.backend.infrastructure.coding_workflow import normalize_coding_workflow
+
+    wf_raw: dict[str, Any] = {}
+    if isinstance(arguments.get("coding_workflow"), dict):
+        wf_raw = dict(arguments["coding_workflow"])
+    ws_arg = arguments.get("workspace_id")
+    if ws_arg is not None and str(ws_arg).strip():
+        wf_raw.setdefault("workspace_id", str(ws_arg).strip())
+    try:
+        coding_wf = normalize_coding_workflow(wf_raw, require_workspace=True)
+    except (ValueError, TypeError) as e:
+        return _err(str(e))
     row = project_runs_store.insert_run(
         tenant_id=tenant_id,
         created_by_user_id=uid,
@@ -813,9 +828,9 @@ def admin_project_run_create(arguments: dict[str, Any]) -> str:
         dashboard_id=ws,
         project_row_id=str(arguments.get("project_row_id") or "").strip() or None,
         project_title=str(arguments.get("project_title") or "").strip() or None,
-        execution_target="ide_agent",
+        execution_target="coding_agent",
         instructions=instructions,
-        ide_workflow=ide_wf,
+        coding_workflow=coding_wf,
     )
     if not row:
         return _err("failed to create run")
@@ -1005,7 +1020,7 @@ TOOLS: list[dict[str, Any]] = [
     ),
     _tool_fn(
         "admin_scheduler_job_create",
-        "Create scheduler job (admin): execution_target, instructions, optional title, dashboard_id, interval_minutes, enabled, ide_workflow.",
+        "Create scheduler job (admin): execution_target, instructions, optional title, dashboard_id, interval_minutes, enabled, workspace_id, coding_workflow.",
         {
             "type": "object",
             "properties": {
@@ -1015,14 +1030,15 @@ TOOLS: list[dict[str, Any]] = [
                 "dashboard_id": {"type": "string"},
                 "interval_minutes": {"type": "integer"},
                 "enabled": {"type": "boolean"},
-                "ide_workflow": {"type": "object"},
+                "workspace_id": {"type": "string"},
+                "coding_workflow": {"type": "object"},
             },
             "required": ["execution_target", "instructions"],
         },
     ),
     _tool_fn(
         "admin_scheduler_job_patch",
-        "Patch job by job_id: optional title, instructions, interval_minutes, ide_workflow.",
+        "Patch job by job_id: optional title, instructions, interval_minutes, coding_workflow.",
         {
             "type": "object",
             "properties": {
@@ -1030,7 +1046,7 @@ TOOLS: list[dict[str, Any]] = [
                 "title": {"type": "string"},
                 "instructions": {"type": "string"},
                 "interval_minutes": {"type": "integer"},
-                "ide_workflow": {"type": "object"},
+                "coding_workflow": {"type": "object"},
             },
             "required": ["job_id"],
         },
@@ -1077,17 +1093,18 @@ TOOLS: list[dict[str, Any]] = [
     ),
     _tool_fn(
         "admin_project_run_create",
-        "Enqueue ide_agent project run: instructions; optional dashboard_id, project_row_id, project_title, ide_workflow.",
+        "Enqueue coding_agent project run: instructions, workspace_id; optional dashboard_id, project_row_id, project_title, coding_workflow.",
         {
             "type": "object",
             "properties": {
                 "instructions": {"type": "string"},
+                "workspace_id": {"type": "string"},
                 "dashboard_id": {"type": "string"},
                 "project_row_id": {"type": "string"},
                 "project_title": {"type": "string"},
-                "ide_workflow": {"type": "object"},
+                "coding_workflow": {"type": "object"},
             },
-            "required": ["instructions"],
+            "required": ["instructions", "workspace_id"],
         },
     ),
 ]

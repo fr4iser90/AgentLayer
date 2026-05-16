@@ -1,16 +1,15 @@
-"""Background worker for ``project_runs`` (execution queue).
-
-``ide_agent`` rows are acknowledged as failed: server-side PIDEA/Playwright execution was removed.
-"""
+"""Background worker for ``project_runs`` (coding agent execution queue)."""
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import threading
 import uuid
 from typing import Any
 
 from apps.backend.infrastructure import operator_settings, project_runs_store
+from apps.backend.infrastructure.coding_schedule_execution import run_coding_schedule_row
 
 logger = logging.getLogger(__name__)
 
@@ -50,22 +49,17 @@ def _uid(row: dict[str, Any], key: str) -> uuid.UUID:
     return uuid.UUID(str(v))
 
 
-def _run_ide_agent_pipeline(_run_row: dict[str, Any], *, timeout_s: float) -> tuple[bool, str | None]:
-    _ = timeout_s
-    return False, "IDE server integration disabled (placeholder for external connector)"
-
-
 def _worker_loop() -> None:
     logger.info("project_runs worker thread started")
     while not _stop.is_set():
         if _stop.wait(timeout=_POLL_SEC):
             break
         try:
-            worker_on, ide_on, timeout_s = operator_settings.scheduler_jobs_worker_settings()
-            if not worker_on or not ide_on:
+            worker_on, _ = operator_settings.scheduler_jobs_worker_settings()
+            if not worker_on:
                 continue
 
-            rows = project_runs_store.fetch_queued_runs_ide_agent(limit=_MAX_BATCH)
+            rows = project_runs_store.fetch_queued_runs_coding_agent(limit=_MAX_BATCH)
             for row in rows:
                 if _stop.is_set():
                     break
@@ -73,7 +67,9 @@ def _worker_loop() -> None:
                 run_id = _uid(row, "id")
                 if not project_runs_store.mark_running(run_id=run_id, tenant_id=tenant_id):
                     continue
-                ok, err = _run_ide_agent_pipeline(row, timeout_s=timeout_s)
+                ok, err = asyncio.run(
+                    run_coding_schedule_row(row, row_kind="project_run")
+                )
                 project_runs_store.mark_done(
                     run_id=run_id,
                     tenant_id=tenant_id,

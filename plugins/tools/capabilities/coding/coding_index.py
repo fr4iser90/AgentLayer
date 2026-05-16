@@ -15,6 +15,7 @@ from plugins.tools.capabilities.coding.coding_index_lib import (
 from plugins.tools.capabilities.coding.coding_common import (
     json_workspace_missing_error,
     workspace_binding_from_context,
+    workspace_retrieval_flags,
 )
 
 try:
@@ -53,6 +54,17 @@ def coding_index(arguments: dict[str, Any], context: dict | None = None) -> str:
     ws = workspace_binding_from_context(context)
     if ws is None:
         return json_workspace_missing_error()
+    sem_on, _ = workspace_retrieval_flags(context)
+    if not sem_on:
+        return json.dumps(
+            {
+                "ok": False,
+                "skipped": True,
+                "reason": "semantic_index_disabled",
+                "hint": "Enable indexing on this workspace in the Coding Agent header.",
+            },
+            ensure_ascii=False,
+        )
     workspace_id = str(ws.get("id") or "")
     root = Path(ws["path"])
     max_files = int(arguments.get("max_files", _DEFAULT_MAX_FILES))
@@ -92,6 +104,24 @@ def coding_index(arguments: dict[str, Any], context: dict | None = None) -> str:
         result["qdrant_indexed"] = qdrant_indexed
     if qdrant_error:
         result["qdrant_error"] = qdrant_error
+    if workspace_id:
+        try:
+            from apps.backend.infrastructure.workspace_retrieval import _persist_index_result
+
+            stats_payload = {
+                "scan": stats,
+                "elapsed_sec": elapsed,
+                "total_files": idx.file_count,
+                "total_symbols": idx.symbol_count,
+                "qdrant_indexed": qdrant_indexed,
+            }
+            _persist_index_result(
+                workspace_id,
+                stats=stats_payload,
+                error=qdrant_error,
+            )
+        except Exception:
+            pass
     return json.dumps(result, ensure_ascii=False)
 
 

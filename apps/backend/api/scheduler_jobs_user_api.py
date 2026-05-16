@@ -9,11 +9,14 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from apps.backend.infrastructure.auth import get_current_user
+from apps.backend.infrastructure.coding_workflow import normalize_coding_workflow
 from apps.backend.infrastructure.db import db
 from apps.backend.infrastructure import scheduler_jobs_store
 from apps.backend.dashboard.db import dashboard_access_ex
 
 router = APIRouter(prefix="/v1/user/scheduler-jobs", tags=["scheduler-jobs-user"])
+
+_VALID_TARGETS = frozenset({"server_periodic", "coding_agent"})
 
 
 class SchedulerJobCreateBody(BaseModel):
@@ -23,7 +26,11 @@ class SchedulerJobCreateBody(BaseModel):
     title: str | None = Field(default=None, max_length=500)
     instructions: str = Field(..., min_length=1, max_length=32000)
     dashboard_id: str | None = None
-    ide_workflow: dict[str, Any] | None = None
+    coding_workflow: dict[str, Any] | None = None
+    workspace_id: str | None = Field(
+        default=None,
+        description="Required for coding_agent unless in coding_workflow",
+    )
 
 
 class SchedulerJobSetEnabledBody(BaseModel):
@@ -44,8 +51,8 @@ async def scheduler_job_list(request: Request, dashboard_id: str | None = None, 
     if dashboard_id is not None and str(dashboard_id).strip():
         try:
             ws_id = uuid.UUID(str(dashboard_id).strip())
-        except (ValueError, TypeError):
-            raise HTTPException(status_code=400, detail="invalid dashboard_id") from None
+        except (ValueError, TypeError) as e:
+            raise HTTPException(status_code=400, detail="invalid dashboard_id") from e
     rows = scheduler_jobs_store.list_jobs_for_user(
         tenant_id=tenant_id,
         current_user_id=user.id,
@@ -61,17 +68,17 @@ async def scheduler_job_create(request: Request, body: SchedulerJobCreateBody) -
     user = await get_current_user(request)
     tenant_id = db.user_tenant_id(user.id)
     tgt = body.execution_target.strip().lower()
-    if tgt not in ("server_periodic", "ide_agent"):
+    if tgt not in _VALID_TARGETS:
         raise HTTPException(status_code=400, detail="invalid execution_target")
-    if tgt == "ide_agent" and user.role != "admin":
-        raise HTTPException(status_code=403, detail="execution_target ide_agent requires admin")
+    if tgt == "coding_agent" and user.role != "admin":
+        raise HTTPException(status_code=403, detail="execution_target coding_agent requires admin")
 
     ws_id: uuid.UUID | None = None
     if body.dashboard_id is not None and str(body.dashboard_id).strip():
         try:
             ws_id = uuid.UUID(str(body.dashboard_id).strip())
-        except (ValueError, TypeError):
-            raise HTTPException(status_code=400, detail="invalid dashboard_id") from None
+        except (ValueError, TypeError) as e:
+            raise HTTPException(status_code=400, detail="invalid dashboard_id") from e
         d = dashboard_access_ex(user.id, tenant_id, ws_id)
         if d.role is None:
             raise HTTPException(status_code=403, detail="dashboard not accessible")
@@ -81,6 +88,14 @@ async def scheduler_job_create(request: Request, body: SchedulerJobCreateBody) -
         else:
             if not d.granular_can_write:
                 raise HTTPException(status_code=403, detail="dashboard is read-only for this user")
+
+    wf_raw: dict[str, Any] = dict(body.coding_workflow or {})
+    if body.workspace_id and str(body.workspace_id).strip():
+        wf_raw.setdefault("workspace_id", str(body.workspace_id).strip())
+    try:
+        wf = normalize_coding_workflow(wf_raw, require_workspace=(tgt == "coding_agent"))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     row = scheduler_jobs_store.insert_job(
         tenant_id=tenant_id,
@@ -92,7 +107,7 @@ async def scheduler_job_create(request: Request, body: SchedulerJobCreateBody) -
         instructions=body.instructions.strip(),
         interval_minutes=int(body.interval_minutes),
         enabled=bool(body.enabled),
-        ide_workflow=body.ide_workflow or {},
+        coding_workflow=wf,
     )
     if not row:
         raise HTTPException(status_code=500, detail="failed to create job")
@@ -105,8 +120,8 @@ async def scheduler_job_patch(request: Request, job_id: str, body: SchedulerJobP
     tenant_id = db.user_tenant_id(user.id)
     try:
         jid = uuid.UUID(job_id.strip())
-    except (ValueError, AttributeError):
-        raise HTTPException(status_code=400, detail="invalid job_id") from None
+    except (ValueError, AttributeError) as e:
+        raise HTTPException(status_code=400, detail="invalid job_id") from e
     row = scheduler_jobs_store.update_job(
         job_id=jid,
         tenant_id=tenant_id,
@@ -115,7 +130,7 @@ async def scheduler_job_patch(request: Request, job_id: str, body: SchedulerJobP
         title=body.title.strip() if isinstance(body.title, str) else None,
         instructions=body.instructions.strip() if isinstance(body.instructions, str) else None,
         interval_minutes=body.interval_minutes,
-        ide_workflow=None,
+        coding_workflow=None,
     )
     if not row:
         raise HTTPException(status_code=404, detail="job not found or not allowed")
@@ -128,8 +143,8 @@ async def scheduler_job_hard_delete(request: Request, job_id: str) -> dict[str, 
     tenant_id = db.user_tenant_id(user.id)
     try:
         jid = uuid.UUID(job_id.strip())
-    except (ValueError, AttributeError):
-        raise HTTPException(status_code=400, detail="invalid job_id") from None
+    except (ValueError, AttributeError) as e:
+        raise HTTPException(status_code=400, detail="invalid job_id") from e
     ok = scheduler_jobs_store.hard_delete_job(
         job_id=jid,
         tenant_id=tenant_id,
@@ -140,6 +155,7 @@ async def scheduler_job_hard_delete(request: Request, job_id: str) -> dict[str, 
         raise HTTPException(status_code=404, detail="job not found or not allowed")
     return {"ok": True, "deleted": True, "job_id": str(jid)}
 
+
 @router.patch("/{job_id}/enabled")
 async def scheduler_job_set_enabled(
     request: Request, job_id: str, body: SchedulerJobSetEnabledBody
@@ -148,8 +164,8 @@ async def scheduler_job_set_enabled(
     tenant_id = db.user_tenant_id(user.id)
     try:
         jid = uuid.UUID(job_id.strip())
-    except (ValueError, AttributeError):
-        raise HTTPException(status_code=400, detail="invalid job_id") from None
+    except (ValueError, AttributeError) as e:
+        raise HTTPException(status_code=400, detail="invalid job_id") from e
     row = scheduler_jobs_store.set_enabled(
         job_id=jid,
         tenant_id=tenant_id,
@@ -160,4 +176,3 @@ async def scheduler_job_set_enabled(
     if not row:
         raise HTTPException(status_code=404, detail="job not found or not allowed")
     return {"ok": True, "job": scheduler_jobs_store.row_to_public(row)}
-

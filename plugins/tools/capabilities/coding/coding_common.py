@@ -36,6 +36,17 @@ def workspace_binding_from_context(context: dict | None) -> dict[str, Any] | Non
     return None
 
 
+def workspace_retrieval_flags(context: dict | None) -> tuple[bool, bool]:
+    """(semantic_index_enabled, retrieval_enabled) from bound workspace dict."""
+    ws = workspace_binding_from_context(context)
+    if ws is None:
+        return True, True
+    return (
+        bool(ws.get("semantic_index_enabled", True)),
+        bool(ws.get("retrieval_enabled", True)),
+    )
+
+
 def json_workspace_missing_error() -> str:
     return json.dumps(
         {

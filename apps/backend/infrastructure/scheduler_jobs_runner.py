@@ -1,11 +1,8 @@
 """
 Background worker for persisted ``scheduler_jobs``.
 
-- ``execution_target=server_periodic``: ``chat_completion`` (plain) as ``execution_user_id``.
-- ``execution_target=ide_agent``: **not executed** on the server (legacy PIDEA path removed; placeholder for a
-  future external IDE connector). ``scheduler_jobs_worker_settings`` reports the IDE branch as disabled.
-
-Worker enable/disable is read from ``operator_settings`` (Admin → Interfaces), not from environment variables.
+- ``execution_target=server_periodic``: ``chat_completion`` (productivity tools).
+- ``execution_target=coding_agent``: coding agent on a workspace via ``chat_completion``.
 """
 
 from __future__ import annotations
@@ -16,11 +13,10 @@ import threading
 import uuid
 from typing import Any
 
-from apps.backend.core.config import config
-from apps.backend.domain.agent import chat_completion
 from apps.backend.domain.identity import reset_identity, set_identity
 from apps.backend.infrastructure import operator_settings
 from apps.backend.infrastructure import scheduler_jobs_store
+from apps.backend.infrastructure.coding_schedule_execution import run_coding_schedule_row
 from apps.backend.infrastructure.db import db
 
 logger = logging.getLogger(__name__)
@@ -62,6 +58,9 @@ def _uid(row: dict[str, Any], key: str) -> uuid.UUID:
 
 
 async def _run_server_job(row: dict[str, Any]) -> None:
+    from apps.backend.core.config import config
+    from apps.backend.domain.agent import chat_completion
+
     tenant_id = _tenant_id(row)
     user_id = _uid(row, "execution_user_id")
     job_id = _uid(row, "id")
@@ -119,23 +118,40 @@ async def _run_server_job(row: dict[str, Any]) -> None:
         logger.warning("scheduler_jobs: could not mark last_run_at job_id=%s", job_id)
 
 
+async def _run_coding_job(row: dict[str, Any]) -> None:
+    job_id = _uid(row, "id")
+    tenant_id = _tenant_id(row)
+    ok, err = await run_coding_schedule_row(row, row_kind="scheduler_job")
+    if ok:
+        scheduler_jobs_store.mark_job_last_run(job_id=job_id, tenant_id=tenant_id)
+        logger.info("scheduler_jobs: finished coding job job_id=%s", job_id)
+    else:
+        logger.warning("scheduler_jobs: coding job failed job_id=%s: %s", job_id, err)
+
+
 def _worker_loop() -> None:
-    logger.info("scheduler_jobs worker thread started (toggles: operator_settings / Admin → Interfaces)")
+    logger.info("scheduler_jobs worker thread started (operator_settings / Admin → Interfaces)")
     while not _stop.is_set():
         if _stop.wait(timeout=_POLL_SEC):
             break
         try:
-            worker_on, _ide_branch, _timeout_s = operator_settings.scheduler_jobs_worker_settings()
+            worker_on, _ = operator_settings.scheduler_jobs_worker_settings()
             if not worker_on:
                 continue
-            jobs = scheduler_jobs_store.fetch_due_jobs_server_periodic(limit=_MAX_BATCH)
-            for row in jobs:
+            for row in scheduler_jobs_store.fetch_due_jobs_server_periodic(limit=_MAX_BATCH):
                 if _stop.is_set():
                     break
                 try:
                     asyncio.run(_run_server_job(row))
                 except Exception:
                     logger.exception("scheduler_jobs: server run failed")
+            for row in scheduler_jobs_store.fetch_due_jobs_coding_agent(limit=_MAX_BATCH):
+                if _stop.is_set():
+                    break
+                try:
+                    asyncio.run(_run_coding_job(row))
+                except Exception:
+                    logger.exception("scheduler_jobs: coding run failed")
         except Exception:
             logger.exception("scheduler_jobs worker iteration failed")
     logger.info("scheduler_jobs server worker stopped")

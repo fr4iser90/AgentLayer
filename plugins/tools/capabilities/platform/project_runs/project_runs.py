@@ -1,4 +1,4 @@
-"""Create and list one-shot project runs (execution queue)."""
+"""Create and list one-shot project runs (coding agent execution queue)."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import uuid
 from typing import Any, Callable
 
 from apps.backend.domain.identity import get_identity
+from apps.backend.infrastructure.coding_workflow import normalize_coding_workflow
 from apps.backend.infrastructure.db import db
 from apps.backend.infrastructure import project_runs_store
 
@@ -15,7 +16,7 @@ TOOL_ID = "project_runs"
 TOOL_BUCKET = "meta"
 TOOL_DOMAIN = "meta"
 TOOL_LABEL = "Project runs"
-TOOL_DESCRIPTION = "Create and inspect one-shot project runs (decoupled execution queue)."
+TOOL_DESCRIPTION = "Create and inspect one-shot coding-agent project runs (decoupled execution queue)."
 TOOL_TRIGGERS = ("run", "project run", "execute project", "run now", "one-shot")
 TOOL_CAPABILITIES = ("project.run.read", "project.run.write")
 TOOL_MIN_ROLE = "user"
@@ -43,7 +44,7 @@ def _identity() -> tuple[int, uuid.UUID] | None:
 
 
 def project_run_create(arguments: dict[str, Any]) -> str:
-    """Insert a project_runs row (one-shot)."""
+    """Insert a project_runs row (one-shot coding agent)."""
     idt = _identity()
     if not idt:
         return _err("missing identity — not authenticated")
@@ -65,9 +66,18 @@ def project_run_create(arguments: dict[str, Any]) -> str:
         if not db.user_by_id(exec_uid):
             return _err("execution_user_id unknown")
 
-    wf = arguments.get("ide_workflow")
-    if wf is not None and not isinstance(wf, dict):
-        return _err("ide_workflow must be an object when provided")
+    wf_raw: dict[str, Any] = {}
+    if arguments.get("coding_workflow") is not None:
+        if not isinstance(arguments.get("coding_workflow"), dict):
+            return _err("coding_workflow must be an object when provided")
+        wf_raw = dict(arguments["coding_workflow"])
+    ws_arg = arguments.get("workspace_id")
+    if ws_arg is not None and str(ws_arg).strip():
+        wf_raw.setdefault("workspace_id", str(ws_arg).strip())
+    try:
+        wf = normalize_coding_workflow(wf_raw, require_workspace=True)
+    except (ValueError, TypeError) as e:
+        return _err(str(e))
 
     row = project_runs_store.insert_run(
         tenant_id=tenant_id,
@@ -77,9 +87,9 @@ def project_run_create(arguments: dict[str, Any]) -> str:
         dashboard_id=None,
         project_row_id=None,
         project_title=None,
-        execution_target="ide_agent",
+        execution_target="coding_agent",
         instructions=instructions,
-        ide_workflow=wf if isinstance(wf, dict) else {},
+        coding_workflow=wf,
     )
     if not row:
         return _err("failed to create run")
@@ -96,19 +106,28 @@ TOOLS: list[dict[str, Any]] = [
         "function": {
             "name": "project_run_create",
             "TOOL_DESCRIPTION": (
-                "Create a one-shot IDE execution run (queued in project_runs). "
-                "This does not create a schedule; it creates a single run for the execution worker."
+                "Create a one-shot coding-agent execution run (queued in project_runs). "
+                "Requires workspace_id. Does not create a recurring schedule."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "instructions": {"type": "string"},
-                    "execution_user_id": {"type": "string", "TOOL_DESCRIPTION": "Optional UUID; default caller."},
-                    "ide_workflow": {"type": "object", "TOOL_DESCRIPTION": "Optional ide_workflow overrides."},
+                    "workspace_id": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": "Coding workspace UUID (required).",
+                    },
+                    "execution_user_id": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": "Optional UUID; default caller.",
+                    },
+                    "coding_workflow": {
+                        "type": "object",
+                        "TOOL_DESCRIPTION": "Optional: agent_id, prompt_preamble.",
+                    },
                 },
-                "required": ["instructions"],
+                "required": ["instructions", "workspace_id"],
             },
         },
     }
 ]
-

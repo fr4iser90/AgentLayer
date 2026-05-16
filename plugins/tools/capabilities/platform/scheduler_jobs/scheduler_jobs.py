@@ -1,4 +1,4 @@
-"""Create and list persisted scheduler jobs (IDE / server targets). Server-side RBAC."""
+"""Create and list persisted scheduler jobs (coding agent / server targets). Server-side RBAC."""
 
 from __future__ import annotations
 
@@ -18,9 +18,9 @@ TOOL_DOMAIN = "meta"
 TOOL_LABEL = "Scheduler jobs"
 TOOL_DESCRIPTION = (
     "Create, list, or enable/disable persisted scheduler jobs (separate from the single operator "
-    "tick in Admin → Interfaces). Use schedule_job_create to queue work for the IDE agent or server; "
+    "tick in Admin → Interfaces). Use schedule_job_create to queue work for the coding agent or server; "
     "schedule_job_list to inspect; schedule_job_set_enabled to pause/resume. "
-    "execution_target ide_agent requires admin; dashboard-bound jobs require edit access to that dashboard."
+    "execution_target coding_agent requires admin and workspace_id; dashboard-bound jobs require edit access."
 )
 TOOL_TRIGGERS = (
     "schedule",
@@ -41,7 +41,7 @@ AGENT_TOOL_META_BY_NAME = {
 
 _MAX_INSTRUCTIONS = 32_000
 _MAX_TITLE = 500
-_VALID_TARGETS = frozenset({"server_periodic", "ide_agent"})
+_VALID_TARGETS = frozenset({"server_periodic", "coding_agent"})
 
 
 def _err(msg: str) -> str:
@@ -79,7 +79,7 @@ def _parse_uuid(s: Any, *, field: str) -> uuid.UUID | None:
 
 
 def schedule_job_create(arguments: dict[str, Any]) -> str:
-    """Insert a scheduler_jobs row; ide_agent requires admin; optional dashboard_id."""
+    """Insert a scheduler_jobs row; coding_agent requires admin + workspace_id; optional dashboard_id."""
     idt = _identity()
     if not idt:
         return _err("missing identity — not authenticated")
@@ -89,10 +89,10 @@ def schedule_job_create(arguments: dict[str, Any]) -> str:
 
     raw_target = (arguments.get("execution_target") or "").strip().lower()
     if raw_target not in _VALID_TARGETS:
-        return _err("execution_target must be server_periodic or ide_agent")
+        return _err("execution_target must be server_periodic or coding_agent")
 
-    if raw_target == "ide_agent" and not is_admin:
-        return _err("execution_target ide_agent requires admin role")
+    if raw_target == "coding_agent" and not is_admin:
+        return _err("execution_target coding_agent requires admin role")
 
     instructions = str(arguments.get("instructions") or "").strip()
     if not instructions:
@@ -127,18 +127,22 @@ def schedule_job_create(arguments: dict[str, Any]) -> str:
         if not _dashboard_allows_schedule(tenant_id, caller_uid, dashboard_id):
             return _err("no permission to attach a schedule to this dashboard")
 
-    ide_wf: dict[str, Any] = {}
-    if arguments.get("ide_workflow") is not None:
-        try:
-            from apps.backend.infrastructure.scheduler_jobs_workflow import normalize_ide_workflow
+    from apps.backend.infrastructure.coding_workflow import normalize_coding_workflow
 
-            ide_wf = normalize_ide_workflow(arguments.get("ide_workflow"))
-        except (ValueError, TypeError) as e:
-            return _err(str(e))
-    elif raw_target == "ide_agent":
-        from apps.backend.infrastructure.scheduler_jobs_workflow import normalize_ide_workflow
-
-        ide_wf = normalize_ide_workflow({"use_pidea_scheduler_pipeline": True})
+    wf_raw: dict[str, Any] = {}
+    if arguments.get("coding_workflow") is not None:
+        if not isinstance(arguments.get("coding_workflow"), dict):
+            return _err("coding_workflow must be an object")
+        wf_raw = dict(arguments["coding_workflow"])
+    ws_arg = arguments.get("workspace_id")
+    if ws_arg is not None and str(ws_arg).strip():
+        wf_raw.setdefault("workspace_id", str(ws_arg).strip())
+    try:
+        coding_wf = normalize_coding_workflow(
+            wf_raw, require_workspace=(raw_target == "coding_agent")
+        )
+    except (ValueError, TypeError) as e:
+        return _err(str(e))
 
     row = scheduler_jobs_store.insert_job(
         tenant_id=tenant_id,
@@ -150,7 +154,7 @@ def schedule_job_create(arguments: dict[str, Any]) -> str:
         instructions=instructions,
         interval_minutes=interval_m,
         enabled=bool(arguments.get("enabled", True)),
-        ide_workflow=ide_wf,
+        coding_workflow=coding_wf,
     )
     if not row:
         return _err("failed to create job")
@@ -227,18 +231,11 @@ TOOLS: list[dict[str, Any]] = [
         "function": {
             "name": "schedule_job_create",
             "TOOL_DESCRIPTION": (
-                "Create a persisted scheduler job. execution_target: server_periodic (general server) or "
-                "ide_agent (runs later in the IDE agent context) — ide_agent requires admin. "
-                "instructions: what to do. Optional dashboard_id (UUID) to scope to a dashboard. "
-                "Optional execution_user_id (UUID) — defaults to the current user (identity the job runs as). "
-                "interval_minutes: 5–10080 (default 60). "
-                "Optional ide_workflow (object): new_chat, prompt_preamble; optional git_repo_path, "
-                "git_branch_template, git_source_branch; "
-                "If ide_workflow is omitted and execution_target is ide_agent, use_pidea_scheduler_pipeline is on by "
-                "default: new chat + task-analyze, then task-create in the same chat, then git branch, then new chat + "
-                "task-execute (+ optional scheduler_pipeline_include_review). Or set ide_workflow explicitly: use_pidea_task_management_phases, "
-                "phase_prompt_paths, pidea_workflow_name (JSON id), use_pidea_scheduler_pipeline, git_repo_path or "
-                "project_path, git_branch_template."
+                "Create a persisted scheduler job. execution_target: server_periodic (general server chat) or "
+                "coding_agent (runs on a coding workspace via chat_completion) — coding_agent requires admin. "
+                "For coding_agent provide workspace_id (UUID) or coding_workflow.workspace_id. "
+                "Optional coding_workflow: agent_id (coding|coding_plan), prompt_preamble. "
+                "instructions: what to do. Optional dashboard_id (UUID). interval_minutes: 5–10080 (default 60)."
             ),
             "parameters": {
                 "type": "object",
@@ -249,8 +246,8 @@ TOOLS: list[dict[str, Any]] = [
                     },
                     "execution_target": {
                         "type": "string",
-                        "enum": ["server_periodic", "ide_agent"],
-                        "TOOL_DESCRIPTION": "ide_agent requires admin.",
+                        "enum": ["server_periodic", "coding_agent"],
+                        "TOOL_DESCRIPTION": "coding_agent requires admin and workspace_id.",
                     },
                     "title": {"type": "string", "TOOL_DESCRIPTION": "Short label (optional)."},
                     "dashboard_id": {
@@ -269,14 +266,14 @@ TOOLS: list[dict[str, Any]] = [
                         "type": "boolean",
                         "TOOL_DESCRIPTION": "Default true.",
                     },
-                    "ide_workflow": {
+                    "workspace_id": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": "Coding workspace UUID (required for coding_agent).",
+                    },
+                    "coding_workflow": {
                         "type": "object",
                         "TOOL_DESCRIPTION": (
-                            "Optional. Default for ide_agent (if omitted): use_pidea_scheduler_pipeline "
-                            "(analyze → create → git → execute). Or: pidea_workflow_name (JSON workflow), "
-                            "use_pidea_task_management_phases / phase_prompt_paths, "
-                            "use_pidea_scheduler_pipeline false for a single message. "
-                            "git_repo_path or project_path + git_branch_template for the branch step."
+                            "Optional overrides: workspace_id, agent_id (coding|coding_plan), prompt_preamble."
                         ),
                     },
                 },

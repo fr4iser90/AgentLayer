@@ -12,8 +12,6 @@ export type AuthUser = {
   id: string;
   email: string;
   role: string;
-  /** Non-admins: granted by admin for IDE Agent when PIDEA is on. */
-  ide_agent_allowed?: boolean;
 };
 
 export type AuthContextValue = {

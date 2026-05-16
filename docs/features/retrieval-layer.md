@@ -149,6 +149,7 @@ Retrieve top‑50 → cross-encoder or LLM rerank → top‑5 for the prompt. No
 | **Short** | `retrieve_context` (grep + semantic + docs + memory) | Done |
 | **Short** | Document retrieval layer (this page) | Done |
 | **Medium** | Workspace-scoped RAG ingest (per `project_workspaces`) | Planned |
+| **Short** | Per-workspace index/retrieval toggles + UI (`semantic_index_enabled`, `retrieval_enabled`) | Done |
 | **Medium** | RRF / reranker in orchestrator | Planned |
 | **Medium** | Session bootstrap snippet (index stats, repo map) | Planned |
 | **Long** | LSP hits inside `retrieve_context` | Planned |

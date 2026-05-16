@@ -12,7 +12,7 @@ type SchedulerJobRow = {
   last_run_at: string | null;
   deleted_at?: string | null;
   created_at: string;
-  ide_workflow?: unknown;
+  coding_workflow?: unknown;
   instructions?: string;
 };
 
@@ -21,7 +21,7 @@ type SchedulerJobPreset = {
   label: string;
   description?: string;
   job: {
-    execution_target?: "ide_agent" | "server_periodic";
+    execution_target?: "coding_agent" | "server_periodic";
     interval_minutes?: number;
     enabled?: boolean;
     title?: string | null;
@@ -46,13 +46,14 @@ export function AdminSchedules() {
   const [scope, setScope] = useState<"all" | "global_only" | "dashboard">("all");
   const [dashboardId, setDashboardId] = useState<string>("");
   const [includeGlobal, setIncludeGlobal] = useState(true);
-  const [target, setTarget] = useState<"all" | "ide_agent" | "server_periodic">("all");
+  const [target, setTarget] = useState<"all" | "coding_agent" | "server_periodic">("all");
   const [enabled, setEnabled] = useState<"all" | "true" | "false">("all");
   const [includeArchived, setIncludeArchived] = useState(false);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createPresetId, setCreatePresetId] = useState<string>("");
-  const [createTarget, setCreateTarget] = useState<"ide_agent" | "server_periodic">("ide_agent");
+  const [createTarget, setCreateTarget] = useState<"server_periodic" | "coding_agent">("server_periodic");
+  const [createWorkspaceId, setCreateWorkspaceId] = useState("");
   const [createInterval, setCreateInterval] = useState(60);
   const [createEnabled, setCreateEnabled] = useState(true);
   const [createTitle, setCreateTitle] = useState("");
@@ -209,7 +210,9 @@ export function AdminSchedules() {
         title: createTitle || null,
         instructions: createInstructions,
         dashboard_id: createDashboardId || null,
-        ide_workflow: {},
+        ...(createTarget === "coding_agent"
+          ? { workspace_id: createWorkspaceId.trim(), coding_workflow: {} }
+          : { coding_workflow: {} }),
       }),
     });
     const j = (await res.json().catch(() => null)) as any;
@@ -222,6 +225,7 @@ export function AdminSchedules() {
     setCreateTitle("");
     setCreateInstructions("");
     setCreateDashboardId("");
+    setCreateWorkspaceId("");
     await refresh();
   };
 
@@ -277,7 +281,7 @@ export function AdminSchedules() {
               onChange={(e) => setTarget(e.target.value as any)}
             >
               <option value="all">All</option>
-              <option value="ide_agent">ide_agent</option>
+              <option value="coding_agent">coding_agent</option>
               <option value="server_periodic">server_periodic</option>
             </select>
           </label>
@@ -466,10 +470,21 @@ export function AdminSchedules() {
                   value={createTarget}
                   onChange={(e) => setCreateTarget(e.target.value as any)}
                 >
-                  <option value="ide_agent">ide_agent</option>
                   <option value="server_periodic">server_periodic</option>
+                  <option value="coding_agent">coding_agent</option>
                 </select>
               </label>
+              {createTarget === "coding_agent" ? (
+                <label className="text-xs text-surface-muted md:col-span-2">
+                  Workspace id (UUID, required)
+                  <input
+                    className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
+                    value={createWorkspaceId}
+                    onChange={(e) => setCreateWorkspaceId(e.target.value)}
+                    placeholder="coding workspace UUID"
+                  />
+                </label>
+              ) : null}
               <label className="text-xs text-surface-muted">
                 Interval (minutes)
                 <input
@@ -530,7 +545,10 @@ export function AdminSchedules() {
                 type="button"
                 className="rounded-md bg-violet-600/80 px-3 py-2 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-60"
                 onClick={() => void createJob()}
-                disabled={!createInstructions.trim()}
+                disabled={
+                  !createInstructions.trim() ||
+                  (createTarget === "coding_agent" && !createWorkspaceId.trim())
+                }
               >
                 Create
               </button>

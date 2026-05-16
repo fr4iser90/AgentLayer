@@ -1,7 +1,6 @@
 """CRUD for ``project_runs`` (tenant-scoped).
 
-`project_runs` is a one-shot execution queue. It decouples *scheduling* (when) from
-*execution* (how: PIDEA pipeline / Git / IDE automation).
+`project_runs` is a one-shot execution queue for coding-agent runs on a workspace.
 """
 
 from __future__ import annotations
@@ -29,9 +28,9 @@ def insert_run(
     project_title: str | None,
     execution_target: str,
     instructions: str,
-    ide_workflow: dict[str, Any] | None,
+    coding_workflow: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    wf = ide_workflow if ide_workflow is not None else {}
+    wf = coding_workflow if coding_workflow is not None else {}
     with db.pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
@@ -39,13 +38,13 @@ def insert_run(
                 INSERT INTO project_runs (
                   tenant_id, created_by_user_id, execution_user_id,
                   scheduler_job_id, dashboard_id, project_row_id, project_title,
-                  execution_target, instructions, ide_workflow,
+                  execution_target, instructions, coding_workflow,
                   status, updated_at
                 )
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'queued', now())
                 RETURNING id, tenant_id, created_by_user_id, execution_user_id, scheduler_job_id,
                           dashboard_id, project_row_id, project_title,
-                          execution_target, instructions, ide_workflow, status, error,
+                          execution_target, instructions, coding_workflow, status, error,
                           started_at, finished_at, created_at, updated_at
                 """,
                 (
@@ -66,7 +65,7 @@ def insert_run(
     return dict(row) if row else {}
 
 
-def fetch_queued_runs_ide_agent(*, limit: int = 10) -> list[dict[str, Any]]:
+def fetch_queued_runs_coding_agent(*, limit: int = 10) -> list[dict[str, Any]]:
     lim = max(1, min(50, int(limit)))
     with db.pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
@@ -74,11 +73,11 @@ def fetch_queued_runs_ide_agent(*, limit: int = 10) -> list[dict[str, Any]]:
                 """
                 SELECT id, tenant_id, created_by_user_id, execution_user_id, scheduler_job_id,
                        dashboard_id, project_row_id, project_title,
-                       execution_target, instructions, ide_workflow, status, error,
+                       execution_target, instructions, coding_workflow, status, error,
                        started_at, finished_at, created_at, updated_at
                 FROM project_runs
                 WHERE status = 'queued'
-                  AND execution_target = 'ide_agent'
+                  AND execution_target = 'coding_agent'
                 ORDER BY created_at ASC
                 LIMIT %s
                 """,
@@ -112,7 +111,7 @@ def list_runs(
                 f"""
                 SELECT id, tenant_id, created_by_user_id, execution_user_id, scheduler_job_id,
                        dashboard_id, project_row_id, project_title,
-                       execution_target, instructions, ide_workflow, status, error,
+                       execution_target, instructions, coding_workflow, status, error,
                        started_at, finished_at, created_at, updated_at
                 FROM project_runs
                 {where}

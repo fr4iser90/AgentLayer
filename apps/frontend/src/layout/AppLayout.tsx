@@ -43,9 +43,6 @@ export function AppLayout() {
               <NavLink to="/coding-agent" className={linkClass}>
                 Coding
               </NavLink>
-              <NavLink to="/ide-agent" className={linkClass}>
-                {t("nav.ideAgent")}
-              </NavLink>
               <NavLink to="/studio" className={linkClass}>
                 {t("nav.studio")}
               </NavLink>

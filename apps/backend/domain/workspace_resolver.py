@@ -49,8 +49,9 @@ def resolve_db_workspace(workspace_id: str, user) -> dict[str, Any] | None:
                 cur.execute(
                     """
                     SELECT id, name, path, source, git_url, git_branch, access_role, owner_user_id,
-                           verify_command, verify_required, mcp_stdio_servers_json
-                    FROM project_workspaces 
+                           verify_command, verify_required, mcp_stdio_servers_json,
+                           semantic_index_enabled, retrieval_enabled
+                    FROM project_workspaces
                     WHERE id = %s AND (owner_user_id = %s OR access_role IN ('editor', 'viewer'))
                     """,
                     (str(workspace_id), user.id),
@@ -81,6 +82,8 @@ def resolve_db_workspace(workspace_id: str, user) -> dict[str, Any] | None:
                     "verify_command": row[8],
                     "verify_required": bool(row[9]) if row[9] is not None else False,
                     "mcp_stdio_servers": mcp_list,
+                    "semantic_index_enabled": bool(row[11]) if row[11] is not None else True,
+                    "retrieval_enabled": bool(row[12]) if row[12] is not None else True,
                 }
     except Exception as e:
         logger.error("failed to resolve workspace from DB: %s", e)

@@ -99,6 +99,31 @@ export type WorkspaceApiRecord = {
   verify_command?: string | null;
   verify_required?: boolean;
   mcp_stdio_servers?: Array<Record<string, unknown>> | null;
+  semantic_index_enabled?: boolean;
+  retrieval_enabled?: boolean;
+  last_index_at?: string | null;
+  last_index_stats?: {
+    total_symbols?: number;
+    total_files?: number;
+    qdrant_indexed?: number;
+    elapsed_sec?: number;
+    scan?: Record<string, unknown>;
+  } | null;
+  last_index_error?: string | null;
+};
+
+export type WorkspaceIndexStatus = {
+  ok: boolean;
+  workspace_id?: string;
+  semantic_index_enabled?: boolean;
+  retrieval_enabled?: boolean;
+  last_index_at?: string | null;
+  last_index_stats?: WorkspaceApiRecord["last_index_stats"];
+  last_index_error?: string | null;
+  qdrant?: { configured?: boolean; reachable?: boolean | null; error?: string };
+  embedding?: { configured?: boolean; enabled?: boolean; embedding_dim?: number };
+  coding_enabled?: boolean;
+  error?: string;
 };
 
 export async function patchWorkspace(

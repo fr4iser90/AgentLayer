@@ -559,6 +559,11 @@ def create_project_workspace_for_user(
             "updated_at": row[9].isoformat() if row[9] else None,
             "verify_command": row[10],
             "verify_required": bool(row[11]) if row[11] is not None else False,
+            "semantic_index_enabled": True,
+            "retrieval_enabled": True,
+            "last_index_at": None,
+            "last_index_stats": None,
+            "last_index_error": None,
         }
     except Exception as e:
         from psycopg.errors import UniqueViolation

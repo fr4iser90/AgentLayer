@@ -84,11 +84,10 @@ from apps.backend.infrastructure.log_redaction import (
 )
 from apps.backend.infrastructure.public_error import http_500_detail
 # from apps.backend.integrations.pidea.api_router import router as pidea_router
-# from apps.backend.api.scheduler_jobs_api import router as scheduler_jobs_router
-# from apps.backend.api.scheduler_jobs_admin_api import router as scheduler_jobs_admin_router
-# from apps.backend.api.scheduler_job_presets_api import router as scheduler_job_presets_router
-# from apps.backend.api.scheduler_jobs_user_api import router as scheduler_jobs_user_router
-# from apps.backend.api.scheduler_job_presets_user_api import router as scheduler_job_presets_user_router
+from apps.backend.api.scheduler_jobs_admin_api import router as scheduler_jobs_admin_router
+from apps.backend.api.scheduler_job_presets_api import router as scheduler_job_presets_router
+from apps.backend.api.scheduler_jobs_user_api import router as scheduler_jobs_user_router
+from apps.backend.api.scheduler_job_presets_user_api import router as scheduler_job_presets_user_router
 from apps.backend.api.project_runs_api import router as project_runs_router
 from apps.backend.api.friends_api import router as friends_router
 from apps.backend.api.shares_api import router as shares_router
@@ -236,11 +235,10 @@ app.include_router(codebase_router)
 app.include_router(chat_ws_router)
 app.include_router(studio_router)
 #app.include_router(pidea_router)
-# app.include_router(scheduler_jobs_router)
-# app.include_router(scheduler_jobs_admin_router)
-# app.include_router(scheduler_job_presets_router)
-# app.include_router(scheduler_jobs_user_router)
-# app.include_router(scheduler_job_presets_user_router)
+app.include_router(scheduler_jobs_admin_router)
+app.include_router(scheduler_job_presets_router)
+app.include_router(scheduler_jobs_user_router)
+app.include_router(scheduler_job_presets_user_router)
 app.include_router(project_runs_router)
 app.include_router(agents_router)
 app.include_router(session_runtime_router)
@@ -275,7 +273,6 @@ async def login(request: Request, login_data: LoginRequest):
             "id": str(user.id),
             "email": user.email,
             "role": user.role,
-            "ide_agent_allowed": bool(getattr(user, "ide_agent_allowed", False)),
         },
     }
     response = JSONResponse(content=payload)
@@ -317,7 +314,6 @@ async def auth_refresh(request: Request):
             "id": str(user.id),
             "email": user.email,
             "role": user.role,
-            "ide_agent_allowed": bool(getattr(user, "ide_agent_allowed", False)),
         },
     }
 
@@ -354,7 +350,6 @@ async def get_current_user_info(request: Request):
         "created_at": user.created_at.isoformat(),
         "discord_user_id": discord_uid,
         "telegram_user_id": telegram_uid,
-        "ide_agent_allowed": bool(getattr(user, "ide_agent_allowed", False)),
     }
     if user.role != "admin":
         id_token = set_identity(1, user.id)
@@ -652,9 +647,7 @@ if _agent_index.is_file():
     @app.get("/app/settings/tools")
     @app.get("/app/settings/agent")
     @app.get("/app/studio")
-    @app.get("/app/ide-agent")
     @app.get("/app/admin")
-    @app.get("/app/admin/ide-integration")
     @app.get("/app/admin/interfaces")
     @app.get("/app/admin/tools")
     @app.get("/app/admin/users")
@@ -662,12 +655,6 @@ if _agent_index.is_file():
     @app.get("/app/admin/workflows")
     async def agent_ui_spa_shell():
         """Serve SPA index for client-side routes (must register before mount /app)."""
-        return FileResponse(_agent_index)
-
-    @app.get("/app/admin/ide-agents/{full_path:path}")
-    async def agent_ui_spa_shell_legacy_ide_agents(full_path: str):
-        """Legacy PIDEA admin URLs; SPA redirects to IDE integration placeholder."""
-        _ = full_path
         return FileResponse(_agent_index)
 
     app.mount(
