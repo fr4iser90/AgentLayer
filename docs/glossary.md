@@ -44,6 +44,7 @@ Special URL prefix for dashboard uploads:
 ### KB vs RAG vs Memory
 
 - **KB**: keyword/full-text notes (`user_kb_notes`), tool: `kb_*`.
-- **RAG**: vector search over ingested documents (`rag_documents`/`rag_chunks`), tool: `rag_search`.
+- **RAG**: vector search over ingested documents (`rag_documents`/`rag_chunks`), tools: `rag_search`, `retrieve_context` (bundled).
+- **Retrieval layer**: orchestration of grep, semantic code (Qdrant), RAG docs, and memory for agents — see `docs/features/retrieval-layer.md`.
 - **Memory**: opt-in persistent user memory (facts + semantic notes), tool: `memory_*`.
 

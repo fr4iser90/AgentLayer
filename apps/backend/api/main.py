@@ -165,6 +165,12 @@ async def lifespan(_app: FastAPI):
         )
     get_registry()
     try:
+        from apps.backend.infrastructure.rag_embedding_sync import ensure_rag_embedding_dim_aligned
+
+        await asyncio.to_thread(ensure_rag_embedding_dim_aligned, log_prefix="startup")
+    except Exception:
+        logger.exception("RAG embedding dim auto-sync failed")
+    try:
         await asyncio.to_thread(run_startup_rag_docs_ingest)
     except Exception:
         logger.exception("RAG docs startup ingest failed (embedding backend unreachable?)")

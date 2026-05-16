@@ -295,6 +295,43 @@ class AgentChatCancelled(Exception):
     """Client aborted in-flight chat (e.g. WebSocket ``{"type":"cancel"}``)."""
 
 
+async def _thread_with_cancel(
+    cancel_event: asyncio.Event | None,
+    func: Callable[..., Any],
+    /,
+    *args: Any,
+    **kwargs: Any,
+) -> Any:
+    """Run blocking work in a thread; abort promptly when ``cancel_event`` is set.
+
+    Still waits for the worker to finish when cancelled so ``LLM_HTTP_SERIALIZE_LOCK``
+    is released before returning.
+    """
+    if cancel_event is None:
+        return await asyncio.to_thread(func, *args, **kwargs)
+    worker = asyncio.create_task(asyncio.to_thread(func, *args, **kwargs))
+    watcher = asyncio.create_task(cancel_event.wait())
+    try:
+        done, _pending = await asyncio.wait(
+            {worker, watcher}, return_when=asyncio.FIRST_COMPLETED
+        )
+        if watcher in done and cancel_event.is_set():
+            try:
+                await worker
+            except Exception:
+                pass
+            raise AgentChatCancelled()
+        watcher.cancel()
+        try:
+            await watcher
+        except asyncio.CancelledError:
+            pass
+        return await worker
+    finally:
+        if not worker.done():
+            pass
+
+
 class WorkspaceAccessDenied(Exception):
     """Raised when a named workspace cannot be bound for the current user (fail closed)."""
 
@@ -611,6 +648,40 @@ def _normalize_tool_call_arguments(
                     out["description"] = u if len(u) <= 120 else u[:117] + "..."
                 if not str(out.get("prompt") or "").strip():
                     out["prompt"] = ut.strip()
+    elif n in ("retrieve_context", "coding_search", "coding_semantic_search"):
+        if not str(out.get("query") or "").strip():
+            for alt in ("q", "search", "text", "prompt", "question", "keywords"):
+                v = out.get(alt)
+                if isinstance(v, str) and v.strip():
+                    out["query"] = v.strip()
+                    break
+        if not str(out.get("query") or "").strip():
+            ut = (last_user_text(messages) or "").strip()
+            if ut:
+                out["query"] = ut[:4000]
+    elif n == "coding_glob":
+        if not str(out.get("pattern") or "").strip():
+            for alt in ("glob", "file_pattern", "glob_pattern", "match"):
+                v = out.get(alt)
+                if isinstance(v, str) and v.strip():
+                    out["pattern"] = v.strip()
+                    break
+        if not str(out.get("pattern") or "").strip():
+            path_given = out.get("path")
+            if isinstance(path_given, str) and path_given.strip() and "*" in path_given:
+                out["pattern"] = path_given.strip()
+        if not str(out.get("pattern") or "").strip():
+            ut = (last_user_text(messages) or "").lower()
+            if ".py" in ut or "python" in ut:
+                out["pattern"] = "**/*.py"
+            elif ".ts" in ut or "typescript" in ut:
+                out["pattern"] = "**/*.{ts,tsx}"
+            elif ".md" in ut or "markdown" in ut:
+                out["pattern"] = "**/*.md"
+            else:
+                out["pattern"] = "**/*"
+        if not str(out.get("path") or "").strip():
+            out["path"] = "."
     elif n == "coding_list_dir":
         if not str(out.get("path") or "").strip():
             out["path"] = "."
@@ -999,12 +1070,10 @@ def _merge_deterministic_tool_recap_into_final_completion(
     data: dict[str, Any],
     messages: list[dict[str, Any]],
     *,
-    round_i: int,
-    max_rounds: int,
     plain_completion: bool,
 ) -> bool:
-    """Prefix assistant content with server recap on the last tool-loop round (mutates ``data``)."""
-    if plain_completion or max_rounds < 1 or round_i != max_rounds - 1:
+    """Prefix assistant content with server recap when the tool loop ends (mutates ``data``)."""
+    if plain_completion:
         return False
     try:
         recap = _build_client_tool_context_markdown(messages)
@@ -1022,7 +1091,10 @@ def _merge_deterministic_tool_recap_into_final_completion(
         if not isinstance(msg0, dict):
             return False
         ex = msg0.get("content")
-        if not isinstance(ex, str):
+        if ex is None:
+            msg0["content"] = ""
+            ex = ""
+        elif not isinstance(ex, str):
             return False
         tail = ex.strip()
         sep = "\n\n---\n\n### Model reply\n\n"
@@ -1085,15 +1157,7 @@ def _sanitize_final_completion_assistant_content(data: dict[str, Any]) -> bool:
         if not _agent_final_text_looks_like_placeholder_tool_markup(raw):
             return False
         stripped = _strip_prose_fake_tool_markup(raw)
-        if stripped.strip() and not _agent_final_text_looks_like_placeholder_tool_markup(stripped):
-            msg["content"] = stripped
-        else:
-            msg["content"] = (
-                "_The model printed **invalid tool markup** in plain text (for example `<tool_call>`). "
-                "The API does **not** run tools from prose — only real `tool_calls` from earlier rounds executed._\n\n"
-                "Check **Agent activity** for tool runs. For a written recap, send a short follow-up asking to "
-                "summarize the tool results in this thread._"
-            )
+        msg["content"] = stripped if stripped.strip() else ""
         msg.pop("tool_calls", None)
         ch0["message"] = msg
         ch_list[0] = ch0
@@ -2308,17 +2372,17 @@ def _log_llm_completion_round(
     if ctx_chars >= config.AGENT_LOG_LARGE_CONTEXT_CHARS:
         large = f" LARGE_CTX(>={config.AGENT_LOG_LARGE_CONTEXT_CHARS} chars)"
     rt_names = [n for t in (tools_for_round or []) if (n := _tool_spec_name(t))]
-    syn = bool(tool_calls) and not had_native_tool_calls
+    synthetic_tc_from_content = bool(tool_calls) and not had_native_tool_calls
     if tool_calls:
         call_names = [(tc.get("function") or {}).get("name") or "?" for tc in tool_calls]
         logger.info(
-            "llm round %d/%d llm_model_id=%s reply=TOOLS calls=%s content_json_fallback=%s "
+            "llm round %d/%d llm_model_id=%s reply=TOOLS calls=%s synthetic_tool_calls_from_content=%s "
             "ctx_msgs=%d ctx_text_chars~=%d tools_forwarded_count=%d tool_names=%s%s",
             round_i + 1,
             max_rounds_cap,
             model,
             call_names,
-            syn,
+            synthetic_tc_from_content,
             ctx_msgs,
             ctx_chars,
             len(rt_names),
@@ -2341,12 +2405,12 @@ def _log_llm_completion_round(
     if not any_text:
         logfn = logger.warning if rt_names else logger.info
         logfn(
-            "llm round %d/%d llm_model_id=%s reply=EMPTY_NO_TOOLS content_json_fallback=%s "
+            "llm round %d/%d llm_model_id=%s reply=empty_text_no_tool_calls synthetic_tool_calls_from_content=%s "
             "ctx_msgs=%d ctx_text_chars~=%d tools_forwarded_count=%d%s",
             round_i + 1,
             max_rounds_cap,
             model,
-            syn,
+            synthetic_tc_from_content,
             ctx_msgs,
             ctx_chars,
             len(rt_names),
@@ -2354,12 +2418,12 @@ def _log_llm_completion_round(
         )
         return
     logger.info(
-        "llm round %d/%d llm_model_id=%s reply=TEXT_NO_TOOLS content_json_fallback=%s "
+        "llm round %d/%d llm_model_id=%s reply=TEXT_NO_TOOLS synthetic_tool_calls_from_content=%s "
         "ctx_msgs=%d ctx_text_chars~=%d tools_forwarded_count=%d preview=%r%s",
         round_i + 1,
         max_rounds_cap,
         model,
-        syn,
+        synthetic_tc_from_content,
         ctx_msgs,
         ctx_chars,
         len(rt_names),
@@ -3301,10 +3365,6 @@ async def chat_completion(
                 )
 
             use_llm_stream = bool(stream_llm_ws and event_emit is not None)
-            _last_llm_round = round_i == max_tool_rounds_eff - 1
-            if use_llm_stream and _last_llm_round:
-                # Final round often has the largest context; streaming through some proxies returns 502.
-                use_llm_stream = False
             round_no = round_i + 1
 
             async def _emit_llm_token_delta(s: str) -> None:
@@ -3364,7 +3424,8 @@ async def chat_completion(
                     pl = dict(payload_base)
                     pl["model"] = b_model
                     try:
-                        data, tools_omitted = await asyncio.to_thread(
+                        data, tools_omitted = await _thread_with_cancel(
+                            cancel_event,
                             http_post_chat_completions,
                             b_url,
                             pl,
@@ -3393,20 +3454,6 @@ async def chat_completion(
                                 sc,
                             )
                             continue
-                        if (
-                            not plain_completion
-                            and round_i == max_tool_rounds_eff - 1
-                            and sc in (502, 503, 504)
-                        ):
-                            logger.warning(
-                                "LLM http %s on final tool-loop round (model=%s) — synthetic assistant fallback",
-                                sc,
-                                b_model,
-                            )
-                            data = _synthetic_final_llm_http_error_completion(status=sc, model_id=b_model)
-                            chosen = (b_url, b_headers, b_model)
-                            model = b_model
-                            break
                         err_body = _redact_provider_error_text_for_log(
                             e.response.text, max_len=600
                         )
@@ -3501,7 +3548,8 @@ async def chat_completion(
                         chosen = chosen_r
                         model = chosen[2]
                     else:
-                        data_r, tools_omitted_r = await asyncio.to_thread(
+                        data_r, tools_omitted_r = await _thread_with_cancel(
+                            cancel_event,
                             http_post_chat_completions,
                             chosen[0],
                             payload_retry,
@@ -3639,63 +3687,9 @@ async def chat_completion(
                             "Workspace verify gate: run coding_workspace_verify successfully (exit 0) before "
                             "finishing, or disable verify_required / agent_require_workspace_verify."
                         )
-                if (
-                    not plain_completion
-                    and chosen is not None
-                    and max_tool_rounds_eff >= 2
-                    and round_i == max_tool_rounds_eff - 1
-                ):
-                    fin_text = _assistant_plain_text_from_message(msg)
-                    if _agent_final_text_looks_like_placeholder_tool_markup(fin_text):
-                        messages.append(dict(msg))
-                        messages.append(
-                            {
-                                "role": "system",
-                                "content": (
-                                    "Your last assistant turn was unusable: **fake tool XML in plain text** "
-                                    "(or empty body), but this stack **never** runs tools from prose — only real "
-                                    "`tool_calls` from earlier rounds executed. "
-                                    "Write **one** replacement answer in Markdown: what **existing** tool messages "
-                                    "in the transcript actually contain; what failed (short quotes); gaps; "
-                                    "actionable next steps for the user. "
-                                    "Do **not** use `<tool_call>`, `</tool_call>`, or `<function=`."
-                                ),
-                            }
-                        )
-                        pl_fix: dict[str, Any] = {"messages": messages, "stream": False, **options}
-                        pl_fix["model"] = chosen[2]
-                        try:
-                            data_fix, _ = await asyncio.to_thread(
-                                http_post_chat_completions,
-                                chosen[0],
-                                pl_fix,
-                                headers=chosen[1],
-                                timeout=600.0,
-                            )
-                            if isinstance(data_fix, dict) and (data_fix.get("choices") or []):
-                                data = data_fix
-                                logger.info(
-                                    "agent: final-round text recovery applied (round %s/%s)",
-                                    round_i + 1,
-                                    max_tool_rounds_eff,
-                                )
-                        except Exception as e:
-                            logger.warning("agent: final-round text recovery failed: %s", e)
                 if _sanitize_final_completion_assistant_content(data):
                     logger.info(
-                        "agent: sanitized fake tool markup in final chat.completion (round %s/%s)",
-                        round_i + 1,
-                        max_tool_rounds_eff,
-                    )
-                if _merge_deterministic_tool_recap_into_final_completion(
-                    data,
-                    messages,
-                    round_i=round_i,
-                    max_rounds=max_tool_rounds_eff,
-                    plain_completion=plain_completion,
-                ):
-                    logger.info(
-                        "agent: merged deterministic tool recap into final chat.completion (round %s/%s)",
+                        "agent: stripped fake tool markup from final chat.completion (round %s/%s)",
                         round_i + 1,
                         max_tool_rounds_eff,
                     )
@@ -3979,35 +3973,6 @@ async def chat_completion(
             len(messages),
             _approx_text_chars_in_messages(messages),
         )
-        rescue_data: dict[str, Any] | None = None
-        if not plain_completion and chosen is not None:
-            messages.append(
-                {
-                    "role": "system",
-                    "content": (
-                        f"The tool-round limit for this reply has been reached (**{max_tool_rounds_eff}** rounds). "
-                        "Respond to the user now with a **normal assistant message** (no tools): "
-                        "what was tried, what succeeded or failed (short error quotes), "
-                        "and concrete next steps. If tools failed for missing parameters, say exactly "
-                        "which JSON fields were required (e.g. coding_bash needs `command`). "
-                        "Offer how the user can continue with a follow-up message if work remains."
-                    ),
-                }
-            )
-            pl_final: dict[str, Any] = {"messages": messages, "stream": False, **options}
-            pl_final["model"] = chosen[2]
-            try:
-                rescue_data, _ = await asyncio.to_thread(
-                    http_post_chat_completions,
-                    chosen[0],
-                    pl_final,
-                    headers=chosen[1],
-                    timeout=600.0,
-                )
-            except Exception as e:
-                logger.warning("max_tool_rounds rescue completion failed: %s", e)
-        if rescue_data is not None:
-            data = rescue_data
         if event_emit:
             await event_emit(
                 {
@@ -4015,7 +3980,6 @@ async def chat_completion(
                     "agent_run_id": agent_run_id,
                     "kind": "max_tool_rounds",
                     "round": max_tool_rounds_eff,
-                    "rescue_completion": rescue_data is not None,
                 }
             )
         return _completion_attach_agent_run_id(data, agent_run_id)

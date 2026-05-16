@@ -22,6 +22,7 @@ Use **only** names that appear in **tools[]** for this request. Typical mental m
 | **read** | ``coding_read_file`` |
 | **list** | ``coding_list_dir`` |
 | **glob** | ``coding_glob`` |
+| **retrieve** | ``retrieve_context`` — grep + semantic + **docs (RAG)** + optional memory in one call (**prefer first** when exploring or asking about product/docs) |
 | **grep** | ``coding_search`` (text search); also ``coding_semantic_search`` / ``coding_symbols`` when offered |
 | **edit** | ``coding_write_file``, ``coding_edit``, ``coding_replace``, ``coding_apply_patch`` |
 | **bash** | ``coding_bash`` |
@@ -46,9 +47,23 @@ For a **single-file** task (e.g. “make README nicer”) when the path is known
 
 Do **not** fire many parallel calls with the same tool name and **empty ``{}``** arguments: the API normalizes defaults (e.g. ``list_dir`` → ``path: "."``) so those look **identical** and can trigger a **loop guard** that **removes tools[] for the next round** — then the model may spew useless ``<tool_call>`` XML in plain text. Prefer **one** call with explicit JSON per intent.
 
+### Retrieval / RAG (required JSON)
+
+For docs, architecture, or “how does X work” questions, call **`retrieve_context`** with a non-empty **`query`** (never ``{}``), for example:
+
+```json
+{"query": "retrieval layer architecture", "sources": ["code_grep", "code_semantic", "docs"], "domain": "agentlayer_docs"}
+```
+
+- **`query`** — required; use the user's question in your own words.
+- **`sources`** — ``code_grep``, ``code_semantic``, ``docs``, ``memory`` (defaults: grep + semantic + docs).
+- **`domain`** — for docs/RAG, usually ``agentlayer_docs`` after admin ingest.
+
+Then open cited paths with ``coding_read_file``. For keyword-only file search use ``coding_search`` with ``{"query": "…"}``; for globs use ``coding_glob`` with ``{"pattern": "**/*.py"}`` (not empty ``{}``).
+
 ## How to work
 
-1. **Orient** — ``coding_list_dir`` / ``coding_read_file`` / ``coding_search`` or ``coding_glob`` as needed; use ``coding_index`` / ``coding_symbols`` / ``coding_lsp`` when the tree is unfamiliar.
+1. **Orient** — ``retrieve_context`` when unfamiliar or doc-related; else ``coding_list_dir`` / ``coding_read_file`` / ``coding_search`` / ``coding_glob``; use ``coding_index`` before ``code_semantic``; ``coding_lsp`` for defs/refs.
 2. **Implement** — edits via the appropriate ``coding_*`` write/edit/patch tools; shell via ``coding_bash`` with explicit commands; for **git pull/fetch** use ``coding_git_sync`` when available.
 3. **Verify** — if the workspace has a **server-side** ``verify_command`` (see workspace settings / API), prefer ``coding_workspace_verify`` over ad-hoc shell for that check; otherwise run sensible checks (tests, linters) before claiming success.
 4. **Close** — if tool rounds run low, answer in plain text: what worked, what failed (short error quotes), next steps.

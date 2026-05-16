@@ -24,6 +24,7 @@ Use **only** tools listed in **tools[]**. Mapping (same table as Build):
 | **read** | ``coding_read_file`` |
 | **list** | ``coding_list_dir`` |
 | **glob** | ``coding_glob`` |
+| **retrieve** | ``retrieve_context`` (grep + semantic + docs; prefer first for exploration) |
 | **grep** | ``coding_search``, ``coding_semantic_search``, ``coding_symbols`` |
 | **edit** | ``coding_write_file``, ``coding_edit``, ``coding_replace``, ``coding_apply_patch`` |
 | **bash** | ``coding_bash`` |

@@ -135,6 +135,43 @@ def fetch_embedding_models_list(*, timeout: float = 15.0) -> tuple[list[str], st
     return ids, None
 
 
+def fetch_embedding_vector_raw(
+    text: str = "healthcheck",
+    *,
+    model_id: str | None = None,
+) -> list[float]:
+    """Call the embedding API and return the vector without ``rag_embedding_dim`` validation."""
+    raw = (text or "").strip()
+    if not raw:
+        raise ValueError("embedding text is empty")
+    rs = operator_settings.rag_settings()
+    model = (model_id or rs["embedding_model"] or "").strip()
+    if not model:
+        raise ValueError("rag_embedding_model is empty (operator settings — embedding model id)")
+    timeout = float(rs["embed_timeout_sec"])
+    url, headers = _embedding_url_and_headers()
+    data = http_post_json(
+        url,
+        {"model": model, "input": raw},
+        headers=headers,
+        timeout=timeout,
+    )
+    vec = _vector_from_openai_embeddings_payload(data)
+    if vec is None:
+        raise ValueError("embedding response missing data[0].embedding")
+    return vec
+
+
+def probe_embedding_output_dim(*, model_id: str | None = None) -> int:
+    """Return embedding width from a live API probe (for syncing ``rag_embedding_dim``)."""
+    return len(fetch_embedding_vector_raw("healthcheck", model_id=model_id))
+
+
+def clear_embedding_health_cache() -> None:
+    global _EMBED_HEALTH_CACHE
+    _EMBED_HEALTH_CACHE = None
+
+
 def embed_one(text: str) -> list[float]:
     """
     Embed one string via ``POST …/v1/embeddings`` at ``EMBEDDING_BASE_URL`` only.
@@ -239,13 +276,17 @@ def embedding_catalog_health(*, force_refresh: bool = False) -> dict[str, Any]:
         return dict(meta)
     meta["embeddings_url"] = url
     try:
-        http_post_json(
-            url,
-            {"model": model, "input": "healthcheck"},
-            headers=headers,
-            timeout=min(12.0, float(rs.get("embed_timeout_sec") or 12.0)),
-        )
+        probe = fetch_embedding_vector_raw("healthcheck", model_id=model)
         meta["reachable"] = True
+        actual = len(probe)
+        meta["actual_embedding_dim"] = actual
+        meta["dim_matches_config"] = actual == dim
+        if dim and actual != dim:
+            meta["dim_mismatch"] = True
+            meta["detail"] = (
+                f"embedding dim {actual} from API != configured rag_embedding_dim {dim} "
+                f"(set rag_embedding_dim to {actual} in Admin → Interfaces)"
+            )
     except httpx.HTTPStatusError as e:
         meta["detail"] = (e.response.text or "")[:200].strip() or f"http_{e.response.status_code}"
         if e.response.status_code == 501:

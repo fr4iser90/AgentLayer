@@ -155,15 +155,29 @@ function assistantFromCompletion(data: unknown): string {
       })
       .join("");
   }
-  if (text.trim()) return text;
-  const tcs = msg0?.tool_calls;
-  if (Array.isArray(tcs) && tcs.length > 0) {
-    return (
-      "(No assistant text in the final response — only tool_calls. " +
-      "See **Agent activity** for tool runs, or retry if the model should have answered in prose.)"
-    );
+  return text;
+}
+
+function chatMessageHasVisibleContent(m: UiMessage): boolean {
+  const raw = m.content ?? "";
+  if (m.role === "assistant" && extractProposals(raw).length > 0) return true;
+  return raw.trim().length > 0;
+}
+
+function messagesWithStreamedAssistant(baseline: UiMessage[], accumulated: string): UiMessage[] {
+  if (!accumulated.trim()) return baseline;
+  return [...baseline, { role: "assistant", content: accumulated }];
+}
+
+function stripTrailingEmptyAssistantMessages(msgs: UiMessage[]): UiMessage[] {
+  let out = [...msgs];
+  while (out.length > 0) {
+    const last = out[out.length - 1]!;
+    if (last.role === "assistant" && !chatMessageHasVisibleContent(last)) {
+      out = out.slice(0, -1);
+    } else break;
   }
-  return "";
+  return out;
 }
 
 function MessageBody({ content }: { content: string }) {
@@ -509,6 +523,9 @@ export function CodingAgentPage() {
   const implementationBranchPreambleRef = useRef<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const toolStartTimesRef = useRef<Map<string, number>>(new Map());
+  const agentTurnBaselineRef = useRef<UiMessage[] | null>(null);
+  const streamDeltaAccRef = useRef("");
+  const agentStreamEnabledThisTurnRef = useRef(false);
   activeThreadIdRef.current = activeThreadId;
 
   const displayName = useMemo(() => {
@@ -550,6 +567,17 @@ export function CodingAgentPage() {
 
   const messages = activeThread?.messages ?? [];
   const agentLog: AgentTimelineEntry[] = activeThread?.agentLog ?? [];
+  const lastMessage = messages[messages.length - 1];
+  const showAgentRunningPlaceholder =
+    loading &&
+    !(
+      lastMessage?.role === "assistant" &&
+      chatMessageHasVisibleContent(lastMessage)
+    );
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages.length, loading, activeThreadId]);
   const defaultSelectValue = useMemo(
     () => defaultModelCatalogSelectValue(modelRows),
     [modelRows]
@@ -641,7 +669,10 @@ export function CodingAgentPage() {
       if (!isAdminUser) return;
       setEmbeddingModelSaving(true);
       try {
-        const ok = await patchEmbeddingModel(auth, id);
+        const hintDim = embeddingMeta?.actual_embedding_dim ?? embeddingMeta?.embedding_dim;
+        const { ok } = await patchEmbeddingModel(auth, id, {
+          embeddingDim: typeof hintDim === "number" ? hintDim : undefined,
+        });
         if (ok) await refreshModelCatalog();
         else setError("Embedding-Modell konnte nicht gespeichert werden (Admin-Rechte?).");
       } catch {
@@ -650,7 +681,7 @@ export function CodingAgentPage() {
         setEmbeddingModelSaving(false);
       }
     },
-    [auth, isAdminUser, refreshModelCatalog]
+    [auth, embeddingMeta?.actual_embedding_dim, embeddingMeta?.embedding_dim, isAdminUser, refreshModelCatalog]
   );
 
   useEffect(() => {
@@ -861,6 +892,9 @@ export function CodingAgentPage() {
       )
     );
     setDraft("");
+    agentTurnBaselineRef.current = nextMessages;
+    streamDeltaAccRef.current = "";
+    agentStreamEnabledThisTurnRef.current = getAgentStreamLlm();
 
     cancelAgentTurnRef.current = false;
 
@@ -873,9 +907,20 @@ export function CodingAgentPage() {
       const id = activeThreadIdRef.current;
       if (id) {
         setThreads((prev) => {
-          const th = prev.find((x) => x.id === id);
+          const next = prev.map((th) => {
+            if (th.id !== id) return th;
+            const messages = stripTrailingEmptyAssistantMessages(th.messages);
+            if (messages.length === th.messages.length) return th;
+            return {
+              ...th,
+              messages,
+              messageCount: messages.length,
+              updatedAt: Date.now(),
+            };
+          });
+          const th = next.find((x) => x.id === id);
           if (th) void putConversation(auth, th).catch(() => {});
-          return prev;
+          return next;
         });
       }
     };
@@ -892,16 +937,27 @@ export function CodingAgentPage() {
           if (data && typeof data === "object" && "usage" in data) {
             setTokenUsage((prev) => addUsageTotals(prev, (data as { usage?: unknown }).usage));
           }
-          const content = assistantFromCompletion(data);
+          const acc = streamDeltaAccRef.current.trim();
+          const fromApi = assistantFromCompletion(data);
+          const content =
+            agentStreamEnabledThisTurnRef.current && acc.length > 0 ? acc : fromApi;
           const id = activeThreadIdRef.current;
-          if (id && content) {
+          if (id && content.trim()) {
             setThreads((prev) => {
               const next = prev.map((th) => {
                 if (th.id !== id) return th;
+                const prevMsgs = th.messages;
+                const last = prevMsgs[prevMsgs.length - 1];
+                const replaceLastAssistant =
+                  agentStreamEnabledThisTurnRef.current &&
+                  last?.role === "assistant";
+                const messages: UiMessage[] = replaceLastAssistant
+                  ? [...prevMsgs.slice(0, -1), { role: "assistant", content }]
+                  : [...prevMsgs, { role: "assistant", content }];
                 const updated: ChatThread = {
                   ...th,
-                  messages: [...th.messages, { role: "assistant", content }],
-                  messageCount: th.messages.length + 1,
+                  messages,
+                  messageCount: messages.length,
                   updatedAt: Date.now(),
                 };
                 void putConversation(auth, updated).catch(() => {});
@@ -929,7 +985,59 @@ export function CodingAgentPage() {
           return;
         }
         if (typ === "agent.llm_round_start") {
+          const r = msg.round != null ? Number(msg.round) : 0;
+          if (agentStreamEnabledThisTurnRef.current && r > 1) {
+            streamDeltaAccRef.current += "\n\n";
+            const tid0 = activeThreadIdRef.current;
+            const base0 = agentTurnBaselineRef.current;
+            if (tid0 && base0) {
+              const streamed = messagesWithStreamedAssistant(
+                base0,
+                streamDeltaAccRef.current
+              );
+              if (streamed.length > base0.length) {
+                setThreads((prev) =>
+                  prev.map((th) =>
+                    th.id === tid0
+                      ? {
+                          ...th,
+                          messages: streamed,
+                          messageCount: streamed.length,
+                          updatedAt: Date.now(),
+                        }
+                      : th
+                  )
+                );
+              }
+            }
+          }
           appendAgentLine("llm", msg.round != null ? `round ${msg.round} (start)` : "round (start)");
+          return;
+        }
+        if (typ === "agent.llm_delta") {
+          const tid0 = activeThreadIdRef.current;
+          const base0 = agentTurnBaselineRef.current;
+          if (!tid0 || !base0 || !agentStreamEnabledThisTurnRef.current) return;
+          const d = msg.delta != null ? String(msg.delta) : "";
+          if (!d) return;
+          streamDeltaAccRef.current += d;
+          if (!streamDeltaAccRef.current.trim()) return;
+          const streamed = messagesWithStreamedAssistant(
+            base0,
+            streamDeltaAccRef.current
+          );
+          setThreads((prev) =>
+            prev.map((th) =>
+              th.id === tid0
+                ? {
+                    ...th,
+                    messages: streamed,
+                    messageCount: streamed.length,
+                    updatedAt: Date.now(),
+                  }
+                : th
+            )
+          );
           return;
         }
         if (typ === "agent.llm_round") {
@@ -1031,6 +1139,8 @@ export function CodingAgentPage() {
 
   const onCancelInFlight = useCallback(() => {
     cancelAgentTurnRef.current = true;
+    setLoading(false);
+    setPermAsk(null);
     const w = wsRef.current;
     if (w?.readyState === WebSocket.OPEN) {
       try {
@@ -1661,7 +1771,7 @@ export function CodingAgentPage() {
                     </div>
                   ) : (
                     <ul className="mx-auto flex w-full max-w-3xl flex-col gap-3">
-                      {messages.map((m, i) => {
+                      {messages.filter(chatMessageHasVisibleContent).map((m, i) => {
                         const proposals = m.role === "assistant" ? extractProposals(m.content) : [];
                         return (
                           <li
@@ -1703,7 +1813,7 @@ export function CodingAgentPage() {
                           </li>
                         );
                       })}
-                      {loading ? (
+                      {showAgentRunningPlaceholder ? (
                         <li className="flex w-full justify-end">
                           <div className="max-w-[min(100%,42rem)] rounded-2xl border border-sky-900/50 bg-sky-950/25 px-4 py-3 text-sm text-sky-100/90 shadow-sm">
                             <span className="mb-1 flex items-center gap-2 text-[10px] font-medium uppercase tracking-wide text-sky-300/80">

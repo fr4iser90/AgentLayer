@@ -121,6 +121,7 @@ Only you merge changes to your host codebase.
 | `coding_replace` | Replace a pattern |
 | `coding_glob` | Find files by pattern |
 | `coding_search` | Search in files |
+| `retrieve_context` | Grep + semantic (Qdrant) + RAG docs (+ optional memory) in one call |
 | `coding_index` | Build symbol index |
 | `coding_bash` | Run shell commands |
 | `coding_symbols` | List symbols in file |

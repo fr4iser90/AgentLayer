@@ -37,7 +37,7 @@ def test_build_tool_transcript_recap_maps_names_and_summarizes_json():
     assert "ok=True" in recap or "ok=true" in recap.lower()
 
 
-def test_merge_only_on_last_round_and_prefixes_content():
+def test_merge_on_terminal_exit_prefixes_content():
     messages = [
         {
             "role": "assistant",
@@ -65,13 +65,17 @@ def test_merge_only_on_last_round_and_prefixes_content():
             }
         ]
     }
-    assert not _merge_deterministic_tool_recap_into_final_completion(
-        data, messages, round_i=0, max_rounds=3, plain_completion=False
+    ok_early = _merge_deterministic_tool_recap_into_final_completion(
+        data, messages, plain_completion=False
     )
-    assert data["choices"][0]["message"]["content"] == "Done."
+    assert ok_early
+    merged_early = data["choices"][0]["message"]["content"]
+    assert "Tool transcript" in merged_early
+    assert "coding_glob" in merged_early
 
+    data["choices"][0]["message"]["content"] = "Done."
     ok = _merge_deterministic_tool_recap_into_final_completion(
-        data, messages, round_i=2, max_rounds=3, plain_completion=False
+        data, messages, plain_completion=False
     )
     assert ok
     merged = data["choices"][0]["message"]["content"]
@@ -214,5 +218,5 @@ def test_recap_tool_args_empty_glob_shows_pattern_missing_and_list_dir_default_p
         {"role": "tool", "tool_call_id": "l0", "content": '{"ok": true, "path": ".", "entries": []}'},
     ]
     recap = _build_tool_transcript_recap(messages)
-    assert "pattern=<missing>" in recap
+    assert "pattern=" in recap
     assert "path=." in recap

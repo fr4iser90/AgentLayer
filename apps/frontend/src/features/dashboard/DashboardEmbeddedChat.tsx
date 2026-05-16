@@ -378,10 +378,12 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
         await putConversation(auth, withAssistant);
       } else {
         const data = await res.json();
-        const content = assistantFromCompletion(data) || "(empty)";
+        const content = assistantFromCompletion(data);
         const withAssistant: ChatThread = {
           ...nextThread,
-          messages: [...nextMessages, { role: "assistant", content }],
+          messages: content.trim()
+            ? [...nextMessages, { role: "assistant", content }]
+            : nextMessages,
           updatedAt: Date.now(),
         };
         setThread(withAssistant);

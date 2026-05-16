@@ -41,6 +41,12 @@ _TTL_SEC = 2.0
 def _invalidate() -> None:
     global _CACHE
     _CACHE = None
+    try:
+        from apps.backend.infrastructure.embedding_client import clear_embedding_health_cache
+
+        clear_embedding_health_cache()
+    except Exception:
+        pass
 
 
 def invalidate_operator_settings_cache() -> None:
@@ -1023,6 +1029,23 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
     if "rag_embedding_dim" in patch:
         v = patch["rag_embedding_dim"]
         r["rag_embedding_dim"] = _bound_int(v, 768, 32, 4096) if v is not None else 768
+    elif "rag_embedding_model" in patch:
+        try:
+            from apps.backend.infrastructure.embedding_client import probe_embedding_output_dim
+
+            probed = probe_embedding_output_dim(model_id=r["rag_embedding_model"])
+            r["rag_embedding_dim"] = _bound_int(probed, 768, 32, 4096)
+            logger.info(
+                "operator_settings: rag_embedding_dim auto-synced to %s for model %r",
+                r["rag_embedding_dim"],
+                r["rag_embedding_model"],
+            )
+        except Exception as e:
+            logger.warning(
+                "operator_settings: rag_embedding_dim auto-sync failed for model %r: %s",
+                r.get("rag_embedding_model"),
+                e,
+            )
     if "rag_chunk_size" in patch:
         v = patch["rag_chunk_size"]
         r["rag_chunk_size"] = _bound_int(v, 1200, 200, 8000) if v is not None else 1200

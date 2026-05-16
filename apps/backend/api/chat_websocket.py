@@ -108,6 +108,10 @@ async def chat_websocket(websocket: WebSocket) -> None:
                 if t == "ping":
                     await emit({"type": "pong"})
                     continue
+                # Apply cancel immediately so in-flight LLM streams / tool loops can abort
+                # without waiting for the next drain_control_queue() between rounds.
+                if t == "cancel":
+                    cancel_event.set()
                 await control_queue.put(msg)
         except WebSocketDisconnect:
             cancel_event.set()

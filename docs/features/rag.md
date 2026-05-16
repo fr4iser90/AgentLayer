@@ -64,11 +64,14 @@ Recommended `domain` values:
 
 ## Search
 
-Tool:
+Tools:
 
-- `rag_search({ query, domain?, limit? })`
+- `rag_search({ query, domain?, limit? })` — RAG only
+- `retrieve_context({ query, sources?, domain? })` — coding agents: grep + semantic code + docs (+ optional memory) in one JSON bundle
 
 Use `domain: "agentlayer_docs"` when answering questions about AgentLayer product behavior from ingested markdown.
+
+See [retrieval-layer.md](./retrieval-layer.md) for architecture, practices, and roadmap.
 
 ## Troubleshooting
 

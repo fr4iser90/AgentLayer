@@ -901,7 +901,8 @@ export function AdminInterfaces() {
             )}
             <p className="mt-1 text-xs text-surface-muted">
               API-Host nur in <span className="font-mono">.env</span> (EMBEDDING_BASE_URL). Liste kommt von GET /v1/models
-              am Embedding-Server.
+              am Embedding-Server. Beim Speichern übernimmt der Server die passende{" "}
+              <span className="font-mono">Embedding-Dim</span> automatisch vom gewählten Modell (z. B. bge-m3 → 1024).
             </p>
             <div className="mt-4 grid max-w-2xl gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <div>

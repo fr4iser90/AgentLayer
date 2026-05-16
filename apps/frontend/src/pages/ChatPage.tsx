@@ -124,6 +124,26 @@ function assistantFromCompletion(data: unknown): string {
   return "";
 }
 
+function chatMessageHasVisibleContent(m: UiMessage): boolean {
+  return (m.content ?? "").trim().length > 0;
+}
+
+function messagesWithStreamedAssistant(baseline: UiMessage[], accumulated: string): UiMessage[] {
+  if (!accumulated.trim()) return baseline;
+  return [...baseline, { role: "assistant", content: accumulated }];
+}
+
+function stripTrailingEmptyAssistantMessages(msgs: UiMessage[]): UiMessage[] {
+  let out = [...msgs];
+  while (out.length > 0) {
+    const last = out[out.length - 1]!;
+    if (last.role === "assistant" && !chatMessageHasVisibleContent(last)) {
+      out = out.slice(0, -1);
+    } else break;
+  }
+  return out;
+}
+
 function MessageBody({ content }: { content: string }) {
   const { plain, parts } = parseContentParts(content);
   if (parts) {
@@ -920,9 +940,20 @@ export function ChatPage() {
       const id = activeThreadIdRef.current;
       if (id) {
         setThreads((prev) => {
-          const th = prev.find((x) => x.id === id);
+          const next = prev.map((th) => {
+            if (th.id !== id) return th;
+            const messages = stripTrailingEmptyAssistantMessages(th.messages);
+            if (messages.length === th.messages.length) return th;
+            return {
+              ...th,
+              messages,
+              messageCount: messages.length,
+              updatedAt: Date.now(),
+            };
+          });
+          const th = next.find((x) => x.id === id);
           if (th) void putConversation(auth, th).catch(() => {});
-          return prev;
+          return next;
         });
       }
     };
@@ -952,7 +983,7 @@ export function ChatPage() {
           const content =
             agentStreamEnabledThisTurnRef.current && acc.length > 0 ? acc : fromApi;
           const id = activeThreadIdRef.current;
-          if (id && content) {
+          if (id && content.trim()) {
             setThreads((prev) => {
               const next = prev.map((th) => {
                 if (th.id !== id) return th;
@@ -1026,18 +1057,24 @@ export function ChatPage() {
             const tid0 = activeThreadIdRef.current;
             const base0 = agentTurnBaselineRef.current;
             if (tid0 && base0) {
-              setThreads((prev) =>
-                prev.map((th) =>
-                  th.id === tid0
-                    ? {
-                        ...th,
-                        messages: [...base0, { role: "assistant", content: streamDeltaAccRef.current }],
-                        messageCount: base0.length + 1,
-                        updatedAt: Date.now(),
-                      }
-                    : th
-                )
+              const streamed = messagesWithStreamedAssistant(
+                base0,
+                streamDeltaAccRef.current
               );
+              if (streamed.length > base0.length) {
+                setThreads((prev) =>
+                  prev.map((th) =>
+                    th.id === tid0
+                      ? {
+                          ...th,
+                          messages: streamed,
+                          messageCount: streamed.length,
+                          updatedAt: Date.now(),
+                        }
+                      : th
+                  )
+                );
+              }
             }
           }
           const rLabel = msg.round != null ? `round ${msg.round}` : "round";
@@ -1051,13 +1088,18 @@ export function ChatPage() {
           const d = msg.delta != null ? String(msg.delta) : "";
           if (!d) return;
           streamDeltaAccRef.current += d;
+          if (!streamDeltaAccRef.current.trim()) return;
+          const streamed = messagesWithStreamedAssistant(
+            base0,
+            streamDeltaAccRef.current
+          );
           setThreads((prev) =>
             prev.map((th) =>
               th.id === tid0
                 ? {
                     ...th,
-                    messages: [...base0, { role: "assistant", content: streamDeltaAccRef.current }],
-                    messageCount: base0.length + 1,
+                    messages: streamed,
+                    messageCount: streamed.length,
                     updatedAt: Date.now(),
                   }
                 : th
@@ -1187,9 +1229,11 @@ export function ChatPage() {
   const onCancelInFlight = useCallback(() => {
     if (mode === "chat") {
       chatAbortControllerRef.current?.abort();
+      setLoading(false);
       return;
     }
     cancelAgentTurnRef.current = true;
+    setLoading(false);
     const w = wsRef.current;
     if (w?.readyState === WebSocket.OPEN) {
       try {
@@ -1667,7 +1711,7 @@ export function ChatPage() {
               </div>
             ) : (
               <ul className="mx-auto flex w-full max-w-3xl flex-col gap-3">
-                {messages.map((m, i) => (
+                {messages.filter(chatMessageHasVisibleContent).map((m, i) => (
                   <li
                     key={`${i}-${m.role}-${m.content.slice(0, 24)}`}
                     className={`flex w-full ${m.role === "user" ? "justify-start" : "justify-end"}`}
@@ -1693,7 +1737,12 @@ export function ChatPage() {
                     </div>
                   </li>
                 ))}
-                {loading ? (
+                {loading &&
+                !(
+                  messages.length > 0 &&
+                  messages[messages.length - 1]?.role === "assistant" &&
+                  chatMessageHasVisibleContent(messages[messages.length - 1]!)
+                ) ? (
                   <li className="flex w-full justify-end">
                     <div className="max-w-[min(100%,42rem)] rounded-2xl border border-sky-900/50 bg-sky-950/25 px-4 py-3 text-sm text-sky-100/90 shadow-sm">
                       <span className="mb-1 flex items-center gap-2 text-[10px] font-medium uppercase tracking-wide text-sky-300/80">

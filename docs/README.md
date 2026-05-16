@@ -33,6 +33,7 @@ This folder is written for **humans** and for **RAG ingestion**.
 - **Dashboards**: [`docs/features/dashboards.md`](./features/dashboards.md)
 - **Memory**: [`docs/features/memory.md`](./features/memory.md)
 - **RAG**: [`docs/features/rag.md`](./features/rag.md)
+- **Retrieval layer** (RAG + code + memory orchestration): [`docs/features/retrieval-layer.md`](./features/retrieval-layer.md)
 - **Discord**: [`docs/features/discord.md`](./features/discord.md)
 - **HTTP API**: [`docs/api/http.md`](./api/http.md)
 - **Ops runbooks**: [`docs/runbooks/`](./runbooks/)

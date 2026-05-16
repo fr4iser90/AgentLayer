@@ -19,6 +19,9 @@ export type EmbeddingCatalogHealth = {
   detail?: string | null;
   model?: string | null;
   embedding_dim?: number;
+  actual_embedding_dim?: number;
+  dim_matches_config?: boolean;
+  dim_mismatch?: boolean;
   embeddings_url?: string | null;
   models_url?: string | null;
   available_models?: string[];
@@ -326,7 +329,16 @@ export function formatEmbeddingStatusHint(emb: EmbeddingCatalogHealth | null | u
   if (!emb?.configured) {
     return "RAG: EMBEDDING_BASE_URL in .env setzen (getrennt vom Chat).";
   }
-  if (emb.reachable === true) return "RAG: Embedding-API erreichbar.";
+  if (emb.dim_mismatch || emb.dim_matches_config === false) {
+    const actual = emb.actual_embedding_dim;
+    const cfg = emb.embedding_dim;
+    if (actual != null && cfg != null) {
+      return `RAG: Dim ${actual} (API) ≠ ${cfg} (gespeichert) — Embedding-Modell erneut wählen oder Admin → Interfaces speichern.`;
+    }
+  }
+  if (emb.reachable === true && emb.dim_matches_config !== false) {
+    return "RAG: Embedding-API erreichbar.";
+  }
   const detail = (emb.detail ?? "").trim();
   if (detail.includes("501") || detail.toLowerCase().includes("not implemented")) {
     return "RAG: Server hat kein /v1/embeddings — anderes Embedding-Backend nötig.";
@@ -339,17 +351,33 @@ export function formatEmbeddingStatusHint(emb: EmbeddingCatalogHealth | null | u
 
 export async function patchEmbeddingModel(
   auth: { accessToken: string | null },
-  modelId: string
-): Promise<boolean> {
+  modelId: string,
+  opts?: { embeddingDim?: number }
+): Promise<{ ok: boolean; embeddingDim?: number }> {
   const id = modelId.trim();
-  if (!id) return false;
+  if (!id) return { ok: false };
+  const body: Record<string, unknown> = { rag_embedding_model: id };
+  const dim = opts?.embeddingDim;
+  if (typeof dim === "number" && Number.isFinite(dim) && dim >= 32 && dim <= 4096) {
+    body.rag_embedding_dim = Math.floor(dim);
+  }
   const { apiFetch } = await import("./api");
   const r = await apiFetch("/v1/admin/operator-settings", auth, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ rag_embedding_model: id }),
+    body: JSON.stringify(body),
   });
-  return r.ok;
+  if (!r.ok) return { ok: false };
+  try {
+    const data = (await r.json()) as { rag_embedding_dim?: number };
+    const saved =
+      data.rag_embedding_dim != null && Number.isFinite(data.rag_embedding_dim)
+        ? data.rag_embedding_dim
+        : undefined;
+    return { ok: true, embeddingDim: saved };
+  } catch {
+    return { ok: true };
+  }
 }
 
 export function defaultModelCatalogSelectValue(rows: ModelRow[]): string {

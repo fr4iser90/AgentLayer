@@ -39,6 +39,7 @@ _PLAN_SUBAGENT_READONLY_TOOLS = [
     "coding_list_dir",
     "coding_read_file",
     "coding_glob",
+    "retrieve_context",
     "coding_search",
     "coding_git_read",
     "coding_semantic_search",
