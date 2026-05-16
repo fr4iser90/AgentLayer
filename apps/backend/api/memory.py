@@ -1,7 +1,7 @@
 """User memory: structured facts + semantic notes (pgvector) + optional graph (nodes/edges).
 
 Facts are authoritative key/value JSON (opt-in writes).
-Notes are free-form and retrieved semantically via Ollama embeddings.
+Notes are free-form and retrieved semantically via ``EMBEDDING_BASE_URL`` (see ``embedding_client``).
 The graph layer stores compact nodes and relations; activation uses **semantic** (embedding) + keyword
 match on label/summary, then expands 1 hop along edges.
 """

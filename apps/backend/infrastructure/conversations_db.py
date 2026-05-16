@@ -64,6 +64,16 @@ def _shared_chat_can_write(user_id: uuid.UUID, tenant_id: int, dashboard_id: uui
     return role is not None and role != "viewer"
 
 
+def _normalize_model_catalog_owned_by(raw: Any) -> str | None:
+    if raw is None:
+        return None
+    s = str(raw).strip().lower()
+    if not s:
+        return None
+    out = "".join(c for c in s if c.isalnum() or c in "_-")[:64]
+    return out or None
+
+
 def _conversation_source_from_bridge(provider: Any) -> str:
     """First-party chats have no ``bridge_agent_sessions`` row → ``web``.
 
@@ -91,10 +101,12 @@ def _row_to_list_item(
     shared = bool(r[7])
     pref_agent = r[8]
     pref_ws = r[9]
-    bridge_provider = r[10]
+    pref_owned = r[10]
+    bridge_provider = r[11]
     pref_ws_out: str | None = None
     if pref_ws is not None:
         pref_ws_out = str(pref_ws) if isinstance(pref_ws, uuid.UUID) else str(uuid.UUID(str(pref_ws)))
+    owned_out = _normalize_model_catalog_owned_by(pref_owned)
     return {
         "id": str(cid),
         "title": r[1] or "",
@@ -106,6 +118,7 @@ def _row_to_list_item(
         "shared": shared,
         "agent_id": str(pref_agent).strip() if pref_agent else None,
         "workspace_id": pref_ws_out,
+        "model_catalog_owned_by": owned_out,
         "source": _conversation_source_from_bridge(bridge_provider),
     }
 
@@ -122,7 +135,7 @@ def conversations_list(
                     SELECT c.id, c.title, c.mode, c.model, c.updated_at,
                       (SELECT COUNT(*)::int FROM chat_messages m WHERE m.conversation_id = c.id),
                       c.dashboard_id, c.shared,
-                      c.pref_agent_id, c.pref_workspace_id,
+                      c.pref_agent_id, c.pref_workspace_id, c.pref_model_catalog_owned_by,
                       (SELECT b.provider FROM bridge_agent_sessions b
                        WHERE b.conversation_id = c.id LIMIT 1)
                     FROM chat_conversations c
@@ -147,7 +160,7 @@ def conversations_list(
                     SELECT c.id, c.title, c.mode, c.model, c.updated_at,
                       (SELECT COUNT(*)::int FROM chat_messages m WHERE m.conversation_id = c.id),
                       c.dashboard_id, c.shared,
-                      c.pref_agent_id, c.pref_workspace_id,
+                      c.pref_agent_id, c.pref_workspace_id, c.pref_model_catalog_owned_by,
                       (SELECT b.provider FROM bridge_agent_sessions b
                        WHERE b.conversation_id = c.id LIMIT 1)
                     FROM chat_conversations c
@@ -208,7 +221,8 @@ def conversation_get(user_id: uuid.UUID, conversation_id: uuid.UUID) -> dict[str
             cur.execute(
                 """
                 SELECT id, title, mode, model, agent_log, updated_at, created_at, dashboard_id,
-                       user_id, tenant_id, shared, pref_agent_id, pref_workspace_id
+                       user_id, tenant_id, shared, pref_agent_id, pref_workspace_id,
+                       pref_model_catalog_owned_by
                 FROM chat_conversations
                 WHERE id = %s
                 """,
@@ -224,6 +238,7 @@ def conversation_get(user_id: uuid.UUID, conversation_id: uuid.UUID) -> dict[str
             shared = bool(crow[10])
             pref_agent_raw = crow[11]
             pref_ws_raw = crow[12]
+            pref_owned_raw = crow[13]
             if shared and wid is not None:
                 if not dashboard_db.dashboard_has_full_access(user_id, tenant_id, wid):
                     return None
@@ -261,6 +276,7 @@ def conversation_get(user_id: uuid.UUID, conversation_id: uuid.UUID) -> dict[str
     pref_agent_out = (
         str(pref_agent_raw).strip() if pref_agent_raw and str(pref_agent_raw).strip() else None
     )
+    pref_owned_out = _normalize_model_catalog_owned_by(pref_owned_raw)
     return {
         "id": str(cid if isinstance(cid, uuid.UUID) else uuid.UUID(str(cid))),
         "title": crow[1] or "",
@@ -274,6 +290,7 @@ def conversation_get(user_id: uuid.UUID, conversation_id: uuid.UUID) -> dict[str
         "shared": shared,
         "agent_id": pref_agent_out,
         "workspace_id": pref_ws_out,
+        "model_catalog_owned_by": pref_owned_out,
         "source": _conversation_source_from_bridge(bridge_provider),
     }
 
@@ -290,6 +307,7 @@ def conversation_create(
     shared: bool = False,
     agent_id: str | None = None,
     workspace_id: uuid.UUID | None = None,
+    model_catalog_owned_by: str | None = None,
 ) -> dict[str, Any]:
     tenant_id = _user_tenant_id(user_id)
     messages = _ingress_conversation_messages_if_enabled(messages, user_id=user_id, tenant_id=tenant_id)
@@ -299,6 +317,7 @@ def conversation_create(
     pref_ws: uuid.UUID | None = None
     if workspace_id is not None:
         pref_ws = workspace_id if isinstance(workspace_id, uuid.UUID) else uuid.UUID(str(workspace_id))
+    pref_owned = _normalize_model_catalog_owned_by(model_catalog_owned_by)
     if shared:
         pref_agent = None
         pref_ws = None
@@ -344,9 +363,10 @@ def conversation_create(
                 cur.execute(
                     """
                     INSERT INTO chat_conversations (
-                      id, user_id, tenant_id, dashboard_id, title, mode, model, agent_log, shared
+                      id, user_id, tenant_id, dashboard_id, title, mode, model, agent_log, shared,
+                      pref_model_catalog_owned_by
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb, true)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb, true, %s)
                     """,
                     (
                         conv_id,
@@ -357,6 +377,7 @@ def conversation_create(
                         mode,
                         model,
                         Json(agent_log),
+                        pref_owned,
                     ),
                 )
                 for i, m in enumerate(messages):
@@ -387,9 +408,9 @@ def conversation_create(
                 """
                 INSERT INTO chat_conversations (
                   id, user_id, tenant_id, dashboard_id, title, mode, model, agent_log, shared,
-                  pref_agent_id, pref_workspace_id
+                  pref_agent_id, pref_workspace_id, pref_model_catalog_owned_by
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb, false, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb, false, %s, %s, %s)
                 """,
                 (
                     conv_id,
@@ -402,6 +423,7 @@ def conversation_create(
                     Json(agent_log),
                     pref_agent,
                     ws_bind,
+                    pref_owned,
                 ),
             )
             for i, m in enumerate(messages):
@@ -479,6 +501,15 @@ def conversation_replace(
                     elif isinstance(raw_a, str):
                         parts.append("pref_agent_id = %s")
                         args.append(raw_a.strip()[:128])
+                if "model_catalog_owned_by" in composer_prefs:
+                    owned = _normalize_model_catalog_owned_by(
+                        composer_prefs.get("model_catalog_owned_by")
+                    )
+                    if owned:
+                        parts.append("pref_model_catalog_owned_by = %s")
+                        args.append(owned)
+                    else:
+                        parts.append("pref_model_catalog_owned_by = NULL")
                 if "workspace_id" in composer_prefs:
                     raw_w = composer_prefs.get("workspace_id")
                     if raw_w is None:

@@ -5,6 +5,24 @@ from __future__ import annotations
 import httpx
 
 
+def _request_url_from_exc(exc: BaseException) -> str:
+    """Best-effort URL from ``httpx`` transport errors (e.g. chat/completions POST)."""
+    req = None
+    try:
+        req = exc.request  # type: ignore[attr-defined]
+    except Exception:
+        return ""
+    if req is None:
+        return ""
+    u = getattr(req, "url", None)
+    if u is None:
+        return ""
+    try:
+        return str(u)
+    except Exception:
+        return ""
+
+
 def user_visible_llm_transport_error(exc: BaseException) -> tuple[str, bool]:
     """
     Return ``(message_for_user, log_with_exc_info)``.
@@ -21,11 +39,25 @@ def user_visible_llm_transport_error(exc: BaseException) -> tuple[str, bool]:
             False,
         )
     if isinstance(exc, httpx.ConnectError):
-        return (
-            "Could not connect to the language model server. Check Ollama / llama.cpp URL, DNS, "
-            "TLS, and that the service is reachable from the AgentLayer container or host.",
-            False,
+        url = _request_url_from_exc(exc)
+        raw = (str(exc) or "").strip()
+        parts = [
+            "Chat LLM connection failed (this is the chat/completions HTTP call to your configured "
+            "model server — not RAG/embeddings).",
+            "EMBEDDING_BASE_URL only configures embeddings (RAG, memory, Qdrant code index, tool ranking); "
+            "it does not change chat. Chat uses OLLAMA_BASE_URL, LLAMA_CPP_*, external LLM rows, and the "
+            "model/catalog selection from the UI.",
+        ]
+        if url:
+            parts.append(f"POST {url}")
+        if raw and raw not in (url, ""):
+            parts.append(f"Reason: {raw}")
+        parts.append(
+            "Typical fix from Docker: the host inside the container must reach that URL "
+            "(LAN IPs like 192.168.x.x are often wrong from a bridge network; use a public hostname, "
+            "host.docker.internal, or host networking if appropriate)."
         )
+        return (" ".join(parts), False)
     if isinstance(exc, httpx.HTTPStatusError):
         code = exc.response.status_code
         return (
@@ -33,9 +65,13 @@ def user_visible_llm_transport_error(exc: BaseException) -> tuple[str, bool]:
             False,
         )
     if isinstance(exc, httpx.RequestError):
+        url = _request_url_from_exc(exc)
+        raw = (str(exc) or "").strip()
+        tail = f" POST {url}" if url else ""
+        extra = f" ({raw})" if raw else ""
         return (
-            f"Request to the language model server failed ({exc.__class__.__name__}). "
-            "Check URL configuration and network path.",
+            f"Request to the language model server failed ({exc.__class__.__name__}){extra}.{tail} "
+            "This is the chat endpoint, not embeddings.",
             False,
         )
     return (

@@ -2,10 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import {
-  catalogOwnedByForModel,
+  applyModelCatalogSelection,
+  defaultModelCatalogSelectValue,
   fetchModelCatalog,
+  findCatalogRowByModelId,
   formatModelCatalogHint,
+  modelCatalogSelectValue,
+  modelCatalogSelectValueForThread,
   modelOptionLabel,
+  resolveComposerModelRouting,
   type ModelRow,
 } from "../../lib/modelCatalog";
 import type { ChatThread } from "../chat/chatThreadStorage";
@@ -103,6 +108,7 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
   const [noSharedChatYet, setNoSharedChatYet] = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const [modelBeforeFirstSend, setModelBeforeFirstSend] = useState("");
+  const lastModelSelectionRef = useRef("");
   const endRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -206,27 +212,59 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
     }
   }, [messages, open, sendLoading]);
 
-  const modelValue = useMemo(
-    () => thread?.model?.trim() || modelBeforeFirstSend.trim() || models[0] || "",
-    [thread?.model, modelBeforeFirstSend, models]
+  const defaultSelectValue = useMemo(
+    () => defaultModelCatalogSelectValue(modelRows),
+    [modelRows]
   );
+  const modelSelectValue = useMemo(() => {
+    if (thread?.model?.trim()) {
+      const fromThread = modelCatalogSelectValueForThread(thread.model, thread.modelProvider);
+      if (fromThread.includes(":")) return fromThread;
+      const row = findCatalogRowByModelId(modelRows, thread.model, thread.modelProvider);
+      if (row) return modelCatalogSelectValue(row);
+      return fromThread;
+    }
+    if (modelBeforeFirstSend.trim()) {
+      const row = findCatalogRowByModelId(modelRows, modelBeforeFirstSend);
+      if (row) return modelCatalogSelectValue(row);
+      return modelBeforeFirstSend.trim();
+    }
+    return defaultSelectValue;
+  }, [thread?.model, thread?.modelProvider, modelBeforeFirstSend, modelRows, defaultSelectValue]);
+
+  useEffect(() => {
+    if (modelSelectValue.includes(":")) {
+      lastModelSelectionRef.current = modelSelectValue;
+    }
+  }, [modelSelectValue]);
 
   const setModelOnThread = useCallback(
-    (m: string) => {
-      setThread((t) => (t ? { ...t, model: m, updatedAt: Date.now() } : t));
+    (raw: string) => {
+      lastModelSelectionRef.current = raw;
+      const { model, modelProvider } = applyModelCatalogSelection(raw, modelRows);
+      setThread((t) => (t ? { ...t, model, modelProvider, updatedAt: Date.now() } : t));
     },
-    []
+    [modelRows]
   );
 
   const send = useCallback(async () => {
     if (readOnly) return;
     const userContent = buildUserMessageContent(draft, pendingAttachments);
     if (!userContent || !accessToken || sendLoading) return;
-    const mdl = modelValue.trim();
-    if (!mdl) {
-      setSendErr("No model available.");
+    const routed = resolveComposerModelRouting(
+      modelRows,
+      lastModelSelectionRef.current || modelSelectValue || defaultSelectValue,
+      (thread?.model || modelBeforeFirstSend || modelRows[0]?.id || "").trim(),
+      thread?.modelProvider
+    );
+    if (!routed) {
+      setSendErr(
+        "Could not resolve model provider. Open the model list and pick an entry (provider in parentheses)."
+      );
       return;
     }
+    const mdl = routed.model;
+    const provider = routed.provider;
     setSendErr(null);
     let prev = thread;
     if (!prev) {
@@ -242,9 +280,10 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
           agent_log: [],
           dashboard_id: dashboardId,
           shared: false,
+          model_catalog_owned_by: provider,
         });
-        prev = created;
-        setThread(created);
+        prev = { ...created, model: mdl, modelProvider: provider };
+        setThread(prev);
       } catch (e) {
         setSendErr(e instanceof Error ? e.message : String(e));
         return;
@@ -255,6 +294,7 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
     const nextThread: ChatThread = {
       ...prev,
       model: mdl,
+      modelProvider: provider,
       messages: nextMessages,
       updatedAt: Date.now(),
     };
@@ -276,7 +316,6 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
     }
     try {
       const disabledTools = getDisabledToolNames();
-      const catOb = catalogOwnedByForModel(modelRows, mdl);
       const payload = {
         model: mdl,
         messages: nextMessages.map((x) => ({
@@ -288,7 +327,7 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
         stream_options: { include_usage: true },
         ...payloadBase,
         ...(disabledTools.length ? { agent_disabled_tools: disabledTools } : {}),
-        ...(catOb ? { agent_model_catalog_owned_by: catOb } : {}),
+        agent_model_catalog_owned_by: provider,
       };
       const res = await apiFetch("/v1/chat/completions", auth, {
         method: "POST",
@@ -423,13 +462,22 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
                 <label className="mb-0.5 block text-[10px] text-surface-muted">Model</label>
                 <select
                   className="w-full rounded-lg border border-surface-border bg-black/30 px-2 py-1.5 text-xs text-white"
-                  value={modelValue}
+                  value={modelSelectValue}
                   onChange={(e) => {
                     const v = e.target.value;
                     if (thread) {
+                      const { model, modelProvider } = applyModelCatalogSelection(v, modelRows);
                       setModelOnThread(v);
-                      if (!readOnly) void putConversation(auth, { ...thread, model: v }).catch(() => {});
+                      if (!readOnly) {
+                        void putConversation(auth, {
+                          ...thread,
+                          model,
+                          modelProvider,
+                          updatedAt: Date.now(),
+                        }).catch(() => {});
+                      }
                     } else {
+                      lastModelSelectionRef.current = v;
                       setModelBeforeFirstSend(v);
                     }
                   }}
@@ -441,7 +489,7 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
                     <option value="">{modelsCatalogHint ?? "No models."}</option>
                   ) : (
                     modelRows.map((row) => (
-                      <option key={`${row.owned_by ?? "ollama"}:${row.id}`} value={row.id}>
+                      <option key={modelCatalogSelectValue(row)} value={modelCatalogSelectValue(row)}>
                         {modelOptionLabel(row)}
                       </option>
                     ))

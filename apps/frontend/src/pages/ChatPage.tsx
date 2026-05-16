@@ -3,12 +3,21 @@ import { NavLink, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { apiFetch, addUsageTotals, emptyTokenUsage, fetchAgents, fetchSessionRuntime, type AgentDefinition, type SessionRuntimePayload, type TokenUsageTotals, type WorkspaceApiRecord } from "../lib/api";
 import {
-  catalogOwnedByForModel,
+  applyModelCatalogSelection,
+  defaultModelCatalogSelectValue,
   fetchModelCatalog,
+  findCatalogRowByModelId,
+  formatEmptyChatModelCatalogHint,
   formatModelCatalogHint,
   catalogModelOptionUnreachableTitle,
   isCatalogModelOptionDisabled,
+  modelCatalogSelectValue,
+  modelCatalogSelectValueForThread,
   modelOptionLabel,
+  normalizeCatalogRoutingToken,
+  parseModelCatalogSelection,
+  resolveComposerModelRouting,
+  resolveModelCatalogRouting,
   type ModelCatalogAgentlayer,
   type ModelRow,
 } from "../lib/modelCatalog";
@@ -51,6 +60,7 @@ import {
   fetchConversationDetail,
   fetchConversationList,
   mapListItemToThread,
+  mergeServerThreadWithLocal,
   putConversation,
 } from "../features/chat/conversationsApi";
 import {
@@ -202,6 +212,7 @@ export function ChatPage() {
   /** In-flight HTTP chat completion (stream or JSON). */
   const chatAbortControllerRef = useRef<AbortController | null>(null);
   const activeThreadIdRef = useRef<string | null>(null);
+  const lastModelSelectionRef = useRef("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const toolStartTimesRef = useRef<Map<string, number>>(new Map());
@@ -258,10 +269,31 @@ export function ChatPage() {
   const messages = activeThread?.messages ?? [];
   const mode: ChatMode = activeThread?.mode ?? "agent";
   const model = activeThread?.model ?? "";
+  const modelProvider = activeThread?.modelProvider;
   const agentLog: AgentTimelineEntry[] = activeThread?.agentLog ?? [];
 
-  const models = useMemo(() => modelRows.map((r) => r.id), [modelRows]);
-  const defaultModel = models[0] ?? "";
+  const defaultSelectValue = useMemo(
+    () => defaultModelCatalogSelectValue(modelRows),
+    [modelRows]
+  );
+  const defaultModel = useMemo(() => {
+    const p = parseModelCatalogSelection(defaultSelectValue);
+    return p.modelId || modelRows[0]?.id || "";
+  }, [defaultSelectValue, modelRows]);
+  const modelSelectValue = useMemo(() => {
+    const fromThread = modelCatalogSelectValueForThread(model, modelProvider);
+    if (fromThread.includes(":")) return fromThread;
+    const row = findCatalogRowByModelId(modelRows, model, modelProvider);
+    if (row) return modelCatalogSelectValue(row);
+    if (model.trim()) return fromThread;
+    return defaultSelectValue;
+  }, [model, modelProvider, defaultSelectValue, modelRows]);
+
+  useEffect(() => {
+    if (modelSelectValue.includes(":")) {
+      lastModelSelectionRef.current = modelSelectValue;
+    }
+  }, [modelSelectValue]);
 
   useEffect(() => {
     setHydrated(false);
@@ -455,7 +487,9 @@ export function ChatPage() {
         setActiveThreadId(pick);
         const full = await fetchConversationDetail(auth, pick);
         if (cancelled) return;
-        setThreads((prev) => prev.map((th) => (th.id === full.id ? full : th)));
+        setThreads((prev) =>
+          prev.map((th) => (th.id === full.id ? mergeServerThreadWithLocal(full, th) : th))
+        );
         setSearchParams({ c: pick }, { replace: true });
         setHydrated(true);
       } catch (e) {
@@ -520,7 +554,9 @@ export function ChatPage() {
       setError(null);
       try {
         const full = await fetchConversationDetail(auth, id);
-        setThreads((prev) => prev.map((th) => (th.id === id ? full : th)));
+        setThreads((prev) =>
+          prev.map((th) => (th.id === id ? mergeServerThreadWithLocal(full, th) : th))
+        );
       } catch {
         /* keep list row */
       }
@@ -540,6 +576,22 @@ export function ChatPage() {
       })
     );
   }, []);
+
+  useEffect(() => {
+    if (!activeThreadId || !modelsCatalogReady || modelRows.length === 0) return;
+    const th = threads.find((x) => x.id === activeThreadId);
+    if (!th?.model?.trim()) return;
+    if (th.modelProvider && normalizeCatalogRoutingToken(th.modelProvider)) return;
+    const hint = lastModelSelectionRef.current || modelSelectValue || defaultSelectValue;
+    const routed = resolveModelCatalogRouting(modelRows, th.model, th.modelProvider, hint);
+    if (!routed) return;
+    if (th.model === routed.model && th.modelProvider === routed.provider) return;
+    lastModelSelectionRef.current = modelCatalogSelectValueForThread(
+      routed.model,
+      routed.provider
+    );
+    patchThread(activeThreadId, { model: routed.model, modelProvider: routed.provider });
+  }, [activeThreadId, defaultSelectValue, modelsCatalogReady, modelRows, modelSelectValue, threads, patchThread]);
 
   const addPickedFiles = useCallback(async (files: FileList | File[] | null) => {
     if (!files?.length) return;
@@ -567,18 +619,22 @@ export function ChatPage() {
   );
 
   const setModel = useCallback(
-    (m: string) => {
+    (raw: string) => {
       if (!activeThreadId) return;
+      lastModelSelectionRef.current = raw;
+      const { model: mid, modelProvider: prov } = applyModelCatalogSelection(raw, modelRows);
       setThreads((prev) => {
         const next = prev.map((t) =>
-          t.id === activeThreadId ? { ...t, model: m, updatedAt: Date.now() } : t
+          t.id === activeThreadId
+            ? { ...t, model: mid, modelProvider: prov, updatedAt: Date.now() }
+            : t
         );
         const th = next.find((x) => x.id === activeThreadId);
         if (th) void putConversation(auth, th).catch(() => {});
         return next;
       });
     },
-    [activeThreadId, auth]
+    [activeThreadId, auth, modelRows]
   );
 
   const setComposerAgent = useCallback(
@@ -632,8 +688,18 @@ export function ChatPage() {
     if (!accessToken || !activeThreadId) return;
     const tid = activeThreadId;
     const t = threads.find((x) => x.id === tid);
-    const effectiveModel = (t?.model || defaultModel).trim();
-    if (!t || !effectiveModel) return;
+    const routed = resolveComposerModelRouting(
+      modelRows,
+      lastModelSelectionRef.current || modelSelectValue,
+      (t?.model || defaultModel).trim(),
+      t?.modelProvider
+    );
+    if (!t || !routed) {
+      setError(
+        "Could not resolve model provider. Open the model list and pick an entry (provider shown in parentheses)."
+      );
+      return;
+    }
 
     const userContent = buildUserMessageContent(draft, pendingAttachments);
     if (!userContent) return;
@@ -644,7 +710,12 @@ export function ChatPage() {
     const firstUser = t.messages.length === 0;
     const nextMessages: UiMessage[] = [...t.messages, { role: "user", content: userContent }];
     const nextTitle = firstUser ? titleFromFirstMessage(userContent) : t.title;
-    patchThread(tid, { messages: nextMessages, title: nextTitle, model: effectiveModel });
+    patchThread(tid, {
+      messages: nextMessages,
+      title: nextTitle,
+      model: routed.model,
+      modelProvider: routed.provider,
+    });
     setDraft("");
     setPendingAttachments([]);
 
@@ -654,16 +725,15 @@ export function ChatPage() {
 
     try {
       const disabledTools = getDisabledToolNames();
-      const catOb = catalogOwnedByForModel(modelRows, effectiveModel);
       const payload = {
-        model: effectiveModel,
+        model: routed.model,
         messages: nextMessages.map((m) => ({ role: m.role, content: toApiContent(m.content) })),
         stream: true,
         agent_plain_completion: true,
         stream_options: { include_usage: true },
         ...agentDashboardPayload,
         ...(disabledTools.length ? { agent_disabled_tools: disabledTools } : {}),
-        ...(catOb ? { agent_model_catalog_owned_by: catOb } : {}),
+        agent_model_catalog_owned_by: routed.provider,
       };
       const res = await apiFetch("/v1/chat/completions", auth, {
         method: "POST",
@@ -758,7 +828,19 @@ export function ChatPage() {
       }
       setLoading(false);
     }
-  }, [accessToken, activeThreadId, agentDashboardPayload, auth, defaultModel, draft, modelRows, pendingAttachments, patchThread, threads]);
+  }, [
+    accessToken,
+    activeThreadId,
+    agentDashboardPayload,
+    auth,
+    defaultModel,
+    draft,
+    modelRows,
+    modelSelectValue,
+    pendingAttachments,
+    patchThread,
+    threads,
+  ]);
 
   const ensureAgentWs = useCallback((): Promise<WebSocket> => {
     return new Promise((resolve, reject) => {
@@ -793,8 +875,18 @@ export function ChatPage() {
     if (!accessToken || !activeThreadId) return;
     const tid = activeThreadId;
     const t = threads.find((x) => x.id === tid);
-    const effectiveModel = (t?.model || defaultModel).trim();
-    if (!t || !effectiveModel) return;
+    const routed = resolveComposerModelRouting(
+      modelRows,
+      lastModelSelectionRef.current || modelSelectValue,
+      (t?.model || defaultModel).trim(),
+      t?.modelProvider
+    );
+    if (!t || !routed) {
+      setError(
+        "Could not resolve model provider. Open the model list and pick an entry (provider shown in parentheses)."
+      );
+      return;
+    }
 
     const userContent = buildUserMessageContent(draft, pendingAttachments);
     if (!userContent) return;
@@ -805,7 +897,13 @@ export function ChatPage() {
     const firstUser = t.messages.length === 0;
     const nextMessages: UiMessage[] = [...t.messages, { role: "user", content: userContent }];
     const nextTitle = firstUser ? titleFromFirstMessage(userContent) : t.title;
-    patchThread(tid, { messages: nextMessages, agentLog: [], title: nextTitle, model: effectiveModel });
+    patchThread(tid, {
+      messages: nextMessages,
+      agentLog: [],
+      title: nextTitle,
+      model: routed.model,
+      modelProvider: routed.provider,
+    });
     agentTurnBaselineRef.current = nextMessages;
     streamDeltaAccRef.current = "";
     agentStreamEnabledThisTurnRef.current = getAgentStreamLlm();
@@ -1044,18 +1142,17 @@ export function ChatPage() {
         return;
       }
       const disabledTools = getDisabledToolNames();
-      const catOb = catalogOwnedByForModel(modelRows, effectiveModel);
       ws.send(
         JSON.stringify({
           type: "chat",
           body: {
-            model: effectiveModel,
+            model: routed.model,
             messages: nextMessages.map((m) => ({ role: m.role, content: toApiContent(m.content) })),
             agent_id: selectedAgentId,
             ...(selectedWorkspaceId ? { workspace_id: selectedWorkspaceId } : {}),
             ...agentDashboardPayload,
             ...(disabledTools.length ? { agent_disabled_tools: disabledTools } : {}),
-            ...(catOb ? { agent_model_catalog_owned_by: catOb } : {}),
+            agent_model_catalog_owned_by: routed.provider,
             ...(getAgentStreamLlm() ? { agent_stream_llm: true } : {}),
           },
         })
@@ -1074,6 +1171,7 @@ export function ChatPage() {
     draft,
     ensureAgentWs,
     modelRows,
+    modelSelectValue,
     patchThread,
     pendingAttachments,
     selectedAgentId,
@@ -1104,12 +1202,14 @@ export function ChatPage() {
 
   const startNewChat = async () => {
     try {
+      const defaultProv = parseModelCatalogSelection(defaultSelectValue).provider;
       const t = await createConversation(auth, {
         title: NEW_CHAT_TITLE,
         mode: "agent",
         model: defaultModel,
         messages: [],
         agent_log: [],
+        model_catalog_owned_by: defaultProv ?? null,
       });
       setThreads((prev) => [t, ...prev]);
       setActiveThreadId(t.id);
@@ -1474,25 +1574,29 @@ export function ChatPage() {
                 <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">Model</label>
                 <select
                   className="mt-0.5 w-full rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100"
-                  value={model || defaultModel}
+                  value={modelSelectValue || defaultSelectValue}
                   onChange={(e) => setModel(e.target.value)}
                   disabled={!modelsCatalogReady || modelRows.length === 0}
                 >
                   {!modelsCatalogReady ? (
                     <option value="">Loading models…</option>
                   ) : modelRows.length === 0 ? (
-                    <option value="">{modelsCatalogHint ?? "No models available."}</option>
+                    <option value="">
+                      {formatEmptyChatModelCatalogHint(modelCatalogAgentlayer) ??
+                        modelsCatalogHint ??
+                        "No chat models available."}
+                    </option>
                   ) : (
                     modelRows.map((row) => {
                       const catalogDown = isCatalogModelOptionDisabled(row, modelCatalogAgentlayer);
                       return (
                         <option
-                          key={`${row.owned_by ?? "ollama"}:${row.id}`}
-                          value={row.id}
+                          key={modelCatalogSelectValue(row)}
+                          value={modelCatalogSelectValue(row)}
                           disabled={catalogDown}
                           title={catalogDown ? catalogModelOptionUnreachableTitle(row, modelCatalogAgentlayer) : undefined}
                         >
-                          {modelOptionLabel(row)}
+                          {modelOptionLabel(row, modelCatalogAgentlayer)}
                         </option>
                       );
                     })

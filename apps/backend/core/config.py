@@ -51,7 +51,7 @@ OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://ollama:11434").rstri
 OLLAMA_DEFAULT_MODEL = (os.environ.get("OLLAMA_DEFAULT_MODEL") or "nemotron-3-nano:4b").strip()
 
 # Optional OpenAI-compatible llama.cpp server (same names as typical compose .env).
-# When ``LLAMA_CPP_BASE_URL`` is set and ``LLAMA_CPP_ENABLED`` is true, :mod:`llamacpp_provider` uses these
+# When ``LLAMA_CPP_BASE_URL`` is set, :mod:`model_catalog_providers` registers provider ``llama_cpp``
 # before ``operator_settings`` (Admin → Interfaces), if present.
 LLAMA_CPP_BASE_URL = (os.environ.get("LLAMA_CPP_BASE_URL") or "").strip().rstrip("/")
 LLAMA_CPP_ENABLED = _env_bool("LLAMA_CPP_ENABLED", True)
@@ -407,6 +407,25 @@ PIDEA_DEFAULT_TIMEOUT_MS = _env_int("PIDEA_DEFAULT_TIMEOUT_MS", 30_000)
 # --- RAG + memory (facts/notes) ---
 # Chunking, embedding model, tenant-wide domains, docs ingest path, and memory kill-switch live in
 # ``operator_settings`` (Admin → Interfaces), not environment variables.
+
+# Embeddings only (RAG, memory, Qdrant code index, tool ranking). Not used for chat.
+# POST {EMBEDDING_BASE_URL}/embeddings with EMBEDDING_API_HEADER_NAME / EMBEDDING_API_HEADER_VALUE.
+def _strip_env_quotes(raw: str | None) -> str:
+    s = (raw or "").strip()
+    if len(s) >= 2 and s[0] == s[-1] and s[0] in ('"', "'"):
+        s = s[1:-1].strip()
+    return s
+
+
+_EMBED_BASE_RAW = (os.environ.get("EMBEDDING_BASE_URL") or "").strip().rstrip("/")
+EMBEDDING_BASE_URL = _strip_env_quotes(_EMBED_BASE_RAW).rstrip("/")
+EMBEDDING_API_HEADER_NAME = _strip_env_quotes(
+    (os.environ.get("EMBEDDING_API_HEADER_NAME") or "").strip()
+) or "X-API-KEY"
+_EMBED_SECRET_RAW = _strip_env_quotes(
+    (os.environ.get("EMBEDDING_API_HEADER_VALUE") or os.environ.get("EMBEDDING_API_KEY") or "").strip()
+)
+EMBEDDING_API_HEADER_VALUE = _EMBED_SECRET_RAW
 
 
 # --- MCP (Model Context Protocol, stdio servers; optional) ---

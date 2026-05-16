@@ -85,13 +85,15 @@ def http_post_chat_completions(
 def http_get_json(
     url: str,
     *,
+    headers: dict[str, str] | None = None,
     timeout: float = 60.0,
 ) -> tuple[int, str, Any | None]:
     """GET; returns ``(status, text_on_error, json_or_none)``."""
+    h = headers or {}
     try:
         with LLM_HTTP_SERIALIZE_LOCK:
             with httpx.Client(timeout=timeout) as client:
-                r = client.get(url)
+                r = client.get(url, headers=h)
                 if r.status_code != 200:
                     return r.status_code, r.text, None
                 return 200, "", r.json()

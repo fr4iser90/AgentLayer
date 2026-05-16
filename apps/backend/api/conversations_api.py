@@ -38,6 +38,7 @@ class ConversationCreateBody(BaseModel):
     shared: bool = False
     agent_id: str | None = Field(default=None, max_length=128)
     workspace_id: uuid.UUID | None = None
+    model_catalog_owned_by: str | None = Field(default=None, max_length=64)
 
 
 class ConversationUpdateBody(BaseModel):
@@ -48,6 +49,7 @@ class ConversationUpdateBody(BaseModel):
     agent_log: list[Any] | None = None
     agent_id: str | None = Field(default=None, max_length=128)
     workspace_id: uuid.UUID | None = None
+    model_catalog_owned_by: str | None = Field(default=None, max_length=64)
 
 
 @router.get("")
@@ -85,6 +87,7 @@ async def create_conversation(request: Request, body: ConversationCreateBody):
             shared=body.shared,
             agent_id=body.agent_id,
             workspace_id=body.workspace_id,
+            model_catalog_owned_by=body.model_catalog_owned_by,
         )
     except PermissionError:
         raise HTTPException(status_code=403, detail="not allowed to create this conversation") from None
@@ -112,12 +115,14 @@ async def put_conversation(
         msgs = [m.model_dump() for m in body.messages]
     prefs: dict[str, Any] | None = None
     fs = body.model_fields_set
-    if "agent_id" in fs or "workspace_id" in fs:
+    if "agent_id" in fs or "workspace_id" in fs or "model_catalog_owned_by" in fs:
         prefs = {}
         if "agent_id" in fs:
             prefs["agent_id"] = body.agent_id
         if "workspace_id" in fs:
             prefs["workspace_id"] = body.workspace_id
+        if "model_catalog_owned_by" in fs:
+            prefs["model_catalog_owned_by"] = body.model_catalog_owned_by
     data = conversation_replace(
         user.id,
         conversation_id,

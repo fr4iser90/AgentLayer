@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
+import {
+  embeddingModelOptions,
+  type EmbeddingCatalogHealth,
+} from "../../lib/modelCatalog";
 
 type InterfaceHints = {
   discord_application_id: string;
@@ -40,7 +44,7 @@ type OperatorPublic = {
   memory_graph_log_activations?: boolean;
   memory_enabled?: boolean;
   rag_enabled?: boolean;
-  rag_ollama_model?: string;
+  rag_embedding_model?: string;
   rag_embedding_dim?: number;
   rag_chunk_size?: number;
   rag_chunk_overlap?: number;
@@ -143,7 +147,8 @@ export function AdminInterfaces() {
   const [memGraphLogActivations, setMemGraphLogActivations] = useState(false);
   const [memoryEnabled, setMemoryEnabled] = useState(true);
   const [ragEnabled, setRagEnabled] = useState(true);
-  const [ragOllamaModel, setRagOllamaModel] = useState("nomic-embed-text");
+  const [ragEmbeddingModel, setRagEmbeddingModel] = useState("nomic-embed-text");
+  const [ragEmbeddingModelOptions, setRagEmbeddingModelOptions] = useState<string[]>([]);
   const [ragEmbeddingDim, setRagEmbeddingDim] = useState("768");
   const [ragChunkSize, setRagChunkSize] = useState("1200");
   const [ragChunkOverlap, setRagChunkOverlap] = useState("200");
@@ -178,11 +183,12 @@ export function AdminInterfaces() {
     setLoading(true);
     setSaveMsg(null);
     try {
-      const [iRes, oRes, epRes, uRes] = await Promise.all([
+      const [iRes, oRes, epRes, uRes, modelsRes] = await Promise.all([
         apiFetch("/v1/admin/interfaces", auth),
         apiFetch("/v1/admin/operator-settings", auth),
         apiFetch("/v1/admin/external-llm/endpoints", auth),
         apiFetch("/v1/admin/users", auth),
+        fetch("/v1/models"),
       ]);
       const iData = (await iRes.json()) as InterfaceHints | { detail?: unknown };
       if (!iRes.ok) {
@@ -263,7 +269,16 @@ export function AdminInterfaces() {
       );
       setMemoryEnabled(op.memory_enabled !== false);
       setRagEnabled(op.rag_enabled !== false);
-      setRagOllamaModel((op.rag_ollama_model ?? "nomic-embed-text").trim() || "nomic-embed-text");
+      setRagEmbeddingModel(
+        (op.rag_embedding_model ?? (op as { rag_ollama_model?: string }).rag_ollama_model ?? "nomic-embed-text")
+          .trim() || "nomic-embed-text"
+      );
+      try {
+        const modelsJson = (await modelsRes.json()) as { agentlayer?: { embedding?: EmbeddingCatalogHealth } };
+        setRagEmbeddingModelOptions(embeddingModelOptions(modelsJson.agentlayer?.embedding));
+      } catch {
+        setRagEmbeddingModelOptions([]);
+      }
       setRagEmbeddingDim(
         op.rag_embedding_dim != null && Number.isFinite(op.rag_embedding_dim) ? String(op.rag_embedding_dim) : "768"
       );
@@ -373,7 +388,7 @@ export function AdminInterfaces() {
           raw.map((x, i) => ({
             localKey: `ep-${x.id}-${i}`,
             id: x.id,
-            enabled: x.enabled !== false,
+            enabled: true,
             label: (x.label ?? "").trim(),
             baseUrl: (x.base_url ?? "").trim(),
             apiKey: "",
@@ -399,7 +414,7 @@ export function AdminInterfaces() {
     setExtLlmModelsLoading(true);
     try {
       const payload: Record<string, string | number> = {};
-      const ep0 = extLlmEndpoints.find((e) => e.enabled && e.baseUrl.trim());
+      const ep0 = extLlmEndpoints.find((e) => e.baseUrl.trim());
       if (ep0?.id != null) {
         payload.endpoint_id = ep0.id;
       } else if (ep0) {
@@ -558,7 +573,7 @@ export function AdminInterfaces() {
       }
       patch.memory_enabled = memoryEnabled;
       patch.rag_enabled = ragEnabled;
-      patch.rag_ollama_model = ragOllamaModel.trim() || "nomic-embed-text";
+      patch.rag_embedding_model = ragEmbeddingModel.trim() || "nomic-embed-text";
       patch.rag_embedding_dim = Math.floor(red);
       patch.rag_chunk_size = Math.floor(rcs);
       patch.rag_chunk_overlap = Math.floor(rco);
@@ -661,7 +676,7 @@ export function AdminInterfaces() {
         endpoints: extLlmEndpoints.map((r, idx) => {
           const o: Record<string, unknown> = {
             sort_order: idx,
-            enabled: r.enabled,
+            enabled: true,
             label: r.label.trim(),
             base_url: r.baseUrl.trim(),
             model_default: r.modelDefault.trim() || null,
@@ -859,16 +874,35 @@ export function AdminInterfaces() {
               RAG (pgvector-Ingest &amp; Suche) aktivieren
             </label>
             <label className="mt-4 block text-xs text-surface-muted" htmlFor="rag-model">
-              Ollama-Embedding-Modell (muss zur DB-Vektorbreite passen)
+              Embedding-Modell (RAG, von EMBEDDING_BASE_URL /v1/models)
             </label>
-            <input
-              id="rag-model"
-              className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
-              value={ragOllamaModel}
-              onChange={(e) => setRagOllamaModel(e.target.value)}
-              placeholder="nomic-embed-text"
-              autoComplete="off"
-            />
+            {ragEmbeddingModelOptions.length > 0 ? (
+              <select
+                id="rag-model"
+                className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                value={ragEmbeddingModel}
+                onChange={(e) => setRagEmbeddingModel(e.target.value)}
+              >
+                {ragEmbeddingModelOptions.map((id) => (
+                  <option key={id} value={id}>
+                    {id}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                id="rag-model"
+                className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                value={ragEmbeddingModel}
+                onChange={(e) => setRagEmbeddingModel(e.target.value)}
+                placeholder="nomic-embed-text"
+                autoComplete="off"
+              />
+            )}
+            <p className="mt-1 text-xs text-surface-muted">
+              API-Host nur in <span className="font-mono">.env</span> (EMBEDDING_BASE_URL). Liste kommt von GET /v1/models
+              am Embedding-Server.
+            </p>
             <div className="mt-4 grid max-w-2xl gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <div>
                 <label className="block text-xs text-surface-muted" htmlFor="rag-dim">
@@ -1204,13 +1238,15 @@ export function AdminInterfaces() {
           </section>
 
           <section className="mt-6 rounded-xl border border-surface-border bg-surface-raised p-5">
-            <h2 className="text-sm font-medium text-white">Externe LLM-Endpoints</h2>
+            <h2 className="text-sm font-medium text-white">LLM-Endpoints (Chat-Provider)</h2>
             <p className="mt-2 text-xs text-surface-muted">
-              Mehrere Provider oder mehrere Keys pro Provider: Reihenfolge = Failover (erster zuerst). Bei HTTP{" "}
-              <span className="font-mono text-neutral-400">401/403/429/5xx</span> wird der nächste Endpoint versucht.
-              OpenAI-kompatibles <span className="font-mono">/v1/chat/completions</span> — z. B. OpenAI, Gemini (
-              <span className="font-mono text-neutral-300">…/v1beta/openai</span>
-              ).
+              Jeder Eintrag = ein Provider im Model-Dropdown (<span className="font-mono">external_1</span>,{" "}
+              <span className="font-mono">external_2</span>, …). Kein Aktivieren nötig — URL + Key eintragen, speichern,
+              dann im Chat Modell wählen. Reihenfolge = Failover nur für Legacy{" "}
+              <span className="font-mono">external</span>. OpenAI-kompatibel: OpenAI, Groq, Gemini, eigene llama.cpp-URL, …
+              Zusätzlich: <span className="font-mono">OLLAMA_BASE_URL</span> und{" "}
+              <span className="font-mono">LLAMA_CPP_*</span> in <span className="font-mono">.env</span> erscheinen als{" "}
+              <span className="font-mono">ollama</span> / <span className="font-mono">llama_cpp</span>.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <button
@@ -1243,7 +1279,7 @@ export function AdminInterfaces() {
                 disabled={extLlmModelsLoading}
                 onClick={() => void loadExternalModels()}
               >
-                {extLlmModelsLoading ? "Lade Modelle…" : "Modelle laden (1. aktiver Endpoint)"}
+                {extLlmModelsLoading ? "Lade Modelle…" : "Modelle laden (erster Endpoint mit URL)"}
               </button>
             </div>
             {extLlmModelsHint ? (
@@ -1314,20 +1350,6 @@ export function AdminInterfaces() {
                       </button>
                     </div>
                   </div>
-                  <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-white">
-                    <input
-                      type="checkbox"
-                      className="rounded border-surface-border"
-                      checked={ep.enabled}
-                      onChange={(e) => {
-                        const v = e.target.checked;
-                        setExtLlmEndpoints((prev) =>
-                          prev.map((x, j) => (j === idx ? { ...x, enabled: v } : x))
-                        );
-                      }}
-                    />
-                    Aktiv (nur aktive zählen für Chat)
-                  </label>
                   <label className="mt-2 block text-xs text-surface-muted" htmlFor={`ep-lbl-${ep.localKey}`}>
                     Label (optional)
                   </label>

@@ -7,7 +7,14 @@ import type {
   ChatThread,
   UiMessage,
 } from "./chatThreadStorage";
+import { normalizeCatalogRoutingToken } from "../../lib/modelCatalog";
 import { normalizeServerContent } from "./messageFormat";
+
+function modelProviderFromApi(item: Record<string, unknown>): string | undefined {
+  const raw = item.model_catalog_owned_by;
+  if (typeof raw !== "string" || !raw.trim()) return undefined;
+  return normalizeCatalogRoutingToken(raw);
+}
 
 type ApiMessage = { role: "user" | "assistant" | "system"; content: unknown };
 
@@ -55,7 +62,22 @@ export function mapListItemToThread(item: Record<string, unknown>): ChatThread {
       : item.workspace_id === null
         ? { workspaceId: null as string | null }
         : {}),
+    ...((): { modelProvider?: string } => {
+      const prov = modelProviderFromApi(item);
+      return prov ? { modelProvider: prov } : {};
+    })(),
   };
+}
+
+/** Prefer server ``model_catalog_owned_by``; keep local only when server has none yet. */
+export function mergeServerThreadWithLocal(
+  server: ChatThread,
+  local: ChatThread | undefined
+): ChatThread {
+  if (!local || local.id !== server.id) return server;
+  if (server.modelProvider) return server;
+  if (local.modelProvider) return { ...server, modelProvider: local.modelProvider };
+  return server;
 }
 
 export function mapServerToThread(raw: Record<string, unknown>): ChatThread {
@@ -95,6 +117,10 @@ export function mapServerToThread(raw: Record<string, unknown>): ChatThread {
       : raw.workspace_id === null
         ? { workspaceId: null as string | null }
         : {}),
+    ...((): { modelProvider?: string } => {
+      const prov = modelProviderFromApi(raw);
+      return prov ? { modelProvider: prov } : {};
+    })(),
   };
 }
 
@@ -135,6 +161,7 @@ export async function createConversation(
     shared?: boolean;
     agent_id?: string | null;
     workspace_id?: string | null;
+    model_catalog_owned_by?: string | null;
   }
 ) {
   const r = await apiFetch("/v1/user/conversations", auth, {
@@ -149,6 +176,9 @@ export async function createConversation(
       ...(body.shared ? { shared: true } : {}),
       ...(body.agent_id !== undefined ? { agent_id: body.agent_id } : {}),
       ...(body.workspace_id !== undefined ? { workspace_id: body.workspace_id } : {}),
+      ...(body.model_catalog_owned_by !== undefined
+        ? { model_catalog_owned_by: body.model_catalog_owned_by }
+        : {}),
     }),
   });
   const data = (await r.json()) as { conversation?: Record<string, unknown> };
@@ -173,6 +203,9 @@ export async function putConversation(
       agent_log: thread.agentLog ?? [],
       ...(thread.agentId !== undefined ? { agent_id: thread.agentId } : {}),
       ...(thread.workspaceId !== undefined ? { workspace_id: thread.workspaceId } : {}),
+      ...(thread.modelProvider !== undefined
+        ? { model_catalog_owned_by: thread.modelProvider || null }
+        : {}),
     }),
   });
   if (!r.ok) {

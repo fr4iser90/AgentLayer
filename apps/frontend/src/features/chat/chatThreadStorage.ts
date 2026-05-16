@@ -14,6 +14,8 @@ export type ChatThread = {
   title: string;
   mode: ChatMode;
   model: string;
+  /** Opaque provider id from the selected GET /v1/models row (``owned_by``); must match the dropdown choice. */
+  modelProvider?: string;
   messages: UiMessage[];
   /** Last agent timeline (optional; kept small in storage). */
   agentLog?: AgentTimelineEntry[];
@@ -69,6 +71,10 @@ export function loadThreads(userId: string): PersistedState | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as PersistedState;
     if (parsed?.version !== 1 || !Array.isArray(parsed.threads)) return null;
+    for (const th of parsed.threads) {
+      const legacy = (th as { modelCatalogOwnedBy?: string }).modelCatalogOwnedBy;
+      if (legacy && !th.modelProvider) th.modelProvider = legacy;
+    }
     return parsed;
   } catch {
     return null;

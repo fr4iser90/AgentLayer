@@ -65,19 +65,19 @@ async def admin_rag_ingest(request: Request):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except httpx.HTTPStatusError as e:
-        logger.exception("RAG ingest Ollama error")
+        logger.exception("RAG ingest embedding HTTP error")
         detail = (
-            f"Ollama embeddings error: {e!s}"
+            f"Embedding HTTP error: {e!s}"
             if operator_settings.expose_internal_errors_in_responses()
-            else "Ollama embeddings error"
+            else "Embedding HTTP error"
         )
         raise HTTPException(status_code=502, detail=detail) from e
     except httpx.RequestError as e:
-        logger.exception("RAG ingest cannot reach Ollama")
+        logger.exception("RAG ingest cannot reach embedding backend")
         detail = (
-            f"Ollama unreachable: {e!s}"
+            f"Embedding backend unreachable: {e!s}"
             if operator_settings.expose_internal_errors_in_responses()
-            else "Ollama unreachable"
+            else "Embedding backend unreachable"
         )
         raise HTTPException(status_code=502, detail=detail) from e
     except Exception as e:

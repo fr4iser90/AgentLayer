@@ -9,7 +9,7 @@ tags: [rag, pgvector, embeddings]
 RAG provides **semantic search** over ingested documents using:
 
 - Postgres + `pgvector`
-- embeddings from Ollama (`/api/embed` with fallback to `/api/embeddings`)
+- embeddings from **`EMBEDDING_BASE_URL`** only (OpenAI-compatible `/v1/embeddings`; see below)
 
 By default, vectors are scoped to **tenant + user** (private notes and uploads stay per user).
 
@@ -27,11 +27,21 @@ The domain **`agentlayer_docs`** is **tenant-wide**: after an admin ingests docu
 In **`operator_settings`** ( **Admin → Interfaces** or `GET/PATCH /v1/admin/operator-settings` ):
 
 - **`rag_enabled`** — master switch for ingest and search
-- **`rag_ollama_model`** — Ollama embedding model (must match DB vector width)
+- **`rag_embedding_model`** — embedding **model id** (OpenAI-compatible `/v1/embeddings` at `EMBEDDING_BASE_URL`)
 - **`rag_embedding_dim`** — must match `rag_chunks.embedding` column (e.g. 768)
 - **`rag_chunk_size`**, **`rag_chunk_overlap`**, **`rag_top_k`**, **`rag_embed_timeout_sec`**
 - **`rag_tenant_shared_domains`** — comma list; tenant-wide domains for search without per-user filter
 - **`docs_root`** — optional filesystem root for startup / `ingest-docs` when body omits `docs_root` (default: `<repo>/docs` in the image)
+
+### Environment: embedding HTTP (only these)
+
+Set in `.env` (not used for chat; no Ollama/llama.cpp fallback):
+
+- **`EMBEDDING_BASE_URL`** — OpenAI-compatible base (e.g. `https://host/v1`)
+- **`EMBEDDING_API_HEADER_NAME`** — header for the secret (default `X-API-KEY`; use `Authorization` for Bearer)
+- **`EMBEDDING_API_HEADER_VALUE`** — secret (no surrounding quotes in `.env`)
+
+Chunking, timeouts, model id (`rag_embedding_model`), and vector width remain in **operator_settings** (`rag_*`).
 
 ## Ingest (admin HTTP)
 
@@ -44,7 +54,7 @@ CLI helper (stdlib HTTP only):
 
 - `scripts/reindex_agentlayer_docs.py` — uses `AGENT_BASE_URL`, `AGENT_ADMIN_TOKEN`, optional `AGENT_INGEST_DOCS_JSON`
 
-On each API process start, the server **attempts** to re-ingest all `docs/**/*.md` into domain `agentlayer_docs` (purge tenant rows for that domain first), using the oldest admin user as row owner, when a docs directory exists. If the embedding stack is not configured or Ollama is unreachable, that pass is skipped or logged and the API still starts.
+On each API process start, the server **attempts** to re-ingest all `docs/**/*.md` into domain `agentlayer_docs` (purge tenant rows for that domain first), using the oldest admin user as row owner, when a docs directory exists. If the embedding stack is not configured or the backend is unreachable, that pass is skipped or logged and the API still starts.
 
 Recommended `domain` values:
 
@@ -63,5 +73,5 @@ Use `domain: "agentlayer_docs"` when answering questions about AgentLayer produc
 ## Troubleshooting
 
 - If you see embedding dim mismatch: align **`rag_embedding_dim`** in operator settings with the DB vector column and the model output size.
-- If search returns nothing: ensure ingest happened, **`rag_enabled`** is on, and Ollama serves **`rag_ollama_model`**.
+- If search returns nothing: ensure ingest happened, **`rag_enabled`** is on, and the embedding backend can serve **`rag_embedding_model`**.
 - If `ingest-docs` reports missing directory: mount or copy `docs/` into the container, set **`docs_root`** in Interfaces, or pass `docs_root` in the request body.

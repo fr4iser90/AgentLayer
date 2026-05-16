@@ -11,6 +11,7 @@ import {
   fetchConversationDetail,
   fetchConversationList,
   mapListItemToThread,
+  mergeServerThreadWithLocal,
   putConversation,
 } from "../features/chat/conversationsApi";
 import {
@@ -41,12 +42,25 @@ import { SessionRuntimeBar } from "../features/chat/SessionRuntimeBar";
 import { CodingWorkspacePanels } from "../features/workspace/CodingWorkspacePanels";
 import { WorkspaceMcpModal } from "../features/workspace/WorkspaceMcpModal";
 import {
-  catalogOwnedByForModel,
+  applyModelCatalogSelection,
+  defaultModelCatalogSelectValue,
   fetchModelCatalog,
+  embeddingModelOptions,
+  findCatalogRowByModelId,
+  formatEmbeddingStatusHint,
+  formatEmptyChatModelCatalogHint,
   formatModelCatalogHint,
+  patchEmbeddingModel,
   catalogModelOptionUnreachableTitle,
   isCatalogModelOptionDisabled,
+  modelCatalogSelectValue,
+  modelCatalogSelectValueForThread,
   modelOptionLabel,
+  normalizeCatalogRoutingToken,
+  parseModelCatalogSelection,
+  resolveComposerModelRouting,
+  resolveModelCatalogRouting,
+  type EmbeddingCatalogHealth,
   type ModelCatalogAgentlayer,
   type ModelRow,
 } from "../lib/modelCatalog";
@@ -408,6 +422,12 @@ export function CodingAgentPage() {
   const [modelsCatalogReady, setModelsCatalogReady] = useState(false);
   const [modelsCatalogHint, setModelsCatalogHint] = useState<string | null>(null);
   const [modelCatalogAgentlayer, setModelCatalogAgentlayer] = useState<ModelCatalogAgentlayer | null>(null);
+  const embeddingMeta = modelCatalogAgentlayer?.embedding as EmbeddingCatalogHealth | undefined;
+  const embeddingModelRows = useMemo(() => embeddingModelOptions(embeddingMeta), [embeddingMeta]);
+  const embeddingStatusHint = useMemo(() => formatEmbeddingStatusHint(embeddingMeta), [embeddingMeta]);
+  const isAdminUser = (user?.role ?? "").toLowerCase() === "admin";
+  const [embeddingModel, setEmbeddingModel] = useState("");
+  const [embeddingModelSaving, setEmbeddingModelSaving] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [selectedOptions, setSelectedOptions] = useState<Map<string, { proposal: Proposal; option: ProposalOption }>>(new Map());
 
@@ -484,6 +504,7 @@ export function CodingAgentPage() {
   /** User cancelled before the chat frame was sent (e.g. while WebSocket connects). */
   const cancelAgentTurnRef = useRef(false);
   const activeThreadIdRef = useRef<string | null>(null);
+  const lastModelSelectionRef = useRef("");
   /** Prepended to the next user message after Plan→Build + server implementation-branch creation. */
   const implementationBranchPreambleRef = useRef<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -507,7 +528,9 @@ export function CodingAgentPage() {
       setError(null);
       try {
         const full = await fetchConversationDetail(auth, id);
-        setThreads((prev) => prev.map((th) => (th.id === id ? full : th)));
+        setThreads((prev) =>
+          prev.map((th) => (th.id === id ? mergeServerThreadWithLocal(full, th) : th))
+        );
       } catch {
         /* keep list row */
       }
@@ -527,22 +550,76 @@ export function CodingAgentPage() {
 
   const messages = activeThread?.messages ?? [];
   const agentLog: AgentTimelineEntry[] = activeThread?.agentLog ?? [];
-  const models = useMemo(() => modelRows.map((r) => r.id), [modelRows]);
-  const defaultModel = models[0] ?? "";
+  const defaultSelectValue = useMemo(
+    () => defaultModelCatalogSelectValue(modelRows),
+    [modelRows]
+  );
+  const defaultModel = useMemo(() => {
+    const p = parseModelCatalogSelection(defaultSelectValue);
+    return p.modelId || modelRows[0]?.id || "";
+  }, [defaultSelectValue, modelRows]);
+  const modelSelectValue = useMemo(() => {
+    const mid = activeThread?.model ?? "";
+    const fromThread = modelCatalogSelectValueForThread(mid, activeThread?.modelProvider);
+    if (fromThread.includes(":")) return fromThread;
+    const row = findCatalogRowByModelId(modelRows, mid, activeThread?.modelProvider);
+    if (row) return modelCatalogSelectValue(row);
+    if (mid.trim()) return fromThread;
+    return defaultSelectValue;
+  }, [activeThread?.model, activeThread?.modelProvider, defaultSelectValue, modelRows]);
+
+  useEffect(() => {
+    if (modelSelectValue.includes(":")) {
+      lastModelSelectionRef.current = modelSelectValue;
+    }
+  }, [modelSelectValue]);
 
   useEffect(() => {
     setHydrated(false);
   }, [userId]);
 
   useEffect(() => {
+    if (!activeThreadId || !modelsCatalogReady || modelRows.length === 0) return;
+    const th = threads.find((x) => x.id === activeThreadId);
+    if (!th?.model?.trim()) return;
+    if (th.modelProvider && normalizeCatalogRoutingToken(th.modelProvider)) return;
+    const hint = lastModelSelectionRef.current || modelSelectValue || defaultSelectValue;
+    const routed = resolveModelCatalogRouting(modelRows, th.model, th.modelProvider, hint);
+    if (!routed) return;
+    if (th.model === routed.model && th.modelProvider === routed.provider) return;
+    lastModelSelectionRef.current = modelCatalogSelectValueForThread(
+      routed.model,
+      routed.provider
+    );
+    setThreads((prev) =>
+      prev.map((t) =>
+        t.id === activeThreadId
+          ? { ...t, model: routed.model, modelProvider: routed.provider, updatedAt: Date.now() }
+          : t
+      )
+    );
+  }, [activeThreadId, defaultSelectValue, modelsCatalogReady, modelRows, modelSelectValue, threads]);
+
+  useEffect(() => {
+    const m = (embeddingMeta?.model ?? "").trim();
+    if (m) setEmbeddingModel(m);
+  }, [embeddingMeta?.model, modelsCatalogReady]);
+
+  const refreshModelCatalog = useCallback(async () => {
+    const { rows, agentlayer } = await fetchModelCatalog();
+    setModelRows(rows);
+    setModelCatalogAgentlayer(agentlayer);
+    setModelsCatalogHint(formatModelCatalogHint(agentlayer, { excludeUnreachableProviderHints: true }));
+    const sel = (agentlayer?.embedding as EmbeddingCatalogHealth | undefined)?.model?.trim();
+    if (sel) setEmbeddingModel(sel);
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const { rows, agentlayer } = await fetchModelCatalog();
         if (cancelled) return;
-        setModelRows(rows);
-        setModelCatalogAgentlayer(agentlayer);
-        setModelsCatalogHint(formatModelCatalogHint(agentlayer, { excludeUnreachableProviderHints: true }));
+        await refreshModelCatalog();
       } catch {
         if (!cancelled) {
           setModelRows([]);
@@ -554,7 +631,27 @@ export function CodingAgentPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [refreshModelCatalog]);
+
+  const setEmbeddingModelSelection = useCallback(
+    async (modelId: string) => {
+      const id = modelId.trim();
+      if (!id) return;
+      setEmbeddingModel(id);
+      if (!isAdminUser) return;
+      setEmbeddingModelSaving(true);
+      try {
+        const ok = await patchEmbeddingModel(auth, id);
+        if (ok) await refreshModelCatalog();
+        else setError("Embedding-Modell konnte nicht gespeichert werden (Admin-Rechte?).");
+      } catch {
+        setError("Embedding-Modell speichern fehlgeschlagen.");
+      } finally {
+        setEmbeddingModelSaving(false);
+      }
+    },
+    [auth, isAdminUser, refreshModelCatalog]
+  );
 
   useEffect(() => {
     if (!accessToken || !userId) return;
@@ -596,7 +693,9 @@ export function CodingAgentPage() {
         setActiveThreadId(pick);
         const full = await fetchConversationDetail(auth, pick);
         if (cancelled) return;
-        setThreads((prev) => prev.map((th) => (th.id === full.id ? full : th)));
+        setThreads((prev) =>
+          prev.map((th) => (th.id === full.id ? mergeServerThreadWithLocal(full, th) : th))
+        );
         setHydrated(true);
       } catch (e) {
         if (!cancelled) {
@@ -711,8 +810,19 @@ export function CodingAgentPage() {
     if (!accessToken || !activeThreadId) return;
     const tid = activeThreadId;
     const t = threads.find((x) => x.id === tid);
-    const effectiveModel = (t?.model || defaultModel).trim();
-    if (!t || !effectiveModel) return;
+    const routed = resolveComposerModelRouting(
+      modelRows,
+      lastModelSelectionRef.current || modelSelectValue,
+      (t?.model || defaultModel).trim(),
+      t?.modelProvider
+    );
+    if (!t || !routed) {
+      setError(
+        "Could not resolve model provider. Open the model list and pick an entry (name shows provider in parentheses)."
+      );
+      return;
+    }
+    const effectiveModel = routed.model;
 
     if (!selectedWorkspaceId) {
       setError("Select a workspace before sending (required for Coding and Plan).");
@@ -742,6 +852,7 @@ export function CodingAgentPage() {
               agentLog: [],
               title: nextTitle,
               model: effectiveModel,
+              modelProvider: routed.provider,
               agentId: agentId,
               workspaceId: selectedWorkspaceId,
               updatedAt: Date.now(),
@@ -877,8 +988,6 @@ export function CodingAgentPage() {
       const disabledTools = getDisabledToolNames();
       const toolBucket = sessionMode === "plan" ? CODING_PLAN_TOOL_NAMES : CODING_TOOLS;
       const enabledTools = toolBucket.filter((x) => !disabledTools.includes(x));
-      const catOb = catalogOwnedByForModel(modelRows, effectiveModel);
-
       ws.send(
         JSON.stringify({
           type: "chat",
@@ -891,7 +1000,7 @@ export function CodingAgentPage() {
             ...(enabledTools.length < toolBucket.length
               ? { agent_disabled_tools: disabledTools }
               : {}),
-            ...(catOb ? { agent_model_catalog_owned_by: catOb } : {}),
+            agent_model_catalog_owned_by: routed.provider,
             agent_permission_ask: true,
             ...(getAgentStreamLlm() ? { agent_stream_llm: true } : {}),
           },
@@ -901,7 +1010,20 @@ export function CodingAgentPage() {
       setError(e instanceof Error ? e.message : String(e));
       setLoading(false);
     }
-  }, [accessToken, activeThreadId, appendAgentLine, auth, defaultModel, draft, ensureAgentWs, modelRows, selectedWorkspaceId, sessionMode, threads]);
+  }, [
+    accessToken,
+    activeThreadId,
+    appendAgentLine,
+    auth,
+    defaultModel,
+    draft,
+    ensureAgentWs,
+    modelRows,
+    modelSelectValue,
+    selectedWorkspaceId,
+    sessionMode,
+    threads,
+  ]);
 
   const onSend = () => {
     void runAgentWs();
@@ -937,6 +1059,7 @@ export function CodingAgentPage() {
 
   const startNewChat = async () => {
     try {
+      const defaultProv = parseModelCatalogSelection(defaultSelectValue).provider;
       const t = await createConversation(auth, {
         title: "New coding session",
         mode: "agent",
@@ -945,6 +1068,7 @@ export function CodingAgentPage() {
         agent_log: [],
         agent_id: sessionMode === "plan" ? "coding_plan" : "coding",
         workspace_id: selectedWorkspaceId,
+        model_catalog_owned_by: defaultProv ?? null,
       });
       if (userId) {
         localStorage.setItem(codingModeStorageKey(userId, t.id), sessionMode);
@@ -1019,18 +1143,22 @@ export function CodingAgentPage() {
   };
 
   const setModel = useCallback(
-    (m: string) => {
+    (raw: string) => {
       if (!activeThreadId) return;
+      lastModelSelectionRef.current = raw;
+      const { model: mid, modelProvider: prov } = applyModelCatalogSelection(raw, modelRows);
       setThreads((prev) => {
         const next = prev.map((t) =>
-          t.id === activeThreadId ? { ...t, model: m, updatedAt: Date.now() } : t
+          t.id === activeThreadId
+            ? { ...t, model: mid, modelProvider: prov, updatedAt: Date.now() }
+            : t
         );
         const th = next.find((x) => x.id === activeThreadId);
         if (th) void putConversation(auth, th).catch(() => {});
         return next;
       });
     },
-    [activeThreadId, auth]
+    [activeThreadId, auth, modelRows]
   );
 
   const persistWorkspaceToThread = useCallback(
@@ -1417,25 +1545,29 @@ export function CodingAgentPage() {
                     </label>
                     <select
                       className="mt-0.5 w-full rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100"
-                      value={activeThread?.model || defaultModel}
+                      value={modelSelectValue || defaultSelectValue}
                       onChange={(e) => setModel(e.target.value)}
                       disabled={!modelsCatalogReady || modelRows.length === 0}
                     >
                       {!modelsCatalogReady ? (
                         <option value="">Loading models…</option>
                       ) : modelRows.length === 0 ? (
-                        <option value="">{modelsCatalogHint ?? "No models available."}</option>
+                        <option value="">
+                          {formatEmptyChatModelCatalogHint(modelCatalogAgentlayer) ??
+                            modelsCatalogHint ??
+                            "No chat models available."}
+                        </option>
                       ) : (
                         modelRows.map((row) => {
                           const catalogDown = isCatalogModelOptionDisabled(row, modelCatalogAgentlayer);
                           return (
                             <option
-                              key={`${row.owned_by ?? "ollama"}:${row.id}`}
-                              value={row.id}
+                              key={modelCatalogSelectValue(row)}
+                              value={modelCatalogSelectValue(row)}
                               disabled={catalogDown}
                               title={catalogDown ? catalogModelOptionUnreachableTitle(row, modelCatalogAgentlayer) : undefined}
                             >
-                              {modelOptionLabel(row)}
+                              {modelOptionLabel(row, modelCatalogAgentlayer)}
                             </option>
                           );
                         })
@@ -1445,6 +1577,61 @@ export function CodingAgentPage() {
                       <p className="mt-1 text-xs text-amber-300/90">{modelsCatalogHint}</p>
                     ) : null}
                   </div>
+                  <div className="w-full">
+                    <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+                      Embedding (RAG)
+                    </label>
+                    <select
+                      className="mt-0.5 w-full rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100"
+                      value={embeddingModel || embeddingModelRows[0] || ""}
+                      onChange={(e) => void setEmbeddingModelSelection(e.target.value)}
+                      disabled={
+                        !modelsCatalogReady ||
+                        embeddingModelSaving ||
+                        !embeddingMeta?.configured ||
+                        (embeddingModelRows.length === 0 && !embeddingModel) ||
+                        !isAdminUser
+                      }
+                      title={
+                        !isAdminUser
+                          ? "Nur Admins können das RAG-Embedding-Modell ändern (Admin → Interfaces)."
+                          : "Modell für RAG/Memory — EMBEDDING_BASE_URL in .env"
+                      }
+                    >
+                      {!modelsCatalogReady ? (
+                        <option value="">Lade Embedding-Modelle…</option>
+                      ) : embeddingModelRows.length === 0 ? (
+                        <option value={embeddingModel || ""}>
+                          {embeddingModel || "Keine Modelle (EMBEDDING_BASE_URL /v1/models)"}
+                        </option>
+                      ) : (
+                        embeddingModelRows.map((id) => (
+                          <option key={id} value={id}>
+                            {id}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                    {embeddingStatusHint ? (
+                      <p
+                        className={`mt-1 text-[10px] leading-snug ${
+                          embeddingMeta?.reachable === false ? "text-amber-300/95" : "text-neutral-500"
+                        }`}
+                      >
+                        {embeddingStatusHint}
+                      </p>
+                    ) : null}
+                    {!isAdminUser && embeddingMeta?.configured ? (
+                      <p className="mt-0.5 text-[10px] text-neutral-500">
+                        Ändern: Admin → Interfaces → Memory &amp; RAG.
+                      </p>
+                    ) : null}
+                  </div>
+                  {modelsCatalogReady && modelRows.length === 0 ? (
+                    <p className="w-full text-[10px] leading-snug text-neutral-500">
+                      Chat-Provider: Admin → LLM-Endpoints oder .env OLLAMA_BASE_URL / LLAMA_CPP_*.
+                    </p>
+                  ) : null}
                 </div>
               </div>
             </div>

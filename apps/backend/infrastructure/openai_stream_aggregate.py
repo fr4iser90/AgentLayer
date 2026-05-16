@@ -244,10 +244,11 @@ async def stream_chat_completions_aggregate(
                 except httpx.RequestError as e:
                     last_trans = e
                     logger.warning(
-                        "LLM stream agg transport (%s) url=%s model=%s: %s",
+                        "LLM stream: chat/completions failed (llm_stack=%s url=%s model=%s): %s: %s",
                         lb,
                         b_url,
                         b_model,
+                        type(e).__name__,
                         e,
                     )
                     continue

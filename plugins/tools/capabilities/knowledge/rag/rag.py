@@ -1,4 +1,4 @@
-"""Vector RAG over Postgres + pgvector (Ollama embeddings). Scoped per user like KB/todos."""
+"""Vector RAG over Postgres + pgvector (configurable embeddings). Scoped per user like KB/todos."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ TOOL_BUCKET = "knowledge"
 TOOL_DOMAIN = "rag"
 TOOL_LABEL = "RAG"
 TOOL_DESCRIPTION = (
-    "Semantic search over ingested documents (pgvector + Ollama embeddings)."
+    "Semantic search over ingested documents (pgvector + configurable embeddings)."
 )
 TOOL_TRIGGERS = (
     "rag",

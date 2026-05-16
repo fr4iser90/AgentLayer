@@ -12,13 +12,27 @@ import time
 import uuid
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 from apps.backend.core import config as app_config
 from apps.backend.core.config import config
 from apps.backend.infrastructure.db import db
 
 logger = logging.getLogger(__name__)
+
+_RAG_EMBEDDING_MODEL_DEFAULT = "nomic-embed-text"
+
+
+def _normalize_rag_embedding_model(raw: Any) -> str:
+    return (str(raw or "").strip() or _RAG_EMBEDDING_MODEL_DEFAULT)[:256]
+
+
+def _rag_embedding_model_from_row(r: dict[str, Any]) -> str:
+    v = r.get("rag_embedding_model")
+    if v is None:
+        v = r.get("rag_ollama_model")
+    return _normalize_rag_embedding_model(v)
+
 
 _CACHE: tuple[float, dict[str, Any]] | None = None
 _TTL_SEC = 2.0
@@ -85,7 +99,7 @@ def _fetch_row() -> dict[str, Any]:
         "memory_graph_log_activations": False,
         "memory_enabled": True,
         "rag_enabled": True,
-        "rag_ollama_model": "nomic-embed-text",
+        "rag_embedding_model": "nomic-embed-text",
         "rag_embedding_dim": 768,
         "rag_chunk_size": 1200,
         "rag_chunk_overlap": 200,
@@ -136,7 +150,7 @@ def _fetch_row() -> dict[str, Any]:
                            memory_graph_enabled, memory_graph_max_hops, memory_graph_min_score,
                            memory_graph_max_bullets, memory_graph_max_prompt_chars,
                            memory_graph_log_activations,
-                           memory_enabled, rag_enabled, rag_ollama_model, rag_embedding_dim,
+                           memory_enabled, rag_enabled, rag_embedding_model, rag_embedding_dim,
                            rag_chunk_size, rag_chunk_overlap, rag_top_k, rag_embed_timeout_sec,
                            rag_tenant_shared_domains, docs_root,
                            pidea_enabled, pidea_cdp_http_url, pidea_selector_ide, pidea_selector_version,
@@ -196,7 +210,7 @@ def _fetch_row() -> dict[str, Any]:
         "memory_graph_log_activations": bool(row[31]) if row[31] is not None else False,
         "memory_enabled": bool(row[32]) if row[32] is not None else True,
         "rag_enabled": bool(row[33]) if row[33] is not None else True,
-        "rag_ollama_model": (str(row[34]).strip() if row[34] is not None else "") or "nomic-embed-text",
+        "rag_embedding_model": _normalize_rag_embedding_model(row[34]),
         "rag_embedding_dim": int(row[35]) if row[35] is not None else 768,
         "rag_chunk_size": int(row[36]) if row[36] is not None else 1200,
         "rag_chunk_overlap": int(row[37]) if row[37] is not None else 200,
@@ -356,7 +370,7 @@ def rag_settings() -> dict[str, Any]:
     r = _cached_row()
     return {
         "enabled": bool(r.get("rag_enabled", True)),
-        "ollama_model": (str(r.get("rag_ollama_model") or "").strip() or "nomic-embed-text")[:256],
+        "embedding_model": _rag_embedding_model_from_row(r),
         "embedding_dim": _bound_int(r.get("rag_embedding_dim"), 768, 32, 4096),
         "chunk_size": _bound_int(r.get("rag_chunk_size"), 1200, 200, 8000),
         "chunk_overlap": _bound_int(r.get("rag_chunk_overlap"), 200, 0, 2000),
@@ -415,6 +429,9 @@ def normalize_external_llm_base_url(raw: str | None) -> str:
         if low.endswith(suf):
             s = s[: -len(suf)].rstrip("/")
             low = s.lower()
+    # ``https://host/v1`` + ``/v1/models`` → avoid ``…/v1/v1/models``
+    if low.endswith("/v1"):
+        s = s[:-3].rstrip("/")
     return s
 
 
@@ -476,7 +493,7 @@ def resolve_external_llm_credentials_for_catalog(
             raise ValueError("missing_api_key")
         return bu, key
 
-    rows = db.external_llm_endpoints_enabled_ordered()
+    rows = db.external_llm_endpoints_list_all()
     if rows:
         row0 = rows[0]
         bu = normalize_external_llm_base_url(_strip_opt(row0.get("base_url")))
@@ -527,35 +544,11 @@ def external_llm_should_failover(http_status: int) -> bool:
     return http_status in (401, 403, 408, 429, 500, 502, 503, 504)
 
 
-# Tokens the UI may send as ``agent_model_catalog_owned_by`` (GET /v1/models ``owned_by``, normalized).
-# Add new providers here + a branch in :func:`llm_chat_transport` when they appear in the catalog.
-_SUPPORTED_MODEL_CATALOG_OWNED_BY = frozenset({"ollama", "llama_cpp", "external"})
-
-
 def normalize_model_catalog_owned_by(raw: Any) -> str | None:
-    """
-    Optional hint from the UI: ``GET /v1/models`` row ``owned_by`` (normalized ``[a-z0-9_-]+``, max 64).
+    """Opaque catalog provider id from GET ``/v1/models`` row ``owned_by`` (see ``model_catalog_providers``)."""
+    from apps.backend.infrastructure.model_catalog_providers import normalize_catalog_provider_id
 
-    Unknown tokens are logged and ignored (same as omitting the hint) until routing support exists.
-    """
-    if raw is None:
-        return None
-    s = str(raw).strip().lower()
-    t = "".join(c for c in s if c.isalnum() or c in "_-")[:64]
-    if not t:
-        return None
-    if t == "llamacpp":
-        t = "llama_cpp"
-    if t not in _SUPPORTED_MODEL_CATALOG_OWNED_BY:
-        logger.warning(
-            "llm: unsupported agent_model_catalog_owned_by token %r (normalized %r); ignoring — "
-            "supported: %s",
-            raw,
-            t,
-            ", ".join(sorted(_SUPPORTED_MODEL_CATALOG_OWNED_BY)),
-        )
-        return None
-    return t
+    return normalize_catalog_provider_id(raw)
 
 
 def _external_llm_chat_attempts(
@@ -567,7 +560,7 @@ def _external_llm_chat_attempts(
     if pk not in ("default", "vlm", "agent", "coding"):
         pk = "default"
     attempts: list[tuple[str, dict[str, str], str]] = []
-    for row in db.external_llm_endpoints_enabled_ordered():
+    for row in db.external_llm_endpoints_list_all():
         bu = normalize_external_llm_base_url(_strip_opt(row.get("base_url")))
         key = _strip_opt(row.get("api_key")) or ""
         ext_model = _external_model_for_endpoint_row(row, pk, is_override, model_from_resolution)
@@ -590,55 +583,20 @@ def llm_chat_transport(
     list[tuple[str, dict[str, str], str]],
     Literal["ollama", "external", "llama_cpp"],
 ]:
-    ollama_base = (getattr(config, "OLLAMA_BASE_URL", None) or "http://ollama:11434").strip().rstrip("/")
-    ollama_url = f"{ollama_base}/v1/chat/completions"
-    ollama_headers: dict[str, str] = {"Content-Type": "application/json"}
-
-    primary: Literal["ollama", "external"] = (
-        backend_override if backend_override is not None else resolved_primary_llm_backend()
-    )
-
-    if catalog_owned_by == "llama_cpp":
-        try:
-            from apps.backend.infrastructure import llamacpp_provider
-        except Exception:
-            logger.exception("llm: failed to import llamacpp_provider")
-            raise ValueError(
-                "A llama.cpp catalog model was selected, but the llama.cpp module failed to load."
-            ) from None
-        le = llamacpp_provider.local_chat_endpoint()
-        if le is None:
-            raise ValueError(
-                "A llama.cpp catalog model was selected, but llama.cpp is not configured "
-                "(LLAMA_CPP_BASE_URL + LLAMA_CPP_API_HEADER_* in .env or Admin → Interfaces)."
-            )
-        l_url, l_headers = le
-        return [(l_url, l_headers, model_from_resolution)], "llama_cpp"
-
-    if catalog_owned_by == "ollama":
-        return [(ollama_url, ollama_headers, model_from_resolution)], "ollama"
-
-    if catalog_owned_by == "external":
-        attempts = _external_llm_chat_attempts(profile_key, is_override, model_from_resolution)
-        if not attempts:
-            raise ValueError(
-                "An external-LLM catalog model was selected, but no enabled external LLM endpoints "
-                "are configured (Admin → Interfaces)."
-            )
-        return attempts, "external"
-
-    if primary == "ollama":
-        return [(ollama_url, ollama_headers, model_from_resolution)], "ollama"
-
-    attempts = _external_llm_chat_attempts(profile_key, is_override, model_from_resolution)
-
-    if not attempts:
-        logger.warning(
-            "llm: primary=external but no complete enabled endpoint rows; using Ollama",
+    if catalog_owned_by is None:
+        raise ValueError(
+            f"Could not determine which LLM provider serves model {model_from_resolution!r}. "
+            "Re-select the model in the UI (provider + model) so agent_model_catalog_owned_by is sent."
         )
-        return [(ollama_url, ollama_headers, model_from_resolution)], "ollama"
 
-    return attempts, "external"
+    from apps.backend.infrastructure.model_catalog_providers import route_chat_by_catalog_provider
+
+    return route_chat_by_catalog_provider(
+        catalog_owned_by,
+        model_from_resolution,
+        profile_key,
+        is_override,
+    )
 
 
 def _discord_trigger_prefix_public(r: dict[str, Any]) -> str:
@@ -761,7 +719,7 @@ def public_dict() -> dict[str, Any]:
         "memory_graph_log_activations": bool(r.get("memory_graph_log_activations", False)),
         "memory_enabled": bool(r.get("memory_enabled", True)),
         "rag_enabled": bool(r.get("rag_enabled", True)),
-        "rag_ollama_model": (str(r.get("rag_ollama_model") or "").strip() or "nomic-embed-text")[:256],
+        "rag_embedding_model": _rag_embedding_model_from_row(r),
         "rag_embedding_dim": _bound_int(r.get("rag_embedding_dim"), 768, 32, 4096),
         "rag_chunk_size": _bound_int(r.get("rag_chunk_size"), 1200, 200, 8000),
         "rag_chunk_overlap": _bound_int(r.get("rag_chunk_overlap"), 200, 0, 2000),
@@ -841,7 +799,11 @@ class OperatorSettingsPatch(BaseModel):
     memory_graph_log_activations: bool | None = None
     memory_enabled: bool | None = None
     rag_enabled: bool | None = None
-    rag_ollama_model: str | None = Field(default=None, max_length=256)
+    rag_embedding_model: str | None = Field(
+        default=None,
+        max_length=256,
+        validation_alias=AliasChoices("rag_embedding_model", "rag_ollama_model"),
+    )
     rag_embedding_dim: int | None = Field(default=None, ge=32, le=4096)
     rag_chunk_size: int | None = Field(default=None, ge=200, le=8000)
     rag_chunk_overlap: int | None = Field(default=None, ge=0, le=2000)
@@ -1056,11 +1018,8 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
         r["memory_enabled"] = bool(patch["memory_enabled"])
     if "rag_enabled" in patch:
         r["rag_enabled"] = bool(patch["rag_enabled"])
-    if "rag_ollama_model" in patch:
-        v = patch["rag_ollama_model"]
-        r["rag_ollama_model"] = (
-            (str(v).strip()[:256] or "nomic-embed-text") if v is not None else "nomic-embed-text"
-        )
+    if "rag_embedding_model" in patch:
+        r["rag_embedding_model"] = _normalize_rag_embedding_model(patch["rag_embedding_model"])
     if "rag_embedding_dim" in patch:
         v = patch["rag_embedding_dim"]
         r["rag_embedding_dim"] = _bound_int(v, 768, 32, 4096) if v is not None else 768
@@ -1202,7 +1161,7 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
                   memory_graph_log_activations = %s,
                   memory_enabled = %s,
                   rag_enabled = %s,
-                  rag_ollama_model = %s,
+                  rag_embedding_model = %s,
                   rag_embedding_dim = %s,
                   rag_chunk_size = %s,
                   rag_chunk_overlap = %s,
@@ -1270,7 +1229,7 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
                     bool(r.get("memory_graph_log_activations", False)),
                     bool(r.get("memory_enabled", True)),
                     bool(r.get("rag_enabled", True)),
-                    (str(r.get("rag_ollama_model") or "").strip() or "nomic-embed-text")[:256],
+                    _rag_embedding_model_from_row(r),
                     _bound_int(r.get("rag_embedding_dim"), 768, 32, 4096),
                     _bound_int(r.get("rag_chunk_size"), 1200, 200, 8000),
                     _bound_int(r.get("rag_chunk_overlap"), 200, 0, 2000),
@@ -1308,6 +1267,12 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
             )
         conn.commit()
     _invalidate()
+    try:
+        from apps.backend.infrastructure.embedding_client import invalidate_embedding_catalog_cache
+
+        invalidate_embedding_catalog_cache()
+    except Exception:
+        pass
     try:
         from apps.backend.infrastructure.log_redaction import apply_http_client_log_levels
 

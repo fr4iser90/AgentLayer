@@ -14,6 +14,7 @@ import httpx
 
 from apps.backend.core import config
 from apps.backend.infrastructure import operator_settings
+from apps.backend.infrastructure.embedding_client import embed_one
 
 logger = logging.getLogger(__name__)
 
@@ -93,28 +94,13 @@ class QdrantCodeIndex:
                 return False
 
     def _embed_text(self, text: str) -> list[float] | None:
-        rs = operator_settings.rag_settings()
-        model = (rs["ollama_model"] or "").strip()
-        if not model:
+        raw = (text or "").strip()
+        if not raw:
             return None
-        timeout = float(rs["embed_timeout_sec"])
-        base = config.OLLAMA_BASE_URL.rstrip("/")
-        url = f"{base}/api/embed"
         try:
-            with httpx.Client(timeout=timeout) as client:
-                resp = client.post(
-                    url,
-                    headers={"Content-Type": "application/json"},
-                    json={"model": model, "input": text},
-                )
-            if resp.status_code != 200:
-                return None
-            data = resp.json()
-            emb = data.get("embedding")
-            if isinstance(emb, list) and emb and isinstance(emb[0], (int, float)):
-                return [float(x) for x in emb]
-            return None
-        except Exception:
+            return embed_one(raw)
+        except Exception as e:
+            logger.debug("code index embed failed: %s", e)
             return None
 
     def _symbol_id(self, workspace_id: str, file_path: str, name: str, line: int) -> str:
