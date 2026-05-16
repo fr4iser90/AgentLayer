@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Callable
 
 from apps.backend.infrastructure import operator_settings
@@ -14,6 +15,7 @@ from plugins.tools.capabilities.coding.coding_common import (
 )
 from plugins.tools.capabilities.coding.coding_search import coding_search
 from plugins.tools.capabilities.coding.coding_semantic_search import coding_semantic_search
+from plugins.tools.capabilities.coding.retrieval_fusion import build_fused_ranking
 
 __version__ = "1.0.0"
 TOOL_ID = "retrieve_context"
@@ -33,11 +35,13 @@ TOOL_DESCRIPTION = (
     "One-shot retrieval across the workspace and knowledge bases: "
     "keyword grep (coding_search), semantic symbols (Qdrant, needs coding_index), "
     "ingested docs (RAG), and optional semantic memory notes. "
+    "Results are merged with RRF (fused_ranking). "
     "Prefer this before many separate search tools — then use coding_read_file on cited path:line."
 )
 
 _VALID_SOURCES = frozenset({"code_grep", "code_semantic", "docs", "memory"})
 _DEFAULT_SOURCES = ("code_grep", "code_semantic", "docs")
+_MAX_WORKERS = 4
 
 
 def _parse_sources(raw: Any) -> list[str]:
@@ -142,23 +146,89 @@ def _run_memory(query: str, limit: int) -> dict[str, Any]:
     return {"ok": True, "notes": slim, "count": len(slim)}
 
 
+def _skipped(source: str, reason: str) -> dict[str, Any]:
+    return {"skipped": True, "reason": reason, "source": source}
+
+
+def _retriever_tasks(
+    sources: list[str],
+    *,
+    query: str,
+    context: dict[str, Any] | None,
+    domain: str,
+    sem_on: bool,
+    grep_limit: int,
+    semantic_limit: int,
+    docs_limit: int,
+    memory_limit: int,
+) -> list[tuple[str, Callable[[], dict[str, Any]]]]:
+    tasks: list[tuple[str, Callable[[], dict[str, Any]]]] = []
+    if "code_grep" in sources:
+        tasks.append(("code_grep", lambda: _run_code_grep(query, context, grep_limit)))
+    if "code_semantic" in sources:
+        if sem_on:
+            tasks.append(("code_semantic", lambda: _run_code_semantic(query, context, semantic_limit)))
+    if "docs" in sources:
+        tasks.append(("docs", lambda: _run_docs(query, domain, docs_limit)))
+    if "memory" in sources:
+        tasks.append(("memory", lambda: _run_memory(query, memory_limit)))
+    return tasks
+
+
+def _run_retrievers_parallel(tasks: list[tuple[str, Callable[[], dict[str, Any]]]]) -> dict[str, Any]:
+    if not tasks:
+        return {}
+    if len(tasks) == 1:
+        name, fn = tasks[0]
+        return {name: fn()}
+
+    out: dict[str, Any] = {}
+    workers = min(_MAX_WORKERS, len(tasks))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(fn): name for name, fn in tasks}
+        for fut in as_completed(futures):
+            name = futures[fut]
+            try:
+                out[name] = fut.result()
+            except Exception as e:
+                out[name] = {"ok": False, "error": str(e)[:300]}
+    return out
+
+
 def _next_steps(bundle: dict[str, Any]) -> list[str]:
     steps: list[str] = []
-    grep = bundle.get("code_grep")
-    if isinstance(grep, dict) and grep.get("ok") and grep.get("matches"):
-        m0 = grep["matches"][0]
-        if isinstance(m0, dict) and m0.get("path"):
-            steps.append(
-                f"Read `coding_read_file` on {m0.get('path')}:{m0.get('line', 1)} for the top grep hit."
-            )
-    sem = bundle.get("code_semantic")
-    if isinstance(sem, dict) and sem.get("ok") and sem.get("results"):
-        r0 = sem["results"][0]
-        if isinstance(r0, dict) and r0.get("file_path"):
-            steps.append(
-                f"Open semantic match {r0.get('file_path')}:{r0.get('line', 1)} "
-                f"({r0.get('name', '')})."
-            )
+    fused = bundle.get("fused_ranking")
+    if isinstance(fused, list) and fused:
+        top = fused[0]
+        if isinstance(top, dict):
+            src = top.get("source")
+            path = top.get("path")
+            line = top.get("line", 1)
+            if path and src in ("code_grep", "code_semantic"):
+                label = top.get("name") or "top fused match"
+                steps.append(f"Read `coding_read_file` on {path}:{line} ({label}, source={src}).")
+            elif src == "docs" and top.get("title"):
+                steps.append(f"Open doc chunk «{top.get('title')}» (fused top hit).")
+            elif src == "memory" and top.get("text"):
+                steps.append("Review fused memory note in the top hit.")
+
+    if not steps:
+        grep = bundle.get("code_grep")
+        if isinstance(grep, dict) and grep.get("ok") and grep.get("matches"):
+            m0 = grep["matches"][0]
+            if isinstance(m0, dict) and m0.get("path"):
+                steps.append(
+                    f"Read `coding_read_file` on {m0.get('path')}:{m0.get('line', 1)} for the top grep hit."
+                )
+        sem = bundle.get("code_semantic")
+        if isinstance(sem, dict) and sem.get("ok") and sem.get("results"):
+            r0 = sem["results"][0]
+            if isinstance(r0, dict) and r0.get("file_path"):
+                steps.append(
+                    f"Open semantic match {r0.get('file_path')}:{r0.get('line', 1)} "
+                    f"({r0.get('name', '')})."
+                )
+
     if not steps:
         steps.append("Narrow the query or run `coding_index` then retry `retrieve_context`.")
     steps.append("Use `coding_lsp` for definitions/refs after you have a file path.")
@@ -176,6 +246,7 @@ def retrieve_context(arguments: dict[str, Any], context: dict | None = None) -> 
     semantic_limit = _clamp_int(arguments.get("semantic_limit"), 12, 1, 50)
     docs_limit = _clamp_int(arguments.get("docs_limit"), 6, 1, 30)
     memory_limit = _clamp_int(arguments.get("memory_limit"), 4, 1, 20)
+    fused_limit = _clamp_int(arguments.get("fused_limit"), 25, 1, 50)
 
     needs_workspace = "code_grep" in sources or "code_semantic" in sources
     if needs_workspace and workspace_binding_from_context(context) is None:
@@ -193,6 +264,19 @@ def retrieve_context(arguments: dict[str, Any], context: dict | None = None) -> 
             ensure_ascii=False,
         )
 
+    tasks = _retriever_tasks(
+        sources,
+        query=query,
+        context=context,
+        domain=domain,
+        sem_on=sem_on,
+        grep_limit=grep_limit,
+        semantic_limit=semantic_limit,
+        docs_limit=docs_limit,
+        memory_limit=memory_limit,
+    )
+    parallel = _run_retrievers_parallel(tasks)
+
     out: dict[str, Any] = {
         "ok": True,
         "query": query,
@@ -200,28 +284,29 @@ def retrieve_context(arguments: dict[str, Any], context: dict | None = None) -> 
     }
 
     if "code_grep" in sources:
-        out["code_grep"] = _run_code_grep(query, context, grep_limit)
+        out["code_grep"] = parallel.get("code_grep") or _skipped("code_grep", "not_run")
     else:
-        out["code_grep"] = {"skipped": True, "reason": "not_requested"}
+        out["code_grep"] = _skipped("code_grep", "not_requested")
 
     if "code_semantic" in sources:
         if sem_on:
-            out["code_semantic"] = _run_code_semantic(query, context, semantic_limit)
+            out["code_semantic"] = parallel.get("code_semantic") or _skipped("code_semantic", "not_run")
         else:
-            out["code_semantic"] = {"skipped": True, "reason": "semantic_index_disabled"}
+            out["code_semantic"] = _skipped("code_semantic", "semantic_index_disabled")
     else:
-        out["code_semantic"] = {"skipped": True, "reason": "not_requested"}
+        out["code_semantic"] = _skipped("code_semantic", "not_requested")
 
     if "docs" in sources:
-        out["docs"] = _run_docs(query, domain, docs_limit)
+        out["docs"] = parallel.get("docs") or _skipped("docs", "not_run")
     else:
-        out["docs"] = {"skipped": True, "reason": "not_requested"}
+        out["docs"] = _skipped("docs", "not_requested")
 
     if "memory" in sources:
-        out["memory"] = _run_memory(query, memory_limit)
+        out["memory"] = parallel.get("memory") or _skipped("memory", "not_run")
     else:
-        out["memory"] = {"skipped": True, "reason": "not_requested"}
+        out["memory"] = _skipped("memory", "not_requested")
 
+    out["fused_ranking"] = build_fused_ranking(out, limit=fused_limit)
     out["next_steps"] = _next_steps(out)
     return json.dumps(out, ensure_ascii=False)
 
@@ -267,6 +352,10 @@ TOOLS: list[dict[str, Any]] = [
                     "memory_limit": {
                         "type": "integer",
                         "description": "Max memory notes (1–20).",
+                    },
+                    "fused_limit": {
+                        "type": "integer",
+                        "description": "Max RRF fused hits (1–50).",
                     },
                 },
                 "required": ["query"],

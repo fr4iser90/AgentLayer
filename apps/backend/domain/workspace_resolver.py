@@ -50,7 +50,8 @@ def resolve_db_workspace(workspace_id: str, user) -> dict[str, Any] | None:
                     """
                     SELECT id, name, path, source, git_url, git_branch, access_role, owner_user_id,
                            verify_command, verify_required, mcp_stdio_servers_json,
-                           semantic_index_enabled, retrieval_enabled
+                           semantic_index_enabled, retrieval_enabled,
+                           last_index_at, last_index_stats, last_index_error
                     FROM project_workspaces
                     WHERE id = %s AND (owner_user_id = %s OR access_role IN ('editor', 'viewer'))
                     """,
@@ -84,6 +85,9 @@ def resolve_db_workspace(workspace_id: str, user) -> dict[str, Any] | None:
                     "mcp_stdio_servers": mcp_list,
                     "semantic_index_enabled": bool(row[11]) if row[11] is not None else True,
                     "retrieval_enabled": bool(row[12]) if row[12] is not None else True,
+                    "last_index_at": row[13].isoformat() if row[13] else None,
+                    "last_index_stats": row[14] if isinstance(row[14], dict) else None,
+                    "last_index_error": row[15],
                 }
     except Exception as e:
         logger.error("failed to resolve workspace from DB: %s", e)

@@ -47,6 +47,20 @@ def _rg_max_filesize_flag(n: int) -> str:
     return f"{max(n // 1024, 1)}K"
 
 
+_RG_LINE_RE = re.compile(r"^(?P<path>.+):(?P<line>\d+):(?P<text>.*)$")
+
+
+def _parse_ripgrep_line(line: str) -> tuple[str, int, str] | None:
+    """Parse ``path:line:text``; handles trailing colons in matched source lines."""
+    m = _RG_LINE_RE.match(line.strip())
+    if not m:
+        return None
+    try:
+        return m.group("path"), int(m.group("line")), m.group("text")
+    except ValueError:
+        return None
+
+
 def _literal_search_via_ripgrep(
     *,
     needle: str,
@@ -100,14 +114,10 @@ def _literal_search_via_ripgrep(
             break
         if not line.strip():
             continue
-        try:
-            path_part, lineno_s, text = line.rsplit(":", 2)
-        except ValueError:
+        parsed = _parse_ripgrep_line(line)
+        if parsed is None:
             continue
-        try:
-            line_no = int(lineno_s)
-        except ValueError:
-            continue
+        path_part, line_no, text = parsed
         try:
             rel = os.path.relpath(path_part, search_root.resolve()).replace("\\", "/")
         except ValueError:

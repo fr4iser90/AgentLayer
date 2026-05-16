@@ -1671,6 +1671,43 @@ def _inject_user_memory_context(messages: list[dict[str, Any]], raw_dashboard_ct
     return out
 
 
+def _inject_workspace_retrieval_bootstrap(
+    messages: list[dict[str, Any]],
+    workspace: dict[str, Any] | None,
+    agent_id: str | None,
+) -> list[dict[str, Any]]:
+    """First user turn only: index stats, repo tree, retrieve_context hint."""
+    if agent_id not in ("coding", "coding_plan"):
+        return messages
+    if not workspace or not isinstance(workspace, dict):
+        return messages
+    user_turns = sum(1 for m in messages if isinstance(m, dict) and m.get("role") == "user")
+    if user_turns > 1:
+        return messages
+    try:
+        from apps.backend.infrastructure.workspace_retrieval_bootstrap import (
+            build_retrieval_bootstrap_snippet,
+        )
+
+        snippet = build_retrieval_bootstrap_snippet(workspace)
+    except Exception:
+        return messages
+    if not snippet:
+        return messages
+    out = list(messages)
+    if not out:
+        return [{"role": "system", "content": snippet}]
+    if out[0].get("role") == "system":
+        existing = out[0].get("content") or ""
+        out[0] = {
+            **out[0],
+            "content": (existing + "\n\n" + snippet).strip() if existing else snippet,
+        }
+    else:
+        out.insert(0, {"role": "system", "content": snippet})
+    return out
+
+
 def _inject_workspace_verify_hints(
     messages: list[dict[str, Any]],
     workspace: dict[str, Any] | None,
@@ -2849,6 +2886,15 @@ async def chat_completion(
         _p = workspace.get("path")
         if isinstance(_p, str) and _p.strip():
             tool_context["workspace"] = workspace
+        if agent_id in ("coding", "coding_plan"):
+            try:
+                from apps.backend.infrastructure.workspace_retrieval_bootstrap import (
+                    maybe_schedule_index_on_attach,
+                )
+
+                maybe_schedule_index_on_attach(workspace)
+            except Exception as e:
+                logger.debug("index-on-attach skipped: %s", e)
     if cancel_event is not None:
         tool_context["cancel_event"] = cancel_event
 
@@ -2907,6 +2953,9 @@ async def chat_completion(
             _apply_tool_prefetch(messages, pf)
         messages = apply_user_persona_system(messages)
         messages = _inject_user_memory_context(messages, dashboard_ctx)
+        messages = _inject_workspace_retrieval_bootstrap(
+            messages, workspace, agent_id if isinstance(agent_id, str) else None
+        )
         messages = _inject_workspace_verify_hints(messages, workspace)
 
         model, model_reason, profile_key, model_is_override = resolve_effective_model(

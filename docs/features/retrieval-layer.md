@@ -102,7 +102,7 @@ Index chunks with metadata (`domain`, `title`, `source_uri`). At query time: emb
 
 ### Hybrid retrieval
 
-Combine **dense** (embeddings) and **sparse** (grep/keywords). `retrieve_context` runs both for code; fusion is by returning both lists (future: RRF rerank in orchestrator).
+Combine **dense** (embeddings) and **sparse** (grep/keywords). `retrieve_context` runs retrievers **in parallel** and merges hits with **RRF** in `fused_ranking`.
 
 ### Agentic RAG
 
@@ -150,12 +150,29 @@ Retrieve top‑50 → cross-encoder or LLM rerank → top‑5 for the prompt. No
 | **Short** | Document retrieval layer (this page) | Done |
 | **Medium** | Workspace-scoped RAG ingest (per `project_workspaces`) | Planned |
 | **Short** | Per-workspace index/retrieval toggles + UI (`semantic_index_enabled`, `retrieval_enabled`) | Done |
-| **Medium** | RRF / reranker in orchestrator | Planned |
-| **Medium** | Session bootstrap snippet (index stats, repo map) | Planned |
+| **Medium** | RRF in orchestrator (`fused_ranking`) | Done |
+| **Medium** | Cross-encoder / LLM reranker | Planned |
+| **Medium** | Session bootstrap snippet (index stats, repo map) | Done |
+| **Medium** | Stale-index UI hint + optional index-on-attach (`AGENT_WORKSPACE_INDEX_ON_ATTACH`) | Done |
 | **Long** | LSP hits inside `retrieve_context` | Planned |
 | **Long** | Query rewriting (HyDE / multi-query) | Planned |
 
 See also `TODO.md` (RAG/workspace section) and [coding-workflow.md](./coding-workflow.md).
+
+## Benchmarks
+
+Measure Hit@k, tool-call count, and latency when changing retrieval:
+
+```bash
+python -m unittest tests.test_retrieval_benchmark -v
+python scripts/run_retrieval_benchmark.py
+RETRIEVAL_BENCH_LIVE=1 python scripts/run_retrieval_benchmark.py --live --json-out /tmp/bench.json
+```
+
+- **Fixture suite** (CI): `tests/benchmarks/fixtures/retrieval_mini` — real `coding_search` / `retrieve_context`, no Qdrant required.
+- **Live suite** (`RETRIEVAL_BENCH_LIVE=1`): adds cases against the AgentLayer repo (semantic needs index + embeddings).
+
+Strategies compared: **`unified`** (`retrieve_context`, 1 tool call) vs **`separate`** (per-source calls). Baseline gate: fixture Hit@k ≥ 80%.
 
 ## Troubleshooting
 

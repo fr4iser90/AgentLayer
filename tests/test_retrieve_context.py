@@ -50,6 +50,8 @@ def test_retrieve_context_merges_sub_retrievers() -> None:
     assert out["ok"] is True
     assert out["code_grep"]["matches"][0]["path"] == "a.py"
     assert out["code_semantic"]["results"][0]["name"] == "login"
+    assert isinstance(out.get("fused_ranking"), list)
+    assert len(out["fused_ranking"]) >= 1
     assert "next_steps" in out
     assert len(out["next_steps"]) >= 1
 

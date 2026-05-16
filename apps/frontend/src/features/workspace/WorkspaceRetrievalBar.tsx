@@ -223,6 +223,10 @@ export function WorkspaceRetrievalBar({
   const progressPct = indexProgressPct(activeJob);
   const progressLabel = indexProgressLabel(activeJob);
   const indexFailed = activeJob?.status === "failed";
+  const indexStale =
+    status?.index_stale === true ||
+    (status?.index_stale_reason != null && status.index_stale_reason !== "");
+  const staleReason = status?.index_stale_reason;
 
   return (
     <div
@@ -296,6 +300,18 @@ export function WorkspaceRetrievalBar({
           Indexed: {fmtIndexTime(status?.last_index_at ?? workspace.last_index_at)}
         </span>
         {symbolCount != null ? <span>· {symbolCount} symbols</span> : null}
+        {indexOn && indexStale ? (
+          <span
+            className="text-amber-300/95"
+            title={
+              staleReason === "never_indexed"
+                ? "No semantic index yet — run Reindex"
+                : "Git has commits newer than the last index — Reindex recommended"
+            }
+          >
+            · stale
+          </span>
+        ) : null}
         <span>
           · Qdrant{" "}
           {status?.qdrant?.configured === false

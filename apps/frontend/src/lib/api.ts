@@ -131,6 +131,9 @@ export type WorkspaceIndexStatus = {
   last_index_stats?: WorkspaceApiRecord["last_index_stats"];
   last_index_error?: string | null;
   index_job?: WorkspaceIndexJob | null;
+  index_stale?: boolean;
+  index_stale_reason?: "never_indexed" | "git_head_newer_than_index" | string | null;
+  repo_tree?: string[];
   qdrant?: { configured?: boolean; reachable?: boolean | null; error?: string };
   embedding?: { configured?: boolean; enabled?: boolean; embedding_dim?: number };
   coding_enabled?: boolean;

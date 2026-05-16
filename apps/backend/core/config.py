@@ -349,6 +349,8 @@ _CODING_ROOT_RAW = (os.environ.get("AGENT_CODING_ROOT") or "").strip()
 CODING_ROOT: Path | None = Path(_CODING_ROOT_RAW).expanduser() if _CODING_ROOT_RAW else None
 # When true, coding tools are enabled; false → all coding_* tools return disabled error.
 CODING_ENABLED = _env_bool("AGENT_CODING_ENABLED", True)
+# Optional background semantic index when a stale/empty workspace is bound to a coding chat.
+AGENT_WORKSPACE_INDEX_ON_ATTACH = _env_bool("AGENT_WORKSPACE_INDEX_ON_ATTACH", False)
 # Max file size for coding read/write operations.
 CODING_MAX_FILE_BYTES = _env_int("AGENT_CODING_MAX_FILE_BYTES", 2_000_000)
 # Comma-separated path prefixes that coding tools must NEVER access (resolved, lowercase).

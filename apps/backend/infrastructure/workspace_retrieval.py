@@ -136,6 +136,22 @@ def index_status_payload(row: tuple | None) -> dict[str, Any]:
     qd = qdrant_status()
     emb = embedding_status()
     stats = api.get("last_index_stats") if isinstance(api.get("last_index_stats"), dict) else {}
+    stale_info: dict[str, Any] = {"stale": False, "reason": None}
+    tree: list[str] = []
+    try:
+        from apps.backend.infrastructure.workspace_retrieval_bootstrap import (
+            index_stale_reason,
+            is_index_stale,
+            list_repo_top_level,
+        )
+
+        stale_info["stale"] = bool(is_index_stale(api))
+        stale_info["reason"] = index_stale_reason(api)
+        p = api.get("path")
+        if isinstance(p, str) and p.strip():
+            tree = list_repo_top_level(Path(p))
+    except Exception:
+        pass
     return {
         "ok": True,
         "workspace_id": api["id"],
@@ -144,6 +160,9 @@ def index_status_payload(row: tuple | None) -> dict[str, Any]:
         "last_index_at": api.get("last_index_at"),
         "last_index_stats": stats,
         "last_index_error": api.get("last_index_error"),
+        "index_stale": stale_info.get("stale"),
+        "index_stale_reason": stale_info.get("reason"),
+        "repo_tree": tree,
         "qdrant": qd,
         "embedding": emb,
         "coding_enabled": bool(config.CODING_ENABLED),
