@@ -235,11 +235,17 @@ async def workspace_run_index(
         raise HTTPException(status_code=400, detail="semantic_index_enabled is off for this workspace")
 
     max_files = body.max_files if body else 5000
-    result = workspace_retrieval.run_semantic_index(workspace_id, row[3], max_files=max_files)
+    kick = workspace_retrieval.start_semantic_index_async(workspace_id, row[3], max_files=max_files)
     status = workspace_retrieval.index_status_payload(
         workspace_retrieval.fetch_workspace_row(workspace_id, user.id)
     )
-    return {"ok": bool(result.get("ok")), "index": result, "status": status}
+    return {
+        "ok": True,
+        "started": bool(kick.get("started")),
+        "already_running": bool(kick.get("already_running")),
+        "job": kick.get("job"),
+        "status": status,
+    }
 
 
 @router.post("/{workspace_id}/git/implementation-branch")

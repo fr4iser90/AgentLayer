@@ -11,6 +11,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+from collections.abc import Callable
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -365,15 +366,21 @@ class CodeIndex:
                 self._symbol_index.setdefault(sym.name, []).append(sym)
         return entry
 
-    def scan(self, root: Path, max_files: int = 5000) -> dict[str, int]:
-        stats: dict[str, int] = {"scanned": 0, "errors": 0, "skipped": 0}
+    def scan(
+        self,
+        root: Path,
+        max_files: int = 5000,
+        *,
+        on_progress: Callable[[int, int], None] | None = None,
+    ) -> dict[str, int]:
+        stats: dict[str, int] = {"scanned": 0, "errors": 0, "skipped": 0, "files_total": 0}
         root_r = root.resolve()
-        
+
         _SKIP_DIRS = {".git", "__pycache__", "node_modules", ".venv", "venv", "dist", "build", ".pytest_cache", ".mypy_cache", ".tox"}
-        
+
         def iter_files() -> list[Path]:
             files: list[Path] = []
-            for ext, lang in _SUPPORTED_LANGUAGES.items():
+            for ext in _SUPPORTED_LANGUAGES:
                 for fp in root_r.rglob(f"*{ext}"):
                     skip = False
                     for part in fp.parts:
@@ -383,9 +390,11 @@ class CodeIndex:
                     if not skip:
                         files.append(fp)
             return files
-        
+
         files_to_scan = sorted(set(iter_files()))[:max_files]
-        for fp in files_to_scan:
+        total = len(files_to_scan)
+        stats["files_total"] = total
+        for i, fp in enumerate(files_to_scan):
             try:
                 result = self.index_file(fp, root)
                 if result:
@@ -394,6 +403,8 @@ class CodeIndex:
                     stats["skipped"] += 1
             except Exception:
                 stats["errors"] += 1
+            if on_progress and (i % 4 == 0 or i + 1 == total):
+                on_progress(i + 1, total)
         with self._lock:
             self._last_scan = time.time()
         return stats

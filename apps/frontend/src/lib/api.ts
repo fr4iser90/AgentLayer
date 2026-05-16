@@ -112,6 +112,16 @@ export type WorkspaceApiRecord = {
   last_index_error?: string | null;
 };
 
+export type WorkspaceIndexJob = {
+  status?: "running" | "done" | "failed";
+  phase?: string | null;
+  files_done?: number | null;
+  files_total?: number | null;
+  started_at?: string | null;
+  finished_at?: string | null;
+  error?: string | null;
+};
+
 export type WorkspaceIndexStatus = {
   ok: boolean;
   workspace_id?: string;
@@ -120,6 +130,7 @@ export type WorkspaceIndexStatus = {
   last_index_at?: string | null;
   last_index_stats?: WorkspaceApiRecord["last_index_stats"];
   last_index_error?: string | null;
+  index_job?: WorkspaceIndexJob | null;
   qdrant?: { configured?: boolean; reachable?: boolean | null; error?: string };
   embedding?: { configured?: boolean; enabled?: boolean; embedding_dim?: number };
   coding_enabled?: boolean;
