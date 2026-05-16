@@ -28,8 +28,19 @@ import {
   type ChatThread,
   type UiMessage,
   exportThreadJson,
+  newMessageId,
   titleFromFirstMessage,
 } from "../features/chat/chatThreadStorage";
+import {
+  activityForTurn,
+  appendTimelineEntry,
+  archiveTurnBeforeNewPrompt,
+  latestUserMessageId,
+  serializeAgentLogPayload,
+} from "../features/chat/agentLogStorage";
+import { AgentActivityPanel } from "../features/chat/AgentActivityPanel";
+import { TurnNavigator, TurnNavigatorHorizontal, buildTurnItems } from "../features/chat/TurnNavigator";
+import { useChatScroll } from "../features/chat/useChatScroll";
 
 /** Dashboard-linked thread: show whether other members see messages (shared) or only you (personal). */
 function DashboardChatVisibilityBadge({ thread }: { thread: Pick<ChatThread, "dashboardId" | "shared"> }) {
@@ -234,7 +245,7 @@ export function ChatPage() {
   const activeThreadIdRef = useRef<string | null>(null);
   const lastModelSelectionRef = useRef("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [selectedTurnId, setSelectedTurnId] = useState<string | null>(null);
   const toolStartTimesRef = useRef<Map<string, number>>(new Map());
   const agentTurnBaselineRef = useRef<UiMessage[] | null>(null);
   const streamDeltaAccRef = useRef("");
@@ -290,7 +301,44 @@ export function ChatPage() {
   const mode: ChatMode = activeThread?.mode ?? "agent";
   const model = activeThread?.model ?? "";
   const modelProvider = activeThread?.modelProvider;
-  const agentLog: AgentTimelineEntry[] = activeThread?.agentLog ?? [];
+
+  const threadContentKey = `${activeThreadId ?? ""}:${messages.length}:${hydrated}`;
+  const { scrollContainerRef, messagesEndRef, scrollToBottom, showScrollFab } = useChatScroll({
+    messageCount: messages.length,
+    loading,
+    activeThreadId,
+    threadContentKey,
+  });
+
+  const userTurns = useMemo(() => buildTurnItems(messages), [messages]);
+  const latestTurnId = useMemo(
+    () => (activeThread ? latestUserMessageId(activeThread) : null),
+    [activeThread, messages]
+  );
+
+  useEffect(() => {
+    if (!activeThreadId) {
+      setSelectedTurnId(null);
+      return;
+    }
+    setSelectedTurnId(latestTurnId);
+  }, [activeThreadId, latestTurnId]);
+
+  const activityEntries = useMemo(() => {
+    if (!activeThread) return [];
+    return activityForTurn(activeThread, selectedTurnId);
+  }, [activeThread, selectedTurnId]);
+
+  const activityLoading =
+    loading && mode === "agent" && selectedTurnId === latestTurnId;
+
+  const handleSelectTurn = useCallback((userMessageId: string) => {
+    setSelectedTurnId(userMessageId);
+    document.getElementById(`msg-${userMessageId}`)?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, []);
 
   const defaultSelectValue = useMemo(
     () => defaultModelCatalogSelectValue(modelRows),
@@ -562,10 +610,6 @@ export function ChatPage() {
     return () => window.removeEventListener("beforeunload", handler);
   }, [loading]);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages.length, loading, activeThreadId]);
-
   const selectThread = useCallback(
     async (id: string) => {
       if (id === activeThreadId) return;
@@ -689,20 +733,28 @@ export function ChatPage() {
     [activeThreadId, auth]
   );
 
-  const appendAgentLine = useCallback((kind: string, text: string) => {
-    const tid = activeThreadIdRef.current;
-    if (!tid) return;
-    setThreads((prev) =>
-      prev.map((t) => {
-        if (t.id !== tid) return t;
-        const next: AgentTimelineEntry[] = [
-          ...(t.agentLog ?? []),
-          { id: `${Date.now()}-${(t.agentLog ?? []).length}`, kind, text },
-        ];
-        return { ...t, agentLog: next, updatedAt: Date.now() };
-      })
-    );
-  }, []);
+  const appendAgentLine = useCallback(
+    (
+      kind: string,
+      text: string,
+      extras?: Pick<AgentTimelineEntry, "toolName" | "durationMs" | "resultChars">
+    ) => {
+      const tid = activeThreadIdRef.current;
+      if (!tid) return;
+      setThreads((prev) =>
+        prev.map((t) => {
+          if (t.id !== tid) return t;
+          const next = appendTimelineEntry(t.agentLog ?? [], {
+            kind,
+            text,
+            ...extras,
+          });
+          return { ...t, agentLog: next, updatedAt: Date.now() };
+        })
+      );
+    },
+    []
+  );
 
   const runChatHttp = useCallback(async () => {
     if (!accessToken || !activeThreadId) return;
@@ -728,7 +780,11 @@ export function ChatPage() {
     setLoading(true);
     setTokenUsage(emptyTokenUsage());
     const firstUser = t.messages.length === 0;
-    const nextMessages: UiMessage[] = [...t.messages, { role: "user", content: userContent }];
+    const userMsgId = newMessageId();
+    const nextMessages: UiMessage[] = [
+      ...t.messages,
+      { role: "user", content: userContent, id: userMsgId, createdAt: Date.now() },
+    ];
     const nextTitle = firstUser ? titleFromFirstMessage(userContent) : t.title;
     patchThread(tid, {
       messages: nextMessages,
@@ -736,6 +792,7 @@ export function ChatPage() {
       model: routed.model,
       modelProvider: routed.provider,
     });
+    setSelectedTurnId(userMsgId);
     setDraft("");
     setPendingAttachments([]);
 
@@ -915,15 +972,21 @@ export function ChatPage() {
     setLoading(true);
     setTokenUsage(emptyTokenUsage());
     const firstUser = t.messages.length === 0;
-    const nextMessages: UiMessage[] = [...t.messages, { role: "user", content: userContent }];
+    const archivePatch = archiveTurnBeforeNewPrompt(t);
+    const userMsgId = newMessageId();
+    const nextMessages: UiMessage[] = [
+      ...t.messages,
+      { role: "user", content: userContent, id: userMsgId, createdAt: Date.now() },
+    ];
     const nextTitle = firstUser ? titleFromFirstMessage(userContent) : t.title;
     patchThread(tid, {
       messages: nextMessages,
-      agentLog: [],
+      ...archivePatch,
       title: nextTitle,
       model: routed.model,
       modelProvider: routed.provider,
     });
+    setSelectedTurnId(userMsgId);
     agentTurnBaselineRef.current = nextMessages;
     streamDeltaAccRef.current = "";
     agentStreamEnabledThisTurnRef.current = getAgentStreamLlm();
@@ -1120,45 +1183,36 @@ export function ChatPage() {
         if (typ === "agent.tool_start") {
           const toolName = String(msg.name ?? "tool");
           toolStartTimesRef.current.set(toolName, Date.now());
-          appendAgentLine("tool", `→ ${toolName}`);
+          appendAgentLine("tool_start", `→ ${toolName}`, { toolName });
           return;
         }
         if (typ === "agent.tool_done") {
           const n = msg.name != null ? String(msg.name) : "tool";
-          const ch = msg.result_chars != null ? String(msg.result_chars) : "";
-          const durationMs = msg.duration_ms != null ? Number(msg.duration_ms) : null;
-          
-          let durationText = "";
-          if (durationMs != null && durationMs >= 0) {
-            if (durationMs < 1000) {
-              durationText = `${durationMs} ms`;
-            } else if (durationMs < 60000) {
-              durationText = `${(durationMs / 1000).toFixed(1)} s`;
-            } else {
-              durationText = `${(durationMs / 60000).toFixed(1)} min`;
-            }
-          } else {
-            // Fallback wenn Backend noch keine duration_ms mitschickt
+          const ch = msg.result_chars != null ? Number(msg.result_chars) : undefined;
+          let durationMs = msg.duration_ms != null ? Number(msg.duration_ms) : null;
+          if (durationMs == null || durationMs < 0) {
             const startTime = toolStartTimesRef.current.get(n);
             if (startTime != null) {
-              const ms = Date.now() - startTime;
+              durationMs = Date.now() - startTime;
               toolStartTimesRef.current.delete(n);
-              
-              if (ms < 1000) {
-                durationText = `${ms} ms`;
-              } else if (ms < 60000) {
-                durationText = `${(ms / 1000).toFixed(1)} s`;
-              } else {
-                durationText = `${(ms / 60000).toFixed(1)} min`;
-              }
             }
           }
-
           const parts: string[] = [];
-          if (ch) parts.push(`${ch} chars`);
-          if (durationText) parts.push(durationText);
-          
-          appendAgentLine("tool", `← ${n}${parts.length ? ` (${parts.join(", ")})` : ""}`);
+          if (ch != null && ch > 0) parts.push(`${ch} chars`);
+          if (durationMs != null && durationMs >= 0) {
+            parts.push(
+              durationMs < 1000
+                ? `${durationMs} ms`
+                : durationMs < 60000
+                  ? `${(durationMs / 1000).toFixed(1)} s`
+                  : `${(durationMs / 60000).toFixed(1)} min`
+            );
+          }
+          appendAgentLine("tool_done", `${n}${parts.length ? ` (${parts.join(", ")})` : ""}`, {
+            toolName: n,
+            durationMs: durationMs ?? undefined,
+            resultChars: ch,
+          });
           return;
         }
         if (typ === "agent.step_wait") {
@@ -1252,7 +1306,7 @@ export function ChatPage() {
         mode: "agent",
         model: defaultModel,
         messages: [],
-        agent_log: [],
+        agent_log: serializeAgentLogPayload({ agentLog: [], turnLogs: [] }),
         model_catalog_owned_by: defaultProv ?? null,
       });
       setThreads((prev) => [t, ...prev]);
@@ -1456,7 +1510,7 @@ export function ChatPage() {
             <p className="truncate text-sm font-medium text-white">{activeThread?.title ?? "Chat"}</p>
             {activeThread ? <DashboardChatVisibilityBadge thread={activeThread} /> : null}
           </div>
-          <div className="grid gap-3 lg:grid-cols-[1fr,17.5rem] lg:items-start">
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_17.5rem] lg:items-stretch">
             <div className="min-w-0 space-y-2">
               <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
                 <div className="min-w-0 flex-1 sm:min-w-[10rem] sm:max-w-[20rem]">
@@ -1550,6 +1604,21 @@ export function ChatPage() {
                 <code className="text-neutral-500">agent_dashboard_context</code> to the agent.
               </p>
             </div>
+            {mode === "agent" ? (
+              <AgentActivityPanel
+                entries={activityEntries}
+                loading={activityLoading}
+                emptyHint="Activity appears here when the agent runs tools or LLM rounds for the selected prompt."
+                layout="header"
+                className="min-h-0 w-full"
+              />
+            ) : (
+              <div className="flex min-h-0 items-center rounded-lg border border-white/10 bg-black/30 px-2.5 py-2">
+                <p className="text-[10px] leading-snug text-surface-muted">
+                  Switch to Agent mode to see tool and LLM activity per prompt.
+                </p>
+              </div>
+            )}
             <div className="flex min-w-0 flex-col gap-2 lg:border-l lg:border-surface-border lg:pl-4">
               <SessionRuntimeBar
                 runtime={sessionRuntime}
@@ -1694,8 +1763,29 @@ export function ChatPage() {
           </div>
         ) : null}
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-6 py-6">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          {userTurns.length > 0 ? (
+            <TurnNavigatorHorizontal
+              userTurns={userTurns}
+              activeId={selectedTurnId}
+              onSelect={handleSelectTurn}
+              className="shrink-0 border-b border-surface-border px-4 py-2"
+            />
+          ) : null}
+          <div className="flex min-h-0 flex-1 overflow-hidden">
+            {userTurns.length > 0 ? (
+              <aside className="hidden w-44 shrink-0 overflow-y-auto border-r border-surface-border px-2 py-4 lg:block">
+                <TurnNavigator
+                  userTurns={userTurns}
+                  activeId={selectedTurnId}
+                  onSelect={handleSelectTurn}
+                />
+              </aside>
+            ) : null}
+            <div
+              ref={scrollContainerRef}
+              className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-6 py-6"
+            >
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="flex h-14 w-14 items-center justify-center rounded-full border border-surface-border bg-white/5 text-lg font-semibold text-neutral-300">
@@ -1705,16 +1795,16 @@ export function ChatPage() {
                   Hello, {displayName}
                 </h1>
                 <p className="mt-2 max-w-md text-sm text-surface-muted">
-                  Agent mode: WebSocket with tools and activity on the right. Chat mode: streamed plain replies over HTTP
-                  (no tools).
+                  Agent mode: tools and activity in the header. Chat mode: streamed plain replies over HTTP (no tools).
                 </p>
               </div>
             ) : (
               <ul className="mx-auto flex w-full max-w-3xl flex-col gap-3">
                 {messages.filter(chatMessageHasVisibleContent).map((m, i) => (
                   <li
-                    key={`${i}-${m.role}-${m.content.slice(0, 24)}`}
-                    className={`flex w-full ${m.role === "user" ? "justify-start" : "justify-end"}`}
+                    key={m.id ?? `${i}-${m.role}-${m.content.slice(0, 24)}`}
+                    id={m.role === "user" && m.id ? `msg-${m.id}` : undefined}
+                    className={`flex w-full scroll-mt-4 ${m.role === "user" ? "justify-start" : "justify-end"}`}
                   >
                     <div
                       className={`max-w-[min(100%,42rem)] rounded-2xl px-4 py-3 text-sm shadow-sm ${
@@ -1726,7 +1816,11 @@ export function ChatPage() {
                       <span className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
                         {m.role === "user" ? "You" : "Assistant"}
                         <span className="ml-2 font-normal normal-case">
-                          {new Date(m.timestamp ?? Date.now()).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          {new Date(m.createdAt ?? Date.now()).toLocaleTimeString(undefined, {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            second: "2-digit",
+                          })}
                         </span>
                       </span>
                       {m.role === "user" ? (
@@ -1758,27 +1852,22 @@ export function ChatPage() {
               </ul>
             )}
             <div ref={messagesEndRef} className="h-px w-full shrink-0" aria-hidden />
-          </div>
-
-          {mode === "agent" && agentLog.length > 0 ? (
-            <div className="flex min-h-0 w-full shrink-0 flex-col border-t border-surface-border bg-black/20 lg:w-[300px] lg:border-l lg:border-t-0">
-              <div className="shrink-0 border-b border-surface-border px-3 py-2 text-xs font-medium uppercase tracking-wide text-surface-muted">
-                Agent activity
-              </div>
-              <ul className="min-h-0 flex-1 overflow-y-auto px-3 py-2 text-xs">
-                {agentLog.map((e) => (
-                  <li key={e.id} className="mb-2 border-l-2 border-sky-500/40 pl-2 text-neutral-400">
-                    <span className="text-[10px] text-surface-muted">{e.kind}</span>
-                    <div className="whitespace-pre-wrap text-neutral-300">{e.text}</div>
-                  </li>
-                ))}
-              </ul>
             </div>
-          ) : null}
+          </div>
         </div>
 
         <div className="shrink-0 border-t border-surface-border bg-[#0c0c0c] px-6 py-4">
           <div className="relative mx-auto max-w-3xl">
+            {showScrollFab ? (
+              <button
+                type="button"
+                onClick={() => scrollToBottom("smooth")}
+                className="absolute -top-12 right-0 z-10 rounded-full border border-surface-border bg-[#1a1a1a] px-3 py-1.5 text-xs text-neutral-200 shadow-lg hover:bg-[#252525]"
+                aria-label="Scroll to bottom"
+              >
+                ↓ New messages
+              </button>
+            ) : null}
             <input
               ref={fileInputRef}
               type="file"

@@ -5,9 +5,26 @@ export type ChatMode = "chat" | "agent";
 /** ``web`` = first-party UI; otherwise bridge provider id from the server (e.g. telegram, slack). */
 export type ChatSource = string;
 
-export type UiMessage = { role: "user" | "assistant"; content: string };
+export type UiMessage = {
+  role: "user" | "assistant";
+  content: string;
+  id?: string;
+  createdAt?: number;
+};
 
-export type AgentTimelineEntry = { id: string; kind: string; text: string };
+export type AgentTimelineEntry = {
+  id: string;
+  kind: string;
+  text: string;
+  toolName?: string;
+  durationMs?: number;
+  resultChars?: number;
+};
+
+export type AgentTurnLog = {
+  userMessageId: string;
+  entries: AgentTimelineEntry[];
+};
 
 export type ChatThread = {
   id: string;
@@ -17,8 +34,10 @@ export type ChatThread = {
   /** Opaque provider id from the selected GET /v1/models row (``owned_by``); must match the dropdown choice. */
   modelProvider?: string;
   messages: UiMessage[];
-  /** Last agent timeline (optional; kept small in storage). */
+  /** Current turn agent timeline (live). */
   agentLog?: AgentTimelineEntry[];
+  /** Archived activity per user prompt. */
+  turnLogs?: AgentTurnLog[];
   updatedAt: number;
   /** Set when this thread is the dashboard-scoped assistant chat (server-side). */
   dashboardId?: string;
@@ -44,6 +63,17 @@ const STORAGE_PREFIX = "agent-layer.chat.v1";
 
 function keyForUser(userId: string): string {
   return `${STORAGE_PREFIX}:${userId}`;
+}
+
+export function newMessageId(): string {
+  return typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `m-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+/** Ensure every message has a stable id (for scroll / turn navigation). */
+export function ensureMessageIds(messages: UiMessage[]): UiMessage[] {
+  return messages.map((m) => (m.id ? m : { ...m, id: newMessageId() }));
 }
 
 export function titleFromFirstMessage(userText: string, maxLen = 52): string {
@@ -102,6 +132,7 @@ export function newThread(modelFallback: string): ChatThread {
     model: modelFallback,
     messages: [],
     agentLog: [],
+    turnLogs: [],
     updatedAt: now,
   };
 }

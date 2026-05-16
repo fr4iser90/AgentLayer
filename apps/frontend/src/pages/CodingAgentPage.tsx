@@ -4,7 +4,18 @@ import {
   type AgentTimelineEntry,
   type ChatThread,
   type UiMessage,
+  newMessageId,
 } from "../features/chat/chatThreadStorage";
+import {
+  activityForTurn,
+  appendTimelineEntry,
+  archiveTurnBeforeNewPrompt,
+  latestUserMessageId,
+  serializeAgentLogPayload,
+} from "../features/chat/agentLogStorage";
+import { AgentActivityPanel } from "../features/chat/AgentActivityPanel";
+import { TurnNavigator, TurnNavigatorHorizontal, buildTurnItems } from "../features/chat/TurnNavigator";
+import { useChatScroll } from "../features/chat/useChatScroll";
 import {
   createConversation,
   deleteConversationApi,
@@ -521,7 +532,7 @@ export function CodingAgentPage() {
   const lastModelSelectionRef = useRef("");
   /** Prepended to the next user message after Plan→Build + server implementation-branch creation. */
   const implementationBranchPreambleRef = useRef<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [selectedTurnId, setSelectedTurnId] = useState<string | null>(null);
   const toolStartTimesRef = useRef<Map<string, number>>(new Map());
   const agentTurnBaselineRef = useRef<UiMessage[] | null>(null);
   const streamDeltaAccRef = useRef("");
@@ -566,8 +577,44 @@ export function CodingAgentPage() {
   }, [activeThreadId, threads, workspaces]);
 
   const messages = activeThread?.messages ?? [];
-  const agentLog: AgentTimelineEntry[] = activeThread?.agentLog ?? [];
   const lastMessage = messages[messages.length - 1];
+
+  const threadContentKey = `${activeThreadId ?? ""}:${messages.length}:${hydrated}`;
+  const { scrollContainerRef, messagesEndRef, scrollToBottom, showScrollFab } = useChatScroll({
+    messageCount: messages.length,
+    loading,
+    activeThreadId,
+    threadContentKey,
+  });
+
+  const userTurns = useMemo(() => buildTurnItems(messages), [messages]);
+  const latestTurnId = useMemo(
+    () => (activeThread ? latestUserMessageId(activeThread) : null),
+    [activeThread, messages]
+  );
+
+  useEffect(() => {
+    if (!activeThreadId) {
+      setSelectedTurnId(null);
+      return;
+    }
+    setSelectedTurnId(latestTurnId);
+  }, [activeThreadId, latestTurnId]);
+
+  const activityEntries = useMemo(() => {
+    if (!activeThread) return [];
+    return activityForTurn(activeThread, selectedTurnId);
+  }, [activeThread, selectedTurnId]);
+
+  const activityLoading = loading && selectedTurnId === latestTurnId;
+
+  const handleSelectTurn = useCallback((userMessageId: string) => {
+    setSelectedTurnId(userMessageId);
+    document.getElementById(`msg-${userMessageId}`)?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, []);
   const showAgentRunningPlaceholder =
     loading &&
     !(
@@ -575,9 +622,6 @@ export function CodingAgentPage() {
       chatMessageHasVisibleContent(lastMessage)
     );
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages.length, loading, activeThreadId]);
   const defaultSelectValue = useMemo(
     () => defaultModelCatalogSelectValue(modelRows),
     [modelRows]
@@ -738,20 +782,24 @@ export function CodingAgentPage() {
     return () => { cancelled = true; };
   }, [accessToken, userId, auth]);
 
-  const appendAgentLine = useCallback((kind: string, text: string) => {
-    const tid = activeThreadIdRef.current;
-    if (!tid) return;
-    setThreads((prev) =>
-      prev.map((t) => {
-        if (t.id !== tid) return t;
-        const next: AgentTimelineEntry[] = [
-          ...(t.agentLog ?? []),
-          { id: `${Date.now()}-${(t.agentLog ?? []).length}`, kind, text },
-        ];
-        return { ...t, agentLog: next, updatedAt: Date.now() };
-      })
-    );
-  }, []);
+  const appendAgentLine = useCallback(
+    (
+      kind: string,
+      text: string,
+      extras?: Pick<AgentTimelineEntry, "toolName" | "durationMs" | "resultChars">
+    ) => {
+      const tid = activeThreadIdRef.current;
+      if (!tid) return;
+      setThreads((prev) =>
+        prev.map((t) => {
+          if (t.id !== tid) return t;
+          const next = appendTimelineEntry(t.agentLog ?? [], { kind, text, ...extras });
+          return { ...t, agentLog: next, updatedAt: Date.now() };
+        })
+      );
+    },
+    []
+  );
 
   const handleCodingSessionModeChange = useCallback(
     async (m: CodingSessionMode) => {
@@ -872,7 +920,12 @@ export function CodingAgentPage() {
     setLoading(true);
     setTokenUsage(emptyTokenUsage());
     const firstUser = t.messages.length === 0;
-    const nextMessages: UiMessage[] = [...t.messages, { role: "user", content: userContent }];
+    const archivePatch = archiveTurnBeforeNewPrompt(t);
+    const userMsgId = newMessageId();
+    const nextMessages: UiMessage[] = [
+      ...t.messages,
+      { role: "user", content: userContent, id: userMsgId, createdAt: Date.now() },
+    ];
     const nextTitle = firstUser ? draft.slice(0, 52) : t.title;
     setThreads((prev) =>
       prev.map((th) =>
@@ -880,7 +933,7 @@ export function CodingAgentPage() {
           ? {
               ...th,
               messages: nextMessages,
-              agentLog: [],
+              ...archivePatch,
               title: nextTitle,
               model: effectiveModel,
               modelProvider: routed.provider,
@@ -891,6 +944,7 @@ export function CodingAgentPage() {
           : th
       )
     );
+    setSelectedTurnId(userMsgId);
     setDraft("");
     agentTurnBaselineRef.current = nextMessages;
     streamDeltaAccRef.current = "";
@@ -1050,32 +1104,36 @@ export function CodingAgentPage() {
         if (typ === "agent.tool_start") {
           const toolName = String(msg.name ?? "tool");
           toolStartTimesRef.current.set(toolName, Date.now());
-          appendAgentLine("tool_start", `→ ${toolName}`);
+          appendAgentLine("tool_start", `→ ${toolName}`, { toolName });
           return;
         }
         if (typ === "agent.tool_done") {
           const n = msg.name != null ? String(msg.name) : "tool";
-          const ch = msg.result_chars != null ? String(msg.result_chars) : "";
-          const durationMs = msg.duration_ms != null ? Number(msg.duration_ms) : null;
-          let durationText = "";
-          if (durationMs != null && durationMs >= 0) {
-            if (durationMs < 1000) durationText = `${durationMs}ms`;
-            else if (durationMs < 60000) durationText = `${(durationMs / 1000).toFixed(1)}s`;
-            else durationText = `${(durationMs / 60000).toFixed(1)}m`;
-          } else {
+          const ch = msg.result_chars != null ? Number(msg.result_chars) : undefined;
+          let durationMs = msg.duration_ms != null ? Number(msg.duration_ms) : null;
+          if (durationMs == null || durationMs < 0) {
             const startTime = toolStartTimesRef.current.get(n);
             if (startTime != null) {
-              const ms = Date.now() - startTime;
+              durationMs = Date.now() - startTime;
               toolStartTimesRef.current.delete(n);
-              if (ms < 1000) durationText = `${ms}ms`;
-              else if (ms < 60000) durationText = `${(ms / 1000).toFixed(1)}s`;
-              else durationText = `${(ms / 60000).toFixed(1)}m`;
             }
           }
           const parts: string[] = [];
-          if (ch) parts.push(`${ch} chars`);
-          if (durationText) parts.push(durationText);
-          appendAgentLine("tool_done", `${n}${parts.length ? ` (${parts.join(", ")})` : ""}`);
+          if (ch != null && ch > 0) parts.push(`${ch} chars`);
+          if (durationMs != null && durationMs >= 0) {
+            parts.push(
+              durationMs < 1000
+                ? `${durationMs}ms`
+                : durationMs < 60000
+                  ? `${(durationMs / 1000).toFixed(1)}s`
+                  : `${(durationMs / 60000).toFixed(1)}m`
+            );
+          }
+          appendAgentLine("tool_done", `${n}${parts.length ? ` (${parts.join(", ")})` : ""}`, {
+            toolName: n,
+            durationMs: durationMs ?? undefined,
+            resultChars: ch,
+          });
           return;
         }
         if (typ === "agent.done" || typ === "agent.aborted" || typ === "agent.cancelled") {
@@ -1175,7 +1233,7 @@ export function CodingAgentPage() {
         mode: "agent",
         model: defaultModel,
         messages: [],
-        agent_log: [],
+        agent_log: serializeAgentLogPayload({ agentLog: [], turnLogs: [] }),
         agent_id: sessionMode === "plan" ? "coding_plan" : "coding",
         workspace_id: selectedWorkspaceId,
         model_catalog_owned_by: defaultProv ?? null,
@@ -1597,7 +1655,7 @@ export function CodingAgentPage() {
               <p className="mb-2 truncate text-sm font-medium text-white">
                 {activeThread?.title ?? "Coding session"}
               </p>
-              <div className="grid gap-3 lg:grid-cols-[1fr,17.5rem] lg:items-start">
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)_17.5rem] lg:items-stretch">
                 <div className="min-w-0 space-y-2">
                   <CodingBuildPlanToggle
                     mode={sessionMode}
@@ -1615,6 +1673,13 @@ export function CodingAgentPage() {
                     />
                   ) : null}
                 </div>
+                <AgentActivityPanel
+                  entries={activityEntries}
+                  loading={activityLoading}
+                  emptyHint="Activity for the selected prompt appears here."
+                  layout="header"
+                  className="min-h-0 w-full"
+                />
                 <div className="flex min-w-0 flex-col gap-2 lg:border-l lg:border-surface-border lg:pl-4">
                   <SessionRuntimeBar
                     runtime={sessionRuntime}
@@ -1756,7 +1821,28 @@ export function CodingAgentPage() {
               <CodingWorkspacePanels auth={auth} workspaceId={selectedWorkspaceId} />
 
               <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-                <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 lg:px-6 lg:py-6">
+                {userTurns.length > 0 ? (
+                  <TurnNavigatorHorizontal
+                    userTurns={userTurns}
+                    activeId={selectedTurnId}
+                    onSelect={handleSelectTurn}
+                    className="shrink-0 border-b border-surface-border px-4 py-2"
+                  />
+                ) : null}
+                <div className="flex min-h-0 flex-1 overflow-hidden">
+                  {userTurns.length > 0 ? (
+                    <aside className="hidden w-44 shrink-0 overflow-y-auto border-r border-surface-border px-2 py-4 lg:block">
+                      <TurnNavigator
+                        userTurns={userTurns}
+                        activeId={selectedTurnId}
+                        onSelect={handleSelectTurn}
+                      />
+                    </aside>
+                  ) : null}
+                  <div
+                    ref={scrollContainerRef}
+                    className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 lg:px-6 lg:py-6"
+                  >
                   {messages.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                       <div className="flex h-14 w-14 items-center justify-center rounded-full border border-surface-border bg-white/5 text-lg font-semibold text-neutral-300">
@@ -1775,8 +1861,9 @@ export function CodingAgentPage() {
                         const proposals = m.role === "assistant" ? extractProposals(m.content) : [];
                         return (
                           <li
-                            key={`${i}-${m.role}-${m.content.slice(0, 24)}`}
-                            className={`flex w-full ${m.role === "user" ? "justify-start" : "justify-end"}`}
+                            key={m.id ?? `${i}-${m.role}-${m.content.slice(0, 24)}`}
+                            id={m.role === "user" && m.id ? `msg-${m.id}` : undefined}
+                            className={`flex w-full scroll-mt-4 ${m.role === "user" ? "justify-start" : "justify-end"}`}
                           >
                             <div
                               className={`max-w-[min(100%,42rem)] rounded-2xl px-4 py-3 text-sm shadow-sm ${
@@ -1831,41 +1918,21 @@ export function CodingAgentPage() {
                     </ul>
                   )}
                   <div ref={messagesEndRef} className="h-px w-full shrink-0" aria-hidden />
-                </div>
-
-                <div className="flex max-h-36 min-h-0 shrink-0 flex-col border-t border-surface-border bg-black/25">
-                  <div className="shrink-0 px-3 py-1.5 text-[10px] font-medium uppercase tracking-wide text-surface-muted">
-                    Agent activity
                   </div>
-                  {agentLog.length > 0 ? (
-                    <ul className="min-h-0 flex-1 overflow-y-auto px-3 pb-2 text-[11px]">
-                      {agentLog.map((e) => (
-                        <li
-                          key={e.id}
-                          className={`mb-1 border-l-2 pl-2 text-neutral-400 ${
-                            e.kind === "tool_start"
-                              ? "border-sky-500/40"
-                              : e.kind === "tool_done"
-                              ? "border-emerald-500/40"
-                              : e.kind === "llm"
-                              ? "border-violet-500/40"
-                              : e.kind === "permission"
-                              ? "border-amber-500/50"
-                              : "border-surface-border"
-                          }`}
-                        >
-                          <span className="text-[9px] text-surface-muted">{e.kind}</span>
-                          <div className="whitespace-pre-wrap text-neutral-300">{e.text}</div>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="px-3 pb-2 text-[11px] text-surface-muted">No activity yet</p>
-                  )}
                 </div>
 
                 <div className="shrink-0 border-t border-surface-border bg-[#0c0c0c] px-4 py-3 lg:px-6 lg:py-4">
               <div className="relative mx-auto max-w-3xl">
+                {showScrollFab ? (
+                  <button
+                    type="button"
+                    onClick={() => scrollToBottom("smooth")}
+                    className="absolute -top-12 right-0 z-10 rounded-full border border-surface-border bg-[#1a1a1a] px-3 py-1.5 text-xs text-neutral-200 shadow-lg hover:bg-[#252525]"
+                    aria-label="Scroll to bottom"
+                  >
+                    ↓ New messages
+                  </button>
+                ) : null}
                 <div className="rounded-2xl border border-surface-border bg-[#141414] p-3 shadow-xl">
                   <textarea
                     className="min-h-[52px] w-full resize-none bg-transparent text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none"

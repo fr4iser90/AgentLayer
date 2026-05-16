@@ -7,6 +7,11 @@ import type {
   ChatThread,
   UiMessage,
 } from "./chatThreadStorage";
+import {
+  assignMissingUserMessageIds,
+  parseAgentLogPayload,
+  serializeAgentLogPayload,
+} from "./agentLogStorage";
 import { normalizeCatalogRoutingToken } from "../../lib/modelCatalog";
 import { normalizeServerContent } from "./messageFormat";
 
@@ -47,6 +52,7 @@ export function mapListItemToThread(item: Record<string, unknown>): ChatThread {
     model: typeof item.model === "string" ? item.model : "",
     messages: [],
     agentLog: [],
+    turnLogs: [],
     updatedAt: Date.parse(String(item.updated_at ?? Date.now())) || Date.now(),
     dashboardId: typeof ws === "string" && ws ? ws : undefined,
     shared: typeof item.shared === "boolean" ? item.shared : undefined,
@@ -81,7 +87,7 @@ export function mergeServerThreadWithLocal(
 }
 
 export function mapServerToThread(raw: Record<string, unknown>): ChatThread {
-  const messages = Array.isArray(raw.messages)
+  const rawMessages = Array.isArray(raw.messages)
     ? (raw.messages as ApiMessage[]).map((m) => {
         const c = (m as { content?: unknown }).content;
         return {
@@ -90,9 +96,8 @@ export function mapServerToThread(raw: Record<string, unknown>): ChatThread {
         };
       })
     : [];
-  const agentLog = Array.isArray(raw.agent_log)
-    ? (raw.agent_log as AgentTimelineEntry[])
-    : [];
+  const messages = assignMissingUserMessageIds(rawMessages);
+  const { agentLog, turnLogs } = parseAgentLogPayload(raw.agent_log);
   const ws = raw.dashboard_id;
   const src = normalizeSource(raw.source);
   return {
@@ -102,6 +107,7 @@ export function mapServerToThread(raw: Record<string, unknown>): ChatThread {
     model: typeof raw.model === "string" ? raw.model : "",
     messages,
     agentLog,
+    turnLogs,
     updatedAt: Date.parse(String(raw.updated_at ?? Date.now())) || Date.now(),
     dashboardId: typeof ws === "string" && ws ? ws : undefined,
     shared: typeof raw.shared === "boolean" ? raw.shared : undefined,
@@ -155,7 +161,7 @@ export async function createConversation(
     mode: ChatMode;
     model: string;
     messages: UiMessage[];
-    agent_log: AgentTimelineEntry[];
+    agent_log: ReturnType<typeof serializeAgentLogPayload> | AgentTimelineEntry[];
     dashboard_id?: string;
     /** One shared thread per dashboard; all members with access see the same messages. */
     shared?: boolean;
@@ -200,7 +206,7 @@ export async function putConversation(
         role: m.role,
         content: serializeMessageContent(m.content),
       })),
-      agent_log: thread.agentLog ?? [],
+      agent_log: serializeAgentLogPayload(thread),
       ...(thread.agentId !== undefined ? { agent_id: thread.agentId } : {}),
       ...(thread.workspaceId !== undefined ? { workspace_id: thread.workspaceId } : {}),
       ...(thread.modelProvider !== undefined
