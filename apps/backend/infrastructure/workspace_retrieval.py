@@ -73,7 +73,9 @@ def qdrant_status() -> dict[str, Any]:
 
         idx = get_code_index()
         ok = idx.ensure_collection()
-        return {"configured": True, "reachable": bool(ok)}
+        out: dict[str, Any] = {"configured": True, "reachable": bool(ok)}
+        out.update(idx.target_info())
+        return out
     except Exception as e:
         return {"configured": True, "reachable": False, "error": str(e)[:200]}
 

@@ -161,5 +161,5 @@ See also `TODO.md` (RAG/workspace section) and [coding-workflow.md](./coding-wor
 
 - **Empty `code_semantic`:** run `coding_index` on the workspace; check `QDRANT_URL` and `EMBEDDING_*`.
 - **Empty `docs`:** `rag_enabled`, ingest (`ingest-docs` or Admin), correct `domain`.
-- **Dim mismatch:** `rag_embedding_dim` must match model output and DB/Qdrant collection.
+- **Dim mismatch:** `rag_embedding_dim` must match model output and Postgres pgvector columns. Code index uses `code_symbols` or `code_symbols_<dim>` automatically when the legacy collection has another width (no upsert spam; switch back without re-index if that collection still exists).
 - **Chat vs embed:** Model dropdown does not power RAG; use Embedding (RAG) + `EMBEDDING_*` in `.env`.

@@ -38,6 +38,8 @@ services:
       - agent_qdrant_data:/qdrant/storage
     environment:
       - QDRANT__SERVICE__GRPC_PORT=6334
+      # Quieter logs after a one-time volume reset (old WAL replays dim-mismatch as ERROR on boot).
+      - QDRANT__LOG_LEVEL=ERROR
     networks:
       - ai-net
   agent-layer:

@@ -1294,6 +1294,13 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
         invalidate_embedding_catalog_cache()
     except Exception:
         pass
+    if "rag_embedding_dim" in patch or "rag_embedding_model" in patch:
+        try:
+            from apps.backend.infrastructure.code_index_qdrant import invalidate_code_index_cache
+
+            invalidate_code_index_cache()
+        except Exception:
+            pass
     try:
         from apps.backend.infrastructure.log_redaction import apply_http_client_log_levels
 

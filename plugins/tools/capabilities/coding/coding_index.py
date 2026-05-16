@@ -102,6 +102,11 @@ def coding_index(arguments: dict[str, Any], context: dict | None = None) -> str:
     }
     if qdrant_indexed > 0:
         result["qdrant_indexed"] = qdrant_indexed
+    if _HAS_QDRANT and qdrant_error is None:
+        try:
+            result.update(get_code_index().target_info())
+        except Exception:
+            pass
     if qdrant_error:
         result["qdrant_error"] = qdrant_error
     if workspace_id:

@@ -419,6 +419,8 @@ def _strip_env_quotes(raw: str | None) -> str:
 
 _EMBED_BASE_RAW = (os.environ.get("EMBEDDING_BASE_URL") or "").strip().rstrip("/")
 EMBEDDING_BASE_URL = _strip_env_quotes(_EMBED_BASE_RAW).rstrip("/")
+# Optional: preferred embedding model id when not in operator_settings or not on provider list.
+EMBEDDING_MODEL = _strip_env_quotes((os.environ.get("EMBEDDING_MODEL") or "").strip())[:256]
 EMBEDDING_API_HEADER_NAME = _strip_env_quotes(
     (os.environ.get("EMBEDDING_API_HEADER_NAME") or "").strip()
 ) or "X-API-KEY"
