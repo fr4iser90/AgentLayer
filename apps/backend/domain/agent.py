@@ -37,6 +37,7 @@ from apps.backend.domain.plugin_system.tool_routing import (
     filter_merged_tools_by_domain,
     last_user_text,
 )
+from apps.backend.domain.schedule_run_context import record_schedule_abort, record_schedule_tool_event
 from apps.backend.domain.tool_executor import execute_tool
 from apps.backend.domain.tool_invocation_context import (
     bind_capability_confirmed,
@@ -550,7 +551,9 @@ def _infer_shell_command_from_user_text(user_text: str) -> str | None:
             if sl.startswith(("git ", "gh ", "npm ", "pnpm ", "yarn ", "docker ", "curl ", "wget ")):
                 return s
     if re.search(r"\bgit\s+pull\b", ul):
-        m2 = re.search(r"(git\s+pull[^\n`]{0,200})", ut, re.IGNORECASE)
+        if "ff-only" in ul or "ff only" in ul:
+            return "git pull --ff-only"
+        m2 = re.search(r"(git\s+pull[^\n`,;]{0,80})", ut, re.IGNORECASE)
         return (m2.group(1).strip().rstrip(",.;") if m2 else "git pull")
     if re.search(r"\bgit\s+fetch\b", ul):
         m2 = re.search(r"(git\s+fetch[^\n`]{0,200})", ut, re.IGNORECASE)
@@ -591,9 +594,153 @@ def _infer_shell_command_from_user_text(user_text: str) -> str | None:
     if any(c in ul for c in update_cues) and any(c in ul for c in ctx_cues):
         return "git pull"
     if re.search(r"\bpull\b", ul) and "git" in ul:
-        m2 = re.search(r"(git\s+pull[^\n`]{0,200})", ut, re.IGNORECASE)
+        if "ff-only" in ul or "ff only" in ul:
+            return "git pull --ff-only"
+        m2 = re.search(r"(git\s+pull[^\n`,;]{0,80})", ut, re.IGNORECASE)
         return (m2.group(1).strip().rstrip(",.;") if m2 else "git pull")
     return None
+
+
+def _is_git_pull_command(command: str) -> bool:
+    c = (command or "").strip().lower()
+    if not c:
+        return False
+    return c == "git pull" or c.startswith("git pull ")
+
+
+def _looks_like_shell_command(command: str) -> bool:
+    s = (command or "").strip()
+    if not s or len(s) > 400:
+        return False
+    sl = s.lower()
+    if " now i need" in sl or s.endswith(":"):
+        return False
+    if sl in ("ls", "pwd"):
+        return True
+    return any(
+        sl.startswith(p)
+        for p in (
+            "git ",
+            "gh ",
+            "npm ",
+            "pnpm ",
+            "yarn ",
+            "npx ",
+            "cd ",
+            "cat ",
+            "mkdir ",
+            "touch ",
+            "cp ",
+            "mv ",
+            "find ",
+            "grep ",
+            "python",
+            "ruff ",
+            "pytest",
+            "docker ",
+            "make ",
+        )
+    )
+
+
+def _unattended_blocked_tool_json(
+    name: str,
+    args: dict[str, Any],
+    tool_context: dict[str, Any],
+) -> str | None:
+    if not tool_context.get("agent_unattended"):
+        return None
+    if tool_context.get("schedule_git_pull_done"):
+        if name == "coding_git_sync" and str(args.get("operation") or "pull").strip().lower() == "pull":
+            pr = tool_context.get("schedule_git_pull_result") or "completed"
+            return json.dumps(
+                {
+                    "ok": False,
+                    "error": (
+                        f"Git pull already completed this run ({pr}). "
+                        "Do NOT run pull again. Next: agent/doc-* branch, then "
+                        "coding_write_file docs/MAINTENANCE_REPORT.md."
+                    ),
+                    "pull_result": pr,
+                },
+                ensure_ascii=False,
+            )
+        if name == "coding_bash":
+            cmd = str(args.get("command") or "").strip()
+            if _is_git_pull_command(cmd):
+                pr = tool_context.get("schedule_git_pull_result") or "completed"
+                return json.dumps(
+                    {
+                        "ok": False,
+                        "error": (
+                            f"Git pull already completed this run ({pr}). "
+                            "Use coding_write_file for docs/MAINTENANCE_REPORT.md."
+                        ),
+                        "pull_result": pr,
+                    },
+                    ensure_ascii=False,
+                )
+    if name == "coding_bash":
+        cmd = str(args.get("command") or "").strip()
+        if not cmd:
+            return json.dumps(
+                {
+                    "ok": False,
+                    "error": (
+                        'coding_bash requires {"command": "…"} — empty {} is not allowed '
+                        "for scheduled runs. Example: {\"command\": \"git checkout -b agent/doc-20260517\"}."
+                    ),
+                },
+                ensure_ascii=False,
+            )
+        if not _looks_like_shell_command(cmd):
+            return json.dumps(
+                {
+                    "ok": False,
+                    "error": (
+                        f"Invalid shell command (not a one-liner): {cmd[:120]!r}. "
+                        "Send a real command or use coding_git_sync for pull."
+                    ),
+                },
+                ensure_ascii=False,
+            )
+    return None
+
+
+def _unattended_mark_git_pull_done(
+    name: str,
+    result: str,
+    tool_context: dict[str, Any],
+) -> str | None:
+    """If a pull succeeded, set context flags and return a system hint for the model."""
+    if not tool_context.get("agent_unattended"):
+        return None
+    try:
+        o = json.loads(result)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(o, dict) or o.get("ok") is not True:
+        return None
+    pull_result: str | None = None
+    if name == "coding_git_sync" and str(o.get("operation") or "").strip().lower() == "pull":
+        pull_result = str(o.get("pull_result") or "completed")
+    elif name == "coding_bash":
+        cmd = str(o.get("command") or "")
+        if _is_git_pull_command(cmd) and int(o.get("exit_code") or 0) == 0:
+            pull_result = str(o.get("pull_result") or "completed")
+    if not pull_result:
+        return None
+    tool_context["schedule_git_pull_done"] = True
+    tool_context["schedule_git_pull_result"] = pull_result
+    msg = str(o.get("message") or "").strip()
+    steps = o.get("next_steps")
+    step_txt = ""
+    if isinstance(steps, list) and steps:
+        step_txt = " Next: " + "; ".join(str(x) for x in steps[:3])
+    return (
+        f"[Schedule git] Pull complete (pull_result={pull_result}). "
+        f"{msg} Do NOT call coding_git_sync pull or coding_bash git pull again.{step_txt}"
+    )
 
 
 def _normalize_tool_call_arguments(
@@ -619,14 +766,16 @@ def _normalize_tool_call_arguments(
                 if isinstance(v, str) and v.strip():
                     out["command"] = v.strip()
                     break
-        if not str(out.get("command") or "").strip():
-            inferred = _infer_shell_command_from_assistant_message(assistant_msg)
-            if inferred:
-                out["command"] = inferred
-        if not str(out.get("command") or "").strip():
-            inferred_u = _infer_shell_command_from_user_text(last_user_text(messages))
-            if inferred_u:
-                out["command"] = inferred_u
+        unattended = bool(tool_context and tool_context.get("agent_unattended"))
+        if not unattended:
+            if not str(out.get("command") or "").strip():
+                inferred = _infer_shell_command_from_assistant_message(assistant_msg)
+                if inferred:
+                    out["command"] = inferred
+            if not str(out.get("command") or "").strip():
+                inferred_u = _infer_shell_command_from_user_text(last_user_text(messages))
+                if inferred_u:
+                    out["command"] = inferred_u
     elif n == "coding_task":
         if not str(out.get("description") or "").strip():
             for alt in ("title", "name", "task", "summary", "label"):
@@ -1327,6 +1476,7 @@ _BODY_KEYS_STRIP_FROM_OLLAMA = frozenset(
         "agent_id",
         "agent_parent_run_id",
         "agent_permission_ask",
+        "agent_unattended",
         "agent_stream_llm",
     }
 )
@@ -1537,7 +1687,6 @@ def _agent_behavior_flags(agent_id: str | None) -> dict[str, Any]:
     base: dict[str, Any] = {
         "strict_workspace": False,
         "coding_tools_permission_ask": False,
-        "dedupe_identical_tool_calls": False,
         "tool_discipline_preset": None,
     }
     if not agent_id or not str(agent_id).strip():
@@ -1552,7 +1701,6 @@ def _agent_behavior_flags(agent_id: str | None) -> dict[str, Any]:
     return {
         "strict_workspace": bool(ag.get("strict_workspace")),
         "coding_tools_permission_ask": bool(ag.get("coding_tools_permission_ask")),
-        "dedupe_identical_tool_calls": bool(ag.get("dedupe_identical_tool_calls")),
         "tool_discipline_preset": preset_norm,
     }
 
@@ -2732,6 +2880,10 @@ async def chat_completion(
     _raw_catalog_owned = body.pop("agent_model_catalog_owned_by", None)
     catalog_owned_by = normalize_model_catalog_owned_by(_raw_catalog_owned)
     _raw_tool_allow = body.pop("agent_tool_name_allowlist", None)
+    _raw_tools_ranking = body.pop("agent_tools_ranking_enabled", None)
+    tools_ranking_enabled = bool(config.AGENT_TOOLS_RANKING_ENABLED)
+    if _raw_tools_ranking is not None:
+        tools_ranking_enabled = _coerce_body_bool(_raw_tools_ranking, tools_ranking_enabled)
     agent_id = body.pop("agent_id", None)
     if isinstance(agent_id, str):
         agent_id = agent_id.strip() or None
@@ -2741,6 +2893,9 @@ async def chat_completion(
     else:
         parent_agent_run_id = None
     permission_ask = _coerce_body_bool(body.pop("agent_permission_ask", None), False)
+    agent_unattended = _coerce_body_bool(body.pop("agent_unattended", None), False)
+    if agent_unattended:
+        permission_ask = False
     agent_require_workspace_verify = _coerce_body_bool(
         body.pop("agent_require_workspace_verify", None), False
     )
@@ -2904,9 +3059,7 @@ async def chat_completion(
     tool_context["permission_always_allow_tools"] = set()
     _abf = _agent_behavior_flags(agent_id if isinstance(agent_id, str) else None)
     tool_context["agent_coding_tools_permission_ask"] = _abf["coding_tools_permission_ask"]
-    tool_context["agent_dedupe_identical_tool_calls"] = _abf["dedupe_identical_tool_calls"]
-    tool_context["_identical_tool_call_dedupe_keys"] = set()
-    tool_context["_identical_tool_call_result_by_key"] = {}
+    tool_context["agent_unattended"] = agent_unattended
     logger.info(
         "chat_completion start agent_run_id=%s parent_agent_run_id=%s agent_id=%r workspace_id=%s user_id=%s",
         agent_run_id,
@@ -3129,7 +3282,7 @@ async def chat_completion(
             ]
 
         # Tool Ranking: sort by semantic similarity to user input (Phase 1)
-        if config.AGENT_TOOLS_RANKING_ENABLED and tools_for_request:
+        if tools_ranking_enabled and tools_for_request:
             try:
                 # Get last user message for ranking (do not name this ``last_user_text`` — shadows imported helper).
                 ranking_user_text: str | None = None
@@ -3780,47 +3933,6 @@ async def chat_completion(
                     )
                 tool_call_id = tc.get("id") or ""
                 logger.info("tool round %s: %s(%s)", round_i + 1, name, args)
-                plan_dedupe_key: str | None = None
-                skipped_plan_duplicate = False
-                prebuilt_result: str | None = None
-                if tool_context.get("agent_dedupe_identical_tool_calls"):
-                    try:
-                        plan_dedupe_key = (
-                            f"{name}|"
-                            + json.dumps(
-                                dict(args),
-                                sort_keys=True,
-                                separators=(",", ":"),
-                                default=str,
-                            )
-                        )
-                    except TypeError:
-                        plan_dedupe_key = f"{name}|{args!r}"
-                    ps = tool_context.get("_identical_tool_call_dedupe_keys")
-                    if isinstance(ps, set) and plan_dedupe_key in ps:
-                        skipped_plan_duplicate = True
-                        cache = tool_context.get("_identical_tool_call_result_by_key")
-                        prev = cache.get(plan_dedupe_key) if isinstance(cache, dict) else None
-                        if isinstance(prev, str) and prev.strip():
-                            prebuilt_result = prev
-                            logger.info(
-                                "tool dedupe: replaying prior tool payload (chars=%s tool=%s)",
-                                len(prev),
-                                name,
-                            )
-                        else:
-                            prebuilt_result = json.dumps(
-                                {
-                                    "ok": True,
-                                    "deduplicated": True,
-                                    "message": (
-                                        "Identical tool+arguments were already run earlier in this reply. "
-                                        "Use the previous tool message in the transcript and continue "
-                                        "(no repeat calls)."
-                                    ),
-                                },
-                                ensure_ascii=False,
-                            )
                 if cancel_event is not None and cancel_event.is_set():
                     if event_emit:
                         await event_emit(
@@ -3848,76 +3960,73 @@ async def chat_completion(
                     if not isinstance(perm_always, set):
                         perm_always = set()
                         tool_context["permission_always_allow_tools"] = perm_always
-                    result = ""
-                    if prebuilt_result is not None:
-                        result = prebuilt_result
-                    else:
-                        need_gate = (
-                            permission_ask
-                            and bool(tool_context.get("agent_coding_tools_permission_ask"))
-                            and name in _CODING_TOOLS_PERMISSION_ASK
-                            and name not in perm_always
+                    need_gate = (
+                        permission_ask
+                        and not bool(tool_context.get("agent_unattended"))
+                        and bool(tool_context.get("agent_coding_tools_permission_ask"))
+                        and name in _CODING_TOOLS_PERMISSION_ASK
+                        and name not in perm_always
+                    )
+                    if need_gate and control_queue is None:
+                        logger.warning(
+                            "agent_permission_ask set but no control_queue; executing %s without approval",
+                            name,
                         )
-                        if need_gate and control_queue is None:
-                            logger.info(
-                                "agent_permission_ask set but no control_queue; executing %s without approval",
-                                name,
-                            )
-                        if (
-                            need_gate
-                            and control_queue is not None
-                        ):
-                            preview = json.dumps(args, ensure_ascii=False, default=str)[:2000]
-                            rid = str(uuid.uuid4())
-                            rep, fb_msg = await _wait_for_tool_permission_reply(
-                                control_queue=control_queue,
-                                cancel_event=cancel_event,
-                                event_emit=event_emit,
-                                agent_run_id=agent_run_id,
-                                request_id=rid,
-                                tool_name=name,
-                                args_preview=preview,
-                                round_i=round_i,
-                                handle_control=handle_control_dict,
-                            )
-                            if rep == "reject":
-                                rej: dict[str, Any] = {
-                                    "ok": False,
-                                    "error": "User rejected permission for this tool call.",
-                                }
-                                if fb_msg:
-                                    rej["user_message"] = fb_msg
-                                result = json.dumps(rej, ensure_ascii=False)
-                            else:
-                                if rep == "always":
-                                    perm_always.add(name)
-                                result = execute_tool(name, args, context=tool_context)
+                    if need_gate and control_queue is not None:
+                        preview = json.dumps(args, ensure_ascii=False, default=str)[:2000]
+                        rid = str(uuid.uuid4())
+                        rep, fb_msg = await _wait_for_tool_permission_reply(
+                            control_queue=control_queue,
+                            cancel_event=cancel_event,
+                            event_emit=event_emit,
+                            agent_run_id=agent_run_id,
+                            request_id=rid,
+                            tool_name=name,
+                            args_preview=preview,
+                            round_i=round_i,
+                            handle_control=handle_control_dict,
+                        )
+                        if rep == "reject":
+                            rej: dict[str, Any] = {
+                                "ok": False,
+                                "error": "User rejected permission for this tool call.",
+                            }
+                            if fb_msg:
+                                rej["user_message"] = fb_msg
+                            result = json.dumps(rej, ensure_ascii=False)
                         else:
-                            result = execute_tool(name, args, context=tool_context)
-                    if (
-                        tool_context.get("agent_dedupe_identical_tool_calls")
-                        and plan_dedupe_key
-                        and not skipped_plan_duplicate
-                    ):
-                        ps2 = tool_context.get("_identical_tool_call_dedupe_keys")
-                        if isinstance(ps2, set):
-                            ps2.add(plan_dedupe_key)
-                        rcache = tool_context.get("_identical_tool_call_result_by_key")
-                        if not isinstance(rcache, dict):
-                            rcache = {}
-                            tool_context["_identical_tool_call_result_by_key"] = rcache
-                        rcache[plan_dedupe_key] = result
+                            if rep == "always":
+                                perm_always.add(name)
+                            blocked = _unattended_blocked_tool_json(name, args, tool_context)
+                            result = (
+                                blocked
+                                if blocked is not None
+                                else execute_tool(name, args, context=tool_context)
+                            )
+                    else:
+                        blocked = _unattended_blocked_tool_json(name, args, tool_context)
+                        result = (
+                            blocked
+                            if blocked is not None
+                            else execute_tool(name, args, context=tool_context)
+                        )
                 finally:
                     reset_tool_invocation_messages(tctx)
                 ok_sum, err_sum = _tool_result_summary(result)
+                git_hint = _unattended_mark_git_pull_done(name, result or "", tool_context)
+                if git_hint:
+                    messages.append({"role": "system", "content": git_hint[:2500]})
+                record_schedule_tool_event(
+                    round_num=round_i + 1,
+                    tool_name=name,
+                    args=args,
+                    ok=ok_sum,
+                    error=err_sum if not ok_sum else None,
+                )
                 if name == "coding_workspace_verify":
                     try:
                         _vd = json.loads(result)
-                        if (
-                            isinstance(_vd, dict)
-                            and _vd.get("ok") is True
-                            and not _vd.get("deduplicated")
-                        ):
+                        if isinstance(_vd, dict) and _vd.get("ok") is True:
                             tool_context["workspace_verify_succeeded"] = True
                     except Exception:
                         pass
@@ -3970,6 +4079,8 @@ async def chat_completion(
                             _args_preview,
                             config.AGENT_TOOL_DOOM_LOOP_STREAK_MAX,
                         )
+                        if tool_context.get("agent_unattended"):
+                            record_schedule_abort("repeated_tool_loop")
                 if event_emit:
                     ev_done: dict[str, Any] = {
                         "type": "agent.tool_done",

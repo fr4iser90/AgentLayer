@@ -104,6 +104,33 @@ def coding_git_read(arguments: dict[str, Any], context: dict | None = None) -> s
 
     if op == "status":
         code, out, _ = _run_git(root, ["status", "--porcelain=v1", "-b"], timeout=timeout_s)
+        preview, cut = _tail(out, MAX_OUTPUT_BYTES)
+        branch_name: str | None = None
+        clean = True
+        for line in (out or "").splitlines():
+            if line.startswith("## "):
+                branch_name = line[3:].strip().split("...")[0].strip() or None
+            elif line.strip():
+                clean = False
+        if branch_name is None:
+            cbr, br_out, _ = _run_git(root, ["rev-parse", "--abbrev-ref", "HEAD"], timeout=timeout_s)
+            if cbr == 0:
+                branch_name = (br_out or "").strip() or None
+        payload: dict[str, Any] = {
+            "ok": code == 0,
+            "operation": op,
+            "exit_code": code,
+            "output": preview,
+            "truncated": cut,
+            "branch": branch_name,
+            "clean": clean,
+            "message": (
+                f"On branch {branch_name or '?'}; working tree clean."
+                if clean
+                else f"On branch {branch_name or '?'}; working tree has uncommitted changes."
+            ),
+        }
+        return json.dumps(payload, ensure_ascii=False)
     elif op == "branch":
         c1, ref, _ = _run_git(root, ["rev-parse", "--abbrev-ref", "HEAD"], timeout=timeout_s)
         c2, short, _ = _run_git(root, ["rev-parse", "--short", "HEAD"], timeout=timeout_s)
@@ -156,6 +183,7 @@ def coding_git_read(arguments: dict[str, Any], context: dict | None = None) -> s
         },
         ensure_ascii=False,
     )
+
 
 
 HANDLERS: dict[str, Callable[..., str]] = {

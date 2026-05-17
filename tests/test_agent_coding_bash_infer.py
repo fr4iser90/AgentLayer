@@ -27,3 +27,18 @@ class AgentCodingBashUserInferTests(unittest.TestCase):
         assistant = {"role": "assistant", "content": ""}
         out = _normalize_tool_call_arguments("coding_bash", {}, assistant, msgs, None)
         self.assertEqual(out.get("command"), "git pull")
+
+    def test_unattended_empty_bash_stays_empty(self) -> None:
+        msgs = [{"role": "user", "content": "Run scheduled task with git pull (ff-only)."}]
+        assistant = {"role": "assistant", "content": "Git pull succeeded. Now I need to:"}
+        ctx = {"agent_unattended": True}
+        out = _normalize_tool_call_arguments("coding_bash", {}, assistant, msgs, ctx)
+        self.assertFalse(str(out.get("command") or "").strip())
+
+    def test_git_pull_ff_only_stops_at_comma(self) -> None:
+        from apps.backend.domain.agent import _infer_shell_command_from_user_text
+
+        cmd = _infer_shell_command_from_user_text(
+            "git pull (ff-only), update docs/MAINTENANCE_REPORT.md"
+        )
+        self.assertEqual(cmd, "git pull --ff-only")

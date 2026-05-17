@@ -9,7 +9,7 @@
     "title": "Doc maintenance",
     "instructions": "Scheduled documentation maintenance for THIS workspace only.\n\n## Phase 0 — Git (required first)\n1. coding_git_read: inspect git status.\n2. If working tree is NOT clean and current branch is NOT named agent/*: append reason to docs/MAINTENANCE_REPORT.md and STOP (no pull, no doc edits).\n3. coding_git_sync with operation pull (fast-forward only). On failure: log to docs/MAINTENANCE_REPORT.md and STOP.\n4. Create or checkout branch agent/doc-MAINT (use today's date in branch name via coding_bash). Do not commit on main/master.\n\n## Phase 1 — Inventory (read-only)\n1. Read docs/CONVENTIONS.md if it exists.\n2. Survey docs/** and README; list up to 5 highest-impact documentation gaps.\n3. Append Inventory section to docs/MAINTENANCE_REPORT.md.\n\n## Phase 2 — Edits (limits)\n- Fix at most 3 gaps from the inventory.\n- Touch at most 8 files total.\n- Only docs/ and root README.md.\n- No src/tests refactors, no dependency bumps, no git push.\n\n## Phase 3 — Close\n1. Run coding_workspace_verify if configured for this workspace.\n2. Append Done or Blocked summary to docs/MAINTENANCE_REPORT.md.\n3. Reply with a short plain-text summary (branch, files changed, verify result).",
     "coding_workflow": {
-      "agent_id": "coding_plan",
+      "agent_id": "coding",
       "prompt_preamble": "Conservative scheduled doc maintenance. Prefer small, accurate doc edits. Stop early if git pull fails or tree is dirty."
     }
   }

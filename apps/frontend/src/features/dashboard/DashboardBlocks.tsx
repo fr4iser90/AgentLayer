@@ -2,6 +2,7 @@ import type { ChangeEvent, Dispatch, SetStateAction } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
+import { formatDateTimeLocal } from "../../lib/formatDateTime";
 import type { UiBlock, UiLayout } from "./types";
 import { EmbedBlockBody } from "./EmbedBlock";
 import { KanbanBlockBody, RichMarkdownBlockBody } from "./KanbanRichMarkdownBlocks";
@@ -1475,7 +1476,7 @@ function BlockView(props: {
                     <td className="px-2 py-2 text-surface-muted">
                       {j.dashboard_id ? "dashboard" : "global"}
                     </td>
-                    <td className="px-2 py-2 text-surface-muted">{j.last_run_at || "—"}</td>
+                    <td className="px-2 py-2 text-surface-muted">{formatDateTimeLocal(j.last_run_at)}</td>
                     <td className="px-2 py-2">
                       {!readOnly ? (
                         <button

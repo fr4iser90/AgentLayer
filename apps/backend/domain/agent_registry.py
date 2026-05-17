@@ -232,7 +232,6 @@ class AgentRegistry:
             # Optional chat-loop behaviour (see ``docs/features/agent-registry-and-allowlists.md``).
             "strict_workspace": bool(getattr(module, "AGENT_STRICT_WORKSPACE", False)),
             "coding_tools_permission_ask": bool(getattr(module, "AGENT_CODING_TOOLS_PERMISSION_ASK", False)),
-            "dedupe_identical_tool_calls": bool(getattr(module, "AGENT_DEDUPE_IDENTICAL_TOOL_CALLS", False)),
             "tool_discipline_preset": (
                 str(getattr(module, "AGENT_TOOL_DISCIPLINE_PRESET", "") or "").strip().lower() or None
             ),
@@ -266,7 +265,6 @@ class AgentRegistry:
             "model_profile": None,
             "strict_workspace": False,
             "coding_tools_permission_ask": False,
-            "dedupe_identical_tool_calls": False,
             "tool_discipline_preset": None,
         }
 

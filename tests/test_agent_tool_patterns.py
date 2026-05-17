@@ -62,15 +62,12 @@ def test_agent_behavior_flags_come_from_plugins_not_ids() -> None:
     c = _agent_behavior_flags("coding")
     assert c["coding_tools_permission_ask"] is True
     assert c["strict_workspace"] is False
-    assert c["dedupe_identical_tool_calls"] is False
     assert c["tool_discipline_preset"] == "coding_build"
 
     p = _agent_behavior_flags("coding_plan")
     assert p["strict_workspace"] is True
     assert p["coding_tools_permission_ask"] is True
-    assert p["dedupe_identical_tool_calls"] is True
     assert p["tool_discipline_preset"] == "coding_plan"
 
     s = _agent_behavior_flags("security_auditor")
     assert s["strict_workspace"] is True
-    assert s["dedupe_identical_tool_calls"] is True

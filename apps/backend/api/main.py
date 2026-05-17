@@ -86,6 +86,8 @@ from apps.backend.infrastructure.public_error import http_500_detail
 # from apps.backend.integrations.pidea.api_router import router as pidea_router
 from apps.backend.api.scheduler_jobs_admin_api import router as scheduler_jobs_admin_router
 from apps.backend.api.scheduler_job_presets_api import router as scheduler_job_presets_router
+from apps.backend.api.scheduler_job_runs_api import admin_router as scheduler_job_runs_admin_router
+from apps.backend.api.scheduler_job_runs_api import user_router as scheduler_job_runs_user_router
 from apps.backend.api.scheduler_jobs_user_api import router as scheduler_jobs_user_router
 from apps.backend.api.scheduler_job_presets_user_api import router as scheduler_job_presets_user_router
 from apps.backend.api.project_runs_api import router as project_runs_router
@@ -238,6 +240,8 @@ app.include_router(studio_router)
 app.include_router(scheduler_jobs_admin_router)
 app.include_router(scheduler_job_presets_router)
 app.include_router(scheduler_jobs_user_router)
+app.include_router(scheduler_job_runs_user_router)
+app.include_router(scheduler_job_runs_admin_router)
 app.include_router(scheduler_job_presets_user_router)
 app.include_router(project_runs_router)
 app.include_router(agents_router)

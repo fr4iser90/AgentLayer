@@ -36,6 +36,38 @@ DEFAULT_TIMEOUT = 120
 FETCH_TIMEOUT = 90
 
 
+def _current_branch(root: Path) -> str | None:
+    code, out, _ = _run_git(root, ["rev-parse", "--abbrev-ref", "HEAD"], timeout=15)
+    if code != 0:
+        return None
+    ref = (out or "").strip()
+    return ref or None
+
+
+def _classify_pull_output(out: str, exit_code: int) -> str:
+    if exit_code != 0:
+        return "failed"
+    low = (out or "").lower()
+    if "already up to date" in low or "already up-to-date" in low:
+        return "already_up_to_date"
+    if "fast-forward" in low or "updating" in low or "files changed" in low:
+        return "fast_forward"
+    return "completed"
+
+
+def _pull_next_steps(pull_result: str) -> list[str]:
+    steps = [
+        "Create or checkout branch agent/doc-YYYYMMDD (not main/master).",
+        "Write docs/MAINTENANCE_REPORT.md Inventory section (coding_write_file).",
+    ]
+    if pull_result == "already_up_to_date":
+        return [
+            "Repository is up to date — do NOT run git pull again.",
+            *steps,
+        ]
+    return steps
+
+
 def _run_git(
     root: Path,
     args: list[str],
@@ -103,16 +135,29 @@ def coding_git_sync(arguments: dict[str, Any], context: dict | None = None) -> s
         code, out = _run_git(root, cmd, timeout=timeout_s)
 
     preview, cut = _tail(out, MAX_OUTPUT_BYTES)
-    return json.dumps(
-        {
-            "ok": code == 0,
-            "operation": op,
-            "exit_code": code,
-            "output": preview,
-            "truncated": cut,
-        },
-        ensure_ascii=False,
-    )
+    payload: dict[str, Any] = {
+        "ok": code == 0,
+        "operation": op,
+        "exit_code": code,
+        "output": preview,
+        "truncated": cut,
+    }
+    branch = _current_branch(root)
+    if branch:
+        payload["branch"] = branch
+    if op == "pull":
+        pull_result = _classify_pull_output(out, code)
+        payload["pull_result"] = pull_result
+        if code == 0:
+            payload["message"] = (
+                "Repository is up to date with remote."
+                if pull_result == "already_up_to_date"
+                else "Git pull completed successfully."
+            )
+            payload["next_steps"] = _pull_next_steps(pull_result)
+        else:
+            payload["message"] = "Git pull failed. Do not retry pull in a loop; fix the error or STOP."
+    return json.dumps(payload, ensure_ascii=False)
 
 
 HANDLERS: dict[str, Callable[..., str]] = {

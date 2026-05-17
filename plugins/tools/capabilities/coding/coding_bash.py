@@ -96,6 +96,17 @@ _VALIDATION_COMMANDS = frozenset({
 })
 
 
+def _classify_git_pull_output(out: str, exit_code: int) -> str:
+    if exit_code != 0:
+        return "failed"
+    low = (out or "").lower()
+    if "already up to date" in low or "already up-to-date" in low:
+        return "already_up_to_date"
+    if "fast-forward" in low or "updating" in low:
+        return "fast_forward"
+    return "completed"
+
+
 def _is_blocked(command: str) -> str | None:
     lower = command.lower().strip()
     for blocked in _BLOCKED_COMMANDS:
@@ -205,15 +216,33 @@ def coding_bash(arguments: dict[str, Any], context: dict | None = None) -> str:
     if not combined:
         combined = "(no output)"
     preview, cut = _tail(combined, MAX_OUTPUT_BYTES)
-    return json.dumps(
-        {
-            "ok": True,
-            "exit_code": result.returncode,
-            "truncated": cut,
-            "output": preview,
-        },
-        ensure_ascii=False,
-    )
+    exit_code = int(result.returncode)
+    payload: dict[str, Any] = {
+        "ok": exit_code == 0,
+        "exit_code": exit_code,
+        "truncated": cut,
+        "output": preview,
+        "command": command,
+    }
+    cmd_l = command.lower()
+    if "git pull" in cmd_l or cmd_l.strip() == "git pull":
+        pull_result = _classify_git_pull_output(combined, exit_code)
+        payload["pull_result"] = pull_result
+        if exit_code == 0:
+            payload["message"] = (
+                "Repository is up to date with remote."
+                if pull_result == "already_up_to_date"
+                else "Git pull completed successfully."
+            )
+            payload["next_steps"] = [
+                "Do NOT run git pull again this session.",
+                "Continue with branch checkout and docs/MAINTENANCE_REPORT.md.",
+            ]
+        else:
+            payload["error"] = preview[:500] if preview else f"git pull failed (exit {exit_code})"
+    elif exit_code != 0:
+        payload["error"] = preview[:500] if preview else f"command failed (exit {exit_code})"
+    return json.dumps(payload, ensure_ascii=False)
 
 
 HANDLERS: dict[str, Callable[[dict[str, Any]], str]] = {

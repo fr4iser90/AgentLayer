@@ -126,7 +126,11 @@ async def _run_coding_job(row: dict[str, Any]) -> None:
         scheduler_jobs_store.mark_job_last_run(job_id=job_id, tenant_id=tenant_id)
         logger.info("scheduler_jobs: finished coding job job_id=%s", job_id)
     else:
-        logger.warning("scheduler_jobs: coding job failed job_id=%s: %s", job_id, err)
+        logger.warning(
+            "scheduler_jobs: coding job failed job_id=%s: %s (see scheduler_job_runs)",
+            job_id,
+            err,
+        )
 
 
 def _worker_loop() -> None:

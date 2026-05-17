@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch, type WorkspaceApiRecord } from "../../lib/api";
+import { formatDateTimeLocal } from "../../lib/formatDateTime";
 
 type SchedulerJobRow = {
   id: string;
@@ -428,8 +429,8 @@ export function AdminSchedules() {
                   <td className="px-3 py-2 font-mono text-[11px] text-surface-muted">
                     {j.dashboard_id || "global"}
                   </td>
-                  <td className="px-3 py-2 text-surface-muted">{j.last_run_at || "—"}</td>
-                  <td className="px-3 py-2 text-surface-muted">{j.created_at}</td>
+                  <td className="px-3 py-2 text-surface-muted">{formatDateTimeLocal(j.last_run_at)}</td>
+                  <td className="px-3 py-2 text-surface-muted">{formatDateTimeLocal(j.created_at)}</td>
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <button

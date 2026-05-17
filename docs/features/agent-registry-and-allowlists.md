@@ -40,13 +40,12 @@ Resolution is the **union** of (2)+(3)+(4) when no explicit names list is used.
 
 ## Optional chat-loop behaviour (no hard-coded agent ids)
 
-`apps/backend/domain/agent.py` reads these **optional** module-level fields from each agent plugin (defaults are false / unset). They are stored on the registry dict and drive workspace gates, permission-ask, identical-call dedupe, and the extra tool-discipline system snippet:
+`apps/backend/domain/agent.py` reads these **optional** module-level fields from each agent plugin (defaults are false / unset). They are stored on the registry dict and drive workspace gates, permission-ask, and the extra tool-discipline system snippet:
 
 | Field | Default | Role |
 |--------|---------|------|
 | `AGENT_STRICT_WORKSPACE` | `False` | If true, chat fails when no **resolved** project workspace is available (even when `AGENT_REQUIRES_WORKSPACE` is also true on other agents that allow auto-create). |
 | `AGENT_CODING_TOOLS_PERMISSION_ASK` | `False` | If true and the client sets `agent_permission_ask`, gated `coding_*` write/bash/patch tools may require a WebSocket `permission_reply` before running. |
-| `AGENT_DEDUPE_IDENTICAL_TOOL_CALLS` | `False` | If true, identical tool+JSON-args repeats in one reply are short-circuited with a dedupe message (loop hygiene). |
 | `AGENT_TOOL_DISCIPLINE_PRESET` | unset | If set to a known preset string, appends the matching discipline block: `coding_plan`, `coding_build`, `security_auditor`. Otherwise the generic tool-usage discipline applies. |
 
 Preset strings map to snippets in `agent.py` (`_TOOL_DISCIPLINE_BY_PRESET`). Add a new preset there **only** when you introduce a new discipline text; new agents otherwise reuse an existing preset key.
@@ -62,7 +61,7 @@ So: **declare domain + capabilities on the tool once**; agents and future orches
 
 ## Current built-in examples
 
-- **Coding / Coding (plan) / Security auditor:** `AGENT_TOOL_DOMAINS = ("coding", "project")` (+ optional `AGENT_TOOL_CAPABILITY_ANY`); plan and security auditor set `AGENT_STRICT_WORKSPACE`, `AGENT_CODING_TOOLS_PERMISSION_ASK`, `AGENT_DEDUPE_IDENTICAL_TOOL_CALLS`, and `AGENT_TOOL_DISCIPLINE_PRESET` as needed (see table above).
+- **Coding / Coding (plan) / Security auditor:** `AGENT_TOOL_DOMAINS = ("coding", "project")` (+ optional `AGENT_TOOL_CAPABILITY_ANY`); plan and security auditor set `AGENT_STRICT_WORKSPACE`, `AGENT_CODING_TOOLS_PERMISSION_ASK`, and `AGENT_TOOL_DISCIPLINE_PRESET` as needed (see table above).
 - **Operator:** `AGENT_TOOL_CAPABILITY_ANY` in `plugins/agents/operator.py`; admin handlers live in `plugins/tools/capabilities/platform/operator_admin.py` with `TOOL_DOMAIN = "operator"` and `operator.console` on each function.
 - **General:** `AGENT_TOOL_PATTERNS` in `plugins/agents/general.py` (broad catalog; domain-only would mix unrelated `meta` tools without finer splits).
 

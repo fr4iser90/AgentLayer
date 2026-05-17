@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { apiFetch, type WorkspaceApiRecord } from "../lib/api";
+import { formatDateTimeLocal } from "../lib/formatDateTime";
 
 type SchedulerJobRow = {
   id: string;
@@ -13,6 +14,39 @@ type SchedulerJobRow = {
   created_at: string;
   instructions?: string;
 };
+
+type SchedulerJobRunSummary = {
+  tools?: Array<{ round?: number; name?: string; ok?: boolean; args?: Record<string, unknown>; error?: string }>;
+  files_changed?: Array<{ path?: string; stat?: string }>;
+  git?: { branch?: string | null; has_changes?: boolean };
+  outcome?: string;
+  final_reply_excerpt?: string;
+  tool_count?: number;
+  duration_ms?: number;
+};
+
+type SchedulerJobRun = {
+  id: string;
+  scheduler_job_id: string;
+  status: "running" | "succeeded" | "partial" | "failed";
+  error: string | null;
+  summary_json: SchedulerJobRunSummary;
+  started_at: string;
+  finished_at: string | null;
+};
+
+function runStatusPill(status: SchedulerJobRun["status"]) {
+  switch (status) {
+    case "succeeded":
+      return "bg-emerald-600/25 text-emerald-200 border-emerald-500/40";
+    case "partial":
+      return "bg-amber-600/25 text-amber-200 border-amber-500/40";
+    case "failed":
+      return "bg-red-600/25 text-red-200 border-red-500/40";
+    default:
+      return "bg-sky-600/25 text-sky-200 border-sky-500/40";
+  }
+}
 
 type CodingWorkflowPreset = {
   agent_id?: "coding" | "coding_plan";
@@ -64,6 +98,12 @@ export function MySchedulesPage() {
   const [editTitle, setEditTitle] = useState("");
   const [editInstructions, setEditInstructions] = useState("");
   const [editInterval, setEditInterval] = useState<number>(60);
+
+  const [runsJob, setRunsJob] = useState<SchedulerJobRow | null>(null);
+  const [runs, setRuns] = useState<SchedulerJobRun[] | null>(null);
+  const [runsLoading, setRunsLoading] = useState(false);
+  const [runsErr, setRunsErr] = useState<string | null>(null);
+  const [selectedRun, setSelectedRun] = useState<SchedulerJobRun | null>(null);
 
   const query = useMemo(() => {
     const q = new URLSearchParams();
@@ -203,6 +243,29 @@ export function MySchedulesPage() {
     await refresh();
   };
 
+  const openRuns = async (j: SchedulerJobRow) => {
+    setRunsJob(j);
+    setRuns(null);
+    setSelectedRun(null);
+    setRunsErr(null);
+    setRunsLoading(true);
+    try {
+      const res = await apiFetch(`/v1/user/scheduler-jobs/${j.id}/runs?limit=25`, auth);
+      const body = (await res.json().catch(() => null)) as { ok?: boolean; runs?: SchedulerJobRun[]; detail?: string };
+      if (!res.ok || !body?.ok) {
+        setRunsErr(String(body?.detail ?? res.status));
+        setRuns([]);
+      } else {
+        setRuns(Array.isArray(body.runs) ? body.runs : []);
+      }
+    } catch (e) {
+      setRunsErr(String(e));
+      setRuns([]);
+    } finally {
+      setRunsLoading(false);
+    }
+  };
+
   const createJob = async () => {
     setErr(null);
     const wf: Record<string, string> = {};
@@ -313,8 +376,8 @@ export function MySchedulesPage() {
                   <td className="px-3 py-3 text-neutral-100">{j.title || "—"}</td>
                   <td className="px-3 py-3 text-neutral-100">{j.interval_minutes} min</td>
                   <td className="px-3 py-3 font-mono text-xs text-surface-muted">{j.dashboard_id || "global"}</td>
-                  <td className="px-3 py-3 font-mono text-xs text-surface-muted">{j.last_run_at || "—"}</td>
-                  <td className="px-3 py-3 font-mono text-xs text-surface-muted">{j.created_at}</td>
+                  <td className="px-3 py-3 text-xs text-surface-muted">{formatDateTimeLocal(j.last_run_at)}</td>
+                  <td className="px-3 py-3 text-xs text-surface-muted">{formatDateTimeLocal(j.created_at)}</td>
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-2">
                       <button
@@ -324,6 +387,15 @@ export function MySchedulesPage() {
                       >
                         {j.enabled ? "Disable" : "Enable"}
                       </button>
+                      {j.execution_target === "coding_agent" ? (
+                        <button
+                          type="button"
+                          className="rounded-md border border-surface-border px-2 py-1 text-xs text-neutral-100 hover:bg-white/5"
+                          onClick={() => void openRuns(j)}
+                        >
+                          Runs
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         className="rounded-md border border-surface-border px-2 py-1 text-xs text-neutral-100 hover:bg-white/5"
@@ -571,6 +643,156 @@ export function MySchedulesPage() {
               >
                 Save
               </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {runsJob ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-xl border border-surface-border bg-surface-raised p-4">
+            <div className="mb-3 flex shrink-0 items-start justify-between gap-3">
+              <div>
+                <div className="text-lg font-semibold text-white">Run history</div>
+                <div className="text-sm text-surface-muted">{runsJob.title || "Untitled"}</div>
+                <div className="font-mono text-[11px] text-surface-muted">{runsJob.id}</div>
+              </div>
+              <button
+                type="button"
+                className="rounded-md border border-surface-border px-3 py-1.5 text-xs text-neutral-100 hover:bg-white/5"
+                onClick={() => {
+                  setRunsJob(null);
+                  setSelectedRun(null);
+                }}
+              >
+                Close
+              </button>
+            </div>
+
+            {runsErr ? (
+              <div className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-100">{runsErr}</div>
+            ) : null}
+
+            <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-2">
+              <div className="min-h-0 overflow-auto rounded-lg border border-surface-border">
+                <table className="min-w-full text-left text-xs">
+                  <thead className="sticky top-0 bg-surface-raised text-surface-muted">
+                    <tr>
+                      <th className="px-2 py-2">Status</th>
+                      <th className="px-2 py-2">Started</th>
+                      <th className="px-2 py-2">Tools</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-surface-border">
+                    {runsLoading ? (
+                      <tr>
+                        <td className="px-2 py-3 text-surface-muted" colSpan={3}>
+                          Loading…
+                        </td>
+                      </tr>
+                    ) : !runs?.length ? (
+                      <tr>
+                        <td className="px-2 py-3 text-surface-muted" colSpan={3}>
+                          No runs recorded yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      runs.map((r) => (
+                        <tr
+                          key={r.id}
+                          className={`cursor-pointer hover:bg-white/5 ${selectedRun?.id === r.id ? "bg-white/10" : ""}`}
+                          onClick={() => setSelectedRun(r)}
+                        >
+                          <td className="px-2 py-2">
+                            <span
+                              className={`inline-flex rounded-full border px-2 py-0.5 ${runStatusPill(r.status)}`}
+                            >
+                              {r.status}
+                            </span>
+                          </td>
+                          <td className="px-2 py-2 text-[10px] text-surface-muted">
+                            {formatDateTimeLocal(r.started_at)}
+                          </td>
+                          <td className="px-2 py-2 text-surface-muted">
+                            {r.summary_json?.tool_count ?? r.summary_json?.tools?.length ?? 0}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="min-h-0 overflow-auto rounded-lg border border-surface-border p-3 text-xs">
+                {!selectedRun ? (
+                  <p className="text-surface-muted">Select a run to see tools, changed files, and summary.</p>
+                ) : (
+                  <div className="space-y-3">
+                    <div>
+                      <span className={`inline-flex rounded-full border px-2 py-0.5 ${runStatusPill(selectedRun.status)}`}>
+                        {selectedRun.status}
+                      </span>
+                      {selectedRun.summary_json?.outcome ? (
+                        <span className="ml-2 text-surface-muted">({selectedRun.summary_json.outcome})</span>
+                      ) : null}
+                      {selectedRun.summary_json?.duration_ms != null ? (
+                        <span className="ml-2 text-surface-muted">
+                          {Math.round(selectedRun.summary_json.duration_ms / 1000)}s
+                        </span>
+                      ) : null}
+                    </div>
+                    {selectedRun.error ? (
+                      <div className="rounded border border-red-500/30 bg-red-500/10 p-2 text-red-100">{selectedRun.error}</div>
+                    ) : null}
+                    {selectedRun.summary_json?.git ? (
+                      <div>
+                        <div className="font-medium text-neutral-200">Git</div>
+                        <div className="text-surface-muted">
+                          branch: {selectedRun.summary_json.git.branch || "—"} · changes:{" "}
+                          {selectedRun.summary_json.git.has_changes ? "yes" : "no"}
+                        </div>
+                      </div>
+                    ) : null}
+                    {(selectedRun.summary_json?.files_changed?.length ?? 0) > 0 ? (
+                      <div>
+                        <div className="font-medium text-neutral-200">Changed files</div>
+                        <ul className="mt-1 space-y-0.5 font-mono text-[11px] text-surface-muted">
+                          {selectedRun.summary_json.files_changed!.map((f) => (
+                            <li key={f.path}>
+                              {f.path} {f.stat ? `| ${f.stat}` : ""}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                    {(selectedRun.summary_json?.tools?.length ?? 0) > 0 ? (
+                      <div>
+                        <div className="font-medium text-neutral-200">Tools</div>
+                        <ul className="mt-1 max-h-48 space-y-1 overflow-auto font-mono text-[11px]">
+                          {selectedRun.summary_json.tools!.map((t, i) => (
+                            <li
+                              key={`${t.round}-${t.name}-${i}`}
+                              className={t.ok ? "text-emerald-200/90" : "text-red-200/90"}
+                            >
+                              r{t.round} {t.name}
+                              {t.args?.path ? ` path=${String(t.args.path)}` : ""}
+                              {t.error ? ` — ${t.error}` : ""}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                    {selectedRun.summary_json?.final_reply_excerpt ? (
+                      <div>
+                        <div className="font-medium text-neutral-200">Reply excerpt</div>
+                        <pre className="mt-1 whitespace-pre-wrap rounded bg-black/30 p-2 text-[11px] text-surface-muted">
+                          {selectedRun.summary_json.final_reply_excerpt}
+                        </pre>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
