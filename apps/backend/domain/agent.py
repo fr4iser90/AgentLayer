@@ -1940,6 +1940,30 @@ _CATALOG_PARAM_HINT = (
 )
 
 
+def _full_schema_tool_function(name: str, fn: dict[str, Any]) -> dict[str, Any]:
+    """OpenAI tools[] entry with registry ``parameters`` (required for unattended / schedule runs)."""
+    desc = (fn.get("TOOL_DESCRIPTION") or fn.get("description") or "").strip()
+    cand = fn.get("parameters")
+    if isinstance(cand, dict) and cand.get("properties"):
+        params: dict[str, Any] = copy.deepcopy(cand)
+        if "type" not in params:
+            params["type"] = "object"
+    else:
+        params = {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": True,
+        }
+    return {
+        "type": "function",
+        "function": {
+            "name": name,
+            "description": desc,
+            "parameters": params,
+        },
+    }
+
+
 def _catalog_tool_function(name: str, fn: dict[str, Any]) -> dict[str, Any]:
     """Small tools[] entry: TOOL_LABEL + TOOL_DESCRIPTION hint; minimal parameters (never full domain schemas)."""
     desc = (fn.get("TOOL_DESCRIPTION") or "").strip()
@@ -1993,13 +2017,18 @@ def _catalog_tool_function(name: str, fn: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _tools_for_chat_request(merged_tools: list[Any]) -> list[Any]:
+def _tools_for_chat_request(
+    merged_tools: list[Any],
+    *,
+    full_schema: bool = False,
+) -> list[Any]:
     """
-    Build tools[] for Ollama: **nur Katalog-Einträge** (Name, Kurzbeschreibung, minimale parameters).
+    Build tools[] for the LLM request.
 
-    **Volles** JSON-Schema für ein Domänen-Tool gibt es **nicht** in ``tools[]`` — nur in der
-    **Tool-Antwort** von ``get_tool_help(tool_name)`` (stufenweise Erkundung).
+    Default (**full_schema=False**): compact catalog (name + hint; empty ``parameters``).
+    **full_schema=True**: registry JSON Schema per tool (used for unattended schedules).
     """
+    builder = _full_schema_tool_function if full_schema else _catalog_tool_function
     out: list[Any] = []
     for spec in merged_tools:
         if not isinstance(spec, dict):
@@ -2010,7 +2039,7 @@ def _tools_for_chat_request(merged_tools: list[Any]) -> list[Any]:
         if not name or not isinstance(fn, dict):
             out.append(spec)
             continue
-        out.append(_catalog_tool_function(name, fn))
+        out.append(builder(name, fn))
     return out
 
 
@@ -2894,6 +2923,7 @@ async def chat_completion(
         parent_agent_run_id = None
     permission_ask = _coerce_body_bool(body.pop("agent_permission_ask", None), False)
     agent_unattended = _coerce_body_bool(body.pop("agent_unattended", None), False)
+    tools_full_schema = _coerce_body_bool(body.pop("agent_tools_full_schema", None), False)
     if agent_unattended:
         permission_ask = False
     agent_require_workspace_verify = _coerce_body_bool(
@@ -3271,8 +3301,15 @@ async def chat_completion(
             except Exception:
                 logger.warning("MCP tool discovery failed", exc_info=True)
 
-        # Stufenweise Erkundung: tools[] immer nur Katalog — volles Schema nur via get_tool_help-Antwort.
-        tools_for_request = _tools_for_chat_request(merged_tools)
+        if not tools_full_schema and agent_unattended and _raw_tool_allow:
+            tools_full_schema = True
+        tools_for_request = _tools_for_chat_request(merged_tools, full_schema=tools_full_schema)
+        if tools_full_schema and tools_for_request:
+            logger.info(
+                "tools request: full parameter schemas for %d tools (agent_unattended=%s)",
+                len(tools_for_request),
+                agent_unattended,
+            )
         if config.AGENT_TOOLS_DENYLIST:
             deny = config.AGENT_TOOLS_DENYLIST
             tools_for_request = [
@@ -3358,7 +3395,7 @@ async def chat_completion(
                 sp = _registry_tool_spec_by_registered_name(nn)
                 if not sp:
                     continue
-                slim = _tools_for_chat_request([sp])
+                slim = _tools_for_chat_request([sp], full_schema=tools_full_schema)
                 if slim:
                     tools_for_request.append(slim[0])
                     existing.add(nn)

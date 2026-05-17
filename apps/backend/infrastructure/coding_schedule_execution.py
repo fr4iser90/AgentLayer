@@ -38,6 +38,7 @@ CODING_SCHEDULE_TOOL_ALLOWLIST: tuple[str, ...] = (
     "coding_glob",
     "coding_bash",
     "coding_workspace_verify",
+    "get_tool_help",
 )
 
 _WRITE_TOOLS = frozenset(
@@ -143,6 +144,8 @@ def _schedule_user_message(*, title: str | None) -> str:
         "Run this scheduled coding task now.",
         "Execute the system instructions in order: git pull (ff-only), update docs/MAINTENANCE_REPORT.md, "
         "then apply limited doc/README edits in the workspace.",
+        "For every tool call, pass a JSON object with all required fields from the tool schema "
+        "(e.g. coding_write_file: {\"path\": \"docs/MAINTENANCE_REPORT.md\", \"content\": \"...\"}).",
     ]
     if title:
         lines.append(f"Job title: {title}")
@@ -342,6 +345,7 @@ async def run_coding_schedule_row(
         # Background schedules have no WebSocket control_queue — never gate on permission UI.
         "agent_permission_ask": False,
         "agent_unattended": True,
+        "agent_tools_full_schema": True,
         "agent_tool_name_allowlist": list(CODING_SCHEDULE_TOOL_ALLOWLIST),
         "agent_tools_ranking_enabled": False,
         **llm_fields,
