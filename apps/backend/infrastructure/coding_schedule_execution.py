@@ -17,6 +17,13 @@ from apps.backend.domain.schedule_run_context import (
     reset_schedule_run_collection,
 )
 from apps.backend.infrastructure.coding_workflow import workflow_from_row
+from apps.backend.infrastructure.doc_maintenance import (
+    DOC_PROFILE_PATH,
+    REPORT_PATH,
+    build_doc_maintenance_instructions,
+    mode_summary_line,
+    parse_doc_maintenance_mode,
+)
 from apps.backend.infrastructure.db import db
 
 logger = logging.getLogger(__name__)
@@ -39,6 +46,13 @@ CODING_SCHEDULE_TOOL_ALLOWLIST: tuple[str, ...] = (
     "coding_bash",
     "coding_workspace_verify",
     "get_tool_help",
+)
+
+SECURITY_SCAN_TOOL_NAMES: tuple[str, ...] = (
+    "security_scan_list",
+    "security_scan_start",
+    "security_scan_get",
+    "security_scan_findings",
 )
 
 _WRITE_TOOLS = frozenset(
@@ -139,14 +153,38 @@ def _extract_assistant_text(data: dict[str, Any]) -> str:
     return c.strip() if isinstance(c, str) else ""
 
 
-def _schedule_user_message(*, title: str | None) -> str:
+def _resolve_doc_maintenance_instructions(
+    *,
+    workflow: dict[str, Any],
+    title: str | None,
+    stored_instructions: str,
+) -> tuple[str, str | None]:
+    """
+    Return (instructions, mode) for doc maintenance jobs.
+
+    When ``coding_workflow.doc_maintenance_mode`` is set, use canonical template.
+    Otherwise for detected doc jobs, prepend mode preamble to stored instructions.
+    """
+    mode = parse_doc_maintenance_mode(workflow)
+    explicit = workflow.get("doc_maintenance_mode") is not None
+    if explicit:
+        return build_doc_maintenance_instructions(mode), mode
+    if _is_doc_maintenance_job(title, stored_instructions):
+        preamble = mode_summary_line(mode) + f"\nRead/update `{DOC_PROFILE_PATH}` when present.\n\n"
+        return preamble + stored_instructions, mode
+    return stored_instructions, None
+
+
+def _schedule_user_message(*, title: str | None, doc_mode: str | None = None) -> str:
     lines = [
         "Run this scheduled coding task now.",
-        "Execute the system instructions in order: git pull (ff-only), update docs/MAINTENANCE_REPORT.md, "
-        "then apply limited doc/README edits in the workspace.",
+        f"Execute the system instructions in order: git pull (ff-only), update `{REPORT_PATH}`, "
+        f"update `{DOC_PROFILE_PATH}` after inventory, then apply limited doc/README edits.",
         "For every tool call, pass a JSON object with all required fields from the tool schema "
-        "(e.g. coding_write_file: {\"path\": \"docs/MAINTENANCE_REPORT.md\", \"content\": \"...\"}).",
+        '(e.g. coding_write_file: {"path": "docs/MAINTENANCE_REPORT.md", "content": "..."}).',
     ]
+    if doc_mode:
+        lines.append(f"Doc maintenance mode: {doc_mode}")
     if title:
         lines.append(f"Job title: {title}")
     return "\n".join(lines)
@@ -173,6 +211,32 @@ def _workspace_disk_path(ws_id: uuid.UUID, user_id: uuid.UUID) -> Path | None:
 def _is_doc_maintenance_job(title: str | None, instructions: str) -> bool:
     blob = f"{title or ''}\n{instructions}".lower()
     return "doc maintenance" in blob or "docs/maintenance_report" in blob
+
+
+def _is_security_remediation_job(
+    title: str | None, instructions: str, workflow: dict[str, Any]
+) -> bool:
+    if workflow.get("security_scan"):
+        return True
+    blob = f"{title or ''}\n{instructions}".lower()
+    return (
+        "security remediation" in blob
+        or "security_remediation" in blob
+        or "simplesec" in blob
+        or "security_scan_start" in blob
+        or "docs/security_report" in blob
+    )
+
+
+def _schedule_tool_allowlist(
+    workflow: dict[str, Any], title: str | None, instructions: str
+) -> list[str]:
+    names = list(CODING_SCHEDULE_TOOL_ALLOWLIST)
+    if _is_security_remediation_job(title, instructions, workflow):
+        for t in SECURITY_SCAN_TOOL_NAMES:
+            if t not in names:
+                names.append(t)
+    return names
 
 
 def _evaluate_run_status(
@@ -220,12 +284,15 @@ def _evaluate_run_status(
         for t in tools
     )
     has_git_changes = bool(git_summary and git_summary.get("has_changes"))
-    report_touched = "docs/MAINTENANCE_REPORT.md" in doc_paths or any(
+    report_touched = REPORT_PATH in doc_paths or any(
         p.endswith("MAINTENANCE_REPORT.md") for p in doc_paths
+    )
+    profile_touched = DOC_PROFILE_PATH in doc_paths or any(
+        p.endswith("DOC_PROFILE.md") for p in doc_paths
     )
 
     if is_doc_job:
-        if has_git_changes or report_touched or doc_write_ok:
+        if has_git_changes or report_touched or profile_touched or doc_write_ok:
             return "succeeded", "docs_touched"
         return "partial", "no_doc_changes"
 
@@ -300,11 +367,16 @@ async def run_coding_schedule_row(
         )
 
     title = (str(row.get("title") or "").strip()) or None
-    instr = str(row.get("instructions") or "").strip()
-    if not instr:
+    stored_instr = str(row.get("instructions") or "").strip()
+    if not stored_instr:
         return False, "empty instructions"
 
-    is_doc_job = _is_doc_maintenance_job(title, instr)
+    instr, doc_mode = _resolve_doc_maintenance_instructions(
+        workflow=wf,
+        title=title,
+        stored_instructions=stored_instr,
+    )
+    is_doc_job = _is_doc_maintenance_job(title, instr) or doc_mode is not None
     run_row: dict[str, Any] | None = None
     run_id: uuid.UUID | None = None
     if job_id is not None and row_kind == "scheduler_job":
@@ -336,7 +408,7 @@ async def run_coding_schedule_row(
     body: dict[str, Any] = {
         "messages": [
             {"role": "system", "content": sys_prompt},
-            {"role": "user", "content": _schedule_user_message(title=title)},
+            {"role": "user", "content": _schedule_user_message(title=title, doc_mode=doc_mode)},
         ],
         "stream": False,
         "agent_id": agent_id,
@@ -346,7 +418,7 @@ async def run_coding_schedule_row(
         "agent_permission_ask": False,
         "agent_unattended": True,
         "agent_tools_full_schema": True,
-        "agent_tool_name_allowlist": list(CODING_SCHEDULE_TOOL_ALLOWLIST),
+        "agent_tool_name_allowlist": _schedule_tool_allowlist(wf, title, instr),
         "agent_tools_ranking_enabled": False,
         **llm_fields,
     }

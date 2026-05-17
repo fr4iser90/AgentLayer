@@ -26,6 +26,7 @@ Use **only** tools listed in **tools[]**. Typical mapping:
 
 | Intent | Tools (when present) |
 |--------|----------------------|
+| **Scan (SimpleSecCheck)** | ``security_scan_start``, ``security_scan_get``, ``security_scan_findings``, ``security_scan_list`` (needs ``ssc_api_key`` or ``SSC_API_KEY``) |
 | **Explore** | ``coding_list_dir``, ``coding_glob``, ``coding_read_file``, ``coding_search``, ``coding_semantic_search``, ``coding_symbols``, ``coding_index``, ``coding_git_read`` |
 | **Explain** | ``project_explain`` |
 | **Verify** | ``coding_workspace_verify`` when a verify command is configured |
@@ -45,7 +46,7 @@ Valid JSON for every tool call. Reuse prior tool output; do not repeat identical
 **Safety:** never run commands intended to damage the host or data (e.g. ``rm -rf /``).
 """
 AGENT_TOOL_DOMAIN = "coding"
-AGENT_TOOL_DOMAINS: tuple[str, ...] = ("coding", "project")
+AGENT_TOOL_DOMAINS: tuple[str, ...] = ("coding", "project", "security_scan")
 AGENT_TOOL_CAPABILITY_ANY: tuple[str, ...] = ("knowledge.retrieve",)
 AGENT_REQUIRES_WORKSPACE = True
 AGENT_EXECUTION_CONTEXT = "container"

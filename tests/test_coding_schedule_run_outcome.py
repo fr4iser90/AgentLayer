@@ -6,9 +6,11 @@ from apps.backend.infrastructure import coding_schedule_execution as mod
 
 
 def test_schedule_user_message_includes_doc_hints() -> None:
-    msg = mod._schedule_user_message(title="Doc maintenance")
+    msg = mod._schedule_user_message(title="Doc maintenance", doc_mode="respect")
     assert "MAINTENANCE_REPORT" in msg
+    assert "DOC_PROFILE" in msg
     assert "Doc maintenance" in msg
+    assert "respect" in msg
 
 
 def test_evaluate_doc_job_succeeded_on_git_changes() -> None:

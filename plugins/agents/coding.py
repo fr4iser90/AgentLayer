@@ -76,7 +76,7 @@ For multiple approaches with real trade-offs, you may use the product’s ```jso
 """
 AGENT_TOOL_DOMAIN = "coding"
 # Resolved from tool-registry metadata (``TOOL_DOMAIN`` on each tool module) — no name patterns to update.
-AGENT_TOOL_DOMAINS: tuple[str, ...] = ("coding", "project")
+AGENT_TOOL_DOMAINS: tuple[str, ...] = ("coding", "project", "security_scan")
 AGENT_REQUIRES_WORKSPACE = True
 AGENT_EXECUTION_CONTEXT = "container"
 AGENT_MIN_ROLE = "user"

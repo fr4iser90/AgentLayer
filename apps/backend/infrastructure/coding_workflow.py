@@ -14,6 +14,8 @@ _ALLOWED_KEYS = frozenset(
         "prompt_preamble",
         "model",
         "model_catalog_owned_by",
+        "doc_maintenance_mode",
+        "security_scan",
     }
 )
 _VALID_AGENT_IDS = frozenset({"coding", "coding_plan"})
@@ -114,6 +116,16 @@ def normalize_coding_workflow(raw: Any, *, require_workspace: bool = False) -> d
 
     if raw.get("model") is not None and str(raw.get("model")).strip():
         out["model"] = str(raw["model"]).strip()[:256]
+
+    if raw.get("doc_maintenance_mode") is not None:
+        from apps.backend.infrastructure.doc_maintenance import normalize_doc_maintenance_mode_value
+
+        dm = normalize_doc_maintenance_mode_value(raw.get("doc_maintenance_mode"))
+        if dm:
+            out["doc_maintenance_mode"] = dm
+
+    if raw.get("security_scan") is not None:
+        out["security_scan"] = bool(raw.get("security_scan"))
 
     if raw.get("model_catalog_owned_by") is not None and str(raw.get("model_catalog_owned_by")).strip():
         from apps.backend.infrastructure.operator_settings import normalize_model_catalog_owned_by

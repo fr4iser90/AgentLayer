@@ -72,6 +72,8 @@ def build_otp_curl_payload(service_key: str, ttl_seconds: int = 600) -> dict[str
         secret_blob = '{"email":"du@gmail.com","app_password":"DEIN_APP_PASSWORT"}'
     elif raw_svc == "github_pat":
         secret_blob = '{"token":"DEIN_GITHUB_PAT_ODER_github_pat_xxx"}'
+    elif raw_svc == "ssc_api_key":
+        secret_blob = '{"token":"ssc_DEIN_API_KEY"}'
     elif raw_svc == "calendar_ics":
         secret_blob = '{"ics_url":"https://DEINE_CLOUD/.../calendar.ics"}'
     elif raw_svc == "google_calendar":

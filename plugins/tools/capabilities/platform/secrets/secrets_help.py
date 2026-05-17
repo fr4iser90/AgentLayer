@@ -48,6 +48,11 @@ def secrets_help(arguments: dict[str, Any]) -> str:
         hints.append(
             'GitHub: `service_key` **`github_pat`** — JSON `{"token":"ghp_…"}` (oder nur den Token-String). Operator kann stattdessen `GITHUB_TOKEN` in docker/.env setzen.'
         )
+    if topic in ("ssc", "simplesec", "simple_sec", "security_scan", "scan"):
+        hints.append(
+            'SimpleSecCheck: `service_key` **`ssc_api_key`** — API-Key aus https://scan.fr4iser.com → API Keys (`ssc_…`). '
+            "Operator alternativ: `SSC_API_KEY` und optional `SSC_BASE_URL` in docker/.env."
+        )
     if topic in ("calendar", "ics", "caldav", "nextcloud"):
         hints.append(
             'Kalender read-only: **`calendar_ics`** oder **`google_calendar`** (gleiches JSON `{"ics_url":"https://…"}`). '

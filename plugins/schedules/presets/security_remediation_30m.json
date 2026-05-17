@@ -1,0 +1,17 @@
+{
+  "id": "security_remediation_30m",
+  "label": "Security remediation (SimpleSecCheck + coding, 30 min)",
+  "description": "Run SimpleSecCheck on the workspace repo, write docs/SECURITY_REPORT.md, fix up to 5 findings on agent/sec-* branch. Requires ssc_api_key (user secret) or SSC_API_KEY in .env. No git push by default.",
+  "job": {
+    "execution_target": "coding_agent",
+    "interval_minutes": 30,
+    "enabled": false,
+    "title": "Security remediation",
+    "instructions": "Scheduled security remediation for THIS workspace.\n\n## Phase 0 — Git\n1. coding_git_read; if dirty tree and not on agent/* branch → log to docs/SECURITY_REPORT.md and STOP.\n2. coding_git_sync pull (ff-only). On failure → log and STOP.\n3. coding_bash: checkout -b agent/sec-YYYYMMDD (today's date).\n\n## Phase 1 — Scan\n1. security_scan_start (uses workspace git URL if repo_url omitted).\n2. Poll security_scan_get until status is completed or failed.\n3. security_scan_findings → append summary to docs/SECURITY_REPORT.md (severity, rule_id, path).\n4. If scan failed, STOP after logging.\n\n## Phase 2 — Fix (limits)\n- Address at most **5** findings (highest severity first).\n- Touch at most **10** files; prefer minimal patches.\n- No dependency major bumps unless required for a CVE fix.\n- No git push.\n\n## Phase 3 — Close\n1. coding_workspace_verify if configured.\n2. Append Done/Blocked to docs/SECURITY_REPORT.md.\n3. Plain-text reply: scan_id, branch, files changed, remaining findings count.\n\nNotify the user in the final reply that they should review the branch and merge; Telegram/Discord outbound is not automatic yet.",
+    "coding_workflow": {
+      "agent_id": "coding",
+      "security_scan": true,
+      "prompt_preamble": "Authorized security remediation on owned repos only. Use SimpleSecCheck tools for scan truth; do not invent findings."
+    }
+  }
+}

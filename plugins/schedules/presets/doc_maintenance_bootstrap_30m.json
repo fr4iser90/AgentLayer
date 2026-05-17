@@ -1,0 +1,17 @@
+{
+  "id": "doc_maintenance_bootstrap_30m",
+  "label": "Doc maintenance — bootstrap (30 min)",
+  "description": "Same as doc maintenance but may create minimal docs/README.md, docs/CONVENTIONS.md, docs/DOC_PROFILE.md when missing (max 3 new files per run). Use only when you want a light standard layout in an empty repo.",
+  "job": {
+    "execution_target": "coding_agent",
+    "interval_minutes": 30,
+    "enabled": false,
+    "title": "Doc maintenance",
+    "instructions": "See coding_workflow.doc_maintenance_mode — instructions are generated server-side (bootstrap).",
+    "coding_workflow": {
+      "agent_id": "coding",
+      "doc_maintenance_mode": "bootstrap",
+      "prompt_preamble": "Bootstrap mode: add minimal doc skeleton only where missing; never replace an existing doc system."
+    }
+  }
+}

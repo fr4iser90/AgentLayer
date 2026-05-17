@@ -10,6 +10,9 @@ This folder is written for **humans** and for **RAG ingestion**.
 
 ### Principles (RAG-friendly)
 
+- **Conventions:** [`docs/CONVENTIONS.md`](./CONVENTIONS.md) — layout, style, scheduler doc modes (`respect` / `bootstrap`).
+- **Doc profile (agent memory):** [`docs/DOC_PROFILE.md`](./DOC_PROFILE.md) — doc roots and inventory; updated by doc maintenance schedules.
+
 - **Small, self-contained sections**: each section should answer *one* question.
 - **Stable headings**: use consistent `##` sections across pages.
 - **Concrete anchors**: always include file paths, function names, and endpoint paths.

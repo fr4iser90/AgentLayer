@@ -1,15 +1,16 @@
 {
   "id": "doc_maintenance_30m",
   "label": "Doc maintenance (coding agent, 30 min)",
-  "description": "Git ff-only pull, then documentation gaps in this workspace. Wähle unten den Project-Workspace im Dropdown. Worker muss unter Admin → Interfaces aktiv sein. Job startet disabled — nach Workspace-Auswahl auf Enabled stellen.",
+  "description": "Per-workspace doc upkeep: respect existing layout (default) or optional bootstrap. Uses docs/DOC_PROFILE.md as project memory and docs/MAINTENANCE_REPORT.md per run. Pick workspace in dropdown; enable job after selection.",
   "job": {
     "execution_target": "coding_agent",
     "interval_minutes": 30,
     "enabled": false,
     "title": "Doc maintenance",
-    "instructions": "Scheduled documentation maintenance for THIS workspace only.\n\n## Phase 0 — Git (required first)\n1. coding_git_read: inspect git status.\n2. If working tree is NOT clean and current branch is NOT named agent/*: append reason to docs/MAINTENANCE_REPORT.md and STOP (no pull, no doc edits).\n3. coding_git_sync with operation pull (fast-forward only). On failure: log to docs/MAINTENANCE_REPORT.md and STOP.\n4. Create or checkout branch agent/doc-MAINT (use today's date in branch name via coding_bash). Do not commit on main/master.\n\n## Phase 1 — Inventory (read-only)\n1. Read docs/CONVENTIONS.md if it exists.\n2. Survey docs/** and README; list up to 5 highest-impact documentation gaps.\n3. Append Inventory section to docs/MAINTENANCE_REPORT.md.\n\n## Phase 2 — Edits (limits)\n- Fix at most 3 gaps from the inventory.\n- Touch at most 8 files total.\n- Only docs/ and root README.md.\n- No src/tests refactors, no dependency bumps, no git push.\n\n## Phase 3 — Close\n1. Run coding_workspace_verify if configured for this workspace.\n2. Append Done or Blocked summary to docs/MAINTENANCE_REPORT.md.\n3. Reply with a short plain-text summary (branch, files changed, verify result).",
+    "instructions": "See coding_workflow.doc_maintenance_mode — instructions are generated server-side (respect | bootstrap).",
     "coding_workflow": {
       "agent_id": "coding",
+      "doc_maintenance_mode": "respect",
       "prompt_preamble": "Conservative scheduled doc maintenance. Prefer small, accurate doc edits. Stop early if git pull fails or tree is dirty."
     }
   }
