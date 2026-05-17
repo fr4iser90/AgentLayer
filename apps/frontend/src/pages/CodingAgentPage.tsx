@@ -471,6 +471,7 @@ export function CodingAgentPage() {
   const [sessionRuntime, setSessionRuntime] = useState<SessionRuntimePayload | null>(null);
   const [tokenUsage, setTokenUsage] = useState<TokenUsageTotals>(() => emptyTokenUsage());
   const [showWorkspaceMcpModal, setShowWorkspaceMcpModal] = useState(false);
+  const [changesRefreshKey, setChangesRefreshKey] = useState(0);
 
   const setImplBranchPreference = useCallback(
     (v: ImplBranchPreference) => {
@@ -959,6 +960,7 @@ export function CodingAgentPage() {
       finished = true;
       setLoading(false);
       setPermAsk(null);
+      setChangesRefreshKey((k) => k + 1);
       const id = activeThreadIdRef.current;
       if (id) {
         setThreads((prev) => {
@@ -1830,7 +1832,11 @@ export function CodingAgentPage() {
             ) : null}
 
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-              <CodingWorkspacePanels auth={auth} workspaceId={selectedWorkspaceId} />
+              <CodingWorkspacePanels
+                auth={auth}
+                workspaceId={selectedWorkspaceId}
+                changesRefreshKey={changesRefreshKey}
+              />
 
               <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                 {userTurns.length > 0 ? (

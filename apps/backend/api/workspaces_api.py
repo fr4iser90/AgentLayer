@@ -248,6 +248,34 @@ async def workspace_run_index(
     }
 
 
+@router.get("/{workspace_id}/git/changes")
+async def workspace_git_changes(
+    request: Request,
+    workspace_id: str,
+    path: str | None = Query(
+        default=None,
+        max_length=4096,
+        description="Optional relative file path; when set, response includes unified diff for that file",
+    ),
+):
+    """Read-only working-tree change summary (``git status`` / ``diff --stat``) and optional per-file diff."""
+    from apps.backend.infrastructure.workspace_git import (
+        workspace_git_changes_summary,
+        workspace_git_file_diff,
+    )
+
+    root_disk, _row = await _workspace_root_path_row(request, workspace_id)
+    summary = workspace_git_changes_summary(root_disk)
+    if not summary.get("is_git_repo"):
+        raise HTTPException(status_code=400, detail=str(summary.get("error") or "not a git repository"))
+    if path and str(path).strip():
+        file_diff = workspace_git_file_diff(root_disk, path)
+        if not file_diff.get("ok") and file_diff.get("error"):
+            raise HTTPException(status_code=400, detail=str(file_diff.get("error")))
+        return {**summary, **{k: file_diff[k] for k in ("path", "diff", "diff_truncated") if k in file_diff}}
+    return summary
+
+
 @router.post("/{workspace_id}/git/implementation-branch")
 async def create_implementation_branch(request: Request, workspace_id: str, body: ImplementationBranchBody):
     """Create ``agent/impl-<slug>`` from a local (or ``origin/<name>``) base ref; then check it out."""
