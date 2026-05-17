@@ -1,0 +1,16 @@
+{
+  "id": "coverage_maintenance_30m",
+  "label": "Test coverage maintenance (coding agent, 30 min)",
+  "description": "Git ff-only pull, then targeted tests for low-coverage areas. Project-Workspace im Dropdown wählen. Worker unter Admin → Interfaces aktivieren. Job zuerst disabled anlegen, dann enablen.",
+  "job": {
+    "execution_target": "coding_agent",
+    "interval_minutes": 30,
+    "enabled": false,
+    "title": "Coverage maintenance",
+    "instructions": "Scheduled test-coverage maintenance for THIS workspace only.\n\n## Phase 0 — Git (required first)\n1. coding_git_read: git status.\n2. If working tree is NOT clean and not on agent/* branch: log to docs/MAINTENANCE_REPORT.md and STOP.\n3. coding_git_sync pull (ff-only). On failure: STOP.\n4. Branch agent/coverage-MAINT (date in name). No push.\n\n## Phase 1 — Measure\n1. Read docs/CONVENTIONS.md or docs/COVERAGE.md if present.\n2. Run coding_workspace_verify OR pytest with coverage via coding_bash.\n3. List up to 5 lowest-coverage critical modules in docs/MAINTENANCE_REPORT.md.\n\n## Phase 2 — Tests (limits)\n- Add or extend tests only for critical paths from inventory.\n- Max 3 test files, max 12 new test cases.\n- No production behavior changes except minimal testability fixes.\n\n## Phase 3 — Close\n1. Re-run verify/coverage command.\n2. Update docs/MAINTENANCE_REPORT.md with results.\n3. Short plain-text summary.",
+    "coding_workflow": {
+      "agent_id": "coding",
+      "prompt_preamble": "Scheduled coverage maintenance. Do not add trivial or generated-file tests. Stop if git is not clean."
+    }
+  }
+}

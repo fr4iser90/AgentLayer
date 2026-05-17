@@ -6,7 +6,6 @@ import logging
 import uuid
 from typing import Any
 
-from apps.backend.core.config import config
 from apps.backend.domain.agent import WorkspaceAccessDenied, chat_completion
 from apps.backend.domain.identity import reset_identity, set_identity
 from apps.backend.infrastructure.coding_workflow import workflow_from_row
@@ -15,6 +14,74 @@ from apps.backend.infrastructure.db import db
 logger = logging.getLogger(__name__)
 
 _MAX_INSTRUCTIONS = 31_000
+_SCHEDULE_MODEL_PROFILE = "coding"
+_SCHEDULE_PROVIDER_ORDER = ("llama_cpp", "ollama")
+
+
+def _provider_configured(provider_id: str) -> bool:
+    from apps.backend.infrastructure.model_catalog_providers import get_provider_spec
+
+    spec = get_provider_spec(provider_id)
+    return spec is not None and bool(spec.base_url.strip())
+
+
+def _pick_schedule_catalog_provider() -> str | None:
+    """
+    Prefer a reachable coding stack for background jobs (llama.cpp before Ollama).
+
+    Falls back to the first configured provider when health probes fail.
+    Override with env ``AGENT_SCHEDULE_LLM_PROVIDER`` (e.g. ``ollama`` when only Ollama is up).
+    """
+    import os
+
+    from apps.backend.infrastructure.model_catalog_providers import fetch_full_model_catalog
+    from apps.backend.infrastructure.operator_settings import normalize_model_catalog_owned_by
+
+    raw = (os.environ.get("AGENT_SCHEDULE_LLM_PROVIDER") or "").strip()
+    if raw:
+        forced = normalize_model_catalog_owned_by(raw)
+        if forced and _provider_configured(forced):
+            return forced
+
+    _, agentlayer = fetch_full_model_catalog()
+    for pid in _SCHEDULE_PROVIDER_ORDER:
+        if not _provider_configured(pid):
+            continue
+        meta = agentlayer.get(pid)
+        if isinstance(meta, dict) and meta.get("reachable") is True:
+            return pid
+
+    for pid in _SCHEDULE_PROVIDER_ORDER:
+        if _provider_configured(pid):
+            return pid
+    return None
+
+
+def _schedule_llm_body_fields(workflow: dict[str, Any]) -> tuple[dict[str, Any], str]:
+    """``chat_completion`` body fields + ``model_profile_header`` (no bare OLLAMA_DEFAULT_MODEL override)."""
+    from apps.backend.infrastructure.operator_settings import normalize_model_catalog_owned_by
+
+    extras: dict[str, Any] = {}
+
+    explicit_owned = workflow.get("model_catalog_owned_by")
+    if explicit_owned is not None and str(explicit_owned).strip():
+        ob = normalize_model_catalog_owned_by(explicit_owned)
+        if ob:
+            extras["agent_model_catalog_owned_by"] = ob
+
+    explicit_model = workflow.get("model")
+    if explicit_model is not None and str(explicit_model).strip():
+        extras["model"] = str(explicit_model).strip()[:256]
+    else:
+        extras["model"] = _SCHEDULE_MODEL_PROFILE
+
+    if "agent_model_catalog_owned_by" not in extras:
+        owned = _pick_schedule_catalog_provider()
+        if owned:
+            extras["agent_model_catalog_owned_by"] = owned
+            logger.info("schedule LLM: using catalog provider %r", owned)
+
+    return extras, _SCHEDULE_MODEL_PROFILE
 
 
 def _parse_uuid(v: Any) -> uuid.UUID | None:
@@ -72,6 +139,7 @@ async def run_coding_schedule_row(
     parts.append(f"Instructions:\n{instr[:_MAX_INSTRUCTIONS]}")
     sys_prompt = "\n\n".join(parts)
 
+    llm_fields, model_profile = _schedule_llm_body_fields(wf)
     body: dict[str, Any] = {
         "messages": [
             {"role": "system", "content": sys_prompt},
@@ -82,7 +150,7 @@ async def run_coding_schedule_row(
         "workspace_id": str(ws_id),
         "TOOL_DOMAIN": "coding",
         "agent_permission_ask": True,
-        "model": str(getattr(config, "OLLAMA_DEFAULT_MODEL", "llama3.2") or "llama3.2"),
+        **llm_fields,
     }
 
     role = db.user_role(user_id)
@@ -91,6 +159,7 @@ async def run_coding_schedule_row(
         await chat_completion(
             body,
             bearer_user_role=role if role in ("user", "admin") else None,
+            model_profile_header=model_profile,
         )
     except WorkspaceAccessDenied as e:
         return False, str(e) or "workspace access denied"

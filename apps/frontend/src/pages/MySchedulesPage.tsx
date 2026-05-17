@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
-import { apiFetch } from "../lib/api";
+import { apiFetch, type WorkspaceApiRecord } from "../lib/api";
 
 type SchedulerJobRow = {
   id: string;
@@ -14,6 +14,11 @@ type SchedulerJobRow = {
   instructions?: string;
 };
 
+type CodingWorkflowPreset = {
+  agent_id?: "coding" | "coding_plan";
+  prompt_preamble?: string;
+};
+
 type SchedulerJobPreset = {
   id: string;
   label: string;
@@ -25,6 +30,7 @@ type SchedulerJobPreset = {
     title?: string | null;
     instructions?: string;
     dashboard_id?: string | null;
+    coding_workflow?: CodingWorkflowPreset;
   };
 };
 
@@ -50,6 +56,9 @@ export function MySchedulesPage() {
   const [createTitle, setCreateTitle] = useState("");
   const [createInstructions, setCreateInstructions] = useState("");
   const [createDashboardId, setCreateDashboardId] = useState("");
+  const [createCodingWorkflow, setCreateCodingWorkflow] = useState<CodingWorkflowPreset>({});
+  const [workspaces, setWorkspaces] = useState<WorkspaceApiRecord[]>([]);
+  const [workspacesLoading, setWorkspacesLoading] = useState(false);
 
   const [editJob, setEditJob] = useState<SchedulerJobRow | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -108,14 +117,40 @@ export function MySchedulesPage() {
   const applyPreset = (pid: string) => {
     const p = (presets || []).find((x) => x.id === pid);
     if (!p) return;
-    const j = p.job || ({} as any);
+    const j = p.job || ({} as SchedulerJobPreset["job"]);
     if (j.execution_target) setCreateTarget(j.execution_target);
     if (typeof j.interval_minutes === "number") setCreateInterval(j.interval_minutes);
     if (typeof j.enabled === "boolean") setCreateEnabled(j.enabled);
     if (typeof j.title === "string") setCreateTitle(j.title);
     if (typeof j.instructions === "string") setCreateInstructions(j.instructions);
     if (typeof j.dashboard_id === "string") setCreateDashboardId(j.dashboard_id);
+    if (j.coding_workflow && typeof j.coding_workflow === "object") {
+      setCreateCodingWorkflow({ ...j.coding_workflow });
+    }
   };
+
+  useEffect(() => {
+    if (!createOpen || createTarget !== "coding_agent") return;
+    let cancelled = false;
+    const load = async () => {
+      setWorkspacesLoading(true);
+      try {
+        const res = await apiFetch("/v1/workspaces", auth);
+        const j = (await res.json().catch(() => null)) as { workspaces?: WorkspaceApiRecord[] };
+        if (!cancelled && res.ok) {
+          setWorkspaces(Array.isArray(j?.workspaces) ? j.workspaces : []);
+        }
+      } catch {
+        if (!cancelled) setWorkspaces([]);
+      } finally {
+        if (!cancelled) setWorkspacesLoading(false);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [createOpen, createTarget, auth]);
 
   const toggleEnabled = async (jobId: string, next: boolean) => {
     const res = await apiFetch(`/v1/user/scheduler-jobs/${jobId}/enabled`, auth, {
@@ -170,6 +205,13 @@ export function MySchedulesPage() {
 
   const createJob = async () => {
     setErr(null);
+    const wf: Record<string, string> = {};
+    if (createCodingWorkflow.agent_id) {
+      wf.agent_id = createCodingWorkflow.agent_id;
+    }
+    if (createCodingWorkflow.prompt_preamble?.trim()) {
+      wf.prompt_preamble = createCodingWorkflow.prompt_preamble.trim();
+    }
     const res = await apiFetch(`/v1/user/scheduler-jobs`, auth, {
       method: "POST",
       body: JSON.stringify({
@@ -180,7 +222,10 @@ export function MySchedulesPage() {
         instructions: createInstructions,
         dashboard_id: createDashboardId || null,
         ...(createTarget === "coding_agent"
-          ? { workspace_id: createWorkspaceId.trim(), coding_workflow: {} }
+          ? {
+              workspace_id: createWorkspaceId.trim(),
+              coding_workflow: Object.keys(wf).length ? wf : {},
+            }
           : { coding_workflow: {} }),
       }),
     });
@@ -195,6 +240,7 @@ export function MySchedulesPage() {
     setCreateInstructions("");
     setCreateDashboardId("");
     setCreateWorkspaceId("");
+    setCreateCodingWorkflow({});
     await refresh();
   };
 
@@ -359,13 +405,36 @@ export function MySchedulesPage() {
               </label>
               {createTarget === "coding_agent" ? (
                 <label className="text-xs text-surface-muted md:col-span-2">
-                  Workspace id (UUID, required)
-                  <input
-                    className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
+                  Project workspace (required)
+                  <select
+                    className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100 disabled:opacity-60"
                     value={createWorkspaceId}
                     onChange={(e) => setCreateWorkspaceId(e.target.value)}
-                    placeholder="coding workspace UUID"
-                  />
+                    disabled={workspacesLoading}
+                  >
+                    <option value="">
+                      {workspacesLoading
+                        ? "Loading workspaces…"
+                        : workspaces.length === 0
+                          ? "No workspaces — create one in Coding Agent"
+                          : "— select workspace —"}
+                    </option>
+                    {workspaces.map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.name}
+                      </option>
+                    ))}
+                  </select>
+                  {createWorkspaceId ? (
+                    <div className="mt-1 break-all font-mono text-[11px] text-surface-muted">
+                      {createWorkspaceId}
+                    </div>
+                  ) : null}
+                  {createCodingWorkflow.agent_id ? (
+                    <div className="mt-1 font-mono text-[11px] text-surface-muted">
+                      Agent: {createCodingWorkflow.agent_id}
+                    </div>
+                  ) : null}
                 </label>
               ) : null}
               <label className="text-xs text-surface-muted">

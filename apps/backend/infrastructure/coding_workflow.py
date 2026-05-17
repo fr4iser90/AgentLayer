@@ -12,6 +12,8 @@ _ALLOWED_KEYS = frozenset(
         "workspace_id",
         "agent_id",
         "prompt_preamble",
+        "model",
+        "model_catalog_owned_by",
     }
 )
 _VALID_AGENT_IDS = frozenset({"coding", "coding_plan"})
@@ -109,6 +111,16 @@ def normalize_coding_workflow(raw: Any, *, require_workspace: bool = False) -> d
         if len(p) > _MAX_PREAMBLE:
             raise ValueError("prompt_preamble too long")
         out["prompt_preamble"] = p
+
+    if raw.get("model") is not None and str(raw.get("model")).strip():
+        out["model"] = str(raw["model"]).strip()[:256]
+
+    if raw.get("model_catalog_owned_by") is not None and str(raw.get("model_catalog_owned_by")).strip():
+        from apps.backend.infrastructure.operator_settings import normalize_model_catalog_owned_by
+
+        ob = normalize_model_catalog_owned_by(raw.get("model_catalog_owned_by"))
+        if ob:
+            out["model_catalog_owned_by"] = ob
 
     return out
 
