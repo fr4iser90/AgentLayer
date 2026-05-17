@@ -37,7 +37,7 @@ FETCH_TIMEOUT = 90
 
 
 def _current_branch(root: Path) -> str | None:
-    code, out, _ = _run_git(root, ["rev-parse", "--abbrev-ref", "HEAD"], timeout=15)
+    code, out = _run_git(root, ["rev-parse", "--abbrev-ref", "HEAD"], timeout=15)
     if code != 0:
         return None
     ref = (out or "").strip()

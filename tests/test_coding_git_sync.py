@@ -41,3 +41,16 @@ def test_coding_git_sync_fetch_no_remote(tmp_path: Path) -> None:
     data = json.loads(out)
     assert "exit_code" in data
     assert "output" in data
+
+
+def test_coding_git_sync_pull_default_includes_branch_and_pull_result(tmp_path: Path) -> None:
+    """Regression: _current_branch must not unpack 3-tuple from 2-tuple _run_git."""
+    _git_init_commit(tmp_path)
+    ctx = {"workspace": {"path": str(tmp_path)}}
+    out = coding_git_sync({}, context=ctx)
+    data = json.loads(out)
+    assert "branch" in data
+    assert data.get("branch") in ("master", "main")
+    assert data.get("pull_result") in ("already_up_to_date", "completed", "fast_forward", "failed")
+    assert "message" in data
+    assert "not enough values to unpack" not in out
