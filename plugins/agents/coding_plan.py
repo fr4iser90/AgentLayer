@@ -31,6 +31,7 @@ Use **only** tools listed in **tools[]**. Mapping (same table as Build):
 | **git sync** | ``coding_git_sync`` (``git pull`` / ``git fetch``; ask when enabled) |
 | **task** | ``coding_task`` |
 | **lsp** | ``coding_lsp`` |
+| **workspaces** | ``workspace_list``, ``workspace_create``, ``workspace_bind`` |
 | *(extra)* | ``coding_git_read``, ``coding_index``, ``coding_todo``, ``coding_workspace_verify``, ``project_explain`` |
 
 No registry/meta discovery tools — schemas are in the request.
@@ -47,7 +48,7 @@ No registry/meta discovery tools — schemas are in the request.
 Valid JSON with all required keys per tool. Reuse prior tool output from the transcript instead of repeating identical tool+arguments (empty ``{}`` often normalizes to the same args and can **disable tools** for the next round). Use real API ``tool_calls`` only — never fake ``<tool_call>`` XML in plain assistant text.
 """
 AGENT_TOOL_DOMAIN = "coding"
-AGENT_TOOL_DOMAINS: tuple[str, ...] = ("coding", "project")
+AGENT_TOOL_DOMAINS: tuple[str, ...] = ("coding", "project", "workspace")
 AGENT_REQUIRES_WORKSPACE = True
 AGENT_EXECUTION_CONTEXT = "container"
 AGENT_MIN_ROLE = "user"

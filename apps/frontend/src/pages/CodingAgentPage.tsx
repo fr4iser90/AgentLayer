@@ -334,6 +334,9 @@ const CODING_TOOLS = [
   "coding_workspace_verify",
   "coding_write_file",
   "project_explain",
+  "workspace_bind",
+  "workspace_create",
+  "workspace_list",
 ];
 
 /** Plan tab uses the same coding tool names as Build; server + WebSocket handle permission ask. */
@@ -1029,6 +1032,23 @@ export function CodingAgentPage() {
         if (typ === "agent.session") {
           const em = msg.effective_model != null ? String(msg.effective_model) : "";
           appendAgentLine("session", em ? `model: ${em}` : "");
+          if (msg.workspace_bound === true && msg.workspace_id != null) {
+            const wid = String(msg.workspace_id).trim();
+            if (wid) {
+              setSelectedWorkspaceId(wid);
+              const tid = activeThreadIdRef.current;
+              if (tid) {
+                setThreads((prev) => {
+                  const next = prev.map((th) =>
+                    th.id === tid ? { ...th, workspaceId: wid, updatedAt: Date.now() } : th
+                  );
+                  const th = next.find((x) => x.id === tid);
+                  if (th) void putConversation(auth, th).catch(() => {});
+                  return next;
+                });
+              }
+            }
+          }
           return;
         }
         if (typ === "agent.permission_ask") {
@@ -1166,6 +1186,7 @@ export function CodingAgentPage() {
             agent_id: agentId,
             TOOL_DOMAIN: "coding",
             workspace_id: selectedWorkspaceId,
+            ...(activeThreadId ? { conversation_id: activeThreadId } : {}),
             ...(enabledTools.length < toolBucket.length
               ? { agent_disabled_tools: disabledTools }
               : {}),

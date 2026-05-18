@@ -1126,7 +1126,10 @@ export function ChatPage() {
               }
             }
           }
-          if (msg.workspace_auto_created === true && msg.workspace_id != null) {
+          if (
+            (msg.workspace_auto_created === true || msg.workspace_bound === true) &&
+            msg.workspace_id != null
+          ) {
             const wid = String(msg.workspace_id).trim();
             if (wid) {
               setSelectedWorkspaceId(wid);
@@ -1278,6 +1281,7 @@ export function ChatPage() {
             messages: nextMessages.map((m) => ({ role: m.role, content: toApiContent(m.content) })),
             agent_id: selectedAgentId,
             ...(selectedWorkspaceId ? { workspace_id: selectedWorkspaceId } : {}),
+            ...(activeThreadId ? { conversation_id: activeThreadId } : {}),
             ...agentDashboardPayload,
             ...(disabledTools.length ? { agent_disabled_tools: disabledTools } : {}),
             agent_model_catalog_owned_by: routed.provider,

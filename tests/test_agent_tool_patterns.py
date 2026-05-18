@@ -31,6 +31,8 @@ def test_coding_agent_uses_registry_domains_not_name_patterns() -> None:
     names = a["tool_names"]
     assert "coding_read_file" in names
     assert "project_explain" in names
+    assert "save_user_secret" in names
+    assert "security_scan_list" in names
     assert "list_available_tools" not in names
 
 

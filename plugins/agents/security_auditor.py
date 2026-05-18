@@ -47,7 +47,7 @@ Valid JSON for every tool call. Reuse prior tool output; do not repeat identical
 **Safety:** never run commands intended to damage the host or data (e.g. ``rm -rf /``).
 """
 AGENT_TOOL_DOMAIN = "coding"
-AGENT_TOOL_DOMAINS: tuple[str, ...] = ("coding", "project", "security_scan")
+AGENT_TOOL_DOMAINS: tuple[str, ...] = ("coding", "project", "security_scan", "workspace")
 AGENT_TOOL_PATTERNS: tuple[str, ...] = (
     "save_user_secret",
     "register_secrets",

@@ -85,6 +85,36 @@ def _get_tool_description(tool_spec: dict[str, Any]) -> str:
     return func.get("description", "") or ""
 
 
+# Survive category router + semantic top-N when an agent allowlists them (e.g. coding + SSC).
+_AGENT_CREDENTIAL_TOOL_NAMES = frozenset(
+    {"save_user_secret", "register_secrets", "secrets_help"}
+)
+
+
+def _partition_tool_specs_by_name(
+    tools: list[Any], pin_names: frozenset[str]
+) -> tuple[list[Any], list[Any]]:
+    pinned: list[Any] = []
+    rest: list[Any] = []
+    for spec in tools:
+        n = _tool_spec_name(spec)
+        if n is not None and n in pin_names:
+            pinned.append(spec)
+        else:
+            rest.append(spec)
+    return pinned, rest
+
+
+def _credential_tools_for_agent(agent_id: str | None) -> frozenset[str]:
+    if not agent_id or not str(agent_id).strip():
+        return frozenset()
+    ag = get_agent_registry().get_agent(str(agent_id).strip())
+    if not ag:
+        return frozenset()
+    allowed = frozenset(ag.get("tool_names") or [])
+    return _AGENT_CREDENTIAL_TOOL_NAMES & allowed
+
+
 def _rank_tools_by_user_input(
     tools: list[dict[str, Any]], 
     user_input: str,
@@ -2765,6 +2795,66 @@ def _completion_attach_agent_run_id(data: dict[str, Any], agent_run_id: str) -> 
     return data
 
 
+def _workspace_tool_bound_workspace_id(tool_name: str, tool_result_json: str) -> str | None:
+    """Return workspace id when ``workspace_bind`` / bound ``workspace_create`` succeeded."""
+    if tool_name not in ("workspace_bind", "workspace_create"):
+        return None
+    try:
+        data = json.loads(tool_result_json)
+    except Exception:
+        return None
+    if not isinstance(data, dict) or data.get("ok") is not True:
+        return None
+    if tool_name == "workspace_create" and not data.get("bound"):
+        return None
+    ws = data.get("workspace")
+    if not isinstance(ws, dict):
+        return None
+    wid = ws.get("id")
+    if wid is None:
+        return None
+    s = str(wid).strip()
+    return s or None
+
+
+async def _apply_workspace_tool_bind_side_effects(
+    *,
+    tool_name: str,
+    result: str,
+    tool_context: dict[str, Any],
+    messages: list[dict[str, Any]],
+    event_emit: Any,
+    agent_run_id: str,
+) -> None:
+    """Refresh bootstrap snippet and notify UI after workspace_bind / workspace_create."""
+    wid = _workspace_tool_bound_workspace_id(tool_name, result)
+    if not wid:
+        return
+    ws = tool_context.get("workspace")
+    if isinstance(ws, dict):
+        try:
+            from apps.backend.infrastructure.workspace_retrieval_bootstrap import (
+                build_retrieval_bootstrap_snippet,
+                maybe_schedule_index_on_attach,
+            )
+
+            snippet = build_retrieval_bootstrap_snippet(ws)
+            if snippet:
+                messages.append({"role": "system", "content": snippet})
+            maybe_schedule_index_on_attach(ws)
+        except Exception as e:
+            logger.debug("workspace bind bootstrap skipped: %s", e)
+    if event_emit:
+        await event_emit(
+            {
+                "type": "agent.session",
+                "agent_run_id": agent_run_id,
+                "workspace_id": wid,
+                "workspace_bound": True,
+            }
+        )
+
+
 def _format_workspace_verify_recap(tool_result_json: str) -> str | None:
     """Build a short system snippet from ``coding_workspace_verify`` JSON output."""
     try:
@@ -3117,6 +3207,11 @@ async def chat_completion(
     _abf = _agent_behavior_flags(agent_id if isinstance(agent_id, str) else None)
     tool_context["agent_coding_tools_permission_ask"] = _abf["coding_tools_permission_ask"]
     tool_context["agent_unattended"] = agent_unattended
+    _raw_conversation_id = body.pop("conversation_id", None)
+    if _raw_conversation_id is not None:
+        _cid_s = str(_raw_conversation_id).strip()
+        if _cid_s:
+            tool_context["conversation_id"] = _cid_s
     logger.info(
         "chat_completion start agent_run_id=%s parent_agent_run_id=%s agent_id=%r workspace_id=%s user_id=%s",
         agent_run_id,
@@ -3346,7 +3441,14 @@ async def chat_completion(
             ]
 
         # Tool Ranking: sort by semantic similarity to user input (Phase 1)
-        if tools_ranking_enabled and tools_for_request:
+        pin_cred = _credential_tools_for_agent(agent_id)
+        if pin_cred:
+            pinned_specs, tools_for_ranking = _partition_tool_specs_by_name(
+                tools_for_request, pin_cred
+            )
+        else:
+            pinned_specs, tools_for_ranking = [], tools_for_request
+        if tools_ranking_enabled and tools_for_ranking:
             try:
                 # Get last user message for ranking (do not name this ``last_user_text`` — shadows imported helper).
                 ranking_user_text: str | None = None
@@ -3360,13 +3462,17 @@ async def chat_completion(
                     reg = get_registry()
                     tool_triggers: dict[str, tuple[str, ...]] = {}
                     # For now, use empty triggers - will be enhanced in Phase 2
-                    tools_for_request = _rank_tools_by_user_input(
-                        tools_for_request,
+                    tools_for_ranking = _rank_tools_by_user_input(
+                        tools_for_ranking,
                         ranking_user_text,
                         tool_triggers,
                     )
             except Exception as e:
                 logger.warning(f"Tool ranking failed, using unranked tools: {e}")
+        if pinned_specs:
+            tools_for_request = pinned_specs + tools_for_ranking
+        elif tools_for_ranking is not tools_for_request:
+            tools_for_request = tools_for_ranking
 
         if tools_for_request:
             names = [n for t in tools_for_request if (n := _tool_spec_name(t))]
@@ -4112,6 +4218,15 @@ async def chat_completion(
                     vr = _format_workspace_verify_recap(result)
                     if vr:
                         verify_recap_line = vr
+                if event_emit:
+                    await _apply_workspace_tool_bind_side_effects(
+                        tool_name=name,
+                        result=result or "",
+                        tool_context=tool_context,
+                        messages=messages,
+                        event_emit=event_emit,
+                        agent_run_id=agent_run_id,
+                    )
                 if config.AGENT_TOOL_THRASH_ENABLED:
                     nk, nc, thr_hint, force_next = _agent_tool_thrash_tick(
                         thrash_key,
