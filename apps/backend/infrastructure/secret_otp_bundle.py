@@ -23,6 +23,14 @@ def normalize_service_key(raw: str | None, default: str = "email_imap") -> str:
     return s
 
 
+def validate_user_secret_service_key(raw: str | None) -> str | None:
+    """Lowercase ``service_key`` if it matches ``[a-z0-9._-]`` (no integration-specific aliases)."""
+    s = (raw or "").strip().lower()
+    if not s or not _SERVICE_KEY_SAFE.fullmatch(s):
+        return None
+    return s
+
+
 def ttl_clamp(raw_ttl: Any, default: int = 600) -> int:
     if isinstance(raw_ttl, (int, float)):
         t = int(raw_ttl)
@@ -72,8 +80,6 @@ def build_otp_curl_payload(service_key: str, ttl_seconds: int = 600) -> dict[str
         secret_blob = '{"email":"du@gmail.com","app_password":"DEIN_APP_PASSWORT"}'
     elif raw_svc == "github_pat":
         secret_blob = '{"token":"DEIN_GITHUB_PAT_ODER_github_pat_xxx"}'
-    elif raw_svc == "ssc_api_key":
-        secret_blob = '{"token":"ssc_DEIN_API_KEY"}'
     elif raw_svc == "calendar_ics":
         secret_blob = '{"ics_url":"https://DEINE_CLOUD/.../calendar.ics"}'
     elif raw_svc == "google_calendar":

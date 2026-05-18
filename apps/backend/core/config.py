@@ -469,7 +469,10 @@ AGENT_SKILLS_MAX_TOTAL_CHARS = max(512, min(_env_int("AGENT_SKILLS_MAX_TOTAL_CHA
 
 def tool_log_redact_keys() -> frozenset[str]:
     """Argument names to redact in tool_invocations logging (comma-separated env)."""
-    raw = (os.environ.get("AGENT_TOOL_LOG_REDACT_KEYS") or "source").strip()
+    raw = (
+        os.environ.get("AGENT_TOOL_LOG_REDACT_KEYS")
+        or "source,secret,token,api_key,app_password,ics_url"
+    ).strip()
     return frozenset(k.strip() for k in raw.split(",") if k.strip())
 
 

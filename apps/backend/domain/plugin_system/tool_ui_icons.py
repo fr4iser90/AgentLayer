@@ -41,6 +41,7 @@ ICON_MAP: dict[str, str] = {
     "survival_shelter": "tent",
     "survival_water": "droplets",
     "register_secrets": "key-round",
+    "save_user_secret": "key-round",
     "secrets_help": "book-open",
     "echo": "message-circle",
 }

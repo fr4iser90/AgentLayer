@@ -49,10 +49,14 @@ CODING_SCHEDULE_TOOL_ALLOWLIST: tuple[str, ...] = (
 )
 
 SECURITY_SCAN_TOOL_NAMES: tuple[str, ...] = (
-    "security_scan_list",
-    "security_scan_start",
+    "security_scan_resolve",
+    "security_scan_status",
     "security_scan_get",
     "security_scan_findings",
+    "security_scan_agent_callback",
+    "security_scan_targets_list",
+    "security_scan_list",
+    "security_scan_start",
 )
 
 _WRITE_TOOLS = frozenset(

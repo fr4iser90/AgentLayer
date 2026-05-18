@@ -27,12 +27,16 @@ class MessageItem(BaseModel):
     content: Any = ""  # str or OpenAI multimodal list
 
 
+# Legacy: JSON array of timeline entries. Current UI: v2 object ``{v, current, turns}``.
+AgentLogPayload = list[Any] | dict[str, Any]
+
+
 class ConversationCreateBody(BaseModel):
     title: str = Field(default="", max_length=500)
     mode: Literal["chat", "agent"] = "chat"
     model: str = Field(default="", max_length=512)
     messages: list[MessageItem] = Field(default_factory=list)
-    agent_log: list[Any] = Field(default_factory=list)
+    agent_log: AgentLogPayload = Field(default_factory=list)
     dashboard_id: uuid.UUID | None = None
     """When true with ``dashboard_id``, creates the one shared thread per dashboard (all members see it)."""
     shared: bool = False
@@ -46,7 +50,7 @@ class ConversationUpdateBody(BaseModel):
     mode: Literal["chat", "agent"] | None = None
     model: str | None = Field(default=None, max_length=512)
     messages: list[MessageItem] | None = None
-    agent_log: list[Any] | None = None
+    agent_log: AgentLogPayload | None = None
     agent_id: str | None = Field(default=None, max_length=128)
     workspace_id: uuid.UUID | None = None
     model_catalog_owned_by: str | None = Field(default=None, max_length=64)

@@ -43,3 +43,16 @@ def test_tools_for_chat_request_full_schema_larger_than_catalog():
 
 def test_schedule_allowlist_includes_get_tool_help():
     assert "get_tool_help" in CODING_SCHEDULE_TOOL_ALLOWLIST
+
+
+def test_catalog_save_user_secret_includes_required_parameters():
+    spec = _registry_tool_spec_by_registered_name("save_user_secret")
+    assert spec is not None
+    fn = spec["function"]
+    assert fn.get("chat_full_parameters") is True
+    out = _catalog_tool_function("save_user_secret", fn)
+    params = out["function"]["parameters"]
+    assert "service_key" in params.get("properties", {})
+    assert "secret" in params.get("properties", {})
+    assert "service_key" in params.get("required", [])
+    assert "secret" in params.get("required", [])

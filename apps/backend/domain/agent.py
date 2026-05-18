@@ -2001,6 +2001,19 @@ def _catalog_tool_function(name: str, fn: dict[str, Any]) -> dict[str, Any]:
                 "properties": {},
                 "additionalProperties": True,
             }
+    elif fn.get("chat_full_parameters"):
+        desc = (fn.get("TOOL_DESCRIPTION") or fn.get("description") or "").strip()
+        cand = fn.get("parameters")
+        if isinstance(cand, dict) and cand.get("properties"):
+            params = copy.deepcopy(cand)
+            if "type" not in params:
+                params["type"] = "object"
+        else:
+            params = {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": True,
+            }
     else:
         params = {
             "type": "object",
@@ -4038,14 +4051,26 @@ async def chat_completion(
                             result = (
                                 blocked
                                 if blocked is not None
-                                else execute_tool(name, args, context=tool_context)
+                                else await _thread_with_cancel(
+                                    cancel_event,
+                                    execute_tool,
+                                    name,
+                                    args,
+                                    context=tool_context,
+                                )
                             )
                     else:
                         blocked = _unattended_blocked_tool_json(name, args, tool_context)
                         result = (
                             blocked
                             if blocked is not None
-                            else execute_tool(name, args, context=tool_context)
+                            else await _thread_with_cancel(
+                                cancel_event,
+                                execute_tool,
+                                name,
+                                args,
+                                context=tool_context,
+                            )
                         )
                 finally:
                     reset_tool_invocation_messages(tctx)

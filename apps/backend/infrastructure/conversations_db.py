@@ -260,7 +260,7 @@ def conversation_get(user_id: uuid.UUID, conversation_id: uuid.UUID) -> dict[str
             agent_log = json.loads(agent_log)
         except Exception:
             agent_log = []
-    if not isinstance(agent_log, list):
+    if not isinstance(agent_log, (list, dict)):
         agent_log = []
     cid = cid_raw
     ws_out: str | None = None
@@ -302,7 +302,7 @@ def conversation_create(
     mode: str,
     model: str,
     messages: list[dict[str, Any]],
-    agent_log: list[Any],
+    agent_log: list[Any] | dict[str, Any],
     dashboard_id: uuid.UUID | None = None,
     shared: bool = False,
     agent_id: str | None = None,
@@ -453,7 +453,7 @@ def conversation_replace(
     mode: str | None,
     model: str | None,
     messages: list[dict[str, Any]] | None,
-    agent_log: list[Any] | None,
+    agent_log: list[Any] | dict[str, Any] | None,
     composer_prefs: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     with db.pool().connection() as conn:

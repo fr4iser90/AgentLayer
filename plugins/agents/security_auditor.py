@@ -26,7 +26,8 @@ Use **only** tools listed in **tools[]**. Typical mapping:
 
 | Intent | Tools (when present) |
 |--------|----------------------|
-| **Scan (SimpleSecCheck)** | ``security_scan_start``, ``security_scan_get``, ``security_scan_findings``, ``security_scan_list`` (needs ``ssc_api_key`` or ``SSC_API_KEY``) |
+| **Scan (SimpleSecCheck)** | ``security_scan_resolve``, ``security_scan_status``, ``security_scan_findings``, ``security_scan_agent_callback``, ``security_scan_targets_list`` (also ``security_scan_start`` / ``security_scan_list``; needs user secret per ``security_scan_*`` tool schemas). After ``started``/``scanning``, **end the run** — check status in a **later** session, never poll in one run. |
+| **User secrets** | ``save_user_secret``, ``register_secrets``, ``secrets_help`` — use ``service_key`` from the integration tool that needs the credential |
 | **Explore** | ``coding_list_dir``, ``coding_glob``, ``coding_read_file``, ``coding_search``, ``coding_semantic_search``, ``coding_symbols``, ``coding_index``, ``coding_git_read`` |
 | **Explain** | ``project_explain`` |
 | **Verify** | ``coding_workspace_verify`` when a verify command is configured |
@@ -47,6 +48,11 @@ Valid JSON for every tool call. Reuse prior tool output; do not repeat identical
 """
 AGENT_TOOL_DOMAIN = "coding"
 AGENT_TOOL_DOMAINS: tuple[str, ...] = ("coding", "project", "security_scan")
+AGENT_TOOL_PATTERNS: tuple[str, ...] = (
+    "save_user_secret",
+    "register_secrets",
+    "secrets_help",
+)
 AGENT_TOOL_CAPABILITY_ANY: tuple[str, ...] = ("knowledge.retrieve",)
 AGENT_REQUIRES_WORKSPACE = True
 AGENT_EXECUTION_CONTEXT = "container"

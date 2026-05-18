@@ -36,9 +36,10 @@ def secrets_help(arguments: dict[str, Any]) -> str:
     user_value = resolved_sub if resolved_sub is not None else "DEINE_WEBUI_USER_ID"
 
     hints: list[str] = [
-        "Neues Secret speichern: **nur** Tool `register_secrets` — in der Antwort stehen `curl_bash` und ggf. `jq_register_example_de` (OTP ist schon eingebaut).",
-        "Mit Web-UI (eingeloggt): **Einstellungen → Connections** — dort zeigen die Tools die passenden Felder (Gmail, GitHub, Kalender …).",
-        "Dieses Tool (`secrets_help`) erzeugt **kein** OTP und keinen curl — nur Erklärung.",
+        "Secret im Chat gepostet: Tool **`save_user_secret`** mit `service_key` + `secret` (sofort in Postgres, kein curl).",
+        "Alternativ OTP+curl: Tool **`register_secrets`** — `curl_bash` / `jq_register_example_de` in der Tool-Antwort.",
+        "Mit Web-UI (eingeloggt): **Einstellungen → Connections** — schema-driven Formulare pro Integration.",
+        "Dieses Tool (`secrets_help`) speichert nichts — nur Erklärung.",
     ]
     if topic in ("email", "imap", "mail", "gmail"):
         hints.append(
@@ -47,11 +48,6 @@ def secrets_help(arguments: dict[str, Any]) -> str:
     if topic in ("github", "gh", "pat"):
         hints.append(
             'GitHub: `service_key` **`github_pat`** — JSON `{"token":"ghp_…"}` (oder nur den Token-String). Operator kann stattdessen `GITHUB_TOKEN` in docker/.env setzen.'
-        )
-    if topic in ("ssc", "simplesec", "simple_sec", "security_scan", "scan"):
-        hints.append(
-            'SimpleSecCheck: `service_key` **`ssc_api_key`** — API-Key aus https://scan.fr4iser.com → API Keys (`ssc_…`). '
-            "Operator alternativ: `SSC_API_KEY` und optional `SSC_BASE_URL` in docker/.env."
         )
     if topic in ("calendar", "ics", "caldav", "nextcloud"):
         hints.append(
@@ -86,18 +82,17 @@ def secrets_help(arguments: dict[str, Any]) -> str:
             "resolved_user_id": uid,
             "resolved_external_sub": user_value,
             "for_llm_de": (
-                "Neues Secret speichern: **Web-UI** Einstellungen → Connections (Formulare), **oder** `register_secrets` "
-                "mit passendem `service_key_example` (gmail, google_calendar, calendar_ics, github_pat, …). "
-                "Bei curl: Dem Nutzer **nur** `curl_bash` / `jq_register_example_de` aus **dieser** Antwort geben — nichts erfinden. "
-                "Klartext-Secrets und iCal-URLs **nie** in den Chat."
+                "Secret speichern: (1) Nutzer hat Key im Chat → `save_user_secret` mit passendem `service_key`; "
+                "(2) Web-UI Connections; (3) `register_secrets` + Nutzer führt `curl_bash` lokal aus. "
+                "Secret-Wert **nie** in der Assistenten-Antwort wiederholen."
             ),
             "common_mistakes_de": [
-                "Falsch: `secrets_help` aufrufen und erwarten, dass ein OTP oder curl erscheint.",
-                "Falsch: Geheime iCal-URL oder Passwörter in den Chat schreiben — nur lokal im Terminal im curl/jq.",
+                "Falsch: `secrets_help` aufrufen und OTP/curl erwarten.",
+                "Falsch: erfundener `service_key` — immer den Key aus dem Integration-Tool / Connections verwenden.",
             ],
             "preferred_flow_de": (
-                "`register_secrets` → Nutzer führt `curl_bash` (eine Zeile) lokal aus → HTTP-Antwort `stored:true`. "
-                "Danach z. B. `calendar_ics_list_events` für Google-Kalender."
+                "Chat-Key: `save_user_secret` → `stored:true`. "
+                "Ohne Chat-Paste: Connections oder `register_secrets` + curl."
             ),
             "steps_de": [
                 "Tool `register_secrets` mit JSON-Argumenten aufrufen, z. B. "

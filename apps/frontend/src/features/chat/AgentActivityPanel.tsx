@@ -38,11 +38,11 @@ export function AgentActivityPanel({
 }: Props) {
   const scrollClass =
     layout === "header"
-      ? "min-h-[7rem] max-h-none flex-1 overflow-y-auto px-2.5 py-1.5"
-      : "min-h-0 max-h-32 flex-1 overflow-y-auto px-2.5 py-1.5";
+      ? "min-h-[7rem] max-h-[min(11rem,28vh)] overflow-y-auto overscroll-contain px-2.5 py-1.5"
+      : "min-h-0 max-h-32 overflow-y-auto overscroll-contain px-2.5 py-1.5";
 
   return (
-    <div className={`flex min-h-0 flex-col rounded-lg border border-white/10 bg-black/30 ${className}`}>
+    <div className={`flex min-h-0 flex-col overflow-hidden rounded-lg border border-white/10 bg-black/30 ${className}`}>
       <div className="shrink-0 border-b border-white/5 px-2.5 py-1.5">
         <span className="text-[10px] font-semibold uppercase tracking-wide text-surface-muted">
           Agent activity

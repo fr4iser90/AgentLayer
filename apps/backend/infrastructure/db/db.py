@@ -482,8 +482,11 @@ def log_tool_invocation(
         if redact:
             args_for_db = {}
             for k, v in args.items():
-                if k in redact and isinstance(v, str) and len(v) > 200:
-                    args_for_db[k] = f"<omitted {len(v)} chars>"
+                if k in redact and isinstance(v, str):
+                    if len(v) > 200:
+                        args_for_db[k] = f"<omitted {len(v)} chars>"
+                    else:
+                        args_for_db[k] = "<redacted>"
                 else:
                     args_for_db[k] = v
     try:

@@ -23,6 +23,22 @@ function modelProviderFromApi(item: Record<string, unknown>): string | undefined
 
 type ApiMessage = { role: "user" | "assistant" | "system"; content: unknown };
 
+function apiErrorDetail(err: unknown, fallback: string): string {
+  if (!err || typeof err !== "object" || !("detail" in err)) return fallback;
+  const d = (err as { detail: unknown }).detail;
+  if (typeof d === "string" && d.trim()) return d;
+  if (Array.isArray(d)) {
+    const parts = d
+      .map((x) => {
+        if (x && typeof x === "object" && "msg" in x) return String((x as { msg: unknown }).msg);
+        return typeof x === "string" ? x : "";
+      })
+      .filter(Boolean);
+    if (parts.length) return parts.join("; ");
+  }
+  return fallback;
+}
+
 function serializeMessageContent(content: string): string | unknown[] {
   if (typeof content === "string" && content.trim().startsWith("[")) {
     try {
@@ -188,7 +204,7 @@ export async function createConversation(
     }),
   });
   const data = (await r.json()) as { conversation?: Record<string, unknown> };
-  if (!r.ok) throw new Error("failed to create conversation");
+  if (!r.ok) throw new Error(apiErrorDetail(data, "failed to create conversation"));
   return mapServerToThread(data.conversation ?? {});
 }
 

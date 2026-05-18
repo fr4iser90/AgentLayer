@@ -141,7 +141,19 @@ function chatMessageHasVisibleContent(m: UiMessage): boolean {
 
 function messagesWithStreamedAssistant(baseline: UiMessage[], accumulated: string): UiMessage[] {
   if (!accumulated.trim()) return baseline;
-  return [...baseline, { role: "assistant", content: accumulated }];
+  const last = baseline[baseline.length - 1];
+  const createdAt =
+    last?.role === "assistant" && last.createdAt != null ? last.createdAt : Date.now();
+  if (last?.role === "assistant") {
+    return [...baseline.slice(0, -1), { role: "assistant", content: accumulated, createdAt }];
+  }
+  return [...baseline, { role: "assistant", content: accumulated, createdAt }];
+}
+
+function assistantMessage(content: string, prior?: UiMessage | null): UiMessage {
+  const createdAt =
+    prior?.role === "assistant" && prior.createdAt != null ? prior.createdAt : Date.now();
+  return { role: "assistant", content, createdAt };
 }
 
 function stripTrailingEmptyAssistantMessages(msgs: UiMessage[]): UiMessage[] {
@@ -250,6 +262,7 @@ export function ChatPage() {
   const agentTurnBaselineRef = useRef<UiMessage[] | null>(null);
   const streamDeltaAccRef = useRef("");
   const agentStreamEnabledThisTurnRef = useRef(false);
+  const agentTurnFinishRef = useRef<(() => void) | null>(null);
   const [agentStreamLlmUi, setAgentStreamLlmUi] = useState(() => getAgentStreamLlm());
   activeThreadIdRef.current = activeThreadId;
 
@@ -841,9 +854,10 @@ export function ChatPage() {
             setThreads((prev) =>
               prev.map((th) => {
                 if (th.id !== tid) return th;
+                const last = th.messages[th.messages.length - 1];
                 return {
                   ...th,
-                  messages: [...nextMessages, { role: "assistant", content: acc }],
+                  messages: [...nextMessages, assistantMessage(acc, last)],
                   messageCount: nextMessages.length + 1,
                   updatedAt: Date.now(),
                 };
@@ -862,9 +876,10 @@ export function ChatPage() {
         setThreads((prev) => {
           const next = prev.map((th) => {
             if (th.id !== tid) return th;
+            const last = th.messages[th.messages.length - 1];
             const updated: ChatThread = {
               ...th,
-              messages: [...nextMessages, { role: "assistant", content: reply }],
+              messages: [...nextMessages, assistantMessage(reply, last)],
               messageCount: nextMessages.length + 1,
               updatedAt: Date.now(),
             };
@@ -944,6 +959,7 @@ export function ChatPage() {
       ws.onerror = () => reject(new Error("WebSocket connection failed"));
       ws.onclose = () => {
         if (wsRef.current === ws) wsRef.current = null;
+        agentTurnFinishRef.current?.();
       };
     });
   }, [accessToken]);
@@ -994,11 +1010,13 @@ export function ChatPage() {
     setPendingAttachments([]);
 
     cancelAgentTurnRef.current = false;
+    agentTurnFinishRef.current = null;
 
     let finished = false;
     const finish = () => {
       if (finished) return;
       finished = true;
+      agentTurnFinishRef.current = null;
       setLoading(false);
       const id = activeThreadIdRef.current;
       if (id) {
@@ -1020,6 +1038,7 @@ export function ChatPage() {
         });
       }
     };
+    agentTurnFinishRef.current = finish;
 
     agentHandlerRef.current = (ev: MessageEvent) => {
       try {
@@ -1056,8 +1075,8 @@ export function ChatPage() {
                   agentStreamEnabledThisTurnRef.current &&
                   last?.role === "assistant";
                 const messages: UiMessage[] = replaceLastAssistant
-                  ? [...prevMsgs.slice(0, -1), { role: "assistant", content }]
-                  : [...prevMsgs, { role: "assistant", content }];
+                  ? [...prevMsgs.slice(0, -1), assistantMessage(content, last)]
+                  : [...prevMsgs, assistantMessage(content)];
                 const updated: ChatThread = {
                   ...th,
                   messages,
@@ -1280,13 +1299,12 @@ export function ChatPage() {
     void (mode === "chat" ? runChatHttp() : runAgentWs());
   };
 
-  const onCancelInFlight = useCallback(() => {
-    if (mode === "chat") {
-      chatAbortControllerRef.current?.abort();
-      setLoading(false);
-      return;
-    }
+  const abortInFlightTurn = useCallback(() => {
+    chatAbortControllerRef.current?.abort();
+    chatAbortControllerRef.current = null;
     cancelAgentTurnRef.current = true;
+    agentTurnFinishRef.current?.();
+    agentTurnFinishRef.current = null;
     setLoading(false);
     const w = wsRef.current;
     if (w?.readyState === WebSocket.OPEN) {
@@ -1296,9 +1314,14 @@ export function ChatPage() {
         /* ignore */
       }
     }
-  }, [mode]);
+  }, []);
+
+  const onCancelInFlight = useCallback(() => {
+    abortInFlightTurn();
+  }, [abortInFlightTurn]);
 
   const startNewChat = async () => {
+    abortInFlightTurn();
     try {
       const defaultProv = parseModelCatalogSelection(defaultSelectValue).provider;
       const t = await createConversation(auth, {
@@ -1314,10 +1337,6 @@ export function ChatPage() {
       setSearchParams({ c: t.id });
       setDraft("");
       setError(null);
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }

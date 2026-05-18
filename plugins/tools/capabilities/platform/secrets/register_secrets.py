@@ -15,6 +15,7 @@ TOOL_DOMAIN = "secrets"
 TOOL_LABEL = "Secrets"
 TOOL_DESCRIPTION = (
     "Register per-user credentials with OTP + curl; static help for stored secrets. "
+    "If the user pasted a secret in chat, prefer **save_user_secret** instead. "
     "In the Agent web UI, **Settings → Connections** can save the same secrets (schema-driven forms) when signed in."
 )
 TOOL_TRIGGERS = (
@@ -66,7 +67,7 @@ TOOLS: list[dict[str, Any]] = [
                 "ONLY way to get a valid OTP and curl for saving a user secret. You MUST invoke this tool — "
                 "NEVER invent or type a curl command yourself (wrong OTP, wrong JSON, broken quotes). "
                 "Copy to the user ONLY the exact curl_bash string from YOUR tool response JSON (and jq_register_example_de if present). "
-                "Match service_key_example to what the user asked for: Google Calendar iCal URL → google_calendar; Gmail → gmail; GitHub PAT → github_pat; generic ICS → calendar_ics. "
+                "service_key_example must match the integration tool's TOOL_SECRETS_REQUIRED / Connections catalog entry. "
                 "Always include for_assistant_must_say_de: secret is NOT stored until the user runs that curl/jq and gets stored:true. "
                 "Do NOT pretty-print curl_bash. Never paste real secrets or iCal URLs into chat."
             ),
@@ -76,9 +77,8 @@ TOOLS: list[dict[str, Any]] = [
                     "service_key_example": {
                         "type": "string",
                         "TOOL_DESCRIPTION": (
-                            "Must match the integration: google_calendar or calendar_ics (HTTPS ICS URL JSON with ics_url), "
-                            "gmail (IMAP: email + app_password JSON), github_pat (token JSON {\"token\":\"ghp_…\"}). "
-                            "Lowercase [a-z0-9._-]."
+                            "Integration service_key (lowercase [a-z0-9._-]); "
+                            "use the key from the tool that needs the credential."
                         ),
                     },
                     "ttl_seconds": {

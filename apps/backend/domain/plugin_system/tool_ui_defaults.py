@@ -178,6 +178,11 @@ PACKAGE_UI_DEFAULTS: dict[str, dict[str, Any]] = {
         "display_name": "Register secrets",
         "order": 10,
     },
+    "save_user_secret": {
+        "category": "system",
+        "display_name": "Save user secret",
+        "order": 10,
+    },
     "secrets_help": {
         "category": "system",
         "display_name": "Secrets help",
