@@ -10,6 +10,8 @@ from typing import Any, Callable
 from apps.backend.core.config import config
 
 from plugins.tools.capabilities.coding.coding_common import (
+    is_blocked_credential_path,
+    json_blocked_credential_path_error,
     json_workspace_missing_error,
     workspace_binding_from_context,
 )
@@ -48,6 +50,8 @@ def coding_write_file(arguments: dict[str, Any], context: dict | None = None) ->
     rel = (arguments.get("path") or "").strip()
     if not rel:
         return json.dumps({"ok": False, "error": "path is required"}, ensure_ascii=False)
+    if is_blocked_credential_path(rel):
+        return json_blocked_credential_path_error(rel)
     resolved = (root / rel).resolve()
     content, cerr = coalesce_content(arguments)
     if cerr:

@@ -14,6 +14,7 @@ import {
 } from "./agentLogStorage";
 import { normalizeCatalogRoutingToken } from "../../lib/modelCatalog";
 import { normalizeServerContent } from "./messageFormat";
+import { apiMessageToUi, inferMissingMessageTimestamps, uiMessageToApiPayload } from "./messageTimestamps";
 
 function modelProviderFromApi(item: Record<string, unknown>): string | undefined {
   const raw = item.model_catalog_owned_by;
@@ -21,7 +22,7 @@ function modelProviderFromApi(item: Record<string, unknown>): string | undefined
   return normalizeCatalogRoutingToken(raw);
 }
 
-type ApiMessage = { role: "user" | "assistant" | "system"; content: unknown };
+type ApiMessage = { role: "user" | "assistant" | "system"; content: unknown; created_at?: unknown };
 
 function apiErrorDetail(err: unknown, fallback: string): string {
   if (!err || typeof err !== "object" || !("detail" in err)) return fallback;
@@ -91,28 +92,50 @@ export function mapListItemToThread(item: Record<string, unknown>): ChatThread {
   };
 }
 
-/** Prefer server ``model_catalog_owned_by``; keep local only when server has none yet. */
+/** Prefer server fields; keep local ``createdAt`` when server row lacks it (same index). */
 export function mergeServerThreadWithLocal(
   server: ChatThread,
   local: ChatThread | undefined
 ): ChatThread {
   if (!local || local.id !== server.id) return server;
-  if (server.modelProvider) return server;
-  if (local.modelProvider) return { ...server, modelProvider: local.modelProvider };
-  return server;
+  let merged: ChatThread = server;
+  if (!server.modelProvider && local.modelProvider) {
+    merged = { ...merged, modelProvider: local.modelProvider };
+  }
+  if (server.messages.length === local.messages.length) {
+    const messages = server.messages.map((sm, i) => {
+      if (sm.createdAt != null) return sm;
+      const lm = local.messages[i];
+      if (lm?.createdAt != null) return { ...sm, createdAt: lm.createdAt };
+      return sm;
+    });
+    merged = { ...merged, messages };
+  }
+  return merged;
 }
 
 export function mapServerToThread(raw: Record<string, unknown>): ChatThread {
   const rawMessages = Array.isArray(raw.messages)
     ? (raw.messages as ApiMessage[]).map((m) => {
-        const c = (m as { content?: unknown }).content;
+        const ui = apiMessageToUi({
+          role: m.role,
+          content: (m as { content?: unknown }).content,
+          created_at: m.created_at,
+        });
         return {
-          role: m.role === "assistant" || m.role === "user" ? m.role : "user",
-          content: normalizeServerContent(c),
+          ...ui,
+          content: normalizeServerContent(ui.content),
         };
       })
     : [];
-  const messages = assignMissingUserMessageIds(rawMessages);
+  const conversationCreatedAt =
+    Date.parse(String(raw.created_at ?? "")) || Date.parse(String(raw.updated_at ?? Date.now())) || Date.now();
+  const updatedAt = Date.parse(String(raw.updated_at ?? Date.now())) || Date.now();
+  const messages = inferMissingMessageTimestamps(
+    assignMissingUserMessageIds(rawMessages),
+    conversationCreatedAt,
+    updatedAt
+  );
   const { agentLog, turnLogs } = parseAgentLogPayload(raw.agent_log);
   const ws = raw.dashboard_id;
   const src = normalizeSource(raw.source);
@@ -124,7 +147,8 @@ export function mapServerToThread(raw: Record<string, unknown>): ChatThread {
     messages,
     agentLog,
     turnLogs,
-    updatedAt: Date.parse(String(raw.updated_at ?? Date.now())) || Date.now(),
+    updatedAt,
+    conversationCreatedAt,
     dashboardId: typeof ws === "string" && ws ? ws : undefined,
     shared: typeof raw.shared === "boolean" ? raw.shared : undefined,
     source: src,
@@ -192,7 +216,7 @@ export async function createConversation(
       title: body.title,
       mode: body.mode,
       model: body.model,
-      messages: body.messages.map((m) => ({ role: m.role, content: serializeMessageContent(m.content) })),
+      messages: body.messages.map((m) => uiMessageToApiPayload(m, serializeMessageContent)),
       agent_log: body.agent_log,
       ...(body.dashboard_id ? { dashboard_id: body.dashboard_id } : {}),
       ...(body.shared ? { shared: true } : {}),
@@ -211,17 +235,14 @@ export async function createConversation(
 export async function putConversation(
   auth: Pick<AuthContextValue, "accessToken" | "refresh">,
   thread: ChatThread
-) {
+): Promise<ChatThread> {
   const r = await apiFetch(`/v1/user/conversations/${encodeURIComponent(thread.id)}`, auth, {
     method: "PUT",
     body: JSON.stringify({
       title: thread.title,
       mode: thread.mode,
       model: thread.model,
-      messages: thread.messages.map((m) => ({
-        role: m.role,
-        content: serializeMessageContent(m.content),
-      })),
+      messages: thread.messages.map((m) => uiMessageToApiPayload(m, serializeMessageContent)),
       agent_log: serializeAgentLogPayload(thread),
       ...(thread.agentId !== undefined ? { agent_id: thread.agentId } : {}),
       ...(thread.workspaceId !== undefined ? { workspace_id: thread.workspaceId } : {}),
@@ -236,6 +257,9 @@ export async function putConversation(
       err && typeof err === "object" && "detail" in err ? String((err as { detail: unknown }).detail) : "save failed"
     );
   }
+  const data = (await r.json()) as { conversation?: Record<string, unknown> };
+  const fromServer = mapServerToThread(data.conversation ?? {});
+  return mergeServerThreadWithLocal(fromServer, thread);
 }
 
 export async function deleteConversationApi(

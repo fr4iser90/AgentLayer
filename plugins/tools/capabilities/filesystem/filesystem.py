@@ -393,6 +393,11 @@ def fs_search_text(arguments: dict[str, Any]) -> str:
 
 
 def fs_replace_text(arguments: dict[str, Any]) -> str:
+    from plugins.tools.capabilities.coding.coding_common import (
+        is_blocked_credential_path,
+        json_blocked_credential_path_error,
+    )
+
     rel = arguments.get("path") or ""
     old = arguments.get("old_string")
     new = arguments.get("new_string")
@@ -400,7 +405,10 @@ def fs_replace_text(arguments: dict[str, Any]) -> str:
         return json.dumps({"ok": False, "error": "old_string is required"}, ensure_ascii=False)
     if new is None:
         new = ""
-    path, err = _safe_resolve(str(rel))
+    rel_s = str(rel)
+    if is_blocked_credential_path(rel_s):
+        return json_blocked_credential_path_error(rel_s)
+    path, err = _safe_resolve(rel_s)
     if err:
         return json.dumps({"ok": False, "error": err}, ensure_ascii=False)
     if not os.path.isfile(path):
@@ -463,13 +471,23 @@ def fs_replace_text(arguments: dict[str, Any]) -> str:
 
 
 def fs_write_file(arguments: dict[str, Any]) -> str:
+    from plugins.tools.capabilities.coding.coding_common import (
+        is_blocked_credential_path,
+        json_blocked_credential_path_error,
+    )
+
     rel = arguments.get("path") or ""
     content = arguments.get("content")
     if content is None:
         return json.dumps({"ok": False, "error": "content is required (string)"}, ensure_ascii=False)
-    path, err = _safe_resolve(str(rel))
+    rel_s = str(rel)
+    if is_blocked_credential_path(rel_s):
+        return json_blocked_credential_path_error(rel_s)
+    path, err = _safe_resolve(rel_s)
     if err:
         return json.dumps({"ok": False, "error": err}, ensure_ascii=False)
+    if path and is_blocked_credential_path(os.path.basename(path)):
+        return json_blocked_credential_path_error(os.path.basename(path))
     text = str(content)
     data = text.encode("utf-8")
     if len(data) > MAX_FILE_BYTES:

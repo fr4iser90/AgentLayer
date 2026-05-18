@@ -26,6 +26,18 @@ class TestConversationCreateBody(unittest.TestCase):
         body = ConversationUpdateBody.model_validate({"agent_log": payload})
         self.assertEqual(body.agent_log, payload)
 
+    def test_message_item_accepts_created_at(self) -> None:
+        from apps.backend.api.conversations_api import MessageItem
+
+        m = MessageItem.model_validate(
+            {
+                "role": "user",
+                "content": "hi",
+                "created_at": "2024-06-01T12:00:00+00:00",
+            }
+        )
+        self.assertEqual(m.created_at, "2024-06-01T12:00:00+00:00")
+
 
 if __name__ == "__main__":
     unittest.main()

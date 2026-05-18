@@ -87,6 +87,7 @@ import { buildSidebarGroups } from "../features/chat/groupThreadsForSidebar";
 import { SessionRuntimeBar } from "../features/chat/SessionRuntimeBar";
 import { WorkspaceMcpModal } from "../features/workspace/WorkspaceMcpModal";
 import { streamOpenAiChatChunks } from "../features/chat/openaiSseStream";
+import { formatMessageTime, inferMissingMessageTimestamps } from "../features/chat/messageTimestamps";
 
 const SUGGESTED = [
   "Show me a code snippet of a website's sticky header",
@@ -311,6 +312,15 @@ export function ChatPage() {
   ]);
 
   const messages = activeThread?.messages ?? [];
+  const displayMessages = useMemo(
+    () =>
+      inferMissingMessageTimestamps(
+        messages,
+        activeThread?.conversationCreatedAt ?? activeThread?.updatedAt ?? 0,
+        activeThread?.updatedAt ?? 0
+      ),
+    [messages, activeThread?.conversationCreatedAt, activeThread?.updatedAt]
+  );
   const mode: ChatMode = activeThread?.mode ?? "agent";
   const model = activeThread?.model ?? "";
   const modelProvider = activeThread?.modelProvider;
@@ -900,7 +910,10 @@ export function ChatPage() {
           if (th.id !== tid) return th;
           const updated: ChatThread = {
             ...th,
-            messages: [...th.messages, { role: "assistant", content: content || "(empty)" }],
+            messages: [
+              ...th.messages,
+              assistantMessage(content || "(empty)", th.messages[th.messages.length - 1]),
+            ],
             messageCount: th.messages.length + 1,
             updatedAt: Date.now(),
           };
@@ -1819,7 +1832,7 @@ export function ChatPage() {
               </div>
             ) : (
               <ul className="mx-auto flex w-full max-w-3xl flex-col gap-3">
-                {messages.filter(chatMessageHasVisibleContent).map((m, i) => (
+                {displayMessages.filter(chatMessageHasVisibleContent).map((m, i) => (
                   <li
                     key={m.id ?? `${i}-${m.role}-${m.content.slice(0, 24)}`}
                     id={m.role === "user" && m.id ? `msg-${m.id}` : undefined}
@@ -1834,13 +1847,12 @@ export function ChatPage() {
                     >
                       <span className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
                         {m.role === "user" ? "You" : "Assistant"}
-                        <span className="ml-2 font-normal normal-case">
-                          {new Date(m.createdAt ?? Date.now()).toLocaleTimeString(undefined, {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            second: "2-digit",
-                          })}
-                        </span>
+                        {(() => {
+                          const t = formatMessageTime(m.createdAt);
+                          return t ? (
+                            <span className="ml-2 font-normal normal-case">{t}</span>
+                          ) : null;
+                        })()}
                       </span>
                       {m.role === "user" ? (
                         <MessageBody content={m.content} />

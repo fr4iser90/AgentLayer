@@ -25,6 +25,7 @@ router = APIRouter(prefix="/v1/user/conversations", tags=["conversations"])
 class MessageItem(BaseModel):
     role: Literal["user", "assistant", "system"] = "user"
     content: Any = ""  # str or OpenAI multimodal list
+    created_at: str | None = None  # ISO-8601; preserved on save when provided
 
 
 # Legacy: JSON array of timeline entries. Current UI: v2 object ``{v, current, turns}``.

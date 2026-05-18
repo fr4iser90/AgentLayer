@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from psycopg.types.json import Json
@@ -36,6 +36,74 @@ def _deserialize_message_content(raw: str | None) -> Any:
         except json.JSONDecodeError:
             pass
     return s
+
+
+def _parse_message_created_at(raw: Any) -> datetime | None:
+    """Parse client ``created_at`` (ISO-8601 string or Unix ms)."""
+    if raw is None:
+        return None
+    if isinstance(raw, datetime):
+        return _ensure_utc(raw)
+    if isinstance(raw, (int, float)):
+        try:
+            n = float(raw)
+            if n > 1e12:
+                n /= 1000.0
+            return datetime.fromtimestamp(n, tz=timezone.utc)
+        except (OSError, ValueError, OverflowError):
+            return None
+    if isinstance(raw, str):
+        s = raw.strip()
+        if not s:
+            return None
+        try:
+            if s.endswith("Z"):
+                s = f"{s[:-1]}+00:00"
+            return _ensure_utc(datetime.fromisoformat(s))
+        except ValueError:
+            return None
+    return None
+
+
+def _ensure_utc(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def _created_at_iso(dt: datetime | None) -> str:
+    if dt is None:
+        return ""
+    return _ensure_utc(dt).isoformat()
+
+
+def _insert_chat_message(
+    cur: Any,
+    conversation_id: uuid.UUID,
+    position: int,
+    m: dict[str, Any],
+) -> None:
+    role = m.get("role") or "user"
+    content = _serialize_message_content(m.get("content"))
+    if role not in ("user", "assistant", "system"):
+        role = "user"
+    created = _parse_message_created_at(m.get("created_at"))
+    if created is not None:
+        cur.execute(
+            """
+            INSERT INTO chat_messages (conversation_id, position, role, content, created_at)
+            VALUES (%s, %s, %s, %s, %s)
+            """,
+            (conversation_id, position, role, content, created),
+        )
+    else:
+        cur.execute(
+            """
+            INSERT INTO chat_messages (conversation_id, position, role, content)
+            VALUES (%s, %s, %s, %s)
+            """,
+            (conversation_id, position, role, content),
+        )
 
 
 def _user_tenant_id(user_id: uuid.UUID) -> int:
@@ -203,16 +271,30 @@ def _pref_workspace_allowed(cur: Any, user_id: uuid.UUID, wid: uuid.UUID) -> boo
 def _fetch_messages(cur: Any, conversation_id: uuid.UUID) -> list[dict[str, Any]]:
     cur.execute(
         """
-        SELECT role, content FROM chat_messages
+        SELECT role, content, created_at FROM chat_messages
         WHERE conversation_id = %s
         ORDER BY position ASC
         """,
         (conversation_id,),
     )
     mrows = cur.fetchall()
-    return [
-        {"role": mr[0], "content": _deserialize_message_content(mr[1])} for mr in mrows
-    ]
+    out: list[dict[str, Any]] = []
+    for mr in mrows:
+        ca = mr[2]
+        if isinstance(ca, datetime):
+            created_s = _created_at_iso(ca)
+        elif isinstance(ca, str) and ca.strip():
+            created_s = ca.strip()
+        else:
+            created_s = ""
+        out.append(
+            {
+                "role": mr[0],
+                "content": _deserialize_message_content(mr[1]),
+                "created_at": created_s,
+            }
+        )
+    return out
 
 
 def conversation_get(user_id: uuid.UUID, conversation_id: uuid.UUID) -> dict[str, Any] | None:
@@ -381,17 +463,7 @@ def conversation_create(
                     ),
                 )
                 for i, m in enumerate(messages):
-                    role = m.get("role") or "user"
-                    content = _serialize_message_content(m.get("content"))
-                    if role not in ("user", "assistant", "system"):
-                        role = "user"
-                    cur.execute(
-                        """
-                        INSERT INTO chat_messages (conversation_id, position, role, content)
-                        VALUES (%s, %s, %s, %s)
-                        """,
-                        (conv_id, i, role, content),
-                    )
+                    _insert_chat_message(cur, conv_id, i, m)
             conn.commit()
         got = conversation_get(user_id, conv_id)
         if not got:
@@ -427,17 +499,7 @@ def conversation_create(
                 ),
             )
             for i, m in enumerate(messages):
-                role = m.get("role") or "user"
-                content = _serialize_message_content(m.get("content"))
-                if role not in ("user", "assistant", "system"):
-                    role = "user"
-                cur.execute(
-                    """
-                    INSERT INTO chat_messages (conversation_id, position, role, content)
-                    VALUES (%s, %s, %s, %s)
-                    """,
-                    (conv_id, i, role, content),
-                )
+                _insert_chat_message(cur, conv_id, i, m)
         conn.commit()
     got = conversation_get(user_id, conv_id)
     if not got:
@@ -557,17 +619,7 @@ def conversation_replace(
                     (conversation_id,),
                 )
                 for i, m in enumerate(msgs_ing):
-                    role = m.get("role") or "user"
-                    content = _serialize_message_content(m.get("content"))
-                    if role not in ("user", "assistant", "system"):
-                        role = "user"
-                    cur.execute(
-                        """
-                        INSERT INTO chat_messages (conversation_id, position, role, content)
-                        VALUES (%s, %s, %s, %s)
-                        """,
-                        (conversation_id, i, role, content),
-                    )
+                    _insert_chat_message(cur, conversation_id, i, m)
         conn.commit()
     return conversation_get(user_id, conversation_id)
 

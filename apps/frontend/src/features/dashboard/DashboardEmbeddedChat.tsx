@@ -13,7 +13,7 @@ import {
   resolveComposerModelRouting,
   type ModelRow,
 } from "../../lib/modelCatalog";
-import type { ChatThread } from "../chat/chatThreadStorage";
+import type { ChatThread, UiMessage } from "../chat/chatThreadStorage";
 import {
   createConversation,
   fetchConversationDetail,
@@ -289,8 +289,11 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
         return;
       }
     }
-    const prior = prev.messages.map((m) => ({ role: m.role, content: m.content }));
-    const nextMessages = [...prior, { role: "user" as const, content: userContent }];
+    const userCreatedAt = Date.now();
+    const nextMessages: UiMessage[] = [
+      ...prev.messages,
+      { role: "user", content: userContent, createdAt: userCreatedAt },
+    ];
     const nextThread: ChatThread = {
       ...prev,
       model: mdl,
@@ -351,13 +354,14 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
       const ctype = (res.headers.get("content-type") || "").toLowerCase();
       if (ctype.includes("text/event-stream")) {
         let acc = "";
+        const assistantCreatedAt = Date.now();
         try {
           for await (const chunk of streamOpenAiChatChunks(res)) {
             if (chunk.kind === "usage") continue;
             acc += chunk.text;
             setThread({
               ...nextThread,
-              messages: [...nextMessages, { role: "assistant", content: acc }],
+              messages: [...nextMessages, { role: "assistant", content: acc, createdAt: assistantCreatedAt }],
               updatedAt: Date.now(),
             });
           }
@@ -371,7 +375,10 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
         }
         const withAssistant: ChatThread = {
           ...nextThread,
-          messages: [...nextMessages, { role: "assistant", content: acc.trim() || "(empty)" }],
+          messages: [
+            ...nextMessages,
+            { role: "assistant", content: acc.trim() || "(empty)", createdAt: assistantCreatedAt },
+          ],
           updatedAt: Date.now(),
         };
         setThread(withAssistant);
@@ -382,7 +389,7 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
         const withAssistant: ChatThread = {
           ...nextThread,
           messages: content.trim()
-            ? [...nextMessages, { role: "assistant", content }]
+            ? [...nextMessages, { role: "assistant", content, createdAt: Date.now() }]
             : nextMessages,
           updatedAt: Date.now(),
         };

@@ -60,6 +60,49 @@ def json_workspace_missing_error() -> str:
     )
 
 
+_CREDENTIAL_ENV_BASENAMES = frozenset(
+    {
+        ".env",
+        ".env.local",
+        ".env.production",
+        ".env.development",
+        ".env.test",
+    }
+)
+
+
+def is_blocked_credential_path(rel: str) -> bool:
+    """True when *rel* targets operator env files (API keys belong in user secrets)."""
+    s = (rel or "").strip().replace("\\", "/")
+    if not s:
+        return False
+    parts = [p for p in s.split("/") if p]
+    base = (parts[-1] if parts else s).lower()
+    if base in _CREDENTIAL_ENV_BASENAMES:
+        return True
+    if base.startswith(".env.") or base.endswith(".env"):
+        return True
+    return False
+
+
+def json_blocked_credential_path_error(rel: str) -> str:
+    return json.dumps(
+        {
+            "ok": False,
+            "error": (
+                f"Refusing to modify credential/env file {rel!r}. "
+                "Never edit docker/.env or .env for API keys or tokens."
+            ),
+            "hint": (
+                "Use save_user_secret(service_key=<catalog key>, secret=<value>) — "
+                "e.g. service_key='ssc_api_key' for SimpleSecCheck. "
+                "Operator-only env vars stay in docker/.env (human/ops, not the agent)."
+            ),
+        },
+        ensure_ascii=False,
+    )
+
+
 def require_workspace(context: dict | None = None) -> Path:
     """Get workspace path or raise clear error - NO FALLBACKS!"""
     if not context:

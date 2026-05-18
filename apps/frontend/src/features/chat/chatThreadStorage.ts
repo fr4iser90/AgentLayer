@@ -39,6 +39,8 @@ export type ChatThread = {
   /** Archived activity per user prompt. */
   turnLogs?: AgentTurnLog[];
   updatedAt: number;
+  /** Conversation row ``created_at`` from server (ms); used to infer legacy message times. */
+  conversationCreatedAt?: number;
   /** Set when this thread is the dashboard-scoped assistant chat (server-side). */
   dashboardId?: string;
   /** Shared dashboard thread (members see same messages). */

@@ -26,6 +26,7 @@ from apps.backend.api import memory as memory_api
 from apps.backend.domain.agent_registry import get_agent_registry
 from apps.backend.infrastructure.openai_compat_http import http_post_chat_completions
 from apps.backend.infrastructure.openai_stream_aggregate import stream_chat_completions_aggregate
+from apps.backend.infrastructure.stream_repetition_guard import apply_repetition_guard_to_completion
 from apps.backend.domain.plugin_system.registry import get_registry
 from apps.backend.dashboard import db as dashboard_db
 from apps.backend.domain.plugin_system.capability_governance import parse_user_capability_confirm
@@ -1644,6 +1645,14 @@ def _inject_system_prompt(messages: list[dict[str, Any]]) -> list[dict[str, Any]
     return out
 
 
+_SECRETS_CREDENTIAL_DISCIPLINE = """## Credentials and API keys (mandatory)
+
+- **Never** edit ``docker/.env``, ``.env``, or similar env files to store user API keys, tokens, or passwords — those writes are **blocked**.
+- When the user pastes a credential in chat and asks to save it, call **`save_user_secret`** with the integration's ``service_key`` (e.g. ``ssc_api_key`` for SimpleSecCheck, ``github_pat`` for GitHub) and the secret value.
+- Use **`register_secrets`** / Settings → Connections only when the user must run OTP curl themselves; prefer **`save_user_secret`** when they pasted the key in chat.
+- Operator env vars (``SSC_API_KEY`` in docker) are for humans/ops — not for you to write from a chat turn.
+"""
+
 _TOOL_USAGE_DISCIPLINE = """## Tool usage (discipline)
 
 - The API **tools[]** list is a compact catalog; full JSON Schema for a tool is returned from **get_tool_help** when needed.
@@ -1714,14 +1723,16 @@ def _append_tool_usage_discipline(
         snippet = _TOOL_DISCIPLINE_BY_PRESET[preset].strip()
     else:
         snippet = _TOOL_USAGE_DISCIPLINE.strip()
-    if not snippet:
+    secrets_snippet = _SECRETS_CREDENTIAL_DISCIPLINE.strip()
+    combined = "\n\n".join(s for s in (secrets_snippet, snippet) if s)
+    if not combined:
         return messages
     out = list(messages)
     if out and out[0].get("role") == "system":
         prev = str(out[0].get("content") or "")
-        out[0] = {**out[0], "content": (prev + "\n\n" + snippet).strip()}
+        out[0] = {**out[0], "content": (prev + "\n\n" + combined).strip()}
     else:
-        out.insert(0, {"role": "system", "content": snippet})
+        out.insert(0, {"role": "system", "content": combined})
     return out
 
 
@@ -2038,8 +2049,8 @@ def _tools_for_chat_request(
     """
     Build tools[] for the LLM request.
 
-    Default (**full_schema=False**): compact catalog (name + hint; empty ``parameters``).
-    **full_schema=True**: registry JSON Schema per tool (used for unattended schedules).
+    Default (**full_schema** from ``AGENT_TOOLS_FULL_SCHEMA``, usually **true**): registry JSON Schema per tool.
+    **full_schema=False**: compact catalog (name + hint; empty ``parameters``) — legacy/token-saving mode.
     """
     builder = _full_schema_tool_function if full_schema else _catalog_tool_function
     out: list[Any] = []
@@ -2936,7 +2947,10 @@ async def chat_completion(
         parent_agent_run_id = None
     permission_ask = _coerce_body_bool(body.pop("agent_permission_ask", None), False)
     agent_unattended = _coerce_body_bool(body.pop("agent_unattended", None), False)
-    tools_full_schema = _coerce_body_bool(body.pop("agent_tools_full_schema", None), False)
+    tools_full_schema = _coerce_body_bool(
+        body.pop("agent_tools_full_schema", None),
+        config.AGENT_TOOLS_FULL_SCHEMA,
+    )
     if agent_unattended:
         permission_ask = False
     agent_require_workspace_verify = _coerce_body_bool(
@@ -3765,6 +3779,8 @@ async def chat_completion(
                     max_tool_rounds_eff,
                 )
 
+            apply_repetition_guard_to_completion(data)
+
             choice0, msg, tool_calls, had_native_tool_calls = (
                 _extract_tool_calls_from_completion_response(
                     data,
@@ -3838,6 +3854,7 @@ async def chat_completion(
                                 "agent: tool_choice=required retry produced tool_calls (llm_model_id=%s)",
                                 model,
                             )
+                            apply_repetition_guard_to_completion(data_r)
                             data, tools_omitted = data_r, tools_omitted_r
                             choice0, msg, tool_calls, had_native_tool_calls = (
                                 c0,

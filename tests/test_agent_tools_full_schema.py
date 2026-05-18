@@ -1,5 +1,6 @@
-"""Full JSON Schema in tools[] for unattended / schedule agent runs."""
+"""Full JSON Schema in tools[] for chat (default) and catalog mode (opt-out)."""
 
+from apps.backend.core.config import config
 from apps.backend.domain.agent import (
     _catalog_tool_function,
     _full_schema_tool_function,
@@ -43,6 +44,10 @@ def test_tools_for_chat_request_full_schema_larger_than_catalog():
 
 def test_schedule_allowlist_includes_get_tool_help():
     assert "get_tool_help" in CODING_SCHEDULE_TOOL_ALLOWLIST
+
+
+def test_tools_full_schema_default_is_true():
+    assert config.AGENT_TOOLS_FULL_SCHEMA is True
 
 
 def test_catalog_save_user_secret_includes_required_parameters():

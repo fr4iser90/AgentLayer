@@ -175,6 +175,15 @@ AGENT_TOOLS_DENYLIST = frozenset(
     if x.strip()
 )
 # Tool Ranking (Semantic Search based)
+# Chat tools[]: send full JSON Schema per tool (default on). Set false for compact catalog (empty parameters).
+AGENT_TOOLS_FULL_SCHEMA = _env_bool("AGENT_TOOLS_FULL_SCHEMA", True)
+
+# LLM text degeneration: abort when the same tail block repeats consecutively at stream end.
+AGENT_STREAM_REPETITION_GUARD = _env_bool("AGENT_STREAM_REPETITION_GUARD", True)
+AGENT_STREAM_REPETITION_MIN_BLOCK = max(40, _env_int("AGENT_STREAM_REPETITION_MIN_BLOCK", 80))
+AGENT_STREAM_REPETITION_REPEAT_COUNT = max(2, _env_int("AGENT_STREAM_REPETITION_REPEAT_COUNT", 3))
+AGENT_STREAM_REPETITION_TAIL_WINDOW = max(500, _env_int("AGENT_STREAM_REPETITION_TAIL_WINDOW", 1500))
+
 AGENT_TOOLS_RANKING_ENABLED = _env_bool("AGENT_TOOLS_RANKING_ENABLED", True)
 AGENT_TOOLS_MAX_RANKING = max(1, int(os.environ.get("AGENT_TOOLS_MAX_RANKING", "10")))
 AGENT_TOOLS_SEMANTIC_WEIGHT = max(0.0, float(os.environ.get("AGENT_TOOLS_SEMANTIC_WEIGHT", "1.0")))
