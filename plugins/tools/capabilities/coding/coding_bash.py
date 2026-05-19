@@ -13,6 +13,16 @@ from plugins.tools.capabilities.coding.coding_common import (
     json_workspace_missing_error,
     workspace_binding_from_context,
 )
+from plugins.tools.capabilities.coding.coding_git_auth import (
+    askpass_extra_env,
+    blocks_git_credential_exfil,
+    cleanup_askpass_paths,
+    git_auth_failure_reason,
+    git_command_needs_github_pat,
+    github_pat_for_current_user,
+    no_github_pat_payload,
+    redact_secrets,
+)
 
 __version__ = "1.0.0"
 TOOL_ID = "coding_bash"
@@ -109,6 +119,8 @@ def _classify_git_pull_output(out: str, exit_code: int) -> str:
 
 def _is_blocked(command: str) -> str | None:
     lower = command.lower().strip()
+    if blocks_git_credential_exfil(command):
+        return "command blocked: cannot inspect git credential helpers or askpass paths"
     for blocked in _BLOCKED_COMMANDS:
         if blocked in lower:
             return f"command blocked: '{blocked}' is not allowed (1)"
@@ -175,7 +187,18 @@ def coding_bash(arguments: dict[str, Any], context: dict | None = None) -> str:
         **os.environ,
         "HOME": str(root),
         "PWD": cwd,
+        "GIT_TERMINAL_PROMPT": "0",
     }
+    needs_pat = git_command_needs_github_pat(command)
+    pat_token: str | None = None
+    askpass_cleanup: list[str] = []
+    if needs_pat:
+        pat_token = github_pat_for_current_user()
+        if not pat_token:
+            return json.dumps(no_github_pat_payload(), ensure_ascii=False)
+        extra_env, askpass_cleanup = askpass_extra_env(pat_token)
+        env.update(extra_env)
+
     try:
         result = subprocess.run(
             command,
@@ -192,6 +215,7 @@ def coding_bash(arguments: dict[str, Any], context: dict | None = None) -> str:
             out_text += str(e.stdout)
         if e.stderr:
             out_text += "\n" + str(e.stderr)
+        out_text = redact_secrets(out_text, pat_token)
         preview, cut = _tail(out_text, MAX_OUTPUT_BYTES)
         detail = "..." if cut else ""
         return json.dumps(
@@ -206,6 +230,9 @@ def coding_bash(arguments: dict[str, Any], context: dict | None = None) -> str:
         )
     except OSError as e:
         return json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False)
+    finally:
+        if askpass_cleanup:
+            cleanup_askpass_paths(askpass_cleanup)
     combined = ""
     if result.stdout:
         combined += result.stdout
@@ -215,6 +242,7 @@ def coding_bash(arguments: dict[str, Any], context: dict | None = None) -> str:
         combined += result.stderr
     if not combined:
         combined = "(no output)"
+    combined = redact_secrets(combined, pat_token)
     preview, cut = _tail(combined, MAX_OUTPUT_BYTES)
     exit_code = int(result.returncode)
     payload: dict[str, Any] = {
@@ -224,6 +252,16 @@ def coding_bash(arguments: dict[str, Any], context: dict | None = None) -> str:
         "output": preview,
         "command": command,
     }
+    if needs_pat:
+        payload["github_auth"] = "pat_injected"
+        reason = git_auth_failure_reason(combined, exit_code)
+        if reason:
+            payload["reason"] = reason
+        if reason == "auth_denied":
+            payload["error"] = (
+                "GitHub rejected credentials (check github_pat scopes, expiry, SSO, "
+                "and that origin uses https://github.com/… not git@github.com)."
+            )
     cmd_l = command.lower()
     if "git pull" in cmd_l or cmd_l.strip() == "git pull":
         pull_result = _classify_git_pull_output(combined, exit_code)

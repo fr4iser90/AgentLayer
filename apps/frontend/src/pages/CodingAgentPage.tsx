@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import {
   type AgentTimelineEntry,
@@ -53,6 +54,8 @@ import { SessionRuntimeBar } from "../features/chat/SessionRuntimeBar";
 import { CodingWorkspacePanels } from "../features/workspace/CodingWorkspacePanels";
 import { WorkspaceMcpModal } from "../features/workspace/WorkspaceMcpModal";
 import { WorkspaceRetrievalBar } from "../features/workspace/WorkspaceRetrievalBar";
+import { confirmOpenCodingSessionForWorkspace } from "../features/workspace/confirmWorkspaceScope";
+import { shouldIsolateWorkspaceThread } from "../features/workspace/codingWorkspaceNav";
 import {
   applyModelCatalogSelection,
   defaultModelCatalogSelectValue,
@@ -320,6 +323,7 @@ const CODING_TOOLS = [
   "coding_edit",
   "coding_git_read",
   "coding_git_sync",
+  "coding_git_push",
   "coding_glob",
   "coding_index",
   "coding_list_dir",
@@ -441,6 +445,8 @@ export function CodingAgentPage() {
   const auth = useAuth();
   const { accessToken, user } = auth;
   const userId = user?.id ?? "";
+  const [searchParams, setSearchParams] = useSearchParams();
+  const deepLinkRef = useRef<{ workspaceId: string; newSession: boolean } | null>(null);
 
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
@@ -1037,6 +1043,20 @@ export function CodingAgentPage() {
             if (wid) {
               setSelectedWorkspaceId(wid);
               const tid = activeThreadIdRef.current;
+              const th0 = threads.find((x) => x.id === tid);
+              const msgCount = th0?.messageCount ?? th0?.messages.length ?? 0;
+              if (msgCount > 2 && tid) {
+                const wsName = workspaces.find((w) => w.id === wid)?.name ?? "project";
+                const openNew = window.confirm(
+                  `Workspace switched to "${wsName}" mid-session.\n\n` +
+                    "OK — start a new Coding session for this project (recommended).\n" +
+                    "Cancel — keep this chat thread."
+                );
+                if (openNew) {
+                  void startNewChat(wid);
+                  return;
+                }
+              }
               if (tid) {
                 setThreads((prev) => {
                   const next = prev.map((th) =>
@@ -1249,8 +1269,10 @@ export function CodingAgentPage() {
     [runAgentWs]
   );
 
-  const startNewChat = async () => {
+  const startNewChat = useCallback(
+    async (workspaceIdOverride?: string | null) => {
     try {
+      const wsForChat = workspaceIdOverride ?? selectedWorkspaceId;
       const defaultProv = parseModelCatalogSelection(defaultSelectValue).provider;
       const t = await createConversation(auth, {
         title: "New coding session",
@@ -1259,7 +1281,7 @@ export function CodingAgentPage() {
         messages: [],
         agent_log: serializeAgentLogPayload({ agentLog: [], turnLogs: [] }),
         agent_id: sessionMode === "plan" ? "coding_plan" : "coding",
-        workspace_id: selectedWorkspaceId,
+        workspace_id: wsForChat,
         model_catalog_owned_by: defaultProv ?? null,
       });
       if (userId) {
@@ -1271,7 +1293,16 @@ export function CodingAgentPage() {
       setError(null);
       if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
     } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
-  };
+  },
+    [
+      auth,
+      defaultModel,
+      defaultSelectValue,
+      selectedWorkspaceId,
+      sessionMode,
+      userId,
+    ]
+  );
 
   const deleteThread = async (id: string) => {
     if (!confirm("Delete this coding session?")) return;
@@ -1353,8 +1384,55 @@ export function CodingAgentPage() {
     [activeThreadId, auth, modelRows]
   );
 
+  useEffect(() => {
+    const wsParam = (searchParams.get("workspace") || "").trim();
+    if (!wsParam) return;
+    deepLinkRef.current = {
+      workspaceId: wsParam,
+      newSession: searchParams.get("new") === "1",
+    };
+  }, [searchParams]);
+
+  useEffect(() => {
+    const pending = deepLinkRef.current;
+    if (!pending || workspaces.length === 0 || !hydrated) return;
+    if (!workspaces.some((w) => w.id === pending.workspaceId)) {
+      deepLinkRef.current = null;
+      setSearchParams({}, { replace: true });
+      setError("Workspace from link was not found.");
+      return;
+    }
+    const { workspaceId, newSession } = pending;
+    deepLinkRef.current = null;
+    setSearchParams({}, { replace: true });
+    setSelectedWorkspaceId(workspaceId);
+    if (newSession) {
+      void startNewChat(workspaceId);
+      return;
+    }
+    const match = threads.find(
+      (t) =>
+        t.workspaceId === workspaceId &&
+        (t.messageCount ?? t.messages.length) > 0
+    );
+    if (match) void selectCodingSession(match.id);
+  }, [workspaces, hydrated, threads, searchParams, setSearchParams, startNewChat, selectCodingSession]);
+
   const persistWorkspaceToThread = useCallback(
     (wsId: string | null) => {
+      if (!wsId) {
+        setSelectedWorkspaceId(null);
+        return;
+      }
+      const t = threads.find((x) => x.id === activeThreadId);
+      const msgCount = t?.messageCount ?? t?.messages.length ?? 0;
+      const prevWs = typeof t?.workspaceId === "string" ? t.workspaceId : null;
+      if (shouldIsolateWorkspaceThread(msgCount, prevWs, wsId)) {
+        const wsName = workspaces.find((w) => w.id === wsId)?.name ?? wsId;
+        if (confirmOpenCodingSessionForWorkspace(wsName, wsId)) {
+          return;
+        }
+      }
       setSelectedWorkspaceId(wsId);
       if (!activeThreadId) return;
       const aid = sessionMode === "plan" ? "coding_plan" : "coding";
@@ -1369,7 +1447,7 @@ export function CodingAgentPage() {
         return next;
       });
     },
-    [activeThreadId, auth, sessionMode]
+    [activeThreadId, auth, sessionMode, threads, workspaces]
   );
 
   const sidebarThreads = useMemo(
@@ -1522,17 +1600,30 @@ export function CodingAgentPage() {
             </select>
           )}
           {selectedWorkspace && (
-            <div className="mt-2 flex items-center gap-2">
-              <span className="text-[10px] text-surface-muted truncate" title={selectedWorkspace.path}>
-                {selectedWorkspace.path}
-              </span>
-              <button
-                type="button"
-                onClick={() => handleDeleteWorkspace(selectedWorkspace.id)}
-                className="text-[10px] text-red-400/70 hover:text-red-300"
-              >
-                Del
-              </button>
+            <div className="mt-2 flex flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-surface-muted truncate flex-1" title={selectedWorkspace.path}>
+                  {selectedWorkspace.path}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void startNewChat(selectedWorkspace.id)}
+                  className="shrink-0 text-[10px] text-sky-400 hover:text-sky-300"
+                  title="Fresh coding session for this workspace only"
+                >
+                  New session
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteWorkspace(selectedWorkspace.id)}
+                  className="shrink-0 text-[10px] text-red-400/70 hover:text-red-300"
+                >
+                  Del
+                </button>
+              </div>
+              <p className="text-[10px] leading-snug text-surface-muted">
+                Switching to another repo in the same chat mixes context — use New session when changing projects.
+              </p>
             </div>
           )}
         </div>

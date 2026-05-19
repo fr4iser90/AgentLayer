@@ -86,6 +86,11 @@ import { getAgentStreamLlm, setAgentStreamLlm } from "../features/settings/agent
 import { buildSidebarGroups } from "../features/chat/groupThreadsForSidebar";
 import { SessionRuntimeBar } from "../features/chat/SessionRuntimeBar";
 import { WorkspaceMcpModal } from "../features/workspace/WorkspaceMcpModal";
+import {
+  codingAgentPath,
+  shouldIsolateWorkspaceThread,
+} from "../features/workspace/codingWorkspaceNav";
+import { confirmOpenCodingSessionForWorkspace } from "../features/workspace/confirmWorkspaceScope";
 import { streamOpenAiChatChunks } from "../features/chat/openaiSseStream";
 import { formatMessageTime, inferMissingMessageTimestamps } from "../features/chat/messageTimestamps";
 
@@ -248,6 +253,7 @@ export function ChatPage() {
   const [workspaces, setWorkspaces] = useState<WorkspaceApiRecord[]>([]);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
   const [showWorkspaceMcpModal, setShowWorkspaceMcpModal] = useState(false);
+  const [workspaceScopeHint, setWorkspaceScopeHint] = useState<string | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
   const agentHandlerRef = useRef<(ev: MessageEvent) => void>(() => {});
@@ -743,6 +749,18 @@ export function ChatPage() {
   const setComposerWorkspace = useCallback(
     (wsId: string | null) => {
       if (!activeThreadId) return;
+      if (wsId) {
+        const t = threads.find((x) => x.id === activeThreadId);
+        const msgCount = t?.messageCount ?? t?.messages.length ?? 0;
+        const prevWs = typeof t?.workspaceId === "string" ? t.workspaceId : null;
+        if (shouldIsolateWorkspaceThread(msgCount, prevWs, wsId)) {
+          const wsName = workspaces.find((w) => w.id === wsId)?.name ?? wsId;
+          if (confirmOpenCodingSessionForWorkspace(wsName, wsId)) {
+            return;
+          }
+        }
+      }
+      setWorkspaceScopeHint(null);
       setSelectedWorkspaceId(wsId);
       setThreads((prev) => {
         const next = prev.map((t) =>
@@ -753,7 +771,7 @@ export function ChatPage() {
         return next;
       });
     },
-    [activeThreadId, auth]
+    [activeThreadId, auth, threads, workspaces]
   );
 
   const appendAgentLine = useCallback(
@@ -1135,6 +1153,14 @@ export function ChatPage() {
               setSelectedWorkspaceId(wid);
               const tid = activeThreadIdRef.current;
               if (tid) {
+                const th0 = threads.find((x) => x.id === tid);
+                const msgCount = th0?.messageCount ?? th0?.messages.length ?? 0;
+                const wsName = workspaces.find((w) => w.id === wid)?.name ?? "project";
+                if (msg.workspace_bound === true && msgCount > 2) {
+                  setWorkspaceScopeHint(
+                    `Workspace is now "${wsName}". For focused repo work, open Coding with a new session.`
+                  );
+                }
                 setThreads((prev) => {
                   const next = prev.map((th) =>
                     th.id === tid ? { ...th, workspaceId: wid, updatedAt: Date.now() } : th
@@ -1584,17 +1610,28 @@ export function ChatPage() {
                       <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
                         Workspace
                       </label>
-                      <select
-                        className="mt-0.5 w-full rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100"
-                        value={selectedWorkspaceId ?? ""}
-                        onChange={(e) => setComposerWorkspace(e.target.value || null)}
-                      >
-                        {workspaces.map((ws) => (
-                          <option key={ws.id} value={ws.id}>
-                            {ws.name}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="mt-0.5 flex gap-1.5">
+                        <select
+                          className="min-w-0 flex-1 rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100"
+                          value={selectedWorkspaceId ?? ""}
+                          onChange={(e) => setComposerWorkspace(e.target.value || null)}
+                        >
+                          {workspaces.map((ws) => (
+                            <option key={ws.id} value={ws.id}>
+                              {ws.name}
+                            </option>
+                          ))}
+                        </select>
+                        {selectedWorkspaceId ? (
+                          <NavLink
+                            to={codingAgentPath(selectedWorkspaceId, { newSession: true })}
+                            className="shrink-0 rounded-lg border border-sky-600/50 bg-sky-950/40 px-2.5 py-1.5 text-[11px] font-medium text-sky-200 hover:bg-sky-900/50"
+                            title="Open Coding Agent with a fresh session for this project"
+                          >
+                            Coding
+                          </NavLink>
+                        ) : null}
+                      </div>
                     </div>
                   );
                 })()}
@@ -1618,6 +1655,24 @@ export function ChatPage() {
                   </div>
                 );
               })()}
+              {workspaceScopeHint && selectedWorkspaceId ? (
+                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-600/40 bg-amber-950/30 px-3 py-2">
+                  <p className="min-w-0 flex-1 text-[11px] leading-snug text-amber-100/95">{workspaceScopeHint}</p>
+                  <NavLink
+                    to={codingAgentPath(selectedWorkspaceId, { newSession: true })}
+                    className="shrink-0 rounded-md bg-sky-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-sky-500"
+                  >
+                    Open in Coding
+                  </NavLink>
+                  <button
+                    type="button"
+                    className="shrink-0 text-[11px] text-surface-muted hover:text-neutral-200"
+                    onClick={() => setWorkspaceScopeHint(null)}
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              ) : null}
               {selectedAgentId === "coding" ? (
                 <p className="max-w-xl text-[11px] leading-snug text-sky-300/85">
                   Tip: the model can call{" "}

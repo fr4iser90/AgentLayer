@@ -89,6 +89,13 @@ def _get_tool_description(tool_spec: dict[str, Any]) -> str:
 _AGENT_CREDENTIAL_TOOL_NAMES = frozenset(
     {"save_user_secret", "register_secrets", "secrets_help"}
 )
+# Always forwarded to the LLM when the agent allowlists them (ranking would drop them otherwise).
+_AGENT_GIT_NETWORK_TOOL_NAMES = frozenset(
+    {
+        "coding_git_push",
+        "coding_git_sync",
+    }
+)
 
 
 def _partition_tool_specs_by_name(
@@ -113,6 +120,21 @@ def _credential_tools_for_agent(agent_id: str | None) -> frozenset[str]:
         return frozenset()
     allowed = frozenset(ag.get("tool_names") or [])
     return _AGENT_CREDENTIAL_TOOL_NAMES & allowed
+
+
+def _git_network_tools_for_agent(agent_id: str | None) -> frozenset[str]:
+    if not agent_id or not str(agent_id).strip():
+        return frozenset()
+    ag = get_agent_registry().get_agent(str(agent_id).strip())
+    if not ag:
+        return frozenset()
+    allowed = frozenset(ag.get("tool_names") or [])
+    return _AGENT_GIT_NETWORK_TOOL_NAMES & allowed
+
+
+def _pinned_tools_for_agent(agent_id: str | None) -> frozenset[str]:
+    """Tools always prepended to ranked tools[] (credentials + git push/sync)."""
+    return _credential_tools_for_agent(agent_id) | _git_network_tools_for_agent(agent_id)
 
 
 def _rank_tools_by_user_input(
@@ -3441,10 +3463,10 @@ async def chat_completion(
             ]
 
         # Tool Ranking: sort by semantic similarity to user input (Phase 1)
-        pin_cred = _credential_tools_for_agent(agent_id)
-        if pin_cred:
+        pin_names = _pinned_tools_for_agent(agent_id)
+        if pin_names:
             pinned_specs, tools_for_ranking = _partition_tool_specs_by_name(
-                tools_for_request, pin_cred
+                tools_for_request, pin_names
             )
         else:
             pinned_specs, tools_for_ranking = [], tools_for_request

@@ -9,7 +9,7 @@ AGENT_SYSTEM_PROMPT = """You are a helpful AI assistant with access to tools (wo
 ## How to work (important)
 
 - Answer normally when no tool is needed.
-- When the user wants **shell**, **git**, **clone**, **install**, **run tests**, or **edit a repo**, use **coding_** tools if a workspace is available, or guide them to attach/create a workspace first. Do **not** spend many turns only listing or describing tools.
+- When the user wants **shell**, **git**, **clone**, **install**, **run tests**, or **edit a repo**, use **workspace_*** tools to list/create/bind the right project, then **coding_** tools only in that workspace — or tell them to use **Coding** UI for a dedicated session. For a **different repo** than the current chat workspace, prefer ``workspace_create`` and suggest opening **Coding** (new session), not a long mixed history. Do **not** spend many turns only listing or describing tools.
 - When calling tools, **always send the required JSON fields** (e.g. `coding_bash` needs `"command"`, read/write tools need `"path"`). Empty `{}` calls will fail.
 - **Reserve the last part of the turn budget for a clear user-facing summary** if tools fail or you are unsure — do not burn every round on tools without explaining to the user.
 - Use **get_tool_help** only when you are about to call a tool and genuinely do not know its parameters — at most once per tool, not in a loop.
@@ -55,6 +55,9 @@ AGENT_TOOL_PATTERNS: tuple[str, ...] = (
     "rag.*",
     "kb.*",
     "project.*",
+    "workspace_list",
+    "workspace_create",
+    "workspace_bind",
     "search_web",
     "deep_search",
     "github.*",
