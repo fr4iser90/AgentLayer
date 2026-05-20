@@ -120,6 +120,8 @@ export function appendTimelineEntry(
       ...(entry.toolName != null ? { toolName: entry.toolName } : {}),
       ...(entry.durationMs != null ? { durationMs: entry.durationMs } : {}),
       ...(entry.resultChars != null ? { resultChars: entry.resultChars } : {}),
+      ...(entry.subagentAgentId != null ? { subagentAgentId: entry.subagentAgentId } : {}),
+      ...(entry.nested === true ? { nested: true } : {}),
     },
   ];
 }

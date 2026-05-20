@@ -131,7 +131,10 @@ def _parse_router_json(content: str) -> dict[str, Any] | None:
 def _call_local_router_model(
     messages: list[dict[str, Any]], snap: dict[str, Any], p: dict[str, Any]
 ) -> dict[str, Any] | None:
-    model = str(p.get("router_model") or "nemotron-3-nano:4b").strip() or "nemotron-3-nano:4b"
+    model = str(p.get("router_model") or "").strip()
+    if not model:
+        logger.warning("smart route: llm_router_ollama_model not configured in Admin → Interfaces")
+        return None
     last = (last_user_text(messages) or "")[:2000]
     user_payload = (
         "Classify whether the MAIN chat completion should run on-device (local) or on external cloud API.\n"

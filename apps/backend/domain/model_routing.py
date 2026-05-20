@@ -67,18 +67,14 @@ def _profile_token_from_body(body_model: Any) -> str | None:
 
 
 def _model_for_profile(profile: str) -> str:
-    base = (config.OLLAMA_DEFAULT_MODEL or "").strip() or "nemotron-3-nano:4b"
+    """Env profile hints only; chat completions must finalize via ``catalog_chat_llm`` (no env default model id)."""
     if profile == "vlm":
-        v = (config.AGENT_MODEL_PROFILE_VLM or "").strip()
-        return v or base
+        return (config.AGENT_MODEL_PROFILE_VLM or "").strip()
     if profile == "agent":
-        v = (config.AGENT_MODEL_PROFILE_AGENT or "").strip()
-        return v or base
+        return (config.AGENT_MODEL_PROFILE_AGENT or "").strip()
     if profile == "coding":
-        v = (config.AGENT_MODEL_PROFILE_CODING or "").strip()
-        return v or base
-    v = (config.AGENT_MODEL_PROFILE_DEFAULT or "").strip()
-    return v or base
+        return (config.AGENT_MODEL_PROFILE_CODING or "").strip()
+    return (config.AGENT_MODEL_PROFILE_DEFAULT or "").strip()
 
 
 def ollama_model_for_profile(profile: str) -> str:

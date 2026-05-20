@@ -23,7 +23,6 @@ from typing import Any
 
 import discord
 
-from apps.backend.core.config import config
 from apps.backend.domain.agent import chat_completion
 from apps.backend.domain.identity import reset_identity, set_identity
 from apps.backend.infrastructure.bridge_agent_session import (
@@ -50,6 +49,7 @@ _logged_idle_reason: str | None = None
 class _BridgeCfg:
     discord_token: str
     model: str
+    catalog_owned_by: str
     prefix: str
 
 
@@ -117,8 +117,21 @@ def _load_bridge_cfg_with_reason() -> tuple[_BridgeCfg | None, str]:
     if prefix and not prefix.endswith(" "):
         prefix = prefix + " "
     model_raw = (str(cmodel).strip() if cmodel is not None else "") or ""
-    model = model_raw or getattr(config, "OLLAMA_DEFAULT_MODEL", "llama3.2") or "llama3.2"
-    return _BridgeCfg(discord_token=dt, model=model, prefix=prefix), ""
+    try:
+        from apps.backend.domain.catalog_chat_llm import catalog_llm_body_extras
+
+        llm = catalog_llm_body_extras(model=model_raw or None, profile_key="agent")
+    except ValueError as exc:
+        return None, str(exc)
+    return (
+        _BridgeCfg(
+            discord_token=dt,
+            model=str(llm["model"]),
+            catalog_owned_by=str(llm["agent_model_catalog_owned_by"]),
+            prefix=prefix,
+        ),
+        "",
+    )
 
 
 def _load_bridge_cfg() -> _BridgeCfg | None:
@@ -247,6 +260,7 @@ def _make_client(cfg: _BridgeCfg) -> discord.Client:
             )
             work: dict[str, Any] = {
                 "model": cfg.model,
+                "agent_model_catalog_owned_by": cfg.catalog_owned_by,
                 "messages": msg_list,
                 "stream": False,
             }

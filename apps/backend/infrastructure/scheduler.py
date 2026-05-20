@@ -163,10 +163,17 @@ async def _run_one_tick() -> None:
         ],
         "stream": False,
     }
-    if model:
-        body["model"] = model
-    else:
-        body["model"] = str(getattr(config, "OLLAMA_DEFAULT_MODEL", "llama3.2") or "llama3.2")
+    from apps.backend.domain.catalog_chat_llm import catalog_llm_body_extras
+
+    try:
+        llm = catalog_llm_body_extras(
+            model=model,
+            profile_key="agent",
+        )
+    except ValueError as exc:
+        logger.warning("scheduler: no catalog LLM — skip tick: %s", exc)
+        return
+    body.update(llm)
 
     if max_rounds_i is not None:
         body["agent_max_tool_rounds"] = max_rounds_i

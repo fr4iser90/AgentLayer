@@ -19,6 +19,10 @@ export type AgentTimelineEntry = {
   toolName?: string;
   durationMs?: number;
   resultChars?: number;
+  /** Sub-agent registry id (e.g. coding_plan) when ``kind`` is subagent_* . */
+  subagentAgentId?: string;
+  /** Indent in activity panel (delegated run). */
+  nested?: boolean;
 };
 
 export type AgentTurnLog = {

@@ -12,7 +12,8 @@ export function codingAgentPath(workspaceId: string, options?: CodingAgentNavOpt
   if (options?.newSession) {
     params.set("new", "1");
   }
-  return `/coding-agent?${params.toString()}`;
+  // SPA is mounted at /app (see App.tsx basename); bare /coding-agent hits API auth → 401 JSON.
+  return `/app/coding-agent?${params.toString()}`;
 }
 
 /** True when switching workspace would mix repo context in an existing thread. */

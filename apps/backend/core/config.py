@@ -48,7 +48,8 @@ def _env_int(key: str, default: int) -> int:
 
 
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://ollama:11434").rstrip("/")
-OLLAMA_DEFAULT_MODEL = (os.environ.get("OLLAMA_DEFAULT_MODEL") or "nemotron-3-nano:4b").strip()
+# Optional legacy hint for non-chat tools (e.g. memory extract). Chat uses Admin catalog + UI model picker only.
+OLLAMA_DEFAULT_MODEL = (os.environ.get("OLLAMA_DEFAULT_MODEL") or "").strip()
 
 # Optional OpenAI-compatible llama.cpp server (same names as typical compose .env).
 # When ``LLAMA_CPP_BASE_URL`` is set, :mod:`model_catalog_providers` registers provider ``llama_cpp``
@@ -66,7 +67,7 @@ LLAMA_CPP_MODEL_VLM = (os.environ.get("LLAMA_CPP_MODEL_VLM") or "").strip() or N
 LLAMA_CPP_MODEL_AGENT = (os.environ.get("LLAMA_CPP_MODEL_AGENT") or "").strip() or None
 LLAMA_CPP_MODEL_CODING = (os.environ.get("LLAMA_CPP_MODEL_CODING") or "").strip() or None
 
-# Hybrid model routing: per-profile defaults (empty = fall back to OLLAMA_DEFAULT_MODEL).
+# Hybrid model routing: per-profile defaults (empty = endpoint catalog model_default / UI picker).
 AGENT_MODEL_PROFILE_DEFAULT = (os.environ.get("AGENT_MODEL_PROFILE_DEFAULT") or "").strip() or None
 AGENT_MODEL_PROFILE_VLM = (os.environ.get("AGENT_MODEL_PROFILE_VLM") or "").strip() or None
 AGENT_MODEL_PROFILE_AGENT = (os.environ.get("AGENT_MODEL_PROFILE_AGENT") or "").strip() or None
@@ -240,6 +241,9 @@ SQLALCHEMY_DATABASE_URL = _sqlalchemy_postgresql_url(DATABASE_URL)
 # First admin when no admin user exists yet: set both before first start, or the process exits.
 AGENT_INITIAL_ADMIN_EMAIL = (os.environ.get("AGENT_INITIAL_ADMIN_EMAIL") or "").strip()
 AGENT_INITIAL_ADMIN_PASSWORD = os.environ.get("AGENT_INITIAL_ADMIN_PASSWORD") or ""
+
+# Required for POST /auth/setup when set. If unset on first start, a one-time token is generated and logged.
+AGENT_SETUP_TOKEN = (os.environ.get("AGENT_SETUP_TOKEN") or "").strip()
 
 # Extra tool tree (optional): scan + create_tool writes here. Two different concerns:
 # - ENABLE = whether create_tool may run (security / ops).

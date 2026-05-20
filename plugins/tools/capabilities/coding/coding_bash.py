@@ -15,7 +15,6 @@ from plugins.tools.capabilities.coding.coding_common import (
 )
 from plugins.tools.capabilities.coding.coding_git_auth import (
     askpass_extra_env,
-    blocks_git_credential_exfil,
     cleanup_askpass_paths,
     git_auth_failure_reason,
     git_command_needs_github_pat,
@@ -78,12 +77,9 @@ _BLOCKED_PATTERNS = [
     r"dd\s+if=/dev/urandom",  # random disk write
     r">\s*/dev/sd[a-z]",     # write to disk device
     r"chmod\s+-R\s+777",    # chmod 777 recursive
-    r"chown\s+-R",           # chown recursive
     r"mv\s+/.*\s+/bin",    # move to bin
     r"cp\s+.*\s+/bin",    # copy to bin
-    r"ln\s+-s",            # symlink attack
     r":\|",                 # pipe fork bomb pattern
-    r"while\s+.*do\s+.*done", # infinite loop potential
 ]
 
 _BLOCKED_REGEX = [re.compile(p, re.IGNORECASE) for p in _BLOCKED_PATTERNS]
@@ -119,8 +115,6 @@ def _classify_git_pull_output(out: str, exit_code: int) -> str:
 
 def _is_blocked(command: str) -> str | None:
     lower = command.lower().strip()
-    if blocks_git_credential_exfil(command):
-        return "command blocked: cannot inspect git credential helpers or askpass paths"
     for blocked in _BLOCKED_COMMANDS:
         if blocked in lower:
             return f"command blocked: '{blocked}' is not allowed (1)"

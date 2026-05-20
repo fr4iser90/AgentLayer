@@ -210,7 +210,8 @@ def resolve_model_for_provider(
             return raw[:256]
     if prof:
         return prof
-    return (model_from_resolution or "").strip()[:256] or "default"
+    raw = (model_from_resolution or "").strip()[:256]
+    return raw
 
 
 def _llm_stack_for_provider_id(provider_id: str) -> LlmStack:

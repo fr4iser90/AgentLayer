@@ -4,7 +4,6 @@ First admin: only via AGENT_INITIAL_ADMIN_EMAIL + AGENT_INITIAL_ADMIN_PASSWORD b
 from __future__ import annotations
 
 import logging
-import os
 
 from apps.backend.core.config import AGENT_INITIAL_ADMIN_EMAIL, AGENT_INITIAL_ADMIN_PASSWORD
 from apps.backend.infrastructure.db import db
@@ -59,16 +58,7 @@ def try_create_initial_admin_from_env() -> bool:
 
 
 def setup_admin_claim_if_needed() -> None:
-    """
-    Empty DB requires AGENT_INITIAL_ADMIN_EMAIL + AGENT_INITIAL_ADMIN_PASSWORD, or the process exits.
-    """
-    if not is_first_start():
-        return
-    if try_create_initial_admin_from_env():
-        return
-    # os._exit: avoid Starlette/Uvicorn logging SystemExit as ERROR + traceback
-    logger.warning(
-        "First-start admin required — process exits. "
-        "Set AGENT_INITIAL_ADMIN_EMAIL and AGENT_INITIAL_ADMIN_PASSWORD (password ≥ 8 chars), then restart."
-    )
-    os._exit(1)
+    """Delegate to instance_setup (env bootstrap or /app/setup)."""
+    from apps.backend.domain.instance_setup import setup_admin_claim_if_needed as _run
+
+    _run()

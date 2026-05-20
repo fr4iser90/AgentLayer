@@ -95,8 +95,14 @@ async def _run_server_job(row: dict[str, Any]) -> None:
         "stream": False,
         "agent_plain_completion": False,
         "TOOL_DOMAIN": "productivity",
-        "model": str(getattr(config, "OLLAMA_DEFAULT_MODEL", "llama3.2") or "llama3.2"),
     }
+    from apps.backend.domain.catalog_chat_llm import catalog_llm_body_extras
+
+    try:
+        body.update(catalog_llm_body_extras(profile_key="agent"))
+    except ValueError as exc:
+        logger.warning("scheduler_jobs: no catalog LLM — skip job: %s", exc)
+        return
 
     id_tok = set_identity(tenant_id, user_id)
     try:

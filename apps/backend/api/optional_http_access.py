@@ -19,6 +19,7 @@ _MIDDLEWARE_PUBLIC_EXACT: frozenset[str] = frozenset(
         "/auth/refresh",
         "/auth/logout",
         "/auth/setup-status",
+        "/auth/setup",
         "/auth/policy",
         "/favicon.ico",
         "/login",

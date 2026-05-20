@@ -38,6 +38,8 @@ class TestCodingTaskPlanSubagent(unittest.TestCase):
             "workspace": {"id": str(ws_id), "path": "/tmp/ws", "name": "w"},
             "user": type("U", (), {"id": uid})(),
             "agent_run_id": "parent-run-abc",
+            "parent_effective_model": "__mock_ui_model__",
+            "parent_model_catalog_owned_by": "__mock_ui_provider__",
         }
 
         bodies: list[dict] = []
@@ -67,7 +69,7 @@ class TestCodingTaskPlanSubagent(unittest.TestCase):
 
         data = json.loads(out)
         self.assertTrue(data.get("ok"), msg=data)
-        self.assertEqual(data.get("mode"), "plan_subagent")
+        self.assertEqual(data.get("mode"), "embedded_subagent")
         self.assertEqual(data.get("agent_id"), "coding_plan")
         self.assertIn("Plan summary", data.get("assistant_excerpt") or "")
 
@@ -83,6 +85,7 @@ class TestCodingTaskPlanSubagent(unittest.TestCase):
                 "coding_list_dir",
                 "coding_read_file",
                 "coding_glob",
+                "retrieve_context",
                 "coding_search",
                 "coding_git_read",
                 "coding_semantic_search",
@@ -105,6 +108,8 @@ class TestCodingTaskPlanSubagent(unittest.TestCase):
         ctx = {
             "workspace": {"id": str(ws_id), "path": "/tmp/ws", "name": "w"},
             "user": type("U", (), {"id": uid})(),
+            "parent_effective_model": "__mock_ui_model__",
+            "parent_model_catalog_owned_by": "__mock_ui_provider__",
         }
 
         async def fake_cc(body: dict, **kwargs: object) -> dict:

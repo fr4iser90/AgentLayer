@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import {
   type AgentTimelineEntry,
@@ -15,6 +15,11 @@ import {
   serializeAgentLogPayload,
 } from "../features/chat/agentLogStorage";
 import { AgentActivityPanel } from "../features/chat/AgentActivityPanel";
+import {
+  getShowSubagentsInActivity,
+  setShowSubagentsInActivity as persistShowSubagentsPref,
+} from "../features/chat/chatSubagentPrefs";
+import { handleSubagentWsEvent } from "../features/chat/subagentActivity";
 import { TurnNavigator, TurnNavigatorHorizontal, buildTurnItems } from "../features/chat/TurnNavigator";
 import { useChatScroll } from "../features/chat/useChatScroll";
 import {
@@ -33,7 +38,11 @@ import {
 } from "../features/chat/messageFormat";
 import { getDisabledToolNames } from "../features/settings/toolPrefs";
 import { getAgentStreamLlm, setAgentStreamLlm } from "../features/settings/agentStreamPrefs";
-import { buildSidebarGroups } from "../features/chat/groupThreadsForSidebar";
+import {
+  buildBuildSidebarGroups,
+  filterThreadsForBuildSidebar,
+  threadsVisibleInSidebar,
+} from "../features/chat/groupThreadsForSidebar";
 import {
   extractProposals,
   stripProposalBlocks,
@@ -54,7 +63,6 @@ import { SessionRuntimeBar } from "../features/chat/SessionRuntimeBar";
 import { CodingWorkspacePanels } from "../features/workspace/CodingWorkspacePanels";
 import { WorkspaceMcpModal } from "../features/workspace/WorkspaceMcpModal";
 import { WorkspaceRetrievalBar } from "../features/workspace/WorkspaceRetrievalBar";
-import { confirmOpenCodingSessionForWorkspace } from "../features/workspace/confirmWorkspaceScope";
 import { shouldIsolateWorkspaceThread } from "../features/workspace/codingWorkspaceNav";
 import {
   applyModelCatalogSelection,
@@ -445,6 +453,8 @@ export function CodingAgentPage() {
   const auth = useAuth();
   const { accessToken, user } = auth;
   const userId = user?.id ?? "";
+  const isAdminUser = (user?.role ?? "").toLowerCase() === "admin";
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const deepLinkRef = useRef<{ workspaceId: string; newSession: boolean } | null>(null);
 
@@ -460,7 +470,6 @@ export function CodingAgentPage() {
   const embeddingMeta = modelCatalogAgentlayer?.embedding as EmbeddingCatalogHealth | undefined;
   const embeddingModelRows = useMemo(() => embeddingModelOptions(embeddingMeta), [embeddingMeta]);
   const embeddingStatusHint = useMemo(() => formatEmbeddingStatusHint(embeddingMeta), [embeddingMeta]);
-  const isAdminUser = (user?.role ?? "").toLowerCase() === "admin";
   const [embeddingModel, setEmbeddingModel] = useState("");
   const [embeddingModelSaving, setEmbeddingModelSaving] = useState(false);
   const [hydrated, setHydrated] = useState(false);
@@ -481,6 +490,7 @@ export function CodingAgentPage() {
   const [tokenUsage, setTokenUsage] = useState<TokenUsageTotals>(() => emptyTokenUsage());
   const [showWorkspaceMcpModal, setShowWorkspaceMcpModal] = useState(false);
   const [changesRefreshKey, setChangesRefreshKey] = useState(0);
+  const [showSubagentsInActivity, setShowSubagentsInActivity] = useState(true);
 
   const setImplBranchPreference = useCallback(
     (v: ImplBranchPreference) => {
@@ -545,6 +555,7 @@ export function CodingAgentPage() {
   const implementationBranchPreambleRef = useRef<string | null>(null);
   const [selectedTurnId, setSelectedTurnId] = useState<string | null>(null);
   const toolStartTimesRef = useRef<Map<string, number>>(new Map());
+  const subagentStartTimesRef = useRef<Map<string, number>>(new Map());
   const agentTurnBaselineRef = useRef<UiMessage[] | null>(null);
   const streamDeltaAccRef = useRef("");
   const agentStreamEnabledThisTurnRef = useRef(false);
@@ -773,8 +784,9 @@ export function CodingAgentPage() {
         }
         const mapped = listRaw.map((row) => mapListItemToThread(row as Record<string, unknown>));
         setThreads(mapped);
-        const withMsgs = mapped.find((x) => (x.messageCount ?? x.messages.length) > 0);
-        const pick = withMsgs?.id ?? mapped[0]?.id ?? null;
+        const buildMapped = filterThreadsForBuildSidebar(mapped);
+        const withMsgs = buildMapped.find((x) => (x.messageCount ?? x.messages.length) > 0);
+        const pick = withMsgs?.id ?? buildMapped[0]?.id ?? null;
         if (!pick) { setActiveThreadId(null); setHydrated(true); return; }
         setActiveThreadId(pick);
         const full = await fetchConversationDetail(auth, pick);
@@ -793,11 +805,19 @@ export function CodingAgentPage() {
     return () => { cancelled = true; };
   }, [accessToken, userId, auth]);
 
+  useEffect(() => {
+    if (!userId) return;
+    setShowSubagentsInActivity(getShowSubagentsInActivity(userId));
+  }, [userId]);
+
   const appendAgentLine = useCallback(
     (
       kind: string,
       text: string,
-      extras?: Pick<AgentTimelineEntry, "toolName" | "durationMs" | "resultChars">
+      extras?: Pick<
+        AgentTimelineEntry,
+        "toolName" | "durationMs" | "resultChars" | "subagentAgentId" | "nested"
+      >
     ) => {
       const tid = activeThreadIdRef.current;
       if (!tid) return;
@@ -1144,6 +1164,16 @@ export function CodingAgentPage() {
           }
           return;
         }
+        if (
+          handleSubagentWsEvent(
+            typ,
+            msg as Record<string, unknown>,
+            appendAgentLine,
+            subagentStartTimesRef.current
+          )
+        ) {
+          return;
+        }
         if (typ === "agent.tool_start") {
           const toolName = String(msg.name ?? "tool");
           toolStartTimesRef.current.set(toolName, Date.now());
@@ -1211,7 +1241,7 @@ export function CodingAgentPage() {
               ? { agent_disabled_tools: disabledTools }
               : {}),
             agent_model_catalog_owned_by: routed.provider,
-            agent_permission_ask: true,
+            agent_permission_ask: false,
             ...(getAgentStreamLlm() ? { agent_stream_llm: true } : {}),
           },
         })
@@ -1275,7 +1305,7 @@ export function CodingAgentPage() {
       const wsForChat = workspaceIdOverride ?? selectedWorkspaceId;
       const defaultProv = parseModelCatalogSelection(defaultSelectValue).provider;
       const t = await createConversation(auth, {
-        title: "New coding session",
+        title: "New build session",
         mode: "agent",
         model: defaultModel,
         messages: [],
@@ -1305,7 +1335,7 @@ export function CodingAgentPage() {
   );
 
   const deleteThread = async (id: string) => {
-    if (!confirm("Delete this coding session?")) return;
+    if (!confirm("Delete this build session?")) return;
     try {
       await deleteConversationApi(auth, id);
       setThreads((prev) => {
@@ -1410,7 +1440,7 @@ export function CodingAgentPage() {
       void startNewChat(workspaceId);
       return;
     }
-    const match = threads.find(
+    const match = filterThreadsForBuildSidebar(threads).find(
       (t) =>
         t.workspaceId === workspaceId &&
         (t.messageCount ?? t.messages.length) > 0
@@ -1428,10 +1458,8 @@ export function CodingAgentPage() {
       const msgCount = t?.messageCount ?? t?.messages.length ?? 0;
       const prevWs = typeof t?.workspaceId === "string" ? t.workspaceId : null;
       if (shouldIsolateWorkspaceThread(msgCount, prevWs, wsId)) {
-        const wsName = workspaces.find((w) => w.id === wsId)?.name ?? wsId;
-        if (confirmOpenCodingSessionForWorkspace(wsName, wsId)) {
-          return;
-        }
+        void startNewChat(wsId);
+        return;
       }
       setSelectedWorkspaceId(wsId);
       if (!activeThreadId) return;
@@ -1447,17 +1475,25 @@ export function CodingAgentPage() {
         return next;
       });
     },
-    [activeThreadId, auth, sessionMode, threads, workspaces]
+    [activeThreadId, auth, sessionMode, startNewChat, threads, workspaces]
   );
 
-  const sidebarThreads = useMemo(
-    () => threads.filter((t) => (t.messageCount ?? t.messages.length) > 0 || t.id === activeThreadId),
-    [threads, activeThreadId]
-  );
+  const workspaceNameById = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const ws of workspaces) {
+      if (ws.id && ws.name) m[ws.id] = ws.name;
+    }
+    return m;
+  }, [workspaces]);
 
-  const sidebarGroups = useMemo(
-    () => buildSidebarGroups(sidebarThreads, {}),
-    [sidebarThreads]
+  const sidebarThreads = useMemo(() => {
+    const visible = threadsVisibleInSidebar(threads, activeThreadId);
+    return filterThreadsForBuildSidebar(visible);
+  }, [threads, activeThreadId]);
+
+  const buildSidebarGroups = useMemo(
+    () => buildBuildSidebarGroups(sidebarThreads, workspaceNameById),
+    [sidebarThreads, workspaceNameById]
   );
 
   const activeToolBucket = sessionMode === "plan" ? CODING_PLAN_TOOL_NAMES : CODING_TOOLS;
@@ -1467,10 +1503,24 @@ export function CodingAgentPage() {
     return bucket.filter((x) => !disabled.includes(x)).length;
   }, [sessionMode]);
 
+  useEffect(() => {
+    if (hydrated && userId && !isAdminUser) {
+      navigate("/chat", { replace: true });
+    }
+  }, [hydrated, userId, isAdminUser, navigate]);
+
   if (!hydrated || !userId) {
     return (
       <div className="flex h-full min-h-0 flex-1 items-center justify-center overflow-hidden text-sm text-surface-muted">
-        Loading coding agent…
+        Loading build workspace…
+      </div>
+    );
+  }
+
+  if (!isAdminUser) {
+    return (
+      <div className="flex h-full min-h-0 flex-1 items-center justify-center overflow-hidden text-sm text-surface-muted">
+        Redirecting to Chat…
       </div>
     );
   }
@@ -1556,11 +1606,11 @@ export function CodingAgentPage() {
             onClick={() => void startNewChat()}
             className="w-full rounded-lg border border-surface-border bg-white/5 px-3 py-2 text-left text-sm text-neutral-200 hover:bg-white/10"
           >
-            + New coding session
+            + New build session
           </button>
           <p className="mt-2 text-[10px] leading-snug text-surface-muted">
             Mode:{" "}
-            <span className="text-neutral-300">{sessionMode === "plan" ? "Plan (ask on risky tools)" : "Build (full tools)"}</span>
+            <span className="text-neutral-300">{sessionMode === "plan" ? "Plan" : "Build"}</span>
             {" · "}
             {codingToolCount}/{activeToolBucket.length} tools enabled for this mode.
           </p>
@@ -1575,7 +1625,7 @@ export function CodingAgentPage() {
 
         <div className="shrink-0 border-b border-surface-border p-3">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-medium uppercase tracking-wide text-surface-muted">Workspace</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-surface-muted">Project</p>
             <button
               type="button"
               onClick={() => setShowCreateWorkspace(true)}
@@ -1667,14 +1717,16 @@ export function CodingAgentPage() {
 
         <div className="flex-1 overflow-y-auto px-2 py-2">
           <p className="px-2 pb-1 text-xs font-medium uppercase tracking-wide text-surface-muted">
-            Sessions
+            Build sessions
           </p>
+          {buildSidebarGroups.length === 0 ? (
+            <p className="px-2 text-[10px] leading-snug text-surface-muted">
+              No build sessions yet. Pick a project above and start a new session.
+            </p>
+          ) : null}
           <div className="flex flex-col gap-3">
-            {sidebarGroups.map((g) => (
-              <section
-                key={g.kind === "dashboard" ? `ws-${g.dashboardId}` : `src-${g.source}`}
-                className="min-w-0"
-              >
+            {buildSidebarGroups.map((g) => (
+              <section key={g.workspaceId ?? "none"} className="min-w-0">
                 <p className="px-2 pb-1 text-[10px] font-medium uppercase tracking-wide text-surface-muted/90">
                   {g.label}
                 </p>
@@ -1734,10 +1786,10 @@ export function CodingAgentPage() {
               {"</>"}
             </div>
             <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white">
-              Coding Agent
+              Build
             </h1>
             <p className="max-w-md text-sm text-surface-muted">
-              Give coding instructions. The agent reads, writes, and edits files using dashboard-scoped tools.
+              Project workspace with file browser and agent tools for read, edit, and shell.
             </p>
             <CodingBuildPlanToggle
               mode={sessionMode}
@@ -1761,14 +1813,14 @@ export function CodingAgentPage() {
               onClick={() => void startNewChat()}
               className="rounded-lg border border-surface-border bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/15"
             >
-              + New coding session
+              + New build session
             </button>
           </div>
         ) : (
           <>
             <div className="shrink-0 border-b border-surface-border px-4 py-3 sm:px-6">
               <p className="mb-2 truncate text-sm font-medium text-white">
-                {activeThread?.title ?? "Coding session"}
+                {activeThread?.title ?? "Build session"}
               </p>
               <div className="grid gap-3 lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)_17.5rem] lg:items-stretch">
                 <div className="min-w-0 space-y-2">
@@ -1794,6 +1846,12 @@ export function CodingAgentPage() {
                   emptyHint="Activity for the selected prompt appears here."
                   layout="header"
                   className="min-h-0 w-full"
+                  showSubagentToggle
+                  showSubagents={showSubagentsInActivity}
+                  onShowSubagentsChange={(on) => {
+                    setShowSubagentsInActivity(on);
+                    persistShowSubagentsPref(userId, on);
+                  }}
                 />
                 <div className="flex min-w-0 flex-col gap-2 lg:border-l lg:border-surface-border lg:pl-4">
                   <SessionRuntimeBar

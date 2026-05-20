@@ -17,8 +17,35 @@ depends_on = None
 def upgrade() -> None:
     op.execute(
         """
-        ALTER TABLE operator_settings
-          RENAME COLUMN rag_ollama_model TO rag_embedding_model;
+        DO $$
+        BEGIN
+          IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'operator_settings'
+              AND column_name = 'rag_ollama_model'
+          ) AND NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'operator_settings'
+              AND column_name = 'rag_embedding_model'
+          ) THEN
+            ALTER TABLE operator_settings
+              RENAME COLUMN rag_ollama_model TO rag_embedding_model;
+          ELSIF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'operator_settings'
+              AND column_name = 'rag_ollama_model'
+          ) AND EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'operator_settings'
+              AND column_name = 'rag_embedding_model'
+          ) THEN
+            ALTER TABLE operator_settings DROP COLUMN rag_ollama_model;
+          END IF;
+        END $$;
         """
     )
 

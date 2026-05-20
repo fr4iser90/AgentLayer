@@ -13,7 +13,6 @@ import { AdminUsers } from "./pages/admin/AdminUsers";
 import { AdminScheduledJobs } from "./pages/admin/AdminScheduledJobs";
 import { AdminSchedules } from "./pages/admin/AdminSchedules";
 import { ChatPage } from "./pages/ChatPage";
-import { CodingAgentPage } from "./pages/CodingAgentPage";
 import { DocsPage } from "./pages/DocsPage";
 import { HomePage } from "./pages/HomePage";
 import { AgentSettings } from "./pages/settings/AgentSettings";
@@ -24,6 +23,7 @@ import SharesSettings from "./pages/settings/SharesSettings";
 import { StudioPage } from "./pages/StudioPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { LoginPage } from "./pages/LoginPage";
+import { SetupWizardPage } from "./pages/SetupWizardPage";
 import { MySchedulesPage } from "./pages/MySchedulesPage";
 
 export function App() {
@@ -33,10 +33,11 @@ export function App() {
         <Routes>
           <Route element={<AppLayout />}>
             <Route path="login" element={<LoginPage />} />
+            <Route path="setup" element={<SetupWizardPage />} />
             <Route element={<RequireSession />}>
               <Route path="/" element={<HomePage />} />
               <Route path="chat" element={<ChatPage />} />
-              <Route path="coding-agent" element={<CodingAgentPage />} />
+              <Route path="coding-agent" element={<Navigate to="/chat" replace />} />
               <Route path="studio" element={<StudioPage />} />
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="schedules" element={<MySchedulesPage />} />

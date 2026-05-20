@@ -28,6 +28,8 @@ CREATE TABLE users (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   discord_user_id TEXT,
   telegram_user_id TEXT,
+  workspace_quota INTEGER NOT NULL DEFAULT 10,
+  workspace_self_allowed BOOLEAN NOT NULL DEFAULT false,
   UNIQUE (tenant_id, external_sub)
 );
 
@@ -553,6 +555,32 @@ CREATE TABLE dashboard_members (
 );
 
 CREATE INDEX idx_dashboard_members_user ON dashboard_members (user_id);
+
+-- Project workspaces (coding agent); required before chat_conversations.pref_workspace_id FK.
+
+CREATE TABLE project_workspaces (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  owner_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  path TEXT NOT NULL,
+  source VARCHAR(32) NOT NULL DEFAULT 'manual' CHECK (source IN ('manual', 'git')),
+  git_url TEXT,
+  git_branch VARCHAR(255) DEFAULT 'main',
+  access_role VARCHAR(16) NOT NULL DEFAULT 'owner' CHECK (access_role IN ('owner', 'editor', 'viewer')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (owner_user_id, name)
+);
+
+CREATE INDEX idx_project_workspaces_owner ON project_workspaces (owner_user_id);
+
+COMMENT ON TABLE project_workspaces IS
+  'User Git project workspaces for coding agent (separate from dashboards).';
+
+COMMENT ON COLUMN users.workspace_quota IS
+  'Max workspaces this user may create.';
+COMMENT ON COLUMN users.workspace_self_allowed IS
+  'User may access the AgentLayer self-editing workspace.';
 
 -- Server-side chat threads (first-party UI sync; per user, per tenant).
 

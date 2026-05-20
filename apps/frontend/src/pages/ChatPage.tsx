@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { apiFetch, addUsageTotals, emptyTokenUsage, fetchAgents, fetchSessionRuntime, type AgentDefinition, type SessionRuntimePayload, type TokenUsageTotals, type WorkspaceApiRecord } from "../lib/api";
+import { apiFetch, addUsageTotals, emptyTokenUsage, fetchSessionRuntime, type SessionRuntimePayload, type TokenUsageTotals, type WorkspaceApiRecord } from "../lib/api";
 import {
   applyModelCatalogSelection,
   defaultModelCatalogSelectValue,
@@ -83,13 +83,24 @@ import {
 } from "../features/chat/messageFormat";
 import { getDisabledToolNames } from "../features/settings/toolPrefs";
 import { getAgentStreamLlm, setAgentStreamLlm } from "../features/settings/agentStreamPrefs";
-import { buildSidebarGroups } from "../features/chat/groupThreadsForSidebar";
-import { SessionRuntimeBar } from "../features/chat/SessionRuntimeBar";
-import { WorkspaceMcpModal } from "../features/workspace/WorkspaceMcpModal";
 import {
-  codingAgentPath,
-  shouldIsolateWorkspaceThread,
-} from "../features/workspace/codingWorkspaceNav";
+  buildSidebarGroups,
+  filterThreadsForChatSidebar,
+  threadsVisibleInSidebar,
+} from "../features/chat/groupThreadsForSidebar";
+import { SessionRuntimeBar } from "../features/chat/SessionRuntimeBar";
+import {
+  getChatProjectPanelOpen,
+  setChatProjectPanelOpen,
+} from "../features/chat/chatProjectPanelPrefs";
+import {
+  getShowSubagentsInActivity,
+  setShowSubagentsInActivity as persistShowSubagentsPref,
+} from "../features/chat/chatSubagentPrefs";
+import { handleSubagentWsEvent } from "../features/chat/subagentActivity";
+import { CodingWorkspacePanels } from "../features/workspace/CodingWorkspacePanels";
+import { WorkspaceMcpModal } from "../features/workspace/WorkspaceMcpModal";
+import { shouldIsolateWorkspaceThread } from "../features/workspace/codingWorkspaceNav";
 import { confirmOpenCodingSessionForWorkspace } from "../features/workspace/confirmWorkspaceScope";
 import { streamOpenAiChatChunks } from "../features/chat/openaiSseStream";
 import { formatMessageTime, inferMissingMessageTimestamps } from "../features/chat/messageTimestamps";
@@ -236,24 +247,20 @@ export function ChatPage() {
   const [hydrated, setHydrated] = useState(false);
   const [composerDragActive, setComposerDragActive] = useState(false);
   const [dashboardTitles, setDashboardTitles] = useState<Record<string, string>>({});
-  const [agents, setAgents] = useState<AgentDefinition[]>([]);
-  const [selectedAgentId, setSelectedAgentId] = useState<string>("general");
   const [sessionRuntime, setSessionRuntime] = useState<SessionRuntimePayload | null>(null);
   const [tokenUsage, setTokenUsage] = useState<TokenUsageTotals>(() => emptyTokenUsage());
 
   const isAdminUser = (user?.role ?? "").toLowerCase() === "admin";
-  const visibleAgents = useMemo(
-    () =>
-      agents.filter(
-        (a) => (a.min_role ?? "user").toLowerCase() !== "admin" || isAdminUser
-      ),
-    [agents, isAdminUser]
-  );
+  /** Single Chat UI: everyone uses General; specialists via agent_delegate tool. */
+  const composerAgentId = "general";
 
   const [workspaces, setWorkspaces] = useState<WorkspaceApiRecord[]>([]);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
   const [showWorkspaceMcpModal, setShowWorkspaceMcpModal] = useState(false);
   const [workspaceScopeHint, setWorkspaceScopeHint] = useState<string | null>(null);
+  const [projectPanelOpen, setProjectPanelOpen] = useState(false);
+  const [projectTreeRefreshKey, setProjectTreeRefreshKey] = useState(0);
+  const [showSubagentsInActivity, setShowSubagentsInActivity] = useState(true);
 
   const wsRef = useRef<WebSocket | null>(null);
   const agentHandlerRef = useRef<(ev: MessageEvent) => void>(() => {});
@@ -266,6 +273,7 @@ export function ChatPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedTurnId, setSelectedTurnId] = useState<string | null>(null);
   const toolStartTimesRef = useRef<Map<string, number>>(new Map());
+  const subagentStartTimesRef = useRef<Map<string, number>>(new Map());
   const agentTurnBaselineRef = useRef<UiMessage[] | null>(null);
   const streamDeltaAccRef = useRef("");
   const agentStreamEnabledThisTurnRef = useRef(false);
@@ -289,33 +297,16 @@ export function ChatPage() {
     [threads, activeThreadId]
   );
 
-  const threadComposerAgentId = activeThread?.agentId;
   const threadComposerWorkspaceId = activeThread?.workspaceId;
 
   useEffect(() => {
-    if (!activeThreadId || !visibleAgents.length) return;
-    const aid =
-      typeof threadComposerAgentId === "string" && threadComposerAgentId.trim()
-        ? threadComposerAgentId.trim()
-        : null;
-    if (aid && visibleAgents.some((a) => a.id === aid)) {
-      setSelectedAgentId(aid);
-    } else {
-      const g = visibleAgents.find((a) => a.id === "general");
-      if (g) setSelectedAgentId(g.id);
-      else if (visibleAgents[0]) setSelectedAgentId(visibleAgents[0].id);
-    }
+    if (!activeThreadId) return;
     const wid =
       typeof threadComposerWorkspaceId === "string" && threadComposerWorkspaceId.trim()
         ? threadComposerWorkspaceId.trim()
         : null;
     setSelectedWorkspaceId(wid || null);
-  }, [
-    activeThreadId,
-    visibleAgents,
-    threadComposerAgentId,
-    threadComposerWorkspaceId,
-  ]);
+  }, [activeThreadId, threadComposerWorkspaceId]);
 
   const messages = activeThread?.messages ?? [];
   const displayMessages = useMemo(
@@ -423,57 +414,24 @@ export function ChatPage() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      try {
-        const ags = await fetchAgents(auth);
-        if (cancelled) return;
-        setAgents(ags);
-        if (ags.length === 0) return;
-        setSelectedAgentId((prev) => {
-          if (ags.some((a) => a.id === prev)) return prev;
-          const general = ags.find((a) => a.id === "general");
-          return general ? general.id : ags[0].id;
-        });
-      } catch {
-        /* ignore */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [auth]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      const agent = visibleAgents.find((a) => a.id === selectedAgentId);
-      const wsParam =
-        agent?.requires_workspace && selectedWorkspaceId ? selectedWorkspaceId : null;
+      const wsParam = selectedWorkspaceId ? selectedWorkspaceId : null;
       const r = await fetchSessionRuntime(auth, wsParam);
       if (!cancelled) setSessionRuntime(r);
     })();
     return () => {
       cancelled = true;
     };
-  }, [auth, selectedAgentId, selectedWorkspaceId, visibleAgents]);
+  }, [auth, selectedWorkspaceId]);
 
   useEffect(() => {
-    if (!visibleAgents.length) return;
-    if (!visibleAgents.some((a) => a.id === selectedAgentId)) {
-      const g = visibleAgents.find((a) => a.id === "general");
-      setSelectedAgentId(g ? g.id : visibleAgents[0].id);
-    }
-  }, [visibleAgents, selectedAgentId]);
+    if (!userId) return;
+    setProjectPanelOpen(getChatProjectPanelOpen(userId));
+    setShowSubagentsInActivity(getShowSubagentsInActivity(userId));
+  }, [userId]);
 
   useEffect(() => {
-    if (!selectedAgentId || !accessToken) {
+    if (!accessToken) {
       setWorkspaces([]);
-      setSelectedWorkspaceId(null);
-      return;
-    }
-    const agent = visibleAgents.find((a) => a.id === selectedAgentId);
-    if (!agent?.requires_workspace) {
-      setWorkspaces([]);
-      setSelectedWorkspaceId(null);
       return;
     }
     let cancelled = false;
@@ -483,10 +441,12 @@ export function ChatPage() {
         if (!r.ok || cancelled) return;
         const j = (await r.json()) as { workspaces?: WorkspaceApiRecord[] };
         if (cancelled) return;
-        setWorkspaces(j.workspaces ?? []);
+        const list = j.workspaces ?? [];
+        setWorkspaces(list);
+        const wsFromUrl = (searchParams.get("workspace") || "").trim();
         setSelectedWorkspaceId((prev) => {
-          const list = j.workspaces ?? [];
-          if (prev && list.some((w: WorkspaceApiRecord) => w.id === prev)) return prev;
+          if (wsFromUrl && list.some((w) => w.id === wsFromUrl)) return wsFromUrl;
+          if (prev && list.some((w) => w.id === prev)) return prev;
           return list[0]?.id ?? null;
         });
       } catch {
@@ -496,7 +456,7 @@ export function ChatPage() {
     return () => {
       cancelled = true;
     };
-  }, [selectedAgentId, accessToken, auth, visibleAgents]);
+  }, [accessToken, auth, searchParams]);
 
   useEffect(() => {
     if (!dashboardChatId || !accessToken) {
@@ -730,20 +690,8 @@ export function ChatPage() {
     [activeThreadId, auth, modelRows]
   );
 
-  const setComposerAgent = useCallback(
-    (agentId: string) => {
-      if (!activeThreadId) return;
-      setSelectedAgentId(agentId);
-      setThreads((prev) => {
-        const next = prev.map((t) =>
-          t.id === activeThreadId ? { ...t, agentId, updatedAt: Date.now() } : t
-        );
-        const th = next.find((x) => x.id === activeThreadId);
-        if (th) void putConversation(auth, th).catch(() => {});
-        return next;
-      });
-    },
-    [activeThreadId, auth]
+  const startNewChatRef = useRef<(workspaceIdOverride?: string | null) => Promise<void>>(
+    async () => {}
   );
 
   const setComposerWorkspace = useCallback(
@@ -756,6 +704,7 @@ export function ChatPage() {
         if (shouldIsolateWorkspaceThread(msgCount, prevWs, wsId)) {
           const wsName = workspaces.find((w) => w.id === wsId)?.name ?? wsId;
           if (confirmOpenCodingSessionForWorkspace(wsName, wsId)) {
+            void startNewChatRef.current(wsId);
             return;
           }
         }
@@ -778,7 +727,10 @@ export function ChatPage() {
     (
       kind: string,
       text: string,
-      extras?: Pick<AgentTimelineEntry, "toolName" | "durationMs" | "resultChars">
+      extras?: Pick<
+        AgentTimelineEntry,
+        "toolName" | "durationMs" | "resultChars" | "subagentAgentId" | "nested"
+      >
     ) => {
       const tid = activeThreadIdRef.current;
       if (!tid) return;
@@ -1241,6 +1193,16 @@ export function ChatPage() {
           }
           return;
         }
+        if (
+          handleSubagentWsEvent(
+            typ,
+            msg as Record<string, unknown>,
+            appendAgentLine,
+            subagentStartTimesRef.current
+          )
+        ) {
+          return;
+        }
         if (typ === "agent.tool_start") {
           const toolName = String(msg.name ?? "tool");
           toolStartTimesRef.current.set(toolName, Date.now());
@@ -1282,6 +1244,7 @@ export function ChatPage() {
         }
         if (typ === "agent.done" || typ === "agent.aborted" || typ === "agent.cancelled") {
           appendAgentLine(String(typ), String(msg.detail ?? ""));
+          if (typ === "agent.done") setProjectTreeRefreshKey((k) => k + 1);
           return;
         }
         appendAgentLine(String(typ ?? "event"), JSON.stringify(msg).slice(0, 300));
@@ -1305,7 +1268,7 @@ export function ChatPage() {
           body: {
             model: routed.model,
             messages: nextMessages.map((m) => ({ role: m.role, content: toApiContent(m.content) })),
-            agent_id: selectedAgentId,
+            agent_id: composerAgentId,
             ...(selectedWorkspaceId ? { workspace_id: selectedWorkspaceId } : {}),
             ...(activeThreadId ? { conversation_id: activeThreadId } : {}),
             ...agentDashboardPayload,
@@ -1332,10 +1295,9 @@ export function ChatPage() {
     modelSelectValue,
     patchThread,
     pendingAttachments,
-    selectedAgentId,
+    composerAgentId,
     selectedWorkspaceId,
     threads,
-    visibleAgents,
   ]);
 
   const onSend = () => {
@@ -1363,27 +1325,43 @@ export function ChatPage() {
     abortInFlightTurn();
   }, [abortInFlightTurn]);
 
-  const startNewChat = async () => {
-    abortInFlightTurn();
-    try {
-      const defaultProv = parseModelCatalogSelection(defaultSelectValue).provider;
-      const t = await createConversation(auth, {
-        title: NEW_CHAT_TITLE,
-        mode: "agent",
-        model: defaultModel,
-        messages: [],
-        agent_log: serializeAgentLogPayload({ agentLog: [], turnLogs: [] }),
-        model_catalog_owned_by: defaultProv ?? null,
-      });
-      setThreads((prev) => [t, ...prev]);
-      setActiveThreadId(t.id);
-      setSearchParams({ c: t.id });
-      setDraft("");
-      setError(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
-  };
+  const startNewChat = useCallback(
+    async (workspaceIdOverride?: string | null) => {
+      abortInFlightTurn();
+      try {
+        const defaultProv = parseModelCatalogSelection(defaultSelectValue).provider;
+        const ws =
+          workspaceIdOverride !== undefined ? workspaceIdOverride : selectedWorkspaceId;
+        const t = await createConversation(auth, {
+          title: NEW_CHAT_TITLE,
+          mode: "agent",
+          model: defaultModel,
+          messages: [],
+          agent_log: serializeAgentLogPayload({ agentLog: [], turnLogs: [] }),
+          agent_id: "general",
+          workspace_id: ws,
+          model_catalog_owned_by: defaultProv ?? null,
+        });
+        setThreads((prev) => [t, ...prev]);
+        setActiveThreadId(t.id);
+        setSearchParams({ c: t.id });
+        setSelectedWorkspaceId(ws);
+        setDraft("");
+        setError(null);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      }
+    },
+    [
+      abortInFlightTurn,
+      auth,
+      defaultModel,
+      defaultSelectValue,
+      selectedWorkspaceId,
+      setSearchParams,
+    ]
+  );
+  startNewChatRef.current = startNewChat;
 
   const deleteThread = async (id: string) => {
     if (!confirm("Delete this chat?")) return;
@@ -1428,12 +1406,11 @@ export function ChatPage() {
     }
   };
 
-  /** Hide empty threads unless they are the one currently open (avoids fake sidebar clutter). */
-  const sidebarThreads = useMemo(
-    () =>
-      threads.filter((t) => threadMessageCount(t) > 0 || t.id === activeThreadId),
-    [threads, activeThreadId]
-  );
+  /** Hide empty threads unless open; all agent sessions in one Chat sidebar. */
+  const sidebarThreads = useMemo(() => {
+    const visible = threadsVisibleInSidebar(threads, activeThreadId);
+    return filterThreadsForChatSidebar(visible);
+  }, [threads, activeThreadId]);
 
   const sidebarGroups = useMemo(
     () => buildSidebarGroups(sidebarThreads, dashboardTitles),
@@ -1577,93 +1554,72 @@ export function ChatPage() {
               <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
                 <div className="min-w-0 flex-1 sm:min-w-[10rem] sm:max-w-[20rem]">
                   <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
-                    Agent
+                    Assistant
                   </label>
-                  <select
-                    className="mt-0.5 w-full rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100 disabled:opacity-50"
-                    value={selectedAgentId}
-                    onChange={(e) => setComposerAgent(e.target.value)}
-                    disabled={!visibleAgents.length || mode === "chat"}
-                    title={
-                      mode === "chat"
-                        ? "Chat mode uses plain completion without tools; switch to Agent mode to use this agent."
-                        : undefined
-                    }
-                  >
-                    {!visibleAgents.length ? (
-                      <option>Loading agents…</option>
-                    ) : (
-                      visibleAgents.map((ag) => (
-                        <option key={ag.id} value={ag.id}>
-                          {ag.icon} {ag.name}
-                        </option>
-                      ))
-                    )}
-                  </select>
+                  <p className="mt-0.5 rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-300">
+                    General
+                  </p>
+                  <p className="mt-1 text-[10px] leading-snug text-surface-muted">
+                    Ask for scans or repo work — General can delegate to specialist sub-agents.
+                  </p>
                 </div>
-                {(() => {
-                  const agent = visibleAgents.find((a) => a.id === selectedAgentId);
-                  if (!agent?.requires_workspace) return null;
-                  if (workspaces.length === 0) return null;
-                  return (
-                    <div className="min-w-0 flex-1 sm:min-w-[10rem] sm:max-w-[20rem]">
-                      <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
-                        Workspace
-                      </label>
-                      <div className="mt-0.5 flex gap-1.5">
-                        <select
-                          className="min-w-0 flex-1 rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100"
-                          value={selectedWorkspaceId ?? ""}
-                          onChange={(e) => setComposerWorkspace(e.target.value || null)}
-                        >
-                          {workspaces.map((ws) => (
-                            <option key={ws.id} value={ws.id}>
-                              {ws.name}
-                            </option>
-                          ))}
-                        </select>
-                        {selectedWorkspaceId ? (
-                          <NavLink
-                            to={codingAgentPath(selectedWorkspaceId, { newSession: true })}
-                            className="shrink-0 rounded-lg border border-sky-600/50 bg-sky-950/40 px-2.5 py-1.5 text-[11px] font-medium text-sky-200 hover:bg-sky-900/50"
-                            title="Open Coding Agent with a fresh session for this project"
-                          >
-                            Coding
-                          </NavLink>
-                        ) : null}
-                      </div>
+                {workspaces.length > 0 ? (
+                  <div className="min-w-0 flex-1 sm:min-w-[10rem] sm:max-w-[24rem]">
+                    <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+                      Project
+                    </label>
+                    <div className="mt-0.5 flex flex-wrap gap-1.5">
+                      <select
+                        className="min-w-0 flex-1 rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100"
+                        value={selectedWorkspaceId ?? ""}
+                        onChange={(e) => setComposerWorkspace(e.target.value || null)}
+                      >
+                        <option value="">No project</option>
+                        {workspaces.map((ws) => (
+                          <option key={ws.id} value={ws.id}>
+                            {ws.name}
+                            {ws.access_role === "viewer" ? " (view)" : ""}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className={[
+                          "shrink-0 rounded-lg border px-2.5 py-1.5 text-[11px] font-medium",
+                          projectPanelOpen
+                            ? "border-sky-500/60 bg-sky-950/50 text-sky-100"
+                            : "border-surface-border bg-black/30 text-neutral-300 hover:bg-white/10",
+                        ].join(" ")}
+                        disabled={!selectedWorkspaceId}
+                        title={
+                          selectedWorkspaceId
+                            ? "Show or hide project file tree"
+                            : "Select a project first"
+                        }
+                        onClick={() => {
+                          const next = !projectPanelOpen;
+                          setProjectPanelOpen(next);
+                          setChatProjectPanelOpen(userId, next);
+                        }}
+                      >
+                        {projectPanelOpen ? "Hide tree" : "Show tree"}
+                      </button>
                     </div>
-                  );
-                })()}
-              </div>
-              {(() => {
-                const agent = visibleAgents.find((a) => a.id === selectedAgentId);
-                if (!agent?.requires_workspace) return null;
-                if (workspaces.length > 0) return null;
-                return (
-                  <div className="rounded-lg border border-surface-border bg-black/25 px-3 py-2">
-                    <p className="text-xs leading-snug text-surface-muted">
-                      No workspace yet. Create one on the Coding Agent page (manual folder or Git), then return here and
-                      pick it from the list.
-                    </p>
-                    <NavLink
-                      to="/coding-agent"
-                      className="mt-2 inline-flex items-center justify-center rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
-                    >
-                      Open Coding Agent
-                    </NavLink>
                   </div>
-                );
-              })()}
+                ) : null}
+              </div>
+              {workspaces.length === 0 ? (
+                <div className="rounded-lg border border-surface-border bg-black/25 px-3 py-2">
+                  <p className="text-xs leading-snug text-surface-muted">
+                    {isAdminUser
+                      ? "No projects yet. Add a workspace in Settings or ask your operator to provision one."
+                      : "No projects assigned yet. Ask an admin to add a workspace for you."}
+                  </p>
+                </div>
+              ) : null}
               {workspaceScopeHint && selectedWorkspaceId ? (
                 <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-600/40 bg-amber-950/30 px-3 py-2">
                   <p className="min-w-0 flex-1 text-[11px] leading-snug text-amber-100/95">{workspaceScopeHint}</p>
-                  <NavLink
-                    to={codingAgentPath(selectedWorkspaceId, { newSession: true })}
-                    className="shrink-0 rounded-md bg-sky-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-sky-500"
-                  >
-                    Open in Coding
-                  </NavLink>
                   <button
                     type="button"
                     className="shrink-0 text-[11px] text-surface-muted hover:text-neutral-200"
@@ -1672,21 +1628,6 @@ export function ChatPage() {
                     Dismiss
                   </button>
                 </div>
-              ) : null}
-              {selectedAgentId === "coding" ? (
-                <p className="max-w-xl text-[11px] leading-snug text-sky-300/85">
-                  Tip: the model can call{" "}
-                  <code className="rounded bg-black/30 px-1 text-neutral-300">coding_task</code> with{" "}
-                  <code className="rounded bg-black/30 px-1 text-neutral-300">run_plan_subagent: true</code> to run a
-                  short read-only <span className="text-neutral-200">coding_plan</span> pass on this workspace; the
-                  tool JSON includes <code className="rounded bg-black/30 px-1 text-neutral-300">assistant_excerpt</code>.
-                </p>
-              ) : null}
-              {selectedAgentId === "coding_plan" ? (
-                <p className="max-w-xl text-[11px] leading-snug text-amber-200/90">
-                  Read-only agent: no write, shell, or patch tools. Choose{" "}
-                  <span className="text-neutral-200">Coding</span> to apply changes.
-                </p>
               ) : null}
               <p className="text-[10px] leading-snug text-surface-muted">
                 Titles from the first message. Open a shared chat: URL query{" "}
@@ -1702,6 +1643,12 @@ export function ChatPage() {
                 emptyHint="Activity appears here when the agent runs tools or LLM rounds for the selected prompt."
                 layout="header"
                 className="min-h-0 w-full"
+                showSubagentToggle={mode === "agent"}
+                showSubagents={showSubagentsInActivity}
+                onShowSubagentsChange={(on) => {
+                  setShowSubagentsInActivity(on);
+                  persistShowSubagentsPref(userId, on);
+                }}
               />
             ) : (
               <div className="flex min-h-0 items-center rounded-lg border border-white/10 bg-black/30 px-2.5 py-2">
@@ -1717,7 +1664,6 @@ export function ChatPage() {
                 className="w-full"
                 mcpAddon={
                   selectedWorkspaceId &&
-                  visibleAgents.find((a) => a.id === selectedAgentId)?.requires_workspace &&
                   selectedWorkspace &&
                   selectedWorkspace.access_role !== "viewer" ? (
                     <button
@@ -1864,6 +1810,15 @@ export function ChatPage() {
             />
           ) : null}
           <div className="flex min-h-0 flex-1 overflow-hidden">
+            {projectPanelOpen && selectedWorkspaceId ? (
+              <CodingWorkspacePanels
+                auth={auth}
+                workspaceId={selectedWorkspaceId}
+                changesRefreshKey={projectTreeRefreshKey}
+                variant="chat"
+                readOnly={selectedWorkspace?.access_role === "viewer"}
+              />
+            ) : null}
             {userTurns.length > 0 ? (
               <aside className="hidden w-44 shrink-0 overflow-y-auto border-r border-surface-border px-2 py-4 lg:block">
                 <TurnNavigator
@@ -2121,9 +2076,7 @@ export function ChatPage() {
                 const j = (await r.json()) as { workspaces?: WorkspaceApiRecord[] };
                 setWorkspaces(j.workspaces ?? []);
               }
-              const agent = visibleAgents.find((a) => a.id === selectedAgentId);
-              const wsParam =
-                agent?.requires_workspace && selectedWorkspaceId ? selectedWorkspaceId : null;
+              const wsParam = selectedWorkspaceId ? selectedWorkspaceId : null;
               setSessionRuntime(await fetchSessionRuntime(auth, wsParam));
             } catch {
               /* ignore */

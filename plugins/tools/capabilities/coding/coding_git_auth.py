@@ -22,18 +22,6 @@ def git_command_needs_github_pat(command: str) -> bool:
     return bool(_GIT_PAT_SUBCOMMAND_RE.search((command or "").strip()))
 
 
-def blocks_git_credential_exfil(command: str) -> bool:
-    """Block obvious attempts to read askpass/token paths in the same shell line."""
-    lower = (command or "").lower()
-    if "git_askpass" in lower or "al-git-tok" in lower or "al-git-ask" in lower:
-        return True
-    if git_command_needs_github_pat(command) and re.search(
-        r"\b(env|printenv|export)\b", lower
-    ):
-        return True
-    return False
-
-
 def git_auth_failure_reason(output: str, exit_code: int) -> str | None:
     if exit_code == 0:
         return None

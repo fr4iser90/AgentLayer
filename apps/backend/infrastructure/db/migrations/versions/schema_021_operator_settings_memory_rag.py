@@ -20,7 +20,7 @@ def upgrade() -> None:
         ALTER TABLE operator_settings
           ADD COLUMN IF NOT EXISTS memory_enabled BOOLEAN NOT NULL DEFAULT true,
           ADD COLUMN IF NOT EXISTS rag_enabled BOOLEAN NOT NULL DEFAULT true,
-          ADD COLUMN IF NOT EXISTS rag_ollama_model TEXT NOT NULL DEFAULT 'nomic-embed-text',
+          ADD COLUMN IF NOT EXISTS rag_embedding_model TEXT NOT NULL DEFAULT 'nomic-embed-text',
           ADD COLUMN IF NOT EXISTS rag_embedding_dim INTEGER NOT NULL DEFAULT 768,
           ADD COLUMN IF NOT EXISTS rag_chunk_size INTEGER NOT NULL DEFAULT 1200,
           ADD COLUMN IF NOT EXISTS rag_chunk_overlap INTEGER NOT NULL DEFAULT 200,
@@ -43,7 +43,7 @@ def downgrade() -> None:
           DROP COLUMN IF EXISTS rag_chunk_overlap,
           DROP COLUMN IF EXISTS rag_chunk_size,
           DROP COLUMN IF EXISTS rag_embedding_dim,
-          DROP COLUMN IF EXISTS rag_ollama_model,
+          DROP COLUMN IF EXISTS rag_embedding_model,
           DROP COLUMN IF EXISTS rag_enabled,
           DROP COLUMN IF EXISTS memory_enabled;
         """

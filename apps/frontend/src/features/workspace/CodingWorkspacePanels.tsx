@@ -43,10 +43,17 @@ type Props = {
   workspaceId: string | null;
   /** Increment after agent run completes to refresh the changes tab. */
   changesRefreshKey?: number;
+  /** ``chat`` = narrow sidebar beside Chat; ``build`` = full Build page layout. */
+  variant?: "build" | "chat";
+  /** When true, hide git Changes tab (e.g. viewer-only projects). */
+  readOnly?: boolean;
 };
 
-const SHELL_CLASS =
+const SHELL_CLASS_BUILD =
   "flex max-h-[40vh] min-h-0 shrink-0 flex-col border-b border-surface-border bg-[#0a0a0a] lg:h-full lg:max-h-none lg:w-[min(100%,480px)] lg:shrink-0 lg:flex-row lg:border-b-0 lg:border-r";
+
+const SHELL_CLASS_CHAT =
+  "flex h-full min-h-0 w-[min(100%,300px)] shrink-0 flex-col border-r border-surface-border bg-[#0a0a0a]";
 
 function diffLineClass(line: string): string {
   if (line.startsWith("+++") || line.startsWith("---")) return "text-neutral-500";
@@ -60,10 +67,12 @@ function PanelTabs({
   panelTab,
   onTab,
   changesBadge,
+  showChanges = true,
 }: {
   panelTab: PanelTab;
   onTab: (t: PanelTab) => void;
   changesBadge: string | null;
+  showChanges?: boolean;
 }) {
   const tabClass = (active: boolean) =>
     `rounded-md px-2.5 py-1 text-[10px] font-medium transition-colors ${
@@ -75,12 +84,14 @@ function PanelTabs({
       <button type="button" className={tabClass(panelTab === "files")} onClick={() => onTab("files")}>
         Files
       </button>
-      <button type="button" className={tabClass(panelTab === "changes")} onClick={() => onTab("changes")}>
-        Changes
-        {changesBadge ? (
-          <span className="ml-1 rounded bg-amber-600/40 px-1 py-px text-[9px] text-amber-100">{changesBadge}</span>
-        ) : null}
-      </button>
+      {showChanges ? (
+        <button type="button" className={tabClass(panelTab === "changes")} onClick={() => onTab("changes")}>
+          Changes
+          {changesBadge ? (
+            <span className="ml-1 rounded bg-amber-600/40 px-1 py-px text-[9px] text-amber-100">{changesBadge}</span>
+          ) : null}
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -103,7 +114,14 @@ function DiffView({ text, truncated }: { text: string; truncated: boolean }) {
   );
 }
 
-export function CodingWorkspacePanels({ auth, workspaceId, changesRefreshKey = 0 }: Props) {
+export function CodingWorkspacePanels({
+  auth,
+  workspaceId,
+  changesRefreshKey = 0,
+  variant = "build",
+  readOnly = false,
+}: Props) {
+  const shellClass = variant === "chat" ? SHELL_CLASS_CHAT : SHELL_CLASS_BUILD;
   const [panelTab, setPanelTab] = useState<PanelTab>("files");
 
   const [browsePath, setBrowsePath] = useState("");
@@ -281,17 +299,22 @@ export function CodingWorkspacePanels({ auth, workspaceId, changesRefreshKey = 0
 
   if (!workspaceId) {
     return (
-      <div className={`${SHELL_CLASS} items-center justify-center px-3 py-6 text-center text-xs text-surface-muted`}>
-        <p>Select a workspace to browse files.</p>
+      <div className={`${shellClass} items-center justify-center px-3 py-6 text-center text-xs text-surface-muted`}>
+        <p>Select a project to browse files.</p>
       </div>
     );
   }
 
   return (
-    <div className={SHELL_CLASS}>
+    <div className={shellClass}>
       <div className="flex min-h-0 w-full flex-col border-surface-border lg:w-52 lg:shrink-0 lg:border-r">
         <div className="shrink-0 border-b border-surface-border px-2 py-2">
-          <PanelTabs panelTab={panelTab} onTab={setPanelTab} changesBadge={changesBadge} />
+          <PanelTabs
+            panelTab={panelTab}
+            onTab={setPanelTab}
+            changesBadge={changesBadge}
+            showChanges={!readOnly}
+          />
           {panelTab === "files" ? (
             <>
               <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-surface-muted">

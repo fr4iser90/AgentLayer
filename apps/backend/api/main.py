@@ -59,7 +59,26 @@ from apps.backend.api.optional_http_access import (
     middleware_path_is_public,
     public_http_auth_policy,
 )
-from apps.backend.domain.admin_setup import is_first_start, setup_admin_claim_if_needed
+from apps.backend.domain.admin_setup import is_first_start
+from apps.backend.domain.instance_setup import (
+    apply_setup_llm_endpoint,
+    build_setup_status,
+    create_first_admin,
+    emit_initial_setup_notice_at_end,
+    enforce_setup_rate_limit,
+    probe_llm_endpoint,
+    setup_admin_claim_if_needed,
+    validate_setup_email,
+    validate_setup_password,
+    validate_setup_token,
+)
+from apps.backend.domain.setup_catalog import (
+    SetupPreferencesBody,
+    apply_setup_preferences,
+    apply_setup_skip_suggestions,
+    build_setup_catalog,
+    test_embedding_model,
+)
 from apps.backend.domain.rag_docs_file_ingest import run_startup_rag_docs_ingest
 from apps.backend.domain.agent import WorkspaceAccessDenied, chat_completion
 from apps.backend.infrastructure.llm_user_errors import user_visible_llm_transport_error
@@ -200,6 +219,10 @@ async def lifespan(_app: FastAPI):
         telegram_bridge.start_background()
     except Exception:
         logger.exception("Telegram bridge failed to start (optional)")
+    if is_first_start():
+        # Let bridge/cron idle lines flush before the setup token block (last visible line).
+        await asyncio.sleep(0.75)
+    emit_initial_setup_notice_at_end()
     yield
     try:
         discord_bridge.stop_background()
@@ -252,23 +275,19 @@ app.include_router(workspaces_router)
 
 
 # Auth Endpoints
-@app.post("/auth/login")
-async def login(request: Request, login_data: LoginRequest):
-    user = get_user_by_email(login_data.email)
-    if not user or not user.password_hash or not verify_password(login_data.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid email or password")
-
+def _auth_session_response(request: Request, user: Any) -> JSONResponse:
     access_token = create_access_token(user.id, user.role)
     refresh_token, refresh_token_hash = create_refresh_token(user.id)
-
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO refresh_tokens (user_id, token_hash, expires_at)
                 VALUES (%s, %s, NOW() + INTERVAL '7 days')
-            """, (user.id, refresh_token_hash))
+                """,
+                (user.id, refresh_token_hash),
+            )
             conn.commit()
-
     payload = {
         "access_token": access_token,
         "token_type": "bearer",
@@ -290,6 +309,14 @@ async def login(request: Request, login_data: LoginRequest):
         path="/",
     )
     return response
+
+
+@app.post("/auth/login")
+async def login(request: Request, login_data: LoginRequest):
+    user = get_user_by_email(login_data.email)
+    if not user or not user.password_hash or not verify_password(login_data.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    return _auth_session_response(request, user)
 
 
 @app.post("/auth/refresh")
@@ -332,10 +359,98 @@ async def auth_logout(request: Request):
     return response
 
 
+class AuthSetupBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: str
+    password: str
+    password_confirm: str
+    setup_token: str
+
+
+class AuthSetupLlmBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    base_url: str
+    api_key: str | None = None
+    model_default: str | None = None
+    label: str | None = None
+    test_only: bool = False
+
+
 @app.get("/auth/setup-status")
 async def auth_setup_status():
-    """False when an admin exists (startup already requires env or CLI if DB was empty)."""
-    return {"needs_setup": is_first_start()}
+    """Initial instance configuration state (admin account, LLM catalog)."""
+    return build_setup_status()
+
+
+@app.post("/auth/setup")
+async def auth_setup(request: Request, body: AuthSetupBody):
+    """Create the first administrator (only while no admin exists)."""
+    enforce_setup_rate_limit(request)
+    validate_setup_token(body.setup_token)
+    validate_setup_email(body.email)
+    validate_setup_password(body.password, body.password_confirm)
+    user = create_first_admin(email=body.email, password=body.password)
+    return _auth_session_response(request, user)
+
+
+@app.post("/auth/setup/llm")
+async def auth_setup_llm(request: Request, body: AuthSetupLlmBody):
+    """Configure or test the OpenAI-compatible LLM endpoint (admin session required)."""
+    await require_admin(request)
+    if body.test_only:
+        return await probe_llm_endpoint(base_url=body.base_url, api_key=body.api_key)
+    probe = await probe_llm_endpoint(base_url=body.base_url, api_key=body.api_key)
+    apply_setup_llm_endpoint(
+        base_url=body.base_url,
+        api_key=body.api_key,
+        model_default=body.model_default,
+        label=body.label,
+    )
+    return {
+        "ok": True,
+        "model_count": probe.get("model_count", 0),
+        "models": probe.get("models", []),
+    }
+
+
+@app.get("/auth/setup/catalog")
+async def auth_setup_catalog(request: Request):
+    """Provider reachability and chat/embedding model lists for setup step 2."""
+    await require_admin(request)
+    return build_setup_catalog()
+
+
+class AuthSetupPreferencesBody(SetupPreferencesBody):
+    """Alias for OpenAPI; fields defined on SetupPreferencesBody."""
+
+
+@app.post("/auth/setup/preferences")
+async def auth_setup_preferences(request: Request, body: AuthSetupPreferencesBody):
+    """Persist preferred provider and profile models (general, coding, embedding)."""
+    await require_admin(request)
+    return apply_setup_preferences(body)
+
+
+class AuthSetupTestEmbeddingBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    model: str = Field(..., min_length=1, max_length=256)
+
+
+@app.post("/auth/setup/test-embedding")
+async def auth_setup_test_embedding(request: Request, body: AuthSetupTestEmbeddingBody):
+    """Probe embedding dimension for a model id on the configured embedding API."""
+    await require_admin(request)
+    return await test_embedding_model(body.model)
+
+
+@app.post("/auth/setup/skip-profiles")
+async def auth_setup_skip_profiles(request: Request):
+    """Skip provider wizard step; persist catalog suggestions when a chat provider is reachable."""
+    await require_admin(request)
+    return apply_setup_skip_suggestions()
 
 
 @app.get("/auth/me")
@@ -635,6 +750,13 @@ _agent_ui_dir = _repo_root / "apps" / "frontend" / "dist"
 _agent_index = _agent_ui_dir / "index.html"
 if _agent_index.is_file():
 
+    @app.get("/coding-agent")
+    async def redirect_legacy_coding_agent(request: Request):
+        """Legacy deep links used /coding-agent; SPA lives under /app/coding-agent."""
+        q = request.url.query
+        target = "/app/coding-agent" + (f"?{q}" if q else "")
+        return RedirectResponse(url=target, status_code=302)
+
     @app.get("/app")
     async def agent_ui_spa_root():
         """``/app`` without trailing slash: same shell as ``/app/`` (hard refresh must not 405)."""
@@ -645,17 +767,22 @@ if _agent_index.is_file():
     @app.get("/app/dashboard")
     @app.get("/app/docs")
     @app.get("/app/login")
+    @app.get("/app/setup")
+    @app.get("/app/schedules")
     @app.get("/app/settings")
     @app.get("/app/settings/profile")
     @app.get("/app/settings/connections")
     @app.get("/app/settings/tools")
     @app.get("/app/settings/agent")
+    @app.get("/app/settings/friends")
+    @app.get("/app/settings/shares")
     @app.get("/app/studio")
     @app.get("/app/admin")
     @app.get("/app/admin/interfaces")
     @app.get("/app/admin/tools")
     @app.get("/app/admin/users")
     @app.get("/app/admin/scheduled-jobs")
+    @app.get("/app/admin/schedules")
     @app.get("/app/admin/workflows")
     async def agent_ui_spa_shell():
         """Serve SPA index for client-side routes (must register before mount /app)."""

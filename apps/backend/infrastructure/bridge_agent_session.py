@@ -183,6 +183,8 @@ def bridge_chat_completion_extras(
     scope_thread_id: int | None,
 ) -> dict[str, Any]:
     """Keys to merge into ``chat_completion`` body: ``workspace_id``, optional ``agent_id``."""
+    from apps.backend.domain.agent_access import default_agent_for_workspace
+
     prefs = bridge_session_get_runtime_prefs(
         user_id,
         provider=provider,
@@ -194,10 +196,11 @@ def bridge_chat_completion_extras(
     if isinstance(wid, str) and wid.strip():
         out["workspace_id"] = wid.strip()
     aid = prefs.get("default_agent_id")
+    role = db.user_role(user_id) or "user"
     if isinstance(aid, str) and aid.strip():
         out["agent_id"] = aid.strip()
     elif out.get("workspace_id"):
-        out["agent_id"] = "coding"
+        out["agent_id"] = default_agent_for_workspace(role)
     return out
 
 
@@ -207,15 +210,10 @@ def _bridge_user_like(user_id: uuid.UUID):
 
 
 def _user_may_use_agent(user_id: uuid.UUID, agent_id: str) -> tuple[bool, str]:
-    from apps.backend.domain.agent_registry import get_agent_registry
+    from apps.backend.domain.agent_access import user_may_invoke_agent
 
-    ag = get_agent_registry().get_agent(agent_id.strip())
-    if not ag:
-        return False, f"Unknown agent {agent_id!r}. Use /agent list."
-    min_r = str(ag.get("min_role") or "user").strip().lower()
-    if min_r == "admin" and db.user_role(user_id) != "admin":
-        return False, "This agent is only available to admins."
-    return True, ""
+    role = db.user_role(user_id) or "user"
+    return user_may_invoke_agent(role, agent_id.strip())
 
 
 def _bridge_update_session_columns(

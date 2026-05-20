@@ -5,21 +5,25 @@ import { useAuth } from "./AuthContext";
  * Access token only in React memory; refresh uses httpOnly cookie (see POST /auth/login).
  */
 export function RequireSession() {
-  const { accessToken, loading } = useAuth();
+  const { accessToken, loading, setupStatus } = useAuth();
 
   if (loading) {
     return (
       <div className="flex h-full min-h-0 flex-1 items-center justify-center px-4 text-sm text-surface-muted">
-        Loading…
+        Laden…
       </div>
     );
   }
 
   if (!accessToken) {
-    window.location.replace("/app/login");
+    const target =
+      setupStatus?.needs_setup || setupStatus?.needs_provider_wizard
+        ? "/app/setup"
+        : "/app/login";
+    window.location.replace(target);
     return (
       <div className="flex h-full min-h-0 flex-1 items-center justify-center px-4 text-sm text-surface-muted">
-        Redirecting to sign in…
+        Weiterleitung…
       </div>
     );
   }

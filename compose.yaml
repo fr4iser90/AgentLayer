@@ -48,8 +48,7 @@ services:
       dockerfile: Dockerfile
     image: jetpack-agent-layer:local
     container_name: agent-layer
-    # "no": missing AGENT_INITIAL_ADMIN_* exits the process — avoid infinite restart + repeated Alembic.
-    # After first successful boot, you can set restart: unless-stopped if you want crash recovery.
+    # Optional: restart unless-stopped after first admin exists (via /app/setup or AGENT_INITIAL_ADMIN_*).
     restart: "no"
     depends_on:
       postgres:

@@ -7,9 +7,15 @@ type Props = {
   className?: string;
   /** Taller scroll area when placed in the header grid beside model/MCP controls. */
   layout?: "compact" | "header";
+  /** Show checkbox to toggle sub-agent rows (delegated coding_task runs). */
+  showSubagentToggle?: boolean;
+  showSubagents?: boolean;
+  onShowSubagentsChange?: (show: boolean) => void;
 };
 
 function borderForKind(kind: string): string {
+  if (kind === "subagent_start") return "border-indigo-500/55";
+  if (kind === "subagent_done") return "border-indigo-400/45";
   if (kind === "tool_start") return "border-sky-500/50";
   if (kind === "tool_done") return "border-emerald-500/50";
   if (kind === "llm") return "border-violet-500/45";
@@ -20,6 +26,8 @@ function borderForKind(kind: string): string {
 }
 
 function labelForKind(kind: string): string {
+  if (kind === "subagent_start") return "Sub";
+  if (kind === "subagent_done") return "Sub✓";
   if (kind === "tool_start") return "Tool";
   if (kind === "tool_done") return "Done";
   if (kind === "llm") return "LLM";
@@ -35,35 +43,62 @@ export function AgentActivityPanel({
   emptyHint,
   className = "",
   layout = "compact",
+  showSubagentToggle = false,
+  showSubagents = true,
+  onShowSubagentsChange,
 }: Props) {
   const scrollClass =
     layout === "header"
       ? "min-h-[7rem] max-h-[min(11rem,28vh)] overflow-y-auto overscroll-contain px-2.5 py-1.5"
       : "min-h-0 max-h-32 overflow-y-auto overscroll-contain px-2.5 py-1.5";
 
+  const visible = showSubagents
+    ? entries
+    : entries.filter((e) => e.kind !== "subagent_start" && e.kind !== "subagent_done");
+
   return (
-    <div className={`flex min-h-0 flex-col overflow-hidden rounded-lg border border-white/10 bg-black/30 ${className}`}>
-      <div className="shrink-0 border-b border-white/5 px-2.5 py-1.5">
+    <div
+      className={`flex min-h-0 flex-col overflow-hidden rounded-lg border border-white/10 bg-black/30 ${className}`}
+    >
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/5 px-2.5 py-1.5">
         <span className="text-[10px] font-semibold uppercase tracking-wide text-surface-muted">
           Agent activity
         </span>
+        {showSubagentToggle ? (
+          <label className="flex cursor-pointer items-center gap-1.5 text-[10px] text-surface-muted">
+            <input
+              type="checkbox"
+              className="rounded border-surface-border bg-[#1a1a1a] text-indigo-500"
+              checked={showSubagents}
+              onChange={(e) => onShowSubagentsChange?.(e.target.checked)}
+            />
+            Sub-agents
+          </label>
+        ) : null}
       </div>
       <div className={scrollClass}>
-        {entries.length === 0 && !loading ? (
+        {visible.length === 0 && !loading ? (
           <p className="text-[11px] leading-snug text-surface-muted">
             {emptyHint ?? "No activity for this prompt yet."}
           </p>
         ) : (
           <ul className="space-y-1">
-            {entries.map((e) => (
+            {visible.map((e) => (
               <li
                 key={e.id}
-                className={`border-l-2 pl-2 text-[11px] leading-snug ${borderForKind(e.kind)}`}
+                className={[
+                  "border-l-2 text-[11px] leading-snug",
+                  borderForKind(e.kind),
+                  e.nested ? "ml-3 pl-2" : "pl-2",
+                ].join(" ")}
               >
                 <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0">
                   <span className="text-[9px] font-medium uppercase tracking-wide text-surface-muted">
                     {labelForKind(e.kind)}
                   </span>
+                  {e.subagentAgentId ? (
+                    <span className="text-[9px] text-indigo-300/90">{e.subagentAgentId}</span>
+                  ) : null}
                   <span className="text-neutral-300">{e.text}</span>
                   {e.durationMs != null && e.durationMs >= 0 ? (
                     <span className="tabular-nums text-neutral-500">

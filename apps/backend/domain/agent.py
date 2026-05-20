@@ -134,7 +134,10 @@ def _git_network_tools_for_agent(agent_id: str | None) -> frozenset[str]:
 
 def _pinned_tools_for_agent(agent_id: str | None) -> frozenset[str]:
     """Tools always prepended to ranked tools[] (credentials + git push/sync)."""
-    return _credential_tools_for_agent(agent_id) | _git_network_tools_for_agent(agent_id)
+    pins = _credential_tools_for_agent(agent_id) | _git_network_tools_for_agent(agent_id)
+    if (agent_id or "").strip() == "general":
+        pins = pins | frozenset({"agent_delegate"})
+    return pins
 
 
 def _rank_tools_by_user_input(
@@ -3016,6 +3019,7 @@ async def chat_completion(
     control_queue: asyncio.Queue | None = None,
     cancel_event: asyncio.Event | None = None,
     stream_requested: bool = False,
+    embedded_subagent: bool = False,
 ) -> dict[str, Any] | AsyncIterator[bytes]:
     # Without ``stream_requested`` + plain completion, the tool loop uses blocking HTTP; HTTP callers may
     # wrap the final JSON as SSE. True streaming is returned as an async byte iterator (upstream SSE passthrough).
@@ -3052,6 +3056,12 @@ async def chat_completion(
     agent_id = body.pop("agent_id", None)
     if isinstance(agent_id, str):
         agent_id = agent_id.strip() or None
+    if not embedded_subagent and agent_id and agent_id != "general":
+        logger.info(
+            "chat_completion: forcing agent_id %r -> general (single Chat product surface)",
+            agent_id,
+        )
+        agent_id = "general"
     parent_agent_run_id = body.pop("agent_parent_run_id", None)
     if isinstance(parent_agent_run_id, str):
         parent_agent_run_id = parent_agent_run_id.strip() or None
@@ -3102,28 +3112,27 @@ async def chat_completion(
         except Exception:
             pass
 
-    if agent_id:
-        ag_def = get_agent_registry().get_agent(agent_id)
-        if ag_def:
-            min_r = str(ag_def.get("min_role") or "user").strip().lower()
-            if min_r == "admin":
-                from apps.backend.infrastructure.db import db as _role_db
+    _role_for_agent = None
+    if user_obj is not None:
+        _role_for_agent = getattr(user_obj, "role", None)
+    if _role_for_agent is None and user_id:
+        try:
+            from apps.backend.infrastructure.db import db as _role_db
 
-                if _role_db.user_role(user_id) != "admin":
-                    raise ValueError("This agent is only available to admin users.")
+            _role_for_agent = _role_db.user_role(user_id)
+        except Exception:
+            _role_for_agent = bearer_user_role
+    if _role_for_agent is None:
+        _role_for_agent = bearer_user_role
+
+    if agent_id and not embedded_subagent:
+        from apps.backend.domain.agent_access import user_may_invoke_agent
+
+        ok_agent, agent_err = user_may_invoke_agent(_role_for_agent, agent_id)
+        if not ok_agent:
+            raise ValueError(agent_err)
 
     _is_admin = _is_elevated_admin(user_obj, bearer_user_role, user_id)
-    if (
-        agent_id == "general"
-        and _is_admin
-        and not workspace_id
-        and _coding_repo_intent(_bootstrap_last_user)
-    ):
-        logger.info(
-            "chat_completion: auto-routing agent general -> coding (admin, repo/git intent)"
-        )
-        agent_id = "coding"
-        agent_auto_routed = True
 
     if workspace_id and user_id:
         try:
@@ -3224,6 +3233,19 @@ async def chat_completion(
 
     agent_run_id = str(uuid.uuid4())
     tool_context["agent_run_id"] = agent_run_id
+    if event_emit is not None:
+        try:
+            _loop = asyncio.get_running_loop()
+
+            def _agent_subagent_notify(payload: dict[str, Any]) -> None:
+                ev = dict(payload)
+                ev.setdefault("parent_agent_run_id", agent_run_id)
+                ev.setdefault("agent_run_id", agent_run_id)
+                asyncio.run_coroutine_threadsafe(event_emit(ev), _loop)
+
+            tool_context["agent_subagent_notify"] = _agent_subagent_notify
+        except RuntimeError:
+            pass
     tool_context["workspace_verify_succeeded"] = False
     tool_context["permission_always_allow_tools"] = set()
     _abf = _agent_behavior_flags(agent_id if isinstance(agent_id, str) else None)
@@ -3269,6 +3291,12 @@ async def chat_completion(
         messages = _inject_dashboard_context(messages, dashboard_ctx)
         if agent_id:
             messages = _inject_agent_system_prompt(messages, agent_id)
+        if agent_id == "general":
+            from plugins.tools.capabilities.platform._embedded_subagent import (
+                build_delegate_agents_catalog_snippet,
+            )
+
+            messages = _append_system_block(messages, build_delegate_agents_catalog_snippet())
         if agent_id and agent_id in config.AGENT_SKILLS_PROMPT_AGENT_IDS:
             from apps.backend.infrastructure.skills_prompt import load_combined_skills_prompt
 
@@ -3292,6 +3320,18 @@ async def chat_completion(
             override_header=model_override_header,
             bearer_user_role=bearer_user_role,
         )
+        if not plain_completion:
+            from apps.backend.domain.catalog_chat_llm import finalize_catalog_chat_llm
+
+            model, catalog_owned_by = finalize_catalog_chat_llm(
+                model=model,
+                profile_key=profile_key,
+                is_override=model_is_override,
+                catalog_owned_by=catalog_owned_by,
+            )
+        tool_context["parent_effective_model"] = model
+        if catalog_owned_by:
+            tool_context["parent_model_catalog_owned_by"] = catalog_owned_by
         smart_route_reason = ""
         backend_override: Literal["ollama", "external"] | None = None
         if isinstance(_raw_llm_be, str):

@@ -22,7 +22,6 @@ export function AppLayout() {
   const { t, i18n } = useTranslation();
   const { accessToken, user, loading } = useAuth();
   const signedIn = !!accessToken && !!user;
-
   return (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden">
       <header className="flex shrink-0 items-center gap-3 border-b border-surface-border bg-surface-raised px-4 py-3">
@@ -39,9 +38,6 @@ export function AppLayout() {
               </NavLink>
               <NavLink to="/chat" className={linkClass}>
                 {t("nav.chat")}
-              </NavLink>
-              <NavLink to="/coding-agent" className={linkClass}>
-                Coding
               </NavLink>
               <NavLink to="/studio" className={linkClass}>
                 {t("nav.studio")}
