@@ -479,16 +479,16 @@ def admin_rag_ingest(arguments: dict[str, Any]) -> str:
         return _err(str(e))
     except httpx.HTTPStatusError as e:
         detail = (
-            f"Ollama embeddings error: {e!s}"
+            f"Embedding API HTTP error: {e!s}"
             if operator_settings.expose_internal_errors_in_responses()
-            else "Ollama embeddings error"
+            else "Embedding API HTTP error"
         )
         return _err(detail)
     except httpx.RequestError as e:
         detail = (
-            f"Ollama unreachable: {e!s}"
+            f"Embedding API unreachable: {e!s}"
             if operator_settings.expose_internal_errors_in_responses()
-            else "Ollama unreachable"
+            else "Embedding API unreachable"
         )
         return _err(detail)
     except Exception as e:

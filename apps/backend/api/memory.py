@@ -17,7 +17,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-from apps.backend.api.rag import ollama_embed_one
+from apps.backend.api.rag import embed_one
 from apps.backend.domain.identity import get_identity
 from apps.backend.infrastructure import operator_settings
 from apps.backend.infrastructure.db import db
@@ -112,7 +112,7 @@ def note_add_for_identity(
     _require_identity()
     t = (text or "").strip()
     _reject_secrets(t)
-    emb = ollama_embed_one(t)
+    emb = embed_one(t)
     nid = db.memory_note_insert(text=t, embedding=emb, tags=tags, source=source, dashboard_id=dashboard_id)
     return {"ok": True, "id": nid}
 
@@ -130,7 +130,7 @@ def note_search_for_identity(
     q = (query or "").strip()
     if not q:
         return []
-    emb = ollama_embed_one(q)
+    emb = embed_one(q)
     return db.memory_note_vector_search(query_embedding=emb, dashboard_id=dashboard_id, tags=tags, limit=limit)
 
 
@@ -165,7 +165,7 @@ def graph_node_add_for_identity(
     blurb = f"{lab}\n{summ}".strip() or lab
     emb: list[float] | None = None
     try:
-        emb = ollama_embed_one(blurb[:12_000])
+        emb = embed_one(blurb[:12_000])
     except Exception:
         emb = None
     return db.memory_graph_node_insert(
@@ -270,7 +270,7 @@ def graph_render_for_identity(
     raw_q = (user_query or "").strip()
     if raw_q:
         try:
-            qemb = ollama_embed_one(raw_q[:12_000])
+            qemb = embed_one(raw_q[:12_000])
         except Exception:
             qemb = None
     hops = int(mg["max_hops"])

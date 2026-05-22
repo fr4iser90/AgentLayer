@@ -10,6 +10,10 @@ import httpx
 
 from apps.backend.infrastructure import operator_settings
 from apps.backend.infrastructure.db import db
+from apps.backend.infrastructure.embedding_client import (
+    format_embedding_http_error,
+    format_embedding_request_error,
+)
 import apps.backend.api.rag as rag_service
 
 logger = logging.getLogger(__name__)
@@ -47,7 +51,7 @@ def ingest_markdown_tree(
         raise FileNotFoundError(f"docs_root not found or not a directory: {docs_root}")
 
     try:
-        rag_service.ollama_embed_one("agentlayer")
+        rag_service.embed_one("agentlayer")
     except Exception as e:
         return {
             "ok": False,
@@ -98,11 +102,11 @@ def ingest_markdown_tree(
         except ValueError as e:
             errors.append({"path": rel, "error": str(e)})
         except httpx.HTTPStatusError as e:
-            logger.warning("ingest-docs Ollama HTTP error path=%s: %s", rel, e)
-            errors.append({"path": rel, "error": f"Ollama: {e!s}"})
+            logger.warning("ingest-docs embedding HTTP error path=%s: %s", rel, e)
+            errors.append({"path": rel, "error": format_embedding_http_error(e)})
         except httpx.RequestError as e:
-            logger.warning("ingest-docs Ollama unreachable path=%s: %s", rel, e)
-            errors.append({"path": rel, "error": f"Ollama unreachable: {e!s}"})
+            logger.warning("ingest-docs embedding unreachable path=%s: %s", rel, e)
+            errors.append({"path": rel, "error": format_embedding_request_error(e)})
         except Exception as e:
             logger.warning("ingest-docs failed path=%s: %s", rel, e)
             errors.append({"path": rel, "error": str(e)})

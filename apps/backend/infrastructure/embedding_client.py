@@ -175,6 +175,16 @@ def clear_embedding_health_cache() -> None:
     _EMBED_HEALTH_CACHE = None
 
 
+def format_embedding_http_error(exc: httpx.HTTPStatusError) -> str:
+    """User-facing message for embedding ingest/search HTTP failures (any provider)."""
+    return f"Embedding API HTTP error: {exc!s}"
+
+
+def format_embedding_request_error(exc: httpx.RequestError) -> str:
+    """User-facing message when the configured embedding host is unreachable."""
+    return f"Embedding API unreachable: {exc!s}"
+
+
 def embed_one(text: str) -> list[float]:
     """
     Embed one string via ``POST …/v1/embeddings`` at ``EMBEDDING_BASE_URL`` only.

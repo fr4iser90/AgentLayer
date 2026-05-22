@@ -8,7 +8,7 @@ import re
 import uuid
 from typing import Any
 
-from apps.backend.api.rag import ollama_embed_one
+from apps.backend.api.rag import embed_one
 from apps.backend.core.config import config
 from apps.backend.infrastructure.db import db
 from apps.backend.infrastructure.openai_compat_http import http_post_chat_completions
@@ -114,7 +114,7 @@ def propose_graph_from_text(
         blurb = f"{label}\n{summary}".strip() or label
         emb: list[float] | None = None
         try:
-            emb = ollama_embed_one(blurb[:12_000])
+            emb = embed_one(blurb[:12_000])
         except Exception as e:
             logger.warning("graph propose: embed failed for node %r: %s", label, e)
         try:

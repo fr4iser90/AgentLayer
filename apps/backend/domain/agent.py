@@ -149,7 +149,7 @@ def _rank_tools_by_user_input(
     Rank tools by semantic similarity to user input + trigger boost + context boost.
     Returns sorted tools (highest score first).
     """
-    from apps.backend.api.rag import ollama_embed_one
+    from apps.backend.api.rag import embed_one
     
     if not config.AGENT_TOOLS_RANKING_ENABLED:
         return tools
@@ -163,7 +163,7 @@ def _rank_tools_by_user_input(
     
     try:
         # 1. Get user input embedding
-        user_emb = ollama_embed_one(user_input)
+        user_emb = embed_one(user_input)
     except Exception as e:
         logger.warning(f"Tool ranking: failed to get user embedding: {e}")
         return tools
@@ -184,7 +184,7 @@ def _rank_tools_by_user_input(
     if tools_to_embed:
         for tool_id, desc in tools_to_embed:
             try:
-                emb = ollama_embed_one(desc[:2000])  # Truncate long descriptions
+                emb = embed_one(desc[:2000])  # Truncate long descriptions
                 _tool_embedding_cache[tool_id] = emb
             except Exception as e:
                 logger.debug(f"Tool ranking: failed to embed tool {tool_id}: {e}")

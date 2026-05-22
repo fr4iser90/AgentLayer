@@ -11,6 +11,13 @@ from apps.backend.infrastructure.db import db
 from apps.backend.infrastructure.embedding_client import embed_one
 from apps.backend.domain.identity import get_identity
 
+__all__ = [
+    "chunk_text",
+    "embed_one",
+    "ingest_for_user",
+    "search_for_identity",
+]
+
 
 def chunk_text(text: str, chunk_size: int, overlap: int) -> list[str]:
     t = (text or "").strip()
@@ -25,15 +32,6 @@ def chunk_text(text: str, chunk_size: int, overlap: int) -> list[str]:
         out.append(t[i : i + chunk_size])
         i += step
     return [c for c in out if c.strip()]
-
-
-def ollama_embed_one(text: str) -> list[float]:
-    """
-    Single string → one embedding.
-
-    Delegates to :func:`embed_one` (``EMBEDDING_BASE_URL`` only).
-    """
-    return embed_one(text)
 
 
 def ingest_for_user(

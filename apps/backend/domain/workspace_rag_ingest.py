@@ -45,7 +45,7 @@ def ingest_workspace_markdown_tree(
         return {"ok": False, "error": "no user identity", "files_ingested": 0, "chunk_count_total": 0}
 
     try:
-        rag_service.ollama_embed_one("workspace rag probe")
+        rag_service.embed_one("workspace rag probe")
     except Exception as e:
         return {
             "ok": False,
