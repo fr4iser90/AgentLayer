@@ -3,6 +3,7 @@ import { useAuth } from "../../../auth/AuthContext";
 import { apiFetch } from "../../../lib/api";
 import {
   embeddingModelOptions,
+  formatEmbeddingStatusHint,
   type EmbeddingCatalogHealth,
 } from "../../../lib/modelCatalog";
 import {
@@ -33,7 +34,6 @@ function useOperatorSettingsState() {
   const [uploadMime, setUploadMime] = useState("");
   const [uploadEffBytes, setUploadEffBytes] = useState<number | null>(null);
   const [uploadEffMime, setUploadEffMime] = useState<string[]>([]);
-  const [llmPrimaryBackend, setLlmPrimaryBackend] = useState<"ollama" | "external">("ollama");
   const [extLlmEndpoints, setExtLlmEndpoints] = useState<ExternalLlmEndpointUI[]>([]);
   const [llmSmartRouting, setLlmSmartRouting] = useState(false);
   const [llmRouterModel, setLlmRouterModel] = useState("nemotron-3-nano:4b");
@@ -51,8 +51,25 @@ function useOperatorSettingsState() {
   const [memGraphLogActivations, setMemGraphLogActivations] = useState(false);
   const [memoryEnabled, setMemoryEnabled] = useState(true);
   const [ragEnabled, setRagEnabled] = useState(true);
+  const [embeddingApiBaseUrl, setEmbeddingApiBaseUrl] = useState("");
+  const [embeddingApiBaseSource, setEmbeddingApiBaseSource] = useState<
+    "env" | "operator_settings" | null
+  >(null);
+  const [embeddingApiBaseEffective, setEmbeddingApiBaseEffective] = useState<string | null>(null);
+  const [embeddingApiKey, setEmbeddingApiKey] = useState("");
+  const [embeddingApiKeyConfigured, setEmbeddingApiKeyConfigured] = useState(false);
+  const [embeddingApiKeySource, setEmbeddingApiKeySource] = useState<
+    "env" | "operator_settings" | null
+  >(null);
+  const [embeddingApiHeaderName, setEmbeddingApiHeaderName] = useState("X-API-KEY");
+  const [embeddingApiHeaderNameEffective, setEmbeddingApiHeaderNameEffective] = useState("X-API-KEY");
+  const [embeddingApiHeaderNameSource, setEmbeddingApiHeaderNameSource] = useState<
+    "env" | "operator_settings" | null
+  >(null);
   const [ragEmbeddingModel, setRagEmbeddingModel] = useState("nomic-embed-text");
   const [ragEmbeddingModelOptions, setRagEmbeddingModelOptions] = useState<string[]>([]);
+  const [ragEmbeddingStatusHint, setRagEmbeddingStatusHint] = useState<string | null>(null);
+  const [embeddingModelsLoading, setEmbeddingModelsLoading] = useState(false);
   const [ragEmbeddingDim, setRagEmbeddingDim] = useState("768");
   const [ragChunkSize, setRagChunkSize] = useState("1200");
   const [ragChunkOverlap, setRagChunkOverlap] = useState("200");
@@ -139,7 +156,6 @@ function useOperatorSettingsState() {
           ? op.dashboard_upload_effective_allowed_mime
           : []
       );
-      setLlmPrimaryBackend(op.llm_primary_backend === "external" ? "external" : "ollama");
       setLlmSmartRouting(!!op.llm_smart_routing_enabled);
       setLlmRouterModel((op.llm_router_ollama_model ?? "nemotron-3-nano:4b").trim() || "nemotron-3-nano:4b");
       setLlmRouterConfMin(
@@ -174,15 +190,53 @@ function useOperatorSettingsState() {
       );
       setMemoryEnabled(op.memory_enabled !== false);
       setRagEnabled(op.rag_enabled !== false);
+      setEmbeddingApiBaseUrl((op.embedding_api_base_url ?? "").trim());
+      setEmbeddingApiBaseSource(
+        op.embedding_api_base_source === "env" || op.embedding_api_base_source === "operator_settings"
+          ? op.embedding_api_base_source
+          : null
+      );
+      setEmbeddingApiBaseEffective(
+        typeof op.embedding_api_base_effective === "string" && op.embedding_api_base_effective.trim()
+          ? op.embedding_api_base_effective.trim()
+          : null
+      );
+      setEmbeddingApiKey("");
+      setEmbeddingApiKeyConfigured(!!op.embedding_api_key_configured);
+      setEmbeddingApiKeySource(
+        op.embedding_api_key_source === "env" || op.embedding_api_key_source === "operator_settings"
+          ? op.embedding_api_key_source
+          : null
+      );
+      const hdrEff =
+        typeof op.embedding_api_header_name_effective === "string" &&
+        op.embedding_api_header_name_effective.trim()
+          ? op.embedding_api_header_name_effective.trim()
+          : "X-API-KEY";
+      setEmbeddingApiHeaderNameEffective(hdrEff);
+      setEmbeddingApiHeaderName(
+        op.embedding_api_header_name_source === "env"
+          ? hdrEff
+          : (op.embedding_api_header_name ?? "").trim() || hdrEff
+      );
+      setEmbeddingApiHeaderNameSource(
+        op.embedding_api_header_name_source === "env" ||
+          op.embedding_api_header_name_source === "operator_settings"
+          ? op.embedding_api_header_name_source
+          : null
+      );
       setRagEmbeddingModel(
         (op.rag_embedding_model ?? (op as { rag_ollama_model?: string }).rag_ollama_model ?? "nomic-embed-text")
           .trim() || "nomic-embed-text"
       );
       try {
         const modelsJson = (await modelsRes.json()) as { agentlayer?: { embedding?: EmbeddingCatalogHealth } };
-        setRagEmbeddingModelOptions(embeddingModelOptions(modelsJson.agentlayer?.embedding));
+        const emb = modelsJson.agentlayer?.embedding;
+        setRagEmbeddingModelOptions(embeddingModelOptions(emb));
+        setRagEmbeddingStatusHint(formatEmbeddingStatusHint(emb));
       } catch {
         setRagEmbeddingModelOptions([]);
+        setRagEmbeddingStatusHint(null);
       }
       setRagEmbeddingDim(
         op.rag_embedding_dim != null && Number.isFinite(op.rag_embedding_dim) ? String(op.rag_embedding_dim) : "768"
@@ -407,7 +461,6 @@ function useOperatorSettingsState() {
       }
       const mimeStr = uploadMime.trim();
       patch.dashboard_upload_allowed_mime = mimeStr === "" ? null : mimeStr;
-      patch.llm_primary_backend = llmPrimaryBackend;
       const confMin = Number(llmRouterConfMin.trim());
       const rtSec = Number(llmRouterTimeoutSec.trim());
       const longC = Number(llmRouteLongChars.trim());
@@ -478,6 +531,12 @@ function useOperatorSettingsState() {
       }
       patch.memory_enabled = memoryEnabled;
       patch.rag_enabled = ragEnabled;
+      const embBase = embeddingApiBaseUrl.trim();
+      patch.embedding_api_base_url = embBase ? embBase : null;
+      patch.embedding_api_header_name = embeddingApiHeaderName.trim() || null;
+      if (embeddingApiKey.trim()) {
+        patch.embedding_api_key = embeddingApiKey.trim();
+      }
       patch.rag_embedding_model = ragEmbeddingModel.trim() || "nomic-embed-text";
       patch.rag_embedding_dim = Math.floor(red);
       patch.rag_chunk_size = Math.floor(rcs);
@@ -619,6 +678,22 @@ function useOperatorSettingsState() {
     }
   }
 
+  const refreshEmbeddingCatalog = useCallback(async () => {
+    setEmbeddingModelsLoading(true);
+    try {
+      const modelsRes = await fetch("/v1/models");
+      const modelsJson = (await modelsRes.json()) as { agentlayer?: { embedding?: EmbeddingCatalogHealth } };
+      const emb = modelsJson.agentlayer?.embedding;
+      setRagEmbeddingModelOptions(embeddingModelOptions(emb));
+      setRagEmbeddingStatusHint(formatEmbeddingStatusHint(emb));
+    } catch {
+      setRagEmbeddingModelOptions([]);
+      setRagEmbeddingStatusHint("Embedding-Modellliste konnte nicht geladen werden.");
+    } finally {
+      setEmbeddingModelsLoading(false);
+    }
+  }, []);
+
   async function clearTelegramToken() {
     setSaveMsg(null);
     try {
@@ -695,8 +770,6 @@ function useOperatorSettingsState() {
     setUploadMime,
     uploadEffBytes,
     uploadEffMime,
-    llmPrimaryBackend,
-    setLlmPrimaryBackend,
     extLlmEndpoints,
     setExtLlmEndpoints,
     llmSmartRouting,
@@ -731,9 +804,24 @@ function useOperatorSettingsState() {
     setMemoryEnabled,
     ragEnabled,
     setRagEnabled,
+    embeddingApiBaseUrl,
+    setEmbeddingApiBaseUrl,
+    embeddingApiBaseSource,
+    embeddingApiBaseEffective,
+    embeddingApiKey,
+    setEmbeddingApiKey,
+    embeddingApiKeyConfigured,
+    embeddingApiKeySource,
+    embeddingApiHeaderName,
+    setEmbeddingApiHeaderName,
+    embeddingApiHeaderNameEffective,
+    embeddingApiHeaderNameSource,
     ragEmbeddingModel,
     setRagEmbeddingModel,
     ragEmbeddingModelOptions,
+    ragEmbeddingStatusHint,
+    embeddingModelsLoading,
+    refreshEmbeddingCatalog,
     ragEmbeddingDim,
     setRagEmbeddingDim,
     ragChunkSize,

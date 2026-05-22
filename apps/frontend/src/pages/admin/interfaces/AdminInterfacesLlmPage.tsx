@@ -5,7 +5,7 @@ export function AdminInterfacesLlmPage() {
   return (
     <AdminInterfacesPageShell
       title="LLM & routing"
-      description="Chat backend, smart routing, and external OpenAI-compatible endpoints."
+      description="Chat providers (OpenAI-compatible endpoints), optional smart routing."
       wide
     >
       <AdminInterfacesLlmSection />

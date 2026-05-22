@@ -113,6 +113,8 @@ def _fetch_row() -> dict[str, Any]:
         "rag_embed_timeout_sec": 120.0,
         "rag_tenant_shared_domains": "agentlayer_docs",
         "embedding_api_base_url": None,
+        "embedding_api_key": None,
+        "embedding_api_header_name": None,
         "docs_root": None,
         "pidea_enabled": False,
         "pidea_cdp_http_url": None,
@@ -170,7 +172,9 @@ def _fetch_row() -> dict[str, Any]:
                            scheduler_jobs_worker_enabled, scheduler_jobs_ide_pidea_enabled,
                            scheduler_jobs_ide_pidea_timeout_sec,
                            workspace_allow_self_editing,
-                           embedding_api_base_url
+                           embedding_api_base_url,
+                           embedding_api_key,
+                           embedding_api_header_name
                     FROM operator_settings WHERE id = 1
                     """
                 )
@@ -255,6 +259,12 @@ def _fetch_row() -> dict[str, Any]:
         "embedding_api_base_url": (
             (str(row[64]).strip() or None) if len(row) > 64 and row[64] is not None else None
         ),
+        "embedding_api_key": (
+            (str(row[65]).strip() or None) if len(row) > 65 and row[65] is not None else None
+        ),
+        "embedding_api_header_name": (
+            (str(row[66]).strip() or None) if len(row) > 66 and row[66] is not None else None
+        ),
     }
 
 
@@ -264,6 +274,72 @@ def resolved_embedding_api_base_url() -> str:
     if not raw:
         return ""
     return (normalize_external_llm_base_url(str(raw)) or "").strip()
+
+
+def _embedding_env_header_secret() -> str:
+    from apps.backend.infrastructure.embedding_client import _strip_env_value
+
+    return _strip_env_value(getattr(app_config, "EMBEDDING_API_HEADER_VALUE", None))
+
+
+def _embedding_env_header_name() -> str:
+    from apps.backend.infrastructure.embedding_client import _strip_env_value
+
+    return (
+        _strip_env_value(getattr(app_config, "EMBEDDING_API_HEADER_NAME", None) or "X-API-KEY")
+        or "X-API-KEY"
+    )
+
+
+def resolved_embedding_api_header_name() -> str:
+    """Env secret wins entirely; else DB ``embedding_api_header_name`` or ``X-API-KEY``."""
+    if _embedding_env_header_secret():
+        return _embedding_env_header_name()
+    db = (str(_cached_row().get("embedding_api_header_name") or "").strip() or None)
+    return db or "X-API-KEY"
+
+
+def resolved_embedding_api_key() -> str:
+    """Env ``EMBEDDING_API_HEADER_VALUE`` overrides DB ``embedding_api_key``."""
+    env = _embedding_env_header_secret()
+    if env:
+        return env
+    return (str(_cached_row().get("embedding_api_key") or "").strip())
+
+
+def embedding_api_public_fields() -> dict[str, Any]:
+    """Embedding host + auth hints for admin UI (no secrets). Env overrides DB."""
+    r = _cached_row()
+    db_stored = (str(r.get("embedding_api_base_url") or "").strip() or None)
+    env_raw = (getattr(app_config, "EMBEDDING_BASE_URL", None) or "").strip()
+    if env_raw:
+        from apps.backend.infrastructure.embedding_client import _normalized_embedding_base
+
+        effective = _normalized_embedding_base()
+        base_source: str | None = "env"
+    elif db_stored:
+        effective = normalize_external_llm_base_url(db_stored) or db_stored
+        base_source = "operator_settings"
+    else:
+        effective = ""
+        base_source = None
+
+    env_secret = _embedding_env_header_secret()
+    db_key = (str(r.get("embedding_api_key") or "").strip())
+    db_header = (str(r.get("embedding_api_header_name") or "").strip() or None)
+    key_source: str | None = "env" if env_secret else ("operator_settings" if db_key else None)
+    header_source: str | None = "env" if env_secret else ("operator_settings" if db_header else None)
+
+    return {
+        "embedding_api_base_url": db_stored,
+        "embedding_api_base_source": base_source,
+        "embedding_api_base_effective": effective or None,
+        "embedding_api_key_configured": bool(env_secret or db_key),
+        "embedding_api_key_source": key_source,
+        "embedding_api_header_name": db_header,
+        "embedding_api_header_name_effective": resolved_embedding_api_header_name(),
+        "embedding_api_header_name_source": header_source,
+    }
 
 
 def _cached_row() -> dict[str, Any]:
@@ -721,7 +797,6 @@ def public_dict() -> dict[str, Any]:
         "dashboard_upload_allowed_mime": (r.get("dashboard_upload_allowed_mime") or "").strip(),
         "dashboard_upload_effective_max_bytes": effective_dashboard_upload_max_bytes(),
         "dashboard_upload_effective_allowed_mime": sorted(effective_dashboard_upload_mime()),
-        "llm_primary_backend": resolved_primary_llm_backend(),
         "llm_smart_routing_enabled": bool(r.get("llm_smart_routing_enabled")),
         "llm_router_ollama_model": (str(r.get("llm_router_ollama_model") or "").strip())[:128],
         "llm_router_local_confidence_min": _bound_float(r.get("llm_router_local_confidence_min"), 0.7, 0.0, 1.0),
@@ -738,6 +813,7 @@ def public_dict() -> dict[str, Any]:
         "memory_graph_log_activations": bool(r.get("memory_graph_log_activations", False)),
         "memory_enabled": bool(r.get("memory_enabled", True)),
         "rag_enabled": bool(r.get("rag_enabled", True)),
+        **embedding_api_public_fields(),
         "rag_embedding_model": _rag_embedding_model_from_row(r),
         "rag_embedding_dim": _bound_int(r.get("rag_embedding_dim"), 768, 32, 4096),
         "rag_chunk_size": _bound_int(r.get("rag_chunk_size"), 1200, 200, 8000),
@@ -801,7 +877,6 @@ class OperatorSettingsPatch(BaseModel):
     telegram_chat_model: str | None = Field(default=None, max_length=256)
     dashboard_upload_max_file_mb: int | None = None
     dashboard_upload_allowed_mime: str | None = Field(default=None, max_length=2000)
-    llm_primary_backend: str | None = Field(default=None, max_length=32)
     llm_smart_routing_enabled: bool | None = None
     llm_router_ollama_model: str | None = Field(default=None, max_length=128)
     llm_router_local_confidence_min: float | None = Field(default=None, ge=0.0, le=1.0)
@@ -825,6 +900,8 @@ class OperatorSettingsPatch(BaseModel):
     )
     rag_embedding_dim: int | None = Field(default=None, ge=32, le=4096)
     embedding_api_base_url: str | None = Field(default=None, max_length=2048)
+    embedding_api_key: str | None = Field(default=None, max_length=4096)
+    embedding_api_header_name: str | None = Field(default=None, max_length=128)
     rag_chunk_size: int | None = Field(default=None, ge=200, le=8000)
     rag_chunk_overlap: int | None = Field(default=None, ge=0, le=2000)
     rag_top_k: int | None = Field(default=None, ge=1, le=50)
@@ -984,13 +1061,6 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
         else:
             s = str(v).strip()
             r["dashboard_upload_allowed_mime"] = s or None
-    if "llm_primary_backend" in patch:
-        v = patch["llm_primary_backend"]
-        if v is None:
-            r["llm_primary_backend"] = "ollama"
-        else:
-            s = str(v).strip().lower()
-            r["llm_primary_backend"] = "external" if s == "external" else "ollama"
     if "llm_smart_routing_enabled" in patch:
         r["llm_smart_routing_enabled"] = bool(patch["llm_smart_routing_enabled"])
     if "llm_router_ollama_model" in patch:
@@ -1044,6 +1114,20 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
             r["embedding_api_base_url"] = (
                 normalize_external_llm_base_url(str(v).strip()) or str(v).strip()
             )[:2048]
+    if "embedding_api_key" in patch:
+        v = patch["embedding_api_key"]
+        if v is None:
+            r["embedding_api_key"] = None
+        else:
+            s = str(v).strip()
+            if s:
+                r["embedding_api_key"] = s
+    if "embedding_api_header_name" in patch:
+        v = patch["embedding_api_header_name"]
+        if v is None or not str(v).strip():
+            r["embedding_api_header_name"] = None
+        else:
+            r["embedding_api_header_name"] = str(v).strip()[:128]
     if "rag_embedding_model" in patch:
         r["rag_embedding_model"] = _normalize_rag_embedding_model(patch["rag_embedding_model"])
     if "rag_embedding_dim" in patch:
@@ -1235,6 +1319,8 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
                   scheduler_jobs_ide_pidea_timeout_sec = %s,
                   workspace_allow_self_editing = %s,
                   embedding_api_base_url = %s,
+                  embedding_api_key = %s,
+                  embedding_api_header_name = %s,
                   updated_at = now()
                 WHERE id = 1
                 """,
@@ -1308,6 +1394,8 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
                     _bound_float(r.get("scheduler_jobs_ide_pidea_timeout_sec"), 300.0, 30.0, 900.0),
                     bool(r.get("workspace_allow_self_editing", False)),
                     r.get("embedding_api_base_url"),
+                    r.get("embedding_api_key"),
+                    r.get("embedding_api_header_name"),
                 ),
             )
         conn.commit()

@@ -327,7 +327,7 @@ export function embeddingModelOptions(emb: EmbeddingCatalogHealth | null | undef
 /** Short status under the RAG model dropdown (not a replacement for it). */
 export function formatEmbeddingStatusHint(emb: EmbeddingCatalogHealth | null | undefined): string | null {
   if (!emb?.configured) {
-    return "RAG: EMBEDDING_BASE_URL in .env setzen (getrennt vom Chat).";
+    return "Embedding: Base-URL unter Admin → Interfaces → Memory & RAG oder EMBEDDING_BASE_URL in .env.";
   }
   if (emb.dim_mismatch || emb.dim_matches_config === false) {
     const actual = emb.actual_embedding_dim;

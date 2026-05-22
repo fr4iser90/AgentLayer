@@ -65,14 +65,20 @@ export function AdminInterfacesOverviewPage() {
         />
         <StatusCard
           title="LLM"
-          status={s.llmPrimaryBackend === "external" ? "External API" : "Ollama"}
-          detail={s.llmSmartRouting ? "Smart routing on" : "Smart routing off"}
+          status={`${s.extLlmEndpoints.filter((e) => e.baseUrl.trim()).length} endpoint(s)`}
+          detail={s.llmSmartRouting ? "Smart routing on" : "Provider + model in chat"}
           to="/admin/interfaces/llm"
         />
         <StatusCard
           title="Memory & RAG"
           status={[s.memoryEnabled && "Memory", s.ragEnabled && "RAG"].filter(Boolean).join(" · ") || "Off"}
-          detail={s.ragEnabled ? `Embed: ${s.ragEmbeddingModel}` : undefined}
+          detail={
+            s.embeddingApiBaseEffective
+              ? `${s.ragEmbeddingModel} @ ${s.embeddingApiBaseEffective}`
+              : s.ragEnabled
+                ? `Embed: ${s.ragEmbeddingModel}`
+                : undefined
+          }
           to="/admin/interfaces/memory"
         />
         <StatusCard

@@ -5,7 +5,8 @@ export function AdminInterfacesMemoryPage() {
   return (
     <AdminInterfacesPageShell
       title="Memory & RAG"
-      description="Memory service, RAG ingest/search, memory graph, and docs root."
+      description="Embedding endpoints (separate from chat), RAG tuning, memory, and memory graph."
+      wide
     >
       <AdminInterfacesMemorySection />
     </AdminInterfacesPageShell>

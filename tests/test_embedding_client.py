@@ -95,3 +95,21 @@ def test_embedding_request_headers_authorization_bearer() -> None:
     ):
         h = embedding_client._embedding_request_headers()
     assert h["Authorization"] == "Bearer tok"
+
+
+def test_embedding_request_headers_from_operator_settings_db() -> None:
+    with (
+        patch.object(cfgmod, "EMBEDDING_API_HEADER_VALUE", ""),
+        patch.object(
+            embedding_client.operator_settings,
+            "resolved_embedding_api_key",
+            return_value="db-secret",
+        ),
+        patch.object(
+            embedding_client.operator_settings,
+            "resolved_embedding_api_header_name",
+            return_value="X-Custom-Auth",
+        ),
+    ):
+        h = embedding_client._embedding_request_headers()
+    assert h["X-Custom-Auth"] == "db-secret"

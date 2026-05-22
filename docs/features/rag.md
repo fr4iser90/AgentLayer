@@ -40,6 +40,7 @@ Set in `.env` (not used for chat; no Ollama/llama.cpp fallback):
 - **`EMBEDDING_BASE_URL`** — OpenAI-compatible base (e.g. `https://host/v1`)
 - **`EMBEDDING_API_HEADER_NAME`** — header for the secret (default `X-API-KEY`; use `Authorization` for Bearer)
 - **`EMBEDDING_API_HEADER_VALUE`** — secret (no surrounding quotes in `.env`)
+- **Admin → Interfaces → Memory & RAG** — alternative: `embedding_api_base_url`, `embedding_api_key`, `embedding_api_header_name` in `operator_settings` (env vars override when set)
 
 Chunking, timeouts, model id (`rag_embedding_model`), and vector width remain in **operator_settings** (`rag_*`).
 

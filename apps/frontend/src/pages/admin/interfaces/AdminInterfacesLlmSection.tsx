@@ -7,159 +7,17 @@ export function AdminInterfacesLlmSection() {
   }
   return (
     <>
-          <section className="mt-8 rounded-xl border border-surface-border bg-surface-raised p-5">
-            <h2 className="text-sm font-medium text-white">Agent-Chat: Backend</h2>
-            <p className="mt-2 text-xs text-surface-muted">
-              Nur diese eine Auswahl: wo Agent-Chat-Completions laufen.{" "}
-              <span className="text-white/85">Kein API-Key in diesem Block</span> — URL, Key und Modell-IDs trägst du in
-              der Karte <span className="text-white/85">Externe LLM-Endpoints</span> direkt unter diesem Block ein.
-            </p>
-            <label className="mt-4 block text-xs text-surface-muted" htmlFor="llm-backend">
-              Backend
-            </label>
-            <select
-              id="llm-backend"
-              className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
-              value={s.llmPrimaryBackend}
-              onChange={(e) => s.setLlmPrimaryBackend(e.target.value as "ollama" | "external")}
-            >
-              <option value="ollama">Ollama (OLLAMA_BASE_URL)</option>
-              <option value="external">Extern (OpenAI-kompatible API)</option>
-            </select>
-            <p className="mt-3 text-xs text-surface-muted">
-              <span className="text-white/80">Ollama</span> = alles über den lokalen Dienst.{" "}
-              <span className="text-white/80">Extern</span> = Completions über die in der{" "}
-              <span className="text-white/80">nächsten</span> Karte hinterlegte URL + Key (Profil-Modell-IDs dort).
-            </p>
-          </section>
-
-          <section className="mt-6 rounded-xl border border-surface-border bg-surface-raised p-5">
-            <h2 className="text-sm font-medium text-white">Smart LLM-Routing</h2>
-            <p className="mt-2 text-xs text-surface-muted">
-              Pro Anfrage zwischen lokalem Ollama und externer API wählen (Heuristik + kleines Router-Modell auf
-              Ollama). Nur sinnvoll, wenn du <span className="text-white/85">beide</span> Backends nutzen willst
-              (externe Zugangsdaten in der nächsten Karte). Gespeichert in der Datenbank — keine Umgebungsvariablen.
-            </p>
-            <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-white">
-              <input
-                type="checkbox"
-                className="rounded border-surface-border"
-                checked={s.llmSmartRouting}
-                onChange={(e) => s.setLlmSmartRouting(e.target.checked)}
-              />
-              Smart Routing aktivieren
-            </label>
-            <label className="mt-4 block text-xs text-surface-muted" htmlFor="llm-router-model">
-              Router-Modell (Ollama, klein, z. B. 3–6B)
-            </label>
-            <input
-              id="llm-router-model"
-              className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
-              value={s.llmRouterModel}
-              onChange={(e) => s.setLlmRouterModel(e.target.value)}
-              placeholder="nemotron-3-nano:4b"
-              autoComplete="off"
-            />
-            <div className="mt-4 grid max-w-xl gap-3 sm:grid-cols-2">
-              <div>
-                <label className="block text-xs text-surface-muted" htmlFor="llm-router-conf">
-                  Min. Konfidenz für „lokal“ (0–1)
-                </label>
-                <input
-                  id="llm-router-conf"
-                  type="number"
-                  step="0.05"
-                  min={0}
-                  max={1}
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
-                  value={s.llmRouterConfMin}
-                  onChange={(e) => s.setLlmRouterConfMin(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-surface-muted" htmlFor="llm-router-to">
-                  Router-Timeout (Sekunden, 1–120)
-                </label>
-                <input
-                  id="llm-router-to"
-                  type="number"
-                  min={1}
-                  max={120}
-                  step="1"
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
-                  value={s.llmRouterTimeoutSec}
-                  onChange={(e) => s.setLlmRouterTimeoutSec(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-surface-muted" htmlFor="llm-route-long">
-                  Lange letzte User-Nachricht ab (Zeichen) → eher extern
-                </label>
-                <input
-                  id="llm-route-long"
-                  type="number"
-                  min={100}
-                  max={500000}
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
-                  value={s.llmRouteLongChars}
-                  onChange={(e) => s.setLlmRouteLongChars(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-surface-muted" htmlFor="llm-route-short">
-                  Kurze Nachricht bis (Zeichen) → eher lokal
-                </label>
-                <input
-                  id="llm-route-short"
-                  type="number"
-                  min={1}
-                  max={50000}
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
-                  value={s.llmRouteShortChars}
-                  onChange={(e) => s.setLlmRouteShortChars(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-surface-muted" htmlFor="llm-route-fences">
-                  Code-Blöcke (Schwelle, ≥)
-                </label>
-                <input
-                  id="llm-route-fences"
-                  type="number"
-                  min={1}
-                  max={100}
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
-                  value={s.llmRouteManyFences}
-                  onChange={(e) => s.setLlmRouteManyFences(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-surface-muted" htmlFor="llm-route-msgs">
-                  Viele Turns (über) → eher extern
-                </label>
-                <input
-                  id="llm-route-msgs"
-                  type="number"
-                  min={1}
-                  max={500}
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
-                  value={s.llmRouteManyMsgs}
-                  onChange={(e) => s.setLlmRouteManyMsgs(e.target.value)}
-                />
-              </div>
-            </div>
-          </section>
-
-          <section className="mt-6 rounded-xl border border-surface-border bg-surface-raised p-5">
+          <section className="rounded-xl border border-surface-border bg-surface-raised p-5">
             <h2 className="text-sm font-medium text-white">LLM-Endpoints (Chat-Provider)</h2>
             <p className="mt-2 text-xs text-surface-muted">
-              Jeder Eintrag = ein Provider im Model-Dropdown (<span className="font-mono">external_1</span>,{" "}
-              <span className="font-mono">external_2</span>, …). Kein Aktivieren nötig — URL + Key eintragen, speichern,
-              dann im Chat Modell wählen. Reihenfolge = Failover nur für Legacy{" "}
-              <span className="font-mono">external</span>. OpenAI-kompatibel: OpenAI, Groq, Gemini, eigene llama.cpp-URL, …
-              Zusätzlich: <span className="font-mono">OLLAMA_BASE_URL</span> und{" "}
-              <span className="font-mono">LLAMA_CPP_*</span> in <span className="font-mono">.env</span> erscheinen als{" "}
-              <span className="font-mono">ollama</span> / <span className="font-mono">llama_cpp</span>.
+              Jeder Eintrag = ein Provider im Chat-Model-Dropdown (<span className="font-mono">external_1</span>,{" "}
+              <span className="font-mono">external_2</span>, …). URL + Key eintragen, speichern, dann im Chat Provider
+              und Modell wählen (<span className="font-mono">agent_model_catalog_owned_by</span>). OpenAI-kompatibel:
+              OpenAI, Groq, Gemini, llama.cpp, …               Zusätzlich aus <span className="font-mono">.env</span>:{" "}
+              <span className="font-mono">OLLAMA_BASE_URL</span> → <span className="font-mono">ollama</span>,{" "}
+              <span className="font-mono">LLAMA_CPP_*</span> → <span className="font-mono">llama_cpp</span>.{" "}
+              <span className="text-white/85">Embeddings</span> (RAG/Memory):{" "}
+              <span className="text-sky-400/90">Interfaces → Memory &amp; RAG</span>.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <button
@@ -392,11 +250,128 @@ export function AdminInterfacesLlmSection() {
             </div>
             {s.extLlmEndpoints.length === 0 ? (
               <p className="mt-4 text-xs text-amber-300/90">
-                Keine externen Endpoints — es wird bei Bedarf die alte Einzel-Konfiguration in{" "}
-                <span className="font-mono">operator_settings</span> genutzt (Migration legt ggf. eine Zeile an).
-                Endpoint hinzufügen für Multi-Provider / Failover.
+                Noch keine Endpoints — <span className="font-mono">ollama</span> /{" "}
+                <span className="font-mono">llama_cpp</span> aus <span className="font-mono">.env</span> oder Endpoint
+                hinzufügen.
               </p>
             ) : null}
+          </section>
+
+          <section className="mt-6 rounded-xl border border-surface-border bg-surface-raised p-5">
+            <h2 className="text-sm font-medium text-white">Smart LLM-Routing (optional)</h2>
+            <p className="mt-2 text-xs text-surface-muted">
+              Experimentell: Heuristik + kleines Router-Modell auf <span className="font-mono">OLLAMA_BASE_URL</span>.
+              Der Chat nutzt sonst den im Composer gewählten Katalog-Provider — Smart Routing ersetzt diesen Schalter
+              nicht. Nur sinnvoll, wenn du parallel lokales Ollama und externe APIs nutzt.
+            </p>
+            <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-white">
+              <input
+                type="checkbox"
+                className="rounded border-surface-border"
+                checked={s.llmSmartRouting}
+                onChange={(e) => s.setLlmSmartRouting(e.target.checked)}
+              />
+              Smart Routing aktivieren
+            </label>
+            <label className="mt-4 block text-xs text-surface-muted" htmlFor="llm-router-model">
+              Router-Modell (Ollama, klein, z. B. 3–6B)
+            </label>
+            <input
+              id="llm-router-model"
+              className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+              value={s.llmRouterModel}
+              onChange={(e) => s.setLlmRouterModel(e.target.value)}
+              placeholder="nemotron-3-nano:4b"
+              autoComplete="off"
+            />
+            <div className="mt-4 grid max-w-xl gap-3 sm:grid-cols-2">
+              <div>
+                <label className="block text-xs text-surface-muted" htmlFor="llm-router-conf">
+                  Min. Konfidenz für „lokal“ (0–1)
+                </label>
+                <input
+                  id="llm-router-conf"
+                  type="number"
+                  step="0.05"
+                  min={0}
+                  max={1}
+                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  value={s.llmRouterConfMin}
+                  onChange={(e) => s.setLlmRouterConfMin(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-surface-muted" htmlFor="llm-router-to">
+                  Router-Timeout (Sekunden, 1–120)
+                </label>
+                <input
+                  id="llm-router-to"
+                  type="number"
+                  min={1}
+                  max={120}
+                  step="1"
+                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  value={s.llmRouterTimeoutSec}
+                  onChange={(e) => s.setLlmRouterTimeoutSec(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-surface-muted" htmlFor="llm-route-long">
+                  Lange letzte User-Nachricht ab (Zeichen) → eher extern
+                </label>
+                <input
+                  id="llm-route-long"
+                  type="number"
+                  min={100}
+                  max={500000}
+                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  value={s.llmRouteLongChars}
+                  onChange={(e) => s.setLlmRouteLongChars(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-surface-muted" htmlFor="llm-route-short">
+                  Kurze Nachricht bis (Zeichen) → eher lokal
+                </label>
+                <input
+                  id="llm-route-short"
+                  type="number"
+                  min={1}
+                  max={50000}
+                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  value={s.llmRouteShortChars}
+                  onChange={(e) => s.setLlmRouteShortChars(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-surface-muted" htmlFor="llm-route-fences">
+                  Code-Blöcke (Schwelle, ≥)
+                </label>
+                <input
+                  id="llm-route-fences"
+                  type="number"
+                  min={1}
+                  max={100}
+                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  value={s.llmRouteManyFences}
+                  onChange={(e) => s.setLlmRouteManyFences(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-surface-muted" htmlFor="llm-route-msgs">
+                  Viele Turns (über) → eher extern
+                </label>
+                <input
+                  id="llm-route-msgs"
+                  type="number"
+                  min={1}
+                  max={500}
+                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  value={s.llmRouteManyMsgs}
+                  onChange={(e) => s.setLlmRouteManyMsgs(e.target.value)}
+                />
+              </div>
+            </div>
           </section>
     </>
   );

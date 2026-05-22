@@ -119,7 +119,7 @@ Source: `apps/backend/infrastructure/operator_settings.py`. `public_dict()` alre
 | **Discord** | `discord_application_id`, `integration_notes`, `discord_bot_enabled`, `discord_bot_token`, `discord_trigger_prefix`, `discord_chat_model` |
 | **Telegram** | `telegram_bot_enabled`, `telegram_bot_token`, `telegram_trigger_prefix`, `telegram_chat_model` |
 | **Dashboard uploads** | `dashboard_upload_max_file_mb`, `dashboard_upload_allowed_mime` |
-| **LLM** | `llm_primary_backend`, `llm_smart_routing_enabled`, `llm_router_*`, `llm_route_*` heuristics |
+| **LLM** | `operator_external_llm_endpoints` (catalog providers), optional `llm_smart_routing_enabled`, `llm_router_*`, `llm_route_*` heuristics |
 | **Memory** | `memory_graph_*`, `memory_enabled` |
 | **RAG** | `rag_*`, `docs_root` |
 | **PIDEA** | `pidea_*` |

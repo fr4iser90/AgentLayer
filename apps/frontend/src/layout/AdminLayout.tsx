@@ -89,7 +89,7 @@ export function AdminLayout() {
           ← Back to app
         </NavLink>
       </aside>
-      <div className="min-h-0 flex-1 overflow-hidden">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <Outlet />
       </div>
     </div>

@@ -78,14 +78,11 @@ def _embedding_models_list_url() -> str | None:
     return external_models_list_url(b)
 
 
-def _embedding_request_headers() -> dict[str, str]:
-    """Build headers from ``EMBEDDING_API_HEADER_*`` only."""
-    hn_raw = _strip_env_value(getattr(cfgmod, "EMBEDDING_API_HEADER_NAME", None) or "X-API-KEY")
-    secret = _strip_env_value(getattr(cfgmod, "EMBEDDING_API_HEADER_VALUE", None))
+def _auth_headers_for_secret(header_name: str, secret: str) -> dict[str, str]:
     out: dict[str, str] = {"Content-Type": "application/json"}
     if not secret:
         return out
-    hn = hn_raw or "X-API-KEY"
+    hn = (header_name or "X-API-KEY").strip() or "X-API-KEY"
     if hn.lower() == "authorization":
         out["Authorization"] = f"Bearer {secret}" if not secret.lower().startswith("bearer ") else secret
         return out
@@ -95,6 +92,19 @@ def _embedding_request_headers() -> dict[str, str]:
     raise ValueError(
         f"EMBEDDING_API_HEADER_NAME {hn!r} is not a valid HTTP header token "
         "(use e.g. X-API-KEY or Authorization)."
+    )
+
+
+def _embedding_request_headers() -> dict[str, str]:
+    """Env ``EMBEDDING_API_HEADER_VALUE`` overrides DB ``embedding_api_key``."""
+    from apps.backend.infrastructure.operator_settings import (
+        resolved_embedding_api_header_name,
+        resolved_embedding_api_key,
+    )
+
+    return _auth_headers_for_secret(
+        resolved_embedding_api_header_name(),
+        resolved_embedding_api_key(),
     )
 
 

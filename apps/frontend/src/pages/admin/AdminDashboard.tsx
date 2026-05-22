@@ -77,8 +77,8 @@ export function AdminDashboard() {
           />
           <StatusCard
             title="LLM"
-            status={op?.llm_primary_backend === "external" ? "External" : "Ollama"}
-            detail={op?.llm_smart_routing_enabled ? "Smart routing on" : undefined}
+            status={op?.llm_smart_routing_enabled ? "Smart routing" : "Catalog providers"}
+            detail="Endpoints + model in chat composer"
             to="/admin/interfaces/llm"
           />
           <StatusCard

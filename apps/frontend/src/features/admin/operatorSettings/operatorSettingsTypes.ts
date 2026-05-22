@@ -19,7 +19,6 @@ export type OperatorPublic = {
   dashboard_upload_allowed_mime?: string;
   dashboard_upload_effective_max_bytes?: number;
   dashboard_upload_effective_allowed_mime?: string[];
-  llm_primary_backend?: "ollama" | "external";
   llm_smart_routing_enabled?: boolean;
   llm_router_ollama_model?: string;
   llm_router_local_confidence_min?: number;
@@ -36,6 +35,15 @@ export type OperatorPublic = {
   memory_graph_log_activations?: boolean;
   memory_enabled?: boolean;
   rag_enabled?: boolean;
+  /** DB-stored OpenAI-compatible embedding base (env ``EMBEDDING_BASE_URL`` overrides when set). */
+  embedding_api_base_url?: string | null;
+  embedding_api_base_source?: "env" | "operator_settings" | null;
+  embedding_api_base_effective?: string | null;
+  embedding_api_key_configured?: boolean;
+  embedding_api_key_source?: "env" | "operator_settings" | null;
+  embedding_api_header_name?: string | null;
+  embedding_api_header_name_effective?: string | null;
+  embedding_api_header_name_source?: "env" | "operator_settings" | null;
   rag_embedding_model?: string;
   rag_embedding_dim?: number;
   rag_chunk_size?: number;

@@ -19,7 +19,7 @@ const NAV = [
 export function InterfacesLayout() {
   return (
     <OperatorSettingsProvider>
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
+      <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
         <aside className="shrink-0 border-b border-surface-border bg-[#0a0a0a] px-3 py-4 md:w-48 md:border-b-0 md:border-r">
           <p className="mb-2 px-2 text-[10px] font-medium uppercase tracking-wide text-surface-muted">
             Interfaces
