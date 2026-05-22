@@ -11,11 +11,15 @@ from pydantic import BaseModel, Field
 from apps.backend.infrastructure.auth import require_admin
 from apps.backend.infrastructure.coding_workflow import normalize_coding_workflow
 from apps.backend.infrastructure.db import db
+from apps.backend.domain.scheduler_targets import (
+    agent_requires_workspace_for_target,
+    execution_target_error,
+    is_valid_execution_target,
+    normalize_execution_target,
+)
 from apps.backend.infrastructure import scheduler_jobs_store
 
 router = APIRouter(prefix="/v1/admin/scheduler-jobs", tags=["scheduler-jobs-admin"])
-
-_VALID_TARGETS = frozenset({"server_periodic", "coding_agent"})
 
 
 class SchedulerJobSetEnabledBody(BaseModel):
@@ -32,7 +36,7 @@ class SchedulerJobCreateBody(BaseModel):
     coding_workflow: dict[str, Any] | None = None
     workspace_id: str | None = Field(
         default=None,
-        description="Required for coding_agent unless in coding_workflow",
+        description="Required for workspace agents unless in coding_workflow",
     )
 
 
@@ -57,7 +61,7 @@ def _merge_coding_workflow(
     wf_raw: dict[str, Any] = dict(body_wf or {})
     if workspace_id and str(workspace_id).strip():
         wf_raw.setdefault("workspace_id", str(workspace_id).strip())
-    require_ws = execution_target == "coding_agent"
+    require_ws = agent_requires_workspace_for_target(execution_target)
     try:
         return normalize_coding_workflow(wf_raw, require_workspace=require_ws)
     except ValueError as e:
@@ -82,9 +86,9 @@ async def scheduler_job_list(
             ws_id = uuid.UUID(str(dashboard_id).strip())
         except (ValueError, TypeError) as e:
             raise HTTPException(status_code=400, detail="invalid dashboard_id") from e
-    tgt = (execution_target or "").strip().lower() or None
-    if tgt is not None and tgt not in _VALID_TARGETS:
-        raise HTTPException(status_code=400, detail="invalid execution_target")
+    tgt = normalize_execution_target(execution_target) if execution_target else None
+    if tgt is not None and not is_valid_execution_target(tgt):
+        raise HTTPException(status_code=400, detail=execution_target_error(tgt))
     rows = scheduler_jobs_store.list_jobs_for_tenant(
         tenant_id=tenant_id,
         dashboard_id=ws_id,
@@ -101,9 +105,9 @@ async def scheduler_job_list(
 async def scheduler_job_create(request: Request, body: SchedulerJobCreateBody) -> dict[str, Any]:
     user = await require_admin(request)
     tenant_id = db.user_tenant_id(user.id)
-    tgt = body.execution_target.strip().lower()
-    if tgt not in _VALID_TARGETS:
-        raise HTTPException(status_code=400, detail="invalid execution_target")
+    tgt = normalize_execution_target(body.execution_target)
+    if not tgt or not is_valid_execution_target(tgt):
+        raise HTTPException(status_code=400, detail=execution_target_error(body.execution_target))
     ws_id: uuid.UUID | None = None
     if body.dashboard_id is not None and str(body.dashboard_id).strip():
         try:
@@ -145,7 +149,11 @@ async def scheduler_job_patch(request: Request, job_id: str, body: SchedulerJobP
         merged = dict(existing.get("coding_workflow") or {})
         if isinstance(body.coding_workflow, dict):
             merged.update(body.coding_workflow)
-        wf = _merge_coding_workflow(merged, body.workspace_id, execution_target=tgt or "coding_agent")
+        wf = _merge_coding_workflow(
+            merged,
+            body.workspace_id,
+            execution_target=normalize_execution_target(tgt) or tgt or "coding",
+        )
     row = scheduler_jobs_store.update_job(
         job_id=jid,
         tenant_id=tenant_id,

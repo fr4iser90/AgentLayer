@@ -55,6 +55,8 @@ export type ChatThread = {
   agentId?: string | null;
   /** Last composer workspace (project_workspaces id); persisted with conversation. */
   workspaceId?: string | null;
+  /** Active agent task bound to this conversation (server ``active_task_id``). */
+  activeTaskId?: string | null;
   /** Server list field ``message_count``; falls back to ``messages.length`` when loaded. */
   messageCount?: number;
 };

@@ -558,8 +558,15 @@ def admin_scheduler_job_list(arguments: dict[str, Any]) -> str:
     include_archived = bool(arguments.get("include_archived", False))
     tgt_raw = arguments.get("execution_target")
     tgt = str(tgt_raw).strip().lower() or None if tgt_raw is not None else None
-    if tgt is not None and tgt not in ("server_periodic", "coding_agent"):
-        return _err("execution_target must be server_periodic or coding_agent")
+    from apps.backend.domain.scheduler_targets import (
+        execution_target_error,
+        is_valid_execution_target,
+        normalize_execution_target,
+    )
+
+    tgt = normalize_execution_target(tgt) if tgt is not None else None
+    if tgt is not None and not is_valid_execution_target(tgt):
+        return _err(execution_target_error(tgt))
     en_raw = arguments.get("enabled")
     enabled = bool(en_raw) if isinstance(en_raw, bool) else None
     try:
@@ -584,9 +591,16 @@ def admin_scheduler_job_create(arguments: dict[str, Any]) -> str:
         return g_adm
     _tid, uid = g_adm
     tenant_id = db.user_tenant_id(uid)
-    tgt = str(arguments.get("execution_target") or "").strip().lower()
-    if tgt not in ("server_periodic", "coding_agent"):
-        return _err("execution_target must be server_periodic or coding_agent")
+    from apps.backend.domain.scheduler_targets import (
+        agent_requires_workspace_for_target,
+        execution_target_error,
+        is_valid_execution_target,
+        normalize_execution_target,
+    )
+
+    tgt = normalize_execution_target(str(arguments.get("execution_target") or ""))
+    if not tgt or not is_valid_execution_target(tgt):
+        return _err(execution_target_error(arguments.get("execution_target")))
     instructions = str(arguments.get("instructions") or "").strip()
     if not instructions:
         return _err("instructions is required")
@@ -615,7 +629,7 @@ def admin_scheduler_job_create(arguments: dict[str, Any]) -> str:
         wf_raw.setdefault("workspace_id", str(ws_arg).strip())
     try:
         coding_wf = normalize_coding_workflow(
-            wf_raw, require_workspace=(tgt == "coding_agent")
+            wf_raw, require_workspace=agent_requires_workspace_for_target(tgt)
         )
     except (ValueError, TypeError) as e:
         return _err(str(e))
@@ -828,7 +842,7 @@ def admin_project_run_create(arguments: dict[str, Any]) -> str:
         dashboard_id=ws,
         project_row_id=str(arguments.get("project_row_id") or "").strip() or None,
         project_title=str(arguments.get("project_title") or "").strip() or None,
-        execution_target="coding_agent",
+        execution_target="coding",
         instructions=instructions,
         coding_workflow=coding_wf,
     )
@@ -1093,7 +1107,7 @@ TOOLS: list[dict[str, Any]] = [
     ),
     _tool_fn(
         "admin_project_run_create",
-        "Enqueue coding_agent project run: instructions, workspace_id; optional dashboard_id, project_row_id, project_title, coding_workflow.",
+        "Enqueue coding project run (execution_target=coding): instructions, workspace_id; optional dashboard_id, project_row_id, project_title, coding_workflow.",
         {
             "type": "object",
             "properties": {

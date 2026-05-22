@@ -101,6 +101,14 @@ export type WorkspaceApiRecord = {
   mcp_stdio_servers?: Array<Record<string, unknown>> | null;
   semantic_index_enabled?: boolean;
   retrieval_enabled?: boolean;
+  docs_rag_enabled?: boolean;
+  last_docs_rag_at?: string | null;
+  last_docs_rag_stats?: {
+    files_ingested?: number;
+    chunk_count_total?: number;
+    purge_deleted_documents?: number;
+  } | null;
+  last_docs_rag_error?: string | null;
   last_index_at?: string | null;
   last_index_stats?: {
     total_symbols?: number;
@@ -108,6 +116,7 @@ export type WorkspaceApiRecord = {
     qdrant_indexed?: number;
     elapsed_sec?: number;
     scan?: Record<string, unknown>;
+    docs_rag?: Record<string, unknown>;
   } | null;
   last_index_error?: string | null;
 };
@@ -127,6 +136,10 @@ export type WorkspaceIndexStatus = {
   workspace_id?: string;
   semantic_index_enabled?: boolean;
   retrieval_enabled?: boolean;
+  docs_rag_enabled?: boolean;
+  last_docs_rag_at?: string | null;
+  last_docs_rag_stats?: WorkspaceApiRecord["last_docs_rag_stats"];
+  last_docs_rag_error?: string | null;
   last_index_at?: string | null;
   last_index_stats?: WorkspaceApiRecord["last_index_stats"];
   last_index_error?: string | null;

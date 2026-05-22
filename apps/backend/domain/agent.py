@@ -3067,6 +3067,8 @@ async def chat_completion(
         parent_agent_run_id = parent_agent_run_id.strip() or None
     else:
         parent_agent_run_id = None
+    _pre_run_id = body.pop("agent_run_id", None)
+    _active_task_body = body.pop("agent_active_task_id", None)
     permission_ask = _coerce_body_bool(body.pop("agent_permission_ask", None), False)
     agent_unattended = _coerce_body_bool(body.pop("agent_unattended", None), False)
     tools_full_schema = _coerce_body_bool(
@@ -3231,7 +3233,13 @@ async def chat_completion(
     if cancel_event is not None:
         tool_context["cancel_event"] = cancel_event
 
-    agent_run_id = str(uuid.uuid4())
+    if isinstance(_pre_run_id, str) and _pre_run_id.strip():
+        try:
+            agent_run_id = str(uuid.UUID(_pre_run_id.strip()))
+        except (ValueError, TypeError):
+            agent_run_id = str(uuid.uuid4())
+    else:
+        agent_run_id = str(uuid.uuid4())
     tool_context["agent_run_id"] = agent_run_id
     if event_emit is not None:
         try:
@@ -3252,10 +3260,71 @@ async def chat_completion(
     tool_context["agent_coding_tools_permission_ask"] = _abf["coding_tools_permission_ask"]
     tool_context["agent_unattended"] = agent_unattended
     _raw_conversation_id = body.pop("conversation_id", None)
+    conversation_uuid: uuid.UUID | None = None
     if _raw_conversation_id is not None:
         _cid_s = str(_raw_conversation_id).strip()
         if _cid_s:
             tool_context["conversation_id"] = _cid_s
+            try:
+                conversation_uuid = uuid.UUID(_cid_s)
+            except (ValueError, TypeError):
+                conversation_uuid = None
+    active_task_id: str | None = None
+    if isinstance(_active_task_body, str) and _active_task_body.strip():
+        active_task_id = _active_task_body.strip()
+    elif conversation_uuid is not None and user_id is not None:
+        try:
+            from apps.backend.infrastructure.db import db
+
+            with db.pool().connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT active_task_id FROM chat_conversations WHERE id = %s AND user_id = %s",
+                        (conversation_uuid, user_id),
+                    )
+                    row = cur.fetchone()
+                conn.commit()
+            if row and row[0]:
+                active_task_id = str(row[0])
+        except Exception:
+            pass
+    if active_task_id:
+        tool_context["agent_task_id"] = active_task_id
+    _ws_uuid_for_run: uuid.UUID | None = None
+    if workspace_id:
+        try:
+            _ws_uuid_for_run = uuid.UUID(str(workspace_id).strip())
+        except (ValueError, TypeError):
+            _ws_uuid_for_run = None
+    _task_uuid_for_run: uuid.UUID | None = None
+    if active_task_id:
+        try:
+            _task_uuid_for_run = uuid.UUID(active_task_id)
+        except (ValueError, TypeError):
+            _task_uuid_for_run = None
+    _parent_run_uuid: uuid.UUID | None = None
+    if parent_agent_run_id:
+        try:
+            _parent_run_uuid = uuid.UUID(parent_agent_run_id)
+        except (ValueError, TypeError):
+            _parent_run_uuid = None
+    if user_id is not None and tenant_id is not None:
+        try:
+            from apps.backend.infrastructure import agent_runs_store
+
+            agent_runs_store.insert_run_start(
+                run_id=uuid.UUID(agent_run_id),
+                tenant_id=int(tenant_id),
+                user_id=user_id,
+                agent_id=agent_id if isinstance(agent_id, str) else None,
+                task_id=_task_uuid_for_run,
+                parent_run_id=_parent_run_uuid,
+                conversation_id=conversation_uuid,
+                workspace_id=_ws_uuid_for_run,
+                embedded_subagent=embedded_subagent,
+            )
+        except Exception:
+            logger.debug("agent_runs insert skipped", exc_info=True)
     logger.info(
         "chat_completion start agent_run_id=%s parent_agent_run_id=%s agent_id=%r workspace_id=%s user_id=%s",
         agent_run_id,
@@ -3270,6 +3339,18 @@ async def chat_completion(
             raise ValueError(
                 "agent_require_workspace_verify requires workspace_id to resolve to an accessible workspace."
             )
+
+    from apps.backend.domain.tool_invocation_context import (
+        reset_agent_run_id,
+        reset_agent_task_id,
+        set_agent_run_id,
+        set_agent_task_id,
+    )
+
+    _run_ctx_tok = set_agent_run_id(agent_run_id)
+    _task_ctx_tok = set_agent_task_id(active_task_id)
+    _run_finish_status = "succeeded"
+    _run_finish_error: str | None = None
 
     try:
 
@@ -3297,6 +3378,11 @@ async def chat_completion(
             )
 
             messages = _append_system_block(messages, build_delegate_agents_catalog_snippet())
+            from apps.backend.domain.agent_task_prompt import build_agent_tasks_context_snippet
+
+            tasks_snip = build_agent_tasks_context_snippet(active_task_id=active_task_id)
+            if tasks_snip:
+                messages = _append_system_block(messages, tasks_snip)
         if agent_id and agent_id in config.AGENT_SKILLS_PROMPT_AGENT_IDS:
             from apps.backend.infrastructure.skills_prompt import load_combined_skills_prompt
 
@@ -4400,6 +4486,19 @@ async def chat_completion(
             )
         return _completion_attach_agent_run_id(data, agent_run_id)
     finally:
+        reset_agent_run_id(_run_ctx_tok)
+        reset_agent_task_id(_task_ctx_tok)
+        if user_id is not None and tenant_id is not None:
+            try:
+                from apps.backend.infrastructure import agent_runs_store
+
+                agent_runs_store.finish_run(
+                    run_id=uuid.UUID(agent_run_id),
+                    status=_run_finish_status,
+                    error=_run_finish_error,
+                )
+            except Exception:
+                logger.debug("agent_runs finish skipped", exc_info=True)
         reset_capability_confirmed(_cap_cf_tok)
         from apps.backend.domain.identity import reset_workspace
         if workspace_token:

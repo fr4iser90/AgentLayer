@@ -72,20 +72,34 @@ def test_delegate_invokes_security_auditor() -> None:
         bodies.append(dict(body))
         return {"choices": [{"message": {"content": "Scan report."}, "finish_reason": "stop"}]}
 
+    art_id = uuid.uuid4()
     with patch("apps.backend.domain.agent.chat_completion", new=AsyncMock(side_effect=fake_cc)):
         with patch("apps.backend.domain.identity.get_identity", return_value=(1, uid)):
-            out = agent_delegate(
-                {
-                    "run_subagent": True,
-                    "agent_id": "security_auditor",
-                    "prompt": "Run SSC scan and summarize findings",
-                    "description": "SSC scan",
-                },
-                context=ctx,
-            )
+            with patch(
+                "apps.backend.infrastructure.agent_artifacts_store.create_artifact",
+                return_value={"id": art_id},
+            ):
+                with patch(
+                    "apps.backend.infrastructure.agent_runs_store.insert_run_start",
+                    return_value={},
+                ):
+                    with patch(
+                        "apps.backend.infrastructure.agent_runs_store.finish_run",
+                        return_value=True,
+                    ):
+                        out = agent_delegate(
+                            {
+                                "run_subagent": True,
+                                "agent_id": "security_auditor",
+                                "prompt": "Run SSC scan and summarize findings",
+                                "description": "SSC scan",
+                            },
+                            context=ctx,
+                        )
 
     data = json.loads(out)
     assert data.get("ok") is True, data
+    assert data.get("artifact_id") == str(art_id)
     assert data.get("agent_id") == "security_auditor"
     assert len(bodies) == 1
     assert bodies[0].get("agent_id") == "security_auditor"

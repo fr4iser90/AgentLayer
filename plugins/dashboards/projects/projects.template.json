@@ -28,7 +28,7 @@
         "id": "projects-schedules",
         "type": "schedules",
         "grid": { "x": 0, "y": 9, "w": 12, "h": 5 },
-        "props": { "scope": "both", "executionTarget": "coding_agent" }
+        "props": { "scope": "both", "executionTarget": "coding" }
       },
       {
         "id": "project-notes",

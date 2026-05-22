@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { NavLink, useSearchParams } from "react-router-dom";
+import { Link, NavLink, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { apiFetch, addUsageTotals, emptyTokenUsage, fetchSessionRuntime, type SessionRuntimePayload, type TokenUsageTotals, type WorkspaceApiRecord } from "../lib/api";
 import {
@@ -261,6 +261,7 @@ export function ChatPage() {
   const [projectPanelOpen, setProjectPanelOpen] = useState(false);
   const [projectTreeRefreshKey, setProjectTreeRefreshKey] = useState(0);
   const [showSubagentsInActivity, setShowSubagentsInActivity] = useState(true);
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
   const agentHandlerRef = useRef<(ev: MessageEvent) => void>(() => {});
@@ -307,6 +308,14 @@ export function ChatPage() {
         : null;
     setSelectedWorkspaceId(wid || null);
   }, [activeThreadId, threadComposerWorkspaceId]);
+
+  useEffect(() => {
+    const tid =
+      typeof activeThread?.activeTaskId === "string" && activeThread.activeTaskId.trim()
+        ? activeThread.activeTaskId.trim()
+        : null;
+    setActiveTaskId(tid);
+  }, [activeThreadId, activeThread?.activeTaskId]);
 
   const messages = activeThread?.messages ?? [];
   const displayMessages = useMemo(
@@ -1271,6 +1280,7 @@ export function ChatPage() {
             agent_id: composerAgentId,
             ...(selectedWorkspaceId ? { workspace_id: selectedWorkspaceId } : {}),
             ...(activeThreadId ? { conversation_id: activeThreadId } : {}),
+            ...(activeTaskId ? { agent_active_task_id: activeTaskId } : {}),
             ...agentDashboardPayload,
             ...(disabledTools.length ? { agent_disabled_tools: disabledTools } : {}),
             agent_model_catalog_owned_by: routed.provider,
@@ -1637,19 +1647,41 @@ export function ChatPage() {
               </p>
             </div>
             {mode === "agent" ? (
-              <AgentActivityPanel
-                entries={activityEntries}
-                loading={activityLoading}
-                emptyHint="Activity appears here when the agent runs tools or LLM rounds for the selected prompt."
-                layout="header"
-                className="min-h-0 w-full"
-                showSubagentToggle={mode === "agent"}
-                showSubagents={showSubagentsInActivity}
-                onShowSubagentsChange={(on) => {
-                  setShowSubagentsInActivity(on);
-                  persistShowSubagentsPref(userId, on);
-                }}
-              />
+              <div className="flex min-h-0 w-full flex-col gap-1.5">
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5">
+                  <Link
+                    to={
+                      activeThreadId
+                        ? `/tasks?conversation=${encodeURIComponent(activeThreadId)}${
+                            selectedWorkspaceId
+                              ? `&workspace=${encodeURIComponent(selectedWorkspaceId)}`
+                              : ""
+                          }`
+                        : "/tasks"
+                    }
+                    className="text-[11px] text-sky-400/90 hover:text-sky-300 hover:underline"
+                  >
+                    Tasks
+                    {activeTaskId ? " · one bound to this chat" : ""}
+                  </Link>
+                  <span className="text-[10px] text-surface-muted">
+                    Backlog lives on the Tasks page, not here.
+                  </span>
+                </div>
+                <AgentActivityPanel
+                  entries={activityEntries}
+                  loading={activityLoading}
+                  emptyHint="Activity appears here when the agent runs tools or LLM rounds for the selected prompt."
+                  layout="header"
+                  className="min-h-0 w-full"
+                  showSubagentToggle={mode === "agent"}
+                  showSubagents={showSubagentsInActivity}
+                  onShowSubagentsChange={(on) => {
+                    setShowSubagentsInActivity(on);
+                    persistShowSubagentsPref(userId, on);
+                  }}
+                />
+              </div>
             ) : (
               <div className="flex min-h-0 items-center rounded-lg border border-white/10 bg-black/30 px-2.5 py-2">
                 <p className="text-[10px] leading-snug text-surface-muted">

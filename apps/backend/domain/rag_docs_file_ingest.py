@@ -124,7 +124,9 @@ def run_startup_rag_docs_ingest() -> None:
     Ingest ``docs/**/*.md`` at API process start when RAG is enabled.
     Uses the oldest admin user as document owner (``agentlayer_docs`` is tenant-wide for search).
     """
+    logger.info("RAG docs startup ingest starting")
     if not operator_settings.rag_settings()["enabled"]:
+        logger.info("RAG docs startup ingest skipped (rag disabled)")
         return
     admin_id = db.user_first_admin_id()
     if admin_id is None:

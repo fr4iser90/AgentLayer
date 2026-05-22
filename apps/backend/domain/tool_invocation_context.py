@@ -13,6 +13,33 @@ _capability_confirmed: ContextVar[frozenset[str]] = ContextVar(
     "agent_capability_confirmed", default=frozenset()
 )
 
+_agent_run_id: ContextVar[str | None] = ContextVar("agent_layer_run_id", default=None)
+_agent_task_id: ContextVar[str | None] = ContextVar("agent_layer_task_id", default=None)
+
+
+def get_agent_run_id() -> str | None:
+    return _agent_run_id.get()
+
+
+def set_agent_run_id(run_id: str | None) -> Token[str | None]:
+    return _agent_run_id.set(run_id)
+
+
+def reset_agent_run_id(token: Token[str | None]) -> None:
+    _agent_run_id.reset(token)
+
+
+def get_agent_task_id() -> str | None:
+    return _agent_task_id.get()
+
+
+def set_agent_task_id(task_id: str | None) -> Token[str | None]:
+    return _agent_task_id.set(task_id)
+
+
+def reset_agent_task_id(token: Token[str | None]) -> None:
+    _agent_task_id.reset(token)
+
 
 def get_tool_invocation_messages() -> list[dict[str, Any]] | None:
     return _tool_invocation_messages.get()

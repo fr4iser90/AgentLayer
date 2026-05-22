@@ -62,14 +62,23 @@ Recommended `domain` values:
 - `user_uploads`
 - `manual_notes`
 
+## Workspace-scoped doc RAG (coding projects)
+
+When a **coding workspace** is bound, `retrieve_context` / `rag_search` search **only** Markdown indexed for that workspace (`rag_documents.workspace_id`). They do **not** mix in `agentlayer_docs` or other global domains.
+
+- Enable **Docs RAG** on the workspace (Coding Agent header) and run **Reindex** — ingests `*.md` under the repo (skips `.git`, `node_modules`, etc.).
+- Domain stored as `workspace_docs`; purge-on-reindex replaces prior workspace chunks.
+
+Without a workspace, use `domain: "agentlayer_docs"` (tenant-wide product docs) or personal domains as before.
+
 ## Search
 
 Tools:
 
-- `rag_search({ query, domain?, limit? })` — RAG only
+- `rag_search({ query, domain?, limit? })` — RAG only; workspace-bound calls ignore `domain`
 - `retrieve_context({ query, sources?, domain? })` — coding agents: grep + semantic code + docs (+ optional memory) in one JSON bundle
 
-Use `domain: "agentlayer_docs"` when answering questions about AgentLayer product behavior from ingested markdown.
+Use `domain: "agentlayer_docs"` when answering questions about AgentLayer product behavior from ingested markdown **and no project workspace is active**.
 
 See [retrieval-layer.md](./retrieval-layer.md) for architecture, practices, and roadmap.
 

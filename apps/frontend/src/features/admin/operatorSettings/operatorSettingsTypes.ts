@@ -1,0 +1,90 @@
+export type InterfaceHints = {
+  discord_application_id: string;
+  telegram_application_id?: string;
+  agent_mode?: "" | "sandbox" | "host";
+  agent_mode_effective?: "sandbox" | "host";
+  agent_mode_env?: "sandbox" | "host";
+};
+
+export type OperatorPublic = {
+  discord_bot_enabled?: boolean;
+  discord_bot_token_configured?: boolean;
+  discord_trigger_prefix?: string;
+  discord_chat_model?: string;
+  telegram_bot_enabled?: boolean;
+  telegram_bot_token_configured?: boolean;
+  telegram_trigger_prefix?: string;
+  telegram_chat_model?: string;
+  dashboard_upload_max_file_mb?: number | null;
+  dashboard_upload_allowed_mime?: string;
+  dashboard_upload_effective_max_bytes?: number;
+  dashboard_upload_effective_allowed_mime?: string[];
+  llm_primary_backend?: "ollama" | "external";
+  llm_smart_routing_enabled?: boolean;
+  llm_router_ollama_model?: string;
+  llm_router_local_confidence_min?: number;
+  llm_router_timeout_sec?: number;
+  llm_route_long_prompt_chars?: number;
+  llm_route_short_local_max_chars?: number;
+  llm_route_many_code_fences?: number;
+  llm_route_many_messages?: number;
+  memory_graph_enabled?: boolean;
+  memory_graph_max_hops?: number;
+  memory_graph_min_score?: number;
+  memory_graph_max_bullets?: number;
+  memory_graph_max_prompt_chars?: number;
+  memory_graph_log_activations?: boolean;
+  memory_enabled?: boolean;
+  rag_enabled?: boolean;
+  rag_embedding_model?: string;
+  rag_embedding_dim?: number;
+  rag_chunk_size?: number;
+  rag_chunk_overlap?: number;
+  rag_top_k?: number;
+  rag_embed_timeout_sec?: number;
+  rag_tenant_shared_domains?: string;
+  rag_tenant_shared_domains_effective?: string[];
+  docs_root?: string;
+  expose_internal_errors?: boolean;
+  http_client_log_level?: string;
+  scheduler_enabled?: boolean;
+  scheduler_interval_minutes?: number;
+  scheduler_user_id?: string;
+  scheduler_model?: string | null;
+  scheduler_max_tool_rounds?: number | null;
+  scheduler_notify_only_if_not_ok?: boolean;
+  scheduler_max_outbound_per_day?: number;
+  scheduler_allowed_tool_packages?: string;
+  scheduler_llm_backend?: string;
+  scheduler_tools_mode?: string;
+  scheduler_pidea_enabled?: boolean;
+  scheduler_instructions?: string;
+  scheduler_jobs_worker_enabled?: boolean;
+  scheduler_jobs_ide_pidea_enabled?: boolean;
+  scheduler_jobs_ide_pidea_timeout_sec?: number;
+  workspace_allow_self_editing?: boolean;
+  detail?: unknown;
+};
+
+export type ExternalLlmEndpointUI = {
+  localKey: string;
+  id: number | null;
+  enabled: boolean;
+  label: string;
+  baseUrl: string;
+  apiKey: string;
+  apiKeyConfigured: boolean;
+  modelDefault: string;
+  modelVlm: string;
+  modelAgent: string;
+  modelCoding: string;
+};
+
+export function detailMessage(data: unknown): string {
+  if (data && typeof data === "object" && "detail" in data) {
+    const d = (data as { detail: unknown }).detail;
+    if (typeof d === "string") return d;
+    if (Array.isArray(d)) return JSON.stringify(d);
+  }
+  return "Request failed";
+}

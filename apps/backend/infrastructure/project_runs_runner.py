@@ -59,7 +59,7 @@ def _worker_loop() -> None:
             if not worker_on:
                 continue
 
-            rows = project_runs_store.fetch_queued_runs_coding_agent(limit=_MAX_BATCH)
+            rows = project_runs_store.fetch_queued_runs_coding(limit=_MAX_BATCH)
             for row in rows:
                 if _stop.is_set():
                     break

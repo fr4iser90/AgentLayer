@@ -8,7 +8,8 @@ from typing import Any
 WORKSPACE_SELECT_SQL = """
     id, owner_user_id, name, path, source, git_url, git_branch, access_role,
     created_at, updated_at, verify_command, verify_required, mcp_stdio_servers_json,
-    semantic_index_enabled, retrieval_enabled, last_index_at, last_index_stats, last_index_error
+    semantic_index_enabled, retrieval_enabled, last_index_at, last_index_stats, last_index_error,
+    docs_rag_enabled, last_docs_rag_at, last_docs_rag_stats, last_docs_rag_error
 """
 
 
@@ -37,4 +38,8 @@ def workspace_row_to_api(row: tuple) -> dict[str, Any]:
         "last_index_at": row[15].isoformat() if isinstance(row[15], datetime) else None,
         "last_index_stats": last_stats if isinstance(last_stats, dict) else None,
         "last_index_error": row[17],
+        "docs_rag_enabled": bool(row[18]) if row[18] is not None else True,
+        "last_docs_rag_at": row[19].isoformat() if isinstance(row[19], datetime) else None,
+        "last_docs_rag_stats": row[20] if isinstance(row[20], dict) else None,
+        "last_docs_rag_error": row[21],
     }

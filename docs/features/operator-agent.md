@@ -161,7 +161,7 @@ The operator’s tool surface is resolved from `plugins/agents/operator.py` (`AG
 | `read_tool` | Read tool source (when policy allows). |
 | `rag_search` | Search ingested RAG corpus (respects operator RAG settings). |
 | `schedule_job_list` | List persisted scheduler jobs for the tenant. |
-| `schedule_job_create` | Create a job (`server_periodic` or `ide_agent`; `ide_agent` requires admin in tool implementation). |
+| `schedule_job_create` | Create a job (`execution_target` = registry `agent_id`; workspace agents need `workspace_id`). |
 | `schedule_job_set_enabled` | Enable/disable a job. |
 
 Implementation pointers:

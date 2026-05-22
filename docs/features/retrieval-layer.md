@@ -50,7 +50,7 @@ Chat uses **`LLAMA_CPP_*`** (or Ollama / external). Embeddings use **`EMBEDDING_
 
 | Source | Backend | Tool / path |
 |--------|---------|-------------|
-| Doc RAG | Postgres + pgvector | `rag_search`, Admin ingest |
+| Doc RAG | Postgres + pgvector | `rag_search`, Admin ingest; **workspace `*.md`** via Reindex (scoped `workspace_id`) |
 | Code semantic | Qdrant | `coding_semantic_search` (after `coding_index`) |
 | Code keyword | ripgrep / walk | `coding_search` |
 | Symbols | In-process index | `coding_symbols` |
@@ -148,7 +148,7 @@ Retrieve top‑50 → cross-encoder or LLM rerank → top‑5 for the prompt. No
 |-------|------|--------|
 | **Short** | `retrieve_context` (grep + semantic + docs + memory) | Done |
 | **Short** | Document retrieval layer (this page) | Done |
-| **Medium** | Workspace-scoped RAG ingest (per `project_workspaces`) | Planned |
+| **Medium** | Workspace-scoped RAG ingest (per `project_workspaces`) | Done |
 | **Short** | Per-workspace index/retrieval toggles + UI (`semantic_index_enabled`, `retrieval_enabled`) | Done |
 | **Medium** | RRF in orchestrator (`fused_ranking`) | Done |
 | **Medium** | Cross-encoder / LLM reranker | Planned |

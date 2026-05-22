@@ -3,7 +3,7 @@
   "label": "Doc maintenance (coding agent, 30 min)",
   "description": "Per-workspace doc upkeep: respect existing layout (default) or optional bootstrap. Uses docs/DOC_PROFILE.md as project memory and docs/MAINTENANCE_REPORT.md per run. Pick workspace in dropdown; enable job after selection.",
   "job": {
-    "execution_target": "coding_agent",
+    "execution_target": "coding",
     "interval_minutes": 30,
     "enabled": false,
     "title": "Doc maintenance",

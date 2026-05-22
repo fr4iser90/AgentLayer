@@ -224,6 +224,7 @@ CREATE TABLE rag_documents (
   id BIGSERIAL PRIMARY KEY,
   tenant_id BIGINT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  workspace_id UUID NULL,
   domain TEXT NOT NULL DEFAULT '',
   title TEXT NOT NULL DEFAULT '',
   source_uri TEXT,
@@ -232,6 +233,8 @@ CREATE TABLE rag_documents (
 );
 
 CREATE INDEX idx_rag_documents_scope ON rag_documents (tenant_id, user_id, domain);
+CREATE INDEX idx_rag_documents_workspace ON rag_documents (tenant_id, workspace_id)
+  WHERE workspace_id IS NOT NULL;
 
 CREATE TABLE rag_chunks (
   id BIGSERIAL PRIMARY KEY,

@@ -14,14 +14,14 @@ Zusätzlich ist ein **Produktziel** beschrieben: Im Chat soll man z. B. Auftr�
 
 ### Phase B — Tabelle `scheduler_jobs`
 
-**Umgesetzt (Schema `schema_030`–`schema_033`):** Tabelle `scheduler_jobs` inkl. `last_run_at` und **`ide_workflow` (JSONB)** — optional: `new_chat`, `prompt_preamble`, Git-Schritt (`git_repo_path`, `git_branch_template`, `git_source_branch`) vor PIDEA; optional **mehrere Phasen** mit `use_pidea_task_management_phases` oder `phase_prompt_paths` (lesen aus `integrations/pidea/content-library/prompts/`, portierter Snapshot, via `content_library_prompts.py`); Umsetzung in Python (`scheduler_jobs_workflow`, `integrations/pidea/workflow/git_ops`). **Server:** Daemon-Thread `scheduler_jobs_runner`; **`operator_settings`** (Admin → Interfaces): Worker an/aus, IDE/PIDEA-Zweig, Timeout. Laufzeit: (1) `server_periodic` → `chat_completion` plain; (2) `ide_agent` → optional Git, dann **PIDEA** (`run_ide_agent_message_sync`, erste Phase **neuer Chat**, Folgephasen gleicher Chat). **Manuell:** `GET /v1/scheduler/jobs/due` + `ack-run`. **Dashboard-UI** / Audit optional (Phase D).
+**Umgesetzt (Schema `schema_030`+):** Tabelle `scheduler_jobs` inkl. `last_run_at` und **`coding_workflow` (JSONB)**. **Server:** Daemon-Thread `scheduler_jobs_runner`; **`operator_settings`** (Admin → Interfaces): Worker an/aus, Timeout. Laufzeit: `execution_target` = Registry-`agent_id` (z. B. `general`, `coding`, …). **Dashboard-UI** / Audit optional (Phase D).
 
 Ein Datensatz pro geplantem Job, z. B. mit:
 
 - Identität & Lebenszyklus: `id`, `enabled`, `created_by`, `created_at`, …
 - **Ausführung:** `user_id` (Tenant/Kontext wie heute), optional Modell/Tools/Backend-Felder
 - **Zeit:** `interval_minutes` und/oder später `cron_expr` + Zeitzone
-- **Ziel:** `execution_target` (z. B. `server_periodic` | `ide_agent` | …) — steuert, **welcher Worker** den Job abholt
+- **Ziel:** `execution_target` (Registry-`agent_id`) — steuert, **welcher Agent** den Job ausführt
 - **Dashboard:** optional `dashboard_id` — Jobs wie „Calendar check in diesem Repo“ sind an einen Dashboard gebunden und können in der **IDE-/Dashboard-UI** gelistet werden
 - **Inhalt:** `instructions` (oder strukturierte Payload), wie der ausführende Agent den Task versteht
 

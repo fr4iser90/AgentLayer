@@ -33,6 +33,7 @@ AGENT_TOOL_CAPABILITY_ANY: tuple[str, ...] = (
     "meta.inspect",
 )
 AGENT_REQUIRES_WORKSPACE = False
+AGENT_SCHEDULABLE = False
 AGENT_EXECUTION_CONTEXT = "auto"
 AGENT_MIN_ROLE = "admin"
 AGENT_MODEL_PROFILE = None

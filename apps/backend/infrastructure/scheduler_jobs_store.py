@@ -352,8 +352,8 @@ def hard_delete_job(*, job_id: uuid.UUID, tenant_id: int, actor_user_id: uuid.UU
     return n > 0
 
 
-def fetch_due_jobs_server_periodic(*, limit: int = 10) -> list[dict[str, Any]]:
-    """Jobs with execution_target=server_periodic whose interval has elapsed since last run (or creation)."""
+def fetch_due_jobs(*, limit: int = 10) -> list[dict[str, Any]]:
+    """Enabled jobs whose interval has elapsed since last run (or creation)."""
     lim = max(1, min(50, limit))
     with db.pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
@@ -365,33 +365,6 @@ def fetch_due_jobs_server_periodic(*, limit: int = 10) -> list[dict[str, Any]]:
                 FROM scheduler_jobs
                 WHERE enabled = true
                   AND deleted_at IS NULL
-                  AND execution_target = 'server_periodic'
-                  AND COALESCE(last_run_at, created_at)
-                      + (interval '1 minute' * interval_minutes) <= now()
-                ORDER BY created_at ASC
-                LIMIT %s
-                """,
-                (lim,),
-            )
-            rows = cur.fetchall()
-        conn.commit()
-    return [dict(r) for r in rows]
-
-
-def fetch_due_jobs_coding_agent(*, limit: int = 10) -> list[dict[str, Any]]:
-    """Due ``coding_agent`` jobs (interval elapsed)."""
-    lim = max(1, min(50, limit))
-    with db.pool().connection() as conn:
-        with conn.cursor(row_factory=dict_row) as cur:
-            cur.execute(
-                """
-                SELECT id, tenant_id, created_by_user_id, execution_user_id, dashboard_id,
-                       execution_target, title, instructions, interval_minutes, enabled,
-                       coding_workflow, last_run_at, created_at, updated_at
-                FROM scheduler_jobs
-                WHERE enabled = true
-                  AND deleted_at IS NULL
-                  AND execution_target = 'coding_agent'
                   AND COALESCE(last_run_at, created_at)
                       + (interval '1 minute' * interval_minutes) <= now()
                 ORDER BY created_at ASC

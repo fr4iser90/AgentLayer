@@ -631,7 +631,12 @@ class ToolRegistry:
         except Exception as e:
             ok = False
             out = json.dumps({"ok": False, "error": str(e)})
-        db.log_tool_invocation(name, dict(arguments or {}), out, ok)
+        from apps.backend.domain.tool_invocation_context import get_agent_run_id
+
+        rid = get_agent_run_id()
+        db.log_tool_invocation(
+            name, dict(arguments or {}), out, ok, agent_run_id=rid
+        )
         return out
 
 

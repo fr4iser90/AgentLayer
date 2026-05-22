@@ -51,7 +51,8 @@ def build_delegate_agents_catalog_snippet() -> str:
     lines.append(
         "Pick the specialist by task (SSC/findings → security_auditor; "
         "edits/bash/push → coding; read-only exploration → coding_plan). "
-        "Summarize the sub-agent JSON `assistant_excerpt` for the user."
+        "Summarize the sub-agent result for the user (prefer `artifact_id` + short summary; "
+        "do not paste raw `assistant_excerpt`). Use `task_*` tools for backlog, `artifact_refs` on delegate."
     )
     return "\n".join(lines)
 
@@ -81,6 +82,9 @@ def run_embedded_subagent_sync(
     description: str,
     max_rounds: int | None = None,
     tool_allowlist: list[str] | None = None,
+    artifact_refs: list[Any] | None = None,
+    requirements: list[Any] | None = None,
+    task_id: str | None = None,
 ) -> str:
     from apps.backend.domain.agent import chat_completion
     from apps.backend.domain.identity import get_identity, reset_identity, set_identity
@@ -95,8 +99,9 @@ def run_embedded_subagent_sync(
             ensure_ascii=False,
         )
 
+    ctx = context or {}
     parent_tid, parent_uid = get_identity()
-    u = (context or {}).get("user") if context else None
+    u = ctx.get("user")
     if parent_uid is None and u is not None:
         uid = getattr(u, "id", None)
         if uid is not None:
@@ -108,9 +113,28 @@ def run_embedded_subagent_sync(
             except Exception:
                 parent_tid = 1
 
+    from apps.backend.domain.agent_task_prompt import enrich_delegate_prompt
+
     prompt = (prompt or "").strip()
     if not prompt:
         return json.dumps({"ok": False, "error": "prompt is required"}, ensure_ascii=False)
+    refs = artifact_refs
+    if refs is None:
+        raw_refs = ctx.get("delegate_artifact_refs")
+        if isinstance(raw_refs, list):
+            refs = raw_refs
+    reqs = requirements
+    if reqs is None:
+        raw_req = ctx.get("delegate_requirements")
+        if isinstance(raw_req, list):
+            reqs = raw_req
+    if parent_tid is not None:
+        prompt = enrich_delegate_prompt(
+            tenant_id=int(parent_tid),
+            base_prompt=prompt,
+            artifact_refs=refs,
+            requirements=reqs,
+        )
 
     max_r = 6
     if max_rounds is not None:
@@ -151,19 +175,32 @@ def run_embedded_subagent_sync(
     elif tool_allowlist:
         body["agent_tool_name_allowlist"] = list(tool_allowlist)
 
-    ws = (context or {}).get("workspace") if context else None
+    sub_run_id = str(uuid.uuid4())
+    ws = ctx.get("workspace")
+    ws_uuid: uuid.UUID | None = None
     if isinstance(ws, dict) and ws.get("id"):
         body["workspace_id"] = str(ws["id"])
+        try:
+            ws_uuid = uuid.UUID(str(ws["id"]))
+        except (ValueError, TypeError):
+            ws_uuid = None
 
-    ctx = context or {}
+    tid_task = task_id or ctx.get("agent_task_id")
+    task_uuid: uuid.UUID | None = None
+    if isinstance(tid_task, str) and tid_task.strip():
+        body["agent_active_task_id"] = tid_task.strip()
+        try:
+            task_uuid = uuid.UUID(tid_task.strip())
+        except (ValueError, TypeError):
+            task_uuid = None
+
+    body["agent_run_id"] = sub_run_id
     ce = ctx.get("cancel_event")
     if not isinstance(ce, asyncio.Event):
         ce = None
     prid = ctx.get("agent_run_id")
     if isinstance(prid, str) and prid.strip():
         body["agent_parent_run_id"] = prid.strip()
-
-    sub_run_id = str(uuid.uuid4())
     notify = ctx.get("agent_subagent_notify")
     detail = (description or aid).strip()[:200]
     if callable(notify):
@@ -212,17 +249,42 @@ def run_embedded_subagent_sync(
         excerpt_len = len(content)
         finish_reason = ch0.get("finish_reason")
         ok = True
-        result = json.dumps(
-            {
-                "ok": True,
-                "mode": "embedded_subagent",
-                "agent_id": aid,
-                "assistant_excerpt": content[:12000],
-                "finish_reason": finish_reason,
-                "detail": "Sub-agent finished. Use assistant_excerpt in your reply to the user.",
-            },
-            ensure_ascii=False,
-        )
+        excerpt = content[:12000]
+        artifact_id: str | None = None
+        if parent_uid is not None and parent_tid is not None and excerpt:
+            from apps.backend.infrastructure import agent_artifacts_store, agent_tasks_store
+
+            art = agent_artifacts_store.create_artifact(
+                tenant_id=int(parent_tid),
+                created_by_user_id=parent_uid,
+                kind="subagent_report",
+                summary=(description or aid)[:500],
+                content={"text": excerpt, "assistant_excerpt": excerpt, "agent_id": aid},
+                workspace_id=ws_uuid,
+                created_by_task_id=task_uuid,
+                created_by_run_id=uuid.UUID(sub_run_id),
+            )
+            artifact_id = str(art.get("id") or "")
+            if task_uuid and artifact_id:
+                agent_tasks_store.update_task(
+                    task_id=task_uuid,
+                    tenant_id=int(parent_tid),
+                    append_artifact_ref=artifact_id,
+                    status="in_progress",
+                )
+        payload: dict[str, Any] = {
+            "ok": True,
+            "mode": "embedded_subagent",
+            "agent_id": aid,
+            "assistant_excerpt": excerpt,
+            "finish_reason": finish_reason,
+            "subagent_run_id": sub_run_id,
+            "detail": "Sub-agent finished. Prefer artifact_id summary for the user; do not paste raw excerpt verbatim.",
+        }
+        if artifact_id:
+            payload["artifact_id"] = artifact_id
+            payload["artifact_summary"] = (description or aid)[:500]
+        result = json.dumps(payload, ensure_ascii=False)
     except FuturesTimeout:
         err_msg = "sub-agent timed out after 600s"
         result = json.dumps({"ok": False, "error": err_msg}, ensure_ascii=False)

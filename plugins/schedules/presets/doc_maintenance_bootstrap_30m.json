@@ -3,7 +3,7 @@
   "label": "Doc maintenance — bootstrap (30 min)",
   "description": "Same as doc maintenance but may create minimal docs/README.md, docs/CONVENTIONS.md, docs/DOC_PROFILE.md when missing (max 3 new files per run). Use only when you want a light standard layout in an empty repo.",
   "job": {
-    "execution_target": "coding_agent",
+    "execution_target": "coding",
     "interval_minutes": 30,
     "enabled": false,
     "title": "Doc maintenance",

@@ -62,6 +62,14 @@ def agent_delegate(arguments: dict[str, Any], context: dict[str, Any] | None = N
     description = (arguments.get("description") or "").strip() or "Specialist sub-agent"
     agent_id = (arguments.get("agent_id") or "").strip()
 
+    artifact_refs = arguments.get("artifact_refs")
+    if not isinstance(artifact_refs, list):
+        artifact_refs = None
+    requirements = arguments.get("requirements")
+    if not isinstance(requirements, list):
+        requirements = None
+    task_id = (arguments.get("task_id") or "").strip() or None
+
     return run_embedded_subagent_sync(
         subagent_agent_id=agent_id,
         prompt=prompt,
@@ -69,6 +77,9 @@ def agent_delegate(arguments: dict[str, Any], context: dict[str, Any] | None = N
         tool_name="agent_delegate",
         description=description,
         max_rounds=arguments.get("max_rounds"),
+        artifact_refs=artifact_refs,
+        requirements=requirements,
+        task_id=task_id,
     )
 
 
@@ -109,6 +120,20 @@ TOOLS: list[dict[str, Any]] = [
                     "max_rounds": {
                         "type": "integer",
                         "description": "Max tool rounds for the sub-agent (default depends on agent_id).",
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "description": "Optional tasks UUID to attach run output as artifact.",
+                    },
+                    "artifact_refs": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Artifact UUIDs to inject as context (instead of huge chat history).",
+                    },
+                    "requirements": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Structured requirements passed to the sub-agent.",
                     },
                 },
                 "required": [],

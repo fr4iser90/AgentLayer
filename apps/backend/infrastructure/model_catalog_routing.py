@@ -31,6 +31,9 @@ def invalidate_model_catalog_cache() -> None:
     global _cache_at, _cache_index
     _cache_at = 0.0
     _cache_index = {}
+    from apps.backend.domain.catalog_chat_llm import invalidate_reachable_catalog_cache
+
+    invalidate_reachable_catalog_cache()
     from apps.backend.infrastructure.model_catalog_providers import invalidate_provider_specs_cache
 
     invalidate_provider_specs_cache()

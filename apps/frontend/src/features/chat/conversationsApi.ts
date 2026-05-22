@@ -89,6 +89,11 @@ export function mapListItemToThread(item: Record<string, unknown>): ChatThread {
       const prov = modelProviderFromApi(item);
       return prov ? { modelProvider: prov } : {};
     })(),
+    ...(typeof item.active_task_id === "string" && item.active_task_id.trim()
+      ? { activeTaskId: item.active_task_id.trim() }
+      : item.active_task_id === null
+        ? { activeTaskId: null as string | null }
+        : {}),
   };
 }
 
@@ -167,6 +172,11 @@ export function mapServerToThread(raw: Record<string, unknown>): ChatThread {
       const prov = modelProviderFromApi(raw);
       return prov ? { modelProvider: prov } : {};
     })(),
+    ...(typeof raw.active_task_id === "string" && raw.active_task_id.trim()
+      ? { activeTaskId: raw.active_task_id.trim() }
+      : raw.active_task_id === null
+        ? { activeTaskId: null as string | null }
+        : {}),
   };
 }
 

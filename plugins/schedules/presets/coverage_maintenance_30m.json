@@ -3,7 +3,7 @@
   "label": "Test coverage maintenance (coding agent, 30 min)",
   "description": "Git ff-only pull, then targeted tests for low-coverage areas. Project-Workspace im Dropdown wählen. Worker unter Admin → Interfaces aktivieren. Job zuerst disabled anlegen, dann enablen.",
   "job": {
-    "execution_target": "coding_agent",
+    "execution_target": "coding",
     "interval_minutes": 30,
     "enabled": false,
     "title": "Coverage maintenance",

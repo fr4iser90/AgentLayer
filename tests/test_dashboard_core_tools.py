@@ -1,0 +1,120 @@
+"""Generic dashboard agent tools (data paths + layout ops)."""
+
+from __future__ import annotations
+
+import json
+import uuid
+from unittest.mock import patch
+
+from apps.backend.dashboard.data_paths import apply_data_patches, get_path, set_path
+from plugins.tools.capabilities.platform.dashboard_core import dashboard_core as mod
+
+
+def test_set_path_nested() -> None:
+    obj: dict = {"albums": [{"photos": []}]}
+    out = set_path(obj, "albums.0.photos", [{"url": "x"}])
+    assert get_path(out, "albums.0.photos") == [{"url": "x"}]
+
+
+def test_apply_data_patches_reserved() -> None:
+    data = {"notes": "a"}
+    _, err = apply_data_patches(data, [{"path": "_secret", "value": 1}])
+    assert err and "reserved" in err
+
+
+def test_apply_layout_add_block() -> None:
+    ul = {"version": 1, "blocks": []}
+    data: dict = {}
+    new_ul, new_data, err = mod._apply_layout_ops(
+        ul, data, [{"op": "add_block", "type": "markdown"}], allowed_block_ids=None
+    )
+    assert err is None
+    assert len(new_ul["blocks"]) == 1
+    b = new_ul["blocks"][0]
+    assert b["type"] == "markdown"
+    dp = b["props"]["dataPath"]
+    assert dp in new_data
+    assert new_data[dp] == ""
+
+
+def test_dashboard_list_no_identity() -> None:
+    with patch.object(mod, "_identity", return_value=None):
+        out = json.loads(mod.dashboard_list({}))
+    assert out["ok"] is False
+
+
+def test_dashboard_read_and_patch_data() -> None:
+    wid = uuid.uuid4()
+    uid = uuid.uuid4()
+    tid = 1
+    ws = {
+        "id": str(wid),
+        "kind": "custom",
+        "title": "Test",
+        "ui_layout": {"version": 1, "blocks": []},
+        "data": {"notes": "hello"},
+        "access_role": "owner",
+        "access_scope": "full",
+    }
+
+    with (
+        patch.object(mod, "_identity", return_value=(tid, uid)),
+        patch(
+            "plugins.tools.capabilities.platform.dashboard_core.dashboard_core.resolve_dashboard_id",
+            return_value=(wid, None),
+        ),
+        patch(
+            "plugins.tools.capabilities.platform.dashboard_core.dashboard_core.dashboard_db.dashboard_get",
+            return_value=ws,
+        ),
+        patch(
+            "plugins.tools.capabilities.platform.dashboard_core.dashboard_core.dashboard_db.dashboard_update",
+            return_value=ws,
+        ) as mock_up,
+    ):
+        read_out = json.loads(mod.dashboard_read({"dashboard_id": str(wid)}))
+        assert read_out["ok"] is True
+        assert read_out["data"]["notes"] == "hello"
+
+        patch_out = json.loads(
+            mod.dashboard_patch_data(
+                {
+                    "dashboard_id": str(wid),
+                    "patches": [{"path": "notes", "value": "updated"}],
+                }
+            )
+        )
+    assert patch_out["ok"] is True
+    mock_up.assert_called_once()
+    sent_data = mock_up.call_args.kwargs.get("data") or mock_up.call_args[1].get("data")
+    if sent_data is None and len(mock_up.call_args[0]) >= 4:
+        sent_data = mock_up.call_args[0][3]
+    assert sent_data["notes"] == "updated"
+
+
+def test_dashboard_patch_layout_viewer() -> None:
+    wid = uuid.uuid4()
+    uid = uuid.uuid4()
+    ws = {
+        "kind": "custom",
+        "title": "T",
+        "ui_layout": {"version": 1, "blocks": []},
+        "data": {},
+        "access_role": "viewer",
+    }
+    with (
+        patch.object(mod, "_identity", return_value=(1, uid)),
+        patch(
+            "plugins.tools.capabilities.platform.dashboard_core.dashboard_core.resolve_dashboard_id",
+            return_value=(wid, None),
+        ),
+        patch(
+            "plugins.tools.capabilities.platform.dashboard_core.dashboard_core.dashboard_db.dashboard_get",
+            return_value=ws,
+        ),
+    ):
+        out = json.loads(
+            mod.dashboard_patch_layout({"dashboard_id": str(wid), "ops": [{"op": "add_block", "type": "table"}]})
+        )
+    assert out["ok"] is False
+    assert "read-only" in out["error"]

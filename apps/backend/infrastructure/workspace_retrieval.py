@@ -61,10 +61,11 @@ def index_job_for_status(workspace_id: str) -> dict[str, Any] | None:
     }
 
 
-def _row_flags(row: tuple) -> tuple[bool, bool]:
+def _row_flags(row: tuple) -> tuple[bool, bool, bool]:
     sem = bool(row[13]) if row[13] is not None else True
     ret = bool(row[14]) if row[14] is not None else True
-    return sem, ret
+    docs = bool(row[18]) if len(row) > 18 and row[18] is not None else True
+    return sem, ret, docs
 
 
 def fetch_workspace_row(workspace_id: str, user_id: uuid.UUID) -> tuple | None:
@@ -132,7 +133,7 @@ def index_status_payload(row: tuple | None) -> dict[str, Any]:
     if row is None:
         return {"ok": False, "error": "workspace not found"}
     api = workspace_row_to_api(row)
-    sem, ret = _row_flags(row)
+    sem, ret, docs_rag = _row_flags(row)
     qd = qdrant_status()
     emb = embedding_status()
     stats = api.get("last_index_stats") if isinstance(api.get("last_index_stats"), dict) else {}
@@ -157,6 +158,10 @@ def index_status_payload(row: tuple | None) -> dict[str, Any]:
         "workspace_id": api["id"],
         "semantic_index_enabled": sem,
         "retrieval_enabled": ret,
+        "docs_rag_enabled": docs_rag,
+        "last_docs_rag_at": api.get("last_docs_rag_at"),
+        "last_docs_rag_stats": api.get("last_docs_rag_stats"),
+        "last_docs_rag_error": api.get("last_docs_rag_error"),
         "last_index_at": api.get("last_index_at"),
         "last_index_stats": stats,
         "last_index_error": api.get("last_index_error"),
@@ -168,6 +173,29 @@ def index_status_payload(row: tuple | None) -> dict[str, Any]:
         "coding_enabled": bool(config.CODING_ENABLED),
         "index_job": index_job_for_status(api["id"]),
     }
+
+
+def _persist_docs_rag_result(
+    workspace_id: str,
+    *,
+    stats: dict[str, Any],
+    error: str | None,
+) -> None:
+    now = datetime.now(UTC)
+    with db.pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE project_workspaces
+                SET last_docs_rag_at = %s,
+                    last_docs_rag_stats = %s,
+                    last_docs_rag_error = %s,
+                    updated_at = NOW()
+                WHERE id = %s
+                """,
+                (now, Json(stats), error, workspace_id),
+            )
+        conn.commit()
 
 
 def _persist_index_result(
@@ -298,9 +326,65 @@ def run_semantic_index(
         if not qd.get("reachable"):
             err = "Qdrant unreachable or embedding failed — check QDRANT_URL and EMBEDDING_*"
 
-    _persist_index_result(workspace_id, stats=stats, error=err)
+    docs_rag_summary: dict[str, Any] | None = None
+    docs_rag_error: str | None = None
+    try:
+        with db.pool().connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT docs_rag_enabled FROM project_workspaces WHERE id = %s",
+                    (workspace_id,),
+                )
+                dr = cur.fetchone()
+        docs_on = bool(dr[0]) if dr and dr[0] is not None else True
+    except Exception:
+        docs_on = True
 
-    ok = err is None or qdrant_indexed > 0
+    if docs_on and operator_settings.rag_settings()["enabled"]:
+        if track_progress:
+            _progress(phase="docs_rag", files_done=0, files_total=1)
+        try:
+            from apps.backend.domain.workspace_rag_ingest import ingest_workspace_markdown_tree
+
+            docs_rag_summary = ingest_workspace_markdown_tree(
+                uuid.UUID(workspace_id),
+                root,
+                purge_first=True,
+            )
+            if not docs_rag_summary.get("ok"):
+                errs = docs_rag_summary.get("errors")
+                if isinstance(errs, list) and errs:
+                    docs_rag_error = str(errs[0].get("error", errs[0]))[:500]
+                else:
+                    docs_rag_error = str(docs_rag_summary.get("error") or "docs RAG ingest failed")[:500]
+        except Exception as e:
+            docs_rag_error = str(e)[:500]
+            logger.warning("workspace docs rag: %s", e)
+        if track_progress:
+            _progress(phase="docs_rag", files_done=1, files_total=1)
+    elif docs_on:
+        docs_rag_error = "RAG disabled (operator settings)"
+
+    if docs_rag_summary is not None:
+        stats["docs_rag"] = {
+            "files_ingested": docs_rag_summary.get("files_ingested"),
+            "chunk_count_total": docs_rag_summary.get("chunk_count_total"),
+            "purge_deleted_documents": docs_rag_summary.get("purge_deleted_documents"),
+        }
+    _persist_index_result(workspace_id, stats=stats, error=err)
+    _persist_docs_rag_result(
+        workspace_id,
+        stats=stats.get("docs_rag") or {},
+        error=docs_rag_error,
+    )
+
+    code_ok = err is None or qdrant_indexed > 0
+    docs_ok = (
+        not docs_on
+        or docs_rag_error is None
+        or bool(docs_rag_summary and docs_rag_summary.get("files_ingested"))
+    )
+    ok = code_ok and docs_ok
     if track_progress:
         finished = datetime.now(UTC).isoformat()
         if ok:

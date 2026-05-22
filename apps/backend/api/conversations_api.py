@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field
 
 from apps.backend.infrastructure.auth import get_current_user
 from apps.backend.infrastructure.db import db as db_mod
+from apps.backend.domain.agent_task_access import user_may_access_task_row
+from apps.backend.infrastructure import agent_tasks_store
 from apps.backend.infrastructure.conversations_db import (
     conversation_create,
     conversation_delete,
@@ -44,6 +46,11 @@ class ConversationCreateBody(BaseModel):
     agent_id: str | None = Field(default=None, max_length=128)
     workspace_id: uuid.UUID | None = None
     model_catalog_owned_by: str | None = Field(default=None, max_length=64)
+    active_task_id: uuid.UUID | None = None
+
+
+class ConversationActiveTaskBody(BaseModel):
+    active_task_id: uuid.UUID | None = None
 
 
 class ConversationUpdateBody(BaseModel):
@@ -55,6 +62,7 @@ class ConversationUpdateBody(BaseModel):
     agent_id: str | None = Field(default=None, max_length=128)
     workspace_id: uuid.UUID | None = None
     model_catalog_owned_by: str | None = Field(default=None, max_length=64)
+    active_task_id: uuid.UUID | None = None
 
 
 @router.get("")
@@ -120,7 +128,12 @@ async def put_conversation(
         msgs = [m.model_dump() for m in body.messages]
     prefs: dict[str, Any] | None = None
     fs = body.model_fields_set
-    if "agent_id" in fs or "workspace_id" in fs or "model_catalog_owned_by" in fs:
+    if (
+        "agent_id" in fs
+        or "workspace_id" in fs
+        or "model_catalog_owned_by" in fs
+        or "active_task_id" in fs
+    ):
         prefs = {}
         if "agent_id" in fs:
             prefs["agent_id"] = body.agent_id
@@ -128,6 +141,8 @@ async def put_conversation(
             prefs["workspace_id"] = body.workspace_id
         if "model_catalog_owned_by" in fs:
             prefs["model_catalog_owned_by"] = body.model_catalog_owned_by
+        if "active_task_id" in fs:
+            prefs["active_task_id"] = body.active_task_id
     data = conversation_replace(
         user.id,
         conversation_id,
@@ -141,6 +156,39 @@ async def put_conversation(
     if not data:
         raise HTTPException(status_code=404, detail="conversation not found")
     return {"ok": True, "conversation": data}
+
+
+@router.patch("/{conversation_id}/active-task")
+async def set_conversation_active_task(
+    request: Request, conversation_id: uuid.UUID, body: ConversationActiveTaskBody
+) -> dict:
+    user = await get_current_user(request)
+    tenant_id = db_mod.user_tenant_id(user.id)
+    if body.active_task_id is not None:
+        trow = agent_tasks_store.get_task(
+            task_id=body.active_task_id, tenant_id=tenant_id
+        )
+        if not trow or not user_may_access_task_row(
+            user_id=user.id, tenant_id=tenant_id, row=trow
+        ):
+            raise HTTPException(status_code=404, detail="task not found")
+    with db_mod.pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE chat_conversations
+                SET active_task_id = %s, updated_at = now()
+                WHERE id = %s AND user_id = %s
+                """,
+                (body.active_task_id, conversation_id, user.id),
+            )
+            if cur.rowcount < 1:
+                raise HTTPException(status_code=404, detail="conversation not found")
+        conn.commit()
+    return {
+        "ok": True,
+        "active_task_id": str(body.active_task_id) if body.active_task_id else None,
+    }
 
 
 @router.delete("/{conversation_id}")

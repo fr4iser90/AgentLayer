@@ -51,7 +51,8 @@ def resolve_db_workspace(workspace_id: str, user) -> dict[str, Any] | None:
                     SELECT id, name, path, source, git_url, git_branch, access_role, owner_user_id,
                            verify_command, verify_required, mcp_stdio_servers_json,
                            semantic_index_enabled, retrieval_enabled,
-                           last_index_at, last_index_stats, last_index_error
+                           last_index_at, last_index_stats, last_index_error,
+                           docs_rag_enabled, last_docs_rag_at, last_docs_rag_stats, last_docs_rag_error
                     FROM project_workspaces
                     WHERE id = %s AND (owner_user_id = %s OR access_role IN ('editor', 'viewer'))
                     """,
@@ -88,6 +89,10 @@ def resolve_db_workspace(workspace_id: str, user) -> dict[str, Any] | None:
                     "last_index_at": row[13].isoformat() if row[13] else None,
                     "last_index_stats": row[14] if isinstance(row[14], dict) else None,
                     "last_index_error": row[15],
+                    "docs_rag_enabled": bool(row[16]) if row[16] is not None else True,
+                    "last_docs_rag_at": row[17].isoformat() if row[17] else None,
+                    "last_docs_rag_stats": row[18] if isinstance(row[18], dict) else None,
+                    "last_docs_rag_error": row[19],
                 }
     except Exception as e:
         logger.error("failed to resolve workspace from DB: %s", e)

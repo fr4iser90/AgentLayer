@@ -43,6 +43,8 @@ def ingest_for_user(
     title: str,
     text: str,
     source_uri: str | None = None,
+    *,
+    workspace_id: uuid.UUID | None = None,
 ) -> dict[str, Any]:
     rs = operator_settings.rag_settings()
     if not rs["enabled"]:
@@ -66,20 +68,26 @@ def ingest_for_user(
         source_uri,
         sha,
         indexed,
+        workspace_id=workspace_id,
     )
-    return {
+    out: dict[str, Any] = {
         "ok": True,
         "document_id": doc_id,
         "chunk_count": n,
         "domain": (domain or "").strip(),
         "title": (title or "").strip(),
     }
+    if workspace_id is not None:
+        out["workspace_id"] = str(workspace_id)
+    return out
 
 
 def search_for_identity(
     query: str,
     domain: str | None = None,
     limit: int | None = None,
+    *,
+    workspace_id: uuid.UUID | None = None,
 ) -> list[dict[str, Any]]:
     rs = operator_settings.rag_settings()
     if not rs["enabled"]:
@@ -92,6 +100,14 @@ def search_for_identity(
     if user_id is None:
         return []
     lim = limit if limit is not None else int(rs["top_k"])
+    if workspace_id is not None:
+        return db.rag_vector_search_by_workspace(
+            tenant_id,
+            user_id,
+            workspace_id,
+            emb,
+            int(lim),
+        )
     dom_raw = (domain or "").strip() if domain else ""
     dom_lc = dom_raw.lower()
     tenant_wide = bool(dom_lc and dom_lc in operator_settings.effective_rag_tenant_shared_domains())

@@ -361,14 +361,19 @@ async def run_coding_schedule_row(
     if ws_id is None:
         return False, "coding_workflow.workspace_id is required"
 
-    wf_agent = str(wf.get("agent_id") or "coding").strip().lower()
-    # Background schedules always use Build agent (writes); ignore stored coding_plan.
-    agent_id = "coding"
-    if row_kind == "scheduler_job" and wf_agent and wf_agent != "coding":
+    from apps.backend.domain.scheduler_targets import is_agent_schedulable, normalize_execution_target
+
+    exec_agent = normalize_execution_target(str(row.get("execution_target") or "")) or ""
+    wf_agent = str(wf.get("agent_id") or "").strip().lower()
+    agent_id = exec_agent or wf_agent or "coding"
+    if wf_agent and exec_agent and wf_agent != exec_agent:
         logger.info(
-            "schedule: overriding coding_workflow.agent_id %r -> coding for job execution",
+            "schedule: using execution_target agent_id=%r (workflow had agent_id=%r)",
+            exec_agent,
             wf_agent,
         )
+    if not is_agent_schedulable(agent_id):
+        return False, f"non-schedulable agent_id: {agent_id}"
 
     title = (str(row.get("title") or "").strip()) or None
     stored_instr = str(row.get("instructions") or "").strip()

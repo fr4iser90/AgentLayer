@@ -62,5 +62,5 @@ def test_run_docs_skipped_when_rag_disabled() -> None:
         "rag_settings",
         return_value={"enabled": False},
     ):
-        doc = rc._run_docs("q", "agentlayer_docs", 5)
+        doc = rc._run_docs("q", 5, context=None, domain="agentlayer_docs")
     assert doc.get("skipped") is True

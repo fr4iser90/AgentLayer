@@ -3,7 +3,7 @@
   "label": "Security remediation (SimpleSecCheck + coding, 30 min)",
   "description": "Run SimpleSecCheck on the workspace repo, write docs/SECURITY_REPORT.md, fix up to 5 findings on agent/sec-* branch. Requires ssc_api_key (user secret) or SSC_API_KEY in .env. No git push by default.",
   "job": {
-    "execution_target": "coding_agent",
+    "execution_target": "coding",
     "interval_minutes": 30,
     "enabled": false,
     "title": "Security remediation",

@@ -69,6 +69,19 @@ Helper functions:
 
 For built-in kinds with dedicated tools (`pets`, `ideas`, `shopping_list`), `dashboard_id` may be **omitted** when the user has exactly **one** dashboard of that `kind`; the server picks it automatically. If there are several, the tool returns a short list of `id` + `title` so the model can ask or pass the UUID. Logic: `src/dashboard/tool_dashboard_resolve.py`.
 
+### Generic tools (any kind)
+
+Module: `plugins/tools/capabilities/platform/dashboard_core/dashboard_core.py`
+
+| Tool | Purpose |
+|------|---------|
+| `dashboard_list` | All accessible boards (`id`, `kind`, `title`, `access_role`) |
+| `dashboard_read` | `ui_layout`, `data`, `block_ids` (large payloads may truncate) |
+| `dashboard_patch_data` | `{path, value}` patches on `data` (dotted paths; granular shares: allowed keys only) |
+| `dashboard_patch_layout` | `add_block`, `remove_block`, `set_grid`, `set_props` (not for granular block-only shares) |
+
+Capabilities: `dashboard.read`, `dashboard.write`. Prefer kind-specific tools when they exist.
+
 ## Terminology: dashboard vs project path
 
 In AgentLayer, a **dashboard** is a UI dashboard/board stored in `user_dashboards` (identified by `dashboard_id`).
@@ -77,12 +90,17 @@ When scheduling IDE/Git jobs, use **`project_path`** for the local filesystem pa
 
 ## Block: schedules
 
-The `schedules` block shows persisted user-defined schedules from `scheduler_jobs` (admin only).
+The `schedules` block shows persisted user-defined schedules from `scheduler_jobs` via `/v1/user/scheduler-jobs` (jobs the user created or executes).
+
+`execution_target` values:
+
+- `general` — recurring run with chat agent **`general`** (`plugins/agents/general.py`)
+- `coding` — recurring run with agent **`coding`** on a workspace (and other schedulable workspace agents from the registry)
 
 Example block props:
 
 - `scope`: `"dashboard"` | `"global"` | `"both"` (default `"dashboard"`)
-- `executionTarget`: `"ide_agent"` | `"server_periodic"` | `"all"` (default `"all"`)
+- `executionTarget`: `"all"` or any registry `agent_id` from `GET /v1/user/scheduler-jobs/execution-targets` (e.g. `general`, `coding`, `coding_plan`, `security_auditor` when `AGENT_SCHEDULABLE` is true).
 
 ## Files / uploads
 

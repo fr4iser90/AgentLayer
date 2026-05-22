@@ -37,6 +37,17 @@ export function HomePage() {
         </li>
         <li>
           <Link
+            to="/tasks"
+            className="block rounded-xl border border-surface-border bg-surface-raised px-5 py-4 text-white hover:bg-white/5"
+          >
+            <span className="font-medium">Tasks</span>
+            <span className="mt-1 block text-sm text-surface-muted">
+              Global and per-project backlog — bind a task when chatting
+            </span>
+          </Link>
+        </li>
+        <li>
+          <Link
             to="/dashboard"
             className="block rounded-xl border border-surface-border bg-surface-raised px-5 py-4 text-white hover:bg-white/5"
           >

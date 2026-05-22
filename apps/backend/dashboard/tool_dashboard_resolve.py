@@ -61,3 +61,37 @@ def resolve_dashboard_id_for_kind(
         f"Multiple {label} dashboards — pass dashboard_id (UUID). Boards: "
         + json.dumps(opts, ensure_ascii=False)
     )
+
+
+def resolve_dashboard_id(
+    user_id: uuid.UUID,
+    tenant_id: int,
+    raw_dashboard_id: Any,
+    *,
+    limit: int = 200,
+) -> tuple[uuid.UUID | None, str | None]:
+    """
+    Resolve ``dashboard_id`` when omitted: use the board only if the user has exactly one.
+    """
+    if raw_dashboard_id is not None and str(raw_dashboard_id).strip():
+        wid = parse_dashboard_uuid_arg(str(raw_dashboard_id).strip())
+        if wid is None:
+            return None, "dashboard_id must be a valid UUID when provided"
+        return wid, None
+    rows = dashboard_db.dashboard_list(user_id, tenant_id, limit=limit)
+    if not rows:
+        return None, "No dashboards yet — create one in the app first."
+    if len(rows) == 1:
+        rid = rows[0].get("id")
+        try:
+            return (rid if isinstance(rid, uuid.UUID) else uuid.UUID(str(rid))), None
+        except (ValueError, TypeError):
+            return None, "internal error: invalid dashboard id in list"
+    opts = [
+        {"id": str(r.get("id", "")), "kind": (r.get("kind") or "").strip(), "title": (r.get("title") or "").strip()}
+        for r in rows[:40]
+    ]
+    return None, (
+        "Multiple dashboards — pass dashboard_id (UUID) or use [Dashboard context]. Boards: "
+        + json.dumps(opts, ensure_ascii=False)
+    )

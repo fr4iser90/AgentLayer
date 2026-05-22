@@ -3,7 +3,7 @@
   "label": "Daily RSS Summary (Feeds dashboard)",
   "description": "Fetch + summarize enabled RSS feeds from a feeds dashboard and write the markdown summary back into the dashboard.",
   "job": {
-    "execution_target": "server_periodic",
+    "execution_target": "general",
     "interval_minutes": 1440,
     "enabled": false,
     "title": "Daily RSS summary",

@@ -51,7 +51,8 @@ function indexProgressLabel(job: WorkspaceIndexJob | null | undefined): string {
   const done = job.files_done ?? 0;
   const total = job.files_total ?? 0;
   const pct = indexProgressPct(job);
-  const phaseLabel = phase === "qdrant" ? "embedding" : phase === "scan" ? "scan" : phase;
+  const phaseLabel =
+    phase === "qdrant" ? "embedding" : phase === "docs_rag" ? "docs" : phase === "scan" ? "scan" : phase;
   if (total > 0 && pct != null) {
     return `Indexing (${phaseLabel})… ${pct}% (${done}/${total})`;
   }
@@ -154,6 +155,7 @@ export function WorkspaceRetrievalBar({
   const patchFlags = async (patch: {
     semantic_index_enabled?: boolean;
     retrieval_enabled?: boolean;
+    docs_rag_enabled?: boolean;
   }) => {
     if (!workspace?.id || !canEdit) return;
     setBusy("toggle");
@@ -213,6 +215,7 @@ export function WorkspaceRetrievalBar({
 
   const indexOn = workspace.semantic_index_enabled !== false;
   const retrievalOn = workspace.retrieval_enabled !== false;
+  const docsRagOn = workspace.docs_rag_enabled !== false;
   const qdrantOk = status?.qdrant?.reachable === true;
   const symbolCount =
     typeof status?.last_index_stats?.total_symbols === "number"
@@ -221,7 +224,10 @@ export function WorkspaceRetrievalBar({
   const activeJob = status?.index_job;
   const showProgress = indexing || indexJobRunning(activeJob);
   const progressPct = indexProgressPct(activeJob);
-  const progressLabel = indexProgressLabel(activeJob);
+  const progressLabel = indexProgressLabel(activeJob)?.replace(
+    "docs_rag",
+    "docs"
+  );
   const indexFailed = activeJob?.status === "failed";
   const indexStale =
     status?.index_stale === true ||
@@ -252,7 +258,7 @@ export function WorkspaceRetrievalBar({
             type="button"
             disabled={!indexOn || busy === "index" || showProgress}
             className="rounded border border-violet-500/35 bg-violet-950/40 px-1.5 py-0.5 text-[9px] font-medium text-violet-200/95 hover:bg-violet-900/50 disabled:opacity-50"
-            title="Run tree-sitter scan + Qdrant upsert"
+            title="Run tree-sitter scan + Qdrant upsert + workspace *.md RAG (when Docs RAG is on)"
             onClick={() => void runIndex()}
           >
             {showProgress ? "…" : "Reindex"}
@@ -272,6 +278,21 @@ export function WorkspaceRetrievalBar({
           onClick={() => void patchFlags({ retrieval_enabled: !retrievalOn })}
         >
           {retrievalOn ? "on" : "off"}
+        </button>
+        <span className="text-neutral-600">·</span>
+        <span className="font-semibold uppercase tracking-wide text-surface-muted">Docs RAG</span>
+        <button
+          type="button"
+          disabled={!canEdit || busy !== null}
+          className={pill(docsRagOn)}
+          title={
+            canEdit
+              ? "Index *.md into pgvector for this workspace only (retrieve_context docs)"
+              : "Read-only — cannot change"
+          }
+          onClick={() => void patchFlags({ docs_rag_enabled: !docsRagOn })}
+        >
+          {docsRagOn ? "on" : "off"}
         </button>
       </div>
       {showProgress ? (
@@ -300,6 +321,14 @@ export function WorkspaceRetrievalBar({
           Indexed: {fmtIndexTime(status?.last_index_at ?? workspace.last_index_at)}
         </span>
         {symbolCount != null ? <span>· {symbolCount} symbols</span> : null}
+        {typeof status?.last_docs_rag_stats?.files_ingested === "number" ? (
+          <span>· {status.last_docs_rag_stats.files_ingested} md files</span>
+        ) : typeof workspace.last_docs_rag_stats?.files_ingested === "number" ? (
+          <span>· {workspace.last_docs_rag_stats.files_ingested} md files</span>
+        ) : null}
+        <span title="Workspace-scoped markdown RAG (pgvector)">
+          · Docs RAG: {fmtIndexTime(status?.last_docs_rag_at ?? workspace.last_docs_rag_at)}
+        </span>
         {indexOn && indexStale ? (
           <span
             className="text-amber-300/95"

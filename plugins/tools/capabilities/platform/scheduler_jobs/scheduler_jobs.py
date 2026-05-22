@@ -8,6 +8,13 @@ from typing import Any, Callable
 
 from apps.backend.domain.identity import get_identity
 from apps.backend.infrastructure.db import db
+from apps.backend.domain.scheduler_targets import (
+    agent_requires_workspace_for_target,
+    execution_target_error,
+    is_valid_execution_target,
+    normalize_execution_target,
+    schedule_permission_error,
+)
 from apps.backend.infrastructure import scheduler_jobs_store
 from apps.backend.dashboard.db import dashboard_access_ex
 
@@ -20,7 +27,8 @@ TOOL_DESCRIPTION = (
     "Create, list, or enable/disable persisted scheduler jobs (separate from the single operator "
     "tick in Admin → Interfaces). Use schedule_job_create to queue work for the coding agent or server; "
     "schedule_job_list to inspect; schedule_job_set_enabled to pause/resume. "
-    "execution_target coding_agent requires admin and workspace_id; dashboard-bound jobs require edit access."
+    "execution_target is a registry agent_id (see schedule_job_list / execution-targets catalog); "
+    "workspace agents need workspace_id; admin-only agents need admin role."
 )
 TOOL_TRIGGERS = (
     "schedule",
@@ -41,7 +49,6 @@ AGENT_TOOL_META_BY_NAME = {
 
 _MAX_INSTRUCTIONS = 32_000
 _MAX_TITLE = 500
-_VALID_TARGETS = frozenset({"server_periodic", "coding_agent"})
 
 
 def _err(msg: str) -> str:
@@ -79,7 +86,7 @@ def _parse_uuid(s: Any, *, field: str) -> uuid.UUID | None:
 
 
 def schedule_job_create(arguments: dict[str, Any]) -> str:
-    """Insert a scheduler_jobs row; coding_agent requires admin + workspace_id; optional dashboard_id."""
+    """Insert a scheduler_jobs row; workspace agents need workspace_id; optional dashboard_id."""
     idt = _identity()
     if not idt:
         return _err("missing identity — not authenticated")
@@ -87,12 +94,13 @@ def schedule_job_create(arguments: dict[str, Any]) -> str:
     role = db.user_role(caller_uid)
     is_admin = role == "admin"
 
-    raw_target = (arguments.get("execution_target") or "").strip().lower()
-    if raw_target not in _VALID_TARGETS:
-        return _err("execution_target must be server_periodic or coding_agent")
+    raw_target = normalize_execution_target(arguments.get("execution_target"))
+    if not raw_target or not is_valid_execution_target(raw_target):
+        return _err(execution_target_error(arguments.get("execution_target")))
 
-    if raw_target == "coding_agent" and not is_admin:
-        return _err("execution_target coding_agent requires admin role")
+    perm_err = schedule_permission_error(user_role=role or "user", execution_target=raw_target or "")
+    if perm_err:
+        return _err(perm_err)
 
     instructions = str(arguments.get("instructions") or "").strip()
     if not instructions:
@@ -139,7 +147,7 @@ def schedule_job_create(arguments: dict[str, Any]) -> str:
         wf_raw.setdefault("workspace_id", str(ws_arg).strip())
     try:
         coding_wf = normalize_coding_workflow(
-            wf_raw, require_workspace=(raw_target == "coding_agent")
+            wf_raw, require_workspace=agent_requires_workspace_for_target(raw_target)
         )
     except (ValueError, TypeError) as e:
         return _err(str(e))
@@ -231,10 +239,10 @@ TOOLS: list[dict[str, Any]] = [
         "function": {
             "name": "schedule_job_create",
             "TOOL_DESCRIPTION": (
-                "Create a persisted scheduler job. execution_target: server_periodic (general server chat) or "
-                "coding_agent (runs on a coding workspace via chat_completion) — coding_agent requires admin. "
-                "For coding_agent provide workspace_id (UUID) or coding_workflow.workspace_id. "
-                "Optional coding_workflow: agent_id (coding|coding_plan), prompt_preamble. "
+                "Create a persisted scheduler job. execution_target: registry agent_id "
+                "(e.g. general, coding, coding_plan, security_auditor — see GET /v1/user/scheduler-jobs/execution-targets). "
+                "Workspace agents need workspace_id or coding_workflow.workspace_id. "
+                "Optional coding_workflow: agent_id, prompt_preamble. "
                 "instructions: what to do. Optional dashboard_id (UUID). interval_minutes: 5–10080 (default 60)."
             ),
             "parameters": {
@@ -246,8 +254,7 @@ TOOLS: list[dict[str, Any]] = [
                     },
                     "execution_target": {
                         "type": "string",
-                        "enum": ["server_periodic", "coding_agent"],
-                        "TOOL_DESCRIPTION": "coding_agent requires admin and workspace_id.",
+                        "TOOL_DESCRIPTION": "Registry agent_id (general, coding, coding_plan, security_auditor, …).",
                     },
                     "title": {"type": "string", "TOOL_DESCRIPTION": "Short label (optional)."},
                     "dashboard_id": {
@@ -268,7 +275,7 @@ TOOLS: list[dict[str, Any]] = [
                     },
                     "workspace_id": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Coding workspace UUID (required for coding_agent).",
+                        "TOOL_DESCRIPTION": "Workspace UUID (required for workspace agents).",
                     },
                     "coding_workflow": {
                         "type": "object",

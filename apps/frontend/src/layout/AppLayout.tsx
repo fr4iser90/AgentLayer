@@ -48,6 +48,9 @@ export function AppLayout() {
               <NavLink to="/schedules" className={linkClass}>
                 {t("nav.schedules")}
               </NavLink>
+              <NavLink to="/tasks" className={linkClass}>
+                Tasks
+              </NavLink>
               <NavLink to="/settings/shares" className={linkClass}>
                 🔗 Shares
               </NavLink>

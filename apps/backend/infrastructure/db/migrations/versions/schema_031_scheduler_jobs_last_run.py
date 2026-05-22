@@ -24,7 +24,7 @@ def upgrade() -> None:
     op.execute(
         """
         COMMENT ON COLUMN scheduler_jobs.last_run_at IS
-          'UTC time of last successful run (server_periodic) or IDE ack-run; drives next due window.';
+          'UTC time of last successful run (general / coding_agent) or IDE ack-run; drives next due window.';
         """
     )
 

@@ -13,10 +13,15 @@ from apps.backend.infrastructure.coding_workflow import normalize_coding_workflo
 from apps.backend.infrastructure.db import db
 from apps.backend.infrastructure import scheduler_jobs_store
 from apps.backend.dashboard.db import dashboard_access_ex
+from apps.backend.domain.scheduler_targets import (
+    agent_requires_workspace_for_target,
+    execution_target_error,
+    is_valid_execution_target,
+    normalize_execution_target,
+    schedule_permission_error,
+)
 
 router = APIRouter(prefix="/v1/user/scheduler-jobs", tags=["scheduler-jobs-user"])
-
-_VALID_TARGETS = frozenset({"server_periodic", "coding_agent"})
 
 
 class SchedulerJobCreateBody(BaseModel):
@@ -29,7 +34,7 @@ class SchedulerJobCreateBody(BaseModel):
     coding_workflow: dict[str, Any] | None = None
     workspace_id: str | None = Field(
         default=None,
-        description="Required for coding_agent unless in coding_workflow",
+        description="Required for workspace agents unless in coding_workflow",
     )
 
 
@@ -41,6 +46,15 @@ class SchedulerJobPatchBody(BaseModel):
     title: str | None = Field(default=None, max_length=500)
     instructions: str | None = Field(default=None, max_length=32000)
     interval_minutes: int | None = Field(default=None, ge=5, le=10080)
+
+
+@router.get("/execution-targets")
+async def scheduler_execution_targets_catalog(request: Request) -> dict[str, Any]:
+    """Scheduled job modes (not the full agent registry — only targets with a cron runner)."""
+    await get_current_user(request)
+    from apps.backend.domain.scheduler_targets import execution_target_catalog
+
+    return {"ok": True, "targets": execution_target_catalog()}
 
 
 @router.get("")
@@ -67,11 +81,14 @@ async def scheduler_job_list(request: Request, dashboard_id: str | None = None, 
 async def scheduler_job_create(request: Request, body: SchedulerJobCreateBody) -> dict[str, Any]:
     user = await get_current_user(request)
     tenant_id = db.user_tenant_id(user.id)
-    tgt = body.execution_target.strip().lower()
-    if tgt not in _VALID_TARGETS:
-        raise HTTPException(status_code=400, detail="invalid execution_target")
-    if tgt == "coding_agent" and user.role != "admin":
-        raise HTTPException(status_code=403, detail="execution_target coding_agent requires admin")
+    tgt = normalize_execution_target(body.execution_target)
+    if not tgt or not is_valid_execution_target(tgt):
+        raise HTTPException(status_code=400, detail=execution_target_error(body.execution_target))
+    perm_err = schedule_permission_error(user_role=user.role, execution_target=tgt or "")
+    if perm_err:
+        if "requires admin" in perm_err:
+            raise HTTPException(status_code=403, detail=perm_err)
+        raise HTTPException(status_code=400, detail=perm_err)
 
     ws_id: uuid.UUID | None = None
     if body.dashboard_id is not None and str(body.dashboard_id).strip():
@@ -93,7 +110,9 @@ async def scheduler_job_create(request: Request, body: SchedulerJobCreateBody) -
     if body.workspace_id and str(body.workspace_id).strip():
         wf_raw.setdefault("workspace_id", str(body.workspace_id).strip())
     try:
-        wf = normalize_coding_workflow(wf_raw, require_workspace=(tgt == "coding_agent"))
+        wf = normalize_coding_workflow(
+            wf_raw, require_workspace=agent_requires_workspace_for_target(tgt)
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 

@@ -18,7 +18,17 @@ _ALLOWED_KEYS = frozenset(
         "security_scan",
     }
 )
-_VALID_AGENT_IDS = frozenset({"coding", "coding_plan"})
+def _workspace_schedulable_agent_ids() -> frozenset[str]:
+    from apps.backend.domain.agent_registry import get_agent_registry
+
+    reg = get_agent_registry()
+    return frozenset(
+        str(a.get("id") or "").strip()
+        for a in reg.list_agents()
+        if a.get("id")
+        and a.get("requires_workspace")
+        and a.get("schedulable", True)
+    )
 
 
 def workflow_from_row(row: dict[str, Any]) -> dict[str, Any]:
@@ -41,13 +51,13 @@ def workflow_from_row(row: dict[str, Any]) -> dict[str, Any]:
 def normalize_coding_workflow(raw: Any, *, require_workspace: bool = False) -> dict[str, Any]:
     if raw is None:
         if require_workspace:
-            raise ValueError("coding_workflow.workspace_id is required for coding_agent schedules")
+            raise ValueError("coding_workflow.workspace_id is required for workspace agent schedules")
         return {}
     if isinstance(raw, str):
         s = raw.strip()
         if not s:
             if require_workspace:
-                raise ValueError("coding_workflow.workspace_id is required for coding_agent schedules")
+                raise ValueError("coding_workflow.workspace_id is required for workspace agent schedules")
             return {}
         try:
             raw = json.loads(s)
@@ -97,13 +107,16 @@ def normalize_coding_workflow(raw: Any, *, require_workspace: bool = False) -> d
         except (ValueError, TypeError) as e:
             raise ValueError("coding_workflow.workspace_id must be a UUID") from e
     elif require_workspace:
-        raise ValueError("coding_workflow.workspace_id is required for coding_agent schedules")
+        raise ValueError("coding_workflow.workspace_id is required for workspace agent schedules")
 
     aid = raw.get("agent_id")
     if aid is not None and str(aid).strip():
         a = str(aid).strip().lower()
-        if a not in _VALID_AGENT_IDS:
-            raise ValueError("coding_workflow.agent_id must be coding or coding_plan")
+        allowed = _workspace_schedulable_agent_ids()
+        if a not in allowed:
+            raise ValueError(
+                f"coding_workflow.agent_id must be a workspace agent: {', '.join(sorted(allowed))}"
+            )
         out["agent_id"] = a
     elif require_workspace:
         out["agent_id"] = "coding"
@@ -139,7 +152,7 @@ def normalize_coding_workflow(raw: Any, *, require_workspace: bool = False) -> d
 
 def default_coding_workflow_for_create(workspace_id: str | None = None) -> dict[str, Any]:
     if not workspace_id or not str(workspace_id).strip():
-        raise ValueError("workspace_id is required for coding_agent schedules")
+        raise ValueError("workspace_id is required for workspace agent schedules")
     return normalize_coding_workflow(
         {"workspace_id": str(workspace_id).strip(), "agent_id": "coding"},
         require_workspace=True,

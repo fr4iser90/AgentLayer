@@ -47,6 +47,24 @@ def workspace_retrieval_flags(context: dict | None) -> tuple[bool, bool]:
     )
 
 
+def workspace_id_from_context(context: dict | None) -> str | None:
+    ws = workspace_binding_from_context(context)
+    if ws is None:
+        return None
+    wid = ws.get("id")
+    if wid is None:
+        return None
+    s = str(wid).strip()
+    return s or None
+
+
+def workspace_docs_rag_enabled(context: dict | None) -> bool:
+    ws = workspace_binding_from_context(context)
+    if ws is None:
+        return False
+    return bool(ws.get("docs_rag_enabled", True))
+
+
 def json_workspace_missing_error() -> str:
     return json.dumps(
         {

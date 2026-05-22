@@ -47,6 +47,7 @@ class WorkspaceUpdateBody(BaseModel):
     mcp_stdio_servers: list[dict[str, Any]] | None = None
     semantic_index_enabled: bool | None = None
     retrieval_enabled: bool | None = None
+    docs_rag_enabled: bool | None = None
 
 
 class WorkspaceIndexBody(BaseModel):
@@ -355,6 +356,9 @@ async def update_workspace(request: Request, workspace_id: str, body: WorkspaceU
     if "retrieval_enabled" in patch and patch["retrieval_enabled"] is not None:
         updates.append("retrieval_enabled = %s")
         params.append(bool(patch["retrieval_enabled"]))
+    if "docs_rag_enabled" in patch and patch["docs_rag_enabled"] is not None:
+        updates.append("docs_rag_enabled = %s")
+        params.append(bool(patch["docs_rag_enabled"]))
 
     if updates:
         params.append(workspace_id)

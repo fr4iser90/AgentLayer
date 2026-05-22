@@ -304,7 +304,7 @@ def conversation_get(user_id: uuid.UUID, conversation_id: uuid.UUID) -> dict[str
                 """
                 SELECT id, title, mode, model, agent_log, updated_at, created_at, dashboard_id,
                        user_id, tenant_id, shared, pref_agent_id, pref_workspace_id,
-                       pref_model_catalog_owned_by
+                       pref_model_catalog_owned_by, active_task_id
                 FROM chat_conversations
                 WHERE id = %s
                 """,
@@ -321,6 +321,7 @@ def conversation_get(user_id: uuid.UUID, conversation_id: uuid.UUID) -> dict[str
             pref_agent_raw = crow[11]
             pref_ws_raw = crow[12]
             pref_owned_raw = crow[13]
+            active_task_raw = crow[14]
             if shared and wid is not None:
                 if not dashboard_db.dashboard_has_full_access(user_id, tenant_id, wid):
                     return None
@@ -359,6 +360,13 @@ def conversation_get(user_id: uuid.UUID, conversation_id: uuid.UUID) -> dict[str
         str(pref_agent_raw).strip() if pref_agent_raw and str(pref_agent_raw).strip() else None
     )
     pref_owned_out = _normalize_model_catalog_owned_by(pref_owned_raw)
+    active_task_out: str | None = None
+    if active_task_raw is not None:
+        active_task_out = (
+            str(active_task_raw)
+            if isinstance(active_task_raw, uuid.UUID)
+            else str(uuid.UUID(str(active_task_raw)))
+        )
     return {
         "id": str(cid if isinstance(cid, uuid.UUID) else uuid.UUID(str(cid))),
         "title": crow[1] or "",
@@ -373,6 +381,7 @@ def conversation_get(user_id: uuid.UUID, conversation_id: uuid.UUID) -> dict[str
         "agent_id": pref_agent_out,
         "workspace_id": pref_ws_out,
         "model_catalog_owned_by": pref_owned_out,
+        "active_task_id": active_task_out,
         "source": _conversation_source_from_bridge(bridge_provider),
     }
 
@@ -591,6 +600,22 @@ def conversation_replace(
                                 args.append(wid)
                             else:
                                 parts.append("pref_workspace_id = NULL")
+                if "active_task_id" in composer_prefs:
+                    raw_t = composer_prefs.get("active_task_id")
+                    if raw_t is None:
+                        parts.append("active_task_id = NULL")
+                    else:
+                        try:
+                            tid = (
+                                raw_t
+                                if isinstance(raw_t, uuid.UUID)
+                                else uuid.UUID(str(raw_t))
+                            )
+                        except (ValueError, TypeError):
+                            parts.append("active_task_id = NULL")
+                        else:
+                            parts.append("active_task_id = %s")
+                            args.append(tid)
             parts.append("updated_at = now()")
             if shared:
                 args.append(conversation_id)

@@ -60,7 +60,7 @@ async def project_run_create(request: Request, body: ProjectRunCreateBody) -> di
         dashboard_id=ws_id,
         project_row_id=(body.project_row_id or "").strip() or None,
         project_title=(body.project_title or "").strip() or None,
-        execution_target="coding_agent",
+        execution_target="coding",
         instructions=instr,
         coding_workflow=wf,
     )

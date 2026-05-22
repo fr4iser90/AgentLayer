@@ -65,7 +65,7 @@ def insert_run(
     return dict(row) if row else {}
 
 
-def fetch_queued_runs_coding_agent(*, limit: int = 10) -> list[dict[str, Any]]:
+def fetch_queued_runs_coding(*, limit: int = 10) -> list[dict[str, Any]]:
     lim = max(1, min(50, int(limit)))
     with db.pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
@@ -77,7 +77,7 @@ def fetch_queued_runs_coding_agent(*, limit: int = 10) -> list[dict[str, Any]]:
                        started_at, finished_at, created_at, updated_at
                 FROM project_runs
                 WHERE status = 'queued'
-                  AND execution_target = 'coding_agent'
+                  AND execution_target = 'coding'
                 ORDER BY created_at ASC
                 LIMIT %s
                 """,

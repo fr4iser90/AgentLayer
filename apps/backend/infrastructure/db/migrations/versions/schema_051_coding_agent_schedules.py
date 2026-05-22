@@ -24,7 +24,7 @@ def upgrade() -> None:
         ALTER TABLE scheduler_jobs DROP CONSTRAINT IF EXISTS scheduler_jobs_execution_target_check;
         ALTER TABLE scheduler_jobs
           ADD CONSTRAINT scheduler_jobs_execution_target_check
-          CHECK (execution_target IN ('server_periodic', 'coding_agent'));
+          CHECK (execution_target IN ('general', 'coding_agent'));
 
         ALTER TABLE project_runs DROP CONSTRAINT IF EXISTS project_runs_execution_target_check;
         ALTER TABLE project_runs
@@ -66,7 +66,7 @@ def downgrade() -> None:
         ALTER TABLE scheduler_jobs DROP CONSTRAINT IF EXISTS scheduler_jobs_execution_target_check;
         ALTER TABLE scheduler_jobs
           ADD CONSTRAINT scheduler_jobs_execution_target_check
-          CHECK (execution_target IN ('server_periodic', 'ide_agent'));
+          CHECK (execution_target IN ('general', 'ide_agent'));
 
         ALTER TABLE project_runs DROP CONSTRAINT IF EXISTS project_runs_execution_target_check;
         ALTER TABLE project_runs

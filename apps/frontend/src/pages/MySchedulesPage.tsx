@@ -2,6 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { apiFetch, type WorkspaceApiRecord } from "../lib/api";
 import { formatDateTimeLocal } from "../lib/formatDateTime";
+import {
+  EXECUTION_GENERAL,
+  type ExecutionTargetCatalogRow,
+  executionTargetRequiresWorkspace,
+  labelForExecutionTarget,
+  normalizeExecutionTargetInput,
+} from "../lib/schedulerExecutionTarget";
 
 type SchedulerJobRow = {
   id: string;
@@ -58,7 +65,7 @@ type SchedulerJobPreset = {
   label: string;
   description?: string;
   job: {
-    execution_target?: "coding_agent" | "server_periodic";
+    execution_target?: string;
     interval_minutes?: number;
     enabled?: boolean;
     title?: string | null;
@@ -83,7 +90,8 @@ export function MySchedulesPage() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createPresetId, setCreatePresetId] = useState<string>("");
-  const [createTarget, setCreateTarget] = useState<"server_periodic" | "coding_agent">("server_periodic");
+  const [targetCatalog, setTargetCatalog] = useState<ExecutionTargetCatalogRow[]>([]);
+  const [createTarget, setCreateTarget] = useState(EXECUTION_GENERAL);
   const [createWorkspaceId, setCreateWorkspaceId] = useState("");
   const [createInterval, setCreateInterval] = useState(1440);
   const [createEnabled, setCreateEnabled] = useState(false);
@@ -111,6 +119,20 @@ export function MySchedulesPage() {
     return q;
   }, []);
 
+  const createTargetOptions = useMemo(
+    () =>
+      targetCatalog.filter((o) => {
+        const role = (o.min_role || "user").toLowerCase();
+        return role !== "admin" || auth.user?.role === "admin";
+      }),
+    [targetCatalog, auth.user?.role]
+  );
+
+  const createNeedsWorkspace = useMemo(
+    () => executionTargetRequiresWorkspace(createTarget, targetCatalog),
+    [createTarget, targetCatalog]
+  );
+
   const refresh = async () => {
     setLoading(true);
     setErr(null);
@@ -137,6 +159,25 @@ export function MySchedulesPage() {
   }, []);
 
   useEffect(() => {
+    const loadCatalog = async () => {
+      try {
+        const res = await apiFetch("/v1/user/scheduler-jobs/execution-targets", auth);
+        const j = (await res.json().catch(() => null)) as {
+          ok?: boolean;
+          targets?: ExecutionTargetCatalogRow[];
+        };
+        if (res.ok && j?.ok && Array.isArray(j.targets)) {
+          setTargetCatalog(j.targets);
+        }
+      } catch {
+        setTargetCatalog([]);
+      }
+    };
+    void loadCatalog();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     const loadPresets = async () => {
       try {
         const res = await apiFetch(`/v1/user/scheduler-job-presets`, auth);
@@ -158,7 +199,9 @@ export function MySchedulesPage() {
     const p = (presets || []).find((x) => x.id === pid);
     if (!p) return;
     const j = p.job || ({} as SchedulerJobPreset["job"]);
-    if (j.execution_target) setCreateTarget(j.execution_target);
+    if (j.execution_target) {
+      setCreateTarget(normalizeExecutionTargetInput(j.execution_target, targetCatalog));
+    }
     if (typeof j.interval_minutes === "number") setCreateInterval(j.interval_minutes);
     if (typeof j.enabled === "boolean") setCreateEnabled(j.enabled);
     if (typeof j.title === "string") setCreateTitle(j.title);
@@ -170,7 +213,7 @@ export function MySchedulesPage() {
   };
 
   useEffect(() => {
-    if (!createOpen || createTarget !== "coding_agent") return;
+    if (!createOpen || !createNeedsWorkspace) return;
     let cancelled = false;
     const load = async () => {
       setWorkspacesLoading(true);
@@ -190,7 +233,7 @@ export function MySchedulesPage() {
     return () => {
       cancelled = true;
     };
-  }, [createOpen, createTarget, auth]);
+  }, [createOpen, createNeedsWorkspace, auth]);
 
   const toggleEnabled = async (jobId: string, next: boolean) => {
     const res = await apiFetch(`/v1/user/scheduler-jobs/${jobId}/enabled`, auth, {
@@ -284,7 +327,7 @@ export function MySchedulesPage() {
         title: createTitle || null,
         instructions: createInstructions,
         dashboard_id: createDashboardId || null,
-        ...(createTarget === "coding_agent"
+        ...(createNeedsWorkspace
           ? {
               workspace_id: createWorkspaceId.trim(),
               coding_workflow: Object.keys(wf).length ? wf : {},
@@ -313,7 +356,9 @@ export function MySchedulesPage() {
         <div>
           <h1 className="text-2xl font-semibold text-white">My schedules</h1>
           <p className="mt-2 text-sm text-surface-muted">
-            Your saved schedules (recurring jobs). RSS schedules run as <span className="font-mono">server_periodic</span>.
+            Your saved schedules (recurring jobs). General schedules use the{" "}
+            <span className="font-mono">general</span> chat agent; coding schedules use agent{" "}
+            <span className="font-mono">coding</span> on a workspace.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -372,7 +417,9 @@ export function MySchedulesPage() {
                       {j.enabled ? "enabled" : "disabled"}
                     </span>
                   </td>
-                  <td className="px-3 py-3 font-mono text-xs text-neutral-200">{j.execution_target}</td>
+                  <td className="px-3 py-3 text-xs text-neutral-200">
+                    {labelForExecutionTarget(j.execution_target, targetCatalog)}
+                  </td>
                   <td className="px-3 py-3 text-neutral-100">{j.title || "—"}</td>
                   <td className="px-3 py-3 text-neutral-100">{j.interval_minutes} min</td>
                   <td className="px-3 py-3 font-mono text-xs text-surface-muted">{j.dashboard_id || "global"}</td>
@@ -387,7 +434,7 @@ export function MySchedulesPage() {
                       >
                         {j.enabled ? "Disable" : "Enable"}
                       </button>
-                      {j.execution_target === "coding_agent" ? (
+                      {executionTargetRequiresWorkspace(j.execution_target, targetCatalog) ? (
                         <button
                           type="button"
                           className="rounded-md border border-surface-border px-2 py-1 text-xs text-neutral-100 hover:bg-white/5"
@@ -467,15 +514,18 @@ export function MySchedulesPage() {
                 <select
                   className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
                   value={createTarget}
-                  onChange={(e) => setCreateTarget(e.target.value as any)}
+                  onChange={(e) =>
+                    setCreateTarget(normalizeExecutionTargetInput(e.target.value, targetCatalog))
+                  }
                 >
-                  <option value="server_periodic">server_periodic</option>
-                  {auth.user?.role === "admin" ? (
-                    <option value="coding_agent">coding_agent</option>
-                  ) : null}
+                  {createTargetOptions.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
                 </select>
               </label>
-              {createTarget === "coding_agent" ? (
+              {createNeedsWorkspace ? (
                 <label className="text-xs text-surface-muted md:col-span-2">
                   Project workspace (required)
                   <select
@@ -572,7 +622,7 @@ export function MySchedulesPage() {
                 onClick={() => void createJob()}
                 disabled={
                   !createInstructions.trim() ||
-                  (createTarget === "coding_agent" && !createWorkspaceId.trim())
+                  (createNeedsWorkspace && !createWorkspaceId.trim())
                 }
               >
                 Create

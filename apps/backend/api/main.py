@@ -111,6 +111,9 @@ from apps.backend.api.scheduler_job_runs_api import user_router as scheduler_job
 from apps.backend.api.scheduler_jobs_user_api import router as scheduler_jobs_user_router
 from apps.backend.api.scheduler_job_presets_user_api import router as scheduler_job_presets_user_router
 from apps.backend.api.project_runs_api import router as project_runs_router
+from apps.backend.api.task_artifacts_api import router as task_artifacts_router
+from apps.backend.api.tasks_api import router as tasks_router
+from apps.backend.api.run_traces_admin_api import router as run_traces_admin_router
 from apps.backend.api.friends_api import router as friends_router
 from apps.backend.api.shares_api import router as shares_router
 from apps.backend.api.workspaces_api import router as workspaces_router
@@ -185,16 +188,26 @@ async def lifespan(_app: FastAPI):
             "(e.g. https://openwebui.example) so browsers do not send creds to arbitrary sites."
         )
     get_registry()
-    try:
-        from apps.backend.infrastructure.rag_embedding_sync import ensure_rag_embedding_aligned
 
-        await asyncio.to_thread(ensure_rag_embedding_aligned, log_prefix="startup")
-    except Exception:
-        logger.exception("RAG embedding provider sync failed")
-    try:
-        await asyncio.to_thread(run_startup_rag_docs_ingest)
-    except Exception:
-        logger.exception("RAG docs startup ingest failed (embedding backend unreachable?)")
+    async def _startup_rag_background() -> None:
+        try:
+            from apps.backend.infrastructure.rag_embedding_sync import ensure_rag_embedding_aligned
+
+            await asyncio.to_thread(ensure_rag_embedding_aligned, log_prefix="startup")
+        except Exception:
+            logger.exception("RAG embedding provider sync failed")
+        skip_docs = (os.environ.get("AGENT_SKIP_STARTUP_RAG_DOCS_INGEST") or "").strip().lower()
+        if skip_docs in ("1", "true", "yes"):
+            return
+        try:
+            await asyncio.to_thread(run_startup_rag_docs_ingest)
+        except Exception:
+            logger.exception("RAG docs startup ingest failed (embedding backend unreachable?)")
+
+    asyncio.create_task(_startup_rag_background())
+    logger.info(
+        "RAG embedding sync + docs ingest scheduled in background (API/UI ready immediately)"
+    )
     
     # Deferred code index on startup - REMOVED
     # Workspace is now per-user from DB, not hardcoded. Indexing happens per-workspace on demand.
@@ -268,6 +281,9 @@ app.include_router(scheduler_job_runs_user_router)
 app.include_router(scheduler_job_runs_admin_router)
 app.include_router(scheduler_job_presets_user_router)
 app.include_router(project_runs_router)
+app.include_router(tasks_router)
+app.include_router(task_artifacts_router)
+app.include_router(run_traces_admin_router)
 app.include_router(agents_router)
 app.include_router(session_runtime_router)
 app.include_router(friends_router)
@@ -787,7 +803,13 @@ if _agent_index.is_file():
     @app.get("/app/studio")
     @app.get("/app/admin")
     @app.get("/app/admin/interfaces")
+    @app.get("/app/admin/interfaces/bridges")
+    @app.get("/app/admin/interfaces/llm")
+    @app.get("/app/admin/interfaces/memory")
+    @app.get("/app/admin/interfaces/automation")
+    @app.get("/app/admin/interfaces/platform")
     @app.get("/app/admin/tools")
+    @app.get("/app/admin/run-traces")
     @app.get("/app/admin/users")
     @app.get("/app/admin/scheduled-jobs")
     @app.get("/app/admin/schedules")

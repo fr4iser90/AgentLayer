@@ -24,7 +24,7 @@ def upgrade() -> None:
           execution_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
           dashboard_id UUID NULL REFERENCES user_dashboards(id) ON DELETE SET NULL,
           execution_target TEXT NOT NULL
-            CHECK (execution_target IN ('server_periodic', 'ide_agent')),
+            CHECK (execution_target IN ('general', 'ide_agent')),
           title TEXT,
           instructions TEXT NOT NULL,
           interval_minutes INTEGER NOT NULL

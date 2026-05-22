@@ -219,9 +219,10 @@ def setup_preferences_saved() -> bool:
 
 def build_setup_status() -> dict[str, Any]:
     needs_admin = is_first_start()
-    needs_llm = not needs_admin and not catalog_llm_configured()
+    llm_configured = catalog_llm_configured() if not needs_admin else False
+    needs_llm = not needs_admin and not llm_configured
     needs_provider_wizard = not needs_admin and not setup_preferences_saved()
-    llm_reachable = catalog_llm_configured()
+    llm_reachable = llm_configured
     src = setup_token_source()
     return {
         "needs_setup": needs_admin,

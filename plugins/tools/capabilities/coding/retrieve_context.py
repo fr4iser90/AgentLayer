@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Callable
 
@@ -11,6 +12,8 @@ from apps.backend.infrastructure import operator_settings
 from plugins.tools.capabilities.coding.coding_common import (
     json_workspace_missing_error,
     workspace_binding_from_context,
+    workspace_docs_rag_enabled,
+    workspace_id_from_context,
     workspace_retrieval_flags,
 )
 from plugins.tools.capabilities.coding.coding_search import coding_search
@@ -94,17 +97,43 @@ def _run_code_semantic(query: str, context: dict[str, Any] | None, limit: int) -
     return _json_loads_safe(raw)
 
 
-def _run_docs(query: str, domain: str, limit: int) -> dict[str, Any]:
+def _run_docs(
+    query: str,
+    limit: int,
+    *,
+    context: dict[str, Any] | None,
+    domain: str | None,
+) -> dict[str, Any]:
     rs = operator_settings.rag_settings()
     if not rs["enabled"]:
         return {"ok": False, "skipped": True, "reason": "rag_disabled"}
-    dom = (domain or "agentlayer_docs").strip() or "agentlayer_docs"
-    try:
-        from apps.backend.infrastructure.rag import rag as rag_service
 
-        rows = rag_service.search_for_identity(query, domain=dom, limit=limit)
-    except Exception as e:
-        return {"ok": False, "error": str(e)[:300]}
+    wid_raw = workspace_id_from_context(context)
+    if wid_raw:
+        if not workspace_docs_rag_enabled(context):
+            return {"ok": False, "skipped": True, "reason": "docs_rag_disabled"}
+        try:
+            ws_uuid = uuid.UUID(wid_raw)
+        except ValueError:
+            return {"ok": False, "error": "invalid workspace id in context"}
+        try:
+            from apps.backend.infrastructure.rag import rag as rag_service
+
+            rows = rag_service.search_for_identity(query, limit=limit, workspace_id=ws_uuid)
+        except Exception as e:
+            return {"ok": False, "error": str(e)[:300]}
+        scope = "workspace"
+        dom = "workspace_docs"
+    else:
+        dom = (domain or "agentlayer_docs").strip() or "agentlayer_docs"
+        try:
+            from apps.backend.infrastructure.rag import rag as rag_service
+
+            rows = rag_service.search_for_identity(query, domain=dom, limit=limit)
+        except Exception as e:
+            return {"ok": False, "error": str(e)[:300]}
+        scope = "global"
+
     hits = []
     for row in rows[:limit]:
         if not isinstance(row, dict):
@@ -114,12 +143,30 @@ def _run_docs(query: str, domain: str, limit: int) -> dict[str, Any]:
             {
                 "domain": row.get("domain"),
                 "title": row.get("title"),
+                "source_uri": row.get("source_uri"),
                 "chunk_index": row.get("chunk_index"),
                 "distance": dist,
                 "text": (row.get("content") or "")[:2000],
             }
         )
-    return {"ok": True, "domain": dom, "hits": hits, "count": len(hits)}
+    if scope == "workspace" and not hits:
+        return {
+            "ok": True,
+            "scope": scope,
+            "workspace_id": wid_raw,
+            "domain": dom,
+            "hits": [],
+            "count": 0,
+            "hint": "No workspace docs indexed yet — run Reindex with Docs RAG enabled.",
+        }
+    return {
+        "ok": True,
+        "scope": scope,
+        "workspace_id": wid_raw if scope == "workspace" else None,
+        "domain": dom,
+        "hits": hits,
+        "count": len(hits),
+    }
 
 
 def _run_memory(query: str, limit: int) -> dict[str, Any]:
@@ -169,7 +216,9 @@ def _retriever_tasks(
         if sem_on:
             tasks.append(("code_semantic", lambda: _run_code_semantic(query, context, semantic_limit)))
     if "docs" in sources:
-        tasks.append(("docs", lambda: _run_docs(query, domain, docs_limit)))
+        tasks.append(
+            ("docs", lambda: _run_docs(query, docs_limit, context=context, domain=domain))
+        )
     if "memory" in sources:
         tasks.append(("memory", lambda: _run_memory(query, memory_limit)))
     return tasks
@@ -341,7 +390,10 @@ TOOLS: list[dict[str, Any]] = [
                     },
                     "domain": {
                         "type": "string",
-                        "description": "RAG domain for docs (default agentlayer_docs).",
+                        "description": (
+                            "RAG domain when no workspace is bound (default agentlayer_docs). "
+                            "Ignored when a workspace is active — only that workspace's indexed *.md is searched."
+                        ),
                     },
                     "grep_limit": {"type": "integer", "description": "Max grep hits (1–50)."},
                     "semantic_limit": {

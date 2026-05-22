@@ -8,6 +8,12 @@ import { EmbedBlockBody } from "./EmbedBlock";
 import { KanbanBlockBody, RichMarkdownBlockBody } from "./KanbanRichMarkdownBlocks";
 import { ChartBlockBody, SparklineBlockBody } from "./chart/ChartBlockViews";
 import { getPath, setPath } from "./dashboardDataPaths";
+import {
+  EXECUTION_TARGET_OPTIONS,
+  labelForExecutionTarget,
+  parseSchedulesBlockExecutionTargetFilter,
+  type ExecutionTargetCatalogRow,
+} from "../../lib/schedulerExecutionTarget";
 
 type Row = Record<string, unknown>;
 
@@ -1367,9 +1373,17 @@ function BlockView(props: {
     const auth = useAuth();
     const scopeRaw = String(block.props.scope ?? "dashboard").trim().toLowerCase();
     const scope = scopeRaw === "both" || scopeRaw === "global" || scopeRaw === "dashboard" ? scopeRaw : "dashboard";
-    const targetRaw = String(block.props.executionTarget ?? "all").trim().toLowerCase();
-    const executionTarget =
-      targetRaw === "coding_agent" || targetRaw === "server_periodic" ? targetRaw : "all";
+    const [targetCatalog, setTargetCatalog] = useState<readonly ExecutionTargetCatalogRow[]>(
+      EXECUTION_TARGET_OPTIONS
+    );
+    const knownTargets = useMemo(
+      () => new Set(targetCatalog.map((o) => o.value)),
+      [targetCatalog]
+    );
+    const executionTarget = parseSchedulesBlockExecutionTargetFilter(
+      block.props.executionTarget as string | undefined,
+      knownTargets
+    );
     const [jobs, setJobs] = useState<SchedulerJobRowLite[] | null>(null);
     const [loading, setLoading] = useState(false);
     const [err, setErr] = useState<string | null>(null);
@@ -1380,25 +1394,39 @@ function BlockView(props: {
       setErr(null);
       try {
         const q = new URLSearchParams();
-        if (scope === "global") {
-          q.set("include_global", "true");
-        } else if (scope === "dashboard") {
-          if (dashboardId) q.set("dashboard_id", String(dashboardId));
-          q.set("include_global", "false");
-        } else if (scope === "both") {
-          if (dashboardId) q.set("dashboard_id", String(dashboardId));
-          q.set("include_global", "true");
-        }
-        if (executionTarget !== "all") q.set("execution_target", executionTarget);
-        if (includeArchived) q.set("include_archived", "true");
         q.set("limit", "100");
-        const res = await apiFetch(`/v1/admin/scheduler-jobs?${q.toString()}`, auth);
+        if (scope === "dashboard" && dashboardId) {
+          q.set("dashboard_id", String(dashboardId));
+        }
+        const res = await apiFetch(`/v1/user/scheduler-jobs?${q.toString()}`, auth);
         const j = (await res.json().catch(() => null)) as any;
         if (!res.ok || !j?.ok) {
           setErr(String(j?.detail ?? j?.error ?? res.status));
           setJobs(null);
         } else {
-          setJobs(Array.isArray(j.jobs) ? (j.jobs as SchedulerJobRowLite[]) : []);
+          const dashKey = dashboardId ? String(dashboardId) : "";
+          let rows: SchedulerJobRowLite[] = Array.isArray(j.jobs)
+            ? (j.jobs as SchedulerJobRowLite[])
+            : [];
+          if (scope === "global") {
+            rows = rows.filter((row) => !row.dashboard_id);
+          } else if (scope === "dashboard" && dashKey) {
+            rows = rows.filter((row) => String(row.dashboard_id || "") === dashKey);
+          } else if (scope === "both" && dashKey) {
+            rows = rows.filter(
+              (row) => !row.dashboard_id || String(row.dashboard_id) === dashKey
+            );
+          }
+          if (executionTarget !== "all") {
+            rows = rows.filter(
+              (row) =>
+                String(row.execution_target || "").trim().toLowerCase() === executionTarget
+            );
+          }
+          if (!includeArchived) {
+            rows = rows.filter((row) => !(row as { deleted_at?: string | null }).deleted_at);
+          }
+          setJobs(rows);
         }
       } catch (e) {
         setErr(String(e));
@@ -1409,12 +1437,25 @@ function BlockView(props: {
     };
 
     useEffect(() => {
+      void (async () => {
+        const res = await apiFetch("/v1/user/scheduler-jobs/execution-targets", auth);
+        const j = (await res.json().catch(() => null)) as {
+          ok?: boolean;
+          targets?: ExecutionTargetCatalogRow[];
+        };
+        if (res.ok && j?.ok && Array.isArray(j.targets) && j.targets.length > 0) {
+          setTargetCatalog(j.targets);
+        }
+      })();
+    }, [auth, auth.accessToken]);
+
+    useEffect(() => {
       void refresh();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [scope, executionTarget, dashboardId]);
 
     const toggleEnabled = async (jobId: string, next: boolean) => {
-      const res = await apiFetch(`/v1/admin/scheduler-jobs/${jobId}/enabled`, auth, {
+      const res = await apiFetch(`/v1/user/scheduler-jobs/${jobId}/enabled`, auth, {
         method: "PATCH",
         body: JSON.stringify({ enabled: next }),
       });
@@ -1468,8 +1509,11 @@ function BlockView(props: {
                         {j.enabled ? "enabled" : "disabled"}
                       </span>
                     </td>
-                    <td className="px-2 py-2 font-mono text-xs text-neutral-100">
-                      {j.execution_target}
+                    <td className="px-2 py-2 text-xs text-neutral-100">
+                      <div>{labelForExecutionTarget(j.execution_target, targetCatalog)}</div>
+                      <div className="font-mono text-[10px] text-surface-muted">
+                        {j.execution_target}
+                      </div>
                     </td>
                     <td className="px-2 py-2 text-neutral-100">{j.title || "—"}</td>
                     <td className="px-2 py-2 text-surface-muted">{j.interval_minutes} min</td>

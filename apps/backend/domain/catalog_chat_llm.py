@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any
 
 from apps.backend.infrastructure.model_catalog_routing import infer_catalog_owned_by
@@ -17,6 +18,14 @@ logger = logging.getLogger(__name__)
 
 _PROFILE_KEYS = frozenset({"default", "vlm", "agent", "coding"})
 
+# ``/auth/setup-status`` and the SPA boot path call this often; avoid re-probing every provider per request.
+_REACHABLE_CACHE_TTL_SEC = 30.0
+_reachable_cache: dict[tuple[str, ...], tuple[float, str | None]] = {}
+
+
+def invalidate_reachable_catalog_cache() -> None:
+    _reachable_cache.clear()
+
 
 def _normalize_profile(profile_key: str) -> str:
     pk = (profile_key or "default").strip().lower()
@@ -26,6 +35,12 @@ def _normalize_profile(profile_key: str) -> str:
 def pick_reachable_catalog_provider(*, prefer: tuple[str, ...] = ()) -> str | None:
     """First configured provider that is reachable and exposes at least one model."""
     from apps.backend.infrastructure.model_catalog_providers import fetch_models_for_provider
+
+    pref_key = tuple(prefer)
+    now = time.monotonic()
+    cached = _reachable_cache.get(pref_key)
+    if cached is not None and now - cached[0] <= _REACHABLE_CACHE_TTL_SEC:
+        return cached[1]
 
     order: list[str] = []
     seen: set[str] = set()
@@ -45,10 +60,13 @@ def pick_reachable_catalog_provider(*, prefer: tuple[str, ...] = ()) -> str | No
             continue
         rows, meta = fetch_models_for_provider(spec)
         if meta.get("reachable") and rows:
+            _reachable_cache[pref_key] = (now, pid)
             return pid
     for pid in order:
         if get_provider_spec(pid) is not None:
+            _reachable_cache[pref_key] = (now, pid)
             return pid
+    _reachable_cache[pref_key] = (now, None)
     return None
 
 

@@ -7,11 +7,18 @@ import { RequireSession } from "./auth/RequireSession";
 import { AppLayout } from "./layout/AppLayout";
 import { AdminLayout } from "./layout/AdminLayout";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
-import { AdminInterfaces } from "./pages/admin/AdminInterfaces";
+import { InterfacesLayout } from "./layout/InterfacesLayout";
+import { AdminInterfacesOverviewPage } from "./pages/admin/interfaces/AdminInterfacesOverviewPage";
+import { AdminInterfacesBridgesPage } from "./pages/admin/interfaces/AdminInterfacesBridgesPage";
+import { AdminInterfacesLlmPage } from "./pages/admin/interfaces/AdminInterfacesLlmPage";
+import { AdminInterfacesMemoryPage } from "./pages/admin/interfaces/AdminInterfacesMemoryPage";
+import { AdminInterfacesAutomationPage } from "./pages/admin/interfaces/AdminInterfacesAutomationPage";
+import { AdminInterfacesPlatformPage } from "./pages/admin/interfaces/AdminInterfacesPlatformPage";
 import { AdminTools } from "./pages/admin/AdminTools";
 import { AdminUsers } from "./pages/admin/AdminUsers";
 import { AdminScheduledJobs } from "./pages/admin/AdminScheduledJobs";
 import { AdminSchedules } from "./pages/admin/AdminSchedules";
+import { AdminAgentTraces } from "./pages/admin/AdminAgentTraces";
 import { ChatPage } from "./pages/ChatPage";
 import { DocsPage } from "./pages/DocsPage";
 import { HomePage } from "./pages/HomePage";
@@ -25,6 +32,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { LoginPage } from "./pages/LoginPage";
 import { SetupWizardPage } from "./pages/SetupWizardPage";
 import { MySchedulesPage } from "./pages/MySchedulesPage";
+import { TasksPage } from "./pages/TasksPage";
 
 export function App() {
   return (
@@ -41,6 +49,7 @@ export function App() {
               <Route path="studio" element={<StudioPage />} />
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="schedules" element={<MySchedulesPage />} />
+              <Route path="tasks" element={<TasksPage />} />
               <Route path="docs" element={<DocsPage />} />
               <Route path="settings" element={<SettingsLayout />}>
                 <Route index element={<Navigate to="/settings/profile" replace />} />
@@ -55,13 +64,21 @@ export function App() {
               <Route path="admin" element={<RequireAdmin />}>
                 <Route element={<AdminLayout />}>
                   <Route index element={<AdminDashboard />} />
-                  <Route path="interfaces" element={<AdminInterfaces />} />
-                  <Route path="discord" element={<Navigate to="../interfaces" replace />} />
-                  <Route path="telegram" element={<Navigate to="../interfaces" replace />} />
+                  <Route path="interfaces" element={<InterfacesLayout />}>
+                    <Route index element={<AdminInterfacesOverviewPage />} />
+                    <Route path="bridges" element={<AdminInterfacesBridgesPage />} />
+                    <Route path="llm" element={<AdminInterfacesLlmPage />} />
+                    <Route path="memory" element={<AdminInterfacesMemoryPage />} />
+                    <Route path="automation" element={<AdminInterfacesAutomationPage />} />
+                    <Route path="platform" element={<AdminInterfacesPlatformPage />} />
+                  </Route>
+                  <Route path="discord" element={<Navigate to="../interfaces/bridges" replace />} />
+                  <Route path="telegram" element={<Navigate to="../interfaces/bridges" replace />} />
                   <Route path="tools" element={<AdminTools />} />
                   <Route path="users" element={<AdminUsers />} />
                   <Route path="scheduled-jobs" element={<AdminScheduledJobs />} />
                   <Route path="schedules" element={<AdminSchedules />} />
+                  <Route path="run-traces" element={<AdminAgentTraces />} />
                   <Route path="workflows" element={<Navigate to="../scheduled-jobs" replace />} />
                 </Route>
               </Route>

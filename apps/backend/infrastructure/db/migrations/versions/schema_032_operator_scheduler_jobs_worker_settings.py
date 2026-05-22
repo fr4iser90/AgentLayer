@@ -26,7 +26,7 @@ def upgrade() -> None:
     op.execute(
         """
         COMMENT ON COLUMN operator_settings.scheduler_jobs_worker_enabled IS
-          'Background thread: run persisted scheduler_jobs (server_periodic + optional ide_agent/PIDEA).';
+          'Background thread: run persisted scheduler_jobs (general + coding_agent).';
         """
     )
 

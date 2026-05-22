@@ -87,7 +87,7 @@ def project_run_create(arguments: dict[str, Any]) -> str:
         dashboard_id=None,
         project_row_id=None,
         project_title=None,
-        execution_target="coding_agent",
+        execution_target="coding",
         instructions=instructions,
         coding_workflow=wf,
     )
