@@ -1,13 +1,12 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { SETUP_WIZARD_ACTIVE_KEY, useAuth } from "../auth/AuthContext";
-
-type LlmPreset = "ollama" | "llama_cpp" | "custom";
-
-const PRESET_BASE_URL: Record<Exclude<LlmPreset, "custom">, string> = {
-  ollama: "http://ollama:11434",
-  llama_cpp: "http://127.0.0.1:8080",
-};
+import {
+  DEFAULT_LLM_PRESET,
+  getLlmPreset,
+  LLM_PRESETS,
+  type LlmPresetId,
+} from "../setup/llmPresets";
 
 type SetupCatalogProvider = {
   provider_id: string;
@@ -25,9 +24,17 @@ type SetupCatalog = {
   embedding: {
     configured?: boolean;
     reachable?: boolean;
+    rag_active?: boolean;
+    status_line?: string | null;
     model?: string | null;
     detail?: string | null;
     available_models?: string[];
+    ollama_opt_in?: {
+      available?: boolean;
+      suggested_base_url?: string | null;
+      suggested_model?: string | null;
+      suggested_models?: string[];
+    };
   };
   suggestions: {
     primary_provider_id?: string | null;
@@ -75,10 +82,11 @@ export function SetupWizardPage() {
   const [prefsOk, setPrefsOk] = useState<string | null>(null);
   const [embedTestOk, setEmbedTestOk] = useState<string | null>(null);
   const [embedTestPending, setEmbedTestPending] = useState(false);
+  const [ollamaEmbedPending, setOllamaEmbedPending] = useState(false);
   const [showManual, setShowManual] = useState(false);
 
-  const [preset, setPreset] = useState<LlmPreset>("ollama");
-  const [baseUrl, setBaseUrl] = useState(PRESET_BASE_URL.ollama);
+  const [preset, setPreset] = useState<LlmPresetId>(DEFAULT_LLM_PRESET);
+  const [baseUrl, setBaseUrl] = useState(getLlmPreset(DEFAULT_LLM_PRESET).baseUrl);
   const [apiKey, setApiKey] = useState("");
   const [modelDefaultManual, setModelDefaultManual] = useState("");
   const [llmError, setLlmError] = useState<string | null>(null);
@@ -156,10 +164,16 @@ export function SetupWizardPage() {
 
   const selectedProvider = catalog?.providers.find((p) => p.provider_id === primaryProviderId);
 
-  function onPresetChange(p: LlmPreset) {
+  const presetConfig = getLlmPreset(preset);
+
+  function onPresetChange(p: LlmPresetId) {
+    const cfg = getLlmPreset(p);
     setPreset(p);
     if (p !== "custom") {
-      setBaseUrl(PRESET_BASE_URL[p]);
+      setBaseUrl(cfg.baseUrl);
+      if (cfg.modelExample) {
+        setModelDefaultManual(cfg.modelExample);
+      }
     }
     setLlmTestOk(null);
     setLlmError(null);
@@ -253,6 +267,35 @@ export function SetupWizardPage() {
     setStep(3);
   }
 
+  async function onEnableOllamaEmbedding() {
+    if (!accessToken) return;
+    setOllamaEmbedPending(true);
+    setPrefsError(null);
+    const r = await fetch("/auth/setup/enable-ollama-embedding", {
+      method: "POST",
+      credentials: "include",
+      headers: authHeaders(accessToken),
+    });
+    setOllamaEmbedPending(false);
+    if (!r.ok) {
+      let msg = "Ollama-Embedding konnte nicht aktiviert werden.";
+      try {
+        const d = (await r.json()) as { detail?: string };
+        if (typeof d.detail === "string") msg = d.detail;
+      } catch {
+        /* ignore */
+      }
+      setPrefsError(msg);
+      return;
+    }
+    const d = (await r.json()) as {
+      rag_embedding_model?: string;
+      embedding?: SetupCatalog["embedding"];
+    };
+    if (d.rag_embedding_model) setRagEmbedding(d.rag_embedding_model);
+    await loadCatalog();
+  }
+
   async function onTestEmbedding() {
     if (!accessToken || !ragEmbedding.trim()) return;
     setEmbedTestPending(true);
@@ -289,6 +332,15 @@ export function SetupWizardPage() {
       setLlmError("Sitzung abgelaufen. Laden Sie die Seite neu.");
       return false;
     }
+    const cfg = getLlmPreset(preset);
+    if (cfg.apiKeyRequired && !apiKey.trim()) {
+      setLlmError(`API-Schlüssel erforderlich (${cfg.endpointLabel}).`);
+      return false;
+    }
+    if (!baseUrl.trim()) {
+      setLlmError("Basis-URL ist erforderlich.");
+      return false;
+    }
     setLlmPending(true);
     setLlmError(null);
     setLlmTestOk(null);
@@ -300,7 +352,7 @@ export function SetupWizardPage() {
         base_url: baseUrl.trim(),
         api_key: apiKey.trim() || null,
         model_default: modelDefaultManual.trim() || null,
-        label: preset === "ollama" ? "Ollama" : preset === "llama_cpp" ? "llama.cpp" : "LLM",
+        label: cfg.endpointLabel,
         test_only: testOnly,
       }),
     });
@@ -463,8 +515,9 @@ export function SetupWizardPage() {
             <h1 className="mt-2 text-2xl font-semibold text-white">KI-Provider &amp; Modelle</h1>
             <p className="mt-2 text-sm text-surface-muted">
               Erkannte Provider aus Umgebung und Konfiguration. Chat- und Embedding-Modelle werden
-              automatisch eingestuft; Sie legen hier einmal die Standard-Profile fest. Im Chat und
-              unter Admin können Sie jederzeit andere Modelle wählen.
+              automatisch eingestuft; Sie legen hier einmal die Standard-Profile fest. Cloud-Anbieter
+              (OpenAI, Claude via OpenRouter, Groq, …) binden Sie unten als OpenAI-kompatiblen
+              Endpunkt ein. Im Chat und unter Admin können Sie jederzeit andere Modelle wählen.
             </p>
 
             {catalogLoading ? (
@@ -510,23 +563,53 @@ export function SetupWizardPage() {
                   </ul>
                 </section>
 
-                {catalog.embedding.configured !== false ? (
-                  <section className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-white">Embedding-API</span>
-                      <span
-                        className={
-                          catalog.embedding.reachable ? "text-emerald-400" : "text-amber-400"
-                        }
+                <section className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium text-white">Embeddings (RAG / Memory)</span>
+                    <span
+                      className={
+                        catalog.embedding.configured && catalog.embedding.reachable
+                          ? "text-emerald-400"
+                          : "text-amber-400"
+                      }
+                    >
+                      {!catalog.embedding.configured
+                        ? "Optional"
+                        : catalog.embedding.reachable
+                          ? "Erreichbar"
+                          : "Nicht erreichbar"}
+                    </span>
+                  </div>
+                  {catalog.embedding.status_line && !catalog.embedding.configured ? (
+                    <p className="mt-2 text-xs text-surface-muted">{catalog.embedding.status_line}</p>
+                  ) : null}
+                  {catalog.embedding.configured && catalog.embedding.detail && !catalog.embedding.reachable ? (
+                    <p className="mt-1 text-xs text-amber-300/90">{catalog.embedding.detail}</p>
+                  ) : null}
+                  {!catalog.embedding.configured &&
+                  catalog.embedding.ollama_opt_in?.available ? (
+                    <div className="mt-3 flex flex-col gap-2">
+                      <p className="text-xs text-surface-muted">
+                        Ein Anbieter, zwei Pfade: Chat läuft über Ollama; für RAG dieselbe URL für{" "}
+                        <span className="font-mono">/v1/embeddings</span> (ohne .env-Neustart).
+                        Modell-Vorschlag:{" "}
+                        <span className="font-mono text-white">
+                          {catalog.embedding.ollama_opt_in.suggested_model ?? "nomic-embed-text"}
+                        </span>
+                      </p>
+                      <button
+                        type="button"
+                        disabled={ollamaEmbedPending || prefsPending}
+                        onClick={() => void onEnableOllamaEmbedding()}
+                        className="self-start rounded-lg border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-sm text-sky-200 hover:bg-sky-500/20 disabled:opacity-50"
                       >
-                        {catalog.embedding.reachable ? "Erreichbar" : "Nicht erreichbar"}
-                      </span>
+                        {ollamaEmbedPending
+                          ? "Wird eingerichtet…"
+                          : "Ollama auch für Embeddings (RAG) nutzen"}
+                      </button>
                     </div>
-                    {catalog.embedding.detail && !catalog.embedding.reachable ? (
-                      <p className="mt-1 text-xs text-amber-300/90">{catalog.embedding.detail}</p>
-                    ) : null}
-                  </section>
-                ) : null}
+                  ) : null}
+                </section>
 
                 <form onSubmit={onSavePreferences} className="flex flex-col gap-4">
                   <label className="flex flex-col gap-1.5 text-sm">
@@ -614,7 +697,10 @@ export function SetupWizardPage() {
                   {embedOptions.length > 0 || catalog.embedding.configured ? (
                     <div className="flex flex-col gap-2">
                       <label className="flex flex-col gap-1.5 text-sm">
-                        <span className="text-surface-muted">RAG / Embedding</span>
+                        <span className="text-surface-muted">
+                          RAG / Embedding-Modell
+                          {!catalog.embedding.configured ? " (nach Aktivierung oben)" : ""}
+                        </span>
                         <select
                           value={ragEmbedding}
                           onChange={(ev) => setRagEmbedding(ev.target.value)}
@@ -686,7 +772,9 @@ export function SetupWizardPage() {
                 onClick={() => setShowManual((v) => !v)}
                 className="text-sm text-sky-400 hover:underline"
               >
-                {showManual ? "Manuellen Endpunkt ausblenden" : "Weiteren Endpunkt manuell hinzufügen"}
+                {showManual
+                  ? "Cloud-/Zusatz-Endpunkt ausblenden"
+                  : "Cloud- oder Zusatz-Endpunkt hinzufügen (OpenAI, OpenRouter, …)"}
               </button>
               {showManual ? (
                 <form onSubmit={onLlmSave} className="mt-4 flex flex-col gap-4">
@@ -694,13 +782,16 @@ export function SetupWizardPage() {
                     <span className="text-surface-muted">Vorlage</span>
                     <select
                       value={preset}
-                      onChange={(ev) => onPresetChange(ev.target.value as LlmPreset)}
+                      onChange={(ev) => onPresetChange(ev.target.value as LlmPresetId)}
                       className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                     >
-                      <option value="ollama">Ollama</option>
-                      <option value="llama_cpp">llama.cpp</option>
-                      <option value="custom">Benutzerdefiniert</option>
+                      {LLM_PRESETS.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.label}
+                        </option>
+                      ))}
                     </select>
+                    <p className="text-xs text-surface-muted">{presetConfig.help}</p>
                   </label>
                   <label className="flex flex-col gap-1.5 text-sm">
                     <span className="text-surface-muted">Basis-URL</span>
@@ -717,12 +808,30 @@ export function SetupWizardPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1.5 text-sm">
+                    <span className="text-surface-muted">
+                      API-Schlüssel
+                      {presetConfig.apiKeyRequired ? " (erforderlich)" : " (optional)"}
+                    </span>
+                    <input
+                      type="password"
+                      value={apiKey}
+                      onChange={(ev) => {
+                        setApiKey(ev.target.value);
+                        setLlmTestOk(null);
+                      }}
+                      autoComplete="off"
+                      required={presetConfig.apiKeyRequired}
+                      className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                    />
+                    <p className="text-xs text-surface-muted">{presetConfig.apiKeyHint}</p>
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-sm">
                     <span className="text-surface-muted">Standardmodell (optional)</span>
                     <input
                       type="text"
                       value={modelDefaultManual}
                       onChange={(ev) => setModelDefaultManual(ev.target.value)}
-                      placeholder="z. B. qwen2.5:7b"
+                      placeholder={presetConfig.modelPlaceholder}
                       className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                     />
                   </label>

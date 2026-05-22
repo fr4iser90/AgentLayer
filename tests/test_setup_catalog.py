@@ -68,6 +68,30 @@ def test_apply_setup_preferences_unreachable_provider() -> None:
     assert exc.value.status_code == 400
 
 
+def test_ollama_embedding_base_url_from_spec() -> None:
+    spec = MagicMock(base_url="http://ollama:11434", provider_id="ollama")
+    with patch.object(mod, "get_provider_spec", return_value=spec):
+        url = mod.ollama_embedding_base_url()
+    assert url == "http://ollama:11434"
+
+
+def test_enrich_setup_embedding_meta_not_configured() -> None:
+    emb = {"configured": False, "reachable": False}
+    providers = [
+        {
+            "provider_id": "ollama",
+            "reachable": True,
+            "embedding_models": ["nomic-embed-text"],
+        }
+    ]
+    with patch.object(mod, "ollama_embedding_base_url", return_value="http://ollama:11434"):
+        out = mod.enrich_setup_embedding_meta(emb, providers)
+    assert out["rag_active"] is False
+    assert "status_line" in out or out.get("status_line")
+    assert out["ollama_opt_in"]["available"] is True
+    assert out["ollama_opt_in"]["suggested_model"] == "nomic-embed-text"
+
+
 def test_apply_setup_preferences_syncs_db() -> None:
     spec = MagicMock(
         provider_id="ollama",
@@ -82,6 +106,11 @@ def test_apply_setup_preferences_syncs_db() -> None:
         patch.object(mod.db, "external_llm_endpoints_sync") as sync,
         patch.object(mod, "invalidate_operator_settings_cache"),
         patch.object(mod, "invalidate_model_catalog_cache"),
+        patch(
+            "apps.backend.infrastructure.embedding_client._normalized_embedding_base",
+            return_value="",
+        ),
+        patch.object(mod, "apply_operator_settings_patch"),
     ):
         out = mod.apply_setup_preferences(
             SetupPreferencesBody(

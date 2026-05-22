@@ -50,11 +50,13 @@ def _vector_from_openai_embeddings_payload(data: dict[str, Any]) -> list[float] 
 
 def _normalized_embedding_base() -> str:
     base = _strip_env_value(getattr(cfgmod, "EMBEDDING_BASE_URL", None))
-    if not base:
-        return ""
-    from apps.backend.infrastructure.operator_settings import normalize_external_llm_base_url
+    if base:
+        from apps.backend.infrastructure.operator_settings import normalize_external_llm_base_url
 
-    return (normalize_external_llm_base_url(base) or base).rstrip("/")
+        return (normalize_external_llm_base_url(base) or base).rstrip("/")
+    from apps.backend.infrastructure.operator_settings import resolved_embedding_api_base_url
+
+    return resolved_embedding_api_base_url()
 
 
 def _embeddings_url(api_base: str | None = None) -> str:
@@ -99,8 +101,9 @@ def _embedding_request_headers() -> dict[str, str]:
 def _embedding_url_and_headers() -> tuple[str, dict[str, str]]:
     if not _normalized_embedding_base():
         raise ValueError(
-            "Embeddings require EMBEDDING_BASE_URL in .env (OpenAI-compatible host, e.g. https://host/v1). "
-            "OLLAMA_BASE_URL and LLAMA_CPP_* are not used for embeddings."
+            "Embeddings require EMBEDDING_BASE_URL in .env or embedding_api_base_url in operator "
+            "settings (OpenAI-compatible host, e.g. https://host or https://host/v1). "
+            "OLLAMA_BASE_URL is not used for embeddings unless enabled via setup."
         )
     return _embeddings_url(), _embedding_request_headers()
 
@@ -114,7 +117,7 @@ def fetch_embedding_models_list(*, timeout: float = 15.0) -> tuple[list[str], st
     """``GET …/v1/models`` at ``EMBEDDING_BASE_URL`` → model ids for the UI dropdown."""
     url = _embedding_models_list_url()
     if not url:
-        return [], "EMBEDDING_BASE_URL not set"
+        return [], "Embedding-API nicht konfiguriert (EMBEDDING_BASE_URL oder Setup)"
     try:
         headers = _embedding_request_headers()
     except ValueError as e:
@@ -246,12 +249,21 @@ def embedding_catalog_health(*, force_refresh: bool = False) -> dict[str, Any]:
         "models_url": None,
         "available_models": [],
         "note": (
-            "Separate from chat. Set EMBEDDING_BASE_URL + EMBEDDING_API_HEADER_* in .env; "
+            "Separate from chat. EMBEDDING_BASE_URL in .env and/or embedding_api_base_url from setup; "
             "model id from operator_settings rag_embedding_model."
+        ),
+        "source": (
+            "env"
+            if _strip_env_value(getattr(cfgmod, "EMBEDDING_BASE_URL", None))
+            else ("operator_settings" if base else None)
         ),
     }
     if not base:
-        meta["detail"] = "EMBEDDING_BASE_URL not set"
+        meta["detail"] = "Embedding-API nicht konfiguriert"
+        meta["status_line"] = (
+            "Nicht konfiguriert — RAG/Memory-Vektoren inaktiv. Chat und Coding sind davon unabhängig."
+        )
+        meta["rag_active"] = False
         _EMBED_HEALTH_CACHE = (now, meta)
         return dict(meta)
     try:
@@ -278,6 +290,7 @@ def embedding_catalog_health(*, force_refresh: bool = False) -> dict[str, Any]:
     try:
         probe = fetch_embedding_vector_raw("healthcheck", model_id=model)
         meta["reachable"] = True
+        meta["rag_active"] = bool(rs.get("enabled", True))
         actual = len(probe)
         meta["actual_embedding_dim"] = actual
         meta["dim_matches_config"] = actual == dim

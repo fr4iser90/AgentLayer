@@ -26,7 +26,7 @@ docker compose up -d
 ## Ablauf in der Oberfläche
 
 1. **Administrator** — E-Mail und Passwort (mindestens 8 Zeichen) für das erste Admin-Konto.
-2. **KI-Provider & Modelle** — Alle konfigurierten Provider (erreichbar/nicht erreichbar), Chat- vs. Embedding-Modelle, Standard-Profile (Allgemein, Coding, RAG). Optional manueller Zusatz-Endpunkt.
+2. **KI-Provider & Modelle** — Provider-Status, Chat- vs. Embedding-Modelle, Standard-Profile. **Embeddings optional:** ohne `EMBEDDING_BASE_URL` bleiben Chat/Coding nutzbar; RAG aus. Mit erreichbarem Ollama: Button **„Ollama auch für Embeddings (RAG) nutzen“** (speichert URL in der DB, kein Neustart). Cloud: Vorlagen **OpenAI**, **OpenRouter**, **Groq**, **Together**.
 3. **Abschluss** — Weiter zum Chat; Modell im Composer jederzeit änderbar.
 
 Weitere Endpunkte und Schnittstellen: **Admin → Schnittstellen**.
@@ -40,6 +40,7 @@ Weitere Endpunkte und Schnittstellen: **Admin → Schnittstellen**.
 | GET | `/auth/setup/catalog` | Provider-Status, Chat-/Embedding-Modelle (Admin-Session) |
 | POST | `/auth/setup/preferences` | Bevorzugten Provider und Profilmodelle speichern |
 | POST | `/auth/setup/test-embedding` | Embedding-Modell testen (Dimensionen) |
+| POST | `/auth/setup/enable-ollama-embedding` | Ollama-URL für Embeddings (Opt-in, ohne .env-Neustart) |
 | POST | `/auth/setup/llm` | Zusätzlichen LLM-Endpunkt testen oder speichern |
 
 ## Fehlerbehebung

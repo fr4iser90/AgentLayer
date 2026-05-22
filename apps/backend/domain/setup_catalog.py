@@ -9,6 +9,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
 from apps.backend.infrastructure.embedding_client import (
+    clear_embedding_health_cache,
     embedding_catalog_health,
     probe_embedding_output_dim,
 )
@@ -86,6 +87,50 @@ def _models_for_provider(
     return rank_chat_model_ids(chat), rank_embedding_model_ids(embed), other
 
 
+def ollama_embedding_base_url() -> str | None:
+    """OpenAI-compat host prefix for Ollama embeddings (same host as chat, path /v1/embeddings)."""
+    spec = get_provider_spec("ollama")
+    raw = (spec.base_url if spec else "") or ""
+    if not raw.strip():
+        from apps.backend.core.config import config as app_config
+
+        raw = (getattr(app_config, "OLLAMA_BASE_URL", None) or "").strip()
+    if not raw:
+        return None
+    from apps.backend.infrastructure.operator_settings import normalize_external_llm_base_url
+
+    return normalize_external_llm_base_url(raw) or None
+
+
+def enrich_setup_embedding_meta(
+    embedding: dict[str, Any], providers: list[dict[str, Any]]
+) -> dict[str, Any]:
+    out = dict(embedding)
+    out["optional"] = True
+    configured = bool(embedding.get("configured"))
+    reachable = bool(embedding.get("reachable"))
+    out["rag_active"] = configured and reachable and bool(embedding.get("model"))
+    if not configured:
+        out.setdefault(
+            "status_line",
+            "Nicht konfiguriert — RAG/Memory-Vektoren inaktiv. Chat und Coding sind davon unabhängig.",
+        )
+        ollama = next(
+            (p for p in providers if p.get("provider_id") == "ollama" and p.get("reachable")),
+            None,
+        )
+        base = ollama_embedding_base_url() if ollama else None
+        embed_models = list(ollama.get("embedding_models") or []) if ollama else []
+        ranked = rank_embedding_model_ids(embed_models)
+        out["ollama_opt_in"] = {
+            "available": bool(ollama and base),
+            "suggested_base_url": base,
+            "suggested_model": ranked[0] if ranked else "nomic-embed-text",
+            "suggested_models": ranked,
+        }
+    return out
+
+
 def build_setup_catalog() -> dict[str, Any]:
     merged, agentlayer = fetch_full_model_catalog()
     providers_out: list[dict[str, Any]] = []
@@ -115,6 +160,7 @@ def build_setup_catalog() -> dict[str, Any]:
     embedding = agentlayer.get("embedding")
     if not isinstance(embedding, dict):
         embedding = embedding_catalog_health()
+    embedding = enrich_setup_embedding_meta(embedding, providers_out)
 
     suggestions = _suggest_defaults(providers_out, embedding)
     return {
@@ -257,6 +303,12 @@ def apply_setup_preferences(body: SetupPreferencesBody) -> dict[str, Any]:
             rag_result["dim_probe_error"] = str(exc)[:200]
         apply_operator_settings_patch(patch)
         rag_result["updated"] = True
+    elif not rag_model:
+        from apps.backend.infrastructure.embedding_client import _normalized_embedding_base
+
+        if not _normalized_embedding_base():
+            apply_operator_settings_patch(OperatorSettingsPatch(rag_enabled=False))
+            rag_result["rag_disabled"] = True
 
     return {
         "ok": True,
@@ -266,6 +318,60 @@ def apply_setup_preferences(body: SetupPreferencesBody) -> dict[str, Any]:
         "model_default": md,
         "rag_embedding_model": rag_model,
         "rag": rag_result,
+    }
+
+
+def apply_enable_ollama_embedding() -> dict[str, Any]:
+    """Opt-in: use reachable Ollama host for embeddings (stored in operator_settings)."""
+    base = ollama_embedding_base_url()
+    if not base:
+        raise HTTPException(
+            status_code=400,
+            detail="Ollama ist nicht konfiguriert (OLLAMA_BASE_URL fehlt).",
+        )
+    spec = get_provider_spec("ollama")
+    if spec is not None:
+        _, ometa = fetch_models_for_provider(spec)
+        if not ometa.get("reachable"):
+            raise HTTPException(
+                status_code=400,
+                detail="Ollama ist nicht erreichbar. Starten Sie Ollama und laden Sie ein Embedding-Modell.",
+            )
+    merged, _ = fetch_full_model_catalog()
+    _, embed_models, _ = _models_for_provider(merged, "ollama")
+    ranked = rank_embedding_model_ids(embed_models)
+    model = ranked[0] if ranked else "nomic-embed-text"
+
+    apply_operator_settings_patch(
+        OperatorSettingsPatch(
+            embedding_api_base_url=base,
+            rag_enabled=True,
+            rag_embedding_model=model,
+        )
+    )
+    invalidate_operator_settings_cache()
+    clear_embedding_health_cache()
+    invalidate_model_catalog_cache()
+
+    dim_result: dict[str, Any] = {}
+    try:
+        dim = probe_embedding_output_dim(model_id=model)
+        apply_operator_settings_patch(OperatorSettingsPatch(rag_embedding_dim=dim))
+        dim_result["embedding_dim"] = dim
+    except Exception as exc:
+        logger.warning("setup: ollama embedding probe failed: %s", exc)
+        dim_result["dim_probe_error"] = str(exc)[:200]
+
+    emb = enrich_setup_embedding_meta(
+        embedding_catalog_health(force_refresh=True),
+        [],
+    )
+    return {
+        "ok": True,
+        "embedding_api_base_url": base,
+        "rag_embedding_model": model,
+        "embedding": emb,
+        **dim_result,
     }
 
 
@@ -298,7 +404,10 @@ async def test_embedding_model(model_id: str) -> dict[str, Any]:
     if not emb.get("configured"):
         raise HTTPException(
             status_code=400,
-            detail="Embedding-API nicht konfiguriert (EMBEDDING_BASE_URL in .env).",
+            detail=(
+                "Embedding-API nicht konfiguriert. "
+                "EMBEDDING_BASE_URL in .env oder „Ollama für Embeddings“ im Setup."
+            ),
         )
     try:
         dim = probe_embedding_output_dim(model_id=mid)

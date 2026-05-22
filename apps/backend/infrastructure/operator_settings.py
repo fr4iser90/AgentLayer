@@ -112,6 +112,7 @@ def _fetch_row() -> dict[str, Any]:
         "rag_top_k": 8,
         "rag_embed_timeout_sec": 120.0,
         "rag_tenant_shared_domains": "agentlayer_docs",
+        "embedding_api_base_url": None,
         "docs_root": None,
         "pidea_enabled": False,
         "pidea_cdp_http_url": None,
@@ -166,9 +167,10 @@ def _fetch_row() -> dict[str, Any]:
                            scheduler_max_outbound_per_day, scheduler_allowed_tool_packages,
                            scheduler_llm_backend, scheduler_tools_mode, scheduler_pidea_enabled,
                            scheduler_instructions,
-                    scheduler_jobs_worker_enabled, scheduler_jobs_ide_pidea_enabled,
+                           scheduler_jobs_worker_enabled, scheduler_jobs_ide_pidea_enabled,
                            scheduler_jobs_ide_pidea_timeout_sec,
-                           workspace_allow_self_editing
+                           workspace_allow_self_editing,
+                           embedding_api_base_url
                     FROM operator_settings WHERE id = 1
                     """
                 )
@@ -250,7 +252,18 @@ def _fetch_row() -> dict[str, Any]:
         if len(row) > 62 and row[62] is not None
         else 300.0,
         "workspace_allow_self_editing": bool(row[63]) if len(row) > 63 and row[63] is not None else False,
+        "embedding_api_base_url": (
+            (str(row[64]).strip() or None) if len(row) > 64 and row[64] is not None else None
+        ),
     }
+
+
+def resolved_embedding_api_base_url() -> str:
+    """DB override (setup wizard) or empty; env ``EMBEDDING_BASE_URL`` is checked in ``embedding_client`` first."""
+    raw = _cached_row().get("embedding_api_base_url")
+    if not raw:
+        return ""
+    return (normalize_external_llm_base_url(str(raw)) or "").strip()
 
 
 def _cached_row() -> dict[str, Any]:
@@ -811,6 +824,7 @@ class OperatorSettingsPatch(BaseModel):
         validation_alias=AliasChoices("rag_embedding_model", "rag_ollama_model"),
     )
     rag_embedding_dim: int | None = Field(default=None, ge=32, le=4096)
+    embedding_api_base_url: str | None = Field(default=None, max_length=2048)
     rag_chunk_size: int | None = Field(default=None, ge=200, le=8000)
     rag_chunk_overlap: int | None = Field(default=None, ge=0, le=2000)
     rag_top_k: int | None = Field(default=None, ge=1, le=50)
@@ -1022,6 +1036,14 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
         r["memory_enabled"] = bool(patch["memory_enabled"])
     if "rag_enabled" in patch:
         r["rag_enabled"] = bool(patch["rag_enabled"])
+    if "embedding_api_base_url" in patch:
+        v = patch["embedding_api_base_url"]
+        if v is None or not str(v).strip():
+            r["embedding_api_base_url"] = None
+        else:
+            r["embedding_api_base_url"] = (
+                normalize_external_llm_base_url(str(v).strip()) or str(v).strip()
+            )[:2048]
     if "rag_embedding_model" in patch:
         r["rag_embedding_model"] = _normalize_rag_embedding_model(patch["rag_embedding_model"])
     if "rag_embedding_dim" in patch:
@@ -1212,6 +1234,7 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
                   scheduler_jobs_ide_pidea_enabled = %s,
                   scheduler_jobs_ide_pidea_timeout_sec = %s,
                   workspace_allow_self_editing = %s,
+                  embedding_api_base_url = %s,
                   updated_at = now()
                 WHERE id = 1
                 """,
@@ -1284,6 +1307,7 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
                     bool(r.get("scheduler_jobs_ide_pidea_enabled", True)),
                     _bound_float(r.get("scheduler_jobs_ide_pidea_timeout_sec"), 300.0, 30.0, 900.0),
                     bool(r.get("workspace_allow_self_editing", False)),
+                    r.get("embedding_api_base_url"),
                 ),
             )
         conn.commit()
