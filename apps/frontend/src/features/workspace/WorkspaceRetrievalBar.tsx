@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { AuthContextValue } from "../../auth/AuthContext";
 import {
   apiFetch,
   patchWorkspace,
   type WorkspaceApiRecord,
   type WorkspaceIndexJob,
+  type WorkspaceIndexMode,
   type WorkspaceIndexStatus,
 } from "../../lib/api";
 
@@ -16,8 +18,8 @@ type Props = {
   className?: string;
 };
 
-function fmtIndexTime(iso: string | null | undefined): string {
-  if (!iso) return "never";
+function fmtIndexTime(iso: string | null | undefined, t: (key: string) => string): string {
+  if (!iso) return t("workspace:never");
   try {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return "—";
@@ -45,19 +47,29 @@ function indexProgressPct(job: WorkspaceIndexJob | null | undefined): number | n
   return Math.min(100, Math.round((done / total) * 100));
 }
 
-function indexProgressLabel(job: WorkspaceIndexJob | null | undefined): string {
+const PHASE_LABELS: Record<string, string> = {
+  scan: "scan",
+  qdrant: "embed",
+  neo4j: "graph",
+  docs_rag: "docs",
+  starting: "start",
+};
+
+function indexProgressLabel(job: WorkspaceIndexJob | null | undefined, t: (key: string, opts?: any) => string): string {
   if (!job || job.status !== "running") return "";
   const phase = (job.phase || "index").toLowerCase();
   const done = job.files_done ?? 0;
   const total = job.files_total ?? 0;
   const pct = indexProgressPct(job);
-  const phaseLabel =
-    phase === "qdrant" ? "embedding" : phase === "docs_rag" ? "docs" : phase === "scan" ? "scan" : phase;
+  const phaseLabel = PHASE_LABELS[phase] ?? phase;
   if (total > 0 && pct != null) {
-    return `Indexing (${phaseLabel})… ${pct}% (${done}/${total})`;
+    return t("workspace:indexingWithPct", { phase: phaseLabel, pct, done, total });
   }
-  return `Indexing (${phaseLabel})…`;
+  return t("workspace:indexing", { phase: phaseLabel });
 }
+
+const INDEX_BTN =
+  "rounded border px-1.5 py-0.5 text-[9px] font-medium disabled:opacity-50";
 
 export function WorkspaceRetrievalBar({
   auth,
@@ -66,9 +78,10 @@ export function WorkspaceRetrievalBar({
   onWorkspaceUpdated,
   className = "",
 }: Props) {
+  const { t } = useTranslation(["workspace", "common"]);
   const [status, setStatus] = useState<WorkspaceIndexStatus | null>(null);
   const [statusErr, setStatusErr] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"toggle" | "index" | null>(null);
+  const [busy, setBusy] = useState<"toggle" | WorkspaceIndexMode | null>(null);
   const [indexing, setIndexing] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -102,7 +115,7 @@ export function WorkspaceRetrievalBar({
 
   useEffect(() => {
     void loadStatus();
-  }, [loadStatus, workspace?.semantic_index_enabled, workspace?.retrieval_enabled]);
+  }, [loadStatus, workspace?.semantic_index_enabled, workspace?.retrieval_enabled, workspace?.docs_rag_enabled]);
 
   useEffect(() => {
     const job = status?.index_job;
@@ -169,15 +182,15 @@ export function WorkspaceRetrievalBar({
     }
   };
 
-  const runIndex = async () => {
+  const runIndex = async (mode: WorkspaceIndexMode) => {
     if (!workspace?.id || !canEdit) return;
-    setBusy("index");
+    setBusy(mode);
     setIndexing(true);
     setStatusErr(null);
     try {
       const r = await apiFetch(`/v1/workspaces/${encodeURIComponent(workspace.id)}/index`, auth, {
         method: "POST",
-        body: JSON.stringify({ max_files: 5000 }),
+        body: JSON.stringify({ max_files: 5000, mode }),
       });
       const j = (await r.json().catch(() => null)) as {
         ok?: boolean;
@@ -217,91 +230,114 @@ export function WorkspaceRetrievalBar({
   const retrievalOn = workspace.retrieval_enabled !== false;
   const docsRagOn = workspace.docs_rag_enabled !== false;
   const qdrantOk = status?.qdrant?.reachable === true;
+  const neo4jOk = status?.neo4j?.reachable === true;
   const symbolCount =
     typeof status?.last_index_stats?.total_symbols === "number"
       ? status.last_index_stats.total_symbols
       : null;
+  const graphEdges =
+    typeof status?.last_index_stats?.neo4j_edges === "number"
+      ? status.last_index_stats.neo4j_edges
+      : null;
   const activeJob = status?.index_job;
   const showProgress = indexing || indexJobRunning(activeJob);
   const progressPct = indexProgressPct(activeJob);
-  const progressLabel = indexProgressLabel(activeJob)?.replace(
-    "docs_rag",
-    "docs"
-  );
+  const progressLabel = indexProgressLabel(activeJob, t);
   const indexFailed = activeJob?.status === "failed";
   const indexStale =
     status?.index_stale === true ||
     (status?.index_stale_reason != null && status.index_stale_reason !== "");
   const staleReason = status?.index_stale_reason;
+  const indexBusy = busy !== null && busy !== "toggle";
 
   return (
     <div
       className={`rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-[10px] leading-snug text-neutral-300 ${className}`}
     >
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="font-semibold uppercase tracking-wide text-surface-muted">Index</span>
+        <span className="font-semibold uppercase tracking-wide text-surface-muted">{t("workspace:codeIndex")}</span>
         <button
           type="button"
           disabled={!canEdit || busy !== null}
           className={pill(indexOn)}
           title={
             canEdit
-              ? "Toggle semantic indexing (Qdrant) for this workspace"
-              : "Read-only — cannot change"
+              ? t("workspace:treeSitterHint")
+              : t("workspace:readOnlyCannotChange")
           }
           onClick={() => void patchFlags({ semantic_index_enabled: !indexOn })}
         >
-          {indexOn ? "on" : "off"}
+          {indexOn ? t("common:on") : t("common:off")}
         </button>
-        {canEdit ? (
-          <button
-            type="button"
-            disabled={!indexOn || busy === "index" || showProgress}
-            className="rounded border border-violet-500/35 bg-violet-950/40 px-1.5 py-0.5 text-[9px] font-medium text-violet-200/95 hover:bg-violet-900/50 disabled:opacity-50"
-            title="Run tree-sitter scan + Qdrant upsert + workspace *.md RAG (when Docs RAG is on)"
-            onClick={() => void runIndex()}
-          >
-            {showProgress ? "…" : "Reindex"}
-          </button>
-        ) : null}
         <span className="text-neutral-600">·</span>
-        <span className="font-semibold uppercase tracking-wide text-surface-muted">Retrieval</span>
+        <span className="font-semibold uppercase tracking-wide text-surface-muted">{t("workspace:retrieval")}</span>
         <button
           type="button"
           disabled={!canEdit || busy !== null}
           className={pill(retrievalOn)}
           title={
             canEdit
-              ? "Toggle retrieve_context bundle for this workspace"
-              : "Read-only — cannot change"
+              ? t("workspace:toggleRetrievalHint")
+              : t("workspace:readOnlyCannotChange")
           }
           onClick={() => void patchFlags({ retrieval_enabled: !retrievalOn })}
         >
-          {retrievalOn ? "on" : "off"}
+          {retrievalOn ? t("common:on") : t("common:off")}
         </button>
         <span className="text-neutral-600">·</span>
-        <span className="font-semibold uppercase tracking-wide text-surface-muted">Docs RAG</span>
+        <span className="font-semibold uppercase tracking-wide text-surface-muted">{t("workspace:docsRag")}</span>
         <button
           type="button"
           disabled={!canEdit || busy !== null}
           className={pill(docsRagOn)}
           title={
             canEdit
-              ? "Index *.md into pgvector for this workspace only (retrieve_context docs)"
-              : "Read-only — cannot change"
+              ? t("workspace:docsIndexHint")
+              : t("workspace:readOnlyCannotChange")
           }
           onClick={() => void patchFlags({ docs_rag_enabled: !docsRagOn })}
         >
-          {docsRagOn ? "on" : "off"}
+          {docsRagOn ? t("common:on") : t("common:off")}
         </button>
       </div>
+
+      {canEdit ? (
+        <div className="mt-1.5 flex flex-wrap items-center gap-1">
+          <span className="mr-0.5 text-[9px] uppercase tracking-wide text-surface-muted">{t("workspace:reindex")}</span>
+          <button
+            type="button"
+            disabled={!indexOn || indexBusy || showProgress}
+            className={`${INDEX_BTN} border-violet-500/35 bg-violet-950/40 text-violet-200/95 hover:bg-violet-900/50`}
+            title={t("workspace:reindexAllTitle")}
+            onClick={() => void runIndex("full")}
+          >
+            {busy === "full" && showProgress ? "…" : t("workspace:all")}
+          </button>
+          <button
+            type="button"
+            disabled={!indexOn || indexBusy || showProgress}
+            className={`${INDEX_BTN} border-sky-500/35 bg-sky-950/40 text-sky-200/95 hover:bg-sky-900/50`}
+            title={t("workspace:reindexCodeTitle")}
+            onClick={() => void runIndex("code")}
+          >
+            {busy === "code" && showProgress ? "…" : t("workspace:code")}
+          </button>
+          <button
+            type="button"
+            disabled={!docsRagOn || indexBusy || showProgress}
+            className={`${INDEX_BTN} border-amber-500/35 bg-amber-950/40 text-amber-200/95 hover:bg-amber-900/50`}
+            title={t("workspace:reindexDocsTitle")}
+            onClick={() => void runIndex("docs")}
+          >
+            {busy === "docs" && showProgress ? "…" : t("workspace:docs")}
+          </button>
+        </div>
+      ) : null}
+
       {showProgress ? (
-        <div
-          className="mt-1.5 space-y-1"
-          title={progressLabel || "Indexing in progress"}
-        >
+        <div className="mt-1.5 space-y-1" title={progressLabel || t("workspace:indexingInProgress")}>
           <div className="flex items-center justify-between gap-2 text-[9px] text-violet-200/90">
-            <span className="truncate">{progressLabel || "Indexing…"}</span>
+            <span className="truncate">{progressLabel || t("workspace:indexingEllipsis")}</span>
             {progressPct != null ? <span className="shrink-0 tabular-nums">{progressPct}%</span> : null}
           </div>
           <div className="h-1 overflow-hidden rounded-full bg-white/10">
@@ -313,47 +349,59 @@ export function WorkspaceRetrievalBar({
         </div>
       ) : indexFailed && activeJob?.error ? (
         <p className="mt-1 text-[9px] text-amber-300/90" title={activeJob.error}>
-          Index failed: {activeJob.error.slice(0, 120)}
+          {t("workspace:indexFailed", { err: activeJob.error.slice(0, 120) })}
         </p>
       ) : null}
+
       <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] text-neutral-500">
-        <span title="Last successful index run">
-          Indexed: {fmtIndexTime(status?.last_index_at ?? workspace.last_index_at)}
+        <span title={t("workspace:lastCodeIndexRun")}>
+          {t("workspace:code")}: {fmtIndexTime(status?.last_index_at ?? workspace.last_index_at, t)}
         </span>
         {symbolCount != null ? <span>· {symbolCount} symbols</span> : null}
+        {graphEdges != null && graphEdges > 0 ? <span>· {graphEdges} graph edges</span> : null}
         {typeof status?.last_docs_rag_stats?.files_ingested === "number" ? (
           <span>· {status.last_docs_rag_stats.files_ingested} md files</span>
         ) : typeof workspace.last_docs_rag_stats?.files_ingested === "number" ? (
           <span>· {workspace.last_docs_rag_stats.files_ingested} md files</span>
         ) : null}
-        <span title="Workspace-scoped markdown RAG (pgvector)">
-          · Docs RAG: {fmtIndexTime(status?.last_docs_rag_at ?? workspace.last_docs_rag_at)}
+        <span title={t("workspace:workspaceMarkdownRag")}>
+          · {t("workspace:docs")}: {fmtIndexTime(status?.last_docs_rag_at ?? workspace.last_docs_rag_at, t)}
         </span>
         {indexOn && indexStale ? (
           <span
             className="text-amber-300/95"
             title={
               staleReason === "never_indexed"
-                ? "No semantic index yet — run Reindex"
-                : "Git has commits newer than the last index — Reindex recommended"
+                ? t("workspace:noCodeIndexYet")
+                : t("workspace:gitNewerThanIndex")
             }
           >
-            · stale
+            · {t("workspace:stale")}
           </span>
         ) : null}
         <span>
           · Qdrant{" "}
           {status?.qdrant?.configured === false
-            ? "n/a"
+            ? t("workspace:na")
             : qdrantOk
-              ? "ok"
+              ? t("workspace:ok")
               : status?.qdrant?.reachable === false
-                ? "down"
+                ? t("workspace:down")
+                : "—"}
+        </span>
+        <span>
+          · Neo4j{" "}
+          {status?.neo4j?.configured === false
+            ? t("workspace:na")
+            : neo4jOk
+              ? t("workspace:ok")
+              : status?.neo4j?.reachable === false
+                ? t("workspace:down")
                 : "—"}
         </span>
         {workspace.last_index_error ? (
           <span className="text-amber-300/90" title={workspace.last_index_error}>
-            · err
+            · {t("workspace:err")}
           </span>
         ) : null}
         {statusErr ? <span className="text-red-400/90">· {statusErr}</span> : null}

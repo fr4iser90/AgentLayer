@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 
@@ -35,6 +36,7 @@ type KnownPerson = {
 };
 
 export function FriendsSettings() {
+  const { t } = useTranslation(["settings"]);
   const auth = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -96,7 +98,7 @@ export function FriendsSettings() {
         setKnownPeople(data.known_people || []);
       }
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Could not load friends");
+      setErr(e instanceof Error ? e.message : t("settings:friendsLoadFailed"));
     } finally {
       setLoading(false);
     }
@@ -132,7 +134,7 @@ export function FriendsSettings() {
       });
       void load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Could not accept request");
+      setErr(e instanceof Error ? e.message : t("settings:friendAcceptFailed"));
     }
   }, [auth, load]);
 
@@ -143,7 +145,7 @@ export function FriendsSettings() {
       });
       void load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Could not decline request");
+      setErr(e instanceof Error ? e.message : t("settings:friendDeclineFailed"));
     }
   }, [auth, load]);
 
@@ -154,7 +156,7 @@ export function FriendsSettings() {
       });
       void load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Could not remove friend");
+      setErr(e instanceof Error ? e.message : t("settings:friendRemoveFailed"));
     }
   }, [auth, load]);
 
@@ -179,7 +181,7 @@ export function FriendsSettings() {
       setEditingFriend(null);
       void load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Could not save friend");
+      setErr(e instanceof Error ? e.message : t("settings:friendSaveFailed"));
     } finally {
       setSaving(false);
     }
@@ -195,7 +197,7 @@ export function FriendsSettings() {
       });
       setKnownPeople(updated);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Could not save");
+      setErr(e instanceof Error ? e.message : t("settings:saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -231,10 +233,8 @@ export function FriendsSettings() {
   return (
     <div className="mx-auto max-w-4xl space-y-8">
       <div>
-        <h1 className="text-lg font-semibold text-white">👥 Friends System</h1>
-        <p className="mt-2 text-sm text-surface-muted">
-          Verwalte deine Freundschaftsanfragen, bestätigte Freunde und manuell eingetragene Personen.
-        </p>
+        <h1 className="text-lg font-semibold text-white">{t("settings:friendsSystemTitle")}</h1>
+        <p className="mt-2 text-sm text-surface-muted">{t("settings:friendsSystemSubtitle")}</p>
       </div>
 
       {/* Tabs */}
@@ -248,7 +248,9 @@ export function FriendsSettings() {
               : "text-surface-muted hover:text-white"
           }`}
         >
-          🔗 Echte Freunde {incomingRequests.length > 0 && `(${incomingRequests.length})`}
+          {incomingRequests.length > 0
+            ? t("settings:friendsTabFriendsCount", { count: incomingRequests.length })
+            : t("settings:friendsTabFriends")}
         </button>
         <button
           type="button"
@@ -259,12 +261,12 @@ export function FriendsSettings() {
               : "text-surface-muted hover:text-white"
           }`}
         >
-          📝 Manuelle Einträge
+          {t("settings:friendsTabManual")}
         </button>
       </div>
 
       {loading ? (
-        <p className="text-sm text-surface-muted">Loading…</p>
+        <p className="text-sm text-surface-muted">{t("settings:agentLoading")}</p>
       ) : err ? (
         <p className="text-sm text-amber-400">{err}</p>
       ) : activeTab === "friends" ? (
@@ -273,7 +275,7 @@ export function FriendsSettings() {
           {incomingRequests.length > 0 && (
             <div className="rounded-xl border border-surface-border bg-surface-raised overflow-hidden">
               <div className="p-4 border-b border-surface-border">
-                <h3 className="font-medium text-amber-300">📥 Eingehende Freundesanfragen</h3>
+                <h3 className="font-medium text-amber-300">{t("settings:friendsIncomingTitle")}</h3>
               </div>
               <div className="divide-y divide-surface-border">
                 {incomingRequests.map((req) => (
@@ -288,14 +290,14 @@ export function FriendsSettings() {
                         onClick={() => acceptRequest(req.id)}
                         className="px-3 py-1.5 rounded bg-emerald-600 text-white text-sm hover:bg-emerald-500"
                       >
-                        ✅ Akzeptieren
+                        {t("settings:friendsAcceptBtn")}
                       </button>
                       <button
                         type="button"
                         onClick={() => declineRequest(req.id)}
                         className="px-3 py-1.5 rounded bg-neutral-700 text-white text-sm hover:bg-neutral-600"
                       >
-                        ❌ Ablehnen
+                        {t("settings:friendsDeclineBtn")}
                       </button>
                     </div>
                   </div>
@@ -308,13 +310,13 @@ export function FriendsSettings() {
           {outgoingRequests.length > 0 && (
             <div className="rounded-xl border border-surface-border bg-surface-raised overflow-hidden">
               <div className="p-4 border-b border-surface-border">
-                <h3 className="font-medium text-sky-300">📤 Ausstehende Anfragen</h3>
+                <h3 className="font-medium text-sky-300">{t("settings:friendsOutgoingTitle")}</h3>
               </div>
               <div className="divide-y divide-surface-border">
                 {outgoingRequests.map((req) => (
                   <div key={req.id} className="p-4">
                     <div className="font-medium text-white">{req.display_name || req.email}</div>
-                    <div className="text-sm text-neutral-400 mt-1">Warte auf Bestätigung...</div>
+                    <div className="text-sm text-neutral-400 mt-1">{t("settings:friendsWaitingConfirmation")}</div>
                   </div>
                 ))}
               </div>
@@ -324,18 +326,18 @@ export function FriendsSettings() {
           {/* Send Request Button */}
           {showSendRequestForm ? (
             <div className="rounded-xl border border-surface-border bg-surface-raised p-5 space-y-4">
-              <h3 className="font-medium text-white">Freundesanfrage senden</h3>
+              <h3 className="font-medium text-white">{t("settings:friendsSendRequestTitle")}</h3>
               <div className="space-y-3">
                 <input
                   type="email"
-                  placeholder="E-Mail Adresse des Users"
+                  placeholder={t("settings:friendRequestEmailPlaceholder")}
                   value={newRequestEmail}
                   onChange={(e) => setNewRequestEmail(e.target.value)}
                   className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white text-sm"
                 />
                 <input
                   type="text"
-                  placeholder="Optionale Nachricht (z.B. Hey ich bin Tom!)"
+                  placeholder={t("settings:friendRequestMessagePlaceholder")}
                   value={newRequestMessage}
                   onChange={(e) => setNewRequestMessage(e.target.value)}
                   className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white text-sm"
@@ -346,7 +348,7 @@ export function FriendsSettings() {
                     onClick={() => setShowSendRequestForm(false)}
                     className="px-4 py-2 rounded border border-white/10 text-sm text-neutral-300 hover:bg-white/5"
                   >
-                    Abbrechen
+                    {t("settings:friendsCancelRequest")}
                   </button>
                   <button
                     type="button"
@@ -354,7 +356,7 @@ export function FriendsSettings() {
                     disabled={!newRequestEmail.trim() || saving}
                     className="px-4 py-2 rounded bg-sky-600 text-white text-sm hover:bg-sky-500 disabled:opacity-50"
                   >
-                    Anfrage senden
+                    {t("settings:friendsSendRequest")}
                   </button>
                 </div>
               </div>
@@ -365,7 +367,7 @@ export function FriendsSettings() {
               onClick={() => setShowSendRequestForm(true)}
               className="w-full py-3 rounded-xl border border-dashed border-white/20 text-surface-muted hover:border-white/40 hover:text-white text-sm"
             >
-              + Freundesanfrage senden
+              {t("settings:friendsSendRequestBtn")}
             </button>
           )}
 
@@ -373,7 +375,7 @@ export function FriendsSettings() {
           {confirmedFriends.length > 0 && (
             <div className="rounded-xl border border-surface-border bg-surface-raised overflow-hidden">
               <div className="p-4 border-b border-surface-border">
-                <h3 className="font-medium text-emerald-300">✅ Bestätigte Freunde</h3>
+                <h3 className="font-medium text-emerald-300">✅ {t("settings:friendsConfirmedTitle")}</h3>
               </div>
               <div className="divide-y divide-surface-border">
                 {confirmedFriends.map((friend) => (
@@ -395,14 +397,14 @@ export function FriendsSettings() {
                         onClick={() => openEditFriend(friend)}
                         className="text-xs text-sky-400 hover:text-sky-300"
                       >
-                        ✏️ Bearbeiten
+                        {t("settings:friendsEditWithIcon")}
                       </button>
                       <button
                         type="button"
                         onClick={() => removeFriend(friend.friend_user_id)}
                         className="text-xs text-red-400 hover:text-red-300"
                       >
-                        Entfernen
+                        {t("settings:friendsRemove")}
                       </button>
                     </div>
                   </div>
@@ -413,7 +415,7 @@ export function FriendsSettings() {
 
           {confirmedFriends.length === 0 && incomingRequests.length === 0 && outgoingRequests.length === 0 && (
             <div className="p-8 text-center text-surface-muted rounded-xl border border-surface-border bg-surface-raised">
-              Noch keine Freunde. Sende eine Freundesanfrage um zu starten.
+              {t("settings:friendsEmptyStart")}
             </div>
           )}
         </div>
@@ -427,7 +429,7 @@ export function FriendsSettings() {
           <div className="rounded-xl border border-surface-border bg-surface-raised overflow-hidden">
             {knownPeople.length === 0 ? (
               <div className="p-8 text-center text-surface-muted">
-                Noch keine Personen eingetragen.
+                {t("settings:friendsNoPeopleYet")}
               </div>
             ) : (
               <div className="divide-y divide-surface-border">
@@ -453,7 +455,7 @@ export function FriendsSettings() {
                       className="text-xs text-red-400 hover:text-red-300"
                       disabled={saving}
                     >
-                      Entfernen
+                      {t("settings:friendsRemove")}
                     </button>
                   </div>
                 ))}
@@ -463,67 +465,67 @@ export function FriendsSettings() {
 
           {showAddForm ? (
             <div className="rounded-xl border border-surface-border bg-surface-raised p-5 space-y-4">
-              <h3 className="font-medium text-white">Neue Person hinzufügen</h3>
+              <h3 className="font-medium text-white">{t("settings:friendsNewPersonTitle")}</h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs text-surface-muted">Name *</label>
+                  <label className="text-xs text-surface-muted">{t("settings:friendsNameRequired")}</label>
                   <input
                     type="text"
                     value={newPerson.name}
                     onChange={(e) => setNewPerson({ ...newPerson, name: e.target.value })}
                     className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white text-sm"
-                    placeholder="Vorname Nachname"
+                    placeholder={t("settings:friendNamePlaceholder")}
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-surface-muted">Spitzname</label>
+                  <label className="text-xs text-surface-muted">{t("settings:friendsNicknameLabel")}</label>
                   <input
                     type="text"
                     value={newPerson.nickname}
                     onChange={(e) => setNewPerson({ ...newPerson, nickname: e.target.value })}
                     className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white text-sm"
-                    placeholder="z.B. Sandy"
+                    placeholder={t("settings:friendNicknamePlaceholder")}
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs text-surface-muted">Email</label>
+                  <label className="text-xs text-surface-muted">{t("settings:friendsEmailLabel")}</label>
                   <input
                     type="email"
                     value={newPerson.email}
                     onChange={(e) => setNewPerson({ ...newPerson, email: e.target.value })}
                     className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white text-sm"
-                    placeholder="email@beispiel.de"
+                    placeholder={t("settings:friendEmailPlaceholder")}
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-surface-muted">Discord User ID</label>
+                  <label className="text-xs text-surface-muted">{t("settings:friendsDiscordIdLabel")}</label>
                   <input
                     type="text"
                     value={newPerson.discord_user_id}
                     onChange={(e) => setNewPerson({ ...newPerson, discord_user_id: e.target.value })}
                     className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white text-sm font-mono"
-                    placeholder="1234567890"
+                    placeholder={t("settings:friendPhonePlaceholder")}
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs text-surface-muted">Beziehung</label>
+                  <label className="text-xs text-surface-muted">{t("settings:friendsRelationLabel")}</label>
                   <input
                     type="text"
                     value={newPerson.relation}
                     onChange={(e) => setNewPerson({ ...newPerson, relation: e.target.value })}
                     className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white text-sm"
-                    placeholder="z.B. Beste Freundin, Kollege, Bruder"
+                    placeholder={t("settings:friendRelationPlaceholder")}
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-surface-muted">Geburtstag</label>
+                  <label className="text-xs text-surface-muted">{t("settings:friendsBirthdayLabel")}</label>
                   <input
                     type="date"
                     value={newPerson.birthday}
@@ -534,23 +536,23 @@ export function FriendsSettings() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs text-surface-muted">Beschreibung / Wichtige Infos</label>
+                <label className="text-xs text-surface-muted">{t("settings:friendsDescriptionLabel")}</label>
                 <textarea
                   value={newPerson.description}
                   onChange={(e) => setNewPerson({ ...newPerson, description: e.target.value })}
                   className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white text-sm min-h-[80px]"
-                  placeholder="Alles was der Agent über diese Person wissen soll..."
+                  placeholder={t("settings:friendDescriptionPlaceholder")}
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs text-surface-muted">Tone / Umgangsform</label>
+                <label className="text-xs text-surface-muted">{t("settings:friendsToneFormLabel")}</label>
                 <input
                   type="text"
                   value={newPerson.tone}
                   onChange={(e) => setNewPerson({ ...newPerson, tone: e.target.value })}
                   className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white text-sm"
-                  placeholder="z.B. locker duzen, immer ein bisschen neckisch, formell"
+                  placeholder={t("settings:friendTonePlaceholder")}
                 />
               </div>
 
@@ -560,7 +562,7 @@ export function FriendsSettings() {
                   onClick={() => setShowAddForm(false)}
                   className="px-4 py-2 rounded border border-white/10 text-sm text-neutral-300 hover:bg-white/5"
                 >
-                  Abbrechen
+                  {t("settings:friendsCancel")}
                 </button>
                 <button
                   type="button"
@@ -568,7 +570,7 @@ export function FriendsSettings() {
                   disabled={!newPerson.name.trim() || saving}
                   className="px-4 py-2 rounded bg-sky-600 text-white text-sm hover:bg-sky-500 disabled:opacity-50"
                 >
-                  Hinzufügen
+                  {t("settings:friendsAdd")}
                 </button>
               </div>
             </div>
@@ -578,7 +580,7 @@ export function FriendsSettings() {
               onClick={() => setShowAddForm(true)}
               className="w-full py-3 rounded-xl border border-dashed border-white/20 text-surface-muted hover:border-white/40 hover:text-white text-sm"
             >
-              + Neue Person hinzufügen
+              {t("settings:friendsAddNewPerson")}
             </button>
           )}
         </div>

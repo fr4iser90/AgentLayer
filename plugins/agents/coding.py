@@ -30,7 +30,7 @@ Use **only** names that appear in **tools[]** for this request. Typical mental m
 | **git push** | ``coding_git_push`` or ``coding_bash`` with ``git push`` — server injects ``github_pat`` (never in your context; never ask user to paste tokens) |
 | **task** | ``coding_task`` (delegate / sub-planner when offered) |
 | **lsp** | ``coding_lsp`` |
-| **SimpleSecCheck** | ``security_scan_list``, ``security_scan_findings``, ``security_scan_status``, ``security_scan_resolve``, … (when listed; needs ``ssc_api_key`` user secret or operator ``SSC_API_KEY``) |
+| **SimpleSecCheck** | ``security_scan_finding_policy_schema``, ``security_scan_list``, ``security_scan_findings``, ``security_scan_status``, ``security_scan_resolve``, … (when listed; needs ``ssc_api_key`` user secret or operator ``SSC_API_KEY``) |
 | **Workspaces** | ``workspace_list``, ``workspace_create``, ``workspace_bind`` — for a **different repo** than the bound workspace: prefer ``workspace_create`` + bind, then tell the user to **open Coding with a new session** (do not rely on a long mixed chat history) |
 | **User secrets** | ``save_user_secret``, ``register_secrets``, ``secrets_help`` — store credentials the user pasted in chat (**never** write API keys to ``.env`` / ``docker/.env``) |
 | *(extra)* | ``coding_git_read``, ``coding_git_push``, ``coding_index``, ``coding_todo``, ``coding_workspace_verify``, ``project_explain`` when listed |

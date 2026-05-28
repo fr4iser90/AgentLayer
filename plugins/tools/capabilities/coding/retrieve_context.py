@@ -42,9 +42,9 @@ TOOL_DESCRIPTION = (
     "Prefer this before many separate search tools — then use coding_read_file on cited path:line."
 )
 
-_VALID_SOURCES = frozenset({"code_grep", "code_semantic", "docs", "memory"})
+_VALID_SOURCES = frozenset({"code_grep", "code_semantic", "docs", "memory", "graph"})
 _DEFAULT_SOURCES = ("code_grep", "code_semantic", "docs")
-_MAX_WORKERS = 4
+_MAX_WORKERS = 5
 
 
 def _parse_sources(raw: Any) -> list[str]:
@@ -193,6 +193,39 @@ def _run_memory(query: str, limit: int) -> dict[str, Any]:
     return {"ok": True, "notes": slim, "count": len(slim)}
 
 
+def _run_graph(query: str, context: dict[str, Any] | None, limit: int) -> dict[str, Any]:
+    try:
+        from apps.backend.infrastructure.code_graph_neo4j import get_code_graph
+    except ImportError:
+        return {"ok": False, "skipped": True, "reason": "neo4j_not_installed"}
+
+    graph = get_code_graph()
+    if not graph.available():
+        return {"ok": False, "skipped": True, "reason": "neo4j_unavailable"}
+
+    ws = workspace_binding_from_context(context)
+    if ws is None:
+        return {"ok": False, "skipped": True, "reason": "no_workspace"}
+    workspace_id = str(ws.get("id") or "")
+
+    results = graph.query_impact(workspace_id, query, max_depth=3)
+    if not results:
+        results = graph.query_callers(workspace_id, query, transitive=False)
+
+    hits = []
+    for r in results[:limit]:
+        if not isinstance(r, dict):
+            continue
+        hits.append({
+            "name": r.get("name"),
+            "file_path": r.get("file_path"),
+            "line": r.get("line", 0),
+            "kind": r.get("kind"),
+            "via": r.get("via", "graph"),
+        })
+    return {"ok": True, "hits": hits, "count": len(hits)}
+
+
 def _skipped(source: str, reason: str) -> dict[str, Any]:
     return {"skipped": True, "reason": reason, "source": source}
 
@@ -208,6 +241,7 @@ def _retriever_tasks(
     semantic_limit: int,
     docs_limit: int,
     memory_limit: int,
+    graph_limit: int = 10,
 ) -> list[tuple[str, Callable[[], dict[str, Any]]]]:
     tasks: list[tuple[str, Callable[[], dict[str, Any]]]] = []
     if "code_grep" in sources:
@@ -221,6 +255,8 @@ def _retriever_tasks(
         )
     if "memory" in sources:
         tasks.append(("memory", lambda: _run_memory(query, memory_limit)))
+    if "graph" in sources:
+        tasks.append(("graph", lambda: _run_graph(query, context, graph_limit)))
     return tasks
 
 
@@ -295,9 +331,10 @@ def retrieve_context(arguments: dict[str, Any], context: dict | None = None) -> 
     semantic_limit = _clamp_int(arguments.get("semantic_limit"), 12, 1, 50)
     docs_limit = _clamp_int(arguments.get("docs_limit"), 6, 1, 30)
     memory_limit = _clamp_int(arguments.get("memory_limit"), 4, 1, 20)
+    graph_limit = _clamp_int(arguments.get("graph_limit"), 10, 1, 50)
     fused_limit = _clamp_int(arguments.get("fused_limit"), 25, 1, 50)
 
-    needs_workspace = "code_grep" in sources or "code_semantic" in sources
+    needs_workspace = "code_grep" in sources or "code_semantic" in sources or "graph" in sources
     if needs_workspace and workspace_binding_from_context(context) is None:
         return json_workspace_missing_error()
 
@@ -323,6 +360,7 @@ def retrieve_context(arguments: dict[str, Any], context: dict | None = None) -> 
         semantic_limit=semantic_limit,
         docs_limit=docs_limit,
         memory_limit=memory_limit,
+        graph_limit=graph_limit,
     )
     parallel = _run_retrievers_parallel(tasks)
 
@@ -355,6 +393,11 @@ def retrieve_context(arguments: dict[str, Any], context: dict | None = None) -> 
     else:
         out["memory"] = _skipped("memory", "not_requested")
 
+    if "graph" in sources:
+        out["graph"] = parallel.get("graph") or _skipped("graph", "not_run")
+    else:
+        out["graph"] = _skipped("graph", "not_requested")
+
     out["fused_ranking"] = build_fused_ranking(out, limit=fused_limit)
     out["next_steps"] = _next_steps(out)
     return json.dumps(out, ensure_ascii=False)
@@ -381,11 +424,11 @@ TOOLS: list[dict[str, Any]] = [
                         "type": "array",
                         "items": {
                             "type": "string",
-                            "enum": ["code_grep", "code_semantic", "docs", "memory"],
+                            "enum": ["code_grep", "code_semantic", "docs", "memory", "graph"],
                         },
                         "description": (
                             "Retrievers to run (default: code_grep, code_semantic, docs). "
-                            "Add memory for user notes."
+                            "Add memory for user notes. Add graph for Neo4j call-graph/impact hits."
                         ),
                     },
                     "domain": {
@@ -404,6 +447,10 @@ TOOLS: list[dict[str, Any]] = [
                     "memory_limit": {
                         "type": "integer",
                         "description": "Max memory notes (1–20).",
+                    },
+                    "graph_limit": {
+                        "type": "integer",
+                        "description": "Max graph hits (1–50, default 10).",
                     },
                     "fused_limit": {
                         "type": "integer",

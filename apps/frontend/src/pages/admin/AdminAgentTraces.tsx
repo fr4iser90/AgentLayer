@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import {
   fetchAdminRuns,
@@ -7,6 +8,7 @@ import {
 } from "../../lib/runTracesApi";
 
 export function AdminAgentTraces() {
+  const { t } = useTranslation(["admin"]);
   const auth = useAuth();
   const [runs, setRuns] = useState<RunTrace[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -23,7 +25,7 @@ export function AdminAgentTraces() {
       const list = await fetchAdminRuns(auth);
       setRuns(list);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load runs");
+      setError(e instanceof Error ? e.message : t("admin:agentTracesFailedLoadRuns"));
     } finally {
       setLoading(false);
     }
@@ -43,7 +45,7 @@ export function AdminAgentTraces() {
         const d = await fetchAdminRunTrace(auth, selectedId);
         setDetail(d);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to load trace");
+        setError(e instanceof Error ? e.message : t("admin:agentTracesFailedLoadTrace"));
       }
     })();
   }, [auth, selectedId]);
@@ -52,9 +54,9 @@ export function AdminAgentTraces() {
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden p-4">
       <div className="flex shrink-0 items-center justify-between gap-2">
         <div>
-          <h1 className="text-lg font-semibold text-white">Agent traces</h1>
+          <h1 className="text-lg font-semibold text-white">{t("admin:agentTracesTitle")}</h1>
           <p className="text-sm text-surface-muted">
-            Persisted runs and correlated tool invocations (debug / operator).
+            {t("admin:agentTracesSubtitle")}
           </p>
         </div>
         <button
@@ -62,20 +64,20 @@ export function AdminAgentTraces() {
           onClick={() => void loadRuns()}
           className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-neutral-200 hover:bg-white/10"
         >
-          Refresh
+          {t("admin:agentTracesRefresh")}
         </button>
       </div>
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
       <div className="flex min-h-0 flex-1 gap-4 overflow-hidden">
         <div className="flex w-72 shrink-0 flex-col overflow-hidden rounded-xl border border-surface-border bg-surface-raised/40">
           <div className="border-b border-white/5 px-3 py-2 text-xs font-medium uppercase tracking-wide text-surface-muted">
-            Recent runs
+            {t("admin:agentTracesRecentRuns")}
           </div>
           <ul className="min-h-0 flex-1 overflow-y-auto p-2 text-sm">
             {loading ? (
-              <li className="text-surface-muted">Loading…</li>
+              <li className="text-surface-muted">{t("admin:agentTracesLoadingRuns")}</li>
             ) : runs.length === 0 ? (
-              <li className="text-surface-muted">No runs yet.</li>
+              <li className="text-surface-muted">{t("admin:agentTracesNoneYet")}</li>
             ) : (
               runs.map((r) => (
                 <li key={r.id}>
@@ -98,7 +100,7 @@ export function AdminAgentTraces() {
         </div>
         <div className="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-xl border border-surface-border bg-black/30 p-4">
           {!selectedId || !detail ? (
-            <p className="text-sm text-surface-muted">Select a run to inspect tools and child runs.</p>
+            <p className="text-sm text-surface-muted">{t("admin:agentTracesSelectHint")}</p>
           ) : (
             <div className="space-y-4 text-sm">
               <pre className="overflow-x-auto rounded-lg bg-black/50 p-3 text-xs text-neutral-300">
@@ -106,7 +108,9 @@ export function AdminAgentTraces() {
               </pre>
               {detail.child_runs.length > 0 ? (
                 <section>
-                  <h2 className="mb-2 text-xs font-semibold uppercase text-surface-muted">Child runs</h2>
+                  <h2 className="mb-2 text-xs font-semibold uppercase text-surface-muted">
+                    {t("admin:agentTracesChildRuns")}
+                  </h2>
                   <ul className="space-y-1 font-mono text-xs text-indigo-200/90">
                     {detail.child_runs.map((c) => (
                       <li key={c.id}>
@@ -118,7 +122,7 @@ export function AdminAgentTraces() {
               ) : null}
               <section>
                 <h2 className="mb-2 text-xs font-semibold uppercase text-surface-muted">
-                  Tool invocations ({detail.tool_invocations.length})
+                  {t("admin:agentTracesToolInvocations", { count: detail.tool_invocations.length })}
                 </h2>
                 <ul className="space-y-2">
                   {detail.tool_invocations.map((t) => (
@@ -128,7 +132,7 @@ export function AdminAgentTraces() {
                     >
                       <span className="font-medium text-sky-300">{String(t.tool_name)}</span>
                       <span className={t.ok ? " text-emerald-400" : " text-red-400"}>
-                        {t.ok ? " ok" : " err"}
+                        {t.ok ? ` ${t("admin:agentTracesOk")}` : ` ${t("admin:agentTracesErr")}`}
                       </span>
                       <pre className="mt-1 max-h-24 overflow-auto text-[10px] text-neutral-500">
                         {JSON.stringify(t.args_json, null, 2)}

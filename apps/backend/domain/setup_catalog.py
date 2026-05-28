@@ -125,7 +125,7 @@ def enrich_setup_embedding_meta(
         out["ollama_opt_in"] = {
             "available": bool(ollama and base),
             "suggested_base_url": base,
-            "suggested_model": ranked[0] if ranked else "nomic-embed-text",
+            "suggested_model": ranked[0] if ranked else None,
             "suggested_models": ranked,
         }
     return out
@@ -340,7 +340,12 @@ def apply_enable_ollama_embedding() -> dict[str, Any]:
     merged, _ = fetch_full_model_catalog()
     _, embed_models, _ = _models_for_provider(merged, "ollama")
     ranked = rank_embedding_model_ids(embed_models)
-    model = ranked[0] if ranked else "nomic-embed-text"
+    model = ranked[0] if ranked else ""
+    if not model:
+        raise HTTPException(
+            status_code=400,
+            detail="Kein Embedding-Modell auf Ollama gefunden. Laden Sie z. B. ein Embed-Modell oder konfigurieren Sie die Embedding-API in Admin.",
+        )
 
     apply_operator_settings_patch(
         OperatorSettingsPatch(

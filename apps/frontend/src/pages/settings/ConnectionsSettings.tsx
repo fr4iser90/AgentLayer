@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 
@@ -48,6 +49,7 @@ function mergeSecretForms(meta: ToolsMeta[]): Record<string, UserSecretFormSpec>
 }
 
 export function ConnectionsSettings() {
+  const { t } = useTranslation(["settings", "admin"]);
   const auth = useAuth();
   const [meta, setMeta] = useState<ToolsMeta[]>([]);
   const [services, setServices] = useState<string[]>([]);
@@ -84,8 +86,10 @@ export function ConnectionsSettings() {
       if (mres.ok) {
         const d = mdata.discord_user_id;
         setDiscordUserId(d != null && String(d).trim() ? String(d).trim() : "");
-        const t = mdata.telegram_user_id;
-        setTelegramUserId(t != null && String(t).trim() ? String(t).trim() : "");
+        const telegramId = mdata.telegram_user_id;
+        setTelegramUserId(
+          telegramId != null && String(telegramId).trim() ? String(telegramId).trim() : ""
+        );
       } else {
         setDiscordUserId("");
         setTelegramUserId("");
@@ -96,7 +100,7 @@ export function ConnectionsSettings() {
         setMeta(Array.isArray(tdata.tools_meta) ? tdata.tools_meta : []);
       } else {
         setMeta([]);
-        setMsg("Could not load tool catalog.");
+        setMsg(t("settings:toolCatalogLoadFailed"));
       }
 
       const sdata = (await sres.json()) as { ok?: boolean; services?: string[]; detail?: unknown };
@@ -106,7 +110,7 @@ export function ConnectionsSettings() {
         setMsg(
           typeof sdata.detail === "string"
             ? sdata.detail
-            : "Secrets storage is off until the operator sets AGENT_SECRETS_MASTER_KEY.",
+            : t("settings:secretsOffUntilKey"),
         );
         return;
       }
@@ -114,7 +118,7 @@ export function ConnectionsSettings() {
       if (!sres.ok) {
         setServices([]);
         if (!tres.ok) return;
-        setMsg(typeof sdata.detail === "string" ? sdata.detail : "Could not list secrets");
+        setMsg(typeof sdata.detail === "string" ? sdata.detail : t("settings:listSecretsFailed"));
         return;
       }
       setServices((sdata.services ?? []).map((k) => String(k).toLowerCase()));
@@ -136,12 +140,12 @@ export function ConnectionsSettings() {
       const data = (await res.json()) as { ok?: boolean; telegram_user_id?: string | null; detail?: unknown };
       if (!res.ok) {
         const d = data.detail;
-        setMsg(typeof d === "string" ? d : "Could not save Telegram link");
+        setMsg(typeof d === "string" ? d : t("settings:saveTelegramFailed"));
         return;
       }
-      const t = data.telegram_user_id;
-      setTelegramUserId(t != null && String(t).trim() ? String(t).trim() : "");
-      setMsg("Telegram link saved.");
+      const linkedId = data.telegram_user_id;
+      setTelegramUserId(linkedId != null && String(linkedId).trim() ? String(linkedId).trim() : "");
+      setMsg(t("settings:telegramSaved"));
     } catch (e) {
       setMsg(e instanceof Error ? e.message : String(e));
     } finally {
@@ -160,12 +164,12 @@ export function ConnectionsSettings() {
       const data = (await res.json()) as { ok?: boolean; discord_user_id?: string | null; detail?: unknown };
       if (!res.ok) {
         const d = data.detail;
-        setMsg(typeof d === "string" ? d : "Could not save Discord link");
+        setMsg(typeof d === "string" ? d : t("settings:saveDiscordFailed"));
         return;
       }
       const d = data.discord_user_id;
       setDiscordUserId(d != null && String(d).trim() ? String(d).trim() : "");
-      setMsg("Discord link saved.");
+      setMsg(t("settings:discordSaved"));
     } catch (e) {
       setMsg(e instanceof Error ? e.message : String(e));
     } finally {
@@ -204,7 +208,7 @@ export function ConnectionsSettings() {
   async function saveSecret() {
     const sk = (activeKey ?? "").trim().toLowerCase();
     if (!sk) {
-      setMsg("Open a connection below first.");
+      setMsg(t("settings:connectionsPickConnectionFirst"));
       return;
     }
 
@@ -220,14 +224,18 @@ export function ConnectionsSettings() {
       }
       const missing = activeForm.fields.filter((f) => f.required && !obj[f.name]?.trim());
       if (missing.length) {
-        setMsg(`Please fill: ${missing.map((f) => f.label || f.name).join(", ")}`);
+        setMsg(
+          t("settings:connectionsPleaseFill", {
+            fields: missing.map((f) => f.label || f.name).join(", "),
+          })
+        );
         return;
       }
       payload = { service_key: sk, secret: obj };
     } else {
       const raw = rawJson.trim();
       if (!raw) {
-        setMsg("Enter a secret value or paste JSON in the field below.");
+        setMsg(t("settings:connectionsSecretRequired"));
         return;
       }
       try {
@@ -250,10 +258,10 @@ export function ConnectionsSettings() {
       });
       const data = (await res.json().catch(() => ({}))) as { detail?: unknown };
       if (!res.ok) {
-        setMsg(typeof data.detail === "string" ? data.detail : "Save failed");
+        setMsg(typeof data.detail === "string" ? data.detail : t("settings:connectionsSaveFailed"));
         return;
       }
-      setMsg("Saved.");
+      setMsg(t("settings:connectionsSaved"));
       setFieldValues({});
       setRawJson("");
       await load();
@@ -265,7 +273,7 @@ export function ConnectionsSettings() {
   }
 
   async function deleteSecret(key: string) {
-    if (!confirm(`Remove secret "${key}"? Tools that depend on it may stop working.`)) return;
+    if (!confirm(t("settings:connectionsRemoveSecretConfirm", { key }))) return;
     setMsg(null);
     try {
       const res = await apiFetch(`/v1/user/secrets/${encodeURIComponent(key)}`, auth, {
@@ -273,10 +281,10 @@ export function ConnectionsSettings() {
       });
       const data = (await res.json().catch(() => ({}))) as { detail?: unknown };
       if (!res.ok) {
-        setMsg(typeof data.detail === "string" ? data.detail : "Delete failed");
+        setMsg(typeof data.detail === "string" ? data.detail : t("settings:connectionsDeleteFailed"));
         return;
       }
-      setMsg("Removed.");
+      setMsg(t("settings:connectionsRemoved"));
       if (activeKey === key) {
         setActiveKey(null);
       }
@@ -296,35 +304,17 @@ export function ConnectionsSettings() {
   return (
     <div className="mx-auto max-w-2xl space-y-8">
       <div>
-        <h1 className="text-lg font-semibold text-white">Connections</h1>
-        <p className="mt-2 text-sm text-surface-muted">
-          Link Discord and Telegram below so bridge bots can map those accounts to this AgentLayer user (same{" "}
-          <span className="font-mono">tenant_id</span> as in Admin → Users). Tool credentials are stored per{" "}
-          <span className="font-mono">service_key</span> (encrypted on the server).{" "}
-          <strong className="font-medium text-neutral-300">Known tools</strong> can ship a small form schema in the tool
-          module (<span className="font-mono">TOOL_USER_SECRET_FORMS</span>) so this page shows the right fields — e.g. Gmail
-          wants your address plus a Google <strong>App Password</strong>, not your normal login password. Keys like{" "}
-          <span className="font-mono">weather</span> or <span className="font-mono">time</span> are{" "}
-          <strong className="font-medium text-neutral-300">names chosen by the tool author</strong> for a secret slot (often an
-          API key or URL you paste once). <strong className="font-medium text-neutral-300">Not saved</strong> means you have
-          not stored anything for that key yet — not that the key name is invalid.
-        </p>
+        <h1 className="text-lg font-semibold text-white">{t("settings:connectionsTitle")}</h1>
+        <p className="mt-2 text-sm text-surface-muted">{t("settings:connectionsIntro")}</p>
       </div>
 
-      {loading ? <p className="text-sm text-surface-muted">Loading…</p> : null}
+      {loading ? <p className="text-sm text-surface-muted">{t("settings:agentLoading")}</p> : null}
 
       <section className="rounded-xl border border-surface-border bg-surface-raised p-5">
-        <h2 className="text-sm font-medium text-white">Discord</h2>
-        <p className="mt-2 text-xs text-surface-muted">
-          Paste your numeric Discord user id (Developer Mode → right‑click your profile → Copy User ID). The Discord
-          gateway runs <strong className="text-neutral-300">inside agent-layer</strong> when an admin enables it under{" "}
-          <Link to="/admin/interfaces" className="text-sky-400 hover:underline">
-            Admin → Interfaces
-          </Link>
-          . This field only links <em>your</em> Discord account to your AgentLayer user; it does not replace normal login.
-        </p>
+        <h2 className="text-sm font-medium text-white">{t("admin:discord")}</h2>
+        <p className="mt-2 text-xs text-surface-muted">{t("settings:connectionsDiscordIntro")}</p>
         <label className="mt-4 block text-xs text-surface-muted" htmlFor="discord-user-id">
-          Discord numeric user ID
+          {t("settings:connectionsDiscordIdLabel")}
         </label>
         <input
           id="discord-user-id"
@@ -333,7 +323,7 @@ export function ConnectionsSettings() {
           onChange={(e) => setDiscordUserId(e.target.value.replace(/\D/g, ""))}
           autoComplete="off"
           inputMode="numeric"
-          placeholder="e.g. 123456789012345678"
+          placeholder={t("settings:discordUserIdPlaceholder")}
           spellCheck={false}
         />
         <div className="mt-4 flex flex-wrap gap-2">
@@ -343,7 +333,7 @@ export function ConnectionsSettings() {
             className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
             onClick={() => void saveDiscordLink()}
           >
-            {discordSaving ? "Saving…" : "Save Discord link"}
+            {discordSaving ? t("settings:saving") : t("settings:connectionsSaveDiscord")}
           </button>
           <button
             type="button"
@@ -361,11 +351,11 @@ export function ConnectionsSettings() {
                   });
                   const data = (await res.json()) as { detail?: unknown };
                   if (!res.ok) {
-                    setMsg(typeof data.detail === "string" ? data.detail : "Could not clear link");
+                    setMsg(typeof data.detail === "string" ? data.detail : t("settings:connectionsClearLinkFailed"));
                     await load();
                     return;
                   }
-                  setMsg("Discord link removed.");
+                  setMsg(t("settings:connectionsDiscordRemoved"));
                 } catch (e) {
                   setMsg(e instanceof Error ? e.message : String(e));
                 } finally {
@@ -374,29 +364,16 @@ export function ConnectionsSettings() {
               })();
             }}
           >
-            Clear
+            {t("settings:connectionsClearDiscord")}
           </button>
         </div>
       </section>
 
       <section className="rounded-xl border border-surface-border bg-surface-raised p-5">
-        <h2 className="text-sm font-medium text-white">Telegram</h2>
-        <p className="mt-2 text-xs text-surface-muted">
-          Telegram does <strong className="text-neutral-300">not</strong> show your numeric user id under Settings / profile — you need a bot for that.
-          Open a chat with <span className="font-mono">@getidsbot</span>, tap <strong className="text-neutral-300">Start</strong> or send{" "}
-          <span className="font-mono">/start</span>; the reply lists your <strong className="text-neutral-300">user id</strong> (digits only). Copy that number here.
-          If <span className="font-mono">@getidsbot</span> does not answer, try another id bot (e.g. <span className="font-mono">@RawDataBot</span>).
-          The Telegram gateway runs <strong className="text-neutral-300">inside agent-layer</strong> when an admin enables
-          it under{" "}
-          <Link to="/admin/interfaces" className="text-sky-400 hover:underline">
-            Admin → Interfaces
-          </Link>
-          . In groups, disable bot privacy via @BotFather <span className="font-mono">/setprivacy</span> so the bot can see
-          normal messages (same idea as Discord channels). This field only links <em>your</em> Telegram account; it does not
-          replace normal login.
-        </p>
+        <h2 className="text-sm font-medium text-white">{t("admin:telegram")}</h2>
+        <p className="mt-2 text-xs text-surface-muted">{t("settings:connectionsTelegramIntro")}</p>
         <label className="mt-4 block text-xs text-surface-muted" htmlFor="telegram-user-id">
-          Telegram numeric user ID
+          {t("settings:connectionsTelegramIdLabel")}
         </label>
         <input
           id="telegram-user-id"
@@ -405,7 +382,7 @@ export function ConnectionsSettings() {
           onChange={(e) => setTelegramUserId(e.target.value.replace(/\D/g, ""))}
           autoComplete="off"
           inputMode="numeric"
-          placeholder="e.g. 123456789"
+          placeholder={t("settings:telegramUserIdPlaceholder")}
           spellCheck={false}
         />
         <div className="mt-4 flex flex-wrap gap-2">
@@ -415,7 +392,7 @@ export function ConnectionsSettings() {
             className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
             onClick={() => void saveTelegramLink()}
           >
-            {telegramSaving ? "Saving…" : "Save Telegram link"}
+            {telegramSaving ? t("settings:saving") : t("settings:connectionsSaveTelegram")}
           </button>
           <button
             type="button"
@@ -433,11 +410,11 @@ export function ConnectionsSettings() {
                   });
                   const data = (await res.json()) as { detail?: unknown };
                   if (!res.ok) {
-                    setMsg(typeof data.detail === "string" ? data.detail : "Could not clear link");
+                    setMsg(typeof data.detail === "string" ? data.detail : t("settings:connectionsClearLinkFailed"));
                     await load();
                     return;
                   }
-                  setMsg("Telegram link removed.");
+                  setMsg(t("settings:connectionsTelegramRemoved"));
                 } catch (e) {
                   setMsg(e instanceof Error ? e.message : String(e));
                 } finally {
@@ -446,7 +423,7 @@ export function ConnectionsSettings() {
               })();
             }}
           >
-            Clear
+            {t("settings:connectionsClear")}
           </button>
         </div>
       </section>
@@ -454,12 +431,12 @@ export function ConnectionsSettings() {
       {msg ? (
         <p
           className={`text-sm ${
-            msg === "Saved." ||
-            msg === "Removed." ||
-            msg === "Discord link saved." ||
-            msg === "Telegram link saved." ||
-            msg === "Discord link removed." ||
-            msg === "Telegram link removed."
+            msg === t("settings:connectionsSaved") ||
+            msg === t("settings:connectionsRemoved") ||
+            msg === t("settings:discordSaved") ||
+            msg === t("settings:telegramSaved") ||
+            msg === t("settings:connectionsDiscordRemoved") ||
+            msg === t("settings:connectionsTelegramRemoved")
               ? "text-emerald-400"
               : "text-amber-400"
           }`}
@@ -470,17 +447,12 @@ export function ConnectionsSettings() {
 
       <section className="rounded-xl border border-surface-border bg-surface-raised">
         <div className="border-b border-surface-border px-4 py-3">
-          <h2 className="text-sm font-medium text-white">From your tool catalog</h2>
-          <p className="mt-0.5 text-xs text-surface-muted">
-            Click a row to add or edit that connection. For calendar, <span className="font-mono">google_calendar</span> and{" "}
-            <span className="font-mono">calendar_ics</span> use the same URL — storing one is enough for the tool to work.
-          </p>
+          <h2 className="text-sm font-medium text-white">{t("settings:connectionsCatalogTitle")}</h2>
+          <p className="mt-0.5 text-xs text-surface-muted">{t("settings:connectionsCatalogHint")}</p>
         </div>
         <ul className="divide-y divide-white/5">
           {keyUsage.length === 0 && !loading ? (
-            <li className="px-4 py-6 text-sm text-surface-muted">
-              No packages declare secrets in the current catalog.
-            </li>
+            <li className="px-4 py-6 text-sm text-surface-muted">{t("settings:connectionsCatalogEmpty")}</li>
           ) : (
             keyUsage.map(([key, info]) => {
               const saved = services.includes(key);
@@ -497,12 +469,17 @@ export function ConnectionsSettings() {
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-mono text-sm text-white">{key}</span>
                         {hasForm ? (
-                          <span className="rounded bg-sky-500/15 px-1.5 py-0.5 text-[10px] text-sky-200">form in UI</span>
+                          <span className="rounded bg-sky-500/15 px-1.5 py-0.5 text-[10px] text-sky-200">
+                            {t("settings:connectionsFormInUiBadge")}
+                          </span>
                         ) : null}
                       </div>
                       <div className="mt-1 text-xs text-surface-muted">
-                        Packages: {info.labels.slice(0, 4).join(", ")}
-                        {info.labels.length > 4 ? ` +${info.labels.length - 4}` : ""}
+                        {t("settings:connectionsPackages", {
+                          labels:
+                            info.labels.slice(0, 4).join(", ") +
+                            (info.labels.length > 4 ? ` +${info.labels.length - 4}` : ""),
+                        })}
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
@@ -513,7 +490,7 @@ export function ConnectionsSettings() {
                             : "rounded bg-neutral-500/20 px-2 py-1 text-xs text-neutral-300"
                         }
                       >
-                        {saved ? "saved" : "not saved"}
+                        {saved ? t("settings:connectionsSecretSaved") : t("settings:connectionsSecretNotSaved")}
                       </span>
                       <span className="text-xs text-surface-muted">{open ? "▲" : "▼"}</span>
                     </div>
@@ -531,12 +508,12 @@ export function ConnectionsSettings() {
                               void deleteSecret(key);
                             }}
                           >
-                            Remove stored secret
+                            {t("settings:connectionsRemoveStoredSecret")}
                           </button>
                         </div>
                       ) : null}
 
-                      {activeForm?.help ? (
+                        {activeForm?.help || activeForm?.title ? (
                         <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs leading-relaxed text-neutral-300">
                           {activeForm.title ? (
                             <p className="mb-1 font-medium text-neutral-200">{activeForm.title}</p>
@@ -549,8 +526,9 @@ export function ConnectionsSettings() {
                         <div className="space-y-3">
                           {activeForm.fields.map((f) => {
                             const id = `sec-${key}-${f.name}`;
-                            const t = (f.type || "text").toLowerCase();
-                            const inputType = t === "password" ? "password" : t === "email" ? "email" : "text";
+                            const fieldType = (f.type || "text").toLowerCase();
+                            const inputType =
+                              fieldType === "password" ? "password" : fieldType === "email" ? "email" : "text";
                             return (
                               <label key={f.name} className="block text-xs text-surface-muted" htmlFor={id}>
                                 {f.label || f.name}
@@ -570,10 +548,10 @@ export function ConnectionsSettings() {
                         </div>
                       ) : (
                         <label className="block text-xs text-surface-muted">
-                          Secret (plain text or JSON)
+                          {t("settings:connectionsSecretLabel")}
                           <textarea
                             className="mt-1 min-h-[7rem] w-full rounded-md border border-surface-border bg-black/30 px-3 py-2 font-mono text-xs text-white placeholder:text-neutral-600"
-                            placeholder='{"api_key":"…"} or paste token'
+                            placeholder={t("settings:connectionsSecretJsonPlaceholder")}
                             value={rawJson}
                             onChange={(e) => setRawJson(e.target.value)}
                             disabled={secretsUnavailable}
@@ -588,7 +566,7 @@ export function ConnectionsSettings() {
                         className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-40"
                         onClick={() => void saveSecret()}
                       >
-                        {saving ? "Saving…" : "Save"}
+                        {saving ? t("settings:saving") : t("admin:save")}
                       </button>
                     </div>
                   ) : null}
@@ -601,11 +579,8 @@ export function ConnectionsSettings() {
 
       {orphanServices.length > 0 ? (
         <section className="rounded-xl border border-surface-border bg-black/20 p-5">
-          <h2 className="text-sm font-medium text-white">Saved keys not in current catalog</h2>
-          <p className="mt-1 text-xs text-surface-muted">
-            You have secrets stored under these names, but no enabled package currently lists them. You can still open and
-            overwrite or remove them.
-          </p>
+          <h2 className="text-sm font-medium text-white">{t("settings:connectionsOrphanTitle")}</h2>
+          <p className="mt-1 text-xs text-surface-muted">{t("settings:connectionsOrphanIntro")}</p>
           <ul className="mt-3 divide-y divide-white/5 rounded-lg border border-white/10">
             {orphanServices.map((k) => {
               const open = activeKey === k;
@@ -622,7 +597,7 @@ export function ConnectionsSettings() {
                   {open ? (
                     <div className="space-y-3 border-t border-white/5 px-3 py-3">
                       <label className="block text-xs text-surface-muted">
-                        Secret (plain text or JSON)
+                        {t("settings:connectionsSecretLabel")}
                         <textarea
                           className="mt-1 min-h-[6rem] w-full rounded-md border border-surface-border bg-black/30 px-3 py-2 font-mono text-xs text-white"
                           value={rawJson}
@@ -638,14 +613,14 @@ export function ConnectionsSettings() {
                           className="rounded-md bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500 disabled:opacity-40"
                           onClick={() => void saveSecret()}
                         >
-                          {saving ? "Saving…" : "Save"}
+                          {saving ? t("settings:saving") : t("admin:save")}
                         </button>
                         <button
                           type="button"
                           className="text-xs text-red-400/90 hover:text-red-300 hover:underline"
                           onClick={() => void deleteSecret(k)}
                         >
-                          Remove
+                          {t("settings:connectionsRemove")}
                         </button>
                       </div>
                     </div>
@@ -657,18 +632,12 @@ export function ConnectionsSettings() {
         </section>
       ) : null}
 
-      <p className="text-xs text-surface-muted">
-        Tool authors: set <span className="font-mono">TOOL_SECRETS_REQUIRED</span> (user secret{" "}
-        <span className="font-mono">service_key</span> names) and optional{" "}
-        <span className="font-mono">TOOL_USER_SECRET_FORMS</span> so this UI matches what each tool reads server-side.
-        See <span className="font-mono">gmail.py</span> /{" "}
-        <span className="font-mono">github.py</span>.
-      </p>
+      <p className="text-xs text-surface-muted">{t("settings:connectionsToolAuthorsHint")}</p>
 
       <p className="text-xs text-surface-muted">
-        End-user tool toggles:{" "}
+        {t("settings:connectionsEndUserTools")}{" "}
         <Link to="/settings/tools" className="text-sky-400 hover:text-sky-300 hover:underline">
-          Tools
+          {t("settings:toolsTitle")}
         </Link>
         .
       </p>
@@ -678,7 +647,7 @@ export function ConnectionsSettings() {
         className="text-xs text-sky-400 hover:text-sky-300 hover:underline"
         onClick={() => void load()}
       >
-        Refresh
+        {t("settings:profileRefresh")}
       </button>
     </div>
   );

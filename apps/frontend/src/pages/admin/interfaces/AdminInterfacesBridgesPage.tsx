@@ -1,11 +1,13 @@
 import { AdminInterfacesBridgesSection } from "./AdminInterfacesBridgesSection";
 import { AdminInterfacesPageShell } from "./AdminInterfacesPageShell";
+import { useTranslation } from "react-i18next";
 
 export function AdminInterfacesBridgesPage() {
+  const { t } = useTranslation(["admin"]);
   return (
     <AdminInterfacesPageShell
-      title="Bridges"
-      description="Discord and Telegram in-process gateways. Users link accounts under Settings → Connections."
+      title={t("admin:bridges")}
+      description={t("admin:interfacesBridgesDescription")}
     >
       <AdminInterfacesBridgesSection />
     </AdminInterfacesPageShell>

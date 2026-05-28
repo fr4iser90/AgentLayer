@@ -1,0 +1,26 @@
+{
+  "loading": "Laden…",
+  "noTasksYet": "Noch keine Aufgaben.",
+  "boundToChat": "An Chat gebunden",
+  "bindToChat": "An Chat binden",
+  "markDone": "Als erledigt markieren",
+  "loadFailed": "Aufgaben konnten nicht geladen werden",
+  "bindFailed": "Aufgabe konnte nicht an den Chat gebunden werden",
+  "newGlobalGoalPlaceholder": "Neues globales Ziel…",
+  "pageTitle": "Tasks",
+  "pageSubtitle": "Backlog für Orchestrierung (global) und Projekt-Arbeit (pro Workspace). Chat nutzt nur einen gebundenen Task — hier verwalten.",
+  "backToChat": "← Zurück zum Chat",
+  "bindingToChat": "Tasks an Chat {{id}} binden. Unten „An Chat binden“ auf einem Task.",
+  "clearBinding": "Bindung löschen",
+  "globalTasks": "Globale Tasks",
+  "globalTasksHint": "Projektübergreifende Ziele (ohne Workspace). Nicht mit Projekt-Tasks gemischt.",
+  "add": "Hinzufügen",
+  "projectTasks": "Projekt-Tasks",
+  "projectTasksHint": "Auf einen Workspace / Repo bezogen.",
+  "workspaceLabel": "Workspace",
+  "selectProject": "Projekt wählen…",
+  "newProjectTaskFor": "Neuer Task für {{name}}…",
+  "newProjectTask": "Neuer Projekt-Task…",
+  "chooseWorkspaceHint": "Workspace wählen, um Projekt-Tasks zu sehen und anzulegen."
+}
+

@@ -30,8 +30,12 @@ class IngestDocsBody(BaseModel):
     )
     domain: str = Field(default="agentlayer_docs", min_length=1)
     purge_first: bool = Field(
+        default=False,
+        description="If true, delete all RAG rows for this tenant+domain then re-ingest everything.",
+    )
+    incremental: bool = Field(
         default=True,
-        description="If true, delete existing RAG rows for this tenant+domain before ingest.",
+        description="Skip files whose content hash matches DB; remove DB rows for deleted files.",
     )
 
 
@@ -92,7 +96,7 @@ async def admin_rag_ingest_docs(
 ):
     """
     Walk ``docs_root`` for ``*.md``, ingest each file under ``domain`` (default ``agentlayer_docs``).
-    Purges all rows for that tenant+domain first when ``purge_first`` is true so reindex is idempotent.
+    Default: incremental sync (hash + source_uri). Set ``purge_first`` for a full rebuild.
     """
     user = await require_admin(request)
     if not operator_settings.rag_settings()["enabled"]:
@@ -121,6 +125,7 @@ async def admin_rag_ingest_docs(
             root,
             domain,
             purge_first=opts.purge_first,
+            incremental=opts.incremental and not opts.purge_first,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e

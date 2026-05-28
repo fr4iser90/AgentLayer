@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../../auth/AuthContext";
 import { apiFetch } from "../../../lib/api";
 import {
@@ -14,6 +15,7 @@ import {
 } from "./operatorSettingsTypes";
 
 function useOperatorSettingsState() {
+  const { t } = useTranslation(["admin"]);
   const auth = useAuth();
   const [discordAppId, setDiscordAppId] = useState("");
   const [telegramAppId, setTelegramAppId] = useState("");
@@ -66,7 +68,7 @@ function useOperatorSettingsState() {
   const [embeddingApiHeaderNameSource, setEmbeddingApiHeaderNameSource] = useState<
     "env" | "operator_settings" | null
   >(null);
-  const [ragEmbeddingModel, setRagEmbeddingModel] = useState("nomic-embed-text");
+  const [ragEmbeddingModel, setRagEmbeddingModel] = useState("");
   const [ragEmbeddingModelOptions, setRagEmbeddingModelOptions] = useState<string[]>([]);
   const [ragEmbeddingStatusHint, setRagEmbeddingStatusHint] = useState<string | null>(null);
   const [embeddingModelsLoading, setEmbeddingModelsLoading] = useState(false);
@@ -226,8 +228,7 @@ function useOperatorSettingsState() {
           : null
       );
       setRagEmbeddingModel(
-        (op.rag_embedding_model ?? (op as { rag_ollama_model?: string }).rag_ollama_model ?? "nomic-embed-text")
-          .trim() || "nomic-embed-text"
+        (op.rag_embedding_model ?? (op as { rag_ollama_model?: string }).rag_ollama_model ?? "").trim()
       );
       try {
         const modelsJson = (await modelsRes.json()) as { agentlayer?: { embedding?: EmbeddingCatalogHealth } };
@@ -398,8 +399,8 @@ function useOperatorSettingsState() {
       setExtLlmModelIds(ids);
       setExtLlmModelsHint(
         ids.length > 0
-          ? `${ids.length} Modellnamen geladen — Vorschläge erscheinen beim Tippen in den Feldern unten.`
-          : "Die API hat keine Modelle geliefert (leere Liste)."
+          ? t("admin:externalModelsLoaded", { count: ids.length })
+          : t("admin:externalModelsEmpty")
       );
     } catch (e) {
       setExtLlmModelIds([]);
@@ -407,7 +408,7 @@ function useOperatorSettingsState() {
     } finally {
       setExtLlmModelsLoading(false);
     }
-  }, [auth, extLlmEndpoints]);
+  }, [auth, extLlmEndpoints, t]);
 
   useEffect(() => {
     void load();
@@ -453,7 +454,7 @@ function useOperatorSettingsState() {
         if (!Number.isFinite(n) || n < 1) {
           setSaveMsg({
             ok: false,
-            text: "Dashboard upload: max file MB must be empty (use env) or an integer ≥ 1.",
+            text: t("admin:operatorSaveDashboardUploadInvalid"),
           });
           return;
         }
@@ -489,7 +490,7 @@ function useOperatorSettingsState() {
       ) {
         setSaveMsg({
           ok: false,
-          text: "Smart routing: Ungültige Zahlen (siehe Hilfetext zu den Grenzen).",
+          text: t("admin:operatorSaveSmartRoutingInvalid"),
         });
         return;
       }
@@ -525,7 +526,7 @@ function useOperatorSettingsState() {
       ) {
         setSaveMsg({
           ok: false,
-          text: "RAG: Ungültige Zahlen (Dim 32–4096, Chunk 200–8000, Overlap 0–2000, Top-K 1–50, Timeout 5–600).",
+          text: t("admin:operatorSaveRagInvalid"),
         });
         return;
       }
@@ -537,7 +538,7 @@ function useOperatorSettingsState() {
       if (embeddingApiKey.trim()) {
         patch.embedding_api_key = embeddingApiKey.trim();
       }
-      patch.rag_embedding_model = ragEmbeddingModel.trim() || "nomic-embed-text";
+      patch.rag_embedding_model = ragEmbeddingModel.trim();
       patch.rag_embedding_dim = Math.floor(red);
       patch.rag_chunk_size = Math.floor(rcs);
       patch.rag_chunk_overlap = Math.floor(rco);
@@ -591,7 +592,7 @@ function useOperatorSettingsState() {
       ) {
         setSaveMsg({
           ok: false,
-          text: "Memory graph: Ungültige Zahlen (Hops 0–4, Score 0–1, Bullets 1–50, Zeichen 200–50000).",
+          text: t("admin:operatorSaveMemGraphInvalid"),
         });
         return;
       }
@@ -615,7 +616,7 @@ function useOperatorSettingsState() {
       if (!patchRes.ok) {
         setSaveMsg({
           ok: false,
-          text: `Interfaces saved, but operator settings failed: ${detailMessage(patchData)}`,
+          text: t("admin:operatorSaveInterfacesPartial", { detail: detailMessage(patchData) }),
         });
         return;
       }
@@ -624,14 +625,14 @@ function useOperatorSettingsState() {
         if (!r.baseUrl.trim()) {
           setSaveMsg({
             ok: false,
-            text: `Externe LLM: Endpoint ${i + 1}: Base URL fehlt (oder Zeile entfernen).`,
+            text: t("admin:operatorSaveLlmMissingUrl", { n: i + 1 }),
           });
           return;
         }
         if (r.id == null && !r.apiKey.trim()) {
           setSaveMsg({
             ok: false,
-            text: `Externe LLM: Neuer Endpoint ${i + 1}: API-Key erforderlich.`,
+            text: t("admin:operatorSaveLlmMissingKey", { n: i + 1 }),
           });
           return;
         }
@@ -662,7 +663,7 @@ function useOperatorSettingsState() {
       if (!epRes.ok) {
         setSaveMsg({
           ok: false,
-          text: `Einstellungen gespeichert, aber externe LLM-Endpoints: ${detailMessage(epData)}`,
+          text: t("admin:operatorSaveLlmEndpointsPartial", { detail: detailMessage(epData) }),
         });
         return;
       }
@@ -671,7 +672,7 @@ function useOperatorSettingsState() {
       await load();
       setSaveMsg({
         ok: true,
-        text: "Saved. In-process Discord/Telegram bridges pick up token/enable changes after the current session reconnects (or restart the container).",
+        text: t("admin:operatorSaveOkBridges"),
       });
     } catch (e) {
       setSaveMsg({ ok: false, text: e instanceof Error ? e.message : String(e) });
@@ -688,11 +689,11 @@ function useOperatorSettingsState() {
       setRagEmbeddingStatusHint(formatEmbeddingStatusHint(emb));
     } catch {
       setRagEmbeddingModelOptions([]);
-      setRagEmbeddingStatusHint("Embedding-Modellliste konnte nicht geladen werden.");
+      setRagEmbeddingStatusHint(t("admin:embeddingModelListLoadFailed"));
     } finally {
       setEmbeddingModelsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   async function clearTelegramToken() {
     setSaveMsg(null);
@@ -707,7 +708,7 @@ function useOperatorSettingsState() {
         return;
       }
       await load();
-      setSaveMsg({ ok: true, text: "Telegram bot token cleared." });
+      setSaveMsg({ ok: true, text: t("admin:telegramTokenCleared") });
     } catch (e) {
       setSaveMsg({ ok: false, text: e instanceof Error ? e.message : String(e) });
     }
@@ -726,7 +727,7 @@ function useOperatorSettingsState() {
         return;
       }
       await load();
-      setSaveMsg({ ok: true, text: "Discord bot token cleared." });
+      setSaveMsg({ ok: true, text: t("admin:discordTokenCleared") });
     } catch (e) {
       setSaveMsg({ ok: false, text: e instanceof Error ? e.message : String(e) });
     }

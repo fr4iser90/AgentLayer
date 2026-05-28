@@ -20,11 +20,8 @@ from apps.backend.infrastructure.db import db
 
 logger = logging.getLogger(__name__)
 
-_RAG_EMBEDDING_MODEL_DEFAULT = "nomic-embed-text"
-
-
 def _normalize_rag_embedding_model(raw: Any) -> str:
-    return (str(raw or "").strip() or _RAG_EMBEDDING_MODEL_DEFAULT)[:256]
+    return (str(raw or "").strip())[:256]
 
 
 def _rag_embedding_model_from_row(r: dict[str, Any]) -> str:
@@ -105,7 +102,7 @@ def _fetch_row() -> dict[str, Any]:
         "memory_graph_log_activations": False,
         "memory_enabled": True,
         "rag_enabled": True,
-        "rag_embedding_model": "nomic-embed-text",
+        "rag_embedding_model": "",
         "rag_embedding_dim": 768,
         "rag_chunk_size": 1200,
         "rag_chunk_overlap": 200,
@@ -115,6 +112,7 @@ def _fetch_row() -> dict[str, Any]:
         "embedding_api_base_url": None,
         "embedding_api_key": None,
         "embedding_api_header_name": None,
+        "rag_docs_ingest_fingerprint": None,
         "docs_root": None,
         "pidea_enabled": False,
         "pidea_cdp_http_url": None,
@@ -174,7 +172,8 @@ def _fetch_row() -> dict[str, Any]:
                            workspace_allow_self_editing,
                            embedding_api_base_url,
                            embedding_api_key,
-                           embedding_api_header_name
+                           embedding_api_header_name,
+                           rag_docs_ingest_fingerprint
                     FROM operator_settings WHERE id = 1
                     """
                 )
@@ -265,7 +264,31 @@ def _fetch_row() -> dict[str, Any]:
         "embedding_api_header_name": (
             (str(row[66]).strip() or None) if len(row) > 66 and row[66] is not None else None
         ),
+        "rag_docs_ingest_fingerprint": (
+            (str(row[67]).strip() or None) if len(row) > 67 and row[67] is not None else None
+        ),
     }
+
+
+def rag_docs_ingest_fingerprint() -> str:
+    """Last successful incremental docs ingest (embedding model/dim + chunking)."""
+    return (str(_cached_row().get("rag_docs_ingest_fingerprint") or "").strip())
+
+
+def set_rag_docs_ingest_fingerprint(value: str) -> None:
+    v = (value or "").strip()[:128] or None
+    with db.pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE operator_settings
+                SET rag_docs_ingest_fingerprint = %s, updated_at = now()
+                WHERE id = 1
+                """,
+                (v,),
+            )
+        conn.commit()
+    _invalidate()
 
 
 def resolved_embedding_api_base_url() -> str:
@@ -458,6 +481,32 @@ def memory_service_enabled() -> bool:
 def expose_internal_errors_in_responses() -> bool:
     """When true, some HTTP 5xx ``detail`` may include ``str(exception)`` (debug). Admin → Interfaces."""
     return bool(_cached_row().get("expose_internal_errors", False))
+
+
+def code_graph_enabled() -> bool:
+    """True when Neo4j URL is configured and the driver is importable."""
+    url = (os.environ.get("NEO4J_URL") or getattr(app_config, "NEO4J_URL", "")).strip()
+    if not url:
+        return False
+    try:
+        import neo4j  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+def rag_embedding_ready() -> bool:
+    """RAG ingest/search need embedding API base and a non-empty model id."""
+    if not rag_settings()["enabled"]:
+        return False
+    try:
+        from apps.backend.infrastructure.embedding_client import _normalized_embedding_base
+
+        if not _normalized_embedding_base():
+            return False
+    except Exception:
+        return False
+    return bool((rag_settings().get("embedding_model") or "").strip())
 
 
 def rag_settings() -> dict[str, Any]:
@@ -1133,7 +1182,7 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
     if "rag_embedding_dim" in patch:
         v = patch["rag_embedding_dim"]
         r["rag_embedding_dim"] = _bound_int(v, 768, 32, 4096) if v is not None else 768
-    elif "rag_embedding_model" in patch:
+    elif "rag_embedding_model" in patch and (r.get("rag_embedding_model") or "").strip():
         try:
             from apps.backend.infrastructure.embedding_client import probe_embedding_output_dim
 

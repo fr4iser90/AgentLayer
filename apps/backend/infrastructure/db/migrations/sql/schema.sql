@@ -476,7 +476,7 @@ CREATE TABLE operator_settings (
   memory_graph_log_activations BOOLEAN NOT NULL DEFAULT false,
   memory_enabled BOOLEAN NOT NULL DEFAULT true,
   rag_enabled BOOLEAN NOT NULL DEFAULT true,
-  rag_embedding_model TEXT NOT NULL DEFAULT 'nomic-embed-text',
+  rag_embedding_model TEXT NOT NULL DEFAULT '',
   rag_embedding_dim INTEGER NOT NULL DEFAULT 768,
   rag_chunk_size INTEGER NOT NULL DEFAULT 1200,
   rag_chunk_overlap INTEGER NOT NULL DEFAULT 200,

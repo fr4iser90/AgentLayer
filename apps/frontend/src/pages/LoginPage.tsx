@@ -1,8 +1,10 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { SETUP_WIZARD_ACTIVE_KEY, useAuth } from "../auth/AuthContext";
 
 export function LoginPage() {
+  const { t } = useTranslation(["auth"]);
   const { accessToken, loading, setupStatus, refreshSetupStatus, login } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -39,7 +41,7 @@ export function LoginPage() {
     const ok = await login(email.trim(), password);
     setPending(false);
     if (!ok) {
-      setError("Ungültige E-Mail oder Passwort.");
+      setError(t("auth:invalidCredentials"));
       return;
     }
     navigate("/", { replace: true });
@@ -48,21 +50,21 @@ export function LoginPage() {
   return (
     <div className="h-full min-h-0 overflow-y-auto">
       <div className="mx-auto max-w-sm px-6 py-12">
-        <h1 className="text-2xl font-semibold text-white">Anmelden</h1>
+        <h1 className="text-2xl font-semibold text-white">{t("auth:loginTitle")}</h1>
         <p className="mt-2 text-sm text-surface-muted">
-          Melden Sie sich mit Ihrem Agent-Layer-Konto an.
+          {t("auth:loginSubtitle")}
         </p>
         {setupStatus?.needs_setup ? (
           <p className="mt-4 text-sm text-surface-muted">
-            Diese Instanz ist noch nicht eingerichtet.{" "}
+            {t("auth:instanceNotSetup")}{" "}
             <Link to="/setup" className="text-sky-400 hover:underline">
-              Ersteinrichtung starten
+              {t("auth:startSetup")}
             </Link>
           </p>
         ) : null}
         <form onSubmit={onSubmit} className="mt-8 flex flex-col gap-4">
           <label className="flex flex-col gap-1.5 text-sm">
-            <span className="text-surface-muted">E-Mail</span>
+            <span className="text-surface-muted">{t("auth:emailLabel")}</span>
             <input
               type="email"
               name="email"
@@ -74,7 +76,7 @@ export function LoginPage() {
             />
           </label>
           <label className="flex flex-col gap-1.5 text-sm">
-            <span className="text-surface-muted">Passwort</span>
+            <span className="text-surface-muted">{t("auth:passwordLabel")}</span>
             <input
               type="password"
               name="password"
@@ -95,7 +97,7 @@ export function LoginPage() {
             disabled={pending || loading}
             className="rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
           >
-            {pending ? "Anmeldung…" : "Anmelden"}
+            {pending ? t("auth:signingIn") : t("auth:signIn")}
           </button>
         </form>
       </div>

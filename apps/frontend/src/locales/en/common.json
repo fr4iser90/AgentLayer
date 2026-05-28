@@ -9,6 +9,8 @@
     "studio": "Image generation",
     "dashboard": "Dashboard",
     "schedules": "Schedules",
+    "tasks": "Tasks",
+    "shares": "Shares",
     "signIn": "Sign in"
   },
   "footer": {
@@ -16,6 +18,7 @@
     "docs": "Docs",
     "brand": "Agent Layer"
   },
+  "settings": "Settings",
   "userMenu": {
     "account": "Account",
     "settings": "Settings",
@@ -26,5 +29,34 @@
     "label": "Language",
     "en": "English",
     "de": "German"
+  },
+  "home": {
+    "intro": "First-party UI on the same origin as the API. Operators with the admin role can open Admin for connection keys, tools, and registry actions.",
+    "chatDesc": "Open WebUI–style shell (P2: WebSocket)",
+    "studioDesc": "ComfyUI presets — GET /v1/studio/catalog",
+    "tasksDesc": "Global and per-project backlog — bind a task when chatting",
+    "dashboardDesc": "Multiple kinds (tasks, friends, pets, …) — install schema once, then create dashboards"
+  },
+  "docs": {
+    "title": "Documentation",
+    "intro": "API and UI contracts live in the repo under docs/. Open a file on GitHub or clone the project to edit locally.",
+    "repository": "Repository",
+    "docsFolder": "docs/ (folder)",
+    "webuiContract": "WEBUI_CONTRACT.md",
+    "frontendPlan": "FRONTEND_AGENT_UI_PLAN.md"
+  },
+  "studio": {
+    "title": "Image generation",
+    "inpaint": "Inpaint",
+    "subtitle": "ComfyUI-backed workflows. Presets and checkpoints come from the server catalog; configure ComfyUI URLs in operator settings / env.",
+    "catalogFromServer": "Catalog from server",
+    "reloadCatalog": "Reload catalog",
+    "run": "Run",
+    "running": "Running…",
+    "catalogLoadFailed": "Failed to load catalog",
+    "requestFailed": "Request failed",
+    "result": "Result",
+    "generatedImageAlt": "Generated image",
+    "noPresetSelected": "No preset selected."
   }
 }

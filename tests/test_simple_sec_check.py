@@ -9,6 +9,9 @@ from plugins.tools.integrations.simple_sec_check import ssc_common
 from plugins.tools.integrations.simple_sec_check.security_scan_agent_callback import (
     security_scan_agent_callback,
 )
+from plugins.tools.integrations.simple_sec_check.security_scan_finding_policy_schema import (
+    security_scan_finding_policy_schema,
+)
 from plugins.tools.integrations.simple_sec_check.security_scan_findings import (
     security_scan_findings,
 )
@@ -219,6 +222,44 @@ def test_security_scan_findings_poll_path():
     assert int(params["offset"]) == 25
 
 
+@patch.dict("os.environ", {"SSC_API_KEY": "ssc_test"}, clear=False)
+def test_security_scan_finding_policy_schema():
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "semgrep": {"accepted_findings": [{"fields": ["rule_id", "path_regex"]}]},
+        "notes": ["root dedupe ignored"],
+    }
+    mock_resp.content = b"{}"
+    with patch("plugins.tools.integrations.simple_sec_check.ssc_common.httpx.Client") as client_cls:
+        client = client_cls.return_value.__enter__.return_value
+        client.request.return_value = mock_resp
+        out = json.loads(
+            security_scan_finding_policy_schema({"tools": "semgrep,gitleaks"}, None)
+        )
+    assert out["ok"] is True
+    assert "finding-policy/schema" in client.request.call_args[0][1]
+    assert client.request.call_args.kwargs["params"]["tools"] == "semgrep,gitleaks"
+    assert "semgrep" in out["schema"]
+    assert out["notes"] == ["root dedupe ignored"]
+    assert out["agent_guidance"]
+
+
+@patch.dict("os.environ", {"SSC_API_KEY": "ssc_test"}, clear=False)
+def test_security_scan_finding_policy_schema_nested_schema_key():
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "schema": {"bandit": {"accepted_findings": []}},
+        "notes": "ok",
+    }
+    mock_resp.content = b"{}"
+    with patch("plugins.tools.integrations.simple_sec_check.ssc_common.httpx.Client") as client_cls:
+        client_cls.return_value.__enter__.return_value.request.return_value = mock_resp
+        out = json.loads(security_scan_finding_policy_schema({}, None))
+    assert out["schema"] == {"bandit": {"accepted_findings": []}}
+
+
 def test_schedule_allowlist_includes_scan_tools():
     from apps.backend.infrastructure.coding_schedule_execution import _schedule_tool_allowlist
 
@@ -227,6 +268,7 @@ def test_schedule_allowlist_includes_scan_tools():
         "Security remediation",
         "security_scan_resolve",
     )
+    assert "security_scan_finding_policy_schema" in names
     assert "security_scan_resolve" in names
     assert "security_scan_status" in names
     assert "coding_write_file" in names

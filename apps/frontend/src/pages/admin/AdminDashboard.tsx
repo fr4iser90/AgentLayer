@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import type { OperatorPublic } from "../../features/admin/operatorSettings/operatorSettingsTypes";
@@ -15,6 +16,7 @@ function StatusCard({
   detail?: string;
   to: string;
 }) {
+  const { t } = useTranslation(["admin"]);
   return (
     <Link
       to={to}
@@ -23,13 +25,14 @@ function StatusCard({
       <p className="text-[10px] font-medium uppercase tracking-wide text-surface-muted">{title}</p>
       <p className="mt-2 text-sm font-medium text-white">{status}</p>
       {detail ? <p className="mt-1 text-xs text-surface-muted">{detail}</p> : null}
-      <p className="mt-3 text-xs text-sky-400/90">Open →</p>
+      <p className="mt-3 text-xs text-sky-400/90">{t("admin:openCard")}</p>
     </Link>
   );
 }
 
 export function AdminDashboard() {
   const auth = useAuth();
+  const { t } = useTranslation(["admin"]);
   const [op, setOp] = useState<OperatorPublic | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -53,50 +56,49 @@ export function AdminDashboard() {
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
-      <h1 className="text-xl font-semibold text-white">Overview</h1>
+      <h1 className="text-xl font-semibold text-white">{t("admin:overview")}</h1>
       <p className="mt-2 text-sm text-surface-muted">
-        Operator console. Use the sidebar for platform settings, automation, users, and traces. Everything
-        here requires an admin session.
+        {t("admin:adminDashboardIntro")}
       </p>
 
       {loading ? (
-        <p className="mt-8 text-sm text-surface-muted">Loading status…</p>
+        <p className="mt-8 text-sm text-surface-muted">{t("admin:loadingStatus")}</p>
       ) : (
         <div className="mt-8 grid gap-3 sm:grid-cols-2">
           <StatusCard
-            title="Discord"
-            status={op?.discord_bot_enabled ? "On" : "Off"}
-            detail={op?.discord_bot_token_configured ? "Token configured" : "No token"}
+            title={t("admin:discord")}
+            status={op?.discord_bot_enabled ? t("admin:on") : t("admin:off")}
+            detail={op?.discord_bot_token_configured ? t("admin:tokenConfigured") : t("admin:noToken")}
             to="/admin/interfaces/bridges"
           />
           <StatusCard
-            title="Telegram"
-            status={op?.telegram_bot_enabled ? "On" : "Off"}
-            detail={op?.telegram_bot_token_configured ? "Token configured" : "No token"}
+            title={t("admin:telegram")}
+            status={op?.telegram_bot_enabled ? t("admin:on") : t("admin:off")}
+            detail={op?.telegram_bot_token_configured ? t("admin:tokenConfigured") : t("admin:noToken")}
             to="/admin/interfaces/bridges"
           />
           <StatusCard
-            title="LLM"
-            status={op?.llm_smart_routing_enabled ? "Smart routing" : "Catalog providers"}
-            detail="Endpoints + model in chat composer"
+            title={t("admin:llm")}
+            status={op?.llm_smart_routing_enabled ? t("admin:smartRouting") : t("admin:catalogProviders")}
+            detail={t("admin:endpointsModelInComposer")}
             to="/admin/interfaces/llm"
           />
           <StatusCard
-            title="Jobs worker"
-            status={op?.scheduler_jobs_worker_enabled !== false ? "Running" : "Stopped"}
-            detail={op?.scheduler_enabled ? "Operator tick on" : "Operator tick off"}
+            title={t("admin:jobsWorker")}
+            status={op?.scheduler_jobs_worker_enabled !== false ? t("admin:running") : t("admin:stopped")}
+            detail={op?.scheduler_enabled ? t("admin:operatorTickOn") : t("admin:operatorTickOff")}
             to="/admin/interfaces/automation"
           />
           <StatusCard
-            title="Schedules"
-            status="User jobs"
-            detail="CRUD for scheduler_jobs"
+            title={t("admin:schedulesTitle")}
+            status={t("admin:userJobs")}
+            detail={t("admin:crudSchedulerJobs")}
             to="/admin/schedules"
           />
           <StatusCard
-            title="Run traces"
-            status="Debug"
-            detail="Agent run history"
+            title={t("admin:runTraces")}
+            status={t("admin:debug")}
+            detail={t("admin:agentRunHistory")}
             to="/admin/run-traces"
           />
         </div>

@@ -1,11 +1,13 @@
 import { AdminInterfacesMemorySection } from "./AdminInterfacesMemorySection";
 import { AdminInterfacesPageShell } from "./AdminInterfacesPageShell";
+import { useTranslation } from "react-i18next";
 
 export function AdminInterfacesMemoryPage() {
+  const { t } = useTranslation(["admin"]);
   return (
     <AdminInterfacesPageShell
-      title="Memory & RAG"
-      description="Embedding endpoints (separate from chat), RAG tuning, memory, and memory graph."
+      title={t("admin:memoryRagTitle")}
+      description={t("admin:interfacesMemoryDescription")}
       wide
     >
       <AdminInterfacesMemorySection />

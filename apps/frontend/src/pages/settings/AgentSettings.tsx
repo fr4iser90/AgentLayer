@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 
@@ -26,6 +27,7 @@ type ProfileResp = {
 };
 
 export function AgentSettings() {
+  const { t } = useTranslation(["settings"]);
   const auth = useAuth();
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<string | null>(null);
@@ -108,10 +110,10 @@ export function AgentSettings() {
       });
       const data = (await res.json().catch(() => ({}))) as { detail?: unknown };
       if (!res.ok) {
-        setMsg(typeof data.detail === "string" ? data.detail : "Could not save persona");
+        setMsg(typeof data.detail === "string" ? data.detail : t("settings:savePersonaFailed"));
         return;
       }
-      setMsg("Persona saved.");
+      setMsg(t("settings:personaSaved"));
     } catch (e) {
       setMsg(e instanceof Error ? e.message : String(e));
     } finally {
@@ -141,10 +143,10 @@ export function AgentSettings() {
       });
       const data = (await res.json().catch(() => ({}))) as { detail?: unknown };
       if (!res.ok) {
-        setMsg(typeof data.detail === "string" ? data.detail : "Could not save profile");
+        setMsg(typeof data.detail === "string" ? data.detail : t("settings:saveProfileFailed"));
         return;
       }
-      setMsg("Agent profile saved.");
+      setMsg(t("settings:profileSaved"));
     } catch (e) {
       setMsg(e instanceof Error ? e.message : String(e));
     } finally {
@@ -159,15 +161,13 @@ export function AgentSettings() {
   return (
     <div className="mx-auto max-w-2xl space-y-8">
       <div>
-        <h1 className="text-lg font-semibold text-white">Agent</h1>
+        <h1 className="text-lg font-semibold text-white">{t("settings:agentTitle")}</h1>
         <p className="mt-2 text-sm text-surface-muted">
-          Persona and structured profile are merged into the system context for chat when enabled (
-          <code className="rounded bg-white/5 px-1 text-xs">GET/PUT /v1/user/persona</code>,{" "}
-          <code className="rounded bg-white/5 px-1 text-xs">GET/PUT /v1/user/profile</code>). Do not put secrets here.
+          {t("settings:agentIntro")}
         </p>
       </div>
 
-      {loading ? <p className="text-sm text-surface-muted">Loading…</p> : null}
+      {loading ? <p className="text-sm text-surface-muted">{t("settings:agentLoading")}</p> : null}
       {msg ? (
         <p
           className={`text-sm ${msg.includes("saved") ? "text-emerald-400" : "text-amber-400"}`}
@@ -177,18 +177,18 @@ export function AgentSettings() {
       ) : null}
 
       <section className="rounded-xl border border-surface-border bg-surface-raised p-5">
-        <h2 className="text-sm font-medium text-white">Persona</h2>
+        <h2 className="text-sm font-medium text-white">{t("settings:personaTitle")}</h2>
         <p className="mt-1 text-xs text-surface-muted">
-          Free-form instructions (tone, goals, vocabulary). Optional injection into every chat turn.
+          {t("settings:personaHelp")}
         </p>
         {personaUnavailable ? (
           <p className="mt-3 text-sm text-amber-400">
-            Persona storage is unavailable (database migrations missing?).
+            {t("settings:personaStorageUnavailable")}
           </p>
         ) : (
           <>
             <label className={`${label} mt-4`}>
-              Instructions
+              {t("settings:personaInstructionsLabel")}
               <textarea
                 className={`${input} min-h-[10rem] font-mono text-xs leading-relaxed`}
                 value={instructions}
@@ -203,7 +203,7 @@ export function AgentSettings() {
                 checked={injectPersona}
                 onChange={(e) => setInjectPersona(e.target.checked)}
               />
-              Inject into agent system prompt
+              {t("settings:personaInjectLabel")}
             </label>
             <button
               type="button"
@@ -211,77 +211,87 @@ export function AgentSettings() {
               className="mt-4 rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-50"
               onClick={() => void savePersona()}
             >
-              {savingPersona ? "Saving…" : "Save persona"}
+              {savingPersona ? t("settings:saving") : t("settings:savePersona")}
             </button>
           </>
         )}
       </section>
 
       <section className="rounded-xl border border-surface-border bg-black/20 p-5">
-        <h2 className="text-sm font-medium text-white">Structured profile</h2>
+        <h2 className="text-sm font-medium text-white">{t("settings:structuredProfileTitle")}</h2>
         <p className="mt-1 text-xs text-surface-muted">
-          Fields the server can summarize for the model (see API for the full schema).
+          {t("settings:structuredProfileSubtitle")}
         </p>
         {profileUnavailable ? (
           <p className="mt-3 text-sm text-amber-400">
-            Profile storage is unavailable (run migrations for <span className="font-mono">user_agent_profile</span>).
+            {t("settings:profileStorageUnavailable", { table: "user_agent_profile" })}
           </p>
         ) : (
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <label className={label}>
-              Display name
+              {t("settings:displayName")}
               <input className={input} value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
             </label>
             <label className={label}>
-              Preferred output language
+              {t("settings:preferredOutputLanguage")}
               <input
                 className={input}
                 value={preferredOutputLanguage}
                 onChange={(e) => setPreferredOutputLanguage(e.target.value)}
-                placeholder="e.g. German"
+                placeholder={t("settings:preferredOutputLanguagePlaceholder")}
               />
             </label>
             <label className={label}>
-              Locale
-              <input className={input} value={locale} onChange={(e) => setLocale(e.target.value)} placeholder="de-DE" />
+              {t("settings:localeLabel")}
+              <input
+                className={input}
+                value={locale}
+                onChange={(e) => setLocale(e.target.value)}
+                placeholder={t("settings:localePlaceholder")}
+              />
             </label>
             <label className={label}>
-              Timezone
+              {t("settings:timezone")}
               <input
                 className={input}
                 value={timezone}
                 onChange={(e) => setTimezone(e.target.value)}
-                placeholder="Europe/Berlin"
+                placeholder={t("settings:timezonePlaceholder")}
               />
             </label>
             <label className={label}>
-              Tone
-              <input className={input} value={tone} onChange={(e) => setTone(e.target.value)} placeholder="casual" />
+              {t("settings:tone")}
+              <input
+                className={input}
+                value={tone}
+                onChange={(e) => setTone(e.target.value)}
+                placeholder={t("settings:tonePlaceholder")}
+              />
             </label>
             <label className={label}>
-              Verbosity
+              {t("settings:verbosity")}
               <input
                 className={input}
                 value={verbosity}
                 onChange={(e) => setVerbosity(e.target.value)}
-                placeholder="medium"
+                placeholder={t("settings:verbosityPlaceholder")}
               />
             </label>
             <label className={`${label} sm:col-span-2`}>
-              Interaction style
+              {t("settings:interactionStyle")}
               <input
                 className={input}
                 value={interactionStyle}
                 onChange={(e) => setInteractionStyle(e.target.value)}
-                placeholder="assistant | coach | …"
+                placeholder={t("settings:interactionStylePlaceholder")}
               />
             </label>
             <label className={label}>
-              Job title
+              {t("settings:jobTitle")}
               <input className={input} value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} />
             </label>
             <label className={label}>
-              Organization
+              {t("settings:organization")}
               <input className={input} value={organization} onChange={(e) => setOrganization(e.target.value)} />
             </label>
             <label className="flex cursor-pointer items-center gap-2 text-sm text-neutral-200 sm:col-span-2">
@@ -291,7 +301,7 @@ export function AgentSettings() {
                 checked={injectStructured}
                 onChange={(e) => setInjectStructured(e.target.checked)}
               />
-              Inject structured profile into agent
+              {t("settings:injectStructuredProfile")}
             </label>
             <label className="flex cursor-pointer items-center gap-2 text-sm text-neutral-200 sm:col-span-2">
               <input
@@ -300,7 +310,7 @@ export function AgentSettings() {
                 checked={proactiveMode}
                 onChange={(e) => setProactiveMode(e.target.checked)}
               />
-              Proactive mode
+              {t("settings:proactiveMode")}
             </label>
             <div className="sm:col-span-2">
               <button
@@ -309,7 +319,7 @@ export function AgentSettings() {
                 className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
                 onClick={() => void saveProfile()}
               >
-                {savingProfile ? "Saving…" : "Save profile"}
+                {savingProfile ? t("settings:saving") : t("settings:saveProfile")}
               </button>
             </div>
           </div>
@@ -321,7 +331,7 @@ export function AgentSettings() {
         className="text-xs text-sky-400 hover:text-sky-300 hover:underline"
         onClick={() => void load()}
       >
-        Reload from server
+        {t("settings:reloadFromServer")}
       </button>
     </div>
   );

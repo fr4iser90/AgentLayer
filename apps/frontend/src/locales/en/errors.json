@@ -1,0 +1,20 @@
+{
+  "generic": "Something went wrong.",
+  "copyFailed": "Could not copy.",
+  "readFileFailed": "Could not read file.",
+  "loadChatsFailed": "Could not load chats.",
+  "loadChatsServerSyncFailed": "Could not load chats (server sync).",
+  "loadModelCatalogFailed": "Could not load model catalog.",
+  "agentError": "Agent error.",
+  "notSignedIn": "Not signed in.",
+  "websocketFailed": "WebSocket connection failed.",
+  "resolveModelProviderFailed": "Could not resolve model provider. Open the model list and pick an entry (provider shown in parentheses).",
+  "selectWorkspaceBeforeSending": "Select a workspace before sending (required for Coding and Plan).",
+  "embeddingNotConfigured": "Embedding: set base URL under Admin → Interfaces → Memory & RAG or EMBEDDING_BASE_URL in .env.",
+  "embeddingDimMismatch": "RAG: dim {{actual}} (API) ≠ {{cfg}} (saved) — re-select embedding model or save Admin → Interfaces.",
+  "embeddingApiReachable": "RAG: embedding API reachable.",
+  "embeddingNoV1Endpoint": "RAG: server has no /v1/embeddings — different embedding backend required.",
+  "embeddingDetail": "RAG: {{detail}}",
+  "embeddingModelListDetail": "RAG model list: {{detail}}"
+}
+

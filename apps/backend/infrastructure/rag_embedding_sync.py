@@ -12,7 +12,6 @@ from apps.backend.infrastructure.embedding_client import (
     fetch_embedding_models_list,
     probe_embedding_output_dim,
 )
-
 logger = logging.getLogger(__name__)
 
 # Prefer ids that look like embedding models when auto-picking from GET /v1/models.
@@ -46,7 +45,7 @@ def resolve_rag_embedding_model_from_provider(
     """
     Pick the embedding model id to use.
 
-    Returns (chosen_model, reason).
+    Returns (chosen_model, reason). Empty chosen_model = no provider model (skip RAG ingest).
     """
     current = (current_model or "").strip()
     available = [m.strip() for m in available_models if m and str(m).strip()]
@@ -55,7 +54,7 @@ def resolve_rag_embedding_model_from_provider(
     if not available:
         if current:
             return current, "provider model list empty; keeping configured model"
-        return "nomic-embed-text", "no provider models; using default id"
+        return "", "no provider models listed; set embedding API or choose model in Admin"
 
     ranked = rank_embedding_model_ids(available)
 
@@ -69,7 +68,7 @@ def resolve_rag_embedding_model_from_provider(
     if current and current not in available:
         return (
             chosen,
-            f"configured model {current!r} not on provider; using {chosen!r} "
+            f"configured model {current_model!r} not on provider; using {chosen!r} "
             f"(provider has {len(available)} models)",
         )
     return chosen, f"auto-selected {chosen!r} from provider list"
@@ -94,12 +93,14 @@ def ensure_rag_embedding_aligned(*, log_prefix: str = "rag_embedding_sync") -> d
     }
 
     if not _normalized_embedding_base():
-        summary["note"] = "EMBEDDING_BASE_URL not set"
+        summary["note"] = "embedding API base not configured"
+        logger.info("%s: skipped (%s)", log_prefix, summary["note"])
         return summary
 
     rs = operator_settings.rag_settings()
     if not rs.get("enabled"):
         summary["note"] = "rag disabled in operator_settings"
+        logger.info("%s: skipped (%s)", log_prefix, summary["note"])
         return summary
 
     current_model = (rs.get("embedding_model") or "").strip()
@@ -117,10 +118,16 @@ def ensure_rag_embedding_aligned(*, log_prefix: str = "rag_embedding_sync") -> d
         available_models=available,
         env_preferred=env_model,
     )
-    summary["embedding_model"] = chosen_model
+    summary["embedding_model"] = chosen_model or None
     summary["selection_reason"] = reason
 
-    model_changed = bool(chosen_model and chosen_model != current_model)
+    if not chosen_model:
+        summary["note"] = reason
+        logger.info("%s: no embedding model selected (%s)", log_prefix, reason)
+        return summary
+
+    stored_model = (rs.get("embedding_model") or "").strip()
+    model_changed = chosen_model != stored_model
 
     try:
         probed_dim = probe_embedding_output_dim(model_id=chosen_model)
@@ -140,10 +147,10 @@ def ensure_rag_embedding_aligned(*, log_prefix: str = "rag_embedding_sync") -> d
             )
             summary["model_changed"] = True
             _invalidate_embedding_caches()
-            logger.warning(
+            logger.info(
                 "%s: rag_embedding_model %r -> %r (%s); dim unchanged (probe failed)",
                 log_prefix,
-                current_model or "(empty)",
+                stored_model or "(empty)",
                 chosen_model,
                 reason,
             )
@@ -172,26 +179,26 @@ def ensure_rag_embedding_aligned(*, log_prefix: str = "rag_embedding_sync") -> d
     summary["dim_changed"] = dim_changed
 
     if model_changed and dim_changed:
-        logger.warning(
+        logger.info(
             "%s: rag_embedding_model %r -> %r; rag_embedding_dim %s -> %s (%s)",
             log_prefix,
-            current_model or "(empty)",
+            stored_model or "(empty)",
             chosen_model,
             current_dim,
             probed_dim,
             reason,
         )
     elif model_changed:
-        logger.warning(
+        logger.info(
             "%s: rag_embedding_model %r -> %r (dim=%s; %s)",
             log_prefix,
-            current_model or "(empty)",
+            stored_model or "(empty)",
             chosen_model,
             probed_dim,
             reason,
         )
     else:
-        logger.warning(
+        logger.info(
             "%s: rag_embedding_dim %s -> %s (model %r; re-run ingest-docs if RAG was empty)",
             log_prefix,
             current_dim,

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 
@@ -27,12 +28,13 @@ function rowLabel(r: UserRow): string {
   return r.id;
 }
 
-function tenantLabel(t: TenantRow): string {
-  const n = (t.name ?? "").trim();
-  return n ? `${n} (${t.id})` : `Tenant ${t.id}`;
+function tenantLabel(row: TenantRow, tr: (key: string, opts?: { id: number }) => string): string {
+  const n = (row.name ?? "").trim();
+  return n ? `${n} (${row.id})` : tr("admin:usersTenantDefault", { id: row.id });
 }
 
 export function AdminUsers() {
+  const { t } = useTranslation(["admin", "settings"]);
   const auth = useAuth();
   const { user } = auth;
   const [rows, setRows] = useState<UserRow[]>([]);
@@ -71,13 +73,13 @@ export function AdminUsers() {
       const res = await apiFetch("/v1/admin/users", auth);
       const data = (await res.json()) as { users?: UserRow[]; detail?: unknown };
       if (!res.ok) {
-        setListErr(typeof data.detail === "string" ? data.detail : "Could not load users");
+        setListErr(typeof data.detail === "string" ? data.detail : t("admin:usersLoadFailed"));
         setRows([]);
         return;
       }
       setRows(data.users ?? []);
     } catch (e) {
-      setListErr(e instanceof Error ? e.message : "Could not load users");
+      setListErr(e instanceof Error ? e.message : t("admin:usersLoadFailed"));
       setRows([]);
     } finally {
       setListLoading(false);
@@ -102,12 +104,12 @@ export function AdminUsers() {
       });
       const data = (await res.json().catch(() => ({}))) as { detail?: unknown };
       if (!res.ok) {
-        setListErr(typeof data.detail === "string" ? data.detail : "Could not update tenant");
+        setListErr(typeof data.detail === "string" ? data.detail : t("admin:tenantUpdateFailed"));
         return;
       }
       await loadUsers();
     } catch (e) {
-      setListErr(e instanceof Error ? e.message : "Could not update tenant");
+      setListErr(e instanceof Error ? e.message : t("admin:tenantUpdateFailed"));
     } finally {
       setSavingUserId(null);
     }
@@ -123,12 +125,12 @@ export function AdminUsers() {
       });
       const data = (await res.json().catch(() => ({}))) as { detail?: unknown };
       if (!res.ok) {
-        setListErr(typeof data.detail === "string" ? data.detail : "Could not update workspace quota");
+        setListErr(typeof data.detail === "string" ? data.detail : t("admin:workspaceQuotaUpdateFailed"));
         return;
       }
       await loadUsers();
     } catch (e) {
-      setListErr(e instanceof Error ? e.message : "Could not update workspace quota");
+      setListErr(e instanceof Error ? e.message : t("admin:workspaceQuotaUpdateFailed"));
     } finally {
       setSavingUserId(null);
     }
@@ -144,12 +146,16 @@ export function AdminUsers() {
       });
       const data = (await res.json().catch(() => ({}))) as { detail?: unknown };
       if (!res.ok) {
-        setListErr(typeof data.detail === "string" ? data.detail : "Could not update self-editing permission");
+        setListErr(
+          typeof data.detail === "string"
+            ? data.detail
+            : t("admin:selfEditingPermissionUpdateFailed")
+        );
         return;
       }
       await loadUsers();
     } catch (e) {
-      setListErr(e instanceof Error ? e.message : "Could not update self-editing permission");
+      setListErr(e instanceof Error ? e.message : t("admin:selfEditingPermissionUpdateFailed"));
     } finally {
       setSavingUserId(null);
     }
@@ -161,11 +167,11 @@ export function AdminUsers() {
     const password = newPassword;
     const tid = parseInt(newTenantId, 10);
     if (!email || password.length < 8) {
-      setCreateMsg("Email and password (≥ 8 chars) required.");
+      setCreateMsg(t("admin:usersCreateEmailPasswordRequired"));
       return;
     }
     if (!Number.isFinite(tid) || tid < 1) {
-      setCreateMsg("Pick a valid tenant.");
+      setCreateMsg(t("admin:usersCreatePickTenant"));
       return;
     }
     setCreateMsg(null);
@@ -182,11 +188,15 @@ export function AdminUsers() {
         tenant_id?: number;
       };
       if (!res.ok) {
-        setCreateMsg(typeof data.detail === "string" ? data.detail : "Create failed");
+        setCreateMsg(typeof data.detail === "string" ? data.detail : t("admin:usersCreateFailed"));
         return;
       }
       setCreateMsg(
-        `Created login for ${data.email} (role: ${data.role}, tenant_id: ${data.tenant_id ?? tid}). They can sign in at /login.`,
+        t("admin:usersCreated", {
+          email: data.email ?? email,
+          role: data.role ?? newRole,
+          tenantId: data.tenant_id ?? tid,
+        })
       );
       setNewEmail("");
       setNewPassword("");
@@ -201,7 +211,7 @@ export function AdminUsers() {
   async function createTenant() {
     const name = newTenantName.trim();
     if (!name) {
-      setTenantCreateMsg("Name required (e.g. work, friends).");
+      setTenantCreateMsg(t("admin:usersTenantNameRequired"));
       return;
     }
     setTenantCreateMsg(null);
@@ -213,11 +223,16 @@ export function AdminUsers() {
       });
       const data = (await res.json()) as { detail?: unknown; tenant?: { id: number } };
       if (!res.ok) {
-        setTenantCreateMsg(typeof data.detail === "string" ? data.detail : "Create failed");
+        setTenantCreateMsg(typeof data.detail === "string" ? data.detail : t("admin:usersCreateFailed"));
         return;
       }
       const id = data.tenant?.id;
-      setTenantCreateMsg(`Created tenant “${name}”${id != null ? ` (id ${id})` : ""}.`);
+      setTenantCreateMsg(
+        t("admin:usersTenantCreated", {
+          name,
+          idSuffix: id != null ? ` (id ${id})` : "",
+        })
+      );
       setNewTenantName("");
       await loadTenants();
       if (id != null) setNewTenantId(String(id));
@@ -235,50 +250,42 @@ export function AdminUsers() {
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
-      <h1 className="text-2xl font-semibold text-white">Users</h1>
+      <h1 className="text-2xl font-semibold text-white">{t("admin:usersPageTitle")}</h1>
       <p className="mt-2 text-sm text-surface-muted">
-        Password accounts in the database. Each user belongs to one{" "}
-        <strong className="font-medium text-neutral-300">tenant</strong> (<span className="font-mono">users.tenant_id</span>
-        ): same login always resolves to that tenant for chat, tools, and policy (Bearer/JWT or API key — no
-        identity headers). Create named tenants (e.g. work, friends), then assign users here; use those numeric{" "}
-        <span className="font-mono">id</span> values in tool allowlists on{" "}
+        {t("admin:usersPageIntro")}{" "}
         <Link to="/admin/tools" className="text-sky-400 hover:text-sky-300 hover:underline">
-          Admin → Tools
+          {t("admin:adminToTools")}
         </Link>
         .
         {user?.email ? (
           <span className="ml-1 text-neutral-500">
-            You are signed in as <span className="text-neutral-300">{user.email}</span>.
+            {t("admin:usersSignedInAs", { email: user.email })}
           </span>
         ) : null}
       </p>
 
       <section className="mt-8">
-        <h2 className="text-sm font-medium text-white">All accounts</h2>
-        <p className="mt-1 text-xs text-surface-muted">
-          <code className="text-neutral-500">GET /v1/admin/users</code> ·{" "}
-          <code className="text-neutral-500">PATCH /v1/admin/users/{"{id}"}</code> (
-          <span className="font-mono">tenant_id</span>)
-        </p>
+        <h2 className="text-sm font-medium text-white">{t("admin:usersAllAccounts")}</h2>
+        <p className="mt-1 text-xs text-surface-muted">{t("admin:usersApiHint")}</p>
         <div className="mt-3 overflow-x-auto rounded-xl border border-surface-border">
           <table className="w-full min-w-[36rem] text-left text-sm">
             <thead className="border-b border-surface-border bg-black/20 text-surface-muted">
               <tr>
-                <th className="px-4 py-3 font-medium">Email / identity</th>
-                <th className="px-4 py-3 font-medium">Tenant</th>
-                <th className="px-4 py-3 font-medium">Role</th>
-                <th className="px-4 py-3 font-medium">Workspace Quota</th>
-                <th className="px-4 py-3 font-medium">Self Edit</th>
-                <th className="px-4 py-3 font-medium">Discord id</th>
-                <th className="px-4 py-3 font-medium">Telegram id</th>
-                <th className="px-4 py-3 font-medium">Created</th>
+                <th className="px-4 py-3 font-medium">{t("admin:usersColEmail")}</th>
+                <th className="px-4 py-3 font-medium">{t("admin:usersColTenant")}</th>
+                <th className="px-4 py-3 font-medium">{t("admin:usersColRole")}</th>
+                <th className="px-4 py-3 font-medium">{t("admin:usersColQuota")}</th>
+                <th className="px-4 py-3 font-medium">{t("admin:usersColSelfEdit")}</th>
+                <th className="px-4 py-3 font-medium">{t("admin:usersColDiscord")}</th>
+                <th className="px-4 py-3 font-medium">{t("admin:usersColTelegram")}</th>
+                <th className="px-4 py-3 font-medium">{t("admin:usersColCreated")}</th>
               </tr>
             </thead>
             <tbody>
               {listLoading ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-6 text-center text-surface-muted">
-                    Loading…
+                    {t("admin:loading")}
                   </td>
                 </tr>
               ) : listErr ? (
@@ -290,7 +297,7 @@ export function AdminUsers() {
               ) : rows.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-6 text-center text-surface-muted">
-                    No users found.
+                    {t("admin:usersNoUsers")}
                   </td>
                 </tr>
               ) : (
@@ -303,7 +310,7 @@ export function AdminUsers() {
                         <span className="font-medium">{rowLabel(r)}</span>
                         {r.email?.trim() ? null : (
                           <span className="mt-0.5 block text-xs font-normal text-surface-muted">
-                            no mailbox on file
+                            {t("admin:usersNoMailbox")}
                           </span>
                         )}
                       </td>
@@ -318,14 +325,14 @@ export function AdminUsers() {
                             void patchUserTenant(r.id, next);
                           }}
                         >
-                          {tenantOptions.map((t) => (
-                            <option key={t.id} value={t.id}>
-                              {tenantLabel(t)}
+                          {tenantOptions.map((row) => (
+                            <option key={row.id} value={row.id}>
+                              {tenantLabel(row, (key, opts) => t(key, opts))}
                             </option>
                           ))}
                         </select>
                         {saving ? (
-                          <span className="ml-2 text-[10px] text-surface-muted">Saving…</span>
+                          <span className="ml-2 text-[10px] text-surface-muted">{t("settings:saving", { ns: "settings" })}</span>
                         ) : null}
                       </td>
                       <td className="px-4 py-3">
@@ -392,26 +399,22 @@ export function AdminUsers() {
           className="mt-2 text-xs text-sky-400 hover:text-sky-300 hover:underline"
           onClick={() => void reloadAll()}
         >
-          Refresh list
+          {t("admin:usersRefreshList")}
         </button>
       </section>
 
       <section className="mt-10 rounded-xl border border-surface-border bg-surface-raised p-5">
-        <h2 className="text-sm font-medium text-white">Create tenant</h2>
-        <p className="mt-1 text-xs text-surface-muted">
-          <code className="text-neutral-500">POST /v1/admin/tenants</code> — adds a row in{" "}
-          <span className="font-mono">tenants</span> (new numeric <span className="font-mono">id</span> for allowlists
-          and user assignment).
-        </p>
+        <h2 className="text-sm font-medium text-white">{t("admin:usersCreateTenant")}</h2>
+        <p className="mt-1 text-xs text-surface-muted">{t("admin:usersCreateTenantApi")}</p>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
           <label className="block text-xs text-surface-muted">
-            Display name
+            {t("settings:displayName", { ns: "settings" })}
             <input
               type="text"
               className="mt-1 block w-full min-w-[12rem] rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
               value={newTenantName}
               onChange={(e) => setNewTenantName(e.target.value)}
-              placeholder="work"
+              placeholder={t("admin:tenantDisplayNamePlaceholder")}
               autoComplete="off"
             />
           </label>
@@ -421,12 +424,12 @@ export function AdminUsers() {
             className="rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-50"
             onClick={() => void createTenant()}
           >
-            {tenantCreateBusy ? "…" : "Create tenant"}
+            {tenantCreateBusy ? "…" : t("admin:usersCreateTenant")}
           </button>
         </div>
         {tenantCreateMsg ? (
           <p
-            className={`mt-3 text-sm ${tenantCreateMsg.startsWith("Created") ? "text-emerald-400" : "text-amber-400"}`}
+            className={`mt-3 text-sm ${tenantCreateMsg.startsWith(t("admin:usersTenantCreatedPrefix")) ? "text-emerald-400" : "text-amber-400"}`}
           >
             {tenantCreateMsg}
           </p>
@@ -434,14 +437,11 @@ export function AdminUsers() {
       </section>
 
       <section className="mt-10 rounded-xl border border-surface-border bg-surface-raised p-5">
-        <h2 className="text-sm font-medium text-white">Create user</h2>
-        <p className="mt-1 text-xs text-surface-muted">
-          <code className="text-neutral-500">POST /v1/admin/users</code> — optional{" "}
-          <span className="font-mono">tenant_id</span> (default <span className="font-mono">1</span>).
-        </p>
+        <h2 className="text-sm font-medium text-white">{t("admin:usersCreateUser")}</h2>
+        <p className="mt-1 text-xs text-surface-muted">{t("admin:usersCreateUserApi")}</p>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
           <label className="block text-xs text-surface-muted">
-            Email
+            {t("admin:usersEmailLabel")}
             <input
               type="email"
               className="mt-1 block w-full min-w-[12rem] rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
@@ -451,7 +451,7 @@ export function AdminUsers() {
             />
           </label>
           <label className="block text-xs text-surface-muted">
-            Password (≥ 8)
+            {t("admin:usersPasswordLabel")}
             <input
               type="password"
               className="mt-1 block w-full min-w-[12rem] rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
@@ -461,21 +461,21 @@ export function AdminUsers() {
             />
           </label>
           <label className="block text-xs text-surface-muted">
-            Tenant
+            {t("admin:usersTenantLabel")}
             <select
               className="mt-1 block rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
               value={newTenantId}
               onChange={(e) => setNewTenantId(e.target.value)}
             >
-              {tenantOptions.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {tenantLabel(t)}
+              {tenantOptions.map((row) => (
+                <option key={row.id} value={row.id}>
+                  {tenantLabel(row, (key, opts) => t(key, opts))}
                 </option>
               ))}
             </select>
           </label>
           <label className="block text-xs text-surface-muted">
-            Role
+            {t("admin:usersRoleLabel")}
             <select
               className="mt-1 block rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
               value={newRole}
@@ -491,12 +491,12 @@ export function AdminUsers() {
             className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
             onClick={() => void createUser()}
           >
-            {createBusy ? "…" : "Create user"}
+            {createBusy ? "…" : t("admin:usersCreateUser")}
           </button>
         </div>
         {createMsg ? (
           <p
-            className={`mt-3 text-sm ${createMsg.startsWith("Created") ? "text-emerald-400" : "text-amber-400"}`}
+            className={`mt-3 text-sm ${createMsg.startsWith(t("admin:usersCreatedPrefix")) ? "text-emerald-400" : "text-amber-400"}`}
           >
             {createMsg}
           </p>

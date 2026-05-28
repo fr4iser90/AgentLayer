@@ -1,0 +1,26 @@
+{
+  "loading": "Loading…",
+  "noTasksYet": "No tasks yet.",
+  "boundToChat": "Bound to chat",
+  "bindToChat": "Bind to chat",
+  "markDone": "Mark done",
+  "loadFailed": "Failed to load tasks",
+  "bindFailed": "Failed to bind task to chat",
+  "newGlobalGoalPlaceholder": "New global goal…",
+  "pageTitle": "Tasks",
+  "pageSubtitle": "Backlog for orchestration (global) and project work (per workspace). Chat only uses a bound task — manage everything here.",
+  "backToChat": "← Back to chat",
+  "bindingToChat": "Binding tasks to chat {{id}}. Use \"Bind to chat\" on a task below.",
+  "clearBinding": "Clear binding",
+  "globalTasks": "Global tasks",
+  "globalTasksHint": "Cross-project goals (no workspace). Not mixed with project tasks.",
+  "add": "Add",
+  "projectTasks": "Project tasks",
+  "projectTasksHint": "Scoped to one workspace / repo.",
+  "workspaceLabel": "Workspace",
+  "selectProject": "Select a project…",
+  "newProjectTaskFor": "New task for {{name}}…",
+  "newProjectTask": "New project task…",
+  "chooseWorkspaceHint": "Choose a workspace to see and create project tasks."
+}
+

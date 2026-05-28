@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import { apiFetch, type WorkspaceApiRecord } from "../lib/api";
 import { formatDateTimeLocal } from "../lib/formatDateTime";
@@ -82,6 +83,7 @@ function pill(enabled: boolean) {
 }
 
 export function MySchedulesPage() {
+  const { t } = useTranslation(["settings", "admin"]);
   const auth = useAuth();
   const [jobs, setJobs] = useState<SchedulerJobRow[] | null>(null);
   const [presets, setPresets] = useState<SchedulerJobPreset[] | null>(null);
@@ -276,7 +278,7 @@ export function MySchedulesPage() {
 
   const hardDelete = async (jobId: string) => {
     // eslint-disable-next-line no-alert
-    if (!window.confirm("Delete this schedule permanently? This cannot be undone.")) return;
+    if (!window.confirm(t("admin:schedulesPermanentDeleteConfirm"))) return;
     const res = await apiFetch(`/v1/user/scheduler-jobs/${jobId}`, auth, { method: "DELETE" });
     const j = (await res.json().catch(() => null)) as any;
     if (!res.ok || !j?.ok) {
@@ -354,11 +356,11 @@ export function MySchedulesPage() {
     <div className="mx-auto max-w-5xl px-6 py-10">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-white">My schedules</h1>
+          <h1 className="text-2xl font-semibold text-white">{t("common:schedules")}</h1>
           <p className="mt-2 text-sm text-surface-muted">
-            Your saved schedules (recurring jobs). General schedules use the{" "}
-            <span className="font-mono">general</span> chat agent; coding schedules use agent{" "}
-            <span className="font-mono">coding</span> on a workspace.
+            {t("settings:schedulesPageIntro")}{" "}
+            <span className="font-mono">general</span>{" "}
+            <span className="font-mono">coding</span>
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -367,7 +369,7 @@ export function MySchedulesPage() {
             className="rounded-md border border-surface-border px-3 py-2 text-sm text-neutral-100 hover:bg-white/5"
             onClick={() => setCreateOpen(true)}
           >
-            Create
+            {t("settings:schedulesCreate")}
           </button>
           <button
             type="button"
@@ -375,7 +377,7 @@ export function MySchedulesPage() {
             onClick={() => void refresh()}
             disabled={loading}
           >
-            {loading ? "Loading…" : "Refresh"}
+            {loading ? t("settings:schedulesLoading") : t("settings:schedulesRefresh")}
           </button>
         </div>
       </div>
@@ -386,27 +388,27 @@ export function MySchedulesPage() {
         <table className="min-w-full text-left text-sm">
           <thead className="bg-white/5 text-xs uppercase tracking-wide text-surface-muted">
             <tr>
-              <th className="px-3 py-3">Enabled</th>
-              <th className="px-3 py-3">Target</th>
-              <th className="px-3 py-3">Title</th>
-              <th className="px-3 py-3">Interval</th>
-              <th className="px-3 py-3">Dashboard</th>
-              <th className="px-3 py-3">Last run</th>
-              <th className="px-3 py-3">Created</th>
-              <th className="px-3 py-3">Actions</th>
+              <th className="px-3 py-3">{t("settings:schedulesEnabledHeader")}</th>
+              <th className="px-3 py-3">{t("settings:schedulesTargetHeader")}</th>
+              <th className="px-3 py-3">{t("settings:schedulesTitleHeader")}</th>
+              <th className="px-3 py-3">{t("settings:schedulesIntervalHeader")}</th>
+              <th className="px-3 py-3">{t("settings:schedulesDashboardHeader")}</th>
+              <th className="px-3 py-3">{t("settings:schedulesLastRunHeader")}</th>
+              <th className="px-3 py-3">{t("settings:schedulesCreatedHeader")}</th>
+              <th className="px-3 py-3">{t("settings:schedulesActionsHeader")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-surface-border">
             {jobs === null ? (
               <tr>
                 <td className="px-3 py-4 text-surface-muted" colSpan={8}>
-                  {loading ? "Loading…" : "No data."}
+                  {loading ? t("settings:schedulesLoading") : t("settings:schedulesNoData")}
                 </td>
               </tr>
             ) : jobs.length === 0 ? (
               <tr>
                 <td className="px-3 py-4 text-surface-muted" colSpan={8}>
-                  No schedules yet.
+                  {t("settings:schedulesNoneYet")}
                 </td>
               </tr>
             ) : (
@@ -414,15 +416,19 @@ export function MySchedulesPage() {
                 <tr key={j.id} className="hover:bg-white/2">
                   <td className="px-3 py-3">
                     <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${pill(j.enabled)}`}>
-                      {j.enabled ? "enabled" : "disabled"}
+                      {j.enabled ? t("settings:schedulesEnabled") : t("settings:schedulesDisabled")}
                     </span>
                   </td>
                   <td className="px-3 py-3 text-xs text-neutral-200">
                     {labelForExecutionTarget(j.execution_target, targetCatalog)}
                   </td>
                   <td className="px-3 py-3 text-neutral-100">{j.title || "—"}</td>
-                  <td className="px-3 py-3 text-neutral-100">{j.interval_minutes} min</td>
-                  <td className="px-3 py-3 font-mono text-xs text-surface-muted">{j.dashboard_id || "global"}</td>
+                  <td className="px-3 py-3 text-neutral-100">
+                    {t("settings:schedulesIntervalMinutes", { minutes: j.interval_minutes })}
+                  </td>
+                  <td className="px-3 py-3 font-mono text-xs text-surface-muted">
+                    {j.dashboard_id || t("settings:schedulesDashboardGlobal")}
+                  </td>
                   <td className="px-3 py-3 text-xs text-surface-muted">{formatDateTimeLocal(j.last_run_at)}</td>
                   <td className="px-3 py-3 text-xs text-surface-muted">{formatDateTimeLocal(j.created_at)}</td>
                   <td className="px-3 py-3">
@@ -432,7 +438,7 @@ export function MySchedulesPage() {
                         className="rounded-md border border-surface-border px-2 py-1 text-xs text-neutral-100 hover:bg-white/5"
                         onClick={() => void toggleEnabled(j.id, !j.enabled)}
                       >
-                        {j.enabled ? "Disable" : "Enable"}
+                        {j.enabled ? t("admin:schedulesDisable") : t("admin:schedulesEnable")}
                       </button>
                       {executionTargetRequiresWorkspace(j.execution_target, targetCatalog) ? (
                         <button
@@ -440,7 +446,7 @@ export function MySchedulesPage() {
                           className="rounded-md border border-surface-border px-2 py-1 text-xs text-neutral-100 hover:bg-white/5"
                           onClick={() => void openRuns(j)}
                         >
-                          Runs
+                          {t("settings:schedulesRuns")}
                         </button>
                       ) : null}
                       <button
@@ -448,14 +454,14 @@ export function MySchedulesPage() {
                         className="rounded-md border border-surface-border px-2 py-1 text-xs text-neutral-100 hover:bg-white/5"
                         onClick={() => openEdit(j)}
                       >
-                        Edit
+                        {t("admin:schedulesEdit")}
                       </button>
                       <button
                         type="button"
                         className="rounded-md border border-red-500/30 bg-red-500/10 px-2 py-1 text-xs text-red-100 hover:bg-red-500/20"
                         onClick={() => void hardDelete(j.id)}
                       >
-                        Delete
+                        {t("admin:schedulesDelete")}
                       </button>
                     </div>
                   </td>
@@ -471,21 +477,21 @@ export function MySchedulesPage() {
           <div className="w-full max-w-2xl rounded-xl border border-surface-border bg-surface-raised p-4">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
-                <div className="text-lg font-semibold text-white">Create schedule</div>
-                <div className="text-xs text-surface-muted">Creates a new scheduler job for your user.</div>
+                <div className="text-lg font-semibold text-white">{t("admin:createScheduleTitle")}</div>
+                <div className="text-xs text-surface-muted">{t("admin:schedulesCreateHelpUser")}</div>
               </div>
               <button
                 type="button"
                 className="rounded-md border border-surface-border px-3 py-1.5 text-xs text-neutral-100 hover:bg-white/5"
                 onClick={() => setCreateOpen(false)}
               >
-                Close
+                {t("admin:close")}
               </button>
             </div>
 
             <div className="grid gap-3 md:grid-cols-2">
               <label className="text-xs text-surface-muted md:col-span-2">
-                Preset (optional)
+                {t("admin:schedulesPresetOptional")}
                 <select
                   className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
                   value={createPresetId}
@@ -510,7 +516,7 @@ export function MySchedulesPage() {
               </label>
 
               <label className="text-xs text-surface-muted">
-                Target
+                {t("admin:schedulesTarget")}
                 <select
                   className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
                   value={createTarget}
@@ -527,7 +533,7 @@ export function MySchedulesPage() {
               </label>
               {createNeedsWorkspace ? (
                 <label className="text-xs text-surface-muted md:col-span-2">
-                  Project workspace (required)
+                  {t("settings:schedulesWorkspaceRequired")}
                   <select
                     className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100 disabled:opacity-60"
                     value={createWorkspaceId}
@@ -536,10 +542,10 @@ export function MySchedulesPage() {
                   >
                     <option value="">
                       {workspacesLoading
-                        ? "Loading workspaces…"
+                        ? t("settings:schedulesLoadingWorkspaces")
                         : workspaces.length === 0
-                          ? "No workspaces — create one in Coding Agent"
-                          : "— select workspace —"}
+                          ? t("settings:schedulesNoWorkspacesHint")
+                          : t("settings:schedulesSelectWorkspace")}
                     </option>
                     {workspaces.map((w) => (
                       <option key={w.id} value={w.id}>
@@ -560,7 +566,7 @@ export function MySchedulesPage() {
                 </label>
               ) : null}
               <label className="text-xs text-surface-muted">
-                Interval (minutes)
+                {t("settings:schedulesIntervalHeader")} (minutes)
                 <input
                   type="number"
                   className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
@@ -576,25 +582,25 @@ export function MySchedulesPage() {
                   className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
                   value={createTitle}
                   onChange={(e) => setCreateTitle(e.target.value)}
-                  placeholder="optional"
+                  placeholder={t("admin:optional")}
                 />
               </label>
               <label className="text-xs text-surface-muted md:col-span-2">
-                Dashboard id (optional UUID; blank = global)
+                {t("admin:schedulesDashboardIdOptional")}
                 <input
                   className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
                   value={createDashboardId}
                   onChange={(e) => setCreateDashboardId(e.target.value)}
-                  placeholder="optional"
+                  placeholder={t("admin:optional")}
                 />
               </label>
               <label className="text-xs text-surface-muted md:col-span-2">
-                <span>Instructions</span>
+                <span>{t("admin:instructionsPlaceholder")}</span>
                 <textarea
                   className="mt-1 min-h-[120px] w-full resize-y rounded-md border border-surface-border bg-black/30 px-2 py-2 text-sm text-neutral-100"
                   value={createInstructions}
                   onChange={(e) => setCreateInstructions(e.target.value)}
-                  placeholder="What should the agent do?"
+                  placeholder={t("admin:instructionsPlaceholder")}
                 />
               </label>
               <label className="flex items-center gap-2 text-xs text-surface-muted">
@@ -614,7 +620,7 @@ export function MySchedulesPage() {
                 className="rounded-md border border-surface-border px-3 py-2 text-sm text-neutral-100 hover:bg-white/5"
                 onClick={() => setCreateOpen(false)}
               >
-                Cancel
+                {t("admin:cancel")}
               </button>
               <button
                 type="button"
@@ -637,7 +643,7 @@ export function MySchedulesPage() {
           <div className="w-full max-w-2xl rounded-xl border border-surface-border bg-surface-raised p-4">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
-                <div className="text-lg font-semibold text-white">Edit schedule</div>
+                <div className="text-lg font-semibold text-white">{t("settings:schedulesEditTitle")}</div>
                 <div className="text-xs text-surface-muted font-mono">id: {editJob.id}</div>
               </div>
               <button
@@ -645,7 +651,7 @@ export function MySchedulesPage() {
                 className="rounded-md border border-surface-border px-3 py-1.5 text-xs text-neutral-100 hover:bg-white/5"
                 onClick={() => setEditJob(null)}
               >
-                Close
+                {t("admin:close")}
               </button>
             </div>
             <div className="grid gap-3">
@@ -658,7 +664,7 @@ export function MySchedulesPage() {
                 />
               </label>
               <label className="text-xs text-surface-muted">
-                Interval (minutes)
+                {t("settings:schedulesIntervalHeader")} (minutes)
                 <input
                   type="number"
                   className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
@@ -683,7 +689,7 @@ export function MySchedulesPage() {
                 className="rounded-md border border-surface-border px-3 py-2 text-sm text-neutral-100 hover:bg-white/5"
                 onClick={() => setEditJob(null)}
               >
-                Cancel
+                {t("admin:cancel")}
               </button>
               <button
                 type="button"
@@ -703,8 +709,8 @@ export function MySchedulesPage() {
           <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-xl border border-surface-border bg-surface-raised p-4">
             <div className="mb-3 flex shrink-0 items-start justify-between gap-3">
               <div>
-                <div className="text-lg font-semibold text-white">Run history</div>
-                <div className="text-sm text-surface-muted">{runsJob.title || "Untitled"}</div>
+                <div className="text-lg font-semibold text-white">{t("settings:schedulesRunHistoryTitle")}</div>
+                <div className="text-sm text-surface-muted">{runsJob.title || "—"}</div>
                 <div className="font-mono text-[11px] text-surface-muted">{runsJob.id}</div>
               </div>
               <button
@@ -715,7 +721,7 @@ export function MySchedulesPage() {
                   setSelectedRun(null);
                 }}
               >
-                Close
+                {t("admin:close")}
               </button>
             </div>
 
@@ -728,22 +734,22 @@ export function MySchedulesPage() {
                 <table className="min-w-full text-left text-xs">
                   <thead className="sticky top-0 bg-surface-raised text-surface-muted">
                     <tr>
-                      <th className="px-2 py-2">Status</th>
-                      <th className="px-2 py-2">Started</th>
-                      <th className="px-2 py-2">Tools</th>
+                      <th className="px-2 py-2">{t("settings:schedulesRunColStatus")}</th>
+                      <th className="px-2 py-2">{t("settings:schedulesRunColStarted")}</th>
+                      <th className="px-2 py-2">{t("settings:schedulesRunColTools")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-surface-border">
                     {runsLoading ? (
                       <tr>
                         <td className="px-2 py-3 text-surface-muted" colSpan={3}>
-                          Loading…
+                          {t("settings:schedulesRunsLoading")}
                         </td>
                       </tr>
                     ) : !runs?.length ? (
                       <tr>
                         <td className="px-2 py-3 text-surface-muted" colSpan={3}>
-                          No runs recorded yet.
+                          {t("settings:schedulesNoRunsRecorded")}
                         </td>
                       </tr>
                     ) : (
@@ -775,7 +781,7 @@ export function MySchedulesPage() {
 
               <div className="min-h-0 overflow-auto rounded-lg border border-surface-border p-3 text-xs">
                 {!selectedRun ? (
-                  <p className="text-surface-muted">Select a run to see tools, changed files, and summary.</p>
+                <p className="text-surface-muted">{t("settings:schedulesRunSelectHint")}</p>
                 ) : (
                   <div className="space-y-3">
                     <div>
@@ -796,7 +802,7 @@ export function MySchedulesPage() {
                     ) : null}
                     {selectedRun.summary_json?.git ? (
                       <div>
-                        <div className="font-medium text-neutral-200">Git</div>
+                        <div className="font-medium text-neutral-200">{t("settings:schedulesRunGit")}</div>
                         <div className="text-surface-muted">
                           branch: {selectedRun.summary_json.git.branch || "—"} · changes:{" "}
                           {selectedRun.summary_json.git.has_changes ? "yes" : "no"}
@@ -805,7 +811,7 @@ export function MySchedulesPage() {
                     ) : null}
                     {(selectedRun.summary_json?.files_changed?.length ?? 0) > 0 ? (
                       <div>
-                        <div className="font-medium text-neutral-200">Changed files</div>
+                        <div className="font-medium text-neutral-200">{t("settings:schedulesRunChangedFiles")}</div>
                         <ul className="mt-1 space-y-0.5 font-mono text-[11px] text-surface-muted">
                           {selectedRun.summary_json.files_changed!.map((f) => (
                             <li key={f.path}>
@@ -817,7 +823,7 @@ export function MySchedulesPage() {
                     ) : null}
                     {(selectedRun.summary_json?.tools?.length ?? 0) > 0 ? (
                       <div>
-                        <div className="font-medium text-neutral-200">Tools</div>
+                        <div className="font-medium text-neutral-200">{t("settings:schedulesRunTools")}</div>
                         <ul className="mt-1 max-h-48 space-y-1 overflow-auto font-mono text-[11px]">
                           {selectedRun.summary_json.tools!.map((t, i) => (
                             <li
@@ -834,7 +840,7 @@ export function MySchedulesPage() {
                     ) : null}
                     {selectedRun.summary_json?.final_reply_excerpt ? (
                       <div>
-                        <div className="font-medium text-neutral-200">Reply excerpt</div>
+                        <div className="font-medium text-neutral-200">{t("settings:schedulesRunReplyExcerpt")}</div>
                         <pre className="mt-1 whitespace-pre-wrap rounded bg-black/30 p-2 text-[11px] text-surface-muted">
                           {selectedRun.summary_json.final_reply_excerpt}
                         </pre>

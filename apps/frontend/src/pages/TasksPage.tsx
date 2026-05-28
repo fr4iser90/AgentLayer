@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import { apiFetch } from "../lib/api";
 import {
@@ -31,8 +32,9 @@ function TaskList({
   onBind: (id: string) => void;
   onDone: (id: string) => void;
 }) {
+  const { t } = useTranslation(["tasks"]);
   if (tasks.length === 0) {
-    return <p className="text-sm text-surface-muted">No tasks yet.</p>;
+    return <p className="text-sm text-surface-muted">{t("tasks:noTasksYet")}</p>;
   }
   return (
     <ul className="space-y-2">
@@ -59,7 +61,7 @@ function TaskList({
                 className="rounded border border-white/10 px-2 py-1 text-[11px] text-neutral-300 hover:bg-white/5"
                 onClick={() => onBind(t.id)}
               >
-                {activeTaskId === t.id ? "Bound to chat" : "Bind to chat"}
+                {activeTaskId === t.id ? t("tasks:boundToChat") : t("tasks:bindToChat")}
               </button>
               {t.status !== "done" ? (
                 <button
@@ -67,7 +69,7 @@ function TaskList({
                   className="rounded border border-emerald-500/30 px-2 py-1 text-[11px] text-emerald-300/90 hover:bg-emerald-950/40"
                   onClick={() => onDone(t.id)}
                 >
-                  Mark done
+                  {t("tasks:markDone")}
                 </button>
               ) : null}
             </div>
@@ -79,6 +81,7 @@ function TaskList({
 }
 
 export function TasksPage() {
+  const { t: t_0 } = useTranslation(["tasks"]);
   const auth = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const conversationId = searchParams.get("conversation")?.trim() || null;
@@ -118,7 +121,7 @@ export function TasksPage() {
       setGlobalTasks(global);
       setWorkspaceTasks(ws);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load tasks");
+      setError(e instanceof Error ? e.message : t_0("tasks:loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -142,7 +145,7 @@ export function TasksPage() {
       try {
         await setConversationActiveTask(auth, conversationId, taskId);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to bind task to chat");
+        setError(e instanceof Error ? e.message : t_0("tasks:bindFailed"));
       }
     }
   };
@@ -172,34 +175,27 @@ export function TasksPage() {
       <div className="mx-auto max-w-4xl px-6 py-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-white">Tasks</h1>
-            <p className="mt-1 text-sm text-surface-muted">
-              Backlog for orchestration (global) and project work (per workspace). Chat only
-              uses a bound task — manage everything here.
-            </p>
+            <h1 className="text-2xl font-semibold text-white">{t_0("tasks:pageTitle")}</h1>
+            <p className="mt-1 text-sm text-surface-muted">{t_0("tasks:pageSubtitle")}</p>
           </div>
           <Link
             to={conversationId ? `/chat?c=${encodeURIComponent(conversationId)}` : "/chat"}
             className="rounded-lg border border-white/10 px-3 py-2 text-sm text-sky-400/90 hover:bg-white/5"
           >
-            ← Back to chat
+            {t_0("tasks:backToChat")}
           </Link>
         </div>
 
         {conversationId ? (
           <div className="mt-4 rounded-lg border border-indigo-500/35 bg-indigo-950/25 px-4 py-3 text-sm text-indigo-100/90">
-            Binding tasks to chat{" "}
-            <span className="font-mono text-xs text-indigo-200/80">
-              {conversationId.slice(0, 8)}…
-            </span>
-            . Use &quot;Bind to chat&quot; on a task below.
+            {t_0("tasks:bindingToChat", { id: `${conversationId.slice(0, 8)}…` })}
             {activeTaskId ? (
               <button
                 type="button"
                 className="ml-3 text-xs text-surface-muted underline hover:text-neutral-300"
                 onClick={() => void clearBind()}
               >
-                Clear binding
+                {t_0("tasks:clearBinding")}
               </button>
             ) : null}
           </div>
@@ -209,17 +205,15 @@ export function TasksPage() {
 
         <section className="mt-8">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-surface-muted">
-            Global tasks
+            {t_0("tasks:globalTasks")}
           </h2>
-          <p className="mt-1 text-xs text-surface-muted">
-            Cross-project goals (no workspace). Not mixed with project tasks.
-          </p>
+          <p className="mt-1 text-xs text-surface-muted">{t_0("tasks:globalTasksHint")}</p>
           <div className="mt-3 flex gap-2">
             <input
               type="text"
               value={globalGoal}
               onChange={(e) => setGlobalGoal(e.target.value)}
-              placeholder="New global goal…"
+              placeholder={t_0("tasks:newGlobalGoalPlaceholder")}
               className="min-w-0 flex-1 rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-neutral-200"
             />
             <button
@@ -236,12 +230,12 @@ export function TasksPage() {
                   .catch(() => undefined);
               }}
             >
-              Add
+              {t_0("tasks:add")}
             </button>
           </div>
           <div className="mt-4">
             {loading ? (
-              <p className="text-sm text-surface-muted">Loading…</p>
+              <p className="text-sm text-surface-muted">{t_0("tasks:loading")}</p>
             ) : (
               <TaskList
                 tasks={globalTasks}
@@ -257,19 +251,17 @@ export function TasksPage() {
 
         <section className="mt-10 border-t border-surface-border pt-8">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-surface-muted">
-            Project tasks
+            {t_0("tasks:projectTasks")}
           </h2>
-          <p className="mt-1 text-xs text-surface-muted">
-            Scoped to one workspace / repo.
-          </p>
+          <p className="mt-1 text-xs text-surface-muted">{t_0("tasks:projectTasksHint")}</p>
           <label className="mt-3 block text-xs text-surface-muted">
-            Workspace
+            {t_0("tasks:workspaceLabel")}
             <select
               className="mt-1 block w-full max-w-md rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-neutral-200"
               value={selectedWorkspaceId ?? ""}
               onChange={(e) => onWorkspaceChange(e.target.value)}
             >
-              <option value="">Select a project…</option>
+              <option value="">{t_0("tasks:selectProject")}</option>
               {workspaces.map((w) => (
                 <option key={w.id} value={w.id}>
                   {w.name}
@@ -286,8 +278,8 @@ export function TasksPage() {
                   onChange={(e) => setProjectGoal(e.target.value)}
                   placeholder={
                     selectedWorkspace
-                      ? `New task for ${selectedWorkspace.name}…`
-                      : "New project task…"
+                      ? t_0("tasks:newProjectTaskFor", { name: selectedWorkspace.name })
+                      : t_0("tasks:newProjectTask")
                   }
                   className="min-w-0 flex-1 rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-neutral-200"
                 />
@@ -310,12 +302,12 @@ export function TasksPage() {
                       .catch(() => undefined);
                   }}
                 >
-                  Add
+                  {t_0("tasks:add")}
                 </button>
               </div>
               <div className="mt-4">
                 {loading ? (
-                  <p className="text-sm text-surface-muted">Loading…</p>
+                  <p className="text-sm text-surface-muted">{t_0("tasks:loading")}</p>
                 ) : (
                   <TaskList
                     tasks={workspaceTasks}
@@ -330,7 +322,7 @@ export function TasksPage() {
             </>
           ) : (
             <p className="mt-4 text-sm text-surface-muted">
-              Choose a workspace to see and create project tasks.
+              {t_0("tasks:chooseWorkspaceHint")}
             </p>
           )}
         </section>

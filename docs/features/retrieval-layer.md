@@ -54,6 +54,7 @@ Chat uses **`LLAMA_CPP_*`** (or Ollama / external). Embeddings use **`EMBEDDING_
 | Code semantic | Qdrant | `coding_semantic_search` (after `coding_index`) |
 | Code keyword | ripgrep / walk | `coding_search` |
 | Symbols | In-process index | `coding_symbols` |
+| Code graph | Neo4j | `coding_graph` (call-graph, dependencies, type hierarchy, impact analysis; after `coding_index`) |
 | LSP | Language server | `coding_lsp` |
 | Memory notes | pgvector | Auto-inject + `memory_*` tools |
 | Memory graph | pgvector + edges | Auto-inject when enabled |
@@ -73,6 +74,7 @@ One call runs selected backends in parallel (conceptually) and returns a single 
   "code_grep": { "matches": [{ "path": "...", "line": 12, "text": "..." }] },
   "code_semantic": { "results": [{ "name": "...", "file_path": "...", "score": 0.82 }] },
   "docs": { "hits": [{ "title": "...", "chunk": "...", "score": 0.71 }] },
+  "graph": { "skipped": "not requested" },
   "memory": { "skipped": "not requested" },
   "next_steps": ["Use coding_read_file on the best path:line matches before editing."]
 }
@@ -83,7 +85,7 @@ One call runs selected backends in parallel (conceptually) and returns a single 
 | Field | Description |
 |-------|-------------|
 | `query` | Natural-language or keyword search string (required) |
-| `sources` | Subset of `code_grep`, `code_semantic`, `docs`, `memory` (default: grep + semantic + docs) |
+| `sources` | Subset of `code_grep`, `code_semantic`, `docs`, `memory`, `graph` (default: grep + semantic + docs) |
 | `domain` | RAG domain for `docs` (default `agentlayer_docs`) |
 | `grep_limit` | Cap grep matches (default 25, max 50) |
 | `semantic_limit` | Cap Qdrant hits (default 12) |
@@ -120,7 +122,8 @@ Retrieve top‑50 → cross-encoder or LLM rerank → top‑5 for the prompt. No
 | 1 | `coding_search`, `coding_symbols` | Exact / structural |
 | 2 | `coding_lsp` | Types, defs, refs |
 | 3 | `coding_semantic_search` | “Where is X done?” |
-| 4 | `rag_search` / `docs` in `retrieve_context` | Product/runbook questions |
+| 4 | `coding_graph` (Neo4j) | Call-graph, dependencies, type hierarchy, impact analysis |
+| 5 | `rag_search` / `docs` in `retrieve_context` | Product/runbook questions |
 
 ### Context engineering
 
@@ -154,6 +157,7 @@ Retrieve top‑50 → cross-encoder or LLM rerank → top‑5 for the prompt. No
 | **Medium** | Cross-encoder / LLM reranker | Planned |
 | **Medium** | Session bootstrap snippet (index stats, repo map) | Done |
 | **Medium** | Stale-index UI hint + optional index-on-attach (`AGENT_WORKSPACE_INDEX_ON_ATTACH`) | Done |
+| **Medium** | Code graph (Neo4j): call-graph, dependency-graph, type hierarchy, impact analysis | Done |
 | **Long** | LSP hits inside `retrieve_context` | Planned |
 | **Long** | Query rewriting (HyDE / multi-query) | Planned |
 
@@ -179,4 +183,5 @@ Strategies compared: **`unified`** (`retrieve_context`, 1 tool call) vs **`separ
 - **Empty `code_semantic`:** run `coding_index` on the workspace; check `QDRANT_URL` and `EMBEDDING_*`.
 - **Empty `docs`:** `rag_enabled`, ingest (`ingest-docs` or Admin), correct `domain`.
 - **Dim mismatch:** `rag_embedding_dim` must match model output and Postgres pgvector columns. Code index uses `code_symbols` or `code_symbols_<dim>` automatically when the legacy collection has another width (no upsert spam; switch back without re-index if that collection still exists).
+- **Empty `graph`:** run `coding_index` first; check `NEO4J_URL` env var and Neo4j container health. Graph data is populated during `coding_index` alongside Qdrant.
 - **Chat vs embed:** Model dropdown does not power RAG; use Embedding (RAG) + `EMBEDDING_*` in `.env`.

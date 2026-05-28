@@ -12,6 +12,7 @@ import os
 import re
 import shutil
 import subprocess
+import time
 import uuid
 from pathlib import Path
 from typing import Any
@@ -171,6 +172,91 @@ def materialize_agentlayer_self_workspace(user) -> dict[str, Any] | None:
         return resolve_db_workspace(str(row[0]), user)
     except Exception as e:
         logger.exception("materialize_agentlayer_self_workspace: %s", e)
+        return None
+
+
+def reset_agentlayer_self_workspace(
+    user, *, backup_existing: bool = True
+) -> dict[str, Any] | None:
+    """
+    Destructive reset of the user's ``agentlayer-self`` workspace contents.
+
+    - Requires ``self_editing_allowed(user)``.
+    - Optionally moves the existing directory to ``agentlayer-self.backup-<timestamp>`` before re-seeding.
+    - Always re-seeds from the ADR 0005 seed directory (``/workspace/AgentLayer`` or ``/app`` with ``.git``).
+    """
+    if not self_editing_allowed(user):
+        return None
+    seed = _agentlayer_self_seed_dir()
+    if seed is None:
+        logger.error("agentlayer-self reset: no seed repo with .git under /workspace/AgentLayer or /app")
+        return None
+
+    from apps.backend.domain.workspace_resolver import resolve_db_workspace
+    from apps.backend.infrastructure.db import db
+
+    target = self_workspace_target_path(user)
+    expected = str(target)
+
+    try:
+        # Ensure DB row exists and path matches ADR.
+        with db.pool().connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT id, path FROM project_workspaces WHERE owner_user_id = %s AND name = %s",
+                    (user.id, AGENTLAYER_SELF_NAME),
+                )
+                row = cur.fetchone()
+                if not row:
+                    cur.execute(
+                        """
+                        INSERT INTO project_workspaces
+                        (owner_user_id, name, path, source, git_url, git_branch, access_role)
+                        VALUES (%s, %s, %s, 'manual', NULL, 'main', 'owner')
+                        RETURNING id
+                        """,
+                        (user.id, AGENTLAYER_SELF_NAME, expected),
+                    )
+                    row = cur.fetchone()
+                else:
+                    wid, stored_path = row[0], str(row[1])
+                    if stored_path != expected:
+                        logger.info(
+                            "agentlayer-self reset: updating DB path %s -> %s for id=%s",
+                            stored_path,
+                            expected,
+                            wid,
+                        )
+                        cur.execute(
+                            "UPDATE project_workspaces SET path = %s WHERE id = %s",
+                            (expected, wid),
+                        )
+            conn.commit()
+
+        if not row:
+            return None
+        wid = str(row[0])
+
+        # Rotate existing directory.
+        if target.exists():
+            if backup_existing:
+                ts = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
+                backup = target.with_name(f"{target.name}.backup-{ts}")
+                logger.warning("agentlayer-self reset: moving %s -> %s", target, backup)
+                if backup.exists():
+                    shutil.rmtree(backup, ignore_errors=True)
+                shutil.move(str(target), str(backup))
+            else:
+                logger.warning("agentlayer-self reset: deleting %s", target)
+                shutil.rmtree(target, ignore_errors=True)
+
+        target.parent.mkdir(parents=True, exist_ok=True)
+        logger.warning("agentlayer-self reset: copying seed %s -> %s", seed, target)
+        shutil.copytree(seed, target)
+
+        return resolve_db_workspace(wid, user)
+    except Exception as e:
+        logger.exception("reset_agentlayer_self_workspace: %s", e)
         return None
 
 

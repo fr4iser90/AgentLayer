@@ -24,6 +24,12 @@ try:
 except ImportError:
     _HAS_QDRANT = False
 
+try:
+    from apps.backend.infrastructure.code_graph_neo4j import get_code_graph
+    _HAS_NEO4J = True
+except ImportError:
+    _HAS_NEO4J = False
+
 __version__ = "1.0.0"
 TOOL_ID = "coding_index"
 TOOL_BUCKET = "meta"
@@ -92,6 +98,30 @@ def coding_index(arguments: dict[str, Any], context: dict | None = None) -> str:
         except Exception as e:
             qdrant_error = str(e)
 
+    neo4j_edges = 0
+    neo4j_error = None
+    if _HAS_NEO4J:
+        try:
+            from plugins.tools.capabilities.coding.coding_graph_extract import resolve_import_relationships
+
+            graph = get_code_graph()
+            if graph.available():
+                indexed_paths = set(idx._files.keys())
+                for file_entry in idx._files.values():
+                    import_rels = resolve_import_relationships(file_entry, indexed_paths)
+                    all_rels = [r.to_dict() for r in file_entry.relationships] + import_rels
+                    edges = graph.upsert_file_graph(
+                        workspace_id=workspace_id,
+                        file_path=file_entry.path,
+                        language=file_entry.language,
+                        sha256=file_entry.sha256,
+                        symbols=[s.to_dict() for s in file_entry.symbols],
+                        relationships=all_rels,
+                    )
+                    neo4j_edges += edges
+        except Exception as e:
+            neo4j_error = str(e)
+
     result = {
         "ok": True,
         "stats": stats,
@@ -102,6 +132,8 @@ def coding_index(arguments: dict[str, Any], context: dict | None = None) -> str:
     }
     if qdrant_indexed > 0:
         result["qdrant_indexed"] = qdrant_indexed
+    if neo4j_edges > 0:
+        result["neo4j_edges"] = neo4j_edges
     if _HAS_QDRANT and qdrant_error is None:
         try:
             result.update(get_code_index().target_info())
@@ -109,6 +141,8 @@ def coding_index(arguments: dict[str, Any], context: dict | None = None) -> str:
             pass
     if qdrant_error:
         result["qdrant_error"] = qdrant_error
+    if neo4j_error:
+        result["neo4j_error"] = neo4j_error
     if workspace_id:
         try:
             from apps.backend.infrastructure.workspace_retrieval import _persist_index_result
@@ -119,6 +153,7 @@ def coding_index(arguments: dict[str, Any], context: dict | None = None) -> str:
                 "total_files": idx.file_count,
                 "total_symbols": idx.symbol_count,
                 "qdrant_indexed": qdrant_indexed,
+                "neo4j_edges": neo4j_edges,
             }
             _persist_index_result(
                 workspace_id,

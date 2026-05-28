@@ -411,6 +411,11 @@ QDRANT_URL = os.environ.get("QDRANT_URL", "http://qdrant:6333").rstrip("/")
 QDRANT_API_KEY = (os.environ.get("QDRANT_API_KEY") or "").strip()
 QDRANT_COLLECTION_CODE = "code_symbols"
 
+# --- Neo4j (code graph: call-graph, dependency-graph, type hierarchy, impact analysis) ---
+NEO4J_URL = (os.environ.get("NEO4J_URL") or "bolt://neo4j:7687").strip()
+NEO4J_USER = (os.environ.get("NEO4J_USER") or "neo4j").strip()
+NEO4J_PASSWORD = (os.environ.get("NEO4J_PASSWORD") or "changeme").strip()
+
 # --- PIDEA (DOM / Cursor·VSCode·Windsurf via Playwright + CDP) ---
 # Cursor mit --remote-debugging-port; Playwright nutzt die HTTP-CDP-URL (nicht ws:// direkt).
 # Operator-Override: Admin → IDE Agent (DB). Env nur wenn du bewusst setzt — nicht in compose „mitverdrahten“.

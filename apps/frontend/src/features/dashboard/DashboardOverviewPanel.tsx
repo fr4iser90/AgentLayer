@@ -1,25 +1,26 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import type { DashboardSummary } from "./types";
 import { DEFAULT_HUBS, groupDashboardsByHub, type DashboardHubId } from "./dashboardHubNav";
 
-function relativeActivityEn(iso: string): string {
-  const t = Date.parse(iso);
-  if (Number.isNaN(t)) return "updated";
-  const s = Math.max(0, Math.floor((Date.now() - t) / 1000));
-  if (s < 60) return "just now";
+function relativeActivity(iso: string, t: (key: string, opts?: any) => string): string {
+  const ts = Date.parse(iso);
+  if (Number.isNaN(ts)) return t("dashboard:updated");
+  const s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+  if (s < 60) return t("dashboard:justNow");
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
+  if (m < 60) return t("dashboard:minutesAgo", { count: m });
   const h = Math.floor(m / 60);
-  if (h < 48) return `${h}h ago`;
+  if (h < 48) return t("dashboard:hoursAgo", { count: h });
   const d = Math.floor(h / 24);
-  return `${d}d ago`;
+  return t("dashboard:daysAgo", { count: d });
 }
 
-function accessHint(role: string | undefined): string {
-  if (role === "viewer") return "Read-only";
-  if (role === "editor") return "Shared";
-  if (role === "co_owner") return "Co-owner";
-  return "Owner";
+function accessHint(role: string | undefined, t: (key: string) => string): string {
+  if (role === "viewer") return t("dashboard:accessReadOnly");
+  if (role === "editor") return t("dashboard:accessShared");
+  if (role === "co_owner") return t("dashboard:accessCoOwner");
+  return t("dashboard:accessOwner");
 }
 
 function StatCard(props: { label: string; value: string; sub?: string }) {
@@ -37,6 +38,7 @@ export function DashboardOverviewPanel(props: {
   kindLabelFor: (kind: string) => string;
   onOpenDashboard: (id: string) => void;
 }) {
+  const { t } = useTranslation(["dashboard"]);
   const { list, kindLabelFor, onOpenDashboard } = props;
 
   const grouped = useMemo(() => groupDashboardsByHub(list), [list]);
@@ -64,8 +66,8 @@ export function DashboardOverviewPanel(props: {
     return (
       <div className="mx-auto max-w-3xl space-y-4 py-6">
         <div>
-          <h1 className="text-xl font-semibold text-white">Overview</h1>
-          <p className="mt-1 text-sm text-surface-muted">No dashboards yet. Create one from the sidebar.</p>
+          <h1 className="text-xl font-semibold text-white">{t("dashboard:overviewTitle")}</h1>
+          <p className="mt-1 text-sm text-surface-muted">{t("dashboard:overviewEmpty")}</p>
         </div>
       </div>
     );
@@ -74,25 +76,29 @@ export function DashboardOverviewPanel(props: {
   return (
     <div className="mx-auto max-w-5xl space-y-8 py-6">
       <div>
-        <h1 className="text-xl font-semibold text-white">Overview</h1>
+        <h1 className="text-xl font-semibold text-white">{t("dashboard:overviewTitle")}</h1>
         <p className="mt-1 text-sm text-surface-muted">
-          Everything you can open in this tenant — yours and shared — grouped by hub.
+          {t("dashboard:overviewSubtitle")}
         </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Total dashboards" value={String(list.length)} />
+        <StatCard label={t("dashboard:statTotalDashboards")} value={String(list.length)} />
         <StatCard
-          label="Shared with you"
+          label={t("dashboard:statSharedWithYou")}
           value={String(sharedWithYou)}
-          sub={sharedWithYou === 0 ? "Only owned dashboards" : undefined}
+          sub={sharedWithYou === 0 ? t("dashboard:statOnlyOwnedDashboards") : undefined}
         />
-        <StatCard label="Template kinds in use" value={String(kindCounts.length)} />
-        <StatCard label="Hubs with items" value={String(hubsWithItems.length)} sub="of 6 groups" />
+        <StatCard label={t("dashboard:statTemplateKindsInUse")} value={String(kindCounts.length)} />
+        <StatCard
+          label={t("dashboard:statHubsWithItems")}
+          value={String(hubsWithItems.length)}
+          sub={t("dashboard:statHubsWithItemsSub", { total: 6 })}
+        />
       </div>
 
       <div>
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-surface-muted">By template kind</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-surface-muted">{t("dashboard:byTemplateKind")}</h2>
         <ul className="mt-2 flex flex-wrap gap-2">
           {kindCounts.map(([kind, n]) => (
             <li
@@ -123,8 +129,8 @@ export function DashboardOverviewPanel(props: {
                     <span className="font-medium text-white">{w.title || w.kind}</span>
                     <span className="mt-1 text-xs text-surface-muted">{kindLabelFor(w.kind)}</span>
                     <span className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-white/45">
-                      <span className="rounded border border-white/10 px-1.5 py-0.5">{accessHint(w.access_role)}</span>
-                      <span>Updated {relativeActivityEn(w.updated_at)}</span>
+                      <span className="rounded border border-white/10 px-1.5 py-0.5">{accessHint(w.access_role, t)}</span>
+                      <span>{t("dashboard:updatedPrefix")} {relativeActivity(w.updated_at, t)}</span>
                     </span>
                   </button>
                 </li>

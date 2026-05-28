@@ -5,7 +5,11 @@
   "scripts": {
     "dev": "vite",
     "i18n:check": "node scripts/validate-i18n.mjs",
-    "build": "npm run i18n:check && vite build",
+    "i18n:scan": "node scripts/scan-i18n-ui.mjs",
+    "test": "node scripts/test-frontend-i18n.mjs",
+    "test:i18n": "npm run test",
+    "e2e:i18n": "node scripts/e2e-playwright-i18n.mjs",
+    "build": "npm run test && vite build",
     "preview": "vite preview"
   },
   "dependencies": {

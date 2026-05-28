@@ -3,6 +3,8 @@
  * Chat must send the same token as ``agent_model_catalog_owned_by`` (no cross-provider fallback).
  */
 
+import i18n from "../i18n/config";
+
 export type ProviderHealth = {
   reachable?: boolean;
   configured?: boolean;
@@ -327,25 +329,25 @@ export function embeddingModelOptions(emb: EmbeddingCatalogHealth | null | undef
 /** Short status under the RAG model dropdown (not a replacement for it). */
 export function formatEmbeddingStatusHint(emb: EmbeddingCatalogHealth | null | undefined): string | null {
   if (!emb?.configured) {
-    return "Embedding: Base-URL unter Admin → Interfaces → Memory & RAG oder EMBEDDING_BASE_URL in .env.";
+    return i18n.t("errors:embeddingNotConfigured");
   }
   if (emb.dim_mismatch || emb.dim_matches_config === false) {
     const actual = emb.actual_embedding_dim;
     const cfg = emb.embedding_dim;
     if (actual != null && cfg != null) {
-      return `RAG: Dim ${actual} (API) ≠ ${cfg} (gespeichert) — Embedding-Modell erneut wählen oder Admin → Interfaces speichern.`;
+      return i18n.t("errors:embeddingDimMismatch", { actual, cfg });
     }
   }
   if (emb.reachable === true && emb.dim_matches_config !== false) {
-    return "RAG: Embedding-API erreichbar.";
+    return i18n.t("errors:embeddingApiReachable");
   }
   const detail = (emb.detail ?? "").trim();
   if (detail.includes("501") || detail.toLowerCase().includes("not implemented")) {
-    return "RAG: Server hat kein /v1/embeddings — anderes Embedding-Backend nötig.";
+    return i18n.t("errors:embeddingNoV1Endpoint");
   }
-  if (detail) return `RAG: ${detail}`;
+  if (detail) return i18n.t("errors:embeddingDetail", { detail });
   const listErr = (emb.models_list_detail ?? "").trim();
-  if (listErr) return `RAG Modellliste: ${listErr}`;
+  if (listErr) return i18n.t("errors:embeddingModelListDetail", { detail: listErr });
   return null;
 }
 

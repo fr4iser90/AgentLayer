@@ -1,5 +1,6 @@
 import type { ChangeEvent, Dispatch, SetStateAction } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { formatDateTimeLocal } from "../../lib/formatDateTime";
@@ -26,9 +27,10 @@ export function DashboardBlocks(props: {
   data: Record<string, unknown>;
   setData: Dispatch<SetStateAction<Record<string, unknown>>>;
 }) {
+  const { t } = useTranslation(["dashboard"]);
   const { uiLayout, data, setData } = props;
   if (!uiLayout?.blocks?.length) {
-    return <p className="text-sm text-surface-muted">No blocks in this layout.</p>;
+    return <p className="text-sm text-surface-muted">{t("dashboard:noBlocksInLayout")}</p>;
   }
 
   return (
@@ -66,6 +68,7 @@ export function DashboardBlockTile(props: {
 const WS_FILE_PREFIX = "wsfile:";
 
 function GalleryImage(props: { url: string; alt: string }) {
+  const { t } = useTranslation(["dashboard"]);
   const auth = useAuth();
   const { url, alt } = props;
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
@@ -113,7 +116,7 @@ function GalleryImage(props: { url: string; alt: string }) {
     if (!blobUrl) {
       return (
         <div className="flex h-full items-center justify-center text-xs text-surface-muted">
-          Laden…
+          {t("dashboard:imageLoading")}
         </div>
       );
     }
@@ -167,6 +170,7 @@ function GalleryBlockBody(props: {
   dashboardId: string | null;
   readOnly: boolean;
 }) {
+  const { t } = useTranslation(["dashboard"]);
   const { dp, data, setData, sectionTitle, dashboardId, readOnly } = props;
   const auth = useAuth();
   const rowsUnknown = dp ? getPath(data, dp) : [];
@@ -208,15 +212,15 @@ function GalleryBlockBody(props: {
             className="rounded-md bg-violet-600/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-500"
             onClick={addPhoto}
           >
-            Foto +
+            {t("dashboard:photosAdd")}
           </button>
         ) : null}
       </div>
       {photos.length === 0 ? (
         <p className="rounded-lg border border-dashed border-white/15 py-10 text-center text-sm text-surface-muted">
           {readOnly
-            ? "Noch keine Fotos in diesem Bereich."
-            : "Einträge hinzufügen — Bild hochladen (Dashboard speichern) oder externe URL eintragen."}
+            ? t("dashboard:photosEmptyReadOnly")
+            : t("dashboard:photosEmptyEditable")}
         </p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -249,6 +253,7 @@ function GalleryPhotoCard(props: {
   updatePhoto: (index: number, field: string, value: unknown) => void;
   removePhoto: (index: number) => void;
 }) {
+  const { t } = useTranslation(["dashboard"]);
   const { ri, url, caption, dashboardId, auth, readOnly, updatePhoto, removePhoto } = props;
   const [uploading, setUploading] = useState(false);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
@@ -257,7 +262,7 @@ function GalleryPhotoCard(props: {
     const f = e.target.files?.[0];
     e.target.value = "";
     if (!f || !dashboardId) {
-      if (!dashboardId) setUploadErr("Dashboard speichern, dann Upload möglich.");
+      if (!dashboardId) setUploadErr(t("dashboard:dashboardSaveBeforeUpload"));
       return;
     }
     setUploading(true);
@@ -281,7 +286,7 @@ function GalleryPhotoCard(props: {
           const msg =
             typeof j.detail === "string"
               ? j.detail
-              : `Upload fehlgeschlagen (${res.status})`;
+              : t("dashboard:uploadFailed", { status: res.status });
           setUploadErr(msg);
           return;
         }
@@ -303,7 +308,7 @@ function GalleryPhotoCard(props: {
             <GalleryImage url={url} alt={caption} />
           ) : (
             <div className="flex h-full items-center justify-center text-xs text-surface-muted">
-              Kein Bild
+              {t("dashboard:noImage")}
             </div>
           )}
         </div>
@@ -321,14 +326,14 @@ function GalleryPhotoCard(props: {
           <GalleryImage url={url} alt={caption} />
         ) : (
           <div className="flex h-full items-center justify-center text-xs text-surface-muted">
-            URL oder Upload
+            {t("dashboard:urlOrUpload")}
           </div>
         )}
       </div>
       <div className="space-y-2 p-3">
         <div className="flex flex-wrap items-center gap-2">
           <label className="dashboard-grid-no-drag cursor-pointer rounded-md bg-white/10 px-2 py-1 text-xs text-white hover:bg-white/15">
-            {uploading ? "…" : "Hochladen"}
+            {uploading ? "…" : t("dashboard:upload")}
             <input
               type="file"
               accept="image/jpeg,image/png,image/gif,image/webp"
@@ -338,20 +343,20 @@ function GalleryPhotoCard(props: {
             />
           </label>
           {!dashboardId ? (
-            <span className="text-[10px] text-amber-200/90">Speichern für Upload</span>
+            <span className="text-[10px] text-amber-200/90">{t("dashboard:saveForUpload")}</span>
           ) : null}
         </div>
         {uploadErr ? <p className="text-[10px] text-red-400">{uploadErr}</p> : null}
         <input
           type="url"
-          placeholder="https://… oder wsfile:…"
+          placeholder={t("dashboard:fileUrlPlaceholder")}
           className="w-full rounded-md border border-surface-border bg-black/40 px-2 py-1.5 text-xs text-neutral-100 placeholder:text-white/25"
           value={url}
           onChange={(e) => updatePhoto(ri, "url", e.target.value)}
         />
         <input
           type="text"
-          placeholder="Beschriftung"
+          placeholder={t("dashboard:captionPlaceholder")}
           className="w-full rounded-md border border-surface-border bg-black/40 px-2 py-1.5 text-xs text-neutral-100"
           value={caption}
           onChange={(e) => updatePhoto(ri, "caption", e.target.value)}
@@ -361,7 +366,7 @@ function GalleryPhotoCard(props: {
           className="w-full rounded-md py-1 text-xs text-red-400 hover:bg-red-950/30"
           onClick={() => removePhoto(ri)}
         >
-          Entfernen
+          {t("dashboard:remove")}
         </button>
       </div>
     </div>
@@ -391,6 +396,7 @@ function HeroBlockBody(props: {
   readOnly: boolean;
 }) {
   const { dp, data, setData, sectionTitle, dashboardId, readOnly } = props;
+  const { t } = useTranslation(["dashboard"]);
   const auth = useAuth();
   const hero = readHero(dp ? getPath(data, dp) : undefined);
   const [uploading, setUploading] = useState(false);
@@ -407,7 +413,7 @@ function HeroBlockBody(props: {
     const f = e.target.files?.[0];
     e.target.value = "";
     if (!f || !dashboardId) {
-      if (!dashboardId) setUploadErr("Dashboard speichern, dann Upload möglich.");
+      if (!dashboardId) setUploadErr(t("dashboard:dashboardSaveBeforeUpload"));
       return;
     }
     setUploading(true);
@@ -431,7 +437,7 @@ function HeroBlockBody(props: {
           const msg =
             typeof j.detail === "string"
               ? j.detail
-              : `Upload fehlgeschlagen (${res.status})`;
+              : t("dashboard:uploadFailed", { status: res.status });
           setUploadErr(msg);
           return;
         }
@@ -463,9 +469,7 @@ function HeroBlockBody(props: {
       ) : (
         <div className="flex h-full min-h-[200px] flex-col items-center justify-center gap-2 px-6 text-center">
           <p className="text-sm text-surface-muted">
-            {readOnly
-              ? "Kein Hero-Bild gesetzt."
-              : "Hero-Bild: URL eintragen oder hochladen (Dashboard speichern)."}
+            {readOnly ? t("dashboard:heroEmptyReadOnly") : t("dashboard:heroEmptyEditable")}
           </p>
         </div>
       )}
@@ -491,7 +495,7 @@ function HeroBlockBody(props: {
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-medium text-white">{sectionTitle}</h3>
         <label className="dashboard-grid-no-drag cursor-pointer rounded-md bg-violet-600/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-500">
-          {uploading ? "…" : "Bild hochladen"}
+          {uploading ? "…" : t("dashboard:heroUpload")}
           <input
             type="file"
             accept="image/jpeg,image/png,image/gif,image/webp"
@@ -502,18 +506,18 @@ function HeroBlockBody(props: {
         </label>
       </div>
       {!dashboardId ? (
-        <p className="mb-2 text-[10px] text-amber-200/90">Zuerst Dashboard speichern, dann Upload.</p>
+        <p className="mb-2 text-[10px] text-amber-200/90">{t("dashboard:heroSaveBeforeUploadHint")}</p>
       ) : null}
       {uploadErr ? <p className="mb-2 text-xs text-red-400">{uploadErr}</p> : null}
       {imageArea}
       <div className="mt-4 space-y-3">
         <div>
           <label className="mb-1 block text-[10px] uppercase tracking-wide text-surface-muted">
-            Bild-URL
+            {t("dashboard:heroImageUrlLabel")}
           </label>
           <input
             type="url"
-            placeholder="https://… oder wsfile:…"
+            placeholder={t("dashboard:fileUrlPlaceholder")}
             className="dashboard-grid-no-drag w-full rounded-lg border border-surface-border bg-black/40 px-3 py-2 text-sm text-neutral-100 placeholder:text-white/25"
             value={hero.url}
             onChange={(e) => patchHero({ url: e.target.value })}
@@ -521,11 +525,11 @@ function HeroBlockBody(props: {
         </div>
         <div>
           <label className="mb-1 block text-[10px] uppercase tracking-wide text-surface-muted">
-            Überschrift (auf dem Bild)
+            {t("dashboard:heroHeadlineLabel")}
           </label>
           <input
             type="text"
-            placeholder="z. B. Name des Tieres"
+            placeholder={t("dashboard:heroHeadlinePlaceholder")}
             className="dashboard-grid-no-drag w-full rounded-lg border border-surface-border bg-black/40 px-3 py-2 text-sm text-neutral-100"
             value={hero.headline}
             onChange={(e) => patchHero({ headline: e.target.value })}
@@ -533,11 +537,11 @@ function HeroBlockBody(props: {
         </div>
         <div>
           <label className="mb-1 block text-[10px] uppercase tracking-wide text-surface-muted">
-            Untertitel / Beschreibung
+            {t("dashboard:heroCaptionLabel")}
           </label>
           <textarea
             className="dashboard-grid-no-drag min-h-[72px] w-full resize-y rounded-lg border border-surface-border bg-black/40 px-3 py-2 text-sm text-neutral-100"
-            placeholder="Kurzer Text unter dem Bild…"
+            placeholder={t("dashboard:heroCaptionPlaceholder")}
             value={hero.caption}
             onChange={(e) => patchHero({ caption: e.target.value })}
           />
@@ -575,6 +579,7 @@ function StatBlockBody(props: {
   readOnly: boolean;
 }) {
   const { dp, data, setData, sectionTitle, readOnly } = props;
+  const { t } = useTranslation(["dashboard"]);
   const stat = readStat(dp ? getPath(data, dp) : undefined);
 
   const patchStat = (partial: Partial<StatState>) => {
@@ -586,11 +591,11 @@ function StatBlockBody(props: {
 
   const trendGlyph =
     stat.trend === "up" ? (
-      <span className="text-emerald-400" title="Trend aufwärts">
+      <span className="text-emerald-400" title={t("dashboard:trendUpTitle")}>
         ↑
       </span>
     ) : stat.trend === "down" ? (
-      <span className="text-rose-400" title="Trend abwärts">
+      <span className="text-rose-400" title={t("dashboard:trendDownTitle")}>
         ↓
       </span>
     ) : null;
@@ -618,7 +623,7 @@ function StatBlockBody(props: {
         <div className="mt-4 space-y-2 border-t border-white/5 pt-3">
           <input
             type="text"
-            placeholder="Beschriftung (optional)"
+            placeholder={t("dashboard:kpiLabelOptional")}
             className="dashboard-grid-no-drag w-full rounded-md border border-surface-border bg-black/40 px-2 py-1.5 text-xs text-neutral-100"
             value={stat.label}
             onChange={(e) => patchStat({ label: e.target.value })}
@@ -626,14 +631,14 @@ function StatBlockBody(props: {
           <div className="flex gap-2">
             <input
               type="text"
-              placeholder="Wert"
+              placeholder={t("dashboard:kpiValuePlaceholder")}
               className="dashboard-grid-no-drag min-w-0 flex-1 rounded-md border border-surface-border bg-black/40 px-2 py-1.5 text-xs text-neutral-100"
               value={stat.value}
               onChange={(e) => patchStat({ value: e.target.value })}
             />
             <input
               type="text"
-              placeholder="Suffix"
+              placeholder={t("dashboard:kpiSuffixPlaceholder")}
               className="dashboard-grid-no-drag w-20 shrink-0 rounded-md border border-surface-border bg-black/40 px-2 py-1.5 text-xs text-neutral-100"
               value={stat.suffix}
               onChange={(e) => patchStat({ suffix: e.target.value })}
@@ -644,9 +649,9 @@ function StatBlockBody(props: {
             value={stat.trend}
             onChange={(e) => patchStat({ trend: e.target.value as StatTrend })}
           >
-            <option value="">Kein Trend</option>
-            <option value="up">↑ Aufwärts</option>
-            <option value="down">↓ Abwärts</option>
+            <option value="">{t("dashboard:kpiNoTrend")}</option>
+            <option value="up">{t("dashboard:kpiTrendUp")}</option>
+            <option value="down">{t("dashboard:kpiTrendDown")}</option>
           </select>
         </div>
       ) : null}
@@ -685,6 +690,7 @@ function TimelineBlockBody(props: {
   readOnly: boolean;
 }) {
   const { dp, data, setData, sectionTitle, readOnly } = props;
+  const { t } = useTranslation(["dashboard"]);
 
   const sorted = useMemo(() => {
     const rowsUnknown = dp ? getPath(data, dp) : [];
@@ -743,15 +749,13 @@ function TimelineBlockBody(props: {
             className="rounded-md bg-sky-600/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
             onClick={addEvent}
           >
-            Eintrag +
+            {t("dashboard:timelineAddEntry")}
           </button>
         ) : null}
       </div>
       {sorted.length === 0 ? (
         <p className="rounded-lg border border-dashed border-white/15 py-8 text-center text-sm text-surface-muted">
-          {readOnly
-            ? "Keine Einträge."
-            : "Ereignisse mit Datum — chronologisch sortiert (älteste oben)."}
+          {readOnly ? t("dashboard:timelineEmptyReadOnly") : t("dashboard:timelineEmptyEditable")}
         </p>
       ) : (
         <div className="relative pl-1">
@@ -780,7 +784,7 @@ function TimelineBlockBody(props: {
                   <div className="mt-2 space-y-2">
                     <input
                       type="text"
-                      placeholder="Titel"
+                      placeholder={t("dashboard:timelineTitlePlaceholder")}
                       className="dashboard-grid-no-drag w-full rounded-md border border-surface-border bg-black/40 px-2 py-1.5 text-sm text-white"
                       value={String(row.title ?? "")}
                       onChange={(e) => updateRow(si, "title", e.target.value)}
@@ -797,11 +801,11 @@ function TimelineBlockBody(props: {
                         className="ml-auto rounded px-2 py-1 text-xs text-red-400 hover:bg-white/5"
                         onClick={() => removeRow(si)}
                       >
-                        Entfernen
+                        {t("dashboard:remove")}
                       </button>
                     </div>
                     <textarea
-                      placeholder="Notiz (optional)"
+                      placeholder={t("dashboard:timelineNoteOptional")}
                       className="dashboard-grid-no-drag min-h-[56px] w-full resize-y rounded-md border border-surface-border bg-black/40 px-2 py-1.5 text-xs text-neutral-200"
                       value={String(row.note ?? "")}
                       onChange={(e) => updateRow(si, "note", e.target.value)}
@@ -826,6 +830,7 @@ function BlockView(props: {
   readOnly: boolean;
 }) {
   const { block, data, setData, dashboardId, readOnly } = props;
+  const { t } = useTranslation(["dashboard", "admin"]);
   const dp = block.props.dataPath || "";
 
   if (block.type === "hero") {
@@ -834,7 +839,7 @@ function BlockView(props: {
         dp={dp}
         data={data}
         setData={setData}
-        sectionTitle={block.props.title || "Hero"}
+        sectionTitle={block.props.title || t("dashboard:heroFallback")}
         dashboardId={dashboardId}
         readOnly={readOnly}
       />
@@ -859,7 +864,7 @@ function BlockView(props: {
         dp={dp}
         data={data}
         setData={setData}
-        sectionTitle={block.props.title || "Timeline"}
+        sectionTitle={block.props.title || t("dashboard:timelineFallback")}
         readOnly={readOnly}
       />
     );
@@ -871,7 +876,7 @@ function BlockView(props: {
         dp={dp}
         data={data}
         setData={setData}
-        sectionTitle={block.props.title || "Diagramm"}
+        sectionTitle={block.props.title || t("dashboard:chartFallback")}
         readOnly={readOnly}
       />
     );
@@ -883,7 +888,7 @@ function BlockView(props: {
         dp={dp}
         data={data}
         setData={setData}
-        sectionTitle={block.props.title || "Sparkline"}
+        sectionTitle={block.props.title || t("dashboard:sparklineFallback")}
         readOnly={readOnly}
       />
     );
@@ -895,7 +900,7 @@ function BlockView(props: {
         dp={dp}
         data={data}
         setData={setData}
-        sectionTitle={block.props.title || "Kanban"}
+        sectionTitle={block.props.title || t("dashboard:kanbanFallback")}
         readOnly={readOnly}
       />
     );
@@ -907,7 +912,7 @@ function BlockView(props: {
         dp={dp}
         data={data}
         setData={setData}
-        sectionTitle={block.props.title || "Rich Markdown"}
+        sectionTitle={block.props.title || t("dashboard:richMarkdownFallback")}
         placeholder={block.props.placeholder || ""}
         readOnly={readOnly}
       />
@@ -953,7 +958,7 @@ function BlockView(props: {
         dp={dp}
         data={data}
         setData={setData}
-        sectionTitle={block.props.title || "Fotos"}
+        sectionTitle={block.props.title || t("dashboard:photosTitleFallback")}
         dashboardId={dashboardId}
         readOnly={readOnly}
       />
@@ -974,7 +979,7 @@ function BlockView(props: {
     const searchPlaceholder =
       typeof block.props.searchPlaceholder === "string" && block.props.searchPlaceholder.trim()
         ? block.props.searchPlaceholder.trim()
-        : "Search…";
+        : t("dashboard:tableSearchPlaceholder");
     const searchFieldsRaw = Array.isArray(block.props.searchFields)
       ? (block.props.searchFields as unknown[])
       : [];
@@ -1020,11 +1025,11 @@ function BlockView(props: {
       const remote = String((detailRow as any)?.remote_url ?? "").trim();
       const path = String((detailRow as any)?.project_path ?? "").trim();
       const lines = [
-        `Project: ${title || "Untitled"}`,
-        remote ? `Remote: ${remote}` : "",
-        path ? `Local path: ${path}` : "",
+        `${t("dashboard:project")}: ${title || t("dashboard:untitled")}`,
+        remote ? `${t("dashboard:remote")}: ${remote}` : "",
+        path ? `${t("dashboard:localPath")}: ${path}` : "",
         "",
-        "Task:",
+        `${t("dashboard:task")}:`,
         "",
       ].filter(Boolean);
       setRunNowInstructions(lines.join("\n"));
@@ -1049,13 +1054,13 @@ function BlockView(props: {
         const res = await apiFetch(`/v1/project-runs?${q.toString()}`, auth);
         const j = (await res.json().catch(() => null)) as any;
         if (!res.ok || !j?.ok) {
-          setRecentRunsErr(`Failed: ${String(j?.detail ?? j?.error ?? res.status)}`);
+          setRecentRunsErr(`${t("errors:generic")}: ${String(j?.detail ?? j?.error ?? res.status)}`);
           setRecentRuns(null);
         } else {
           setRecentRuns(Array.isArray(j.runs) ? j.runs : []);
         }
       } catch (e) {
-        setRecentRunsErr(`Failed: ${String(e)}`);
+        setRecentRunsErr(`${t("errors:generic")}: ${String(e)}`);
         setRecentRuns(null);
       } finally {
         setRecentRunsBusy(false);
@@ -1106,7 +1111,7 @@ function BlockView(props: {
       <section className="rounded-xl border border-surface-border bg-surface-raised/60 p-4">
         <div className="mb-3 flex items-center justify-between gap-2">
           <span className="text-xs font-medium uppercase tracking-wide text-surface-muted">
-            Tabelle ({dp})
+            {t("dashboard:tableTitle", { path: dp })}
           </span>
           <div className="flex items-center gap-2">
             {searchEnabled ? (
@@ -1123,7 +1128,7 @@ function BlockView(props: {
                 className="rounded-md bg-sky-600/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
                 onClick={addRow}
               >
-                Zeile +
+                {t("dashboard:tableAddRow")}
               </button>
             ) : null}
           </div>
@@ -1150,9 +1155,9 @@ function BlockView(props: {
                   >
                     {rows.length === 0
                       ? readOnly
-                        ? "Noch keine Einträge."
-                        : "Noch keine Zeilen — „Zeile +“."
-                      : "Keine Treffer."}
+                        ? t("dashboard:tableEmptyReadOnly")
+                        : t("dashboard:tableEmptyEditable")
+                      : t("dashboard:tableNoMatches")}
                   </td>
                 </tr>
               ) : (
@@ -1179,7 +1184,7 @@ function BlockView(props: {
                           type="button"
                           className="rounded px-2 py-1 text-xs text-sky-200 hover:bg-white/5"
                           onClick={() => setDetailRowId(String(row.id ?? ""))}
-                          title="Details"
+                          title={t("dashboard:details")}
                         >
                           ↗
                         </button>
@@ -1197,7 +1202,7 @@ function BlockView(props: {
                               : ri;
                             removeRow(realIndex >= 0 ? realIndex : ri);
                           }}
-                          title="Zeile löschen"
+                          title={t("dashboard:deleteRow")}
                         >
                           ✕
                         </button>
@@ -1214,9 +1219,9 @@ function BlockView(props: {
             <div className="h-full w-full max-w-lg overflow-auto rounded-xl border border-surface-border bg-surface-raised p-4 shadow-2xl">
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
-                  <div className="text-xs uppercase tracking-wide text-surface-muted">Project</div>
+                  <div className="text-xs uppercase tracking-wide text-surface-muted">{t("dashboard:project")}</div>
                   <div className="text-lg font-semibold text-white">
-                    {String((detailRow as any).title ?? "").trim() || "Untitled"}
+                    {String((detailRow as any).title ?? "").trim() || t("dashboard:untitled")}
                   </div>
                   <div className="mt-1 text-xs text-surface-muted">id: {detailRowId}</div>
                 </div>
@@ -1225,7 +1230,7 @@ function BlockView(props: {
                   className="rounded-md border border-surface-border px-3 py-1.5 text-xs text-neutral-100 hover:bg-white/5"
                   onClick={() => setDetailRowId(null)}
                 >
-                  Close
+                  {t("dashboard:close")}
                 </button>
               </div>
 
@@ -1233,7 +1238,7 @@ function BlockView(props: {
                 <div className="mb-4 rounded-xl border border-surface-border bg-black/20 p-3">
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <div className="text-xs font-medium uppercase tracking-wide text-surface-muted">
-                      Run now (one-shot)
+                      {t("dashboard:runNow")}
                     </div>
                     <button
                       type="button"
@@ -1262,36 +1267,36 @@ function BlockView(props: {
                           const j = (await res.json().catch(() => null)) as any;
                           if (!res.ok || !j?.ok) {
                             setRunNowMsg(
-                              `Failed: ${String(j?.detail ?? j?.error ?? res.status)}`
+                              `${t("errors:generic")}: ${String(j?.detail ?? j?.error ?? res.status)}`
                             );
                           } else {
-                            setRunNowMsg(`Queued run: ${String(j.run?.id ?? "")}`);
+                            setRunNowMsg(t("dashboard:queuedRun", { id: String(j.run?.id ?? "") }));
                             void refreshRecentRuns();
                           }
                         } catch (e) {
-                          setRunNowMsg(`Failed: ${String(e)}`);
+                          setRunNowMsg(`${t("errors:generic")}: ${String(e)}`);
                         } finally {
                           setRunNowBusy(false);
                         }
                       }}
                     >
-                      {runNowBusy ? "Queueing…" : "Queue run"}
+                      {runNowBusy ? t("dashboard:queueing") : t("dashboard:queueRun")}
                     </button>
                   </div>
                   <label className="mb-2 block text-[11px] text-surface-muted">
-                    Workspace id (UUID)
+                    {t("dashboard:workspaceIdUuid")}
                     <input
                       value={runNowWorkspaceId}
                       onChange={(e) => setRunNowWorkspaceId(e.target.value)}
                       className="mt-1 w-full rounded-lg border border-surface-border bg-black/30 px-3 py-1.5 font-mono text-xs text-neutral-100 outline-none focus:border-violet-400/60"
-                      placeholder="coding workspace UUID"
+                      placeholder={t("dashboard:workspaceUuidPlaceholder")}
                     />
                   </label>
                   <textarea
                     value={runNowInstructions}
                     onChange={(e) => setRunNowInstructions(e.target.value)}
                     className="min-h-[110px] w-full resize-y rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-xs text-neutral-100 outline-none focus:border-violet-400/60"
-                    placeholder="Describe what to do…"
+                    placeholder={t("dashboard:describeWhatToDo")}
                   />
                   {runNowMsg ? (
                     <div className="mt-2 text-xs text-surface-muted">{runNowMsg}</div>
@@ -1303,7 +1308,7 @@ function BlockView(props: {
                 <div className="mb-4 rounded-xl border border-surface-border bg-black/10 p-3">
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <div className="text-xs font-medium uppercase tracking-wide text-surface-muted">
-                      Recent runs
+                      {t("dashboard:recentRuns")}
                     </div>
                     <button
                       type="button"
@@ -1311,13 +1316,13 @@ function BlockView(props: {
                       disabled={recentRunsBusy}
                       onClick={() => void refreshRecentRuns()}
                     >
-                      {recentRunsBusy ? "Loading…" : "Refresh"}
+                      {recentRunsBusy ? t("dashboard:loading") : t("dashboard:refresh")}
                     </button>
                   </div>
                   {recentRunsErr ? (
                     <div className="text-xs text-red-200/90">{recentRunsErr}</div>
                   ) : recentRuns && recentRuns.length === 0 ? (
-                    <div className="text-xs text-surface-muted">No runs yet.</div>
+                    <div className="text-xs text-surface-muted">{t("dashboard:recentRunsNoneYet")}</div>
                   ) : recentRuns ? (
                     <div className="space-y-2">
                       {recentRuns.map((r) => (
@@ -1343,7 +1348,7 @@ function BlockView(props: {
                       ))}
                     </div>
                   ) : (
-                    <div className="text-xs text-surface-muted">Loading…</div>
+                    <div className="text-xs text-surface-muted">{t("dashboard:runNowLoading")}</div>
                   )}
                 </div>
               ) : null}
@@ -1471,7 +1476,7 @@ function BlockView(props: {
       <section className="rounded-xl border border-surface-border bg-surface-raised/60 p-4">
         <div className="mb-3 flex items-center justify-between gap-2">
           <span className="text-xs font-medium uppercase tracking-wide text-surface-muted">
-            Schedules
+            {t("admin:schedulesTitle")}
           </span>
           <button
             type="button"
@@ -1479,25 +1484,27 @@ function BlockView(props: {
             onClick={() => void refresh()}
             disabled={loading}
           >
-            {loading ? "Loading…" : "Refresh"}
+            {loading ? t("admin:loading") : t("admin:schedulesRefresh")}
           </button>
         </div>
         {err ? <div className="mb-3 text-xs text-red-200/90">{err}</div> : null}
         {!jobs ? (
-          <div className="text-sm text-surface-muted">{loading ? "Loading…" : "No data yet."}</div>
+          <div className="text-sm text-surface-muted">
+            {loading ? t("admin:loading") : t("admin:schedulesNoDataYet")}
+          </div>
         ) : jobs.length === 0 ? (
-          <div className="text-sm text-surface-muted">No schedules.</div>
+          <div className="text-sm text-surface-muted">{t("admin:schedulesNone")}</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-surface-border text-surface-muted">
-                  <th className="px-2 py-2 font-medium">Enabled</th>
-                  <th className="px-2 py-2 font-medium">Target</th>
-                  <th className="px-2 py-2 font-medium">Title</th>
-                  <th className="px-2 py-2 font-medium">Interval</th>
-                  <th className="px-2 py-2 font-medium">Scope</th>
-                  <th className="px-2 py-2 font-medium">Last run</th>
+                  <th className="px-2 py-2 font-medium">{t("admin:schedulesEnabledFilter")}</th>
+                  <th className="px-2 py-2 font-medium">{t("admin:schedulesTarget")}</th>
+                  <th className="px-2 py-2 font-medium">{t("admin:schedulesColTitle")}</th>
+                  <th className="px-2 py-2 font-medium">{t("admin:schedulesColInterval")}</th>
+                  <th className="px-2 py-2 font-medium">{t("admin:schedulesColScope")}</th>
+                  <th className="px-2 py-2 font-medium">{t("admin:schedulesColLastRun")}</th>
                   <th className="px-2 py-2 font-medium" />
                 </tr>
               </thead>
@@ -1506,7 +1513,7 @@ function BlockView(props: {
                   <tr key={j.id} className="border-b border-white/5">
                     <td className="px-2 py-2">
                       <span className={`rounded-md border px-2 py-0.5 text-xs ${pill(j.enabled)}`}>
-                        {j.enabled ? "enabled" : "disabled"}
+                        {j.enabled ? t("admin:schedulesEnabledLabel") : t("admin:schedulesDisabledLabel")}
                       </span>
                     </td>
                     <td className="px-2 py-2 text-xs text-neutral-100">
@@ -1516,9 +1523,13 @@ function BlockView(props: {
                       </div>
                     </td>
                     <td className="px-2 py-2 text-neutral-100">{j.title || "—"}</td>
-                    <td className="px-2 py-2 text-surface-muted">{j.interval_minutes} min</td>
                     <td className="px-2 py-2 text-surface-muted">
-                      {j.dashboard_id ? "dashboard" : "global"}
+                      {t("admin:schedulesIntervalMin", { minutes: j.interval_minutes })}
+                    </td>
+                    <td className="px-2 py-2 text-surface-muted">
+                      {j.dashboard_id
+                        ? t("admin:schedulesScopeDashboardShort")
+                        : t("admin:schedulesScopeGlobal")}
                     </td>
                     <td className="px-2 py-2 text-surface-muted">{formatDateTimeLocal(j.last_run_at)}</td>
                     <td className="px-2 py-2">
@@ -1528,7 +1539,7 @@ function BlockView(props: {
                           className="rounded-md border border-surface-border px-2 py-1 text-xs text-neutral-100 hover:bg-white/5"
                           onClick={() => void toggleEnabled(j.id, !j.enabled)}
                         >
-                          {j.enabled ? "Disable" : "Enable"}
+                          {j.enabled ? t("admin:schedulesDisable") : t("admin:schedulesEnable")}
                         </button>
                       ) : null}
                     </td>

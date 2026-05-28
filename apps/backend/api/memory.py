@@ -265,6 +265,7 @@ def graph_render_for_identity(
     _require_identity()
     from apps.backend.api.memory_graph_scoring import build_graph_prompt_section, rank_and_filter_nodes
 
+    mg = operator_settings.memory_graph_prompt_settings()
     tokens = _tokenize_query_for_graph(user_query)
     qemb: list[float] | None = None
     raw_q = (user_query or "").strip()

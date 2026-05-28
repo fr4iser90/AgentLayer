@@ -1,0 +1,33 @@
+/**
+ * Canonical app routes (basename /app). Used by i18n/route coverage tests.
+ * Update when App.tsx routes change.
+ */
+export const APP_ROUTES = [
+  { path: "/app/login", page: "LoginPage", file: "pages/LoginPage.tsx", auth: "public" },
+  { path: "/app/setup", page: "SetupWizardPage", file: "pages/SetupWizardPage.tsx", auth: "public" },
+  { path: "/app/", page: "HomePage", file: "pages/HomePage.tsx", auth: "session" },
+  { path: "/app/chat", page: "ChatPage", file: "pages/ChatPage.tsx", auth: "session" },
+  { path: "/app/studio", page: "StudioPage", file: "pages/StudioPage.tsx", auth: "session" },
+  { path: "/app/dashboard", page: "DashboardPage", file: "pages/DashboardPage.tsx", auth: "session" },
+  { path: "/app/schedules", page: "MySchedulesPage", file: "pages/MySchedulesPage.tsx", auth: "session" },
+  { path: "/app/tasks", page: "TasksPage", file: "pages/TasksPage.tsx", auth: "session" },
+  { path: "/app/docs", page: "DocsPage", file: "pages/DocsPage.tsx", auth: "session" },
+  { path: "/app/settings/profile", page: "ProfileSettings", file: "pages/settings/ProfileSettings.tsx", auth: "session" },
+  { path: "/app/settings/friends", page: "FriendsSettings", file: "pages/settings/FriendsSettings.tsx", auth: "session" },
+  { path: "/app/settings/connections", page: "ConnectionsSettings", file: "pages/settings/ConnectionsSettings.tsx", auth: "session" },
+  { path: "/app/settings/tools", page: "ToolsSettings", file: "pages/settings/ToolsSettings.tsx", auth: "session" },
+  { path: "/app/settings/agent", page: "AgentSettings", file: "pages/settings/AgentSettings.tsx", auth: "session" },
+  { path: "/app/settings/shares", page: "SharesSettings", file: "pages/settings/SharesSettings.tsx", auth: "session" },
+  { path: "/app/admin", page: "AdminDashboard", file: "pages/admin/AdminDashboard.tsx", auth: "admin" },
+  { path: "/app/admin/interfaces", page: "AdminInterfacesOverviewPage", file: "pages/admin/interfaces/AdminInterfacesOverviewPage.tsx", auth: "admin" },
+  { path: "/app/admin/interfaces/bridges", page: "AdminInterfacesBridgesPage", file: "pages/admin/interfaces/AdminInterfacesBridgesPage.tsx", auth: "admin" },
+  { path: "/app/admin/interfaces/llm", page: "AdminInterfacesLlmPage", file: "pages/admin/interfaces/AdminInterfacesLlmPage.tsx", auth: "admin" },
+  { path: "/app/admin/interfaces/memory", page: "AdminInterfacesMemoryPage", file: "pages/admin/interfaces/AdminInterfacesMemoryPage.tsx", auth: "admin" },
+  { path: "/app/admin/interfaces/automation", page: "AdminInterfacesAutomationPage", file: "pages/admin/interfaces/AdminInterfacesAutomationPage.tsx", auth: "admin" },
+  { path: "/app/admin/interfaces/platform", page: "AdminInterfacesPlatformPage", file: "pages/admin/interfaces/AdminInterfacesPlatformPage.tsx", auth: "admin" },
+  { path: "/app/admin/tools", page: "AdminTools", file: "pages/admin/AdminTools.tsx", auth: "admin" },
+  { path: "/app/admin/users", page: "AdminUsers", file: "pages/admin/AdminUsers.tsx", auth: "admin" },
+  { path: "/app/admin/scheduled-jobs", page: "AdminScheduledJobs", file: "pages/admin/AdminScheduledJobs.tsx", auth: "admin" },
+  { path: "/app/admin/schedules", page: "AdminSchedules", file: "pages/admin/AdminSchedules.tsx", auth: "admin" },
+  { path: "/app/admin/run-traces", page: "AdminAgentTraces", file: "pages/admin/AdminAgentTraces.tsx", auth: "admin" },
+];

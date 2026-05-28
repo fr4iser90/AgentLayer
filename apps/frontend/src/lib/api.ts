@@ -114,6 +114,7 @@ export type WorkspaceApiRecord = {
     total_symbols?: number;
     total_files?: number;
     qdrant_indexed?: number;
+    neo4j_edges?: number;
     elapsed_sec?: number;
     scan?: Record<string, unknown>;
     docs_rag?: Record<string, unknown>;
@@ -148,10 +149,13 @@ export type WorkspaceIndexStatus = {
   index_stale_reason?: "never_indexed" | "git_head_newer_than_index" | string | null;
   repo_tree?: string[];
   qdrant?: { configured?: boolean; reachable?: boolean | null; error?: string };
+  neo4j?: { configured?: boolean; reachable?: boolean | null; error?: string };
   embedding?: { configured?: boolean; enabled?: boolean; embedding_dim?: number };
   coding_enabled?: boolean;
   error?: string;
 };
+
+export type WorkspaceIndexMode = "full" | "code" | "docs";
 
 export async function patchWorkspace(
   auth: Pick<AuthContextValue, "accessToken" | "refresh">,

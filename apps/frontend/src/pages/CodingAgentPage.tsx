@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import i18n from "../i18n/config";
 import { useAuth } from "../auth/AuthContext";
 import {
   type AgentTimelineEntry,
@@ -107,7 +109,7 @@ async function createWorkspace(auth: ReturnType<typeof useAuth>, name: string, g
   });
   if (!r.ok) {
     const err = (await r.json().catch(() => ({}))) as { detail?: string };
-    throw new Error(err.detail ?? "Failed to create workspace");
+    throw new Error(err.detail ?? i18n.t("coding:createWorkspaceFailed"));
   }
   const j = (await r.json()) as { workspace: WorkspaceApiRecord };
   return j.workspace;
@@ -117,9 +119,29 @@ async function deleteWorkspace(auth: ReturnType<typeof useAuth>, workspaceId: st
   const r = await apiFetch(`/v1/workspaces/${workspaceId}`, auth, { method: "DELETE" });
   if (!r.ok) {
     const err = (await r.json().catch(() => ({}))) as { detail?: string };
-    throw new Error(err.detail ?? "Failed to delete workspace");
+    throw new Error(err.detail ?? i18n.t("coding:deleteWorkspaceFailed"));
   }
   return true;
+}
+
+async function resetSelfWorkspaceApi(
+  auth: ReturnType<typeof useAuth>,
+  workspaceId: string,
+  body: { backup_existing: boolean }
+): Promise<WorkspaceApiRecord> {
+  const r = await apiFetch(`/v1/workspaces/${workspaceId}/self/reset`, auth, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  const j = (await r.json().catch(() => ({}))) as { ok?: boolean; workspace?: WorkspaceApiRecord; detail?: string };
+  if (!r.ok) {
+    const d = typeof j.detail === "string" ? j.detail : `HTTP ${r.status}`;
+    throw new Error(d);
+  }
+  if (!j.workspace) {
+    throw new Error(i18n.t("coding:resetNoPayload"));
+  }
+  return j.workspace;
 }
 
 async function createImplementationBranchApi(
@@ -142,17 +164,11 @@ async function createImplementationBranchApi(
     throw new Error(d);
   }
   if (!j.branch) {
-    throw new Error("Branch creation returned no branch name");
+    throw new Error(i18n.t("coding:branchNoName"));
   }
   return { branch: j.branch, base_branch: j.base_branch, head_summary: j.head_summary };
 }
 
-const CODING_SUGGESTED = [
-  "Explain the structure of this project",
-  "Find and fix all linting errors",
-  "Add unit tests for the main module",
-  "Refactor this function to be more readable",
-];
 
 function wsUrl(token: string): string {
   const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -383,13 +399,14 @@ function ImplementationBranchSetting({
   onChange: (v: ImplBranchPreference) => void;
   className?: string;
 }) {
+  const { t } = useTranslation(["coding"]);
   return (
     <div className={`mt-2 flex flex-col gap-1 text-left ${className}`}>
       <label
         className="text-[10px] font-medium uppercase tracking-wide text-surface-muted"
         htmlFor="impl-branch-pref"
       >
-        Plan → Build: implementation branch
+        {t("coding:implBranchLabel")}
       </label>
       <select
         id="impl-branch-pref"
@@ -397,13 +414,11 @@ function ImplementationBranchSetting({
         value={value}
         onChange={(e) => onChange(e.target.value as ImplBranchPreference)}
       >
-        <option value="ask">Ask each time</option>
-        <option value="always">Always create agent/impl-…</option>
-        <option value="never">Never (switch mode only)</option>
+        <option value="ask">{t("coding:implBranchAsk")}</option>
+        <option value="always">{t("coding:implBranchAlways")}</option>
+        <option value="never">{t("coding:implBranchNever")}</option>
       </select>
-      <p className="text-[10px] leading-snug text-surface-muted">
-        When switching from Plan to Build and this session already has messages. Saved per account in this browser.
-      </p>
+      <p className="text-[10px] leading-snug text-surface-muted">{t("coding:implBranchHint")}</p>
     </div>
   );
 }
@@ -419,10 +434,11 @@ function CodingBuildPlanToggle({
   helper?: string;
   className?: string;
 }) {
+  const { t } = useTranslation(["coding"]);
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-surface-muted">Mode</span>
+        <span className="text-[10px] font-medium uppercase tracking-wide text-surface-muted">{t("coding:modeLabel")}</span>
         <div className="inline-flex rounded-lg border border-surface-border bg-black/40 p-0.5">
           <button
             type="button"
@@ -431,7 +447,7 @@ function CodingBuildPlanToggle({
               mode === "build" ? "bg-sky-600 text-white shadow" : "text-surface-muted hover:text-white"
             }`}
           >
-            Build
+            {t("coding:modeBuild")}
           </button>
           <button
             type="button"
@@ -440,7 +456,7 @@ function CodingBuildPlanToggle({
               mode === "plan" ? "bg-amber-600 text-white shadow" : "text-surface-muted hover:text-white"
             }`}
           >
-            Plan
+            {t("coding:modePlan")}
           </button>
         </div>
       </div>
@@ -450,6 +466,16 @@ function CodingBuildPlanToggle({
 }
 
 export function CodingAgentPage() {
+  const { t } = useTranslation(["coding", "errors", "chat", "workspace", "setup"]);
+  const codingSuggested = useMemo(
+    () => [
+      t("coding:suggested1"),
+      t("coding:suggested2"),
+      t("coding:suggested3"),
+      t("coding:suggested4"),
+    ],
+    [t]
+  );
   const auth = useAuth();
   const { accessToken, user } = auth;
   const userId = user?.id ?? "";
@@ -590,9 +616,9 @@ export function CodingAgentPage() {
 
   useEffect(() => {
     if (!activeThreadId || !workspaces.length) return;
-    const t = threads.find((x) => x.id === activeThreadId);
-    if (!t) return;
-    const wid = typeof t.workspaceId === "string" && t.workspaceId.trim() ? t.workspaceId.trim() : null;
+    const thread = threads.find((x) => x.id === activeThreadId);
+    if (!thread) return;
+    const wid = typeof thread.workspaceId === "string" && thread.workspaceId.trim() ? thread.workspaceId.trim() : null;
     if (wid && workspaces.some((w) => w.id === wid)) {
       setSelectedWorkspaceId(wid);
     }
@@ -609,7 +635,7 @@ export function CodingAgentPage() {
     threadContentKey,
   });
 
-  const userTurns = useMemo(() => buildTurnItems(messages), [messages]);
+  const userTurns = useMemo(() => buildTurnItems(messages, 40, (n) => t("chat:promptN", { n })), [messages, t]);
   const latestTurnId = useMemo(
     () => (activeThread ? latestUserMessageId(activeThread) : null),
     [activeThread, messages]
@@ -718,7 +744,7 @@ export function CodingAgentPage() {
         if (!cancelled) {
           setModelRows([]);
           setModelCatalogAgentlayer(null);
-          setModelsCatalogHint("Could not load model catalog.");
+          setModelsCatalogHint(t("errors:loadModelCatalogFailed"));
         }
       } finally {
         if (!cancelled) setModelsCatalogReady(true);
@@ -740,9 +766,9 @@ export function CodingAgentPage() {
           embeddingDim: typeof hintDim === "number" ? hintDim : undefined,
         });
         if (ok) await refreshModelCatalog();
-        else setError("Embedding-Modell konnte nicht gespeichert werden (Admin-Rechte?).");
+        else setError(t("coding:embeddingModelSaveNoAdmin"));
       } catch {
-        setError("Embedding-Modell speichern fehlgeschlagen.");
+        setError(t("coding:embeddingModelSaveFailed"));
       } finally {
         setEmbeddingModelSaving(false);
       }
@@ -797,7 +823,7 @@ export function CodingAgentPage() {
         setHydrated(true);
       } catch (e) {
         if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Could not load chats");
+          setError(e instanceof Error ? e.message : t("errors:loadChatsFailed"));
           setHydrated(true);
         }
       }
@@ -840,8 +866,8 @@ export function CodingAgentPage() {
         activeThreadId &&
         selectedWorkspaceId
       ) {
-        const t = threads.find((x) => x.id === activeThreadId);
-        const hasTranscript = (t?.messages.length ?? 0) > 0;
+        const thread = threads.find((x) => x.id === activeThreadId);
+        const hasTranscript = (thread?.messages.length ?? 0) > 0;
         if (hasTranscript) {
           const ws = workspaces.find((w) => w.id === selectedWorkspaceId);
           const baseHint = (ws?.git_branch ?? "main").trim() || "main";
@@ -852,10 +878,7 @@ export function CodingAgentPage() {
             shouldCreate = false;
           } else {
             shouldCreate = window.confirm(
-              "Switch to **Build**: create an implementation git branch `agent/impl-…` on the server?\n\n" +
-                `Base: **${baseHint}** (workspace default branch; override via PATCH /v1/workspaces if needed).\n\n` +
-                "OK = create branch and switch to Build\n" +
-                "Cancel = switch to Build without creating a branch"
+              t("coding:switchToBuildCreateBranchQuestion", { base: baseHint })
             );
           }
           if (shouldCreate) {
@@ -880,7 +903,7 @@ export function CodingAgentPage() {
               const msg = e instanceof Error ? e.message : String(e);
               setError(msg);
               const still = window.confirm(
-                "Could not create the implementation branch (see error banner). Switch to Build anyway?"
+                t("coding:createImplBranchFailedContinueQuestion")
               );
               if (!still) return;
             }
@@ -905,37 +928,35 @@ export function CodingAgentPage() {
   const ensureAgentWs = useCallback((): Promise<WebSocket> => {
     return new Promise((resolve, reject) => {
       const tok = accessToken;
-      if (!tok) { reject(new Error("Not signed in")); return; }
+      if (!tok) { reject(new Error(t("errors:notSignedIn"))); return; }
       const existing = wsRef.current;
       if (existing?.readyState === WebSocket.OPEN) { resolve(existing); return; }
       if (existing) { existing.close(); wsRef.current = null; }
       const ws = new WebSocket(wsUrl(tok));
       ws.onopen = () => { wsRef.current = ws; ws.onmessage = (ev) => agentHandlerRef.current(ev); resolve(ws); };
-      ws.onerror = () => reject(new Error("WebSocket connection failed"));
+      ws.onerror = () => reject(new Error(t("errors:websocketFailed")));
       ws.onclose = () => { if (wsRef.current === ws) wsRef.current = null; };
     });
-  }, [accessToken]);
+  }, [accessToken, t]);
 
   const runAgentWs = useCallback(async () => {
     if (!accessToken || !activeThreadId) return;
     const tid = activeThreadId;
-    const t = threads.find((x) => x.id === tid);
+    const thread = threads.find((x) => x.id === tid);
     const routed = resolveComposerModelRouting(
       modelRows,
       lastModelSelectionRef.current || modelSelectValue,
-      (t?.model || defaultModel).trim(),
-      t?.modelProvider
+      (thread?.model || defaultModel).trim(),
+      thread?.modelProvider
     );
-    if (!t || !routed) {
-      setError(
-        "Could not resolve model provider. Open the model list and pick an entry (name shows provider in parentheses)."
-      );
+    if (!thread || !routed) {
+      setError(t("errors:resolveModelProviderFailed"));
       return;
     }
     const effectiveModel = routed.model;
 
     if (!selectedWorkspaceId) {
-      setError("Select a workspace before sending (required for Coding and Plan).");
+      setError(t("errors:selectWorkspaceBeforeSending"));
       return;
     }
 
@@ -950,14 +971,14 @@ export function CodingAgentPage() {
     setError(null);
     setLoading(true);
     setTokenUsage(emptyTokenUsage());
-    const firstUser = t.messages.length === 0;
-    const archivePatch = archiveTurnBeforeNewPrompt(t);
+    const firstUser = thread.messages.length === 0;
+    const archivePatch = archiveTurnBeforeNewPrompt(thread);
     const userMsgId = newMessageId();
     const nextMessages: UiMessage[] = [
-      ...t.messages,
+      ...thread.messages,
       { role: "user", content: userContent, id: userMsgId, createdAt: Date.now() },
     ];
-    const nextTitle = firstUser ? draft.slice(0, 52) : t.title;
+    const nextTitle = firstUser ? draft.slice(0, 52) : thread.title;
     setThreads((prev) =>
       prev.map((th) =>
         th.id === tid
@@ -1016,9 +1037,9 @@ export function CodingAgentPage() {
         const msg = JSON.parse(String(ev.data)) as Record<string, unknown>;
         const typ = msg.type;
         if (typ === "pong") return;
-        if (typ === "error") { setError(typeof msg.detail === "string" ? msg.detail : "Agent error"); finish(); return; }
+        if (typ === "error") { setError(typeof msg.detail === "string" ? msg.detail : t("errors:agentError")); finish(); return; }
         if (typ === "chat.completion") {
-          if (msg.error) { setError(typeof msg.detail === "string" ? msg.detail : "Cancelled or failed"); finish(); return; }
+          if (msg.error) { setError(typeof msg.detail === "string" ? msg.detail : t("coding:cancelledOrFailed")); finish(); return; }
           const data = msg.data;
           if (data && typeof data === "object" && "usage" in data) {
             setTokenUsage((prev) => addUsageTotals(prev, (data as { usage?: unknown }).usage));
@@ -1066,12 +1087,9 @@ export function CodingAgentPage() {
               const th0 = threads.find((x) => x.id === tid);
               const msgCount = th0?.messageCount ?? th0?.messages.length ?? 0;
               if (msgCount > 2 && tid) {
-                const wsName = workspaces.find((w) => w.id === wid)?.name ?? "project";
-                const openNew = window.confirm(
-                  `Workspace switched to "${wsName}" mid-session.\n\n` +
-                    "OK — start a new Coding session for this project (recommended).\n" +
-                    "Cancel — keep this chat thread."
-                );
+                const wsName =
+                  workspaces.find((w) => w.id === wid)?.name ?? t("coding:projectFallbackName");
+                const openNew = window.confirm(t("coding:workspaceSwitchedConfirm", { name: wsName }));
                 if (openNew) {
                   void startNewChat(wid);
                   return;
@@ -1097,7 +1115,7 @@ export function CodingAgentPage() {
           const argsPreview = String(msg.args_preview ?? "");
           if (requestId) {
             setPermAsk({ requestId, toolName, argsPreview });
-            appendAgentLine("permission", `Waiting for approval: ${toolName}`);
+            appendAgentLine("permission", t("coding:permissionWaiting", { tool: toolName }));
           }
           return;
         }
@@ -1214,7 +1232,7 @@ export function CodingAgentPage() {
           finish();
           return;
         }
-      } catch { setError("Invalid WebSocket message"); finish(); }
+      } catch { setError(t("coding:invalidWebsocketMessage")); finish(); }
     };
 
     try {
@@ -1304,8 +1322,9 @@ export function CodingAgentPage() {
     try {
       const wsForChat = workspaceIdOverride ?? selectedWorkspaceId;
       const defaultProv = parseModelCatalogSelection(defaultSelectValue).provider;
-      const t = await createConversation(auth, {
-        title: "New build session",
+      const title = t("coding:newBuildSessionTitle");
+      const newThread = await createConversation(auth, {
+        title,
         mode: "agent",
         model: defaultModel,
         messages: [],
@@ -1315,10 +1334,10 @@ export function CodingAgentPage() {
         model_catalog_owned_by: defaultProv ?? null,
       });
       if (userId) {
-        localStorage.setItem(codingModeStorageKey(userId, t.id), sessionMode);
+        localStorage.setItem(codingModeStorageKey(userId, newThread.id), sessionMode);
       }
-      setThreads((prev) => [t, ...prev]);
-      setActiveThreadId(t.id);
+      setThreads((prev) => [newThread, ...prev]);
+      setActiveThreadId(newThread.id);
       setDraft("");
       setError(null);
       if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
@@ -1335,7 +1354,7 @@ export function CodingAgentPage() {
   );
 
   const deleteThread = async (id: string) => {
-    if (!confirm("Delete this build session?")) return;
+    if (!confirm(t("coding:deleteBuildSessionConfirm"))) return;
     try {
       await deleteConversationApi(auth, id);
       setThreads((prev) => {
@@ -1358,14 +1377,14 @@ export function CodingAgentPage() {
       setNewWorkspaceName("");
       setNewWorkspaceGitUrl("");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to create workspace");
+      setError(e instanceof Error ? e.message : t("coding:createWorkspaceFailed"));
     } finally {
       setCreatingWorkspace(false);
     }
   };
 
   const handleDeleteWorkspace = async (wsId: string) => {
-    if (!confirm("Delete this workspace and all its files?")) return;
+    if (!confirm(t("coding:deleteWorkspaceConfirm"))) return;
     try {
       await deleteWorkspace(auth, wsId);
       setWorkspaces((prev) => prev.filter((w) => w.id !== wsId));
@@ -1373,7 +1392,26 @@ export function CodingAgentPage() {
         setSelectedWorkspaceId(workspaces.length > 1 ? workspaces.find((w) => w.id !== wsId)?.id ?? null : null);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to delete workspace");
+      setError(e instanceof Error ? e.message : t("coding:deleteWorkspaceFailed"));
+    }
+  };
+
+  const handleResetSelfWorkspace = async (
+    wsId: string,
+    opts: { backupExisting: boolean }
+  ) => {
+    const { backupExisting } = opts;
+    const first = confirm(t("coding:resetSelfConfirm"));
+    if (!first) return;
+    if (!backupExisting) {
+      const sure = confirm(t("coding:resetNoBackupConfirm"));
+      if (!sure) return;
+    }
+    try {
+      const ws = await resetSelfWorkspaceApi(auth, wsId, { backup_existing: backupExisting });
+      setWorkspaces((prev) => prev.map((w) => (w.id === ws.id ? ws : w)));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("coding:resetSelfFailed"));
     }
   };
 
@@ -1383,16 +1421,16 @@ export function CodingAgentPage() {
   );
 
   const renameThread = (id: string) => {
-    const t = threads.find((x) => x.id === id);
-    if (!t) return;
-    const next = window.prompt("Session title", t.title);
+    const thread = threads.find((x) => x.id === id);
+    if (!thread) return;
+    const next = window.prompt(t("coding:renameSessionPrompt"), thread.title);
     if (next === null) return;
     const trimmed = next.trim();
     if (!trimmed) return;
     setThreads((prev) =>
       prev.map((th) => (th.id === id ? { ...th, title: trimmed, updatedAt: Date.now() } : th))
     );
-    void putConversation(auth, { ...t, title: trimmed }).catch(() => {});
+    void putConversation(auth, { ...thread, title: trimmed }).catch(() => {});
   };
 
   const setModel = useCallback(
@@ -1429,7 +1467,7 @@ export function CodingAgentPage() {
     if (!workspaces.some((w) => w.id === pending.workspaceId)) {
       deepLinkRef.current = null;
       setSearchParams({}, { replace: true });
-      setError("Workspace from link was not found.");
+      setError(t("coding:workspaceFromLinkNotFound"));
       return;
     }
     const { workspaceId, newSession } = pending;
@@ -1454,9 +1492,9 @@ export function CodingAgentPage() {
         setSelectedWorkspaceId(null);
         return;
       }
-      const t = threads.find((x) => x.id === activeThreadId);
-      const msgCount = t?.messageCount ?? t?.messages.length ?? 0;
-      const prevWs = typeof t?.workspaceId === "string" ? t.workspaceId : null;
+      const thread = threads.find((x) => x.id === activeThreadId);
+      const msgCount = thread?.messageCount ?? thread?.messages.length ?? 0;
+      const prevWs = typeof thread?.workspaceId === "string" ? thread.workspaceId : null;
       if (shouldIsolateWorkspaceThread(msgCount, prevWs, wsId)) {
         void startNewChat(wsId);
         return;
@@ -1512,7 +1550,7 @@ export function CodingAgentPage() {
   if (!hydrated || !userId) {
     return (
       <div className="flex h-full min-h-0 flex-1 items-center justify-center overflow-hidden text-sm text-surface-muted">
-        Loading build workspace…
+        {t("coding:loadingBuildWorkspace")}
       </div>
     );
   }
@@ -1537,16 +1575,14 @@ export function CodingAgentPage() {
           <div className="max-h-[85vh] w-full max-w-lg overflow-hidden rounded-2xl border border-amber-700/40 bg-[#141414] shadow-2xl">
             <div className="border-b border-surface-border px-5 py-4">
               <h2 id="perm-ask-title" className="text-base font-semibold text-white">
-                Allow tool execution?
+                {t("coding:permAskTitle")}
               </h2>
-              <p className="mt-1 text-xs text-surface-muted">
-                Plan or Build may ask before shell and file-changing tools (permission **ask**).
-              </p>
+              <p className="mt-1 text-xs text-surface-muted">{t("coding:planBuildPermissionHint")}</p>
             </div>
             <div className="max-h-[50vh] overflow-y-auto px-5 py-3">
               <p className="text-sm font-medium text-amber-200/90">{permAsk.toolName}</p>
               <pre className="mt-2 whitespace-pre-wrap break-words rounded-lg border border-white/10 bg-black/40 p-3 text-[11px] leading-relaxed text-neutral-300">
-                {permAsk.argsPreview || "(no args preview)"}
+                {permAsk.argsPreview || t("coding:permAskNoArgs")}
               </pre>
             </div>
             <div className="flex flex-wrap gap-2 border-t border-surface-border px-5 py-4">
@@ -1593,7 +1629,7 @@ export function CodingAgentPage() {
                   setPermAsk(null);
                 }}
               >
-                Reject
+                {t("coding:reject")}
               </button>
             </div>
           </div>
@@ -1606,36 +1642,31 @@ export function CodingAgentPage() {
             onClick={() => void startNewChat()}
             className="w-full rounded-lg border border-surface-border bg-white/5 px-3 py-2 text-left text-sm text-neutral-200 hover:bg-white/10"
           >
-            + New build session
+            {t("coding:newBuildSession")}
           </button>
           <p className="mt-2 text-[10px] leading-snug text-surface-muted">
-            Mode:{" "}
-            <span className="text-neutral-300">{sessionMode === "plan" ? "Plan" : "Build"}</span>
-            {" · "}
-            {codingToolCount}/{activeToolBucket.length} tools enabled for this mode.
+            {t("coding:modeStatus", {
+              mode: sessionMode === "plan" ? t("coding:modePlan") : t("coding:modeBuild"),
+              enabled: codingToolCount,
+              total: activeToolBucket.length,
+            })}
           </p>
-          <p className="mt-2 text-[10px] leading-snug text-sky-300/80">
-            Optional: ask the model to use{" "}
-            <code className="rounded bg-black/40 px-0.5 text-neutral-300">coding_task</code> with{" "}
-            <code className="rounded bg-black/40 px-0.5 text-neutral-300">run_plan_subagent: true</code> for a bounded
-            embedded read-only planner (no approval UI in that thread); results in{" "}
-            <code className="text-neutral-400">assistant_excerpt</code>.
-          </p>
+          <p className="mt-2 text-[10px] leading-snug text-sky-300/80">{t("coding:subagentHint")}</p>
         </div>
 
         <div className="shrink-0 border-b border-surface-border p-3">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-medium uppercase tracking-wide text-surface-muted">Project</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-surface-muted">{t("coding:project")}</p>
             <button
               type="button"
               onClick={() => setShowCreateWorkspace(true)}
               className="text-[10px] text-sky-400 hover:text-sky-300"
             >
-              + New
+              {t("coding:projectNew")}
             </button>
           </div>
           {workspaces.length === 0 ? (
-            <p className="mt-2 text-[10px] text-surface-muted">No workspaces yet. Create one to start coding.</p>
+            <p className="mt-2 text-[10px] text-surface-muted">{t("coding:noWorkspacesYet")}</p>
           ) : (
             <select
               className="mt-2 w-full rounded-lg border border-surface-border bg-black/30 px-2 py-1.5 text-xs text-neutral-200"
@@ -1655,42 +1686,75 @@ export function CodingAgentPage() {
                 <span className="text-[10px] text-surface-muted truncate flex-1" title={selectedWorkspace.path}>
                   {selectedWorkspace.path}
                 </span>
+                {(selectedWorkspace.name || "").trim() === "agentlayer-self" ? (
+                  <span
+                    className="shrink-0 rounded border border-red-500/30 bg-red-500/10 px-1.5 py-0.5 text-[9px] font-medium text-red-200/90"
+                    title={t("workspace:selfCopyTitle")}
+                  >
+                    {t("coding:selfCopyBadge")}
+                  </span>
+                ) : null}
                 <button
                   type="button"
                   onClick={() => void startNewChat(selectedWorkspace.id)}
                   className="shrink-0 text-[10px] text-sky-400 hover:text-sky-300"
-                  title="Fresh coding session for this workspace only"
+                  title={t("workspace:freshCodingSessionTitle")}
                 >
-                  New session
+                  {t("coding:newSession")}
                 </button>
+                {(selectedWorkspace.name || "").trim() === "agentlayer-self" ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void handleResetSelfWorkspace(selectedWorkspace.id, { backupExisting: true })
+                    }
+                    className="shrink-0 text-[10px] text-orange-300/80 hover:text-orange-200"
+                    title={t("workspace:resetWithBackupTitle")}
+                  >
+                    {t("coding:reset")}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={() => handleDeleteWorkspace(selectedWorkspace.id)}
                   className="shrink-0 text-[10px] text-red-400/70 hover:text-red-300"
                 >
-                  Del
+                  {t("coding:deleteShort")}
                 </button>
               </div>
-              <p className="text-[10px] leading-snug text-surface-muted">
-                Switching to another repo in the same chat mixes context — use New session when changing projects.
-              </p>
+              <p className="text-[10px] leading-snug text-surface-muted">{t("coding:workspaceSwitchHint")}</p>
+              {(selectedWorkspace.name || "").trim() === "agentlayer-self" ? (
+                <div className="text-[10px] leading-snug text-surface-muted">
+                  {t("coding:selfWorkspaceHint")}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void handleResetSelfWorkspace(selectedWorkspace.id, { backupExisting: false })
+                    }
+                    className="ml-2 text-[10px] text-red-300/80 hover:text-red-200 underline"
+                    title={t("workspace:resetWithoutBackupTitle")}
+                  >
+                    {t("coding:resetWithoutBackup")}
+                  </button>
+                </div>
+              ) : null}
             </div>
           )}
         </div>
 
         {showCreateWorkspace && (
           <div className="shrink-0 border-b border-surface-border bg-black/50 p-3">
-            <p className="text-xs font-medium text-neutral-200">Create Workspace</p>
+            <p className="text-xs font-medium text-neutral-200">{t("coding:createWorkspace")}</p>
             <input
               type="text"
-              placeholder="Workspace name"
+              placeholder={t("workspace:workspaceNamePlaceholder")}
               value={newWorkspaceName}
               onChange={(e) => setNewWorkspaceName(e.target.value)}
               className="mt-2 w-full rounded-lg border border-surface-border bg-black/30 px-2 py-1.5 text-xs text-neutral-200 placeholder:text-surface-muted"
             />
             <input
               type="text"
-              placeholder="Git URL (optional)"
+              placeholder={t("workspace:gitUrlOptionalPlaceholder")}
               value={newWorkspaceGitUrl}
               onChange={(e) => setNewWorkspaceGitUrl(e.target.value)}
               className="mt-2 w-full rounded-lg border border-surface-border bg-black/30 px-2 py-1.5 text-xs text-neutral-200 placeholder:text-surface-muted"
@@ -1702,14 +1766,14 @@ export function CodingAgentPage() {
                 disabled={creatingWorkspace || !newWorkspaceName.trim()}
                 className="rounded-lg bg-sky-600 px-2 py-1 text-xs text-white hover:bg-sky-500 disabled:opacity-40"
               >
-                {creatingWorkspace ? "Creating..." : "Create"}
+                {creatingWorkspace ? t("coding:creating") : t("coding:create")}
               </button>
               <button
                 type="button"
                 onClick={() => { setShowCreateWorkspace(false); setNewWorkspaceName(""); setNewWorkspaceGitUrl(""); }}
                 className="rounded-lg border border-surface-border px-2 py-1 text-xs text-neutral-400 hover:text-neutral-200"
               >
-                Cancel
+                {t("coding:cancel")}
               </button>
             </div>
           </div>
@@ -1717,7 +1781,7 @@ export function CodingAgentPage() {
 
         <div className="flex-1 overflow-y-auto px-2 py-2">
           <p className="px-2 pb-1 text-xs font-medium uppercase tracking-wide text-surface-muted">
-            Build sessions
+            {t("coding:buildSessions")}
           </p>
           {buildSidebarGroups.length === 0 ? (
             <p className="px-2 text-[10px] leading-snug text-surface-muted">
@@ -1785,19 +1849,13 @@ export function CodingAgentPage() {
             <div className="flex h-14 w-14 items-center justify-center rounded-full border border-surface-border bg-white/5 text-lg font-semibold text-neutral-300">
               {"</>"}
             </div>
-            <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white">
-              Build
-            </h1>
-            <p className="max-w-md text-sm text-surface-muted">
-              Project workspace with file browser and agent tools for read, edit, and shell.
-            </p>
+            <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white">{t("coding:buildHeroTitle")}</h1>
+            <p className="max-w-md text-sm text-surface-muted">{t("coding:buildHeroIntro")}</p>
             <CodingBuildPlanToggle
               mode={sessionMode}
               onChange={handleCodingSessionModeChange}
               helper={
-                sessionMode === "plan"
-                  ? "Plan: same tools as Build; bash/writes may ask in the UI. Choice is saved per session."
-                  : "Build: same tool surface; risky tools may ask when enabled."
+                sessionMode === "plan" ? t("coding:planModeToggleTitle") : t("coding:buildModeToggleTitle")
               }
               className="max-w-md items-start"
             />
@@ -1813,14 +1871,14 @@ export function CodingAgentPage() {
               onClick={() => void startNewChat()}
               className="rounded-lg border border-surface-border bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/15"
             >
-              + New build session
+              {t("coding:newBuildSessionBtn")}
             </button>
           </div>
         ) : (
           <>
             <div className="shrink-0 border-b border-surface-border px-4 py-3 sm:px-6">
               <p className="mb-2 truncate text-sm font-medium text-white">
-                {activeThread?.title ?? "Build session"}
+                {activeThread?.title ?? t("coding:buildSessionDefaultTitle")}
               </p>
               <div className="grid gap-3 lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)_17.5rem] lg:items-stretch">
                 <div className="min-w-0 space-y-2">
@@ -1829,8 +1887,8 @@ export function CodingAgentPage() {
                     onChange={handleCodingSessionModeChange}
                     helper={
                       sessionMode === "plan"
-                        ? "Plan: same tools as Build; bash/writes ask in the UI when enabled. Prefer a written handoff before big edits."
-                        : "Full coding tools on the selected workspace."
+                        ? t("coding:planModeToggleTitleThread")
+                        : t("coding:buildModeThreadHelper")
                     }
                   />
                   {userId ? (
@@ -1843,7 +1901,7 @@ export function CodingAgentPage() {
                 <AgentActivityPanel
                   entries={activityEntries}
                   loading={activityLoading}
-                  emptyHint="Activity for the selected prompt appears here."
+                  emptyHint={t("coding:activityEmptyHint")}
                   layout="header"
                   className="min-h-0 w-full"
                   showSubagentToggle
@@ -1863,7 +1921,7 @@ export function CodingAgentPage() {
                         <button
                           type="button"
                           className="ml-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded border border-white/15 px-1 text-[11px] font-medium text-sky-300/95 hover:bg-white/10"
-                          title="Edit MCP servers for this workspace only"
+                          title={t("workspace:editMcpServersWorkspaceOnlyTitle")}
                           onClick={() => setShowWorkspaceMcpModal(true)}
                         >
                           +
@@ -1893,14 +1951,14 @@ export function CodingAgentPage() {
                           setAgentStreamLlm(on);
                           setAgentStreamLlmUi(on);
                         }}
-                        title="Stream LLM tokens per round when the provider supports it."
+                        title={t("coding:streamLlmTokensTitle")}
                       />
-                      <span>LLM stream</span>
+                      <span>{t("coding:llmStreamLabel")}</span>
                     </label>
                   </div>
                   <div className="w-full">
                     <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
-                      Model
+                      {t("coding:modelLabel")}
                     </label>
                     <select
                       className="mt-0.5 w-full rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100"
@@ -1909,12 +1967,12 @@ export function CodingAgentPage() {
                       disabled={!modelsCatalogReady || modelRows.length === 0}
                     >
                       {!modelsCatalogReady ? (
-                        <option value="">Loading models…</option>
+                        <option value="">{t("coding:loadingModels")}</option>
                       ) : modelRows.length === 0 ? (
                         <option value="">
                           {formatEmptyChatModelCatalogHint(modelCatalogAgentlayer) ??
                             modelsCatalogHint ??
-                            "No chat models available."}
+                            t("setup:noChatModels")}
                         </option>
                       ) : (
                         modelRows.map((row) => {
@@ -1938,7 +1996,7 @@ export function CodingAgentPage() {
                   </div>
                   <div className="w-full">
                     <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
-                      Embedding (RAG)
+                      {t("coding:embeddingLabel")}
                     </label>
                     <select
                       className="mt-0.5 w-full rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100"
@@ -1953,15 +2011,15 @@ export function CodingAgentPage() {
                       }
                       title={
                         !isAdminUser
-                          ? "Nur Admins können das RAG-Embedding-Modell ändern (Admin → Interfaces)."
-                          : "Modell für RAG/Memory — EMBEDDING_BASE_URL in .env"
+                          ? t("coding:embeddingAdminOnlyTitle")
+                          : t("coding:embeddingModelTitle")
                       }
                     >
                       {!modelsCatalogReady ? (
-                        <option value="">Lade Embedding-Modelle…</option>
+                        <option value="">{t("coding:embeddingLoading")}</option>
                       ) : embeddingModelRows.length === 0 ? (
                         <option value={embeddingModel || ""}>
-                          {embeddingModel || "Keine Modelle (EMBEDDING_BASE_URL /v1/models)"}
+                          {embeddingModel || t("coding:embeddingNoModels")}
                         </option>
                       ) : (
                         embeddingModelRows.map((id) => (
@@ -1982,13 +2040,13 @@ export function CodingAgentPage() {
                     ) : null}
                     {!isAdminUser && embeddingMeta?.configured ? (
                       <p className="mt-0.5 text-[10px] text-neutral-500">
-                        Ändern: Admin → Interfaces → Memory &amp; RAG.
+                        {t("coding:embeddingChangeAdminHint")}
                       </p>
                     ) : null}
                   </div>
                   {modelsCatalogReady && modelRows.length === 0 ? (
                     <p className="w-full text-[10px] leading-snug text-neutral-500">
-                      Chat-Provider: Admin → LLM-Endpoints oder .env OLLAMA_BASE_URL / LLAMA_CPP_*.
+                      {t("coding:chatProviderAdminHint")}
                     </p>
                   ) : null}
                 </div>
@@ -2097,8 +2155,8 @@ export function CodingAgentPage() {
                             </span>
                             <p className="text-neutral-300">
                               {sessionMode === "plan"
-                                ? "Plan agent running (may prompt before edits/shell)…"
-                                : "Coding agent running…"}
+                                ? t("coding:planAgentRunning")
+                                : t("coding:codingAgentRunning")}
                             </p>
                           </div>
                         </li>
@@ -2116,15 +2174,15 @@ export function CodingAgentPage() {
                     type="button"
                     onClick={() => scrollToBottom("smooth")}
                     className="absolute -top-12 right-0 z-10 rounded-full border border-surface-border bg-[#1a1a1a] px-3 py-1.5 text-xs text-neutral-200 shadow-lg hover:bg-[#252525]"
-                    aria-label="Scroll to bottom"
+                    aria-label={t("chat:scrollToBottomAria")}
                   >
-                    ↓ New messages
+                    {t("chat:newMessages")}
                   </button>
                 ) : null}
                 <div className="rounded-2xl border border-surface-border bg-[#141414] p-3 shadow-xl">
                   <textarea
                     className="min-h-[52px] w-full resize-none bg-transparent text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none"
-                    placeholder="Describe what you want to build or fix…"
+                    placeholder={t("coding:composerPlaceholder")}
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                     rows={2}
@@ -2143,7 +2201,7 @@ export function CodingAgentPage() {
                         className="rounded-lg border border-amber-500/60 bg-amber-950/50 px-4 py-2 text-sm font-medium text-amber-100 hover:bg-amber-900/40"
                         onClick={() => onCancelInFlight()}
                       >
-                        Cancel
+                        {t("coding:cancel")}
                       </button>
                     ) : (
                       <button
@@ -2164,7 +2222,7 @@ export function CodingAgentPage() {
                       Suggestions
                     </p>
                     <ul className="flex flex-col gap-2">
-                      {CODING_SUGGESTED.map((s) => (
+                      {codingSuggested.map((s) => (
                         <li key={s}>
                           <button
                             type="button"

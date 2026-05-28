@@ -1,5 +1,6 @@
 import type { KeyboardEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { DashboardSummary } from "./types";
 import type { HubGroup, DashboardHub, DashboardHubId } from "./dashboardHubNav";
@@ -49,6 +50,7 @@ export function DashboardHubNavigator(props: {
   onSelectDashboard: (id: string) => void;
   kindLabelFor: (kind: string) => string;
 }) {
+  const { t } = useTranslation(["dashboard"]);
   const {
     hubs,
     grouped,
@@ -175,7 +177,7 @@ export function DashboardHubNavigator(props: {
         <div className="min-w-[220px] flex-1 lg:max-w-sm">
           <input
             className="dashboard-grid-no-drag w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-500/50"
-            placeholder="Search dashboard…"
+            placeholder={t("dashboard:searchPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -184,7 +186,9 @@ export function DashboardHubNavigator(props: {
 
       {favorites.length ? (
         <div className="mt-4">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-white/40">Favorites</p>
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-white/40">
+            {t("dashboard:favorites")}
+          </p>
           <div className="flex flex-wrap gap-2">
             {favorites.map((w) => (
               <button
@@ -205,7 +209,9 @@ export function DashboardHubNavigator(props: {
 
       {!query && recents.length ? (
         <div className="mt-4">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-white/40">Recent</p>
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-white/40">
+            {t("dashboard:recent")}
+          </p>
           <div className="flex flex-wrap gap-2">
             {recents.map((w) => (
               <button
@@ -227,16 +233,23 @@ export function DashboardHubNavigator(props: {
       <div className="mt-4">
         <div className="mb-2 flex items-center justify-between gap-2">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-white/40">
-            {query ? `Matches (${listEntries.length})` : `All in ${grouped[activeHubId]?.hub.label ?? "Hub"} (${listEntries.length})`}
+            {query
+              ? t("dashboard:matches", { count: listEntries.length })
+              : t("dashboard:allInHub", {
+                  hub: grouped[activeHubId]?.hub.label ?? t("dashboard:hubFallback"),
+                  count: listEntries.length,
+                })}
           </p>
-          <p className="text-[10px] text-white/25">↑/↓ navigate · Enter open · Esc clear</p>
+          <p className="text-[10px] text-white/25">{t("dashboard:kbdHint")}</p>
         </div>
         <div
           ref={listRef}
           className="max-h-[min(46vh,420px)] overflow-y-auto rounded-lg border border-white/10 bg-black/20"
         >
           {listEntries.length === 0 ? (
-            <p className="px-3 py-8 text-center text-sm text-surface-muted">No dashboards in this hub.</p>
+            <p className="px-3 py-8 text-center text-sm text-surface-muted">
+              {t("dashboard:noDashboardsInHub")}
+            </p>
           ) : (
             <ul className="divide-y divide-white/5">
               {listEntries.map((e, idx) => {
@@ -265,7 +278,7 @@ export function DashboardHubNavigator(props: {
                     </button>
                     <button
                       type="button"
-                      title={fav ? "Unfavorite" : "Favorite"}
+                      title={fav ? t("dashboard:unfavorite") : t("dashboard:favorite")}
                       className={[
                         "shrink-0 px-3 text-sm",
                         fav ? "text-amber-300/90 hover:bg-amber-950/30" : "text-white/25 hover:bg-white/5 hover:text-white/50",

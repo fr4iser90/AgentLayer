@@ -1,4 +1,6 @@
+import type { TFunction } from "i18next";
 import type { AgentTimelineEntry } from "./chatThreadStorage";
+import { useTranslation } from "react-i18next";
 
 type Props = {
   entries: AgentTimelineEntry[];
@@ -25,14 +27,14 @@ function borderForKind(kind: string): string {
   return "border-surface-border";
 }
 
-function labelForKind(kind: string): string {
-  if (kind === "subagent_start") return "Sub";
-  if (kind === "subagent_done") return "Sub✓";
-  if (kind === "tool_start") return "Tool";
-  if (kind === "tool_done") return "Done";
-  if (kind === "llm") return "LLM";
-  if (kind === "permission") return "Perm";
-  if (kind === "session") return "Session";
+function labelForKind(kind: string, tr: TFunction<"chat">): string {
+  if (kind === "subagent_start") return tr("chat:activityKindSub");
+  if (kind === "subagent_done") return tr("chat:activityKindSubDone");
+  if (kind === "tool_start") return tr("chat:activityKindTool");
+  if (kind === "tool_done") return tr("chat:activityKindDone");
+  if (kind === "llm") return tr("chat:activityKindLlm");
+  if (kind === "permission") return tr("chat:activityKindPerm");
+  if (kind === "session") return tr("chat:activityKindSession");
   if (kind.startsWith("agent.")) return kind.replace("agent.", "");
   return kind;
 }
@@ -47,6 +49,7 @@ export function AgentActivityPanel({
   showSubagents = true,
   onShowSubagentsChange,
 }: Props) {
+  const { t } = useTranslation(["chat"]);
   const scrollClass =
     layout === "header"
       ? "min-h-[7rem] max-h-[min(11rem,28vh)] overflow-y-auto overscroll-contain px-2.5 py-1.5"
@@ -62,7 +65,7 @@ export function AgentActivityPanel({
     >
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/5 px-2.5 py-1.5">
         <span className="text-[10px] font-semibold uppercase tracking-wide text-surface-muted">
-          Agent activity
+          {t("chat:agentActivity")}
         </span>
         {showSubagentToggle ? (
           <label className="flex cursor-pointer items-center gap-1.5 text-[10px] text-surface-muted">
@@ -72,14 +75,14 @@ export function AgentActivityPanel({
               checked={showSubagents}
               onChange={(e) => onShowSubagentsChange?.(e.target.checked)}
             />
-            Sub-agents
+            {t("chat:subagents")}
           </label>
         ) : null}
       </div>
       <div className={scrollClass}>
         {visible.length === 0 && !loading ? (
           <p className="text-[11px] leading-snug text-surface-muted">
-            {emptyHint ?? "No activity for this prompt yet."}
+            {emptyHint ?? t("chat:noActivityYet")}
           </p>
         ) : (
           <ul className="space-y-1">
@@ -94,7 +97,7 @@ export function AgentActivityPanel({
               >
                 <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0">
                   <span className="text-[9px] font-medium uppercase tracking-wide text-surface-muted">
-                    {labelForKind(e.kind)}
+                    {labelForKind(e.kind, t)}
                   </span>
                   {e.subagentAgentId ? (
                     <span className="text-[9px] text-indigo-300/90">{e.subagentAgentId}</span>
@@ -113,7 +116,7 @@ export function AgentActivityPanel({
             {loading ? (
               <li className="flex items-center gap-1.5 border-l-2 border-violet-500/40 pl-2 text-[11px] text-violet-200/80">
                 <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400" />
-                Running…
+                {t("chat:running")}
               </li>
             ) : null}
           </ul>

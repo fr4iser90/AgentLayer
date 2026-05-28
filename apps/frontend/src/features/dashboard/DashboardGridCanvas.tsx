@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import type { Dispatch, SetStateAction } from "react";
+import { useTranslation } from "react-i18next";
 import ReactGridLayout, {
   useContainerWidth,
   verticalCompactor,
@@ -50,7 +51,7 @@ function uniqueDataPath(prefix: string, blocks: UiBlock[], data: Record<string, 
 
 const defaultTableColumns: ColumnDef[] = [
   { field: "done", kind: "checkbox", label: "" },
-  { field: "name", kind: "text", label: "Item" },
+  { field: "name", kind: "text", label: "" },
 ];
 
 function makeBlock(type: BlockType, dp: string, y: number): UiBlock {
@@ -59,7 +60,7 @@ function makeBlock(type: BlockType, dp: string, y: number): UiBlock {
       id: newBlockId(),
       type: "hero",
       grid: { x: 0, y, w: 12, h: 8 },
-      props: { dataPath: dp, title: "Hero" },
+      props: { dataPath: dp, title: "" },
     };
   }
   if (type === "timeline") {
@@ -67,7 +68,7 @@ function makeBlock(type: BlockType, dp: string, y: number): UiBlock {
       id: newBlockId(),
       type: "timeline",
       grid: { x: 0, y, w: 12, h: 9 },
-      props: { dataPath: dp, title: "Timeline" },
+      props: { dataPath: dp, title: "" },
     };
   }
   if (type === "stat") {
@@ -75,7 +76,7 @@ function makeBlock(type: BlockType, dp: string, y: number): UiBlock {
       id: newBlockId(),
       type: "stat",
       grid: { x: 0, y, w: 4, h: 5 },
-      props: { dataPath: dp, title: "KPI" },
+      props: { dataPath: dp, title: "" },
     };
   }
   if (type === "chart") {
@@ -83,7 +84,7 @@ function makeBlock(type: BlockType, dp: string, y: number): UiBlock {
       id: newBlockId(),
       type: "chart",
       grid: { x: 0, y, w: 12, h: 10 },
-      props: { dataPath: dp, title: "Diagramm" },
+      props: { dataPath: dp, title: "" },
     };
   }
   if (type === "sparkline") {
@@ -91,7 +92,7 @@ function makeBlock(type: BlockType, dp: string, y: number): UiBlock {
       id: newBlockId(),
       type: "sparkline",
       grid: { x: 0, y, w: 6, h: 4 },
-      props: { dataPath: dp, title: "Sparkline" },
+      props: { dataPath: dp, title: "" },
     };
   }
   if (type === "kanban") {
@@ -99,7 +100,7 @@ function makeBlock(type: BlockType, dp: string, y: number): UiBlock {
       id: newBlockId(),
       type: "kanban",
       grid: { x: 0, y, w: 12, h: 12 },
-      props: { dataPath: dp, title: "Kanban" },
+      props: { dataPath: dp, title: "" },
     };
   }
   if (type === "rich_markdown") {
@@ -107,7 +108,7 @@ function makeBlock(type: BlockType, dp: string, y: number): UiBlock {
       id: newBlockId(),
       type: "rich_markdown",
       grid: { x: 0, y, w: 12, h: 9 },
-      props: { dataPath: dp, placeholder: "Markdown mit **Vorschau**…", title: "Rich Markdown" },
+      props: { dataPath: dp, placeholder: "", title: "" },
     };
   }
   if (type === "embed") {
@@ -115,7 +116,7 @@ function makeBlock(type: BlockType, dp: string, y: number): UiBlock {
       id: newBlockId(),
       type: "embed",
       grid: { x: 0, y, w: 12, h: 10 },
-      props: { dataPath: dp, title: "Embed" },
+      props: { dataPath: dp, title: "" },
     };
   }
   const grid = { x: 0, y, w: 6, h: 6 };
@@ -132,7 +133,7 @@ function makeBlock(type: BlockType, dp: string, y: number): UiBlock {
       id: newBlockId(),
       type: "markdown",
       grid,
-      props: { dataPath: dp, placeholder: "Notes" },
+      props: { dataPath: dp, placeholder: "" },
     };
   }
   return {
@@ -197,6 +198,7 @@ export function DashboardGridCanvas(props: {
   contentReadOnly?: boolean;
   dashboardId?: string | null;
 }) {
+  const { t } = useTranslation(["dashboard"]);
   const { layout, setLayout, data, setData, editMode, contentReadOnly = false, dashboardId } = props;
   const { width, containerRef, mounted } = useContainerWidth();
 
@@ -234,16 +236,16 @@ export function DashboardGridCanvas(props: {
           n[dp] = {
             chartType: "line",
             labels: ["Q1", "Q2", "Q3"],
-            series: [{ label: "Serie 1", data: [12, 19, 3] }],
+            series: [{ label: t("dashboard:chartSeriesN", { n: 1 }), data: [12, 19, 3] }],
           };
         else if (type === "sparkline") n[dp] = { values: [2, 5, 3, 8, 6, 4, 7] };
         else if (type === "kanban") {
-          const t = Date.now();
+          const tms = Date.now();
           n[dp] = {
             columns: [
-              { id: `col_${t}_a`, title: "Todo", cards: [] },
-              { id: `col_${t}_b`, title: "Doing", cards: [] },
-              { id: `col_${t}_c`, title: "Done", cards: [] },
+              { id: `col_${tms}_a`, title: t("dashboard:kanbanTodo"), cards: [] },
+              { id: `col_${tms}_b`, title: t("dashboard:kanbanDoing"), cards: [] },
+              { id: `col_${tms}_c`, title: t("dashboard:kanbanDone"), cards: [] },
             ],
           };
         } else if (type === "rich_markdown") n[dp] = "";
@@ -253,7 +255,7 @@ export function DashboardGridCanvas(props: {
         return n;
       });
     },
-    [layout.blocks, data, setLayout, setData]
+    [layout.blocks, data, setLayout, setData, t]
   );
 
   const removeBlock = useCallback(
@@ -285,81 +287,81 @@ export function DashboardGridCanvas(props: {
               className="dashboard-grid-no-drag rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
               onClick={() => addBlock("table")}
             >
-              + List
+              {t("dashboard:addList")}
             </button>
             <button
               type="button"
               className="dashboard-grid-no-drag rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
               onClick={() => addBlock("markdown")}
             >
-              + Notes
+              {t("dashboard:addNotes")}
             </button>
             <button
               type="button"
               className="dashboard-grid-no-drag rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
               onClick={() => addBlock("gallery")}
             >
-              + Photos
+              {t("dashboard:addPhotos")}
             </button>
             <button
               type="button"
               className="dashboard-grid-no-drag rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
               onClick={() => addBlock("hero")}
             >
-              + Hero
+              {t("dashboard:addHero")}
             </button>
             <button
               type="button"
               className="dashboard-grid-no-drag rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
               onClick={() => addBlock("timeline")}
             >
-              + Timeline
+              {t("dashboard:addTimeline")}
             </button>
             <button
               type="button"
               className="dashboard-grid-no-drag rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
               onClick={() => addBlock("stat")}
             >
-              + KPI
+              {t("dashboard:addKpi")}
             </button>
             <button
               type="button"
               className="dashboard-grid-no-drag rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
               onClick={() => addBlock("chart")}
             >
-              + Chart
+              {t("dashboard:addChart")}
             </button>
             <button
               type="button"
               className="dashboard-grid-no-drag rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
               onClick={() => addBlock("sparkline")}
             >
-              + Spark
+              {t("dashboard:addSpark")}
             </button>
             <button
               type="button"
               className="dashboard-grid-no-drag rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
               onClick={() => addBlock("kanban")}
             >
-              + Kanban
+              {t("dashboard:addKanban")}
             </button>
             <button
               type="button"
               className="dashboard-grid-no-drag rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
               onClick={() => addBlock("rich_markdown")}
             >
-              + Rich MD
+              {t("dashboard:addRichMarkdown")}
             </button>
             <button
               type="button"
               className="dashboard-grid-no-drag rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
               onClick={() => addBlock("embed")}
             >
-              + Embed
+              {t("dashboard:addEmbed")}
             </button>
           </div>
         ) : null}
-        <p className="text-sm text-surface-muted">No blocks in this layout.</p>
+        <p className="text-sm text-surface-muted">{t("dashboard:noBlocksInLayout")}</p>
       </div>
     );
   }
@@ -373,77 +375,77 @@ export function DashboardGridCanvas(props: {
             className="dashboard-grid-no-drag rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
             onClick={() => addBlock("table")}
           >
-            + List
+            {t("dashboard:addList")}
           </button>
           <button
             type="button"
             className="dashboard-grid-no-drag rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
             onClick={() => addBlock("markdown")}
           >
-            + Notes
+            {t("dashboard:addNotes")}
           </button>
           <button
             type="button"
             className="dashboard-grid-no-drag rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
             onClick={() => addBlock("gallery")}
           >
-            + Photos
+            {t("dashboard:addPhotos")}
           </button>
           <button
             type="button"
             className="dashboard-grid-no-drag rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
             onClick={() => addBlock("hero")}
           >
-            + Hero
+            {t("dashboard:addHero")}
           </button>
           <button
             type="button"
             className="dashboard-grid-no-drag rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
             onClick={() => addBlock("timeline")}
           >
-            + Timeline
+            {t("dashboard:addTimeline")}
           </button>
           <button
             type="button"
             className="dashboard-grid-no-drag rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
             onClick={() => addBlock("stat")}
           >
-            + KPI
+            {t("dashboard:addKpi")}
           </button>
           <button
             type="button"
             className="dashboard-grid-no-drag rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
             onClick={() => addBlock("chart")}
           >
-            + Chart
+            {t("dashboard:addChart")}
           </button>
           <button
             type="button"
             className="dashboard-grid-no-drag rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
             onClick={() => addBlock("sparkline")}
           >
-            + Spark
+            {t("dashboard:addSpark")}
           </button>
           <button
             type="button"
             className="dashboard-grid-no-drag rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
             onClick={() => addBlock("kanban")}
           >
-            + Kanban
+            {t("dashboard:addKanban")}
           </button>
           <button
             type="button"
             className="dashboard-grid-no-drag rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
             onClick={() => addBlock("rich_markdown")}
           >
-            + Rich MD
+            {t("dashboard:addRichMarkdown")}
           </button>
           <button
             type="button"
             className="dashboard-grid-no-drag rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
             onClick={() => addBlock("embed")}
           >
-            + Embed
+            {t("dashboard:addEmbed")}
           </button>
         </div>
       ) : null}
@@ -493,7 +495,7 @@ export function DashboardGridCanvas(props: {
                         className="dashboard-grid-no-drag rounded px-2 py-0.5 text-xs text-red-300 hover:bg-red-950/50"
                         onClick={() => removeBlock(b.id)}
                       >
-                        Remove
+                        {t("dashboard:gridRemoveBlock")}
                       </button>
                     </div>
                   ) : null}

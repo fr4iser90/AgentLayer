@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 export function DashboardSettingsDrawer(props: {
   open: boolean;
@@ -6,6 +7,7 @@ export function DashboardSettingsDrawer(props: {
   onClose: () => void;
   children: ReactNode;
 }) {
+  const { t } = useTranslation(["dashboard"]);
   const { open, title, onClose, children } = props;
   if (!open) return null;
 
@@ -13,7 +15,7 @@ export function DashboardSettingsDrawer(props: {
     <div className="fixed inset-0 z-50 flex justify-end">
       <button
         type="button"
-        aria-label="Close settings"
+        aria-label={t("dashboard:closeSettings")}
         className="absolute inset-0 bg-black/60"
         onClick={onClose}
       />
@@ -25,7 +27,7 @@ export function DashboardSettingsDrawer(props: {
             className="rounded-md px-2 py-1 text-xs text-surface-muted hover:bg-white/5 hover:text-neutral-200"
             onClick={onClose}
           >
-            Close
+            {t("dashboard:close")}
           </button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain p-4">{children}</div>

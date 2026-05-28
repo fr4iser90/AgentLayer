@@ -1,9 +1,11 @@
 import { useOperatorSettings } from "../../../features/admin/operatorSettings/OperatorSettingsProvider";
+import { useTranslation } from "react-i18next";
 
 export function AdminInterfacesMemorySection() {
+  const { t } = useTranslation(["admin"]);
   const s = useOperatorSettings();
   if (s.loading) {
-    return <p className="text-sm text-surface-muted">Loading…</p>;
+    return <p className="text-sm text-surface-muted">{t("admin:loading")}</p>;
   }
 
   const embedModelsOk = s.ragEmbeddingModelOptions.length > 0;
@@ -11,15 +13,8 @@ export function AdminInterfacesMemorySection() {
   return (
     <>
       <section className="rounded-xl border border-surface-border bg-surface-raised p-5">
-        <h2 className="text-sm font-medium text-white">Embedding-Endpoints (RAG &amp; Memory)</h2>
-        <p className="mt-2 text-xs text-surface-muted">
-          Getrennt vom Chat unter{" "}
-          <span className="text-sky-400/90">Interfaces → LLM &amp; routing</span>. OpenAI-kompatibel:{" "}
-          <span className="font-mono">POST …/v1/embeddings</span>. Base URL hier in der DB oder via{" "}
-          <span className="font-mono">EMBEDDING_BASE_URL</span> in <span className="font-mono">.env</span> (Env
-          überschreibt DB). Key und Header-Name unten speichern (wie LLM-Endpoints) oder via{" "}
-          <span className="font-mono">EMBEDDING_API_HEADER_*</span> in <span className="font-mono">.env</span>.
-        </p>
+        <h2 className="text-sm font-medium text-white">{t("admin:ifMemEmbedTitle")}</h2>
+        <p className="mt-2 text-xs text-surface-muted">{t("admin:ifMemEmbedIntro")}</p>
         <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
@@ -27,7 +22,7 @@ export function AdminInterfacesMemorySection() {
             disabled={s.embeddingModelsLoading}
             onClick={() => void s.refreshEmbeddingCatalog()}
           >
-            {s.embeddingModelsLoading ? "Lade Modelle…" : "Modelle laden (Embedding-API)"}
+            {s.embeddingModelsLoading ? t("admin:ifMemLoadingModels") : t("admin:ifMemLoadModelsEmbedding")}
           </button>
         </div>
         {s.ragEmbeddingStatusHint ? (
@@ -48,15 +43,15 @@ export function AdminInterfacesMemorySection() {
         <div className="mt-6 space-y-6">
           <div className="rounded-lg border border-white/10 bg-black/15 p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-xs font-medium text-surface-muted">Endpoint 1</span>
+              <span className="text-xs font-medium text-surface-muted">{t("admin:ifMemEndpointN", { n: 1 })}</span>
               {s.embeddingApiBaseSource === "env" ? (
-                <span className="text-xs text-amber-300/90">Base URL aus .env</span>
+                <span className="text-xs text-amber-300/90">{t("admin:ifMemBaseUrlFromEnv")}</span>
               ) : s.embeddingApiBaseEffective ? (
-                <span className="font-mono text-xs text-neutral-500">aktiv</span>
+                <span className="font-mono text-xs text-neutral-500">{t("admin:ifMemActive")}</span>
               ) : null}
             </div>
             <label className="mt-2 block text-xs text-surface-muted" htmlFor="embedding-base-url">
-              Base URL
+              {t("admin:ifMemBaseUrlLabel")}
             </label>
             <input
               id="embedding-base-url"
@@ -67,30 +62,31 @@ export function AdminInterfacesMemorySection() {
                   : s.embeddingApiBaseUrl
               }
               onChange={(e) => s.setEmbeddingApiBaseUrl(e.target.value)}
-              placeholder="https://embed-llm.example.com/v1"
+              placeholder={t("admin:ifMemoryEmbedUrlPlaceholder")}
               autoComplete="off"
               disabled={s.embeddingApiBaseSource === "env"}
             />
             {s.embeddingApiBaseSource === "env" ? (
               <p className="mt-1 text-xs text-surface-muted">
-                <span className="font-mono">EMBEDDING_BASE_URL</span> in <span className="font-mono">.env</span>{" "}
-                überschreibt die DB. Feld leer lassen in <span className="font-mono">.env</span>, um die URL unten zu
-                speichern.
+                <span className="font-mono">EMBEDDING_BASE_URL</span> {t("admin:ifMemInDotenv")}{" "}
+                <span className="font-mono">.env</span>{" "}
+                {t("admin:ifMemEnvOverridesDbUrl")}
               </p>
             ) : s.embeddingApiBaseEffective ? (
               <p className="mt-1 text-xs text-surface-muted">
-                Wirksam nach Save:{" "}
+                {t("admin:ifMemEffectiveAfterSave")}{" "}
                 <span className="font-mono text-neutral-300">{s.embeddingApiBaseEffective}</span>
               </p>
             ) : null}
             <p className="mt-3 text-xs text-surface-muted">
-              Key: {s.embeddingApiKeyConfigured ? "gespeichert" : "—"}
+              {t("admin:ifMemKeyLabel")}{" "}
+              {s.embeddingApiKeyConfigured ? t("admin:ifMemKeyStored") : t("admin:ifMemKeyEmpty")}
               {s.embeddingApiKeySource === "env" ? (
-                <span className="text-amber-300/90"> (aus .env)</span>
+                <span className="text-amber-300/90"> {t("admin:ifMemFromEnv")}</span>
               ) : null}
             </p>
             <label className="mt-2 block text-xs text-surface-muted" htmlFor="embedding-api-key">
-              API-Key (leer lassen = gespeicherten Key behalten)
+              {t("admin:ifMemApiKeyLabel")}
             </label>
             <input
               id="embedding-api-key"
@@ -99,53 +95,57 @@ export function AdminInterfacesMemorySection() {
               className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white disabled:opacity-50"
               value={s.embeddingApiKey}
               onChange={(e) => s.setEmbeddingApiKey(e.target.value)}
-              placeholder={s.embeddingApiKeyConfigured ? "•••• (neu = ersetzen)" : "Key einfügen"}
+              placeholder={
+                s.embeddingApiKeyConfigured ? t("admin:tokenReplacePlaceholder") : t("admin:ifMemPasteKey")
+              }
               disabled={s.embeddingApiKeySource === "env"}
             />
             {s.embeddingApiKeySource === "env" ? (
               <p className="mt-1 text-xs text-surface-muted">
-                <span className="font-mono">EMBEDDING_API_HEADER_VALUE</span> in <span className="font-mono">.env</span>{" "}
-                überschreibt den DB-Key.
+                <span className="font-mono">EMBEDDING_API_HEADER_VALUE</span> {t("admin:ifMemInDotenv")}{" "}
+                <span className="font-mono">.env</span>{" "}
+                {t("admin:ifMemEnvOverridesDbKey")}
               </p>
             ) : null}
             <label className="mt-3 block text-xs text-surface-muted" htmlFor="embedding-header-name">
-              Header-Name für den Key
+              {t("admin:ifMemHeaderForKey")}
             </label>
             <input
               id="embedding-header-name"
               className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white disabled:opacity-50"
               value={s.embeddingApiHeaderName}
               onChange={(e) => s.setEmbeddingApiHeaderName(e.target.value)}
-              placeholder="X-API-KEY"
+              placeholder={t("admin:ifMemoryApiKeyPlaceholder")}
               autoComplete="off"
               disabled={s.embeddingApiKeySource === "env"}
             />
             <p className="mt-1 text-xs text-surface-muted">
-              Wirksam: <span className="font-mono text-neutral-300">{s.embeddingApiHeaderNameEffective}</span>
-              {s.embeddingApiHeaderNameSource === "env" ? " (aus .env)" : ""}.{" "}
-              <span className="font-mono">Authorization</span> → Bearer automatisch.
+              {t("admin:ifMemEffective")}{" "}
+              <span className="font-mono text-neutral-300">{s.embeddingApiHeaderNameEffective}</span>
+              {s.embeddingApiHeaderNameSource === "env" ? ` ${t("admin:ifMemFromEnv")}` : ""}.{" "}
+              {t("admin:ifMemAuthBearerAuto")}
             </p>
             <h4 className="mt-4 text-xs font-medium uppercase tracking-wide text-surface-muted">
-              Embedding-Modell
+              {t("admin:ifMemEmbedModelSection")}
             </h4>
             <div className="mt-2 grid gap-3 sm:grid-cols-2">
               <div>
                 <label className="block text-xs text-surface-muted" htmlFor="rag-model">
-                  Modell-ID
+                  {t("admin:ifMemModelId")}
                 </label>
                 <input
                   id="rag-model"
                   className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
                   value={s.ragEmbeddingModel}
                   onChange={(e) => s.setRagEmbeddingModel(e.target.value)}
-                  placeholder="bge-m3-Q4_K_M.gguf"
+                  placeholder={t("admin:ifMemoryModelFilePlaceholder")}
                   list="embed-model-ids"
                   autoComplete="off"
                 />
               </div>
               <div>
                 <label className="block text-xs text-surface-muted" htmlFor="rag-dim">
-                  Embedding-Dim (32–4096)
+                  {t("admin:ifMemEmbedDim")}
                 </label>
                 <input
                   id="rag-dim"
@@ -158,25 +158,17 @@ export function AdminInterfacesMemorySection() {
                 />
               </div>
             </div>
-            <p className="mt-2 text-xs text-surface-muted">
-              Nach <span className="text-white/80">Save</span> synchronisiert der Server Modell/Dim mit dem Provider.
-            </p>
+            <p className="mt-2 text-xs text-surface-muted">{t("admin:ifMemSaveSyncHint")}</p>
           </div>
         </div>
         {!s.embeddingApiBaseUrl.trim() && s.embeddingApiBaseSource !== "env" ? (
-          <p className="mt-4 text-xs text-amber-300/90">
-            Noch keine Base URL — <span className="font-mono">EMBEDDING_BASE_URL</span> in{" "}
-            <span className="font-mono">.env</span> oder URL eintragen und speichern.
-          </p>
+          <p className="mt-4 text-xs text-amber-300/90">{t("admin:ifMemNoBaseUrl")}</p>
         ) : null}
       </section>
 
       <section className="mt-6 rounded-xl border border-surface-border bg-surface-raised p-5">
-        <h2 className="text-sm font-medium text-white">Memory &amp; RAG</h2>
-        <p className="mt-2 text-xs text-surface-muted">
-          Schalter und Tuning in <span className="font-mono text-neutral-400">operator_settings</span>. Tool-Pakete unter{" "}
-          <span className="text-white/85">Admin → Tools</span>.
-        </p>
+        <h2 className="text-sm font-medium text-white">{t("admin:memoryRagTitle")}</h2>
+        <p className="mt-2 text-xs text-surface-muted">{t("admin:ifMemMemoryRagIntro")}</p>
         <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-white">
           <input
             type="checkbox"
@@ -184,7 +176,7 @@ export function AdminInterfacesMemorySection() {
             checked={s.exposeInternalErrors}
             onChange={(e) => s.setExposeInternalErrors(e.target.checked)}
           />
-          Interne Fehlertexte in API-Antworten (5xx/502) — nur zum Debuggen
+          {t("admin:ifMemExposeErrors")}
         </label>
         <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-white">
           <input
@@ -193,7 +185,7 @@ export function AdminInterfacesMemorySection() {
             checked={s.memoryEnabled}
             onChange={(e) => s.setMemoryEnabled(e.target.checked)}
           />
-          Memory (Fakten, semantische Notizen, APIs) aktivieren
+          {t("admin:ifMemEnableMemory")}
         </label>
         <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-white">
           <input
@@ -202,12 +194,12 @@ export function AdminInterfacesMemorySection() {
             checked={s.ragEnabled}
             onChange={(e) => s.setRagEnabled(e.target.checked)}
           />
-          RAG (pgvector-Ingest &amp; Suche) aktivieren
+          {t("admin:ifMemEnableRag")}
         </label>
         <div className="mt-4 grid max-w-xl gap-3 sm:grid-cols-2">
           <div>
             <label className="block text-xs text-surface-muted" htmlFor="rag-chunk">
-              Chunk-Größe (200–8000)
+              {t("admin:ifMemChunkSize")}
             </label>
             <input
               id="rag-chunk"
@@ -221,7 +213,7 @@ export function AdminInterfacesMemorySection() {
           </div>
           <div>
             <label className="block text-xs text-surface-muted" htmlFor="rag-overlap">
-              Chunk-Overlap (0–2000)
+              {t("admin:ifMemChunkOverlap")}
             </label>
             <input
               id="rag-overlap"
@@ -235,7 +227,7 @@ export function AdminInterfacesMemorySection() {
           </div>
           <div>
             <label className="block text-xs text-surface-muted" htmlFor="rag-topk">
-              Top-K (1–50)
+              {t("admin:ifMemTopK")}
             </label>
             <input
               id="rag-topk"
@@ -249,7 +241,7 @@ export function AdminInterfacesMemorySection() {
           </div>
           <div>
             <label className="block text-xs text-surface-muted" htmlFor="rag-timeout">
-              Embed-Timeout (Sek., 5–600)
+              {t("admin:ifMemEmbedTimeout")}
             </label>
             <input
               id="rag-timeout"
@@ -264,38 +256,37 @@ export function AdminInterfacesMemorySection() {
           </div>
         </div>
         <label className="mt-4 block text-xs text-surface-muted" htmlFor="rag-domains">
-          Tenant-weite Domains (kommagetrennt)
+          {t("admin:ifMemTenantDomains")}
         </label>
         <input
           id="rag-domains"
           className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
           value={s.ragTenantDomains}
           onChange={(e) => s.setRagTenantDomains(e.target.value)}
-          placeholder="agentlayer_docs"
+          placeholder={t("admin:ifMemoryCollectionPlaceholder")}
         />
         {s.ragTenantEffective.length > 0 ? (
           <p className="mt-2 text-xs text-surface-muted">
-            Wirksam: <span className="font-mono text-neutral-300">{s.ragTenantEffective.join(", ")}</span>
+            {t("admin:ifMemEffectiveDomains")}{" "}
+            <span className="font-mono text-neutral-300">{s.ragTenantEffective.join(", ")}</span>
           </p>
         ) : null}
         <label className="mt-4 block text-xs text-surface-muted" htmlFor="docs-root">
-          Docs-Pfad für <span className="font-mono text-neutral-400">ingest-docs</span> (optional)
+          {t("admin:ifMemDocsPathOptional")}
         </label>
         <input
           id="docs-root"
           className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
           value={s.docsRoot}
           onChange={(e) => s.setDocsRoot(e.target.value)}
-          placeholder="/pfad/zum/docs"
+          placeholder={t("admin:ifMemoryDocsPathPlaceholder")}
           autoComplete="off"
         />
       </section>
 
       <section className="mt-6 rounded-xl border border-surface-border bg-surface-raised p-5">
-        <h2 className="text-sm font-medium text-white">Memory graph</h2>
-        <p className="mt-2 text-xs text-surface-muted">
-          Strukturierte Knoten/Kanten + Prompt-Injection. Benötigt aktiviertes Memory oben.
-        </p>
+        <h2 className="text-sm font-medium text-white">{t("admin:ifMemGraphTitle")}</h2>
+        <p className="mt-2 text-xs text-surface-muted">{t("admin:ifMemGraphIntro")}</p>
         <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-white">
           <input
             type="checkbox"
@@ -303,7 +294,7 @@ export function AdminInterfacesMemorySection() {
             checked={s.memGraphEnabled}
             onChange={(e) => s.setMemGraphEnabled(e.target.checked)}
           />
-          Graph-Speicherung und Kontext-Injection aktivieren
+          {t("admin:ifMemGraphEnable")}
         </label>
         <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-white">
           <input
@@ -312,12 +303,12 @@ export function AdminInterfacesMemorySection() {
             checked={s.memGraphLogActivations}
             onChange={(e) => s.setMemGraphLogActivations(e.target.checked)}
           />
-          Aktivierungs-Log schreiben (node ids, gehashte Query — kein Rohtext)
+          {t("admin:ifMemGraphLog")}
         </label>
         <div className="mt-4 grid max-w-xl gap-3 sm:grid-cols-2">
           <div>
             <label className="block text-xs text-surface-muted" htmlFor="mg-hops">
-              Max. Hops (0–4)
+              {t("admin:ifMemGraphMaxHops")}
             </label>
             <input
               id="mg-hops"
@@ -331,7 +322,7 @@ export function AdminInterfacesMemorySection() {
           </div>
           <div>
             <label className="block text-xs text-surface-muted" htmlFor="mg-score">
-              Min. Aktivierungsscore (0–1)
+              {t("admin:ifMemGraphMinScore")}
             </label>
             <input
               id="mg-score"
@@ -346,7 +337,7 @@ export function AdminInterfacesMemorySection() {
           </div>
           <div>
             <label className="block text-xs text-surface-muted" htmlFor="mg-bullets">
-              Max. Bullet-Zeilen
+              {t("admin:ifMemGraphMaxBullets")}
             </label>
             <input
               id="mg-bullets"
@@ -360,7 +351,7 @@ export function AdminInterfacesMemorySection() {
           </div>
           <div>
             <label className="block text-xs text-surface-muted" htmlFor="mg-chars">
-              Max. Zeichen (Graph-Block)
+              {t("admin:ifMemGraphMaxChars")}
             </label>
             <input
               id="mg-chars"

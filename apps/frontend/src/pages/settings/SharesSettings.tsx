@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
+import { useTranslation } from "react-i18next";
 
 type ShareItem = {
   resource_type: string;
@@ -25,6 +26,7 @@ const RESOURCE_TYPES = [
 ];
 
 export default function SharesSettings() {
+  const { t } = useTranslation(["settings"]);
   const auth = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -80,7 +82,7 @@ export default function SharesSettings() {
       }
       
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Could not load shares");
+      setErr(e instanceof Error ? e.message : t("settings:sharesLoadFailed"));
     } finally {
       setLoading(false);
     }
@@ -95,7 +97,7 @@ export default function SharesSettings() {
         setFriendShares(data);
       }
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Could not load friend shares");
+      setErr(e instanceof Error ? e.message : t("settings:friendSharesLoadFailed"));
     }
   }
 
@@ -118,7 +120,7 @@ export default function SharesSettings() {
       await load();
       await loadFriendShares(selectedFriend);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Could not update share");
+      setErr(e instanceof Error ? e.message : t("settings:shareUpdateFailed"));
     } finally {
       setSaving(false);
     }
@@ -141,9 +143,9 @@ export default function SharesSettings() {
   return (
     <div className="mx-auto max-w-4xl space-y-8">
       <div>
-        <h1 className="text-lg font-semibold text-white">🔗 Shares</h1>
+        <h1 className="text-lg font-semibold text-white">🔗 {t("settings:sharesTitle")}</h1>
         <p className="mt-2 text-sm text-surface-muted">
-          Manage who has access to your data and what others have shared with you.
+          {t("settings:sharesSubtitle")}
         </p>
       </div>
 
@@ -158,7 +160,7 @@ export default function SharesSettings() {
               : "text-surface-muted hover:text-white"
           }`}
         >
-          Shared by Me
+          {t("settings:sharesTabOutgoing")}
         </button>
         <button
           type="button"
@@ -169,12 +171,12 @@ export default function SharesSettings() {
               : "text-surface-muted hover:text-white"
           }`}
         >
-          Shared with Me
+          {t("settings:sharesTabIncoming")}
         </button>
       </div>
 
       {loading ? (
-        <p className="text-sm text-surface-muted">Loading…</p>
+        <p className="text-sm text-surface-muted">{t("settings:sharesLoading")}</p>
       ) : err ? (
         <p className="text-sm text-amber-400">{err}</p>
       ) : activeTab === "outgoing" ? (
@@ -198,7 +200,7 @@ export default function SharesSettings() {
                     </div>
                   </div>
                   <div className="text-sm text-surface-muted">
-                    {shares.length} resources
+                    {t("settings:sharesResourcesCount", { count: shares.length })}
                   </div>
                 </div>
               </div>
@@ -207,7 +209,7 @@ export default function SharesSettings() {
 
           {Object.keys(groupByUser(outgoing)).length === 0 && (
             <div className="p-8 text-center text-surface-muted rounded-xl border border-surface-border bg-surface-raised">
-              You haven't shared anything with anyone yet.
+              {t("settings:sharesNoneOutgoing")}
             </div>
           )}
         </div>
@@ -228,7 +230,7 @@ export default function SharesSettings() {
                     </div>
                   </div>
                   <div className="text-sm text-surface-muted">
-                    {shares.length} resources
+                    {t("settings:sharesResourcesCount", { count: shares.length })}
                   </div>
                 </div>
               </div>
@@ -237,7 +239,7 @@ export default function SharesSettings() {
 
           {Object.keys(groupByUser(incoming)).length === 0 && (
             <div className="p-8 text-center text-surface-muted rounded-xl border border-surface-border bg-surface-raised">
-              Nobody has shared anything with you yet.
+              {t("settings:sharesNoneIncoming")}
             </div>
           )}
         </div>
@@ -250,13 +252,13 @@ export default function SharesSettings() {
               {selectedFriend.display_name || selectedFriend.email}
             </h3>
             <p className="text-sm text-surface-muted mt-1">
-              Manage sharing permissions for this friend
+              {t("settings:sharesManageFriend")}
             </p>
           </div>
 
           <div className="p-4 space-y-6">
             <div>
-              <h4 className="text-sm font-medium mb-4 text-white">What you share with them</h4>
+              <h4 className="text-sm font-medium mb-4 text-white">{t("settings:sharesWhatYouShare")}</h4>
               <div className="space-y-3">
                 {RESOURCE_TYPES.map(resource => (
                   <div key={resource.id} className="flex items-center justify-between py-2">
@@ -280,7 +282,7 @@ export default function SharesSettings() {
             </div>
 
             <div className="border-t border-surface-border pt-6">
-              <h4 className="text-sm font-medium mb-4 text-white">What they share with you</h4>
+              <h4 className="text-sm font-medium mb-4 text-white">{t("settings:sharesWhatTheyShare")}</h4>
               <div className="space-y-3">
                 {RESOURCE_TYPES.map(resource => (
                   <div key={`in-${resource.id}`} className="flex items-center justify-between py-2">
@@ -290,9 +292,9 @@ export default function SharesSettings() {
                     </div>
                     <div className="text-sm">
                       {friendShares.incoming.includes(resource.id) ? (
-                        <span className="text-emerald-400 font-medium">✓ Access granted</span>
+                        <span className="text-emerald-400 font-medium">{t("settings:sharesAccessGranted")}</span>
                       ) : (
-                        <span className="text-surface-muted">Not shared</span>
+                        <span className="text-surface-muted">{t("settings:sharesNotShared")}</span>
                       )}
                     </div>
                   </div>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import { apiFetch, addUsageTotals, emptyTokenUsage, fetchSessionRuntime, type SessionRuntimePayload, type TokenUsageTotals, type WorkspaceApiRecord } from "../lib/api";
 import {
@@ -44,24 +45,25 @@ import { useChatScroll } from "../features/chat/useChatScroll";
 
 /** Dashboard-linked thread: show whether other members see messages (shared) or only you (personal). */
 function DashboardChatVisibilityBadge({ thread }: { thread: Pick<ChatThread, "dashboardId" | "shared"> }) {
+  const { t } = useTranslation(["chat"]);
   if (!thread.dashboardId) return null;
   const shared = thread.shared === true;
   if (shared) {
     return (
       <span
         className="inline-flex shrink-0 items-center rounded-full border border-amber-400/40 bg-amber-950/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-100/95"
-        title="Shared dashboard chat — other members can read messages in this thread."
+        title={t("chat:visibilitySharedTitle")}
       >
-        Shared
+        {t("chat:visibilitySharedLabel")}
       </span>
     );
   }
   return (
     <span
       className="inline-flex shrink-0 items-center rounded-full border border-emerald-500/35 bg-emerald-950/45 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-100/90"
-      title="Personal dashboard chat — only you see this thread."
+      title={t("chat:visibilityPersonalTitle")}
     >
-      Personal
+      {t("chat:visibilityPersonalLabel")}
     </span>
   );
 }
@@ -99,17 +101,13 @@ import {
 } from "../features/chat/chatSubagentPrefs";
 import { handleSubagentWsEvent } from "../features/chat/subagentActivity";
 import { CodingWorkspacePanels } from "../features/workspace/CodingWorkspacePanels";
+import { WorkspaceRetrievalBar } from "../features/workspace/WorkspaceRetrievalBar";
 import { WorkspaceMcpModal } from "../features/workspace/WorkspaceMcpModal";
 import { shouldIsolateWorkspaceThread } from "../features/workspace/codingWorkspaceNav";
 import { confirmOpenCodingSessionForWorkspace } from "../features/workspace/confirmWorkspaceScope";
 import { streamOpenAiChatChunks } from "../features/chat/openaiSseStream";
 import { formatMessageTime, inferMissingMessageTimestamps } from "../features/chat/messageTimestamps";
 
-const SUGGESTED = [
-  "Show me a code snippet of a website's sticky header",
-  "Explain options trading if I'm familiar with buying and selling stocks",
-  "Help me study vocabulary for a college entrance exam",
-];
 
 function wsUrl(token: string): string {
   const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -216,6 +214,11 @@ function MessageBody({ content }: { content: string }) {
 }
 
 export function ChatPage() {
+  const { t } = useTranslation(["chat", "errors", "admin", "dashboard", "workspace", "setup"]);
+  const suggested = useMemo(
+    () => [t("chat:suggested1"), t("chat:suggested2"), t("chat:suggested3")],
+    [t]
+  );
   const auth = useAuth();
   const { accessToken, user } = auth;
   const userId = user?.id ?? "";
@@ -294,7 +297,7 @@ export function ChatPage() {
   );
 
   const activeThread = useMemo(
-    () => threads.find((t) => t.id === activeThreadId) ?? null,
+    () => threads.find((th) => th.id === activeThreadId) ?? null,
     [threads, activeThreadId]
   );
 
@@ -339,7 +342,7 @@ export function ChatPage() {
     threadContentKey,
   });
 
-  const userTurns = useMemo(() => buildTurnItems(messages), [messages]);
+  const userTurns = useMemo(() => buildTurnItems(messages, 40, (n) => t("chat:promptN", { n })), [messages, t]);
   const latestTurnId = useMemo(
     () => (activeThread ? latestUserMessageId(activeThread) : null),
     [activeThread, messages]
@@ -409,7 +412,7 @@ export function ChatPage() {
         if (!cancelled) {
           setModelRows([]);
           setModelCatalogAgentlayer(null);
-          setModelsCatalogHint("Could not load model catalog.");
+          setModelsCatalogHint(t("errors:loadModelCatalogFailed"));
         }
       } finally {
         if (!cancelled) setModelsCatalogReady(true);
@@ -560,7 +563,7 @@ export function ChatPage() {
         setHydrated(true);
       } catch (e) {
         if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Could not load chats (server sync)");
+          setError(e instanceof Error ? e.message : t("errors:loadChatsServerSyncFailed"));
           setHydrated(true);
         }
       }
@@ -661,7 +664,7 @@ export function ChatPage() {
       const next = await filesToAttachments(files);
       setPendingAttachments((prev) => [...prev, ...next]);
     } catch {
-      setError("Could not read file");
+      setError(t("chat:couldNotReadFile"));
     }
   }, []);
 
@@ -707,9 +710,9 @@ export function ChatPage() {
     (wsId: string | null) => {
       if (!activeThreadId) return;
       if (wsId) {
-        const t = threads.find((x) => x.id === activeThreadId);
-        const msgCount = t?.messageCount ?? t?.messages.length ?? 0;
-        const prevWs = typeof t?.workspaceId === "string" ? t.workspaceId : null;
+        const thread = threads.find((x) => x.id === activeThreadId);
+        const msgCount = thread?.messageCount ?? thread?.messages.length ?? 0;
+        const prevWs = typeof thread?.workspaceId === "string" ? thread.workspaceId : null;
         if (shouldIsolateWorkspaceThread(msgCount, prevWs, wsId)) {
           const wsName = workspaces.find((w) => w.id === wsId)?.name ?? wsId;
           if (confirmOpenCodingSessionForWorkspace(wsName, wsId)) {
@@ -761,17 +764,15 @@ export function ChatPage() {
   const runChatHttp = useCallback(async () => {
     if (!accessToken || !activeThreadId) return;
     const tid = activeThreadId;
-    const t = threads.find((x) => x.id === tid);
+    const thread = threads.find((x) => x.id === tid);
     const routed = resolveComposerModelRouting(
       modelRows,
       lastModelSelectionRef.current || modelSelectValue,
-      (t?.model || defaultModel).trim(),
-      t?.modelProvider
+      (thread?.model || defaultModel).trim(),
+      thread?.modelProvider
     );
-    if (!t || !routed) {
-      setError(
-        "Could not resolve model provider. Open the model list and pick an entry (provider shown in parentheses)."
-      );
+    if (!thread || !routed) {
+      setError(t("errors:resolveModelProviderFailed"));
       return;
     }
 
@@ -781,13 +782,13 @@ export function ChatPage() {
     setError(null);
     setLoading(true);
     setTokenUsage(emptyTokenUsage());
-    const firstUser = t.messages.length === 0;
+    const firstUser = thread.messages.length === 0;
     const userMsgId = newMessageId();
     const nextMessages: UiMessage[] = [
-      ...t.messages,
+      ...thread.messages,
       { role: "user", content: userContent, id: userMsgId, createdAt: Date.now() },
     ];
-    const nextTitle = firstUser ? titleFromFirstMessage(userContent) : t.title;
+    const nextTitle = firstUser ? titleFromFirstMessage(userContent) : thread.title;
     patchThread(tid, {
       messages: nextMessages,
       title: nextTitle,
@@ -930,7 +931,7 @@ export function ChatPage() {
     return new Promise((resolve, reject) => {
       const tok = accessToken;
       if (!tok) {
-        reject(new Error("Not signed in"));
+        reject(new Error(t("errors:notSignedIn")));
         return;
       }
       const existing = wsRef.current;
@@ -948,7 +949,7 @@ export function ChatPage() {
         ws.onmessage = (ev) => agentHandlerRef.current(ev);
         resolve(ws);
       };
-      ws.onerror = () => reject(new Error("WebSocket connection failed"));
+      ws.onerror = () => reject(new Error(t("errors:websocketFailed")));
       ws.onclose = () => {
         if (wsRef.current === ws) wsRef.current = null;
         agentTurnFinishRef.current?.();
@@ -959,17 +960,15 @@ export function ChatPage() {
   const runAgentWs = useCallback(async () => {
     if (!accessToken || !activeThreadId) return;
     const tid = activeThreadId;
-    const t = threads.find((x) => x.id === tid);
+    const thread = threads.find((x) => x.id === tid);
     const routed = resolveComposerModelRouting(
       modelRows,
       lastModelSelectionRef.current || modelSelectValue,
-      (t?.model || defaultModel).trim(),
-      t?.modelProvider
+      (thread?.model || defaultModel).trim(),
+      thread?.modelProvider
     );
-    if (!t || !routed) {
-      setError(
-        "Could not resolve model provider. Open the model list and pick an entry (provider shown in parentheses)."
-      );
+    if (!thread || !routed) {
+      setError(t("errors:resolveModelProviderFailed"));
       return;
     }
 
@@ -979,14 +978,14 @@ export function ChatPage() {
     setError(null);
     setLoading(true);
     setTokenUsage(emptyTokenUsage());
-    const firstUser = t.messages.length === 0;
-    const archivePatch = archiveTurnBeforeNewPrompt(t);
+    const firstUser = thread.messages.length === 0;
+    const archivePatch = archiveTurnBeforeNewPrompt(thread);
     const userMsgId = newMessageId();
     const nextMessages: UiMessage[] = [
-      ...t.messages,
+      ...thread.messages,
       { role: "user", content: userContent, id: userMsgId, createdAt: Date.now() },
     ];
-    const nextTitle = firstUser ? titleFromFirstMessage(userContent) : t.title;
+    const nextTitle = firstUser ? titleFromFirstMessage(userContent) : thread.title;
     patchThread(tid, {
       messages: nextMessages,
       ...archivePatch,
@@ -1038,13 +1037,13 @@ export function ChatPage() {
         const typ = msg.type;
         if (typ === "pong") return;
         if (typ === "error") {
-          setError(typeof msg.detail === "string" ? msg.detail : "Agent error");
+          setError(typeof msg.detail === "string" ? msg.detail : t("errors:agentError"));
           finish();
           return;
         }
         if (typ === "chat.completion") {
           if (msg.error) {
-            setError(typeof msg.detail === "string" ? msg.detail : "Cancelled or failed");
+            setError(typeof msg.detail === "string" ? msg.detail : t("chat:cancelledOrFailed"));
             finish();
             return;
           }
@@ -1091,7 +1090,6 @@ export function ChatPage() {
           if (msg.agent_auto_routed === true && msg.effective_agent_id != null) {
             const aid = String(msg.effective_agent_id).trim();
             if (aid) {
-              setSelectedAgentId(aid);
               const tid = activeThreadIdRef.current;
               if (tid) {
                 setThreads((prev) => {
@@ -1248,7 +1246,7 @@ export function ChatPage() {
           return;
         }
         if (typ === "agent.step_wait") {
-          appendAgentLine("wait", "Paused (step mode)");
+          appendAgentLine("wait", t("chat:pausedStepMode"));
           return;
         }
         if (typ === "agent.done" || typ === "agent.aborted" || typ === "agent.cancelled") {
@@ -1258,7 +1256,7 @@ export function ChatPage() {
         }
         appendAgentLine(String(typ ?? "event"), JSON.stringify(msg).slice(0, 300));
       } catch {
-        setError("Invalid WebSocket message");
+        setError(t("chat:invalidWebsocketMessage"));
         finish();
       }
     };
@@ -1342,7 +1340,7 @@ export function ChatPage() {
         const defaultProv = parseModelCatalogSelection(defaultSelectValue).provider;
         const ws =
           workspaceIdOverride !== undefined ? workspaceIdOverride : selectedWorkspaceId;
-        const t = await createConversation(auth, {
+        const newThread = await createConversation(auth, {
           title: NEW_CHAT_TITLE,
           mode: "agent",
           model: defaultModel,
@@ -1352,9 +1350,9 @@ export function ChatPage() {
           workspace_id: ws,
           model_catalog_owned_by: defaultProv ?? null,
         });
-        setThreads((prev) => [t, ...prev]);
-        setActiveThreadId(t.id);
-        setSearchParams({ c: t.id });
+        setThreads((prev) => [newThread, ...prev]);
+        setActiveThreadId(newThread.id);
+        setSearchParams({ c: newThread.id });
         setSelectedWorkspaceId(ws);
         setDraft("");
         setError(null);
@@ -1374,7 +1372,7 @@ export function ChatPage() {
   startNewChatRef.current = startNewChat;
 
   const deleteThread = async (id: string) => {
-    if (!confirm("Delete this chat?")) return;
+    if (!confirm(t("chat:deleteConfirm"))) return;
     try {
       await deleteConversationApi(auth, id);
       setThreads((prev) => {
@@ -1397,22 +1395,22 @@ export function ChatPage() {
   };
 
   const renameThread = (id: string) => {
-    const t = threads.find((x) => x.id === id);
-    if (!t) return;
-    const next = window.prompt("Chat title", t.title);
+    const thread = threads.find((x) => x.id === id);
+    if (!thread) return;
+    const next = window.prompt(t("chat:renamePrompt"), thread.title);
     if (next === null) return;
     const trimmed = next.trim();
     if (!trimmed) return;
     patchThread(id, { title: trimmed });
-    void putConversation(auth, { ...t, title: trimmed }).catch(() => {});
+    void putConversation(auth, { ...thread, title: trimmed }).catch(() => {});
   };
 
-  const shareThread = async (t: ChatThread) => {
-    const url = `${window.location.origin}/app/chat?c=${encodeURIComponent(t.id)}`;
+  const shareThread = async (thread: ChatThread) => {
+    const url = `${window.location.origin}/app/chat?c=${encodeURIComponent(thread.id)}`;
     try {
-      await navigator.clipboard.writeText(url + "\n\n" + exportThreadJson(t));
+      await navigator.clipboard.writeText(url + "\n\n" + exportThreadJson(thread));
     } catch {
-      setError("Could not copy");
+      setError(t("errors:copyFailed"));
     }
   };
 
@@ -1435,7 +1433,7 @@ export function ChatPage() {
   if (!hydrated || !userId) {
     return (
       <div className="flex h-full min-h-0 flex-1 items-center justify-center overflow-hidden text-sm text-surface-muted">
-        Loading chats…
+        {t("chat:loadingChats")}
       </div>
     );
   }
@@ -1449,7 +1447,7 @@ export function ChatPage() {
             onClick={() => void startNewChat()}
             className="w-full rounded-lg border border-surface-border bg-white/5 px-3 py-2 text-left text-sm text-neutral-200 hover:bg-white/10"
           >
-            + New chat
+            {t("chat:newChat")}
           </button>
           <p className="mt-2 text-[11px] leading-snug text-surface-muted">
             Agent: WebSocket mit mehreren Runden. Chats sync zum Server.
@@ -1458,12 +1456,11 @@ export function ChatPage() {
 
         <div className="flex-1 overflow-y-auto px-2 py-2">
           <p className="px-2 pb-1 text-xs font-medium uppercase tracking-wide text-surface-muted">
-            Your chats
+            {t("chat:sidebarTitle")}
           </p>
           <p className="mb-2 px-2 text-[10px] leading-snug text-surface-muted/80">
-            Empty threads stay hidden until you open them or send a message. Dashboard rows marked{" "}
-            <span className="text-amber-200/90">Shared</span> are older team chats (or API); new assistants are private
-            by default.
+            {t("chat:sidebarHint")}{" "}
+            <span className="text-amber-200/90">{t("chat:sharedBadge")}</span>
           </p>
           <div className="flex flex-col gap-3">
             {sidebarGroups.map((g) => (
@@ -1475,24 +1472,24 @@ export function ChatPage() {
                   {g.label}
                 </p>
                 <ul className="flex flex-col gap-1">
-                  {g.threads.map((t) => (
-                    <li key={t.id}>
+                  {g.threads.map((thread) => (
+                    <li key={thread.id}>
                       <div
                         className={`group flex items-start gap-1 rounded-md px-2 py-2 ${
-                          t.id === activeThreadId ? "bg-white/10" : "hover:bg-white/5"
+                          thread.id === activeThreadId ? "bg-white/10" : "hover:bg-white/5"
                         }`}
                       >
                         <button
                           type="button"
                           className="min-w-0 flex-1 text-left text-sm text-neutral-200"
-                          onClick={() => void selectThread(t.id)}
+                          onClick={() => void selectThread(thread.id)}
                         >
                           <span className="flex flex-wrap items-start gap-1.5">
-                            <span className="line-clamp-2 min-w-0 flex-1 text-left">{t.title}</span>
-                            <DashboardChatVisibilityBadge thread={t} />
+                            <span className="line-clamp-2 min-w-0 flex-1 text-left">{thread.title}</span>
+                            <DashboardChatVisibilityBadge thread={thread} />
                           </span>
                           <span className="mt-0.5 block text-[10px] text-surface-muted">
-                            {new Date(t.updatedAt).toLocaleString(undefined, {
+                            {new Date(thread.updatedAt).toLocaleString(undefined, {
                               month: "short",
                               day: "numeric",
                               hour: "2-digit",
@@ -1504,24 +1501,24 @@ export function ChatPage() {
                           <button
                             type="button"
                             className="rounded px-1 text-[10px] text-surface-muted hover:text-white"
-                            title="Rename"
-                            onClick={() => renameThread(t.id)}
+                            title={t("chat:rename")}
+                            onClick={() => renameThread(thread.id)}
                           >
                             Ren
                           </button>
                           <button
                             type="button"
                             className="rounded px-1 text-[10px] text-surface-muted hover:text-white"
-                            title="Copy link + JSON"
-                            onClick={() => void shareThread(t)}
+                            title={t("chat:copyLinkJson")}
+                            onClick={() => void shareThread(thread)}
                           >
                             Share
                           </button>
                           <button
                             type="button"
                             className="rounded px-1 text-[10px] text-red-400/90 hover:text-red-300"
-                            title="Delete"
-                            onClick={() => void deleteThread(t.id)}
+                            title={t("chat:delete")}
+                            onClick={() => void deleteThread(thread.id)}
                           >
                             Del
                           </button>
@@ -1540,23 +1537,25 @@ export function ChatPage() {
         {!activeThreadId ? (
           <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-6 py-12 text-center">
             <p className="max-w-md text-sm text-surface-muted">
-              No conversation open. Threads with <strong className="text-neutral-400">no messages</strong> stay out of
-              the sidebar until you send something. Use <strong className="text-neutral-400">+ New chat</strong> to
-              start.
+              {t("chat:noConversationOpenLead")}{" "}
+              <strong className="text-neutral-400">{t("chat:noConversationOpenBoldNone")}</strong>{" "}
+              {t("chat:noConversationOpenMid")}{" "}
+              <strong className="text-neutral-400">{t("chat:noConversationOpenBoldNew")}</strong>{" "}
+              {t("chat:noConversationOpenEnd")}
             </p>
             <button
               type="button"
               onClick={() => void startNewChat()}
               className="rounded-lg border border-surface-border bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/15"
             >
-              + New chat
+              {t("chat:newChat")}
             </button>
           </div>
         ) : (
           <>
         <div className="shrink-0 border-b border-surface-border px-4 py-3 sm:px-6">
           <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
-            <p className="truncate text-sm font-medium text-white">{activeThread?.title ?? "Chat"}</p>
+            <p className="truncate text-sm font-medium text-white">{activeThread?.title ?? t("chat:defaultThreadTitle")}</p>
             {activeThread ? <DashboardChatVisibilityBadge thread={activeThread} /> : null}
           </div>
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_17.5rem] lg:items-stretch">
@@ -1564,19 +1563,19 @@ export function ChatPage() {
               <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
                 <div className="min-w-0 flex-1 sm:min-w-[10rem] sm:max-w-[20rem]">
                   <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
-                    Assistant
+                    {t("chat:assistantLabel")}
                   </label>
                   <p className="mt-0.5 rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-300">
-                    General
+                    {t("chat:generalAssistant")}
                   </p>
                   <p className="mt-1 text-[10px] leading-snug text-surface-muted">
-                    Ask for scans or repo work — General can delegate to specialist sub-agents.
+                    {t("chat:generalAssistantHint")}
                   </p>
                 </div>
                 {workspaces.length > 0 ? (
                   <div className="min-w-0 flex-1 sm:min-w-[10rem] sm:max-w-[24rem]">
                     <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
-                      Project
+                      {t("chat:projectLabel")}
                     </label>
                     <div className="mt-0.5 flex flex-wrap gap-1.5">
                       <select
@@ -1584,11 +1583,11 @@ export function ChatPage() {
                         value={selectedWorkspaceId ?? ""}
                         onChange={(e) => setComposerWorkspace(e.target.value || null)}
                       >
-                        <option value="">No project</option>
+                        <option value="">{t("chat:noProject")}</option>
                         {workspaces.map((ws) => (
                           <option key={ws.id} value={ws.id}>
                             {ws.name}
-                            {ws.access_role === "viewer" ? " (view)" : ""}
+                            {ws.access_role === "viewer" ? t("chat:projectViewerSuffix") : ""}
                           </option>
                         ))}
                       </select>
@@ -1601,29 +1600,34 @@ export function ChatPage() {
                             : "border-surface-border bg-black/30 text-neutral-300 hover:bg-white/10",
                         ].join(" ")}
                         disabled={!selectedWorkspaceId}
-                        title={
-                          selectedWorkspaceId
-                            ? "Show or hide project file tree"
-                            : "Select a project first"
-                        }
+                        title={selectedWorkspaceId ? t("chat:showProjectTree") : t("chat:selectProjectFirst")}
                         onClick={() => {
                           const next = !projectPanelOpen;
                           setProjectPanelOpen(next);
                           setChatProjectPanelOpen(userId, next);
                         }}
                       >
-                        {projectPanelOpen ? "Hide tree" : "Show tree"}
+                        {projectPanelOpen ? t("chat:hideTree") : t("chat:showTree")}
                       </button>
                     </div>
+                    {selectedWorkspace ? (
+                      <WorkspaceRetrievalBar
+                        auth={auth}
+                        workspace={selectedWorkspace}
+                        canEdit={selectedWorkspace.access_role !== "viewer"}
+                        onWorkspaceUpdated={(ws) => {
+                          setWorkspaces((prev) => prev.map((w) => (w.id === ws.id ? ws : w)));
+                        }}
+                        className="mt-2 w-full"
+                      />
+                    ) : null}
                   </div>
                 ) : null}
               </div>
               {workspaces.length === 0 ? (
                 <div className="rounded-lg border border-surface-border bg-black/25 px-3 py-2">
                   <p className="text-xs leading-snug text-surface-muted">
-                    {isAdminUser
-                      ? "No projects yet. Add a workspace in Settings or ask your operator to provision one."
-                      : "No projects assigned yet. Ask an admin to add a workspace for you."}
+                    {isAdminUser ? t("chat:noProjectsAdmin") : t("chat:noProjectsUser")}
                   </p>
                 </div>
               ) : null}
@@ -1635,16 +1639,11 @@ export function ChatPage() {
                     className="shrink-0 text-[11px] text-surface-muted hover:text-neutral-200"
                     onClick={() => setWorkspaceScopeHint(null)}
                   >
-                    Dismiss
+                    {t("chat:dismiss")}
                   </button>
                 </div>
               ) : null}
-              <p className="text-[10px] leading-snug text-surface-muted">
-                Titles from the first message. Open a shared chat: URL query{" "}
-                <code className="text-neutral-500">?c=&lt;id&gt;</code>. From Dashboards:{" "}
-                <code className="text-neutral-500">?dashboard=&lt;uuid&gt;</code> sends{" "}
-                <code className="text-neutral-500">agent_dashboard_context</code> to the agent.
-              </p>
+              <p className="text-[10px] leading-snug text-surface-muted">{t("chat:titlesHint")}</p>
             </div>
             {mode === "agent" ? (
               <div className="flex min-h-0 w-full flex-col gap-1.5">
@@ -1661,17 +1660,15 @@ export function ChatPage() {
                     }
                     className="text-[11px] text-sky-400/90 hover:text-sky-300 hover:underline"
                   >
-                    Tasks
-                    {activeTaskId ? " · one bound to this chat" : ""}
+                    {t("chat:tasksLink")}
+                    {activeTaskId ? t("chat:tasksBoundHint") : ""}
                   </Link>
-                  <span className="text-[10px] text-surface-muted">
-                    Backlog lives on the Tasks page, not here.
-                  </span>
+                  <span className="text-[10px] text-surface-muted">{t("chat:tasksBacklogHint")}</span>
                 </div>
                 <AgentActivityPanel
                   entries={activityEntries}
                   loading={activityLoading}
-                  emptyHint="Activity appears here when the agent runs tools or LLM rounds for the selected prompt."
+                  emptyHint={t("chat:activityEmptyHint")}
                   layout="header"
                   className="min-h-0 w-full"
                   showSubagentToggle={mode === "agent"}
@@ -1685,7 +1682,7 @@ export function ChatPage() {
             ) : (
               <div className="flex min-h-0 items-center rounded-lg border border-white/10 bg-black/30 px-2.5 py-2">
                 <p className="text-[10px] leading-snug text-surface-muted">
-                  Switch to Agent mode to see tool and LLM activity per prompt.
+                  {t("chat:switchToAgentModeHint")}
                 </p>
               </div>
             )}
@@ -1701,7 +1698,7 @@ export function ChatPage() {
                     <button
                       type="button"
                       className="ml-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded border border-white/15 px-1 text-[11px] font-medium text-sky-300/95 hover:bg-white/10"
-                      title="Edit MCP servers for this workspace only"
+                      title={t("workspace:editMcpServersWorkspaceOnlyTitle")}
                       onClick={() => setShowWorkspaceMcpModal(true)}
                     >
                       +
@@ -1711,21 +1708,18 @@ export function ChatPage() {
               />
               <div className="w-full">
                 <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
-                  Reply mode
+                  {t("chat:replyModeLabel")}
                 </label>
                 <select
                   className="mt-0.5 w-full rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100"
                   value={mode}
                   onChange={(e) => setMode(e.target.value as ChatMode)}
-                  title="Agent: tools + multi-round WebSocket. Chat: single streamed assistant message (HTTP)."
+                  title={t("chat:replyModeTitle")}
                 >
-                  <option value="agent">Agent (tools, WebSocket)</option>
-                  <option value="chat">Chat (streamed HTTP)</option>
+                  <option value="agent">{t("chat:replyModeAgent")}</option>
+                  <option value="chat">{t("chat:replyModeChat")}</option>
                 </select>
-                <p className="mt-1 text-[10px] leading-snug text-surface-muted">
-                  Chat mode sends <code className="text-neutral-500">agent_plain_completion</code> so tokens stream when
-                  the model supports it.
-                </p>
+                <p className="mt-1 text-[10px] leading-snug text-surface-muted">{t("chat:replyModeChatHint")}</p>
               </div>
               <div className="w-full">
                 <label className="flex cursor-pointer items-center gap-2 text-[10px] font-medium uppercase tracking-wide text-surface-muted">
@@ -1741,19 +1735,20 @@ export function ChatPage() {
                     }}
                     title={
                       mode === "chat"
-                        ? "Nur im Agent-Modus (WebSocket): LLM-Streaming pro Runde."
-                        : "LLM-Antwort pro Runde streamen (wenn der Provider es unterstützt). Aus = bisheriges Verhalten."
+                        ? t("chat:agentLlmStreamTitleAgent")
+                        : t("chat:agentLlmStreamTitle")
                     }
                   />
-                  <span>Agent: LLM-Stream</span>
+                  <span>{t("chat:agentLlmStreamLabel")}</span>
                 </label>
                 <p className="mt-1 pl-6 text-[10px] leading-snug text-surface-muted">
-                  Schaltet <code className="text-neutral-500">agent_stream_llm</code> ein. Bei Tools: sichtbarer Text bis
-                  zum Tool-Call; weitere Runden folgen.
+                  {t("chat:agentLlmStreamHint")}
                 </p>
               </div>
               <div className="w-full">
-                <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">Model</label>
+                <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+                  {t("chat:modelLabel")}
+                </label>
                 <select
                   className="mt-0.5 w-full rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100"
                   value={modelSelectValue || defaultSelectValue}
@@ -1761,12 +1756,12 @@ export function ChatPage() {
                   disabled={!modelsCatalogReady || modelRows.length === 0}
                 >
                   {!modelsCatalogReady ? (
-                    <option value="">Loading models…</option>
+                    <option value="">{t("chat:loadingModels")}</option>
                   ) : modelRows.length === 0 ? (
                     <option value="">
                       {formatEmptyChatModelCatalogHint(modelCatalogAgentlayer) ??
                         modelsCatalogHint ??
-                        "No chat models available."}
+                            t("setup:noChatModels")}
                     </option>
                   ) : (
                     modelRows.map((row) => {
@@ -1794,11 +1789,11 @@ export function ChatPage() {
 
         {dashboardChatId ? (
           <div className="shrink-0 border-b border-sky-900/40 bg-sky-950/25 px-6 py-2 text-sm text-sky-100/90">
-            <span className="font-medium text-sky-200">Dashboard context</span>
+            <span className="font-medium text-sky-200">{t("chat:dashboardContextLabel")}</span>
             {": "}
             {dashboardChatTitle ?? dashboardChatId}
             <span className="ml-2 text-xs text-sky-300/80">
-              (this dashboard id is passed to the agent; say &quot;add milk&quot; for this list)
+              {t("chat:dashboardContextHint")}
             </span>
           </div>
         ) : null}
@@ -1808,10 +1803,9 @@ export function ChatPage() {
             className="shrink-0 border-b border-amber-900/45 bg-amber-950/40 px-6 py-2.5 text-sm text-amber-50/95"
             role="status"
           >
-            <span className="font-medium text-amber-200">Shared dashboard chat</span>
+            <span className="font-medium text-amber-200">{t("chat:sharedBannerTitle")}</span>
             {" — "}
-            Other members who can access this dashboard may see messages you send here. Do not post secrets or
-            private data.
+            {t("chat:sharedBannerBody")}
           </div>
         ) : null}
 
@@ -1820,9 +1814,9 @@ export function ChatPage() {
             className="shrink-0 border-b border-emerald-900/35 bg-emerald-950/25 px-6 py-2 text-sm text-emerald-100/90"
             role="status"
           >
-            <span className="font-medium text-emerald-200">Personal dashboard chat</span>
+            <span className="font-medium text-emerald-200">{t("chat:personalBannerTitle")}</span>
             {" — "}
-            Only your account sees this thread; it is not the shared team chat for this dashboard.
+            {t("chat:personalBannerBody")}
           </div>
         ) : null}
 
@@ -1870,11 +1864,9 @@ export function ChatPage() {
                   AL
                 </div>
                 <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white">
-                  Hello, {displayName}
+                  {t("chat:emptyHello", { name: displayName })}
                 </h1>
-                <p className="mt-2 max-w-md text-sm text-surface-muted">
-                  Agent mode: tools and activity in the header. Chat mode: streamed plain replies over HTTP (no tools).
-                </p>
+                <p className="mt-2 max-w-md text-sm text-surface-muted">{t("chat:emptyIntro")}</p>
               </div>
             ) : (
               <ul className="mx-auto flex w-full max-w-3xl flex-col gap-3">
@@ -1892,11 +1884,11 @@ export function ChatPage() {
                       }`}
                     >
                       <span className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
-                        {m.role === "user" ? "You" : "Assistant"}
+                        {m.role === "user" ? t("chat:roleYou") : t("chat:roleAssistant")}
                         {(() => {
-                          const t = formatMessageTime(m.createdAt);
-                          return t ? (
-                            <span className="ml-2 font-normal normal-case">{t}</span>
+                          const timeLabel = formatMessageTime(m.createdAt);
+                          return timeLabel ? (
+                            <span className="ml-2 font-normal normal-case">{timeLabel}</span>
                           ) : null;
                         })()}
                       </span>
@@ -1918,10 +1910,10 @@ export function ChatPage() {
                     <div className="max-w-[min(100%,42rem)] rounded-2xl border border-sky-900/50 bg-sky-950/25 px-4 py-3 text-sm text-sky-100/90 shadow-sm">
                       <span className="mb-1 flex items-center gap-2 text-[10px] font-medium uppercase tracking-wide text-sky-300/80">
                         <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-sky-400" />
-                        Assistant
+                        {t("chat:roleAssistant")}
                       </span>
                       <p className="text-neutral-300">
-                        {mode === "agent" ? "Agent running (LLM / tools)…" : "Generating a reply…"}
+                        {mode === "agent" ? t("chat:agentRunning") : t("chat:generatingReply")}
                       </p>
                     </div>
                   </li>
@@ -1940,9 +1932,9 @@ export function ChatPage() {
                 type="button"
                 onClick={() => scrollToBottom("smooth")}
                 className="absolute -top-12 right-0 z-10 rounded-full border border-surface-border bg-[#1a1a1a] px-3 py-1.5 text-xs text-neutral-200 shadow-lg hover:bg-[#252525]"
-                aria-label="Scroll to bottom"
+                aria-label={t("chat:scrollToBottomAria")}
               >
-                ↓ New messages
+                {t("chat:newMessages")}
               </button>
             ) : null}
             <input
@@ -1959,7 +1951,7 @@ export function ChatPage() {
             />
             <div
               role="group"
-              aria-label="Message composer — drop files here or use the attach button"
+              aria-label={t("chat:composerAria")}
               className={`relative rounded-2xl border bg-[#141414] p-3 shadow-xl transition-colors ${
                 composerDragActive
                   ? "border-sky-500/70 ring-2 ring-sky-500/25"
@@ -1992,7 +1984,7 @@ export function ChatPage() {
                   aria-hidden
                 >
                   <p className="rounded-lg border border-sky-500/40 bg-black/50 px-4 py-2 text-sm font-medium text-sky-100">
-                    Drop files to attach
+                    {t("chat:dropFilesToAttach")}
                   </p>
                 </div>
               ) : null}
@@ -2005,12 +1997,12 @@ export function ChatPage() {
                     >
                       <span className="truncate" title={a.kind === "unsupported" ? a.hint : a.name}>
                         {a.name}
-                        {a.kind === "unsupported" ? " (not sent)" : ""}
+                        {a.kind === "unsupported" ? t("chat:attachmentNotSent") : ""}
                       </span>
                       <button
                         type="button"
                         className="shrink-0 rounded px-1 text-surface-muted hover:text-white"
-                        aria-label="Remove attachment"
+                        aria-label={t("chat:removeAttachment")}
                         onClick={() => setPendingAttachments((prev) => prev.filter((_, i) => i !== idx))}
                       >
                         ×
@@ -2021,7 +2013,7 @@ export function ChatPage() {
               ) : null}
               <textarea
                 className="min-h-[52px] w-full resize-none bg-transparent text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none"
-                placeholder="How can I help you today?"
+                placeholder={t("chat:composerPlaceholder")}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 rows={2}
@@ -2038,8 +2030,8 @@ export function ChatPage() {
                   type="button"
                   disabled={loading}
                   className="rounded-lg border border-white/10 bg-black/20 p-2 text-surface-muted hover:bg-white/5 hover:text-neutral-200 disabled:opacity-40"
-                  title="Attach or drag & drop files (images, text; zip not unpacked)"
-                  aria-label="Attach files"
+                  title={t("chat:attachTitle")}
+                  aria-label={t("chat:attachFiles")}
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -2052,7 +2044,7 @@ export function ChatPage() {
                     className="rounded-lg border border-amber-500/60 bg-amber-950/50 px-4 py-2 text-sm font-medium text-amber-100 hover:bg-amber-900/40"
                     onClick={() => onCancelInFlight()}
                   >
-                    Cancel
+                    {t("admin:cancel")}
                   </button>
                 ) : (
                   <button
@@ -2061,7 +2053,7 @@ export function ChatPage() {
                     className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-40"
                     onClick={() => onSend()}
                   >
-                    Send
+                    {t("dashboard:send")}
                   </button>
                 )}
               </div>
@@ -2073,7 +2065,7 @@ export function ChatPage() {
                   Suggested
                 </p>
                 <ul className="flex flex-col gap-2">
-                  {SUGGESTED.map((s) => (
+                  {suggested.map((s) => (
                     <li key={s}>
                       <button
                         type="button"

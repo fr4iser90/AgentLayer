@@ -133,6 +133,24 @@ class Symbol:
 
 
 @dataclass
+class Relationship:
+    kind: str       # "calls", "extends", "implements", "imports"
+    source: str     # source symbol or file name
+    target: str     # target symbol or file name
+    line: int       # where the relationship occurs
+    source_file: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "kind": self.kind,
+            "source": self.source,
+            "target": self.target,
+            "line": self.line,
+            "source_file": self.source_file,
+        }
+
+
+@dataclass
 class FileEntry:
     path: str
     language: str
@@ -142,6 +160,7 @@ class FileEntry:
     mtime: float
     symbols: list[Symbol] = field(default_factory=list)
     imports: list[str] = field(default_factory=list)
+    relationships: list[Relationship] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -153,6 +172,7 @@ class FileEntry:
             "mtime": self.mtime,
             "symbol_count": len(self.symbols),
             "import_count": len(self.imports),
+            "relationship_count": len(self.relationships),
         }
 
 
@@ -349,6 +369,13 @@ class CodeIndex:
             return None
         tree = _parse_tree(source, lang)
         symbols, imports = _extract_symbols(tree, source, lang) if tree else ([], [])
+        relationships: list[Relationship] = []
+        if tree is not None:
+            try:
+                from plugins.tools.capabilities.coding.coding_graph_extract import extract_relationships
+                relationships = extract_relationships(tree, source, lang, symbols)
+            except Exception:
+                logger.debug("relationship extraction skipped for %s", rel)
         line_count = source.count(b"\n") + (1 if source and not source.endswith(b"\n") else 0)
         entry = FileEntry(
             path=rel,
@@ -359,6 +386,7 @@ class CodeIndex:
             mtime=mtime,
             symbols=symbols,
             imports=imports,
+            relationships=relationships,
         )
         with self._lock:
             self._files[rel] = entry

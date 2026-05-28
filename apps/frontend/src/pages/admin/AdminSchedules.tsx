@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch, type WorkspaceApiRecord } from "../../lib/api";
 import { formatDateTimeLocal } from "../../lib/formatDateTime";
@@ -51,6 +52,7 @@ function pill(enabled: boolean) {
 }
 
 export function AdminSchedules() {
+  const { t } = useTranslation(["admin", "dashboard"]);
   const auth = useAuth();
   const [jobs, setJobs] = useState<SchedulerJobRow[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -233,7 +235,7 @@ export function AdminSchedules() {
 
   const hardDelete = async (jobId: string) => {
     // eslint-disable-next-line no-alert
-    if (!window.confirm("Delete this schedule permanently? This cannot be undone.")) return;
+    if (!window.confirm(t("admin:schedulesPermanentDeleteConfirm"))) return;
     const res = await apiFetch(`/v1/admin/scheduler-jobs/${jobId}`, auth, { method: "DELETE" });
     const j = (await res.json().catch(() => null)) as any;
     if (!res.ok || !j?.ok) {
@@ -314,13 +316,8 @@ export function AdminSchedules() {
     <div className="mx-auto max-w-5xl px-6 py-10">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-white">Schedules</h1>
-          <p className="mt-2 text-sm text-surface-muted">
-            Persisted schedules (<span className="font-mono">scheduler_jobs</span>). Doc/coverage presets
-            use a workspace agent (e.g. <span className="font-mono">coding</span>) on a project workspace.
-            Enable the worker
-            under <span className="font-mono">Admin → Interfaces</span> first.
-          </p>
+          <h1 className="text-2xl font-semibold text-white">{t("admin:schedulesTitle")}</h1>
+          <p className="mt-2 text-sm text-surface-muted">{t("admin:schedulesIntro")}</p>
         </div>
         <button
           type="button"
@@ -328,42 +325,42 @@ export function AdminSchedules() {
           onClick={() => void refresh()}
           disabled={loading}
         >
-          {loading ? "Loading…" : "Refresh"}
+          {loading ? t("admin:loading") : t("admin:schedulesRefresh")}
         </button>
       </div>
 
       <div className="mt-6 rounded-xl border border-surface-border bg-surface-raised/50 p-4">
         <div className="grid gap-3 md:grid-cols-5">
           <label className="text-xs text-surface-muted">
-            Scope
+            {t("admin:schedulesScope")}
             <select
               className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
               value={scope}
               onChange={(e) => setScope(e.target.value as any)}
             >
-              <option value="all">All</option>
-              <option value="global_only">Global only (dashboard_id NULL)</option>
-              <option value="dashboard">Dashboard scoped</option>
+              <option value="all">{t("admin:schedulesScopeAll")}</option>
+              <option value="global_only">{t("admin:schedulesScopeGlobalOnly")}</option>
+              <option value="dashboard">{t("admin:schedulesScopeDashboard")}</option>
             </select>
           </label>
           <label className="text-xs text-surface-muted md:col-span-2">
-            Dashboard id (UUID)
+            {t("admin:schedulesDashboardId")}
             <input
               className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
               value={dashboardId}
               onChange={(e) => setDashboardId(e.target.value)}
-              placeholder="optional"
+              placeholder={t("admin:optional")}
               disabled={scope !== "dashboard"}
             />
           </label>
           <label className="text-xs text-surface-muted">
-            Target
+            {t("admin:schedulesTarget")}
             <select
               className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
               value={target}
               onChange={(e) => setTarget(e.target.value as any)}
             >
-              <option value="all">All</option>
+              <option value="all">{t("admin:schedulesScopeAll")}</option>
               {targetCatalog.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
@@ -372,15 +369,15 @@ export function AdminSchedules() {
             </select>
           </label>
           <label className="text-xs text-surface-muted">
-            Enabled
+            {t("admin:schedulesEnabledFilter")}
             <select
               className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
               value={enabled}
               onChange={(e) => setEnabled(e.target.value as any)}
             >
-              <option value="all">All</option>
-              <option value="true">Enabled</option>
-              <option value="false">Disabled</option>
+              <option value="all">{t("admin:schedulesScopeAll")}</option>
+              <option value="true">{t("admin:schedulesEnabledFilterEnabled")}</option>
+              <option value="false">{t("admin:schedulesEnabledFilterDisabled")}</option>
             </select>
           </label>
         </div>
@@ -392,7 +389,7 @@ export function AdminSchedules() {
               checked={includeGlobal}
               onChange={(e) => setIncludeGlobal(e.target.checked)}
             />
-            Include global schedules
+            {t("admin:schedulesIncludeGlobal")}
           </label>
         ) : null}
         <div className="mt-3 flex items-center justify-between gap-3">
@@ -403,14 +400,14 @@ export function AdminSchedules() {
               checked={includeArchived}
               onChange={(e) => setIncludeArchived(e.target.checked)}
             />
-            Show archived
+            {t("admin:schedulesShowArchived")}
           </label>
           <button
             type="button"
             className="rounded-md bg-violet-600/80 px-3 py-2 text-sm font-medium text-white hover:bg-violet-500"
             onClick={() => setCreateOpen(true)}
           >
-            Create schedule
+            {t("admin:schedulesCreate")}
           </button>
         </div>
       </div>
@@ -425,27 +422,27 @@ export function AdminSchedules() {
         <table className="w-full min-w-[840px] border-collapse text-left text-sm">
           <thead className="bg-black/30">
             <tr className="border-b border-surface-border text-surface-muted">
-              <th className="px-3 py-2 font-medium">Enabled</th>
-              <th className="px-3 py-2 font-medium">Target</th>
-              <th className="px-3 py-2 font-medium">Title</th>
-              <th className="px-3 py-2 font-medium">Interval</th>
-              <th className="px-3 py-2 font-medium">Dashboard</th>
-              <th className="px-3 py-2 font-medium">Last run</th>
-              <th className="px-3 py-2 font-medium">Created</th>
-              <th className="px-3 py-2 font-medium">Actions</th>
+              <th className="px-3 py-2 font-medium">{t("admin:schedulesEnabledFilter")}</th>
+              <th className="px-3 py-2 font-medium">{t("admin:schedulesTarget")}</th>
+              <th className="px-3 py-2 font-medium">{t("admin:schedulesColTitle")}</th>
+              <th className="px-3 py-2 font-medium">{t("admin:schedulesColInterval")}</th>
+              <th className="px-3 py-2 font-medium">{t("admin:schedulesDashboardId")}</th>
+              <th className="px-3 py-2 font-medium">{t("admin:schedulesColLastRun")}</th>
+              <th className="px-3 py-2 font-medium">{t("admin:created")}</th>
+              <th className="px-3 py-2 font-medium">{t("dashboard:actions")}</th>
             </tr>
           </thead>
           <tbody>
             {!jobs ? (
               <tr>
                 <td colSpan={8} className="px-3 py-10 text-center text-surface-muted">
-                  {loading ? "Loading…" : "No data yet."}
+                  {loading ? t("admin:loading") : t("admin:schedulesNoDataYet")}
                 </td>
               </tr>
             ) : jobs.length === 0 ? (
               <tr>
                 <td colSpan={8} className="px-3 py-10 text-center text-surface-muted">
-                  No schedules.
+                  {t("admin:schedulesNone")}
                 </td>
               </tr>
             ) : (
@@ -453,11 +450,11 @@ export function AdminSchedules() {
                 <tr key={j.id} className="border-b border-white/5">
                   <td className="px-3 py-2">
                     <span className={`rounded-md border px-2 py-0.5 text-xs ${pill(j.enabled)}`}>
-                      {j.enabled ? "enabled" : "disabled"}
+                      {j.enabled ? t("admin:schedulesEnabledLabel") : t("admin:schedulesDisabledLabel")}
                     </span>
                     {j.deleted_at ? (
                       <span className="ml-2 rounded-md border border-surface-border bg-white/5 px-2 py-0.5 text-xs text-surface-muted">
-                        archived
+                        {t("admin:schedulesArchivedLabel")}
                       </span>
                     ) : null}
                   </td>
@@ -478,28 +475,28 @@ export function AdminSchedules() {
                         className="rounded-md border border-surface-border px-2 py-1 text-xs text-neutral-100 hover:bg-white/5"
                         onClick={() => void toggleEnabled(j.id, !j.enabled)}
                       >
-                        {j.enabled ? "Disable" : "Enable"}
+                        {j.enabled ? t("admin:schedulesDisable") : t("admin:schedulesEnable")}
                       </button>
                       <button
                         type="button"
                         className="rounded-md border border-surface-border px-2 py-1 text-xs text-neutral-100 hover:bg-white/5"
                         onClick={() => openEdit(j)}
                       >
-                        Edit
+                        {t("admin:schedulesEdit")}
                       </button>
                       <button
                         type="button"
                         className="rounded-md border border-surface-border px-2 py-1 text-xs text-neutral-100 hover:bg-white/5"
                         onClick={() => void archiveJob(j.id, !j.deleted_at)}
                       >
-                        {j.deleted_at ? "Unarchive" : "Archive"}
+                        {j.deleted_at ? t("admin:schedulesUnarchive") : t("admin:schedulesArchive")}
                       </button>
                       <button
                         type="button"
                         className="rounded-md border border-red-500/30 bg-red-500/10 px-2 py-1 text-xs text-red-100 hover:bg-red-500/20"
                         onClick={() => void hardDelete(j.id)}
                       >
-                        Delete
+                        {t("admin:schedulesDelete")}
                       </button>
                     </div>
                   </td>
@@ -515,20 +512,20 @@ export function AdminSchedules() {
           <div className="w-full max-w-2xl rounded-xl border border-surface-border bg-surface-raised p-4">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
-                <div className="text-lg font-semibold text-white">Create schedule</div>
-                <div className="text-xs text-surface-muted">Writes a new row to scheduler_jobs.</div>
+                <div className="text-lg font-semibold text-white">{t("admin:createScheduleTitle")}</div>
+                <div className="text-xs text-surface-muted">{t("admin:createScheduleHelp")}</div>
               </div>
               <button
                 type="button"
                 className="rounded-md border border-surface-border px-3 py-1.5 text-xs text-neutral-100 hover:bg-white/5"
                 onClick={() => setCreateOpen(false)}
               >
-                Close
+                {t("admin:close")}
               </button>
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               <label className="text-xs text-surface-muted md:col-span-2">
-                Preset (optional)
+                {t("admin:schedulesPresetOptional")}
                 <select
                   className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
                   value={createPresetId}
@@ -569,7 +566,7 @@ export function AdminSchedules() {
               </label>
               {createNeedsWorkspace ? (
                 <label className="text-xs text-surface-muted md:col-span-2">
-                  Project workspace (required)
+                  {t("admin:schedulesWorkspaceRequired")}
                   <select
                     className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100 disabled:opacity-60"
                     value={createWorkspaceId}
@@ -578,10 +575,10 @@ export function AdminSchedules() {
                   >
                     <option value="">
                       {workspacesLoading
-                        ? "Loading workspaces…"
+                        ? t("admin:schedulesLoadingWorkspaces")
                         : workspaces.length === 0
-                          ? "No workspaces — create one in Coding Agent"
-                          : "— select workspace —"}
+                          ? t("admin:schedulesNoWorkspacesHint")
+                          : t("admin:schedulesSelectWorkspace")}
                     </option>
                     {workspaces.map((w) => (
                       <option key={w.id} value={w.id}>
@@ -618,25 +615,25 @@ export function AdminSchedules() {
                   className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
                   value={createTitle}
                   onChange={(e) => setCreateTitle(e.target.value)}
-                  placeholder="optional"
+                  placeholder={t("admin:optional")}
                 />
               </label>
               <label className="text-xs text-surface-muted md:col-span-2">
-                Dashboard id (optional UUID; blank = global)
+                {t("admin:schedulesDashboardIdOptional")}
                 <input
                   className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
                   value={createDashboardId}
                   onChange={(e) => setCreateDashboardId(e.target.value)}
-                  placeholder="optional"
+                  placeholder={t("admin:optional")}
                 />
               </label>
               <label className="text-xs text-surface-muted md:col-span-2">
-                <span>Instructions</span>
+                <span>{t("admin:instructionsPlaceholder")}</span>
                 <textarea
                   className="mt-1 min-h-[120px] w-full resize-y rounded-md border border-surface-border bg-black/30 px-2 py-2 text-sm text-neutral-100"
                   value={createInstructions}
                   onChange={(e) => setCreateInstructions(e.target.value)}
-                  placeholder="What should the agent do?"
+                  placeholder={t("admin:instructionsPlaceholder")}
                 />
               </label>
               <label className="flex items-center gap-2 text-xs text-surface-muted">
@@ -646,7 +643,7 @@ export function AdminSchedules() {
                   checked={createEnabled}
                   onChange={(e) => setCreateEnabled(e.target.checked)}
                 />
-                Enabled
+                {t("admin:schedulesEnabledFilter")}
               </label>
             </div>
             <div className="mt-4 flex items-center justify-end gap-2">
@@ -655,7 +652,7 @@ export function AdminSchedules() {
                 className="rounded-md border border-surface-border px-3 py-2 text-sm text-neutral-100 hover:bg-white/5"
                 onClick={() => setCreateOpen(false)}
               >
-                Cancel
+                {t("admin:cancel")}
               </button>
               <button
                 type="button"
@@ -666,7 +663,7 @@ export function AdminSchedules() {
                   (createNeedsWorkspace && !createWorkspaceId.trim())
                 }
               >
-                Create
+                {t("admin:create")}
               </button>
             </div>
           </div>
@@ -678,7 +675,7 @@ export function AdminSchedules() {
           <div className="w-full max-w-2xl rounded-xl border border-surface-border bg-surface-raised p-4">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
-                <div className="text-lg font-semibold text-white">Edit schedule</div>
+                <div className="text-lg font-semibold text-white">{t("admin:editScheduleTitle")}</div>
                 <div className="text-xs text-surface-muted font-mono">id: {editJob.id}</div>
               </div>
               <button
@@ -686,7 +683,7 @@ export function AdminSchedules() {
                 className="rounded-md border border-surface-border px-3 py-1.5 text-xs text-neutral-100 hover:bg-white/5"
                 onClick={() => setEditJob(null)}
               >
-                Close
+                {t("admin:close")}
               </button>
             </div>
             <div className="grid gap-3">

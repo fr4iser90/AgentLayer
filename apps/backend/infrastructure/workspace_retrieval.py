@@ -169,10 +169,20 @@ def index_status_payload(row: tuple | None) -> dict[str, Any]:
         "index_stale_reason": stale_info.get("reason"),
         "repo_tree": tree,
         "qdrant": qd,
+        "neo4j": neo4j_status(),
         "embedding": emb,
         "coding_enabled": bool(config.CODING_ENABLED),
         "index_job": index_job_for_status(api["id"]),
     }
+
+
+def neo4j_status() -> dict[str, Any]:
+    try:
+        from apps.backend.infrastructure.code_graph_neo4j import neo4j_status as _neo
+
+        return _neo()
+    except Exception as e:
+        return {"configured": False, "reachable": False, "error": str(e)[:200]}
 
 
 def _persist_docs_rag_result(
@@ -221,14 +231,100 @@ def _persist_index_result(
         conn.commit()
 
 
+def _run_docs_rag_phase(
+    workspace_id: str,
+    root: Path,
+    *,
+    track_progress: bool,
+    docs_on: bool,
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Ingest workspace ``*.md`` into pgvector when enabled."""
+    if not docs_on:
+        return None, None
+    if not operator_settings.rag_settings()["enabled"]:
+        return None, "RAG disabled (operator settings)"
+
+    if track_progress:
+        _index_job_set(workspace_id, phase="docs_rag", files_done=0, files_total=1)
+
+    try:
+        from apps.backend.domain.workspace_rag_ingest import ingest_workspace_markdown_tree
+
+        summary = ingest_workspace_markdown_tree(
+            uuid.UUID(workspace_id),
+            root,
+            purge_first=True,
+        )
+    except Exception as e:
+        logger.warning("workspace docs rag: %s", e)
+        if track_progress:
+            _index_job_set(workspace_id, phase="docs_rag", files_done=1, files_total=1)
+        return None, str(e)[:500]
+
+    docs_error: str | None = None
+    if not summary.get("ok"):
+        errs = summary.get("errors")
+        if isinstance(errs, list) and errs:
+            docs_error = str(errs[0].get("error", errs[0]))[:500]
+        else:
+            docs_error = str(summary.get("error") or "docs RAG ingest failed")[:500]
+
+    if track_progress:
+        _index_job_set(workspace_id, phase="docs_rag", files_done=1, files_total=1)
+
+    docs_stats = {
+        "files_ingested": summary.get("files_ingested"),
+        "chunk_count_total": summary.get("chunk_count_total"),
+        "purge_deleted_documents": summary.get("purge_deleted_documents"),
+    }
+    return docs_stats, docs_error
+
+
 def run_semantic_index(
     workspace_id: str,
     root_path: str | Path,
     *,
     max_files: int = _DEFAULT_MAX_FILES,
     track_progress: bool = False,
+    mode: str = "full",
 ) -> dict[str, Any]:
-    """Tree-sitter scan + Qdrant upsert; updates ``last_index_*`` columns."""
+    """Tree-sitter scan + Qdrant + Neo4j graph + optional workspace docs RAG."""
+    mode = (mode or "full").strip().lower()
+    if mode not in ("full", "code", "docs"):
+        mode = "full"
+
+    if mode == "docs":
+        root = Path(root_path)
+        if not root.exists() or not root.is_dir():
+            err = "workspace path not found"
+            _persist_docs_rag_result(workspace_id, stats={}, error=err)
+            if track_progress:
+                _index_job_set(
+                    workspace_id,
+                    status="failed",
+                    phase="failed",
+                    error=err,
+                    finished_at=datetime.now(UTC).isoformat(),
+                )
+            return {"ok": False, "error": err}
+        docs_stats, docs_error = _run_docs_rag_phase(
+            workspace_id, root, track_progress=track_progress, docs_on=True
+        )
+        stats: dict[str, Any] = {}
+        if docs_stats:
+            stats["docs_rag"] = docs_stats
+        _persist_docs_rag_result(workspace_id, stats=docs_stats or {}, error=docs_error)
+        ok = docs_error is None
+        if track_progress:
+            finished = datetime.now(UTC).isoformat()
+            _index_job_set(
+                workspace_id,
+                status="done" if ok else "failed",
+                phase="done" if ok else "failed",
+                finished_at=finished,
+                error=docs_error,
+            )
+        return {"ok": ok, "stats": stats, "docs_rag": docs_stats}
     from plugins.tools.capabilities.coding.coding_index_lib import (
         _HAS_TS,
         get_index,
@@ -313,76 +409,77 @@ def run_semantic_index(
         qdrant_error = str(e)[:500]
         logger.warning("workspace index qdrant: %s", e)
 
+    neo4j_edges = 0
+    neo4j_error: str | None = None
+    try:
+        from apps.backend.infrastructure.code_graph_neo4j import get_code_graph
+
+        graph = get_code_graph()
+        if graph.available():
+            file_list = list(idx._files.values())
+            neo4j_total = len(file_list)
+
+            def on_neo4j_progress(done: int, total: int) -> None:
+                _progress(phase="neo4j", files_done=done, files_total=total)
+
+            if track_progress:
+                _progress(phase="neo4j", files_done=0, files_total=neo4j_total)
+            neo4j_edges, neo4j_error = graph.upsert_workspace_files(
+                workspace_id,
+                file_list,
+                on_progress=on_neo4j_progress if track_progress else None,
+            )
+    except Exception as e:
+        neo4j_error = str(e)[:500]
+        logger.warning("workspace index neo4j: %s", e)
+
     stats = {
         "scan": scan_stats,
         "elapsed_sec": elapsed,
         "total_files": idx.file_count,
         "total_symbols": idx.symbol_count,
         "qdrant_indexed": qdrant_indexed,
+        "neo4j_edges": neo4j_edges,
     }
-    err = qdrant_error
+    err = qdrant_error or neo4j_error
     if qdrant_indexed == 0 and not qdrant_error:
         qd = qdrant_status()
         if not qd.get("reachable"):
             err = "Qdrant unreachable or embedding failed — check QDRANT_URL and EMBEDDING_*"
 
-    docs_rag_summary: dict[str, Any] | None = None
     docs_rag_error: str | None = None
-    try:
-        with db.pool().connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT docs_rag_enabled FROM project_workspaces WHERE id = %s",
-                    (workspace_id,),
-                )
-                dr = cur.fetchone()
-        docs_on = bool(dr[0]) if dr and dr[0] is not None else True
-    except Exception:
-        docs_on = True
-
-    if docs_on and operator_settings.rag_settings()["enabled"]:
-        if track_progress:
-            _progress(phase="docs_rag", files_done=0, files_total=1)
+    docs_on = True
+    if mode == "full":
         try:
-            from apps.backend.domain.workspace_rag_ingest import ingest_workspace_markdown_tree
+            with db.pool().connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT docs_rag_enabled FROM project_workspaces WHERE id = %s",
+                        (workspace_id,),
+                    )
+                    dr = cur.fetchone()
+            docs_on = bool(dr[0]) if dr and dr[0] is not None else True
+        except Exception:
+            docs_on = True
+        docs_stats, docs_rag_error = _run_docs_rag_phase(
+            workspace_id, root, track_progress=track_progress, docs_on=docs_on
+        )
+        if docs_stats:
+            stats["docs_rag"] = docs_stats
 
-            docs_rag_summary = ingest_workspace_markdown_tree(
-                uuid.UUID(workspace_id),
-                root,
-                purge_first=True,
-            )
-            if not docs_rag_summary.get("ok"):
-                errs = docs_rag_summary.get("errors")
-                if isinstance(errs, list) and errs:
-                    docs_rag_error = str(errs[0].get("error", errs[0]))[:500]
-                else:
-                    docs_rag_error = str(docs_rag_summary.get("error") or "docs RAG ingest failed")[:500]
-        except Exception as e:
-            docs_rag_error = str(e)[:500]
-            logger.warning("workspace docs rag: %s", e)
-        if track_progress:
-            _progress(phase="docs_rag", files_done=1, files_total=1)
-    elif docs_on:
-        docs_rag_error = "RAG disabled (operator settings)"
-
-    if docs_rag_summary is not None:
-        stats["docs_rag"] = {
-            "files_ingested": docs_rag_summary.get("files_ingested"),
-            "chunk_count_total": docs_rag_summary.get("chunk_count_total"),
-            "purge_deleted_documents": docs_rag_summary.get("purge_deleted_documents"),
-        }
     _persist_index_result(workspace_id, stats=stats, error=err)
-    _persist_docs_rag_result(
-        workspace_id,
-        stats=stats.get("docs_rag") or {},
-        error=docs_rag_error,
-    )
+    if mode == "full":
+        _persist_docs_rag_result(
+            workspace_id,
+            stats=stats.get("docs_rag") or {},
+            error=docs_rag_error,
+        )
 
-    code_ok = err is None or qdrant_indexed > 0
-    docs_ok = (
+    code_ok = err is None or qdrant_indexed > 0 or neo4j_edges > 0
+    docs_ok = mode != "full" or (
         not docs_on
         or docs_rag_error is None
-        or bool(docs_rag_summary and docs_rag_summary.get("files_ingested"))
+        or bool(stats.get("docs_rag", {}).get("files_ingested"))
     )
     ok = code_ok and docs_ok
     if track_progress:
@@ -410,19 +507,23 @@ def run_semantic_index(
         "ok": ok,
         "stats": stats,
         "qdrant_indexed": qdrant_indexed,
+        "neo4j_edges": neo4j_edges,
     }
     if err:
         out["error"] = err
+    if neo4j_error:
+        out["neo4j_error"] = neo4j_error
     return out
 
 
-def _run_index_job(workspace_id: str, root_path: str | Path, max_files: int) -> None:
+def _run_index_job(workspace_id: str, root_path: str | Path, max_files: int, mode: str = "full") -> None:
     try:
         run_semantic_index(
             workspace_id,
             root_path,
             max_files=max_files,
             track_progress=True,
+            mode=mode,
         )
     except Exception as e:
         logger.exception("workspace index job %s", workspace_id)
@@ -441,6 +542,7 @@ def start_semantic_index_async(
     root_path: str | Path,
     *,
     max_files: int = _DEFAULT_MAX_FILES,
+    mode: str = "full",
 ) -> dict[str, Any]:
     """Start background index; returns immediately with job snapshot."""
     existing = _index_job_get(workspace_id)
@@ -460,7 +562,7 @@ def start_semantic_index_async(
     )
     thread = threading.Thread(
         target=_run_index_job,
-        args=(workspace_id, root_path, max_files),
+        args=(workspace_id, root_path, max_files, mode),
         name=f"ws-index-{workspace_id[:8]}",
         daemon=True,
     )

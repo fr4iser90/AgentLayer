@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import {
@@ -93,6 +94,7 @@ type Props = {
  * Same completion API + `agent_dashboard_context` as the full Chat page.
  */
 export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = false }: Props) {
+  const { t } = useTranslation(["dashboard", "errors"]);
   const auth = useAuth();
   const { accessToken } = auth;
   const [open, setOpen] = useState(true);
@@ -132,7 +134,7 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
       } catch {
         if (!cancelled) {
           setModelRows([]);
-          setModelsCatalogHint("Could not load model catalog.");
+          setModelsCatalogHint(t("errors:loadModelCatalogFailed"));
         }
       } finally {
         if (!cancelled) setModelsCatalogReady(true);
@@ -259,7 +261,7 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
     );
     if (!routed) {
       setSendErr(
-        "Could not resolve model provider. Open the model list and pick an entry (provider in parentheses)."
+        t("dashboard:resolveModelProviderFailed")
       );
       return;
     }
@@ -269,8 +271,8 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
     let prev = thread;
     if (!prev) {
       const title = dashboardTitle?.trim()
-        ? `Assistant · ${dashboardTitle.trim()}`
-        : "Dashboard assistant";
+        ? t("dashboard:assistantTitleWithDashboard", { title: dashboardTitle.trim() })
+        : t("dashboard:assistantTitleFallback");
       try {
         const created = await createConversation(auth, {
           title,
@@ -439,7 +441,7 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
         className="flex w-full shrink-0 items-center justify-between gap-2 px-3 py-2.5 text-left text-sm font-medium text-white hover:bg-white/5 lg:py-2"
       >
         <span>
-          Assistant
+          {t("dashboard:assistant")}
           <span className="ml-1 font-normal text-surface-muted">
             {dashboardTitle ? `· ${dashboardTitle}` : ""}
           </span>
@@ -450,16 +452,14 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
         <div className="flex min-h-0 flex-1 flex-col border-t border-surface-border">
           <p className="shrink-0 px-3 pt-2 text-[11px] leading-snug text-surface-muted">
             {readOnly
-              ? "Team dashboard chat when available (read-only for your role). If the owner has not created a shared thread yet, this panel may be empty."
-              : "Private assistant: your first message creates the thread (no empty placeholder in main Chat). Text + images like main Chat."}
+              ? t("dashboard:embeddedChatTeamHint")
+              : t("dashboard:embeddedChatPrivateHint")}
           </p>
           {initLoading ? (
-            <div className="px-3 py-4 text-sm text-surface-muted">Loading chat…</div>
+            <div className="px-3 py-4 text-sm text-surface-muted">{t("dashboard:embeddedChatLoading")}</div>
           ) : noSharedChatYet && !thread ? (
             <div className="px-3 py-4 text-xs leading-snug text-surface-muted">
-              No dashboard chat visible for your role yet. Viewers need a <strong className="text-neutral-400">shared</strong>{" "}
-              team conversation (created with <code className="text-neutral-500">shared: true</code> on the API) to
-              see the same thread as others.
+              {t("dashboard:embeddedChatNoVisibleYet")}
             </div>
           ) : initErr ? (
             <div className="mx-3 mb-2 rounded border border-red-500/40 bg-red-950/30 px-2 py-2 text-xs text-red-200">
@@ -468,7 +468,7 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
           ) : (
             <>
               <div className="shrink-0 px-3 pt-2">
-                <label className="mb-0.5 block text-[10px] text-surface-muted">Model</label>
+                <label className="mb-0.5 block text-[10px] text-surface-muted">{t("dashboard:modelLabel")}</label>
                 <select
                   className="w-full rounded-lg border border-surface-border bg-black/30 px-2 py-1.5 text-xs text-white"
                   value={modelSelectValue}
@@ -493,9 +493,9 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
                   disabled={readOnly || !modelsCatalogReady || modelRows.length === 0}
                 >
                   {!modelsCatalogReady ? (
-                    <option value="">Loading…</option>
+                    <option value="">{t("dashboard:loading")}</option>
                   ) : modelRows.length === 0 ? (
-                    <option value="">{modelsCatalogHint ?? "No models."}</option>
+                    <option value="">{modelsCatalogHint ?? t("dashboard:noModels")}</option>
                   ) : (
                     modelRows.map((row) => (
                       <option key={modelCatalogSelectValue(row)} value={modelCatalogSelectValue(row)}>
@@ -518,8 +518,8 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
                   {messages.length === 0 ? (
                     <p className="text-xs text-surface-muted">
                       {thread
-                        ? "Ask questions or attach images (+) — same multimodal messages as the main Chat page."
-                        : "No conversation yet — send below to create your private thread (first message is stored)."}
+                        ? t("dashboard:embeddedChatEmptyWithThread")
+                        : t("dashboard:embeddedChatEmptyNoThread")}
                     </p>
                   ) : (
                     <ul className="flex flex-col gap-2">
@@ -533,7 +533,7 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
                           }`}
                         >
                           <span className="mb-0.5 block text-[9px] font-medium uppercase text-surface-muted">
-                            {m.role === "user" ? "You" : "Assistant"}
+                            {m.role === "user" ? t("dashboard:you") : t("dashboard:assistant")}
                           </span>
                           <div className="whitespace-pre-wrap">{m.content}</div>
                         </li>
@@ -568,12 +568,12 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
                       >
                         <span className="truncate" title={a.kind === "unsupported" ? a.hint : a.name}>
                           {a.name}
-                          {a.kind === "unsupported" ? " (skip)" : ""}
+                          {a.kind === "unsupported" ? t("dashboard:attachmentSkip") : ""}
                         </span>
                         <button
                           type="button"
                           className="text-surface-muted hover:text-white"
-                          aria-label="Remove"
+                          aria-label={t("dashboard:remove")}
                           onClick={() => setPendingAttachments((p) => p.filter((_, i) => i !== idx))}
                         >
                           ×
@@ -587,8 +587,8 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
                     type="button"
                     disabled={readOnly || sendLoading || !thread}
                     className="shrink-0 rounded-lg border border-white/10 bg-black/30 px-2.5 py-2 text-surface-muted hover:bg-white/5 hover:text-white disabled:opacity-40"
-                    title="Bild oder Textdatei anhängen"
-                    aria-label="Attach"
+                    title={t("dashboard:attachTitle")}
+                    aria-label={t("dashboard:attach")}
                     onClick={() => fileInputRef.current?.click()}
                   >
                     +
@@ -603,7 +603,7 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
                         void send();
                       }
                     }}
-                    placeholder="Message…"
+                    placeholder={t("dashboard:messagePlaceholder")}
                     className="min-w-0 flex-1 rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-500/50"
                     disabled={readOnly || sendLoading || !thread}
                   />
@@ -613,7 +613,7 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
                     onClick={() => void send()}
                     className="shrink-0 rounded-lg bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
                   >
-                    Send
+                    {t("dashboard:send")}
                   </button>
                 </div>
               </div>

@@ -1,24 +1,17 @@
 import { useOperatorSettings } from "../../../features/admin/operatorSettings/OperatorSettingsProvider";
+import { useTranslation } from "react-i18next";
 
 export function AdminInterfacesLlmSection() {
+  const { t } = useTranslation(["admin"]);
   const s = useOperatorSettings();
   if (s.loading) {
-    return <p className="text-sm text-surface-muted">Loading…</p>;
+    return <p className="text-sm text-surface-muted">{t("admin:loading")}</p>;
   }
   return (
     <>
           <section className="rounded-xl border border-surface-border bg-surface-raised p-5">
-            <h2 className="text-sm font-medium text-white">LLM-Endpoints (Chat-Provider)</h2>
-            <p className="mt-2 text-xs text-surface-muted">
-              Jeder Eintrag = ein Provider im Chat-Model-Dropdown (<span className="font-mono">external_1</span>,{" "}
-              <span className="font-mono">external_2</span>, …). URL + Key eintragen, speichern, dann im Chat Provider
-              und Modell wählen (<span className="font-mono">agent_model_catalog_owned_by</span>). OpenAI-kompatibel:
-              OpenAI, Groq, Gemini, llama.cpp, …               Zusätzlich aus <span className="font-mono">.env</span>:{" "}
-              <span className="font-mono">OLLAMA_BASE_URL</span> → <span className="font-mono">ollama</span>,{" "}
-              <span className="font-mono">LLAMA_CPP_*</span> → <span className="font-mono">llama_cpp</span>.{" "}
-              <span className="text-white/85">Embeddings</span> (RAG/Memory):{" "}
-              <span className="text-sky-400/90">Interfaces → Memory &amp; RAG</span>.
-            </p>
+            <h2 className="text-sm font-medium text-white">{t("admin:ifLlmEndpointsTitle")}</h2>
+            <p className="mt-2 text-xs text-surface-muted">{t("admin:ifLlmEndpointsIntro")}</p>
             <div className="mt-4 flex flex-wrap gap-2">
               <button
                 type="button"
@@ -42,7 +35,7 @@ export function AdminInterfacesLlmSection() {
                   ])
                 }
               >
-                Endpoint hinzufügen
+                {t("admin:ifMemAddEndpoint")}
               </button>
               <button
                 type="button"
@@ -50,7 +43,7 @@ export function AdminInterfacesLlmSection() {
                 disabled={s.extLlmModelsLoading}
                 onClick={() => void s.loadExternalModels()}
               >
-                {s.extLlmModelsLoading ? "Lade Modelle…" : "Modelle laden (erster Endpoint mit URL)"}
+                {s.extLlmModelsLoading ? t("admin:ifMemLoadingModels") : t("admin:ifMemLoadModelsLlm")}
               </button>
             </div>
             {s.extLlmModelsHint ? (
@@ -76,7 +69,7 @@ export function AdminInterfacesLlmSection() {
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="text-xs font-medium text-surface-muted">
-                      Endpoint {idx + 1}
+                      {t("admin:ifMemEndpointN", { n: idx + 1 })}
                       {ep.id != null ? (
                         <span className="ml-2 font-mono text-neutral-500">id={ep.id}</span>
                       ) : null}
@@ -117,12 +110,12 @@ export function AdminInterfacesLlmSection() {
                           s.setExtLlmEndpoints((prev) => prev.filter((_, j) => j !== idx))
                         }
                       >
-                        Entfernen
+                        {t("admin:ifLlmRemove")}
                       </button>
                     </div>
                   </div>
                   <label className="mt-2 block text-xs text-surface-muted" htmlFor={`ep-lbl-${ep.localKey}`}>
-                    Label (optional)
+                    {t("admin:ifLlmLabelOptional")}
                   </label>
                   <input
                     id={`ep-lbl-${ep.localKey}`}
@@ -134,10 +127,10 @@ export function AdminInterfacesLlmSection() {
                         prev.map((x, j) => (j === idx ? { ...x, label: v } : x))
                       );
                     }}
-                    placeholder="z. B. Google, OpenAI Backup"
+                    placeholder={t("admin:ifLlmEndpointLabelPlaceholder")}
                   />
                   <label className="mt-3 block text-xs text-surface-muted" htmlFor={`ep-url-${ep.localKey}`}>
-                    Base URL
+                    {t("admin:ifMemBaseUrlLabel")}
                   </label>
                   <input
                     id={`ep-url-${ep.localKey}`}
@@ -149,14 +142,15 @@ export function AdminInterfacesLlmSection() {
                         prev.map((x, j) => (j === idx ? { ...x, baseUrl: v } : x))
                       );
                     }}
-                    placeholder="https://api.openai.com"
+                    placeholder={t("admin:ifLlmBaseUrlPlaceholder")}
                     autoComplete="off"
                   />
                   <p className="mt-1 text-xs text-surface-muted">
-                    Key: {ep.apiKeyConfigured ? "gespeichert" : "—"}
+                    {t("admin:ifMemKeyLabel")}{" "}
+                    {ep.apiKeyConfigured ? t("admin:ifMemKeyStored") : t("admin:ifMemKeyEmpty")}
                   </p>
                   <label className="mt-2 block text-xs text-surface-muted" htmlFor={`ep-key-${ep.localKey}`}>
-                    API-Key (leer lassen = gespeicherten Key behalten)
+                    {t("admin:ifMemApiKeyLabel")}
                   </label>
                   <input
                     id={`ep-key-${ep.localKey}`}
@@ -170,10 +164,12 @@ export function AdminInterfacesLlmSection() {
                         prev.map((x, j) => (j === idx ? { ...x, apiKey: v } : x))
                       );
                     }}
-                    placeholder={ep.apiKeyConfigured ? "•••• (neu = ersetzen)" : "Key einfügen"}
+                    placeholder={
+                      ep.apiKeyConfigured ? t("admin:tokenReplacePlaceholder") : t("admin:ifMemPasteKey")
+                    }
                   />
                   <h4 className="mt-4 text-xs font-medium uppercase tracking-wide text-surface-muted">
-                    Modell-IDs (OpenAI-Namen)
+                    {t("admin:ifLlmModelIdsTitle")}
                   </h4>
                   <div className="mt-2 grid gap-3 sm:grid-cols-2">
                     <div>
@@ -249,21 +245,13 @@ export function AdminInterfacesLlmSection() {
               ))}
             </div>
             {s.extLlmEndpoints.length === 0 ? (
-              <p className="mt-4 text-xs text-amber-300/90">
-                Noch keine Endpoints — <span className="font-mono">ollama</span> /{" "}
-                <span className="font-mono">llama_cpp</span> aus <span className="font-mono">.env</span> oder Endpoint
-                hinzufügen.
-              </p>
+              <p className="mt-4 text-xs text-amber-300/90">{t("admin:ifLlmNoEndpoints")}</p>
             ) : null}
           </section>
 
           <section className="mt-6 rounded-xl border border-surface-border bg-surface-raised p-5">
-            <h2 className="text-sm font-medium text-white">Smart LLM-Routing (optional)</h2>
-            <p className="mt-2 text-xs text-surface-muted">
-              Experimentell: Heuristik + kleines Router-Modell auf <span className="font-mono">OLLAMA_BASE_URL</span>.
-              Der Chat nutzt sonst den im Composer gewählten Katalog-Provider — Smart Routing ersetzt diesen Schalter
-              nicht. Nur sinnvoll, wenn du parallel lokales Ollama und externe APIs nutzt.
-            </p>
+            <h2 className="text-sm font-medium text-white">{t("admin:ifLlmSmartRoutingTitle")}</h2>
+            <p className="mt-2 text-xs text-surface-muted">{t("admin:ifLlmSmartRoutingIntro")}</p>
             <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-white">
               <input
                 type="checkbox"
@@ -271,23 +259,23 @@ export function AdminInterfacesLlmSection() {
                 checked={s.llmSmartRouting}
                 onChange={(e) => s.setLlmSmartRouting(e.target.checked)}
               />
-              Smart Routing aktivieren
+              {t("admin:ifLlmSmartRoutingEnable")}
             </label>
             <label className="mt-4 block text-xs text-surface-muted" htmlFor="llm-router-model">
-              Router-Modell (Ollama, klein, z. B. 3–6B)
+              {t("admin:ifLlmRouterModel")}
             </label>
             <input
               id="llm-router-model"
               className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
               value={s.llmRouterModel}
               onChange={(e) => s.setLlmRouterModel(e.target.value)}
-              placeholder="nemotron-3-nano:4b"
+              placeholder={t("admin:ollamaModelIdPlaceholder")}
               autoComplete="off"
             />
             <div className="mt-4 grid max-w-xl gap-3 sm:grid-cols-2">
               <div>
                 <label className="block text-xs text-surface-muted" htmlFor="llm-router-conf">
-                  Min. Konfidenz für „lokal“ (0–1)
+                  {t("admin:ifLlmRouterConfMin")}
                 </label>
                 <input
                   id="llm-router-conf"
@@ -302,7 +290,7 @@ export function AdminInterfacesLlmSection() {
               </div>
               <div>
                 <label className="block text-xs text-surface-muted" htmlFor="llm-router-to">
-                  Router-Timeout (Sekunden, 1–120)
+                  {t("admin:ifLlmRouterTimeout")}
                 </label>
                 <input
                   id="llm-router-to"
@@ -317,7 +305,7 @@ export function AdminInterfacesLlmSection() {
               </div>
               <div>
                 <label className="block text-xs text-surface-muted" htmlFor="llm-route-long">
-                  Lange letzte User-Nachricht ab (Zeichen) → eher extern
+                  {t("admin:ifLlmRouteLongChars")}
                 </label>
                 <input
                   id="llm-route-long"
@@ -331,7 +319,7 @@ export function AdminInterfacesLlmSection() {
               </div>
               <div>
                 <label className="block text-xs text-surface-muted" htmlFor="llm-route-short">
-                  Kurze Nachricht bis (Zeichen) → eher lokal
+                  {t("admin:ifLlmRouteShortChars")}
                 </label>
                 <input
                   id="llm-route-short"
@@ -345,7 +333,7 @@ export function AdminInterfacesLlmSection() {
               </div>
               <div>
                 <label className="block text-xs text-surface-muted" htmlFor="llm-route-fences">
-                  Code-Blöcke (Schwelle, ≥)
+                  {t("admin:ifLlmRouteFences")}
                 </label>
                 <input
                   id="llm-route-fences"
@@ -359,7 +347,7 @@ export function AdminInterfacesLlmSection() {
               </div>
               <div>
                 <label className="block text-xs text-surface-muted" htmlFor="llm-route-msgs">
-                  Viele Turns (über) → eher extern
+                  {t("admin:ifLlmRouteManyMsgs")}
                 </label>
                 <input
                   id="llm-route-msgs"

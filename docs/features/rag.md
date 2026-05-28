@@ -49,13 +49,13 @@ Chunking, timeouts, model id (`rag_embedding_model`), and vector width remain in
 Both routes require a Bearer token for a user with **`role=admin`**:
 
 - `POST /v1/admin/rag/ingest` — body: `text`, optional `domain`, `title`, `source_uri`
-- `POST /v1/admin/rag/ingest-docs` — optional JSON: `docs_root`, `domain` (default `agentlayer_docs`), `purge_first` (default `true`). Walks `*.md` under `docs_root`, embeds each file, and (when purging) removes prior rows for that **tenant + domain** so reindex stays clean.
+- `POST /v1/admin/rag/ingest-docs` — optional JSON: `docs_root`, `domain` (default `agentlayer_docs`), `purge_first` (default `false`), `incremental` (default `true`). Walks `*.md` under `docs_root`. **Incremental** (default): skip files whose `content_sha256` matches the DB row for the same `source_uri`; remove DB rows for files no longer on disk; full re-embed when embedding model/dim or chunk settings change (stored **ingest fingerprint** in `operator_settings`). Set `purge_first: true` for a full rebuild of that tenant + domain.
 
 CLI helper (stdlib HTTP only):
 
 - `scripts/reindex_agentlayer_docs.py` — uses `AGENT_BASE_URL`, `AGENT_ADMIN_TOKEN`, optional `AGENT_INGEST_DOCS_JSON`
 
-On each API process start, the server **attempts** to re-ingest all `docs/**/*.md` into domain `agentlayer_docs` (purge tenant rows for that domain first), using the oldest admin user as row owner, when a docs directory exists. If the embedding stack is not configured or the backend is unreachable, that pass is skipped or logged and the API still starts.
+On each API process start, the server **attempts** an **incremental** sync of `docs/**/*.md` into domain `agentlayer_docs` (no purge unless embedding/chunk config changed), using the oldest admin user as row owner, when a docs directory exists. If the embedding stack is not configured or the backend is unreachable, that pass is skipped or logged and the API still starts.
 
 Recommended `domain` values:
 

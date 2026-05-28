@@ -1,6 +1,8 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useMemo } from "react";
 import { Bar, Doughnut, Line, Pie } from "react-chartjs-2";
+import { useTranslation } from "react-i18next";
+import i18n from "../../../i18n/config";
 
 import "./chartRegister";
 
@@ -45,17 +47,17 @@ export function readChartData(raw: unknown): ChartDataState {
   const series: { label: string; data: number[] }[] = serRaw.map((s) => {
     const o = s && typeof s === "object" && !Array.isArray(s) ? (s as Record<string, unknown>) : {};
     const data = Array.isArray(o.data) ? o.data.map((n) => Number(n) || 0) : [];
-    return { label: String(o.label ?? "Serie"), data };
+    return { label: String(o.label ?? i18n.t("dashboard:chartSeriesDefault")), data };
   });
   if (series.length === 0) {
-    series.push({ label: "Serie 1", data: [0, 0, 0] });
+    series.push({ label: i18n.t("dashboard:chartSeriesOne"), data: [0, 0, 0] });
   }
   const need = Math.max(
     labels.length,
     ...series.map((s) => s.data.length),
     1
   );
-  while (labels.length < need) labels.push(`L${labels.length + 1}`);
+  while (labels.length < need) labels.push(i18n.t("dashboard:chartAxisLabel", { n: labels.length + 1 }));
   labels = labels.slice(0, need);
   for (const s of series) {
     while (s.data.length < need) s.data.push(0);
@@ -112,6 +114,7 @@ export function ChartBlockBody(props: {
   sectionTitle: string;
   readOnly: boolean;
 }) {
+  const { t } = useTranslation(["dashboard"]);
   const { dp, data, setData, sectionTitle, readOnly } = props;
   const chart = readChartData(dp ? getPath(data, dp) : undefined);
 
@@ -171,7 +174,7 @@ export function ChartBlockBody(props: {
       {!readOnly ? (
         <div className="dashboard-grid-no-drag mt-4 space-y-3 border-t border-white/5 pt-4">
           <div>
-            <label className="mb-1 block text-[10px] uppercase text-surface-muted">Diagrammtyp</label>
+            <label className="mb-1 block text-[10px] uppercase text-surface-muted">{t("dashboard:chartTypeLabel")}</label>
             <select
               className="w-full rounded-md border border-surface-border bg-black/40 px-2 py-1.5 text-xs text-neutral-100"
               value={chart.chartType}
@@ -181,15 +184,15 @@ export function ChartBlockBody(props: {
                 })
               }
             >
-              <option value="line">Linie</option>
-              <option value="bar">Balken</option>
-              <option value="pie">Kuchen</option>
-              <option value="doughnut">Donut</option>
+              <option value="line">{t("dashboard:chartTypeLine")}</option>
+              <option value="bar">{t("dashboard:chartTypeBar")}</option>
+              <option value="pie">{t("dashboard:chartTypePie")}</option>
+              <option value="doughnut">{t("dashboard:chartTypeDoughnut")}</option>
             </select>
           </div>
           <div>
             <label className="mb-1 block text-[10px] uppercase text-surface-muted">
-              Kategorien (eine pro Zeile)
+              {t("dashboard:chartCategoriesLabel")}
             </label>
             <textarea
               className="min-h-[72px] w-full rounded-md border border-surface-border bg-black/40 px-2 py-1.5 text-xs text-neutral-100"
@@ -217,7 +220,7 @@ export function ChartBlockBody(props: {
           {chart.series.map((s, si) => (
             <div key={si} className="rounded-lg border border-white/5 bg-black/20 p-2">
               <div className="mb-1 flex items-center justify-between gap-2">
-                <span className="text-[10px] text-surface-muted">Serie {si + 1}</span>
+                <span className="text-[10px] text-surface-muted">{t("dashboard:chartSeriesN", { n: si + 1 })}</span>
                 {chart.series.length > 1 ? (
                   <button
                     type="button"
@@ -229,14 +232,14 @@ export function ChartBlockBody(props: {
                       }))
                     }
                   >
-                    Entfernen
+                    {t("dashboard:remove")}
                   </button>
                 ) : null}
               </div>
               <input
                 type="text"
                 className="mb-2 w-full rounded border border-surface-border bg-black/40 px-2 py-1 text-xs text-white"
-                placeholder="Bezeichnung"
+                placeholder={t("dashboard:chartSeriesLabelPlaceholder")}
                 value={s.label}
                 onChange={(e) =>
                   patchChart(dp, setData, (prev) => {
@@ -247,7 +250,7 @@ export function ChartBlockBody(props: {
                 }
               />
               <label className="mb-1 block text-[10px] text-surface-muted">
-                Werte (Komma-getrennt, Reihenfolge wie Kategorien)
+                {t("dashboard:chartValuesLabel")}
               </label>
               <input
                 type="text"
@@ -258,7 +261,7 @@ export function ChartBlockBody(props: {
                   patchChart(dp, setData, (prev) => {
                     const need = Math.max(prev.labels.length, parts.length, 1);
                     let labels = [...prev.labels];
-                    while (labels.length < need) labels.push(`L${labels.length + 1}`);
+                    while (labels.length < need) labels.push(i18n.t("dashboard:chartAxisLabel", { n: labels.length + 1 }));
                     labels = labels.slice(0, need);
                     const series = [...prev.series];
                     const d = [...parts];
@@ -288,7 +291,7 @@ export function ChartBlockBody(props: {
                 })
               }
             >
-              + Serie
+              {t("dashboard:chartAddSeries")}
             </button>
           ) : null}
         </div>
@@ -312,6 +315,7 @@ export function SparklineBlockBody(props: {
   sectionTitle: string;
   readOnly: boolean;
 }) {
+  const { t } = useTranslation(["dashboard"]);
   const { dp, data, setData, sectionTitle, readOnly } = props;
   const values = readSparklineValues(dp ? getPath(data, dp) : undefined);
 
@@ -359,7 +363,7 @@ export function SparklineBlockBody(props: {
       </div>
       {!readOnly ? (
         <div className="dashboard-grid-no-drag mt-3">
-          <label className="mb-1 block text-[10px] text-surface-muted">Werte (Komma-getrennt)</label>
+          <label className="mb-1 block text-[10px] text-surface-muted">{t("dashboard:sparklineValuesLabel")}</label>
           <input
             type="text"
             className="w-full rounded-md border border-surface-border bg-black/40 px-2 py-1.5 text-xs text-neutral-100"

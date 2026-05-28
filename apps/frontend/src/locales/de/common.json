@@ -9,6 +9,8 @@
     "studio": "Bildgenerierung",
     "dashboard": "Arbeitsbereich",
     "schedules": "Zeitpläne",
+    "tasks": "Aufgaben",
+    "shares": "Shares",
     "signIn": "Anmelden"
   },
   "footer": {
@@ -16,6 +18,7 @@
     "docs": "Dokumentation",
     "brand": "Agent Layer"
   },
+  "settings": "Einstellungen",
   "userMenu": {
     "account": "Konto",
     "settings": "Einstellungen",
@@ -26,5 +29,34 @@
     "label": "Sprache",
     "en": "Englisch",
     "de": "Deutsch"
+  },
+  "home": {
+    "intro": "First-Party-UI auf derselben Origin wie die API. Operatoren mit Admin-Rolle öffnen Admin für Connection-Keys, Tools und Registry-Aktionen.",
+    "chatDesc": "Open-WebUI-ähnliche Shell (P2: WebSocket)",
+    "studioDesc": "ComfyUI-Presets — GET /v1/studio/catalog",
+    "tasksDesc": "Globales und projektbezogenes Backlog — Task beim Chatten binden",
+    "dashboardDesc": "Mehrere Arten (u. a. Aufgaben, Freunde, Haustiere) — Schema einmal installieren, dann Dashboards anlegen"
+  },
+  "docs": {
+    "title": "Dokumentation",
+    "intro": "API- und UI-Verträge liegen im Repo unter docs/. Datei auf GitHub öffnen oder Projekt klonen und lokal bearbeiten.",
+    "repository": "Repository",
+    "docsFolder": "docs/ (Ordner)",
+    "webuiContract": "WEBUI_CONTRACT.md",
+    "frontendPlan": "FRONTEND_AGENT_UI_PLAN.md"
+  },
+  "studio": {
+    "title": "Bildgenerierung",
+    "inpaint": "Inpaint",
+    "subtitle": "ComfyUI-Workflows. Presets und Checkpoints kommen vom Server-Katalog; ComfyUI-URLs in Operator-Settings / .env konfigurieren.",
+    "catalogFromServer": "Katalog vom Server",
+    "reloadCatalog": "Katalog neu laden",
+    "run": "Ausführen",
+    "running": "Läuft…",
+    "catalogLoadFailed": "Katalog konnte nicht geladen werden",
+    "requestFailed": "Anfrage fehlgeschlagen",
+    "result": "Ergebnis",
+    "generatedImageAlt": "Generiertes Bild",
+    "noPresetSelected": "Kein Preset ausgewählt."
   }
 }

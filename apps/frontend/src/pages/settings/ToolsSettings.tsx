@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { isPackageEnabledForChat, setPackageEnabledForChat } from "../../features/settings/toolPrefs";
@@ -41,21 +42,20 @@ const CATEGORY_ORDER = [
   "system",
 ] as const;
 
-const CATEGORY_LABEL: Record<string, string> = {
-  productivity: "Productivity",
-  knowledge: "Knowledge",
-  developer: "Developer",
-  creative: "Creative",
-  outdoor: "Outdoor",
-  system: "System & Admin",
+const CATEGORY_LABEL_KEY: Record<string, string> = {
+  productivity: "settings:toolsCategoryProductivity",
+  knowledge: "settings:toolsCategoryKnowledge",
+  developer: "settings:toolsCategoryDeveloper",
+  creative: "settings:toolsCategoryCreative",
+  outdoor: "settings:toolsCategoryOutdoor",
+  system: "settings:toolsCategorySystem",
 };
 
-/** Optional friendlier copy for recommendation strip (Phase 3). */
-const SETUP_HINTS: Record<string, string> = {
-  gmail: "Connect Gmail to search and summarize emails.",
-  github: "Add a GitHub token to search repositories and read files.",
-  google_calendar: "Add your calendar URL so events can be listed.",
-  openweather: "Add an OpenWeather API key for live forecasts.",
+const SETUP_HINT_KEY: Record<string, string> = {
+  gmail: "settings:toolsHintGmail",
+  github: "settings:toolsHintGithub",
+  google_calendar: "settings:toolsHintGoogleCalendar",
+  openweather: "settings:toolsHintOpenweather",
 };
 
 type TabId = "all" | "enabled" | "needs_setup" | "high_risk";
@@ -79,12 +79,12 @@ function isHighRisk(m: ToolsMeta): boolean {
 
 function matchesSearch(m: ToolsMeta, q: string): boolean {
   if (!q.trim()) return true;
-  const t = q.trim().toLowerCase();
+  const needle = q.trim().toLowerCase();
   const id = (m.id || "").toLowerCase();
   const dn = (m.ui?.display_name || m.TOOL_LABEL || "").toLowerCase();
   const tg = (m.ui?.tagline || m.TOOL_DESCRIPTION || "").toLowerCase();
   const tools = (m.tools ?? []).join(" ").toLowerCase();
-  return id.includes(t) || dn.includes(t) || tg.includes(t) || tools.includes(t);
+  return id.includes(needle) || dn.includes(needle) || tg.includes(needle) || tools.includes(needle);
 }
 
 function buildFunctionIndex(chatTools: unknown[]): Map<string, ChatToolFunction> {
@@ -124,17 +124,23 @@ function categoryAnalytics(items: ToolsMeta[], services: string[]) {
   return { total: items.length, ready, needSetup, enabled };
 }
 
-function recommendationForPackage(m: ToolsMeta, missing: string[], display: string): string {
+function recommendationForPackage(
+  m: ToolsMeta,
+  missing: string[],
+  display: string,
+  tr: (key: string, opts?: Record<string, unknown>) => string
+): string {
   const mid = (m.id || "").trim();
   for (const k of missing) {
-    const hint = SETUP_HINTS[k];
-    if (hint) return hint;
+    const hintKey = SETUP_HINT_KEY[k];
+    if (hintKey) return tr(hintKey);
   }
-  if (mid && SETUP_HINTS[mid]) return SETUP_HINTS[mid];
-  return `Add credentials (${missing.join(", ")}) under Connections to use ${display}.`;
+  if (mid && SETUP_HINT_KEY[mid]) return tr(SETUP_HINT_KEY[mid]);
+  return tr("settings:toolsRecommendationMissing", { keys: missing.join(", "), display });
 }
 
 export function ToolsSettings() {
+  const { t } = useTranslation(["settings"]);
   const auth = useAuth();
   const [meta, setMeta] = useState<ToolsMeta[]>([]);
   const [chatSpecs, setChatSpecs] = useState<unknown[]>([]);
@@ -162,7 +168,7 @@ export function ToolsSettings() {
       if (!res.ok) {
         setMeta([]);
         setChatSpecs([]);
-        setMsg(typeof data.detail === "string" ? data.detail : "Could not load tools");
+        setMsg(typeof data.detail === "string" ? data.detail : t("settings:toolsLoadFailed"));
         return;
       }
       setMeta(Array.isArray(data.tools_meta) ? data.tools_meta : []);
@@ -225,16 +231,20 @@ export function ToolsSettings() {
     const ordered: { cat: string; label: string; items: ToolsMeta[] }[] = [];
     for (const c of CATEGORY_ORDER) {
       const items = map.get(c);
-      if (items?.length) ordered.push({ cat: c, label: CATEGORY_LABEL[c] ?? c, items });
+      if (items?.length) {
+        const key = CATEGORY_LABEL_KEY[c];
+        ordered.push({ cat: c, label: key ? t(key) : c, items });
+      }
     }
     const orderSet = new Set<string>(CATEGORY_ORDER);
     for (const [c, items] of map.entries()) {
       if (!orderSet.has(c) && items.length) {
-        ordered.push({ cat: c, label: CATEGORY_LABEL[c] ?? c, items });
+        const key = CATEGORY_LABEL_KEY[c];
+        ordered.push({ cat: c, label: key ? t(key) : c, items });
       }
     }
     return ordered;
-  }, [searched]);
+  }, [searched, t]);
 
   const recommendations = useMemo(() => {
     const out: { id: string; title: string; body: string }[] = [];
@@ -247,7 +257,7 @@ export function ToolsSettings() {
       out.push({
         id: (m.id || "").trim(),
         title,
-        body: recommendationForPackage(m, missing, title),
+        body: recommendationForPackage(m, missing, title, t),
       });
     }
     return out.slice(0, 6);
@@ -283,33 +293,33 @@ export function ToolsSettings() {
     const names = (m.tools ?? []).filter((x): x is string => typeof x === "string" && !!x.trim());
     const first = names[0] || "tools";
     const title = (m.ui?.display_name || m.id || "").trim();
-    return `Use the ${first} tool (${title}). Run it with minimal arguments to verify it works.`;
+    return t("settings:toolsTryPromptVerify", { tool: first, title });
   }
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 pb-12">
       <div>
-        <h1 className="text-lg font-semibold text-white">Tools</h1>
+        <h1 className="text-lg font-semibold text-white">{t("settings:toolsTitle")}</h1>
         <p className="mt-2 text-sm text-surface-muted">
-          Packages come from <code className="rounded bg-white/5 px-1 text-xs">GET /v1/tools</code> (operator policy
-          applied). Opt out per package on <strong className="text-neutral-300">this browser</strong> — requests send{" "}
-          <code className="rounded bg-white/5 px-1 text-xs">agent_disabled_tools</code>. Credentials:{" "}
+          {t("settings:toolsIntro")}{" "}
           <Link to="/settings/connections" className="text-sky-400 hover:text-sky-300 hover:underline">
-            Connections
+            {t("settings:toolsConnectionsLink")}
           </Link>
           .
         </p>
       </div>
 
       {msg ? <p className="text-sm text-amber-400">{msg}</p> : null}
-      {loading ? <p className="text-sm text-surface-muted">Loading…</p> : null}
+      {loading ? <p className="text-sm text-surface-muted">{t("settings:toolsLoading")}</p> : null}
 
       {!loading && recommendations.length > 0 ? (
         <section
           className="rounded-xl border border-sky-500/25 bg-sky-500/5 px-4 py-3"
-          aria-label="Setup suggestions"
+          aria-label={t("settings:toolsSetupSuggestionsAria")}
         >
-          <p className="text-xs font-semibold uppercase tracking-wide text-sky-200/90">Suggested next steps</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-sky-200/90">
+            {t("settings:toolsSuggestedNextSteps")}
+          </p>
           <ul className="mt-2 space-y-2 text-sm text-neutral-200">
             {recommendations.map((r) => (
               <li key={r.id} className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between">
@@ -318,7 +328,7 @@ export function ToolsSettings() {
                   to="/settings/connections"
                   className="shrink-0 text-xs font-medium text-sky-400 hover:text-sky-300 hover:underline"
                 >
-                  Open Connections
+                  {t("settings:toolsOpenConnections")}
                 </Link>
               </li>
             ))}
@@ -329,22 +339,26 @@ export function ToolsSettings() {
       {!loading && meta.length > 0 ? (
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <label className="block max-w-md flex-1 text-sm text-surface-muted">
-            Search
+            {t("settings:toolsSearchLabel")}
             <input
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Gmail, files, weather, kb…"
+              placeholder={t("settings:toolsSearchPlaceholder")}
               className="mt-1 w-full rounded-lg border border-surface-border bg-black/40 px-3 py-2 text-sm text-white placeholder:text-neutral-600"
             />
           </label>
-          <div className="flex flex-wrap gap-1" role="tablist" aria-label="Filter packages">
+          <div
+            className="flex flex-wrap gap-1"
+            role="tablist"
+            aria-label={t("settings:toolsFilterPackagesAria")}
+          >
             {(
               [
-                ["all", "All"],
-                ["enabled", "Enabled"],
-                ["needs_setup", "Needs setup"],
-                ["high_risk", "High risk"],
+                ["all", t("settings:toolsTabAll")],
+                ["enabled", t("settings:toolsTabEnabled")],
+                ["needs_setup", t("settings:toolsTabNeedsSetup")],
+                ["high_risk", t("settings:toolsTabHighRisk")],
               ] as const
             ).map(([id, label]) => (
               <button
@@ -378,8 +392,12 @@ export function ToolsSettings() {
                 <div>
                   <h2 className="text-sm font-semibold text-white">{g.label}</h2>
                   <p className="text-[11px] text-surface-muted">
-                    {stats.total} packages · {stats.ready}/{stats.total} ready · {stats.enabled} enabled ·{" "}
-                    {stats.needSetup} needs setup
+                    {t("settings:toolsCategoryStats", {
+                      total: stats.total,
+                      ready: stats.ready,
+                      enabled: stats.enabled,
+                      needSetup: stats.needSetup,
+                    })}
                   </p>
                 </div>
                 <span className="text-surface-muted">{open ? "▲" : "▼"}</span>
@@ -414,40 +432,40 @@ export function ToolsSettings() {
                             <div className="flex flex-wrap justify-end gap-1">
                               {enabled ? (
                                 <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] text-emerald-200">
-                                  On
+                                  {t("settings:toolsBadgeOn")}
                                 </span>
                               ) : (
                                 <span className="rounded bg-neutral-500/20 px-1.5 py-0.5 text-[10px] text-neutral-400">
-                                  Off
+                                  {t("settings:toolsBadgeOff")}
                                 </span>
                               )}
                               {missing.length ? (
                                 <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-200">
-                                  Needs secret
+                                  {t("settings:toolsBadgeNeedsSecret")}
                                 </span>
                               ) : reqs.length ? (
                                 <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-200/90">
-                                  Ready
+                                  {t("settings:toolsBadgeReady")}
                                 </span>
                               ) : (
                                 <span className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-neutral-400">
-                                  No secrets
+                                  {t("settings:toolsBadgeNoSecrets")}
                                 </span>
                               )}
                               {high ? (
                                 <span className="rounded bg-orange-500/20 px-1.5 py-0.5 text-[10px] text-orange-200">
-                                  Risk {risk || "high"}
+                                  {t("settings:toolsRiskHigh", { level: risk || "high" })}
                                 </span>
                               ) : risk ? (
                                 <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-neutral-400">
-                                  risk {risk}
+                                  {t("settings:toolsRiskLevel", { level: risk })}
                                 </span>
                               ) : null}
                             </div>
                           </div>
                           {tagline ? <p className="mb-3 text-xs leading-relaxed text-surface-muted">{tagline}</p> : null}
                           <p className="mb-3 text-[11px] text-neutral-500">
-                            <span className="text-surface-muted">Tools ({names.length}):</span>{" "}
+                            <span className="text-surface-muted">{t("settings:toolsToolsCount", { count: names.length })}</span>{" "}
                             <span className="font-mono text-[10px] text-neutral-400">{names.join(", ")}</span>
                           </p>
                           <div className="mb-3 flex flex-wrap gap-2 border-t border-white/5 pt-3">
@@ -455,20 +473,20 @@ export function ToolsSettings() {
                               to={`/chat?try=${tryEnc}`}
                               className="rounded-md bg-white/10 px-2.5 py-1 text-[11px] font-medium text-neutral-100 hover:bg-white/15"
                             >
-                              Test
+                              {t("settings:toolsTest")}
                             </Link>
                             <Link
                               to="/docs"
                               className="rounded-md bg-white/5 px-2.5 py-1 text-[11px] text-surface-muted hover:bg-white/10 hover:text-neutral-200"
                             >
-                              Docs
+                              {t("settings:toolsDocs")}
                             </Link>
                             {reqs.length ? (
                               <Link
                                 to="/settings/connections"
                                 className="rounded-md bg-white/5 px-2.5 py-1 text-[11px] text-sky-400 hover:bg-white/10"
                               >
-                                Configure
+                                {t("settings:toolsConfigure")}
                               </Link>
                             ) : null}
                             <button
@@ -480,14 +498,14 @@ export function ToolsSettings() {
                                 refreshToggles();
                               }}
                             >
-                              Disable
+                              {t("settings:toolsDisable")}
                             </button>
                             <button
                               type="button"
                               className="rounded-md border border-white/15 px-2.5 py-1 text-[11px] text-neutral-200 hover:bg-white/10"
                               onClick={() => setDrawerPkg(m)}
                             >
-                              Details
+                              {t("settings:toolsDetails")}
                             </button>
                           </div>
                           <div className="flex flex-wrap items-center gap-3 border-t border-white/5 pt-3">
@@ -502,7 +520,7 @@ export function ToolsSettings() {
                                   refreshToggles();
                                 }}
                               />
-                              Enable (this browser)
+                              {t("settings:toolsEnableBrowser")}
                             </label>
                           </div>
                         </div>
@@ -517,11 +535,11 @@ export function ToolsSettings() {
       </div>
 
       {!loading && meta.length === 0 ? (
-        <p className="text-sm text-surface-muted">No tool packages available for your account.</p>
+        <p className="text-sm text-surface-muted">{t("settings:toolsNoPackages")}</p>
       ) : null}
 
       {!loading && meta.length > 0 && searched.length === 0 ? (
-        <p className="text-sm text-surface-muted">No packages match the current search and filters.</p>
+        <p className="text-sm text-surface-muted">{t("settings:toolsNoMatchFilter")}</p>
       ) : null}
 
       <button
@@ -529,7 +547,7 @@ export function ToolsSettings() {
         className="text-xs text-sky-400 hover:text-sky-300 hover:underline"
         onClick={() => void load()}
       >
-        Refresh catalog
+        {t("settings:toolsRefreshCatalog")}
       </button>
 
       {drawerPkg ? (
@@ -552,15 +570,21 @@ function PackageDrawer({
   fnIndex: Map<string, ChatToolFunction>;
   onClose: () => void;
 }) {
+  const { t } = useTranslation(["settings", "common"]);
   const pid = (pkg.id || "").trim();
   const title = (pkg.ui?.display_name || pkg.TOOL_LABEL || pid).trim();
   const names = (pkg.tools ?? []).filter((x): x is string => typeof x === "string" && !!x.trim());
   const first = names[0] || "tool";
-  const example = `Try: “Use ${first} to handle …” (adjust for your task).`;
+  const example = t("settings:toolsTryExample", { tool: first });
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/60 p-0 sm:p-4" role="dialog" aria-modal="true">
-      <button type="button" className="absolute inset-0 h-full w-full cursor-default" aria-label="Close" onClick={onClose} />
+      <button
+        type="button"
+        className="absolute inset-0 h-full w-full cursor-default"
+        aria-label={t("settings:close")}
+        onClick={onClose}
+      />
       <div className="relative flex h-full w-full max-w-lg flex-col border-l border-white/10 bg-[#141414] shadow-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-xl">
         <div className="flex items-start justify-between gap-3 border-b border-white/10 px-5 py-4">
           <div>
@@ -580,11 +604,11 @@ function PackageDrawer({
         </div>
         <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-4">
           <section>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-sky-200/80">Example prompt</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-sky-200/80">{t("settings:toolsExamplePrompt")}</h3>
             <p className="mt-1 text-sm text-neutral-300">{example}</p>
           </section>
           <section>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-sky-200/80">Functions in this package</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-sky-200/80">{t("settings:toolsFunctionsInPackage")}</h3>
             <ul className="mt-2 space-y-4">
               {names.map((n) => {
                 const fn = fnIndex.get(n);
@@ -599,7 +623,7 @@ function PackageDrawer({
                         {params}
                       </pre>
                     ) : (
-                      <p className="mt-1 text-[10px] text-neutral-600">No parameter schema in catalog.</p>
+                      <p className="mt-1 text-[10px] text-neutral-600">{t("settings:toolsNoParamSchema")}</p>
                     )}
                   </li>
                 );
@@ -607,11 +631,8 @@ function PackageDrawer({
             </ul>
           </section>
           <section className="rounded-lg border border-dashed border-white/15 bg-white/[0.02] p-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Logs &amp; last used</h3>
-            <p className="mt-1 text-xs text-surface-muted">
-              Per-tool invocation history and “last used” timestamps are not exposed to this UI yet — they need a small
-              operator/analytics endpoint on the server.
-            </p>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{t("settings:toolsLogsLastUsed")}</h3>
+            <p className="mt-1 text-xs text-surface-muted">{t("settings:toolsLogsNotExposed")}</p>
           </section>
         </div>
         <div className="flex gap-2 border-t border-white/10 px-5 py-4">
@@ -620,14 +641,14 @@ function PackageDrawer({
             className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
             onClick={onClose}
           >
-            Connections
+            {t("settings:connectionsTitle")}
           </Link>
           <button
             type="button"
             className="rounded-lg border border-white/15 px-4 py-2 text-sm text-neutral-200 hover:bg-white/10"
             onClick={onClose}
           >
-            Close
+            {t("settings:toolsDrawerClose")}
           </button>
         </div>
       </div>

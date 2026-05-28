@@ -1,16 +1,18 @@
 import { Outlet } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "./AuthContext";
 
 /**
  * Access token only in React memory; refresh uses httpOnly cookie (see POST /auth/login).
  */
 export function RequireSession() {
+  const { t } = useTranslation(["auth"]);
   const { accessToken, loading, setupStatus } = useAuth();
 
   if (loading) {
     return (
       <div className="flex h-full min-h-0 flex-1 items-center justify-center px-4 text-sm text-surface-muted">
-        Laden…
+        {t("auth:loading")}
       </div>
     );
   }
@@ -23,7 +25,7 @@ export function RequireSession() {
     window.location.replace(target);
     return (
       <div className="flex h-full min-h-0 flex-1 items-center justify-center px-4 text-sm text-surface-muted">
-        Weiterleitung…
+        {t("auth:redirectingToSignIn")}
       </div>
     );
   }

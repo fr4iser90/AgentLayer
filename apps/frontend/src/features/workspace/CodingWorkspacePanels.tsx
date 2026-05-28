@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { AuthContextValue } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 
@@ -74,6 +75,7 @@ function PanelTabs({
   changesBadge: string | null;
   showChanges?: boolean;
 }) {
+  const { t } = useTranslation(["dashboard", "errors"]);
   const tabClass = (active: boolean) =>
     `rounded-md px-2.5 py-1 text-[10px] font-medium transition-colors ${
       active ? "bg-white/15 text-white" : "text-surface-muted hover:bg-white/10 hover:text-neutral-200"
@@ -97,6 +99,7 @@ function PanelTabs({
 }
 
 function DiffView({ text, truncated }: { text: string; truncated: boolean }) {
+  const { t } = useTranslation(["dashboard"]);
   const lines = text.split("\n");
   return (
     <>
@@ -108,7 +111,7 @@ function DiffView({ text, truncated }: { text: string; truncated: boolean }) {
         ))}
       </div>
       {truncated ? (
-        <p className="mt-2 text-[9px] text-amber-300/80">Diff truncated (server cap).</p>
+        <p className="mt-2 text-[9px] text-amber-300/80">{t("dashboard:diffTruncated")}</p>
       ) : null}
     </>
   );
@@ -121,6 +124,7 @@ export function CodingWorkspacePanels({
   variant = "build",
   readOnly = false,
 }: Props) {
+  const { t } = useTranslation(["dashboard", "workspace"]);
   const shellClass = variant === "chat" ? SHELL_CLASS_CHAT : SHELL_CLASS_BUILD;
   const [panelTab, setPanelTab] = useState<PanelTab>("files");
 
@@ -158,14 +162,16 @@ export function CodingWorkspacePanels({
       const r = await apiFetch(`/v1/workspaces/${workspaceId}/fs/list${q}`, auth);
       const j = (await r.json().catch(() => ({}))) as ListPayload;
       if (!r.ok) {
-        setListError(typeof j.detail === "string" ? j.detail : `List failed (${r.status})`);
+        setListError(
+          typeof j.detail === "string" ? j.detail : `${t("errors:readFileFailed")} (${r.status})`
+        );
         setEntries([]);
         return;
       }
       setEntries(Array.isArray(j.entries) ? j.entries : []);
       setListTruncated(Boolean(j.truncated));
     } catch (e) {
-      setListError(e instanceof Error ? e.message : "List failed");
+      setListError(e instanceof Error ? e.message : t("errors:readFileFailed"));
       setEntries([]);
     } finally {
       setListLoading(false);
@@ -184,13 +190,15 @@ export function CodingWorkspacePanels({
       const r = await apiFetch(`/v1/workspaces/${workspaceId}/git/changes`, auth);
       const j = (await r.json().catch(() => ({}))) as GitChangesSummary & { detail?: string };
       if (!r.ok) {
-        setChangesError(typeof j.detail === "string" ? j.detail : `Changes failed (${r.status})`);
+        setChangesError(
+          typeof j.detail === "string" ? j.detail : `${t("errors:loadChatsServerSyncFailed")} (${r.status})`
+        );
         setChangesSummary(null);
         return;
       }
       setChangesSummary(j);
     } catch (e) {
-      setChangesError(e instanceof Error ? e.message : "Changes failed");
+      setChangesError(e instanceof Error ? e.message : t("errors:loadChatsServerSyncFailed"));
       setChangesSummary(null);
     } finally {
       setChangesLoading(false);
@@ -209,13 +217,15 @@ export function CodingWorkspacePanels({
         const r = await apiFetch(`/v1/workspaces/${workspaceId}/git/changes${q}`, auth);
         const j = (await r.json().catch(() => ({}))) as GitChangesSummary & { detail?: string };
         if (!r.ok) {
-          setChangeDiffError(typeof j.detail === "string" ? j.detail : `Diff failed (${r.status})`);
+          setChangeDiffError(
+            typeof j.detail === "string" ? j.detail : `${t("dashboard:diffFailed")} (${r.status})`
+          );
           return;
         }
         setChangeDiff(typeof j.diff === "string" ? j.diff : "");
         setChangeDiffTruncated(Boolean(j.diff_truncated));
       } catch (e) {
-        setChangeDiffError(e instanceof Error ? e.message : "Diff failed");
+        setChangeDiffError(e instanceof Error ? e.message : t("dashboard:diffFailed"));
       } finally {
         setChangeDiffLoading(false);
       }
@@ -236,14 +246,14 @@ export function CodingWorkspacePanels({
         const r = await apiFetch(`/v1/workspaces/${workspaceId}/fs/read${q}`, auth);
         const j = (await r.json().catch(() => ({}))) as ReadPayload;
         if (!r.ok) {
-          setFileError(typeof j.detail === "string" ? j.detail : `Open failed (${r.status})`);
+          setFileError(typeof j.detail === "string" ? j.detail : `${t("errors:readFileFailed")} (${r.status})`);
           return;
         }
         setFileContent(typeof j.content === "string" ? j.content : "");
         const sz = j.size != null ? ` · ${j.size} bytes` : "";
         setFileMeta(`${j.path ?? relPath}${sz}`);
       } catch (e) {
-        setFileError(e instanceof Error ? e.message : "Open failed");
+        setFileError(e instanceof Error ? e.message : t("errors:readFileFailed"));
       } finally {
         setFileLoading(false);
       }
@@ -300,7 +310,7 @@ export function CodingWorkspacePanels({
   if (!workspaceId) {
     return (
       <div className={`${shellClass} items-center justify-center px-3 py-6 text-center text-xs text-surface-muted`}>
-        <p>Select a project to browse files.</p>
+        <p>{t("workspace:selectProjectBrowseFiles")}</p>
       </div>
     );
   }
@@ -365,7 +375,7 @@ export function CodingWorkspacePanels({
                   onClick={goUp}
                   disabled={!browsePath}
                 >
-                  Up
+                  {t("dashboard:up")}
                 </button>
                 <button
                   type="button"
@@ -373,17 +383,17 @@ export function CodingWorkspacePanels({
                   onClick={() => void loadList()}
                   disabled={listLoading}
                 >
-                  {listLoading ? "…" : "Refresh"}
+                  {listLoading ? "…" : t("dashboard:refresh")}
                 </button>
               </div>
             </>
           ) : (
             <>
               <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-surface-muted">
-                Git changes
+                {t("dashboard:gitChanges")}
               </p>
               <p className="mt-0.5 text-[10px] text-neutral-500">
-                {changesSummary?.branch ? `branch: ${changesSummary.branch}` : "working tree"}
+                {changesSummary?.branch ? `branch: ${changesSummary.branch}` : t("dashboard:workingTree")}
               </p>
               <div className="mt-1">
                 <button
@@ -392,7 +402,7 @@ export function CodingWorkspacePanels({
                   onClick={() => void loadChangesSummary()}
                   disabled={changesLoading}
                 >
-                  {changesLoading ? "…" : "Refresh"}
+                  {changesLoading ? "…" : t("dashboard:refresh")}
                 </button>
               </div>
             </>
@@ -405,7 +415,7 @@ export function CodingWorkspacePanels({
               {listError ? (
                 <li className="px-2 py-2 text-red-300/90">{listError}</li>
               ) : entries.length === 0 && !listLoading ? (
-                <li className="px-2 py-2 text-surface-muted">Empty</li>
+                <li className="px-2 py-2 text-surface-muted">{t("dashboard:filesEmpty")}</li>
               ) : (
                 entries.map((e) => (
                   <li key={e.path}>
@@ -428,20 +438,22 @@ export function CodingWorkspacePanels({
                     >
                       <span className="text-surface-muted">{e.is_dir ? "📁" : "📄"}</span>
                       <span className="min-w-0 flex-1 truncate text-neutral-200">{e.name}</span>
-                      {e.is_symlink ? <span className="text-[9px] text-amber-400/80">link</span> : null}
+                      {e.is_symlink ? (
+                        <span className="text-[9px] text-amber-400/80">{t("workspace:treeEntrySymlink")}</span>
+                      ) : null}
                     </button>
                   </li>
                 ))
               )}
             </>
           ) : changesLoading && !changesSummary ? (
-            <li className="px-2 py-2 text-surface-muted">Loading…</li>
+            <li className="px-2 py-2 text-surface-muted">{t("dashboard:loading")}</li>
           ) : changesError ? (
             <li className="px-2 py-2 text-red-300/90">{changesError}</li>
           ) : !changesSummary?.has_changes ? (
-            <li className="px-2 py-2 text-surface-muted">No uncommitted changes.</li>
+            <li className="px-2 py-2 text-surface-muted">{t("dashboard:noUncommittedChanges")}</li>
           ) : (changesSummary.files ?? []).length === 0 ? (
-            <li className="px-2 py-2 text-surface-muted">Changes detected (see summary).</li>
+            <li className="px-2 py-2 text-surface-muted">{t("dashboard:changesDetected")}</li>
           ) : (
             (changesSummary.files ?? []).map((f) => (
               <li key={f.path}>
@@ -461,7 +473,7 @@ export function CodingWorkspacePanels({
         </ul>
         {panelTab === "files" && listTruncated ? (
           <p className="shrink-0 border-t border-surface-border px-2 py-1 text-[9px] text-amber-300/80">
-            List truncated (server cap).
+            {t("dashboard:listTruncated")}
           </p>
         ) : null}
       </div>
@@ -469,7 +481,7 @@ export function CodingWorkspacePanels({
       <div className="flex min-h-0 min-w-0 flex-1 flex-col border-t border-surface-border lg:border-t-0">
         <div className="shrink-0 border-b border-surface-border px-3 py-2">
           <p className="text-[10px] font-medium uppercase tracking-wide text-surface-muted">
-            {panelTab === "files" ? "Preview" : "Diff"}
+            {panelTab === "files" ? t("dashboard:preview") : t("dashboard:diff")}
           </p>
           {panelTab === "files" && fileMeta ? (
             <p className="mt-0.5 truncate font-mono text-[10px] text-neutral-500">{fileMeta}</p>
@@ -482,7 +494,7 @@ export function CodingWorkspacePanels({
           {panelTab === "files" ? (
             <>
               {fileLoading ? (
-                <p className="text-xs text-surface-muted">Loading…</p>
+                <p className="text-xs text-surface-muted">{t("dashboard:loading")}</p>
               ) : fileError ? (
                 <p className="text-xs text-red-300/90">{fileError}</p>
               ) : fileContent != null ? (
@@ -490,11 +502,11 @@ export function CodingWorkspacePanels({
                   {fileContent}
                 </pre>
               ) : (
-                <p className="text-xs text-surface-muted">Pick a file in the tree (read-only preview).</p>
+                <p className="text-xs text-surface-muted">{t("dashboard:pickFileHint")}</p>
               )}
             </>
           ) : changeDiffLoading ? (
-            <p className="text-xs text-surface-muted">Loading diff…</p>
+            <p className="text-xs text-surface-muted">{t("dashboard:loadingDiff")}</p>
           ) : changeDiffError ? (
             <p className="text-xs text-red-300/90">{changeDiffError}</p>
           ) : changeDiff != null ? (
@@ -505,9 +517,9 @@ export function CodingWorkspacePanels({
               {changesSummary.stat_truncated ? "\n…[truncated]" : ""}
             </pre>
           ) : changesSummary?.has_changes ? (
-            <p className="text-xs text-surface-muted">Select a changed file to view its diff.</p>
+            <p className="text-xs text-surface-muted">{t("dashboard:selectChangedFileHint")}</p>
           ) : changesError ? null : (
-            <p className="text-xs text-surface-muted">No changes to review.</p>
+            <p className="text-xs text-surface-muted">{t("dashboard:noChangesToReview")}</p>
           )}
           {panelTab === "changes" && selectedChangePath ? (
             <button

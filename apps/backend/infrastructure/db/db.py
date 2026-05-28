@@ -1662,6 +1662,67 @@ def rag_delete_documents_by_workspace(tenant_id: int, workspace_id: uuid.UUID) -
     return int(n)
 
 
+def rag_documents_by_tenant_domain_index(
+    tenant_id: int,
+    domain: str,
+    *,
+    workspace_id: uuid.UUID | None = None,
+) -> dict[str, dict[str, Any]]:
+    """``source_uri`` → ``{id, content_sha256}`` for incremental ingest."""
+    dom = (domain or "").strip().lower()
+    if not dom:
+        return {}
+    with pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            if workspace_id is None:
+                cur.execute(
+                    """
+                    SELECT id, source_uri, content_sha256
+                    FROM rag_documents
+                    WHERE tenant_id = %s
+                      AND lower(trim(domain)) = %s
+                      AND workspace_id IS NULL
+                      AND source_uri IS NOT NULL
+                      AND trim(source_uri) <> ''
+                    """,
+                    (tenant_id, dom),
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT id, source_uri, content_sha256
+                    FROM rag_documents
+                    WHERE tenant_id = %s
+                      AND lower(trim(domain)) = %s
+                      AND workspace_id = %s
+                      AND source_uri IS NOT NULL
+                      AND trim(source_uri) <> ''
+                    """,
+                    (tenant_id, dom, workspace_id),
+                )
+            rows = cur.fetchall()
+    out: dict[str, dict[str, Any]] = {}
+    for r in rows:
+        uri = str(r.get("source_uri") or "").strip()
+        if not uri:
+            continue
+        out[uri] = {
+            "id": int(r["id"]),
+            "content_sha256": (str(r.get("content_sha256") or "").strip() or None),
+        }
+    return out
+
+
+def rag_delete_document_by_id(document_id: int) -> bool:
+    """Delete one document and its chunks."""
+    with pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM rag_documents WHERE id = %s", (int(document_id),))
+            n = cur.rowcount or 0
+        conn.commit()
+    return n > 0
+
+
 def rag_delete_documents_by_tenant_domain(tenant_id: int, domain: str) -> int:
     """Delete all ``rag_documents`` for a tenant and domain (case-insensitive). Cascades to chunks."""
     dom = (domain or "").strip().lower()

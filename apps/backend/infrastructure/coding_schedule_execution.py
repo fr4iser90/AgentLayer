@@ -49,6 +49,7 @@ CODING_SCHEDULE_TOOL_ALLOWLIST: tuple[str, ...] = (
 )
 
 SECURITY_SCAN_TOOL_NAMES: tuple[str, ...] = (
+    "security_scan_finding_policy_schema",
     "security_scan_resolve",
     "security_scan_status",
     "security_scan_get",

@@ -793,6 +793,7 @@ if _agent_index.is_file():
     @app.get("/app/login")
     @app.get("/app/setup")
     @app.get("/app/schedules")
+    @app.get("/app/tasks")
     @app.get("/app/settings")
     @app.get("/app/settings/profile")
     @app.get("/app/settings/connections")

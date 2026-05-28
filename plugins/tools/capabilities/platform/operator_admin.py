@@ -502,7 +502,8 @@ class _IngestDocsArgs(BaseModel):
 
     docs_root: str | None = None
     domain: str = Field(default="agentlayer_docs", min_length=1)
-    purge_first: bool = True
+    purge_first: bool = False
+    incremental: bool = True
 
 
 def admin_rag_ingest_docs(arguments: dict[str, Any]) -> str:
@@ -531,6 +532,7 @@ def admin_rag_ingest_docs(arguments: dict[str, Any]) -> str:
             root,
             domain,
             purge_first=opts.purge_first,
+            incremental=opts.incremental and not opts.purge_first,
         )
     except ValueError as e:
         return _err(str(e))
@@ -1007,13 +1009,14 @@ TOOLS: list[dict[str, Any]] = [
     ),
     _tool_fn(
         "admin_rag_ingest_docs",
-        "Ingest markdown tree: optional docs_root, domain (default agentlayer_docs), purge_first (default true).",
+        "Ingest markdown tree: optional docs_root, domain (default agentlayer_docs), purge_first (default false), incremental (default true).",
         {
             "type": "object",
             "properties": {
                 "docs_root": {"type": "string"},
                 "domain": {"type": "string"},
                 "purge_first": {"type": "boolean"},
+                "incremental": {"type": "boolean"},
             },
         },
     ),

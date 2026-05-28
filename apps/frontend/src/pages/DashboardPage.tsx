@@ -7,6 +7,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useTranslation } from "react-i18next";
+import i18n from "../i18n/config";
 import { useAuth } from "../auth/AuthContext";
 import { apiFetch } from "../lib/api";
 import { DashboardEmbeddedChat } from "../features/dashboard/DashboardEmbeddedChat";
@@ -46,7 +48,7 @@ type KindCatalogRow = {
 
 function humanizeKindId(kind: string): string {
   const k = (kind || "").trim().toLowerCase();
-  if (!k) return "Dashboard";
+  if (!k) return i18n.t("dashboard:kindDashboardDefault");
   return k.replace(/_/g, " ").replace(/\b\w/g, (ch) => ch.toUpperCase());
 }
 
@@ -115,6 +117,7 @@ function relativeActivityEn(iso: string): string {
 type HubPanel = "home" | "catalog" | "overview";
 
 export function DashboardPage() {
+  const { t } = useTranslation(["dashboard", "admin"]);
   const auth = useAuth();
   const [schemaInstalled, setSchemaInstalled] = useState<boolean | null>(null);
   const [installBusy, setInstallBusy] = useState(false);
@@ -217,13 +220,13 @@ export function DashboardPage() {
     if (custom) return [custom, ...rest];
     const synthetic: KindCatalogRow = {
       kind: "custom",
-      label: "Custom",
+      label: t("dashboard:customKindLabel"),
       description: "",
       has_template: true,
       has_schema: true,
     };
     return [synthetic, ...rest];
-  }, [kindCatalog, installedKindSet]);
+  }, [kindCatalog, installedKindSet, t]);
 
   const loadList = useCallback(async () => {
     setError(null);
@@ -521,7 +524,7 @@ export function DashboardPage() {
       .filter(([, v]) => v)
       .map(([k]) => k);
     if (ids.length === 0) {
-      setBlockSharesErr("Select at least one block.");
+      setBlockSharesErr(t("dashboard:selectAtLeastOneBlock"));
       return;
     }
     setBlockSharesBusy(true);
@@ -654,7 +657,7 @@ export function DashboardPage() {
 
   const removeWs = async () => {
     if (!selectedId || !isPrimaryOwner) return;
-    if (!window.confirm("Delete this dashboard?")) return;
+    if (!window.confirm(t("dashboard:dashboardDeleteConfirm"))) return;
     const res = await apiFetch(`/v1/dashboards/${selectedId}`, auth, {
       method: "DELETE",
     });
@@ -736,13 +739,13 @@ export function DashboardPage() {
     return (
       <div className="h-full min-h-0 overflow-y-auto">
         <div className="mx-auto max-w-4xl px-6 py-10">
-          <h1 className="text-xl font-semibold text-white">Catalog</h1>
+          <h1 className="text-xl font-semibold text-white">{t("dashboard:catalogTitle")}</h1>
           <p className="mt-1 text-sm text-surface-muted">
-            Install packs to enable storage. Nothing is created until you add dashboards afterward.
+            {t("dashboard:catalogIntro")}
           </p>
 
           {installableCatalog.length === 0 ? (
-            <p className="mt-8 text-sm text-surface-muted">No installable packs under dashboard/.</p>
+            <p className="mt-8 text-sm text-surface-muted">{t("dashboard:noInstallablePacks")}</p>
           ) : (
             <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {installableCatalog.map((row) => (
@@ -756,7 +759,7 @@ export function DashboardPage() {
                     {row.description ? (
                       <span className="mt-2 text-sm leading-snug text-surface-muted">{row.description}</span>
                     ) : null}
-                    <span className="mt-auto pt-4 text-sm font-medium text-sky-400">Install</span>
+                    <span className="mt-auto pt-4 text-sm font-medium text-sky-400">{t("dashboard:install")}</span>
                   </button>
                 </li>
               ))}
@@ -776,7 +779,7 @@ export function DashboardPage() {
               className="absolute inset-0 bg-black/70"
               role="button"
               tabIndex={0}
-              aria-label="Close"
+              aria-label={t("dashboard:close")}
               onClick={() => {
                 if (!installBusy) setInstallModalRow(null);
               }}
@@ -794,13 +797,13 @@ export function DashboardPage() {
               className="relative w-full max-w-md rounded-xl border border-surface-border bg-surface-raised p-6 shadow-xl"
             >
               <h2 id="ws-install-title" className="text-lg font-semibold text-white">
-                Install {installModalRow.label}?
+                {t("dashboard:installPackConfirmTitle", { label: installModalRow.label })}
               </h2>
               {installModalRow.description ? (
                 <p className="mt-2 text-sm text-surface-muted">{installModalRow.description}</p>
               ) : null}
               <p className="mt-3 text-sm text-surface-muted">
-                Applies schema for this pack. You still create dashboard rows separately.
+                {t("dashboard:installPackConfirmBody")}
               </p>
               <div className="mt-6 flex justify-end gap-2">
                 <button
@@ -809,7 +812,7 @@ export function DashboardPage() {
                   className="rounded-lg border border-surface-border px-4 py-2 text-sm text-neutral-200 hover:bg-white/5 disabled:opacity-50"
                   onClick={() => setInstallModalRow(null)}
                 >
-                  Cancel
+                  {t("admin:cancel")}
                 </button>
                 <button
                   type="button"
@@ -817,7 +820,7 @@ export function DashboardPage() {
                   className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-50"
                   onClick={() => void runInstallFromModal()}
                 >
-                  {installBusy ? "Installing…" : "Install"}
+                  {installBusy ? t("dashboard:installing") : t("dashboard:install")}
                 </button>
               </div>
             </div>
@@ -829,14 +832,18 @@ export function DashboardPage() {
 
   if (loading || schemaInstalled === null) {
     return (
-      <div className="flex h-full items-center justify-center text-sm text-surface-muted">Loading…</div>
+      <div className="flex h-full items-center justify-center text-sm text-surface-muted">
+        {t("dashboard:loading")}
+      </div>
     );
   }
 
   const sidebar = (
     <aside className="flex w-full shrink-0 flex-col border-surface-border bg-surface-raised/40 md:w-44 md:border-r">
       <div className="flex flex-col gap-1 p-2">
-        <p className="px-2.5 pt-1 text-xs font-semibold uppercase tracking-wide text-surface-muted">Actions</p>
+        <p className="px-2.5 pt-1 text-xs font-semibold uppercase tracking-wide text-surface-muted">
+          {t("dashboard:actions")}
+        </p>
         <button
           type="button"
           onClick={() => {
@@ -846,7 +853,7 @@ export function DashboardPage() {
           }}
           className="rounded-lg px-2.5 py-2 text-left text-xs text-neutral-200 transition hover:bg-white/5"
         >
-          Create new
+          {t("dashboard:createNew")}
         </button>
         <button
           type="button"
@@ -859,15 +866,15 @@ export function DashboardPage() {
             !selectedId && hubPanel === "overview" ? "bg-white/10 text-white" : "text-neutral-200",
           ].join(" ")}
         >
-          Overview
+          {t("dashboard:overviewTitle")}
         </button>
         <button
           type="button"
           disabled
           className="cursor-not-allowed rounded-lg px-2.5 py-2 text-left text-xs text-white/30"
-          title="Coming soon"
+          title={t("dashboard:comingSoon")}
         >
-          Import
+          {t("dashboard:import")}
         </button>
         <button
           type="button"
@@ -877,7 +884,7 @@ export function DashboardPage() {
             !selectedId && hubPanel === "catalog" ? "bg-white/10 text-white" : "text-neutral-200",
           ].join(" ")}
         >
-          Catalog
+          {t("dashboard:catalogTitle")}
         </button>
       </div>
     </aside>
@@ -915,22 +922,22 @@ export function DashboardPage() {
           onClick={() => setNewWsModalOpen(true)}
           className="flex flex-col rounded-xl border border-surface-border bg-surface-raised p-6 text-left transition hover:border-sky-500/35 hover:bg-white/[0.03]"
         >
-          <span className="text-base font-semibold text-white">New dashboard</span>
-          <span className="mt-2 text-sm text-surface-muted">Create a dashboard from an installed template.</span>
+          <span className="text-base font-semibold text-white">{t("dashboard:newDashboardTitle")}</span>
+          <span className="mt-2 text-sm text-surface-muted">{t("dashboard:newDashboardSubtitle")}</span>
         </button>
         <button
           type="button"
           onClick={() => openCatalog()}
           className="flex flex-col rounded-xl border border-surface-border bg-surface-raised p-6 text-left transition hover:border-sky-500/35 hover:bg-white/[0.03]"
         >
-          <span className="text-base font-semibold text-white">Catalog</span>
-          <span className="mt-2 text-sm text-surface-muted">Install template packs and extensions.</span>
+          <span className="text-base font-semibold text-white">{t("dashboard:catalogTitle")}</span>
+          <span className="mt-2 text-sm text-surface-muted">{t("dashboard:catalogIntro")}</span>
         </button>
       </div>
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-surface-muted">Recent activity</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-surface-muted">{t("dashboard:recentActivity")}</p>
         {recentActivity.length === 0 ? (
-          <p className="mt-2 text-sm text-surface-muted">No activity yet.</p>
+          <p className="mt-2 text-sm text-surface-muted">{t("dashboard:noActivityYet")}</p>
         ) : (
           <ul className="mt-2 space-y-1.5 text-sm text-neutral-300">
             {recentActivity.map((w) => (
@@ -959,34 +966,34 @@ export function DashboardPage() {
           onClick={() => setHubPanel("home")}
           className="text-sm text-sky-400 hover:text-sky-300"
         >
-          ← Dashboards
+          {t("dashboard:backToDashboards")}
         </button>
       </div>
-      <h1 className="text-xl font-semibold text-white">Catalog</h1>
+      <h1 className="text-xl font-semibold text-white">{t("dashboard:catalogTitle")}</h1>
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-[200px] flex-1">
-          <label className="mb-1 block text-xs text-surface-muted">Search</label>
+          <label className="mb-1 block text-xs text-surface-muted">{t("dashboard:catalogSearchLabel")}</label>
           <input
             value={catalogQuery}
             onChange={(e) => setCatalogQuery(e.target.value)}
-            placeholder="Filter by name…"
+            placeholder={t("dashboard:filterByNamePlaceholder")}
             className="w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-500/50"
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs text-surface-muted">Category</label>
+          <label className="mb-1 block text-xs text-surface-muted">{t("dashboard:catalogCategoryLabel")}</label>
           <select
             disabled
             className="rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white/50"
             value="all"
             onChange={() => {}}
           >
-            <option value="all">All</option>
+            <option value="all">{t("dashboard:catalogCategoryAll")}</option>
           </select>
         </div>
       </div>
       {catalogRows.length === 0 ? (
-        <p className="text-sm text-surface-muted">No packs match this search.</p>
+        <p className="text-sm text-surface-muted">{t("dashboard:catalogNoMatches")}</p>
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {catalogRows.map((row) => {
@@ -1003,7 +1010,7 @@ export function DashboardPage() {
                 <div className="mt-4 flex flex-wrap gap-2">
                   {isInstalled ? (
                     <span className="rounded-md border border-white/10 px-2 py-1 text-xs text-surface-muted">
-                      Installed
+                      {t("dashboard:catalogInstalledBadge")}
                     </span>
                   ) : (
                     <button
@@ -1012,7 +1019,7 @@ export function DashboardPage() {
                       className="rounded-lg bg-sky-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
                       onClick={() => confirmInstallCatalogRow(row)}
                     >
-                      Install
+                      {t("dashboard:install")}
                     </button>
                   )}
                   {isInstalled && row.has_template ? (
@@ -1021,7 +1028,7 @@ export function DashboardPage() {
                       className="rounded-lg border border-surface-border px-3 py-1.5 text-sm text-neutral-200 hover:bg-white/5"
                       onClick={() => void createWs(row.kind)}
                     >
-                      New dashboard
+                      {t("dashboard:catalogCreateDashboardBtn")}
                     </button>
                   ) : null}
                 </div>
@@ -1065,27 +1072,21 @@ export function DashboardPage() {
               />
             </div>
             {!dashboardReady ? (
-              <p className="text-sm text-surface-muted">Loading…</p>
+            <p className="text-sm text-surface-muted">{t("dashboard:loading")}</p>
             ) : (
               <>
                 {isViewer ? (
                   <p className="mb-4 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-surface-muted">
                     {detail?.access_scope === "granular" ? (
-                      <>
-                        Read-only: you only see blocks the owner shared with you. Shared dashboard team chat is
-                        not included on this access level.
-                      </>
+                      <>{t("dashboard:viewerReadOnlyGranular")}</>
                     ) : (
-                      <>
-                        Read-only: you can view lists and pet photos here. Ask the owner for editor access if
-                        you should change something.
-                      </>
+                      <>{t("dashboard:viewerReadOnlySimple")}</>
                     )}
                   </p>
                 ) : null}
                 <div className="mb-4 flex flex-wrap items-end gap-3">
                   <div className="min-w-[200px] flex-1">
-                    <label className="mb-1 block text-xs text-surface-muted">Title</label>
+                    <label className="mb-1 block text-xs text-surface-muted">{t("dashboard:dashboardTitleLabel")}</label>
                     <input
                       readOnly={isViewer}
                       className="w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-500/50 read-only:cursor-default read-only:opacity-90"
@@ -1101,7 +1102,7 @@ export function DashboardPage() {
                           className="rounded-lg border border-surface-border px-4 py-2 text-sm text-neutral-200 hover:bg-white/5"
                           onClick={() => startLayoutEdit()}
                         >
-                          Edit layout
+                          {t("dashboard:editLayout")}
                         </button>
                       ) : (
                         <button
@@ -1109,7 +1110,7 @@ export function DashboardPage() {
                           className="rounded-lg border border-surface-border px-4 py-2 text-sm text-neutral-200 hover:bg-white/5"
                           onClick={() => cancelLayoutEdit()}
                         >
-                          Cancel
+                          {t("admin:cancel")}
                         </button>
                       )
                     ) : null}
@@ -1120,7 +1121,7 @@ export function DashboardPage() {
                         className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
                         onClick={() => void save()}
                       >
-                        {saving ? "Saving…" : layoutEditMode ? "Save" : "Save"}
+                        {saving ? t("dashboard:saving") : t("admin:save")}
                       </button>
                     ) : null}
                     {detail ? (
@@ -1145,7 +1146,8 @@ export function DashboardPage() {
                 </div>
                 {canManageMembers ? (
                   <p className="mb-4 text-xs text-surface-muted">
-                    Sharing &amp; members are now in <span className="text-white/80">Settings</span>.
+                    {t("dashboard:membersMovedHint")}{" "}
+                    <span className="text-white/80">{t("dashboard:settingsLabel")}</span>.
                   </p>
                 ) : null}
                 <p className="mb-4 text-xs text-surface-muted">
@@ -1214,33 +1216,30 @@ export function DashboardPage() {
           <div className="space-y-4">
             <div className="rounded-xl border border-surface-border bg-black/20 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-surface-muted">
-                Dashboard info
+                {t("dashboard:dashboardInfoTitle")}
               </p>
               <div className="mt-2 space-y-1 text-sm text-neutral-200">
                 <p>
-                  <span className="text-surface-muted">Kind:</span> {detail.kind}
+                  <span className="text-surface-muted">{t("dashboard:dashboardInfoKind")}</span> {detail.kind}
                 </p>
                 <p>
-                  <span className="text-surface-muted">Access:</span> {accessRole}
+                  <span className="text-surface-muted">{t("dashboard:dashboardInfoAccess")}</span> {accessRole}
                 </p>
                 <p>
-                  <span className="text-surface-muted">Updated:</span> {detail.updated_at}
+                  <span className="text-surface-muted">{t("dashboard:dashboardInfoUpdated")}</span> {detail.updated_at}
                 </p>
               </div>
             </div>
 
             <div className="rounded-xl border border-surface-border bg-black/20 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-surface-muted">
-                Dashboard assistant (agent)
+                {t("dashboard:dashboardAgentTitle")}
               </p>
               <p className="mt-2 text-xs text-surface-muted">
-                Zusätzliche Anweisungen für das Modell, wenn dieses Dashboard aktiv ist (eingebetteter Chat und jeder
-                Chat mit <span className="font-mono text-neutral-400">agent_dashboard_context</span>). Werden
-                serverseitig an den System-Kontext angehängt — spezialisiert z.&nbsp;B. Ton, Tools oder Domain.
-                Mit <span className="text-white/80">Save</span> in der Hauptleiste speichern.
+                {t("dashboard:dashboardAgentIntro")} {t("dashboard:saveInMainToolbarHint")}
               </p>
               <label className="mt-3 block text-[10px] text-surface-muted" htmlFor="ws-agent-prompt">
-                Zusatz-Systemprompt / Instructions
+                {t("dashboard:dashboardAgentPromptLabel")}
               </label>
               <textarea
                 id="ws-agent-prompt"
@@ -1261,38 +1260,27 @@ export function DashboardPage() {
                     return next;
                   });
                 }}
-                placeholder="z. B. Du hilfst bei Haustier-Pflege; nutze bevorzugt pets_* Tools mit dieser dashboard_id …"
+                placeholder={t("dashboard:agentPromptExtraPlaceholder")}
                 className="mt-1 w-full resize-y rounded-lg border border-surface-border bg-black/30 px-3 py-2 font-mono text-sm leading-relaxed text-white outline-none placeholder:text-white/25 focus:border-sky-500/50 read-only:cursor-default read-only:opacity-90"
               />
-              <p className="mt-2 text-[10px] text-surface-muted">
-                Gespeichert unter <span className="font-mono text-neutral-500">data._agentlayer.system_prompt_extra</span>
-                (max. ca. 8000 Zeichen serverseitig).
-              </p>
-              <p className="mt-3 text-[11px] text-surface-muted">
-                <span className="text-sky-400/90">↓</span> Direkt darunter (eigene Karte):{" "}
-                <span className="text-white/85">Tool-Präferenzen</span> — bei kleinem Fenster nach unten scrollen.
-              </p>
+              <p className="mt-2 text-[10px] text-surface-muted">{t("dashboard:agentPromptExtraSavedHint")}</p>
+              <p className="mt-3 text-[11px] text-surface-muted">{t("dashboard:agentPromptScrollHint")}</p>
             </div>
 
             <div className="rounded-xl border border-surface-border bg-black/20 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-surface-muted">
-                Tool-Präferenzen (Allowlist)
+                {t("dashboard:dashboardToolPrefsTitle")}
               </p>
-              <p className="mt-2 text-xs text-surface-muted">
-                Wenn du hier Tools einträgst, sieht der Agent in diesem Dashboard <strong className="text-white/90">nur</strong>{" "}
-                diese Funktionsnamen (nach Router, Operator-Policies und deinen globalen Tool-Deaktivierungen). Leer =
-                keine Extra-Einschränkung. Gilt für eingebetteten Chat und alle Chats mit{" "}
-                <span className="font-mono text-neutral-400">agent_dashboard_context</span>.
-              </p>
+              <p className="mt-2 text-xs text-surface-muted">{t("dashboard:dashboardToolPrefsIntro")}</p>
               {toolsCatalogErr ? (
                 <p className="mt-2 text-xs text-amber-300/90">
-                  Tool-Katalog konnte nicht geladen werden ({toolsCatalogErr}). Du kannst Namen manuell eintragen.
+                  {t("dashboard:dashboardToolCatalogErr", { err: toolsCatalogErr })}
                 </p>
               ) : null}
               <div className="mt-3 flex flex-wrap gap-2">
                 {dashboardToolAllowlist.length === 0 ? (
                   <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-surface-muted">
-                    Standard: alle erlaubten Tools
+                    {t("dashboard:dashboardToolDefaultAll")}
                   </span>
                 ) : (
                   dashboardToolAllowlist.map((name) => (
@@ -1305,7 +1293,7 @@ export function DashboardPage() {
                         <button
                           type="button"
                           className="shrink-0 text-sky-300 hover:text-white"
-                          aria-label={`${name} entfernen`}
+                          aria-label={t("dashboard:dashboardToolRemoveAria", { name })}
                           onClick={() => removeToolFromDashboardAllowlist(name)}
                         >
                           ×
@@ -1319,7 +1307,7 @@ export function DashboardPage() {
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
                   <div className="min-w-[min(100%,220px)] flex-1">
                     <label className="mb-1 block text-[10px] text-surface-muted" htmlFor="ws-tool-pick">
-                      Aus Katalog
+                      {t("dashboard:dashboardToolFromCatalog")}
                     </label>
                     <select
                       id="ws-tool-pick"
@@ -1334,7 +1322,7 @@ export function DashboardPage() {
                         }
                       }}
                     >
-                      <option value="">Tool wählen…</option>
+                      <option value="">{t("dashboard:dashboardToolPickPlaceholder")}</option>
                       {pickableCatalogTools.map((n) => (
                         <option key={n} value={n}>
                           {n}
@@ -1344,7 +1332,7 @@ export function DashboardPage() {
                   </div>
                   <div className="min-w-[min(100%,200px)] flex-1">
                     <label className="mb-1 block text-[10px] text-surface-muted" htmlFor="ws-tool-manual">
-                      Manuell (z. B. Extra-Tools)
+                      {t("dashboard:dashboardToolManualLabel")}
                     </label>
                     <div className="flex gap-2">
                       <input
@@ -1358,7 +1346,7 @@ export function DashboardPage() {
                             setManualToolName("");
                           }
                         }}
-                        placeholder="function_name"
+                        placeholder={t("dashboard:shareToolNamePlaceholder")}
                         className="min-w-0 flex-1 rounded-lg border border-surface-border bg-black/30 px-3 py-2 font-mono text-sm text-white outline-none focus:border-sky-500/50"
                       />
                       <button
@@ -1369,54 +1357,50 @@ export function DashboardPage() {
                           setManualToolName("");
                         }}
                       >
-                        Add
+                        {t("dashboard:dashboardToolAdd")}
                       </button>
                     </div>
                   </div>
                 </div>
               ) : (
-                <p className="mt-3 text-xs text-surface-muted">Nur Editor/Owner können die Allowlist ändern.</p>
+                <p className="mt-3 text-xs text-surface-muted">{t("dashboard:dashboardToolEditorOnly")}</p>
               )}
-              <p className="mt-2 text-[10px] text-surface-muted">
-                <span className="font-mono text-neutral-500">data._agentlayer.tool_allowlist</span> · max. 200 Einträge
-                serverseitig
-              </p>
+              <p className="mt-2 text-[10px] text-surface-muted">{t("dashboard:dashboardToolAllowlistMeta")}</p>
             </div>
 
             {canManageMembers ? (
               <>
               <div className="rounded-xl border border-surface-border bg-black/20 p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-surface-muted">
-                  Sharing &amp; members
+                  {t("dashboard:membersTitle")}
                 </p>
-                <p className="mt-1 text-xs text-surface-muted">
-                  Same-tenant accounts only. <span className="text-white/70">Viewer</span> is read-only.
-                  <span className="text-white/70"> Editor</span> can edit content.{" "}
-                  <span className="text-white/70">Co-owner</span> can edit and manage members. Only the
-                  primary owner can delete the dashboard.
-                </p>
+                <p className="mt-1 text-xs text-surface-muted">{t("dashboard:membersIntro")}</p>
                 {membersErr ? <p className="mt-2 text-xs text-red-300">{membersErr}</p> : null}
                 <div className="mt-3 flex flex-wrap items-end gap-2">
                   <div className="min-w-[220px] flex-1">
-                    <label className="mb-1 block text-[10px] text-surface-muted">Email</label>
+                    <label className="mb-1 block text-[10px] text-surface-muted">
+                      {t("dashboard:membersEmailLabel")}
+                    </label>
                     <input
                       type="email"
                       value={memberEmail}
                       onChange={(e) => setMemberEmail(e.target.value)}
-                      placeholder="colleague@example.com"
+                      placeholder={t("dashboard:shareEmailPlaceholder")}
                       className="w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-500/50"
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-[10px] text-surface-muted">Role</label>
+                    <label className="mb-1 block text-[10px] text-surface-muted">
+                      {t("dashboard:membersRoleLabel")}
+                    </label>
                     <select
                       value={memberRole}
                       onChange={(e) => setMemberRole(e.target.value as "viewer" | "editor" | "co_owner")}
                       className="rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white"
                     >
-                      <option value="viewer">Viewer</option>
-                      <option value="editor">Editor</option>
-                      <option value="co_owner">Co-owner</option>
+                      <option value="viewer">{t("dashboard:membersRoleViewer")}</option>
+                      <option value="editor">{t("dashboard:membersRoleEditor")}</option>
+                      <option value="co_owner">{t("dashboard:membersRoleCoOwner")}</option>
                     </select>
                   </div>
                   <button
@@ -1425,11 +1409,11 @@ export function DashboardPage() {
                     className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
                     onClick={() => void addDashboardMember()}
                   >
-                    {membersBusy ? "…" : "Add"}
+                    {membersBusy ? "…" : t("dashboard:membersAdd")}
                   </button>
                 </div>
                 {members.length === 0 ? (
-                  <p className="mt-3 text-xs text-surface-muted">No members yet.</p>
+                  <p className="mt-3 text-xs text-surface-muted">{t("dashboard:membersNoneYet")}</p>
                 ) : (
                   <ul className="mt-3 divide-y divide-white/5 text-sm">
                     {members.map((m) => (
@@ -1446,7 +1430,7 @@ export function DashboardPage() {
                           className="text-xs text-red-300 hover:underline disabled:opacity-50"
                           onClick={() => void removeDashboardMember(m.user_id)}
                         >
-                          Remove
+                          {t("dashboard:remove")}
                         </button>
                       </li>
                     ))}
@@ -1456,29 +1440,30 @@ export function DashboardPage() {
 
               <div className="mt-4 rounded-xl border border-surface-border bg-black/20 p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-surface-muted">
-                  Granular block sharing (optional add-on)
+                  {t("admin:dashboardBlockSharingTitle")}
                 </p>
                 <p className="mt-1 text-xs text-surface-muted">
-                  <span className="text-white/85">Does not replace</span> “Sharing &amp; members” above — co-owner,
-                  editor, and viewer roles stay as they are. Use this for someone who is <span className="text-white/85">not</span>{" "}
-                  a full member: <span className="text-white/85">View only</span> shows selected blocks read-only;{" "}
-                  <span className="text-white/85">Edit</span> lets them change content (and those blocks in the layout)
-                  only. Same tenant only; saving again updates that user&apos;s block list and access.
+                  <span className="text-white/85">{t("dashboard:blockSharingIntroPrefix")}</span>{" "}
+                  {t("dashboard:blockSharingIntroBody")}
                 </p>
                 {blockSharesErr ? <p className="mt-2 text-xs text-red-300">{blockSharesErr}</p> : null}
                 <div className="mt-3 flex flex-wrap items-end gap-2">
                   <div className="min-w-[200px] flex-1">
-                    <label className="mb-1 block text-[10px] text-surface-muted">User email</label>
+                    <label className="mb-1 block text-[10px] text-surface-muted">
+                      {t("dashboard:blockShareUserEmailLabel")}
+                    </label>
                     <input
                       type="email"
                       value={blockShareEmail}
                       onChange={(e) => setBlockShareEmail(e.target.value)}
-                      placeholder="colleague@example.com"
+                      placeholder={t("dashboard:shareEmailPlaceholder")}
                       className="w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-500/50"
                     />
                   </div>
                   <div className="min-w-[140px]">
-                    <label className="mb-1 block text-[10px] text-surface-muted">Access</label>
+                    <label className="mb-1 block text-[10px] text-surface-muted">
+                      {t("dashboard:blockShareAccessLabel")}
+                    </label>
                     <select
                       value={blockSharePermission}
                       onChange={(e) =>
@@ -1486,8 +1471,8 @@ export function DashboardPage() {
                       }
                       className="w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-500/50"
                     >
-                      <option value="view">View only</option>
-                      <option value="edit">Edit</option>
+                      <option value="view">{t("dashboard:blockShareViewOnly")}</option>
+                      <option value="edit">{t("dashboard:blockShareEdit")}</option>
                     </select>
                   </div>
                   <button
@@ -1496,12 +1481,14 @@ export function DashboardPage() {
                     className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
                     onClick={() => void addBlockShareGrant()}
                   >
-                    {blockSharesBusy ? "…" : "Share selected blocks"}
+                    {blockSharesBusy ? "…" : t("dashboard:shareSelectedBlocks")}
                   </button>
                 </div>
-                <p className="mt-3 text-[10px] uppercase tracking-wide text-surface-muted">Blocks to include</p>
+                <p className="mt-3 text-[10px] uppercase tracking-wide text-surface-muted">
+                  {t("dashboard:blocksToInclude")}
+                </p>
                 {gridLayout.blocks.length === 0 ? (
-                  <p className="mt-1 text-xs text-surface-muted">No blocks in the layout yet — add blocks on the canvas first.</p>
+                  <p className="mt-1 text-xs text-surface-muted">{t("dashboard:noBlocksInLayoutYet")}</p>
                 ) : (
                   <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto rounded-lg border border-white/5 p-2 text-sm">
                     {gridLayout.blocks.map((b) => {
@@ -1530,7 +1517,7 @@ export function DashboardPage() {
                   </ul>
                 )}
                 {blockGrants.length === 0 ? (
-                  <p className="mt-3 text-xs text-surface-muted">No granular shares yet.</p>
+                  <p className="mt-3 text-xs text-surface-muted">{t("dashboard:granularSharesNoneYet")}</p>
                 ) : (
                   <ul className="mt-3 divide-y divide-white/5 text-sm">
                     {blockGrants.map((g) => (
@@ -1551,7 +1538,7 @@ export function DashboardPage() {
                           className="text-xs text-red-300 hover:underline disabled:opacity-50"
                           onClick={() => void removeBlockGrant(g.user_id)}
                         >
-                          Remove
+                          {t("dashboard:remove")}
                         </button>
                       </li>
                     ))}
@@ -1562,24 +1549,24 @@ export function DashboardPage() {
             ) : (
               <div className="rounded-xl border border-surface-border bg-black/20 p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-surface-muted">
-                  Sharing &amp; members
+                  {t("dashboard:membersTitle")}
                 </p>
-                <p className="mt-2 text-sm text-surface-muted">You don’t have permission to manage members.</p>
+                <p className="mt-2 text-sm text-surface-muted">{t("dashboard:membersManagePermissionDenied")}</p>
               </div>
             )}
 
             {isPrimaryOwner ? (
               <div className="rounded-xl border border-red-500/30 bg-red-950/20 p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-red-200/80">
-                  Danger zone
+                  {t("dashboard:dangerZone")}
                 </p>
-                <p className="mt-2 text-xs text-red-200/80">Delete is permanent.</p>
+                <p className="mt-2 text-xs text-red-200/80">{t("dashboard:deletePermanent")}</p>
                 <button
                   type="button"
                   className="mt-3 rounded-lg border border-red-500/30 px-3 py-2 text-sm text-red-200 hover:bg-red-950/40"
                   onClick={() => void removeWs()}
                 >
-                  Delete dashboard
+                  {t("dashboard:deleteDashboard")}
                 </button>
               </div>
             ) : null}
@@ -1593,7 +1580,7 @@ export function DashboardPage() {
             className="absolute inset-0 bg-black/70"
             role="button"
             tabIndex={0}
-            aria-label="Close"
+            aria-label={t("dashboard:close")}
             onClick={() => setNewWsModalOpen(false)}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
@@ -1609,12 +1596,12 @@ export function DashboardPage() {
             className="relative max-h-[85vh] w-full max-w-md overflow-y-auto rounded-xl border border-surface-border bg-surface-raised p-6 shadow-xl"
           >
             <h2 id="ws-new-title" className="text-lg font-semibold text-white">
-              New dashboard
+              {t("dashboard:newDashboardModalTitle")}
             </h2>
-            <p className="mt-2 text-sm text-surface-muted">Pick a type (only installed templates).</p>
+            <p className="mt-2 text-sm text-surface-muted">{t("dashboard:newDashboardPickType")}</p>
             <ul className="mt-4 flex flex-col gap-2">
               {kindsAllowedForNewDashboard.length === 0 ? (
-                <li className="text-sm text-surface-muted">Install a pack from the Catalog first.</li>
+                <li className="text-sm text-surface-muted">{t("dashboard:installPackFromCatalogFirst")}</li>
               ) : (
                 kindsAllowedForNewDashboard.map((row) => (
                   <li key={row.kind}>
@@ -1635,7 +1622,7 @@ export function DashboardPage() {
                 className="rounded-lg border border-surface-border px-4 py-2 text-sm text-neutral-200 hover:bg-white/5"
                 onClick={() => setNewWsModalOpen(false)}
               >
-                Cancel
+                {t("admin:cancel")}
               </button>
             </div>
           </div>
@@ -1648,7 +1635,7 @@ export function DashboardPage() {
             className="absolute inset-0 bg-black/70"
             role="button"
             tabIndex={0}
-            aria-label="Close"
+            aria-label={t("dashboard:close")}
             onClick={() => {
               if (!installBusy) setInstallModalRow(null);
             }}
@@ -1666,7 +1653,7 @@ export function DashboardPage() {
             className="relative w-full max-w-md rounded-xl border border-surface-border bg-surface-raised p-6 shadow-xl"
           >
             <h2 id="ws-tpl-install-title" className="text-lg font-semibold text-white">
-              Install {installModalRow.label}?
+              {t("dashboard:installPackConfirmTitle", { label: installModalRow.label })}
             </h2>
             {installModalRow.description ? (
               <p className="mt-2 text-sm text-surface-muted">{installModalRow.description}</p>
@@ -1678,7 +1665,7 @@ export function DashboardPage() {
                 className="rounded-lg border border-surface-border px-4 py-2 text-sm text-neutral-200 hover:bg-white/5 disabled:opacity-50"
                 onClick={() => setInstallModalRow(null)}
               >
-                Cancel
+                {t("admin:cancel")}
               </button>
               <button
                 type="button"
@@ -1686,7 +1673,7 @@ export function DashboardPage() {
                 className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
                 onClick={() => void runInstallTemplates(installModalRow.kind)}
               >
-                {installBusy ? "Installing…" : "Install"}
+                {installBusy ? t("dashboard:installing") : t("dashboard:install")}
               </button>
             </div>
           </div>

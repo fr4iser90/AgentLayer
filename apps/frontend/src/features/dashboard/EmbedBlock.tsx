@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
+import { useTranslation } from "react-i18next";
 
 import { getPath, setPath } from "./dashboardDataPaths";
 
@@ -61,6 +62,7 @@ export function EmbedBlockBody(props: {
   sectionTitle: string;
   readOnly: boolean;
 }) {
+  const { t } = useTranslation(["dashboard"]);
   const { dp, data, setData, sectionTitle, readOnly } = props;
   const st = readEmbed(dp ? getPath(data, dp) : undefined);
 
@@ -81,7 +83,7 @@ export function EmbedBlockBody(props: {
         <div className="dashboard-grid-no-drag mb-3 space-y-2">
           <div>
             <label className="mb-1 block text-[10px] uppercase text-surface-muted">
-              Titel (optional)
+              {t("dashboard:embedTitleOptionalLabel")}
             </label>
             <input
               type="text"
@@ -93,12 +95,12 @@ export function EmbedBlockBody(props: {
           </div>
           <div>
             <label className="mb-1 block text-[10px] uppercase text-surface-muted">
-              Embed-URL (https, nur erlaubte Domains)
+              {t("dashboard:embedUrlLabel")}
             </label>
             <input
               type="url"
               className="w-full rounded-lg border border-surface-border bg-black/40 px-3 py-2 font-mono text-xs text-neutral-100"
-              placeholder="https://calendar.google.com/calendar/embed?src=…"
+              placeholder={t("dashboard:embedUrlPlaceholder")}
               value={st.url}
               onChange={(e) => patch({ url: e.target.value })}
             />
@@ -106,7 +108,7 @@ export function EmbedBlockBody(props: {
           <div className="flex flex-wrap items-end gap-2">
             <div>
               <label className="mb-1 block text-[10px] uppercase text-surface-muted">
-                Höhe (px)
+                {t("dashboard:embedHeightLabel")}
               </label>
               <input
                 type="number"
@@ -121,13 +123,12 @@ export function EmbedBlockBody(props: {
           </div>
           {st.url && !allowed ? (
             <p className="rounded-lg border border-amber-500/40 bg-amber-950/30 px-2 py-1.5 text-xs text-amber-200">
-              URL nicht erlaubt oder ungültig. Erlaubte Hosts:{" "}
+              {t("dashboard:embedUrlNotAllowed")}{" "}
               {EMBED_ALLOWED_HOSTNAMES.slice(0, 4).join(", ")} …
             </p>
           ) : null}
           <p className="text-[10px] leading-snug text-surface-muted">
-            Google Kalender: Kalender → Einstellungen → <strong>Integrate calendar</strong> →
-            Einbettungscode-URL kopieren (https://calendar.google.com/…).
+            {t("dashboard:embedGoogleCalendarHint")}
           </p>
         </div>
       ) : null}
@@ -147,13 +148,13 @@ export function EmbedBlockBody(props: {
         </div>
       ) : st.url && readOnly ? (
         <p className="rounded-lg border border-red-500/30 bg-red-950/20 px-3 py-4 text-sm text-red-200">
-          Einbettung nicht verfügbar (ungültige oder nicht freigegebene URL).
+          {t("dashboard:embedUnavailableReadOnly")}
         </p>
       ) : !st.url ? (
         <p className="rounded-lg border border-dashed border-white/15 py-10 text-center text-sm text-surface-muted">
           {readOnly
-            ? "Kein Embed gesetzt."
-            : "HTTPS-URL eines erlaubten Dienstes eintragen (z. B. Google Calendar)."}
+            ? t("dashboard:embedEmptyReadOnly")
+            : t("dashboard:embedEmptyEditable")}
         </p>
       ) : null}
     </section>

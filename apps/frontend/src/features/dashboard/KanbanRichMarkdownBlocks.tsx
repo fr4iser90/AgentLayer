@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useTranslation } from "react-i18next";
 
 import { getPath, setPath } from "./dashboardDataPaths";
 
@@ -12,6 +13,7 @@ type KanbanCard = { id: string; title: string };
 type KanbanColumn = { id: string; title: string; cards: KanbanCard[] };
 
 function readKanban(raw: unknown): { columns: KanbanColumn[] } {
+  const defaultColTitle = "Spalte";
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     return { columns: [] };
   }
@@ -30,7 +32,7 @@ function readKanban(raw: unknown): { columns: KanbanColumn[] } {
       });
       return {
         id: String(col.id || `col_${i}`),
-        title: String(col.title || "Spalte"),
+        title: String(col.title || defaultColTitle),
         cards,
       };
     }),
@@ -44,6 +46,7 @@ export function KanbanBlockBody(props: {
   sectionTitle: string;
   readOnly: boolean;
 }) {
+  const { t } = useTranslation(["dashboard"]);
   const { dp, data, setData, sectionTitle, readOnly } = props;
   const { columns } = readKanban(dp ? getPath(data, dp) : undefined);
 
@@ -60,7 +63,7 @@ export function KanbanBlockBody(props: {
     write({
       columns: [
         ...columns,
-        { id: newKanbanId("col"), title: "Neu", cards: [] },
+        { id: newKanbanId("col"), title: t("dashboard:kanbanNewColumnTitle"), cards: [] },
       ],
     });
   };
@@ -128,7 +131,7 @@ export function KanbanBlockBody(props: {
             className="rounded-md bg-sky-600/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
             onClick={addColumn}
           >
-            Spalte +
+            {t("dashboard:kanbanAddColumn")}
           </button>
         ) : null}
       </div>
@@ -153,7 +156,7 @@ export function KanbanBlockBody(props: {
                 <button
                   type="button"
                   className="shrink-0 rounded px-1.5 text-xs text-red-400 hover:bg-white/5"
-                  title="Spalte löschen"
+                  title={t("dashboard:kanbanDeleteColumn")}
                   onClick={() => removeColumn(ci)}
                 >
                   ×
@@ -167,12 +170,12 @@ export function KanbanBlockBody(props: {
                   className="rounded-md border border-white/5 bg-surface-raised/80 p-2 shadow-sm"
                 >
                   {readOnly ? (
-                    <p className="text-sm text-neutral-200">{card.title || "—"}</p>
+                    <p className="text-sm text-neutral-200">{card.title || t("dashboard:kanbanCardTitleEmpty")}</p>
                   ) : (
                     <>
                       <input
                         type="text"
-                        placeholder="Karte"
+                        placeholder={t("dashboard:kanbanCardPlaceholder")}
                         className="dashboard-grid-no-drag mb-2 w-full rounded border border-surface-border bg-black/40 px-2 py-1 text-sm text-white"
                         value={card.title}
                         onChange={(e) => updateCardTitle(ci, card.id, e.target.value)}
@@ -182,11 +185,11 @@ export function KanbanBlockBody(props: {
                           className="dashboard-grid-no-drag max-w-full flex-1 rounded border border-surface-border bg-black/40 px-1 py-0.5 text-[10px] text-neutral-200"
                           value={ci}
                           onChange={(e) => moveCard(ci, card.id, Number(e.target.value))}
-                          title="Spalte wechseln"
+                          title={t("dashboard:kanbanMoveColumn")}
                         >
                           {columns.map((c, ti) => (
                             <option key={c.id} value={ti}>
-                              → {c.title || `Spalte ${ti + 1}`}
+                              → {c.title || t("dashboard:kanbanColumnFallback", { index: ti + 1 })}
                             </option>
                           ))}
                         </select>
@@ -195,7 +198,7 @@ export function KanbanBlockBody(props: {
                           className="text-[10px] text-red-400 hover:underline"
                           onClick={() => removeCard(ci, card.id)}
                         >
-                          Löschen
+                          {t("dashboard:delete")}
                         </button>
                       </div>
                     </>
@@ -209,14 +212,14 @@ export function KanbanBlockBody(props: {
                 className="dashboard-grid-no-drag mt-2 rounded-md border border-dashed border-white/15 py-1.5 text-xs text-surface-muted hover:border-sky-500/40 hover:text-sky-300"
                 onClick={() => addCard(ci)}
               >
-                + Karte
+                {t("dashboard:kanbanAddCard")}
               </button>
             ) : null}
           </div>
         ))}
       </div>
       {columns.length === 0 && !readOnly ? (
-        <p className="text-center text-sm text-surface-muted">Spalte hinzufügen zum Starten.</p>
+        <p className="text-center text-sm text-surface-muted">{t("dashboard:kanbanEmptyHint")}</p>
       ) : null}
     </section>
   );
@@ -248,6 +251,7 @@ export function RichMarkdownBlockBody(props: {
   readOnly: boolean;
 }) {
   const { dp, data, setData, sectionTitle, placeholder, readOnly } = props;
+  const { t } = useTranslation(["dashboard"]);
   const raw = dp ? getPath(data, dp) : "";
   const text = typeof raw === "string" ? raw : "";
 
@@ -292,7 +296,7 @@ export function RichMarkdownBlockBody(props: {
           td: ({ children }) => <td className={mdClass.td}>{children}</td>,
         }}
       >
-        {text || "*Kein Inhalt*"}
+        {text || t("dashboard:markdownEmpty")}
       </ReactMarkdown>
     </div>
   );
@@ -311,7 +315,7 @@ export function RichMarkdownBlockBody(props: {
       <h3 className="mb-3 text-sm font-medium text-white">{sectionTitle}</h3>
       <div className="grid gap-3 lg:grid-cols-2">
         <div>
-          <label className="mb-1 block text-[10px] uppercase text-surface-muted">Markdown</label>
+          <label className="mb-1 block text-[10px] uppercase text-surface-muted">{t("dashboard:markdownLabel")}</label>
           <textarea
             className="dashboard-grid-no-drag min-h-[220px] w-full resize-y rounded-lg border border-surface-border bg-black/35 px-3 py-2 font-mono text-sm text-neutral-100 outline-none focus:border-sky-500/50"
             placeholder={placeholder}
@@ -320,7 +324,7 @@ export function RichMarkdownBlockBody(props: {
           />
         </div>
         <div>
-          <label className="mb-1 block text-[10px] uppercase text-surface-muted">Vorschau</label>
+          <label className="mb-1 block text-[10px] uppercase text-surface-muted">{t("dashboard:markdownPreview")}</label>
           {preview}
         </div>
       </div>

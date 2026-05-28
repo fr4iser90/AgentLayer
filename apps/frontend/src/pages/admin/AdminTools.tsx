@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 
@@ -86,16 +87,16 @@ const ADMIN_BUCKET_ORDER = [
 
 const ADMIN_BUCKET_SET = new Set<string>(ADMIN_BUCKET_ORDER);
 
-const ADMIN_BUCKET_LABELS: Record<string, string> = {
-  files: "Local filesystem",
-  network: "Outbound network",
-  knowledge: "Knowledge & memory",
-  secrets: "Secrets & identity",
-  comms: "Comms & schedule",
-  verticals: "Domain verticals",
-  meta: "Meta & factory",
-  media: "Media",
-  unsorted: "Unsorted (set TOOL_BUCKET in the tool module)",
+const ADMIN_BUCKET_LABEL_KEYS: Record<string, string> = {
+  files: "toolsBucketFiles",
+  network: "toolsBucketNetwork",
+  knowledge: "toolsBucketKnowledge",
+  secrets: "toolsBucketSecrets",
+  comms: "toolsBucketComms",
+  verticals: "toolsBucketVerticals",
+  meta: "toolsBucketMeta",
+  media: "toolsBucketMedia",
+  unsorted: "toolsBucketUnsorted",
 };
 
 function shouldSubdivideByDomain(pkgs: ToolMeta[]): boolean {
@@ -141,6 +142,7 @@ function riskBadgeClass(rl: string | undefined): string {
 }
 
 export function AdminTools() {
+  const { t } = useTranslation(["admin"]);
   const auth = useAuth();
   const [meta, setMeta] = useState<ToolMeta[]>([]);
   const [policyByPkg, setPolicyByPkg] = useState<Record<string, PolicyRow>>({});
@@ -156,7 +158,7 @@ export function AdminTools() {
       const res = await apiFetch("/v1/admin/tools", auth);
       const data = (await res.json()) as { tools?: ToolMeta[]; policy_rows?: PolicyRow[] };
       if (!res.ok) {
-        setMsg("Failed to load admin tools");
+        setMsg(t("admin:toolsRegistryLoadFailed"));
         return;
       }
       const list = data.tools ?? [];
@@ -199,7 +201,7 @@ export function AdminTools() {
     } finally {
       setLoading(false);
     }
-  }, [auth]);
+  }, [auth, t]);
 
   useEffect(() => {
     void loadAdmin();
@@ -220,7 +222,7 @@ export function AdminTools() {
         return;
       }
       await loadAdmin();
-      setMsg("Registry reloaded.");
+      setMsg(t("admin:toolsRegistryReloaded"));
     } catch (e) {
       setMsg(e instanceof Error ? e.message : String(e));
     } finally {
@@ -266,7 +268,7 @@ export function AdminTools() {
         setMsg(detail);
         return;
       }
-      setMsg("Policy saved.");
+      setMsg(t("admin:toolsPolicySaved"));
       await loadAdmin();
     } catch (e) {
       setMsg(e instanceof Error ? e.message : String(e));
@@ -346,46 +348,48 @@ export function AdminTools() {
               {p.version ? <span className="text-[11px] text-surface-muted">v{p.version}</span> : null}
               {p.admin_bucket ? (
                 <span className="rounded bg-emerald-950/60 px-1.5 py-0.5 text-[10px] text-emerald-200/90">
-                  bucket:{p.admin_bucket}
+                  {t("admin:toolsBadgeBucket", { name: p.admin_bucket })}
                 </span>
               ) : null}
               {p.domain ? (
                 <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-neutral-300">
-                  domain:{p.domain}
+                  {t("admin:toolsBadgeDomain", { name: p.domain })}
                 </span>
               ) : null}
               <span
                 className="rounded bg-violet-900/50 px-1.5 py-0.5 text-[10px] text-violet-100"
-                title="Effective run context from manifest + Interfaces (AGENT_MODE). Not set on this page."
+                title={t("admin:effectiveRunContextTitle")}
               >
-                run:{effCtx}
+                {t("admin:toolsBadgeRun", { ctx: effCtx })}
                 {effCtx !== manCtx ? (
-                  <span className="text-violet-200/80"> (manifest:{manCtx})</span>
+                  <span className="text-violet-200/80">
+                    {t("admin:toolsBadgeRunManifest", { ctx: manCtx })}
+                  </span>
                 ) : null}
               </span>
               {effMr ? (
                 <span
                   className="rounded bg-amber-950/50 px-1.5 py-0.5 text-[10px] text-amber-100"
-                  title="Effective minimum role for this caller (manifest + operator policy)."
+                  title={t("admin:effectiveMinRoleTitle")}
                 >
-                  access:min_role={effMr}
+                  {t("admin:toolsBadgeAccess", { role: effMr })}
                 </span>
               ) : null}
               {effTenants?.length ? (
                 <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-200">
-                  tenants:{effTenants.join(",")}
+                  {t("admin:toolsBadgeTenants", { ids: effTenants.join(",") })}
                 </span>
               ) : null}
               {p.os_support?.length ? (
                 <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-neutral-300">
-                  os:{p.os_support.join(",")}
+                  {t("admin:toolsBadgeOs", { list: p.os_support.join(",") })}
                 </span>
               ) : null}
               {p.risk_level ? (
                 <span
                   className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${riskBadgeClass(p.risk_level)}`}
                 >
-                  risk:{p.risk_level}
+                  {t("admin:toolsBadgeRisk", { level: p.risk_level })}
                 </span>
               ) : null}
             </div>
@@ -394,49 +398,49 @@ export function AdminTools() {
             </p>
             <div className="grid gap-1.5 sm:grid-cols-2">
               <div>
-                <span className="text-surface-muted">Tools:</span>{" "}
+                <span className="text-surface-muted">{t("admin:toolsColTools")}</span>{" "}
                 <span className="break-all font-mono text-[11px] text-neutral-300">
                   {(p.tools ?? []).join(", ")}
                 </span>
               </div>
               {p.tags?.length ? (
                 <div>
-                  <span className="text-surface-muted">Manifest tags:</span>{" "}
+                  <span className="text-surface-muted">{t("admin:toolsColManifestTags")}</span>{" "}
                   <span className="text-neutral-300">{p.tags.join(", ")}</span>
                 </div>
               ) : null}
               {p.admin_tags?.length ? (
                 <div>
-                  <span className="text-surface-muted">Registry tags:</span>{" "}
+                  <span className="text-surface-muted">{t("admin:toolsColRegistryTags")}</span>{" "}
                   <span className="text-neutral-300">{p.admin_tags.join(", ")}</span>
                 </div>
               ) : null}
               {p.capabilities?.length ? (
                 <div>
-                  <span className="text-surface-muted">Capabilities:</span>{" "}
+                  <span className="text-surface-muted">{t("admin:toolsColCapabilities")}</span>{" "}
                   <span className="text-neutral-300">{p.capabilities.join(", ")}</span>
                 </div>
               ) : null}
               {req?.length ? (
                 <div>
-                  <span className="text-surface-muted">TOOL_REQUIRES (context hints):</span>{" "}
+                  <span className="text-surface-muted">{t("admin:toolsColToolRequires")}</span>{" "}
                   <span className="text-neutral-300">{req.join(", ")}</span>
                 </div>
               ) : null}
               {sec?.length ? (
                 <div>
-                  <span className="text-surface-muted">Secrets (service keys):</span>{" "}
+                  <span className="text-surface-muted">{t("admin:toolsColSecrets")}</span>{" "}
                   <span className="text-amber-200/90">{sec.join(", ")}</span>
                 </div>
               ) : null}
               {p.families?.length ? (
                 <div>
-                  <span className="text-surface-muted">Families:</span>{" "}
+                  <span className="text-surface-muted">{t("admin:toolsColFamilies")}</span>{" "}
                   <span className="text-neutral-300">{p.families.join(", ")}</span>
                 </div>
               ) : null}
               <div className="sm:col-span-2">
-                <span className="text-surface-muted">Manifest access (optional in module):</span>{" "}
+                <span className="text-surface-muted">{t("admin:adminToolsManifestAccess")}</span>{" "}
                 <span className="font-mono text-neutral-300">
                   TOOL_MIN_ROLE={p.min_role ?? "user"}
                   {p.allowed_tenant_ids?.length
@@ -452,12 +456,12 @@ export function AdminTools() {
               checked={pol.enabled}
               onChange={(e) => updatePolicy(pid, { enabled: e.target.checked })}
             />
-            Enabled
+            {t("admin:toolsPolicyEnabled")}
           </label>
         </div>
         <div className="mt-3 grid grid-cols-1 gap-3 border-t border-white/10 pt-3 sm:grid-cols-2">
           <label className="flex min-w-0 flex-col gap-1 text-[11px] text-surface-muted">
-            <span className="text-neutral-400">Minimum role to use this package</span>
+            <span className="text-neutral-400">{t("admin:toolsPolicyMinRole")}</span>
             <select
               className="w-full rounded-md border border-surface-border bg-black/30 px-2 py-1.5 text-xs text-white"
               value={pol.min_role}
@@ -465,18 +469,18 @@ export function AdminTools() {
                 updatePolicy(pid, { min_role: e.target.value === "admin" ? "admin" : "user" })
               }
             >
-              <option value="user">user (all signed-in users)</option>
-              <option value="admin">admin only</option>
+              <option value="user">{t("admin:toolsMinRoleUser")}</option>
+              <option value="admin">{t("admin:toolsMinRoleAdmin")}</option>
             </select>
           </label>
           <label className="flex min-w-0 flex-col gap-1 text-[11px] text-surface-muted">
             <span className="text-neutral-400">
-              Allowed tenant IDs (empty = any tenant; numbers = <span className="font-mono">tenants.id</span>)
+              {t("admin:toolsPolicyTenantIds")} (<span className="font-mono">tenants.id</span>)
             </span>
             <input
               type="text"
               className="w-full rounded-md border border-surface-border bg-black/30 px-2 py-1.5 font-mono text-xs text-white placeholder:text-neutral-500"
-              placeholder="e.g. 1, 2"
+              placeholder={t("admin:toolsPolicyTenantIdsPlaceholder")}
               value={tenantInputByPkg[pid] ?? ""}
               onChange={(e) => {
                 const v = e.target.value;
@@ -491,16 +495,10 @@ export function AdminTools() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-      <h1 className="text-2xl font-semibold text-white">Tool registry</h1>
+      <h1 className="text-2xl font-semibold text-white">{t("admin:toolsRegistryTitle")}</h1>
       <p className="mt-2 max-w-2xl text-sm text-surface-muted">
-        Grouping comes from each module&apos;s <span className="font-mono">TOOL_BUCKET</span> /{" "}
-        <span className="font-mono">TOOL_ADMIN_TAGS</span> (shown as bucket and registry tags).{" "}
-        <strong className="font-medium text-neutral-300">Save policy</strong> updates package enabled state,
-        minimum role, and optional tenant allowlist (comma-separated <span className="font-mono">tenants.id</span>;
-        leave empty for any tenant). Run context is from the manifest and operator interfaces, not this page.{" "}
-        <span className="text-neutral-500">
-          Assign users to tenants under <span className="text-neutral-400">Admin → Users</span>.
-        </span>
+        {t("admin:toolsRegistryIntro")}{" "}
+        <span className="text-neutral-500">{t("admin:toolsRegistryAssignUsers")}</span>
       </p>
 
       <div className="mt-4 flex flex-wrap gap-2">
@@ -510,7 +508,7 @@ export function AdminTools() {
           className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
           onClick={() => void loadAdmin()}
         >
-          Refresh
+          {t("admin:toolsRegistryRefresh")}
         </button>
         <button
           type="button"
@@ -518,7 +516,7 @@ export function AdminTools() {
           className="rounded-md bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/15 disabled:opacity-50"
           onClick={() => void reloadRegistry()}
         >
-          Reload registry
+          {t("admin:toolsRegistryReload")}
         </button>
         <button
           type="button"
@@ -526,14 +524,14 @@ export function AdminTools() {
           className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-50"
           onClick={() => void savePolicies()}
         >
-          Save policy
+          {t("admin:toolsRegistrySavePolicy")}
         </button>
       </div>
 
       {msg ? <p className="mt-3 text-sm text-surface-muted">{msg}</p> : null}
 
       {loading ? (
-        <p className="mt-8 text-sm text-surface-muted">Loading…</p>
+        <p className="mt-8 text-sm text-surface-muted">{t("admin:toolsRegistryLoading")}</p>
       ) : (
         <div className="mt-6 max-h-[min(72vh,calc(100dvh-11rem))] overflow-y-auto overscroll-contain rounded-lg border border-surface-border bg-black/20 pr-1">
           <div className="flex flex-col divide-y divide-white/10">
@@ -552,10 +550,10 @@ export function AdminTools() {
                     <div className="flex flex-wrap items-baseline justify-between gap-2 pr-1">
                       <span className="text-sm font-medium text-neutral-200">
                         <span className="font-mono text-neutral-500">{bucket}</span> ·{" "}
-                        {ADMIN_BUCKET_LABELS[bucket] ?? bucket}
+                        {t(`admin:${ADMIN_BUCKET_LABEL_KEYS[bucket] ?? "toolsBucketUnsorted"}`)}
                       </span>
                       <span className="font-mono text-xs text-surface-muted">
-                        {sectionPkgs.length} packages
+                        {t("admin:toolsPackagesCount", { count: sectionPkgs.length })}
                       </span>
                     </div>
                   </summary>
@@ -564,10 +562,10 @@ export function AdminTools() {
                       <div key={block.domain || "_"}>
                         {subdiv ? (
                           <h3 className="mb-2 border-l-2 border-sky-600/60 pl-2 text-[11px] font-semibold uppercase tracking-wide text-sky-200/90">
-                            Domain · {block.domain}{" "}
-                            <span className="font-mono font-normal text-surface-muted">
-                              ({block.items.length})
-                            </span>
+                            {t("admin:toolsDomainHeader", {
+                              domain: block.domain,
+                              count: block.items.length,
+                            })}
                           </h3>
                         ) : null}
                         <ul className="flex flex-col gap-2">{block.items.map((p) => renderCard(p))}</ul>
@@ -582,7 +580,7 @@ export function AdminTools() {
       )}
 
       {!loading && totalPackages === 0 ? (
-        <p className="mt-8 text-sm text-surface-muted">No tool packages loaded.</p>
+        <p className="mt-8 text-sm text-surface-muted">{t("admin:toolsRegistryNoneLoaded")}</p>
       ) : null}
     </div>
   );

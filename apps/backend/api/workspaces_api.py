@@ -52,6 +52,10 @@ class WorkspaceUpdateBody(BaseModel):
 
 class WorkspaceIndexBody(BaseModel):
     max_files: int = Field(default=5000, ge=100, le=20000)
+    mode: str = Field(
+        default="full",
+        description="full: code (Qdrant+Neo4j) + workspace docs RAG; code: symbols+graph only; docs: *.md RAG only",
+    )
 
 
 class ImplementationBranchBody(BaseModel):
@@ -59,6 +63,13 @@ class ImplementationBranchBody(BaseModel):
 
     base_branch: str | None = Field(default=None, max_length=255)
     implementation_run_id: str | None = Field(default=None, max_length=128)
+
+
+class WorkspaceSelfResetBody(BaseModel):
+    backup_existing: bool = Field(
+        default=True,
+        description="When true, move existing agentlayer-self directory to a timestamped backup before re-seeding.",
+    )
 
 
 def safe_resolve_under_workspace(root: Path, rel: str | None) -> Path:
@@ -210,7 +221,7 @@ async def workspace_index_status(request: Request, workspace_id: str) -> dict[st
 async def workspace_run_index(
     request: Request, workspace_id: str, body: WorkspaceIndexBody | None = None
 ) -> dict[str, Any]:
-    """Build or refresh the Qdrant symbol index for this workspace."""
+    """Build or refresh code index (Qdrant + Neo4j) and/or workspace docs RAG."""
     user = await get_current_user(request)
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
@@ -231,12 +242,20 @@ async def workspace_run_index(
     if (row[2] or "").strip() == AGENTLAYER_SELF_NAME and not self_editing_allowed(user):
         raise HTTPException(status_code=404, detail="Workspace not found or no edit permission")
 
-    sem, _ret = workspace_retrieval._row_flags(row)
-    if not sem:
+    sem, _ret, docs_rag = workspace_retrieval._row_flags(row)
+    mode = (body.mode if body else "full").strip().lower()
+    if mode not in ("full", "code", "docs"):
+        mode = "full"
+
+    if mode in ("full", "code") and not sem:
         raise HTTPException(status_code=400, detail="semantic_index_enabled is off for this workspace")
+    if mode == "docs" and not docs_rag:
+        raise HTTPException(status_code=400, detail="docs_rag_enabled is off for this workspace")
 
     max_files = body.max_files if body else 5000
-    kick = workspace_retrieval.start_semantic_index_async(workspace_id, row[3], max_files=max_files)
+    kick = workspace_retrieval.start_semantic_index_async(
+        workspace_id, row[3], max_files=max_files, mode=mode
+    )
     status = workspace_retrieval.index_status_payload(
         workspace_retrieval.fetch_workspace_row(workspace_id, user.id)
     )
@@ -292,6 +311,58 @@ async def create_implementation_branch(request: Request, workspace_id: str, body
     if not result.get("ok"):
         raise HTTPException(status_code=400, detail=str(result.get("error") or "branch creation failed"))
     return result
+
+
+@router.post("/{workspace_id}/self/reset")
+async def reset_self_workspace(request: Request, workspace_id: str, body: WorkspaceSelfResetBody | None = None):
+    """Destructive reset/re-seed for the AgentLayer self workspace (ADR 0005)."""
+    user = await get_current_user(request)
+    from apps.backend.infrastructure.workspace_service import (
+        AGENTLAYER_SELF_NAME,
+        reset_agentlayer_self_workspace,
+        self_editing_allowed,
+    )
+
+    with db.pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT {WORKSPACE_SELECT_SQL}
+                FROM project_workspaces
+                WHERE id = %s AND owner_user_id = %s AND access_role IN ('owner', 'editor')
+                """,
+                (workspace_id, user.id),
+            )
+            row = cur.fetchone()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Workspace not found or no edit permission")
+
+    if (row[2] or "").strip() != AGENTLAYER_SELF_NAME:
+        raise HTTPException(status_code=400, detail="Reset is only supported for agentlayer-self")
+    if not self_editing_allowed(user):
+        raise HTTPException(status_code=404, detail="Workspace not found or no edit permission")
+
+    backup_existing = bool(body.backup_existing) if body is not None else True
+    ws = reset_agentlayer_self_workspace(user, backup_existing=backup_existing)
+    if not ws:
+        raise HTTPException(status_code=500, detail="Failed to reset agentlayer-self (seed missing or server error)")
+
+    # Return fresh DB-shaped record.
+    with db.pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT {WORKSPACE_SELECT_SQL}
+                FROM project_workspaces
+                WHERE id = %s AND owner_user_id = %s
+                """,
+                (workspace_id, user.id),
+            )
+            row2 = cur.fetchone()
+    if not row2:
+        raise HTTPException(status_code=500, detail="Workspace reset but could not read DB row")
+    return {"ok": True, "workspace": _row_to_workspace(row2)}
 
 
 @router.patch("/{workspace_id}")

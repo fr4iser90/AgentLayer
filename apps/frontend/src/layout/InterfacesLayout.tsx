@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { OperatorSettingsProvider } from "../features/admin/operatorSettings/OperatorSettingsProvider";
 import { OperatorSettingsStickySave } from "../features/admin/operatorSettings/OperatorSettingsStickySave";
 
@@ -7,24 +8,27 @@ const subLink =
 const subActive = "border-white/10 bg-white/10 text-white";
 const subIdle = "text-surface-muted hover:bg-white/5 hover:text-neutral-200";
 
-const NAV = [
-  { to: "/admin/interfaces", end: true, label: "Overview" },
-  { to: "/admin/interfaces/bridges", label: "Bridges" },
-  { to: "/admin/interfaces/llm", label: "LLM & routing" },
-  { to: "/admin/interfaces/memory", label: "Memory & RAG" },
-  { to: "/admin/interfaces/automation", label: "Automation" },
-  { to: "/admin/interfaces/platform", label: "Platform" },
-] as const;
-
 export function InterfacesLayout() {
+  const { t } = useTranslation(["admin"]);
+  const NAV = [
+    { to: "/admin/interfaces", end: true, label: t("admin:overview") },
+    { to: "/admin/interfaces/bridges", label: t("admin:bridges") },
+    { to: "/admin/interfaces/llm", label: t("admin:llmRouting") },
+    { to: "/admin/interfaces/memory", label: t("admin:memoryRagTitle") },
+    { to: "/admin/interfaces/automation", label: t("admin:navAutomation") },
+    { to: "/admin/interfaces/platform", label: t("admin:navPlatform") },
+  ] as const;
   return (
     <OperatorSettingsProvider>
       <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
         <aside className="shrink-0 border-b border-surface-border bg-[#0a0a0a] px-3 py-4 md:w-48 md:border-b-0 md:border-r">
           <p className="mb-2 px-2 text-[10px] font-medium uppercase tracking-wide text-surface-muted">
-            Interfaces
+            {t("admin:interfacesTitle")}
           </p>
-          <nav className="flex flex-row flex-wrap gap-1 md:flex-col md:gap-0.5" aria-label="Interface settings">
+          <nav
+            className="flex flex-row flex-wrap gap-1 md:flex-col md:gap-0.5"
+            aria-label={t("admin:interfaceSettingsAria")}
+          >
             {NAV.map((item) => (
               <NavLink
                 key={item.to}

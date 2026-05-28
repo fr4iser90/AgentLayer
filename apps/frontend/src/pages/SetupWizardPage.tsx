@@ -1,5 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { SETUP_WIZARD_ACTIVE_KEY, useAuth } from "../auth/AuthContext";
 import {
   DEFAULT_LLM_PRESET,
@@ -54,6 +55,7 @@ function authHeaders(token: string): HeadersInit {
 }
 
 export function SetupWizardPage() {
+  const { t } = useTranslation(["setup"]);
   const navigate = useNavigate();
   const { accessToken, loading, setupStatus, refreshSetupStatus, completeSetup } = useAuth();
 
@@ -110,7 +112,7 @@ export function SetupWizardPage() {
     });
     setCatalogLoading(false);
     if (!r.ok) {
-      let msg = "Katalog konnte nicht geladen werden.";
+      let msg = t("setup:catalogLoadFailed");
       try {
         const d = (await r.json()) as { detail?: string };
         if (typeof d.detail === "string") msg = d.detail;
@@ -186,7 +188,7 @@ export function SetupWizardPage() {
     const result = await completeSetup(email.trim(), password, passwordConfirm, setupToken);
     setAdminPending(false);
     if (!result.ok) {
-      setAdminError(result.error ?? "Einrichtung fehlgeschlagen.");
+      setAdminError(result.error ?? t("setup:setupFailed"));
       return;
     }
     sessionStorage.setItem(SETUP_WIZARD_ACTIVE_KEY, "1");
@@ -209,7 +211,7 @@ export function SetupWizardPage() {
     });
     setPrefsPending(false);
     if (!r.ok) {
-      let msg = "Überspringen fehlgeschlagen.";
+      let msg = t("setup:skipFailed");
       try {
         const d = (await r.json()) as { detail?: string };
         if (typeof d.detail === "string") msg = d.detail;
@@ -227,11 +229,11 @@ export function SetupWizardPage() {
   async function onSavePreferences(e: FormEvent) {
     e.preventDefault();
     if (!accessToken) {
-      setPrefsError("Sitzung abgelaufen. Laden Sie die Seite neu.");
+      setPrefsError(t("setup:prefsSessionExpired"));
       return;
     }
     if (!primaryProviderId) {
-      setPrefsError("Bitte einen Provider auswählen.");
+      setPrefsError(t("setup:prefsChooseProvider"));
       return;
     }
     setPrefsPending(true);
@@ -251,7 +253,7 @@ export function SetupWizardPage() {
     });
     setPrefsPending(false);
     if (!r.ok) {
-      let msg = "Speichern fehlgeschlagen.";
+      let msg = t("setup:saveFailed");
       try {
         const d = (await r.json()) as { detail?: string };
         if (typeof d.detail === "string") msg = d.detail;
@@ -261,7 +263,7 @@ export function SetupWizardPage() {
       setPrefsError(msg);
       return;
     }
-    setPrefsOk("Standard-Provider und Profilmodelle gespeichert.");
+    setPrefsOk(t("setup:prefsSaved"));
     finishWizard();
     await refreshSetupStatus();
     setStep(3);
@@ -278,7 +280,7 @@ export function SetupWizardPage() {
     });
     setOllamaEmbedPending(false);
     if (!r.ok) {
-      let msg = "Ollama-Embedding konnte nicht aktiviert werden.";
+      let msg = t("setup:ollamaEnableFailed");
       try {
         const d = (await r.json()) as { detail?: string };
         if (typeof d.detail === "string") msg = d.detail;
@@ -309,7 +311,7 @@ export function SetupWizardPage() {
     });
     setEmbedTestPending(false);
     if (!r.ok) {
-      let msg = "Embedding-Test fehlgeschlagen.";
+      let msg = t("setup:embeddingTestFailed");
       try {
         const d = (await r.json()) as { detail?: string };
         if (typeof d.detail === "string") msg = d.detail;
@@ -322,23 +324,23 @@ export function SetupWizardPage() {
     const d = (await r.json()) as { embedding_dim?: number };
     setEmbedTestOk(
       d.embedding_dim != null
-        ? `Embedding OK (${d.embedding_dim} Dimensionen).`
-        : "Embedding OK."
+        ? t("setup:embeddingOkWithDim", { dim: d.embedding_dim })
+        : t("setup:embeddingOk")
     );
   }
 
   async function llmRequest(testOnly: boolean): Promise<boolean> {
     if (!accessToken) {
-      setLlmError("Sitzung abgelaufen. Laden Sie die Seite neu.");
+      setLlmError(t("setup:prefsSessionExpired"));
       return false;
     }
     const cfg = getLlmPreset(preset);
     if (cfg.apiKeyRequired && !apiKey.trim()) {
-      setLlmError(`API-Schlüssel erforderlich (${cfg.endpointLabel}).`);
+      setLlmError(t("setup:llmApiKeyRequired", { label: cfg.endpointLabel }));
       return false;
     }
     if (!baseUrl.trim()) {
-      setLlmError("Basis-URL ist erforderlich.");
+      setLlmError(t("setup:llmBaseUrlRequired"));
       return false;
     }
     setLlmPending(true);
@@ -358,7 +360,7 @@ export function SetupWizardPage() {
     });
     setLlmPending(false);
     if (!r.ok) {
-      let msg = "Anfrage fehlgeschlagen.";
+      let msg = t("setup:requestFailed");
       try {
         const d = (await r.json()) as { detail?: string };
         if (typeof d.detail === "string") msg = d.detail;
@@ -371,15 +373,11 @@ export function SetupWizardPage() {
     const d = (await r.json()) as { model_count?: number; ok?: boolean };
     const n = d.model_count ?? 0;
     if (n === 0 && !testOnly) {
-      setLlmError(
-        "Verbindung OK, aber keine Modelle gemeldet. Prüfen Sie den Endpunkt oder wählen Sie ein Modell aus der Liste."
-      );
+      setLlmError(t("setup:llmTestNoModels"));
       return false;
     }
     setLlmTestOk(
-      n > 0
-        ? `Verbindung erfolgreich. ${n} Modell${n === 1 ? "" : "e"} verfügbar.`
-        : "Verbindung erfolgreich."
+      n > 0 ? t("setup:llmTestOkCount", { count: n }) : t("setup:llmTestOkSimple")
     );
     if (!testOnly) {
       await loadCatalog();
@@ -400,7 +398,7 @@ export function SetupWizardPage() {
   if (statusLoading || loading) {
     return (
       <div className="flex h-full min-h-0 flex-1 items-center justify-center text-sm text-surface-muted">
-        Laden…
+        {t("setup:loading")}
       </div>
     );
   }
@@ -424,19 +422,17 @@ export function SetupWizardPage() {
     <div className="h-full min-h-0 overflow-y-auto">
       <div className="mx-auto max-w-lg px-6 py-12">
         <p className="text-xs font-medium uppercase tracking-wide text-surface-muted">
-          Schritt {step} von 3
+          {t("setup:stepOf", { step })}
         </p>
 
         {step === 1 ? (
           <>
-            <h1 className="mt-2 text-2xl font-semibold text-white">Ersteinrichtung</h1>
-            <p className="mt-2 text-sm text-surface-muted">
-              Legen Sie das Administrator-Konto für diese Instanz an.
-            </p>
+            <h1 className="mt-2 text-2xl font-semibold text-white">{t("setup:step1Title")}</h1>
+            <p className="mt-2 text-sm text-surface-muted">{t("setup:step1Intro")}</p>
             <form onSubmit={onAdminSubmit} className="mt-8 flex flex-col gap-4">
               {setupStatus?.setup_token_required ? (
                 <label className="flex flex-col gap-1.5 text-sm">
-                  <span className="text-surface-muted">Einrichtungs-Token</span>
+                  <span className="text-surface-muted">{t("setup:setupToken")}</span>
                   <input
                     type="password"
                     name="setup_token"
@@ -448,13 +444,13 @@ export function SetupWizardPage() {
                   />
                   <p className="text-xs text-surface-muted">
                     {setupStatus.setup_token_source === "env"
-                      ? "Wert aus AGENT_SETUP_TOKEN in der Server-Konfiguration (.env)."
-                      : "Einmalig im Server-Log nach Start (z. B. docker compose logs agent-layer)."}
+                      ? t("setup:setupTokenEnv")
+                      : t("setup:setupTokenLog")}
                   </p>
                 </label>
               ) : null}
               <label className="flex flex-col gap-1.5 text-sm">
-                <span className="text-surface-muted">E-Mail</span>
+                <span className="text-surface-muted">{t("setup:email")}</span>
                 <input
                   type="email"
                   name="email"
@@ -466,7 +462,7 @@ export function SetupWizardPage() {
                 />
               </label>
               <label className="flex flex-col gap-1.5 text-sm">
-                <span className="text-surface-muted">Passwort</span>
+                <span className="text-surface-muted">{t("setup:password")}</span>
                 <input
                   type="password"
                   name="password"
@@ -479,7 +475,7 @@ export function SetupWizardPage() {
                 />
               </label>
               <label className="flex flex-col gap-1.5 text-sm">
-                <span className="text-surface-muted">Passwort bestätigen</span>
+                <span className="text-surface-muted">{t("setup:passwordConfirm")}</span>
                 <input
                   type="password"
                   name="password_confirm"
@@ -492,7 +488,7 @@ export function SetupWizardPage() {
                 />
               </label>
               <p className="text-xs text-surface-muted">
-                Mindestens 8 Zeichen. Weitere Konten legen Sie unter Admin → Benutzer an.
+                {t("setup:passwordHint")}
               </p>
               {adminError ? (
                 <p className="text-sm text-red-400" role="alert">
@@ -504,7 +500,7 @@ export function SetupWizardPage() {
                 disabled={adminPending}
                 className="rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
               >
-                {adminPending ? "Wird angelegt…" : "Weiter"}
+                {adminPending ? t("setup:adminPending") : t("setup:continueBtn")}
               </button>
             </form>
           </>
@@ -512,16 +508,11 @@ export function SetupWizardPage() {
 
         {step === 2 ? (
           <>
-            <h1 className="mt-2 text-2xl font-semibold text-white">KI-Provider &amp; Modelle</h1>
-            <p className="mt-2 text-sm text-surface-muted">
-              Erkannte Provider aus Umgebung und Konfiguration. Chat- und Embedding-Modelle werden
-              automatisch eingestuft; Sie legen hier einmal die Standard-Profile fest. Cloud-Anbieter
-              (OpenAI, Claude via OpenRouter, Groq, …) binden Sie unten als OpenAI-kompatiblen
-              Endpunkt ein. Im Chat und unter Admin können Sie jederzeit andere Modelle wählen.
-            </p>
+            <h1 className="mt-2 text-2xl font-semibold text-white">{t("setup:step2Title")}</h1>
+            <p className="mt-2 text-sm text-surface-muted">{t("setup:step2Intro")}</p>
 
             {catalogLoading ? (
-              <p className="mt-6 text-sm text-surface-muted">Provider werden geprüft…</p>
+              <p className="mt-6 text-sm text-surface-muted">{t("setup:catalogLoading")}</p>
             ) : null}
             {catalogError ? (
               <p className="mt-4 text-sm text-red-400" role="alert">
@@ -532,7 +523,7 @@ export function SetupWizardPage() {
             {catalog ? (
               <div className="mt-6 space-y-4">
                 <section>
-                  <h2 className="text-sm font-medium text-white">Provider-Status</h2>
+                  <h2 className="text-sm font-medium text-white">{t("setup:providerStatus")}</h2>
                   <ul className="mt-2 space-y-2">
                     {catalog.providers.map((p) => (
                       <li
@@ -546,13 +537,16 @@ export function SetupWizardPage() {
                               p.reachable ? "text-emerald-400" : "text-amber-400"
                             }
                           >
-                            {p.reachable ? "Erreichbar" : "Nicht erreichbar"}
+                            {p.reachable ? t("setup:reachable") : t("setup:notReachable")}
                           </span>
                         </div>
                         <p className="mt-1 text-xs text-surface-muted">
                           {p.source}
                           {p.model_count > 0
-                            ? ` · ${p.chat_models.length} Chat, ${p.embedding_models.length} Embedding`
+                            ? t("setup:providerModelsSummary", {
+                                chat: p.chat_models.length,
+                                embed: p.embedding_models.length,
+                              })
                             : ""}
                         </p>
                         {p.detail && !p.reachable ? (
@@ -565,7 +559,7 @@ export function SetupWizardPage() {
 
                 <section className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-sm">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium text-white">Embeddings (RAG / Memory)</span>
+                    <span className="font-medium text-white">{t("setup:embeddingsTitle")}</span>
                     <span
                       className={
                         catalog.embedding.configured && catalog.embedding.reachable
@@ -574,10 +568,10 @@ export function SetupWizardPage() {
                       }
                     >
                       {!catalog.embedding.configured
-                        ? "Optional"
+                        ? t("setup:optional")
                         : catalog.embedding.reachable
-                          ? "Erreichbar"
-                          : "Nicht erreichbar"}
+                          ? t("setup:reachable")
+                          : t("setup:notReachable")}
                     </span>
                   </div>
                   {catalog.embedding.status_line && !catalog.embedding.configured ? (
@@ -590,12 +584,9 @@ export function SetupWizardPage() {
                   catalog.embedding.ollama_opt_in?.available ? (
                     <div className="mt-3 flex flex-col gap-2">
                       <p className="text-xs text-surface-muted">
-                        Ein Anbieter, zwei Pfade: Chat läuft über Ollama; für RAG dieselbe URL für{" "}
-                        <span className="font-mono">/v1/embeddings</span> (ohne .env-Neustart).
-                        Modell-Vorschlag:{" "}
-                        <span className="font-mono text-white">
-                          {catalog.embedding.ollama_opt_in.suggested_model ?? "nomic-embed-text"}
-                        </span>
+                        {t("setup:ollamaEmbedHint", {
+                          model: catalog.embedding.ollama_opt_in.suggested_model ?? "—",
+                        })}
                       </p>
                       <button
                         type="button"
@@ -603,9 +594,7 @@ export function SetupWizardPage() {
                         onClick={() => void onEnableOllamaEmbedding()}
                         className="self-start rounded-lg border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-sm text-sky-200 hover:bg-sky-500/20 disabled:opacity-50"
                       >
-                        {ollamaEmbedPending
-                          ? "Wird eingerichtet…"
-                          : "Ollama auch für Embeddings (RAG) nutzen"}
+                        {ollamaEmbedPending ? t("setup:ollamaEmbedPending") : t("setup:ollamaEmbedBtn")}
                       </button>
                     </div>
                   ) : null}
@@ -613,7 +602,7 @@ export function SetupWizardPage() {
 
                 <form onSubmit={onSavePreferences} className="flex flex-col gap-4">
                   <label className="flex flex-col gap-1.5 text-sm">
-                    <span className="text-surface-muted">Bevorzugter Chat-Provider</span>
+                    <span className="text-surface-muted">{t("setup:preferredProvider")}</span>
                     <select
                       value={primaryProviderId}
                       onChange={(ev) => {
@@ -628,7 +617,7 @@ export function SetupWizardPage() {
                       }}
                       className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                     >
-                      <option value="">— auswählen —</option>
+                      <option value="">{t("setup:selectProvider")}</option>
                       {catalog.providers.map((p) => (
                         <option
                           key={p.provider_id}
@@ -636,14 +625,14 @@ export function SetupWizardPage() {
                           disabled={!p.reachable}
                         >
                           {p.label}
-                          {p.reachable ? "" : " (offline)"}
+                          {p.reachable ? "" : t("setup:offlineSuffix")}
                         </option>
                       ))}
                     </select>
                   </label>
 
                   <label className="flex flex-col gap-1.5 text-sm">
-                    <span className="text-surface-muted">Allgemein / Agent (Chat)</span>
+                    <span className="text-surface-muted">{t("setup:modelAgent")}</span>
                     <select
                       value={modelAgent}
                       onChange={(ev) => setModelAgent(ev.target.value)}
@@ -651,7 +640,7 @@ export function SetupWizardPage() {
                       className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50"
                     >
                       {chatModels.length === 0 ? (
-                        <option value="">Keine Chat-Modelle</option>
+                        <option value="">{t("setup:noChatModels")}</option>
                       ) : (
                         chatModels.map((m) => (
                           <option key={m} value={m}>
@@ -663,7 +652,7 @@ export function SetupWizardPage() {
                   </label>
 
                   <label className="flex flex-col gap-1.5 text-sm">
-                    <span className="text-surface-muted">Coding-Agent</span>
+                    <span className="text-surface-muted">{t("setup:modelCoding")}</span>
                     <select
                       value={modelCoding}
                       onChange={(ev) => setModelCoding(ev.target.value)}
@@ -679,7 +668,7 @@ export function SetupWizardPage() {
                   </label>
 
                   <label className="flex flex-col gap-1.5 text-sm">
-                    <span className="text-surface-muted">Standard-Fallback (Chat)</span>
+                    <span className="text-surface-muted">{t("setup:modelDefault")}</span>
                     <select
                       value={modelDefault}
                       onChange={(ev) => setModelDefault(ev.target.value)}
@@ -698,15 +687,15 @@ export function SetupWizardPage() {
                     <div className="flex flex-col gap-2">
                       <label className="flex flex-col gap-1.5 text-sm">
                         <span className="text-surface-muted">
-                          RAG / Embedding-Modell
-                          {!catalog.embedding.configured ? " (nach Aktivierung oben)" : ""}
+                          {t("setup:ragEmbedding")}
+                          {!catalog.embedding.configured ? t("setup:ragEmbeddingAfterEnable") : ""}
                         </span>
                         <select
                           value={ragEmbedding}
                           onChange={(ev) => setRagEmbedding(ev.target.value)}
                           className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                         >
-                          <option value="">— optional —</option>
+                          <option value="">{t("setup:optionalDash")}</option>
                           {embedOptions.map((m) => (
                             <option key={m} value={m}>
                               {m}
@@ -720,7 +709,7 @@ export function SetupWizardPage() {
                         onClick={() => void onTestEmbedding()}
                         className="self-start rounded-lg border border-surface-border px-3 py-2 text-sm text-white hover:bg-white/5 disabled:opacity-50"
                       >
-                        {embedTestPending ? "Test läuft…" : "Embedding testen"}
+                        {embedTestPending ? t("setup:embedTestPending") : t("setup:embedTestBtn")}
                       </button>
                       {embedTestOk ? (
                         <p className="text-sm text-emerald-400" role="status">
@@ -748,7 +737,7 @@ export function SetupWizardPage() {
                       onClick={() => void loadCatalog()}
                       className="rounded-lg border border-surface-border px-4 py-2.5 text-sm text-white hover:bg-white/5 disabled:opacity-50"
                     >
-                      Aktualisieren
+                      {t("setup:refresh")}
                     </button>
                     <button
                       type="submit"
@@ -759,7 +748,7 @@ export function SetupWizardPage() {
                       }
                       className="rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
                     >
-                      {prefsPending ? "Wird gespeichert…" : "Speichern & weiter"}
+                      {prefsPending ? t("setup:savePending") : t("setup:saveAndContinue")}
                     </button>
                   </div>
                 </form>
@@ -772,14 +761,12 @@ export function SetupWizardPage() {
                 onClick={() => setShowManual((v) => !v)}
                 className="text-sm text-sky-400 hover:underline"
               >
-                {showManual
-                  ? "Cloud-/Zusatz-Endpunkt ausblenden"
-                  : "Cloud- oder Zusatz-Endpunkt hinzufügen (OpenAI, OpenRouter, …)"}
+                {showManual ? t("setup:showManualHide") : t("setup:showManualAdd")}
               </button>
               {showManual ? (
                 <form onSubmit={onLlmSave} className="mt-4 flex flex-col gap-4">
                   <label className="flex flex-col gap-1.5 text-sm">
-                    <span className="text-surface-muted">Vorlage</span>
+                    <span className="text-surface-muted">{t("setup:preset")}</span>
                     <select
                       value={preset}
                       onChange={(ev) => onPresetChange(ev.target.value as LlmPresetId)}
@@ -787,14 +774,14 @@ export function SetupWizardPage() {
                     >
                       {LLM_PRESETS.map((p) => (
                         <option key={p.id} value={p.id}>
-                          {p.label}
+                          {t(`setup:${p.labelKey}`)}
                         </option>
                       ))}
                     </select>
-                    <p className="text-xs text-surface-muted">{presetConfig.help}</p>
+                    <p className="text-xs text-surface-muted">{t(`setup:${presetConfig.helpKey}`)}</p>
                   </label>
                   <label className="flex flex-col gap-1.5 text-sm">
-                    <span className="text-surface-muted">Basis-URL</span>
+                    <span className="text-surface-muted">{t("setup:baseUrl")}</span>
                     <input
                       type="url"
                       value={baseUrl}
@@ -809,8 +796,8 @@ export function SetupWizardPage() {
                   </label>
                   <label className="flex flex-col gap-1.5 text-sm">
                     <span className="text-surface-muted">
-                      API-Schlüssel
-                      {presetConfig.apiKeyRequired ? " (erforderlich)" : " (optional)"}
+                      {t("setup:apiKey")}
+                      {presetConfig.apiKeyRequired ? t("setup:apiKeyRequired") : t("setup:apiKeyOptional")}
                     </span>
                     <input
                       type="password"
@@ -823,15 +810,15 @@ export function SetupWizardPage() {
                       required={presetConfig.apiKeyRequired}
                       className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                     />
-                    <p className="text-xs text-surface-muted">{presetConfig.apiKeyHint}</p>
+                    <p className="text-xs text-surface-muted">{t(`setup:${presetConfig.apiKeyHintKey}`)}</p>
                   </label>
                   <label className="flex flex-col gap-1.5 text-sm">
-                    <span className="text-surface-muted">Standardmodell (optional)</span>
+                    <span className="text-surface-muted">{t("setup:defaultModelOptional")}</span>
                     <input
                       type="text"
                       value={modelDefaultManual}
                       onChange={(ev) => setModelDefaultManual(ev.target.value)}
-                      placeholder={presetConfig.modelPlaceholder}
+                      placeholder={t(`setup:${presetConfig.modelPlaceholderKey}`)}
                       className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                     />
                   </label>
@@ -852,14 +839,14 @@ export function SetupWizardPage() {
                       onClick={(ev) => void onLlmTest(ev as unknown as FormEvent)}
                       className="rounded-lg border border-surface-border px-4 py-2.5 text-sm text-white hover:bg-white/5 disabled:opacity-50"
                     >
-                      Verbindung prüfen
+                      {t("setup:testConnection")}
                     </button>
                     <button
                       type="submit"
                       disabled={llmPending}
                       className="rounded-lg border border-surface-border px-4 py-2.5 text-sm text-white hover:bg-white/5 disabled:opacity-50"
                     >
-                      Endpunkt speichern
+                      {t("setup:saveEndpoint")}
                     </button>
                   </div>
                 </form>
@@ -872,30 +859,27 @@ export function SetupWizardPage() {
               onClick={() => void onSkipProfiles()}
               className="mt-6 text-left text-sm text-surface-muted hover:text-white disabled:opacity-50"
             >
-              Überspringen (Vorschläge übernehmen, falls erreichbar)
+              {t("setup:skipProfiles")}
             </button>
           </>
         ) : null}
 
         {step === 3 ? (
           <>
-            <h1 className="mt-2 text-2xl font-semibold text-white">Einrichtung abgeschlossen</h1>
-            <p className="mt-2 text-sm text-surface-muted">
-              Die Instanz ist betriebsbereit. Im Chat wählen Sie das Modell im Composer; Profile und
-              Endpunkte passen Sie unter Admin → Schnittstellen an.
-            </p>
+            <h1 className="mt-2 text-2xl font-semibold text-white">{t("setup:step3Title")}</h1>
+            <p className="mt-2 text-sm text-surface-muted">{t("setup:step3Intro")}</p>
             <div className="mt-8 flex flex-col gap-3">
               <Link
                 to="/chat"
                 className="rounded-lg bg-sky-600 px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-sky-500"
               >
-                Zum Chat
+                {t("setup:goToChat")}
               </Link>
               <Link
                 to="/admin"
                 className="rounded-lg border border-surface-border px-4 py-2.5 text-center text-sm text-white hover:bg-white/5"
               >
-                Admin-Bereich
+                {t("setup:goToAdmin")}
               </Link>
             </div>
           </>
@@ -903,7 +887,7 @@ export function SetupWizardPage() {
 
         <p className="mt-10 text-center text-sm text-surface-muted">
           <Link to="/login" className="text-sky-400 hover:underline">
-            Zur Anmeldung
+            {t("setup:backToLogin")}
           </Link>
         </p>
       </div>

@@ -11,91 +11,91 @@ export type LlmPresetId =
 
 export type LlmPresetConfig = {
   id: LlmPresetId;
-  /** Short label in the preset dropdown */
-  label: string;
+  /** i18n key under setup namespace */
+  labelKey: string;
   /** Stored as operator_external_llm_endpoints.label */
   endpointLabel: string;
   baseUrl: string;
-  modelPlaceholder: string;
+  modelPlaceholderKey: string;
   modelExample?: string;
   apiKeyRequired: boolean;
-  apiKeyHint: string;
-  help: string;
+  apiKeyHintKey: string;
+  helpKey: string;
 };
 
 export const LLM_PRESETS: readonly LlmPresetConfig[] = [
   {
     id: "ollama",
-    label: "Ollama (lokal / Docker)",
+    labelKey: "llmPresetOllamaLabel",
     endpointLabel: "Ollama",
     baseUrl: "http://ollama:11434",
-    modelPlaceholder: "z. B. qwen2.5:7b",
+    modelPlaceholderKey: "llmPresetOllamaModelPlaceholder",
     apiKeyRequired: false,
-    apiKeyHint: "Meist leer (lokaler Server ohne Auth).",
-    help: "OpenAI-kompatibel unter /v1. In Docker typisch http://ollama:11434.",
+    apiKeyHintKey: "llmPresetOllamaApiKeyHint",
+    helpKey: "llmPresetOllamaHelp",
   },
   {
     id: "llama_cpp",
-    label: "llama.cpp Server",
+    labelKey: "llmPresetLlamaCppLabel",
     endpointLabel: "llama.cpp",
     baseUrl: "http://127.0.0.1:8080/v1",
-    modelPlaceholder: "z. B. Qwen3-8B-Q4_K_M.gguf",
+    modelPlaceholderKey: "llmPresetLlamaCppModelPlaceholder",
     apiKeyRequired: false,
-    apiKeyHint: "Nur wenn Ihr Gateway einen API-Key verlangt.",
-    help: "Eigener llama.cpp- oder Gateway-Endpunkt mit /v1/chat/completions.",
+    apiKeyHintKey: "llmPresetLlamaCppApiKeyHint",
+    helpKey: "llmPresetLlamaCppHelp",
   },
   {
     id: "openai",
-    label: "OpenAI",
+    labelKey: "llmPresetOpenaiLabel",
     endpointLabel: "OpenAI",
     baseUrl: "https://api.openai.com/v1",
-    modelPlaceholder: "z. B. gpt-4o",
+    modelPlaceholderKey: "llmPresetOpenaiModelPlaceholder",
     modelExample: "gpt-4o",
     apiKeyRequired: true,
-    apiKeyHint: "API-Key von platform.openai.com (sk-…).",
-    help: "Offizielle OpenAI-API. Modell-IDs wie gpt-4o, gpt-4o-mini.",
+    apiKeyHintKey: "llmPresetOpenaiApiKeyHint",
+    helpKey: "llmPresetOpenaiHelp",
   },
   {
     id: "openrouter",
-    label: "OpenRouter (Claude, GPT, Gemini, …)",
+    labelKey: "llmPresetOpenrouterLabel",
     endpointLabel: "OpenRouter",
     baseUrl: "https://openrouter.ai/api/v1",
-    modelPlaceholder: "z. B. anthropic/claude-sonnet-4",
+    modelPlaceholderKey: "llmPresetOpenrouterModelPlaceholder",
     modelExample: "anthropic/claude-sonnet-4",
     apiKeyRequired: true,
-    apiKeyHint: "API-Key von openrouter.ai — ein Endpoint für viele Anbieter.",
-    help: "Claude ohne nativen Anthropic-Adapter: Modell-ID anthropic/claude-… wählen. Liste unter openrouter.ai/models.",
+    apiKeyHintKey: "llmPresetOpenrouterApiKeyHint",
+    helpKey: "llmPresetOpenrouterHelp",
   },
   {
     id: "groq",
-    label: "Groq",
+    labelKey: "llmPresetGroqLabel",
     endpointLabel: "Groq",
     baseUrl: "https://api.groq.com/openai/v1",
-    modelPlaceholder: "z. B. nemotron-3-nano:4b",
+    modelPlaceholderKey: "llmPresetGroqModelPlaceholder",
     modelExample: "nemotron-3-nano:4b",
     apiKeyRequired: true,
-    apiKeyHint: "API-Key von console.groq.com.",
-    help: "Schnelle Inference; OpenAI-kompatibles /v1.",
+    apiKeyHintKey: "llmPresetGroqApiKeyHint",
+    helpKey: "llmPresetGroqHelp",
   },
   {
     id: "together",
-    label: "Together AI",
+    labelKey: "llmPresetTogetherLabel",
     endpointLabel: "Together",
     baseUrl: "https://api.together.xyz/v1",
-    modelPlaceholder: "z. B. meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    modelPlaceholderKey: "llmPresetTogetherModelPlaceholder",
     apiKeyRequired: true,
-    apiKeyHint: "API-Key von api.together.xyz.",
-    help: "Viele Open-Source- und Hosted-Modelle über eine OpenAI-kompatible API.",
+    apiKeyHintKey: "llmPresetTogetherApiKeyHint",
+    helpKey: "llmPresetTogetherHelp",
   },
   {
     id: "custom",
-    label: "Benutzerdefiniert",
+    labelKey: "llmPresetCustomLabel",
     endpointLabel: "LLM",
     baseUrl: "",
-    modelPlaceholder: "Modell-ID vom Anbieter",
+    modelPlaceholderKey: "llmPresetCustomModelPlaceholder",
     apiKeyRequired: false,
-    apiKeyHint: "Bearer-Token, falls der Anbieter Auth verlangt.",
-    help: "Beliebiger OpenAI-kompatibler Endpunkt (LiteLLM, eigener Proxy, …).",
+    apiKeyHintKey: "llmPresetCustomApiKeyHint",
+    helpKey: "llmPresetCustomHelp",
   },
 ] as const;
 

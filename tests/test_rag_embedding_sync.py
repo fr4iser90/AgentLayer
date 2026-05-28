@@ -25,7 +25,7 @@ def test_resolve_keeps_current_when_on_provider() -> None:
     assert "offered" in reason
 
 
-def test_resolve_switches_when_current_missing() -> None:
+def test_resolve_switches_when_current_missing_on_provider() -> None:
     model, reason = resolve_rag_embedding_model_from_provider(
         current_model="nomic-embed-text",
         available_models=["bge-m3", "gpt-4"],
@@ -34,9 +34,18 @@ def test_resolve_switches_when_current_missing() -> None:
     assert "not on provider" in reason
 
 
+def test_resolve_empty_when_no_provider_models() -> None:
+    model, reason = resolve_rag_embedding_model_from_provider(
+        current_model="",
+        available_models=[],
+    )
+    assert model == ""
+    assert "no provider models" in reason
+
+
 def test_resolve_env_preferred_when_current_missing() -> None:
     model, reason = resolve_rag_embedding_model_from_provider(
-        current_model="nomic-embed-text",
+        current_model="",
         available_models=["bge-m3", "custom-embed-v1"],
         env_preferred="custom-embed-v1",
     )

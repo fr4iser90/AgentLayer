@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import { SchemaForm } from "../components/SchemaForm";
 
@@ -37,6 +38,7 @@ function buildInitialValues(
 }
 
 export function StudioPage() {
+  const { t } = useTranslation(["common"]);
   const { accessToken } = useAuth();
   const [catalog, setCatalog] = useState<CatalogPayload | null>(null);
   const [catalogError, setCatalogError] = useState<string | null>(null);
@@ -69,7 +71,7 @@ export function StudioPage() {
         }
       } catch (e) {
         if (!cancelled)
-          setCatalogError(e instanceof Error ? e.message : "Failed to load catalog");
+          setCatalogError(e instanceof Error ? e.message : t("common:studio.catalogLoadFailed"));
       }
     })();
     return () => {
@@ -117,7 +119,7 @@ export function StudioPage() {
       }
       setJobResult(data);
     } catch (e) {
-      setJobError(e instanceof Error ? e.message : "Request failed");
+      setJobError(e instanceof Error ? e.message : t("common:studio.requestFailed"));
     } finally {
       setJobLoading(false);
     }
@@ -140,7 +142,7 @@ export function StudioPage() {
     <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-surface">
       <aside className="flex h-full min-h-0 w-56 shrink-0 flex-col overflow-y-auto border-r border-surface-border bg-[#111] p-3">
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-surface-muted">
-          Image generation
+          {t("common:studio.title")}
         </p>
         {txt2img ? (
           <button
@@ -159,7 +161,7 @@ export function StudioPage() {
         ) : null}
 
         <p className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wide text-surface-muted">
-          Inpaint
+          {t("common:studio.inpaint")}
         </p>
         {inpaint ? (
           <button
@@ -179,11 +181,8 @@ export function StudioPage() {
       </aside>
 
       <div className="min-w-0 flex-1 overflow-y-auto p-8">
-        <h1 className="text-2xl font-semibold text-white">Image generation</h1>
-        <p className="mt-1 max-w-2xl text-sm text-surface-muted">
-          ComfyUI-backed workflows. Presets and checkpoints come from the server catalog; configure
-          ComfyUI URLs in operator settings / env.
-        </p>
+        <h1 className="text-2xl font-semibold text-white">{t("common:studio.title")}</h1>
+        <p className="mt-1 max-w-2xl text-sm text-surface-muted">{t("common:studio.subtitle")}</p>
 
         {catalogError ? (
           <p className="mt-4 rounded-lg border border-red-900/50 bg-red-950/40 px-3 py-2 text-sm text-red-200">
@@ -194,7 +193,7 @@ export function StudioPage() {
         {catalog && !catalogError ? (
           <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
             <span className="rounded-full bg-emerald-950/80 px-2 py-0.5 text-emerald-300">
-              Catalog from server
+              {t("common:studio.catalogFromServer")}
             </span>
             <span className="text-surface-muted">v{catalog.studio_version ?? "?"}</span>
             <span className="text-surface-muted">
@@ -205,7 +204,7 @@ export function StudioPage() {
               className="text-sky-400 underline hover:text-sky-300"
               onClick={() => window.location.reload()}
             >
-              Reload catalog
+              {t("common:studio.reloadCatalog")}
             </button>
           </div>
         ) : null}
@@ -239,7 +238,7 @@ export function StudioPage() {
                 onClick={() => void runJob()}
                 className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-black hover:bg-neutral-200 disabled:opacity-50"
               >
-                {jobLoading ? "Running…" : "Run job"}
+                {jobLoading ? t("common:studio.running") : t("common:studio.run")}
               </button>
               <code className="text-xs text-surface-muted">POST /v1/studio/jobs</code>
             </div>
@@ -252,10 +251,10 @@ export function StudioPage() {
 
             {previewUrl ? (
               <div className="mt-6">
-                <p className="mb-2 text-sm text-neutral-300">Result</p>
+                <p className="mb-2 text-sm text-neutral-300">{t("common:studio.result")}</p>
                 <img
                   src={previewUrl}
-                  alt="Generated image"
+                  alt={t("common:studio.generatedImageAlt")}
                   className="max-h-[480px] max-w-full rounded-lg border border-surface-border"
                 />
               </div>
@@ -266,7 +265,7 @@ export function StudioPage() {
             ) : null}
           </div>
         ) : catalog && !catalogError ? (
-          <p className="mt-8 text-surface-muted">No preset selected.</p>
+          <p className="mt-8 text-surface-muted">{t("common:studio.noPresetSelected")}</p>
         ) : null}
       </div>
     </div>
