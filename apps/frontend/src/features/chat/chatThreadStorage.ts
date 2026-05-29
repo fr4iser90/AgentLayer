@@ -12,6 +12,9 @@ export type UiMessage = {
   createdAt?: number;
 };
 
+/** Workspace reindex mode (UI or tool-triggered). */
+export type IndexRunMode = "full" | "code" | "docs" | "incremental";
+
 export type AgentTimelineEntry = {
   id: string;
   kind: string;
@@ -23,6 +26,12 @@ export type AgentTimelineEntry = {
   subagentAgentId?: string;
   /** Indent in activity panel (delegated run). */
   nested?: boolean;
+  /** ``index_start`` / ``index_done`` / ``coding_index`` tool runs. */
+  indexMode?: IndexRunMode;
+  indexPhase?: string;
+  filesDone?: number;
+  filesTotal?: number;
+  runStatus?: "running" | "done" | "failed";
 };
 
 export type AgentTurnLog = {

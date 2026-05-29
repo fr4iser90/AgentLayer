@@ -40,6 +40,9 @@ import {
   serializeAgentLogPayload,
 } from "../features/chat/agentLogStorage";
 import { AgentActivityPanel } from "../features/chat/AgentActivityPanel";
+import { buildTranscriptWithRunCards } from "../features/chat/buildRunCards";
+import { indexActivityToTimeline, type IndexActivityEvent } from "../features/chat/indexActivity";
+import { RunCardsRow } from "../features/chat/RunCardBlock";
 import { TurnNavigator, TurnNavigatorHorizontal, buildTurnItems } from "../features/chat/TurnNavigator";
 import { useChatScroll } from "../features/chat/useChatScroll";
 
@@ -360,6 +363,11 @@ export function ChatPage() {
     if (!activeThread) return [];
     return activityForTurn(activeThread, selectedTurnId);
   }, [activeThread, selectedTurnId]);
+
+  const transcriptItems = useMemo(() => {
+    if (!activeThread) return [];
+    return buildTranscriptWithRunCards(displayMessages, activeThread);
+  }, [activeThread, displayMessages]);
 
   const activityLoading =
     loading && mode === "agent" && selectedTurnId === latestTurnId;
@@ -739,10 +747,7 @@ export function ChatPage() {
     (
       kind: string,
       text: string,
-      extras?: Pick<
-        AgentTimelineEntry,
-        "toolName" | "durationMs" | "resultChars" | "subagentAgentId" | "nested"
-      >
+      extras?: Omit<AgentTimelineEntry, "id" | "kind" | "text">
     ) => {
       const tid = activeThreadIdRef.current;
       if (!tid) return;
@@ -759,6 +764,14 @@ export function ChatPage() {
       );
     },
     []
+  );
+
+  const handleIndexActivity = useCallback(
+    (ev: IndexActivityEvent) => {
+      const { kind, text, extras } = indexActivityToTimeline(ev);
+      appendAgentLine(kind, text, extras as Omit<AgentTimelineEntry, "id" | "kind" | "text">);
+    },
+    [appendAgentLine]
   );
 
   const runChatHttp = useCallback(async () => {
@@ -1615,6 +1628,7 @@ export function ChatPage() {
                         auth={auth}
                         workspace={selectedWorkspace}
                         canEdit={selectedWorkspace.access_role !== "viewer"}
+                        onIndexActivity={handleIndexActivity}
                         onWorkspaceUpdated={(ws) => {
                           setWorkspaces((prev) => prev.map((w) => (w.id === ws.id ? ws : w)));
                         }}
@@ -1870,7 +1884,13 @@ export function ChatPage() {
               </div>
             ) : (
               <ul className="mx-auto flex w-full max-w-3xl flex-col gap-3">
-                {displayMessages.filter(chatMessageHasVisibleContent).map((m, i) => (
+                {transcriptItems.map((item, i) => {
+                  if (item.type === "run_cards") {
+                    return <RunCardsRow key={`runs-${item.turnId}-${i}`} cards={item.cards} />;
+                  }
+                  const m = item.message;
+                  if (!chatMessageHasVisibleContent(m)) return null;
+                  return (
                   <li
                     key={m.id ?? `${i}-${m.role}-${m.content.slice(0, 24)}`}
                     id={m.role === "user" && m.id ? `msg-${m.id}` : undefined}
@@ -1899,7 +1919,8 @@ export function ChatPage() {
                       )}
                     </div>
                   </li>
-                ))}
+                  );
+                })}
                 {loading &&
                 !(
                   messages.length > 0 &&

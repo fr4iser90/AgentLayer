@@ -46,53 +46,53 @@ def resolve_db_workspace(workspace_id: str, user) -> dict[str, Any] | None:
     try:
         with db.pool().connection() as conn:
             with conn.cursor() as cur:
+                from apps.backend.infrastructure.workspace_columns import (
+                    WORKSPACE_SELECT_SQL,
+                    workspace_row_to_api,
+                )
+
                 cur.execute(
-                    """
-                    SELECT id, name, path, source, git_url, git_branch, access_role, owner_user_id,
-                           verify_command, verify_required, mcp_stdio_servers_json,
-                           semantic_index_enabled, retrieval_enabled,
-                           last_index_at, last_index_stats, last_index_error,
-                           docs_rag_enabled, last_docs_rag_at, last_docs_rag_stats, last_docs_rag_error
+                    f"""
+                    SELECT {WORKSPACE_SELECT_SQL}
                     FROM project_workspaces
                     WHERE id = %s AND (owner_user_id = %s OR access_role IN ('editor', 'viewer'))
                     """,
                     (str(workspace_id), user.id),
                 )
                 row = cur.fetchone()
-                
+
                 if not row:
                     logger.debug("workspace not found or not accessible: %s", workspace_id)
                     return None
 
-                mcp_raw = row[10]
-                mcp_list: list | None = None
-                if isinstance(mcp_raw, list) and len(mcp_raw) > 0:
-                    mcp_list = list(mcp_raw)
-
+                api = workspace_row_to_api(row)
                 return {
                     "type": "db",
                     "state": WorkspaceState.READY,
-                    "source": row[3],  # source: manual/git
-                    "git_url": row[4],
-                    "git_branch": row[5],
-                    "path": row[2],  # path from DB
-                    "repo_path": row[2],
-                    "name": row[1],
-                    "id": str(row[0]),
-                    "owner_user_id": str(row[7]),
-                    "access_role": row[6],
-                    "verify_command": row[8],
-                    "verify_required": bool(row[9]) if row[9] is not None else False,
-                    "mcp_stdio_servers": mcp_list,
-                    "semantic_index_enabled": bool(row[11]) if row[11] is not None else True,
-                    "retrieval_enabled": bool(row[12]) if row[12] is not None else True,
-                    "last_index_at": row[13].isoformat() if row[13] else None,
-                    "last_index_stats": row[14] if isinstance(row[14], dict) else None,
-                    "last_index_error": row[15],
-                    "docs_rag_enabled": bool(row[16]) if row[16] is not None else True,
-                    "last_docs_rag_at": row[17].isoformat() if row[17] else None,
-                    "last_docs_rag_stats": row[18] if isinstance(row[18], dict) else None,
-                    "last_docs_rag_error": row[19],
+                    "source": api["source"],
+                    "git_url": api.get("git_url"),
+                    "git_branch": api.get("git_branch"),
+                    "path": api["path"],
+                    "repo_path": api["path"],
+                    "name": api["name"],
+                    "id": api["id"],
+                    "owner_user_id": api["owner_user_id"],
+                    "access_role": api["access_role"],
+                    "verify_command": api.get("verify_command"),
+                    "verify_required": bool(api.get("verify_required", False)),
+                    "mcp_stdio_servers": api.get("mcp_stdio_servers"),
+                    "semantic_index_enabled": api.get("semantic_index_enabled", True),
+                    "retrieval_enabled": api.get("retrieval_enabled", True),
+                    "last_index_at": api.get("last_index_at"),
+                    "last_index_stats": api.get("last_index_stats"),
+                    "last_index_error": api.get("last_index_error"),
+                    "docs_rag_enabled": api.get("docs_rag_enabled", True),
+                    "last_docs_rag_at": api.get("last_docs_rag_at"),
+                    "last_docs_rag_stats": api.get("last_docs_rag_stats"),
+                    "last_docs_rag_error": api.get("last_docs_rag_error"),
+                    "index_on_write": api.get("index_on_write"),
+                    "graph_index_enabled": api.get("graph_index_enabled", True),
+                    "retrieve_context_sources": api.get("retrieve_context_sources"),
                 }
     except Exception as e:
         logger.error("failed to resolve workspace from DB: %s", e)

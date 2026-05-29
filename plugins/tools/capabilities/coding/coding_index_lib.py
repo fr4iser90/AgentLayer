@@ -437,6 +437,66 @@ class CodeIndex:
             self._last_scan = time.time()
         return stats
 
+    _SKIP_DIRS = frozenset(
+        {".git", "__pycache__", "node_modules", ".venv", "venv", "dist", "build", ".pytest_cache", ".mypy_cache", ".tox"}
+    )
+
+    def list_indexable_rel_paths(self, root: Path, *, max_files: int = 20000) -> set[str]:
+        """Relative paths of supported source files (no parsing)."""
+        root_r = root.resolve()
+        out: set[str] = set()
+        for ext in _SUPPORTED_LANGUAGES:
+            for fp in root_r.rglob(f"*{ext}"):
+                skip = False
+                for part in fp.parts:
+                    if part.startswith(".") or part in self._SKIP_DIRS:
+                        skip = True
+                        break
+                if skip:
+                    continue
+                try:
+                    rel = str(fp.relative_to(root_r)).replace("\\", "/")
+                except ValueError:
+                    continue
+                out.add(rel)
+                if len(out) >= max_files:
+                    return out
+        return out
+
+    def scan_paths(
+        self,
+        root: Path,
+        rel_paths: list[str],
+    ) -> tuple[list[FileEntry], dict[str, int]]:
+        """Parse and index only the given workspace-relative paths."""
+        stats: dict[str, int] = {"scanned": 0, "errors": 0, "skipped": 0, "missing": 0}
+        root_r = root.resolve()
+        entries: list[FileEntry] = []
+        seen: set[str] = set()
+        for raw in rel_paths:
+            rel = (raw or "").strip().replace("\\", "/").lstrip("/")
+            if not rel or rel in seen:
+                continue
+            seen.add(rel)
+            fp = root_r / rel
+            if not fp.is_file():
+                stats["missing"] += 1
+                with self._lock:
+                    self._files.pop(rel, None)
+                continue
+            try:
+                result = self.index_file(fp, root_r)
+                if result:
+                    entries.append(result)
+                    stats["scanned"] += 1
+                else:
+                    stats["skipped"] += 1
+            except Exception:
+                stats["errors"] += 1
+        with self._lock:
+            self._last_scan = time.time()
+        return entries, stats
+
     def lookup_symbol(self, name: str) -> list[dict[str, Any]]:
         with self._lock:
             syms = self._symbol_index.get(name, [])

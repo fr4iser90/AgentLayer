@@ -90,6 +90,20 @@
   "activityKindDone": "Done",
   "activityKindLlm": "LLM",
   "activityKindPerm": "Perm",
-  "activityKindSession": "Session"
+  "activityKindSession": "Session",
+  "runCardStatusRunning": "Running",
+  "runCardStatusDone": "Done",
+  "runCardStatusFailed": "Failed",
+  "runCardResultChars": "{{count}} chars",
+  "runCardFilesProgress": "{{done}}/{{total}} files",
+  "runCardShowDetails": "Show details",
+  "runCardHideDetails": "Hide details",
+  "runCardAgent_coding": "Coding agent",
+  "runCardAgent_coding_plan": "Plan agent",
+  "runCardAgent_security_auditor": "Security auditor",
+  "runCardIndex_full": "Full reindex",
+  "runCardIndex_code": "Code index",
+  "runCardIndex_docs": "Docs index",
+  "runCardIndex_incremental": "Incremental index"
 }
 

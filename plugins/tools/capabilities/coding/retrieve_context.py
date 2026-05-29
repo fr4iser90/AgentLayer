@@ -325,7 +325,15 @@ def retrieve_context(arguments: dict[str, Any], context: dict | None = None) -> 
     if not query:
         return json.dumps({"ok": False, "error": "query is required"}, ensure_ascii=False)
 
-    sources = _parse_sources(arguments.get("sources"))
+    from apps.backend.infrastructure.workspace_index_policy import resolve_retrieve_context_sources
+
+    ws = workspace_binding_from_context(context)
+    agent_id = (context or {}).get("agent_id") if context else None
+    sources = resolve_retrieve_context_sources(
+        ws,
+        agent_id=str(agent_id) if agent_id else None,
+        requested=arguments.get("sources"),
+    )
     domain = str(arguments.get("domain") or "agentlayer_docs").strip()
     grep_limit = _clamp_int(arguments.get("grep_limit"), 25, 1, 50)
     semantic_limit = _clamp_int(arguments.get("semantic_limit"), 12, 1, 50)
@@ -393,12 +401,18 @@ def retrieve_context(arguments: dict[str, Any], context: dict | None = None) -> 
     else:
         out["memory"] = _skipped("memory", "not_requested")
 
+    graph_on = False
     if "graph" in sources:
-        out["graph"] = parallel.get("graph") or _skipped("graph", "not_run")
+        if ws is not None and ws.get("graph_index_enabled") is False:
+            out["graph"] = _skipped("graph", "graph_index_disabled")
+        else:
+            g = parallel.get("graph") or _skipped("graph", "not_run")
+            out["graph"] = g
+            graph_on = isinstance(g, dict) and bool(g.get("ok")) and bool(g.get("results"))
     else:
         out["graph"] = _skipped("graph", "not_requested")
 
-    out["fused_ranking"] = build_fused_ranking(out, limit=fused_limit)
+    out["fused_ranking"] = build_fused_ranking(out, limit=fused_limit, include_graph=graph_on)
     out["next_steps"] = _next_steps(out)
     return json.dumps(out, ensure_ascii=False)
 

@@ -71,6 +71,9 @@ export type OperatorPublic = {
   scheduler_jobs_ide_pidea_enabled?: boolean;
   scheduler_jobs_ide_pidea_timeout_sec?: number;
   workspace_allow_self_editing?: boolean;
+  workspace_index_on_write_default?: string;
+  workspace_reindex_after_git_pull?: boolean;
+  workspace_nightly_reindex_enabled?: boolean;
   detail?: unknown;
 };
 

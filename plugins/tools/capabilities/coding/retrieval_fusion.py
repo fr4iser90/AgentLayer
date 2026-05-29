@@ -17,6 +17,8 @@ def _candidate_key(source: str, item: dict[str, Any]) -> str:
         return f"grep:{item.get('path')}:{item.get('line')}"
     if source == "code_semantic":
         return f"sem:{item.get('file_path') or item.get('path')}:{item.get('line')}:{item.get('name')}"
+    if source == "graph":
+        return f"graph:{item.get('path')}:{item.get('name')}:{item.get('via')}"
     if source == "docs":
         return f"doc:{item.get('domain')}:{item.get('title')}:{item.get('chunk_index')}"
     if source == "memory":
@@ -63,6 +65,15 @@ def _item_to_fused(source: str, item: dict[str, Any], rrf_score: float, rank: in
             "score": item.get("score"),
             "text": (item.get("text") or "")[:500],
         }
+    if source == "graph":
+        return {
+            "rank": rank,
+            "source": source,
+            "rrf_score": round(rrf_score, 6),
+            "name": item.get("name"),
+            "path": item.get("path"),
+            "via": item.get("via"),
+        }
     return {"rank": rank, "source": source, "rrf_score": round(rrf_score, 6), "raw": item}
 
 
@@ -92,7 +103,9 @@ def reciprocal_rank_fusion(
     return out
 
 
-def build_fused_ranking(bundle: dict[str, Any], *, limit: int = 25) -> list[dict[str, Any]]:
+def build_fused_ranking(
+    bundle: dict[str, Any], *, limit: int = 25, include_graph: bool = False
+) -> list[dict[str, Any]]:
     """Collect hits from a retrieve_context bundle and return RRF-ordered list."""
     lists: list[tuple[str, list[dict[str, Any]]]] = []
 
@@ -111,6 +124,11 @@ def build_fused_ranking(bundle: dict[str, Any], *, limit: int = 25) -> list[dict
     mem = bundle.get("memory")
     if isinstance(mem, dict) and mem.get("ok"):
         lists.append(("memory", list(mem.get("notes") or [])))
+
+    if include_graph:
+        graph = bundle.get("graph")
+        if isinstance(graph, dict) and graph.get("ok"):
+            lists.append(("graph", list(graph.get("results") or [])))
 
     if not lists:
         return []

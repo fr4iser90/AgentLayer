@@ -9,12 +9,15 @@ import {
   type WorkspaceIndexMode,
   type WorkspaceIndexStatus,
 } from "../../lib/api";
+import type { IndexActivityEvent } from "../chat/indexActivity";
 
 type Props = {
   auth: Pick<AuthContextValue, "accessToken" | "refresh">;
   workspace: WorkspaceApiRecord | null;
   canEdit: boolean;
   onWorkspaceUpdated: (ws: WorkspaceApiRecord) => void;
+  /** Emit index run lifecycle for chat run cards (optional). */
+  onIndexActivity?: (ev: IndexActivityEvent) => void;
   className?: string;
 };
 
@@ -52,6 +55,7 @@ const PHASE_LABELS: Record<string, string> = {
   qdrant: "embed",
   neo4j: "graph",
   docs_rag: "docs",
+  incremental: "incr",
   starting: "start",
 };
 
@@ -76,6 +80,7 @@ export function WorkspaceRetrievalBar({
   workspace,
   canEdit,
   onWorkspaceUpdated,
+  onIndexActivity,
   className = "",
 }: Props) {
   const { t } = useTranslation(["workspace", "common"]);
@@ -84,6 +89,8 @@ export function WorkspaceRetrievalBar({
   const [busy, setBusy] = useState<"toggle" | WorkspaceIndexMode | null>(null);
   const [indexing, setIndexing] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const indexRunStartedAtRef = useRef<number | null>(null);
+  const indexRunModeRef = useRef<WorkspaceIndexMode | null>(null);
 
   const loadStatus = useCallback(async () => {
     if (!workspace?.id) {
@@ -133,6 +140,25 @@ export function WorkspaceRetrievalBar({
     }
   }, []);
 
+  const finishIndexRun = useCallback(
+    (mode: WorkspaceIndexMode, job: WorkspaceIndexJob | null | undefined, failed: boolean) => {
+      const started = indexRunStartedAtRef.current;
+      indexRunStartedAtRef.current = null;
+      indexRunModeRef.current = null;
+      onIndexActivity?.({
+        type: "done",
+        mode,
+        failed,
+        error: job?.error ?? undefined,
+        durationMs: started != null ? Date.now() - started : undefined,
+        filesDone: job?.files_done ?? undefined,
+        filesTotal: job?.files_total ?? undefined,
+        phase: job?.phase ?? undefined,
+      });
+    },
+    [onIndexActivity]
+  );
+
   const startPolling = useCallback(() => {
     stopPolling();
     pollRef.current = setInterval(() => {
@@ -143,6 +169,10 @@ export function WorkspaceRetrievalBar({
           stopPolling();
           setIndexing(false);
           setBusy(null);
+          const mode = indexRunModeRef.current;
+          if (mode) {
+            finishIndexRun(mode, job, job?.status === "failed");
+          }
           if (workspace?.id) {
             const list = await apiFetch("/v1/workspaces", auth);
             const lj = (await list.json()) as { workspaces?: WorkspaceApiRecord[] };
@@ -152,7 +182,7 @@ export function WorkspaceRetrievalBar({
         }
       })();
     }, 1500);
-  }, [auth, loadStatus, onWorkspaceUpdated, stopPolling, workspace?.id]);
+  }, [auth, finishIndexRun, loadStatus, onWorkspaceUpdated, stopPolling, workspace?.id]);
 
   useEffect(() => {
     void (async () => {
@@ -169,6 +199,8 @@ export function WorkspaceRetrievalBar({
     semantic_index_enabled?: boolean;
     retrieval_enabled?: boolean;
     docs_rag_enabled?: boolean;
+    graph_index_enabled?: boolean;
+    index_on_write?: string | null;
   }) => {
     if (!workspace?.id || !canEdit) return;
     setBusy("toggle");
@@ -187,6 +219,9 @@ export function WorkspaceRetrievalBar({
     setBusy(mode);
     setIndexing(true);
     setStatusErr(null);
+    indexRunStartedAtRef.current = Date.now();
+    indexRunModeRef.current = mode;
+    onIndexActivity?.({ type: "start", mode });
     try {
       const r = await apiFetch(`/v1/workspaces/${encodeURIComponent(workspace.id)}/index`, auth, {
         method: "POST",
@@ -203,6 +238,7 @@ export function WorkspaceRetrievalBar({
         setStatusErr(String(j?.detail ?? r.status));
         setIndexing(false);
         setBusy(null);
+        finishIndexRun(mode, null, true);
         return;
       }
       if (j.status) setStatus(j.status);
@@ -212,6 +248,7 @@ export function WorkspaceRetrievalBar({
       } else {
         setIndexing(false);
         setBusy(null);
+        finishIndexRun(mode, j.status?.index_job ?? j.job ?? null, false);
         const list = await apiFetch("/v1/workspaces", auth);
         const lj = (await list.json()) as { workspaces?: WorkspaceApiRecord[] };
         const fresh = (lj.workspaces ?? []).find((w) => w.id === workspace.id);
@@ -221,6 +258,7 @@ export function WorkspaceRetrievalBar({
       setStatusErr(e instanceof Error ? e.message : String(e));
       setIndexing(false);
       setBusy(null);
+      finishIndexRun(mode, null, true);
     }
   };
 
@@ -229,6 +267,11 @@ export function WorkspaceRetrievalBar({
   const indexOn = workspace.semantic_index_enabled !== false;
   const retrievalOn = workspace.retrieval_enabled !== false;
   const docsRagOn = workspace.docs_rag_enabled !== false;
+  const graphOn = workspace.graph_index_enabled !== false;
+  const indexOnWriteEffective =
+    status?.index_on_write_effective ?? workspace.index_on_write ?? "debounced";
+  const filesOutOfDate =
+    typeof status?.files_out_of_date === "number" ? status.files_out_of_date : null;
   const qdrantOk = status?.qdrant?.reachable === true;
   const neo4jOk = status?.neo4j?.reachable === true;
   const symbolCount =
@@ -299,7 +342,42 @@ export function WorkspaceRetrievalBar({
         >
           {docsRagOn ? t("common:on") : t("common:off")}
         </button>
+        <span className="text-neutral-600">·</span>
+        <span className="font-semibold uppercase tracking-wide text-surface-muted">Graph</span>
+        <button
+          type="button"
+          disabled={!canEdit || busy !== null}
+          className={pill(graphOn)}
+          title="Neo4j call-graph index (coding_graph)"
+          onClick={() => void patchFlags({ graph_index_enabled: !graphOn })}
+        >
+          {graphOn ? t("common:on") : t("common:off")}
+        </button>
       </div>
+
+      {canEdit ? (
+        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+          <label className="text-[9px] text-surface-muted" htmlFor={`idx-write-${workspace.id}`}>
+            Index on write
+          </label>
+          <select
+            id={`idx-write-${workspace.id}`}
+            className="rounded border border-white/15 bg-black/40 px-1.5 py-0.5 text-[9px] text-neutral-200"
+            disabled={busy !== null}
+            value={workspace.index_on_write ?? ""}
+            title={`Effective: ${indexOnWriteEffective}`}
+            onChange={(e) => {
+              const v = e.target.value;
+              void patchFlags({ index_on_write: v === "" ? null : v });
+            }}
+          >
+            <option value="">operator default ({indexOnWriteEffective})</option>
+            <option value="debounced">debounced</option>
+            <option value="immediate">immediate</option>
+            <option value="off">off</option>
+          </select>
+        </div>
+      ) : null}
 
       {canEdit ? (
         <div className="mt-1.5 flex flex-wrap items-center gap-1">
@@ -373,10 +451,15 @@ export function WorkspaceRetrievalBar({
             title={
               staleReason === "never_indexed"
                 ? t("workspace:noCodeIndexYet")
-                : t("workspace:gitNewerThanIndex")
+                : staleReason === "files_changed_since_index"
+                  ? `${filesOutOfDate ?? "?"} file(s) changed since index`
+                  : t("workspace:gitNewerThanIndex")
             }
           >
             · {t("workspace:stale")}
+            {staleReason === "files_changed_since_index" && filesOutOfDate != null
+              ? ` (${filesOutOfDate})`
+              : ""}
           </span>
         ) : null}
         <span>

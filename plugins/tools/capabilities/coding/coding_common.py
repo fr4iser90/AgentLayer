@@ -147,3 +147,18 @@ def coalesce_content(arguments: dict[str, Any]) -> tuple[str, str | None]:
             s = str(v)
             return s, None
     return "", "content is required (use 'content', 'text', or 'source' key)"
+
+
+def maybe_enqueue_incremental_index(
+    context: dict[str, Any] | None,
+    rel_paths: list[str],
+) -> None:
+    """After a successful coding write, queue debounced Qdrant + Neo4j update for touched paths."""
+    try:
+        from apps.backend.infrastructure.workspace_index_incremental import (
+            enqueue_incremental_index_from_context,
+        )
+
+        enqueue_incremental_index_from_context(context, rel_paths)
+    except Exception:
+        pass

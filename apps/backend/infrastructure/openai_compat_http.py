@@ -70,6 +70,12 @@ def http_post_chat_completions(
 
     Returns ``(response_json, tools_omitted)`` — ``tools_omitted`` is always ``False`` (reserved).
     """
+    from apps.backend.infrastructure.e2e_mock_llm import build_mock_chat_completion, e2e_mock_llm_enabled
+
+    if e2e_mock_llm_enabled():
+        logger.info("E2E mock LLM: short-circuit chat/completions (url=%s)", url)
+        return build_mock_chat_completion(json_body), False
+
     h = headers or {"Content-Type": "application/json"}
     body = json_body
     if "tools" in json_body:

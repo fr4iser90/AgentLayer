@@ -161,6 +161,37 @@ class CodeGraphNeo4j:
             return 0
         return edges_written
 
+    def delete_file_graph(self, workspace_id: str, file_path: str) -> bool:
+        """Remove File node and all symbols/edges for one path in a workspace."""
+        driver = self._get_driver()
+        if driver is None or not self._ensure_schema():
+            return False
+        fp = (file_path or "").strip().replace("\\", "/")
+        if not fp:
+            return False
+        try:
+            with driver.session() as session:
+                session.run(
+                    """
+                    MATCH (s:Symbol {file_path: $fp, workspace_id: $ws})
+                    DETACH DELETE s
+                    """,
+                    fp=fp,
+                    ws=workspace_id,
+                )
+                session.run(
+                    """
+                    MATCH (f:File {path: $fp, workspace_id: $ws})
+                    DETACH DELETE f
+                    """,
+                    fp=fp,
+                    ws=workspace_id,
+                )
+            return True
+        except Exception as exc:
+            logger.warning("Neo4j delete_file_graph failed for %s: %s", file_path, exc)
+            return False
+
     def upsert_workspace_files(
         self,
         workspace_id: str,

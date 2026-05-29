@@ -12,6 +12,7 @@ from apps.backend.core.config import config
 
 from plugins.tools.capabilities.coding.coding_common import (
     json_workspace_missing_error,
+    maybe_enqueue_incremental_index,
     workspace_binding_from_context,
 )
 
@@ -203,11 +204,15 @@ def coding_apply_patch(arguments: dict[str, Any], context: dict | None = None) -
             "diff": diff,
         })
     summary = []
+    touched: list[str] = []
     for r in results:
         if r["ok"]:
             summary.append(f"{'A' if r['action'] == 'created' else 'M'} {r['path']}")
+            touched.append(str(r["path"]))
         else:
             summary.append(f"E {r['path']}: {r['error']}")
+    if touched:
+        maybe_enqueue_incremental_index(context, touched)
     return json.dumps(
         {
             "ok": all_ok,

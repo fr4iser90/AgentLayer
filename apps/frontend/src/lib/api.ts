@@ -120,6 +120,9 @@ export type WorkspaceApiRecord = {
     docs_rag?: Record<string, unknown>;
   } | null;
   last_index_error?: string | null;
+  index_on_write?: string | null;
+  graph_index_enabled?: boolean;
+  retrieve_context_sources?: string[] | null;
 };
 
 export type WorkspaceIndexJob = {
@@ -146,7 +149,15 @@ export type WorkspaceIndexStatus = {
   last_index_error?: string | null;
   index_job?: WorkspaceIndexJob | null;
   index_stale?: boolean;
-  index_stale_reason?: "never_indexed" | "git_head_newer_than_index" | string | null;
+  index_stale_reason?:
+    | "never_indexed"
+    | "git_head_newer_than_index"
+    | "files_changed_since_index"
+    | string
+    | null;
+  index_on_write_effective?: string;
+  graph_index_enabled?: boolean;
+  files_out_of_date?: number;
   repo_tree?: string[];
   qdrant?: { configured?: boolean; reachable?: boolean | null; error?: string };
   neo4j?: { configured?: boolean; reachable?: boolean | null; error?: string };

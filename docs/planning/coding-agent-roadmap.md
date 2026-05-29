@@ -13,6 +13,7 @@ Related docs:
 - `docs/features/coding-workflow.md` — container/workspace workflow and validation expectations
 - `docs/features/workspaces.md` — workspace model and sharing (update paths if the tree moves)
 - `docs/TODO-future.md` — broader product/research backlog
+- `docs/planning/retrieval-incremental-index-roadmap.md` — **3-stage plan** for incremental Qdrant/Neo4j index on write (Stufe A/B/C) + change checklist
 - `docs/adr/0001-tool-and-agent-architecture.md` — tool loop architecture
 - **`docs/adr/0005-agentlayer-self-workspace-contract.md`** — **binding contract** for AgentLayer-on-AgentLayer (self) workspace: DB id, rw path, seed rules
 

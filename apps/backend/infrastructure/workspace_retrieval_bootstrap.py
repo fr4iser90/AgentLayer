@@ -52,16 +52,29 @@ def git_head_commit_time(root: Path) -> datetime | None:
 
 
 def is_index_stale(workspace: dict[str, Any]) -> bool:
-    """True when never indexed or last index predates current ``HEAD`` commit."""
+    """True when never indexed, git HEAD newer than index, or indexed files differ on disk."""
     if workspace.get("semantic_index_enabled") is False:
         return False
     last_at = _parse_iso(workspace.get("last_index_at"))
+    path = workspace.get("path") or workspace.get("repo_path")
+    root: Path | None = Path(path) if isinstance(path, str) and path.strip() else None
+
     if last_at is None:
         return True
-    path = workspace.get("path") or workspace.get("repo_path")
-    if not isinstance(path, str) or not path.strip():
+
+    if root and root.is_dir():
+        try:
+            from apps.backend.infrastructure.workspace_index_file_state import count_files_out_of_date
+
+            wid = str(workspace.get("id") or "").strip()
+            if wid and count_files_out_of_date(wid, root) > 0:
+                return True
+        except Exception:
+            pass
+
+    if root is None:
         return False
-    head_at = git_head_commit_time(Path(path))
+    head_at = git_head_commit_time(root)
     if head_at is None:
         return False
     return head_at > last_at
@@ -89,6 +102,16 @@ def index_stale_reason(workspace: dict[str, Any]) -> str | None:
         return None
     if not workspace.get("last_index_at"):
         return "never_indexed"
+    path = workspace.get("path") or workspace.get("repo_path")
+    if isinstance(path, str) and path.strip():
+        try:
+            from apps.backend.infrastructure.workspace_index_file_state import count_files_out_of_date
+
+            wid = str(workspace.get("id") or "").strip()
+            if wid and count_files_out_of_date(wid, Path(path)) > 0:
+                return "files_changed_since_index"
+        except Exception:
+            pass
     return "git_head_newer_than_index"
 
 
@@ -119,6 +142,10 @@ def build_retrieval_bootstrap_snippet(workspace: dict[str, Any]) -> str:
     stale = index_stale_reason(workspace)
     if stale == "git_head_newer_than_index":
         lines.append("Index may be **stale** (commits after last index) — prefer Reindex for semantic queries.")
+    elif stale == "files_changed_since_index":
+        lines.append(
+            "Index may be **stale** (files changed since last index) — Reindex or wait for background incremental index."
+        )
     elif stale == "never_indexed" and sem_on:
         lines.append("No semantic index yet — use `coding_search` / grep; run index for Qdrant symbol search.")
 

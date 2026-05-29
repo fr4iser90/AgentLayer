@@ -264,6 +264,31 @@ class QdrantCodeIndex:
         except Exception:
             return []
 
+    def delete_file_symbols(self, workspace_id: str, file_path: str) -> bool:
+        """Remove all symbol points for one file in a workspace."""
+        if not self.ensure_collection():
+            return False
+        fp = (file_path or "").strip().replace("\\", "/")
+        if not fp:
+            return False
+        try:
+            with httpx.Client(timeout=30.0) as client:
+                resp = client.post(
+                    f"{self._url}/collections/{self._collection}/points/delete",
+                    headers=self._headers(),
+                    json={
+                        "filter": {
+                            "must": [
+                                {"key": "workspace_id", "match": {"value": workspace_id}},
+                                {"key": "file_path", "match": {"value": fp}},
+                            ]
+                        }
+                    },
+                )
+            return resp.status_code in (200, 201)
+        except Exception:
+            return False
+
     def delete_workspace(self, workspace_id: str) -> bool:
         if not self.ensure_collection():
             return False

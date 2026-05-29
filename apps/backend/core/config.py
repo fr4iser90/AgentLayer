@@ -364,6 +364,16 @@ CODING_ROOT: Path | None = Path(_CODING_ROOT_RAW).expanduser() if _CODING_ROOT_R
 CODING_ENABLED = _env_bool("AGENT_CODING_ENABLED", True)
 # Optional background semantic index when a stale/empty workspace is bound to a coding chat.
 AGENT_WORKSPACE_INDEX_ON_ATTACH = _env_bool("AGENT_WORKSPACE_INDEX_ON_ATTACH", False)
+# Post-write incremental index: off | debounced (default) | immediate — touched files only (Qdrant + Neo4j).
+_AGENT_INDEX_ON_WRITE_RAW = (os.environ.get("AGENT_WORKSPACE_INDEX_ON_WRITE") or "debounced").strip().lower()
+AGENT_WORKSPACE_INDEX_ON_WRITE = (
+    _AGENT_INDEX_ON_WRITE_RAW
+    if _AGENT_INDEX_ON_WRITE_RAW in ("off", "debounced", "immediate")
+    else "debounced"
+)
+AGENT_WORKSPACE_INDEX_DEBOUNCE_SEC = max(
+    0, min(_env_int("AGENT_WORKSPACE_INDEX_DEBOUNCE_SEC", 3), 120)
+)
 # Max file size for coding read/write operations.
 CODING_MAX_FILE_BYTES = _env_int("AGENT_CODING_MAX_FILE_BYTES", 2_000_000)
 # Comma-separated path prefixes that coding tools must NEVER access (resolved, lowercase).

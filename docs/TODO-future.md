@@ -63,6 +63,12 @@ Order below is **recommended implementation priority** (security and correctness
 - [x] **Ripgrep or fast path:** Literal ``coding_search`` uses **ripgrep** when ``rg`` is on ``PATH`` (or ``AGENT_RIPGREP_PATH``); timeout ``AGENT_RIPGREP_TIMEOUT_SEC``; falls back to Python walk. Regex mode stays Python. Response includes ``search_engine``.
 - [ ] **LSP runbook:** Per-language smoke (Python/TS minimum), compose PATH notes, and clearer surfacing of diagnostics inside tool JSON for the model.
 
+**Retrieval / incremental index (3-stage plan):** Full spec + file-level change list → [`docs/planning/retrieval-incremental-index-roadmap.md`](planning/retrieval-incremental-index-roadmap.md).
+
+- [x] **Stufe A (P2 priority):** Post-write incremental index (debounced, touched files only) → Qdrant + Neo4j `upsert_file_graph`; hooks on `coding_write_file` / `coding_edit` / `coding_replace` / `coding_apply_patch`; env `AGENT_WORKSPACE_INDEX_ON_WRITE`.
+- [x] **Stufe B:** Operator/workspace policy (`index_on_write`, graph toggle), per-file stale (`workspace_index_file_state`), graph in RRF when requested; UI in WorkspaceRetrievalBar + Admin Interfaces.
+- [x] **Stufe C:** Reindex after `git pull` (operator flag); nightly stale reindex scheduler; `POST /v1/admin/workspaces/{id}/reindex`.
+
 ### P3 — Subagents and observability (Phase 5 + Phase 1 tail)
 
 - [x] **Cancellation + accounting:** Parent **WebSocket cancel** is observed **between tool calls** in the planner loop (`before_tool`); plan subagent receives the same ``cancel_event`` and optional ``agent_parent_run_id`` for log correlation. (Token/cost accounting still open.)

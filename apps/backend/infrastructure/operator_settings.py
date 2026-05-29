@@ -136,6 +136,9 @@ def _fetch_row() -> dict[str, Any]:
         "scheduler_jobs_ide_pidea_enabled": True,
         "scheduler_jobs_ide_pidea_timeout_sec": 300.0,
         "workspace_allow_self_editing": False,
+        "workspace_index_on_write_default": "debounced",
+        "workspace_reindex_after_git_pull": False,
+        "workspace_nightly_reindex_enabled": False,
     }
     try:
         with db.pool().connection() as conn:
@@ -173,7 +176,10 @@ def _fetch_row() -> dict[str, Any]:
                            embedding_api_base_url,
                            embedding_api_key,
                            embedding_api_header_name,
-                           rag_docs_ingest_fingerprint
+                           rag_docs_ingest_fingerprint,
+                           workspace_index_on_write_default,
+                           workspace_reindex_after_git_pull,
+                           workspace_nightly_reindex_enabled
                     FROM operator_settings WHERE id = 1
                     """
                 )
@@ -267,6 +273,13 @@ def _fetch_row() -> dict[str, Any]:
         "rag_docs_ingest_fingerprint": (
             (str(row[67]).strip() or None) if len(row) > 67 and row[67] is not None else None
         ),
+        "workspace_index_on_write_default": (
+            str(row[68]).strip().lower()
+            if len(row) > 68 and row[68] is not None and str(row[68]).strip()
+            else "debounced"
+        ),
+        "workspace_reindex_after_git_pull": bool(row[69]) if len(row) > 69 and row[69] is not None else False,
+        "workspace_nightly_reindex_enabled": bool(row[70]) if len(row) > 70 and row[70] is not None else False,
     }
 
 
@@ -899,6 +912,9 @@ def public_dict() -> dict[str, Any]:
             r.get("scheduler_jobs_ide_pidea_timeout_sec"), 300.0, 30.0, 900.0
         ),
         "workspace_allow_self_editing": bool(r.get("workspace_allow_self_editing", False)),
+        "workspace_index_on_write_default": str(r.get("workspace_index_on_write_default") or "debounced"),
+        "workspace_reindex_after_git_pull": bool(r.get("workspace_reindex_after_git_pull", False)),
+        "workspace_nightly_reindex_enabled": bool(r.get("workspace_nightly_reindex_enabled", False)),
     }
 
 
@@ -979,6 +995,9 @@ class OperatorSettingsPatch(BaseModel):
     scheduler_jobs_ide_pidea_enabled: bool | None = None
     scheduler_jobs_ide_pidea_timeout_sec: float | None = Field(default=None, ge=30.0, le=900.0)
     workspace_allow_self_editing: bool | None = None
+    workspace_index_on_write_default: str | None = Field(default=None, max_length=16)
+    workspace_reindex_after_git_pull: bool | None = None
+    workspace_nightly_reindex_enabled: bool | None = None
 
 
 def scheduler_jobs_worker_settings() -> tuple[bool, float]:
@@ -1296,6 +1315,15 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
         )
     if "workspace_allow_self_editing" in patch:
         r["workspace_allow_self_editing"] = bool(patch["workspace_allow_self_editing"])
+    if "workspace_index_on_write_default" in patch:
+        from apps.backend.infrastructure.workspace_index_policy import normalize_index_on_write
+
+        v = normalize_index_on_write(patch["workspace_index_on_write_default"]) or "debounced"
+        r["workspace_index_on_write_default"] = v
+    if "workspace_reindex_after_git_pull" in patch:
+        r["workspace_reindex_after_git_pull"] = bool(patch["workspace_reindex_after_git_pull"])
+    if "workspace_nightly_reindex_enabled" in patch:
+        r["workspace_nightly_reindex_enabled"] = bool(patch["workspace_nightly_reindex_enabled"])
 
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
@@ -1447,7 +1475,23 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
                     r.get("embedding_api_header_name"),
                 ),
             )
-        conn.commit()
+            extra_sets: list[str] = []
+            extra_params: list[Any] = []
+            if "workspace_index_on_write_default" in patch:
+                extra_sets.append("workspace_index_on_write_default = %s")
+                extra_params.append(r.get("workspace_index_on_write_default", "debounced"))
+            if "workspace_reindex_after_git_pull" in patch:
+                extra_sets.append("workspace_reindex_after_git_pull = %s")
+                extra_params.append(bool(r.get("workspace_reindex_after_git_pull", False)))
+            if "workspace_nightly_reindex_enabled" in patch:
+                extra_sets.append("workspace_nightly_reindex_enabled = %s")
+                extra_params.append(bool(r.get("workspace_nightly_reindex_enabled", False)))
+            if extra_sets:
+                cur.execute(
+                    f"UPDATE operator_settings SET {', '.join(extra_sets)}, updated_at = now() WHERE id = 1",
+                    tuple(extra_params),
+                )
+            conn.commit()
     _invalidate()
     try:
         from apps.backend.infrastructure.embedding_client import invalidate_embedding_catalog_cache

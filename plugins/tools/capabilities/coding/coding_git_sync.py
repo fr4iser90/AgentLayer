@@ -155,6 +155,20 @@ def coding_git_sync(arguments: dict[str, Any], context: dict | None = None) -> s
                 else "Git pull completed successfully."
             )
             payload["next_steps"] = _pull_next_steps(pull_result)
+            try:
+                from apps.backend.infrastructure.operator_settings import fetch_operator_settings_row
+                from apps.backend.infrastructure.workspace_retrieval import start_semantic_index_async
+
+                if fetch_operator_settings_row().get("workspace_reindex_after_git_pull"):
+                    wid = str(ws.get("id") or "").strip()
+                    if wid:
+                        kick = start_semantic_index_async(wid, str(root), max_files=5000, mode="code")
+                        payload["reindex_after_pull"] = {
+                            "started": bool(kick.get("started")),
+                            "already_running": bool(kick.get("already_running")),
+                        }
+            except Exception:
+                pass
         else:
             payload["message"] = "Git pull failed. Do not retry pull in a loop; fix the error or STOP."
     return json.dumps(payload, ensure_ascii=False)

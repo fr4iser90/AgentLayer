@@ -57,15 +57,27 @@ class TestCodingTaskPlanSubagent(unittest.TestCase):
 
         with patch("apps.backend.domain.agent.chat_completion", new=AsyncMock(side_effect=fake_cc)):
             with patch("apps.backend.domain.identity.get_identity", return_value=(1, uid)):
-                out = coding_task(
-                    {
-                        "run_plan_subagent": True,
-                        "prompt": "List entrypoints",
-                        "description": "plan",
-                        "max_rounds": 2,
-                    },
-                    context=ctx,
-                )
+                with patch(
+                    "apps.backend.infrastructure.agent_artifacts_store.create_artifact",
+                    return_value={"id": uuid.uuid4()},
+                ):
+                    with patch(
+                        "apps.backend.infrastructure.agent_runs_store.insert_run_start",
+                        return_value={},
+                    ):
+                        with patch(
+                            "apps.backend.infrastructure.agent_runs_store.finish_run",
+                            return_value=True,
+                        ):
+                            out = coding_task(
+                                {
+                                    "run_plan_subagent": True,
+                                    "prompt": "List entrypoints",
+                                    "description": "plan",
+                                    "max_rounds": 2,
+                                },
+                                context=ctx,
+                            )
 
         data = json.loads(out)
         self.assertTrue(data.get("ok"), msg=data)
@@ -123,14 +135,26 @@ class TestCodingTaskPlanSubagent(unittest.TestCase):
                     "apps.backend.infrastructure.db.db.user_tenant_id",
                     return_value=42,
                 ):
-                    out = coding_task(
-                        {
-                            "run_plan_subagent": True,
-                            "prompt": "x",
-                            "description": "d",
-                        },
-                        context=ctx,
-                    )
+                    with patch(
+                        "apps.backend.infrastructure.agent_artifacts_store.create_artifact",
+                        return_value={"id": uuid.uuid4()},
+                    ):
+                        with patch(
+                            "apps.backend.infrastructure.agent_runs_store.insert_run_start",
+                            return_value={},
+                        ):
+                            with patch(
+                                "apps.backend.infrastructure.agent_runs_store.finish_run",
+                                return_value=True,
+                            ):
+                                out = coding_task(
+                                    {
+                                        "run_plan_subagent": True,
+                                        "prompt": "x",
+                                        "description": "d",
+                                    },
+                                    context=ctx,
+                                )
 
         data = json.loads(out)
         self.assertTrue(data.get("ok"), msg=data)

@@ -8,7 +8,15 @@ import uuid
 from typing import Any, Callable
 
 from apps.backend.domain.identity import get_identity
-from apps.backend.infrastructure.db.share_permissions_db import share_permission_check
+from apps.backend.infrastructure.db.share_permissions_db import (
+    SHARE_RESOURCE_GOOGLE_CALENDAR,
+    share_permission_check_resolved,
+)
+
+from plugins.tools.capabilities.platform.friends.friends_common import (
+    friend_calendar_ics_url,
+    resolve_friend_by_name,
+)
 
 __version__ = "1.0.0"
 TOOL_ID = "get_friend_calendar"
@@ -64,18 +72,7 @@ def get_friend_calendar(arguments: dict[str, Any]) -> Any:
             return json.dumps({"error": "name or entity parameter is required"}, ensure_ascii=False)
 
         # Step 1: Find friend by name
-        from apps.backend.infrastructure.db.friends_db import friends_list
-        friends = friends_list(requesting_user_id)
-        search_name = name_query.strip().lower()
-        
-        friend_user = None
-        for friend in friends:
-            name = friend.get("display_name", "").lower()
-            email = friend.get("email", "").lower()
-            
-            if search_name in name or search_name in email:
-                friend_user = friend
-                break
+        friend_user = resolve_friend_by_name(requesting_user_id, str(name_query))
         
         if not friend_user:
             res = {
@@ -87,12 +84,12 @@ def get_friend_calendar(arguments: dict[str, Any]) -> Any:
         friend_user_id = uuid.UUID(friend_user["friend_user_id"])
         friend_display_name = friend_user.get("display_name") or friend_user.get("email")
 
-        # Step 2: Check share permission
-        has_access = share_permission_check(
+        # Step 2: Check share permission (google_calendar + legacy calendar alias)
+        has_access = share_permission_check_resolved(
             owner_user_id=friend_user_id,
             grantee_user_id=requesting_user_id,
-            resource_type="calendar",
-            resource_identifier="primary"
+            resource_type=SHARE_RESOURCE_GOOGLE_CALENDAR,
+            resource_identifier="primary",
         )
         
         if not has_access:
@@ -102,9 +99,8 @@ def get_friend_calendar(arguments: dict[str, Any]) -> Any:
             logger.info("✅ get_friend_calendar RESULT: %s", res)
             return json.dumps(res, ensure_ascii=False)
 
-        # Step 3: Get friend's ICS calendar URL
-        from apps.backend.infrastructure.db.user_secrets import user_secret_get_plaintext
-        ics_url = user_secret_get_plaintext(friend_user_id, "calendar_ics")
+        # Step 3: Get friend's ICS calendar URL (google_calendar or calendar_ics secret)
+        ics_url = friend_calendar_ics_url(friend_user_id)
         
         if not ics_url:
             res = {

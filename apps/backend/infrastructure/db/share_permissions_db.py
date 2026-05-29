@@ -12,6 +12,29 @@ from psycopg.rows import dict_row
 
 from apps.backend.infrastructure.db.db import pool
 
+# Canonical ids — must match SharesSettings RESOURCE_TYPES in the frontend.
+SHARE_RESOURCE_GOOGLE_CALENDAR = "google_calendar"
+SHARE_RESOURCE_GITHUB_ACTIVITY = "github_activity"
+SHARE_RESOURCE_TODOIST = "todoist"
+SHARE_RESOURCE_NOTES = "notes"
+SHARE_RESOURCE_ROADMAP = "roadmap"
+
+SHARE_RESOURCE_ALIASES: dict[str, tuple[str, ...]] = {
+    SHARE_RESOURCE_GOOGLE_CALENDAR: ("calendar",),
+}
+
+
+def _resource_type_variants(resource_type: str) -> tuple[str, ...]:
+    canonical = (resource_type or "").strip().lower()
+    if not canonical:
+        return ()
+    aliases = SHARE_RESOURCE_ALIASES.get(canonical, ())
+    out: list[str] = []
+    for candidate in (canonical, *aliases):
+        if candidate and candidate not in out:
+            out.append(candidate)
+    return tuple(out)
+
 
 def share_permission_set(
     *,
@@ -24,7 +47,7 @@ def share_permission_set(
     """
     Set or remove share permission for a specific user and resource type.
     
-    resource_type examples: 'calendar', 'github', 'todoist', 'notes'
+    resource_type examples: 'google_calendar', 'github_activity', 'todoist', 'notes', 'roadmap'
     """
     ok = False
     
@@ -76,9 +99,28 @@ def share_permission_check(
     owner_user_id: uuid.UUID,
     grantee_user_id: uuid.UUID,
     resource_type: str,
-    resource_identifier: str = "primary"
+    resource_identifier: str = "primary",
 ) -> bool:
-    """Check if grantee has active permission to access owners resource."""
+    """Check if grantee has active permission to access owner's resource."""
+    return share_permission_check_resolved(
+        owner_user_id=owner_user_id,
+        grantee_user_id=grantee_user_id,
+        resource_type=resource_type,
+        resource_identifier=resource_identifier,
+    )
+
+
+def share_permission_check_resolved(
+    owner_user_id: uuid.UUID,
+    grantee_user_id: uuid.UUID,
+    resource_type: str,
+    resource_identifier: str = "primary",
+) -> bool:
+    """Check permission using canonical resource_type plus known legacy aliases."""
+    variants = _resource_type_variants(resource_type)
+    if not variants:
+        return False
+    identifier = (resource_identifier or "primary").strip().lower()
     with pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -86,18 +128,13 @@ def share_permission_check(
                 SELECT 1 FROM share_permissions
                 WHERE owner_user_id = %s
                   AND grantee_user_id = %s
-                  AND resource_type = %s
+                  AND resource_type = ANY(%s)
                   AND resource_identifier = %s
                   AND revoked_at IS NULL
                   AND is_allowed = TRUE
                 LIMIT 1
                 """,
-                (
-                    owner_user_id, 
-                    grantee_user_id, 
-                    resource_type.strip().lower(),
-                    resource_identifier.strip().lower()
-                )
+                (owner_user_id, grantee_user_id, list(variants), identifier),
             )
             return cur.fetchone() is not None
 

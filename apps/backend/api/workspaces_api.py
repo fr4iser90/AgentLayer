@@ -48,6 +48,12 @@ class WorkspaceUpdateBody(BaseModel):
     semantic_index_enabled: bool | None = None
     retrieval_enabled: bool | None = None
     docs_rag_enabled: bool | None = None
+    index_on_write: str | None = Field(
+        default=None,
+        description="off | debounced | immediate | null = operator default",
+    )
+    graph_index_enabled: bool | None = None
+    retrieve_context_sources: list[str] | None = None
 
 
 class WorkspaceIndexBody(BaseModel):
@@ -430,6 +436,36 @@ async def update_workspace(request: Request, workspace_id: str, body: WorkspaceU
     if "docs_rag_enabled" in patch and patch["docs_rag_enabled"] is not None:
         updates.append("docs_rag_enabled = %s")
         params.append(bool(patch["docs_rag_enabled"]))
+    if "index_on_write" in patch:
+        from apps.backend.infrastructure.workspace_index_policy import normalize_index_on_write
+
+        v = patch["index_on_write"]
+        if v is None or (isinstance(v, str) and not str(v).strip()):
+            updates.append("index_on_write = NULL")
+        else:
+            norm = normalize_index_on_write(v)
+            if norm is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="index_on_write must be off, debounced, immediate, or null",
+                )
+            updates.append("index_on_write = %s")
+            params.append(norm)
+    if "graph_index_enabled" in patch and patch["graph_index_enabled"] is not None:
+        updates.append("graph_index_enabled = %s")
+        params.append(bool(patch["graph_index_enabled"]))
+    if "retrieve_context_sources" in patch:
+        from apps.backend.infrastructure.workspace_index_policy import parse_retrieve_context_sources
+
+        src = patch["retrieve_context_sources"]
+        if src is None or src == []:
+            updates.append("retrieve_context_sources = NULL")
+        else:
+            parsed = parse_retrieve_context_sources(src)
+            if not parsed:
+                raise HTTPException(status_code=400, detail="retrieve_context_sources invalid")
+            updates.append("retrieve_context_sources = %s::jsonb")
+            params.append(json.dumps(parsed))
 
     if updates:
         params.append(workspace_id)

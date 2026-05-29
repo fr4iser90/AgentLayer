@@ -153,12 +153,29 @@ def index_status_payload(row: tuple | None) -> dict[str, Any]:
             tree = list_repo_top_level(Path(p))
     except Exception:
         pass
+    index_on_write_effective = "debounced"
+    files_stale = 0
+    try:
+        from apps.backend.infrastructure.workspace_index_file_state import count_files_out_of_date
+        from apps.backend.infrastructure.workspace_index_policy import effective_index_on_write
+
+        index_on_write_effective = effective_index_on_write(api)
+        p = api.get("path")
+        if isinstance(p, str) and p.strip() and api.get("id"):
+            files_stale = count_files_out_of_date(str(api["id"]), Path(p))
+    except Exception:
+        pass
+
     return {
         "ok": True,
         "workspace_id": api["id"],
         "semantic_index_enabled": sem,
         "retrieval_enabled": ret,
         "docs_rag_enabled": docs_rag,
+        "graph_index_enabled": api.get("graph_index_enabled", True),
+        "index_on_write": api.get("index_on_write"),
+        "index_on_write_effective": index_on_write_effective,
+        "files_out_of_date": files_stale,
         "last_docs_rag_at": api.get("last_docs_rag_at"),
         "last_docs_rag_stats": api.get("last_docs_rag_stats"),
         "last_docs_rag_error": api.get("last_docs_rag_error"),
@@ -206,6 +223,22 @@ def _persist_docs_rag_result(
                 (now, Json(stats), error, workspace_id),
             )
         conn.commit()
+
+
+def _workspace_graph_index_enabled(workspace_id: str) -> bool:
+    try:
+        with db.pool().connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT graph_index_enabled FROM project_workspaces WHERE id = %s",
+                    (workspace_id,),
+                )
+                row = cur.fetchone()
+        if not row:
+            return True
+        return bool(row[0]) if row[0] is not None else True
+    except Exception:
+        return True
 
 
 def _persist_index_result(
@@ -278,6 +311,165 @@ def _run_docs_rag_phase(
         "purge_deleted_documents": summary.get("purge_deleted_documents"),
     }
     return docs_stats, docs_error
+
+
+def run_incremental_index(
+    workspace_id: str,
+    root_path: str | Path,
+    rel_paths: list[str],
+    *,
+    semantic_index_enabled: bool = True,
+) -> dict[str, Any]:
+    """Re-index only touched files into Qdrant + Neo4j (post-write background job)."""
+    if not semantic_index_enabled:
+        return {"ok": False, "skipped": True, "reason": "semantic_index_disabled"}
+    if not config.CODING_ENABLED:
+        return {"ok": False, "error": "coding tools disabled"}
+
+    from plugins.tools.capabilities.coding.coding_index_lib import _HAS_TS, get_index
+
+    if not _HAS_TS:
+        return {"ok": False, "error": "tree-sitter not installed"}
+
+    root = Path(root_path)
+    if not root.exists() or not root.is_dir():
+        return {"ok": False, "error": "workspace path not found"}
+
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for p in rel_paths:
+        rel = (p or "").strip().replace("\\", "/").lstrip("/")
+        if rel and rel not in seen:
+            seen.add(rel)
+            normalized.append(rel)
+    if not normalized:
+        return {"ok": True, "skipped": True, "reason": "no_paths"}
+
+    job = _index_job_get(workspace_id)
+    if job and str(job.get("status")) == "running" and str(job.get("phase") or "") != "incremental":
+        return {"ok": False, "skipped": True, "reason": "full_index_running"}
+
+    started = datetime.now(UTC).isoformat()
+    _index_job_set(
+        workspace_id,
+        status="running",
+        phase="incremental",
+        files_done=0,
+        files_total=len(normalized),
+        started_at=started,
+        finished_at=None,
+        error=None,
+    )
+
+    idx = get_index()
+    indexed_paths = idx.list_indexable_rel_paths(root)
+    file_entries, scan_stats = idx.scan_paths(root, normalized)
+
+    qdrant_indexed = 0
+    qdrant_error: str | None = None
+    neo4j_edges = 0
+    neo4j_error: str | None = None
+    removed = 0
+
+    try:
+        from apps.backend.infrastructure.code_index_qdrant import get_code_index
+
+        code_index = get_code_index()
+        for rel in normalized:
+            fp = root / rel
+            if not fp.is_file():
+                code_index.delete_file_symbols(workspace_id, rel)
+                removed += 1
+        for i, file_entry in enumerate(file_entries):
+            qdrant_indexed += code_index.index_symbols(
+                [s.to_dict() for s in file_entry.symbols],
+                file_entry.path,
+                file_entry.language,
+                workspace_id,
+            )
+            _index_job_set(workspace_id, phase="incremental", files_done=i + 1, files_total=len(normalized))
+    except Exception as e:
+        qdrant_error = str(e)[:500]
+        logger.warning("incremental index qdrant: %s", e)
+
+    graph_on = _workspace_graph_index_enabled(workspace_id)
+
+    try:
+        from apps.backend.infrastructure.code_graph_neo4j import get_code_graph
+        from plugins.tools.capabilities.coding.coding_graph_extract import resolve_import_relationships
+
+        graph = get_code_graph()
+        if graph.available() and graph_on:
+            for rel in normalized:
+                if not (root / rel).is_file():
+                    graph.delete_file_graph(workspace_id, rel)
+            for file_entry in file_entries:
+                import_rels = resolve_import_relationships(file_entry, indexed_paths)
+                all_rels = [r.to_dict() for r in file_entry.relationships] + import_rels
+                neo4j_edges += graph.upsert_file_graph(
+                    workspace_id=workspace_id,
+                    file_path=file_entry.path,
+                    language=file_entry.language,
+                    sha256=file_entry.sha256,
+                    symbols=[s.to_dict() for s in file_entry.symbols],
+                    relationships=all_rels,
+                )
+    except Exception as e:
+        neo4j_error = str(e)[:500]
+        logger.warning("incremental index neo4j: %s", e)
+
+    stats: dict[str, Any] = {
+        "incremental": True,
+        "paths": normalized,
+        "scan": scan_stats,
+        "removed_paths": removed,
+        "qdrant_indexed": qdrant_indexed,
+        "neo4j_edges": neo4j_edges,
+    }
+    err = qdrant_error or neo4j_error
+    ok = err is None or qdrant_indexed > 0 or neo4j_edges > 0 or removed > 0
+
+    try:
+        from apps.backend.infrastructure.workspace_index_file_state import upsert_file_states
+
+        upsert_file_states(
+            workspace_id,
+            [(fe.path, fe.sha256) for fe in file_entries if fe.sha256],
+        )
+        for rel in normalized:
+            if not (root / rel).is_file():
+                from apps.backend.infrastructure.workspace_index_file_state import delete_file_state
+
+                delete_file_state(workspace_id, rel)
+    except Exception as e:
+        logger.debug("incremental file state update: %s", e)
+
+    _persist_index_result(workspace_id, stats=stats, error=err if not ok else None)
+    finished = datetime.now(UTC).isoformat()
+    _index_job_set(
+        workspace_id,
+        status="done" if ok else "failed",
+        phase="incremental",
+        files_done=len(normalized),
+        files_total=len(normalized),
+        finished_at=finished,
+        error=err if not ok else None,
+    )
+    logger.info(
+        "incremental index workspace=%s paths=%d qdrant=%d neo4j_edges=%d removed=%d",
+        workspace_id,
+        len(normalized),
+        qdrant_indexed,
+        neo4j_edges,
+        removed,
+    )
+    return {
+        "ok": ok,
+        "stats": stats,
+        "qdrant_indexed": qdrant_indexed,
+        "neo4j_edges": neo4j_edges,
+        "error": err,
+    }
 
 
 def run_semantic_index(
@@ -415,7 +607,7 @@ def run_semantic_index(
         from apps.backend.infrastructure.code_graph_neo4j import get_code_graph
 
         graph = get_code_graph()
-        if graph.available():
+        if graph.available() and _workspace_graph_index_enabled(workspace_id):
             file_list = list(idx._files.values())
             neo4j_total = len(file_list)
 
@@ -432,6 +624,16 @@ def run_semantic_index(
     except Exception as e:
         neo4j_error = str(e)[:500]
         logger.warning("workspace index neo4j: %s", e)
+
+    try:
+        from apps.backend.infrastructure.workspace_index_file_state import upsert_file_states
+
+        upsert_file_states(
+            workspace_id,
+            [(fe.path, fe.sha256) for fe in idx._files.values() if fe.sha256],
+        )
+    except Exception as e:
+        logger.debug("full index file state: %s", e)
 
     stats = {
         "scan": scan_stats,

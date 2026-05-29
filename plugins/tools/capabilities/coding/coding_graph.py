@@ -49,6 +49,11 @@ def coding_graph(arguments: dict[str, Any], context: dict | None = None) -> str:
     ws = workspace_binding_from_context(context)
     if ws is None:
         return json_workspace_missing_error()
+    if ws.get("graph_index_enabled") is False:
+        return json.dumps(
+            {"ok": False, "skipped": True, "reason": "graph_index_disabled"},
+            ensure_ascii=False,
+        )
     workspace_id = str(ws.get("id") or "")
 
     graph = get_code_graph()

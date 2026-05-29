@@ -13,6 +13,7 @@ from plugins.tools.capabilities.coding.coding_common import (
     is_blocked_credential_path,
     json_blocked_credential_path_error,
     json_workspace_missing_error,
+    maybe_enqueue_incremental_index,
     workspace_binding_from_context,
 )
 
@@ -67,10 +68,12 @@ def coding_write_file(arguments: dict[str, Any], context: dict | None = None) ->
         resolved.write_text(content, encoding="utf-8", newline="")
     except OSError as e:
         return json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False)
+    rel_norm = rel.replace("\\", "/")
+    maybe_enqueue_incremental_index(context, [rel_norm])
     return json.dumps(
         {
             "ok": True,
-            "path": rel.replace("\\", "/"),
+            "path": rel_norm,
             "bytes_written": len(data),
         },
         ensure_ascii=False,

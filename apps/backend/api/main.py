@@ -117,6 +117,7 @@ from apps.backend.api.run_traces_admin_api import router as run_traces_admin_rou
 from apps.backend.api.friends_api import router as friends_router
 from apps.backend.api.shares_api import router as shares_router
 from apps.backend.api.workspaces_api import router as workspaces_router
+from apps.backend.api.workspaces_admin_api import router as workspaces_admin_router
 from apps.backend.api.agents_api import router as agents_router
 from apps.backend.api.session_runtime_api import router as session_runtime_router
 
@@ -214,6 +215,14 @@ async def lifespan(_app: FastAPI):
     
     start_cron_scheduler()
     try:
+        from apps.backend.infrastructure.workspace_reindex_scheduler import (
+            start_workspace_reindex_scheduler,
+        )
+
+        start_workspace_reindex_scheduler()
+    except Exception:
+        logger.exception("Workspace reindex scheduler failed to start (optional)")
+    try:
         start_scheduler_worker()
     except Exception:
         logger.exception("Scheduler worker failed to start (optional)")
@@ -247,6 +256,14 @@ async def lifespan(_app: FastAPI):
     except Exception:
         pass
     stop_cron_scheduler()
+    try:
+        from apps.backend.infrastructure.workspace_reindex_scheduler import (
+            stop_workspace_reindex_scheduler,
+        )
+
+        stop_workspace_reindex_scheduler()
+    except Exception:
+        pass
     try:
         stop_scheduler_worker()
     except Exception:
@@ -289,6 +306,7 @@ app.include_router(session_runtime_router)
 app.include_router(friends_router)
 app.include_router(shares_router)
 app.include_router(workspaces_router)
+app.include_router(workspaces_admin_router)
 
 
 # Auth Endpoints

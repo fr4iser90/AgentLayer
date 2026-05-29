@@ -9,7 +9,8 @@ WORKSPACE_SELECT_SQL = """
     id, owner_user_id, name, path, source, git_url, git_branch, access_role,
     created_at, updated_at, verify_command, verify_required, mcp_stdio_servers_json,
     semantic_index_enabled, retrieval_enabled, last_index_at, last_index_stats, last_index_error,
-    docs_rag_enabled, last_docs_rag_at, last_docs_rag_stats, last_docs_rag_error
+    docs_rag_enabled, last_docs_rag_at, last_docs_rag_stats, last_docs_rag_error,
+    index_on_write, graph_index_enabled, retrieve_context_sources
 """
 
 
@@ -42,4 +43,9 @@ def workspace_row_to_api(row: tuple) -> dict[str, Any]:
         "last_docs_rag_at": row[19].isoformat() if isinstance(row[19], datetime) else None,
         "last_docs_rag_stats": row[20] if isinstance(row[20], dict) else None,
         "last_docs_rag_error": row[21],
+        "index_on_write": (str(row[22]).strip() if len(row) > 22 and row[22] is not None else None),
+        "graph_index_enabled": bool(row[23]) if len(row) > 23 and row[23] is not None else True,
+        "retrieve_context_sources": (
+            list(row[24]) if len(row) > 24 and isinstance(row[24], list) else None
+        ),
     }

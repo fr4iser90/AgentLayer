@@ -122,6 +122,11 @@ export function appendTimelineEntry(
       ...(entry.resultChars != null ? { resultChars: entry.resultChars } : {}),
       ...(entry.subagentAgentId != null ? { subagentAgentId: entry.subagentAgentId } : {}),
       ...(entry.nested === true ? { nested: true } : {}),
+      ...(entry.indexMode != null ? { indexMode: entry.indexMode } : {}),
+      ...(entry.indexPhase != null ? { indexPhase: entry.indexPhase } : {}),
+      ...(entry.filesDone != null ? { filesDone: entry.filesDone } : {}),
+      ...(entry.filesTotal != null ? { filesTotal: entry.filesTotal } : {}),
+      ...(entry.runStatus != null ? { runStatus: entry.runStatus } : {}),
     },
   ];
 }

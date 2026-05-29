@@ -158,6 +158,7 @@ Retrieve top‑50 → cross-encoder or LLM rerank → top‑5 for the prompt. No
 | **Medium** | Session bootstrap snippet (index stats, repo map) | Done |
 | **Medium** | Stale-index UI hint + optional index-on-attach (`AGENT_WORKSPACE_INDEX_ON_ATTACH`) | Done |
 | **Medium** | Code graph (Neo4j): call-graph, dependency-graph, type hierarchy, impact analysis | Done |
+| **Medium** | Incremental index on write (debounced, per-file Qdrant + Neo4j) | Done (env `AGENT_WORKSPACE_INDEX_ON_WRITE`; hooks on write tools) — see [`retrieval-incremental-index-roadmap.md`](../planning/retrieval-incremental-index-roadmap.md) |
 | **Long** | LSP hits inside `retrieve_context` | Planned |
 | **Long** | Query rewriting (HyDE / multi-query) | Planned |
 

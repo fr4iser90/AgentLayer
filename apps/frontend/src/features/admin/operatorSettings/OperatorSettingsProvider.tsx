@@ -95,6 +95,9 @@ function useOperatorSettingsState() {
   const [schedulerInstructions, setSchedulerInstructions] = useState("");
   const [schedulerJobsWorkerEnabled, setSchedulerJobsWorkerEnabled] = useState(true);
   const [workspaceAllowSelfEditing, setWorkspaceAllowSelfEditing] = useState(false);
+  const [workspaceIndexOnWriteDefault, setWorkspaceIndexOnWriteDefault] = useState("debounced");
+  const [workspaceReindexAfterGitPull, setWorkspaceReindexAfterGitPull] = useState(false);
+  const [workspaceNightlyReindexEnabled, setWorkspaceNightlyReindexEnabled] = useState(false);
   const [adminUsers, setAdminUsers] = useState<Array<{ id: string; email?: string | null; display_name?: string | null }>>([]);
   const [extLlmModelIds, setExtLlmModelIds] = useState<string[]>([]);
   const [extLlmModelsLoading, setExtLlmModelsLoading] = useState(false);
@@ -298,6 +301,14 @@ function useOperatorSettingsState() {
       setSchedulerInstructions((op.scheduler_instructions ?? "").trim());
       setSchedulerJobsWorkerEnabled(op.scheduler_jobs_worker_enabled !== false);
       setWorkspaceAllowSelfEditing(!!op.workspace_allow_self_editing);
+      setWorkspaceIndexOnWriteDefault(
+        op.workspace_index_on_write_default === "off" ||
+          op.workspace_index_on_write_default === "immediate"
+          ? op.workspace_index_on_write_default
+          : "debounced"
+      );
+      setWorkspaceReindexAfterGitPull(!!op.workspace_reindex_after_git_pull);
+      setWorkspaceNightlyReindexEnabled(!!op.workspace_nightly_reindex_enabled);
 
       if (uRes.ok) {
         const uData = (await uRes.json()) as { users?: Array<{ id: string; email?: string | null; display_name?: string | null }> };
@@ -572,6 +583,9 @@ function useOperatorSettingsState() {
       patch.scheduler_jobs_ide_pidea_enabled = false;
       patch.scheduler_jobs_ide_pidea_timeout_sec = 300;
       patch.workspace_allow_self_editing = workspaceAllowSelfEditing;
+      patch.workspace_index_on_write_default = workspaceIndexOnWriteDefault;
+      patch.workspace_reindex_after_git_pull = workspaceReindexAfterGitPull;
+      patch.workspace_nightly_reindex_enabled = workspaceNightlyReindexEnabled;
       const mgHops = Number(memGraphMaxHops.trim());
       const mgScore = Number(memGraphMinScore.trim());
       const mgBullets = Number(memGraphMaxBullets.trim());
@@ -868,6 +882,12 @@ function useOperatorSettingsState() {
     setSchedulerJobsWorkerEnabled,
     workspaceAllowSelfEditing,
     setWorkspaceAllowSelfEditing,
+    workspaceIndexOnWriteDefault,
+    setWorkspaceIndexOnWriteDefault,
+    workspaceReindexAfterGitPull,
+    setWorkspaceReindexAfterGitPull,
+    workspaceNightlyReindexEnabled,
+    setWorkspaceNightlyReindexEnabled,
     adminUsers,
     extLlmModelIds,
     extLlmModelsLoading,
