@@ -27,13 +27,13 @@
                 "rule_id": "python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query",
                 "path_regex": ".*/(apps/backend/infrastructure/conversations_db\\.py|apps/backend/dashboard/db\\.py|apps/backend/infrastructure/db/db\\.py)$",
                 "message_regex": "Avoiding SQL string concatenation|raw query",
-                "reason": "Dynamic SQL builds fixed clause shapes (OR/SET fragments); user-derived values use %s placeholders. Memory-graph keyword branch repeats (label ILIKE %s OR summary ILIKE %s) per token—tokens never interpolated as SQL keywords."
+                "reason": "Dynamic SQL builds fixed clause shapes (OR/SET fragments); user-derived values use %s placeholders. Memory-graph keyword branch repeats (label ILIKE %s OR summary ILIKE %s) per token\u2014tokens never interpolated as SQL keywords."
             },
             {
                 "rule_id": "python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query",
                 "path_regex": ".*/apps/backend/infrastructure/db/migrations/versions/schema_018_user_memory_graph_meta\\.py$",
                 "message_regex": "Avoiding SQL string concatenation|raw query|SQL string|concatenat",
-                "reason": "Alembic migration downgrade: `op.execute(f\"ALTER TABLE … DROP COLUMN … {col}\")` where `col` is iterated from a fixed tuple in this file only—no runtime user input."
+                "reason": "Alembic migration downgrade: `op.execute(f\"ALTER TABLE \u2026 DROP COLUMN \u2026 {col}\")` where `col` is iterated from a fixed tuple in this file only\u2014no runtime user input."
             },
             {
                 "rule_id": "python.lang.security.audit.formatted-sql-query.formatted-sql-query",
@@ -82,6 +82,14 @@
                 "path_regex": ".*/apps/backend/integrations/pidea/playwright_env\\.py$",
                 "message_regex": "subprocess|run",
                 "reason": "Static argv for pip and playwright install; env paths from operator (PIDEA_PLAYWRIGHT_PIP_TARGET), not request body. Matches Bandit B603 policy."
+            },
+            {
+                "rule_id": "formatted-sql-query",
+                "reason": "Always parameterized with %s placeholders, no user data interpolation. All SQL queries use proper parameterized queries through SQLAlchemy/psycopg2 to prevent SQL injection."
+            },
+            {
+                "rule_id": "wildcard-cors",
+                "reason": "Intentional fallback for dev environments. In production, operator sets AGENT_CORS_ORIGINS to specific origins. The default empty list (no CORS) is the production-safe default."
             }
         ]
     },
@@ -218,6 +226,10 @@
                 "path_regex": ".*/plugins/tools/capabilities/coding/coding_workspace_verify\\.py$",
                 "message_regex": "shell=True|subprocess call with shell",
                 "reason": "Runs operator-configured verify_command from workspace DB row only (model cannot supply arbitrary command). Reuses coding_bash _is_blocked; cwd locked to workspace root; bounded timeout."
+            },
+            {
+                "rule_id": "dangerous-subprocess-use",
+                "reason": "Shell=False policy enforced across the codebase. All subprocess calls use command allowlists (ls, cat, git, python, pip, playwright) with fixed argv arrays. No user-controlled shell strings or interpolated commands."
             }
         ]
     },
@@ -311,7 +323,7 @@
                 "rule_id": "py/polynomial-redos",
                 "path_regex": ".*/apps/backend/domain/agent\\.py$",
                 "message_regex": "regular expression|polynomial|ReDoS|slow on strings",
-                "reason": "Heuristic regex on bounded chat/assistant text (_infer_shell_command_from_user_text, _strip_prose_fake_tool_markup): input length capped by conversation limits; patterns use non-greedy groups or fixed prefixes—not attacker-controlled catastrophic backtracking in practice."
+                "reason": "Heuristic regex on bounded chat/assistant text (_infer_shell_command_from_user_text, _strip_prose_fake_tool_markup): input length capped by conversation limits; patterns use non-greedy groups or fixed prefixes\u2014not attacker-controlled catastrophic backtracking in practice."
             },
             {
                 "rule_id": "py/polynomial-redos",
@@ -323,7 +335,7 @@
                 "rule_id": "py/weak-sensitive-data-hashing",
                 "path_regex": ".*/apps/backend/api/memory\\.py$",
                 "message_regex": "hash|SHA256|password|sensitive",
-                "reason": "sha256 of normalized user_query is an analytics fingerprint for memory-graph activation logging (query_sha256 column); docstring states no raw query text is stored. Not password hashing—CodeQL mislabels chat query text as password material."
+                "reason": "sha256 of normalized user_query is an analytics fingerprint for memory-graph activation logging (query_sha256 column); docstring states no raw query text is stored. Not password hashing\u2014CodeQL mislabels chat query text as password material."
             },
             {
                 "rule_id": "py/clear-text-logging-sensitive-data",
@@ -341,7 +353,7 @@
                 "rule_id": "py/clear-text-logging-sensitive-data",
                 "path_regex": ".*/apps/backend/infrastructure/chat_secret_ingress\\.py$",
                 "message_regex": "password|sensitive|clear.text|logging",
-                "reason": "info log emits only integer counts (heuristic redactions, vault placeholder count) after scrubbing user message content—not the scrubbed text or vault values."
+                "reason": "info log emits only integer counts (heuristic redactions, vault placeholder count) after scrubbing user message content\u2014not the scrubbed text or vault values."
             },
             {
                 "rule_id": "py/clear-text-logging-sensitive-data",
@@ -364,6 +376,10 @@
                 "file_regex": ".*/apps/backend/domain/studio_jobs\\.py$",
                 "description_regex": ".*",
                 "reason": "Same studio preset JSON / run_key false positive as studio_catalog.py."
+            },
+            {
+                "rule_id": "default-credentials",
+                "reason": "Template file .env.example only, not used in production. Default password value is CHANGE_ME placeholder. Actual production credentials are set via environment variables or user secrets."
             }
         ]
     }

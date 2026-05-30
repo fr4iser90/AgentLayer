@@ -183,10 +183,13 @@ async def lifespan(_app: FastAPI):
         logger.exception(
             "First-admin bootstrap failed (DB migrations? or set AGENT_INITIAL_ADMIN_EMAIL/PASSWORD)"
         )
-    if (os.environ.get("AGENT_CORS_ORIGINS") or "*").strip() == "*":
+    cors_env = os.environ.get("AGENT_CORS_ORIGINS", "").strip()
+    if not cors_env or cors_env == "*":
         logger.warning(
-            "AGENT_CORS_ORIGINS is '*'. For a public host, set explicit origins "
-            "(e.g. https://openwebui.example) so browsers do not send creds to arbitrary sites."
+            "CORS is not explicitly configured (AGENT_CORS_ORIGINS not set or '*'). "
+            "In production, set AGENT_CORS_ORIGINS to specific origins "
+            "(e.g. https://openwebui.example) to prevent wildcard CORS. "
+            "Without it, browsers will block credentials."
         )
     get_registry()
 
@@ -844,13 +847,14 @@ if _agent_index.is_file():
     )
 
 _cors_origins = [
-    o.strip() for o in os.environ.get("AGENT_CORS_ORIGINS", "*").split(",") if o.strip()
+    o.strip() for o in os.environ.get("AGENT_CORS_ORIGINS", "").split(",") if o.strip()
 ]
-_cors_credentials = "*" not in _cors_origins
+# Default: no CORS (deny all). Operator must set AGENT_CORS_ORIGINS for production.
+_cors_credentials = "*" not in _cors_origins if _cors_origins else False
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_cors_origins or ["*"],
+    allow_origins=_cors_origins or [],
     allow_credentials=_cors_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
