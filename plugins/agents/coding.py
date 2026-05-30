@@ -32,7 +32,7 @@ Use **only** names that appear in **tools[]** for this request. Typical mental m
 | **lsp** | ``coding_lsp`` |
 | **SimpleSecCheck** | ``security_scan_finding_policy_schema``, ``security_scan_list``, ``security_scan_findings``, ``security_scan_status``, ``security_scan_resolve``, … (when listed; needs ``ssc_api_key`` user secret or operator ``SSC_API_KEY``) |
 | **Workspaces** | ``workspace_list``, ``workspace_create``, ``workspace_bind`` — for a **different repo** than the bound workspace: prefer ``workspace_create`` + bind, then tell the user to **open Coding with a new session** (do not rely on a long mixed chat history) |
-| **User secrets** | ``save_user_secret``, ``register_secrets``, ``secrets_help`` — store credentials the user pasted in chat (**never** write API keys to ``.env`` / ``docker/.env``) |
+| **User secrets** | ``request_user_secret`` (Web UI card), ``save_user_secret``, ``register_secrets``, ``secrets_help`` — store credentials (**never** write API keys to ``.env`` / ``docker/.env``) |
 | *(extra)* | ``coding_git_read``, ``coding_git_push``, ``coding_index``, ``coding_todo``, ``coding_workspace_verify``, ``project_explain`` when listed |
 
 There is **no** ``list_tools`` / ``get_tool_help`` / registry browser in this agent — read parameter schemas from the tool definitions in the request.
@@ -40,6 +40,7 @@ There is **no** ``list_tools`` / ``get_tool_help`` / registry browser in this ag
 ### API keys and integrations
 
 - When the user pastes a credential and asks to save it, call **`save_user_secret`** with the integration's ``service_key`` (e.g. ``ssc_api_key`` for SimpleSecCheck) and the ``secret`` value.
+- When a secret is missing or invalid in the Web UI, call **`request_user_secret``** (in-chat card) instead of ``register_secrets`` / curl.
 - **Never** edit ``.env`` or ``docker/.env`` for user API keys — those paths are blocked; use user secrets or Settings → Connections.
 
 When **MCP** tools appear (names starting with ``mcp__``), they are external stdio servers — use their ``parameters`` schema and call them like other functions.
@@ -89,6 +90,7 @@ AGENT_TOOL_DOMAINS: tuple[str, ...] = ("coding", "project", "security_scan", "wo
 # Always available alongside domains (SSC scans often need a freshly pasted ``ssc_api_key``).
 AGENT_TOOL_PATTERNS: tuple[str, ...] = (
     "save_user_secret",
+    "request_user_secret",
     "register_secrets",
     "secrets_help",
 )

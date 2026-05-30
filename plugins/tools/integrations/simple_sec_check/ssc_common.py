@@ -82,8 +82,8 @@ def auth_error() -> dict[str, Any]:
     return {
         "ok": False,
         "error": (
-            f"No SimpleSecCheck API key: use save_user_secret(service_key={USER_SECRET_KEY!r}, secret=<ssc_…>) "
-            f"when the user pasted a key in chat, or register via Settings → Connections. "
+            f"No SimpleSecCheck API key: use request_user_secret(service_key={USER_SECRET_KEY!r}) in Web UI, "
+            f"save_user_secret when pasted in chat, or Settings → Connections. "
             "Operator may set SSC_API_KEY in docker/.env (not via agent file edits). "
             '(plain token or JSON {"token":"…"}).'
         ),

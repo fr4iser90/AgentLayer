@@ -10,6 +10,7 @@ Client → server JSON:
   - ``{"type":"continue_step"}`` → after ``agent.step_wait``, resume the tool/LLM loop (see ``agent_pause_between_rounds`` in chat body)
   - ``{"type":"permission_reply","request_id":"…","reply":"once"|"always"|"reject","message":"?"}`` →
         response to ``agent.permission_ask`` (``body.agent_permission_ask`` + agent plugins with ``AGENT_CODING_TOOLS_PERMISSION_ASK``) before a gated tool runs
+  - ``{"type":"secret_saved","prompt_id":"…","service_key":"ssc_api_key","ok":true}`` → optional ack after the user saved via the in-chat secret card
   - ``{"type":"chat","body":{...},...}``
         body = OpenAI-style chat completion request (``stream`` ignored).
         Optional ``body.agent_model_catalog_owned_by``: normalized ``GET /v1/models`` row ``owned_by``
@@ -22,7 +23,7 @@ Client → server JSON:
 
 Server → client JSON events (subset):
   - ``agent.session``, ``agent.llm_round_start``, ``agent.llm_delta`` (token chunks when ``agent_stream_llm``), ``agent.llm_round`` (optional ``usage`` when the LLM returns OpenAI-style token counts), ``agent.tool_start``,
-    ``agent.tool_done``, ``agent.permission_ask``, ``agent.subagent_start``, ``agent.subagent_done``,
+    ``agent.tool_done``, ``agent.secret_prompt``, ``agent.permission_ask``, ``agent.subagent_start``, ``agent.subagent_done``,
     ``agent.done``, ``agent.cancelled``
   - ``chat.completion`` — final OpenAI-shaped response (or error payload on failure)
 """

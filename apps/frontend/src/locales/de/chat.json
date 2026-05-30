@@ -33,6 +33,9 @@
   "attachmentNotSent": " (nicht gesendet)",
   "removeAttachment": "Anhang entfernen",
   "composerPlaceholder": "Wobei kann ich dir heute helfen?",
+  "composerQueueTitle": "Warteschlange ({{count}})",
+  "composerQueueAdd": "In Queue",
+  "composerQueueRemove": "Aus Queue entfernen",
   "attachTitle": "Anhängen oder Drag & Drop (Bilder, Text; zip wird nicht entpackt)",
   "attachFiles": "Dateien anhängen",
   "loadingModels": "Modelle werden geladen…",
@@ -117,6 +120,13 @@
   "runCardIndex_full": "Vollständiger Reindex",
   "runCardIndex_code": "Code-Index",
   "runCardIndex_docs": "Docs-Index",
-  "runCardIndex_incremental": "Inkrementeller Index"
+  "runCardIndex_incremental": "Inkrementeller Index",
+  "secretCardSave": "Speichern",
+  "secretCardSaving": "Speichern…",
+  "secretCardSaved": "Gespeichert — du kannst den Agenten weiterführen lassen.",
+  "secretCardSaveFailed": "Secret konnte nicht gespeichert werden.",
+  "secretCardFillRequired": "Bitte alle Pflichtfelder ausfüllen.",
+  "secretCardValueLabel": "Secret-Wert",
+  "secretCardOpenConnections": "Einstellungen → Verbindungen"
 }
 

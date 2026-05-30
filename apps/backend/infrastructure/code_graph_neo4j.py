@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 from typing import Any
 
 from apps.backend.core import config
@@ -29,30 +30,44 @@ _CONSTRAINTS_CYPHER = [
 class CodeGraphNeo4j:
     """Singleton client for the code-graph Neo4j database."""
 
+    _CONNECT_RETRY_SECONDS = 60.0
+
     def __init__(self) -> None:
         self._driver: Driver | None = None
         self._lock = threading.Lock()
         self._schema_ready = False
+        self._connect_retry_after: float = 0.0
+        self._last_connect_error: str | None = None
 
     def _get_driver(self) -> Driver | None:
         if not _HAS_NEO4J:
             return None
         with self._lock:
-            if self._driver is None:
-                url = config.NEO4J_URL
-                if not url:
-                    return None
-                try:
-                    self._driver = GraphDatabase.driver(
-                        url,
-                        auth=(config.NEO4J_USER, config.NEO4J_PASSWORD),
-                        max_connection_lifetime=600,
-                    )
-                    self._driver.verify_connectivity()
-                except Exception as exc:
+            if self._driver is not None:
+                return self._driver
+            if time.monotonic() < self._connect_retry_after:
+                return None
+            url = (config.NEO4J_URL or "").strip()
+            password = (config.NEO4J_PASSWORD or "").strip()
+            if not url or not password:
+                return None
+            try:
+                self._driver = GraphDatabase.driver(
+                    url,
+                    auth=(config.NEO4J_USER, password),
+                    max_connection_lifetime=600,
+                )
+                self._driver.verify_connectivity()
+                self._connect_retry_after = 0.0
+                self._last_connect_error = None
+            except Exception as exc:
+                err = str(exc)
+                if err != self._last_connect_error:
                     logger.warning("Neo4j connection failed: %s", exc)
-                    self._driver = None
-                    return None
+                    self._last_connect_error = err
+                self._connect_retry_after = time.monotonic() + self._CONNECT_RETRY_SECONDS
+                self._driver = None
+                return None
             return self._driver
 
     def _ensure_schema(self) -> bool:
@@ -495,7 +510,8 @@ def neo4j_status() -> dict[str, Any]:
     from apps.backend.core import config
 
     url = (config.NEO4J_URL or "").strip()
-    if not url:
+    password = (config.NEO4J_PASSWORD or "").strip()
+    if not url or not password:
         return {"configured": False, "reachable": None}
     try:
         g = get_code_graph()

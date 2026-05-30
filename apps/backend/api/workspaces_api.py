@@ -507,12 +507,16 @@ async def delete_workspace(request: Request, workspace_id: str):
     """Delete a workspace (owner only)."""
     user = await get_current_user(request)
 
-    from apps.backend.infrastructure.workspace_service import AGENTLAYER_SELF_NAME, self_editing_allowed
+    from apps.backend.infrastructure.workspace_service import (
+        AGENTLAYER_SELF_NAME,
+        delete_owned_workspace,
+        self_editing_allowed,
+    )
 
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT path, name FROM project_workspaces WHERE id = %s AND owner_user_id = %s AND access_role = 'owner'",
+                "SELECT name FROM project_workspaces WHERE id = %s AND owner_user_id = %s AND access_role = 'owner'",
                 (workspace_id, user.id),
             )
             row = cur.fetchone()
@@ -520,17 +524,20 @@ async def delete_workspace(request: Request, workspace_id: str):
     if not row:
         raise HTTPException(status_code=404, detail="Workspace not found or no delete permission")
 
-    if (row[1] or "").strip() == AGENTLAYER_SELF_NAME and not self_editing_allowed(user):
+    if (row[0] or "").strip() == AGENTLAYER_SELF_NAME and not self_editing_allowed(user):
         raise HTTPException(status_code=404, detail="Workspace not found or no delete permission")
 
-    workspace_path = Path(row[0])
-    if workspace_path.exists():
-        shutil.rmtree(workspace_path)
-
-    with db.pool().connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("DELETE FROM project_workspaces WHERE id = %s", (workspace_id,))
-        conn.commit()
+    try:
+        if not delete_owned_workspace(workspace_id=workspace_id, owner_user_id=user.id):
+            raise HTTPException(status_code=404, detail="Workspace not found or no delete permission")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("delete_workspace failed for %s", workspace_id)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to delete workspace: {e!s}"[:500],
+        ) from e
 
     return {"ok": True}
 

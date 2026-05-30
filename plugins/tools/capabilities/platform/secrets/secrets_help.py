@@ -36,8 +36,9 @@ def secrets_help(arguments: dict[str, Any]) -> str:
     user_value = resolved_sub if resolved_sub is not None else "DEINE_WEBUI_USER_ID"
 
     hints: list[str] = [
-        "Secret im Chat gepostet: Tool **`save_user_secret`** mit `service_key` + `secret` (sofort in Postgres, kein curl).",
-        "Alternativ OTP+curl: Tool **`register_secrets`** — `curl_bash` / `jq_register_example_de` in der Tool-Antwort.",
+        "Web-UI: Tool **`request_user_secret`** — Card im Chat (kein curl).",
+        "Secret im Chat gepostet: Tool **`save_user_secret`** mit `service_key` + `secret` (sofort in Postgres).",
+        "Headless/Bridge: OTP+curl via **`register_secrets`** — `curl_bash` in der Tool-Antwort.",
         "Mit Web-UI (eingeloggt): **Einstellungen → Connections** — schema-driven Formulare pro Integration.",
         "Dieses Tool (`secrets_help`) speichert nichts — nur Erklärung.",
     ]

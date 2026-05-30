@@ -40,6 +40,7 @@ import {
   appendTimelineEntry,
   archiveTurnBeforeNewPrompt,
   latestUserMessageId,
+  markSecretPromptSaved,
   serializeAgentLogPayload,
 } from "../features/chat/agentLogStorage";
 import { AgentActivityPanel } from "../features/chat/AgentActivityPanel";
@@ -177,6 +178,18 @@ function messagesWithStreamedAssistant(baseline: UiMessage[], accumulated: strin
   return [...baseline, { role: "assistant", content: accumulated, createdAt }];
 }
 
+type QueuedComposerMessage = {
+  id: string;
+  draft: string;
+  attachments: PendingAttachment[];
+};
+
+function queueItemPreview(item: QueuedComposerMessage): string {
+  const text = buildUserMessageContent(item.draft, item.attachments);
+  if (text.length <= 120) return text;
+  return `${text.slice(0, 117)}…`;
+}
+
 function assistantMessage(content: string, prior?: UiMessage | null): UiMessage {
   const createdAt =
     prior?.role === "assistant" && prior.createdAt != null ? prior.createdAt : Date.now();
@@ -301,8 +314,30 @@ export function ChatPage() {
   const streamDeltaAccRef = useRef("");
   const agentStreamEnabledThisTurnRef = useRef(false);
   const agentTurnFinishRef = useRef<(() => void) | null>(null);
+  const composerQueueRef = useRef<Map<string, QueuedComposerMessage[]>>(new Map());
+  const [composerQueueVersion, setComposerQueueVersion] = useState(0);
+  const drainComposerQueueRef = useRef<() => void>(() => {});
+  const runChatHttpRef = useRef<(queued?: QueuedComposerMessage) => Promise<void>>(async () => {});
+  const runAgentWsRef = useRef<(queued?: QueuedComposerMessage) => Promise<void>>(async () => {});
+  const threadsRef = useRef(threads);
   const [agentStreamLlmUi, setAgentStreamLlmUi] = useState(() => getAgentStreamLlm());
   activeThreadIdRef.current = activeThreadId;
+  threadsRef.current = threads;
+
+  const bumpComposerQueue = useCallback(() => {
+    setComposerQueueVersion((v) => v + 1);
+  }, []);
+
+  const activeComposerQueue = useMemo(() => {
+    void composerQueueVersion;
+    const tid = activeThreadId;
+    if (!tid) return [];
+    return composerQueueRef.current.get(tid) ?? [];
+  }, [activeThreadId, composerQueueVersion]);
+
+  const scheduleDrainComposerQueue = useCallback(() => {
+    queueMicrotask(() => drainComposerQueueRef.current());
+  }, []);
 
   const displayName = useMemo(() => {
     const e = user?.email;
@@ -827,6 +862,29 @@ export function ChatPage() {
     []
   );
 
+  const handleSecretSaved = useCallback((promptId: string, serviceKey: string) => {
+    const tid = activeThreadIdRef.current;
+    if (tid) {
+      setThreads((prev) =>
+        prev.map((t) => {
+          if (t.id !== tid) return t;
+          return { ...t, ...markSecretPromptSaved(t, promptId), updatedAt: Date.now() };
+        })
+      );
+    }
+    const ws = wsRef.current;
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(
+        JSON.stringify({
+          type: "secret_saved",
+          prompt_id: promptId,
+          service_key: serviceKey,
+          ok: true,
+        })
+      );
+    }
+  }, []);
+
   const handleIndexActivity = useCallback(
     (ev: IndexActivityEvent) => {
       const { kind, text, extras } = indexActivityToTimeline(ev);
@@ -840,7 +898,7 @@ export function ChatPage() {
     [appendAgentLine, assistantStreamOffset]
   );
 
-  const runChatHttp = useCallback(async () => {
+  const runChatHttp = useCallback(async (queued?: QueuedComposerMessage) => {
     if (!accessToken || !activeThreadId) return;
     const tid = activeThreadId;
     const thread = threads.find((x) => x.id === tid);
@@ -857,7 +915,9 @@ export function ChatPage() {
     }
     lastModelSelectionRef.current = routed.selectValue;
 
-    const userContent = buildUserMessageContent(draft, pendingAttachments);
+    const sendDraft = queued?.draft ?? draft;
+    const sendAttachments = queued?.attachments ?? pendingAttachments;
+    const userContent = buildUserMessageContent(sendDraft, sendAttachments);
     if (!userContent) return;
 
     setError(null);
@@ -877,8 +937,10 @@ export function ChatPage() {
       modelProvider: routed.provider,
     });
     setSelectedTurnId(userMsgId);
-    setDraft("");
-    setPendingAttachments([]);
+    if (!queued) {
+      setDraft("");
+      setPendingAttachments([]);
+    }
 
     chatAbortControllerRef.current?.abort();
     const chatAbort = new AbortController();
@@ -993,6 +1055,7 @@ export function ChatPage() {
         chatAbortControllerRef.current = null;
       }
       setLoading(false);
+      scheduleDrainComposerQueue();
     }
   }, [
     accessToken,
@@ -1005,8 +1068,10 @@ export function ChatPage() {
     modelSelectValue,
     pendingAttachments,
     patchThread,
+    scheduleDrainComposerQueue,
     threads,
   ]);
+  runChatHttpRef.current = runChatHttp;
 
   const ensureAgentWs = useCallback((): Promise<WebSocket> => {
     return new Promise((resolve, reject) => {
@@ -1038,7 +1103,7 @@ export function ChatPage() {
     });
   }, [accessToken]);
 
-  const runAgentWs = useCallback(async () => {
+  const runAgentWs = useCallback(async (queued?: QueuedComposerMessage) => {
     if (!accessToken || !activeThreadId) return;
     const tid = activeThreadId;
     const thread = threads.find((x) => x.id === tid);
@@ -1055,7 +1120,9 @@ export function ChatPage() {
     }
     lastModelSelectionRef.current = routed.selectValue;
 
-    const userContent = buildUserMessageContent(draft, pendingAttachments);
+    const sendDraft = queued?.draft ?? draft;
+    const sendAttachments = queued?.attachments ?? pendingAttachments;
+    const userContent = buildUserMessageContent(sendDraft, sendAttachments);
     if (!userContent) return;
 
     setError(null);
@@ -1080,8 +1147,10 @@ export function ChatPage() {
     agentTurnBaselineRef.current = nextMessages;
     streamDeltaAccRef.current = "";
     agentStreamEnabledThisTurnRef.current = getAgentStreamLlm();
-    setDraft("");
-    setPendingAttachments([]);
+    if (!queued) {
+      setDraft("");
+      setPendingAttachments([]);
+    }
 
     cancelAgentTurnRef.current = false;
     agentTurnFinishRef.current = null;
@@ -1092,6 +1161,7 @@ export function ChatPage() {
       finished = true;
       agentTurnFinishRef.current = null;
       setLoading(false);
+      scheduleDrainComposerQueue();
       const id = activeThreadIdRef.current;
       if (id) {
         setThreads((prev) => {
@@ -1294,6 +1364,39 @@ export function ChatPage() {
         ) {
           return;
         }
+        if (typ === "agent.secret_prompt") {
+          const promptId = String(msg.prompt_id ?? "").trim();
+          const serviceKey = String(msg.service_key ?? "")
+            .trim()
+            .toLowerCase();
+          if (!promptId || !serviceKey) return;
+          const rawFields = msg.fields;
+          const fields = Array.isArray(rawFields)
+            ? rawFields
+                .filter((f): f is Record<string, unknown> => !!f && typeof f === "object")
+                .map((f) => ({
+                  name: String(f.name ?? ""),
+                  label: f.label != null ? String(f.label) : undefined,
+                  type: f.type != null ? String(f.type) : undefined,
+                  required: f.required === true,
+                }))
+                .filter((f) => f.name.length > 0)
+            : [];
+          appendAgentLine("secret_prompt", serviceKey, {
+            streamOffset: assistantStreamOffset(),
+            secretPrompt: {
+              promptId,
+              serviceKey,
+              mode: "authenticated",
+              title: msg.title != null ? String(msg.title) : undefined,
+              help: msg.help != null ? String(msg.help) : undefined,
+              reason: msg.reason != null ? String(msg.reason) : undefined,
+              fields,
+              status: "pending",
+            },
+          });
+          return;
+        }
         if (typ === "agent.tool_start") {
           const toolName = String(msg.name ?? "tool");
           toolStartTimesRef.current.set(toolName, Date.now());
@@ -1376,6 +1479,7 @@ export function ChatPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setLoading(false);
+      scheduleDrainComposerQueue();
     }
   }, [
     accessToken,
@@ -1392,8 +1496,58 @@ export function ChatPage() {
     pendingAttachments,
     composerAgentId,
     selectedWorkspaceId,
+    scheduleDrainComposerQueue,
     threads,
   ]);
+  runAgentWsRef.current = runAgentWs;
+
+  const drainComposerQueue = useCallback(() => {
+    const tid = activeThreadIdRef.current;
+    if (!tid) return;
+    const q = composerQueueRef.current.get(tid);
+    if (!q?.length) return;
+    const next = q.shift();
+    if (!q.length) composerQueueRef.current.delete(tid);
+    else composerQueueRef.current.set(tid, q);
+    bumpComposerQueue();
+    if (!next) return;
+    const thread = threadsRef.current.find((x) => x.id === tid);
+    const chatMode = thread?.mode ?? "agent";
+    void (chatMode === "chat" ? runChatHttpRef.current(next) : runAgentWsRef.current(next));
+  }, [bumpComposerQueue]);
+  drainComposerQueueRef.current = drainComposerQueue;
+
+  const onQueue = useCallback(() => {
+    const tid = activeThreadId;
+    if (!tid) return;
+    const userContent = buildUserMessageContent(draft, pendingAttachments);
+    if (!userContent) return;
+    const item: QueuedComposerMessage = {
+      id: newMessageId(),
+      draft,
+      attachments: [...pendingAttachments],
+    };
+    const q = composerQueueRef.current.get(tid) ?? [];
+    q.push(item);
+    composerQueueRef.current.set(tid, q);
+    bumpComposerQueue();
+    setDraft("");
+    setPendingAttachments([]);
+  }, [activeThreadId, bumpComposerQueue, draft, pendingAttachments]);
+
+  const removeFromComposerQueue = useCallback(
+    (itemId: string) => {
+      const tid = activeThreadId;
+      if (!tid) return;
+      const q = composerQueueRef.current.get(tid);
+      if (!q?.length) return;
+      const next = q.filter((item) => item.id !== itemId);
+      if (next.length) composerQueueRef.current.set(tid, next);
+      else composerQueueRef.current.delete(tid);
+      bumpComposerQueue();
+    },
+    [activeThreadId, bumpComposerQueue]
+  );
 
   const handleSelectProposalOption = useCallback(
     (proposal: Proposal, option: ProposalOption) => {
@@ -1568,10 +1722,20 @@ export function ChatPage() {
     [sidebarThreads, dashboardTitles]
   );
 
+  const composerHasContent = useMemo(
+    () => buildUserMessageContent(draft, pendingAttachments) !== "",
+    [draft, pendingAttachments]
+  );
+
   const canSend = useMemo(() => {
     if (!activeThreadId || loading || !(model || defaultModel) || !accessToken) return false;
-    return buildUserMessageContent(draft, pendingAttachments) !== "";
-  }, [activeThreadId, loading, model, defaultModel, accessToken, draft, pendingAttachments]);
+    return composerHasContent;
+  }, [activeThreadId, loading, model, defaultModel, accessToken, composerHasContent]);
+
+  const canQueue = useMemo(() => {
+    if (!activeThreadId || !loading || !(model || defaultModel) || !accessToken) return false;
+    return composerHasContent;
+  }, [activeThreadId, loading, model, defaultModel, accessToken, composerHasContent]);
 
   if (!hydrated || !userId) {
     return (
@@ -2060,7 +2224,9 @@ export function ChatPage() {
                   const segments = buildInterleavedTurnSegments(m.content, timelineEntries);
                   const hasStreamBody = segments.some(
                     (s) =>
-                      (s.type === "text" && s.text.trim().length > 0) || s.type === "card"
+                      (s.type === "text" && s.text.trim().length > 0) ||
+                      s.type === "card" ||
+                      s.type === "secret_prompt"
                   );
                   if (!hasStreamBody && !inFlight) return null;
 
@@ -2071,8 +2237,10 @@ export function ChatPage() {
                       timelineEntries={timelineEntries}
                       running={inFlight && !hasStreamBody}
                       createdAt={m.createdAt}
+                      auth={auth}
                       selectedByProposalId={proposalSelectionMap}
                       onSelectProposalOption={handleSelectProposalOption}
+                      onSecretSaved={handleSecretSaved}
                     />
                   );
                 })}
@@ -2086,8 +2254,10 @@ export function ChatPage() {
                     content=""
                     timelineEntries={timelineForTurn(activeThread, latestTurnId)}
                     running
+                    auth={auth}
                     selectedByProposalId={proposalSelectionMap}
                     onSelectProposalOption={handleSelectProposalOption}
+                    onSecretSaved={handleSecretSaved}
                   />
                 ) : null}
                 {loading &&
@@ -2163,7 +2333,6 @@ export function ChatPage() {
               onDrop={(e) => {
                 e.preventDefault();
                 setComposerDragActive(false);
-                if (loading) return;
                 void addPickedFiles(e.dataTransfer.files);
               }}
             >
@@ -2176,6 +2345,32 @@ export function ChatPage() {
                     {t("chat:dropFilesToAttach")}
                   </p>
                 </div>
+              ) : null}
+              {activeComposerQueue.length > 0 ? (
+                <ul className="mb-2 space-y-1 rounded-lg border border-violet-500/25 bg-violet-950/20 px-2 py-1.5">
+                  <li className="text-[9px] font-medium uppercase tracking-wide text-violet-200/80">
+                    {t("chat:composerQueueTitle", { count: activeComposerQueue.length })}
+                  </li>
+                  {activeComposerQueue.map((item, idx) => (
+                    <li
+                      key={item.id}
+                      className="flex items-start gap-2 text-[11px] text-neutral-300"
+                    >
+                      <span className="shrink-0 tabular-nums text-violet-300/70">{idx + 1}.</span>
+                      <span className="min-w-0 flex-1 truncate" title={queueItemPreview(item)}>
+                        {queueItemPreview(item)}
+                      </span>
+                      <button
+                        type="button"
+                        className="shrink-0 rounded px-1 text-surface-muted hover:text-white"
+                        aria-label={t("chat:composerQueueRemove")}
+                        onClick={() => removeFromComposerQueue(item.id)}
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               ) : null}
               {pendingAttachments.length > 0 ? (
                 <ul className="mb-2 flex flex-wrap gap-2">
@@ -2206,18 +2401,17 @@ export function ChatPage() {
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 rows={2}
-                disabled={loading}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     if (canSend) onSend();
+                    else if (canQueue) onQueue();
                   }
                 }}
               />
               <div className="mt-2 flex items-center justify-between gap-2">
                 <button
                   type="button"
-                  disabled={loading}
                   className="rounded-lg border border-white/10 bg-black/20 p-2 text-surface-muted hover:bg-white/5 hover:text-neutral-200 disabled:opacity-40"
                   title={t("chat:attachTitle")}
                   aria-label={t("chat:attachFiles")}
@@ -2228,13 +2422,24 @@ export function ChatPage() {
                   </svg>
                 </button>
                 {loading ? (
-                  <button
-                    type="button"
-                    className="rounded-lg border border-amber-500/60 bg-amber-950/50 px-4 py-2 text-sm font-medium text-amber-100 hover:bg-amber-900/40"
-                    onClick={() => onCancelInFlight()}
-                  >
-                    {t("admin:cancel")}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {canQueue ? (
+                      <button
+                        type="button"
+                        className="rounded-lg border border-violet-500/50 bg-violet-950/40 px-4 py-2 text-sm font-medium text-violet-100 hover:bg-violet-900/50"
+                        onClick={() => onQueue()}
+                      >
+                        {t("chat:composerQueueAdd")}
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="rounded-lg border border-amber-500/60 bg-amber-950/50 px-4 py-2 text-sm font-medium text-amber-100 hover:bg-amber-900/40"
+                      onClick={() => onCancelInFlight()}
+                    >
+                      {t("admin:cancel")}
+                    </button>
+                  </div>
                 ) : (
                   <button
                     type="button"

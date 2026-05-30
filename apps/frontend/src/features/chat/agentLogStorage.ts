@@ -130,8 +130,29 @@ export function appendTimelineEntry(
       ...(entry.streamOffset != null && entry.streamOffset >= 0
         ? { streamOffset: entry.streamOffset }
         : {}),
+      ...(entry.secretPrompt != null ? { secretPrompt: entry.secretPrompt } : {}),
     },
   ];
+}
+
+/** Mark a secret prompt card as saved in agentLog and archived turnLogs. */
+export function markSecretPromptSaved(
+  thread: Pick<ChatThread, "agentLog" | "turnLogs">,
+  promptId: string
+): Pick<ChatThread, "agentLog" | "turnLogs"> {
+  const patch = (entries: AgentTimelineEntry[]): AgentTimelineEntry[] =>
+    entries.map((e) =>
+      e.secretPrompt?.promptId === promptId
+        ? { ...e, secretPrompt: { ...e.secretPrompt!, status: "saved" as const } }
+        : e
+    );
+  return {
+    agentLog: patch(thread.agentLog ?? []),
+    turnLogs: (thread.turnLogs ?? []).map((t) => ({
+      ...t,
+      entries: patch(t.entries),
+    })),
+  };
 }
 
 /** Assign ids to user messages missing them (e.g. after server load). */

@@ -88,7 +88,6 @@ export function WorkspaceRetrievalBar({
   const [statusErr, setStatusErr] = useState<string | null>(null);
   const [busy, setBusy] = useState<"toggle" | WorkspaceIndexMode | null>(null);
   const [indexing, setIndexing] = useState(false);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const indexRunStartedAtRef = useRef<number | null>(null);
   const indexRunModeRef = useRef<WorkspaceIndexMode | null>(null);
 
@@ -122,23 +121,13 @@ export function WorkspaceRetrievalBar({
 
   useEffect(() => {
     void loadStatus();
-  }, [loadStatus, workspace?.semantic_index_enabled, workspace?.retrieval_enabled, workspace?.docs_rag_enabled]);
-
-  useEffect(() => {
-    const job = status?.index_job;
-    if (indexJobRunning(job)) {
-      setIndexing(true);
-    } else if (job?.status === "done" || job?.status === "failed") {
-      setIndexing(false);
-    }
-  }, [status?.index_job]);
-
-  const stopPolling = useCallback(() => {
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
-  }, []);
+  }, [
+    loadStatus,
+    workspace?.id,
+    workspace?.semantic_index_enabled,
+    workspace?.retrieval_enabled,
+    workspace?.docs_rag_enabled,
+  ]);
 
   const finishIndexRun = useCallback(
     (mode: WorkspaceIndexMode, job: WorkspaceIndexJob | null | undefined, failed: boolean) => {
@@ -159,41 +148,15 @@ export function WorkspaceRetrievalBar({
     [onIndexActivity]
   );
 
-  const startPolling = useCallback(() => {
-    stopPolling();
-    pollRef.current = setInterval(() => {
-      void (async () => {
-        const j = await loadStatus();
-        const job = j?.index_job;
-        if (!indexJobRunning(job)) {
-          stopPolling();
-          setIndexing(false);
-          setBusy(null);
-          const mode = indexRunModeRef.current;
-          if (mode) {
-            finishIndexRun(mode, job, job?.status === "failed");
-          }
-          if (workspace?.id) {
-            const list = await apiFetch("/v1/workspaces", auth);
-            const lj = (await list.json()) as { workspaces?: WorkspaceApiRecord[] };
-            const fresh = (lj.workspaces ?? []).find((w) => w.id === workspace.id);
-            if (fresh) onWorkspaceUpdated(fresh);
-          }
-        }
-      })();
-    }, 1500);
-  }, [auth, finishIndexRun, loadStatus, onWorkspaceUpdated, stopPolling, workspace?.id]);
-
   useEffect(() => {
-    void (async () => {
-      const j = await loadStatus();
-      if (indexJobRunning(j?.index_job)) {
-        setIndexing(true);
-        startPolling();
-      }
-    })();
-    return () => stopPolling();
-  }, [loadStatus, startPolling, stopPolling, workspace?.id]);
+    const job = status?.index_job;
+    if (indexJobRunning(job)) {
+      setIndexing(true);
+    } else if (job?.status === "done" || job?.status === "failed") {
+      setIndexing(false);
+      setBusy(null);
+    }
+  }, [status?.index_job]);
 
   const patchFlags = async (patch: {
     semantic_index_enabled?: boolean;
@@ -243,12 +206,13 @@ export function WorkspaceRetrievalBar({
       }
       if (j.status) setStatus(j.status);
       else await loadStatus();
-      if (indexJobRunning(j.status?.index_job ?? j.job) || j.already_running) {
-        startPolling();
+      const job = j.status?.index_job ?? j.job;
+      if (indexJobRunning(job) || j.already_running) {
+        setIndexing(true);
       } else {
         setIndexing(false);
         setBusy(null);
-        finishIndexRun(mode, j.status?.index_job ?? j.job ?? null, false);
+        finishIndexRun(mode, job, false);
         const list = await apiFetch("/v1/workspaces", auth);
         const lj = (await list.json()) as { workspaces?: WorkspaceApiRecord[] };
         const fresh = (lj.workspaces ?? []).find((w) => w.id === workspace.id);

@@ -34,7 +34,9 @@ def build_delegate_agents_catalog_snippet() -> str:
         "## Specialist sub-agents",
         "You cannot run shell, git push, or security_scan tools directly. "
         "When the user needs those capabilities, call **`agent_delegate`** with "
-        "`run_subagent: true`, a specialist `agent_id`, and a full `prompt`.",
+        "`run_subagent: true`, a specialist `agent_id`, and a full `prompt`. "
+        "Bind a workspace first (`workspace_create` / `workspace_bind`) — sub-agents inherit it. "
+        "If `ssc_api_key` is listed as configured in the system context, do not ask the user to paste it.",
         "",
         "Available specialists:",
     ]
@@ -177,6 +179,26 @@ def run_embedded_subagent_sync(
 
     sub_run_id = str(uuid.uuid4())
     ws = ctx.get("workspace")
+    if not (isinstance(ws, dict) and ws.get("path")) and ctx.get("workspace_id") and parent_uid is not None:
+        try:
+            from apps.backend.infrastructure.workspace_service import ensure_workspace
+
+            u = ctx.get("user")
+            if u is None:
+
+                class _UserLike:
+                    def __init__(self, uid: Any):
+                        self.id = uid
+                        self.role = "user"
+
+                u = _UserLike(parent_uid)
+            materialized = ensure_workspace(str(ctx["workspace_id"]).strip(), u)
+            if materialized:
+                ws = materialized
+                ctx = dict(ctx)
+                ctx["workspace"] = materialized
+        except Exception:
+            pass
     ws_uuid: uuid.UUID | None = None
     if isinstance(ws, dict) and ws.get("id"):
         body["workspace_id"] = str(ws["id"])

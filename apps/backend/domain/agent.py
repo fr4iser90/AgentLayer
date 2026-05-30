@@ -16,7 +16,7 @@ import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from json import JSONDecoder
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Awaitable, Callable, Literal
 
 import httpx
 
@@ -87,7 +87,13 @@ def _get_tool_description(tool_spec: dict[str, Any]) -> str:
 
 # Survive category router + semantic top-N when an agent allowlists them (e.g. coding + SSC).
 _AGENT_CREDENTIAL_TOOL_NAMES = frozenset(
-    {"save_user_secret", "register_secrets", "secrets_help"}
+    {
+        "save_user_secret",
+        "register_secrets",
+        "request_user_secret",
+        "secrets_help",
+        "user_secrets_status",
+    }
 )
 # Always forwarded to the LLM when the agent allowlists them (ranking would drop them otherwise).
 _AGENT_GIT_NETWORK_TOOL_NAMES = frozenset(
@@ -1477,6 +1483,41 @@ def _tool_result_summary(result: str | None) -> tuple[bool | None, str | None]:
     return False, None
 
 
+async def _emit_secret_prompt_from_tool_result(
+    tool_name: str,
+    result: str | None,
+    *,
+    event_emit: Callable[[dict[str, Any]], Awaitable[None]] | None,
+    agent_run_id: str,
+) -> None:
+    """After ``request_user_secret``, push ``agent.secret_prompt`` to the WebSocket client."""
+    if tool_name != "request_user_secret" or event_emit is None:
+        return
+    if not result or not str(result).strip().startswith("{"):
+        return
+    try:
+        data = json.loads(result)
+    except json.JSONDecodeError:
+        return
+    if not isinstance(data, dict) or data.get("ok") is not True:
+        return
+    sp = data.get("secret_prompt")
+    if not isinstance(sp, dict) or not sp.get("prompt_id"):
+        return
+    ev: dict[str, Any] = {
+        "type": "agent.secret_prompt",
+        "agent_run_id": agent_run_id,
+        "prompt_id": str(sp["prompt_id"]),
+        "service_key": str(sp.get("service_key") or ""),
+        "mode": str(sp.get("mode") or "authenticated"),
+        "title": sp.get("title"),
+        "help": sp.get("help"),
+        "fields": sp.get("fields") if isinstance(sp.get("fields"), list) else [],
+        "reason": sp.get("reason"),
+    }
+    await event_emit(ev)
+
+
 def _agent_tool_thrash_tick(
     thrash_key: str | None,
     thrash_count: int,
@@ -1703,10 +1744,14 @@ def _inject_system_prompt(messages: list[dict[str, Any]]) -> list[dict[str, Any]
 _SECRETS_CREDENTIAL_DISCIPLINE = """## Credentials and API keys (mandatory)
 
 - **Never** edit ``docker/.env``, ``.env``, or similar env files to store user API keys, tokens, or passwords — those writes are **blocked**.
+- If a system block lists **configured** secret keys (e.g. ``ssc_api_key``), do **not** ask the user to paste them again unless a tool returns an explicit auth error for that key. Use **`user_secrets_status`** to re-check keys (no values returned).
 - When the user pastes a credential in chat and asks to save it, call **`save_user_secret`** with the integration's ``service_key`` (e.g. ``ssc_api_key`` for SimpleSecCheck, ``github_pat`` for GitHub) and the secret value.
-- Use **`register_secrets`** / Settings → Connections only when the user must run OTP curl themselves; prefer **`save_user_secret`** when they pasted the key in chat.
+- In the **Web UI**, when a secret is missing or a tool reports auth failure, call **`request_user_secret`** (in-chat card) — **not** ``register_secrets`` / curl.
+- Use **`register_secrets`** / Settings → Connections only for headless/bridge users who cannot use the Web UI card; prefer **`save_user_secret`** when they pasted the key in chat.
 - Operator env vars (``SSC_API_KEY`` in docker) are for humans/ops — not for you to write from a chat turn.
 """
+
+_AGENTS_AUTO_WORKSPACE_FROM_GIT_URL = frozenset({"coding", "general"})
 
 _TOOL_USAGE_DISCIPLINE = """## Tool usage (discipline)
 
@@ -1883,6 +1928,44 @@ def _inject_user_memory_context(messages: list[dict[str, Any]], raw_dashboard_ct
     else:
         out.insert(0, {"role": "system", "content": snippet})
     return out
+
+
+def _inject_user_secrets_bootstrap(
+    messages: list[dict[str, Any]], user_id: Any
+) -> list[dict[str, Any]]:
+    if user_id is None:
+        return messages
+    try:
+        from apps.backend.infrastructure.user_secrets_bootstrap import (
+            build_user_secrets_bootstrap_snippet,
+        )
+
+        snippet = build_user_secrets_bootstrap_snippet(user_id)
+    except Exception:
+        return messages
+    if not snippet:
+        return messages
+    return _append_system_block(messages, snippet)
+
+
+def _inject_workspace_bound_context(
+    messages: list[dict[str, Any]],
+    workspace: dict[str, Any] | None,
+    agent_id: str | None,
+) -> list[dict[str, Any]]:
+    if agent_id != "general" or not workspace or not isinstance(workspace, dict):
+        return messages
+    try:
+        from apps.backend.infrastructure.user_secrets_bootstrap import (
+            build_workspace_bound_snippet,
+        )
+
+        snippet = build_workspace_bound_snippet(workspace)
+    except Exception:
+        return messages
+    if not snippet:
+        return messages
+    return _append_system_block(messages, snippet)
 
 
 def _inject_workspace_retrieval_bootstrap(
@@ -2733,6 +2816,75 @@ _REPO_GIT_INTENT_RE = re.compile(
 )
 
 
+def _try_auto_create_workspace_from_git_url(
+    *,
+    agent_id: str | None,
+    user_id: Any,
+    user_obj: Any,
+    last_user_text: str,
+    embedded_subagent: bool,
+) -> dict[str, Any] | None:
+    """
+    Admin users: clone/bind a project workspace when the last user message contains a Git HTTPS URL.
+    Used for ``coding`` and ``general`` chat (not embedded sub-agents).
+    """
+    aid = (agent_id or "general").strip() or "general"
+    if aid not in _AGENTS_AUTO_WORKSPACE_FROM_GIT_URL:
+        return None
+    if embedded_subagent or not user_id:
+        return None
+    gu = _extract_https_git_url(last_user_text)
+    if not gu:
+        return None
+    u = user_obj
+    if u is None:
+
+        class UserLike:
+            def __init__(self, uid: Any):
+                self.id = uid
+                self.role = "user"
+
+        u = UserLike(user_id)
+        try:
+            from apps.backend.infrastructure.db import db as _role_db2
+
+            u.role = _role_db2.user_role(user_id) or "user"
+        except Exception:
+            pass
+    if u is None or not _is_elevated_admin(u, None, user_id):
+        return None
+    try:
+        from apps.backend.infrastructure.workspace_service import (
+            WorkspaceCreateError,
+            create_project_workspace_for_user,
+            ensure_workspace as _ensure_ws,
+            slug_from_git_url,
+        )
+
+        nm = f"{slug_from_git_url(gu)}-{uuid.uuid4().hex[:8]}"
+        created = create_project_workspace_for_user(
+            u,
+            name=nm,
+            source="git",
+            git_url=gu,
+            git_branch="main",
+        )
+        wid = str(created["id"])
+        workspace = _ensure_ws(wid, u)
+        if workspace:
+            logger.info(
+                "chat_completion: auto-created workspace %s from Git URL (agent=%s)",
+                wid,
+                aid,
+            )
+            return workspace
+    except WorkspaceCreateError as e:
+        logger.warning("auto-create workspace failed: %s", e.message)
+    except Exception as e:
+        logger.warning("auto-create workspace failed: %s", e)
+    return None
+
+
 def _extract_https_git_url(text: str) -> str | None:
     if not (text or "").strip():
         return None
@@ -3182,58 +3334,18 @@ async def chat_completion(
             logger.debug("resolved workspace: %s", workspace.get("name") if workspace else None)
         except Exception as e:
             logger.warning("failed to resolve workspace: %s", e)
-    elif (
-        agent_id == "coding"
-        and user_id
-        and not workspace_id
-        and _is_admin
-        and _extract_https_git_url(_bootstrap_last_user)
-    ):
-        u = user_obj
-        if u is None:
-
-            class UserLike:
-                def __init__(self, uid):
-                    self.id = uid
-                    self.role = "user"
-
-            u = UserLike(user_id)
-            try:
-                from apps.backend.infrastructure.db import db as _role_db2
-
-                u.role = _role_db2.user_role(user_id) or "user"
-            except Exception:
-                pass
-        gu = _extract_https_git_url(_bootstrap_last_user)
-        if gu and u is not None:
-            try:
-                from apps.backend.infrastructure.workspace_service import (
-                    WorkspaceCreateError,
-                    create_project_workspace_for_user,
-                    ensure_workspace as _ensure_ws,
-                    slug_from_git_url,
-                )
-
-                nm = f"{slug_from_git_url(gu)}-{uuid.uuid4().hex[:8]}"
-                created = create_project_workspace_for_user(
-                    u,
-                    name=nm,
-                    source="git",
-                    git_url=gu,
-                    git_branch="main",
-                )
-                wid = str(created["id"])
-                workspace = _ensure_ws(wid, u)
-                if workspace:
-                    workspace_auto_created = True
-                    logger.info(
-                        "chat_completion: auto-created workspace %s from Git URL in message",
-                        wid,
-                    )
-            except WorkspaceCreateError as e:
-                logger.warning("auto-create workspace failed: %s", e.message)
-            except Exception as e:
-                logger.warning("auto-create workspace failed: %s", e)
+    elif user_id and not workspace_id and _extract_https_git_url(_bootstrap_last_user):
+        ws_auto = _try_auto_create_workspace_from_git_url(
+            agent_id=agent_id if isinstance(agent_id, str) else None,
+            user_id=user_id,
+            user_obj=user_obj,
+            last_user_text=_bootstrap_last_user,
+            embedded_subagent=embedded_subagent,
+        )
+        if ws_auto:
+            workspace = ws_auto
+            workspace_id = str(ws_auto.get("id") or "")
+            workspace_auto_created = True
 
     _raise_if_workspace_inaccessible(
         workspace_id=workspace_id,
@@ -3321,6 +3433,26 @@ async def chat_completion(
             pass
     if active_task_id:
         tool_context["agent_task_id"] = active_task_id
+    if (
+        workspace_auto_created
+        and workspace
+        and isinstance(workspace, dict)
+        and workspace.get("id")
+        and conversation_uuid is not None
+        and user_id is not None
+    ):
+        try:
+            from plugins.tools.capabilities.platform.workspaces._workspace_common import (
+                persist_conversation_workspace,
+            )
+
+            persist_conversation_workspace(
+                tool_context,
+                str(workspace["id"]),
+                user_id,
+            )
+        except Exception as e:
+            logger.debug("auto-create conversation workspace persist skipped: %s", e)
     _ws_uuid_for_run: uuid.UUID | None = None
     if workspace_id:
         try:
@@ -3425,6 +3557,10 @@ async def chat_completion(
             _apply_tool_prefetch(messages, pf)
         messages = apply_user_persona_system(messages)
         messages = _inject_user_memory_context(messages, dashboard_ctx)
+        messages = _inject_user_secrets_bootstrap(messages, user_id)
+        messages = _inject_workspace_bound_context(
+            messages, workspace, agent_id if isinstance(agent_id, str) else None
+        )
         messages = _inject_workspace_retrieval_bootstrap(
             messages, workspace, agent_id if isinstance(agent_id, str) else None
         )
@@ -3739,6 +3875,19 @@ async def chat_completion(
                     continue
                 if m.get("type") == "permission_reply":
                     logger.debug("discarding stray permission_reply (not waiting for permission)")
+                    continue
+                if m.get("type") == "secret_saved" and m.get("ok") is True:
+                    sk = str(m.get("service_key") or "").strip().lower()
+                    if sk:
+                        messages.append(
+                            {
+                                "role": "system",
+                                "content": (
+                                    f"[User saved secret via UI] service_key={sk} — "
+                                    "do not ask for this key again; retry the integration tool that failed."
+                                ),
+                            }
+                        )
                     continue
                 handle_control_dict(m)
 
@@ -4456,6 +4605,12 @@ async def chat_completion(
                         if tool_context.get("agent_unattended"):
                             record_schedule_abort("repeated_tool_loop")
                 if event_emit:
+                    await _emit_secret_prompt_from_tool_result(
+                        name,
+                        result,
+                        event_emit=event_emit,
+                        agent_run_id=agent_run_id,
+                    )
                     ev_done: dict[str, Any] = {
                         "type": "agent.tool_done",
                         "agent_run_id": agent_run_id,

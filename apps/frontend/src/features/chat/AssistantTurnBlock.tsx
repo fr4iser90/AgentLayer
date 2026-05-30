@@ -1,7 +1,9 @@
 import { useTranslation } from "react-i18next";
+import type { AuthContextValue } from "../../auth/AuthContext";
 import { AssistantProposalBody } from "./ProposalMessageBody";
 import type { RunCard } from "./buildRunCards";
 import { RunCardBlock } from "./RunCardBlock";
+import { SecretRegisterCard } from "./SecretRegisterCard";
 import {
   buildInterleavedTurnSegments,
   type TurnSegment,
@@ -14,18 +16,24 @@ type Props = {
   timelineEntries: AgentTimelineEntry[];
   running?: boolean;
   createdAt?: number;
+  auth: AuthContextValue;
   selectedByProposalId: Map<string, string | null>;
   onSelectProposalOption: (proposal: Proposal, option: ProposalOption) => void;
+  onSecretSaved: (promptId: string, serviceKey: string) => void;
 };
 
 function InterleavedStreamBody({
   segments,
+  auth,
   selectedByProposalId,
   onSelectProposalOption,
+  onSecretSaved,
 }: {
   segments: TurnSegment[];
+  auth: AuthContextValue;
   selectedByProposalId: Map<string, string | null>;
   onSelectProposalOption: (proposal: Proposal, option: ProposalOption) => void;
+  onSecretSaved: (promptId: string, serviceKey: string) => void;
 }) {
   return (
     <div className="flex flex-col gap-3">
@@ -39,6 +47,16 @@ function InterleavedStreamBody({
               content={seg.text}
               selectedByProposalId={selectedByProposalId}
               onSelectOption={onSelectProposalOption}
+            />
+          );
+        }
+        if (seg.type === "secret_prompt") {
+          return (
+            <SecretRegisterCard
+              key={`secret-${seg.prompt.promptId}-${i}`}
+              prompt={seg.prompt}
+              auth={auth}
+              onSaved={onSecretSaved}
             />
           );
         }
@@ -60,13 +78,18 @@ export function AssistantTurnBlock({
   timelineEntries,
   running = false,
   createdAt,
+  auth,
   selectedByProposalId,
   onSelectProposalOption,
+  onSecretSaved,
 }: Props) {
   const { t } = useTranslation(["chat"]);
   const segments = buildInterleavedTurnSegments(content, timelineEntries);
   const hasStreamBody = segments.some(
-    (s) => (s.type === "text" && s.text.trim().length > 0) || s.type === "card"
+    (s) =>
+      (s.type === "text" && s.text.trim().length > 0) ||
+      s.type === "card" ||
+      s.type === "secret_prompt"
   );
   const timeLabel =
     createdAt != null
@@ -91,8 +114,10 @@ export function AssistantTurnBlock({
         {hasStreamBody ? (
           <InterleavedStreamBody
             segments={segments}
+            auth={auth}
             selectedByProposalId={selectedByProposalId}
             onSelectProposalOption={onSelectProposalOption}
+            onSecretSaved={onSecretSaved}
           />
         ) : running ? (
           <p className="text-neutral-300">{t("chat:agentRunning")}</p>

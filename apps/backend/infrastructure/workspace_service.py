@@ -697,39 +697,78 @@ def create_project_workspace_for_user(
         raise WorkspaceCreateError(str(e)[:800]) from e
 
 
-def cleanup_workspace(workspace_id: str, user) -> bool:
-    """Clean up workspace (delete files, optionally remove DB entry)."""
+def _delete_workspace_db_dependencies(cur: Any, workspace_id: str) -> None:
+    """
+    Remove rows that block ``DELETE FROM project_workspaces``.
+
+    ``agent_tasks`` with ``scope='workspace'`` cannot have ``workspace_id`` set to NULL
+    (check constraint) when the FK fires — delete them explicitly first.
+    """
+    cur.execute("DELETE FROM agent_tasks WHERE workspace_id = %s", (workspace_id,))
+
+
+def _delete_workspace_files(ws_path: Path) -> None:
+    if not ws_path.exists():
+        return
+    shutil.rmtree(ws_path, ignore_errors=False)
+
+
+def _delete_workspace_index_sidecars(workspace_id: str) -> None:
+    """Best-effort Qdrant / Neo4j cleanup (non-fatal)."""
+    try:
+        from apps.backend.infrastructure.code_index_qdrant import get_code_index
+
+        get_code_index().delete_workspace(workspace_id)
+    except Exception as e:
+        logger.debug("qdrant delete_workspace skipped: %s", e)
+    try:
+        from apps.backend.infrastructure.code_graph_neo4j import get_code_graph
+
+        get_code_graph().delete_workspace(workspace_id)
+    except Exception as e:
+        logger.debug("neo4j delete_workspace skipped: %s", e)
+
+
+def delete_owned_workspace(*, workspace_id: str, owner_user_id: Any) -> bool:
+    """
+    Delete DB row + on-disk tree for a workspace owned by ``owner_user_id``.
+    Returns False when not found / not owner.
+    """
     from apps.backend.infrastructure.db import db
 
-    # Only allow cleanup for user's own workspaces
+    wid = str(workspace_id).strip()
     try:
         with db.pool().connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT path FROM project_workspaces WHERE id = %s AND owner_user_id = %s",
-                    (str(workspace_id), user.id),
+                    """
+                    SELECT path, name FROM project_workspaces
+                    WHERE id = %s AND owner_user_id = %s AND access_role = 'owner'
+                    """,
+                    (wid, owner_user_id),
                 )
                 row = cur.fetchone()
-
                 if not row:
-                    logger.warning("cannot cleanup: workspace not owned by user")
                     return False
 
                 ws_path = Path(row[0])
-
-                # Delete files
-                if ws_path.exists():
-                    shutil.rmtree(ws_path)
-                    logger.info("deleted workspace files: %s", ws_path)
-
-                # Remove DB entry
-                cur.execute(
-                    "DELETE FROM project_workspaces WHERE id = %s",
-                    (str(workspace_id),),
-                )
+                _delete_workspace_db_dependencies(cur, wid)
+                cur.execute("DELETE FROM project_workspaces WHERE id = %s", (wid,))
             conn.commit()
 
-            return True
+        _delete_workspace_files(ws_path)
+        _delete_workspace_index_sidecars(wid)
+        logger.info("deleted workspace %s (%s)", wid, row[1])
+        return True
+    except Exception as e:
+        logger.error("failed to delete workspace %s: %s", wid, e)
+        raise
+
+
+def cleanup_workspace(workspace_id: str, user) -> bool:
+    """Clean up workspace (delete files, optionally remove DB entry)."""
+    try:
+        return delete_owned_workspace(workspace_id=workspace_id, owner_user_id=user.id)
     except Exception as e:
         logger.error("failed to cleanup workspace: %s", e)
         return False

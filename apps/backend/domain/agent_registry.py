@@ -47,6 +47,7 @@ _DEFAULT_GENERAL_TOOL_PATTERNS: tuple[str, ...] = (
     "survival.*",
     "secrets.*",
     "register_secrets",
+    "request_user_secret",
     "save_user_secret",
     "outdoor_environment_snapshot",
     "echo_text",

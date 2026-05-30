@@ -70,8 +70,9 @@ def json_workspace_missing_error() -> str:
         {
             "ok": False,
             "error": (
-                "No coding workspace bound. Select a workspace in the UI (workspace_id on the request), "
-                "or send a Git HTTPS URL as an admin user to auto-create a cloned workspace for this chat."
+                "No coding workspace bound. Call workspace_list, then workspace_create (git_url + bind) "
+                "or workspace_bind before coding_* / agent_delegate. Admin users: a Git HTTPS URL in the "
+                "user message may auto-create a workspace on the next chat turn."
             ),
         },
         ensure_ascii=False,

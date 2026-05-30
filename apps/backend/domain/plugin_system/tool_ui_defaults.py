@@ -183,6 +183,11 @@ PACKAGE_UI_DEFAULTS: dict[str, dict[str, Any]] = {
         "display_name": "Save user secret",
         "order": 10,
     },
+    "request_user_secret": {
+        "category": "system",
+        "display_name": "Request user secret",
+        "order": 10,
+    },
     "secrets_help": {
         "category": "system",
         "display_name": "Secrets help",

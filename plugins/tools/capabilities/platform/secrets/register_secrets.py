@@ -16,7 +16,7 @@ TOOL_LABEL = "Secrets"
 TOOL_DESCRIPTION = (
     "Register per-user credentials with OTP + curl; static help for stored secrets. "
     "If the user pasted a secret in chat, prefer **save_user_secret** instead. "
-    "In the Agent web UI, **Settings → Connections** can save the same secrets (schema-driven forms) when signed in."
+    "In the Agent web UI, prefer **request_user_secret** (in-chat card) or **Settings → Connections** when signed in."
 )
 TOOL_TRIGGERS = (
     "secret",

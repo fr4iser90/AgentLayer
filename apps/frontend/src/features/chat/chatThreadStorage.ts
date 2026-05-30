@@ -15,10 +15,30 @@ export type UiMessage = {
 /** Workspace reindex mode (UI or tool-triggered). */
 export type IndexRunMode = "full" | "code" | "docs" | "incremental";
 
+export type SecretFieldSpec = {
+  name: string;
+  label?: string;
+  type?: string;
+  required?: boolean;
+};
+
+export type SecretPromptPayload = {
+  promptId: string;
+  serviceKey: string;
+  mode: "authenticated" | "otp";
+  title?: string;
+  help?: string;
+  reason?: string;
+  fields?: SecretFieldSpec[];
+  status: "pending" | "saved" | "expired" | "error";
+  errorMessage?: string;
+};
+
 export type AgentTimelineEntry = {
   id: string;
   kind: string;
   text: string;
+  secretPrompt?: SecretPromptPayload;
   toolName?: string;
   durationMs?: number;
   resultChars?: number;
