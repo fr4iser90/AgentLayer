@@ -41,15 +41,44 @@ export function AdminInterfacesMemorySection() {
         </datalist>
 
         <div className="mt-6 space-y-6">
-          <div className="rounded-lg border border-white/10 bg-black/15 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-xs font-medium text-surface-muted">{t("admin:ifMemEndpointN", { n: 1 })}</span>
-              {s.embeddingApiBaseSource === "env" ? (
-                <span className="text-xs text-amber-300/90">{t("admin:ifMemBaseUrlFromEnv")}</span>
-              ) : s.embeddingApiBaseEffective ? (
-                <span className="font-mono text-xs text-neutral-500">{t("admin:ifMemActive")}</span>
+            <div className="rounded-lg border border-white/10 bg-black/15 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs font-medium text-surface-muted">{t("admin:ifMemEndpointN", { n: 1 })}</span>
+                {s.embeddingApiBaseSource === "env" ? (
+                  <span className="text-xs text-amber-300/90">{t("admin:ifMemBaseUrlFromEnv")}</span>
+                ) : s.embeddingApiBaseEffective ? (
+                  <span className="font-mono text-xs text-neutral-500">{t("admin:ifMemActive")}</span>
+                ) : null}
+              </div>
+              {s.embeddingProviders.length > 0 ? (
+                <>
+                  <label className="mt-2 block text-xs text-surface-muted" htmlFor="embedding-provider-id">
+                    {t("admin:ifMemEmbeddingProvider")}
+                  </label>
+                  <select
+                    id="embedding-provider-id"
+                    className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white disabled:opacity-50"
+                    value={s.ragEmbeddingProviderId || s.ragEmbeddingProviderIdEffective || ""}
+                    onChange={(e) => s.setRagEmbeddingProviderId(e.target.value)}
+                  >
+                    <option value="">{t("admin:ifMemEmbeddingProviderAuto")}</option>
+                    {s.embeddingProviders.map((p) => (
+                      <option key={p.provider_id} value={p.provider_id}>
+                        {p.label} ({p.provider_id})
+                      </option>
+                    ))}
+                  </select>
+                  {s.ragEmbeddingProviderIdEffective ? (
+                    <p className="mt-1 text-xs text-surface-muted">
+                      {t("admin:ifMemEmbeddingProviderActive")}{" "}
+                      <span className="font-mono text-neutral-300">{s.ragEmbeddingProviderIdEffective}</span>
+                      {!s.ragEmbeddingProviderId && s.ragEmbeddingProviderIdEffective
+                        ? ` (${t("admin:ifMemEmbeddingProviderAuto")})`
+                        : null}
+                    </p>
+                  ) : null}
+                </>
               ) : null}
-            </div>
             <label className="mt-2 block text-xs text-surface-muted" htmlFor="embedding-base-url">
               {t("admin:ifMemBaseUrlLabel")}
             </label>
@@ -68,7 +97,7 @@ export function AdminInterfacesMemorySection() {
             />
             {s.embeddingApiBaseSource === "env" ? (
               <p className="mt-1 text-xs text-surface-muted">
-                <span className="font-mono">EMBEDDING_BASE_URL</span> {t("admin:ifMemInDotenv")}{" "}
+                <span className="font-mono">EMBEDDING_PROVIDER_1_BASE_URL</span> {t("admin:ifMemInDotenv")}{" "}
                 <span className="font-mono">.env</span>{" "}
                 {t("admin:ifMemEnvOverridesDbUrl")}
               </p>

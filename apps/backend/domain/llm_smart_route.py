@@ -1,5 +1,4 @@
-"""
-Heuristic + small local model routing: Ollama vs external API per chat request.
+"""Heuristic + small router model: local catalog provider vs external API per chat request.
 
 Enable ``llm_smart_routing_enabled`` in operator settings (Web UI / DB). External
 credentials still come from operator_settings; this module only picks which backend
@@ -8,12 +7,10 @@ to use for the main completion.
 **How many LLM HTTP calls per user chat turn (this module + main completion)?**
 
 - Heuristics alone decide (``smart_route:heuristic_*``): **one** call — only the main
-  ``/v1/chat/completions`` (Ollama or external).
-- Heuristics are inconclusive: **two** calls — first a **local** Ollama router
-  (same ``OLLAMA_BASE_URL``), then the main completion. The router never hits the
-  external API.
-- Fail-safe: if the local router call fails or returns unusable JSON, we fall back
-  to **Ollama** for the main completion so we do not burn external quota by mistake.
+  ``/v1/chat/completions``.
+- Heuristics are inconclusive: **two** calls — first a **local** router on
+  ``LLM_ROUTER_PROVIDER_ID`` (or first env provider), then the main completion.
+- Fail-safe: if the local router call fails, fall back to the local provider for the main completion.
 """
 
 from __future__ import annotations
@@ -26,7 +23,12 @@ from typing import Any, Literal
 from apps.backend.core.config import config
 from apps.backend.domain.model_routing import messages_contain_image_parts
 from apps.backend.domain.plugin_system.tool_routing import last_user_text
-from apps.backend.infrastructure.openai_compat_http import http_post_chat_completions
+from apps.backend.infrastructure.catalog_llm_client import post_catalog_chat_completions
+from apps.backend.infrastructure.model_catalog_providers import (
+    first_db_external_provider_id,
+    first_env_provider_id,
+    get_provider_spec,
+)
 from apps.backend.infrastructure.operator_settings import smart_routing_params
 
 logger = logging.getLogger(__name__)
@@ -128,12 +130,24 @@ def _parse_router_json(content: str) -> dict[str, Any] | None:
     return None
 
 
+def _router_provider_id() -> str | None:
+    raw = (getattr(config, "LLM_ROUTER_PROVIDER_ID", None) or "").strip()
+    if raw:
+        if get_provider_spec(raw) is not None:
+            return raw
+    return first_env_provider_id()
+
+
 def _call_local_router_model(
     messages: list[dict[str, Any]], snap: dict[str, Any], p: dict[str, Any]
 ) -> dict[str, Any] | None:
     model = str(p.get("router_model") or "").strip()
     if not model:
-        logger.warning("smart route: llm_router_ollama_model not configured in Admin → Interfaces")
+        logger.warning("smart route: router model not configured in Admin → Interfaces")
+        return None
+    provider_id = _router_provider_id()
+    if not provider_id:
+        logger.warning("smart route: no local LLM provider (set LLM_PROVIDER_1_BASE_URL or LLM_ROUTER_PROVIDER_ID)")
         return None
     last = (last_user_text(messages) or "")[:2000]
     user_payload = (
@@ -148,20 +162,20 @@ def _call_local_router_model(
         "- route=external if the task needs stronger cloud models (deep reasoning, long code, architecture, risk).\n"
         "- confidence: how sure (0..1) that LOCAL is sufficient; if unsure, prefer low confidence.\n"
     )
-    url = f"{config.OLLAMA_BASE_URL.rstrip('/')}/v1/chat/completions"
-    payload: dict[str, Any] = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": sys_prompt},
-            {"role": "user", "content": user_payload},
-        ],
-        "stream": False,
-        "temperature": 0,
-        "max_tokens": 200,
-    }
     timeout = float(p.get("router_timeout_sec") or 12.0)
     try:
-        data, _omitted = http_post_chat_completions(url, payload, timeout=timeout)
+        data, _omitted = post_catalog_chat_completions(
+            messages=[
+                {"role": "system", "content": sys_prompt},
+                {"role": "user", "content": user_payload},
+            ],
+            model=model,
+            provider_id=provider_id,
+            timeout=timeout,
+            temperature=0,
+            max_tokens=200,
+            stream=False,
+        )
     except Exception as e:
         logger.warning("smart route: router model call failed: %s", e)
         return None
@@ -178,12 +192,12 @@ def _call_local_router_model(
 
 def decide_smart_backend(
     messages: list[dict[str, Any]],
-) -> tuple[Literal["ollama", "external"], str]:
+) -> tuple[Literal["local", "external"], str]:
     """
     Return (backend, reason_tag) for the main LLM request.
 
-    - ``ollama`` = use local OpenAI-compatible Ollama endpoint.
-    - ``external`` = use operator-configured external API.
+    - ``local`` = first env catalog provider (``provider_1`` by default).
+    - ``external`` = first DB external endpoint (``external_N``).
 
     Call budget: 0 or 1 extra **local** router request (see module docstring), then
     exactly one main completion — never two external calls caused by routing alone.
@@ -195,12 +209,11 @@ def decide_smart_backend(
         return "external", "smart_route:heuristic_external"
 
     if _force_local(snap):
-        return "ollama", "smart_route:heuristic_local"
+        return "local", "smart_route:heuristic_local"
 
     parsed = _call_local_router_model(messages, snap, p)
     if not parsed:
-        # Router is local-only; do not send the main request to external on parse/HTTP failure.
-        return "ollama", "smart_route:router_fail_fallback_ollama"
+        return "local", "smart_route:router_fail_fallback_local"
 
     route = str(parsed.get("route") or "").strip().lower()
     try:
@@ -214,10 +227,9 @@ def decide_smart_backend(
     if route in ("external", "cloud", "api"):
         return "external", f"smart_route:router:{reason or 'external'}"
 
-    if route in ("local", "ollama", "ondevice", "device"):
+    if route in ("local", "ondevice", "device"):
         if conf < min_conf:
             return "external", f"smart_route:low_confidence_local({conf:.2f}<{min_conf})"
-        return "ollama", f"smart_route:router_local({conf:.2f}):{reason or 'ok'}"
+        return "local", f"smart_route:router_local({conf:.2f}):{reason or 'ok'}"
 
-    # Unclear route token — prefer local main completion to avoid surprise external quota use.
-    return "ollama", "smart_route:router_ambiguous_fallback_ollama"
+    return "local", "smart_route:router_ambiguous_fallback_local"

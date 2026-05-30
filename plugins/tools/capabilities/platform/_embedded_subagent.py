@@ -159,7 +159,7 @@ def run_embedded_subagent_sync(
                 "error": (
                     "Sub-agent needs the parent chat model from the UI (model + provider). "
                     "Re-select the model in the chat composer and retry; "
-                    "embedded runs do not use OLLAMA_DEFAULT_MODEL from env."
+                    "embedded runs require an explicit model from the catalog (no env default)."
                 ),
             },
             ensure_ascii=False,

@@ -1,11 +1,10 @@
 """
 Unified OpenAI-compatible LLM catalog providers.
 
-Every chat stack (Ollama, llama.cpp, OpenAI, Anthropic-via-proxy, …) is a
-:class:`CatalogProviderSpec` with the same fetch + route logic. Configure via:
+Every chat stack is a :class:`CatalogProviderSpec` with the same fetch + route logic. Configure via:
 
-- **Admin → Interfaces → LLM-Endpoints** (``operator_external_llm_endpoints``), or
-- **Legacy env bootstrap** (optional): ``OLLAMA_BASE_URL``, ``LLAMA_CPP_*`` → same shape as DB rows.
+- **Env bootstrap**: ``LLM_PROVIDER_1_BASE_URL``, ``LLM_PROVIDER_2_*``, … (``provider_1``, ``provider_2``, …), or
+- **Admin → Interfaces → LLM-Endpoints** (``external_1``, ``external_2``, … in DB).
 
 No per-vendor Python modules. Pick provider + model in the UI → ``agent_model_catalog_owned_by``.
 """
@@ -20,12 +19,12 @@ from typing import Any, Literal
 
 import httpx
 
-from apps.backend.core.config import config
 from apps.backend.infrastructure.db import db
+from apps.backend.infrastructure.llm_env_providers import EnvLlmProviderRow, parse_llm_env_providers
 
 logger = logging.getLogger(__name__)
 
-LlmStack = Literal["ollama", "external", "llama_cpp"]
+LlmStack = Literal["external"]
 
 _EXTERNAL_LEGACY_ID = "external"
 _EXTERNAL_PREFIX = "external_"
@@ -93,13 +92,6 @@ def merge_model_catalog_rows(*row_lists: list[dict[str, Any]]) -> list[dict[str,
             seen.add(key)
             out.append(row)
     return out
-
-
-def _strip_env_value(raw: str | None) -> str:
-    s = (raw or "").strip()
-    if len(s) >= 2 and s[0] == s[-1] and s[0] in ('"', "'"):
-        s = s[1:-1].strip()
-    return s
 
 
 def _strip_opt(s: Any) -> str | None:
@@ -214,68 +206,18 @@ def resolve_model_for_provider(
     return raw
 
 
-def _llm_stack_for_provider_id(provider_id: str) -> LlmStack:
-    pid = normalize_catalog_provider_id(provider_id) or ""
-    if pid == "ollama":
-        return "ollama"
-    if pid == "llama_cpp":
-        return "llama_cpp"
-    return "external"
-
-
-def _env_ollama_spec() -> CatalogProviderSpec | None:
-    base = _strip_env_value(getattr(config, "OLLAMA_BASE_URL", None)).rstrip("/")
-    if not base:
-        return None
+def _env_row_spec(row: EnvLlmProviderRow) -> CatalogProviderSpec:
     return CatalogProviderSpec(
-        provider_id="ollama",
-        label="Ollama",
-        base_url=base,
-        api_key="",
-        api_header_name="Authorization",
-        source="env_ollama",
-    )
-
-
-def _env_llama_cpp_spec() -> CatalogProviderSpec | None:
-    base = _strip_env_value(getattr(config, "LLAMA_CPP_BASE_URL", None)).rstrip("/")
-    hn = _strip_env_value(getattr(config, "LLAMA_CPP_API_HEADER_NAME", None)) or "Authorization"
-    key = _strip_env_value(getattr(config, "LLAMA_CPP_API_HEADER_VALUE", None)) or ""
-    source = "env_llama_cpp"
-    model_default = _strip_opt(getattr(config, "LLAMA_CPP_MODEL_DEFAULT", None))
-    model_vlm = _strip_opt(getattr(config, "LLAMA_CPP_MODEL_VLM", None))
-    model_agent = _strip_opt(getattr(config, "LLAMA_CPP_MODEL_AGENT", None))
-    model_coding = _strip_opt(getattr(config, "LLAMA_CPP_MODEL_CODING", None))
-
-    if not base:
-        from apps.backend.infrastructure.operator_settings import _cached_row
-
-        r = _cached_row()
-        base = _strip_opt(r.get("llama_cpp_api_base")) or ""
-        if base:
-            base = base.rstrip("/")
-            hn = _strip_opt(r.get("llama_cpp_api_header_name")) or hn
-            key = _strip_opt(r.get("llama_cpp_api_key")) or key
-            model_default = _strip_opt(r.get("llama_cpp_model_default")) or model_default
-            model_vlm = _strip_opt(r.get("llama_cpp_model_vlm")) or model_vlm
-            model_agent = _strip_opt(r.get("llama_cpp_model_agent")) or model_agent
-            model_coding = _strip_opt(r.get("llama_cpp_model_coding")) or model_coding
-            source = "env_llama_cpp_admin"
-
-    if not base:
-        return None
-
-    return CatalogProviderSpec(
-        provider_id="llama_cpp",
-        label="llama.cpp",
-        base_url=base,
-        api_key=key,
-        api_header_name=hn,
-        model_default=model_default,
-        model_vlm=model_vlm,
-        model_agent=model_agent,
-        model_coding=model_coding,
-        source=source,
+        provider_id=row.provider_id,
+        label=row.label,
+        base_url=row.base_url,
+        api_key=row.api_key,
+        api_header_name=row.api_header_name,
+        model_default=row.model_default,
+        model_vlm=row.model_vlm,
+        model_agent=row.model_agent,
+        model_coding=row.model_coding,
+        source=row.source,
     )
 
 
@@ -284,12 +226,13 @@ def _db_endpoint_spec(row: dict[str, Any]) -> CatalogProviderSpec:
 
     eid = int(row["id"])
     bu = normalize_external_llm_base_url(_strip_opt(row.get("base_url"))) or ""
+    header = _strip_opt(row.get("api_header_name")) or "Authorization"
     return CatalogProviderSpec(
         provider_id=external_provider_id(eid),
         label=(_strip_opt(row.get("label")) or f"LLM #{eid}")[:128],
         base_url=bu,
         api_key=_strip_opt(row.get("api_key")) or "",
-        api_header_name="Authorization",
+        api_header_name=header,
         model_default=_strip_opt(row.get("model_default")),
         model_vlm=_strip_opt(row.get("model_vlm")),
         model_agent=_strip_opt(row.get("model_agent")),
@@ -312,10 +255,11 @@ def list_provider_specs(*, force_refresh: bool = False) -> list[CatalogProviderS
     specs: list[CatalogProviderSpec] = []
     seen: set[str] = set()
 
-    for bootstrap in (_env_ollama_spec(), _env_llama_cpp_spec()):
-        if bootstrap and bootstrap.provider_id not in seen:
-            specs.append(bootstrap)
-            seen.add(bootstrap.provider_id)
+    for row in parse_llm_env_providers():
+        sp = _env_row_spec(row)
+        if sp.provider_id not in seen and sp.base_url:
+            specs.append(sp)
+            seen.add(sp.provider_id)
 
     for row in db.external_llm_endpoints_list_all():
         sp = _db_endpoint_spec(row)
@@ -357,18 +301,6 @@ def fetch_models_for_provider(
     if not url:
         meta["detail"] = "not_configured"
         return [], meta
-
-    if spec.provider_id == "ollama" and not spec.api_key:
-        from apps.backend.infrastructure.openai_compat_http import http_get_json
-
-        status, text, data = http_get_json(url, timeout=timeout)
-        if status != 200 or not isinstance(data, dict):
-            tag = "timeout" if status == 408 else "connect_error" if status == 503 else f"http_{status}"
-            meta["detail"] = (text or "").strip() or tag
-            return [], meta
-        meta["reachable"] = True
-        rows = _parse_models_payload(data, spec.provider_id)
-        return rows, meta
 
     headers = provider_request_headers(spec)
     try:
@@ -479,7 +411,7 @@ def route_chat_by_catalog_provider(
     if spec is None:
         raise ValueError(
             f"Unknown catalog provider {catalog_owned_by!r}. "
-            "Add it under Admin → Interfaces → LLM-Endpoints (or set OLLAMA_BASE_URL / LLAMA_CPP_* in .env)."
+            "Add LLM_PROVIDER_N_* in .env or endpoints under Admin → Interfaces → LLM-Endpoints."
         )
 
     if not spec.base_url.strip():
@@ -498,21 +430,19 @@ def route_chat_by_catalog_provider(
         chat_url,
         model,
     )
-    return [(chat_url, headers, model)], _llm_stack_for_provider_id(pid)
+    return [(chat_url, headers, model)], "external"
 
 
-# --- Backward-compatible helpers (no separate llamacpp module) ---
+def first_env_provider_id() -> str | None:
+    rows = parse_llm_env_providers()
+    return rows[0].provider_id if rows else None
 
 
-def llama_cpp_configured() -> bool:
-    return get_provider_spec("llama_cpp") is not None
-
-
-def llama_cpp_chat_endpoint() -> tuple[str, dict[str, str]] | None:
-    spec = get_provider_spec("llama_cpp")
-    if not spec:
-        return None
-    return _chat_completions_url(spec), provider_request_headers(spec)
+def first_db_external_provider_id() -> str | None:
+    for row in db.external_llm_endpoints_list_all():
+        if _strip_opt(row.get("base_url")):
+            return external_provider_id(int(row["id"]))
+    return None
 
 
 def invalidate_provider_specs_cache() -> None:

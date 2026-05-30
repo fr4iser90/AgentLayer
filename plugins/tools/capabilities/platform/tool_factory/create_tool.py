@@ -13,7 +13,7 @@ from plugins.tools.capabilities.platform.tool_factory._tool_factory_common impor
     coerce_test_args,
     digest_reload_response,
     extra_root_or_error,
-    ollama_generate_module,
+    catalog_generate_module,
     retry_hint_from_response,
     tool_write_extra_for_digest,
     validate_module_text,
@@ -205,7 +205,7 @@ def create_tool(arguments: dict[str, Any]) -> str:
         test_args = coerce_test_args(arguments.get("test_arguments"))
 
         for attempt in range(max_at):
-            text, gen_err = ollama_generate_module(
+            text, gen_err = catalog_generate_module(
                 registered_tool_function_name=snake,
                 display_hint=hint,
                 extra_TOOL_DESCRIPTION=extra_desc,

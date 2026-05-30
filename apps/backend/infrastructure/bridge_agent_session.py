@@ -430,7 +430,10 @@ def messages_for_bridge_completion(
     *,
     new_user_text: str,
 ) -> list[dict[str, Any]]:
-    """Load history (trimmed), append the new user turn; roles ``user`` / ``assistant`` only."""
+    """Load history, append the new user turn; roles ``user`` / ``assistant`` only.
+
+    Context trimming/compaction runs in ``chat_completion`` via ``prepare_chat_history_for_llm``.
+    """
     conv = conversation_get(user_id, conversation_id)
     if not conv:
         return [{"role": "user", "content": new_user_text}]
@@ -445,12 +448,8 @@ def messages_for_bridge_completion(
         content = m.get("content")
         if content is None:
             continue
-        if not isinstance(content, str):
-            continue
-        if not content.strip():
+        if isinstance(content, str) and not content.strip():
             continue
         out.append({"role": role, "content": content})
-    if len(out) > MAX_CONTEXT_MESSAGES:
-        out = out[-MAX_CONTEXT_MESSAGES:]
     out.append({"role": "user", "content": new_user_text})
     return out

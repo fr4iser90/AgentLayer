@@ -10,7 +10,7 @@
   "websocketFailed": "WebSocket-Verbindung fehlgeschlagen.",
   "resolveModelProviderFailed": "Model-Provider konnte nicht aufgelöst werden. Öffne die Modellliste und wähle einen Eintrag (Provider steht in Klammern).",
   "selectWorkspaceBeforeSending": "Wähle vor dem Senden einen Workspace aus (erforderlich für Coding und Plan).",
-  "embeddingNotConfigured": "Embedding: Base-URL unter Admin → Interfaces → Memory & RAG oder EMBEDDING_BASE_URL in .env.",
+  "embeddingNotConfigured": "Embedding: EMBEDDING_PROVIDER_1_* in .env oder Admin → Interfaces → Memory & RAG.",
   "embeddingDimMismatch": "RAG: Dim {{actual}} (API) ≠ {{cfg}} (gespeichert) — Embedding-Modell erneut wählen oder Admin → Interfaces speichern.",
   "embeddingApiReachable": "RAG: Embedding-API erreichbar.",
   "embeddingNoV1Endpoint": "RAG: Server hat kein /v1/embeddings — anderes Embedding-Backend nötig.",

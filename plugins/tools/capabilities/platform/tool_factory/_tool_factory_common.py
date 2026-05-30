@@ -14,7 +14,7 @@ from typing import Any
 import httpx
 
 from apps.backend.core.config import config
-from apps.backend.infrastructure.openai_compat_http import http_post_json
+from apps.backend.infrastructure.catalog_llm_client import post_catalog_chat_completions
 from apps.backend.domain.plugin_system.tool_authoring import tool_authoring
 from apps.backend.domain.plugin_system.registry import get_registry, reload_registry
 from apps.backend.domain.plugin_system.tool_name_hints import suggest_tool_names
@@ -411,7 +411,7 @@ def retry_hint_from_response(out: dict[str, Any]) -> tuple[bool, str]:
     return True, hint[:8000]
 
 
-def ollama_generate_module(
+def catalog_generate_module(
     *,
     registered_tool_function_name: str,
     display_hint: str,
@@ -493,22 +493,16 @@ def ollama_generate_module(
             "Output one full corrected module (same registered tool function name). Context:\n"
             + repair_context.strip()
         )
-    url = f"{config.OLLAMA_BASE_URL}/v1/chat/completions"
-    payload: dict[str, Any] = {
-        "model": config.CREATE_TOOL_CODEGEN_MODEL,
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ],
-        "stream": False,
-        "temperature": 0.2,
-    }
     try:
-        data = http_post_json(
-            url,
-            payload,
-            headers={"Content-Type": "application/json"},
+        data, _ = post_catalog_chat_completions(
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            model=config.CREATE_TOOL_CODEGEN_MODEL,
             timeout=float(config.CREATE_TOOL_CODEGEN_TIMEOUT),
+            temperature=0.2,
+            stream=False,
         )
     except httpx.HTTPStatusError as e:
         return None, f"codegen HTTP {e.response.status_code}: {e.response.text[:2000]}"

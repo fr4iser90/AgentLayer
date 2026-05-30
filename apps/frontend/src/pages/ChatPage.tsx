@@ -3,7 +3,7 @@ import { Link, NavLink, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import { ConfirmModal } from "../components/ConfirmModal";
-import { apiFetch, addUsageTotals, emptyTokenUsage, fetchSessionRuntime, type SessionRuntimePayload, type TokenUsageTotals, type WorkspaceApiRecord } from "../lib/api";
+import { apiFetch, addUsageTotals, emptyTokenUsage, fetchSessionRuntime, type ChatContextMeta, type SessionRuntimePayload, type TokenUsageTotals, type WorkspaceApiRecord } from "../lib/api";
 import {
   deleteWorkspaceApi,
   isAgentlayerSelfWorkspace,
@@ -28,6 +28,7 @@ import {
 import {
   NEW_CHAT_TITLE,
   type AgentTimelineEntry,
+  type AgentTurnLog,
   type ChatMode,
   type ChatThread,
   type UiMessage,
@@ -92,10 +93,12 @@ import {
 import {
   buildUserMessageContent,
   filesToAttachments,
-  parseContentParts,
   toApiContent,
+  userMessagePlainText,
+  userMessageToComposerState,
   type PendingAttachment,
 } from "../features/chat/messageFormat";
+import { UserMessageBubble } from "../features/chat/UserMessageBubble";
 import { getDisabledToolNames } from "../features/settings/toolPrefs";
 import { getAgentStreamLlm, setAgentStreamLlm } from "../features/settings/agentStreamPrefs";
 import {
@@ -184,6 +187,24 @@ type QueuedComposerMessage = {
   attachments: PendingAttachment[];
 };
 
+type SendTurnOptions = {
+  /** Re-run the API for an existing user message (no duplicate user row). */
+  resendUserMsgId?: string;
+};
+
+type InFlightTurnSnapshot = {
+  threadId: string;
+  userMsgId: string;
+  draft: string;
+  attachments: PendingAttachment[];
+  priorMessages: UiMessage[];
+  priorTitle: string;
+  priorAgentLog: AgentTimelineEntry[];
+  priorTurnLogs: AgentTurnLog[];
+  /** When true, cancel removes the user message and restores the composer draft. */
+  rewindUserMessage: boolean;
+};
+
 function queueItemPreview(item: QueuedComposerMessage): string {
   const text = buildUserMessageContent(item.draft, item.attachments);
   if (text.length <= 120) return text;
@@ -207,35 +228,25 @@ function stripTrailingEmptyAssistantMessages(msgs: UiMessage[]): UiMessage[] {
   return out;
 }
 
-function MessageBody({ content }: { content: string }) {
-  const { plain, parts } = parseContentParts(content);
-  if (parts) {
-    return (
-      <div className="space-y-2">
-        {parts.map((p, i) => {
-          if (p.type === "text" && p.text) {
-            return (
-              <div key={i} className="whitespace-pre-wrap">
-                {p.text}
-              </div>
-            );
-          }
-          if (p.type === "image_url" && p.image_url?.url) {
-            return (
-              <img
-                key={i}
-                src={p.image_url.url}
-                alt=""
-                className="max-h-64 max-w-full rounded-md border border-white/10 object-contain"
-              />
-            );
-          }
-          return null;
-        })}
-      </div>
-    );
+function stripTrailingAssistantsAfterLastUser(msgs: UiMessage[]): UiMessage[] {
+  let out = [...msgs];
+  while (out.length > 0 && out[out.length - 1]?.role === "assistant") {
+    out = out.slice(0, -1);
   }
-  return <div className="whitespace-pre-wrap">{plain}</div>;
+  return out;
+}
+
+function lastUserMessageIndex(msgs: UiMessage[]): number {
+  for (let i = msgs.length - 1; i >= 0; i -= 1) {
+    if (msgs[i]?.role === "user") return i;
+  }
+  return -1;
+}
+
+function turnHasAssistantAfter(msgs: UiMessage[], userMsgId: string): boolean {
+  const idx = msgs.findIndex((m) => m.id === userMsgId && m.role === "user");
+  if (idx < 0) return false;
+  return msgs.slice(idx + 1).some((m) => m.role === "assistant");
 }
 
 export function ChatPage() {
@@ -277,6 +288,7 @@ export function ChatPage() {
   const [dashboardTitles, setDashboardTitles] = useState<Record<string, string>>({});
   const [sessionRuntime, setSessionRuntime] = useState<SessionRuntimePayload | null>(null);
   const [tokenUsage, setTokenUsage] = useState<TokenUsageTotals>(() => emptyTokenUsage());
+  const [chatContextMeta, setChatContextMeta] = useState<ChatContextMeta | null>(null);
 
   const isAdminUser = (user?.role ?? "").toLowerCase() === "admin";
   /** Single Chat UI: everyone uses General; specialists via agent_delegate tool. */
@@ -302,6 +314,10 @@ export function ChatPage() {
   const agentHandlerRef = useRef<(ev: MessageEvent) => void>(() => {});
   /** User cancelled before the chat frame was sent (e.g. while WebSocket connects). */
   const cancelAgentTurnRef = useRef(false);
+  /** Snapshot of the in-flight turn for cancel-restore and resend bookkeeping. */
+  const inFlightTurnRef = useRef<InFlightTurnSnapshot | null>(null);
+  /** Skip draining the composer queue after cancel-restore (user may edit before re-sending). */
+  const skipQueueDrainOnFinishRef = useRef(false);
   /** In-flight HTTP chat completion (stream or JSON). */
   const chatAbortControllerRef = useRef<AbortController | null>(null);
   const activeThreadIdRef = useRef<string | null>(null);
@@ -317,8 +333,8 @@ export function ChatPage() {
   const composerQueueRef = useRef<Map<string, QueuedComposerMessage[]>>(new Map());
   const [composerQueueVersion, setComposerQueueVersion] = useState(0);
   const drainComposerQueueRef = useRef<() => void>(() => {});
-  const runChatHttpRef = useRef<(queued?: QueuedComposerMessage) => Promise<void>>(async () => {});
-  const runAgentWsRef = useRef<(queued?: QueuedComposerMessage) => Promise<void>>(async () => {});
+  const runChatHttpRef = useRef<(queued?: QueuedComposerMessage, opts?: SendTurnOptions) => Promise<void>>(async () => {});
+  const runAgentWsRef = useRef<(queued?: QueuedComposerMessage, opts?: SendTurnOptions) => Promise<void>>(async () => {});
   const threadsRef = useRef(threads);
   const [agentStreamLlmUi, setAgentStreamLlmUi] = useState(() => getAgentStreamLlm());
   activeThreadIdRef.current = activeThreadId;
@@ -898,7 +914,47 @@ export function ChatPage() {
     [appendAgentLine, assistantStreamOffset]
   );
 
-  const runChatHttp = useCallback(async (queued?: QueuedComposerMessage) => {
+  const applyInFlightRestore = useCallback(
+    (snapshot: InFlightTurnSnapshot) => {
+      const tid = snapshot.threadId;
+      if (snapshot.rewindUserMessage) {
+        setDraft(snapshot.draft);
+        setPendingAttachments([...snapshot.attachments]);
+      }
+      const priorUsers = snapshot.priorMessages.filter((m) => m.role === "user" && m.id);
+      setSelectedTurnId(
+        priorUsers[priorUsers.length - 1]?.id ?? snapshot.userMsgId ?? null
+      );
+
+      setThreads((prev) => {
+        const next = prev.map((th) => {
+          if (th.id !== tid) return th;
+          const messages = snapshot.rewindUserMessage
+            ? [...snapshot.priorMessages]
+            : stripTrailingAssistantsAfterLastUser(
+                th.messages.length ? th.messages : snapshot.priorMessages
+              );
+          const updated: ChatThread = {
+            ...th,
+            messages,
+            title: snapshot.priorTitle,
+            agentLog: snapshot.rewindUserMessage ? [...snapshot.priorAgentLog] : [],
+            turnLogs: snapshot.rewindUserMessage
+              ? [...snapshot.priorTurnLogs]
+              : th.turnLogs,
+            messageCount: messages.length,
+            updatedAt: Date.now(),
+          };
+          void putConversation(auth, updated).catch(() => {});
+          return updated;
+        });
+        return next;
+      });
+    },
+    [auth]
+  );
+
+  const runChatHttp = useCallback(async (queued?: QueuedComposerMessage, opts?: SendTurnOptions) => {
     if (!accessToken || !activeThreadId) return;
     const tid = activeThreadId;
     const thread = threads.find((x) => x.id === tid);
@@ -915,29 +971,74 @@ export function ChatPage() {
     }
     lastModelSelectionRef.current = routed.selectValue;
 
-    const sendDraft = queued?.draft ?? draft;
-    const sendAttachments = queued?.attachments ?? pendingAttachments;
-    const userContent = buildUserMessageContent(sendDraft, sendAttachments);
-    if (!userContent) return;
+    const resendUserMsgId = opts?.resendUserMsgId?.trim() || null;
+    const isResend = Boolean(resendUserMsgId);
+    let sendDraft: string;
+    let sendAttachments: PendingAttachment[];
+    let userMsgId: string;
+    let nextMessages: UiMessage[];
+    let nextTitle: string;
+    let archivePatch: Pick<ChatThread, "turnLogs" | "agentLog"> = {};
+
+    if (isResend && resendUserMsgId) {
+      const userIdx = thread.messages.findIndex(
+        (m) => m.id === resendUserMsgId && m.role === "user"
+      );
+      if (userIdx < 0) return;
+      const userMsg = thread.messages[userIdx]!;
+      const composer = userMessageToComposerState(userMsg.content);
+      sendDraft = composer.draft;
+      sendAttachments = composer.attachments;
+      userMsgId = resendUserMsgId;
+      nextMessages = thread.messages.slice(0, userIdx + 1);
+      nextTitle = thread.title;
+      archivePatch = {
+        agentLog: [],
+        turnLogs: (thread.turnLogs ?? []).filter((tl) => tl.userMessageId !== userMsgId),
+      };
+    } else {
+      sendDraft = queued?.draft ?? draft;
+      sendAttachments = queued?.attachments ?? pendingAttachments;
+      const userContent = buildUserMessageContent(sendDraft, sendAttachments);
+      if (!userContent) return;
+      const firstUser = thread.messages.length === 0;
+      userMsgId = newMessageId();
+      nextMessages = [
+        ...thread.messages,
+        { role: "user", content: userContent, id: userMsgId, createdAt: Date.now() },
+      ];
+      nextTitle = firstUser ? titleFromFirstMessage(userContent) : thread.title;
+      archivePatch = archiveTurnBeforeNewPrompt(thread);
+    }
+
+    const userContentForApi = buildUserMessageContent(sendDraft, sendAttachments);
+    if (!userContentForApi) return;
+
+    inFlightTurnRef.current = {
+      threadId: tid,
+      userMsgId,
+      draft: sendDraft,
+      attachments: [...sendAttachments],
+      priorMessages: isResend ? [...nextMessages] : [...thread.messages],
+      priorTitle: thread.title,
+      priorAgentLog: [...(thread.agentLog ?? [])],
+      priorTurnLogs: [...(thread.turnLogs ?? [])],
+      rewindUserMessage: !isResend,
+    };
+    skipQueueDrainOnFinishRef.current = false;
 
     setError(null);
     setLoading(true);
     setTokenUsage(emptyTokenUsage());
-    const firstUser = thread.messages.length === 0;
-    const userMsgId = newMessageId();
-    const nextMessages: UiMessage[] = [
-      ...thread.messages,
-      { role: "user", content: userContent, id: userMsgId, createdAt: Date.now() },
-    ];
-    const nextTitle = firstUser ? titleFromFirstMessage(userContent) : thread.title;
     patchThread(tid, {
       messages: nextMessages,
+      ...archivePatch,
       title: nextTitle,
       model: routed.model,
       modelProvider: routed.provider,
     });
     setSelectedTurnId(userMsgId);
-    if (!queued) {
+    if (!queued && !isResend) {
       setDraft("");
       setPendingAttachments([]);
     }
@@ -1005,6 +1106,7 @@ export function ChatPage() {
           }
           return;
         }
+        inFlightTurnRef.current = null;
         const reply = acc.trim() || "(empty)";
         setThreads((prev) => {
           const next = prev.map((th) => {
@@ -1024,9 +1126,16 @@ export function ChatPage() {
         return;
       }
       const data = await res.json();
+      if (data && typeof data === "object" && "agentlayer_context" in data) {
+        const ctx = (data as { agentlayer_context?: unknown }).agentlayer_context;
+        if (ctx && typeof ctx === "object") {
+          setChatContextMeta(ctx as ChatContextMeta);
+        }
+      }
       if (data && typeof data === "object" && "usage" in data) {
         setTokenUsage((prev) => addUsageTotals(prev, (data as { usage?: unknown }).usage));
       }
+      inFlightTurnRef.current = null;
       const content = assistantFromCompletion(data);
       setThreads((prev) => {
         const next = prev.map((th) => {
@@ -1055,7 +1164,11 @@ export function ChatPage() {
         chatAbortControllerRef.current = null;
       }
       setLoading(false);
-      scheduleDrainComposerQueue();
+      if (!skipQueueDrainOnFinishRef.current) {
+        scheduleDrainComposerQueue();
+      } else {
+        skipQueueDrainOnFinishRef.current = false;
+      }
     }
   }, [
     accessToken,
@@ -1103,7 +1216,7 @@ export function ChatPage() {
     });
   }, [accessToken]);
 
-  const runAgentWs = useCallback(async (queued?: QueuedComposerMessage) => {
+  const runAgentWs = useCallback(async (queued?: QueuedComposerMessage, opts?: SendTurnOptions) => {
     if (!accessToken || !activeThreadId) return;
     const tid = activeThreadId;
     const thread = threads.find((x) => x.id === tid);
@@ -1120,22 +1233,64 @@ export function ChatPage() {
     }
     lastModelSelectionRef.current = routed.selectValue;
 
-    const sendDraft = queued?.draft ?? draft;
-    const sendAttachments = queued?.attachments ?? pendingAttachments;
-    const userContent = buildUserMessageContent(sendDraft, sendAttachments);
-    if (!userContent) return;
+    const resendUserMsgId = opts?.resendUserMsgId?.trim() || null;
+    const isResend = Boolean(resendUserMsgId);
+    let sendDraft: string;
+    let sendAttachments: PendingAttachment[];
+    let userMsgId: string;
+    let nextMessages: UiMessage[];
+    let nextTitle: string;
+    let archivePatch: Pick<ChatThread, "turnLogs" | "agentLog"> = {};
+
+    if (isResend && resendUserMsgId) {
+      const userIdx = thread.messages.findIndex(
+        (m) => m.id === resendUserMsgId && m.role === "user"
+      );
+      if (userIdx < 0) return;
+      const userMsg = thread.messages[userIdx]!;
+      const composer = userMessageToComposerState(userMsg.content);
+      sendDraft = composer.draft;
+      sendAttachments = composer.attachments;
+      userMsgId = resendUserMsgId;
+      nextMessages = thread.messages.slice(0, userIdx + 1);
+      nextTitle = thread.title;
+      archivePatch = {
+        agentLog: [],
+        turnLogs: (thread.turnLogs ?? []).filter((tl) => tl.userMessageId !== userMsgId),
+      };
+    } else {
+      sendDraft = queued?.draft ?? draft;
+      sendAttachments = queued?.attachments ?? pendingAttachments;
+      const userContent = buildUserMessageContent(sendDraft, sendAttachments);
+      if (!userContent) return;
+      const firstUser = thread.messages.length === 0;
+      userMsgId = newMessageId();
+      nextMessages = [
+        ...thread.messages,
+        { role: "user", content: userContent, id: userMsgId, createdAt: Date.now() },
+      ];
+      nextTitle = firstUser ? titleFromFirstMessage(userContent) : thread.title;
+      archivePatch = archiveTurnBeforeNewPrompt(thread);
+    }
+
+    if (!buildUserMessageContent(sendDraft, sendAttachments)) return;
+
+    inFlightTurnRef.current = {
+      threadId: tid,
+      userMsgId,
+      draft: sendDraft,
+      attachments: [...sendAttachments],
+      priorMessages: isResend ? [...nextMessages] : [...thread.messages],
+      priorTitle: thread.title,
+      priorAgentLog: [...(thread.agentLog ?? [])],
+      priorTurnLogs: [...(thread.turnLogs ?? [])],
+      rewindUserMessage: !isResend,
+    };
+    skipQueueDrainOnFinishRef.current = false;
 
     setError(null);
     setLoading(true);
     setTokenUsage(emptyTokenUsage());
-    const firstUser = thread.messages.length === 0;
-    const archivePatch = archiveTurnBeforeNewPrompt(thread);
-    const userMsgId = newMessageId();
-    const nextMessages: UiMessage[] = [
-      ...thread.messages,
-      { role: "user", content: userContent, id: userMsgId, createdAt: Date.now() },
-    ];
-    const nextTitle = firstUser ? titleFromFirstMessage(userContent) : thread.title;
     patchThread(tid, {
       messages: nextMessages,
       ...archivePatch,
@@ -1147,7 +1302,7 @@ export function ChatPage() {
     agentTurnBaselineRef.current = nextMessages;
     streamDeltaAccRef.current = "";
     agentStreamEnabledThisTurnRef.current = getAgentStreamLlm();
-    if (!queued) {
+    if (!queued && !isResend) {
       setDraft("");
       setPendingAttachments([]);
     }
@@ -1161,9 +1316,14 @@ export function ChatPage() {
       finished = true;
       agentTurnFinishRef.current = null;
       setLoading(false);
-      scheduleDrainComposerQueue();
+      const skipDrain = skipQueueDrainOnFinishRef.current;
+      if (skipDrain) {
+        skipQueueDrainOnFinishRef.current = false;
+      } else {
+        scheduleDrainComposerQueue();
+      }
       const id = activeThreadIdRef.current;
-      if (id) {
+      if (id && !skipDrain) {
         setThreads((prev) => {
           const next = prev.map((th) => {
             if (th.id !== id) return th;
@@ -1210,6 +1370,7 @@ export function ChatPage() {
             agentStreamEnabledThisTurnRef.current && acc.length > 0 ? acc : fromApi;
           const id = activeThreadIdRef.current;
           if (id && content.trim()) {
+            inFlightTurnRef.current = null;
             setThreads((prev) => {
               const next = prev.map((th) => {
                 if (th.id !== id) return th;
@@ -1232,6 +1393,8 @@ export function ChatPage() {
               });
               return next;
             });
+          } else {
+            inFlightTurnRef.current = null;
           }
           finish();
           return;
@@ -1240,6 +1403,9 @@ export function ChatPage() {
           const em = msg.effective_model != null ? String(msg.effective_model) : "";
           const mr = msg.model_resolution != null ? String(msg.model_resolution) : "";
           appendAgentLine("session", [em && `model: ${em}`, mr && `(${mr})`].filter(Boolean).join(" "));
+          if (msg.context && typeof msg.context === "object") {
+            setChatContextMeta(msg.context as ChatContextMeta);
+          }
           if (msg.agent_auto_routed === true && msg.effective_agent_id != null) {
             const aid = String(msg.effective_agent_id).trim();
             if (aid) {
@@ -1572,6 +1738,14 @@ export function ChatPage() {
     chatAbortControllerRef.current?.abort();
     chatAbortControllerRef.current = null;
     cancelAgentTurnRef.current = true;
+    skipQueueDrainOnFinishRef.current = true;
+
+    const snapshot = inFlightTurnRef.current;
+    if (snapshot && snapshot.threadId === activeThreadIdRef.current) {
+      applyInFlightRestore(snapshot);
+      inFlightTurnRef.current = null;
+    }
+
     agentTurnFinishRef.current?.();
     agentTurnFinishRef.current = null;
     setLoading(false);
@@ -1583,11 +1757,39 @@ export function ChatPage() {
         /* ignore */
       }
     }
-  }, []);
+  }, [applyInFlightRestore]);
 
   const onCancelInFlight = useCallback(() => {
     abortInFlightTurn();
   }, [abortInFlightTurn]);
+
+  const copyUserMessage = useCallback(
+    async (content: string) => {
+      try {
+        await navigator.clipboard.writeText(userMessagePlainText(content));
+      } catch {
+        setError(t("chat:messageCopyFailed"));
+      }
+    },
+    [t]
+  );
+
+  const retryUserTurn = useCallback(
+    (userMsgId: string) => {
+      if (loading || !activeThreadId) return;
+      const thread = threads.find((x) => x.id === activeThreadId);
+      if (!thread) return;
+      const userIdx = thread.messages.findIndex(
+        (m) => m.id === userMsgId && m.role === "user"
+      );
+      if (userIdx < 0) return;
+      if (userIdx !== lastUserMessageIndex(thread.messages)) return;
+      void (thread.mode === "chat"
+        ? runChatHttpRef.current(undefined, { resendUserMsgId: userMsgId })
+        : runAgentWsRef.current(undefined, { resendUserMsgId: userMsgId }));
+    },
+    [activeThreadId, loading, threads]
+  );
 
   const requestDeleteProject = useCallback(
     (ws: WorkspaceApiRecord) => {
@@ -2010,6 +2212,7 @@ export function ChatPage() {
               <SessionRuntimeBar
                 runtime={sessionRuntime}
                 usage={tokenUsage}
+                contextMeta={chatContextMeta}
                 className="w-full"
                 mcpAddon={
                   selectedWorkspaceId &&
@@ -2193,24 +2396,25 @@ export function ChatPage() {
                 {displayMessages.map((m, i) => {
                   if (m.role === "user") {
                     if (!chatMessageHasVisibleContent(m)) return null;
+                    const isLastUser =
+                      m.id != null && m.id === latestTurnId && lastUserMessageIndex(displayMessages) === i;
+                    const showRetry =
+                      Boolean(isLastUser) &&
+                      !loading &&
+                      turnHasAssistantAfter(displayMessages, m.id!);
                     return (
                       <li
                         key={m.id ?? `${i}-user-${m.content.slice(0, 24)}`}
                         id={m.id ? `msg-${m.id}` : undefined}
                         className="flex w-full scroll-mt-4 justify-start"
                       >
-                        <div className="max-w-[min(100%,42rem)] rounded-2xl border border-sky-900/40 bg-[#1a2a3d] px-4 py-3 text-sm text-neutral-100 shadow-sm">
-                          <span className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
-                            {t("chat:roleYou")}
-                            {(() => {
-                              const timeLabel = formatMessageTime(m.createdAt);
-                              return timeLabel ? (
-                                <span className="ml-2 font-normal normal-case">{timeLabel}</span>
-                              ) : null;
-                            })()}
-                          </span>
-                          <MessageBody content={m.content} />
-                        </div>
+                        <UserMessageBubble
+                          message={m}
+                          timeLabel={formatMessageTime(m.createdAt)}
+                          showRetry={showRetry}
+                          onCopy={() => void copyUserMessage(m.content)}
+                          onRetry={() => retryUserTurn(m.id!)}
+                        />
                       </li>
                     );
                   }

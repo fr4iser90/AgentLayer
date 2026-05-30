@@ -45,7 +45,7 @@ def test_delegate_requires_parent_model_from_ui() -> None:
     )
     data = json.loads(out)
     assert data.get("ok") is False
-    assert "OLLAMA_DEFAULT_MODEL" in (data.get("error") or "") or "UI" in (data.get("error") or "")
+    assert "catalog" in (data.get("error") or "").lower() or "UI" in (data.get("error") or "")
 
 
 def test_delegate_requires_run_subagent() -> None:

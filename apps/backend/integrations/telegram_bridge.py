@@ -259,6 +259,7 @@ async def _run_polling_session(cfg: _BridgeCfg) -> None:
             "agent_model_catalog_owned_by": cfg.catalog_owned_by,
             "messages": msg_list,
             "stream": False,
+            "conversation_id": str(conv_id),
         }
         work.update(
             bridge_chat_completion_extras(

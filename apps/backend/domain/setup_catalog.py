@@ -87,15 +87,11 @@ def _models_for_provider(
     return rank_chat_model_ids(chat), rank_embedding_model_ids(embed), other
 
 
-def ollama_embedding_base_url() -> str | None:
-    """OpenAI-compat host prefix for Ollama embeddings (same host as chat, path /v1/embeddings)."""
-    spec = get_provider_spec("ollama")
+def chat_provider_embedding_base_url() -> str | None:
+    """OpenAI-compat host prefix when a chat provider also exposes /v1/embeddings."""
+    spec = get_provider_spec("provider_1")
     raw = (spec.base_url if spec else "") or ""
     if not raw.strip():
-        from apps.backend.core.config import config as app_config
-
-        raw = (getattr(app_config, "OLLAMA_BASE_URL", None) or "").strip()
-    if not raw:
         return None
     from apps.backend.infrastructure.operator_settings import normalize_external_llm_base_url
 
@@ -115,15 +111,19 @@ def enrich_setup_embedding_meta(
             "status_line",
             "Nicht konfiguriert — RAG/Memory-Vektoren inaktiv. Chat und Coding sind davon unabhängig.",
         )
-        ollama = next(
-            (p for p in providers if p.get("provider_id") == "ollama" and p.get("reachable")),
+        local = next(
+            (
+                p
+                for p in providers
+                if p.get("reachable") and (p.get("embedding_models") or str(p.get("provider_id", "")).startswith("provider_"))
+            ),
             None,
         )
-        base = ollama_embedding_base_url() if ollama else None
-        embed_models = list(ollama.get("embedding_models") or []) if ollama else []
+        base = chat_provider_embedding_base_url() if local else None
+        embed_models = list(local.get("embedding_models") or []) if local else []
         ranked = rank_embedding_model_ids(embed_models)
-        out["ollama_opt_in"] = {
-            "available": bool(ollama and base),
+        out["chat_embed_opt_in"] = {
+            "available": bool(local and base),
             "suggested_base_url": base,
             "suggested_model": ranked[0] if ranked else None,
             "suggested_models": ranked,
@@ -321,30 +321,31 @@ def apply_setup_preferences(body: SetupPreferencesBody) -> dict[str, Any]:
     }
 
 
-def apply_enable_ollama_embedding() -> dict[str, Any]:
-    """Opt-in: use reachable Ollama host for embeddings (stored in operator_settings)."""
-    base = ollama_embedding_base_url()
+def apply_enable_chat_provider_embedding() -> dict[str, Any]:
+    """Opt-in: use first chat provider host for embeddings when it exposes embed models."""
+    base = chat_provider_embedding_base_url()
     if not base:
         raise HTTPException(
             status_code=400,
-            detail="Ollama ist nicht konfiguriert (OLLAMA_BASE_URL fehlt).",
+            detail="Kein LLM-Provider konfiguriert (LLM_PROVIDER_1_BASE_URL oder Admin-Endpoint).",
         )
-    spec = get_provider_spec("ollama")
+    spec = get_provider_spec("provider_1")
     if spec is not None:
         _, ometa = fetch_models_for_provider(spec)
         if not ometa.get("reachable"):
             raise HTTPException(
                 status_code=400,
-                detail="Ollama ist nicht erreichbar. Starten Sie Ollama und laden Sie ein Embedding-Modell.",
+                detail="Chat-Provider provider_1 ist nicht erreichbar.",
             )
+    pid = spec.provider_id if spec is not None else "provider_1"
     merged, _ = fetch_full_model_catalog()
-    _, embed_models, _ = _models_for_provider(merged, "ollama")
+    _, embed_models, _ = _models_for_provider(merged, pid)
     ranked = rank_embedding_model_ids(embed_models)
     model = ranked[0] if ranked else ""
     if not model:
         raise HTTPException(
             status_code=400,
-            detail="Kein Embedding-Modell auf Ollama gefunden. Laden Sie z. B. ein Embed-Modell oder konfigurieren Sie die Embedding-API in Admin.",
+            detail="Kein Embedding-Modell auf dem Chat-Provider. Nutze EMBEDDING_PROVIDER_1_* oder Admin → Memory & RAG.",
         )
 
     apply_operator_settings_patch(
@@ -364,7 +365,7 @@ def apply_enable_ollama_embedding() -> dict[str, Any]:
         apply_operator_settings_patch(OperatorSettingsPatch(rag_embedding_dim=dim))
         dim_result["embedding_dim"] = dim
     except Exception as exc:
-        logger.warning("setup: ollama embedding probe failed: %s", exc)
+        logger.warning("setup: chat provider embedding probe failed: %s", exc)
         dim_result["dim_probe_error"] = str(exc)[:200]
 
     emb = enrich_setup_embedding_meta(
@@ -411,7 +412,7 @@ async def test_embedding_model(model_id: str) -> dict[str, Any]:
             status_code=400,
             detail=(
                 "Embedding-API nicht konfiguriert. "
-                "EMBEDDING_BASE_URL in .env oder „Ollama für Embeddings“ im Setup."
+            "EMBEDDING_PROVIDER_N_* in .env or Admin → Memory & RAG."
             ),
         )
     try:

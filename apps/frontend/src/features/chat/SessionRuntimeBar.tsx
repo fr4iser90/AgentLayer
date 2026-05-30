@@ -1,24 +1,47 @@
 import type { ReactNode } from "react";
-import type { SessionRuntimePayload, TokenUsageTotals } from "../../lib/api";
+import type {
+  ChatContextMeta,
+  SessionRuntimePayload,
+  TokenUsageTotals,
+} from "../../lib/api";
 import { useTranslation } from "react-i18next";
 
 type Props = {
   runtime: SessionRuntimePayload | null;
   usage: TokenUsageTotals;
+  contextMeta?: ChatContextMeta | null;
   className?: string;
   /** e.g. a &quot;+&quot; control to edit workspace-scoped MCP (parent owns modal). */
   mcpAddon?: ReactNode;
 };
 
-export function SessionRuntimeBar({ runtime, usage, className = "", mcpAddon }: Props) {
-  const { t } = useTranslation(["workspace", "dashboard"]);
+export function SessionRuntimeBar({ runtime, usage, contextMeta, className = "", mcpAddon }: Props) {
+  const { t } = useTranslation(["workspace", "dashboard", "chat"]);
   const mcp = runtime?.mcp;
+  const budget = runtime?.context;
   const hasUsage = usage.total > 0 || usage.rounds > 0;
-  if (!mcp && !hasUsage) return null;
+  const estimated = contextMeta?.estimated_prompt_tokens ?? 0;
+  const softLimit =
+    contextMeta?.soft_limit_tokens ?? budget?.soft_limit_tokens ?? 0;
+  const hardLimit =
+    contextMeta?.hard_limit_tokens ?? budget?.hard_limit_tokens ?? 0;
+  const showContext =
+    Boolean(budget?.prep_enabled) &&
+    (estimated > 0 || Boolean(contextMeta?.summary_active) || Boolean(contextMeta?.at_soft_limit));
+  if (!mcp && !hasUsage && !showContext) return null;
 
   const servers = mcp?.servers ?? [];
   const connected = servers.filter((s) => s.connected).length;
   const scope = mcp?.scope;
+
+  const contextWarn =
+    contextMeta?.at_hard_limit
+      ? "hard"
+      : contextMeta?.at_soft_limit
+        ? "soft"
+        : estimated > 0 && softLimit > 0 && estimated >= softLimit
+          ? "soft"
+          : null;
 
   return (
     <div
@@ -59,6 +82,37 @@ export function SessionRuntimeBar({ runtime, usage, className = "", mcpAddon }: 
             <span className="ml-1 text-neutral-500">{t("workspace:servers")}</span>
           </span>
         )}
+        {showContext ? (
+          <>
+            <span className="text-neutral-600">·</span>
+            <span className="font-semibold uppercase tracking-wide text-surface-muted">
+              {t("chat:contextBudgetLabel")}
+            </span>
+            <span
+              className={`tabular-nums ${
+                contextWarn === "hard"
+                  ? "text-red-300/95"
+                  : contextWarn === "soft"
+                    ? "text-amber-300/90"
+                    : "text-neutral-200"
+              }`}
+              title={t("chat:contextBudgetTitle")}
+            >
+              {t("chat:contextBudgetUsage", {
+                est: estimated.toLocaleString(),
+                soft: softLimit.toLocaleString(),
+              })}
+              {contextMeta?.summary_active ? (
+                <span className="ml-1 text-violet-300/85">{t("chat:contextCompacted")}</span>
+              ) : null}
+              {contextMeta?.messages_dropped ? (
+                <span className="ml-1 text-neutral-500">
+                  {t("chat:contextDropped", { count: contextMeta.messages_dropped })}
+                </span>
+              ) : null}
+            </span>
+          </>
+        ) : null}
         {hasUsage ? (
           <>
             <span className="text-neutral-600">·</span>

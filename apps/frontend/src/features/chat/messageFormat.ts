@@ -126,7 +126,12 @@ export function normalizeServerContent(c: unknown): string {
   return String(c ?? "");
 }
 
-type Part = { type?: string; text?: string; image_url?: { url?: string } };
+type Part = {
+  type?: string;
+  text?: string;
+  image_url?: { url?: string };
+  agent_filename?: string;
+};
 
 export function parseContentParts(content: string): { plain: string; parts: Part[] | null } {
   const s = content.trim();
@@ -142,4 +147,63 @@ export function parseContentParts(content: string): { plain: string; parts: Part
   } catch {
     return { plain: content, parts: null };
   }
+}
+
+/** Plain user text for clipboard (excludes embedded file bodies and images). */
+export function userMessagePlainText(content: string): string {
+  const { plain, parts } = parseContentParts(content);
+  if (parts) {
+    return parts
+      .filter((p) => p.type === "text" && p.text)
+      .map((p) => String(p.text ?? ""))
+      .join("\n\n")
+      .trim();
+  }
+  return stripEmbeddedFileBlocks(plain).trim();
+}
+
+const EMBEDDED_FILE_RE =
+  /(?:^|\n\n)\[File: ([^\]]+)\]\n[\s\S]*?(?=\n\n\[File: |\n\n\[[^\]]+\] |$)/g;
+
+function stripEmbeddedFileBlocks(text: string): string {
+  return text.replace(EMBEDDED_FILE_RE, "").trim();
+}
+
+/** Best-effort reverse of ``buildUserMessageContent`` for composer restore / retry. */
+export function userMessageToComposerState(content: string): {
+  draft: string;
+  attachments: PendingAttachment[];
+} {
+  const attachments: PendingAttachment[] = [];
+  const { plain, parts } = parseContentParts(content);
+  if (parts) {
+    const textLines: string[] = [];
+    for (const p of parts) {
+      if (p.type === "text" && p.text) {
+        textLines.push(String(p.text));
+      } else if (p.type === "image_url" && p.image_url?.url) {
+        attachments.push({
+          kind: "image",
+          name: typeof p.agent_filename === "string" && p.agent_filename.trim()
+            ? p.agent_filename.trim()
+            : "image",
+          dataUrl: p.image_url.url,
+        });
+      }
+    }
+    return { draft: textLines.join("\n\n"), attachments };
+  }
+
+  let draft = plain;
+  const fileRe = /(?:^|\n\n)\[File: ([^\]]+)\]\n([\s\S]*?)(?=\n\n\[File: |\n\n\[[^\]]+\] |$)/g;
+  let m: RegExpExecArray | null;
+  while ((m = fileRe.exec(plain)) !== null) {
+    attachments.push({
+      kind: "textfile",
+      name: m[1] ?? "file",
+      text: (m[2] ?? "").trimEnd(),
+    });
+  }
+  draft = stripEmbeddedFileBlocks(plain);
+  return { draft, attachments };
 }

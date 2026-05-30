@@ -1,12 +1,7 @@
 """Single entry point for text embeddings (RAG, memory, Qdrant code index, tool ranking).
 
-Uses **only** explicit env (no Ollama, llama.cpp, or chat URL reuse):
-
-- ``EMBEDDING_BASE_URL`` — OpenAI-compatible API base (e.g. ``https://host/v1``)
-- ``EMBEDDING_API_HEADER_NAME`` — HTTP header name for the secret (e.g. ``X-API-KEY``)
-- ``EMBEDDING_API_HEADER_VALUE`` — secret sent in that header
-
-Model id and dimension: ``operator_settings`` ``rag_embedding_model`` / ``rag_embedding_dim``.
+Configure via numbered env providers (``EMBEDDING_PROVIDER_1_BASE_URL``, …) and/or Admin → Memory & RAG.
+Active provider: ``rag_embedding_provider_id`` in operator settings (Admin UI), else first configured env provider.
 """
 
 from __future__ import annotations
@@ -18,13 +13,18 @@ import httpx
 
 from apps.backend.core import config as cfgmod
 from apps.backend.infrastructure import operator_settings
+from apps.backend.infrastructure.embedding_catalog_providers import (
+    EmbeddingProviderSpec,
+    list_embedding_provider_specs,
+    resolve_active_embedding_provider_id,
+    resolve_active_embedding_spec,
+)
 from apps.backend.infrastructure.openai_compat_http import http_post_json
 
 _HDR_NAME_TOKEN = re.compile(r"^[!#$%&'*+.0-9A-Z^_`a-z|~-]{1,128}\Z")
 
 
 def _strip_env_value(raw: str | None) -> str:
-    """Trim env value; strip one pair of surrounding quotes from .env mistakes."""
     s = (raw or "").strip()
     if len(s) >= 2 and s[0] == s[-1] and s[0] in ('"', "'"):
         s = s[1:-1].strip()
@@ -48,88 +48,108 @@ def _vector_from_openai_embeddings_payload(data: dict[str, Any]) -> list[float] 
     return None
 
 
+def _normalized_base_for_spec(spec: EmbeddingProviderSpec) -> str:
+    from apps.backend.infrastructure.operator_settings import normalize_external_llm_base_url
+
+    return (normalize_external_llm_base_url(spec.base_url) or spec.base_url).rstrip("/")
+
+
 def _normalized_embedding_base() -> str:
-    base = _strip_env_value(getattr(cfgmod, "EMBEDDING_BASE_URL", None))
-    if base:
-        from apps.backend.infrastructure.operator_settings import normalize_external_llm_base_url
-
-        return (normalize_external_llm_base_url(base) or base).rstrip("/")
-    from apps.backend.infrastructure.operator_settings import resolved_embedding_api_base_url
-
-    return resolved_embedding_api_base_url()
+    spec = resolve_active_embedding_spec()
+    if spec is None:
+        return ""
+    return _normalized_base_for_spec(spec)
 
 
-def _embeddings_url(api_base: str | None = None) -> str:
-    b = (api_base or _normalized_embedding_base()).strip().rstrip("/")
-    if not b:
-        raise ValueError("EMBEDDING_BASE_URL is empty")
+def _embeddings_url(*, spec: EmbeddingProviderSpec | None = None) -> str:
+    active = spec or resolve_active_embedding_spec()
+    if active is None:
+        raise ValueError(
+            "No embedding provider configured. Set EMBEDDING_PROVIDER_1_BASE_URL in .env "
+            "or configure Admin → Interfaces → Memory & RAG."
+        )
+    b = _normalized_base_for_spec(active)
     low = b.lower()
     if low.endswith("/embeddings"):
         return b
     return f"{b}/v1/embeddings"
 
 
-def _embedding_models_list_url() -> str | None:
-    b = _normalized_embedding_base()
-    if not b:
+def _embedding_models_list_url(*, spec: EmbeddingProviderSpec | None = None) -> str | None:
+    active = spec or resolve_active_embedding_spec()
+    if active is None:
         return None
     from apps.backend.infrastructure.operator_settings import external_models_list_url
 
-    return external_models_list_url(b)
+    return external_models_list_url(_normalized_base_for_spec(active))
 
 
-def _auth_headers_for_secret(header_name: str, secret: str) -> dict[str, str]:
+def _auth_headers_for_spec(spec: EmbeddingProviderSpec) -> dict[str, str]:
     out: dict[str, str] = {"Content-Type": "application/json"}
+    secret = (spec.api_key or "").strip()
+    hn = (spec.api_header_name or "X-API-KEY").strip() or "X-API-KEY"
     if not secret:
         return out
-    hn = (header_name or "X-API-KEY").strip() or "X-API-KEY"
     if hn.lower() == "authorization":
-        out["Authorization"] = f"Bearer {secret}" if not secret.lower().startswith("bearer ") else secret
+        out["Authorization"] = (
+            secret if secret.lower().startswith("bearer ") else f"Bearer {secret}"
+        )
         return out
     if _HDR_NAME_TOKEN.match(hn):
         out[hn] = secret
         return out
     raise ValueError(
-        f"EMBEDDING_API_HEADER_NAME {hn!r} is not a valid HTTP header token "
+        f"embedding API header name {hn!r} is not a valid HTTP header token "
         "(use e.g. X-API-KEY or Authorization)."
     )
 
 
-def _embedding_request_headers() -> dict[str, str]:
-    """Env ``EMBEDDING_API_HEADER_VALUE`` overrides DB ``embedding_api_key``."""
-    from apps.backend.infrastructure.operator_settings import (
-        resolved_embedding_api_header_name,
-        resolved_embedding_api_key,
-    )
-
-    return _auth_headers_for_secret(
-        resolved_embedding_api_header_name(),
-        resolved_embedding_api_key(),
-    )
+def _embedding_request_headers(*, spec: EmbeddingProviderSpec | None = None) -> dict[str, str]:
+    active = spec or resolve_active_embedding_spec()
+    if active is None:
+        raise ValueError("No active embedding provider configured.")
+    return _auth_headers_for_spec(active)
 
 
-def _embedding_url_and_headers() -> tuple[str, dict[str, str]]:
-    if not _normalized_embedding_base():
+def _embedding_url_and_headers(
+    *, spec: EmbeddingProviderSpec | None = None
+) -> tuple[str, dict[str, str]]:
+    if resolve_active_embedding_spec() is None and spec is None:
         raise ValueError(
-            "Embeddings require EMBEDDING_BASE_URL in .env or embedding_api_base_url in operator "
-            "settings (OpenAI-compatible host, e.g. https://host or https://host/v1). "
-            "OLLAMA_BASE_URL is not used for embeddings unless enabled via setup."
+            "Embeddings require EMBEDDING_PROVIDER_N_* in .env or embedding settings in Admin → Memory & RAG."
         )
-    return _embeddings_url(), _embedding_request_headers()
+    return _embeddings_url(spec=spec), _embedding_request_headers(spec=spec)
 
 
 def invalidate_embedding_catalog_cache() -> None:
     global _EMBED_HEALTH_CACHE
     _EMBED_HEALTH_CACHE = None
+    from apps.backend.infrastructure.embedding_catalog_providers import (
+        invalidate_embedding_provider_specs_cache,
+    )
+
+    invalidate_embedding_provider_specs_cache()
 
 
-def fetch_embedding_models_list(*, timeout: float = 15.0) -> tuple[list[str], str | None]:
-    """``GET …/v1/models`` at ``EMBEDDING_BASE_URL`` → model ids for the UI dropdown."""
-    url = _embedding_models_list_url()
+def fetch_embedding_models_list(
+    *,
+    timeout: float = 15.0,
+    provider_id: str | None = None,
+) -> tuple[list[str], str | None]:
+    """``GET …/v1/models`` for the active (or given) embedding provider."""
+    from apps.backend.infrastructure.embedding_catalog_providers import get_embedding_provider_spec
+
+    if provider_id:
+        spec = get_embedding_provider_spec(provider_id)
+    else:
+        spec = resolve_active_embedding_spec()
+    if spec is None:
+        return [], "Embedding-API nicht konfiguriert (EMBEDDING_PROVIDER_1_BASE_URL oder Admin)"
+    url = _embedding_models_list_url(spec=spec)
     if not url:
-        return [], "Embedding-API nicht konfiguriert (EMBEDDING_BASE_URL oder Setup)"
+        return [], "Embedding-API nicht konfiguriert"
     try:
-        headers = _embedding_request_headers()
+        headers = _auth_headers_for_spec(spec)
     except ValueError as e:
         return [], str(e)
     from apps.backend.infrastructure.openai_compat_http import http_get_json
@@ -152,17 +172,25 @@ def fetch_embedding_vector_raw(
     text: str = "healthcheck",
     *,
     model_id: str | None = None,
+    provider_id: str | None = None,
 ) -> list[float]:
-    """Call the embedding API and return the vector without ``rag_embedding_dim`` validation."""
+    from apps.backend.infrastructure.embedding_catalog_providers import get_embedding_provider_spec
+
+    if provider_id:
+        spec = get_embedding_provider_spec(provider_id)
+    else:
+        spec = resolve_active_embedding_spec()
+    if spec is None:
+        raise ValueError("No active embedding provider configured.")
     raw = (text or "").strip()
     if not raw:
         raise ValueError("embedding text is empty")
     rs = operator_settings.rag_settings()
-    model = (model_id or rs["embedding_model"] or "").strip()
+    model = (model_id or rs["embedding_model"] or spec.model_default or "").strip()
     if not model:
         raise ValueError("rag_embedding_model is empty (operator settings — embedding model id)")
     timeout = float(rs["embed_timeout_sec"])
-    url, headers = _embedding_url_and_headers()
+    url, headers = _embedding_url_and_headers(spec=spec)
     data = http_post_json(
         url,
         {"model": model, "input": raw},
@@ -176,29 +204,22 @@ def fetch_embedding_vector_raw(
 
 
 def probe_embedding_output_dim(*, model_id: str | None = None) -> int:
-    """Return embedding width from a live API probe (for syncing ``rag_embedding_dim``)."""
     return len(fetch_embedding_vector_raw("healthcheck", model_id=model_id))
 
 
 def clear_embedding_health_cache() -> None:
-    global _EMBED_HEALTH_CACHE
-    _EMBED_HEALTH_CACHE = None
+    invalidate_embedding_catalog_cache()
 
 
 def format_embedding_http_error(exc: httpx.HTTPStatusError) -> str:
-    """User-facing message for embedding ingest/search HTTP failures (any provider)."""
     return f"Embedding API HTTP error: {exc!s}"
 
 
 def format_embedding_request_error(exc: httpx.RequestError) -> str:
-    """User-facing message when the configured embedding host is unreachable."""
     return f"Embedding API unreachable: {exc!s}"
 
 
 def embed_one(text: str) -> list[float]:
-    """
-    Embed one string via ``POST …/v1/embeddings`` at ``EMBEDDING_BASE_URL`` only.
-    """
     raw = (text or "").strip()
     if not raw:
         raise ValueError("embedding text is empty")
@@ -239,11 +260,6 @@ _EMBED_HEALTH_TTL_SEC = 45.0
 
 
 def embedding_catalog_health(*, force_refresh: bool = False) -> dict[str, Any]:
-    """
-    Probe ``EMBEDDING_*`` for GET ``/v1/models`` ``agentlayer.embedding`` (RAG only; not chat).
-
-    Never uses Ollama / llama.cpp chat URLs.
-    """
     import time
 
     global _EMBED_HEALTH_CACHE
@@ -258,9 +274,21 @@ def embedding_catalog_health(*, force_refresh: bool = False) -> dict[str, Any]:
     rs = operator_settings.rag_settings()
     model = (rs.get("embedding_model") or "").strip()
     dim = int(rs.get("embedding_dim") or 0)
-    base = _normalized_embedding_base()
+    active_id = resolve_active_embedding_provider_id()
+    active = resolve_active_embedding_spec()
+    providers_meta: dict[str, Any] = {}
+    for spec in list_embedding_provider_specs():
+        listed, list_err = fetch_embedding_models_list(timeout=12.0, provider_id=spec.provider_id)
+        providers_meta[spec.provider_id] = {
+            "label": spec.label,
+            "source": spec.source,
+            "reachable": bool(listed),
+            "detail": list_err,
+            "available_models": listed,
+        }
+
     meta: dict[str, Any] = {
-        "configured": bool(base),
+        "configured": active is not None,
         "reachable": False,
         "detail": None,
         "model": model or None,
@@ -268,17 +296,15 @@ def embedding_catalog_health(*, force_refresh: bool = False) -> dict[str, Any]:
         "embeddings_url": None,
         "models_url": None,
         "available_models": [],
+        "active_provider_id": active_id,
+        "providers": providers_meta,
         "note": (
-            "Separate from chat. EMBEDDING_BASE_URL in .env and/or embedding_api_base_url from setup; "
-            "model id from operator_settings rag_embedding_model."
+            "Separate from chat. EMBEDDING_PROVIDER_N_* in .env and/or Admin → Memory & RAG; "
+            "active provider via Admin → Memory & RAG (or auto: first configured)."
         ),
-        "source": (
-            "env"
-            if _strip_env_value(getattr(cfgmod, "EMBEDDING_BASE_URL", None))
-            else ("operator_settings" if base else None)
-        ),
+        "source": active.source if active else None,
     }
-    if not base:
+    if active is None:
         meta["detail"] = "Embedding-API nicht konfiguriert"
         meta["status_line"] = (
             "Nicht konfiguriert — RAG/Memory-Vektoren inaktiv. Chat und Coding sind davon unabhängig."
@@ -287,15 +313,15 @@ def embedding_catalog_health(*, force_refresh: bool = False) -> dict[str, Any]:
         _EMBED_HEALTH_CACHE = (now, meta)
         return dict(meta)
     try:
-        url, headers = _embedding_url_and_headers()
+        url, headers = _embedding_url_and_headers(spec=active)
     except ValueError as e:
         meta["detail"] = str(e)
         _EMBED_HEALTH_CACHE = (now, meta)
         return dict(meta)
-    models_url = _embedding_models_list_url()
+    models_url = _embedding_models_list_url(spec=active)
     if models_url:
         meta["models_url"] = models_url
-        listed, list_err = fetch_embedding_models_list(timeout=min(12.0, float(rs.get("embed_timeout_sec") or 12.0)))
+        listed, list_err = fetch_embedding_models_list(provider_id=active.provider_id)
         meta["available_models"] = listed
         if list_err and not listed:
             meta["models_list_detail"] = list_err
@@ -308,7 +334,7 @@ def embedding_catalog_health(*, force_refresh: bool = False) -> dict[str, Any]:
         return dict(meta)
     meta["embeddings_url"] = url
     try:
-        probe = fetch_embedding_vector_raw("healthcheck", model_id=model)
+        probe = fetch_embedding_vector_raw("healthcheck", model_id=model, provider_id=active.provider_id)
         meta["reachable"] = True
         meta["rag_active"] = bool(rs.get("enabled", True))
         actual = len(probe)
@@ -323,7 +349,7 @@ def embedding_catalog_health(*, force_refresh: bool = False) -> dict[str, Any]:
     except httpx.HTTPStatusError as e:
         meta["detail"] = (e.response.text or "")[:200].strip() or f"http_{e.response.status_code}"
         if e.response.status_code == 501:
-            meta["detail"] = "501 Not Implemented — this host has no /v1/embeddings (use a dedicated embedding API)"
+            meta["detail"] = "501 Not Implemented — this host has no /v1/embeddings"
     except httpx.RequestError as e:
         meta["detail"] = str(e)[:200]
     except ValueError as e:

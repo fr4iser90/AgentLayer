@@ -316,7 +316,7 @@ async def stream_chat_completions_aggregate(
                     local_model,
                     outer_profile,
                     False,
-                    backend_override="ollama",
+                    backend_override="local",
                     catalog_owned_by=None,
                 )
                 logger.warning(

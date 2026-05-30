@@ -30,7 +30,7 @@ type SetupCatalog = {
     model?: string | null;
     detail?: string | null;
     available_models?: string[];
-    ollama_opt_in?: {
+    chat_embed_opt_in?: {
       available?: boolean;
       suggested_base_url?: string | null;
       suggested_model?: string | null;
@@ -84,7 +84,7 @@ export function SetupWizardPage() {
   const [prefsOk, setPrefsOk] = useState<string | null>(null);
   const [embedTestOk, setEmbedTestOk] = useState<string | null>(null);
   const [embedTestPending, setEmbedTestPending] = useState(false);
-  const [ollamaEmbedPending, setOllamaEmbedPending] = useState(false);
+  const [chatEmbedPending, setChatEmbedPending] = useState(false);
   const [showManual, setShowManual] = useState(false);
 
   const [preset, setPreset] = useState<LlmPresetId>(DEFAULT_LLM_PRESET);
@@ -269,18 +269,18 @@ export function SetupWizardPage() {
     setStep(3);
   }
 
-  async function onEnableOllamaEmbedding() {
+  async function onEnableChatProviderEmbedding() {
     if (!accessToken) return;
-    setOllamaEmbedPending(true);
+    setChatEmbedPending(true);
     setPrefsError(null);
-    const r = await fetch("/auth/setup/enable-ollama-embedding", {
+    const r = await fetch("/auth/setup/enable-chat-provider-embedding", {
       method: "POST",
       credentials: "include",
       headers: authHeaders(accessToken),
     });
-    setOllamaEmbedPending(false);
+    setChatEmbedPending(false);
     if (!r.ok) {
-      let msg = t("setup:ollamaEnableFailed");
+      let msg = t("setup:chatEmbedEnableFailed");
       try {
         const d = (await r.json()) as { detail?: string };
         if (typeof d.detail === "string") msg = d.detail;
@@ -581,20 +581,20 @@ export function SetupWizardPage() {
                     <p className="mt-1 text-xs text-amber-300/90">{catalog.embedding.detail}</p>
                   ) : null}
                   {!catalog.embedding.configured &&
-                  catalog.embedding.ollama_opt_in?.available ? (
+                  catalog.embedding.chat_embed_opt_in?.available ? (
                     <div className="mt-3 flex flex-col gap-2">
                       <p className="text-xs text-surface-muted">
-                        {t("setup:ollamaEmbedHint", {
-                          model: catalog.embedding.ollama_opt_in.suggested_model ?? "—",
+                        {t("setup:chatEmbedHint", {
+                          model: catalog.embedding.chat_embed_opt_in.suggested_model ?? "—",
                         })}
                       </p>
                       <button
                         type="button"
-                        disabled={ollamaEmbedPending || prefsPending}
-                        onClick={() => void onEnableOllamaEmbedding()}
+                        disabled={chatEmbedPending || prefsPending}
+                        onClick={() => void onEnableChatProviderEmbedding()}
                         className="self-start rounded-lg border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-sm text-sky-200 hover:bg-sky-500/20 disabled:opacity-50"
                       >
-                        {ollamaEmbedPending ? t("setup:ollamaEmbedPending") : t("setup:ollamaEmbedBtn")}
+                        {chatEmbedPending ? t("setup:chatEmbedPending") : t("setup:chatEmbedBtn")}
                       </button>
                     </div>
                   ) : null}

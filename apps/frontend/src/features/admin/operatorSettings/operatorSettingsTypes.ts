@@ -35,7 +35,7 @@ export type OperatorPublic = {
   memory_graph_log_activations?: boolean;
   memory_enabled?: boolean;
   rag_enabled?: boolean;
-  /** DB-stored OpenAI-compatible embedding base (env ``EMBEDDING_BASE_URL`` overrides when set). */
+  /** DB-stored OpenAI-compatible embedding base (env ``EMBEDDING_PROVIDER_N_*`` wins when configured). */
   embedding_api_base_url?: string | null;
   embedding_api_base_source?: "env" | "operator_settings" | null;
   embedding_api_base_effective?: string | null;
@@ -44,6 +44,15 @@ export type OperatorPublic = {
   embedding_api_header_name?: string | null;
   embedding_api_header_name_effective?: string | null;
   embedding_api_header_name_source?: "env" | "operator_settings" | null;
+  rag_embedding_provider_id?: string | null;
+  rag_embedding_provider_id_effective?: string | null;
+  rag_embedding_provider_id_source?: "operator_settings" | null;
+  embedding_providers?: Array<{
+    provider_id: string;
+    label: string;
+    source: string;
+    base_url: string;
+  }>;
   rag_embedding_model?: string;
   rag_embedding_dim?: number;
   rag_chunk_size?: number;

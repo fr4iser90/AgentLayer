@@ -116,7 +116,7 @@ def catalog_llm_body_extras(
     model: str | None = None,
     catalog_owned_by: str | None = None,
     profile_key: str = "agent",
-    prefer_providers: tuple[str, ...] = ("llama_cpp", "ollama"),
+    prefer_providers: tuple[str, ...] = ("provider_1", "provider_2"),
 ) -> dict[str, Any]:
     """
     Build ``model`` + ``agent_model_catalog_owned_by`` for non-UI callers (scheduler, bridges).

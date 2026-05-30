@@ -75,7 +75,7 @@ from apps.backend.domain.instance_setup import (
 from apps.backend.domain.setup_catalog import (
     SetupPreferencesBody,
     apply_setup_preferences,
-    apply_enable_ollama_embedding,
+    apply_enable_chat_provider_embedding,
     apply_setup_skip_suggestions,
     build_setup_catalog,
     test_embedding_model,
@@ -491,11 +491,11 @@ async def auth_setup_skip_profiles(request: Request):
     return apply_setup_skip_suggestions()
 
 
-@app.post("/auth/setup/enable-ollama-embedding")
-async def auth_setup_enable_ollama_embedding(request: Request):
-    """Opt-in: store Ollama base URL for embeddings (operator_settings, no .env restart)."""
+@app.post("/auth/setup/enable-chat-provider-embedding")
+async def auth_setup_enable_chat_provider_embedding(request: Request):
+    """Opt-in: use chat provider host for embeddings (operator_settings)."""
     await require_admin(request)
-    return apply_enable_ollama_embedding()
+    return apply_enable_chat_provider_embedding()
 
 
 @app.get("/auth/me")

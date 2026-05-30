@@ -2498,8 +2498,6 @@ def external_llm_endpoints_sync(rows: list[dict[str, Any]]) -> None:
                     if not base_url:
                         raise ValueError("external_llm: base_url required for new endpoint")
                     nk = (str(key_in).strip() if key_in is not None else "")
-                    if not nk:
-                        raise ValueError("external_llm: api_key required for new endpoint")
                     cur.execute(
                         """
                         INSERT INTO operator_external_llm_endpoints (

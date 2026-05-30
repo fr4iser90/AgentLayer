@@ -7,6 +7,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 
+from apps.backend.core.config import config
 from apps.backend.infrastructure.auth import get_current_user
 from apps.backend.infrastructure.mcp_runtime import mcp_runtime_status
 
@@ -41,4 +42,18 @@ async def get_session_runtime(
     except Exception:
         logger.exception("session runtime: mcp_runtime_status failed")
         mcp = {"enabled": False, "import_ok": False, "agent_ids": [], "servers": [], "error": "status_failed"}
-    return {"mcp": mcp}
+    return {
+        "mcp": mcp,
+        "context": {
+            "prep_enabled": config.CHAT_CONTEXT_PREP_ENABLED,
+            "budget_tokens": config.CHAT_CONTEXT_DEFAULT_BUDGET_TOKENS,
+            "soft_limit_tokens": int(
+                config.CHAT_CONTEXT_DEFAULT_BUDGET_TOKENS * config.CHAT_CONTEXT_SOFT_LIMIT_RATIO
+            ),
+            "hard_limit_tokens": int(
+                config.CHAT_CONTEXT_DEFAULT_BUDGET_TOKENS * config.CHAT_CONTEXT_HARD_LIMIT_RATIO
+            ),
+            "max_messages": config.CHAT_CONTEXT_MAX_MESSAGES,
+            "compaction_enabled": config.CHAT_CONTEXT_COMPACTION_ENABLED,
+        },
+    }

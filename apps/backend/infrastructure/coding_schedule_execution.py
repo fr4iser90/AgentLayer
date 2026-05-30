@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 _MAX_INSTRUCTIONS = 31_000
 _SCHEDULE_MODEL_PROFILE = "coding"
-_SCHEDULE_PROVIDER_ORDER = ("llama_cpp", "ollama")
+_SCHEDULE_PROVIDER_ORDER = ("provider_1", "provider_2")
 
 # Fixed tool set for background schedules (avoids ranking dropping git/write tools).
 CODING_SCHEDULE_TOOL_ALLOWLIST: tuple[str, ...] = (
@@ -82,7 +82,7 @@ def _pick_schedule_catalog_provider() -> str | None:
     Prefer a reachable coding stack for background jobs (llama.cpp before Ollama).
 
     Falls back to the first configured provider when health probes fail.
-    Override with env ``AGENT_SCHEDULE_LLM_PROVIDER`` (e.g. ``ollama`` when only Ollama is up).
+    Override with env ``AGENT_SCHEDULE_LLM_PROVIDER`` (e.g. ``provider_1``).
     """
     import os
 

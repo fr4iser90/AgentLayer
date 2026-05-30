@@ -20,7 +20,7 @@ class TestLlmUserErrors(unittest.TestCase):
         msg, log_exc = user_visible_llm_transport_error(httpx.ConnectError("refused"))
         self.assertFalse(log_exc)
         self.assertIn("chat", msg.lower())
-        self.assertIn("embedding_base_url", msg.lower())
+        self.assertIn("embedding_provider", msg.lower())
 
     def test_connect_error_includes_post_url_when_request_present(self) -> None:
         req = httpx.Request("POST", "http://192.168.1.5:11435/v1/chat/completions")

@@ -304,7 +304,8 @@ def conversation_get(user_id: uuid.UUID, conversation_id: uuid.UUID) -> dict[str
                 """
                 SELECT id, title, mode, model, agent_log, updated_at, created_at, dashboard_id,
                        user_id, tenant_id, shared, pref_agent_id, pref_workspace_id,
-                       pref_model_catalog_owned_by, active_task_id
+                       pref_model_catalog_owned_by, active_task_id,
+                       context_summary, context_summary_message_count, context_summary_updated_at
                 FROM chat_conversations
                 WHERE id = %s
                 """,
@@ -322,6 +323,9 @@ def conversation_get(user_id: uuid.UUID, conversation_id: uuid.UUID) -> dict[str
             pref_ws_raw = crow[12]
             pref_owned_raw = crow[13]
             active_task_raw = crow[14]
+            context_summary_raw = crow[15]
+            context_summary_count_raw = crow[16]
+            context_summary_updated_raw = crow[17]
             if shared and wid is not None:
                 if not dashboard_db.dashboard_has_full_access(user_id, tenant_id, wid):
                     return None
@@ -383,6 +387,13 @@ def conversation_get(user_id: uuid.UUID, conversation_id: uuid.UUID) -> dict[str
         "model_catalog_owned_by": pref_owned_out,
         "active_task_id": active_task_out,
         "source": _conversation_source_from_bridge(bridge_provider),
+        "context_summary": str(context_summary_raw or "").strip(),
+        "context_summary_message_count": int(context_summary_count_raw or 0),
+        "context_summary_updated_at": (
+            context_summary_updated_raw.isoformat()
+            if isinstance(context_summary_updated_raw, datetime)
+            else (str(context_summary_updated_raw) if context_summary_updated_raw else "")
+        ),
     }
 
 
@@ -645,6 +656,22 @@ def conversation_replace(
                 )
                 for i, m in enumerate(msgs_ing):
                     _insert_chat_message(cur, conversation_id, i, m)
+                msg_count = len(msgs_ing)
+                cur.execute(
+                    """
+                    UPDATE chat_conversations
+                    SET context_summary = CASE
+                          WHEN context_summary_message_count > %s THEN '' ELSE context_summary END,
+                        context_summary_message_count = CASE
+                          WHEN context_summary_message_count > %s THEN 0
+                          ELSE context_summary_message_count END,
+                        context_summary_updated_at = CASE
+                          WHEN context_summary_message_count > %s THEN NULL
+                          ELSE context_summary_updated_at END
+                    WHERE id = %s
+                    """,
+                    (msg_count, msg_count, msg_count, conversation_id),
+                )
         conn.commit()
     return conversation_get(user_id, conversation_id)
 

@@ -158,7 +158,7 @@ export function formatEmptyChatModelCatalogHint(
 ): string | null {
   const chat = formatModelCatalogHint(agentlayer, { excludeUnreachableProviderHints: false });
   if (chat) return `Chat models unavailable — ${chat}`;
-  return "No chat models in catalog. Check OLLAMA_BASE_URL, LLAMA_CPP_* (.env) or Admin → LLM-Endpoints.";
+  return "No chat models in catalog. Check LLM_PROVIDER_1_* in .env or Admin → LLM-Endpoints.";
 }
 
 export function modelOptionLabel(row: ModelRow, agentlayer?: ModelCatalogAgentlayer | null): string {

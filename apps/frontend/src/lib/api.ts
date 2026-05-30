@@ -30,6 +30,30 @@ export type McpServerRuntime = {
   error: string | null;
 };
 
+export type ChatContextBudget = {
+  prep_enabled?: boolean;
+  budget_tokens?: number;
+  soft_limit_tokens?: number;
+  hard_limit_tokens?: number;
+  max_messages?: number;
+  compaction_enabled?: boolean;
+};
+
+export type ChatContextMeta = {
+  estimated_prompt_tokens?: number;
+  budget_tokens?: number;
+  soft_limit_tokens?: number;
+  hard_limit_tokens?: number;
+  messages_in_prompt?: number;
+  messages_dropped?: number;
+  messages_capped?: number;
+  compaction_applied?: boolean;
+  summary_active?: boolean;
+  summary_covers_messages?: number;
+  at_soft_limit?: boolean;
+  at_hard_limit?: boolean;
+};
+
 export type SessionRuntimePayload = {
   mcp: {
     enabled: boolean;
@@ -41,6 +65,7 @@ export type SessionRuntimePayload = {
     /** ``workspace`` when status used per-workspace MCP JSON from the DB row. */
     scope?: "global" | "workspace";
   };
+  context?: ChatContextBudget;
 };
 
 export type TokenUsageTotals = {

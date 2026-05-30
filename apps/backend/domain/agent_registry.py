@@ -294,7 +294,7 @@ class AgentRegistry:
             include_intro = bool(agent.get("tool_include_introspection", False))
             if not tool_names and (patterns or domains or caps):
                 all_tools = self._get_all_tool_names()
-                logger.info("agent %s: found %d tools in registry: %s", agent_id, len(all_tools), all_tools[:20])
+                logger.debug("agent %s: found %d tools in registry: %s", agent_id, len(all_tools), all_tools[:20])
                 merged: set[str] = set()
                 if patterns:
                     merged.update(_tools_for_patterns(patterns, all_tools))
@@ -304,7 +304,7 @@ class AgentRegistry:
                     merged.update(_tools_for_capabilities_any(caps, all_tools))
                 mapped_tools = sorted(merged)
                 agent["tool_names"] = mapped_tools
-                logger.info("agent %s: mapped %d tools: %s", agent_id, len(mapped_tools), mapped_tools[:30])
+                logger.debug("agent %s: mapped %d tools: %s", agent_id, len(mapped_tools), mapped_tools[:30])
         return agent
 
     def _get_all_tool_names(self) -> list[str]:

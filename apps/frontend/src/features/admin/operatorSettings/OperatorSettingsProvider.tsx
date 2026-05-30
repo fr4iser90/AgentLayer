@@ -72,6 +72,14 @@ function useOperatorSettingsState() {
   const [ragEmbeddingModelOptions, setRagEmbeddingModelOptions] = useState<string[]>([]);
   const [ragEmbeddingStatusHint, setRagEmbeddingStatusHint] = useState<string | null>(null);
   const [embeddingModelsLoading, setEmbeddingModelsLoading] = useState(false);
+  const [ragEmbeddingProviderId, setRagEmbeddingProviderId] = useState("");
+  const [ragEmbeddingProviderIdEffective, setRagEmbeddingProviderIdEffective] = useState<string | null>(null);
+  const [ragEmbeddingProviderIdSource, setRagEmbeddingProviderIdSource] = useState<
+    "operator_settings" | null
+  >(null);
+  const [embeddingProviders, setEmbeddingProviders] = useState<
+    Array<{ provider_id: string; label: string; source: string; base_url: string }>
+  >([]);
   const [ragEmbeddingDim, setRagEmbeddingDim] = useState("768");
   const [ragChunkSize, setRagChunkSize] = useState("1200");
   const [ragChunkOverlap, setRagChunkOverlap] = useState("200");
@@ -211,6 +219,19 @@ function useOperatorSettingsState() {
       setEmbeddingApiKeySource(
         op.embedding_api_key_source === "env" || op.embedding_api_key_source === "operator_settings"
           ? op.embedding_api_key_source
+          : null
+      );
+      setEmbeddingProviders(Array.isArray(op.embedding_providers) ? op.embedding_providers : []);
+      setRagEmbeddingProviderId((op.rag_embedding_provider_id ?? "").trim());
+      setRagEmbeddingProviderIdEffective(
+        typeof op.rag_embedding_provider_id_effective === "string" &&
+          op.rag_embedding_provider_id_effective.trim()
+          ? op.rag_embedding_provider_id_effective.trim()
+          : null
+      );
+      setRagEmbeddingProviderIdSource(
+        op.rag_embedding_provider_id_source === "operator_settings"
+          ? op.rag_embedding_provider_id_source
           : null
       );
       const hdrEff =
@@ -549,6 +570,7 @@ function useOperatorSettingsState() {
       if (embeddingApiKey.trim()) {
         patch.embedding_api_key = embeddingApiKey.trim();
       }
+      patch.rag_embedding_provider_id = ragEmbeddingProviderId.trim() || null;
       patch.rag_embedding_model = ragEmbeddingModel.trim();
       patch.rag_embedding_dim = Math.floor(red);
       patch.rag_chunk_size = Math.floor(rcs);
@@ -837,6 +859,11 @@ function useOperatorSettingsState() {
     ragEmbeddingStatusHint,
     embeddingModelsLoading,
     refreshEmbeddingCatalog,
+    ragEmbeddingProviderId,
+    setRagEmbeddingProviderId,
+    ragEmbeddingProviderIdEffective,
+    ragEmbeddingProviderIdSource,
+    embeddingProviders,
     ragEmbeddingDim,
     setRagEmbeddingDim,
     ragChunkSize,

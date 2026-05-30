@@ -1,8 +1,9 @@
 import { useOperatorSettings } from "../../../features/admin/operatorSettings/OperatorSettingsProvider";
 import { useTranslation } from "react-i18next";
+import { getLlmPreset, LLM_PRESETS, type LlmPresetId } from "../../../setup/llmPresets";
 
 export function AdminInterfacesLlmSection() {
-  const { t } = useTranslation(["admin"]);
+  const { t } = useTranslation(["admin", "setup"]);
   const s = useOperatorSettings();
   if (s.loading) {
     return <p className="text-sm text-surface-muted">{t("admin:loading")}</p>;
@@ -114,6 +115,37 @@ export function AdminInterfacesLlmSection() {
                       </button>
                     </div>
                   </div>
+                  <label className="mt-2 block text-xs text-surface-muted" htmlFor={`ep-preset-${ep.localKey}`}>
+                    {t("admin:ifLlmPresetLabel")}
+                  </label>
+                  <select
+                    id={`ep-preset-${ep.localKey}`}
+                    className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+                    defaultValue="custom"
+                    onChange={(ev) => {
+                      const cfg = getLlmPreset(ev.target.value as LlmPresetId);
+                      if (cfg.id === "custom") {
+                        return;
+                      }
+                      s.setExtLlmEndpoints((prev) =>
+                        prev.map((x, j) =>
+                          j === idx
+                            ? {
+                                ...x,
+                                label: cfg.endpointLabel,
+                                baseUrl: cfg.baseUrl,
+                              }
+                            : x
+                        )
+                      );
+                    }}
+                  >
+                    {LLM_PRESETS.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {t(`setup:${p.labelKey}`)}
+                      </option>
+                    ))}
+                  </select>
                   <label className="mt-2 block text-xs text-surface-muted" htmlFor={`ep-lbl-${ep.localKey}`}>
                     {t("admin:ifLlmLabelOptional")}
                   </label>

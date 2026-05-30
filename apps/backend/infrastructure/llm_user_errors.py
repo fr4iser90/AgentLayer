@@ -44,8 +44,8 @@ def user_visible_llm_transport_error(exc: BaseException) -> tuple[str, bool]:
         parts = [
             "Chat LLM connection failed (this is the chat/completions HTTP call to your configured "
             "model server — not RAG/embeddings).",
-            "EMBEDDING_BASE_URL only configures embeddings (RAG, memory, Qdrant code index, tool ranking); "
-            "it does not change chat. Chat uses OLLAMA_BASE_URL, LLAMA_CPP_*, external LLM rows, and the "
+            "Embeddings use EMBEDDING_PROVIDER_N_* (RAG, memory, Qdrant code index, tool ranking); "
+            "it does not change chat. Chat uses LLM_PROVIDER_N_* and Admin LLM endpoints; "
             "model/catalog selection from the UI.",
         ]
         if url:

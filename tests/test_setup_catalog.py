@@ -68,28 +68,28 @@ def test_apply_setup_preferences_unreachable_provider() -> None:
     assert exc.value.status_code == 400
 
 
-def test_ollama_embedding_base_url_from_spec() -> None:
-    spec = MagicMock(base_url="http://ollama:11434", provider_id="ollama")
+def test_chat_provider_embedding_base_url_from_spec() -> None:
+    spec = MagicMock(base_url="http://host:11434", provider_id="provider_1")
     with patch.object(mod, "get_provider_spec", return_value=spec):
-        url = mod.ollama_embedding_base_url()
-    assert url == "http://ollama:11434"
+        url = mod.chat_provider_embedding_base_url()
+    assert url == "http://host:11434"
 
 
 def test_enrich_setup_embedding_meta_not_configured() -> None:
     emb = {"configured": False, "reachable": False}
     providers = [
         {
-            "provider_id": "ollama",
+            "provider_id": "provider_1",
             "reachable": True,
             "embedding_models": ["nomic-embed-text"],
         }
     ]
-    with patch.object(mod, "ollama_embedding_base_url", return_value="http://ollama:11434"):
+    with patch.object(mod, "chat_provider_embedding_base_url", return_value="http://host:11434"):
         out = mod.enrich_setup_embedding_meta(emb, providers)
     assert out["rag_active"] is False
     assert "status_line" in out or out.get("status_line")
-    assert out["ollama_opt_in"]["available"] is True
-    assert out["ollama_opt_in"]["suggested_model"] == "nomic-embed-text"
+    assert out["chat_embed_opt_in"]["available"] is True
+    assert out["chat_embed_opt_in"]["suggested_model"] == "nomic-embed-text"
 
 
 def test_apply_setup_preferences_syncs_db() -> None:

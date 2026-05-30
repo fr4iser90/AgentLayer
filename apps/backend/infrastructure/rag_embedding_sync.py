@@ -7,6 +7,7 @@ from typing import Any
 
 from apps.backend.core import config as app_config
 from apps.backend.infrastructure import operator_settings
+from apps.backend.infrastructure.embedding_catalog_providers import resolve_active_embedding_spec
 from apps.backend.infrastructure.embedding_client import (
     _normalized_embedding_base,
     fetch_embedding_models_list,
@@ -62,7 +63,7 @@ def resolve_rag_embedding_model_from_provider(
         return current, "configured model offered by provider"
 
     if env_id and env_id in available:
-        return env_id, "EMBEDDING_MODEL from .env is on provider list"
+        return env_id, "EMBEDDING_PROVIDER_N_MODEL_DEFAULT is on provider list"
 
     chosen = ranked[0]
     if current and current not in available:
@@ -78,7 +79,7 @@ def ensure_rag_embedding_aligned(*, log_prefix: str = "rag_embedding_sync") -> d
     """
     On startup (and callable after admin changes):
 
-    1. GET ``/v1/models`` at ``EMBEDDING_BASE_URL``
+    1. GET ``/v1/models`` at the active embedding provider
     2. Ensure ``rag_embedding_model`` exists on the provider (or pick best match)
     3. Probe vector width and sync ``rag_embedding_dim``
     """
@@ -112,7 +113,8 @@ def ensure_rag_embedding_aligned(*, log_prefix: str = "rag_embedding_sync") -> d
     if list_err:
         summary["models_list_error"] = list_err[:300]
 
-    env_model = (getattr(app_config, "EMBEDDING_MODEL", None) or "").strip() or None
+    spec = resolve_active_embedding_spec()
+    env_model = (spec.model_default if spec else None) or None
     chosen_model, reason = resolve_rag_embedding_model_from_provider(
         current_model=current_model,
         available_models=available,

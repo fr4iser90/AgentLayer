@@ -13,26 +13,26 @@ from apps.backend.infrastructure.model_catalog_providers import (
 )
 
 
-def test_route_ollama_spec() -> None:
+def test_route_env_provider_spec() -> None:
     spec = CatalogProviderSpec(
-        provider_id="ollama",
-        label="Ollama",
-        base_url="http://127.0.0.1:11434",
+        provider_id="provider_1",
+        label="Local",
+        base_url="http://127.0.0.1:8080",
         api_key="",
         api_header_name="Authorization",
-        source="env_ollama",
+        source="env",
     )
     with patch(
         "apps.backend.infrastructure.model_catalog_providers.get_provider_spec",
         return_value=spec,
     ):
         attempts, stack = route_chat_by_catalog_provider(
-            "ollama",
+            "provider_1",
             "llama3.2",
             "default",
             is_override=True,
         )
-    assert stack == "ollama"
+    assert stack == "external"
     assert len(attempts) == 1
     url, headers, model = attempts[0]
     assert url.endswith("/v1/chat/completions")
@@ -75,7 +75,7 @@ def test_route_unknown_provider_raises() -> None:
 
 
 def test_merge_same_id_different_providers() -> None:
-    a = [{"id": "m", "owned_by": "ollama"}]
-    b = [{"id": "m", "owned_by": "llama_cpp"}]
+    a = [{"id": "m", "owned_by": "provider_1"}]
+    b = [{"id": "m", "owned_by": "provider_2"}]
     out = merge_model_catalog_rows(a, b)
     assert len(out) == 2

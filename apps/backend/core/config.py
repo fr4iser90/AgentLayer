@@ -47,25 +47,13 @@ def _env_int(key: str, default: int) -> int:
     return int(raw)
 
 
-OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://ollama:11434").rstrip("/")
-# Optional legacy hint for non-chat tools (e.g. memory extract). Chat uses Admin catalog + UI model picker only.
-OLLAMA_DEFAULT_MODEL = (os.environ.get("OLLAMA_DEFAULT_MODEL") or "").strip()
-
-# Optional OpenAI-compatible llama.cpp server (same names as typical compose .env).
-# When ``LLAMA_CPP_BASE_URL`` is set, :mod:`model_catalog_providers` registers provider ``llama_cpp``
-# before ``operator_settings`` (Admin → Interfaces), if present.
-LLAMA_CPP_BASE_URL = (os.environ.get("LLAMA_CPP_BASE_URL") or "").strip().rstrip("/")
-LLAMA_CPP_ENABLED = _env_bool("LLAMA_CPP_ENABLED", True)
-# Secret for ``Authorization: Bearer`` or for the header named ``LLAMA_CPP_API_HEADER_NAME`` (must match what the gateway expects).
-_LLAMA_SECRET_RAW = (os.environ.get("LLAMA_CPP_API_HEADER_VALUE") or "").strip()
-LLAMA_CPP_API_HEADER_VALUE = _LLAMA_SECRET_RAW or None
-_LLAMA_HDR_RAW = (os.environ.get("LLAMA_CPP_API_HEADER_NAME") or "").strip()
-LLAMA_CPP_API_HEADER_NAME = _LLAMA_HDR_RAW or None
-LLAMA_CPP_ROUTER_MODEL = (os.environ.get("LLAMA_CPP_ROUTER_MODEL") or "").strip() or None
-LLAMA_CPP_MODEL_DEFAULT = (os.environ.get("LLAMA_CPP_MODEL_DEFAULT") or "").strip() or None
-LLAMA_CPP_MODEL_VLM = (os.environ.get("LLAMA_CPP_MODEL_VLM") or "").strip() or None
-LLAMA_CPP_MODEL_AGENT = (os.environ.get("LLAMA_CPP_MODEL_AGENT") or "").strip() or None
-LLAMA_CPP_MODEL_CODING = (os.environ.get("LLAMA_CPP_MODEL_CODING") or "").strip() or None
+# --- Unified LLM providers (OpenAI-compatible) ---
+# Numbered env rows: LLM_PROVIDER_1_BASE_URL, LLM_PROVIDER_1_LABEL, LLM_PROVIDER_1_API_KEY,
+# LLM_PROVIDER_1_API_HEADER_NAME (default Authorization), optional _MODEL_DEFAULT/_VLM/_AGENT/_CODING.
+# Parsed by :mod:`llm_env_providers`; registered as provider_1, provider_2, … in the catalog.
+LLM_AUX_PROVIDER_ID = (os.environ.get("LLM_AUX_PROVIDER_ID") or "").strip() or None
+LLM_ROUTER_PROVIDER_ID = (os.environ.get("LLM_ROUTER_PROVIDER_ID") or "").strip() or None
+LLM_AUX_MODEL = (os.environ.get("LLM_AUX_MODEL") or "").strip() or None
 
 # Hybrid model routing: per-profile defaults (empty = endpoint catalog model_default / UI picker).
 AGENT_MODEL_PROFILE_DEFAULT = (os.environ.get("AGENT_MODEL_PROFILE_DEFAULT") or "").strip() or None
@@ -151,6 +139,10 @@ AGENT_LOG_ASSISTANT_PREVIEW_CHARS = _env_int("AGENT_LOG_ASSISTANT_PREVIEW_CHARS"
 AGENT_LOG_LARGE_CONTEXT_CHARS = _env_int("AGENT_LOG_LARGE_CONTEXT_CHARS", 120_000)
 # Log serialized tools[] size + rough token bounds before chat/completions.
 AGENT_LOG_TOOLS_REQUEST_ESTIMATE = _env_bool("AGENT_LOG_TOOLS_REQUEST_ESTIMATE", True)
+# One-line tool funnel (allowlist → pre-rank schemas → ranking → forwarded to LLM).
+AGENT_LOG_TOOL_PIPELINE = _env_bool("AGENT_LOG_TOOL_PIPELINE", True)
+# Repeat full tools[] name list on every llm_round log (noisy; default off).
+AGENT_LOG_TOOL_NAMES_EACH_ROUND = _env_bool("AGENT_LOG_TOOL_NAMES_EACH_ROUND", False)
 
 # --- Tool list sent to Ollama (merged registry tools; no per-request "agent tool mode") ---
 # After a tool returns text that looks like an HTTP client/API error, inject a short system hint
@@ -184,6 +176,24 @@ AGENT_STREAM_REPETITION_GUARD = _env_bool("AGENT_STREAM_REPETITION_GUARD", True)
 AGENT_STREAM_REPETITION_MIN_BLOCK = max(40, _env_int("AGENT_STREAM_REPETITION_MIN_BLOCK", 80))
 AGENT_STREAM_REPETITION_REPEAT_COUNT = max(2, _env_int("AGENT_STREAM_REPETITION_REPEAT_COUNT", 3))
 AGENT_STREAM_REPETITION_TAIL_WINDOW = max(500, _env_int("AGENT_STREAM_REPETITION_TAIL_WINDOW", 1500))
+
+# --- Chat context budget (anti-bloat for LLM prompts; full history stays in DB/UI) ---
+CHAT_CONTEXT_PREP_ENABLED = _env_bool("CHAT_CONTEXT_PREP_ENABLED", True)
+CHAT_CONTEXT_MAX_MESSAGES = max(8, _env_int("CHAT_CONTEXT_MAX_MESSAGES", 48))
+CHAT_CONTEXT_MAX_MESSAGE_CHARS = max(2000, _env_int("CHAT_CONTEXT_MAX_MESSAGE_CHARS", 16_000))
+CHAT_CONTEXT_DEFAULT_BUDGET_TOKENS = max(8000, _env_int("CHAT_CONTEXT_DEFAULT_BUDGET_TOKENS", 128_000))
+CHAT_CONTEXT_SOFT_LIMIT_RATIO = max(
+    0.3, min(0.95, float(os.environ.get("CHAT_CONTEXT_SOFT_LIMIT_RATIO", "0.6")))
+)
+CHAT_CONTEXT_HARD_LIMIT_RATIO = max(
+    0.4, min(0.98, float(os.environ.get("CHAT_CONTEXT_HARD_LIMIT_RATIO", "0.85")))
+)
+CHAT_CONTEXT_RECENT_VERBATIM_MESSAGES = max(4, _env_int("CHAT_CONTEXT_RECENT_VERBATIM_MESSAGES", 12))
+CHAT_CONTEXT_COMPACTION_ENABLED = _env_bool("CHAT_CONTEXT_COMPACTION_ENABLED", True)
+CHAT_CONTEXT_COMPACTION_MODEL = (os.environ.get("CHAT_CONTEXT_COMPACTION_MODEL") or "").strip()
+CHAT_CONTEXT_COMPACTION_MAX_INPUT_CHARS = max(
+    5000, _env_int("CHAT_CONTEXT_COMPACTION_MAX_INPUT_CHARS", 80_000)
+)
 
 AGENT_TOOLS_RANKING_ENABLED = _env_bool("AGENT_TOOLS_RANKING_ENABLED", True)
 AGENT_TOOLS_MAX_RANKING = max(1, int(os.environ.get("AGENT_TOOLS_MAX_RANKING", "10")))
@@ -408,10 +418,8 @@ def WORKSPACE_upload_env_allowed_mime() -> frozenset[str]:
 
 # create_tool limits / codegen (CREATE_TOOL_ENABLED is set above with TOOLS_EXTRA_DIR).
 CREATE_TOOL_MAX_BYTES = _env_int("AGENT_CREATE_TOOL_MAX_BYTES", 120_000)
-# When create_tool is called without ``source``, Ollama generates the module (same base URL as chat).
-CREATE_TOOL_CODEGEN_MODEL = (
-    os.environ.get("AGENT_CREATE_TOOL_CODEGEN_MODEL") or "qwen2.5-coder:7b"
-).strip()
+# When create_tool is called without ``source``, catalog LLM generates the module (LLM_AUX_PROVIDER_ID).
+CREATE_TOOL_CODEGEN_MODEL = (os.environ.get("AGENT_CREATE_TOOL_CODEGEN_MODEL") or "").strip() or None
 CREATE_TOOL_CODEGEN_TIMEOUT = _env_int("AGENT_CREATE_TOOL_CODEGEN_TIMEOUT", 120)
 # Codegen prompt: allow httpx/urllib HTTP (keys only via os.environ — set in compose .env).
 CREATE_TOOL_CODEGEN_ALLOW_NETWORK = _env_bool("AGENT_CREATE_TOOL_CODEGEN_ALLOW_NETWORK", False)
@@ -443,26 +451,8 @@ PIDEA_DEFAULT_TIMEOUT_MS = _env_int("PIDEA_DEFAULT_TIMEOUT_MS", 30_000)
 # ``operator_settings`` (Admin → Interfaces), not environment variables.
 
 # Embeddings only (RAG, memory, Qdrant code index, tool ranking). Not used for chat.
-# POST {EMBEDDING_BASE_URL}/embeddings with EMBEDDING_API_HEADER_NAME / EMBEDDING_API_HEADER_VALUE.
-def _strip_env_quotes(raw: str | None) -> str:
-    s = (raw or "").strip()
-    if len(s) >= 2 and s[0] == s[-1] and s[0] in ('"', "'"):
-        s = s[1:-1].strip()
-    return s
-
-
-_EMBED_BASE_RAW = (os.environ.get("EMBEDDING_BASE_URL") or "").strip().rstrip("/")
-EMBEDDING_BASE_URL = _strip_env_quotes(_EMBED_BASE_RAW).rstrip("/")
-# Optional: preferred embedding model id when not in operator_settings or not on provider list.
-EMBEDDING_MODEL = _strip_env_quotes((os.environ.get("EMBEDDING_MODEL") or "").strip())[:256]
-EMBEDDING_API_HEADER_NAME = _strip_env_quotes(
-    (os.environ.get("EMBEDDING_API_HEADER_NAME") or "").strip()
-) or "X-API-KEY"
-_EMBED_SECRET_RAW = _strip_env_quotes(
-    (os.environ.get("EMBEDDING_API_HEADER_VALUE") or os.environ.get("EMBEDDING_API_KEY") or "").strip()
-)
-EMBEDDING_API_HEADER_VALUE = _EMBED_SECRET_RAW
-
+# Numbered env: EMBEDDING_PROVIDER_1_BASE_URL, EMBEDDING_PROVIDER_1_API_KEY, …
+# Active provider: Admin → Interfaces → Memory & RAG (or auto: first configured).
 
 # --- MCP (Model Context Protocol, stdio servers; optional) ---
 AGENT_MCP_ENABLED = _env_bool("AGENT_MCP_ENABLED", False)
@@ -541,7 +531,7 @@ class Config:
             setattr(self, key, value)
 
     def __repr__(self):
-        return f"Config(OLLAMA_BASE_URL={getattr(self, 'OLLAMA_BASE_URL', None)}, DATA_DIR={getattr(self, 'DATA_DIR', None)})"
+        return f"Config(DATA_DIR={getattr(self, 'DATA_DIR', None)})"
 
 
 # This is what main.py imports

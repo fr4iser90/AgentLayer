@@ -9,9 +9,7 @@ import uuid
 from typing import Any
 
 from apps.backend.api.rag import embed_one
-from apps.backend.core.config import config
-from apps.backend.infrastructure.db import db
-from apps.backend.infrastructure.openai_compat_http import http_post_chat_completions
+from apps.backend.infrastructure.catalog_llm_client import post_catalog_chat_completions
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +42,7 @@ def propose_graph_from_text(
     apply: bool,
 ) -> dict[str, Any]:
     """
-    Call local Ollama chat to propose nodes/edges. If ``apply``, insert nodes (with embeddings) and edges.
+    Call catalog LLM chat to propose nodes/edges. If ``apply``, insert nodes (with embeddings) and edges.
     """
     raw = (text or "").strip()
     if not raw:
@@ -52,23 +50,14 @@ def propose_graph_from_text(
     if len(raw) > 48_000:
         raw = raw[:48_000]
 
-    base = (config.OLLAMA_BASE_URL or "").strip().rstrip("/")
-    if not base:
-        raise ValueError("OLLAMA_BASE_URL is empty")
-    model = (config.OLLAMA_DEFAULT_MODEL or "").strip()
-    if not model:
-        raise ValueError("OLLAMA_DEFAULT_MODEL is empty")
-
-    url = f"{base}/v1/chat/completions"
-    body: dict[str, Any] = {
-        "model": model,
-        "temperature": 0.1,
-        "messages": [
+    data, _ = post_catalog_chat_completions(
+        messages=[
             {"role": "system", "content": _EXTRACT_SYSTEM},
             {"role": "user", "content": raw},
         ],
-    }
-    data, _ = http_post_chat_completions(url, body, timeout=120.0)
+        timeout=120.0,
+        temperature=0.1,
+    )
     choice0 = (data.get("choices") or [{}])[0]
     msg = (choice0.get("message") or {}) if isinstance(choice0, dict) else {}
     content = msg.get("content") if isinstance(msg, dict) else None

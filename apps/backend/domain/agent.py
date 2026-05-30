@@ -245,9 +245,11 @@ def _rank_tools_by_user_input(
         max_score = all_scores[0][1]
         if max_score < min_threshold:
             if fallback_all:
-                logger.info(
-                    f"Tool ranking: max score {max_score:.3f} below threshold {min_threshold}, "
-                    f"falling back to all tools"
+                logfn = logger.debug if config.AGENT_LOG_TOOL_PIPELINE else logger.info
+                logfn(
+                    "Tool ranking: max score %.3f below threshold %s, falling back to all tools",
+                    max_score,
+                    min_threshold,
                 )
                 return tools
             else:
@@ -259,9 +261,12 @@ def _rank_tools_by_user_input(
     top_indices = [s[0] for s in all_scores[:max_tools]]
     ranked_tools = [tools[i] for i in top_indices]
     
-    logger.info(
-        f"Tool ranking: ranked {len(tools)} tools to top {len(ranked_tools)} "
-        f"(max_score={all_scores[0][1]:.3f})"
+    logfn = logger.debug if config.AGENT_LOG_TOOL_PIPELINE else logger.info
+    logfn(
+        "Tool ranking: ranked %d tools to top %d (max_score=%.3f)",
+        len(tools),
+        len(ranked_tools),
+        all_scores[0][1],
     )
     
     return ranked_tools
@@ -2728,10 +2733,68 @@ def _redact_provider_error_text_for_log(raw: str | None, *, max_len: int = 500) 
     return s
 
 
+def _short_run_id(run_id: str | None) -> str:
+    if not run_id:
+        return "-"
+    s = str(run_id).strip()
+    return s[:8] if len(s) >= 8 else s
+
+
+def _log_agent_tools_pipeline(
+    *,
+    agent_run_id: str | None,
+    agent_id: str | None,
+    allowlist_count: int,
+    pre_rank_count: int,
+    rank_pool_count: int,
+    ranked_count: int,
+    pinned_count: int,
+    forward_count: int,
+    tools_full_schema: bool,
+    routed_category: str | None,
+    forward_names: list[str],
+    tools_for_request: list[Any],
+) -> None:
+    if not config.AGENT_LOG_TOOL_PIPELINE:
+        return
+    schema_mode = "full" if tools_full_schema else "catalog"
+    rank_part = (
+        f"rank={rank_pool_count}→{ranked_count}"
+        if rank_pool_count != ranked_count
+        else f"rank={rank_pool_count}"
+    )
+    pin_part = f"+pin{pinned_count}" if pinned_count else ""
+    size_part = ""
+    if config.AGENT_LOG_TOOLS_REQUEST_ESTIMATE and tools_for_request:
+        jc, lo, hi = _tools_payload_size_estimate(tools_for_request)
+        size_part = f" json~{jc} tok~{lo}-{hi}"
+    cat = routed_category or "full"
+    names_bit = ""
+    if forward_names and len(forward_names) <= 24:
+        names_bit = f" names={forward_names}"
+    elif forward_names:
+        names_bit = f" names={forward_names[:12]}…+{len(forward_names) - 12}"
+    logger.info(
+        "tools_pipeline run_id=%s agent=%s allowlist=%d→built=%d(%s)→%s%s→llm=%d cats=%s%s%s",
+        _short_run_id(agent_run_id),
+        agent_id or "-",
+        allowlist_count,
+        pre_rank_count,
+        schema_mode,
+        rank_part,
+        pin_part,
+        forward_count,
+        cat,
+        size_part,
+        names_bit,
+    )
+
+
 def _log_llm_completion_round(
     *,
+    agent_run_id: str | None,
+    agent_id: str | None,
     round_i: int,
-    max_rounds_cap: int,
     model: Any,
     messages: list[dict[str, Any]],
     tools_for_round: list[Any],
@@ -2746,24 +2809,26 @@ def _log_llm_completion_round(
     ctx_chars = _approx_text_chars_in_messages(messages)
     large = ""
     if ctx_chars >= config.AGENT_LOG_LARGE_CONTEXT_CHARS:
-        large = f" LARGE_CTX(>={config.AGENT_LOG_LARGE_CONTEXT_CHARS} chars)"
-    rt_names = [n for t in (tools_for_round or []) if (n := _tool_spec_name(t))]
+        large = " LARGE_CTX"
+    tools_n = len(tools_for_round or [])
+    names_suffix = ""
+    if config.AGENT_LOG_TOOL_NAMES_EACH_ROUND:
+        rt_names = [n for t in (tools_for_round or []) if (n := _tool_spec_name(t))]
+        names_suffix = f" tool_names={rt_names}"
     synthetic_tc_from_content = bool(tool_calls) and not had_native_tool_calls
+    run_bit = f"run_id={_short_run_id(agent_run_id)} agent={agent_id or '-'}"
     if tool_calls:
         call_names = [(tc.get("function") or {}).get("name") or "?" for tc in tool_calls]
         logger.info(
-            "llm round %d/%d llm_model_id=%s reply=TOOLS calls=%s synthetic_tool_calls_from_content=%s "
-            "ctx_msgs=%d ctx_text_chars~=%d tools_forwarded_count=%d tool_names=%s%s",
+            "llm_round %s round=%d reply=TOOLS calls=%s tools=%d ctx_msgs=%d ctx_chars~=%d%s%s",
+            run_bit,
             round_i + 1,
-            max_rounds_cap,
-            model,
             call_names,
-            synthetic_tc_from_content,
+            tools_n,
             ctx_msgs,
             ctx_chars,
-            len(rt_names),
-            rt_names,
             large,
+            names_suffix,
         )
         return
     cap = config.AGENT_LOG_ASSISTANT_PREVIEW_CHARS
@@ -2774,37 +2839,36 @@ def _log_llm_completion_round(
             blobs.append(v)
     joined = "\n".join(blobs)
     any_text = bool(joined.strip())
+    preview_len = len(joined.strip())
     if cap > 0:
-        preview = _redact_secrets_for_log(joined[:cap])
+        preview_note = f"preview={cap}ch"
+    elif any_text:
+        preview_note = f"preview_len={preview_len}ch"
     else:
-        preview = "(set AGENT_LOG_ASSISTANT_PREVIEW_CHARS>0 for redacted snippet)"
+        preview_note = "preview=empty"
     if not any_text:
-        logfn = logger.warning if rt_names else logger.info
+        logfn = logger.warning if tools_n else logger.info
         logfn(
-            "llm round %d/%d llm_model_id=%s reply=empty_text_no_tool_calls synthetic_tool_calls_from_content=%s "
-            "ctx_msgs=%d ctx_text_chars~=%d tools_forwarded_count=%d%s",
+            "llm_round %s round=%d reply=empty_text tools=%d ctx_msgs=%d ctx_chars~=%d%s%s",
+            run_bit,
             round_i + 1,
-            max_rounds_cap,
-            model,
-            synthetic_tc_from_content,
+            tools_n,
             ctx_msgs,
             ctx_chars,
-            len(rt_names),
             large,
+            names_suffix,
         )
         return
     logger.info(
-        "llm round %d/%d llm_model_id=%s reply=TEXT_NO_TOOLS synthetic_tool_calls_from_content=%s "
-        "ctx_msgs=%d ctx_text_chars~=%d tools_forwarded_count=%d preview=%r%s",
+        "llm_round %s round=%d reply=TEXT tools=%d ctx_msgs=%d ctx_chars~=%d %s%s%s",
+        run_bit,
         round_i + 1,
-        max_rounds_cap,
-        model,
-        synthetic_tc_from_content,
+        tools_n,
         ctx_msgs,
         ctx_chars,
-        len(rt_names),
-        preview,
+        preview_note,
         large,
+        names_suffix,
     )
 
 
@@ -2966,9 +3030,17 @@ def _raise_if_workspace_inaccessible(
         )
 
 
-def _completion_attach_agent_run_id(data: dict[str, Any], agent_run_id: str) -> dict[str, Any]:
-    if isinstance(data, dict) and agent_run_id:
-        data["agent_run_id"] = agent_run_id
+def _completion_attach_agent_run_id(
+    data: dict[str, Any],
+    agent_run_id: str,
+    *,
+    context_meta: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    if isinstance(data, dict):
+        if agent_run_id:
+            data["agent_run_id"] = agent_run_id
+        if context_meta:
+            data["agentlayer_context"] = context_meta
     return data
 
 
@@ -3134,7 +3206,7 @@ async def _async_iter_chat_completion_sse(
                     local_model,
                     outer_profile,
                     False,
-                    backend_override="ollama",
+                    backend_override="local",
                     catalog_owned_by=None,
                 )
                 logger.warning(
@@ -3488,13 +3560,14 @@ async def chat_completion(
             )
         except Exception:
             logger.debug("agent_runs insert skipped", exc_info=True)
+    parent_short = _short_run_id(parent_agent_run_id) if parent_agent_run_id else None
     logger.info(
-        "chat_completion start agent_run_id=%s parent_agent_run_id=%s agent_id=%r workspace_id=%s user_id=%s",
-        agent_run_id,
-        parent_agent_run_id,
-        agent_id,
+        "run_start run_id=%s agent=%s parent=%s workspace=%s unattended=%s",
+        _short_run_id(agent_run_id),
+        agent_id or "-",
+        parent_short or "-",
         _normalize_workspace_id_for_gate(workspace_id),
-        str(user_id) if user_id else None,
+        agent_unattended,
     )
 
     if agent_require_workspace_verify:
@@ -3527,6 +3600,54 @@ async def chat_completion(
                     max_tool_rounds_eff = max(1, min(client_v, config.MAX_TOOL_ROUNDS))
             except (TypeError, ValueError):
                 pass
+
+        _chat_history_raw = list(body.get("messages") or [])
+        _context_prep_meta: dict[str, Any] = {}
+        if config.CHAT_CONTEXT_PREP_ENABLED and _chat_history_raw:
+            from apps.backend.infrastructure.chat_context import prepare_chat_history_for_llm
+            from apps.backend.infrastructure.operator_settings import llm_chat_transport
+
+            _prep_model, _, _prep_profile, _prep_override = resolve_effective_model(
+                messages=_chat_history_raw,
+                body_model=body.get("model"),
+                profile_header=model_profile_header,
+                override_header=model_override_header,
+                bearer_user_role=bearer_user_role,
+            )
+            _prep_catalog = catalog_owned_by
+            if not plain_completion:
+                from apps.backend.domain.catalog_chat_llm import finalize_catalog_chat_llm
+
+                _prep_model, _prep_catalog = finalize_catalog_chat_llm(
+                    model=_prep_model,
+                    profile_key=_prep_profile,
+                    is_override=_prep_override,
+                    catalog_owned_by=_prep_catalog,
+                )
+            _compaction_attempt: tuple[str, dict[str, str], str] | None = None
+            if _prep_catalog:
+                try:
+                    _prep_attempts, _ = llm_chat_transport(
+                        _prep_model,
+                        _prep_profile,
+                        _prep_override,
+                        catalog_owned_by=_prep_catalog,
+                    )
+                    if _prep_attempts:
+                        _compaction_attempt = _prep_attempts[0]
+                except ValueError as e:
+                    logger.warning("chat context compaction: LLM transport unavailable: %s", e)
+
+            _chat_history_raw, _ctx_meta = await prepare_chat_history_for_llm(
+                _chat_history_raw,
+                conversation_id=conversation_uuid,
+                user_id=user_id if isinstance(user_id, uuid.UUID) else None,
+                compaction_model=_prep_model,
+                compaction_attempt=_compaction_attempt,
+            )
+            body["messages"] = _chat_history_raw
+            _context_prep_meta = _ctx_meta.as_dict()
+        tool_context["chat_context_meta"] = _context_prep_meta
 
         messages = _inject_system_prompt(list(body.get("messages") or []))
         from apps.backend.infrastructure.chat_secret_ingress import ingress_openai_messages_inplace
@@ -3586,11 +3707,11 @@ async def chat_completion(
         if catalog_owned_by:
             tool_context["parent_model_catalog_owned_by"] = catalog_owned_by
         smart_route_reason = ""
-        backend_override: Literal["ollama", "external"] | None = None
+        backend_override: Literal["local", "external"] | None = None
         if isinstance(_raw_llm_be, str):
             lo = _raw_llm_be.strip().lower()
-            if lo == "ollama":
-                backend_override = "ollama"
+            if lo == "local":
+                backend_override = "local"
             elif lo == "external":
                 backend_override = "external"
         if backend_override is None and not plain_completion and smart_llm_routing_enabled():
@@ -3634,8 +3755,13 @@ async def chat_completion(
                         if n in allowed_tool_names:
                             filtered.append(spec)
                     merged_tools = filtered
-                logger.info("agent %s: %d tools (domain=%s, explicit_names=%s)",
-                           agent_id, len(merged_tools), tool_domain_agent, bool(tool_names_agent))
+                logger.debug(
+                    "agent %s: %d tools (domain=%s, explicit_names=%s)",
+                    agent_id,
+                    len(merged_tools),
+                    tool_domain_agent,
+                    bool(tool_names_agent),
+                )
             else:
                 logger.warning("agent_id %r not found in registry, falling back to tool_domain", agent_id)
         elif tool_domain:
@@ -3740,10 +3866,11 @@ async def chat_completion(
 
         if not tools_full_schema and agent_unattended and _raw_tool_allow:
             tools_full_schema = True
+        tools_allowlist_count = len(merged_tools)
         tools_for_request = _tools_for_chat_request(merged_tools, full_schema=tools_full_schema)
-        if tools_full_schema and tools_for_request:
+        if not config.AGENT_LOG_TOOL_PIPELINE and tools_full_schema and tools_for_request:
             logger.info(
-                "tools request: full parameter schemas for %d tools (agent_unattended=%s)",
+                "tools request: built full schemas for %d tools pre-ranking (agent_unattended=%s)",
                 len(tools_for_request),
                 agent_unattended,
             )
@@ -3763,6 +3890,8 @@ async def chat_completion(
             )
         else:
             pinned_specs, tools_for_ranking = [], tools_for_request
+        tools_pre_rank_count = len(tools_for_request)
+        tools_rank_pool_count = len(tools_for_ranking)
         if tools_ranking_enabled and tools_for_ranking:
             try:
                 # Get last user message for ranking (do not name this ``last_user_text`` — shadows imported helper).
@@ -3784,21 +3913,40 @@ async def chat_completion(
                     )
             except Exception as e:
                 logger.warning(f"Tool ranking failed, using unranked tools: {e}")
+        tools_pinned_count = len(pinned_specs)
+        tools_ranked_count = len(tools_for_ranking)
         if pinned_specs:
             tools_for_request = pinned_specs + tools_for_ranking
         elif tools_for_ranking is not tools_for_request:
             tools_for_request = tools_for_ranking
 
-        if tools_for_request:
-            names = [n for t in tools_for_request if (n := _tool_spec_name(t))]
+        forward_names = [n for t in tools_for_request if (n := _tool_spec_name(t))]
+        if config.AGENT_LOG_TOOL_PIPELINE:
+            _log_agent_tools_pipeline(
+                agent_run_id=agent_run_id,
+                agent_id=agent_id if isinstance(agent_id, str) else None,
+                allowlist_count=tools_allowlist_count,
+                pre_rank_count=tools_pre_rank_count,
+                rank_pool_count=tools_rank_pool_count,
+                ranked_count=tools_ranked_count,
+                pinned_count=tools_pinned_count,
+                forward_count=len(forward_names),
+                tools_full_schema=tools_full_schema,
+                routed_category=routed_category,
+                forward_names=forward_names,
+                tools_for_request=tools_for_request,
+            )
+        elif tools_for_request:
             logger.info(
                 "forwarding %d tools in chat request (llm_model_id=%s, category=%s): %s",
-                len(names),
+                len(forward_names),
                 model,
                 routed_category or "full",
-                names,
+                forward_names,
             )
-        _log_tools_request_estimate("chat_completions", tools_for_request)
+            _log_tools_request_estimate("chat_completions", tools_for_request)
+        elif not config.AGENT_LOG_TOOL_PIPELINE:
+            _log_tools_request_estimate("chat_completions", tools_for_request)
         if not plain_completion and tools_for_request:
             messages = _append_tool_usage_discipline(messages, agent_id=agent_id)
         pause_between_rounds = _coerce_body_bool(body.get("agent_pause_between_rounds"), False)
@@ -3961,6 +4109,7 @@ async def chat_completion(
                     "workspace_auto_created": workspace_auto_created,
                     "workspace_bound": workspace_bound_from_conversation,
                     "agent_auto_routed": agent_auto_routed,
+                    "context": tool_context.get("chat_context_meta") or None,
                 }
             )
 
@@ -4180,7 +4329,7 @@ async def chat_completion(
                                 local_model,
                                 profile_key,
                                 False,
-                                backend_override="ollama",
+                                backend_override="local",
                                 catalog_owned_by=None,
                             )
                             model = local_model
@@ -4331,8 +4480,9 @@ async def chat_completion(
                 had_native_tool_calls = False
 
             _log_llm_completion_round(
+                agent_run_id=agent_run_id,
+                agent_id=agent_id if isinstance(agent_id, str) else None,
                 round_i=round_i,
-                max_rounds_cap=max_tool_rounds_eff,
                 model=model,
                 messages=messages,
                 tools_for_round=tools_for_round,
@@ -4406,9 +4556,9 @@ async def chat_completion(
                             "round": round_i + 1,
                         }
                     )
-                return _completion_attach_agent_run_id(data, agent_run_id)
-
-            # Append assistant message (includes tool_calls, and content if any)
+                return _completion_attach_agent_run_id(
+                    data, agent_run_id, context_meta=_context_prep_meta or None
+                )
             messages.append(msg)
 
             batch_recap: list[str] = []
@@ -4434,7 +4584,15 @@ async def chat_completion(
                         args,
                     )
                 tool_call_id = tc.get("id") or ""
-                logger.info("tool round %s: %s(%s)", round_i + 1, name, args)
+                args_line = _format_normalized_tool_args_for_recap(name, args, max_len=200)
+                logger.info(
+                    "tool_exec run_id=%s agent=%s round=%d tool=%s %s",
+                    _short_run_id(agent_run_id),
+                    agent_id if isinstance(agent_id, str) else "-",
+                    round_i + 1,
+                    name,
+                    args_line,
+                )
                 if cancel_event is not None and cancel_event.is_set():
                     if event_emit:
                         await event_emit(
@@ -4671,7 +4829,9 @@ async def chat_completion(
                     "round": max_tool_rounds_eff,
                 }
             )
-        return _completion_attach_agent_run_id(data, agent_run_id)
+        return _completion_attach_agent_run_id(
+            data, agent_run_id, context_meta=_context_prep_meta or None
+        )
     finally:
         reset_agent_run_id(_run_ctx_tok)
         reset_agent_task_id(_task_ctx_tok)

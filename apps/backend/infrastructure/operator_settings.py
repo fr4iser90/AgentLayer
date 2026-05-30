@@ -44,6 +44,14 @@ def _invalidate() -> None:
         clear_embedding_health_cache()
     except Exception:
         pass
+    try:
+        from apps.backend.infrastructure.embedding_catalog_providers import (
+            invalidate_embedding_provider_specs_cache,
+        )
+
+        invalidate_embedding_provider_specs_cache()
+    except Exception:
+        pass
 
 
 def invalidate_operator_settings_cache() -> None:
@@ -112,6 +120,7 @@ def _fetch_row() -> dict[str, Any]:
         "embedding_api_base_url": None,
         "embedding_api_key": None,
         "embedding_api_header_name": None,
+        "rag_embedding_provider_id": None,
         "rag_docs_ingest_fingerprint": None,
         "docs_root": None,
         "pidea_enabled": False,
@@ -176,6 +185,7 @@ def _fetch_row() -> dict[str, Any]:
                            embedding_api_base_url,
                            embedding_api_key,
                            embedding_api_header_name,
+                           rag_embedding_provider_id,
                            rag_docs_ingest_fingerprint,
                            workspace_index_on_write_default,
                            workspace_reindex_after_git_pull,
@@ -270,16 +280,19 @@ def _fetch_row() -> dict[str, Any]:
         "embedding_api_header_name": (
             (str(row[66]).strip() or None) if len(row) > 66 and row[66] is not None else None
         ),
-        "rag_docs_ingest_fingerprint": (
+        "rag_embedding_provider_id": (
             (str(row[67]).strip() or None) if len(row) > 67 and row[67] is not None else None
         ),
+        "rag_docs_ingest_fingerprint": (
+            (str(row[68]).strip() or None) if len(row) > 68 and row[68] is not None else None
+        ),
         "workspace_index_on_write_default": (
-            str(row[68]).strip().lower()
-            if len(row) > 68 and row[68] is not None and str(row[68]).strip()
+            str(row[69]).strip().lower()
+            if len(row) > 69 and row[69] is not None and str(row[69]).strip()
             else "debounced"
         ),
-        "workspace_reindex_after_git_pull": bool(row[69]) if len(row) > 69 and row[69] is not None else False,
-        "workspace_nightly_reindex_enabled": bool(row[70]) if len(row) > 70 and row[70] is not None else False,
+        "workspace_reindex_after_git_pull": bool(row[70]) if len(row) > 70 and row[70] is not None else False,
+        "workspace_nightly_reindex_enabled": bool(row[71]) if len(row) > 71 and row[71] is not None else False,
     }
 
 
@@ -305,76 +318,78 @@ def set_rag_docs_ingest_fingerprint(value: str) -> None:
 
 
 def resolved_embedding_api_base_url() -> str:
-    """DB override (setup wizard) or empty; env ``EMBEDDING_BASE_URL`` is checked in ``embedding_client`` first."""
-    raw = _cached_row().get("embedding_api_base_url")
-    if not raw:
-        return ""
-    return (normalize_external_llm_base_url(str(raw)) or "").strip()
+    from apps.backend.infrastructure.embedding_catalog_providers import resolve_active_embedding_spec
 
-
-def _embedding_env_header_secret() -> str:
-    from apps.backend.infrastructure.embedding_client import _strip_env_value
-
-    return _strip_env_value(getattr(app_config, "EMBEDDING_API_HEADER_VALUE", None))
-
-
-def _embedding_env_header_name() -> str:
-    from apps.backend.infrastructure.embedding_client import _strip_env_value
-
-    return (
-        _strip_env_value(getattr(app_config, "EMBEDDING_API_HEADER_NAME", None) or "X-API-KEY")
-        or "X-API-KEY"
-    )
+    spec = resolve_active_embedding_spec()
+    return spec.base_url.rstrip("/") if spec else ""
 
 
 def resolved_embedding_api_header_name() -> str:
-    """Env secret wins entirely; else DB ``embedding_api_header_name`` or ``X-API-KEY``."""
-    if _embedding_env_header_secret():
-        return _embedding_env_header_name()
-    db = (str(_cached_row().get("embedding_api_header_name") or "").strip() or None)
-    return db or "X-API-KEY"
+    from apps.backend.infrastructure.embedding_catalog_providers import resolve_active_embedding_spec
+
+    spec = resolve_active_embedding_spec()
+    if spec is not None:
+        return spec.api_header_name or "X-API-KEY"
+    return "X-API-KEY"
 
 
 def resolved_embedding_api_key() -> str:
-    """Env ``EMBEDDING_API_HEADER_VALUE`` overrides DB ``embedding_api_key``."""
-    env = _embedding_env_header_secret()
-    if env:
-        return env
-    return (str(_cached_row().get("embedding_api_key") or "").strip())
+    from apps.backend.infrastructure.embedding_catalog_providers import resolve_active_embedding_spec
+
+    spec = resolve_active_embedding_spec()
+    return (spec.api_key or "").strip() if spec else ""
 
 
 def embedding_api_public_fields() -> dict[str, Any]:
-    """Embedding host + auth hints for admin UI (no secrets). Env overrides DB."""
+    """Embedding providers + active provider for admin UI (no secrets)."""
+    from apps.backend.infrastructure.embedding_catalog_providers import (
+        list_embedding_provider_specs,
+        resolve_active_embedding_provider_id,
+        resolve_active_embedding_spec,
+    )
+
     r = _cached_row()
     db_stored = (str(r.get("embedding_api_base_url") or "").strip() or None)
-    env_raw = (getattr(app_config, "EMBEDDING_BASE_URL", None) or "").strip()
-    if env_raw:
-        from apps.backend.infrastructure.embedding_client import _normalized_embedding_base
-
-        effective = _normalized_embedding_base()
-        base_source: str | None = "env"
-    elif db_stored:
-        effective = normalize_external_llm_base_url(db_stored) or db_stored
+    specs = list_embedding_provider_specs()
+    active_id = resolve_active_embedding_provider_id()
+    active = resolve_active_embedding_spec()
+    effective = active.base_url.rstrip("/") if active else ""
+    env_providers = [s for s in specs if s.source.startswith("env")]
+    base_source: str | None = "env" if env_providers else ("operator_settings" if db_stored else None)
+    if active and active.source == "operator_settings":
         base_source = "operator_settings"
-    else:
-        effective = ""
-        base_source = None
+    elif active and active.source.startswith("env"):
+        base_source = "env"
 
-    env_secret = _embedding_env_header_secret()
     db_key = (str(r.get("embedding_api_key") or "").strip())
     db_header = (str(r.get("embedding_api_header_name") or "").strip() or None)
-    key_source: str | None = "env" if env_secret else ("operator_settings" if db_key else None)
-    header_source: str | None = "env" if env_secret else ("operator_settings" if db_header else None)
+    active_key = (active.api_key if active else "") or ""
+    key_source: str | None = (
+        "env"
+        if active and active.source.startswith("env") and active_key
+        else ("operator_settings" if db_key else None)
+    )
+    header_source: str | None = key_source
+
+    db_provider_id = (str(r.get("rag_embedding_provider_id") or "").strip() or None)
+    provider_id_source: str | None = "operator_settings" if db_provider_id else None
 
     return {
         "embedding_api_base_url": db_stored,
         "embedding_api_base_source": base_source,
         "embedding_api_base_effective": effective or None,
-        "embedding_api_key_configured": bool(env_secret or db_key),
+        "embedding_api_key_configured": bool(active_key or db_key),
         "embedding_api_key_source": key_source,
         "embedding_api_header_name": db_header,
         "embedding_api_header_name_effective": resolved_embedding_api_header_name(),
         "embedding_api_header_name_source": header_source,
+        "rag_embedding_provider_id": db_provider_id,
+        "rag_embedding_provider_id_effective": active_id,
+        "rag_embedding_provider_id_source": provider_id_source,
+        "embedding_providers": [
+            {"provider_id": s.provider_id, "label": s.label, "source": s.source, "base_url": s.base_url}
+            for s in specs
+        ],
     }
 
 
@@ -734,22 +749,34 @@ def llm_chat_transport(
     profile_key: str,
     is_override: bool,
     *,
-    backend_override: Literal["ollama", "external"] | None = None,
+    backend_override: Literal["local", "external"] | None = None,
     catalog_owned_by: str | None = None,
 ) -> tuple[
     list[tuple[str, dict[str, str], str]],
-    Literal["ollama", "external", "llama_cpp"],
+    Literal["external"],
 ]:
-    if catalog_owned_by is None:
+    from apps.backend.infrastructure.model_catalog_providers import (
+        first_db_external_provider_id,
+        first_env_provider_id,
+        route_chat_by_catalog_provider,
+    )
+
+    owned = catalog_owned_by
+    if backend_override is not None:
+        bo = backend_override.strip().lower() if isinstance(backend_override, str) else ""
+        if bo == "local":
+            owned = first_env_provider_id() or owned
+        elif bo == "external":
+            owned = first_db_external_provider_id() or owned
+
+    if owned is None:
         raise ValueError(
             f"Could not determine which LLM provider serves model {model_from_resolution!r}. "
             "Re-select the model in the UI (provider + model) so agent_model_catalog_owned_by is sent."
         )
 
-    from apps.backend.infrastructure.model_catalog_providers import route_chat_by_catalog_provider
-
     return route_chat_by_catalog_provider(
-        catalog_owned_by,
+        owned,
         model_from_resolution,
         profile_key,
         is_override,
@@ -967,6 +994,7 @@ class OperatorSettingsPatch(BaseModel):
     embedding_api_base_url: str | None = Field(default=None, max_length=2048)
     embedding_api_key: str | None = Field(default=None, max_length=4096)
     embedding_api_header_name: str | None = Field(default=None, max_length=128)
+    rag_embedding_provider_id: str | None = Field(default=None, max_length=64)
     rag_chunk_size: int | None = Field(default=None, ge=200, le=8000)
     rag_chunk_overlap: int | None = Field(default=None, ge=0, le=2000)
     rag_top_k: int | None = Field(default=None, ge=1, le=50)
@@ -1196,6 +1224,12 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
             r["embedding_api_header_name"] = None
         else:
             r["embedding_api_header_name"] = str(v).strip()[:128]
+    if "rag_embedding_provider_id" in patch:
+        v = patch["rag_embedding_provider_id"]
+        if v is None or not str(v).strip():
+            r["rag_embedding_provider_id"] = None
+        else:
+            r["rag_embedding_provider_id"] = str(v).strip()[:64]
     if "rag_embedding_model" in patch:
         r["rag_embedding_model"] = _normalize_rag_embedding_model(patch["rag_embedding_model"])
     if "rag_embedding_dim" in patch:
@@ -1398,6 +1432,7 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
                   embedding_api_base_url = %s,
                   embedding_api_key = %s,
                   embedding_api_header_name = %s,
+                  rag_embedding_provider_id = %s,
                   updated_at = now()
                 WHERE id = 1
                 """,
@@ -1473,6 +1508,7 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
                     r.get("embedding_api_base_url"),
                     r.get("embedding_api_key"),
                     r.get("embedding_api_header_name"),
+                    r.get("rag_embedding_provider_id"),
                 ),
             )
             extra_sets: list[str] = []
