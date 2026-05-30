@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shlex
 import subprocess
 from pathlib import Path
 from typing import Any, Callable
@@ -136,9 +137,13 @@ def coding_bash(arguments: dict[str, Any], context: dict | None = None) -> str:
     env = subprocess_env_for_coding(home=str(root.resolve()), cwd=cwd, extra=extra_env)
 
     try:
-        result = subprocess.run(  # nosec B602 — intentional agent shell; policy layer blocks/strict/scrub
-            command,
-            shell=True,
+        # Split command into argument list and run without shell to prevent command injection.
+        # The blocklist (is_blocked) above already rejects dangerous shell operators (|, &&, ||,
+        # backticks, $(), etc.), so shell=False is safe here.
+        args = shlex.split(command)
+        result = subprocess.run(
+            args,
+            shell=False,
             cwd=cwd,
             env=env,
             capture_output=True,
