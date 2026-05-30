@@ -32,6 +32,22 @@ export interface Proposal {
 
 const PROPOSAL_RE = /```json-proposal\s*\n([\s\S]*?)```/g;
 
+function parseProposalJson(raw: string): Record<string, unknown> | null {
+  const trimmed = raw.trim();
+  try {
+    const v = JSON.parse(trimmed) as unknown;
+    return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+  } catch {
+    try {
+      const fixed = trimmed.replace(/,\s*([}\]])/g, "$1");
+      const v = JSON.parse(fixed) as unknown;
+      return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+    } catch {
+      return null;
+    }
+  }
+}
+
 function makeProposalId(): string {
   return `prop-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -42,9 +58,9 @@ export function extractProposals(content: string): Proposal[] {
 
   PROPOSAL_RE.lastIndex = 0;
   while ((match = PROPOSAL_RE.exec(content)) !== null) {
-    try {
-      const raw = JSON.parse(match[1]) as Record<string, unknown>;
-      if (raw && typeof raw === "object" && Array.isArray(raw.options)) {
+    const raw = parseProposalJson(match[1]);
+    if (raw && Array.isArray(raw.options)) {
+      try {
         const options = (raw.options as Array<Record<string, unknown>>)
           .filter((o) => o && typeof o === "object" && typeof o.label === "string")
           .map((o, idx) => ({
@@ -64,9 +80,9 @@ export function extractProposals(content: string): Proposal[] {
             options,
           });
         }
+      } catch {
+        /* invalid option shape — skip block */
       }
-    } catch {
-      /* invalid JSON — skip */
     }
   }
 

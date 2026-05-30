@@ -221,21 +221,36 @@ export type TranscriptItem =
   | { type: "message"; message: UiMessage }
   | { type: "run_cards"; cards: RunCard[]; turnId: string };
 
-/** Interleave user/assistant messages with run cards after each user turn. */
+/**
+ * Per turn: user message → run cards (tools/subagents) → assistant reply.
+ * Cards sit in the stream between the prompt and the answer, not above the user line
+ * and not below the finished/streaming assistant text.
+ */
 export function buildTranscriptWithRunCards(
   messages: UiMessage[],
   thread: Pick<ChatThread, "messages" | "agentLog" | "turnLogs">
 ): TranscriptItem[] {
   const items: TranscriptItem[] = [];
-  for (const m of messages) {
-    items.push({ type: "message", message: m });
+  let i = 0;
+  while (i < messages.length) {
+    const m = messages[i];
     if (m.role === "user" && m.id) {
-      const activity = activityForTurn(thread, m.id);
+      const turnId = m.id;
+      items.push({ type: "message", message: m });
+      i += 1;
+      const activity = activityForTurn(thread, turnId);
       const cards = buildRunCardsFromTimeline(activity);
       if (cards.length > 0) {
-        items.push({ type: "run_cards", cards, turnId: m.id });
+        items.push({ type: "run_cards", cards, turnId });
       }
+      while (i < messages.length && messages[i].role === "assistant") {
+        items.push({ type: "message", message: messages[i] });
+        i += 1;
+      }
+      continue;
     }
+    items.push({ type: "message", message: m });
+    i += 1;
   }
   return items;
 }

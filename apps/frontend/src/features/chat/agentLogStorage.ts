@@ -127,6 +127,9 @@ export function appendTimelineEntry(
       ...(entry.filesDone != null ? { filesDone: entry.filesDone } : {}),
       ...(entry.filesTotal != null ? { filesTotal: entry.filesTotal } : {}),
       ...(entry.runStatus != null ? { runStatus: entry.runStatus } : {}),
+      ...(entry.streamOffset != null && entry.streamOffset >= 0
+        ? { streamOffset: entry.streamOffset }
+        : {}),
     },
   ];
 }

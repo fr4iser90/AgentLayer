@@ -2,7 +2,12 @@ import type { AgentTimelineEntry } from "./chatThreadStorage";
 
 export type SubagentActivityExtras = Pick<
   AgentTimelineEntry,
-  "toolName" | "durationMs" | "resultChars" | "subagentAgentId" | "nested"
+  | "toolName"
+  | "durationMs"
+  | "resultChars"
+  | "subagentAgentId"
+  | "nested"
+  | "streamOffset"
 >;
 
 /** Handle ``agent.subagent_start`` / ``agent.subagent_done`` WebSocket events. Returns true if handled. */
@@ -10,7 +15,8 @@ export function handleSubagentWsEvent(
   typ: string,
   msg: Record<string, unknown>,
   append: (kind: string, text: string, extras?: SubagentActivityExtras) => void,
-  subagentStartTimes: Map<string, number>
+  subagentStartTimes: Map<string, number>,
+  streamOffset?: () => number
 ): boolean {
   if (typ === "agent.subagent_start") {
     const sid = String(msg.subagent_run_id ?? "").trim() || "subagent";
@@ -21,6 +27,7 @@ export function handleSubagentWsEvent(
       subagentAgentId: aid,
       nested: true,
       toolName: typeof msg.tool_name === "string" ? msg.tool_name : "coding_task",
+      streamOffset: streamOffset?.(),
     });
     return true;
   }

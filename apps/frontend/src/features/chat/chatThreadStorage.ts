@@ -32,6 +32,8 @@ export type AgentTimelineEntry = {
   filesDone?: number;
   filesTotal?: number;
   runStatus?: "running" | "done" | "failed";
+  /** Assistant message char index when this event started (for inline stream interleaving). */
+  streamOffset?: number;
 };
 
 export type AgentTurnLog = {

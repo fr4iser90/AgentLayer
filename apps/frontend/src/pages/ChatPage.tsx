@@ -38,9 +38,15 @@ import {
   serializeAgentLogPayload,
 } from "../features/chat/agentLogStorage";
 import { AgentActivityPanel } from "../features/chat/AgentActivityPanel";
-import { buildTranscriptWithRunCards } from "../features/chat/buildRunCards";
+import { AssistantTurnBlock } from "../features/chat/AssistantTurnBlock";
 import { indexActivityToTimeline, type IndexActivityEvent } from "../features/chat/indexActivity";
-import { RunCardsRow } from "../features/chat/RunCardBlock";
+import { buildInterleavedTurnSegments } from "../features/chat/interleavedTurnSegments";
+import { timelineForTurn, userTurnIdBeforeAssistant } from "../features/chat/turnRunCards";
+import {
+  formatOptionSelection,
+  type Proposal,
+  type ProposalOption,
+} from "../lib/proposalParser";
 import { TurnNavigator, TurnNavigatorHorizontal, buildTurnItems } from "../features/chat/TurnNavigator";
 import { useChatScroll } from "../features/chat/useChatScroll";
 
@@ -266,6 +272,9 @@ export function ChatPage() {
   const [projectTreeRefreshKey, setProjectTreeRefreshKey] = useState(0);
   const [showSubagentsInActivity, setShowSubagentsInActivity] = useState(true);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [selectedProposalOptions, setSelectedProposalOptions] = useState<
+    Map<string, { proposal: Proposal; option: ProposalOption }>
+  >(new Map());
 
   const wsRef = useRef<WebSocket | null>(null);
   const agentHandlerRef = useRef<(ev: MessageEvent) => void>(() => {});
@@ -362,10 +371,13 @@ export function ChatPage() {
     return activityForTurn(activeThread, selectedTurnId);
   }, [activeThread, selectedTurnId]);
 
-  const transcriptItems = useMemo(() => {
-    if (!activeThread) return [];
-    return buildTranscriptWithRunCards(displayMessages, activeThread);
-  }, [activeThread, displayMessages]);
+  const proposalSelectionMap = useMemo(
+    () =>
+      new Map(
+        [...selectedProposalOptions.entries()].map(([id, v]) => [id, v.option.id])
+      ),
+    [selectedProposalOptions]
+  );
 
   const activityLoading =
     loading && mode === "agent" && selectedTurnId === latestTurnId;
@@ -743,6 +755,10 @@ export function ChatPage() {
     [activeThreadId, auth, threads, workspaces]
   );
 
+  const assistantStreamOffset = useCallback((): number => {
+    return Math.max(0, streamDeltaAccRef.current.length);
+  }, []);
+
   const appendAgentLine = useCallback(
     (
       kind: string,
@@ -769,9 +785,14 @@ export function ChatPage() {
   const handleIndexActivity = useCallback(
     (ev: IndexActivityEvent) => {
       const { kind, text, extras } = indexActivityToTimeline(ev);
-      appendAgentLine(kind, text, extras as Omit<AgentTimelineEntry, "id" | "kind" | "text">);
+      const base = extras as Omit<AgentTimelineEntry, "id" | "kind" | "text">;
+      if (kind === "index_start") {
+        appendAgentLine(kind, text, { ...base, streamOffset: assistantStreamOffset() });
+      } else {
+        appendAgentLine(kind, text, base);
+      }
     },
-    [appendAgentLine]
+    [appendAgentLine, assistantStreamOffset]
   );
 
   const runChatHttp = useCallback(async () => {
@@ -1222,7 +1243,8 @@ export function ChatPage() {
             typ,
             msg as Record<string, unknown>,
             appendAgentLine,
-            subagentStartTimesRef.current
+            subagentStartTimesRef.current,
+            assistantStreamOffset
           )
         ) {
           return;
@@ -1230,7 +1252,10 @@ export function ChatPage() {
         if (typ === "agent.tool_start") {
           const toolName = String(msg.name ?? "tool");
           toolStartTimesRef.current.set(toolName, Date.now());
-          appendAgentLine("tool_start", `→ ${toolName}`, { toolName });
+          appendAgentLine("tool_start", `→ ${toolName}`, {
+            toolName,
+            streamOffset: assistantStreamOffset(),
+          });
           return;
         }
         if (typ === "agent.tool_done") {
@@ -1325,6 +1350,21 @@ export function ChatPage() {
     threads,
   ]);
 
+  const handleSelectProposalOption = useCallback(
+    (proposal: Proposal, option: ProposalOption) => {
+      setSelectedProposalOptions((prev) => {
+        const next = new Map(prev);
+        next.set(proposal.id, { proposal, option });
+        return next;
+      });
+      setDraft(formatOptionSelection(proposal, option));
+      setTimeout(() => {
+        void runAgentWs();
+      }, 100);
+    },
+    [runAgentWs]
+  );
+
   const onSend = () => {
     void (mode === "chat" ? runChatHttp() : runAgentWs());
   };
@@ -1355,8 +1395,7 @@ export function ChatPage() {
       abortInFlightTurn();
       try {
         const defaultProv = parseModelCatalogSelection(defaultSelectValue).provider;
-        const ws =
-          workspaceIdOverride !== undefined ? workspaceIdOverride : selectedWorkspaceId;
+        const ws = workspaceIdOverride !== undefined ? workspaceIdOverride : null;
         const newThread = await createConversation(auth, {
           title: NEW_CHAT_TITLE,
           mode: "agent",
@@ -1377,14 +1416,7 @@ export function ChatPage() {
         setError(e instanceof Error ? e.message : String(e));
       }
     },
-    [
-      abortInFlightTurn,
-      auth,
-      defaultModel,
-      defaultSelectValue,
-      selectedWorkspaceId,
-      setSearchParams,
-    ]
+    [abortInFlightTurn, auth, defaultModel, defaultSelectValue, setSearchParams]
   );
   startNewChatRef.current = startNewChat;
 
@@ -1888,48 +1920,76 @@ export function ChatPage() {
               </div>
             ) : (
               <ul className="mx-auto flex w-full max-w-3xl flex-col gap-3">
-                {transcriptItems.map((item, i) => {
-                  if (item.type === "run_cards") {
-                    return <RunCardsRow key={`runs-${item.turnId}-${i}`} cards={item.cards} />;
+                {displayMessages.map((m, i) => {
+                  if (m.role === "user") {
+                    if (!chatMessageHasVisibleContent(m)) return null;
+                    return (
+                      <li
+                        key={m.id ?? `${i}-user-${m.content.slice(0, 24)}`}
+                        id={m.id ? `msg-${m.id}` : undefined}
+                        className="flex w-full scroll-mt-4 justify-start"
+                      >
+                        <div className="max-w-[min(100%,42rem)] rounded-2xl border border-sky-900/40 bg-[#1a2a3d] px-4 py-3 text-sm text-neutral-100 shadow-sm">
+                          <span className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+                            {t("chat:roleYou")}
+                            {(() => {
+                              const timeLabel = formatMessageTime(m.createdAt);
+                              return timeLabel ? (
+                                <span className="ml-2 font-normal normal-case">{timeLabel}</span>
+                              ) : null;
+                            })()}
+                          </span>
+                          <MessageBody content={m.content} />
+                        </div>
+                      </li>
+                    );
                   }
-                  const m = item.message;
-                  if (!chatMessageHasVisibleContent(m)) return null;
+                  if (m.role !== "assistant") return null;
+
+                  const turnId = userTurnIdBeforeAssistant(displayMessages, i);
+                  const timelineEntries = timelineForTurn(activeThread, turnId);
+                  const isLast = i === displayMessages.length - 1;
+                  const inFlight =
+                    loading && mode === "agent" && isLast && selectedTurnId === latestTurnId;
+                  const segments = buildInterleavedTurnSegments(m.content, timelineEntries);
+                  const hasStreamBody = segments.some(
+                    (s) =>
+                      (s.type === "text" && s.text.trim().length > 0) || s.type === "card"
+                  );
+                  if (!hasStreamBody && !inFlight) return null;
+
                   return (
-                  <li
-                    key={m.id ?? `${i}-${m.role}-${m.content.slice(0, 24)}`}
-                    id={m.role === "user" && m.id ? `msg-${m.id}` : undefined}
-                    className={`flex w-full scroll-mt-4 ${m.role === "user" ? "justify-start" : "justify-end"}`}
-                  >
-                    <div
-                      className={`max-w-[min(100%,42rem)] rounded-2xl px-4 py-3 text-sm shadow-sm ${
-                        m.role === "user"
-                          ? "border border-sky-900/40 bg-[#1a2a3d] text-neutral-100"
-                          : "border border-white/10 bg-[#1e1e1e] text-neutral-200"
-                      }`}
-                    >
-                      <span className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
-                        {m.role === "user" ? t("chat:roleYou") : t("chat:roleAssistant")}
-                        {(() => {
-                          const timeLabel = formatMessageTime(m.createdAt);
-                          return timeLabel ? (
-                            <span className="ml-2 font-normal normal-case">{timeLabel}</span>
-                          ) : null;
-                        })()}
-                      </span>
-                      {m.role === "user" ? (
-                        <MessageBody content={m.content} />
-                      ) : (
-                        <div className="whitespace-pre-wrap">{m.content}</div>
-                      )}
-                    </div>
-                  </li>
+                    <AssistantTurnBlock
+                      key={m.id ?? `${i}-assistant-${m.content.slice(0, 24)}`}
+                      content={m.content}
+                      timelineEntries={timelineEntries}
+                      running={inFlight && !hasStreamBody}
+                      createdAt={m.createdAt}
+                      selectedByProposalId={proposalSelectionMap}
+                      onSelectProposalOption={handleSelectProposalOption}
+                    />
                   );
                 })}
                 {loading &&
+                mode === "agent" &&
+                latestTurnId &&
+                displayMessages.length > 0 &&
+                displayMessages[displayMessages.length - 1]?.role === "user" ? (
+                  <AssistantTurnBlock
+                    key={`assistant-inflight-${latestTurnId}`}
+                    content=""
+                    timelineEntries={timelineForTurn(activeThread, latestTurnId)}
+                    running
+                    selectedByProposalId={proposalSelectionMap}
+                    onSelectProposalOption={handleSelectProposalOption}
+                  />
+                ) : null}
+                {loading &&
+                mode === "chat" &&
                 !(
-                  messages.length > 0 &&
-                  messages[messages.length - 1]?.role === "assistant" &&
-                  chatMessageHasVisibleContent(messages[messages.length - 1]!)
+                  displayMessages.length > 0 &&
+                  displayMessages[displayMessages.length - 1]?.role === "assistant" &&
+                  chatMessageHasVisibleContent(displayMessages[displayMessages.length - 1]!)
                 ) ? (
                   <li className="flex w-full justify-end">
                     <div className="max-w-[min(100%,42rem)] rounded-2xl border border-sky-900/50 bg-sky-950/25 px-4 py-3 text-sm text-sky-100/90 shadow-sm">
@@ -1937,9 +1997,7 @@ export function ChatPage() {
                         <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-sky-400" />
                         {t("chat:roleAssistant")}
                       </span>
-                      <p className="text-neutral-300">
-                        {mode === "agent" ? t("chat:agentRunning") : t("chat:generatingReply")}
-                      </p>
+                      <p className="text-neutral-300">{t("chat:generatingReply")}</p>
                     </div>
                   </li>
                 ) : null}
