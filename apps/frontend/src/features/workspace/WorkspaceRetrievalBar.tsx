@@ -343,12 +343,12 @@ export function WorkspaceRetrievalBar({
           {docsRagOn ? t("common:on") : t("common:off")}
         </button>
         <span className="text-neutral-600">·</span>
-        <span className="font-semibold uppercase tracking-wide text-surface-muted">Graph</span>
+        <span className="font-semibold uppercase tracking-wide text-surface-muted">{t("workspace:graphIndex")}</span>
         <button
           type="button"
           disabled={!canEdit || busy !== null}
           className={pill(graphOn)}
-          title="Neo4j call-graph index (coding_graph)"
+          title={t("workspace:graphIndexTitle")}
           onClick={() => void patchFlags({ graph_index_enabled: !graphOn })}
         >
           {graphOn ? t("common:on") : t("common:off")}

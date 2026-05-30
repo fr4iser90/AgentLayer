@@ -52,6 +52,8 @@
   "codeIndex": "Code-Index",
   "retrieval": "Retrieval",
   "docsRag": "Docs RAG",
+  "graphIndex": "Graph",
+  "graphIndexTitle": "Neo4j Call-Graph-Index (coding_graph)",
   "treeSitterHint": "Tree-sitter Scan + Qdrant Embeddings + Neo4j Code-Graph",
   "readOnlyCannotChange": "Read-only — kann nicht ändern",
   "toggleRetrievalHint": "retrieve_context Bundle für diesen Workspace togglen",
