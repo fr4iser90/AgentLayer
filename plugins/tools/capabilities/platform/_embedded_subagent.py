@@ -138,16 +138,18 @@ def run_embedded_subagent_sync(
             requirements=reqs,
         )
 
-    max_r = 6
+    from apps.backend.core import config
+
+    max_r = config.MAX_TOOL_ROUNDS
     if max_rounds is not None:
         try:
-            max_r = max(1, min(int(max_rounds), 12))
+            client_v = int(max_rounds)
+            if client_v <= 0:
+                max_r = config.MAX_TOOL_ROUNDS
+            else:
+                max_r = max(1, min(client_v, config.MAX_TOOL_ROUNDS))
         except (TypeError, ValueError):
             pass
-    elif aid == "coding_plan":
-        max_r = 4
-    elif aid == "coding":
-        max_r = 8
 
     parent_model, parent_catalog = _parent_llm_from_context(context)
     if not parent_model or not parent_catalog:
