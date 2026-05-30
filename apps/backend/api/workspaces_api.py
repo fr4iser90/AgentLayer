@@ -401,6 +401,17 @@ async def update_workspace(request: Request, workspace_id: str, body: WorkspaceU
 
     patch = body.model_dump(exclude_unset=True)
     if "name" in patch and patch["name"] is not None:
+        from apps.backend.infrastructure.workspace_service import validate_workspace_name
+
+        try:
+            patch["name"] = validate_workspace_name(patch["name"])
+        except WorkspaceCreateError as e:
+            raise HTTPException(status_code=400, detail=e.message) from e
+        if patch["name"] == AGENTLAYER_SELF_NAME:
+            raise HTTPException(
+                status_code=400,
+                detail="Reserved workspace name. Use the AgentLayer self workspace when self-editing is enabled.",
+            )
         updates.append("name = %s")
         params.append(patch["name"])
     if "git_branch" in patch and patch["git_branch"] is not None:

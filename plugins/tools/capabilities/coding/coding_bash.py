@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 import json
-import os
-import re
 import subprocess
 from pathlib import Path
 from typing import Any, Callable
 
+from plugins.tools.capabilities.coding.coding_bash_policy import (
+    coding_bash_strict_enabled,
+    is_blocked,
+    resolve_path_under_workspace,
+    strict_mode_reject_reason,
+    subprocess_env_for_coding,
+)
 from plugins.tools.capabilities.coding.coding_common import (
     json_workspace_missing_error,
     workspace_binding_from_context,
@@ -46,60 +51,11 @@ TOOL_LABEL = "Coding: Bash"
 TOOL_DESCRIPTION = (
     "Run a shell command within the coding workspace. "
     "Output is truncated if too large; use workdir to set the directory. "
-    "Supports timeout. Dangerous commands (rm -rf /, etc.) are blocked."
+    "Supports timeout. Dangerous commands (rm -rf /, curl|sh, git clean -fdx, etc.) are blocked."
 )
 
 DEFAULT_TIMEOUT = 120
 MAX_OUTPUT_BYTES = 50_000
-
-_BLOCKED_COMMANDS = frozenset({
-    "rm -rf /",
-    "rm -rf /*",
-    "chmod -R 777 /",
-    "dd if=/dev/zero",
-    "mkfs",
-    "fdisk",
-    "parted",
-    "iptables",
-    "ufw",
-})
-
-_BLOCKED_PATTERNS = [
-    r"rm\s+-rf\s+/",           # rm -rf anything at root
-    r"rm\s+-rf\s+\*",         # rm -rf *
-    r"rm\s+-R\s+/",          # rm -R recursive
-    r"wget\s+.*\|\s*sh",      # wget | sh (remote execution)
-    r"curl\s+.*\|\s*sh",      # curl | sh
-    r":\(\)\s*:",             # fork bomb :(){:|:&};:
-    r"fork\(\)",               # fork()
-    r"\$\s*\(\s*\$\s*\)",   # $() subshell loops
-    r"dd\s+if=/dev/zero",     # disk wipe
-    r"dd\s+if=/dev/urandom",  # random disk write
-    r">\s*/dev/sd[a-z]",     # write to disk device
-    r"chmod\s+-R\s+777",    # chmod 777 recursive
-    r"mv\s+/.*\s+/bin",    # move to bin
-    r"cp\s+.*\s+/bin",    # copy to bin
-    r":\|",                 # pipe fork bomb pattern
-]
-
-_BLOCKED_REGEX = [re.compile(p, re.IGNORECASE) for p in _BLOCKED_PATTERNS]
-
-_VALIDATION_COMMANDS = frozenset({
-    "ruff",
-    "python -m py_compile",
-    "pip check",
-    "npm test",
-    "npm run",
-    "npm run build",
-    "npm run lint",
-    "npm run typecheck",
-    "npm run type-check",
-    "npx",
-    "pnpm",
-    "yarn",
-    "pip install",
-    "pip uninstall",
-})
 
 
 def _classify_git_pull_output(out: str, exit_code: int) -> str:
@@ -111,19 +67,6 @@ def _classify_git_pull_output(out: str, exit_code: int) -> str:
     if "fast-forward" in low or "updating" in low:
         return "fast_forward"
     return "completed"
-
-
-def _is_blocked(command: str) -> str | None:
-    lower = command.lower().strip()
-    for blocked in _BLOCKED_COMMANDS:
-        if blocked in lower:
-            return f"command blocked: '{blocked}' is not allowed (1)"
-    
-    for i, regex in enumerate(_BLOCKED_REGEX):
-        if regex.search(lower):
-            return f"command blocked: matches dangerous pattern '{_BLOCKED_PATTERNS[i]}' (2)"
-    
-    return None
 
 
 def _tail(text: str, max_bytes: int, max_lines: int = 200) -> tuple[str, bool]:
@@ -147,7 +90,7 @@ def coding_bash(arguments: dict[str, Any], context: dict | None = None) -> str:
     if ws is None:
         return json_workspace_missing_error()
     root = Path(ws["path"])
-    
+
     command = (arguments.get("command") or "").strip()
     if not command:
         return json.dumps(
@@ -161,40 +104,39 @@ def coding_bash(arguments: dict[str, Any], context: dict | None = None) -> str:
             },
             ensure_ascii=False,
         )
-    blocked = _is_blocked(command)
+    blocked = is_blocked(command)
     if blocked:
         return json.dumps({"ok": False, "error": blocked}, ensure_ascii=False)
-    
+    if coding_bash_strict_enabled():
+        strict_err = strict_mode_reject_reason(command)
+        if strict_err:
+            return json.dumps({"ok": False, "error": strict_err}, ensure_ascii=False)
+
     workdir_rel = (arguments.get("workdir") or "").strip()
-    if workdir_rel:
-        workdir_path = Path(workdir_rel)
-        if workdir_path.is_absolute():
-            raise ValueError(f"workdir must be relative, not absolute: {workdir_rel}")
-        cwd = str((root / workdir_path).resolve())
-    else:
-        cwd = str(root.resolve())
+    try:
+        cwd = resolve_path_under_workspace(root, workdir_rel or None)
+    except ValueError as e:
+        return json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False)
+
     try:
         timeout_s = max(1, int(arguments.get("timeout", DEFAULT_TIMEOUT)))
     except (TypeError, ValueError):
         timeout_s = DEFAULT_TIMEOUT
-    env = {
-        **os.environ,
-        "HOME": str(root),
-        "PWD": cwd,
-        "GIT_TERMINAL_PROMPT": "0",
-    }
+
     needs_pat = git_command_needs_github_pat(command)
     pat_token: str | None = None
     askpass_cleanup: list[str] = []
+    extra_env: dict[str, str] = {}
     if needs_pat:
         pat_token = github_pat_for_current_user()
         if not pat_token:
             return json.dumps(no_github_pat_payload(), ensure_ascii=False)
         extra_env, askpass_cleanup = askpass_extra_env(pat_token)
-        env.update(extra_env)
+
+    env = subprocess_env_for_coding(home=str(root.resolve()), cwd=cwd, extra=extra_env)
 
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # nosec B602 — intentional agent shell; policy layer blocks/strict/scrub
             command,
             shell=True,
             cwd=cwd,

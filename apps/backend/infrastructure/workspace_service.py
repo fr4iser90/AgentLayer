@@ -20,6 +20,40 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 AGENTLAYER_SELF_NAME = "agentlayer-self"
+_WORKSPACE_NAME_MAX_LEN = 255
+
+
+def validate_workspace_name(name: str) -> str:
+    """
+    Return a stripped workspace name safe for use as a single path segment under
+    ``AGENTLAYER_WORKSPACE_PATH/{user_id}/``.
+
+    Raises :class:`WorkspaceCreateError` on empty, reserved, or traversal-like names.
+    """
+    nm = (name or "").strip()
+    if not nm:
+        raise WorkspaceCreateError("name is required")
+    if len(nm) > _WORKSPACE_NAME_MAX_LEN:
+        raise WorkspaceCreateError(
+            f"workspace name must be at most {_WORKSPACE_NAME_MAX_LEN} characters"
+        )
+    if nm in (".", ".."):
+        raise WorkspaceCreateError("invalid workspace name")
+    if "\0" in nm or "/" in nm or "\\" in nm:
+        raise WorkspaceCreateError("workspace name must not contain path separators")
+    return nm
+
+
+def resolve_user_workspace_dir(base: Path, user_id: Any, name: str) -> Path:
+    """Resolve the on-disk workspace directory; must remain under ``base / user_id``."""
+    nm = validate_workspace_name(name)
+    user_root = (base / str(user_id)).resolve()
+    target = (user_root / nm).resolve()
+    try:
+        target.relative_to(user_root)
+    except ValueError:
+        raise WorkspaceCreateError("invalid workspace name") from None
+    return target
 
 
 class WorkspaceState:
@@ -547,9 +581,7 @@ def create_project_workspace_for_user(
     """
     from apps.backend.infrastructure.db import db
 
-    nm = (name or "").strip()
-    if not nm:
-        raise WorkspaceCreateError("name is required")
+    nm = validate_workspace_name(name)
     if nm == AGENTLAYER_SELF_NAME:
         raise WorkspaceCreateError(
             "Reserved workspace name. Use the AgentLayer self workspace when self-editing is enabled."
@@ -583,7 +615,7 @@ def create_project_workspace_for_user(
         )
 
     base = _workspace_base_path()
-    user_workspace_dir = base / str(user.id) / nm
+    user_workspace_dir = resolve_user_workspace_dir(base, user.id, nm)
 
     if src == "git":
         gu = git_url.strip()

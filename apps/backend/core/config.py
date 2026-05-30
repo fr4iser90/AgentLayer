@@ -385,6 +385,10 @@ CODING_PATH_BLOCKLIST = frozenset(
     ).split(",")
     if x.strip()
 )
+# coding_bash: strip operator secrets from subprocess env (PATH/toolchain vars kept).
+CODING_BASH_ENV_SCRUB = _env_bool("AGENT_CODING_BASH_ENV_SCRUB", True)
+# Opt-in strict prefix allowlist for coding_bash (default off — normal agent keeps broad shell).
+CODING_BASH_STRICT = _env_bool("AGENT_CODING_BASH_STRICT", False)
 
 
 def WORKSPACE_upload_dir() -> Path:

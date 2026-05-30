@@ -206,6 +206,18 @@
                 "path_regex": ".*/apps/backend/integrations/pidea/playwright_env\\.py$",
                 "message_regex": "subprocess",
                 "reason": "Same as B404: subprocess.run with static command list and env derived from operator config paths (PIDEA_PLAYWRIGHT_PIP_TARGET), not remote user input."
+            },
+            {
+                "rule_id": "B602",
+                "path_regex": ".*/plugins/tools/capabilities/coding/coding_bash\\.py$",
+                "message_regex": "shell=True|subprocess call with shell",
+                "reason": "Intentional agent coding tool: shell=True required for pipes/redirections in one-liners. cwd locked to bound workspace; workdir must be relative under root; _is_blocked denylist rejects destructive patterns (rm -rf /, curl|sh, fork bomb, etc.). Authenticated tool-governed surface, not anonymous shell."
+            },
+            {
+                "rule_id": "B602",
+                "path_regex": ".*/plugins/tools/capabilities/coding/coding_workspace_verify\\.py$",
+                "message_regex": "shell=True|subprocess call with shell",
+                "reason": "Runs operator-configured verify_command from workspace DB row only (model cannot supply arbitrary command). Reuses coding_bash _is_blocked; cwd locked to workspace root; bounded timeout."
             }
         ]
     },
@@ -276,6 +288,66 @@
                 "path_regex": ".*/apps/backend/domain/plugin_system/tools_api\\.py$",
                 "message_regex": "Stack trace|may be exposed|flows to",
                 "reason": "Admin routes: reload-tools and tool-policies use http_500_detail for 500s. create-tool JSON decode failure returns constant detail string; logger.exception is server-side only."
+            },
+            {
+                "rule_id": "py/path-injection",
+                "path_regex": ".*/apps/backend/api/codebase_api\\.py$",
+                "message_regex": "user-provided|path depends",
+                "reason": "Authenticated POST /v1/codebase/index: body.root is expanduser().resolve()'d and must exist as a directory; when CODING_ROOT is set, path must be under that operator-configured root (403 otherwise)."
+            },
+            {
+                "rule_id": "py/path-injection",
+                "path_regex": ".*/apps/backend/infrastructure/workspace_service\\.py$",
+                "message_regex": "user-provided|path depends",
+                "reason": "Workspace materialization under AGENTLAYER_WORKSPACE_PATH/{owner_user_id}/{name}: validate_workspace_name rejects path separators and . / .. segments; resolve_user_workspace_dir enforces relative_to(user_root) before mkdir/clone. Authenticated per-user tenancy."
+            },
+            {
+                "rule_id": "py/path-injection",
+                "path_regex": ".*/apps/backend/api/workspaces_api\\.py$",
+                "message_regex": "user-provided|path depends",
+                "reason": "Workspace FS browse/read endpoints resolve user path query via safe_resolve_under_workspace (rejects absolute paths and .. escapes after resolve()); owner-scoped workspace_id from DB."
+            },
+            {
+                "rule_id": "py/polynomial-redos",
+                "path_regex": ".*/apps/backend/domain/agent\\.py$",
+                "message_regex": "regular expression|polynomial|ReDoS|slow on strings",
+                "reason": "Heuristic regex on bounded chat/assistant text (_infer_shell_command_from_user_text, _strip_prose_fake_tool_markup): input length capped by conversation limits; patterns use non-greedy groups or fixed prefixes—not attacker-controlled catastrophic backtracking in practice."
+            },
+            {
+                "rule_id": "py/polynomial-redos",
+                "path_regex": ".*/apps/backend/domain/instance_setup\\.py$",
+                "message_regex": "regular expression|polynomial|ReDoS|slow on strings",
+                "reason": "First-start email validation uses anchored simple pattern ^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$ with no nested quantifiers; CodeQL ReDoS heuristic is a false positive on this fixed regex."
+            },
+            {
+                "rule_id": "py/weak-sensitive-data-hashing",
+                "path_regex": ".*/apps/backend/api/memory\\.py$",
+                "message_regex": "hash|SHA256|password|sensitive",
+                "reason": "sha256 of normalized user_query is an analytics fingerprint for memory-graph activation logging (query_sha256 column); docstring states no raw query text is stored. Not password hashing—CodeQL mislabels chat query text as password material."
+            },
+            {
+                "rule_id": "py/clear-text-logging-sensitive-data",
+                "path_regex": ".*/apps/backend/domain/agent_registry\\.py$",
+                "message_regex": "password|sensitive|clear.text|logging",
+                "reason": "Logs agent_id and tool name lists from registry (all_tools[:20], mapped_tools[:30]); no credentials. CodeQL taint from tool/function names containing substrings like 'password' in unrelated fields."
+            },
+            {
+                "rule_id": "py/clear-text-logging-sensitive-data",
+                "path_regex": ".*/apps/backend/domain/plugin_system/capability_index\\.py$",
+                "message_regex": "password|sensitive|clear.text|logging",
+                "reason": "warning logs sorted capability hint strings when filter matches no tools; hints are capability tokens, not user secrets."
+            },
+            {
+                "rule_id": "py/clear-text-logging-sensitive-data",
+                "path_regex": ".*/apps/backend/infrastructure/chat_secret_ingress\\.py$",
+                "message_regex": "password|sensitive|clear.text|logging",
+                "reason": "info log emits only integer counts (heuristic redactions, vault placeholder count) after scrubbing user message content—not the scrubbed text or vault values."
+            },
+            {
+                "rule_id": "py/clear-text-logging-sensitive-data",
+                "path_regex": ".*/apps/backend/domain/model_routing\\.py$",
+                "message_regex": "password|sensitive|clear.text|logging",
+                "reason": "Logs resolved LLM model id, routing reason, and bearer_user_role strings for operator diagnostics; no API keys or passwords in log arguments."
             }
         ]
     },
