@@ -6,12 +6,11 @@ import {
   applyModelCatalogSelection,
   defaultModelCatalogSelectValue,
   fetchModelCatalog,
-  findCatalogRowByModelId,
   formatModelCatalogHint,
+  composerSelectValueForThread,
   modelCatalogSelectValue,
-  modelCatalogSelectValueForThread,
   modelOptionLabel,
-  resolveComposerModelRouting,
+  resolveSendModelRouting,
   type ModelRow,
 } from "../../lib/modelCatalog";
 import type { ChatThread, UiMessage } from "../chat/chatThreadStorage";
@@ -220,16 +219,20 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
   );
   const modelSelectValue = useMemo(() => {
     if (thread?.model?.trim()) {
-      const fromThread = modelCatalogSelectValueForThread(thread.model, thread.modelProvider);
-      if (fromThread.includes(":")) return fromThread;
-      const row = findCatalogRowByModelId(modelRows, thread.model, thread.modelProvider);
-      if (row) return modelCatalogSelectValue(row);
-      return fromThread;
+      return composerSelectValueForThread(
+        modelRows,
+        thread.model,
+        thread.modelProvider,
+        defaultSelectValue
+      );
     }
     if (modelBeforeFirstSend.trim()) {
-      const row = findCatalogRowByModelId(modelRows, modelBeforeFirstSend);
-      if (row) return modelCatalogSelectValue(row);
-      return modelBeforeFirstSend.trim();
+      return composerSelectValueForThread(
+        modelRows,
+        modelBeforeFirstSend,
+        undefined,
+        defaultSelectValue
+      );
     }
     return defaultSelectValue;
   }, [thread?.model, thread?.modelProvider, modelBeforeFirstSend, modelRows, defaultSelectValue]);
@@ -253,18 +256,18 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
     if (readOnly) return;
     const userContent = buildUserMessageContent(draft, pendingAttachments);
     if (!userContent || !accessToken || sendLoading) return;
-    const routed = resolveComposerModelRouting(
-      modelRows,
-      lastModelSelectionRef.current || modelSelectValue || defaultSelectValue,
-      (thread?.model || modelBeforeFirstSend || modelRows[0]?.id || "").trim(),
-      thread?.modelProvider
-    );
+    const routed = resolveSendModelRouting(modelRows, {
+      lastSelection: lastModelSelectionRef.current,
+      modelSelectValue,
+      defaultSelectValue,
+      threadModel: (thread?.model || modelBeforeFirstSend || modelRows[0]?.id || "").trim(),
+      threadProvider: thread?.modelProvider,
+    });
     if (!routed) {
-      setSendErr(
-        t("dashboard:resolveModelProviderFailed")
-      );
+      setSendErr(t("dashboard:resolveModelProviderFailed"));
       return;
     }
+    lastModelSelectionRef.current = routed.selectValue;
     const mdl = routed.model;
     const provider = routed.provider;
     setSendErr(null);

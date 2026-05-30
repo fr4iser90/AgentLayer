@@ -279,6 +279,75 @@ export function resolveComposerModelRouting(
 }
 
 /**
+ * Dropdown / composer value aligned with ``<select value=…>`` (``provider:model`` when catalog allows).
+ */
+export function composerSelectValueForThread(
+  rows: ModelRow[],
+  modelId: string,
+  modelProvider?: string,
+  defaultSelectValue?: string
+): string {
+  const id = modelId.trim();
+  const fromThread = modelCatalogSelectValueForThread(id, modelProvider);
+  if (fromThread.includes(":")) return fromThread;
+  const row = findCatalogRowByModelId(rows, id, modelProvider);
+  if (row?.owned_by) return modelCatalogSelectValue(row);
+  const def = (defaultSelectValue ?? "").trim();
+  if (id && def.includes(":")) {
+    const parsed = parseModelCatalogSelection(def);
+    if (
+      parsed.modelId &&
+      normalizeModelIdKey(parsed.modelId) === normalizeModelIdKey(id)
+    ) {
+      return def;
+    }
+  }
+  if (id) return fromThread;
+  return def;
+}
+
+/**
+ * Resolve provider + model for send — matches visible dropdown (incl. ``defaultSelectValue`` fallback).
+ */
+export function resolveSendModelRouting(
+  rows: ModelRow[],
+  opts: {
+    lastSelection?: string;
+    modelSelectValue: string;
+    defaultSelectValue: string;
+    threadModel?: string;
+    threadProvider?: string;
+  }
+): { model: string; provider: string; selectValue: string } | null {
+  const effectiveSelect = composerSelectValueForThread(
+    rows,
+    (opts.threadModel ?? "").trim(),
+    opts.threadProvider,
+    opts.defaultSelectValue
+  );
+  const candidates = [
+    opts.lastSelection,
+    opts.modelSelectValue,
+    effectiveSelect,
+    opts.defaultSelectValue,
+  ];
+  const seen = new Set<string>();
+  for (const raw of candidates) {
+    const sel = (raw ?? "").trim();
+    if (!sel || seen.has(sel)) continue;
+    seen.add(sel);
+    const routed = resolveComposerModelRouting(
+      rows,
+      sel,
+      opts.threadModel,
+      opts.threadProvider
+    );
+    if (routed) return { ...routed, selectValue: sel };
+  }
+  return null;
+}
+
+/**
  * Resolve provider + canonical model id for chat.
  * Uses stored provider, dropdown composite value, then catalog row lookup (incl. case / .gguf).
  */

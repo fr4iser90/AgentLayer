@@ -7,18 +7,16 @@ import {
   applyModelCatalogSelection,
   defaultModelCatalogSelectValue,
   fetchModelCatalog,
-  findCatalogRowByModelId,
   formatEmptyChatModelCatalogHint,
   formatModelCatalogHint,
   catalogModelOptionUnreachableTitle,
   isCatalogModelOptionDisabled,
   modelCatalogSelectValue,
-  modelCatalogSelectValueForThread,
   modelOptionLabel,
   normalizeCatalogRoutingToken,
   parseModelCatalogSelection,
-  resolveComposerModelRouting,
-  resolveModelCatalogRouting,
+  composerSelectValueForThread,
+  resolveSendModelRouting,
   type ModelCatalogAgentlayer,
   type ModelRow,
 } from "../lib/modelCatalog";
@@ -388,14 +386,10 @@ export function ChatPage() {
     const p = parseModelCatalogSelection(defaultSelectValue);
     return p.modelId || modelRows[0]?.id || "";
   }, [defaultSelectValue, modelRows]);
-  const modelSelectValue = useMemo(() => {
-    const fromThread = modelCatalogSelectValueForThread(model, modelProvider);
-    if (fromThread.includes(":")) return fromThread;
-    const row = findCatalogRowByModelId(modelRows, model, modelProvider);
-    if (row) return modelCatalogSelectValue(row);
-    if (model.trim()) return fromThread;
-    return defaultSelectValue;
-  }, [model, modelProvider, defaultSelectValue, modelRows]);
+  const modelSelectValue = useMemo(
+    () => composerSelectValueForThread(modelRows, model, modelProvider, defaultSelectValue),
+    [model, modelProvider, defaultSelectValue, modelRows]
+  );
 
   useEffect(() => {
     if (modelSelectValue.includes(":")) {
@@ -655,16 +649,22 @@ export function ChatPage() {
     const th = threads.find((x) => x.id === activeThreadId);
     if (!th?.model?.trim()) return;
     if (th.modelProvider && normalizeCatalogRoutingToken(th.modelProvider)) return;
-    const hint = lastModelSelectionRef.current || modelSelectValue || defaultSelectValue;
-    const routed = resolveModelCatalogRouting(modelRows, th.model, th.modelProvider, hint);
+    const routed = resolveSendModelRouting(modelRows, {
+      modelSelectValue: composerSelectValueForThread(
+        modelRows,
+        th.model,
+        th.modelProvider,
+        defaultSelectValue
+      ),
+      defaultSelectValue,
+      threadModel: th.model,
+      threadProvider: th.modelProvider,
+    });
     if (!routed) return;
     if (th.model === routed.model && th.modelProvider === routed.provider) return;
-    lastModelSelectionRef.current = modelCatalogSelectValueForThread(
-      routed.model,
-      routed.provider
-    );
+    lastModelSelectionRef.current = routed.selectValue;
     patchThread(activeThreadId, { model: routed.model, modelProvider: routed.provider });
-  }, [activeThreadId, defaultSelectValue, modelsCatalogReady, modelRows, modelSelectValue, threads, patchThread]);
+  }, [activeThreadId, defaultSelectValue, modelsCatalogReady, modelRows, threads, patchThread]);
 
   const addPickedFiles = useCallback(async (files: FileList | File[] | null) => {
     if (!files?.length) return;
@@ -778,16 +778,18 @@ export function ChatPage() {
     if (!accessToken || !activeThreadId) return;
     const tid = activeThreadId;
     const thread = threads.find((x) => x.id === tid);
-    const routed = resolveComposerModelRouting(
-      modelRows,
-      lastModelSelectionRef.current || modelSelectValue,
-      (thread?.model || defaultModel).trim(),
-      thread?.modelProvider
-    );
+    const routed = resolveSendModelRouting(modelRows, {
+      lastSelection: lastModelSelectionRef.current,
+      modelSelectValue,
+      defaultSelectValue,
+      threadModel: (thread?.model || defaultModel).trim(),
+      threadProvider: thread?.modelProvider,
+    });
     if (!thread || !routed) {
       setError(t("errors:resolveModelProviderFailed"));
       return;
     }
+    lastModelSelectionRef.current = routed.selectValue;
 
     const userContent = buildUserMessageContent(draft, pendingAttachments);
     if (!userContent) return;
@@ -974,16 +976,18 @@ export function ChatPage() {
     if (!accessToken || !activeThreadId) return;
     const tid = activeThreadId;
     const thread = threads.find((x) => x.id === tid);
-    const routed = resolveComposerModelRouting(
-      modelRows,
-      lastModelSelectionRef.current || modelSelectValue,
-      (thread?.model || defaultModel).trim(),
-      thread?.modelProvider
-    );
+    const routed = resolveSendModelRouting(modelRows, {
+      lastSelection: lastModelSelectionRef.current,
+      modelSelectValue,
+      defaultSelectValue,
+      threadModel: (thread?.model || defaultModel).trim(),
+      threadProvider: thread?.modelProvider,
+    });
     if (!thread || !routed) {
       setError(t("errors:resolveModelProviderFailed"));
       return;
     }
+    lastModelSelectionRef.current = routed.selectValue;
 
     const userContent = buildUserMessageContent(draft, pendingAttachments);
     if (!userContent) return;
