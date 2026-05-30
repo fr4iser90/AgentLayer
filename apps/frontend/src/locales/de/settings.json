@@ -158,7 +158,7 @@
   "toolsDrawerClose": "Schließen",
   "schedulesRuns": "Runs",
   "schedulesLoadingWorkspaces": "Workspaces werden geladen…",
-  "schedulesNoWorkspacesHint": "Keine Workspaces — einen im Coding Agent anlegen",
+  "schedulesNoWorkspacesHint": "Keine Workspaces — im Chat (Projekt-Dropdown) oder per Agent anlegen",
   "schedulesSelectWorkspace": "— Workspace wählen —",
   "schedulesWorkspaceRequired": "Projekt-Workspace (erforderlich)",
   "schedulesIntervalMinutes": "{{minutes}} Min.",

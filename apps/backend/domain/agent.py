@@ -3089,9 +3089,38 @@ async def chat_completion(
     _bootstrap_last_user = last_user_text(_bootstrap_messages)
     agent_auto_routed = False
     workspace_auto_created = False
+    workspace_bound_from_conversation = False
 
     # Get user from identity context (tenant_id, user_id)
     tenant_id, user_id = get_identity()
+
+    if not workspace_id and user_id:
+        _raw_cid_pref = body.get("conversation_id")
+        if _raw_cid_pref is not None:
+            _cid_pref_s = str(_raw_cid_pref).strip()
+            if _cid_pref_s:
+                try:
+                    from apps.backend.infrastructure.db import db as _db_pref
+
+                    _cid_pref = uuid.UUID(_cid_pref_s)
+                    with _db_pref.pool().connection() as conn:
+                        with conn.cursor() as cur:
+                            cur.execute(
+                                """
+                                SELECT pref_workspace_id FROM chat_conversations
+                                WHERE id = %s AND user_id = %s
+                                """,
+                                (_cid_pref, user_id),
+                            )
+                            _pw = cur.fetchone()
+                        conn.commit()
+                    if _pw and _pw[0]:
+                        workspace_id = str(_pw[0])
+                        workspace_bound_from_conversation = True
+                except (ValueError, TypeError):
+                    pass
+                except Exception as e:
+                    logger.debug("pref_workspace load skipped: %s", e)
 
     # Load DB user first so workspace resolution (e.g. agentlayer-self gates) sees real role.
     user_obj = None
@@ -3218,6 +3247,8 @@ async def chat_completion(
     # Prepare context dict for tools (DDD-style, with real objects)
     tool_context: dict[str, Any] = {"user": user_obj}
     if workspace and isinstance(workspace, dict):
+        if workspace.get("id"):
+            tool_context["workspace_id"] = str(workspace["id"])
         _p = workspace.get("path")
         if isinstance(_p, str) and _p.strip():
             tool_context["workspace"] = workspace
@@ -3779,6 +3810,7 @@ async def chat_completion(
                     if workspace and workspace.get("id")
                     else None,
                     "workspace_auto_created": workspace_auto_created,
+                    "workspace_bound": workspace_bound_from_conversation,
                     "agent_auto_routed": agent_auto_routed,
                 }
             )

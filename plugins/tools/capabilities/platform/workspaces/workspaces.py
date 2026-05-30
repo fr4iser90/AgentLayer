@@ -205,6 +205,9 @@ def workspace_bind(arguments: dict[str, Any], context: dict[str, Any] | None = N
 
     bind_workspace_in_context(context, workspace)
     conversation_updated = False
+    has_conversation_id = bool(
+        context and str(context.get("conversation_id") or "").strip()
+    )
     if user.id:
         conversation_updated = persist_conversation_workspace(context, str(workspace["id"]), user.id)
 
@@ -221,6 +224,7 @@ def workspace_bind(arguments: dict[str, Any], context: dict[str, Any] | None = N
             },
             "previous_workspace_id": previous,
             "conversation_workspace_updated": conversation_updated,
+            "conversation_id_in_context": has_conversation_id,
             "ui_sync": True,
             "agent_guidance": (
                 f"Bound to workspace **{workspace.get('name')}**. "

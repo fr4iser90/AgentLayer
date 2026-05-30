@@ -1,19 +1,23 @@
-/** Deep-link into Coding Agent scoped to one project workspace. */
+/** Deep-link into Chat scoped to one project workspace. */
 
-export type CodingAgentNavOptions = {
-  /** Start a fresh coding conversation for this workspace (recommended when changing repos). */
+export type ChatWorkspaceNavOptions = {
+  /** Start a fresh chat for this workspace (recommended when changing repos). */
   newSession?: boolean;
 };
 
-export function codingAgentPath(workspaceId: string, options?: CodingAgentNavOptions): string {
+export function chatWorkspacePath(workspaceId: string, options?: ChatWorkspaceNavOptions): string {
   const id = workspaceId.trim();
   const params = new URLSearchParams();
   params.set("workspace", id);
   if (options?.newSession) {
     params.set("new", "1");
   }
-  // SPA is mounted at /app (see App.tsx basename); bare /coding-agent hits API auth → 401 JSON.
-  return `/app/coding-agent?${params.toString()}`;
+  return `/app/chat?${params.toString()}`;
+}
+
+/** @deprecated Use chatWorkspacePath — legacy name from removed Coding page. */
+export function codingAgentPath(workspaceId: string, options?: ChatWorkspaceNavOptions): string {
+  return chatWorkspacePath(workspaceId, options);
 }
 
 /** True when switching workspace would mix repo context in an existing thread. */

@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { SettingsLayout } from "./layout/SettingsLayout";
 import { AuthProvider } from "./auth/AuthContext";
 import { FriendsSettings } from "./pages/settings/FriendsSettings";
@@ -34,6 +34,11 @@ import { SetupWizardPage } from "./pages/SetupWizardPage";
 import { MySchedulesPage } from "./pages/MySchedulesPage";
 import { TasksPage } from "./pages/TasksPage";
 
+function LegacyCodingAgentRedirect() {
+  const { search } = useLocation();
+  return <Navigate to={`/chat${search}`} replace />;
+}
+
 export function App() {
   return (
     <BrowserRouter basename="/app">
@@ -45,7 +50,7 @@ export function App() {
             <Route element={<RequireSession />}>
               <Route path="/" element={<HomePage />} />
               <Route path="chat" element={<ChatPage />} />
-              <Route path="coding-agent" element={<Navigate to="/chat" replace />} />
+              <Route path="coding-agent" element={<LegacyCodingAgentRedirect />} />
               <Route path="studio" element={<StudioPage />} />
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="schedules" element={<MySchedulesPage />} />

@@ -2,7 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
+import { ConfirmModal } from "../components/ConfirmModal";
 import { apiFetch, addUsageTotals, emptyTokenUsage, fetchSessionRuntime, type SessionRuntimePayload, type TokenUsageTotals, type WorkspaceApiRecord } from "../lib/api";
+import {
+  deleteWorkspaceApi,
+  isAgentlayerSelfWorkspace,
+} from "../lib/workspacesApi";
 import {
   applyModelCatalogSelection,
   defaultModelCatalogSelectValue,
@@ -110,8 +115,8 @@ import { handleSubagentWsEvent } from "../features/chat/subagentActivity";
 import { CodingWorkspacePanels } from "../features/workspace/CodingWorkspacePanels";
 import { WorkspaceRetrievalBar } from "../features/workspace/WorkspaceRetrievalBar";
 import { WorkspaceMcpModal } from "../features/workspace/WorkspaceMcpModal";
-import { shouldIsolateWorkspaceThread } from "../features/workspace/codingWorkspaceNav";
-import { confirmOpenCodingSessionForWorkspace } from "../features/workspace/confirmWorkspaceScope";
+import { shouldIsolateWorkspaceThread } from "../features/workspace/chatWorkspaceNav";
+import { confirmNewChatForWorkspace } from "../features/workspace/confirmWorkspaceScope";
 import { streamOpenAiChatChunks } from "../features/chat/openaiSseStream";
 import { formatMessageTime, inferMissingMessageTimestamps } from "../features/chat/messageTimestamps";
 
@@ -275,6 +280,10 @@ export function ChatPage() {
   const [selectedProposalOptions, setSelectedProposalOptions] = useState<
     Map<string, { proposal: Proposal; option: ProposalOption }>
   >(new Map());
+  const [deleteProjectTarget, setDeleteProjectTarget] = useState<WorkspaceApiRecord | null>(
+    null
+  );
+  const [deletingProject, setDeletingProject] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
   const agentHandlerRef = useRef<(ev: MessageEvent) => void>(() => {});
@@ -473,7 +482,7 @@ export function ChatPage() {
         setSelectedWorkspaceId((prev) => {
           if (wsFromUrl && list.some((w) => w.id === wsFromUrl)) return wsFromUrl;
           if (prev && list.some((w) => w.id === prev)) return prev;
-          return list[0]?.id ?? null;
+          return null;
         });
       } catch {
         /* ignore */
@@ -609,6 +618,41 @@ export function ChatPage() {
   }, [hydrated, searchParams, setSearchParams]);
 
   useEffect(() => {
+    const wsParam = (searchParams.get("workspace") || "").trim();
+    if (!wsParam) return;
+    workspaceDeepLinkRef.current = {
+      workspaceId: wsParam,
+      newSession: searchParams.get("new") === "1",
+    };
+  }, [searchParams]);
+
+  useEffect(() => {
+    const pending = workspaceDeepLinkRef.current;
+    if (!pending || workspaces.length === 0 || !hydrated) return;
+    if (!workspaces.some((w) => w.id === pending.workspaceId)) {
+      workspaceDeepLinkRef.current = null;
+      setSearchParams({}, { replace: true });
+      setError(t("chat:workspaceFromLinkNotFound"));
+      return;
+    }
+    const { workspaceId, newSession } = pending;
+    workspaceDeepLinkRef.current = null;
+    setSearchParams({}, { replace: true });
+    setSelectedWorkspaceId(workspaceId);
+    if (newSession) {
+      void startNewChatRef.current(workspaceId);
+      return;
+    }
+    const match = threads.find(
+      (th) => th.workspaceId === workspaceId && (th.messageCount ?? th.messages.length) > 0
+    );
+    if (match) {
+      setActiveThreadId(match.id);
+      setSearchParams({ c: match.id }, { replace: true });
+    }
+  }, [workspaces, hydrated, threads, searchParams, setSearchParams, t]);
+
+  useEffect(() => {
     if (mode !== "agent" && wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
@@ -725,6 +769,7 @@ export function ChatPage() {
   const startNewChatRef = useRef<(workspaceIdOverride?: string | null) => Promise<void>>(
     async () => {}
   );
+  const workspaceDeepLinkRef = useRef<{ workspaceId: string; newSession: boolean } | null>(null);
 
   const setComposerWorkspace = useCallback(
     (wsId: string | null) => {
@@ -735,7 +780,7 @@ export function ChatPage() {
         const prevWs = typeof thread?.workspaceId === "string" ? thread.workspaceId : null;
         if (shouldIsolateWorkspaceThread(msgCount, prevWs, wsId)) {
           const wsName = workspaces.find((w) => w.id === wsId)?.name ?? wsId;
-          if (confirmOpenCodingSessionForWorkspace(wsName, wsId)) {
+          if (confirmNewChatForWorkspace(wsName)) {
             void startNewChatRef.current(wsId);
             return;
           }
@@ -1155,7 +1200,7 @@ export function ChatPage() {
                 const wsName = workspaces.find((w) => w.id === wid)?.name ?? "project";
                 if (msg.workspace_bound === true && msgCount > 2) {
                   setWorkspaceScopeHint(
-                    `Workspace is now "${wsName}". For focused repo work, open Coding with a new session.`
+                    t("chat:workspaceBoundHint", { name: wsName })
                   );
                 }
                 setThreads((prev) => {
@@ -1389,6 +1434,55 @@ export function ChatPage() {
   const onCancelInFlight = useCallback(() => {
     abortInFlightTurn();
   }, [abortInFlightTurn]);
+
+  const requestDeleteProject = useCallback(
+    (ws: WorkspaceApiRecord) => {
+      if (isAgentlayerSelfWorkspace(ws)) {
+        setError(t("chat:deleteProjectSelfForbidden"));
+        return;
+      }
+      if (ws.access_role === "viewer") {
+        setError(t("chat:deleteProjectViewerForbidden"));
+        return;
+      }
+      setDeleteProjectTarget(ws);
+    },
+    [t]
+  );
+
+  const confirmDeleteProject = useCallback(async () => {
+    const ws = deleteProjectTarget;
+    if (!ws) return;
+    setDeletingProject(true);
+    try {
+      await deleteWorkspaceApi(auth, ws.id);
+      setWorkspaces((prev) => prev.filter((w) => w.id !== ws.id));
+      if (selectedWorkspaceId === ws.id) {
+        setSelectedWorkspaceId(null);
+        if (activeThreadId) {
+          setComposerWorkspace(null);
+        }
+      }
+      setThreads((prev) =>
+        prev.map((th) =>
+          th.workspaceId === ws.id ? { ...th, workspaceId: null, updatedAt: Date.now() } : th
+        )
+      );
+      setDeleteProjectTarget(null);
+      setProjectPanelOpen(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("chat:deleteProjectFailed"));
+    } finally {
+      setDeletingProject(false);
+    }
+  }, [
+    activeThreadId,
+    auth,
+    deleteProjectTarget,
+    selectedWorkspaceId,
+    setComposerWorkspace,
+    t,
+  ]);
 
   const startNewChat = useCallback(
     async (workspaceIdOverride?: string | null) => {
@@ -1658,6 +1752,18 @@ export function ChatPage() {
                       >
                         {projectPanelOpen ? t("chat:hideTree") : t("chat:showTree")}
                       </button>
+                      {selectedWorkspace &&
+                      selectedWorkspace.access_role !== "viewer" &&
+                      !isAgentlayerSelfWorkspace(selectedWorkspace) ? (
+                        <button
+                          type="button"
+                          className="shrink-0 rounded-lg border border-red-900/40 bg-red-950/20 px-2.5 py-1.5 text-[11px] font-medium text-red-300/90 hover:bg-red-950/40"
+                          title={t("chat:deleteProject")}
+                          onClick={() => requestDeleteProject(selectedWorkspace)}
+                        >
+                          {t("chat:deleteProject")}
+                        </button>
+                      ) : null}
                     </div>
                     {selectedWorkspace ? (
                       <WorkspaceRetrievalBar
@@ -2191,6 +2297,23 @@ export function ChatPage() {
           }}
         />
       ) : null}
+      <ConfirmModal
+        open={deleteProjectTarget != null}
+        title={t("chat:deleteProjectTitle")}
+        description={
+          deleteProjectTarget
+            ? t("chat:deleteProjectDescription", { name: deleteProjectTarget.name })
+            : ""
+        }
+        confirmLabel={t("chat:deleteProjectConfirm")}
+        cancelLabel={t("admin:cancel")}
+        variant="danger"
+        busy={deletingProject}
+        onConfirm={() => void confirmDeleteProject()}
+        onCancel={() => {
+          if (!deletingProject) setDeleteProjectTarget(null);
+        }}
+      />
     </div>
   );
 }

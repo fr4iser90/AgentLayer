@@ -794,9 +794,9 @@ if _agent_index.is_file():
 
     @app.get("/coding-agent")
     async def redirect_legacy_coding_agent(request: Request):
-        """Legacy deep links used /coding-agent; SPA lives under /app/coding-agent."""
+        """Legacy deep links: Coding UI removed; Chat is the only project surface."""
         q = request.url.query
-        target = "/app/coding-agent" + (f"?{q}" if q else "")
+        target = "/app/chat" + (f"?{q}" if q else "")
         return RedirectResponse(url=target, status_code=302)
 
     @app.get("/app")

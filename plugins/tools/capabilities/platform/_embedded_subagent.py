@@ -184,6 +184,12 @@ def run_embedded_subagent_sync(
             ws_uuid = uuid.UUID(str(ws["id"]))
         except (ValueError, TypeError):
             ws_uuid = None
+    elif ctx.get("workspace_id"):
+        body["workspace_id"] = str(ctx["workspace_id"]).strip()
+        try:
+            ws_uuid = uuid.UUID(str(ctx["workspace_id"]).strip())
+        except (ValueError, TypeError):
+            ws_uuid = None
 
     tid_task = task_id or ctx.get("agent_task_id")
     task_uuid: uuid.UUID | None = None
@@ -195,9 +201,9 @@ def run_embedded_subagent_sync(
             task_uuid = None
 
     body["agent_run_id"] = sub_run_id
-    ce = ctx.get("cancel_event")
-    if not isinstance(ce, asyncio.Event):
-        ce = None
+    # Parent cancel_event is bound to the main asyncio loop; never pass it into
+    # asyncio.run() in this worker thread (causes "bound to a different event loop").
+    ce = None
     prid = ctx.get("agent_run_id")
     if isinstance(prid, str) and prid.strip():
         body["agent_parent_run_id"] = prid.strip()
