@@ -480,6 +480,8 @@ async def update_workspace(request: Request, workspace_id: str, body: WorkspaceU
             params.append(json.dumps(parsed))
 
     if updates:
+        # SECURITY: Column names are validated against explicit ALLOWED_UPDATE_COLUMNS above.
+        # Values are parameterized via %s placeholders — no SQL injection possible.
         params.append(workspace_id)
         with db.pool().connection() as conn:
             with conn.cursor() as cur:

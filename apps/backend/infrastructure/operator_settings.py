@@ -1551,6 +1551,9 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
                 extra_sets.append("workspace_index_on_attach_enabled = %s")
                 extra_params.append(bool(r.get("workspace_index_on_attach_enabled", False)))
             if extra_sets:
+                # SECURITY: Column names in `extra_sets` come from the known
+                # _SETTING_KEYS mapping (see _OPERATOR_SETTINGS_KEYS).
+                # All values are parameterized via %s placeholders.
                 cur.execute(
                     f"UPDATE operator_settings SET {', '.join(extra_sets)}, updated_at = now() WHERE id = 1",
                     tuple(extra_params),

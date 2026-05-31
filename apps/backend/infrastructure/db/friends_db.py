@@ -246,10 +246,12 @@ def friend_update(user_id: uuid.UUID, friend_user_id: uuid.UUID, relation: str |
             
             if not update_fields:
                 return True
-            
+
             params.append(user_id)
             params.append(friend_user_id)
-            
+
+            # SECURITY: Column names in `update_fields` come from function parameters
+            # (relation, note). All values are parameterized via %s placeholders.
             cur.execute(
                 f"""
                 UPDATE friends

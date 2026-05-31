@@ -214,6 +214,8 @@ def list_runs(
         where.append("parent_run_id = %s")
         params.append(parent_run_id)
     params.append(lim)
+    # SECURITY: WHERE conditions come from function parameters with fixed column names.
+    # All values are parameterized via %s placeholders.
     sql = f"""
         SELECT * FROM agent_runs
         WHERE {' AND '.join(where)}

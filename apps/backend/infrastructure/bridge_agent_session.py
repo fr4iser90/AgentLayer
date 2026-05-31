@@ -246,6 +246,9 @@ def _bridge_update_session_columns(
     try:
         with db.pool().connection() as conn:
             with conn.cursor() as cur:
+                # SECURITY: Column names in `sets` come from function parameters
+                # (is_auto_respond_enabled, delegate_auto_respond_after_sec, etc.).
+                # All values are parameterized via %s placeholders.
                 cur.execute(
                     f"""
                     UPDATE bridge_agent_sessions
