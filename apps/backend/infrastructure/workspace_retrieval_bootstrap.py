@@ -137,7 +137,7 @@ def build_retrieval_bootstrap_snippet(workspace: dict[str, Any]) -> str:
         sym_s = f", {sym} symbols" if isinstance(sym, int) else ""
         lines.append(f"Last index: {last_at}{sym_s}")
     elif sem_on:
-        lines.append("Last index: never — run Reindex in the UI or `coding_index` before semantic search.")
+        lines.append("Last index: never — run Reindex in the UI or `index` before semantic search.")
 
     stale = index_stale_reason(workspace)
     if stale == "git_head_newer_than_index":
@@ -147,7 +147,7 @@ def build_retrieval_bootstrap_snippet(workspace: dict[str, Any]) -> str:
             "Index may be **stale** (files changed since last index) — Reindex or wait for background incremental index."
         )
     elif stale == "never_indexed" and sem_on:
-        lines.append("No semantic index yet — use `coding_search` / grep; run index for Qdrant symbol search.")
+        lines.append("No semantic index yet — use `search` / grep; run index for Qdrant symbol search.")
 
     if root and root.is_dir():
         top = list_repo_top_level(root)
@@ -157,7 +157,7 @@ def build_retrieval_bootstrap_snippet(workspace: dict[str, Any]) -> str:
     if ret_on:
         lines.append(
             "For unfamiliar code or docs, call **`retrieve_context`** first (grep + semantic + RAG); "
-            "then `coding_read_file` on cited path:line."
+            "then `read_file` on cited path:line."
         )
 
     return "\n".join(lines)
@@ -166,8 +166,9 @@ def build_retrieval_bootstrap_snippet(workspace: dict[str, Any]) -> str:
 def maybe_schedule_index_on_attach(workspace: dict[str, Any]) -> bool:
     """Background reindex when operator flag is on and index is stale. Returns True if started."""
     from apps.backend.core.config import config
+    from apps.backend.infrastructure.workspace_index_policy import operator_index_on_attach_enabled
 
-    if not config.AGENT_WORKSPACE_INDEX_ON_ATTACH:
+    if not operator_index_on_attach_enabled():
         return False
     if not config.CODING_ENABLED:
         return False

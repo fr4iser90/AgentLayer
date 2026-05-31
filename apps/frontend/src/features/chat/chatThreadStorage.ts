@@ -53,7 +53,7 @@ export type AgentTimelineEntry = {
   toolRound?: number;
   /** Indent in activity panel (delegated run). */
   nested?: boolean;
-  /** ``index_start`` / ``index_done`` / ``coding_index`` tool runs. */
+  /** ``index_start`` / ``index_done`` / ``index`` tool runs. */
   indexMode?: IndexRunMode;
   indexPhase?: string;
   filesDone?: number;
@@ -104,6 +104,10 @@ export type ChatThread = {
   activeTaskId?: string | null;
   /** Server list field ``message_count``; falls back to ``messages.length`` when loaded. */
   messageCount?: number;
+  /** Delegate auto-respond (Stellvertreter) per conversation. */
+  delegateAutoRespondEnabled?: boolean;
+  delegateAutoRespondAfterSec?: number;
+  delegateMaxChainTurns?: number;
 };
 
 export type PersistedState = {

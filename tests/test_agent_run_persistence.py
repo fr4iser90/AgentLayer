@@ -110,7 +110,7 @@ def test_resolve_valid_active_task_id_accepts_accessible() -> None:
 
 def test_embedded_subagent_default_no_wall_clock_timeout() -> None:
     from apps.backend.core import config
-    from plugins.tools.capabilities.platform._embedded_subagent import (
+    from apps.backend.domain.embedded_subagent import (
         run_embedded_subagent_sync,
     )
 
@@ -123,7 +123,7 @@ def test_embedded_subagent_default_no_wall_clock_timeout() -> None:
     with patch.object(config, "SUBAGENT_TIMEOUT_SEC", None):
         with patch("apps.backend.domain.identity.get_identity", return_value=(1, uid)):
             with patch(
-                "plugins.tools.capabilities.platform._embedded_subagent.ThreadPoolExecutor"
+                "apps.backend.domain.embedded_subagent.ThreadPoolExecutor"
             ) as tpe:
                 pool = MagicMock()
                 tpe.return_value.__enter__.return_value = pool
@@ -140,14 +140,14 @@ def test_embedded_subagent_default_no_wall_clock_timeout() -> None:
                         subagent_agent_id="coding",
                         prompt="work",
                         context=ctx,
-                        tool_name="agent_delegate",
+                        tool_name="delegate",
                         description="test",
                     )
                 fut.result.assert_called_once_with()
 
 
 def test_embedded_subagent_surfaces_api_error() -> None:
-    from plugins.tools.capabilities.platform._embedded_subagent import (
+    from apps.backend.domain.embedded_subagent import (
         run_embedded_subagent_sync,
     )
 
@@ -159,7 +159,7 @@ def test_embedded_subagent_surfaces_api_error() -> None:
     }
     with patch("apps.backend.domain.identity.get_identity", return_value=(1, uid)):
         with patch(
-            "plugins.tools.capabilities.platform._embedded_subagent.ThreadPoolExecutor"
+            "apps.backend.domain.embedded_subagent.ThreadPoolExecutor"
         ) as tpe:
             pool = MagicMock()
             tpe.return_value.__enter__.return_value = pool
@@ -168,7 +168,7 @@ def test_embedded_subagent_surfaces_api_error() -> None:
                 subagent_agent_id="coding",
                 prompt="work",
                 context=ctx,
-                tool_name="agent_delegate",
+                tool_name="delegate",
                 description="test",
             )
     data = json.loads(out)
@@ -178,9 +178,9 @@ def test_embedded_subagent_surfaces_api_error() -> None:
 
 
 def test_coding_task_register_only_marks_not_executed() -> None:
-    from plugins.tools.capabilities.coding.coding_task import coding_task
+    from plugins.tools.platform.agents.task import task
 
-    out = coding_task(
+    out = task(
         {"description": "Check branch", "prompt": "Review security branch"},
         context=None,
     )

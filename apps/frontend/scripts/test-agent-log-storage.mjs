@@ -42,7 +42,7 @@ const log = appendTimelineEntry([], {
   subagentAgentId: "coding",
   subagentRunId: "run-a",
   stepPhase: "start",
-  toolName: "coding_read_file",
+  toolName: "read_file",
   toolSummary: "path=friends_db.py",
   toolRound: 2,
 });

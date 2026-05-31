@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from plugins.tools.capabilities.coding.retrieval_fusion import build_fused_ranking, reciprocal_rank_fusion
+from apps.backend.domain.coding.retrieval_fusion import build_fused_ranking, reciprocal_rank_fusion
 
 
 def test_rrf_promotes_dual_list_hit() -> None:

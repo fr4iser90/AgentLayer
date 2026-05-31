@@ -23,12 +23,12 @@ class TestE2eMockLlm(unittest.TestCase):
     def test_first_round_tool_call(self) -> None:
         body = {
             "messages": [{"role": "user", "content": "hi"}],
-            "tools": [{"type": "function", "function": {"name": "coding_list_dir"}}],
+            "tools": [{"type": "function", "function": {"name": "list_dir"}}],
         }
         data = build_mock_chat_completion(body)
         msg = data["choices"][0]["message"]
         self.assertTrue(msg.get("tool_calls"))
-        self.assertEqual(msg["tool_calls"][0]["function"]["name"], "coding_list_dir")
+        self.assertEqual(msg["tool_calls"][0]["function"]["name"], "list_dir")
         args = json.loads(msg["tool_calls"][0]["function"]["arguments"])
         self.assertEqual(args.get("path"), ".")
 
@@ -36,10 +36,10 @@ class TestE2eMockLlm(unittest.TestCase):
         body = {
             "messages": [
                 {"role": "user", "content": "hi"},
-                {"role": "assistant", "tool_calls": [{"id": "x", "type": "function", "function": {"name": "coding_list_dir", "arguments": "{}"}}]},
+                {"role": "assistant", "tool_calls": [{"id": "x", "type": "function", "function": {"name": "list_dir", "arguments": "{}"}}]},
                 {"role": "tool", "tool_call_id": "x", "content": "[]"},
             ],
-            "tools": [{"type": "function", "function": {"name": "coding_list_dir"}}],
+            "tools": [{"type": "function", "function": {"name": "list_dir"}}],
         }
         data = build_mock_chat_completion(body)
         msg = data["choices"][0]["message"]

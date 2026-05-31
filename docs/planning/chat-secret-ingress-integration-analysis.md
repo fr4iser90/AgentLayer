@@ -96,7 +96,7 @@ So even if `chat_completion` redacts `messages` for the LLM, **raw secrets can a
 
 ## Tool execution path (secondary)
 
-Secrets can also appear in **tool arguments** (`operator_settings_patch`, `operator_external_llm_endpoints_put`, …). ADR 0006 focuses on **user message** ingress; tool-args are a separate decision:
+Secrets can also appear in **tool arguments** (`settings_patch`, `external_llm_endpoints_put`, …). ADR 0006 focuses on **user message** ingress; tool-args are a separate decision:
 
 - Either **reject** raw token keys in tool args when feature flag on and require placeholders only, or
 - Run a **narrow** redaction on `arguments` dict inside `run_tool` / `log_tool_invocation` only for logging (already partially supported via `tool_log_redact_keys` in `apps/backend/infrastructure/db/db.py` `log_tool_invocation`).

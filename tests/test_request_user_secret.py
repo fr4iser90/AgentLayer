@@ -8,20 +8,20 @@ from unittest.mock import patch
 
 import pytest
 
-from plugins.tools.capabilities.platform.secrets.request_user_secret import (
+from plugins.tools.platform.secrets.request_user_secret import (
     request_user_secret,
 )
 
 
-@patch("plugins.tools.capabilities.platform.secrets.request_user_secret.config")
+@patch("plugins.tools.platform.secrets.request_user_secret.config")
 def test_request_user_secret_requires_master_key(mock_cfg):
     mock_cfg.SECRETS_MASTER_KEY = ""
     out = json.loads(request_user_secret({"service_key": "ssc_api_key"}))
     assert out["ok"] is False
 
 
-@patch("plugins.tools.capabilities.platform.secrets.request_user_secret.config")
-@patch("plugins.tools.capabilities.platform.secrets.request_user_secret.get_identity")
+@patch("plugins.tools.platform.secrets.request_user_secret.config")
+@patch("plugins.tools.platform.secrets.request_user_secret.get_identity")
 def test_request_user_secret_requires_identity(mock_ident, mock_cfg):
     mock_cfg.SECRETS_MASTER_KEY = "x" * 32
     mock_ident.return_value = (None, None)
@@ -29,10 +29,10 @@ def test_request_user_secret_requires_identity(mock_ident, mock_cfg):
     assert out["ok"] is False
 
 
-@patch("plugins.tools.capabilities.platform.secrets.request_user_secret.form_spec_for_service_key")
-@patch("plugins.tools.capabilities.platform.secrets.request_user_secret._catalog_service_keys")
-@patch("plugins.tools.capabilities.platform.secrets.request_user_secret.config")
-@patch("plugins.tools.capabilities.platform.secrets.request_user_secret.get_identity")
+@patch("plugins.tools.platform.secrets.request_user_secret.form_spec_for_service_key")
+@patch("plugins.tools.platform.secrets.request_user_secret._catalog_service_keys")
+@patch("plugins.tools.platform.secrets.request_user_secret.config")
+@patch("plugins.tools.platform.secrets.request_user_secret.get_identity")
 def test_request_user_secret_emits_payload(
     mock_ident, mock_cfg, mock_catalog, mock_form
 ):

@@ -15,7 +15,7 @@ Accepted — complements ADR 0001.
 | Capability | Meaning |
 |------------|---------|
 | `meta.discover` | List/browse what exists (registry catalog, categories, extra-tool filenames). |
-| `meta.inspect` | Load full schema or source (`get_tool_help`, `read_tool`). |
+| `meta.inspect` | Load full schema or source (`get_tool_help`, `read`). |
 | `meta.author` | Create/update/replace/rename tool modules. |
 | `secrets.user` | Register or document user secrets. |
 | `dashboard.files` | Local filesystem read/write/search on host. |

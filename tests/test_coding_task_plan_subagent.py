@@ -1,4 +1,4 @@
-"""Smoke tests for ``coding_task`` default mode and ``run_plan_subagent`` (mocked ``chat_completion``)."""
+"""Smoke tests for ``task`` default mode and ``run_plan_subagent`` (mocked ``chat_completion``)."""
 
 from __future__ import annotations
 
@@ -10,17 +10,17 @@ from unittest.mock import AsyncMock, patch
 
 class TestCodingTaskPlanSubagent(unittest.TestCase):
     def test_plan_subagent_requires_prompt(self) -> None:
-        from plugins.tools.capabilities.coding.coding_task import coding_task
+        from plugins.tools.platform.agents.task import task
 
-        out = coding_task({"run_plan_subagent": True, "description": "x"}, context=None)
+        out = task({"run_plan_subagent": True, "description": "x"}, context=None)
         data = json.loads(out)
         self.assertFalse(data.get("ok"))
         self.assertIn("prompt", (data.get("error") or "").lower())
 
     def test_default_mode_registers_task(self) -> None:
-        from plugins.tools.capabilities.coding.coding_task import coding_task
+        from plugins.tools.platform.agents.task import task
 
-        out = coding_task(
+        out = task(
             {"description": "Smoke task", "prompt": "Do the thing"},
             context=None,
         )
@@ -30,7 +30,7 @@ class TestCodingTaskPlanSubagent(unittest.TestCase):
         self.assertIn("task_id", data)
 
     def test_plan_subagent_invokes_chat_completion_with_coding_plan(self) -> None:
-        from plugins.tools.capabilities.coding.coding_task import coding_task
+        from plugins.tools.platform.agents.task import task
 
         uid = uuid.uuid4()
         ws_id = uuid.uuid4()
@@ -69,7 +69,7 @@ class TestCodingTaskPlanSubagent(unittest.TestCase):
                             "apps.backend.infrastructure.agent_runs_store.finish_run",
                             return_value=True,
                         ):
-                            out = coding_task(
+                            out = task(
                                 {
                                     "run_plan_subagent": True,
                                     "prompt": "List entrypoints",
@@ -95,15 +95,15 @@ class TestCodingTaskPlanSubagent(unittest.TestCase):
         self.assertEqual(
             b0.get("agent_tool_name_allowlist"),
             [
-                "coding_list_dir",
-                "coding_read_file",
-                "coding_glob",
+                "list_dir",
+                "read_file",
+                "glob",
                 "retrieve_context",
-                "coding_search",
-                "coding_git_read",
-                "coding_semantic_search",
-                "coding_symbols",
-                "coding_lsp",
+                "search",
+                "git_read",
+                "semantic_search",
+                "symbols",
+                "lsp",
                 "project_explain",
             ],
         )
@@ -114,7 +114,7 @@ class TestCodingTaskPlanSubagent(unittest.TestCase):
 
     def test_plan_subagent_identity_fallback_from_context_user(self) -> None:
         """When ``get_identity`` has no user_id, ``context['user'].id`` + ``user_tenant_id`` is used."""
-        from plugins.tools.capabilities.coding.coding_task import coding_task
+        from plugins.tools.platform.agents.task import task
 
         uid = uuid.uuid4()
         ws_id = uuid.uuid4()
@@ -148,7 +148,7 @@ class TestCodingTaskPlanSubagent(unittest.TestCase):
                                 "apps.backend.infrastructure.agent_runs_store.finish_run",
                                 return_value=True,
                             ):
-                                out = coding_task(
+                                out = task(
                                     {
                                         "run_plan_subagent": True,
                                         "prompt": "x",

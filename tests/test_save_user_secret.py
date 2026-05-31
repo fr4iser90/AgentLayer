@@ -7,7 +7,7 @@ import uuid
 from unittest.mock import patch
 
 from apps.backend.infrastructure.secret_otp_bundle import validate_user_secret_service_key
-from plugins.tools.capabilities.platform.secrets.save_user_secret import save_user_secret
+from plugins.tools.platform.secrets.save_user_secret import save_user_secret
 
 
 def test_validate_user_secret_service_key_format():
@@ -16,15 +16,15 @@ def test_validate_user_secret_service_key_format():
     assert validate_user_secret_service_key("") is None
 
 
-@patch("plugins.tools.capabilities.platform.secrets.save_user_secret.config")
+@patch("plugins.tools.platform.secrets.save_user_secret.config")
 def test_save_user_secret_requires_master_key(mock_cfg):
     mock_cfg.SECRETS_MASTER_KEY = None
     out = json.loads(save_user_secret({"service_key": "my_integration", "secret": "x"}))
     assert out["ok"] is False
 
 
-@patch("plugins.tools.capabilities.platform.secrets.save_user_secret.config")
-@patch("plugins.tools.capabilities.platform.secrets.save_user_secret.get_identity")
+@patch("plugins.tools.platform.secrets.save_user_secret.config")
+@patch("plugins.tools.platform.secrets.save_user_secret.get_identity")
 def test_save_user_secret_requires_identity(mock_ident, mock_cfg):
     mock_cfg.SECRETS_MASTER_KEY = "test-key"
     mock_ident.return_value = (1, None)
@@ -32,8 +32,8 @@ def test_save_user_secret_requires_identity(mock_ident, mock_cfg):
     assert out["ok"] is False
 
 
-@patch("plugins.tools.capabilities.platform.secrets.save_user_secret.config")
-@patch("plugins.tools.capabilities.platform.secrets.save_user_secret.get_identity")
+@patch("plugins.tools.platform.secrets.save_user_secret.config")
+@patch("plugins.tools.platform.secrets.save_user_secret.get_identity")
 def test_save_user_secret_rejects_invalid_service_key(mock_ident, mock_cfg):
     mock_cfg.SECRETS_MASTER_KEY = "test-key"
     mock_ident.return_value = (1, uuid.uuid4())
@@ -44,9 +44,9 @@ def test_save_user_secret_rejects_invalid_service_key(mock_ident, mock_cfg):
     assert "catalog_service_keys" in out
 
 
-@patch("plugins.tools.capabilities.platform.secrets.save_user_secret.db")
-@patch("plugins.tools.capabilities.platform.secrets.save_user_secret.config")
-@patch("plugins.tools.capabilities.platform.secrets.save_user_secret.get_identity")
+@patch("plugins.tools.platform.secrets.save_user_secret.db")
+@patch("plugins.tools.platform.secrets.save_user_secret.config")
+@patch("plugins.tools.platform.secrets.save_user_secret.get_identity")
 def test_save_user_secret_upserts(mock_ident, mock_cfg, mock_db):
     mock_cfg.SECRETS_MASTER_KEY = "test-key"
     uid = uuid.uuid4()
@@ -64,9 +64,9 @@ def test_save_user_secret_upserts(mock_ident, mock_cfg, mock_db):
     mock_db.user_secret_upsert.assert_called_once_with(uid, sk, token)
 
 
-@patch("plugins.tools.capabilities.platform.secrets.save_user_secret.db")
-@patch("plugins.tools.capabilities.platform.secrets.save_user_secret.config")
-@patch("plugins.tools.capabilities.platform.secrets.save_user_secret.get_identity")
+@patch("plugins.tools.platform.secrets.save_user_secret.db")
+@patch("plugins.tools.platform.secrets.save_user_secret.config")
+@patch("plugins.tools.platform.secrets.save_user_secret.get_identity")
 def test_save_user_secret_json_object_secret(mock_ident, mock_cfg, mock_db):
     mock_cfg.SECRETS_MASTER_KEY = "test-key"
     uid = uuid.uuid4()

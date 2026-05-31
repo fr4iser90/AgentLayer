@@ -31,7 +31,7 @@ def test_fix_from_artifact_blocks_out_of_scope_edit() -> None:
         "agent_delegate_allowed_paths": ["plugins/foo.py"],
     }
     msg = coding_delegate_tool_blocked(
-        "coding_edit",
+        "edit",
         {"path": "apps/other.py", "old_string": "a", "new_string": "b"},
         ctx,
     )
@@ -46,7 +46,7 @@ def test_fix_from_artifact_allows_scoped_edit() -> None:
     }
     assert (
         coding_delegate_tool_blocked(
-            "coding_edit",
+            "edit",
             {"path": "plugins/foo.py", "old_string": "a", "new_string": "b"},
             ctx,
         )
@@ -61,7 +61,7 @@ def test_fix_from_artifact_blocks_wrong_branch_push() -> None:
         "agent_delegate_required_branch": "security/fix-high-issues",
     }
     msg = coding_delegate_tool_blocked(
-        "coding_git_push",
+        "git_push",
         {"branch": "security/fix-other"},
         ctx,
     )
@@ -71,9 +71,9 @@ def test_fix_from_artifact_blocks_wrong_branch_push() -> None:
 
 def test_general_blocks_search_when_handoff_pending() -> None:
     ctx = {"orchestrator_pending_artifact_refs": ["abc-123"]}
-    msg = general_orchestrator_tool_blocked("coding_search", {"query": "x"}, ctx)
+    msg = general_orchestrator_tool_blocked("search", {"query": "x"}, ctx)
     assert msg is not None
-    assert "agent_delegate" in msg
+    assert "delegate" in msg
 
 
 def test_reject_plan_for_fix_from_artifact() -> None:

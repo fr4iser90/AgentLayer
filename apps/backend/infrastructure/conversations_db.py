@@ -330,7 +330,9 @@ def conversation_get(user_id: uuid.UUID, conversation_id: uuid.UUID) -> dict[str
                 SELECT id, title, mode, model, agent_log, updated_at, created_at, dashboard_id,
                        user_id, tenant_id, shared, pref_agent_id, pref_workspace_id,
                        pref_model_catalog_owned_by, active_task_id,
-                       context_summary, context_summary_message_count, context_summary_updated_at
+                       context_summary, context_summary_message_count, context_summary_updated_at,
+                       delegate_auto_respond_enabled, delegate_auto_respond_after_sec,
+                       delegate_max_chain_turns
                 FROM chat_conversations
                 WHERE id = %s
                 """,
@@ -351,6 +353,9 @@ def conversation_get(user_id: uuid.UUID, conversation_id: uuid.UUID) -> dict[str
             context_summary_raw = crow[15]
             context_summary_count_raw = crow[16]
             context_summary_updated_raw = crow[17]
+            delegate_auto_enabled = bool(crow[18]) if len(crow) > 18 and crow[18] is not None else False
+            delegate_auto_sec = int(crow[19]) if len(crow) > 19 and crow[19] is not None else 60
+            delegate_max_chain = int(crow[20]) if len(crow) > 20 and crow[20] is not None else 3
             if shared and wid is not None:
                 if not dashboard_db.dashboard_has_full_access(user_id, tenant_id, wid):
                     return None
@@ -419,7 +424,50 @@ def conversation_get(user_id: uuid.UUID, conversation_id: uuid.UUID) -> dict[str
             if isinstance(context_summary_updated_raw, datetime)
             else (str(context_summary_updated_raw) if context_summary_updated_raw else "")
         ),
+        "delegate_auto_respond_enabled": delegate_auto_enabled,
+        "delegate_auto_respond_after_sec": max(15, min(delegate_auto_sec, 600)),
+        "delegate_max_chain_turns": max(1, min(delegate_max_chain, 10)),
     }
+
+
+def conversation_update_delegate_prefs(
+    user_id: uuid.UUID,
+    conversation_id: uuid.UUID,
+    *,
+    delegate_auto_respond_enabled: bool | None = None,
+    delegate_auto_respond_after_sec: int | None = None,
+    delegate_max_chain_turns: int | None = None,
+) -> dict[str, Any] | None:
+    parts: list[str] = []
+    args: list[Any] = []
+    if delegate_auto_respond_enabled is not None:
+        parts.append("delegate_auto_respond_enabled = %s")
+        args.append(bool(delegate_auto_respond_enabled))
+    if delegate_auto_respond_after_sec is not None:
+        sec = max(15, min(int(delegate_auto_respond_after_sec), 600))
+        parts.append("delegate_auto_respond_after_sec = %s")
+        args.append(sec)
+    if delegate_max_chain_turns is not None:
+        turns = max(1, min(int(delegate_max_chain_turns), 10))
+        parts.append("delegate_max_chain_turns = %s")
+        args.append(turns)
+    if not parts:
+        return conversation_get(user_id, conversation_id)
+    parts.append("updated_at = now()")
+    with db.pool().connection() as conn:
+        with conn.cursor() as cur:
+            args.extend([conversation_id, user_id])
+            cur.execute(
+                f"""
+                UPDATE chat_conversations SET {", ".join(parts)}
+                WHERE id = %s AND user_id = %s AND shared = false
+                """,
+                args,
+            )
+            if cur.rowcount < 1:
+                return None
+        conn.commit()
+    return conversation_get(user_id, conversation_id)
 
 
 def conversation_create(

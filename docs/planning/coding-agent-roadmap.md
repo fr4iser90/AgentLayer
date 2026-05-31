@@ -46,7 +46,7 @@ Keep **one** canonical story for “where does the coding agent run?” (`docs/f
 
 ### Optional “pro” layer (later)
 
-Structured **audit logs** (who deleted a workspace, who ran push, long `coding_bash`), and **CI** as the gate for “green” before anyone talks about deploy — see epic E.
+Structured **audit logs** (who deleted a workspace, who ran push, long `bash`), and **CI** as the gate for “green” before anyone talks about deploy — see epic E.
 
 ## Security invariants (multi-user)
 
@@ -148,14 +148,14 @@ Single backlog derived from “what agentic coding needs in general,” mapped t
 | **Workspace / Cwd** | Eindeutiger Baum für alle Coding-Tools | **Habt ihr:** `workspace_id`, Clone, `coding_*` mit Root. **Next:** UI immer sichtbarer Workspace-Pfad; Auth-Härtung (Epic A). |
 | **Zuverlässige Tool-JSON** | Keine Endlosschleifen (`coding_bash({})`) | **Teilweise:** Server-Normalisierung, Rescue-/letzte Text-Runde. **Next:** Circuit-Breaker (gleicher Tool-Name + gleiche leere Args 2× → System-Nudge oder Text-only); optional zweites LLM nur für Tool-JSON; weiter Modell-Routing-Docs. |
 | **Read → Plan → Act** | Weniger blindes Editieren | **Habt ihr:** `coding_plan` Agent + Registry-Allowlist (read/meta only); UI wählt Agent. **Next:** Auto-Routing erste N Runden optional. |
-| **Patch-first Editing** | Stabilere Edits | **Habt ihr:** `coding_apply_patch`, replace, edit. **Next:** Prompt/Default „prefer patch“; Metriken ob Patch vs. full write. |
-| **Schnelle Suche** | Repo ohne 20× `list_dir` | **Habt ihr:** `coding_search`, `coding_glob`, Index/Qdrant optional; bei Cap **`truncation_hint`** im JSON. **Next:** Ripgrep-Pfad in Container, Index-on-open optional. |
-| **LSP / Diags** | Echter Code-Intellekt | **Habt ihr:** `coding_lsp`. **Next:** Image/PATH-Doku, pro-Sprache Smoke, Fehler in Tool-Result klar surfaced. |
+| **Patch-first Editing** | Stabilere Edits | **Habt ihr:** `apply_patch`, replace, edit. **Next:** Prompt/Default „prefer patch“; Metriken ob Patch vs. full write. |
+| **Schnelle Suche** | Repo ohne 20× `list_dir` | **Habt ihr:** `search`, `glob`, Index/Qdrant optional; bei Cap **`truncation_hint`** im JSON. **Next:** Ripgrep-Pfad in Container, Index-on-open optional. |
+| **LSP / Diags** | Echter Code-Intellekt | **Habt ihr:** `lsp`. **Next:** Image/PATH-Doku, pro-Sprache Smoke, Fehler in Tool-Result klar surfaced. |
 | **Tests/Linter im Loop** | „Fertig“ definiert | **Teilweise:** optional `verify_command` / `note` in Workspace-Root **`.agentlayer.json`** (Hinweis im ersten System-Prompt; kein Auto-Run). **Next:** explizites Ausführen vor „done“; CI-Webhook (Epic E). |
 | **Budgets** | Tokens, Runden, Zeit | **Habt ihr:** `AGENT_MAX_TOOL_ROUNDS`, Rescue. **Next:** pro-Agent-Override, UI-Warnung bei niedrigem Budget. |
 | **User-Memory vs Thread** | Langzeit vs. Session | **Habt ihr:** Facts/Notes/Graph + `messages`; **Session tool recap** nach Tool-Blöcken (`AGENT_SESSION_TOOL_RECAP_*`). **Next:** komprimierte inhaltliche Zusammenfassung (nicht nur Tool-Namen). |
 | **Observability** | Debuggen | **Teilweise:** Logs, `agent.session`. **Next:** Trace-ID pro Run, strukturierte Tool-Fehler in Events, optional Export. |
-| **Subagents** | Explore/Plan isoliert | **Teilweise:** `coding_task` mit **`run_plan_subagent=true`** → gebundener `coding_plan`-Lauf im Side-Thread (`chat_completion`, gleiches `workspace_id`). **Next:** UI-Summary, Cancellation, Accounting. |
+| **Subagents** | Explore/Plan isoliert | **Teilweise:** `task` mit **`run_plan_subagent=true`** → gebundener `coding_plan`-Lauf im Side-Thread (`chat_completion`, gleiches `workspace_id`). **Next:** UI-Summary, Cancellation, Accounting. |
 
 ### Phased rollout (recommended order)
 
@@ -188,7 +188,7 @@ Each phase should end with **manual smoke** + **one paragraph** in this doc or A
 
 **Implemented (slice):**
 
-- `coding_glob` / `coding_search`: bei Cap ein Feld **`truncation_hint`** mit konkreter Anweisung (narrower glob, `path_prefix`, Limits in Config).
+- `glob` / `search`: bei Cap ein Feld **`truncation_hint`** mit konkreter Anweisung (narrower glob, `path_prefix`, Limits in Config).
 
 **Still open:** Index-on-attach (Flag), LSP-Runbook pro Stack, optional Ripgrep.
 
@@ -206,7 +206,7 @@ Each phase should end with **manual smoke** + **one paragraph** in this doc or A
 **Ziel:** Unter-Agent mit eigenem Nachrichten-/Budget-Kontext; Rückgabe als strukturiertes JSON / Auszug an den Haupt-Planner.
 
 **Option A — Nested planner (gestartet)**  
-- **`coding_task`** mit **`run_plan_subagent: true`**: `ThreadPoolExecutor` + `asyncio.run(chat_completion(...))` mit **`agent_id: coding_plan`**, gleiches **`workspace_id`**, konfigurierbare **`max_rounds`** (1–8) / **`subagent_model`**. Ergebnis: `assistant_excerpt` + Metadaten (Timeout 600s).
+- **`task`** mit **`run_plan_subagent: true`**: `ThreadPoolExecutor` + `asyncio.run(chat_completion(...))` mit **`agent_id: coding_plan`**, gleiches **`workspace_id`**, konfigurierbare **`max_rounds`** (1–8) / **`subagent_model`**. Ergebnis: `assistant_excerpt` + Metadaten (Timeout 600s).
 - Vorteil: wenig neue Infrastruktur. Nachteil: Kosten/Latenz; Cancellation/Accounting noch grob.
 
 **Option B / C:** unverändert später (Queue, Prozess-Isolation).

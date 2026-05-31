@@ -1,4 +1,4 @@
-"""Read-only Git inspection for workspace paths (HTTP API; mirrors ``coding_git_read``)."""
+"""Read-only Git inspection for workspace paths (HTTP API; mirrors ``git_read``)."""
 
 from __future__ import annotations
 

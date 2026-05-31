@@ -1,4 +1,4 @@
-"""Static checks for ``create_tool``-submitted tool source (syntax + AST). Not a sandbox."""
+"""Static checks for ``create``-submitted tool source (syntax + AST). Not a sandbox."""
 
 from __future__ import annotations
 

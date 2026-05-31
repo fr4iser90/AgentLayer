@@ -11,19 +11,19 @@ from apps.backend.infrastructure.coding_schedule_execution import CODING_SCHEDUL
 
 
 def test_catalog_tool_has_empty_properties():
-    spec = _registry_tool_spec_by_registered_name("coding_write_file")
+    spec = _registry_tool_spec_by_registered_name("write_file")
     assert spec is not None
     fn = spec["function"]
-    out = _catalog_tool_function("coding_write_file", fn)
+    out = _catalog_tool_function("write_file", fn)
     props = out["function"]["parameters"].get("properties") or {}
     assert props == {}
 
 
 def test_full_schema_tool_includes_write_file_path_and_content():
-    spec = _registry_tool_spec_by_registered_name("coding_write_file")
+    spec = _registry_tool_spec_by_registered_name("write_file")
     assert spec is not None
     fn = spec["function"]
-    out = _full_schema_tool_function("coding_write_file", fn)
+    out = _full_schema_tool_function("write_file", fn)
     params = out["function"]["parameters"]
     assert "path" in params.get("properties", {})
     assert "content" in params.get("properties", {})
@@ -32,7 +32,7 @@ def test_full_schema_tool_includes_write_file_path_and_content():
 
 
 def test_tools_for_chat_request_full_schema_larger_than_catalog():
-    spec = _registry_tool_spec_by_registered_name("coding_bash")
+    spec = _registry_tool_spec_by_registered_name("bash")
     assert spec is not None
     catalog = _tools_for_chat_request([spec], full_schema=False)
     full = _tools_for_chat_request([spec], full_schema=True)

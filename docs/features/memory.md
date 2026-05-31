@@ -68,7 +68,7 @@ Configure in **Admin → Interfaces** (persisted in `operator_settings`, exposed
 
 ### Auto extraction
 
-- `POST /v1/user/memory/graph/propose` or tool `memory_graph_propose`: local chat model proposes JSON nodes/edges; optional `apply` to insert (embeddings computed per node).
+- `POST /v1/user/memory/graph/propose` or tool `graph_propose`: local chat model proposes JSON nodes/edges; optional `apply` to insert (embeddings computed per node).
 
 ### Observability (for later RL / tuning)
 

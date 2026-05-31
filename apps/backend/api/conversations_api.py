@@ -17,6 +17,7 @@ from apps.backend.infrastructure.conversations_db import (
     conversation_delete,
     conversation_get,
     conversation_replace,
+    conversation_update_delegate_prefs,
     conversations_list,
 )
 from apps.backend.dashboard import db as dashboard_db
@@ -206,3 +207,157 @@ async def delete_conversation(request: Request, conversation_id: uuid.UUID):
     if not conversation_delete(user.id, conversation_id):
         raise HTTPException(status_code=404, detail="conversation not found")
     return {"ok": True, "deleted": True}
+
+
+class ConversationDelegatePrefsBody(BaseModel):
+    delegate_auto_respond_enabled: bool | None = None
+    delegate_auto_respond_after_sec: int | None = Field(default=None, ge=15, le=600)
+    delegate_max_chain_turns: int | None = Field(default=None, ge=1, le=10)
+
+
+@router.patch("/{conversation_id}/delegate-prefs")
+async def patch_conversation_delegate_prefs(
+    request: Request,
+    conversation_id: uuid.UUID,
+    body: ConversationDelegatePrefsBody,
+) -> dict:
+    user = await get_current_user(request)
+    try:
+        data = conversation_update_delegate_prefs(
+            user.id,
+            conversation_id,
+            delegate_auto_respond_enabled=body.delegate_auto_respond_enabled,
+            delegate_auto_respond_after_sec=body.delegate_auto_respond_after_sec,
+            delegate_max_chain_turns=body.delegate_max_chain_turns,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e)[:200]) from e
+    if not data:
+        raise HTTPException(status_code=404, detail="conversation not found")
+    return {
+        "ok": True,
+        "delegate_auto_respond_enabled": data.get("delegate_auto_respond_enabled"),
+        "delegate_auto_respond_after_sec": data.get("delegate_auto_respond_after_sec"),
+        "delegate_max_chain_turns": data.get("delegate_max_chain_turns"),
+    }
+
+
+@router.post("/{conversation_id}/delegate-respond")
+async def post_conversation_delegate_respond(
+    request: Request,
+    conversation_id: uuid.UUID,
+) -> dict:
+    """Idle auto-respond: delegate decides next step; client appends synthetic user message."""
+    user = await get_current_user(request)
+    tenant_id = db_mod.user_tenant_id(user.id)
+    conv = conversation_get(user.id, conversation_id)
+    if not conv:
+        raise HTTPException(status_code=404, detail="conversation not found")
+    if not conv.get("delegate_auto_respond_enabled"):
+        raise HTTPException(status_code=400, detail="delegate auto-respond is disabled for this conversation")
+
+    from apps.backend.domain.delegate_decision import run_delegate_decision
+    from apps.backend.infrastructure import delegate_runs_store, user_delegate_store, workspace_delegate_store
+    from apps.backend.infrastructure.db import db
+
+    max_chain = int(conv.get("delegate_max_chain_turns") or 3)
+    with db.pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT COUNT(*)::int FROM delegate_runs
+                WHERE conversation_id = %s
+                  AND user_id = %s
+                  AND created_at > now() - interval '2 hours'
+                  AND outcome NOT IN ('escalated', 'denied')
+                """,
+                (conversation_id, user.id),
+            )
+            chain_count = int((cur.fetchone() or [0])[0])
+    if chain_count >= max_chain:
+        raise HTTPException(
+            status_code=429,
+            detail=f"delegate chain limit reached ({max_chain} turns)",
+        )
+
+    user_cfg_row = user_delegate_store.get_user_delegate(user_id=user.id)
+    user_cfg = (user_cfg_row or {}).get("config")
+    ws_cfg = None
+    ws_label = None
+    pref_ws = conv.get("workspace_id")
+    if pref_ws:
+        try:
+            ws_uuid = uuid.UUID(str(pref_ws))
+            ws_row = workspace_delegate_store.get_workspace_delegate(workspace_id=ws_uuid)
+            ws_cfg = (ws_row or {}).get("config")
+            ws_label = str(pref_ws)
+        except ValueError:
+            pass
+
+    task_goal = None
+    task_req = None
+    active_task_id = conv.get("active_task_id")
+    if active_task_id:
+        try:
+            trow = agent_tasks_store.get_task(
+                task_id=uuid.UUID(str(active_task_id)), tenant_id=tenant_id
+            )
+            if trow:
+                task_goal = str(trow.get("goal") or "")
+                task_req = str(trow.get("requirements") or "")
+        except ValueError:
+            pass
+
+    messages = conv.get("messages") or []
+    try:
+        decision = run_delegate_decision(
+            messages=messages,
+            user_config=user_cfg,
+            workspace_config=ws_cfg,
+            workspace_label=ws_label,
+            task_goal=task_goal,
+            task_requirements=task_req,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"delegate decision failed: {e}") from e
+
+    if decision.get("escalate"):
+        try:
+            delegate_runs_store.insert_delegate_run(
+                tenant_id=tenant_id,
+                user_id=user.id,
+                conversation_id=conversation_id,
+                trigger="idle",
+                decision_summary=str(decision.get("decision_summary") or ""),
+                synthetic_user_message="",
+                outcome="escalated",
+                chain_index=chain_count,
+            )
+        except Exception:
+            pass
+        raise HTTPException(
+            status_code=409,
+            detail=str(decision.get("escalate_reason") or "delegate escalated"),
+        )
+
+    synthetic = str(decision.get("synthetic_user_message") or "").strip()
+    if not synthetic:
+        raise HTTPException(status_code=502, detail="delegate returned empty synthetic message")
+
+    run_row = delegate_runs_store.insert_delegate_run(
+        tenant_id=tenant_id,
+        user_id=user.id,
+        conversation_id=conversation_id,
+        trigger="idle",
+        decision_summary=str(decision.get("decision_summary") or ""),
+        synthetic_user_message=synthetic,
+        outcome="started",
+        chain_index=chain_count,
+    )
+    return {
+        "ok": True,
+        "delegate_run_id": run_row.get("id"),
+        "decision_summary": decision.get("decision_summary"),
+        "synthetic_user_message": synthetic,
+        "stand_in_marker": "[Stand-in · auto]",
+    }

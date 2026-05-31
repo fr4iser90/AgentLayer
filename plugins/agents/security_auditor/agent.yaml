@@ -1,0 +1,26 @@
+id: security_auditor
+name: Security auditor
+icon: 🛡️
+description: '**Admin** workspace review: static analysis mindset with ``coding_*``
+  + ``project_*`` tools; optional RAG over ingested docs. Use only on systems you
+  own and have in scope.'
+tool_domain: coding
+requires_workspace: true
+execution_context: container
+min_role: admin
+model_profile: coding
+strict_workspace: true
+coding_tools_permission_ask: false
+tool_discipline_preset: security_auditor
+tool_domains:
+  - workspace
+  - security_scan
+  - secrets
+tool_capability_any:
+  - coding.read
+  - coding.lsp
+  - coding.index
+  - coding.task
+  - coding.meta
+  - project.explain
+  - knowledge.retrieve

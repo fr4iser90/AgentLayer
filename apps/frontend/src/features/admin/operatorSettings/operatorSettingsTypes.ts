@@ -83,6 +83,7 @@ export type OperatorPublic = {
   workspace_index_on_write_default?: string;
   workspace_reindex_after_git_pull?: boolean;
   workspace_nightly_reindex_enabled?: boolean;
+  workspace_index_on_attach_enabled?: boolean;
   detail?: unknown;
 };
 

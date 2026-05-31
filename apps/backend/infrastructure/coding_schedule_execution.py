@@ -34,38 +34,38 @@ _SCHEDULE_PROVIDER_ORDER = ("provider_1", "provider_2")
 
 # Fixed tool set for background schedules (avoids ranking dropping git/write tools).
 CODING_SCHEDULE_TOOL_ALLOWLIST: tuple[str, ...] = (
-    "coding_git_read",
-    "coding_git_sync",
-    "coding_read_file",
-    "coding_write_file",
-    "coding_replace",
-    "coding_edit",
-    "coding_apply_patch",
-    "coding_list_dir",
-    "coding_glob",
-    "coding_bash",
-    "coding_workspace_verify",
+    "git_read",
+    "git_sync",
+    "read_file",
+    "write_file",
+    "replace",
+    "edit",
+    "apply_patch",
+    "list_dir",
+    "glob",
+    "bash",
+    "workspace_verify",
     "get_tool_help",
 )
 
 SECURITY_SCAN_TOOL_NAMES: tuple[str, ...] = (
-    "security_scan_finding_policy_schema",
-    "security_scan_resolve",
-    "security_scan_status",
-    "security_scan_get",
-    "security_scan_findings",
-    "security_scan_agent_callback",
-    "security_scan_targets_list",
-    "security_scan_list",
-    "security_scan_start",
+    "finding_policy_schema",
+    "resolve",
+    "status",
+    "get",
+    "findings",
+    "agent_callback",
+    "targets_list",
+    "list",
+    "start",
 )
 
 _WRITE_TOOLS = frozenset(
     {
-        "coding_write_file",
-        "coding_replace",
-        "coding_edit",
-        "coding_apply_patch",
+        "write_file",
+        "replace",
+        "edit",
+        "apply_patch",
     }
 )
 
@@ -228,7 +228,7 @@ def _is_security_remediation_job(
         "security remediation" in blob
         or "security_remediation" in blob
         or "simplesec" in blob
-        or "security_scan_start" in blob
+        or "start" in blob
         or "docs/security_report" in blob
     )
 
@@ -262,7 +262,7 @@ def _evaluate_run_status(
     pull_repeats = sum(
         1
         for t in tools
-        if t.get("name") == "coding_bash"
+        if t.get("name") == "bash"
         and isinstance(t.get("args"), dict)
         and "git pull" in str(t["args"].get("command") or "").lower()
     )

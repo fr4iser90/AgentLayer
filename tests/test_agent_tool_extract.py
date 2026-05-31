@@ -14,7 +14,7 @@ def test_extract_tool_calls_native():
                         {
                             "id": "call-1",
                             "type": "function",
-                            "function": {"name": "gmail_search", "arguments": '{"gmail_query":"in:inbox"}'},
+                            "function": {"name": "search", "arguments": '{"gmail_query":"in:inbox"}'},
                         }
                     ],
                 }
@@ -23,12 +23,12 @@ def test_extract_tool_calls_native():
     }
     _c0, _msg, tool_calls, had_native = agent_mod._extract_tool_calls_from_completion_response(
         data,
-        allowed_tool_names={"gmail_search"},
+        allowed_tool_names={"search"},
     )
     assert had_native is True
     assert tool_calls is not None
     assert len(tool_calls) == 1
-    assert (tool_calls[0].get("function") or {}).get("name") == "gmail_search"
+    assert (tool_calls[0].get("function") or {}).get("name") == "search"
 
 
 def test_extract_tool_calls_empty_choices():

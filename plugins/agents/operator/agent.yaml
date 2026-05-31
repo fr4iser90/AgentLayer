@@ -1,0 +1,16 @@
+id: operator
+name: Operator
+icon: ⚙️
+description: 'Admin-only assistant for AgentLayer: interfaces, tools, scheduler jobs,
+  and RAG docs search — not for arbitrary repo coding (use the Coding agent).'
+requires_workspace: false
+schedulable: false
+execution_context: auto
+min_role: admin
+tool_capability_any:
+  - operator.console
+  - knowledge.retrieve
+  - scheduler.job.read
+  - scheduler.job.write
+  - meta.discover
+  - meta.inspect

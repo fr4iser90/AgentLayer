@@ -17,12 +17,12 @@ def test_tool_events_readable_before_reset() -> None:
     t1, t2 = begin_schedule_run_collection(run_id)
     record_schedule_tool_event(
         round_num=1,
-        tool_name="coding_git_sync",
+        tool_name="git_sync",
         args={"operation": "pull"},
         ok=True,
     )
     events = get_schedule_tool_events()
     assert len(events) == 1
-    assert events[0]["name"] == "coding_git_sync"
+    assert events[0]["name"] == "git_sync"
     reset_schedule_run_collection(t1, t2)
     assert get_schedule_tool_events() == []

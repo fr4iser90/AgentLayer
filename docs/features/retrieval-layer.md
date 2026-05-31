@@ -39,8 +39,8 @@ Goals:
 
 | Layer | Responsibility | AgentLayer modules |
 |--------|----------------|-------------------|
-| **Ingest / index** | Chunk or symbol → embed → store | `ingest_for_user`, `coding_index`, memory note insert |
-| **Retrieve** | Query → ANN / grep → filter → rank | `search_for_identity`, `QdrantCodeIndex.search`, `coding_search` |
+| **Ingest / index** | Chunk or symbol → embed → store | `ingest_for_user`, `index`, memory note insert |
+| **Retrieve** | Query → ANN / grep → filter → rank | `search_for_identity`, `QdrantCodeIndex.search`, `search` |
 | **Orchestrate** | Run multiple retrievers, merge JSON | `retrieve_context` tool |
 | **Embed** | Text → vector | `embedding_client.embed_one` |
 
@@ -51,11 +51,11 @@ Chat uses **`LLAMA_CPP_*`** (or Ollama / external). Embeddings use **`EMBEDDING_
 | Source | Backend | Tool / path |
 |--------|---------|-------------|
 | Doc RAG | Postgres + pgvector | `rag_search`, Admin ingest; **workspace `*.md`** via Reindex (scoped `workspace_id`) |
-| Code semantic | Qdrant | `coding_semantic_search` (after `coding_index`) |
-| Code keyword | ripgrep / walk | `coding_search` |
-| Symbols | In-process index | `coding_symbols` |
-| Code graph | Neo4j | `coding_graph` (call-graph, dependencies, type hierarchy, impact analysis; after `coding_index`) |
-| LSP | Language server | `coding_lsp` |
+| Code semantic | Qdrant | `semantic_search` (after `index`) |
+| Code keyword | ripgrep / walk | `search` |
+| Symbols | In-process index | `symbols` |
+| Code graph | Neo4j | `graph` (call-graph, dependencies, type hierarchy, impact analysis; after `index`) |
+| LSP | Language server | `lsp` |
 | Memory notes | pgvector | Auto-inject + `memory_*` tools |
 | Memory graph | pgvector + edges | Auto-inject when enabled |
 
@@ -94,7 +94,7 @@ One call runs selected backends in parallel (conceptually) and returns a single 
 
 Requires an active **workspace** for code sources. Docs/memory need RAG/memory enabled in operator settings.
 
-**Prefer `retrieve_context` first** when exploring an unfamiliar area; then `coding_read_file` / `coding_lsp` on cited locations.
+**Prefer `retrieve_context` first** when exploring an unfamiliar area; then `read_file` / `lsp` on cited locations.
 
 ## Practices (theory → apply here)
 
@@ -119,10 +119,10 @@ Retrieve top‑50 → cross-encoder or LLM rerank → top‑5 for the prompt. No
 | Tier | Mechanism | When |
 |------|-----------|------|
 | 0 | README, tree | Session start |
-| 1 | `coding_search`, `coding_symbols` | Exact / structural |
-| 2 | `coding_lsp` | Types, defs, refs |
-| 3 | `coding_semantic_search` | “Where is X done?” |
-| 4 | `coding_graph` (Neo4j) | Call-graph, dependencies, type hierarchy, impact analysis |
+| 1 | `search`, `symbols` | Exact / structural |
+| 2 | `lsp` | Types, defs, refs |
+| 3 | `semantic_search` | “Where is X done?” |
+| 4 | `graph` (Neo4j) | Call-graph, dependencies, type hierarchy, impact analysis |
 | 5 | `rag_search` / `docs` in `retrieve_context` | Product/runbook questions |
 
 ### Context engineering
@@ -143,7 +143,7 @@ Retrieve top‑50 → cross-encoder or LLM rerank → top‑5 for the prompt. No
 | Memory facts + notes + graph | Yes (`_inject_user_memory_context`) | No |
 | `retrieve_context` | No | Yes (must call tool) |
 | `rag_search` | No | Yes |
-| `coding_semantic_search` | No | Yes |
+| `semantic_search` | No | Yes |
 
 ## Roadmap
 
@@ -174,15 +174,15 @@ python scripts/run_retrieval_benchmark.py
 RETRIEVAL_BENCH_LIVE=1 python scripts/run_retrieval_benchmark.py --live --json-out /tmp/bench.json
 ```
 
-- **Fixture suite** (CI): `tests/benchmarks/fixtures/retrieval_mini` — real `coding_search` / `retrieve_context`, no Qdrant required.
+- **Fixture suite** (CI): `tests/benchmarks/fixtures/retrieval_mini` — real `search` / `retrieve_context`, no Qdrant required.
 - **Live suite** (`RETRIEVAL_BENCH_LIVE=1`): adds cases against the AgentLayer repo (semantic needs index + embeddings).
 
 Strategies compared: **`unified`** (`retrieve_context`, 1 tool call) vs **`separate`** (per-source calls). Baseline gate: fixture Hit@k ≥ 80%.
 
 ## Troubleshooting
 
-- **Empty `code_semantic`:** run `coding_index` on the workspace; check `QDRANT_URL` and `EMBEDDING_*`.
+- **Empty `code_semantic`:** run `index` on the workspace; check `QDRANT_URL` and `EMBEDDING_*`.
 - **Empty `docs`:** `rag_enabled`, ingest (`ingest-docs` or Admin), correct `domain`.
 - **Dim mismatch:** `rag_embedding_dim` must match model output and Postgres pgvector columns. Code index uses `code_symbols` or `code_symbols_<dim>` automatically when the legacy collection has another width (no upsert spam; switch back without re-index if that collection still exists).
-- **Empty `graph`:** run `coding_index` first; check `NEO4J_URL` env var and Neo4j container health. Graph data is populated during `coding_index` alongside Qdrant.
+- **Empty `graph`:** run `index` first; check `NEO4J_URL` env var and Neo4j container health. Graph data is populated during `index` alongside Qdrant.
 - **Chat vs embed:** Model dropdown does not power RAG; use Embedding (RAG) + `EMBEDDING_*` in `.env`.

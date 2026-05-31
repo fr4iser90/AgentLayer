@@ -25,4 +25,4 @@ async def get_agent(agent_id: str) -> dict[str, Any]:
     agent = registry.get_agent(agent_id)
     if not agent:
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
-    return agent.to_dict()
+    return agent

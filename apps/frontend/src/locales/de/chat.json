@@ -152,6 +152,15 @@
   "secretCardFillRequired": "Bitte alle Pflichtfelder ausfüllen.",
   "secretCardValueLabel": "Secret-Wert",
   "secretCardOpenConnections": "Einstellungen → Verbindungen",
-  "proposalParseError": "Einige Options-Karten konnten nicht geladen werden (ungültiges JSON vom Assistenten). Wähle eine Option per Text oder bitte den Agenten, den Vorschlag erneut zu senden. ({{count}} Block/Blöcke fehlgeschlagen)"
+  "proposalParseError": "Einige Options-Karten konnten nicht geladen werden (ungültiges JSON vom Assistenten). Wähle eine Option per Text oder bitte den Agenten, den Vorschlag erneut zu senden. ({{count}} Block/Blöcke fehlgeschlagen)",
+  "feedbackPrompt": "Hilfreich?",
+  "feedbackUp": "Daumen hoch",
+  "feedbackDown": "Daumen runter",
+  "delegateAutoRespond": "Auto-Respond (Stellvertreter)",
+  "delegateAutoRespondHint": "Nach Leerlauf entscheidet dein Stellvertreter den nächsten Schritt und setzt automatisch fort.",
+  "delegateAutoRespondDelay": "Leerlauf",
+  "standInAutoBadge": "Stellvertreter · auto",
+  "runCardRunId": "Run {{id}}…",
+  "runCardOpenTrace": "Run-Trace in Admin öffnen"
 }
 

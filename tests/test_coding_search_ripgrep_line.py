@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from plugins.tools.capabilities.coding.coding_search import _parse_ripgrep_line, coding_search
+from plugins.tools.workspace.search.search import _parse_ripgrep_line, search
 
 
 class TestRipgrepLineParse(unittest.TestCase):
@@ -32,7 +32,7 @@ class TestRipgrepLineParse(unittest.TestCase):
                 encoding="utf-8",
             )
             ctx = {"workspace": {"id": "00000000-0000-0000-0000-000000000001", "path": str(root)}}
-            out = json.loads(coding_search({"query": "login_handler"}, context=ctx))
+            out = json.loads(search({"query": "login_handler"}, context=ctx))
             self.assertTrue(out.get("ok"), msg=out)
             matches = out.get("matches") or []
             self.assertGreaterEqual(len(matches), 1)

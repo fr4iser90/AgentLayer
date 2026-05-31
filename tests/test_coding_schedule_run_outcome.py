@@ -25,7 +25,7 @@ def test_evaluate_doc_job_succeeded_on_git_changes() -> None:
 
 def test_evaluate_doc_job_partial_without_changes() -> None:
     status, outcome = mod._evaluate_run_status(
-        tools=[{"name": "coding_bash", "ok": False}],
+        tools=[{"name": "bash", "ok": False}],
         git_summary={"ok": True, "has_changes": False, "files": []},
         is_doc_job=True,
     )
@@ -37,7 +37,7 @@ def test_evaluate_doc_job_succeeded_on_write_tool() -> None:
     status, outcome = mod._evaluate_run_status(
         tools=[
             {
-                "name": "coding_write_file",
+                "name": "write_file",
                 "ok": True,
                 "args": {"path": "docs/MAINTENANCE_REPORT.md"},
             }
@@ -67,9 +67,9 @@ def test_evaluate_failed_on_abort_reason() -> None:
 
 def test_evaluate_failed_on_repeated_bash_pull() -> None:
     tools = [
-        {"name": "coding_bash", "ok": True, "args": {"command": "git pull --ff-only"}},
-        {"name": "coding_bash", "ok": True, "args": {"command": "git pull --ff-only"}},
-        {"name": "coding_bash", "ok": True, "args": {"command": "git pull --ff-only"}},
+        {"name": "bash", "ok": True, "args": {"command": "git pull --ff-only"}},
+        {"name": "bash", "ok": True, "args": {"command": "git pull --ff-only"}},
+        {"name": "bash", "ok": True, "args": {"command": "git pull --ff-only"}},
     ]
     status, outcome = mod._evaluate_run_status(tools=tools, git_summary=None, is_doc_job=True)
     assert status == "failed"

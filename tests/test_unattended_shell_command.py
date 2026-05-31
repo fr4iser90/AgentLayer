@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from apps.backend.domain.agent import _blocked_tool_json
-from plugins.tools.capabilities.coding.coding_bash_policy import (
+from apps.backend.domain.coding.bash_policy import (
     unattended_coding_bash_reject_reason,
 )
 
@@ -16,7 +16,7 @@ def test_unattended_policy_accepts_ls_with_flags() -> None:
 
 def test_unattended_coding_bash_not_blocked_for_ls() -> None:
     ctx = {"agent_unattended": True, "agent_id": "coding"}
-    blocked = _blocked_tool_json("coding_bash", {"command": "ls -la"}, ctx)
+    blocked = _blocked_tool_json("bash", {"command": "ls -la"}, ctx)
     assert blocked is None
 
 

@@ -32,7 +32,7 @@ export function handleSubagentWsEvent(
       subagentAgentId: aid,
       subagentRunId: sid,
       nested: true,
-      toolName: typeof msg.tool_name === "string" ? msg.tool_name : "coding_task",
+      toolName: typeof msg.tool_name === "string" ? msg.tool_name : "task",
       streamOffset: streamOffset?.(),
     });
     return true;
@@ -75,7 +75,7 @@ export function handleSubagentWsEvent(
       nested: true,
       durationMs,
       resultChars: ch && ch > 0 ? ch : undefined,
-      toolName: typeof msg.tool_name === "string" ? msg.tool_name : "coding_task",
+      toolName: typeof msg.tool_name === "string" ? msg.tool_name : "task",
     });
     return true;
   }

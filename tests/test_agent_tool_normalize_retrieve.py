@@ -11,11 +11,11 @@ def test_retrieve_context_fills_query_from_last_user_message():
 
 def test_coding_glob_fills_pattern_when_empty():
     msgs = [{"role": "user", "content": "find python files"}]
-    out = _normalize_tool_call_arguments("coding_glob", {}, {}, msgs, None)
+    out = _normalize_tool_call_arguments("glob", {}, {}, msgs, None)
     assert out.get("pattern") == "**/*.py"
 
 
 def test_coding_search_fills_query_from_user():
     msgs = [{"role": "user", "content": "authentication middleware"}]
-    out = _normalize_tool_call_arguments("coding_search", {}, {}, msgs, None)
+    out = _normalize_tool_call_arguments("search", {}, {}, msgs, None)
     assert "authentication" in (out.get("query") or "")

@@ -75,10 +75,10 @@ Module: `plugins/tools/capabilities/platform/dashboard_core/dashboard_core.py`
 
 | Tool | Purpose |
 |------|---------|
-| `dashboard_list` | All accessible boards (`id`, `kind`, `title`, `access_role`) |
-| `dashboard_read` | `ui_layout`, `data`, `block_ids` (large payloads may truncate) |
-| `dashboard_patch_data` | `{path, value}` patches on `data` (dotted paths; granular shares: allowed keys only) |
-| `dashboard_patch_layout` | `add_block`, `remove_block`, `set_grid`, `set_props` (not for granular block-only shares) |
+| `list` | All accessible boards (`id`, `kind`, `title`, `access_role`) |
+| `read` | `ui_layout`, `data`, `block_ids` (large payloads may truncate) |
+| `patch_data` | `{path, value}` patches on `data` (dotted paths; granular shares: allowed keys only) |
+| `patch_layout` | `add_block`, `remove_block`, `set_grid`, `set_props` (not for granular block-only shares) |
 
 Capabilities: `dashboard.read`, `dashboard.write`. Prefer kind-specific tools when they exist.
 

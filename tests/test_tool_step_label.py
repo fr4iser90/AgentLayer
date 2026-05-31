@@ -8,12 +8,12 @@ def test_coding_bash_step_detail_from_registry() -> None:
 
     reg = get_registry()
     detail = reg.tool_step_detail_for(
-        "coding_bash",
+        "bash",
         {"command": "git diff plugins/foo.py"},
     )
     assert "git diff" in detail
     label = format_tool_step_label_from_args(
-        "coding_bash",
+        "bash",
         {"command": "git diff plugins/foo.py"},
         tool_label="Coding: Bash",
     )

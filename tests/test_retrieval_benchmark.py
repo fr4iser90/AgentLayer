@@ -1,7 +1,7 @@
 """
 Retrieval layer benchmarks: Hit@k, tool-call count, latency.
 
-CI (default): fixture mini-workspace, real ``coding_search`` / ``retrieve_context``.
+CI (default): fixture mini-workspace, real ``search`` / ``retrieve_context``.
 Optional live: ``RETRIEVAL_BENCH_LIVE=1`` also runs cases against the AgentLayer repo
 (requires Qdrant + embeddings for semantic/doc cases).
 

@@ -9,8 +9,8 @@ export type TurnSegment =
   | { type: "card"; card: RunCard }
   | { type: "secret_prompt"; prompt: SecretPromptPayload };
 
-const INDEX_TOOL = "coding_index";
-const DELEGATE_TOOL = "agent_delegate";
+const INDEX_TOOL = "index";
+const DELEGATE_TOOL = "delegate";
 
 /** When stream offsets were not recorded, keep a short leading assistant intro before tool cards. */
 function leadingTextSplitIndex(content: string): number {

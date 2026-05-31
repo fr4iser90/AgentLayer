@@ -98,16 +98,16 @@ _AGENT_CREDENTIAL_TOOL_NAMES = frozenset(
 # Always forwarded to the LLM when the agent allowlists them (ranking would drop them otherwise).
 _AGENT_GIT_NETWORK_TOOL_NAMES = frozenset(
     {
-        "coding_git_push",
-        "coding_git_sync",
+        "git_push",
+        "git_sync",
     }
 )
 _CODING_READ_TOOL_PINS = frozenset(
     {
-        "coding_read_file",
-        "coding_search",
-        "coding_glob",
-        "coding_list_dir",
+        "read_file",
+        "search",
+        "glob",
+        "list_dir",
         "retrieve_context",
     }
 )
@@ -152,7 +152,7 @@ def _pinned_tools_for_agent(agent_id: str | None) -> frozenset[str]:
     aid = (agent_id or "").strip()
     pins = _credential_tools_for_agent(agent_id) | _git_network_tools_for_agent(agent_id)
     if aid == "general":
-        pins = pins | frozenset({"agent_delegate"})
+        pins = pins | frozenset({"delegate"})
     if aid in ("coding", "coding_plan"):
         pins = pins | _CODING_READ_TOOL_PINS
     return pins
@@ -455,8 +455,8 @@ def _http_error_recovery_hint(tool_name: str, result: str) -> str | None:
     if not any(m in rl for m in markers):
         return None
     fix_strategy = (
-        "For a **one-line API fix** (wrong query param, URL), **`update_tool`** is usually enough; "
-        "use **`replace_tool`** if you need a larger rewrite. "
+        "For a **one-line API fix** (wrong query param, URL), **`update`** is usually enough; "
+        "use **`replace`** if you need a larger rewrite. "
     )
     return (
         "The previous tool output suggests an HTTP/API failure. "
@@ -464,11 +464,11 @@ def _http_error_recovery_hint(tool_name: str, result: str) -> str | None:
         "(e.g. OpenWeather `/data/2.5/weather` expects **`q`** for the place name, not `city`). "
         "**401** more often means an invalid or missing key. "
         + fix_strategy
-        + "Next steps: (1) **`read_tool`** the `.py` for this tool (use `registered_tool_name` "
-        f"{tool_name!r} or `filename`). (2) Optionally **`search_web`** for the vendor's current API docs. "
-        "(3) Apply the fix with **`replace_tool`** and/or **`update_tool`**; use **`https://`**. "
+        + "Next steps: (1) **`read`** the `.py` for this tool (use `registered_tool_name` "
+        f"{tool_name!r} or `filename`). (2) Optionally **`search`** for the vendor's current API docs. "
+        "(3) Apply the fix with **`replace`** and/or **`update`**; use **`https://`**. "
         "(4) Or delegate to built-ins: **`invoke_registered_tool`**(`\"openweather_current\"`, "
-        "`{\"location\": \"…\"}`) / `openweather_forecast` from Python in an extra tool."
+        "`{\"location\": \"…\"}`) / `forecast` from Python in an extra tool."
     )
 
 
@@ -477,26 +477,26 @@ def _tool_parameter_recovery_hint(tool_name: str, result: str) -> str | None:
     if not result or len(result) > 800:
         return None
     rl = result.lower()
-    if tool_name == "coding_bash" and "command" in rl:
+    if tool_name == "bash" and "command" in rl:
         return (
-            "The last `coding_bash` call was missing or empty **command**. "
+            "The last `bash` call was missing or empty **command**. "
             "You must pass a JSON object with a non-empty string **command** (one shell line). "
             'Example: {"command": "git status"} or {"command": "ls -la", "workdir": ""}.'
         )
     if tool_name in (
-        "coding_read_file",
-        "coding_write_file",
-        "coding_replace",
-        "coding_edit",
-        "coding_apply_patch",
+        "read_file",
+        "write_file",
+        "replace",
+        "edit",
+        "apply_patch",
     ) and "path" in rl:
         return (
             f"The last `{tool_name}` call was missing or empty **path**. "
             'Pass {"path": "relative/path/from/workspace/root"} plus other required fields per the schema.'
         )
-    if tool_name == "coding_task" and "description" in rl and "required" in rl:
+    if tool_name == "task" and "description" in rl and "required" in rl:
         return (
-            "The last `coding_task` call was missing **description** and/or **prompt**. "
+            "The last `task` call was missing **description** and/or **prompt**. "
             r'Example: {"description": "Review README", "prompt": "Summarize README.md and propose edits."}'
         )
     return None
@@ -615,7 +615,7 @@ def _infer_shell_command_from_assistant_message(assistant_msg: dict[str, Any]) -
 
 
 def _infer_shell_command_from_user_text(user_text: str) -> str | None:
-    """Infer a shell one-liner from the latest user message when models emit empty ``coding_bash`` JSON (GGUF)."""
+    """Infer a shell one-liner from the latest user message when models emit empty ``bash`` JSON (GGUF)."""
     if not (user_text or "").strip():
         return None
     ut = user_text.strip()
@@ -695,7 +695,7 @@ def _unattended_blocked_tool_json(
     if not tool_context.get("agent_unattended"):
         return None
     if tool_context.get("schedule_git_pull_done"):
-        if name == "coding_git_sync" and str(args.get("operation") or "pull").strip().lower() == "pull":
+        if name == "git_sync" and str(args.get("operation") or "pull").strip().lower() == "pull":
             pr = tool_context.get("schedule_git_pull_result") or "completed"
             return json.dumps(
                 {
@@ -709,7 +709,7 @@ def _unattended_blocked_tool_json(
                 },
                 ensure_ascii=False,
             )
-        if name == "coding_bash":
+        if name == "bash":
             cmd = str(args.get("command") or "").strip()
             if _is_git_pull_command(cmd):
                 pr = tool_context.get("schedule_git_pull_result") or "completed"
@@ -724,7 +724,7 @@ def _unattended_blocked_tool_json(
                     },
                     ensure_ascii=False,
                 )
-    if name == "coding_bash":
+    if name == "bash":
         cmd = str(args.get("command") or "").strip()
         if not cmd:
             return json.dumps(
@@ -737,7 +737,7 @@ def _unattended_blocked_tool_json(
                 },
                 ensure_ascii=False,
             )
-        from plugins.tools.capabilities.coding.coding_bash_policy import (
+        from apps.backend.domain.coding.bash_policy import (
             unattended_coding_bash_reject_reason,
         )
 
@@ -798,9 +798,9 @@ def _unattended_mark_git_pull_done(
     if not isinstance(o, dict) or o.get("ok") is not True:
         return None
     pull_result: str | None = None
-    if name == "coding_git_sync" and str(o.get("operation") or "").strip().lower() == "pull":
+    if name == "git_sync" and str(o.get("operation") or "").strip().lower() == "pull":
         pull_result = str(o.get("pull_result") or "completed")
-    elif name == "coding_bash":
+    elif name == "bash":
         cmd = str(o.get("command") or "")
         if _is_git_pull_command(cmd) and int(o.get("exit_code") or 0) == 0:
             pull_result = str(o.get("pull_result") or "completed")
@@ -835,7 +835,7 @@ def _normalize_tool_call_arguments(
         rp = ws.get("path")
         if isinstance(rp, str) and rp.strip():
             root_p = Path(rp)
-    if n == "coding_bash":
+    if n == "bash":
         if not str(out.get("command") or "").strip():
             for alt in ("shell", "cmd", "bash", "bash_command", "script", "line", "input"):
                 v = out.get(alt)
@@ -852,7 +852,7 @@ def _normalize_tool_call_arguments(
                 inferred_u = _infer_shell_command_from_user_text(last_user_text(messages))
                 if inferred_u:
                     out["command"] = inferred_u
-    elif n == "coding_task":
+    elif n == "task":
         if not str(out.get("description") or "").strip():
             for alt in ("title", "name", "task", "summary", "label"):
                 v = out.get(alt)
@@ -873,7 +873,7 @@ def _normalize_tool_call_arguments(
                     out["description"] = u if len(u) <= 120 else u[:117] + "..."
                 if not str(out.get("prompt") or "").strip():
                     out["prompt"] = ut.strip()
-    elif n in ("retrieve_context", "coding_search", "coding_semantic_search"):
+    elif n in ("retrieve_context", "search", "semantic_search"):
         if not str(out.get("query") or "").strip():
             for alt in ("q", "search", "text", "prompt", "question", "keywords"):
                 v = out.get(alt)
@@ -884,7 +884,7 @@ def _normalize_tool_call_arguments(
             ut = (last_user_text(messages) or "").strip()
             if ut:
                 out["query"] = ut[:4000]
-    elif n == "coding_glob":
+    elif n == "glob":
         if not str(out.get("pattern") or "").strip():
             for alt in ("glob", "file_pattern", "glob_pattern", "match"):
                 v = out.get(alt)
@@ -907,10 +907,10 @@ def _normalize_tool_call_arguments(
                 out["pattern"] = "**/*"
         if not str(out.get("path") or "").strip():
             out["path"] = "."
-    elif n == "coding_list_dir":
+    elif n == "list_dir":
         if not str(out.get("path") or "").strip():
             out["path"] = "."
-    elif n == "coding_read_file":
+    elif n == "read_file":
         if not str(out.get("path") or "").strip():
             for alt in ("file", "filepath", "filename", "target", "rel_path", "relative_path"):
                 v = out.get(alt)
@@ -921,7 +921,7 @@ def _normalize_tool_call_arguments(
             inferred = _infer_read_file_path_from_context(assistant_msg, messages, root_p)
             if inferred:
                 out["path"] = inferred
-    elif n in ("coding_write_file", "coding_replace", "coding_edit"):
+    elif n in ("write_file", "replace", "edit"):
         if not str(out.get("path") or "").strip():
             for alt in ("file", "filepath", "filename", "target", "rel_path", "relative_path"):
                 v = out.get(alt)
@@ -1008,7 +1008,7 @@ def _tool_call_id_to_args_recap_line(messages: list[dict[str, Any]], *, max_len:
     """Short, human-readable args from prior assistant ``tool_calls`` (by ``tool_call_id``).
 
     Uses the same :func:`_normalize_tool_call_arguments` as execution so defaults (e.g.
-    ``coding_list_dir`` → ``path=.``) show up, and empty ``coding_glob`` shows
+    ``list_dir`` → ``path=.``) show up, and empty ``glob`` shows
     ``pattern=<missing>``.
     """
     out: dict[str, str] = {}
@@ -1507,7 +1507,7 @@ def _tool_result_followup_hint(tool_name: str, result: str | None) -> str | None
         return None
     if not isinstance(o, dict):
         return None
-    if tool_name == "coding_task" and o.get("mode") == "register_only":
+    if tool_name == "task" and o.get("mode") == "register_only":
         warn = o.get("warning") or o.get("detail")
         if isinstance(warn, str) and warn.strip():
             return (
@@ -1528,7 +1528,7 @@ def _tool_result_followup_hint(tool_name: str, result: str | None) -> str | None
         if prob_lines:
             who = tool_name or "tool"
             return f"{who} failed: " + " | ".join(prob_lines[:5])
-    if prob_lines and tool_name in ("agent_delegate", "coding_task"):
+    if prob_lines and tool_name in ("delegate", "task"):
         return f"{tool_name} completed with warnings: " + " | ".join(prob_lines[:5])
     return None
 
@@ -1632,12 +1632,12 @@ _BODY_KEYS_STRIP_FROM_LLM = frozenset(
 # **Ask** before destructive workspace tools (Plan + Build on WebSocket when ``agent_permission_ask``).
 _CODING_TOOLS_PERMISSION_ASK = frozenset(
     {
-        "coding_bash",
-        "coding_git_sync",
-        "coding_write_file",
-        "coding_edit",
-        "coding_apply_patch",
-        "coding_replace",
+        "bash",
+        "git_sync",
+        "write_file",
+        "edit",
+        "apply_patch",
+        "replace",
     }
 )
 
@@ -1807,25 +1807,25 @@ _TOOL_USAGE_DISCIPLINE = """## Tool usage (discipline)
 
 - The API **tools[]** list is a compact catalog; full JSON Schema for a tool is returned from **get_tool_help** when needed.
 - **Do not** loop on `list_tool_categories`, `list_tools_in_category`, `list_available_tools`, or `get_tool_help`. At most one short discovery pass if you truly do not know a tool name.
-- When intent is clear, **call the action tool first** (e.g. **git pull / sync repo** → `coding_git_sync` or `coding_bash` with `{"command":"git pull"}`; `git clone` / repo URL → `coding_bash`; read a file → `coding_read_file` or `fs_read_file`).
+- When intent is clear, **call the action tool first** (e.g. **git pull / sync repo** → `git_sync` or `bash` with `{"command":"git pull"}`; `git clone` / repo URL → `bash`; read a file → `read_file` or `read_file`).
 - Use **get_tool_help at most once** per tool you are about to call with non-obvious arguments; do not repeat it every round for the same tool.
-- Prefer concrete workspace tools (`coding_git_sync`, `coding_bash`, `coding_read_file`, `fs_read_file`, GitHub-related tools) over plugin meta tools (`create_tool`, …) unless the user explicitly asks to build or install a plugin.
+- Prefer concrete workspace tools (`git_sync`, `bash`, `read_file`, `read_file`, GitHub-related tools) over plugin meta tools (`create`, …) unless the user explicitly asks to build or install a plugin.
 """
 
 _CODING_PLAN_TOOL_DISCIPLINE = """## **Plan** discipline (Plan-style)
 
-- **Read-only:** no ``coding_bash``, no ``coding_git_sync``/``coding_git_push``, no edit tools (``coding_write_file``, ``coding_edit``, ``coding_replace``, ``coding_apply_patch``). Use Build (``coding``) or ``agent_delegate`` with ``agent_id=coding`` for shell and writes.
+- **Read-only:** no ``bash``, no ``git_sync``/``git_push``, no edit tools (``write_file``, ``edit``, ``replace``, ``apply_patch``). Use Build (``coding``) or ``delegate`` with ``agent_id=coding`` for shell and writes.
 - Default stance: **analyze first**, then a markdown handoff for Build.
-- **Git / sub-agent debug:** use ``coding_git_read`` (status, log, branch, diff_stat) and ``coding_read_file`` on named paths — **not** repo-wide ``coding_search`` without ``path_prefix``.
-- **Search on Plan:** ``coding_search`` requires ``path_prefix`` scoped to a subdirectory; use ``retrieve_context`` for open exploration.
+- **Git / sub-agent debug:** use ``git_read`` (status, log, branch, diff_stat) and ``read_file`` on named paths — **not** repo-wide ``search`` without ``path_prefix``.
+- **Search on Plan:** ``search`` requires ``path_prefix`` scoped to a subdirectory; use ``retrieve_context`` for open exploration.
 - Reuse existing tool results in the transcript — no identical tool+arguments spam.
 """
 
 _SECURITY_AUDITOR_TOOL_DISCIPLINE = """## **Security auditor** discipline (this stack)
 
 - Same ``coding_*`` / ``project_*`` (and optional RAG) surface as in your system prompt; **edit** and **bash** may require UI approval (**ask**) when the client enables it — prefer read-only passes first.
-- **SSC is source of truth:** ``security_scan_resolve`` / ``security_scan_findings`` return structured paths — use those for evidence, not repo-wide ``coding_search``.
-- When a scan is **ready**, note ``artifact_id`` in the tool response (``ssc_scan`` artifact) for fix handoff via ``agent_delegate`` ``artifact_refs``.
+- **SSC is source of truth:** ``resolve`` / ``findings`` return structured paths — use those for evidence, not repo-wide ``search``.
+- When a scan is **ready**, note ``artifact_id`` in the tool response (``ssc_scan`` artifact) for fix handoff via ``delegate`` ``artifact_refs``.
 - Stay within **authorized scope** (workspace + user-named targets). No open-ended internet-wide scanning or replication-style objectives.
 - Reuse existing tool results in the transcript — no identical tool+arguments spam.
 """
@@ -1834,7 +1834,7 @@ _CODING_BUILD_TOOL_DISCIPLINE = """## **Build** discipline (this stack)
 
 - Use only ``coding_*`` / ``project_explain`` from **tools[]** — no registry meta tools.
 - Map work to permission groups (read, list, glob, grep, edit, bash, task, lsp) as in your system prompt; call with complete JSON.
-- Prefer ``coding_read_file``, ``coding_search``, and ``coding_glob`` over shell for reads/search; prefer ``coding_git_sync`` for git pull/fetch.
+- Prefer ``read_file``, ``search``, and ``glob`` over shell for reads/search; prefer ``git_sync`` for git pull/fetch.
 - Destructive tools may require UI approval when enabled — **ask** semantics for **edit** / **bash** when the client enables them.
 - Do not re-list or re-read the same path when that output is already in the transcript; proceed to edit, bash, or a new path.
 """
@@ -1843,7 +1843,7 @@ _CODING_FIX_ARTIFACT_DISCIPLINE = """## **fix_from_artifact** (this run)
 
 - Edit **only** paths from ``[Referenced artifacts]`` — enforcement blocks other files.
 - When ``branch: …`` is in requirements: checkout, commit, and push **that** branch only.
-- After edits: ``coding_git_read`` log + re-read each changed file before claiming success.
+- After edits: ``git_read`` log + re-read each changed file before claiming success.
 """
 
 _TOOL_DISCIPLINE_BY_PRESET: dict[str, str] = {
@@ -2087,12 +2087,12 @@ def _inject_workspace_verify_hints(
     if isinstance(vc, str) and vc.strip():
         lines.append(
             "This workspace has a **verify** command (stored server-side) — run it with the "
-            "`coding_workspace_verify` tool (same allowlisting as `coding_bash`) or manually: "
+            "`workspace_verify` tool (same allowlisting as `bash`) or manually: "
             f"`{vc.strip()}`"
         )
     if workspace.get("verify_required"):
         lines.append(
-            "Policy: **verify_required** is enabled — run `coding_workspace_verify` until it succeeds "
+            "Policy: **verify_required** is enabled — run `workspace_verify` until it succeeds "
             "(exit code 0) before you finish with a final user-facing answer."
         )
     if not lines:
@@ -2408,15 +2408,29 @@ def _coerce_params_dict(p: Any) -> dict[str, Any] | None:
     return None
 
 
+def _resolve_tool_factory_name(base: str) -> str:
+    from apps.backend.domain.plugin_system.registry import get_registry
+
+    resolved = get_registry().resolve_domain_tool("tool_factory", base)
+    return resolved or f"tool_factory.{base}"
+
+
+def _resolve_meta_tool_name(name: str) -> str:
+    """Map short tool_factory names to qualified registry names when needed."""
+    if name in {"read", "replace", "create", "update", "rename", "list"}:
+        return _resolve_tool_factory_name(name)
+    return name
+
+
 # JSON where the function name is under ``tool_name`` (Nemotron) instead of ``name`` / ``tool``.
 _CONTENT_META_TOOL_NAMES = frozenset(
     {
-        "read_tool",
-        "replace_tool",
-        "create_tool",
-        "update_tool",
-        "rename_tool",
-        "list_tools",
+        "read",
+        "replace",
+        "create",
+        "update",
+        "rename",
+        "list",
         "list_available_tools",
         "get_tool_help",
     }
@@ -2506,38 +2520,38 @@ def _parse_tool_intent_from_content(content: str) -> tuple[str, dict[str, Any]] 
 
 def _content_fallback_args_acceptable(name: str, params: dict[str, Any]) -> bool:
     """Reject synthetic tool_calls that would no-op or loop (e.g. read_tool({}))."""
-    if name == "read_tool":
+    if name == "read":
         return any(
             str(params.get(k) or "").strip()
             for k in ("filename", "registered_tool_name", "tool_name", "name")
         )
-    if name == "replace_tool":
+    if name == "replace":
         if not str(params.get("source") or "").strip():
             return False
         return any(
             str(params.get(k) or "").strip()
             for k in ("filename", "registered_tool_name", "tool_name", "name")
         )
-    if name == "update_tool":
+    if name == "update":
         if not str(params.get("old_string") or "").strip():
             return False
         return any(
             str(params.get(k) or "").strip()
             for k in ("filename", "registered_tool_name", "tool_name", "name")
         )
-    if name == "create_tool":
+    if name == "create":
         if str(params.get("source") or "").strip():
             return True
         return bool(str(params.get("tool_name") or "").strip() or str(params.get("name") or "").strip())
-    if name == "rename_tool":
+    if name == "rename":
         return bool(str(params.get("old_filename") or "").strip()) and bool(
             str(params.get("new_filename") or "").strip()
         )
     if name == "get_tool_help":
         return bool(str(params.get("tool_name") or "").strip())
-    if name == "coding_bash":
+    if name == "bash":
         return bool(str(params.get("command") or "").strip())
-    if name == "coding_task":
+    if name == "task":
         rps = params.get("run_plan_subagent")
         if (isinstance(rps, bool) and rps) or (
             isinstance(rps, str) and rps.strip().lower() in ("1", "true", "yes", "on")
@@ -2546,9 +2560,9 @@ def _content_fallback_args_acceptable(name: str, params: dict[str, Any]) -> bool
         return bool(str(params.get("description") or "").strip()) and bool(
             str(params.get("prompt") or "").strip()
         )
-    if name == "coding_read_file":
+    if name == "read_file":
         return bool(str(params.get("path") or "").strip())
-    if name == "coding_git_sync":
+    if name == "git_sync":
         op = str(params.get("operation") or "pull").strip().lower()
         return op in ("pull", "fetch")
     return True
@@ -2645,7 +2659,7 @@ def _apply_tool_prefetch(messages: list[dict[str, Any]], prefetch: dict[str, Any
     }
     if not args:
         return
-    snippet = execute_tool("read_tool", args)
+    snippet = execute_tool(_resolve_tool_factory_name("read"), args)
     try:
         o = json.loads(snippet)
     except json.JSONDecodeError:
@@ -3050,8 +3064,8 @@ def _completion_attach_agent_run_id(
 
 
 def _workspace_tool_bound_workspace_id(tool_name: str, tool_result_json: str) -> str | None:
-    """Return workspace id when ``workspace_bind`` / bound ``workspace_create`` succeeded."""
-    if tool_name not in ("workspace_bind", "workspace_create"):
+    """Return workspace id when ``bind`` / bound ``create`` succeeded."""
+    if tool_name not in ("bind", "create", "workspace.bind", "workspace.create"):
         return None
     try:
         data = json.loads(tool_result_json)
@@ -3059,7 +3073,7 @@ def _workspace_tool_bound_workspace_id(tool_name: str, tool_result_json: str) ->
         return None
     if not isinstance(data, dict) or data.get("ok") is not True:
         return None
-    if tool_name == "workspace_create" and not data.get("bound"):
+    if tool_name in ("create", "workspace.create") and not data.get("bound"):
         return None
     ws = data.get("workspace")
     if not isinstance(ws, dict):
@@ -3110,7 +3124,7 @@ async def _apply_workspace_tool_bind_side_effects(
 
 
 def _format_workspace_verify_recap(tool_result_json: str) -> str | None:
-    """Build a short system snippet from ``coding_workspace_verify`` JSON output."""
+    """Build a short system snippet from ``workspace_verify`` JSON output."""
     try:
         d = json.loads(tool_result_json)
     except Exception:
@@ -3285,12 +3299,26 @@ async def chat_completion(
     agent_id = body.pop("agent_id", None)
     if isinstance(agent_id, str):
         agent_id = agent_id.strip() or None
-    if not embedded_subagent and agent_id and agent_id != "general":
-        logger.info(
-            "chat_completion: forcing agent_id %r -> general (single Chat product surface)",
-            agent_id,
+    if not embedded_subagent:
+        dash_id = (
+            str(dashboard_ctx.get("dashboard_id") or "").strip()
+            if isinstance(dashboard_ctx, dict)
+            else ""
         )
-        agent_id = "general"
+        if not agent_id and dash_id:
+            agent_id = "dashboard"
+        elif not agent_id:
+            agent_id = "general"
+        _chat_surface_agents = frozenset({"general", "dashboard", "creative"})
+        if agent_id == "dashboard" and not dash_id:
+            logger.info("chat_completion: dashboard agent requires agent_dashboard_context — using general")
+            agent_id = "general"
+        elif agent_id not in _chat_surface_agents:
+            logger.info(
+                "chat_completion: forcing agent_id %r -> general (use delegate for specialists)",
+                agent_id,
+            )
+            agent_id = "general"
     parent_agent_run_id = body.pop("agent_parent_run_id", None)
     if isinstance(parent_agent_run_id, str):
         parent_agent_run_id = parent_agent_run_id.strip() or None
@@ -3573,7 +3601,7 @@ async def chat_completion(
         and user_id is not None
     ):
         try:
-            from plugins.tools.capabilities.platform.workspaces._workspace_common import (
+            from apps.backend.domain.workspace.workspace_common import (
                 persist_conversation_workspace,
             )
 
@@ -3729,7 +3757,7 @@ async def chat_completion(
         if agent_id:
             messages = _inject_agent_system_prompt(messages, agent_id)
         if agent_id == "general":
-            from plugins.tools.capabilities.platform._embedded_subagent import (
+            from apps.backend.domain.embedded_subagent import (
                 build_delegate_agents_catalog_snippet,
             )
 
@@ -4935,7 +4963,7 @@ async def chat_completion(
                         reset_tool_invocation_messages(tctx)
                 ok_sum, err_sum = _tool_result_summary(result)
                 if (
-                    name == "coding_git_read"
+                    name == "git_read"
                     and ok_sum
                     and str(
                         tool_context.get("agent_delegate_mode")
@@ -4965,7 +4993,7 @@ async def chat_completion(
                             if aid and aid not in coll:
                                 coll.append(aid)
                     if str(tool_context.get("agent_id") or "") == "general":
-                        if name == "agent_delegate" and ok_sum:
+                        if name == "delegate" and ok_sum:
                             sub_aid = str(args.get("agent_id") or "").strip()
                             refs = args.get("artifact_refs")
                             if sub_aid == "coding" and isinstance(refs, list) and refs:
@@ -4981,7 +5009,7 @@ async def chat_completion(
                     ok=ok_sum,
                     error=err_sum if not ok_sum else None,
                 )
-                if name == "coding_workspace_verify":
+                if name == "workspace_verify":
                     try:
                         _vd = json.loads(result)
                         if isinstance(_vd, dict) and _vd.get("ok") is True:

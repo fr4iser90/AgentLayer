@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-_PLAN_SEARCH_TOOLS = frozenset({"coding_search", "coding_semantic_search"})
+_PLAN_SEARCH_TOOLS = frozenset({"search", "semantic_search"})
 
 # Root / cwd is not a scope — still searches the whole workspace tree.
 _INVALID_PATH_PREFIXES = frozenset({".", "./", ""})
@@ -15,11 +15,11 @@ _SHALLOW_PATH_PREFIXES = frozenset({"apps", "plugins", "scripts", "docs", "tests
 _GIT_FORENSICS_BLOCKED_TOOLS = frozenset(
     {
         "retrieve_context",
-        "coding_semantic_search",
-        "coding_glob",
-        "coding_list_dir",
-        "coding_symbols",
-        "coding_lsp",
+        "semantic_search",
+        "glob",
+        "list_dir",
+        "symbols",
+        "lsp",
         "project_explain",
     }
 )
@@ -27,13 +27,13 @@ _GIT_FORENSICS_BLOCKED_TOOLS = frozenset(
 # Plan-equivalent: no shell or file writes in Plan mode (use Build / coding agent).
 _PLAN_DENIED_TOOLS = frozenset(
     {
-        "coding_bash",
-        "coding_git_sync",
-        "coding_git_push",
-        "coding_write_file",
-        "coding_edit",
-        "coding_replace",
-        "coding_apply_patch",
+        "bash",
+        "git_sync",
+        "git_push",
+        "write_file",
+        "edit",
+        "replace",
+        "apply_patch",
     }
 )
 
@@ -79,7 +79,7 @@ def coding_plan_search_blocked(
         return None
 
     mode = _plan_delegate_mode(tool_context)
-    if mode == "git_forensics" and tool_name == "coding_search":
+    if mode == "git_forensics" and tool_name == "search":
         ctx = tool_context or {}
         if not ctx.get("plan_git_diff_seen"):
             return (
@@ -131,4 +131,4 @@ def coding_plan_coding_search_blocked(
     *,
     tool_context: dict[str, Any] | None = None,
 ) -> str | None:
-    return coding_plan_search_blocked("coding_search", args, tool_context=tool_context)
+    return coding_plan_search_blocked("search", args, tool_context=tool_context)

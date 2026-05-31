@@ -18,12 +18,12 @@ class FinalRoundRecoveryHeuristicTests(unittest.TestCase):
         self.assertTrue(_agent_final_text_looks_like_placeholder_tool_markup(s))
 
     def test_detects_function_tag(self) -> None:
-        self.assertTrue(_agent_final_text_looks_like_placeholder_tool_markup("<function=coding_bash>"))
+        self.assertTrue(_agent_final_text_looks_like_placeholder_tool_markup("<function=bash>"))
 
     def test_good_markdown_false(self) -> None:
         self.assertFalse(
             _agent_final_text_looks_like_placeholder_tool_markup(
-                "## Summary\nUsed `coding_list_dir` on `.`; saw `apps/`.\n\nNext: open `ChatPage.tsx`."
+                "## Summary\nUsed `list_dir` on `.`; saw `apps/`.\n\nNext: open `ChatPage.tsx`."
             )
         )
 

@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-from plugins.tools.capabilities.coding import retrieve_context as rc
+import plugins.tools.workspace.search.retrieve_context as rc
 
 
 def test_parse_sources_defaults() -> None:

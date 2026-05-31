@@ -84,7 +84,7 @@ Neue Tabelle (Vorschlag) `dashboard_files` (oder `user_dashboard_attachments`):
 
 ### B1 — Modell dokumentieren & minimal erweitern
 
-**Heute:** `dashboard_list` / `dashboard_get` nur `owner_user_id = current user` + `tenant_id`.
+**Heute:** `list` / `dashboard_get` nur `owner_user_id = current user` + `tenant_id`.
 
 **Erweiterung (Schema-Vorschlag):** Tabelle `dashboard_members`:
 
@@ -100,7 +100,7 @@ Neue Tabelle (Vorschlag) `dashboard_files` (oder `user_dashboard_attachments`):
 
 ### B2 — API-Anpassung
 
-- `dashboard_list`: eigene + die, wo Mitglied.
+- `list`: eigene + die, wo Mitglied.
 - `dashboard_get` / `patch` / `delete`: Zugriff wenn Owner **oder** Rolle `editor` (PATCH) / `viewer` (GET only).
 - **DELETE Dashboard:** nur Owner (explizit festlegen).
 

@@ -1,0 +1,15 @@
+id: dashboard
+name: Dashboard
+icon: 📊
+description: Shopping lists, pets, ideas boards, and generic dashboard layout/data tools — use with agent_dashboard_context
+requires_workspace: false
+execution_context: auto
+min_role: user
+tool_domains:
+  - dashboard
+  - shopping
+  - pets
+  - ideas
+  - tasks
+  - rss
+  - calendar

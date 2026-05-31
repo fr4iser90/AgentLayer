@@ -163,6 +163,7 @@ def _fetch_row() -> dict[str, Any]:
         "workspace_index_on_write_default": "debounced",
         "workspace_reindex_after_git_pull": False,
         "workspace_nightly_reindex_enabled": False,
+        "workspace_index_on_attach_enabled": False,
     }
     try:
         with db.pool().connection() as conn:
@@ -204,7 +205,8 @@ def _fetch_row() -> dict[str, Any]:
                            rag_docs_ingest_fingerprint,
                            workspace_index_on_write_default,
                            workspace_reindex_after_git_pull,
-                           workspace_nightly_reindex_enabled
+                           workspace_nightly_reindex_enabled,
+                           workspace_index_on_attach_enabled
                     FROM operator_settings WHERE id = 1
                     """
                 )
@@ -308,6 +310,7 @@ def _fetch_row() -> dict[str, Any]:
         ),
         "workspace_reindex_after_git_pull": bool(row[70]) if len(row) > 70 and row[70] is not None else False,
         "workspace_nightly_reindex_enabled": bool(row[71]) if len(row) > 71 and row[71] is not None else False,
+        "workspace_index_on_attach_enabled": bool(row[72]) if len(row) > 72 and row[72] is not None else False,
     }
 
 
@@ -964,6 +967,7 @@ def public_dict() -> dict[str, Any]:
         "workspace_index_on_write_default": str(r.get("workspace_index_on_write_default") or "debounced"),
         "workspace_reindex_after_git_pull": bool(r.get("workspace_reindex_after_git_pull", False)),
         "workspace_nightly_reindex_enabled": bool(r.get("workspace_nightly_reindex_enabled", False)),
+        "workspace_index_on_attach_enabled": bool(r.get("workspace_index_on_attach_enabled", False)),
     }
 
 
@@ -1044,6 +1048,7 @@ class OperatorSettingsPatch(BaseModel):
     workspace_index_on_write_default: str | None = Field(default=None, max_length=16)
     workspace_reindex_after_git_pull: bool | None = None
     workspace_nightly_reindex_enabled: bool | None = None
+    workspace_index_on_attach_enabled: bool | None = None
 
 
 def scheduler_jobs_worker_settings() -> tuple[bool, float]:
@@ -1376,6 +1381,8 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
         r["workspace_reindex_after_git_pull"] = bool(patch["workspace_reindex_after_git_pull"])
     if "workspace_nightly_reindex_enabled" in patch:
         r["workspace_nightly_reindex_enabled"] = bool(patch["workspace_nightly_reindex_enabled"])
+    if "workspace_index_on_attach_enabled" in patch:
+        r["workspace_index_on_attach_enabled"] = bool(patch["workspace_index_on_attach_enabled"])
 
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
@@ -1540,6 +1547,9 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
             if "workspace_nightly_reindex_enabled" in patch:
                 extra_sets.append("workspace_nightly_reindex_enabled = %s")
                 extra_params.append(bool(r.get("workspace_nightly_reindex_enabled", False)))
+            if "workspace_index_on_attach_enabled" in patch:
+                extra_sets.append("workspace_index_on_attach_enabled = %s")
+                extra_params.append(bool(r.get("workspace_index_on_attach_enabled", False)))
             if extra_sets:
                 cur.execute(
                     f"UPDATE operator_settings SET {', '.join(extra_sets)}, updated_at = now() WHERE id = 1",

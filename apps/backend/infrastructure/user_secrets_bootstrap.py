@@ -40,7 +40,7 @@ def build_user_secrets_bootstrap_snippet(user_id: uuid.UUID | None) -> str:
     if "ssc_api_key" in keys:
         hints.append(
             "**SimpleSecCheck:** ``ssc_api_key`` is already stored — do **not** ask the user to paste "
-            "the SSC API key. For scans, bind a project workspace then ``agent_delegate`` with "
+            "the SSC API key. For scans, bind a project workspace then ``delegate`` with "
             "``agent_id: security_auditor``."
         )
     if "github_pat" in keys:
@@ -79,8 +79,8 @@ def build_workspace_bound_snippet(workspace: dict) -> str:
     if path:
         lines.append(f"Container path: ``{path}``.")
     lines.append(
-        "``agent_delegate`` (``security_auditor``, ``coding``, ``coding_plan``) and ``coding_*`` "
-        "read tools use this workspace — call ``workspace_create`` / ``workspace_bind`` first if the "
+        "``delegate`` (``security_auditor``, ``coding``, ``coding_plan``) and ``coding_*`` "
+        "read tools use this workspace — call ``create`` / ``bind`` first if the "
         "user asked about a **different** repository."
     )
     return "\n".join(lines)

@@ -12,7 +12,7 @@ from apps.backend.domain.agent import (
 
 def test_block_repeat_git_sync_pull() -> None:
     ctx = {"agent_unattended": True, "schedule_git_pull_done": True, "schedule_git_pull_result": "already_up_to_date"}
-    raw = _unattended_blocked_tool_json("coding_git_sync", {"operation": "pull"}, ctx)
+    raw = _unattended_blocked_tool_json("git_sync", {"operation": "pull"}, ctx)
     assert raw is not None
     o = json.loads(raw)
     assert o["ok"] is False
@@ -21,7 +21,7 @@ def test_block_repeat_git_sync_pull() -> None:
 
 def test_block_repeat_bash_pull() -> None:
     ctx = {"agent_unattended": True, "schedule_git_pull_done": True, "schedule_git_pull_result": "already_up_to_date"}
-    raw = _unattended_blocked_tool_json("coding_bash", {"command": "git pull --ff-only"}, ctx)
+    raw = _unattended_blocked_tool_json("bash", {"command": "git pull --ff-only"}, ctx)
     assert raw is not None
     assert json.loads(raw)["ok"] is False
 
@@ -37,7 +37,7 @@ def test_mark_git_pull_done_sets_hint() -> None:
             "next_steps": ["Do not pull again"],
         }
     )
-    hint = _unattended_mark_git_pull_done("coding_git_sync", result, ctx)
+    hint = _unattended_mark_git_pull_done("git_sync", result, ctx)
     assert hint is not None
     assert "Do NOT" in hint
     assert ctx.get("schedule_git_pull_done") is True

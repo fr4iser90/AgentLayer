@@ -1,4 +1,4 @@
-"""Persist ``coding_workspace_verify`` outcomes (Postgres)."""
+"""Persist ``workspace_verify`` outcomes (Postgres)."""
 
 from __future__ import annotations
 

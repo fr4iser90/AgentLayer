@@ -19,7 +19,7 @@ def test_build_tool_transcript_recap_maps_names_and_summarizes_json():
                 {
                     "id": "call_1",
                     "type": "function",
-                    "function": {"name": "coding_bash", "arguments": "{}"},
+                    "function": {"name": "bash", "arguments": "{}"},
                 }
             ],
         },
@@ -32,7 +32,7 @@ def test_build_tool_transcript_recap_maps_names_and_summarizes_json():
         },
     ]
     recap = _build_tool_transcript_recap(messages)
-    assert "coding_bash" in recap
+    assert "bash" in recap
     assert "hello world" in recap
     assert "ok=True" in recap or "ok=true" in recap.lower()
 
@@ -45,7 +45,7 @@ def test_merge_on_terminal_exit_prefixes_content():
                 {
                     "id": "x",
                     "type": "function",
-                    "function": {"name": "coding_glob", "arguments": "{}"},
+                    "function": {"name": "glob", "arguments": "{}"},
                 }
             ],
         },
@@ -71,7 +71,7 @@ def test_merge_on_terminal_exit_prefixes_content():
     assert ok_early
     merged_early = data["choices"][0]["message"]["content"]
     assert "Tool transcript" in merged_early
-    assert "coding_glob" in merged_early
+    assert "glob" in merged_early
 
     data["choices"][0]["message"]["content"] = "Done."
     ok = _merge_deterministic_tool_recap_into_final_completion(
@@ -80,7 +80,7 @@ def test_merge_on_terminal_exit_prefixes_content():
     assert ok
     merged = data["choices"][0]["message"]["content"]
     assert "Tool transcript" in merged
-    assert "coding_glob" in merged
+    assert "glob" in merged
     assert "missing pattern" in merged
     assert "### Model reply" in merged
     assert merged.endswith("Done.")
@@ -95,7 +95,7 @@ def test_recap_includes_glob_files_list_dir_entries_and_tool_args():
                     "id": "g1",
                     "type": "function",
                     "function": {
-                        "name": "coding_glob",
+                        "name": "glob",
                         "arguments": json.dumps(
                             {"pattern": "**/*.py", "path": "src"}
                         ),
@@ -123,7 +123,7 @@ def test_recap_includes_glob_files_list_dir_entries_and_tool_args():
                     "id": "l1",
                     "type": "function",
                     "function": {
-                        "name": "coding_list_dir",
+                        "name": "list_dir",
                         "arguments": json.dumps({"path": "src"}),
                     },
                 }
@@ -163,7 +163,7 @@ def test_client_tool_context_includes_llm_rounds_digest_before_transcript():
                 {
                     "id": "a",
                     "type": "function",
-                    "function": {"name": "coding_glob", "arguments": "{}"},
+                    "function": {"name": "glob", "arguments": "{}"},
                 }
             ],
         },
@@ -172,7 +172,7 @@ def test_client_tool_context_includes_llm_rounds_digest_before_transcript():
     ctx = _build_client_tool_context_markdown(messages)
     assert "## LLM tool rounds" in ctx
     assert "### Round 1" in ctx
-    assert "`coding_glob`" in ctx
+    assert "`glob`" in ctx
     assert "## Tool transcript" in ctx
     assert "### 1." in ctx
 
@@ -205,12 +205,12 @@ def test_recap_tool_args_empty_glob_shows_pattern_missing_and_list_dir_default_p
                 {
                     "id": "g0",
                     "type": "function",
-                    "function": {"name": "coding_glob", "arguments": "{}"},
+                    "function": {"name": "glob", "arguments": "{}"},
                 },
                 {
                     "id": "l0",
                     "type": "function",
-                    "function": {"name": "coding_list_dir", "arguments": "{}"},
+                    "function": {"name": "list_dir", "arguments": "{}"},
                 },
             ],
         },
@@ -218,5 +218,5 @@ def test_recap_tool_args_empty_glob_shows_pattern_missing_and_list_dir_default_p
         {"role": "tool", "tool_call_id": "l0", "content": '{"ok": true, "path": ".", "entries": []}'},
     ]
     recap = _build_tool_transcript_recap(messages)
-    assert "pattern=" in recap
+    assert "pattern missing" in recap.lower() or "pattern is required" in recap.lower()
     assert "path=." in recap

@@ -331,6 +331,7 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
           content: toApiContent(x.content),
         })),
         stream: true,
+        agent_id: "dashboard",
         agent_plain_completion: true,
         stream_options: { include_usage: true },
         ...payloadBase,

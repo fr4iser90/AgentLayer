@@ -66,7 +66,7 @@ Everything below is implemented for **admin-authenticated** HTTP (`require_admin
 | `GET` | `/v1/admin/tools` | Tool metadata + operator policy rows. | `require_admin` |
 | `POST` | `/v1/admin/reload-tools` | Rescan plugin tool directories. | `@require_permission("write", "tool")` |
 | `PUT` | `/v1/admin/tool-policies` | Replace entire operator tool policy table. | `require_admin` |
-| `POST` | `/v1/admin/create-tool` | Server-side `create_tool` codegen. | `@require_permission("write", "tool")` |
+| `POST` | `/v1/admin/create-tool` | Server-side `create` codegen. | `@require_permission("write", "tool")` |
 
 ### HTTP: RAG admin (`apps/backend/api/rag_api.py`, mounted as `rag_router`)
 
@@ -134,16 +134,16 @@ Source: `apps/backend/infrastructure/operator_settings.py`. `public_dict()` alre
 
 | Admin area | Read (Tier A) | Write / action (Tier B/C) |
 |------------|---------------|---------------------------|
-| Operator row | `operator_settings_summary` (wrap `GET` + merge `public_dict`) | `operator_settings_patch` (validated `PATCH`); tokens via **setup link** where possible |
+| Operator row | `operator_settings_summary` (wrap `GET` + merge `public_dict`) | `settings_patch` (validated `PATCH`); tokens via **setup link** where possible |
 | Interfaces | same summary or `interfaces_get` | `interfaces_put` |
 | External LLM | `external_llm_endpoints_list` | `external_llm_endpoints_put`, `external_llm_models_probe` |
-| Tenants / users | `admin_tenants_list`, `admin_users_list` | `admin_tenant_create`, `admin_user_create`, `admin_user_patch` |
-| Tool registry | `admin_tools_catalog` (shape of `GET /v1/admin/tools`) | `admin_tool_policies_put`, `admin_reload_tools`, `admin_create_tool` (high risk — confirm UX) |
-| RAG | `rag_search` (exists) + optional `admin_rag_config_snapshot` | `admin_rag_ingest`, `admin_rag_ingest_docs` |
-| Persisted `scheduler_jobs` | extend listing (archived/filters) vs current `schedule_job_list` | `admin_scheduler_job_patch`, `admin_scheduler_job_delete`, `admin_scheduler_job_archive` |
-| Presets | `admin_scheduler_presets_list` | — (read-only) |
+| Tenants / users | `tenants_list`, `users_list` | `tenant_create`, `user_create`, `user_patch` |
+| Tool registry | `tools_catalog` (shape of `GET /v1/admin/tools`) | `tool_policies_put`, `reload_tools`, `admin_create_tool` (high risk — confirm UX) |
+| RAG | `rag_search` (exists) + optional `admin_rag_config_snapshot` | `rag_ingest`, `rag_ingest_docs` |
+| Persisted `scheduler_jobs` | extend listing (archived/filters) vs current `list` | `scheduler_job_patch`, `scheduler_job_delete`, `admin_scheduler_job_archive` |
+| Presets | `scheduler_presets_list` | — (read-only) |
 | IDE queue | `admin_ide_jobs_due`, `admin_ide_job_ack` | thin wrappers |
-| Project runs | `admin_project_runs_list` | `admin_project_run_create` |
+| Project runs | `project_runs_list` | `run_create` |
 
 Names are **indicative**; align with `TOOL_ID` / plugin layout when implementing.
 
@@ -153,16 +153,16 @@ The operator’s tool surface is resolved from `plugins/agents/operator.py` (`AG
 
 | Tool | Role |
 |------|------|
-| `list_tools` | List tool names (meta discovery). |
+| `list` | List tool names (meta discovery). |
 | `list_available_tools` | Broader listing helper. |
 | `list_tool_categories` | Categories for the catalog. |
 | `list_tools_in_category` | Tools in one category. |
 | `get_tool_help` | JSON Schema / help for a tool name. |
-| `read_tool` | Read tool source (when policy allows). |
+| `read` | Read tool source (when policy allows). |
 | `rag_search` | Search ingested RAG corpus (respects operator RAG settings). |
-| `schedule_job_list` | List persisted scheduler jobs for the tenant. |
-| `schedule_job_create` | Create a job (`execution_target` = registry `agent_id`; workspace agents need `workspace_id`). |
-| `schedule_job_set_enabled` | Enable/disable a job. |
+| `list` | List persisted scheduler jobs for the tenant. |
+| `create` | Create a job (`execution_target` = registry `agent_id`; workspace agents need `workspace_id`). |
+| `set_enabled` | Enable/disable a job. |
 
 Implementation pointers:
 
@@ -174,18 +174,18 @@ Implementation pointers:
 
 | Tool | Purpose |
 |------|---------|
-| `operator_settings_get` | Masked settings + interface hints |
-| `operator_settings_patch` | `OperatorSettingsPatch` fields only |
-| `operator_interfaces_get` / `operator_interfaces_put` | Application IDs + `agent_mode` |
-| `operator_external_llm_endpoints_get` / `…_put` | External LLM endpoint rows |
-| `operator_external_llm_models_list` | Probe `GET …/v1/models` (sync HTTP) |
-| `admin_tenants_list` / `admin_tenant_create` | Tenants |
-| `admin_users_list` / `admin_user_create` / `admin_user_patch` | Users |
-| `admin_tools_catalog` / `admin_tool_policies_put` / `admin_reload_tools` | Tool registry + policies |
-| `admin_rag_ingest` / `admin_rag_ingest_docs` | RAG ingest |
+| `settings_get` | Masked settings + interface hints |
+| `settings_patch` | `OperatorSettingsPatch` fields only |
+| `interfaces_get` / `interfaces_put` | Application IDs + `agent_mode` |
+| `external_llm_endpoints_get` / `…_put` | External LLM endpoint rows |
+| `external_llm_models_list` | Probe `GET …/v1/models` (sync HTTP) |
+| `tenants_list` / `tenant_create` | Tenants |
+| `users_list` / `user_create` / `user_patch` | Users |
+| `tools_catalog` / `tool_policies_put` / `reload_tools` | Tool registry + policies |
+| `rag_ingest` / `rag_ingest_docs` | RAG ingest |
 | `admin_scheduler_job_*` | List/create/patch/enable/archive/delete persisted jobs |
-| `admin_scheduler_presets_list` | Preset JSON templates |
-| `admin_project_runs_list` / `admin_project_run_create` | IDE project runs |
+| `scheduler_presets_list` | Preset JSON templates |
+| `project_runs_list` / `run_create` | IDE project runs |
 
 ## What the operator cannot do yet (Web-UI parity)
 
@@ -207,7 +207,7 @@ Goal: **chat-first configuration** with **secrets outside the LLM** where possib
 
 | Planned tool | Purpose |
 |--------------|---------|
-| `operator_settings_patch` | Strictly validated subset of `OperatorSettingsPatch` keys; **reject** unknown paths; rate-limit; audit log. **Do not** accept full bot tokens if avoidable. |
+| `settings_patch` | Strictly validated subset of `OperatorSettingsPatch` keys; **reject** unknown paths; rate-limit; audit log. **Do not** accept full bot tokens if avoidable. |
 | `interfaces_put` | Thin wrapper over admin interfaces PUT with validation (or split per subsystem). |
 
 ### Tier C — Secrets and onboarding (safest UX)

@@ -72,7 +72,7 @@ export function buildRunCardsFromTimeline(entries) {
       }
       continue;
     }
-    if (e.kind === "tool_start" && e.toolName === "coding_index") {
+    if (e.kind === "tool_start" && e.toolName === "index") {
       const card = { id: e.id, kind: "index", status: "running", indexMode: "code", toolName: e.toolName, details: [e] };
       cards.push(card);
       openTools.set(e.toolName, card);

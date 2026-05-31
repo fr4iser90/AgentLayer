@@ -1,4 +1,4 @@
-"""Tests for ``coding_workspace_verify`` (DB ``verify_command`` on workspace dict)."""
+"""Tests for ``workspace_verify`` (DB ``verify_command`` on workspace dict)."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from plugins.tools.capabilities.coding.coding_workspace_verify import coding_workspace_verify
+from plugins.tools.workspace.shell.workspace_verify import workspace_verify
 from apps.backend.domain.agent import _format_workspace_verify_recap
 
 
@@ -29,7 +29,7 @@ class TestCodingWorkspaceVerify(unittest.TestCase):
                     "verify_command": "echo VERIFY_OK",
                 },
             }
-            out = coding_workspace_verify({}, context=ctx)
+            out = workspace_verify({}, context=ctx)
             data = json.loads(out)
             self.assertTrue(data.get("ok"), msg=data)
             self.assertEqual(data.get("exit_code"), 0)
@@ -41,7 +41,7 @@ class TestCodingWorkspaceVerify(unittest.TestCase):
                 "user": _User("00000000-0000-0000-0000-000000000099"),
                 "workspace": {"id": "00000000-0000-0000-0000-000000000002", "path": tmp},
             }
-            out = coding_workspace_verify({}, context=ctx)
+            out = workspace_verify({}, context=ctx)
             data = json.loads(out)
             self.assertFalse(data.get("ok"))
             self.assertIn("not set", (data.get("error") or "").lower())
@@ -57,7 +57,7 @@ class TestCodingWorkspaceVerify(unittest.TestCase):
                     "verify_command": "rm -rf /",
                 },
             }
-            out = coding_workspace_verify({}, context=ctx)
+            out = workspace_verify({}, context=ctx)
             data = json.loads(out)
             self.assertFalse(data.get("ok"))
             self.assertIn("blocked", (data.get("error") or "").lower())

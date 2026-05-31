@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, patch
 
 class TestEmbeddedSubagentEventLoop(unittest.TestCase):
     def test_delegate_ignores_parent_cancel_event(self) -> None:
-        from plugins.tools.capabilities.platform.agent_delegate import agent_delegate
+        from plugins.tools.platform.agents.delegate import delegate
 
         uid = uuid.uuid4()
         ws_id = uuid.uuid4()
@@ -39,7 +39,7 @@ class TestEmbeddedSubagentEventLoop(unittest.TestCase):
                     "apps.backend.infrastructure.agent_artifacts_store.create_artifact",
                     return_value={"id": uuid.uuid4()},
                 ):
-                    out = agent_delegate(
+                    out = delegate(
                         {
                             "run_subagent": True,
                             "agent_id": "coding_plan",

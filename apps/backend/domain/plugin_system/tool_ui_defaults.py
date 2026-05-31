@@ -76,37 +76,37 @@ PACKAGE_UI_DEFAULTS: dict[str, dict[str, Any]] = {
         "display_name": "Local Files",
         "order": 20,
     },
-    "create_tool": {
+    "create": {
         "category": "developer",
         "display_name": "Create Tool",
         "order": 30,
     },
-    "list_tools": {
+    "list": {
         "category": "developer",
         "display_name": "List Tools",
         "order": 31,
     },
-    "read_tool": {
+    "read": {
         "category": "developer",
         "display_name": "Read Tool",
         "order": 32,
     },
-    "update_tool": {
+    "update": {
         "category": "developer",
         "display_name": "Update Tool",
         "order": 33,
     },
-    "replace_tool": {
+    "replace": {
         "category": "developer",
         "display_name": "Replace Tool",
         "order": 34,
     },
-    "rename_tool": {
+    "rename": {
         "category": "developer",
         "display_name": "Rename Tool",
         "order": 35,
     },
-    "run_iterative_html_build": {
+    "build": {
         "category": "developer",
         "display_name": "HTML Builder",
         "order": 40,
@@ -138,7 +138,7 @@ PACKAGE_UI_DEFAULTS: dict[str, dict[str, Any]] = {
         "display_name": "Fishing — Bait",
         "order": 20,
     },
-    "fishing_bite_index": {
+    "bite_index": {
         "category": "outdoor",
         "display_name": "Fishing — Bite index",
         "order": 21,

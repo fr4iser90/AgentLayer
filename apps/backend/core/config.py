@@ -107,7 +107,7 @@ MAX_TOOL_ROUNDS = _resolve_max_tool_rounds()
 
 
 def _resolve_subagent_max_tool_rounds() -> int:
-    """``SUBAGENT_MAX_TOOL_ROUNDS`` overrides ``AGENT_MAX_TOOL_ROUNDS`` for ``agent_delegate`` sub-agents only."""
+    """``SUBAGENT_MAX_TOOL_ROUNDS`` overrides ``AGENT_MAX_TOOL_ROUNDS`` for ``delegate`` sub-agents only."""
     raw = (os.environ.get("SUBAGENT_MAX_TOOL_ROUNDS") or "").strip()
     if raw:
         parsed = _parse_tool_rounds_env(raw, env_name="SUBAGENT_MAX_TOOL_ROUNDS")
@@ -120,7 +120,7 @@ SUBAGENT_MAX_TOOL_ROUNDS = _resolve_subagent_max_tool_rounds()
 
 
 def _resolve_subagent_timeout_sec() -> float | None:
-    """``SUBAGENT_TIMEOUT_SEC``: positive = wall-clock cap for ``agent_delegate`` runs; unset or <=0 = no limit."""
+    """``SUBAGENT_TIMEOUT_SEC``: positive = wall-clock cap for ``delegate`` runs; unset or <=0 = no limit."""
     raw = (os.environ.get("SUBAGENT_TIMEOUT_SEC") or "").strip()
     if not raw:
         return None
@@ -160,7 +160,7 @@ AGENT_TOOL_DOOM_LOOP_EXCLUDE = frozenset(x.strip() for x in _DOOM_EXCL_PARTS if 
 # Phase 4 (roadmap): one-line recap after each tool batch; workspace .agentlayer.json hints.
 AGENT_SESSION_TOOL_RECAP_ENABLED = _env_bool("AGENT_SESSION_TOOL_RECAP_ENABLED", True)
 AGENT_SESSION_TOOL_RECAP_MAX = max(1, _env_int("AGENT_SESSION_TOOL_RECAP_MAX", 12))
-# Max wall time for ``coding_workspace_verify`` (runs ``verify_command`` from ``.agentlayer.json`` only).
+# Max wall time for ``workspace_verify`` (runs ``verify_command`` from ``.agentlayer.json`` only).
 AGENT_WORKSPACE_VERIFY_TIMEOUT_SEC = max(30, min(_env_int("AGENT_WORKSPACE_VERIFY_TIMEOUT_SEC", 600), 3600))
 DATA_DIR = os.environ.get("AGENT_DATA_DIR", "/data")
 # Before replace_tool / update_tool / create_tool overwrite, copy prior .py here (UTC timestamp prefix).

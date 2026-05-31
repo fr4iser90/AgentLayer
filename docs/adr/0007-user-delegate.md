@@ -126,7 +126,7 @@ Variant **B:** Server runs full `chat_completion` (works when browser closed).
 | Suggestions | `delegate_suggestions` | Only after user accept → updates config |
 | Decision examples | Optional retrieval (Phase 5) | Top-K when similar situation |
 
-Pattern mirrors **`memory_graph_propose`** (propose → apply), not **`dynamic_traits`** auto-injection without review.
+Pattern mirrors **`graph_propose`** (propose → apply), not **`dynamic_traits`** auto-injection without review.
 
 ### 4) Limits (mandatory for G1)
 

@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from apps.backend.domain.delegate_config_schema import default_delegate_config, normalize_delegate_notes
 from apps.backend.domain.http_identity import resolve_chat_identity
 from apps.backend.infrastructure import user_delegate_store
+from apps.backend.infrastructure import delegate_runs_store
 
 router = APIRouter(prefix="/v1/user", tags=["user-delegate"])
 
@@ -75,3 +76,13 @@ def put_user_delegate(request: Request, body: UserDelegateUpdateBody) -> dict[st
             ),
         ) from e
     return {"ok": True, "stored": True, **_row_to_response(row)}
+
+
+@router.get("/delegate/runs")
+def list_delegate_runs(request: Request, limit: int = 50) -> dict:
+    uid, _tid = resolve_chat_identity(request)
+    try:
+        runs = delegate_runs_store.list_delegate_runs(user_id=uid, limit=limit)
+    except Exception as e:
+        return {"ok": True, "runs": [], "delegate_storage": "unavailable", "detail": str(e)[:200]}
+    return {"ok": True, "runs": runs}

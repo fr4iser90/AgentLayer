@@ -166,7 +166,7 @@ async def admin_put_tool_policies(request: Request, body: ToolPoliciesPutBody):
 @require_permission("write", "tool")
 async def admin_create_tool(request: Request, user):
     """
-    Same JSON body as the chat tool ``create_tool`` (codegen without ``source``, or full module in ``source``).
+    Same JSON body as the chat tool ``create`` (codegen without ``source``, or full module in ``source``).
     """
     try:
         body = await request.json()
@@ -175,7 +175,7 @@ async def admin_create_tool(request: Request, user):
     if not isinstance(body, dict):
         raise HTTPException(status_code=400, detail="JSON object expected")
 
-    from plugins.tools.capabilities.platform.tool_factory.create_tool import create_tool as run_create_tool
+    from plugins.tools.platform.tool_factory.create import create as run_create_tool
 
     raw = run_create_tool(body)
     try:

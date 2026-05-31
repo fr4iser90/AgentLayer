@@ -22,7 +22,7 @@ def _tool_result_count(messages: list[Any]) -> int:
 
 
 def build_mock_chat_completion(body: dict[str, Any]) -> dict[str, Any]:
-    """First round with tools → ``coding_list_dir``; second round → plain assistant text."""
+    """First round with tools → ``list_dir``; second round → plain assistant text."""
     messages = body.get("messages") or []
     tools = body.get("tools") or []
     tool_rounds = _tool_result_count(messages if isinstance(messages, list) else [])
@@ -43,7 +43,7 @@ def build_mock_chat_completion(body: dict[str, Any]) -> dict[str, Any]:
                                 "id": call_id,
                                 "type": "function",
                                 "function": {
-                                    "name": "coding_list_dir",
+                                    "name": "list_dir",
                                     "arguments": json.dumps({"path": "."}),
                                 },
                             }

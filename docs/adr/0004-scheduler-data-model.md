@@ -29,7 +29,7 @@ Die bisherigen `scheduler_*`-Spalten in `operator_settings` können parallel ble
 
 ### Phase C — Chat-gesteuerte Anlage + Tools
 
-**Umgesetzt (erste Iteration):** Agent-Tools `schedule_job_create`, `schedule_job_list`, `schedule_job_set_enabled` im Plugin `plugins/tools/capabilities/platform/scheduler_jobs/scheduler_jobs.py` (Persistenz über `apps.backend/infrastructure/scheduler_jobs_store.py`). **Policy:** `execution_target=ide_agent` nur mit **Admin-Rolle**; Dashboard-Zuordnung nur bei ausreichendem Dashboard-Zugriff; Listen für Nicht-Admins auf Jobs eingeschränkt, die der Nutzer angelegt hat oder die ihn als `execution_user_id` führen.
+**Umgesetzt (erste Iteration):** Agent-Tools `create`, `list`, `set_enabled` im Plugin `plugins/tools/capabilities/platform/scheduler_jobs/scheduler_jobs.py` (Persistenz über `apps.backend/infrastructure/scheduler_jobs_store.py`). **Policy:** `execution_target=ide_agent` nur mit **Admin-Rolle**; Dashboard-Zuordnung nur bei ausreichendem Dashboard-Zugriff; Listen für Nicht-Admins auf Jobs eingeschränkt, die der Nutzer angelegt hat oder die ihn als `execution_user_id` führen.
 
 - **REST (Anlage weiterhin über Tools):** Lese-/Ack-Endpunkte für IDE siehe oben; optionales CRUD-PATCH später.
 

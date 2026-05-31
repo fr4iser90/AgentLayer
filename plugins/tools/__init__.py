@@ -1,16 +1,18 @@
 """
-Shipped tool tree: **recursive** scan for ``*.py`` (``TOOLS`` + ``HANDLERS``); see ``app.registry``.
+Shipped tool tree — recursive scan for ``*.py`` with ``TOOLS`` + ``HANDLERS``.
 
-**Layout** (first level under ``plugins/tools/``):
+Layout (by *what the tool is*):
 
-- ``capabilities/`` — ``coding/``, ``filesystem/``, ``knowledge/``, ``browser/``, ``platform/`` (operator,
-  scheduler, secrets, tool_factory, friends, …), ``creative/``.
-- ``integrations/`` — third-party HTTP APIs (GitHub, Gmail, OpenWeather, web search, image generator, …).
-- ``domains/`` — thematic verticals (fishing, hunting, survival, work, …).
-- ``productivity/`` — calendar, todos, shopping list, RSS, ideas, pets, clocks, server, ….
-- ``agent_created/`` — optional host mount for ``create_tool`` output (see compose / ``AGENT_TOOLS_EXTRA_DIR``).
+- ``integrations/`` — external APIs (``mail/``, ``github/``, ``weather/``, ``web_search/``, ``friends/``, ``browser/``)
+- ``workspace/`` — bound repo (``bind/``, ``files/``, ``shell/``, ``search/``, ``lsp/``, ``planning/``)
+- ``platform/`` — AgentLayer infra (``agents/``, ``tasks/``, ``secrets/``, ``scheduler/``, ``tool_help/``, …)
+- ``knowledge/`` — ``kb/``, ``memory/``, ``rag/``
+- ``personal/`` — dashboard verticals (``shopping/``, ``pets/``, ``tasks/``, …)
+- ``creative/`` — ``build/``, ``image_editor/``
+- ``outdoor/`` — ``fishing/``, ``hunting/``, ``survival/``
+- ``security/`` — ``security_scan/``
+- ``agent_created/`` — optional dynamic mount (``AGENT_TOOLS_EXTRA_DIR``)
 
-Admin UI buckets are optional per-module constants ``TOOL_BUCKET`` / ``TOOL_ADMIN_TAGS`` (``tools_meta``).
-
-Extra tools under ``AGENT_TOOLS_EXTRA_DIR`` may use a similar shape (flat or nested ``*.py`` modules).
+Each module: ``TOOL_DOMAIN``, optional ``TOOL_PROVIDER``, ``TOOL_CAPABILITIES``.
+Helpers: ``apps/backend/domain/`` (not scanned).
 """

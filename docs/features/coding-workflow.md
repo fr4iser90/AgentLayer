@@ -117,14 +117,14 @@ Only you merge changes to your host codebase.
 |------|---------|
 | `coding_read` | Read file contents |
 | `coding_write` | Create new file |
-| `coding_edit` | Edit a file |
-| `coding_replace` | Replace a pattern |
-| `coding_glob` | Find files by pattern |
-| `coding_search` | Search in files |
+| `edit` | Edit a file |
+| `replace` | Replace a pattern |
+| `glob` | Find files by pattern |
+| `search` | Search in files |
 | `retrieve_context` | Grep + semantic (Qdrant) + RAG docs (+ optional memory) in one call |
-| `coding_index` | Build symbol index |
-| `coding_bash` | Run shell commands |
-| `coding_symbols` | List symbols in file |
+| `index` | Build symbol index |
+| `bash` | Run shell commands |
+| `symbols` | List symbols in file |
 
 ### Tool Guidelines
 
@@ -163,7 +163,7 @@ RULES:
 1. NEVER edit files outside /code
 2. ALWAYS validate after changes
 3. If validation fails: fix, don't ignore
-4. Use 'coding_index' tool first
+4. Use 'index' tool first
 5. No dangerous commands
 ```
 

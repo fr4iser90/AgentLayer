@@ -94,6 +94,8 @@ from apps.backend.api.rag_api import router as rag_router
 from apps.backend.api.codebase_api import router as codebase_router
 from apps.backend.domain.plugin_system.registry import get_registry
 from apps.backend.infrastructure.user_data_api import router as user_data_router
+from apps.backend.api.message_feedback_api import admin_router as message_feedback_admin_router
+from apps.backend.api.message_feedback_api import router as message_feedback_router
 from apps.backend.infrastructure.delegate_api import router as delegate_router
 from apps.backend.infrastructure.memory_api import router as memory_router
 from apps.backend.infrastructure.user_secrets_api import router as user_secrets_router
@@ -120,6 +122,8 @@ from apps.backend.api.shares_api import router as shares_router
 from apps.backend.api.workspaces_api import router as workspaces_router
 from apps.backend.api.workspaces_admin_api import router as workspaces_admin_router
 from apps.backend.api.agents_api import router as agents_router
+from apps.backend.api.agents_admin_api import router as agents_admin_router
+from apps.backend.api.tools_admin_api import router as tools_admin_router
 from apps.backend.api.session_runtime_api import router as session_runtime_router
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"))
@@ -286,6 +290,8 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(title="agent-layer", version="0.7.7", lifespan=lifespan)
 app.include_router(user_secrets_router)
 app.include_router(conversations_router)
+app.include_router(message_feedback_router)
+app.include_router(message_feedback_admin_router)
 app.include_router(dashboard_router)
 app.include_router(user_data_router)
 app.include_router(delegate_router)
@@ -307,6 +313,8 @@ app.include_router(tasks_router)
 app.include_router(task_artifacts_router)
 app.include_router(run_traces_admin_router)
 app.include_router(agents_router)
+app.include_router(agents_admin_router)
+app.include_router(tools_admin_router)
 app.include_router(session_runtime_router)
 app.include_router(friends_router)
 app.include_router(shares_router)

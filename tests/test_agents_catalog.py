@@ -1,0 +1,41 @@
+"""Tests for agents catalog tool and builder."""
+
+from __future__ import annotations
+
+import json
+
+from apps.backend.domain.agents_catalog import build_agents_catalog
+
+
+def test_build_agents_catalog_includes_general() -> None:
+    out = build_agents_catalog(user_role="user", tenant_id=1)
+    assert out["ok"] is True
+    ids = {a["id"] for a in out["agents"]}
+    assert "general" in ids
+    general = next(a for a in out["agents"] if a["id"] == "general")
+    assert general["invokable_by_caller"] is True
+    assert "tool_names" not in general
+    assert "mail" in general["tool_domains"] or "workspace" in general["tool_domains"]
+
+
+def test_delegatable_only_filters() -> None:
+    out = build_agents_catalog(user_role="user", tenant_id=1, delegatable_only=True)
+    ids = {a["id"] for a in out["agents"]}
+    assert "general" not in ids
+    assert "coding" in ids
+
+
+def test_admin_include_tool_names() -> None:
+    out = build_agents_catalog(user_role="admin", tenant_id=1, include_tool_names=True)
+    coding = next(a for a in out["agents"] if a["id"] == "coding")
+    assert "tool_names" in coding
+    assert "bash" in coding["tool_names"] or "repository.read_file" in coding.get("tool_names", [])
+
+
+def test_catalog_tool_smoke() -> None:
+    from plugins.tools.platform.agents.catalog import catalog
+
+    raw = catalog({}, context={"user_role": "user"})
+    data = json.loads(raw)
+    assert data["ok"] is True
+    assert data["agent_count"] >= 1

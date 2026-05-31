@@ -152,6 +152,15 @@
   "secretCardFillRequired": "Please fill in all required fields.",
   "secretCardValueLabel": "Secret value",
   "secretCardOpenConnections": "Settings → Connections",
-  "proposalParseError": "Some option cards could not be loaded (invalid JSON from the assistant). Pick an option by typing its label, or ask the agent to resend the proposal. ({{count}} block(s) failed)"
+  "proposalParseError": "Some option cards could not be loaded (invalid JSON from the assistant). Pick an option by typing its label, or ask the agent to resend the proposal. ({{count}} block(s) failed)",
+  "feedbackPrompt": "Helpful?",
+  "feedbackUp": "Thumbs up",
+  "feedbackDown": "Thumbs down",
+  "delegateAutoRespond": "Auto-Respond (Delegate)",
+  "delegateAutoRespondHint": "When idle after the assistant finishes, your delegate decides the next step and continues automatically.",
+  "delegateAutoRespondDelay": "Idle delay",
+  "standInAutoBadge": "Stand-in · auto",
+  "runCardRunId": "Run {{id}}…",
+  "runCardOpenTrace": "Open run trace in admin"
 }
 

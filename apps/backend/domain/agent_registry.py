@@ -1,8 +1,7 @@
-"""Agent Registry - dynamically loads agent plugins and resolves tool allowlists from each plugin."""
+"""Agent Registry - loads agent plugins and resolves tool allowlists (domains + capabilities only)."""
 
 from __future__ import annotations
 
-import fnmatch
 import importlib.util
 import logging
 import os
@@ -11,75 +10,11 @@ from pathlib import Path
 from typing import Any
 
 from apps.backend.core.config import PLUGINS_DIR
+from apps.backend.domain.agent_plugin_loader import definition_from_yaml, discover_yaml_agents
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_AGENT_PLUGINS_DIR = PLUGINS_DIR / "agents"
-
-# Fallback when no ``general`` plugin file is present (keep aligned with ``plugins/agents/general.py``).
-_DEFAULT_GENERAL_TOOL_PATTERNS: tuple[str, ...] = (
-    "coding.*",
-    "fs.*",
-    "list_tool_categories",
-    "list_tools_in_category",
-    "list_available_tools",
-    "get_tool_help",
-    "memory.*",
-    "rag.*",
-    "kb.*",
-    "project.*",
-    "search_web",
-    "deep_search",
-    "github.*",
-    "openweather.*",
-    "inpainting_realvision",
-    "shopping.*",
-    "pets.*",
-    "ideas.*",
-    "calendar.*",
-    "gmail.*",
-    "feeds.*",
-    "todo.*",
-    "get_current_time",
-    "friends.*",
-    "fishing.*",
-    "hunting.*",
-    "survival.*",
-    "secrets.*",
-    "register_secrets",
-    "request_user_secret",
-    "save_user_secret",
-    "outdoor_environment_snapshot",
-    "echo_text",
-    "run_iterative_html_build",
-    "schedule_job.*",
-)
-
-
-def _match_tool(tool_name: str, patterns: list[str]) -> bool:
-    """True if ``tool_name`` matches any entry in ``patterns`` (exact, ``prefix.*``, or shell-style globs)."""
-    for pattern in patterns:
-        if pattern == tool_name:
-            return True
-        if pattern.endswith(".*"):
-            prefix = pattern[:-2]
-            if tool_name.startswith(prefix):
-                return True
-        elif "*" in pattern or "?" in pattern or "[" in pattern:
-            if fnmatch.fnmatchcase(tool_name, pattern):
-                return True
-    return False
-
-
-def _tools_for_patterns(patterns: list[str], all_tool_names: list[str]) -> list[str]:
-    """Resolve concrete tool names from pattern strings against the live tool registry."""
-    if not patterns:
-        return []
-    matched: list[str] = []
-    for tool_name in all_tool_names:
-        if _match_tool(tool_name, patterns):
-            matched.append(tool_name)
-    return matched
 
 
 def _tools_for_domains(
@@ -88,7 +23,7 @@ def _tools_for_domains(
     *,
     include_introspection: bool,
 ) -> list[str]:
-    """Tool names whose package ``domain`` is listed or ``shared`` (same idea as ``filter_merged_tools_by_domain``)."""
+    """Tool names whose package ``domain`` is listed or ``shared``."""
     allow = {d.strip().lower() for d in domains if str(d).strip()} | {"shared"}
     if not allow:
         return []
@@ -130,6 +65,70 @@ def _tools_for_capabilities_any(capabilities: list[str], all_tool_names: list[st
     return sorted(n for n in matched if n in allset)
 
 
+def resolve_agent_tool_names(definition: dict[str, Any], all_tool_names: list[str] | None = None) -> list[str]:
+    """Resolve ``tool_names`` for an agent definition dict (domains + capabilities)."""
+    if all_tool_names is None:
+        all_tool_names = _get_all_tool_names_static()
+    all_tools = frozenset(all_tool_names)
+    domains = definition.get("tool_domains") or []
+    caps = definition.get("tool_capability_any") or []
+    include_intro = bool(definition.get("tool_include_introspection", False))
+    merged: set[str] = set()
+    if domains:
+        merged.update(_tools_for_domains(domains, sorted(all_tools), include_introspection=include_intro))
+    if caps:
+        merged.update(_tools_for_capabilities_any(caps, sorted(all_tools)))
+    return sorted(n for n in merged if n in all_tools)
+
+
+def effective_tool_names_for_caller(
+    agent_id: str,
+    *,
+    user_role: str | None,
+    tenant_id: int,
+) -> list[str]:
+    """Agent allowlist intersected with operator tool policy for a role/tenant."""
+    agent = get_agent_registry().get_agent(agent_id)
+    if not agent:
+        return []
+    names = set(agent.get("tool_names") or [])
+    if not names:
+        return []
+    try:
+        from apps.backend.domain.plugin_system.registry import get_registry
+        from apps.backend.domain.plugin_system.tool_policy import filter_chat_tool_specs
+        from apps.backend.infrastructure.tool_operator_policy_db import policies_map
+
+        reg = get_registry()
+        specs = [s for s in reg.chat_tool_specs if (s.get("function") or {}).get("name") in names]
+        filtered = filter_chat_tool_specs(specs, reg, policies_map(), user_role, tenant_id)
+        return sorted(
+            str((s.get("function") or {}).get("name"))
+            for s in filtered
+            if (s.get("function") or {}).get("name")
+        )
+    except Exception:
+        logger.debug("effective_tool_names_for_caller skipped", exc_info=True)
+        return sorted(names)
+
+
+def _get_all_tool_names_static() -> list[str]:
+    try:
+        from apps.backend.domain.plugin_system.registry import get_registry
+
+        reg = get_registry()
+        tool_names: list[str] = []
+        for spec in reg.chat_tool_specs:
+            fn = spec.get("function", {})
+            n = fn.get("name")
+            if n:
+                tool_names.append(n)
+        return tool_names
+    except Exception as e:
+        logger.warning("could not load tool registry for agent mapping: %s", e)
+        return []
+
+
 class AgentRegistry:
     """Registry that loads agent plugins and resolves tool allowlists per plugin."""
 
@@ -148,10 +147,15 @@ class AgentRegistry:
                 logger.warning("plugins directory not found: %s", plugins_dir)
                 continue
 
+            for _agent_dir, yaml_path in discover_yaml_agents(plugins_dir):
+                try:
+                    self._load_agent_from_yaml(yaml_path, seen_ids)
+                except Exception as e:
+                    logger.warning("failed to load agent from %s: %s", yaml_path, e)
+
             for py_file in plugins_dir.glob("*.py"):
                 if py_file.name.startswith("_"):
                     continue
-
                 try:
                     self._load_agent_from_file(py_file, seen_ids)
                 except Exception as e:
@@ -176,8 +180,33 @@ class AgentRegistry:
 
         return dirs
 
+    def _register_definition(self, definition: dict[str, Any], seen_ids: set[str], label: str) -> None:
+        agent_id = definition["id"]
+        if agent_id in seen_ids:
+            logger.warning("duplicate agent_id %s in %s, skipping", agent_id, label)
+            return
+        seen_ids.add(agent_id)
+
+        tool_domains = definition.get("tool_domains") or []
+        tool_capability_any = definition.get("tool_capability_any") or []
+        if not tool_domains and not tool_capability_any:
+            logger.warning(
+                "agent %s (%s): set tool_domains and/or tool_capability_any — no tools until configured",
+                agent_id,
+                label,
+            )
+
+        self._agents[agent_id] = definition
+        logger.debug("loaded agent: %s from %s", agent_id, label)
+
+    def _load_agent_from_yaml(self, yaml_path: Path, seen_ids: set[str]) -> None:
+        definition = definition_from_yaml(yaml_path.parent, yaml_path)
+        if not definition:
+            return
+        self._register_definition(definition, seen_ids, yaml_path.name)
+
     def _load_agent_from_file(self, py_file: Path, seen_ids: set[str]) -> None:
-        """Load agent definition from a Python file."""
+        """Load agent definition from a legacy Python module (``plugins/agents/*.py``)."""
         spec = importlib.util.spec_from_file_location(f"agent_{py_file.stem}", py_file)
         if spec is None or spec.loader is None:
             return
@@ -191,35 +220,27 @@ class AgentRegistry:
             return
 
         if agent_id in seen_ids:
-            logger.warning("duplicate agent_id %s in %s, skipping", agent_id, py_file.name)
+            logger.debug("agent %s already loaded from yaml, skipping %s", agent_id, py_file.name)
             return
 
-        seen_ids.add(agent_id)
+        d_attr = getattr(module, "AGENT_TOOL_DOMAINS", None)
+        tool_domains = [str(x).strip().lower() for x in (d_attr or ()) if str(x).strip()]
+        c_attr = getattr(module, "AGENT_TOOL_CAPABILITY_ANY", None)
+        tool_capability_any = [str(x).strip() for x in (c_attr or ()) if str(x).strip()]
+        tool_include_introspection = bool(getattr(module, "AGENT_TOOL_INCLUDE_INTROSPECTION", False))
 
-        explicit_raw = getattr(module, "AGENT_TOOL_NAMES", None)
-        if isinstance(explicit_raw, (list, tuple)) and len(explicit_raw) > 0:
-            tool_names = [str(x).strip() for x in explicit_raw if str(x).strip()]
-            tool_patterns: list[str] = []
-            tool_domains: list[str] = []
-            tool_capability_any: list[str] = []
-            tool_include_introspection = False
-        else:
-            tool_names = []
-            p_attr = getattr(module, "AGENT_TOOL_PATTERNS", None)
-            tool_patterns = list(p_attr) if isinstance(p_attr, (list, tuple)) else []
-            d_attr = getattr(module, "AGENT_TOOL_DOMAINS", None)
-            tool_domains = [str(x).strip().lower() for x in (d_attr or ()) if str(x).strip()]
-            c_attr = getattr(module, "AGENT_TOOL_CAPABILITY_ANY", None)
-            tool_capability_any = [str(x).strip() for x in (c_attr or ()) if str(x).strip()]
-            tool_include_introspection = bool(getattr(module, "AGENT_TOOL_INCLUDE_INTROSPECTION", False))
-            if not tool_patterns and not tool_domains and not tool_capability_any:
-                logger.warning(
-                    "agent %s (%s): set AGENT_TOOL_DOMAINS, AGENT_TOOL_CAPABILITY_ANY, and/or "
-                    "AGENT_TOOL_PATTERNS (or non-empty AGENT_TOOL_NAMES) — no tools until configured",
-                    agent_id,
-                    py_file.name,
-                )
+        if getattr(module, "AGENT_TOOL_PATTERNS", None) or getattr(module, "AGENT_TOOL_NAMES", None):
+            logger.warning(
+                "agent %s (%s): AGENT_TOOL_PATTERNS / AGENT_TOOL_NAMES are deprecated — "
+                "use tool_domains and/or tool_capability_any only",
+                agent_id,
+                py_file.name,
+            )
 
+        try:
+            rel_source = py_file.relative_to(PLUGINS_DIR.parent).as_posix()
+        except ValueError:
+            rel_source = py_file.as_posix()
         definition = {
             "id": agent_id,
             "name": getattr(module, "AGENT_NAME", agent_id),
@@ -232,36 +253,36 @@ class AgentRegistry:
             "execution_context": getattr(module, "AGENT_EXECUTION_CONTEXT", "auto"),
             "min_role": getattr(module, "AGENT_MIN_ROLE", "user"),
             "model_profile": getattr(module, "AGENT_MODEL_PROFILE", None),
-            # Optional chat-loop behaviour (see ``docs/features/agent-registry-and-allowlists.md``).
             "strict_workspace": bool(getattr(module, "AGENT_STRICT_WORKSPACE", False)),
             "coding_tools_permission_ask": bool(getattr(module, "AGENT_CODING_TOOLS_PERMISSION_ASK", False)),
             "tool_discipline_preset": (
                 str(getattr(module, "AGENT_TOOL_DISCIPLINE_PRESET", "") or "").strip().lower() or None
             ),
-            "tool_patterns": tool_patterns,
             "tool_domains": tool_domains,
             "tool_capability_any": tool_capability_any,
             "tool_include_introspection": tool_include_introspection,
-            "tool_names": tool_names,
+            "source_kind": "python",
+            "source_path": rel_source,
         }
 
-        self._agents[agent_id] = definition
-        logger.debug("loaded agent: %s from %s", agent_id, py_file.name)
+        self._register_definition(definition, seen_ids, py_file.name)
 
     def _create_default_general_agent(self) -> None:
-        """Create a default general agent if none loaded."""
+        """Minimal stub when ``plugins/agents/general/`` is missing."""
+        logger.error(
+            "no general agent plugin loaded — add plugins/agents/general/agent.yaml with "
+            "tool_domains and/or tool_capability_any"
+        )
         self._agents["general"] = {
             "id": "general",
             "name": "General",
             "icon": "🧠",
-            "description": "General purpose assistant",
+            "description": "General purpose assistant (plugin missing — no tools until general is loaded)",
             "system_prompt": "You are a helpful AI assistant.",
             "tool_domain": None,
-            "tool_patterns": list(_DEFAULT_GENERAL_TOOL_PATTERNS),
             "tool_domains": [],
             "tool_capability_any": [],
             "tool_include_introspection": False,
-            "tool_names": [],
             "requires_workspace": False,
             "schedulable": True,
             "execution_context": "auto",
@@ -270,6 +291,8 @@ class AgentRegistry:
             "strict_workspace": False,
             "coding_tools_permission_ask": False,
             "tool_discipline_preset": None,
+            "source_kind": "builtin",
+            "source_path": None,
         }
 
     def ensure_loaded(self) -> None:
@@ -282,47 +305,17 @@ class AgentRegistry:
                 self._loaded = True
 
     def get_agent(self, agent_id: str) -> dict[str, Any] | None:
-        """Get agent definition by ID."""
+        """Get agent definition by ID with ``tool_names`` resolved against the live tool registry."""
         self.ensure_loaded()
         agent = self._agents.get(agent_id)
-        if agent:
-            agent = dict(agent)
-            tool_names = agent.get("tool_names", [])
-            patterns = agent.get("tool_patterns") or []
-            domains = agent.get("tool_domains") or []
-            caps = agent.get("tool_capability_any") or []
-            include_intro = bool(agent.get("tool_include_introspection", False))
-            if not tool_names and (patterns or domains or caps):
-                all_tools = self._get_all_tool_names()
-                logger.debug("agent %s: found %d tools in registry: %s", agent_id, len(all_tools), all_tools[:20])
-                merged: set[str] = set()
-                if patterns:
-                    merged.update(_tools_for_patterns(patterns, all_tools))
-                if domains:
-                    merged.update(_tools_for_domains(domains, all_tools, include_introspection=include_intro))
-                if caps:
-                    merged.update(_tools_for_capabilities_any(caps, all_tools))
-                mapped_tools = sorted(merged)
-                agent["tool_names"] = mapped_tools
-                logger.debug("agent %s: mapped %d tools: %s", agent_id, len(mapped_tools), mapped_tools[:30])
+        if not agent:
+            return None
+        agent = dict(agent)
+        agent["tool_names"] = resolve_agent_tool_names(agent)
         return agent
 
     def _get_all_tool_names(self) -> list[str]:
-        """Get all available tool names from the tool registry."""
-        try:
-            from apps.backend.domain.plugin_system.registry import get_registry
-
-            reg = get_registry()
-            tool_names: list[str] = []
-            for spec in reg.chat_tool_specs:
-                fn = spec.get("function", {})
-                n = fn.get("name")
-                if n:
-                    tool_names.append(n)
-            return tool_names
-        except Exception as e:
-            logger.warning("could not load tool registry for agent mapping: %s", e)
-            return []
+        return _get_all_tool_names_static()
 
     def list_agents(self) -> list[dict[str, Any]]:
         """List all registered agents."""

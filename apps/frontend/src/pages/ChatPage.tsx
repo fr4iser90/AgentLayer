@@ -93,6 +93,11 @@ import {
   putConversation,
 } from "../features/chat/conversationsApi";
 import {
+  fetchConversationFeedback,
+  patchDelegatePrefs,
+} from "../features/chat/chatExtrasApi";
+import { useDelegateAutoRespond } from "../features/chat/useDelegateAutoRespond";
+import {
   buildUserMessageContent,
   filesToAttachments,
   toApiContent,
@@ -308,14 +313,15 @@ export function ChatPage() {
   const [chatContextMeta, setChatContextMeta] = useState<ChatContextMeta | null>(null);
 
   const isAdminUser = (user?.role ?? "").toLowerCase() === "admin";
-  /** Single Chat UI: everyone uses General; specialists via agent_delegate tool. */
-  const composerAgentId = "general";
+  /** Single Chat UI: General by default; Dashboard when ?dashboard= context. */
+  const composerAgentId = dashboardChatId ? "dashboard" : "general";
 
   const [workspaces, setWorkspaces] = useState<WorkspaceApiRecord[]>([]);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
   const [showWorkspaceMcpModal, setShowWorkspaceMcpModal] = useState(false);
   const [workspaceScopeHint, setWorkspaceScopeHint] = useState<string | null>(null);
   const [composerHeaderCollapsed, setComposerHeaderCollapsed] = useState(false);
+  const [messageFeedback, setMessageFeedback] = useState<Map<number, "up" | "down">>(new Map());
   const [projectPanelOpen, setProjectPanelOpen] = useState(false);
   const [projectTreeRefreshKey, setProjectTreeRefreshKey] = useState(0);
   const [showSubagentsInActivity, setShowSubagentsInActivity] = useState(true);
@@ -439,6 +445,16 @@ export function ChatPage() {
         : null;
     setActiveTaskId(tid);
   }, [activeThreadId, activeThread?.activeTaskId]);
+
+  useEffect(() => {
+    if (!activeThreadId || !auth.accessToken) {
+      setMessageFeedback(new Map());
+      return;
+    }
+    void fetchConversationFeedback(auth, activeThreadId)
+      .then(setMessageFeedback)
+      .catch(() => setMessageFeedback(new Map()));
+  }, [activeThreadId, auth]);
 
   useEffect(() => {
     if (!activeTaskId || !auth.accessToken || !activeThreadId) return;
@@ -1864,7 +1880,12 @@ export function ChatPage() {
         }
         if (typ === "agent.done" || typ === "agent.aborted" || typ === "agent.cancelled") {
           appendAgentLine(String(typ), String(msg.detail ?? ""));
-          if (typ === "agent.done") setProjectTreeRefreshKey((k) => k + 1);
+          if (typ === "agent.done") {
+            setProjectTreeRefreshKey((k) => k + 1);
+            delegateScheduleRef.current();
+          } else {
+            delegateClearRef.current();
+          }
           return;
         }
         appendAgentLine(String(typ ?? "event"), JSON.stringify(msg).slice(0, 300));
@@ -1923,6 +1944,26 @@ export function ChatPage() {
     threads,
   ]);
   runAgentWsRef.current = runAgentWs;
+
+  const delegateScheduleRef = useRef<() => void>(() => {});
+  const delegateClearRef = useRef<() => void>(() => {});
+  const delegateAuto = useDelegateAutoRespond({
+    auth,
+    activeThread,
+    loading,
+    mode,
+    draft,
+    onAgentDone: () => {},
+    onSyntheticTurn: (body) => {
+      void runAgentWsRef.current({
+        id: newMessageId(),
+        draft: body,
+        attachments: [],
+      });
+    },
+  });
+  delegateScheduleRef.current = delegateAuto.scheduleAfterDone;
+  delegateClearRef.current = delegateAuto.clearTimer;
 
   const drainComposerQueue = useCallback(() => {
     const tid = activeThreadIdRef.current;
@@ -2510,6 +2551,52 @@ export function ChatPage() {
                 </div>
               ) : null}
               <p className="text-[10px] leading-snug text-surface-muted">{t("chat:titlesHint")}</p>
+              {!activeThread?.shared && activeThreadId ? (
+                <div className="mt-2 rounded-lg border border-violet-500/25 bg-violet-950/15 px-3 py-2">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm text-neutral-200">
+                    <input
+                      type="checkbox"
+                      className="rounded border-surface-border"
+                      checked={!!activeThread?.delegateAutoRespondEnabled}
+                      onChange={(e) => {
+                        const enabled = e.target.checked;
+                        patchThread(activeThreadId, { delegateAutoRespondEnabled: enabled });
+                        void patchDelegatePrefs(auth, activeThreadId, {
+                          delegate_auto_respond_enabled: enabled,
+                        }).catch(() => {});
+                        if (!enabled) delegateClearRef.current();
+                      }}
+                    />
+                    {t("chat:delegateAutoRespond")}
+                  </label>
+                  <p className="mt-1 text-[10px] text-surface-muted">{t("chat:delegateAutoRespondHint")}</p>
+                  {activeThread?.delegateAutoRespondEnabled ? (
+                    <label className="mt-2 block text-[10px] text-surface-muted">
+                      {t("chat:delegateAutoRespondDelay")}
+                      <input
+                        type="number"
+                        min={15}
+                        max={600}
+                        className="ml-2 w-16 rounded border border-surface-border bg-black/30 px-1.5 py-0.5 text-sm text-white"
+                        value={activeThread.delegateAutoRespondAfterSec ?? 60}
+                        onChange={(e) => {
+                          const sec = Number(e.target.value);
+                          if (!Number.isFinite(sec)) return;
+                          patchThread(activeThreadId, { delegateAutoRespondAfterSec: sec });
+                        }}
+                        onBlur={(e) => {
+                          const sec = Number(e.target.value);
+                          if (!Number.isFinite(sec) || !activeThreadId) return;
+                          void patchDelegatePrefs(auth, activeThreadId, {
+                            delegate_auto_respond_after_sec: sec,
+                          }).catch(() => {});
+                        }}
+                      />
+                      s
+                    </label>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
             {mode === "agent" ? (
               <div className="flex min-h-0 w-full flex-col gap-1.5">
@@ -2778,6 +2865,13 @@ export function ChatPage() {
                       s.type === "secret_prompt"
                   );
                   if (!hasStreamBody && !inFlight) return null;
+                  const prevUser =
+                    i > 0 && displayMessages[i - 1]?.role === "user"
+                      ? displayMessages[i - 1]
+                      : null;
+                  const standInAuto =
+                    typeof prevUser?.content === "string" &&
+                    prevUser.content.includes("[Stand-in · auto]");
 
                   return (
                     <AssistantTurnBlock
@@ -2792,6 +2886,10 @@ export function ChatPage() {
                       onSecretSaved={handleSecretSaved}
                       expandedRunCardIds={expandedRunCardIds}
                       onToggleRunCardExpanded={toggleRunCardExpanded}
+                      conversationId={activeThreadId}
+                      messagePosition={i}
+                      feedbackRating={messageFeedback.get(i) ?? null}
+                      standInAuto={standInAuto}
                     />
                   );
                 })}

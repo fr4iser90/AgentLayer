@@ -25,6 +25,7 @@ VALID_UI_CATEGORIES: frozenset[str] = frozenset(UI_CATEGORY_ORDER)
 
 # When package id has no row in package defaults, map TOOL_DOMAIN (or id) → category slug.
 DOMAIN_CATEGORY_FALLBACK: dict[str, str] = {
+    "mail": "productivity",
     "gmail": "productivity",
     "productivity": "productivity",
     "calendar": "productivity",
@@ -39,6 +40,8 @@ DOMAIN_CATEGORY_FALLBACK: dict[str, str] = {
     "rag": "knowledge",
     "web_search": "knowledge",
     "github": "developer",
+    "repository": "developer",
+    "workspace": "developer",
     "files": "developer",
     "meta": "system",
     "tool_factory": "developer",
@@ -50,6 +53,9 @@ DOMAIN_CATEGORY_FALLBACK: dict[str, str] = {
     "survival": "outdoor",
     "shared": "outdoor",
     "secrets": "system",
+    "platform": "system",
+    "delegate": "system",
+    "operator": "system",
     "outdoor": "outdoor",
 }
 

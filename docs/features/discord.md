@@ -17,9 +17,9 @@ AgentLayer can run a Discord bridge that forwards messages (e.g. `!agent ...`) i
 
 ### Memory (opt-in)
 
-- `!agent remember key=value` → `memory_fact_upsert`
-- `!agent remember note: ...` → `memory_note_add`
-- `!agent memory` → `memory_fact_list` + `memory_note_search`
+- `!agent remember key=value` → `fact_upsert`
+- `!agent remember note: ...` → `note_add`
+- `!agent memory` → `fact_list` + `note_search`
 - `!agent forget key` / `!agent forget note <id>`
 
 ### Dashboards

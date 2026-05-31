@@ -5,23 +5,23 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock, patch
 
-from plugins.tools.integrations.simple_sec_check import ssc_common
-from plugins.tools.integrations.simple_sec_check.security_scan_agent_callback import (
-    security_scan_agent_callback,
+from apps.backend.domain.security_scan import common as ssc_common
+from plugins.tools.security.security_scan.agent_callback import (
+    agent_callback,
 )
-from plugins.tools.integrations.simple_sec_check.security_scan_finding_policy_schema import (
-    security_scan_finding_policy_schema,
+from plugins.tools.security.security_scan.finding_policy_schema import (
+    finding_policy_schema,
 )
-from plugins.tools.integrations.simple_sec_check.security_scan_findings import (
-    security_scan_findings,
+from plugins.tools.security.security_scan.findings import (
+    findings,
 )
-from plugins.tools.integrations.simple_sec_check.security_scan_list import security_scan_list
-from plugins.tools.integrations.simple_sec_check.security_scan_resolve import (
-    security_scan_resolve,
+from plugins.tools.security.security_scan.list import list
+from plugins.tools.security.security_scan.resolve import (
+    resolve,
 )
-from plugins.tools.integrations.simple_sec_check.security_scan_start import security_scan_start
-from plugins.tools.integrations.simple_sec_check.security_scan_status import (
-    security_scan_status,
+from plugins.tools.security.security_scan.start import start
+from plugins.tools.security.security_scan.status import (
+    status,
 )
 
 
@@ -36,9 +36,9 @@ def test_security_scan_list_ok():
     mock_resp.status_code = 200
     mock_resp.content = b'[{"id":"1","status":"done"}]'
     mock_resp.json.return_value = [{"id": "1", "status": "done"}]
-    with patch("plugins.tools.integrations.simple_sec_check.ssc_common.httpx.Client") as client_cls:
+    with patch("apps.backend.domain.security_scan.common.httpx.Client") as client_cls:
         client_cls.return_value.__enter__.return_value.request.return_value = mock_resp
-        out = json.loads(security_scan_list({"limit": 5}))
+        out = json.loads(list({"limit": 5}))
     assert out["ok"] is True
     assert out["count"] == 1
 
@@ -46,7 +46,7 @@ def test_security_scan_list_ok():
 @patch.dict("os.environ", {}, clear=True)
 def test_security_scan_list_no_key():
     with patch.object(ssc_common.db, "user_secret_get_plaintext", return_value=None):
-        out = json.loads(security_scan_list({}))
+        out = json.loads(list({}))
     assert out["ok"] is False
     assert "SSC_API_KEY" in out["error"]
 
@@ -57,11 +57,11 @@ def test_security_scan_start_sends_repo_url():
     mock_resp.status_code = 201
     mock_resp.content = b'{"id":"scan-99","status":"queued"}'
     mock_resp.json.return_value = {"id": "scan-99", "status": "queued"}
-    with patch("plugins.tools.integrations.simple_sec_check.ssc_common.httpx.Client") as client_cls:
+    with patch("apps.backend.domain.security_scan.common.httpx.Client") as client_cls:
         client = client_cls.return_value.__enter__.return_value
         client.request.return_value = mock_resp
         out = json.loads(
-            security_scan_start(
+            start(
                 {"repo_url": "https://github.com/org/repo.git", "branch": "main"},
                 None,
             )
@@ -84,11 +84,11 @@ def test_security_scan_resolve_started_defers():
         "scan_id": "abc",
         "status_poll_path": "/api/v1/scans/abc/status",
     }
-    with patch("plugins.tools.integrations.simple_sec_check.ssc_common.httpx.Client") as client_cls:
+    with patch("apps.backend.domain.security_scan.common.httpx.Client") as client_cls:
         client = client_cls.return_value.__enter__.return_value
         client.request.return_value = mock_resp
         out = json.loads(
-            security_scan_resolve(
+            resolve(
                 {"repo_url": "https://github.com/org/repo.git", "findings_severity": "CRITICAL,HIGH"},
                 None,
             )
@@ -114,17 +114,17 @@ def test_security_scan_resolve_ready_includes_findings():
         "summary": {"total_vulnerabilities": 1},
     }
     mock_resp.content = b"{}"
-    with patch("plugins.tools.integrations.simple_sec_check.ssc_common.httpx.Client") as client_cls:
+    with patch("apps.backend.domain.security_scan.common.httpx.Client") as client_cls:
         client_cls.return_value.__enter__.return_value.request.return_value = mock_resp
         out = json.loads(
-            security_scan_resolve({"repo_url": "https://github.com/org/repo.git"}, None)
+            resolve({"repo_url": "https://github.com/org/repo.git"}, None)
         )
     assert out["status"] == "ready"
     assert out["defer"] is False
     assert len(out["findings"]) == 1
     assert out["findings"][0]["severity"] == "HIGH"
     guidance = " ".join(out["agent_guidance"])
-    assert "security_scan_finding_policy_schema" in guidance
+    assert "finding_policy_schema" in guidance
     assert "finding-policy.json" in guidance
     assert "nosec" in guidance.lower()
 
@@ -140,14 +140,14 @@ def test_security_scan_resolve_merges_api_agent_guidance():
         "findings": [{"severity": "HIGH", "path": "a.py", "rule_id": "r1"}],
     }
     mock_resp.content = b"{}"
-    with patch("plugins.tools.integrations.simple_sec_check.ssc_common.httpx.Client") as client_cls:
+    with patch("apps.backend.domain.security_scan.common.httpx.Client") as client_cls:
         client_cls.return_value.__enter__.return_value.request.return_value = mock_resp
         out = json.loads(
-            security_scan_resolve({"repo_url": "https://github.com/org/repo.git"}, None)
+            resolve({"repo_url": "https://github.com/org/repo.git"}, None)
         )
     guidance = out["agent_guidance"]
     assert "SSC custom FP workflow note." in guidance
-    assert any("security_scan_finding_policy_schema" in g for g in guidance)
+    assert any("finding_policy_schema" in g for g in guidance)
 
 
 @patch.dict("os.environ", {"SSC_API_KEY": "ssc_test"}, clear=False)
@@ -156,10 +156,10 @@ def test_security_scan_status_uses_status_endpoint():
     mock_resp.status_code = 200
     mock_resp.json.return_value = {"scan_id": "x", "status": "running", "progress": 42.5}
     mock_resp.content = b"{}"
-    with patch("plugins.tools.integrations.simple_sec_check.ssc_common.httpx.Client") as client_cls:
+    with patch("apps.backend.domain.security_scan.common.httpx.Client") as client_cls:
         client = client_cls.return_value.__enter__.return_value
         client.request.return_value = mock_resp
-        out = json.loads(security_scan_status({"scan_id": "x"}))
+        out = json.loads(status({"scan_id": "x"}))
     assert out["still_running"] is True
     assert out["end_run_recommended"] is True
     assert "/status" in client.request.call_args[0][1]
@@ -175,11 +175,11 @@ def test_security_scan_findings_pagination_params():
         "summary": {"total_vulnerabilities": 87},
     }
     mock_resp.content = b"{}"
-    with patch("plugins.tools.integrations.simple_sec_check.ssc_common.httpx.Client") as client_cls:
+    with patch("apps.backend.domain.security_scan.common.httpx.Client") as client_cls:
         client = client_cls.return_value.__enter__.return_value
         client.request.return_value = mock_resp
         out = json.loads(
-            security_scan_findings(
+            findings(
                 {"scan_id": "s1", "limit": 50, "offset": 0, "severity": "CRITICAL,HIGH"}
             )
         )
@@ -197,9 +197,9 @@ def test_security_scan_findings_409_retry_hint():
     mock_resp.json.return_value = {"detail": "scan still running"}
     mock_resp.content = b"{}"
     mock_resp.reason_phrase = "Conflict"
-    with patch("plugins.tools.integrations.simple_sec_check.ssc_common.httpx.Client") as client_cls:
+    with patch("apps.backend.domain.security_scan.common.httpx.Client") as client_cls:
         client_cls.return_value.__enter__.return_value.request.return_value = mock_resp
-        out = json.loads(security_scan_findings({"scan_id": "s1"}))
+        out = json.loads(findings({"scan_id": "s1"}))
     assert out["ok"] is False
     assert out["retry_later"] is True
     assert out["agent_guidance"]
@@ -211,11 +211,11 @@ def test_security_scan_agent_callback():
     mock_resp.status_code = 200
     mock_resp.json.return_value = {"accepted": True, "scan_id": "new-scan"}
     mock_resp.content = b"{}"
-    with patch("plugins.tools.integrations.simple_sec_check.ssc_common.httpx.Client") as client_cls:
+    with patch("apps.backend.domain.security_scan.common.httpx.Client") as client_cls:
         client = client_cls.return_value.__enter__.return_value
         client.request.return_value = mock_resp
         out = json.loads(
-            security_scan_agent_callback(
+            agent_callback(
                 {"target_id": "tgt-1", "branch_name": "fix/ssc-1", "trigger_rescan": True}
             )
         )
@@ -231,11 +231,11 @@ def test_security_scan_findings_poll_path():
     mock_resp.status_code = 200
     mock_resp.json.return_value = {"findings": [{"severity": "LOW", "path": "b.py"}]}
     mock_resp.content = b"{}"
-    with patch("plugins.tools.integrations.simple_sec_check.ssc_common.httpx.Client") as client_cls:
+    with patch("apps.backend.domain.security_scan.common.httpx.Client") as client_cls:
         client = client_cls.return_value.__enter__.return_value
         client.request.return_value = mock_resp
         out = json.loads(
-            security_scan_findings(
+            findings(
                 {"poll_path": "/api/v1/scans/s1/findings?limit=25&offset=25"}
             )
         )
@@ -245,7 +245,7 @@ def test_security_scan_findings_poll_path():
     params = client.request.call_args.kwargs["params"]
     assert int(params["limit"]) == 25
     assert int(params["offset"]) == 25
-    assert "security_scan_finding_policy_schema" in " ".join(out["agent_guidance"])
+    assert "finding_policy_schema" in " ".join(out["agent_guidance"])
 
 
 @patch.dict("os.environ", {"SSC_API_KEY": "ssc_test"}, clear=False)
@@ -258,11 +258,11 @@ def test_security_scan_finding_policy_schema():
         "agent_guidance": ["Call before editing .scanning/finding-policy.json"],
     }
     mock_resp.content = b"{}"
-    with patch("plugins.tools.integrations.simple_sec_check.ssc_common.httpx.Client") as client_cls:
+    with patch("apps.backend.domain.security_scan.common.httpx.Client") as client_cls:
         client = client_cls.return_value.__enter__.return_value
         client.request.return_value = mock_resp
         out = json.loads(
-            security_scan_finding_policy_schema({"tools": "semgrep,gitleaks"}, None)
+            finding_policy_schema({"tools": "semgrep,gitleaks"}, None)
         )
     assert out["ok"] is True
     assert "finding-policy/schema" in client.request.call_args[0][1]
@@ -281,9 +281,9 @@ def test_security_scan_finding_policy_schema_nested_schema_key():
         "notes": "ok",
     }
     mock_resp.content = b"{}"
-    with patch("plugins.tools.integrations.simple_sec_check.ssc_common.httpx.Client") as client_cls:
+    with patch("apps.backend.domain.security_scan.common.httpx.Client") as client_cls:
         client_cls.return_value.__enter__.return_value.request.return_value = mock_resp
-        out = json.loads(security_scan_finding_policy_schema({}, None))
+        out = json.loads(finding_policy_schema({}, None))
     assert out["schema"] == {"bandit": {"accepted_findings": []}}
 
 
@@ -293,9 +293,9 @@ def test_schedule_allowlist_includes_scan_tools():
     names = _schedule_tool_allowlist(
         {"security_scan": True},
         "Security remediation",
-        "security_scan_resolve",
+        "resolve",
     )
-    assert "security_scan_finding_policy_schema" in names
-    assert "security_scan_resolve" in names
-    assert "security_scan_status" in names
-    assert "coding_write_file" in names
+    assert "finding_policy_schema" in names
+    assert "resolve" in names
+    assert "status" in names
+    assert "write_file" in names

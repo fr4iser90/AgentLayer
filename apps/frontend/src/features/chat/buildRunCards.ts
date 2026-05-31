@@ -34,8 +34,8 @@ export type RunCard = {
   details: AgentTimelineEntry[];
 };
 
-const INDEX_TOOL = "coding_index";
-const DELEGATE_TOOL = "agent_delegate";
+const INDEX_TOOL = "index";
+const DELEGATE_TOOL = "delegate";
 
 const AGENT_TITLES: Record<string, string> = {
   coding: "Coding agent",
@@ -106,6 +106,7 @@ function completeSubagentCard(card: RunCard, done: AgentTimelineEntry): void {
   card.status = isFailedText(done.text) ? "failed" : "done";
   card.durationMs = done.durationMs ?? card.durationMs;
   card.resultChars = done.resultChars ?? card.resultChars;
+  card.subagentRunId = card.subagentRunId ?? done.subagentRunId;
   card.currentStep = undefined;
   if (!card.details.includes(done)) card.details.push(done);
   if (isFailedText(done.text) && done.text.trim()) {
@@ -188,6 +189,7 @@ export function buildRunCardsFromTimeline(entries: AgentTimelineEntry[]): RunCar
           title: agentRunCardTitle(e.subagentAgentId),
           subtitle: e.text.trim() || undefined,
           agentId: e.subagentAgentId,
+          subagentRunId: e.subagentRunId,
           durationMs: e.durationMs,
           resultChars: e.resultChars,
           details: [e],

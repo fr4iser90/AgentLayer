@@ -49,6 +49,12 @@ export function AdminLayout() {
             >
               {t("admin:toolsRegistryTitle")}
             </NavLink>
+            <NavLink
+              to="/admin/agents"
+              className={({ isActive }) => `${item} ${isActive ? itemActive : itemIdle}`}
+            >
+              {t("admin:agentsTitle")}
+            </NavLink>
           </NavGroup>
 
           <NavGroup label={t("admin:navAutomation")}>

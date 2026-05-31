@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import {
@@ -10,8 +11,10 @@ import {
 export function AdminAgentTraces() {
   const { t } = useTranslation(["admin"]);
   const auth = useAuth();
+  const [searchParams] = useSearchParams();
+  const runFromUrl = searchParams.get("run");
   const [runs, setRuns] = useState<RunTrace[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(runFromUrl);
   const [detail, setDetail] = useState<Awaited<ReturnType<typeof fetchAdminRunTrace>> | null>(
     null
   );
@@ -34,6 +37,10 @@ export function AdminAgentTraces() {
   useEffect(() => {
     void loadRuns();
   }, [loadRuns]);
+
+  useEffect(() => {
+    if (runFromUrl) setSelectedId(runFromUrl);
+  }, [runFromUrl]);
 
   useEffect(() => {
     if (!selectedId) {

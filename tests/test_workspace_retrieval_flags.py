@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 import unittest
 
-from plugins.tools.capabilities.coding.coding_common import workspace_retrieval_flags
-from plugins.tools.capabilities.coding.retrieve_context import retrieve_context
+from apps.backend.domain.coding.common import workspace_retrieval_flags
+from plugins.tools.workspace.search.retrieve_context import retrieve_context
 
 
 class TestWorkspaceRetrievalFlags(unittest.TestCase):

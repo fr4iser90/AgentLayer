@@ -35,7 +35,7 @@ Dieses Dokument fasst den **Ist-Zustand**, die **Lücken** (Ollama-Hardcoding, f
 ### 2.2 Code-Index + Qdrant
 
 - **`apps/backend/infrastructure/code_index_qdrant.py`:** eigene `_embed_text` → wieder **nur Ollama** `/api/embed` (ohne die robusten Fallbacks aus `ollama_embed_one`).
-- **Tools:** `coding_index`, `coding_semantic_search` — `workspace_id` aus Workspace-Kontext, Qdrant-Payload-Filter.
+- **Tools:** `index`, `semantic_search` — `workspace_id` aus Workspace-Kontext, Qdrant-Payload-Filter.
 
 ### 2.3 Memory
 
@@ -61,7 +61,7 @@ Dieses Dokument fasst den **Ist-Zustand**, die **Lücken** (Ollama-Hardcoding, f
 
 | Schicht | Verantwortung | Heutige Module (Orientierung) |
 |--------|----------------|-------------------------------|
-| **Ingest / Indexing** | Rohtext holen → chunken → **embedden** → in Vector-Store schreiben (+ Metadaten). | `ingest_for_user`, `ingest_markdown_tree`, `coding_index` + Qdrant upsert |
+| **Ingest / Indexing** | Rohtext holen → chunken → **embedden** → in Vector-Store schreiben (+ Metadaten). | `ingest_for_user`, `ingest_markdown_tree`, `index` + Qdrant upsert |
 | **Retrieval** | Query embedden → ANN-Suche → Post-Filter (ACL, workspace, domain) → Ranking optional reranken. | `search_for_identity`, `rag_vector_search`, `QdrantCodeIndex.search` |
 | **Embedding-Provider** | „String(s) → `list[float]`“ mit Timeout, Batch, Normalisierung, Dim-Check. | Soll **neu** zentral sein; heute: `ollama_embed_one` + Qdrant-Duplikat |
 

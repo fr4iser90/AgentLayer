@@ -17,11 +17,11 @@ Dieses Dokument beschreibt das Produktmodell eines **externen Referenzprodukts**
 | Thema | Referenz (extern) | AgentLayer (Ist) | Parität / Risiko |
 |--------|-----------|------------------|------------------|
 | **Primär-Agenten** | `build` (Standard), `plan` (read-only + ask für bash/edit); Tab-Wechsel, festes UX-Muster | `general`, `coding`, `coding_plan`, … über Registry + UI; Coding-Seite sendet jetzt `agent_id: "coding"` | **Teilweise:** Coding ≈ Build, coding_plan ≈ Plan; UX-Wechsel nicht Tab-identisch |
-| **Subagents** | `general`, `explore`, `scout` + `@mention`, Child-Sessions, Task-Permissions | `coding_task` + `run_plan_subagent`, eingebetteter `coding_plan`-Lauf | **Lücken:** kein `@explore`/`@scout`-Äquivalent, keine gleiche Session-Hierarchie-Navigation |
-| **Permissions** | Granular `allow` / `ask` / `deny` pro Permission-Key (edit, bash, grep, …), inkl. Bash-Globs | Capability-Governance, Tool-Allowlists, `coding_bash`-Blocklists, Workspace-Gates | **Unterschiedlich:** kein UI-native „ask before bash“ wie im Plan-Modus des Referenzprodukts |
+| **Subagents** | `general`, `explore`, `scout` + `@mention`, Child-Sessions, Task-Permissions | `task` + `run_plan_subagent`, eingebetteter `coding_plan`-Lauf | **Lücken:** kein `@explore`/`@scout`-Äquivalent, keine gleiche Session-Hierarchie-Navigation |
+| **Permissions** | Granular `allow` / `ask` / `deny` pro Permission-Key (edit, bash, grep, …), inkl. Bash-Globs | Capability-Governance, Tool-Allowlists, `bash`-Blocklists, Workspace-Gates | **Unterschiedlich:** kein UI-native „ask before bash“ wie im Plan-Modus des Referenzprodukts |
 | **Schritte / Kosten** | `steps` pro Agent dort, sonst Modell stoppt | `AGENT_MAX_TOOL_ROUNDS` (Default in Config oft 8; Betreiber können höher setzen — z. B. 20) + Rescue-Completion | **Anpassbar,** Semantik ≠ `steps` dort |
 | **Memory / Kontext** | Eigene Hidden Agents (`compaction`, `title`, `summary`) | `AGENT_SYSTEM_PROMPT`, User-Persona, Dashboard-Kontext, **User-Memory-Snippet** aus DB, `.agentlayer.json`-Hinweise | **Teilweise:** kein automatisches Compaction-Agent-Äquivalent |
-| **LSP** | Explizit im Permission-Modell | `coding_lsp` Tool + Index/Symbole | **Funktional ähnlich**, anderes API-Modell |
+| **LSP** | Explizit im Permission-Modell | `lsp` Tool + Index/Symbole | **Funktional ähnlich**, anderes API-Modell |
 | **MCP** | Permission-Globs für `mymcp_*` | Roadmap / Platzhalter | **Lücke** |
 
 **Kernbotschaft:** Derselbe **Nutzer-Prompt** führt **nicht** automatisch zum gleichen Verhalten; erst wenn **Agent-ID**, **Tool-Allowlist**, **Systemprompt-Kette**, **Modell** und **Limits** vergleichbar sind, nähert sich das Ergebnis an. Ein konkreter Produktions-Fehler war: Coding-Web-UI ohne `agent_id` → falsche Tool-Mischung (Introspection-Tools bei `TOOL_DOMAIN`‑Fallback) + fehlender Coding-Systemprompt.
@@ -120,7 +120,7 @@ Ablauf (vereinfacht, siehe `agent.py`):
 
 ### 3.5 Subagent / Plan bei AgentLayer
 
-- **`coding_task`** kann einen eingebetteten `coding_plan`-Lauf auslösen (`run_plan_subagent`), inkl. Parent/Child-Run-IDs und Cancel-Propagation (siehe Tests und `agent.py`).
+- **`task`** kann einen eingebetteten `coding_plan`-Lauf auslösen (`run_plan_subagent`), inkl. Parent/Child-Run-IDs und Cancel-Propagation (siehe Tests und `agent.py`).
 - **Unterschied zu Referenzprodukt:** keine TUI-Navigation zwischen Parent/Child-Sessions; kein `@explore` / `@scout` als erste Klasse.
 
 ### 3.6 Limits und Abbruch
@@ -159,9 +159,9 @@ Ablauf (vereinfacht, siehe `agent.py`):
 
 | Referenz (extern) | AgentLayer-Äquivalent / Status |
 |----------|-------------------------------|
-| `general` | `coding_task` + LLM-orchestrierte Tool-Schleifen; kein `@general` |
-| `explore` | `coding_plan` + `coding_search` / `coding_glob` / `coding_git_read`; kein dedizierter „Explore“-Agent |
-| `scout` | Teilweise `coding_semantic_search` / externe Tools; kein „managed dependency cache“ wie beschrieben |
+| `general` | `task` + LLM-orchestrierte Tool-Schleifen; kein `@general` |
+| `explore` | `coding_plan` + `search` / `glob` / `git_read`; kein dedizierter „Explore“-Agent |
+| `scout` | Teilweise `semantic_search` / externe Tools; kein „managed dependency cache“ wie beschrieben |
 | Child sessions | Explizite Session-Baum-Navigation | Konversationen + eingebetteter Plan-Subagent ohne TUI-Navigation |
 
 ### 4.4 Hidden system agents (compaction, title, summary)
@@ -187,7 +187,7 @@ Ablauf (vereinfacht, siehe `agent.py`):
 
 | Referenz (extern) | AgentLayer |
 |----------|------------|
-| Permission-Key `lsp` | Tool `coding_lsp` + Index/Symbole |
+| Permission-Key `lsp` | Tool `lsp` + Index/Symbole |
 | Opt-in LSP | vorhanden, aber anderes Konfigurationsmodell |
 
 ### 4.7 MCP
@@ -222,7 +222,7 @@ Ablauf (vereinfacht, siehe `agent.py`):
 
 1. **`@explore` / `@scout`‑Äquivalente** als Registry-Agents oder feste Subagent-Tools mit festem Tool-Budget.
 2. **Sichtbare Child-Runs** in UI (Run-ID, Parent, Link zum eingebetteten Plan-Output) — heute teils in Logs / Tool-JSON.
-3. **Task-Permission-Matrix** wie Referenzprodukt (`permission.task` Globs) für `coding_task`-Ziele.
+3. **Task-Permission-Matrix** wie Referenzprodukt (`permission.task` Globs) für `task`-Ziele.
 
 ### P3 — Permissions „ask“
 
@@ -252,7 +252,7 @@ Dieser Abschnitt definiert **Akzeptanzkriterien**, nicht Implementierung.
 
 ### 6.3 Ausführung
 
-- Modell wählt direkt `coding_read_file` / `coding_list_dir` / `coding_write_file` / Patch-Tools.
+- Modell wählt direkt `read_file` / `list_dir` / `write_file` / Patch-Tools.
 - Bei unsicherem Bash: entweder **deny** (Plan) oder **ask** (wenn P3 umgesetzt) oder dokumentierte Safe-Commands.
 
 ### 6.4 Subagent
@@ -312,7 +312,7 @@ Wesentliche Mechanik (aus Rohdatei):
 - **`sessions.create({ parentID, title, permission: [...] })`** — Child-Session; `permission` wird aus **`deriveSubagentSessionPermission`** + optionalen experimentellen `primary_tools`-Overrides zusammengesetzt.
 - Beim Prompt der Kind-Session werden **Tool-Flags** gesetzt (u. a. `task: false`, `todowrite: false`), damit der Subagent **nicht rekursiv** denselben Task-Spawn pflegt.
 
-**AgentLayer:** `coding_task` + `run_plan_subagent` nähert sich dem, fehlt aber: **einheitliches Session-Objekt mit Parent/Child**, **Permission-Ask im Tool-Pfad**, **explizites Resume-Modell** (`task_id`), **automatisches Rekursions-Gating** auf derselben Ebene.
+**AgentLayer:** `task` + `run_plan_subagent` nähert sich dem, fehlt aber: **einheitliches Session-Objekt mit Parent/Child**, **Permission-Ask im Tool-Pfad**, **explizites Resume-Modell** (`task_id`), **automatisches Rekursions-Gating** auf derselben Ebene.
 
 ### 6b.4 Tool-Registry (Referenzprodukt)
 
@@ -343,7 +343,7 @@ Alle der folgenden Kriterien müssen **erfüllt** sein (oder im selben Dokument 
 |---|-----------|------------------------|
 | D1 | **Coding-Build** (`coding`): alle **Coding**-Einstiege senden zuverlässig `agent_id: "coding"` **und** gültigen Workspace-Kontext (wie Referenzprodukt build im Worktree) | **CodingAgentPage** (Web): ja (`agent_id: "coding"`). Offen: jeder **weitere** Einstieg, der denselben Agent fahren soll (z. B. mobiles Coding, dedizierte API-Clients) — **nicht** der Dashboard-Allgemein-Chat |
 | D2 | **Plan-Session** = Primary read-only + **keine** Write/Bash-Tools + klare Nutzer-Kopie | `coding_plan` existiert; Tab-/Toggle-UX fehlt |
-| D3 | **Subagent/Task** mit **Parent/Child**-Nachweis, **Resume-ID**, **Anti-Rekursion** (Task/Task) | `coding_task`/Plan: teilweise; kein Referenzprodukt-`task_id`-Modell |
+| D3 | **Subagent/Task** mit **Parent/Child**-Nachweis, **Resume-ID**, **Anti-Rekursion** (Task/Task) | `task`/Plan: teilweise; kein Referenzprodukt-`task_id`-Modell |
 | D4 | **Permissions `ask`** mindestens für **edit** + **bash** (UI-Approval) | Fehlt (nur Allowlist/Capabilities) |
 | D5 | **Doom/Stuck** — Schranke vergleichbar Referenzprodukt `DOOM_LOOP_THRESHOLD` oder nachweislich äquivalent | `AGENT_TOOL_THRASH` existiert; Semantik ≠ 1:1 |
 | D6 | **Compaction** — konfigurierbar, bevor Kontext „hart“ bricht | Kein eigenes Compaction-Agent-Äquivalent |
@@ -393,7 +393,7 @@ Das ist die **technische** Grundlage hinter der Doku-Zeile „`allow` / `ask` / 
 
 - [ ] Expliziter **Explore**-Agent (read-only, festes Tool-Budget) + UI-Einstieg — Upstream-Referenz: Subagent `explore`.
 - [ ] Scout-ähnlicher Pfad für „externe Doku“ (optional Web/MCP später) — Referenzprodukt: `scout`.
-- [ ] `coding_task` um **Resume-Identität** + **Parent-Run-Transparenz** erweitern (Vergleich `task_id` in Referenzprodukt `task.ts`).
+- [ ] `task` um **Resume-Identität** + **Parent-Run-Transparenz** erweitern (Vergleich `task_id` in Referenzprodukt `task.ts`).
 
 ### Phase D — Permissions
 

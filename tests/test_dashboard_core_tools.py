@@ -7,7 +7,7 @@ import uuid
 from unittest.mock import patch
 
 from apps.backend.dashboard.data_paths import apply_data_patches, get_path, set_path
-from plugins.tools.capabilities.platform.dashboard_core import dashboard_core as mod
+import plugins.tools.personal.dashboard.dashboard as mod
 
 
 def test_set_path_nested() -> None:
@@ -39,7 +39,7 @@ def test_apply_layout_add_block() -> None:
 
 def test_dashboard_list_no_identity() -> None:
     with patch.object(mod, "_identity", return_value=None):
-        out = json.loads(mod.dashboard_list({}))
+        out = json.loads(mod.list({}))
     assert out["ok"] is False
 
 
@@ -60,24 +60,24 @@ def test_dashboard_read_and_patch_data() -> None:
     with (
         patch.object(mod, "_identity", return_value=(tid, uid)),
         patch(
-            "plugins.tools.capabilities.platform.dashboard_core.dashboard_core.resolve_dashboard_id",
+            "plugins.tools.personal.dashboard.dashboard.resolve_dashboard_id",
             return_value=(wid, None),
         ),
         patch(
-            "plugins.tools.capabilities.platform.dashboard_core.dashboard_core.dashboard_db.dashboard_get",
+            "plugins.tools.personal.dashboard.dashboard.dashboard_db.dashboard_get",
             return_value=ws,
         ),
         patch(
-            "plugins.tools.capabilities.platform.dashboard_core.dashboard_core.dashboard_db.dashboard_update",
+            "plugins.tools.personal.dashboard.dashboard.dashboard_db.dashboard_update",
             return_value=ws,
         ) as mock_up,
     ):
-        read_out = json.loads(mod.dashboard_read({"dashboard_id": str(wid)}))
+        read_out = json.loads(mod.read({"dashboard_id": str(wid)}))
         assert read_out["ok"] is True
         assert read_out["data"]["notes"] == "hello"
 
         patch_out = json.loads(
-            mod.dashboard_patch_data(
+            mod.patch_data(
                 {
                     "dashboard_id": str(wid),
                     "patches": [{"path": "notes", "value": "updated"}],
@@ -105,16 +105,16 @@ def test_dashboard_patch_layout_viewer() -> None:
     with (
         patch.object(mod, "_identity", return_value=(1, uid)),
         patch(
-            "plugins.tools.capabilities.platform.dashboard_core.dashboard_core.resolve_dashboard_id",
+            "plugins.tools.personal.dashboard.dashboard.resolve_dashboard_id",
             return_value=(wid, None),
         ),
         patch(
-            "plugins.tools.capabilities.platform.dashboard_core.dashboard_core.dashboard_db.dashboard_get",
+            "plugins.tools.personal.dashboard.dashboard.dashboard_db.dashboard_get",
             return_value=ws,
         ),
     ):
         out = json.loads(
-            mod.dashboard_patch_layout({"dashboard_id": str(wid), "ops": [{"op": "add_block", "type": "table"}]})
+            mod.patch_layout({"dashboard_id": str(wid), "ops": [{"op": "add_block", "type": "table"}]})
         )
     assert out["ok"] is False
     assert "read-only" in out["error"]

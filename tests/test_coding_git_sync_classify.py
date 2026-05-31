@@ -1,8 +1,8 @@
-"""Tests for structured coding_git_sync pull responses."""
+"""Tests for structured git_sync pull responses."""
 
 from __future__ import annotations
 
-from plugins.tools.capabilities.coding.coding_git_sync import (
+from plugins.tools.integrations.github.git_sync import (
     _classify_pull_output,
     _pull_next_steps,
 )

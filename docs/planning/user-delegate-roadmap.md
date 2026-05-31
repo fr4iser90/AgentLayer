@@ -221,7 +221,7 @@ Each auto-respond / delegated execution: trigger, merged config snapshot hash, d
 - [ ] Batch job or post-session analyzer proposes JSON patch to `user_delegate` / `workspace_delegate`
 - [ ] UI inbox: *“You asked for tests 17 times — add `prefer_tests: true`?”* Yes / No
 - [ ] On accept: merge patch into delegate config (version bump + audit row)
-- [ ] Pattern reference: `memory_graph_propose` + apply flow
+- [ ] Pattern reference: `graph_propose` + apply flow
 
 ---
 

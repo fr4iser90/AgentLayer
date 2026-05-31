@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { RunCard } from "./buildRunCards";
 
@@ -167,6 +168,17 @@ export function RunCardBlock({
           </div>
           {card.subtitle ? (
             <p className="mt-1 text-[11px] leading-snug text-neutral-400">{card.subtitle}</p>
+          ) : null}
+          {card.kind === "subagent" && card.subagentRunId ? (
+            <p className="mt-1 text-[10px]">
+              <Link
+                to={`/app/admin/run-traces?run=${encodeURIComponent(card.subagentRunId)}`}
+                className="font-mono text-sky-400/90 hover:text-sky-300 hover:underline"
+                title={t("chat:runCardOpenTrace")}
+              >
+                {t("chat:runCardRunId", { id: card.subagentRunId.slice(0, 8) })}
+              </Link>
+            </p>
           ) : null}
           {!expanded && previewSteps.length > 0 ? (
             <ul className="mt-1 space-y-0.5" aria-live="polite">

@@ -26,6 +26,7 @@ export const APP_ROUTES = [
   { path: "/app/admin/interfaces/automation", page: "AdminInterfacesAutomationPage", file: "pages/admin/interfaces/AdminInterfacesAutomationPage.tsx", auth: "admin" },
   { path: "/app/admin/interfaces/platform", page: "AdminInterfacesPlatformPage", file: "pages/admin/interfaces/AdminInterfacesPlatformPage.tsx", auth: "admin" },
   { path: "/app/admin/tools", page: "AdminTools", file: "pages/admin/AdminTools.tsx", auth: "admin" },
+  { path: "/app/admin/agents", page: "AdminAgents", file: "pages/admin/AdminAgents.tsx", auth: "admin" },
   { path: "/app/admin/users", page: "AdminUsers", file: "pages/admin/AdminUsers.tsx", auth: "admin" },
   { path: "/app/admin/scheduled-jobs", page: "AdminScheduledJobs", file: "pages/admin/AdminScheduledJobs.tsx", auth: "admin" },
   { path: "/app/admin/schedules", page: "AdminSchedules", file: "pages/admin/AdminSchedules.tsx", auth: "admin" },

@@ -10,7 +10,7 @@ Example (extra plugin)::
 
     def fishing_index(arguments: dict) -> str:
         raw = invoke_registered_tool(
-            "openweather_forecast",
+            "forecast",
             {"location": arguments.get("location") or "", "max_slots": 16},
         )
         data = json.loads(raw)
@@ -19,7 +19,7 @@ Example (extra plugin)::
         # ... compute heuristic from data[\"forecast\"] ...
         return json.dumps({"ok": True, "score": 7.2})
 
-Use the **registered tool function name** (e.g. ``openweather_forecast``), not the file name.
+Use the **registered tool function name** (e.g. ``forecast``), not the file name.
 Prefer :func:`apps.domain.tool_executor.execute_tool` for clarity (same execution path as chat).
 Avoid recursion (tool A calling tool A) and very deep chains; see
 ``AGENT_TOOL_CHAIN_MAX_DEPTH`` in ``.env.example``.

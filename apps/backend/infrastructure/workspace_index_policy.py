@@ -34,6 +34,17 @@ def operator_index_on_write_default() -> str:
     return config.AGENT_WORKSPACE_INDEX_ON_WRITE
 
 
+def operator_index_on_attach_enabled() -> bool:
+    from apps.backend.infrastructure.operator_settings import fetch_operator_settings_row
+
+    r = fetch_operator_settings_row()
+    if bool(r.get("workspace_index_on_attach_enabled")):
+        return True
+    from apps.backend.core.config import config
+
+    return bool(config.AGENT_WORKSPACE_INDEX_ON_ATTACH)
+
+
 def effective_index_on_write(workspace: dict[str, Any] | None) -> str:
     """Workspace override, else operator default, else env default."""
     if workspace:

@@ -64,7 +64,7 @@ def _workspace_context(workspace_path: str, workspace_id: str | None = None) -> 
 
 
 def _run_unified(case: BenchmarkCase, ctx: dict[str, Any]) -> tuple[dict[str, Any], float]:
-    from plugins.tools.capabilities.coding.retrieve_context import retrieve_context
+    from plugins.tools.workspace.search.retrieve_context import retrieve_context
 
     t0 = time.perf_counter()
     raw = retrieve_context(
@@ -82,7 +82,7 @@ def _run_unified(case: BenchmarkCase, ctx: dict[str, Any]) -> tuple[dict[str, An
 
 
 def _run_separate(case: BenchmarkCase, ctx: dict[str, Any]) -> tuple[dict[str, Any], float]:
-    from plugins.tools.capabilities.coding import retrieve_context as rc
+    from plugins.tools.workspace.search.retrieve_context import retrieve_context as rc
 
     t0 = time.perf_counter()
     bundle: dict[str, Any] = {"ok": True, "query": case.query, "sources_requested": case.sources}

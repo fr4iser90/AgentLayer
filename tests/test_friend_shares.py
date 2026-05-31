@@ -45,42 +45,42 @@ class TestSharePermissionCheckResolved(unittest.TestCase):
 
 class TestFriendSharesTool(unittest.TestCase):
     def test_get_friend_shares_for_unknown_friend(self) -> None:
-        from plugins.tools.capabilities.platform.friends import get_friend_shares as gfs
+        from plugins.tools.integrations.friends import shares as gfs
 
         uid = uuid.uuid4()
-        with mock.patch("plugins.tools.capabilities.platform.friends.get_friend_shares.get_identity", return_value=(1, uid)):
+        with mock.patch("plugins.tools.integrations.friends.shares.get_identity", return_value=(1, uid)):
             with mock.patch(
-                "plugins.tools.capabilities.platform.friends.get_friend_shares.resolve_friend_by_name",
+                "plugins.tools.integrations.friends.shares.resolve_friend_by_name",
                 return_value=None,
             ):
-                out = gfs.get_friend_shares({"name": "nobody@example.com"})
+                out = gfs.shares({"name": "nobody@example.com"})
         self.assertIn("Could not find", out)
 
     def test_get_friend_shares_summary_without_name(self) -> None:
-        from plugins.tools.capabilities.platform.friends import get_friend_shares as gfs
+        from plugins.tools.integrations.friends import shares as gfs
 
         uid = uuid.uuid4()
-        with mock.patch("plugins.tools.capabilities.platform.friends.get_friend_shares.get_identity", return_value=(1, uid)):
+        with mock.patch("plugins.tools.integrations.friends.shares.get_identity", return_value=(1, uid)):
             with mock.patch(
-                "plugins.tools.capabilities.platform.friends.get_friend_shares.list_shares_by_owner",
+                "plugins.tools.integrations.friends.shares.list_shares_by_owner",
                 return_value=[],
             ):
                 with mock.patch(
-                    "plugins.tools.capabilities.platform.friends.get_friend_shares.list_shares_by_grantee",
+                    "plugins.tools.integrations.friends.shares.list_shares_by_grantee",
                     return_value=[],
                 ):
-                    out = gfs.get_friend_shares({})
+                    out = gfs.shares({})
         self.assertIn('"outgoing_count": 0', out)
         self.assertIn('"incoming_count": 0', out)
 
 
 class TestFriendCalendarSecretLookup(unittest.TestCase):
     def test_friend_calendar_ics_url_prefers_google_calendar(self) -> None:
-        from plugins.tools.capabilities.platform.friends.friends_common import friend_calendar_ics_url
+        from apps.backend.domain.friends.common import friend_calendar_ics_url
 
         uid = uuid.uuid4()
         with mock.patch(
-            "plugins.tools.capabilities.platform.friends.friends_common.db.user_secret_get_plaintext",
+            "apps.backend.domain.friends.common.db.user_secret_get_plaintext",
             side_effect=[
                 '{"ics_url":"https://calendar.google.com/calendar/ical/a/basic.ics"}',
                 None,

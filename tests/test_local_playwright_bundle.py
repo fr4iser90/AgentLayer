@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def _load_module():
-    path = ROOT / "plugins/tools/capabilities/browser/local_playwright_bundle.py"
+    path = ROOT / "plugins/tools/integrations/browser/local_playwright_bundle.py"
     spec = importlib.util.spec_from_file_location("local_playwright_bundle_uut", path)
     if spec is None or spec.loader is None:
         raise RuntimeError("spec")
@@ -51,7 +51,7 @@ class TestLocalPlaywrightBundle(unittest.TestCase):
 
     def test_export_creates_zip(self) -> None:
         lp = self.lp
-        tmp = ROOT / "plugins/tools/capabilities/browser/output/_pytest_local_pw"
+        tmp = ROOT / "plugins/tools/integrations/browser/output/_pytest_local_pw"
         tmp.mkdir(parents=True, exist_ok=True)
         out_root = tmp / "bundles"
         out_root.mkdir(exist_ok=True)

@@ -1,4 +1,4 @@
-"""agent_delegate tool and general delegate catalog."""
+"""delegate tool and general delegate catalog."""
 
 from __future__ import annotations
 
@@ -6,35 +6,37 @@ import json
 import uuid
 from unittest.mock import AsyncMock, patch
 
-from plugins.tools.capabilities.platform._embedded_subagent import (
+from apps.backend.domain.embedded_subagent import (
     DELEGATABLE_AGENT_IDS,
     build_delegate_agents_catalog_snippet,
 )
-from plugins.tools.capabilities.platform.agent_delegate import agent_delegate
+from plugins.tools.platform.agents.delegate import delegate
 
 
 def test_delegatable_agent_ids() -> None:
     assert "security_auditor" in DELEGATABLE_AGENT_IDS
     assert "coding" in DELEGATABLE_AGENT_IDS
+    assert "creative" in DELEGATABLE_AGENT_IDS
+    assert "dashboard" in DELEGATABLE_AGENT_IDS
     assert "general" not in DELEGATABLE_AGENT_IDS
 
 
 def test_catalog_snippet_lists_specialists() -> None:
     snip = build_delegate_agents_catalog_snippet()
-    assert "agent_delegate" in snip
+    assert "delegate" in snip
     assert "security_auditor" in snip
     assert "coding" in snip
 
 
 def test_list_agents_mode() -> None:
-    out = agent_delegate({"list_agents": True}, context=None)
+    out = delegate({"list_agents": True}, context=None)
     data = json.loads(out)
     assert data.get("ok") is True
     assert "security_auditor" in data.get("agent_ids", [])
 
 
 def test_delegate_requires_parent_model_from_ui() -> None:
-    out = agent_delegate(
+    out = delegate(
         {
             "run_subagent": True,
             "agent_id": "coding",
@@ -49,7 +51,7 @@ def test_delegate_requires_parent_model_from_ui() -> None:
 
 
 def test_delegate_requires_run_subagent() -> None:
-    out = agent_delegate(
+    out = delegate(
         {"agent_id": "security_auditor", "prompt": "scan", "description": "ssc"},
         context=None,
     )
@@ -87,7 +89,7 @@ def test_delegate_invokes_security_auditor() -> None:
                         "apps.backend.infrastructure.agent_runs_store.finish_run",
                         return_value=True,
                     ):
-                        out = agent_delegate(
+                        out = delegate(
                             {
                                 "run_subagent": True,
                                 "agent_id": "security_auditor",

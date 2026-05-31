@@ -332,7 +332,7 @@ class TestRegistryShipped(unittest.TestCase):
         reg = reload_registry("all")
         names = _tool_function_names(reg)
         self.assertGreater(len(names), 15)
-        self.assertIn("list_tools", names)
+        self.assertIn("list", names)
 
     def test_deterministic_order(self) -> None:
         reg1 = reload_registry("all")

@@ -10,7 +10,7 @@ from apps.backend.infrastructure.user_secrets_bootstrap import (
     build_user_secrets_bootstrap_snippet,
     build_workspace_bound_snippet,
 )
-from plugins.tools.capabilities.platform.secrets.user_secrets_status import (
+from plugins.tools.platform.secrets.user_secrets_status import (
     user_secrets_status,
 )
 
@@ -48,19 +48,19 @@ def test_workspace_bound_snippet() -> None:
 def test_user_secrets_status_tool() -> None:
     uid = uuid.uuid4()
     with patch(
-        "plugins.tools.capabilities.platform.secrets.user_secrets_status.config"
+        "plugins.tools.platform.secrets.user_secrets_status.config"
     ) as cfg:
         cfg.SECRETS_MASTER_KEY = "k"
         with patch(
-            "plugins.tools.capabilities.platform.secrets.user_secrets_status.get_identity",
+            "plugins.tools.platform.secrets.user_secrets_status.get_identity",
             return_value=(1, uid),
         ):
             with patch(
-                "plugins.tools.capabilities.platform.secrets.user_secrets_status.db.user_secret_list_service_keys",
+                "plugins.tools.platform.secrets.user_secrets_status.db.user_secret_list_service_keys",
                 return_value=["ssc_api_key"],
             ):
                 with patch(
-                    "plugins.tools.capabilities.platform.secrets.user_secrets_status._catalog_keys",
+                    "plugins.tools.platform.secrets.user_secrets_status._catalog_keys",
                     return_value=["ssc_api_key", "github_pat"],
                 ):
                     out = json.loads(user_secrets_status({}))

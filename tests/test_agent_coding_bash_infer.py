@@ -1,4 +1,4 @@
-"""Regression: fill empty ``coding_bash`` from user text (GGUF empty JSON)."""
+"""Regression: fill empty ``bash`` from user text (GGUF empty JSON)."""
 
 from __future__ import annotations
 
@@ -19,20 +19,20 @@ class AgentCodingBashUserInferTests(unittest.TestCase):
             }
         ]
         assistant = {"role": "assistant", "content": ""}
-        out = _normalize_tool_call_arguments("coding_bash", {}, assistant, msgs, None)
+        out = _normalize_tool_call_arguments("bash", {}, assistant, msgs, None)
         self.assertEqual(out.get("command"), "git pull")
 
     def test_explicit_git_pull_in_user_message(self) -> None:
         msgs = [{"role": "user", "content": "git pull"}]
         assistant = {"role": "assistant", "content": ""}
-        out = _normalize_tool_call_arguments("coding_bash", {}, assistant, msgs, None)
+        out = _normalize_tool_call_arguments("bash", {}, assistant, msgs, None)
         self.assertEqual(out.get("command"), "git pull")
 
     def test_unattended_empty_bash_stays_empty(self) -> None:
         msgs = [{"role": "user", "content": "Run scheduled task with git pull (ff-only)."}]
         assistant = {"role": "assistant", "content": "Git pull succeeded. Now I need to:"}
         ctx = {"agent_unattended": True}
-        out = _normalize_tool_call_arguments("coding_bash", {}, assistant, msgs, ctx)
+        out = _normalize_tool_call_arguments("bash", {}, assistant, msgs, ctx)
         self.assertFalse(str(out.get("command") or "").strip())
 
     def test_git_pull_ff_only_stops_at_comma(self) -> None:

@@ -6,7 +6,7 @@ import json
 import uuid
 from unittest.mock import patch
 
-from plugins.tools.capabilities.coding import retrieve_context as rc
+import plugins.tools.workspace.search.retrieve_context as rc
 
 
 def test_run_docs_workspace_scope_calls_search_with_workspace_id() -> None:

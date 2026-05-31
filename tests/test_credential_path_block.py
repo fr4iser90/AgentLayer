@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from plugins.tools.capabilities.coding.coding_common import is_blocked_credential_path
+from apps.backend.domain.coding.common import is_blocked_credential_path
 
 
 class TestCredentialPathBlock(unittest.TestCase):

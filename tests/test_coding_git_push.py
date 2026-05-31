@@ -1,4 +1,4 @@
-"""Tests for coding_git_push and git push blocking in coding_bash."""
+"""Tests for git_push and git push blocking in bash."""
 
 from __future__ import annotations
 
@@ -7,9 +7,9 @@ import subprocess
 from pathlib import Path
 from unittest.mock import patch
 
-from plugins.tools.capabilities.coding.coding_bash import coding_bash
-from plugins.tools.capabilities.coding.coding_git_auth import parse_github_pat, redact_secrets
-from plugins.tools.capabilities.coding.coding_git_push import coding_git_push
+from plugins.tools.workspace.shell.bash import bash
+from apps.backend.domain.github.auth import parse_github_pat, redact_secrets
+from plugins.tools.integrations.github.git_push import git_push
 
 
 def test_parse_github_pat_string_and_json() -> None:
@@ -26,10 +26,10 @@ def test_coding_bash_git_push_no_token(tmp_path: Path) -> None:
     repo.mkdir()
     ctx = {"workspace": {"path": str(repo), "id": "ws-1"}}
     with patch(
-        "plugins.tools.capabilities.coding.coding_bash.github_pat_for_current_user",
+        "plugins.tools.workspace.shell.bash.github_pat_for_current_user",
         return_value=None,
     ):
-        out = json.loads(coding_bash({"command": "git push -u origin main"}, context=ctx))
+        out = json.loads(bash({"command": "git push -u origin main"}, context=ctx))
     assert out["ok"] is False
     assert out["reason"] == "no_token"
 
@@ -46,12 +46,12 @@ def test_coding_bash_git_push_injects_askpass(tmp_path: Path) -> None:
     ctx = {"workspace": {"path": str(repo), "id": "ws-1"}}
     with (
         patch(
-            "plugins.tools.capabilities.coding.coding_bash.github_pat_for_current_user",
+            "plugins.tools.workspace.shell.bash.github_pat_for_current_user",
             return_value=tok,
         ),
-        patch("plugins.tools.capabilities.coding.coding_bash.subprocess.run", side_effect=fake_run),
+        patch("plugins.tools.workspace.shell.bash.subprocess.run", side_effect=fake_run),
     ):
-        raw = coding_bash({"command": "git push origin main"}, context=ctx)
+        raw = bash({"command": "git push origin main"}, context=ctx)
     out = json.loads(raw)
     assert out["ok"] is True
     assert out.get("github_auth") == "pat_injected"
@@ -59,7 +59,7 @@ def test_coding_bash_git_push_injects_askpass(tmp_path: Path) -> None:
 
 
 def test_coding_git_push_no_workspace() -> None:
-    out = json.loads(coding_git_push({}, context={}))
+    out = json.loads(git_push({}, context={}))
     assert out["ok"] is False
 
 
@@ -69,10 +69,10 @@ def test_coding_git_push_no_token(tmp_path: Path) -> None:
     (repo / ".git").mkdir()
     ctx = {"workspace": {"path": str(repo), "id": "ws-1"}}
     with patch(
-        "plugins.tools.capabilities.coding.coding_git_push.github_pat_for_current_user",
+        "plugins.tools.integrations.github.git_push.github_pat_for_current_user",
         return_value=None,
     ):
-        out = json.loads(coding_git_push({}, context=ctx))
+        out = json.loads(git_push({}, context=ctx))
     assert out["ok"] is False
     assert out["reason"] == "no_token"
 
@@ -91,16 +91,16 @@ def test_coding_git_push_success(tmp_path: Path) -> None:
     tok = "ghp_test_token_do_not_leak"
     with (
         patch(
-            "plugins.tools.capabilities.coding.coding_git_push.github_pat_for_current_user",
+            "plugins.tools.integrations.github.git_push.github_pat_for_current_user",
             return_value=tok,
         ),
         patch(
-            "plugins.tools.capabilities.coding.coding_git_push._current_branch",
+            "plugins.tools.integrations.github.git_push._current_branch",
             return_value="feature/x",
         ),
-        patch("plugins.tools.capabilities.coding.coding_git_push.subprocess.run", side_effect=fake_run),
+        patch("plugins.tools.integrations.github.git_push.subprocess.run", side_effect=fake_run),
     ):
-        raw = coding_git_push({"remote": "origin"}, context=ctx)
+        raw = git_push({"remote": "origin"}, context=ctx)
     out = json.loads(raw)
     assert out["ok"] is True
     assert tok not in raw
@@ -111,4 +111,4 @@ def test_coding_agent_registry_includes_git_push() -> None:
 
     a = get_agent_registry().get_agent("coding")
     assert a is not None
-    assert "coding_git_push" in a["tool_names"]
+    assert "git_push" in a["tool_names"]

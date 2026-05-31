@@ -42,7 +42,7 @@ def test_git_forensics_blocks_search_before_diff() -> None:
 
     ctx = {"agent_plan_delegate_mode": "git_forensics"}
     msg = coding_plan_tool_blocked(
-        "coding_search",
+        "search",
         {"query": "shell=True", "path_prefix": "plugins/tools/capabilities/coding"},
         ctx,
     )
@@ -51,7 +51,7 @@ def test_git_forensics_blocks_search_before_diff() -> None:
     ctx["plan_git_diff_seen"] = True
     assert (
         coding_plan_tool_blocked(
-            "coding_search",
+            "search",
             {"query": "shell=True", "path_prefix": "plugins/tools/capabilities/coding"},
             ctx,
         )
@@ -75,12 +75,12 @@ def test_plan_denies_bash_and_edit_tools() -> None:
     from apps.backend.domain.coding_plan_search_policy import coding_plan_tool_blocked
 
     for tool in (
-        "coding_bash",
-        "coding_git_sync",
-        "coding_write_file",
-        "coding_edit",
-        "coding_replace",
-        "coding_apply_patch",
+        "bash",
+        "git_sync",
+        "write_file",
+        "edit",
+        "replace",
+        "apply_patch",
     ):
         msg = coding_plan_tool_blocked(tool, {"command": "git pull"})
         assert msg is not None
@@ -97,10 +97,10 @@ def test_infer_git_forensics_from_prompt() -> None:
 def test_semantic_search_same_rule() -> None:
     from apps.backend.domain.coding_plan_search_policy import coding_plan_search_blocked
 
-    assert coding_plan_search_blocked("coding_semantic_search", {"query": "auth flow"}) is not None
+    assert coding_plan_search_blocked("semantic_search", {"query": "auth flow"}) is not None
     assert (
         coding_plan_search_blocked(
-            "coding_semantic_search",
+            "semantic_search",
             {"query": "auth flow", "path_prefix": "apps/backend"},
         )
         is None
@@ -142,6 +142,6 @@ def test_enrich_delegate_git_forensics_mode() -> None:
         requirements=["mode: git_forensics", "No grep"],
     )
     assert "git_forensics" in out
-    assert "coding_git_read" in out
-    assert "coding_search" in out
+    assert "git_read" in out
+    assert "search" in out
     assert "retrieve_context" in out

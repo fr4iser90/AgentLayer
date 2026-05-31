@@ -25,7 +25,7 @@ def test_mcp_function_name_roundtrip() -> None:
 
 def test_parse_mcp_openai_function_name_invalid() -> None:
     assert parse_mcp_openai_function_name("") is None
-    assert parse_mcp_openai_function_name("coding_bash") is None
+    assert parse_mcp_openai_function_name("bash") is None
     assert parse_mcp_openai_function_name("mcp__bad_id__abc") is None
 
 

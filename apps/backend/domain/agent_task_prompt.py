@@ -84,17 +84,17 @@ _DELEGATE_MODE_HINTS: dict[str, str] = {
     "git_forensics": (
         "## Delegate mode: git_forensics\n"
         "Workflow (strict order):\n"
-        "1. ``coding_git_read``: branch, status, log, **diff_stat**\n"
-        "2. ``coding_read_file`` on paths from diff_stat or the task\n"
-        "3. ``coding_search`` **only** with ``path_prefix`` set to a **changed file's directory** "
+        "1. ``git_read``: branch, status, log, **diff_stat**\n"
+        "2. ``read_file`` on paths from diff_stat or the task\n"
+        "3. ``search`` **only** with ``path_prefix`` set to a **changed file's directory** "
         "(e.g. ``plugins/tools/capabilities/coding/`` — never ``apps``, ``plugins``, or ``scripts`` alone)\n"
-        "Do **not** use ``retrieve_context``, ``coding_semantic_search``, or repo-wide grep before step 1–2."
+        "Do **not** use ``retrieve_context``, ``semantic_search``, or repo-wide grep before step 1–2."
     ),
     "fix_from_artifact": (
         "## Delegate mode: fix_from_artifact\n"
         "Fix **only** paths from ``[Referenced artifacts]`` (``paths``, ``high_paths``, or ``findings[].path``).\n"
-        "Workflow: checkout the ``branch: …`` requirement when present → ``coding_read_file`` each path → "
-        "patch → commit → push **that** branch. Verify with ``coding_git_read`` log and re-read edited files "
+        "Workflow: checkout the ``branch: …`` requirement when present → ``read_file`` each path → "
+        "patch → commit → push **that** branch. Verify with ``git_read`` log and re-read edited files "
         "before finishing."
     ),
 }
@@ -159,7 +159,7 @@ def build_agent_tasks_context_snippet(*, active_task_id: str | None = None) -> s
         "Long-running work lives in **agent_tasks**, not chat history. Use:",
         "- `task_create` / `task_list` / `task_update` for global or workspace backlog",
         "- `artifact_get` to load prior outputs by id",
-        "- `agent_delegate` with `artifact_refs`, `requirements`, optional `task_id` for specialists",
+        "- `delegate` with `artifact_refs`, `requirements`, optional `task_id` for specialists",
         "Summarize artifacts for the user; do not dump raw sub-agent transcripts.",
     ]
     if active_task_id:

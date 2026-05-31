@@ -15,6 +15,7 @@ import { AdminInterfacesMemoryPage } from "./pages/admin/interfaces/AdminInterfa
 import { AdminInterfacesAutomationPage } from "./pages/admin/interfaces/AdminInterfacesAutomationPage";
 import { AdminInterfacesPlatformPage } from "./pages/admin/interfaces/AdminInterfacesPlatformPage";
 import { AdminTools } from "./pages/admin/AdminTools";
+import { AdminAgents } from "./pages/admin/AdminAgents";
 import { AdminUsers } from "./pages/admin/AdminUsers";
 import { AdminScheduledJobs } from "./pages/admin/AdminScheduledJobs";
 import { AdminSchedules } from "./pages/admin/AdminSchedules";
@@ -82,6 +83,7 @@ export function App() {
                   <Route path="discord" element={<Navigate to="../interfaces/bridges" replace />} />
                   <Route path="telegram" element={<Navigate to="../interfaces/bridges" replace />} />
                   <Route path="tools" element={<AdminTools />} />
+                  <Route path="agents" element={<AdminAgents />} />
                   <Route path="users" element={<AdminUsers />} />
                   <Route path="scheduled-jobs" element={<AdminScheduledJobs />} />
                   <Route path="schedules" element={<AdminSchedules />} />

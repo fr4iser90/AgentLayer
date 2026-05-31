@@ -1,35 +1,5 @@
-agents:
-  general:
-    description: "Smart routing agent"
-    required_capabilities:
-      - "chat"
-      - "search"
-      - "memory"
-      - "web"
-    permissions:
-      - "agent:general"
+# DEPRECATED — not loaded at runtime.
+# Agents live under plugins/agents/<id>/agent.yaml + system_prompt.md
+# See plugins/agents/README.md
 
-  coding:
-    description: "Coding agent with dangerous tools"
-    required_capabilities:
-      - "coding"
-      - "filesystem"
-      - "exec"
-    permissions:
-      - "agent:coding"
-
-  coding_plan:
-    description: "Read-only workspace exploration (plan before build)"
-    required_capabilities:
-      - "coding"
-    permissions:
-      - "agent:coding"
-
-  security_auditor:
-    description: "Admin workspace security review (coding tools + optional RAG)"
-    required_capabilities:
-      - "coding"
-      - "filesystem"
-      - "exec"
-    permissions:
-      - "agent:coding"
+agents: {}

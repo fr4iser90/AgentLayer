@@ -333,6 +333,9 @@ class ToolRegistry:
         pending_handlers: dict[str, Handler] = {}
         pending_specs: list[dict[str, Any]] = []
 
+        dom_raw = getattr(mod, "TOOL_DOMAIN", None)
+        dom = dom_raw.strip().lower() if isinstance(dom_raw, str) and dom_raw.strip() else ""
+
         for spec in mod_tools:
             if not isinstance(spec, dict):
                 continue
@@ -340,8 +343,6 @@ class ToolRegistry:
             name = fn.get("name")
             if not name:
                 logger.warning("skip tool without name in %s", source)
-                continue
-            if name in handlers or name in pending_handlers:
                 continue
             handler = mod_handlers.get(name)
             if not callable(handler):
@@ -351,9 +352,36 @@ class ToolRegistry:
                     source,
                 )
                 continue
-            pending_handlers[name] = handler  # type: ignore[assignment]
-            pending_specs.append(spec)
-            tool_names.append(name)
+            registered = str(name)
+            if registered in handlers or registered in pending_handlers:
+                if dom:
+                    qualified = f"{dom}.{registered}"
+                    if qualified not in handlers and qualified not in pending_handlers:
+                        registered = qualified
+                    else:
+                        logger.warning(
+                            "skip tool %r in %s: name collision (%s already registered)",
+                            name,
+                            source,
+                            registered,
+                        )
+                        continue
+                else:
+                    logger.warning(
+                        "skip tool %r in %s: name collision (no TOOL_DOMAIN to qualify)",
+                        name,
+                        source,
+                    )
+                    continue
+            spec_out = spec
+            if registered != name:
+                spec_out = json.loads(json.dumps(spec))
+                fn_out = spec_out.get("function")
+                if isinstance(fn_out, dict):
+                    fn_out["name"] = registered
+            pending_handlers[registered] = handler  # type: ignore[assignment]
+            pending_specs.append(spec_out)
+            tool_names.append(registered)
 
         handlers.update(pending_handlers)
         tools.extend(pending_specs)
@@ -412,6 +440,9 @@ class ToolRegistry:
         dom = getattr(mod, "TOOL_DOMAIN", None)
         if isinstance(dom, str) and dom.strip():
             entry["domain"] = dom.strip().lower()
+        prov = getattr(mod, "TOOL_PROVIDER", None)
+        if isinstance(prov, str) and prov.strip():
+            entry["provider"] = prov.strip().lower()
         # Declared context / argument hints (e.g. domain tools). Not user secret keys — use TOOL_SECRETS_REQUIRED.
         req = getattr(mod, "TOOL_REQUIRES", None)
         if isinstance(req, (list, tuple, frozenset, set)):
@@ -659,6 +690,54 @@ class ToolRegistry:
         if out is None:
             return ""
         return str(out).strip()
+
+    def resolve_domain_tool(self, domain: str, base_name: str) -> str | None:
+        """Registered name for ``domain`` + ``base_name`` (``domain.base`` or bare ``base`` if unique)."""
+        dom = (domain or "").strip().lower()
+        base = (base_name or "").strip()
+        if not base:
+            return None
+        qualified = f"{dom}.{base}" if dom else base
+        with self._lock:
+            if qualified in self._handlers:
+                return qualified
+            if base in self._handlers:
+                entry = self.meta_entry_for_tool_name(base)
+                if entry and str(entry.get("domain") or "").lower() == dom:
+                    return base
+        return None
+
+    def tool_names_for_capabilities(self, *capabilities: str) -> list[str]:
+        """Registered tool function names declaring any of ``capabilities``."""
+        want = {str(c).strip() for c in capabilities if str(c).strip()}
+        if not want:
+            return []
+        out: list[str] = []
+        with self._lock:
+            for entry in self._tools_meta:
+                tlist = entry.get("tools")
+                if not isinstance(tlist, list):
+                    continue
+                per = entry.get("per_tool") if isinstance(entry.get("per_tool"), dict) else {}
+                mod_caps = entry.get("capabilities")
+                mod_cap_set = (
+                    {str(x).strip() for x in mod_caps if str(x).strip()}
+                    if isinstance(mod_caps, list)
+                    else set()
+                )
+                for tn in tlist:
+                    n = str(tn).strip()
+                    if not n:
+                        continue
+                    caps: set[str] = set(mod_cap_set)
+                    row = per.get(n) if isinstance(per, dict) else None
+                    if isinstance(row, dict):
+                        rc = row.get("capabilities")
+                        if isinstance(rc, list):
+                            caps.update(str(x).strip() for x in rc if str(x).strip())
+                    if caps & want and n not in out:
+                        out.append(n)
+        return out
 
     def run_tool(self, name: str, arguments: dict[str, Any], context: dict | None = None) -> str:
         with self._lock:

@@ -1,4 +1,4 @@
-"""Tests for ``coding_git_read`` (read-only git -C workspace)."""
+"""Tests for ``git_read`` (read-only git -C workspace)."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from plugins.tools.capabilities.coding.coding_git_read import coding_git_read
+from plugins.tools.integrations.github.git_read import git_read
 
 
 def _have_git() -> bool:
@@ -43,13 +43,13 @@ def test_coding_git_read_operations(tmp_path: Path) -> None:
     ctx = {"workspace": {"path": str(root)}}
 
     for op in ("status", "branch", "log", "diff", "diff_stat"):
-        out = coding_git_read({"operation": op}, context=ctx)
+        out = git_read({"operation": op}, context=ctx)
         data = json.loads(out)
         assert data.get("ok") is True, (op, data)
         assert data.get("operation") == op
         assert "output" in data
 
-    diff_file = coding_git_read({"operation": "diff", "path": "hello.txt"}, context=ctx)
+    diff_file = git_read({"operation": "diff", "path": "hello.txt"}, context=ctx)
     d = json.loads(diff_file)
     assert d.get("ok") is True
     assert "hello.txt" in d.get("output", "")
@@ -59,7 +59,7 @@ def test_coding_git_read_not_a_repo(tmp_path: Path) -> None:
     if not _have_git():
         pytest.skip("git not installed")
     ctx = {"workspace": {"path": str(tmp_path)}}
-    out = coding_git_read({"operation": "status"}, context=ctx)
+    out = git_read({"operation": "status"}, context=ctx)
     data = json.loads(out)
     assert data.get("ok") is False
     assert "git" in (data.get("error") or "").lower()
@@ -72,7 +72,7 @@ def test_coding_git_read_bad_path(tmp_path: Path) -> None:
     root.mkdir()
     subprocess.run(["git", "-C", str(root), "init"], check=True, capture_output=True)
     ctx = {"workspace": {"path": str(root)}}
-    out = coding_git_read({"operation": "diff", "path": "../etc/passwd"}, context=ctx)
+    out = git_read({"operation": "diff", "path": "../etc/passwd"}, context=ctx)
     data = json.loads(out)
     assert data.get("ok") is False
     assert "path" in (data.get("error") or "").lower()

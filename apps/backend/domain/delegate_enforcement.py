@@ -11,21 +11,21 @@ from apps.backend.domain.agent_task_prompt import parse_delegate_mode
 
 _EDIT_TOOLS = frozenset(
     {
-        "coding_write_file",
-        "coding_edit",
-        "coding_replace",
-        "coding_apply_patch",
+        "write_file",
+        "edit",
+        "replace",
+        "apply_patch",
     }
 )
 
 _GENERAL_HANDOFF_BLOCK_TOOLS = frozenset(
     {
-        "coding_search",
-        "coding_semantic_search",
-        "coding_list_dir",
-        "coding_glob",
+        "search",
+        "semantic_search",
+        "list_dir",
+        "glob",
         "retrieve_context",
-        "coding_symbols",
+        "symbols",
     }
 )
 
@@ -131,7 +131,7 @@ def _path_allowed(path: str, allowed: list[str]) -> bool:
 
 
 def _edit_target_path(tool_name: str, args: dict[str, Any]) -> str | None:
-    if tool_name == "coding_apply_patch":
+    if tool_name == "apply_patch":
         patch = str(args.get("patch_text") or args.get("patch") or "")
         for line in patch.splitlines():
             m = _PATCH_PATH_RE.match(line.strip())
@@ -169,10 +169,10 @@ def _required_branch(tool_context: dict[str, Any] | None) -> str | None:
 
 
 def _git_branch_from_args(tool_name: str, args: dict[str, Any]) -> str | None:
-    if tool_name == "coding_git_push":
+    if tool_name == "git_push":
         b = str(args.get("branch") or "").strip()
         return b or None
-    if tool_name == "coding_bash":
+    if tool_name == "bash":
         cmd = str(args.get("command") or "").strip()
         for pat in (
             r"\bgit\s+push(?:\s+-u)?(?:\s+\S+)?\s+(\S+)\s*$",
@@ -207,7 +207,7 @@ def coding_delegate_tool_blocked(
         )
 
     if name in _EDIT_TOOLS:
-        if name == "coding_apply_patch":
+        if name == "apply_patch":
             patch_paths = _paths_in_patch_args(args)
             if not patch_paths:
                 return "fix_from_artifact: patch must touch paths listed in referenced artifacts only."
@@ -225,7 +225,7 @@ def coding_delegate_tool_blocked(
                 )
 
     req_branch = _required_branch(tool_context)
-    if req_branch and name in ("coding_git_push", "coding_bash"):
+    if req_branch and name in ("git_push", "bash"):
         used = _git_branch_from_args(name, args)
         if used and used != req_branch:
             return (

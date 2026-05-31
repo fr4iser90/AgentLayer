@@ -7,7 +7,7 @@ tags: [planning, retrieval, coding-agent, qdrant, neo4j, index]
 # Retrieval & Code-Index — Langfristiger Weg (3 Stufen)
 
 **Status:** Stufe A/B/C umgesetzt (incremental index, per-workspace policies, git-pull + nightly reindex).  
-**Kontext:** Heute sind **grep/read live**, **Qdrant + Neo4j** nur nach **`coding_index` / UI-Reindex** aktuell. Graph ist **nicht** Default in `retrieve_context`.  
+**Kontext:** Heute sind **grep/read live**, **Qdrant + Neo4j** nur nach **`index` / UI-Reindex** aktuell. Graph ist **nicht** Default in `retrieve_context`.  
 **Verwandt:** [`docs/features/retrieval-layer.md`](../features/retrieval-layer.md), [`docs/planning/coding-agent-roadmap.md`](./coding-agent-roadmap.md), [`docs/TODO-future.md`](../TODO-future.md).
 
 ---
@@ -16,7 +16,7 @@ tags: [planning, retrieval, coding-agent, qdrant, neo4j, index]
 
 | Prinzip | Bedeutung |
 |---------|-----------|
-| **Working copy = Wahrheit** | Text über `coding_read_file`, `coding_search` (live). |
+| **Working copy = Wahrheit** | Text über `read_file`, `search` (live). |
 | **Index = Cache** | Qdrant (Semantik) + Neo4j (Graph) mit klarer Refresh-Policy. |
 | **Git = Diff/Review** | `git/changes`, `coding_git_*` — **nicht** im Graph spiegeln. |
 | **Hybrid + inkrementell** | Nicht „immer Full-Reindex“, nicht „nur grep“. |
@@ -39,7 +39,7 @@ tags: [planning, retrieval, coding-agent, qdrant, neo4j, index]
 
 - **Orientierung:** `retrieve_context` Default bleibt `code_grep` + `code_semantic` + `docs` (wie heute).
 - **Nach Write/Patch:** still im Hintergrund **nur geänderte Dateien** re-indexen (Qdrant + Neo4j `upsert_file_graph`), **debounced** (z. B. 2–5 s nach letztem Edit).
-- **Graph:** weiter separat (`coding_graph`) oder optional `retrieve_context` mit `sources: ["graph"]` — **nicht** zwingend in RRF; nach Incremental-Index konsistent.
+- **Graph:** weiter separat (`graph`) oder optional `retrieve_context` mit `sources: ["graph"]` — **nicht** zwingend in RRF; nach Incremental-Index konsistent.
 
 ### Was wir dafür ändern müssen
 
@@ -94,7 +94,7 @@ Für **Stufe A** reicht zunächst **nur Env**; Operator-UI kann in Stufe B folge
 | Datei | Inhalt |
 |-------|--------|
 | `docs/features/retrieval-layer.md` | Abschnitt „Incremental index on write“; Stale-Hinweis anpassen. |
-| `plugins/agents/coding.py` | 1–2 Zeilen: nach großen Renames ggf. Full-Reindex; Impact → `coding_graph` nach Index. |
+| `plugins/agents/coding.py` | 1–2 Zeilen: nach großen Renames ggf. Full-Reindex; Impact → `graph` nach Index. |
 
 ### Stufe A — Explizit **nicht** in Scope
 
@@ -183,7 +183,7 @@ Policy **pro Workspace** (und Operator-Default), nicht nur Env.
 | Bereich | Änderung |
 |---------|----------|
 | Scheduler | `apps/backend/infrastructure/coding_schedule_execution.py` oder neuer Job-Typ `workspace_full_reindex` |
-| Git hooks | Nach `coding_git_sync` pull: optional `start_semantic_index_async` (Operator flag) |
+| Git hooks | Nach `git_sync` pull: optional `start_semantic_index_async` (Operator flag) |
 | HTTP webhook | `POST /v1/admin/workspaces/{id}/reindex` + HMAC secret |
 | Multi-tenant ops | Queue (Redis/DB job table), Rate limits, Prioritäten |
 | Observability | Metriken: index lag, files stale count, Neo4j/Qdrant health |
@@ -224,7 +224,7 @@ Policy **pro Workspace** (und Operator-Default), nicht nur Env.
 |------------|-----------|
 | `retrieve_context` | Default: grep + semantic + docs; **graph** nur explizit |
 | `fused_ranking` | grep, semantic, docs, memory — **ohne** graph |
-| `coding_index` / UI Reindex | Full workspace → Qdrant + Neo4j |
+| `index` / UI Reindex | Full workspace → Qdrant + Neo4j |
 | `upsert_file_graph` | Pro Datei replace (Symbols DELETE + neu) |
 | Stale hint | `git_head_commit_time` vs `last_index_at` |
 | Index on attach | `AGENT_WORKSPACE_INDEX_ON_ATTACH` (env, default off) |

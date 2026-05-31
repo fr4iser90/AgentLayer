@@ -228,7 +228,7 @@ async def mcp_runtime_status(*, workspace_stdio: list[Any] | None = None) -> dic
     """
     Lightweight status for HTTP/UI: whether MCP is configured, importable, and per-server health.
 
-    ``connected`` means ``list_tools`` succeeded for that server (stdio subprocess came up).
+    ``connected`` means ``list`` succeeded for that server (stdio subprocess came up).
 
     When ``workspace_stdio`` is a non-empty list, health checks use only those servers (``scope`` = ``workspace``).
     """

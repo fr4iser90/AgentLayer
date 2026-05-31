@@ -106,6 +106,7 @@ function useOperatorSettingsState() {
   const [workspaceIndexOnWriteDefault, setWorkspaceIndexOnWriteDefault] = useState("debounced");
   const [workspaceReindexAfterGitPull, setWorkspaceReindexAfterGitPull] = useState(false);
   const [workspaceNightlyReindexEnabled, setWorkspaceNightlyReindexEnabled] = useState(false);
+  const [workspaceIndexOnAttachEnabled, setWorkspaceIndexOnAttachEnabled] = useState(false);
   const [adminUsers, setAdminUsers] = useState<Array<{ id: string; email?: string | null; display_name?: string | null }>>([]);
   const [extLlmModelIds, setExtLlmModelIds] = useState<string[]>([]);
   const [extLlmModelsLoading, setExtLlmModelsLoading] = useState(false);
@@ -328,6 +329,7 @@ function useOperatorSettingsState() {
       );
       setWorkspaceReindexAfterGitPull(!!op.workspace_reindex_after_git_pull);
       setWorkspaceNightlyReindexEnabled(!!op.workspace_nightly_reindex_enabled);
+      setWorkspaceIndexOnAttachEnabled(!!op.workspace_index_on_attach_enabled);
 
       if (uRes.ok) {
         const uData = (await uRes.json()) as { users?: Array<{ id: string; email?: string | null; display_name?: string | null }> };
@@ -606,6 +608,7 @@ function useOperatorSettingsState() {
       patch.workspace_index_on_write_default = workspaceIndexOnWriteDefault;
       patch.workspace_reindex_after_git_pull = workspaceReindexAfterGitPull;
       patch.workspace_nightly_reindex_enabled = workspaceNightlyReindexEnabled;
+      patch.workspace_index_on_attach_enabled = workspaceIndexOnAttachEnabled;
       const mgHops = Number(memGraphMaxHops.trim());
       const mgScore = Number(memGraphMinScore.trim());
       const mgBullets = Number(memGraphMaxBullets.trim());
@@ -913,6 +916,8 @@ function useOperatorSettingsState() {
     setWorkspaceReindexAfterGitPull,
     workspaceNightlyReindexEnabled,
     setWorkspaceNightlyReindexEnabled,
+    workspaceIndexOnAttachEnabled,
+    setWorkspaceIndexOnAttachEnabled,
     adminUsers,
     extLlmModelIds,
     extLlmModelsLoading,

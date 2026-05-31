@@ -1,4 +1,4 @@
-"""Tests for coding_bash shell policy (blocklist, workdir containment, env scrub, strict mode)."""
+"""Tests for bash shell policy (blocklist, workdir containment, env scrub, strict mode)."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from plugins.tools.capabilities.coding.coding_bash import coding_bash
-from plugins.tools.capabilities.coding.coding_bash_policy import (
+from plugins.tools.workspace.shell.bash import bash
+from apps.backend.domain.coding.bash_policy import (
     is_blocked,
     resolve_path_under_workspace,
     strict_mode_reject_reason,
@@ -83,7 +83,7 @@ class TestCodingBashIntegration(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             ctx = {"workspace": {"path": str(root), "id": "ws-1"}}
-            out = json.loads(coding_bash({"command": "pwd", "workdir": "../.."}, context=ctx))
+            out = json.loads(bash({"command": "pwd", "workdir": "../.."}, context=ctx))
         self.assertFalse(out["ok"])
         self.assertIn("workspace", out["error"].lower())
 
@@ -91,7 +91,7 @@ class TestCodingBashIntegration(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             ctx = {"workspace": {"path": str(root), "id": "ws-1"}}
-            out = json.loads(coding_bash({"command": "rm -rf ."}, context=ctx))
+            out = json.loads(bash({"command": "rm -rf ."}, context=ctx))
         self.assertFalse(out["ok"])
         self.assertIn("blocked", out["error"])
 
@@ -100,10 +100,10 @@ class TestCodingBashIntegration(unittest.TestCase):
             root = Path(d)
             ctx = {"workspace": {"path": str(root), "id": "ws-1"}}
             with patch(
-                "plugins.tools.capabilities.coding.coding_bash.coding_bash_strict_enabled",
+                "plugins.tools.workspace.shell.bash.coding_bash_strict_enabled",
                 return_value=True,
             ):
-                out = json.loads(coding_bash({"command": "ruby -e '1'"}, context=ctx))
+                out = json.loads(bash({"command": "ruby -e '1'"}, context=ctx))
         self.assertFalse(out["ok"])
         self.assertIn("strict bash mode", out["error"])
 
@@ -116,13 +116,13 @@ class TestCodingBashIntegration(unittest.TestCase):
                 return subprocess.CompletedProcess(cmd, 0, stdout="ok\n", stderr="")
 
             with patch(
-                "plugins.tools.capabilities.coding.coding_bash.coding_bash_strict_enabled",
+                "plugins.tools.workspace.shell.bash.coding_bash_strict_enabled",
                 return_value=False,
             ), patch(
-                "plugins.tools.capabilities.coding.coding_bash.subprocess.run",
+                "plugins.tools.workspace.shell.bash.subprocess.run",
                 side_effect=fake_run,
             ):
-                out = json.loads(coding_bash({"command": "echo hi"}, context=ctx))
+                out = json.loads(bash({"command": "echo hi"}, context=ctx))
         self.assertTrue(out["ok"])
 
 

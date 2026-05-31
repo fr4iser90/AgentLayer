@@ -1,0 +1,20 @@
+id: coding
+name: Coding
+icon: 💻
+description: '**Build** mode: read/list/glob/grep/edit/bash/task/lsp via ``coding_*``
+  tools in the workspace; optional UI confirmation on destructive tools when enabled.'
+tool_domain: coding
+requires_workspace: true
+execution_context: container
+min_role: user
+model_profile: coding
+coding_tools_permission_ask: false
+tool_discipline_preset: coding_build
+tool_domains:
+  - workspace
+  - repository
+  - github
+  - project
+  - security_scan
+  - secrets
+  - delegate

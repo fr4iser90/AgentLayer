@@ -8,16 +8,16 @@ from apps.backend.domain.plugin_system.registry import ToolRegistry
 
 # Common hallucinations → real registered names (lowercase keys).
 _TOOL_NAME_ALIASES: dict[str, tuple[str, ...]] = {
-    "openweather_retrieve": ("openweather_current", "openweather_forecast"),
-    "openweather_get": ("openweather_current", "openweather_forecast"),
-    "openweather_fetch": ("openweather_current", "openweather_forecast"),
-    "weather_get": ("openweather_current", "openweather_forecast"),
+    "openweather_retrieve": ("current", "forecast"),
+    "openweather_get": ("current", "forecast"),
+    "openweather_fetch": ("current", "forecast"),
+    "weather_get": ("current", "forecast"),
     "openai_function": ("list_available_tools", "get_tool_help"),
     "get_tool_result": ("list_available_tools",),
     "call_tool": ("list_available_tools", "get_tool_help"),
-    "create_schedule": ("schedule_job_create",),
-    "add_schedule": ("schedule_job_create",),
-    "list_schedules": ("schedule_job_list",),
+    "create_schedule": ("create",),
+    "add_schedule": ("create",),
+    "list_schedules": ("list",),
 }
 
 

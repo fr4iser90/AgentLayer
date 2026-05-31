@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from apps.backend.domain.agent import _workspace_tool_bound_workspace_id
-from plugins.tools.capabilities.platform.workspaces._workspace_common import normalize_git_url
+from apps.backend.domain.workspace.workspace_common import normalize_git_url
 
 
 def test_normalize_git_url_https() -> None:
@@ -24,9 +24,9 @@ def test_workspace_tool_bound_workspace_id() -> None:
     payload = (
         '{"ok": true, "bound": true, "workspace": {"id": "abc-123", "name": "PIDEA"}}'
     )
-    assert _workspace_tool_bound_workspace_id("workspace_create", payload) == "abc-123"
-    assert _workspace_tool_bound_workspace_id("workspace_bind", payload) == "abc-123"
-    assert _workspace_tool_bound_workspace_id("workspace_create", '{"ok": true, "bound": false}') is None
+    assert _workspace_tool_bound_workspace_id("workspace.create", payload) == "abc-123"
+    assert _workspace_tool_bound_workspace_id("bind", payload) == "abc-123"
+    assert _workspace_tool_bound_workspace_id("workspace.create", '{"ok": true, "bound": false}') is None
 
 
 def test_coding_agent_includes_workspace_tools() -> None:
@@ -35,6 +35,6 @@ def test_coding_agent_includes_workspace_tools() -> None:
     a = get_agent_registry().get_agent("coding")
     assert a is not None
     names = a["tool_names"]
-    assert "workspace_list" in names
-    assert "workspace_create" in names
-    assert "workspace_bind" in names
+    assert "workspace.list" in names
+    assert "workspace.create" in names
+    assert "bind" in names

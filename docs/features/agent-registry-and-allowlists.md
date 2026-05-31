@@ -25,18 +25,19 @@ Set on the **tool module** (same file as `HANDLERS` / `TOOLS`):
 
 **Practical rule:** pick a `TOOL_DOMAIN` that matches the **agent persona** that should see the tool by default (e.g. all workspace file tools → `coding`). If one package exports both “coding” and “explain” style tools, split modules or use per-tool meta so an agent can target **capabilities** instead of a broad domain.
 
-## Adding a new agent (`plugins/agents/<name>.py`)
+## Adding a new agent (`plugins/agents/<name>/`)
 
-Export the usual `AGENT_*` fields, then choose **how** tools are selected (see `agent_registry.py`):
+Create a directory with **`agent.yaml`** (metadata + tool policy) and **`system_prompt.md`** (prompt text).
+
+Export in **`agent.yaml`**:
 
 1. **`AGENT_TOOL_DOMAINS`** — union of all tools whose package `domain` is in the tuple **or** `shared`. Best when a whole vertical shares one domain (e.g. coding workspace: `("coding", "project")`).
-2. **`AGENT_TOOL_CAPABILITY_ANY`** — union of tools whose **effective** capability matches **any** listed string. Best for admin/operator surfaces (e.g. `operator.console`, `scheduler.job.read`).
-3. **`AGENT_TOOL_PATTERNS`** — glob / `prefix.*` / exact names; use when domains would pull in too much (typical for a wide “general” assistant) or for one-off extras.
-4. **`AGENT_TOOL_INCLUDE_INTROSPECTION`** — if you use domains and still need `list_available_tools` / `get_tool_help` etc. (those live in packages that may not set `TOOL_DOMAIN` the way domain-filter expects).
+2. **`AGENT_TOOL_CAPABILITY_ANY`** — union of tools whose **effective** capability matches **any** listed string. Best for admin/operator surfaces (e.g. `operator.console`, `scheduler.job.read`) or read-only slices of a broad domain (e.g. `coding.read` without `coding.execute`).
+3. **`AGENT_TOOL_INCLUDE_INTROSPECTION`** — if you use domains and still need `list_available_tools` / `get_tool_help` etc. (those live in packages that may not set `TOOL_DOMAIN` the way domain-filter expects).
 
-Resolution is the **union** of (2)+(3)+(4) when no explicit names list is used.
+Resolution is the **union** of (1)+(2), filtered against the **live** tool registry. Disabled or removed tool plugins simply disappear from `tool_names`.
 
-**Override:** non-empty **`AGENT_TOOL_NAMES`** replaces dynamic resolution (hard allowlist only).
+**Deprecated (ignored):** `AGENT_TOOL_PATTERNS` and `AGENT_TOOL_NAMES` — the loader logs a warning if still present; migrate to domains + capabilities.
 
 ## Optional chat-loop behaviour (no hard-coded agent ids)
 
@@ -61,9 +62,10 @@ So: **declare domain + capabilities on the tool once**; agents and future orches
 
 ## Current built-in examples
 
-- **Coding / Coding (plan) / Security auditor:** `AGENT_TOOL_DOMAINS = ("coding", "project")` (+ optional `AGENT_TOOL_CAPABILITY_ANY`); plan and security auditor set `AGENT_STRICT_WORKSPACE`, `AGENT_CODING_TOOLS_PERMISSION_ASK`, and `AGENT_TOOL_DISCIPLINE_PRESET` as needed (see table above).
-- **Operator:** `AGENT_TOOL_CAPABILITY_ANY` in `plugins/agents/operator.py`; admin handlers live in `plugins/tools/capabilities/platform/operator_admin.py` with `TOOL_DOMAIN = "operator"` and `operator.console` on each function.
-- **General:** `AGENT_TOOL_PATTERNS` in `plugins/agents/general.py` (broad catalog; domain-only would mix unrelated `meta` tools without finer splits).
+- **Coding:** `AGENT_TOOL_DOMAINS = ("coding", "project", "security_scan", "workspace", "secrets")` — full build surface including bash, edits, and user secrets.
+- **Coding (plan) / Security auditor:** `AGENT_TOOL_DOMAINS` plus `AGENT_TOOL_CAPABILITY_ANY` for read-only coding (`coding.read`, …); plan and security auditor set `AGENT_STRICT_WORKSPACE` and `AGENT_TOOL_DISCIPLINE_PRESET` as needed (see table above).
+- **Operator:** `AGENT_TOOL_CAPABILITY_ANY` only in `plugins/agents/operator.py`; admin handlers use `TOOL_DOMAIN = "operator"` and `operator.console` on each function.
+- **General:** many `AGENT_TOOL_DOMAINS` (workspace, files, rag, …) plus `AGENT_TOOL_CAPABILITY_ANY` for read-only coding (`coding.read`, …) — not the full `coding` domain (which would include bash/write).
 
 ## See also
 

@@ -18,16 +18,16 @@ def test_coding_agent_allowlist_includes_save_user_secret() -> None:
 
 def test_coding_agent_pins_git_push() -> None:
     pin = _pinned_tools_for_agent("coding")
-    assert "coding_git_push" in pin
-    assert "coding_git_sync" in pin
+    assert "git_push" in pin
+    assert "git_sync" in pin
     assert "save_user_secret" in pin
 
 
 def test_partition_pins_credential_specs() -> None:
     specs = [
-        {"type": "function", "function": {"name": "coding_read_file"}},
+        {"type": "function", "function": {"name": "read_file"}},
         {"type": "function", "function": {"name": "save_user_secret"}},
-        {"type": "function", "function": {"name": "security_scan_list"}},
+        {"type": "function", "function": {"name": "list"}},
     ]
     pinned, rest = _partition_tool_specs_by_name(specs, frozenset({"save_user_secret"}))
     assert [t["function"]["name"] for t in pinned] == ["save_user_secret"]

@@ -4,6 +4,7 @@ import { AssistantProposalBody } from "./ProposalMessageBody";
 import type { RunCard } from "./buildRunCards";
 import { RunCardBlock } from "./RunCardBlock";
 import { SecretRegisterCard } from "./SecretRegisterCard";
+import { MessageFeedbackButtons } from "./MessageFeedbackButtons";
 import {
   buildInterleavedTurnSegments,
   type TurnSegment,
@@ -22,6 +23,10 @@ type Props = {
   onSecretSaved: (promptId: string, serviceKey: string) => void;
   expandedRunCardIds?: ReadonlySet<string>;
   onToggleRunCardExpanded?: (cardId: string) => void;
+  conversationId?: string | null;
+  messagePosition?: number;
+  feedbackRating?: "up" | "down" | null;
+  standInAuto?: boolean;
 };
 
 function InterleavedStreamBody({
@@ -95,6 +100,10 @@ export function AssistantTurnBlock({
   onSecretSaved,
   expandedRunCardIds,
   onToggleRunCardExpanded,
+  conversationId,
+  messagePosition,
+  feedbackRating,
+  standInAuto = false,
 }: Props) {
   const { t } = useTranslation(["chat"]);
   const segments = buildInterleavedTurnSegments(content, timelineEntries);
@@ -120,6 +129,11 @@ export function AssistantTurnBlock({
             <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-sky-400" />
           ) : null}
           {t("chat:roleAssistant")}
+          {standInAuto ? (
+            <span className="rounded bg-violet-900/40 px-1.5 py-0.5 text-[9px] font-normal normal-case text-violet-200">
+              {t("chat:standInAutoBadge")}
+            </span>
+          ) : null}
           {timeLabel ? (
             <span className="font-normal normal-case text-surface-muted">{timeLabel}</span>
           ) : null}
@@ -136,6 +150,14 @@ export function AssistantTurnBlock({
           />
         ) : running ? (
           <p className="text-neutral-300">{t("chat:agentRunning")}</p>
+        ) : null}
+        {!running && messagePosition != null ? (
+          <MessageFeedbackButtons
+            auth={auth}
+            conversationId={conversationId}
+            messagePosition={messagePosition}
+            initialRating={feedbackRating ?? null}
+          />
         ) : null}
       </div>
     </li>

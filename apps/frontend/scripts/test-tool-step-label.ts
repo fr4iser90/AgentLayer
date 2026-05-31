@@ -3,7 +3,7 @@ import { formatToolStepLabel } from "../src/features/chat/toolStepLabel.ts";
 
 assert.equal(
   formatToolStepLabel(
-    "coding_bash",
+    "bash",
     "command=git diff foo.py",
     "Coding: Bash",
     "Coding: Bash git diff foo.py",
@@ -12,7 +12,7 @@ assert.equal(
 );
 
 assert.equal(
-  formatToolStepLabel("coding_bash", "command=x", "Coding: Bash", undefined),
+  formatToolStepLabel("bash", "command=x", "Coding: Bash", undefined),
   "Coding: Bash",
 );
 

@@ -111,6 +111,15 @@ export function AdminInterfacesPlatformSection() {
               />
               Nightly reindex for stale workspaces (hourly check, max 100)
             </label>
+            <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-white">
+              <input
+                type="checkbox"
+                className="rounded border-surface-border"
+                checked={s.workspaceIndexOnAttachEnabled}
+                onChange={(e) => s.setWorkspaceIndexOnAttachEnabled(e.target.checked)}
+              />
+              {t("admin:ifPlatformIndexOnAttach")}
+            </label>
           </section>
     </>
   );

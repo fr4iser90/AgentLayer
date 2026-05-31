@@ -13,7 +13,7 @@ from apps.backend.domain.agent_task_prompt import (
     enrich_delegate_prompt,
     format_requirements_block,
 )
-from plugins.tools.capabilities.platform.agent_delegate import agent_delegate
+from plugins.tools.platform.agents.delegate import delegate
 
 
 def test_format_requirements_block() -> None:
@@ -38,7 +38,7 @@ def test_build_artifact_context_block_missing() -> None:
 
 
 def test_delegate_requires_run_subagent() -> None:
-    out = agent_delegate({"agent_id": "coding", "prompt": "x"}, context=None)
+    out = delegate({"agent_id": "coding", "prompt": "x"}, context=None)
     data = json.loads(out)
     assert data.get("ok") is False
 
@@ -46,10 +46,10 @@ def test_delegate_requires_run_subagent() -> None:
 def test_delegate_passes_artifact_refs_to_subagent() -> None:
     aid = str(uuid.uuid4())
     with patch(
-        "plugins.tools.capabilities.platform.agent_delegate.run_embedded_subagent_sync",
+        "plugins.tools.platform.agents.delegate.run_embedded_subagent_sync",
         return_value='{"ok": true}',
     ) as mock_run:
-        agent_delegate(
+        delegate(
             {
                 "run_subagent": True,
                 "agent_id": "coding_plan",

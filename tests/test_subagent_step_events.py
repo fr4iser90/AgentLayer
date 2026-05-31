@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from plugins.tools.capabilities.platform._embedded_subagent import _forward_subagent_tool_event
+from apps.backend.domain.embedded_subagent import _forward_subagent_tool_event
 
 
 def test_forward_tool_start_includes_summary() -> None:
@@ -17,7 +17,7 @@ def test_forward_tool_start_includes_summary() -> None:
         agent_id="coding",
         ev={
             "type": "agent.tool_start",
-            "name": "coding_read_file",
+            "name": "read_file",
             "round": 3,
             "summary": "path=apps/backend/infrastructure/friends_db.py",
         },
@@ -26,7 +26,7 @@ def test_forward_tool_start_includes_summary() -> None:
     ev = out[0]
     assert ev["type"] == "agent.subagent_step"
     assert ev["phase"] == "start"
-    assert ev["tool"] == "coding_read_file"
+    assert ev["tool"] == "read_file"
     assert ev["subagent_run_id"] == "abc"
     assert "friends_db.py" in ev["summary"]
 
@@ -41,7 +41,7 @@ def test_forward_tool_done_omits_summary() -> None:
         notify,
         sub_run_id="abc",
         agent_id="coding",
-        ev={"type": "agent.tool_done", "name": "coding_read_file", "round": 3},
+        ev={"type": "agent.tool_done", "name": "read_file", "round": 3},
     )
     assert out[0]["phase"] == "done"
     assert "summary" not in out[0]

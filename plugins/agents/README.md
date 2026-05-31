@@ -1,9 +1,17 @@
 # Agent plugins (`plugins/agents/`)
 
-Each `*.py` file defines one **agent persona** (`AGENT_ID`, prompts, optional `AGENT_TOOL_DOMAIN` for chat routing).
+Each agent is one directory:
 
-**Tool allowlists** are resolved from this file using `AGENT_TOOL_DOMAINS`, `AGENT_TOOL_CAPABILITY_ANY`, and/or `AGENT_TOOL_PATTERNS` (see `apps/backend/domain/agent_registry.py`).
+- **`agent.yaml`** — metadata, tool policy (`tool_domains`, `tool_capability_any`), behaviour flags
+- **`system_prompt.md`** — system prompt (or set `system_prompt_file` in yaml)
 
-**When adding tools elsewhere:** set `TOOL_DOMAIN` (and ideally `TOOL_CAPABILITIES`) on the tool module under `plugins/tools/` so agents do not need per-tool name lists.
+**Tool allowlists** — union of:
 
-Full convention (orchestrator-friendly): [`docs/features/agent-registry-and-allowlists.md`](../../docs/features/agent-registry-and-allowlists.md).
+- **`tool_domains`** — tools whose module `TOOL_DOMAIN` matches (plus `shared`)
+- **`tool_capability_any`** — tools declaring any listed capability
+
+`apps/backend/domain/agent_registry.py` resolves names against the **live** tool registry.
+
+Admin overview: **Admin → Agents** (`GET /v1/admin/agents`).
+
+See [`docs/features/agent-registry-and-allowlists.md`](../../docs/features/agent-registry-and-allowlists.md).

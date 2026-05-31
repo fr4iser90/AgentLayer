@@ -113,7 +113,7 @@ def format_agent_profile_summary(prof: dict[str, Any]) -> str:
 
         # Known people / friends context
         # NOTE: Known people are NOT injected by default anymore
-        # They are available via the dedicated `get_friend_info` tool which the agent will call ONLY when needed
+        # They are available via the dedicated `info` tool which the agent will call ONLY when needed
         # This prevents ~1-2k token overhead in every single chat request
 
     if _want_injection_section(prefs, "include_location"):

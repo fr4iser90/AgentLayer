@@ -180,6 +180,13 @@ export function mapServerToThread(raw: Record<string, unknown>): ChatThread {
       : raw.active_task_id === null
         ? { activeTaskId: null as string | null }
         : {}),
+    delegateAutoRespondEnabled: raw.delegate_auto_respond_enabled === true,
+    delegateAutoRespondAfterSec:
+      typeof raw.delegate_auto_respond_after_sec === "number"
+        ? raw.delegate_auto_respond_after_sec
+        : 60,
+    delegateMaxChainTurns:
+      typeof raw.delegate_max_chain_turns === "number" ? raw.delegate_max_chain_turns : 3,
   };
 }
 
