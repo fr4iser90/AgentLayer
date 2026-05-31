@@ -26,8 +26,7 @@ async def admin_reindex_workspace(
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                f"""
-                SELECT {WORKSPACE_SELECT_SQL}
+                "SELECT " + WORKSPACE_SELECT_SQL + """
                 FROM project_workspaces
                 WHERE id = %s
                 """,

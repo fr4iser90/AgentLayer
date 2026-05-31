@@ -114,8 +114,7 @@ def _get_self_workspace(user) -> dict[str, Any] | None:
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                f"""
-                SELECT {WORKSPACE_SELECT_SQL}
+                "SELECT " + WORKSPACE_SELECT_SQL + """
                 FROM project_workspaces
                 WHERE id = %s AND owner_user_id = %s
                 """,
@@ -136,8 +135,7 @@ async def list_workspaces(request: Request):
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                f"""
-                SELECT {WORKSPACE_SELECT_SQL}
+                "SELECT " + WORKSPACE_SELECT_SQL + """
                 FROM project_workspaces
                 WHERE owner_user_id = %s
                 ORDER BY name ASC
@@ -190,8 +188,7 @@ async def get_workspace(request: Request, workspace_id: str):
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                f"""
-                SELECT {WORKSPACE_SELECT_SQL}
+                "SELECT " + WORKSPACE_SELECT_SQL + """
                 FROM project_workspaces
                 WHERE id = %s AND owner_user_id = %s
                 """,
@@ -233,8 +230,7 @@ async def workspace_run_index(
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                f"""
-                SELECT {WORKSPACE_SELECT_SQL}
+                "SELECT " + WORKSPACE_SELECT_SQL + """
                 FROM project_workspaces
                 WHERE id = %s AND owner_user_id = %s AND access_role IN ('owner', 'editor')
                 """,
@@ -333,8 +329,7 @@ async def reset_self_workspace(request: Request, workspace_id: str, body: Worksp
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                f"""
-                SELECT {WORKSPACE_SELECT_SQL}
+                "SELECT " + WORKSPACE_SELECT_SQL + """
                 FROM project_workspaces
                 WHERE id = %s AND owner_user_id = %s AND access_role IN ('owner', 'editor')
                 """,
@@ -359,8 +354,7 @@ async def reset_self_workspace(request: Request, workspace_id: str, body: Worksp
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                f"""
-                SELECT {WORKSPACE_SELECT_SQL}
+                "SELECT " + WORKSPACE_SELECT_SQL + """
                 FROM project_workspaces
                 WHERE id = %s AND owner_user_id = %s
                 """,
@@ -380,8 +374,7 @@ async def update_workspace(request: Request, workspace_id: str, body: WorkspaceU
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                f"""
-                SELECT {WORKSPACE_SELECT_SQL}
+                "SELECT " + WORKSPACE_SELECT_SQL + """
                 FROM project_workspaces
                 WHERE id = %s AND owner_user_id = %s AND access_role IN ('owner', 'editor')
                 """,
@@ -486,7 +479,7 @@ async def update_workspace(request: Request, workspace_id: str, body: WorkspaceU
         with db.pool().connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    f"UPDATE project_workspaces SET {', '.join(updates)}, updated_at = NOW() WHERE id = %s",
+                    "UPDATE project_workspaces SET " + ', '.join(updates) + ", updated_at = NOW() WHERE id = %s",
                     tuple(params),
                 )
             conn.commit()
@@ -494,8 +487,7 @@ async def update_workspace(request: Request, workspace_id: str, body: WorkspaceU
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                f"""
-                SELECT {WORKSPACE_SELECT_SQL}
+                "SELECT " + WORKSPACE_SELECT_SQL + """
                 FROM project_workspaces WHERE id = %s
                 """,
                 (workspace_id,),

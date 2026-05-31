@@ -192,7 +192,7 @@ def update_task(
             # (status, goal, priority, etc.) — not from user input.
             # All values are parameterized via %s placeholders.
             cur.execute(
-                f"UPDATE agent_tasks SET {', '.join(parts)} WHERE id = %s AND tenant_id = %s RETURNING *",
+                "UPDATE agent_tasks SET " + ', '.join(parts) + " WHERE id = %s AND tenant_id = %s RETURNING *",
                 args,
             )
             updated = cur.fetchone()

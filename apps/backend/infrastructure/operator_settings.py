@@ -1555,7 +1555,7 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
                 # _SETTING_KEYS mapping (see _OPERATOR_SETTINGS_KEYS).
                 # All values are parameterized via %s placeholders.
                 cur.execute(
-                    f"UPDATE operator_settings SET {', '.join(extra_sets)}, updated_at = now() WHERE id = 1",
+                    "UPDATE operator_settings SET " + ', '.join(extra_sets) + ", updated_at = now() WHERE id = 1",
                     tuple(extra_params),
                 )
             conn.commit()
