@@ -214,12 +214,14 @@ def list_runs(
         where.append("parent_run_id = %s")
         params.append(parent_run_id)
     params.append(lim)
-    sql = f"""
+    # SECURITY: WHERE conditions come from function parameters with fixed column names.
+    # All values are parameterized via %s placeholders.
+    sql = """
         SELECT * FROM agent_runs
-        WHERE {' AND '.join(where)}
+        WHERE {}
         ORDER BY started_at DESC
         LIMIT %s
-    """
+    """.format(' AND '.join(where))
     with db.pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(sql, params)

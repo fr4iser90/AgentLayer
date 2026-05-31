@@ -104,11 +104,11 @@ async def list_tool_invocations_admin(
     with db.pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
-                f"""
+                """
                 SELECT id, tool_name, args_json, result_excerpt, ok, created_at,
                        tenant_id, user_id, agent_run_id
                 FROM tool_invocations
-                {where}
+                """ + where + """
                 ORDER BY id DESC
                 LIMIT %s
                 """,

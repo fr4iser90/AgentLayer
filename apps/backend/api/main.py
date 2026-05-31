@@ -189,9 +189,15 @@ async def lifespan(_app: FastAPI):
             "First-admin bootstrap failed (DB migrations? or set AGENT_INITIAL_ADMIN_EMAIL/PASSWORD)"
         )
     cors_env = os.environ.get("AGENT_CORS_ORIGINS", "").strip()
-    if not cors_env or cors_env == "*":
+    # Security check: prevent CORS wildcard
+    if cors_env == "*":
+        raise ValueError(
+            "SECURITY: CORS_ALLOW_ORIGINS must not be set to '*' in production! "
+            "Set specific origins instead."
+        )
+    if not cors_env:
         logger.warning(
-            "CORS is not explicitly configured (AGENT_CORS_ORIGINS not set or '*'). "
+            "CORS is not explicitly configured (AGENT_CORS_ORIGINS not set). "
             "In production, set AGENT_CORS_ORIGINS to specific origins "
             "(e.g. https://openwebui.example) to prevent wildcard CORS. "
             "Without it, browsers will block credentials."

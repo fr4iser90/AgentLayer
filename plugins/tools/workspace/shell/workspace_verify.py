@@ -128,9 +128,12 @@ def workspace_verify(arguments: dict[str, Any], context: dict | None = None) -> 
 
     env = {**os.environ, "HOME": str(root), "PWD": str(root)}
     try:
+        # Parse the command string into a list of arguments to avoid shell injection.
+        # shlex.split handles quoting/escaping in the command string safely.
+        cmd_args = shlex.split(cmd)
         result = subprocess.run(
-            cmd,
-            shell=True,
+            cmd_args,
+            shell=False,
             cwd=str(root),
             env=env,
             capture_output=True,

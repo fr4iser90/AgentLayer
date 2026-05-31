@@ -457,6 +457,9 @@ def conversation_update_delegate_prefs(
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             args.extend([conversation_id, user_id])
+            # SECURITY: Column names in `parts` come from function parameters
+            # (e.g. is_auto_respond_enabled, delegate_auto_respond_after_sec).
+            # All values are parameterized via %s placeholders.
             cur.execute(
                 f"""
                 UPDATE chat_conversations SET {", ".join(parts)}
@@ -704,6 +707,9 @@ def conversation_replace(
                             else:
                                 parts.append("active_task_id = NULL")
             parts.append("updated_at = now()")
+            # SECURITY: Column names in `parts` come from function parameters
+            # (is_auto_respond_enabled, delegate_auto_respond_after_sec, etc.).
+            # All values are parameterized via %s placeholders.
             if shared:
                 args.append(conversation_id)
                 cur.execute(  # nosec B608

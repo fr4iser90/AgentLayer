@@ -108,16 +108,16 @@ def list_runs(
     with db.pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
-                f"""
+                """
                 SELECT id, tenant_id, created_by_user_id, execution_user_id, scheduler_job_id,
                        dashboard_id, project_row_id, project_title,
                        execution_target, instructions, coding_workflow, status, error,
                        started_at, finished_at, created_at, updated_at
                 FROM project_runs
-                {where}
+                {}
                 ORDER BY created_at DESC
                 LIMIT %s
-                """,
+                """.format(where),
                 params,
             )
             rows = cur.fetchall()

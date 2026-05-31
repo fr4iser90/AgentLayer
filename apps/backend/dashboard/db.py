@@ -244,6 +244,8 @@ def _dashboard_update_granular(
             args.append(Json(new_dt))
             sets.append("updated_at = now()")
             args.extend([dashboard_id, tenant_id, user_id])
+            # SECURITY: Column names in `sets` come from function parameters
+            # (ui_layout, data). All values are parameterized via %s placeholders.
             cur.execute(
                 f"""
                 UPDATE user_dashboards w
@@ -519,7 +521,8 @@ def dashboard_update(
     args.extend([dashboard_id, tenant_id, user_id, user_id])
     with db.pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
-            # SET fragments are fixed literals; values are always %s-bound (not SQL keyword injection).
+            # SECURITY: Column names in `sets` come from function parameters (ui_layout, data).
+            # SET fragments are fixed literals; all values are parameterized via %s placeholders.
             cur.execute(  # nosec B608  # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query
                 f"""
                 UPDATE user_dashboards w

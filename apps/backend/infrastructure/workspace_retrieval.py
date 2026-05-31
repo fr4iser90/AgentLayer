@@ -72,8 +72,8 @@ def fetch_workspace_row(workspace_id: str, user_id: uuid.UUID) -> tuple | None:
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                f"""
-                SELECT {WORKSPACE_SELECT_SQL}
+                """
+                SELECT ''' + WORKSPACE_SELECT_SQL + '''
                 FROM project_workspaces
                 WHERE id = %s AND owner_user_id = %s
                 """,
@@ -87,8 +87,8 @@ def fetch_workspace_row_shared(workspace_id: str, user_id: uuid.UUID) -> tuple |
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                f"""
-                SELECT {WORKSPACE_SELECT_SQL}
+                """
+                SELECT ''' + WORKSPACE_SELECT_SQL + '''
                 FROM project_workspaces
                 WHERE id = %s AND (owner_user_id = %s OR access_role IN ('editor', 'viewer'))
                 """,
