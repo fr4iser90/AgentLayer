@@ -7,7 +7,7 @@ This module is the supported entry point for:
 - Future step runners, tests, and orchestration (separate from cron scheduled jobs).
 
 The **Planner** lives in ``apps/backend/domain/agent.py`` (LLM + rounds + message assembly). Do not add
-LLM or HTTP-to-Ollama calls here.
+LLM or HTTP-to-catalog-provider calls here.
 """
 
 from __future__ import annotations

@@ -301,7 +301,7 @@ export function AdminInterfacesLlmSection() {
               className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
               value={s.llmRouterModel}
               onChange={(e) => s.setLlmRouterModel(e.target.value)}
-              placeholder={t("admin:ollamaModelIdPlaceholder")}
+              placeholder={t("admin:catalogModelIdPlaceholder")}
               autoComplete="off"
             />
             <div className="mt-4 grid max-w-xl gap-3 sm:grid-cols-2">

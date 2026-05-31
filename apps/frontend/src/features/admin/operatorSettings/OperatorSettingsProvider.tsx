@@ -170,7 +170,7 @@ function useOperatorSettingsState() {
           : []
       );
       setLlmSmartRouting(!!op.llm_smart_routing_enabled);
-      setLlmRouterModel((op.llm_router_ollama_model ?? "nemotron-3-nano:4b").trim() || "nemotron-3-nano:4b");
+      setLlmRouterModel((op.llm_router_model ?? "nemotron-3-nano:4b").trim() || "nemotron-3-nano:4b");
       setLlmRouterConfMin(
         op.llm_router_local_confidence_min != null && Number.isFinite(op.llm_router_local_confidence_min)
           ? String(op.llm_router_local_confidence_min)
@@ -251,9 +251,7 @@ function useOperatorSettingsState() {
           ? op.embedding_api_header_name_source
           : null
       );
-      setRagEmbeddingModel(
-        (op.rag_embedding_model ?? (op as { rag_ollama_model?: string }).rag_ollama_model ?? "").trim()
-      );
+      setRagEmbeddingModel((op.rag_embedding_model ?? "").trim());
       try {
         const modelsJson = (await modelsRes.json()) as { agentlayer?: { embedding?: EmbeddingCatalogHealth } };
         const emb = modelsJson.agentlayer?.embedding;
@@ -310,7 +308,7 @@ function useOperatorSettingsState() {
       );
       setSchedulerPackages((op.scheduler_allowed_tool_packages ?? "").trim());
       setSchedulerLlmBackend(
-        op.scheduler_llm_backend === "ollama" || op.scheduler_llm_backend === "external"
+        op.scheduler_llm_backend === "provider" || op.scheduler_llm_backend === "provider_admin"
           ? op.scheduler_llm_backend
           : "inherit"
       );
@@ -527,7 +525,7 @@ function useOperatorSettingsState() {
         return;
       }
       patch.llm_smart_routing_enabled = llmSmartRouting;
-      patch.llm_router_ollama_model = llmRouterModel.trim() || "nemotron-3-nano:4b";
+      patch.llm_router_model = llmRouterModel.trim() || "nemotron-3-nano:4b";
       patch.llm_router_local_confidence_min = confMin;
       patch.llm_router_timeout_sec = rtSec;
       patch.llm_route_long_prompt_chars = Math.floor(longC);

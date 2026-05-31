@@ -44,6 +44,12 @@ export function SettingsLayout() {
             {t("settings:agentTitle")}
           </NavLink>
           <NavLink
+            to="/settings/delegate"
+            className={({ isActive }) => `${subLink} ${isActive ? subLinkActive : subLinkIdle}`}
+          >
+            {t("settings:delegateNav")}
+          </NavLink>
+          <NavLink
             to="/settings/friends"
             className={({ isActive }) => `${subLink} ${isActive ? subLinkActive : subLinkIdle}`}
           >

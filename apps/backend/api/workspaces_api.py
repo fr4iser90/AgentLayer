@@ -7,6 +7,7 @@ import os
 import shutil
 from pathlib import Path
 import json
+import uuid
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -701,3 +702,87 @@ async def workspace_fs_read(
 
     rel = str(target.relative_to(root_disk.resolve())).replace("\\", "/")
     return {"ok": True, "path": rel, "content": text, "size": size}
+
+
+class WorkspaceDelegateUpdateBody(BaseModel):
+    config: dict[str, Any] = Field(default_factory=dict)
+
+
+@router.get("/{workspace_id}/delegate")
+async def get_workspace_delegate(request: Request, workspace_id: str) -> dict[str, Any]:
+    """Workspace delegate overlay (merges over global user delegate at runtime)."""
+    from apps.backend.domain.delegate_config_schema import default_delegate_config
+    from apps.backend.infrastructure import workspace_delegate_store
+
+    user = await get_current_user(request)
+    row = workspace_retrieval.fetch_workspace_row_shared(workspace_id, user.id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+
+    from apps.backend.infrastructure.workspace_service import AGENTLAYER_SELF_NAME, self_editing_allowed
+
+    if (row[2] or "").strip() == AGENTLAYER_SELF_NAME and not self_editing_allowed(user):
+        raise HTTPException(status_code=404, detail="Workspace not found")
+
+    try:
+        ws_row = workspace_delegate_store.get_workspace_delegate(
+            workspace_id=uuid.UUID(str(workspace_id))
+        )
+    except Exception as e:
+        return {
+            "ok": True,
+            "config": default_delegate_config(),
+            "updated_at": None,
+            "delegate_storage": "unavailable",
+            "detail": str(e)[:200],
+        }
+
+    if not ws_row:
+        return {"ok": True, "config": default_delegate_config(), "updated_at": None}
+    return {
+        "ok": True,
+        "config": ws_row.get("config") or default_delegate_config(),
+        "updated_at": ws_row.get("updated_at"),
+    }
+
+
+@router.put("/{workspace_id}/delegate")
+async def put_workspace_delegate(
+    request: Request, workspace_id: str, body: WorkspaceDelegateUpdateBody
+) -> dict[str, Any]:
+    from apps.backend.infrastructure import workspace_delegate_store
+
+    user = await get_current_user(request)
+    with db.pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT tenant_id, name FROM project_workspaces
+                WHERE id = %s AND owner_user_id = %s AND access_role IN ('owner', 'editor')
+                """,
+                (workspace_id, user.id),
+            )
+            meta = cur.fetchone()
+    if not meta:
+        raise HTTPException(status_code=404, detail="Workspace not found or no edit permission")
+
+    tenant_id = int(meta[0])
+    try:
+        stored = workspace_delegate_store.upsert_workspace_delegate(
+            tenant_id=tenant_id,
+            workspace_id=uuid.UUID(str(workspace_id)),
+            config=body.config,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=503,
+            detail=f"delegate storage unavailable — {e}",
+        ) from e
+    return {
+        "ok": True,
+        "stored": True,
+        "config": stored.get("config"),
+        "updated_at": stored.get("updated_at"),
+    }

@@ -12,7 +12,7 @@ import time
 import uuid
 from typing import Any, Literal
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from apps.backend.core import config as app_config
 from apps.backend.core.config import config
@@ -25,10 +25,7 @@ def _normalize_rag_embedding_model(raw: Any) -> str:
 
 
 def _rag_embedding_model_from_row(r: dict[str, Any]) -> str:
-    v = r.get("rag_embedding_model")
-    if v is None:
-        v = r.get("rag_ollama_model")
-    return _normalize_rag_embedding_model(v)
+    return _normalize_rag_embedding_model(r.get("rag_embedding_model"))
 
 
 _CACHE: tuple[float, dict[str, Any]] | None = None
@@ -61,7 +58,25 @@ def invalidate_operator_settings_cache() -> None:
 
 def normalize_scheduler_llm_backend(raw: Any) -> str:
     s = (str(raw or "inherit")).strip().lower()
-    return s if s in ("inherit", "ollama", "external") else "inherit"
+    return s if s in ("inherit", "provider", "provider_admin") else "inherit"
+
+
+def normalize_llm_primary_backend(raw: Any) -> str:
+    s = (str(raw or "provider")).strip().lower()
+    return s if s in ("provider", "provider_admin") else "provider"
+
+
+def scheduler_llm_backend_to_agent_override(backend: str) -> str | None:
+    """Map operator scheduler backend to ``chat_completion`` ``agent_llm_backend``."""
+    if backend == "inherit":
+        return None
+    if backend == "provider_admin":
+        return "provider_admin"
+    return "provider"
+
+
+def _router_model_from_row(r: dict[str, Any]) -> str:
+    return (str(r.get("llm_router_model") or "").strip() or "nemotron-3-nano:4b")[:128]
 
 
 def normalize_scheduler_tools_mode(raw: Any) -> str:
@@ -93,9 +108,9 @@ def _fetch_row() -> dict[str, Any]:
         "telegram_chat_model": None,
         "dashboard_upload_max_file_mb": None,
         "dashboard_upload_allowed_mime": None,
-        "llm_primary_backend": "ollama",
+        "llm_primary_backend": "provider",
         "llm_smart_routing_enabled": False,
-        "llm_router_ollama_model": "nemotron-3-nano:4b",
+        "llm_router_model": "nemotron-3-nano:4b",
         "llm_router_local_confidence_min": 0.7,
         "llm_router_timeout_sec": 12.0,
         "llm_route_long_prompt_chars": 8000,
@@ -162,7 +177,7 @@ def _fetch_row() -> dict[str, Any]:
                            telegram_bot_agent_bearer, telegram_trigger_prefix, telegram_chat_model,
                            dashboard_upload_max_file_mb, dashboard_upload_allowed_mime,
                            llm_primary_backend,
-                           llm_smart_routing_enabled, llm_router_ollama_model,
+                           llm_smart_routing_enabled, llm_router_model,
                            llm_router_local_confidence_min, llm_router_timeout_sec,
                            llm_route_long_prompt_chars, llm_route_short_local_max_chars,
                            llm_route_many_code_fences, llm_route_many_messages,
@@ -220,9 +235,9 @@ def _fetch_row() -> dict[str, Any]:
         "telegram_chat_model": row[14],
         "dashboard_upload_max_file_mb": row[15],
         "dashboard_upload_allowed_mime": row[16],
-        "llm_primary_backend": (str(row[17]).strip().lower() if row[17] is not None else "") or "ollama",
+        "llm_primary_backend": normalize_llm_primary_backend(row[17] if row[17] is not None else None),
         "llm_smart_routing_enabled": bool(row[18]) if row[18] is not None else False,
-        "llm_router_ollama_model": (str(row[19]).strip() if row[19] is not None else "") or "nemotron-3-nano:4b",
+        "llm_router_model": (str(row[19]).strip() if row[19] is not None else "") or "nemotron-3-nano:4b",
         "llm_router_local_confidence_min": float(row[20]) if row[20] is not None else 0.7,
         "llm_router_timeout_sec": float(row[21]) if row[21] is not None else 12.0,
         "llm_route_long_prompt_chars": int(row[22]) if row[22] is not None else 8000,
@@ -429,10 +444,9 @@ def effective_dashboard_upload_max_bytes() -> int:
     return app_config.WORKSPACE_UPLOAD_MAX_FILE_MB * 1024 * 1024
 
 
-def resolved_primary_llm_backend() -> Literal["ollama", "external"]:
+def resolved_primary_llm_backend() -> Literal["provider", "provider_admin"]:
     r = _cached_row()
-    v = (r.get("llm_primary_backend") or "ollama").strip().lower()
-    return "external" if v == "external" else "ollama"
+    return normalize_llm_primary_backend(r.get("llm_primary_backend"))
 
 
 def smart_llm_routing_enabled() -> bool:
@@ -478,7 +492,7 @@ def effective_http_client_log_level_int() -> int:
 def smart_routing_params() -> dict[str, Any]:
     r = _cached_row()
     return {
-        "router_model": (str(r.get("llm_router_ollama_model") or "").strip() or "nemotron-3-nano:4b"),
+        "router_model": _router_model_from_row(r),
         "local_confidence_min": _bound_float(r.get("llm_router_local_confidence_min"), 0.7, 0.0, 1.0),
         "router_timeout_sec": _bound_float(r.get("llm_router_timeout_sec"), 12.0, 1.0, 120.0),
         "long_prompt_chars": _bound_int(r.get("llm_route_long_prompt_chars"), 8000, 100, 500_000),
@@ -703,7 +717,7 @@ def _external_model_for_endpoint_row(
         raw = _strip_opt(model_from_resolution)
         if raw and ":" in raw:
             logger.info(
-                "llm: external endpoint but model override looks like an Ollama id (%r); using profile model",
+                "llm: external endpoint but model override looks like a local catalog id (%r); using profile model",
                 raw,
             )
             return prof
@@ -721,6 +735,14 @@ def normalize_model_catalog_owned_by(raw: Any) -> str | None:
     from apps.backend.infrastructure.model_catalog_providers import normalize_catalog_provider_id
 
     return normalize_catalog_provider_id(raw)
+
+
+def _admin_llm_chat_attempts(
+    profile_key: str,
+    is_override: bool,
+    model_from_resolution: str,
+) -> list[tuple[str, dict[str, str], str]]:
+    return _external_llm_chat_attempts(profile_key, is_override, model_from_resolution)
 
 
 def _external_llm_chat_attempts(
@@ -749,14 +771,14 @@ def llm_chat_transport(
     profile_key: str,
     is_override: bool,
     *,
-    backend_override: Literal["local", "external"] | None = None,
+    backend_override: Literal["provider", "provider_admin"] | None = None,
     catalog_owned_by: str | None = None,
 ) -> tuple[
     list[tuple[str, dict[str, str], str]],
-    Literal["external"],
+    Literal["provider_env", "provider_admin"],
 ]:
     from apps.backend.infrastructure.model_catalog_providers import (
-        first_db_external_provider_id,
+        first_admin_provider_id,
         first_env_provider_id,
         route_chat_by_catalog_provider,
     )
@@ -764,10 +786,10 @@ def llm_chat_transport(
     owned = catalog_owned_by
     if backend_override is not None:
         bo = backend_override.strip().lower() if isinstance(backend_override, str) else ""
-        if bo == "local":
+        if bo == "provider":
             owned = first_env_provider_id() or owned
-        elif bo == "external":
-            owned = first_db_external_provider_id() or owned
+        elif bo == "provider_admin":
+            owned = first_admin_provider_id() or owned
 
     if owned is None:
         raise ValueError(
@@ -887,7 +909,7 @@ def public_dict() -> dict[str, Any]:
         "dashboard_upload_effective_max_bytes": effective_dashboard_upload_max_bytes(),
         "dashboard_upload_effective_allowed_mime": sorted(effective_dashboard_upload_mime()),
         "llm_smart_routing_enabled": bool(r.get("llm_smart_routing_enabled")),
-        "llm_router_ollama_model": (str(r.get("llm_router_ollama_model") or "").strip())[:128],
+        "llm_router_model": _router_model_from_row(r),
         "llm_router_local_confidence_min": _bound_float(r.get("llm_router_local_confidence_min"), 0.7, 0.0, 1.0),
         "llm_router_timeout_sec": _bound_float(r.get("llm_router_timeout_sec"), 12.0, 1.0, 120.0),
         "llm_route_long_prompt_chars": _bound_int(r.get("llm_route_long_prompt_chars"), 8000, 100, 500_000),
@@ -970,7 +992,7 @@ class OperatorSettingsPatch(BaseModel):
     dashboard_upload_max_file_mb: int | None = None
     dashboard_upload_allowed_mime: str | None = Field(default=None, max_length=2000)
     llm_smart_routing_enabled: bool | None = None
-    llm_router_ollama_model: str | None = Field(default=None, max_length=128)
+    llm_router_model: str | None = Field(default=None, max_length=128)
     llm_router_local_confidence_min: float | None = Field(default=None, ge=0.0, le=1.0)
     llm_router_timeout_sec: float | None = Field(default=None, ge=1.0, le=120.0)
     llm_route_long_prompt_chars: int | None = Field(default=None, ge=100, le=500000)
@@ -985,11 +1007,7 @@ class OperatorSettingsPatch(BaseModel):
     memory_graph_log_activations: bool | None = None
     memory_enabled: bool | None = None
     rag_enabled: bool | None = None
-    rag_embedding_model: str | None = Field(
-        default=None,
-        max_length=256,
-        validation_alias=AliasChoices("rag_embedding_model", "rag_ollama_model"),
-    )
+    rag_embedding_model: str | None = Field(default=None, max_length=256)
     rag_embedding_dim: int | None = Field(default=None, ge=32, le=4096)
     embedding_api_base_url: str | None = Field(default=None, max_length=2048)
     embedding_api_key: str | None = Field(default=None, max_length=4096)
@@ -1159,9 +1177,9 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
             r["dashboard_upload_allowed_mime"] = s or None
     if "llm_smart_routing_enabled" in patch:
         r["llm_smart_routing_enabled"] = bool(patch["llm_smart_routing_enabled"])
-    if "llm_router_ollama_model" in patch:
-        v = patch["llm_router_ollama_model"]
-        r["llm_router_ollama_model"] = (
+    if "llm_router_model" in patch:
+        v = patch["llm_router_model"]
+        r["llm_router_model"] = (
             (str(v).strip()[:128] or "nemotron-3-nano:4b") if v is not None else "nemotron-3-nano:4b"
         )
     if "llm_router_local_confidence_min" in patch:
@@ -1384,7 +1402,7 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
                   dashboard_upload_allowed_mime = %s,
                   llm_primary_backend = %s,
                   llm_smart_routing_enabled = %s,
-                  llm_router_ollama_model = %s,
+                  llm_router_model = %s,
                   llm_router_local_confidence_min = %s,
                   llm_router_timeout_sec = %s,
                   llm_route_long_prompt_chars = %s,
@@ -1454,9 +1472,9 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
                     r.get("telegram_chat_model"),
                     r.get("dashboard_upload_max_file_mb"),
                     r.get("dashboard_upload_allowed_mime"),
-                    r.get("llm_primary_backend") or "ollama",
+                    normalize_llm_primary_backend(r.get("llm_primary_backend")),
                     bool(r.get("llm_smart_routing_enabled")),
-                    (str(r.get("llm_router_ollama_model") or "").strip() or "nemotron-3-nano:4b")[:128],
+                    _router_model_from_row(r),
                     _bound_float(r.get("llm_router_local_confidence_min"), 0.7, 0.0, 1.0),
                     _bound_float(r.get("llm_router_timeout_sec"), 12.0, 1.0, 120.0),
                     _bound_int(r.get("llm_route_long_prompt_chars"), 8000, 100, 500_000),

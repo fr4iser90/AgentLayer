@@ -14,7 +14,7 @@ from apps.backend.core.config import config
 
 logger = logging.getLogger(__name__)
 
-# Profile ids (not Ollama model names). Open WebUI may send body ``model: "agent"`` so the
+# Profile ids (not raw model names). Open WebUI may send body ``model: "agent"`` so the
 # server picks ``AGENT_MODEL_PROFILE_AGENT`` (delegated / hybrid routing).
 _PROFILE_KEYS = frozenset({"default", "vlm", "agent", "coding"})
 
@@ -77,10 +77,9 @@ def _model_for_profile(profile: str) -> str:
     return (config.AGENT_MODEL_PROFILE_DEFAULT or "").strip()
 
 
-def ollama_model_for_profile(profile: str) -> str:
-    """Ollama model id for ``default`` / ``vlm`` / ``agent`` / ``coding`` (env ``AGENT_MODEL_*``)."""
+def profile_default_model_id(profile: str) -> str:
+    """Default model id for ``default`` / ``vlm`` / ``agent`` / ``coding`` (env ``AGENT_MODEL_*``)."""
     return _model_for_profile(_normalize_profile(profile))
-
 
 def _strip_model(s: Any) -> str | None:
     if s is None:
@@ -112,7 +111,7 @@ def resolve_effective_model(
     bearer_user_role: str | None,
 ) -> tuple[str, str, str, bool]:
     """
-    Pick the logical model id for this chat completion (Ollama id when primary is local;
+    Pick the logical model id for this chat completion (catalog provider when primary is local;
     same string is reused for OpenAI-style overrides when primary is external).
 
     Returns ``(model_id, reason, profile_key, is_override)`` where ``profile_key`` is
@@ -138,7 +137,7 @@ def resolve_effective_model(
             f" (body.model token)" if body_tok and not hdr else ""
         )
 
-    # Text-only overrides (e.g. lfm2.5-thinking) cannot consume image_url parts — Ollama 500s.
+    # Text-only overrides (e.g. lfm2.5-thinking) cannot consume image_url parts — local stack may error.
     if _override_allowed(bearer_user_role) and not auto_vlm:
         oh = _strip_model(override_header)
         bm = _strip_model(body_model)

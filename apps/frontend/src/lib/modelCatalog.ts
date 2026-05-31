@@ -57,7 +57,10 @@ export function providerDisplayLabel(
   if (!key) return "unknown";
   const label = agentlayer?.[key]?.label?.trim();
   if (label) return label;
-  if (key.startsWith("external_")) return `Endpoint ${key.replace("external_", "")}`;
+  const adminMatch = /^provider_(\d+)$/.exec(key);
+  if (adminMatch && Number(adminMatch[1]) > 32) {
+    return `Admin provider ${Number(adminMatch[1]) - 32}`;
+  }
   return key.replace(/_/g, " ");
 }
 

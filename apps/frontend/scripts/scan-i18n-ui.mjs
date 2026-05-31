@@ -29,7 +29,7 @@ const LINE_ALLOW = [
   /scheduler_jobs/,
   /google_calendar|calendar_ics/,
   /tenants\.id/,
-  /ollama|external/,
+  /provider_admin|provider/,
   /value="user"|value="admin"/,
   /Implement the agreed plan/,
   /wsUrl\(/,

@@ -47,6 +47,6 @@ def test_finalize_resolves_profile_via_endpoint() -> None:
 
 
 def test_catalog_llm_body_extras_returns_model_and_provider() -> None:
-    with patch.object(mod, "finalize_catalog_chat_llm", return_value=("m1", "ollama")):
-        out = mod.catalog_llm_body_extras(model="m1", catalog_owned_by="ollama")
-    assert out == {"model": "m1", "agent_model_catalog_owned_by": "ollama"}
+    with patch.object(mod, "finalize_catalog_chat_llm", return_value=("m1", "provider_1")):
+        out = mod.catalog_llm_body_extras(model="m1", catalog_owned_by="provider_1")
+    assert out == {"model": "m1", "agent_model_catalog_owned_by": "provider_1"}

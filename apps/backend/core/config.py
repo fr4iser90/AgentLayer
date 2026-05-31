@@ -124,7 +124,7 @@ DATA_DIR = os.environ.get("AGENT_DATA_DIR", "/data")
 TOOLS_BACKUP_ENABLED = _env_bool("AGENT_TOOLS_BACKUP_ENABLED", True)
 SYSTEM_PROMPT_EXTRA = os.environ.get("AGENT_SYSTEM_PROMPT", "").strip()
 
-# If Ollama returns no tool_calls but JSON tool intent in message content (e.g. Nemotron), parse and run.
+# If the local catalog provider returns no tool_calls but JSON tool intent in message content, parse and run.
 # Optional legacy: infer tool calls from assistant message text when the backend sends no wire-format
 # ``tool_calls``. Off by default — prefer models that emit native tool_calls.
 CONTENT_TOOL_FALLBACK = _env_bool("AGENT_CONTENT_TOOL_FALLBACK", False)
@@ -133,7 +133,7 @@ CONTENT_TOOL_FALLBACK = _env_bool("AGENT_CONTENT_TOOL_FALLBACK", False)
 # sent, retry once with tool_choice=required (OpenAI-compatible). Later rounds are not retried.
 AGENT_TOOL_CHOICE_REQUIRED_RETRY = _env_bool("AGENT_TOOL_CHOICE_REQUIRED_RETRY", True)
 
-# Per Ollama round: INFO log reply type (TOOLS vs TEXT), context size, optional assistant preview (redacted).
+# Per LLM round: INFO log reply type (TOOLS vs TEXT), context size, optional assistant preview (redacted).
 AGENT_LOG_LLM_ROUNDS = _env_bool("AGENT_LOG_LLM_ROUNDS", True)
 AGENT_LOG_ASSISTANT_PREVIEW_CHARS = _env_int("AGENT_LOG_ASSISTANT_PREVIEW_CHARS", 0)
 AGENT_LOG_LARGE_CONTEXT_CHARS = _env_int("AGENT_LOG_LARGE_CONTEXT_CHARS", 120_000)
@@ -144,7 +144,7 @@ AGENT_LOG_TOOL_PIPELINE = _env_bool("AGENT_LOG_TOOL_PIPELINE", True)
 # Repeat full tools[] name list on every llm_round log (noisy; default off).
 AGENT_LOG_TOOL_NAMES_EACH_ROUND = _env_bool("AGENT_LOG_TOOL_NAMES_EACH_ROUND", False)
 
-# --- Tool list sent to Ollama (merged registry tools; no per-request "agent tool mode") ---
+# --- Tool list sent to the chat provider (merged registry tools; no per-request "agent tool mode") ---
 # After a tool returns text that looks like an HTTP client/API error, inject a short system hint
 # so the model can read_tool / search_web / replace_tool without the user (see TOOLS.md).
 AGENT_TOOL_HTTP_ERROR_RECOVERY_HINTS = _env_bool(
@@ -423,7 +423,7 @@ CREATE_TOOL_CODEGEN_MODEL = (os.environ.get("AGENT_CREATE_TOOL_CODEGEN_MODEL") o
 CREATE_TOOL_CODEGEN_TIMEOUT = _env_int("AGENT_CREATE_TOOL_CODEGEN_TIMEOUT", 120)
 # Codegen prompt: allow httpx/urllib HTTP (keys only via os.environ — set in compose .env).
 CREATE_TOOL_CODEGEN_ALLOW_NETWORK = _env_bool("AGENT_CREATE_TOOL_CODEGEN_ALLOW_NETWORK", False)
-# Codegen: max Ollama attempts (validate + write + reload + test_tool probe). 1 = no retry; cap 20.
+# Codegen: max catalog LLM attempts (validate + write + reload + test_tool probe). 1 = no retry; cap 20.
 CREATE_TOOL_CODEGEN_MAX_ATTEMPTS = max(
     1, min(_env_int("AGENT_CREATE_TOOL_CODEGEN_MAX_ATTEMPTS", 1), 20)
 )

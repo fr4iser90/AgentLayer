@@ -44,22 +44,31 @@ Structured JSON (validated schema), e.g.:
 
 ```yaml
 communication:
-  directness: high          # low | medium | high
+  directness: high
   detail_level: medium
   ask_before_major_changes: true
 engineering:
   security_first: true
   prefer_tests: true
   prefer_refactoring: false
+  primary_goal: stability
+  priorities: [security, stability, maintainability, speed]
 autonomy:
   can_fix_minor_issues: true
   can_merge_prs: false
   can_force_push: false
-goals:                      # stable intent, not mimicry
+decisioning:
+  risk_tolerance: low
+escalation:
+  ask_on_production_changes: true
+  ask_on_database_migrations: true
+  ask_on_security_findings: false
+goals:
   - keep projects stable
   - reduce manual toil
-  - avoid security regressions
 ```
+
+Defaults: `DEFAULT_USER_DELEGATE_CONFIG` / `DEFAULT_WORKSPACE_DELEGATE_CONFIG` in `delegate_config_schema.py` (workspace scope: `risk_tolerance` defaults to `medium`).
 
 Optional free-text `notes` (short, capped).
 
@@ -98,39 +107,39 @@ Each auto-respond / delegated execution: trigger, merged config snapshot hash, d
 
 ### P0.1 Database
 
-- [ ] Migration `schema_065_user_delegate` (or next free id):
-  - [ ] `user_delegate` (`user_id`, `tenant_id`, `config JSONB`, `notes TEXT`, `updated_at`)
-  - [ ] `workspace_delegate` (`workspace_id`, `tenant_id`, `config JSONB`, `updated_at`)
-  - [ ] Unique constraints + FK to `users` / `project_workspaces`
-- [ ] JSON schema validation module `apps/backend/domain/delegate_config_schema.py` (max sizes, allowed keys)
-- [ ] Caps: total serialized config ≤ 8 KiB global, ≤ 4 KiB workspace (tunable)
+- [x] Migration `schema_067_user_delegate`:
+  - [x] `user_delegate` (`user_id`, `tenant_id`, `config JSONB`, `notes TEXT`, `updated_at`)
+  - [x] `workspace_delegate` (`workspace_id`, `tenant_id`, `config JSONB`, `updated_at`)
+  - [x] Unique constraints + FK to `users` / `project_workspaces`
+- [x] JSON schema validation module `apps/backend/domain/delegate_config_schema.py` (max sizes, allowed keys)
+- [x] Caps: total serialized config ≤ 8 KiB global, ≤ 4 KiB workspace (tunable)
 
 ### P0.2 Backend store + API
 
-- [ ] `apps/backend/infrastructure/user_delegate_store.py` — get/upsert
-- [ ] `apps/backend/infrastructure/workspace_delegate_store.py` — get/upsert (workspace access check)
-- [ ] `GET` / `PUT` `/v1/user/delegate`
-- [ ] `GET` / `PUT` `/v1/workspaces/{workspace_id}/delegate`
-- [ ] Merge helper `build_delegate_context(*, user_id, workspace_id) -> str` for system blocks (goals + autonomy + engineering only; no observations)
+- [x] `apps/backend/infrastructure/user_delegate_store.py` — get/upsert
+- [x] `apps/backend/infrastructure/workspace_delegate_store.py` — get/upsert (workspace access check)
+- [x] `GET` / `PUT` `/v1/user/delegate`
+- [x] `GET` / `PUT` `/v1/workspaces/{workspace_id}/delegate`
+- [x] Merge helper `build_delegate_context_block()` in `delegate_merge.py`
 
 ### P0.3 Settings UI
 
-- [ ] New settings page **Stellvertreter** / **Delegate** (`apps/frontend/src/pages/settings/DelegateSettings.tsx`)
-- [ ] Structured form (communication / engineering / autonomy / goals) — not one giant textarea
-- [ ] Link from existing Agent settings clarifying: *Persona = how the agent talks; Delegate = who may decide for you*
-- [ ] i18n: `apps/frontend/src/locales/{de,en}/delegate.json`
-- [ ] Workspace delegate editor (workspace detail or Coding header) — load/save `/v1/workspaces/{id}/delegate`
+- [x] New settings page **Stellvertreter** / **Delegate** (`DelegateSettings.tsx`)
+- [x] Structured form (communication / engineering / autonomy / goals)
+- [x] Link from Agent settings (*Persona vs Delegate*)
+- [x] i18n in `locales/{de,en}/settings.json`
+- [x] Workspace delegate editor (workspace picker on delegate page)
 
 ### P0.4 Documentation
 
 - [x] ADR 0007
 - [x] This roadmap
-- [ ] `docs/features/user-delegate.md` (user-facing, after P0 API stable)
+- [x] `docs/features/user-delegate.md` (user-facing stub; expand with Auto-Respond in P1)
 
 ### P0.5 Tests
 
-- [ ] `tests/test_user_delegate_api.py` — CRUD, validation, 403 foreign workspace
-- [ ] `tests/test_delegate_merge.py` — global + workspace override rules
+- [ ] `tests/test_user_delegate_api.py` — CRUD, validation, 403 foreign workspace (integration)
+- [x] `tests/test_user_delegate.py` — validation + merge rules
 
 ---
 

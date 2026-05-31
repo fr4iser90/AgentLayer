@@ -18,15 +18,15 @@ def test_schedule_llm_uses_coding_profile_token() -> None:
 def test_schedule_llm_workflow_explicit_provider() -> None:
     fields, _ = mod._schedule_llm_body_fields(
         {
-            "model_catalog_owned_by": "ollama",
+            "model_catalog_owned_by": "provider_1",
             "model": "llama3.2",
         }
     )
-    assert fields["agent_model_catalog_owned_by"] == "ollama"
+    assert fields["agent_model_catalog_owned_by"] == "provider_1"
     assert fields["model"] == "llama3.2"
 
 
-def test_pick_provider_prefers_reachable_llama_cpp() -> None:
+def test_pick_provider_prefers_first_reachable_in_order() -> None:
     with (
         patch.object(mod, "_provider_configured", return_value=True),
         patch(
@@ -35,15 +35,15 @@ def test_pick_provider_prefers_reachable_llama_cpp() -> None:
                 [],
                 {
                     "llama_cpp": {"reachable": True},
-                    "ollama": {"reachable": True},
+                    "provider_1": {"reachable": True},
                 },
             ),
         ),
     ):
-        assert mod._pick_schedule_catalog_provider() == "llama_cpp"
+        assert mod._pick_schedule_catalog_provider() == "provider_1"
 
 
-def test_pick_provider_uses_ollama_when_only_ollama_reachable() -> None:
+def test_pick_provider_uses_provider_1_when_only_provider_1_reachable() -> None:
     with (
         patch.object(mod, "_provider_configured", return_value=True),
         patch(
@@ -52,15 +52,15 @@ def test_pick_provider_uses_ollama_when_only_ollama_reachable() -> None:
                 [],
                 {
                     "llama_cpp": {"reachable": False},
-                    "ollama": {"reachable": True},
+                    "provider_1": {"reachable": True},
                 },
             ),
         ),
     ):
-        assert mod._pick_schedule_catalog_provider() == "ollama"
+        assert mod._pick_schedule_catalog_provider() == "provider_1"
 
 
 def test_pick_provider_env_override(monkeypatch) -> None:
-    monkeypatch.setenv("AGENT_SCHEDULE_LLM_PROVIDER", "ollama")
+    monkeypatch.setenv("AGENT_SCHEDULE_LLM_PROVIDER", "provider_1")
     with patch.object(mod, "_provider_configured", return_value=True):
-        assert mod._pick_schedule_catalog_provider() == "ollama"
+        assert mod._pick_schedule_catalog_provider() == "provider_1"

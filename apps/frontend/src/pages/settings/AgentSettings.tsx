@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
@@ -164,6 +165,13 @@ export function AgentSettings() {
         <h1 className="text-lg font-semibold text-white">{t("settings:agentTitle")}</h1>
         <p className="mt-2 text-sm text-surface-muted">
           {t("settings:agentIntro")}
+        </p>
+        <p className="mt-2 text-xs text-surface-muted">
+          <Link to="/settings/delegate" className="text-indigo-300 hover:underline">
+            {t("settings:delegateNav")}
+          </Link>
+          {" — "}
+          {t("settings:delegateSubtitle")}
         </p>
       </div>
 

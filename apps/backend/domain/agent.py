@@ -47,7 +47,7 @@ from apps.backend.domain.tool_invocation_context import (
     set_tool_invocation_messages,
 )
 from apps.backend.domain.llm_smart_route import decide_smart_backend
-from apps.backend.domain.model_routing import ollama_model_for_profile, resolve_effective_model
+from apps.backend.domain.model_routing import profile_default_model_id, resolve_effective_model
 from apps.backend.domain.user_persona import _append_system_block, apply_user_persona_system
 from apps.backend.infrastructure.operator_settings import (
     external_llm_should_failover,
@@ -1561,8 +1561,8 @@ def _agent_tool_thrash_tick(
     return key, n, None, False
 
 
-# Client-only keys: never forward to Ollama (not in upstream Chat Completions request schema).
-_BODY_KEYS_STRIP_FROM_OLLAMA = frozenset(
+# Client-only keys: never forward to the upstream chat API.
+_BODY_KEYS_STRIP_FROM_LLM = frozenset(
     {
         "tool_prefetch",
         "agent_router_categories",
@@ -2059,7 +2059,7 @@ def _tool_spec_name(entry: Any) -> str | None:
 
 def _merge_tools(body_tools: list[Any] | None) -> list[Any]:
     """
-    Always merge the live registry tool list into the request for Ollama.
+    Always merge the live registry tool list into the request for the local catalog provider.
 
     Open WebUI often sends its own non-empty ``tools`` list; previously that
     replaced our list entirely so the model never saw agent-layer tools.
@@ -3144,7 +3144,7 @@ async def _async_iter_chat_completion_sse(
 ) -> AsyncIterator[bytes]:
     """
     OpenAI-compatible POST with ``stream: true``; yield raw response bytes (typically SSE) from the first
-    successful endpoint, with the same external failover / Ollama 429 fallback behaviour as blocking calls.
+    successful endpoint, with the same external failover / local 429 fallback behaviour as blocking calls.
     """
     attempts_local = list(attempts_seq)
     lb = llm_backend
@@ -3163,7 +3163,7 @@ async def _async_iter_chat_completion_sse(
                     async with client.stream("POST", b_url, json=pl, headers=h) as resp:
                         if resp.status_code >= 400:
                             err_body = (await resp.aread()).decode("utf-8", errors="replace")
-                            if lb == "external" and external_llm_should_failover(resp.status_code):
+                            if lb == "provider_admin" and external_llm_should_failover(resp.status_code):
                                 logger.warning(
                                     "LLM stream: external status=%s; trying next endpoint url=%s",
                                     resp.status_code,
@@ -3200,17 +3200,17 @@ async def _async_iter_chat_completion_sse(
             raise last_trans
         if last_http is not None:
             st, txt, url = last_http
-            if st == 429 and lb == "external":
-                local_model = ollama_model_for_profile(outer_profile)
+            if st == 429 and lb == "provider_admin":
+                local_model = profile_default_model_id(outer_profile)
                 attempts_local, lb = llm_chat_transport(
                     local_model,
                     outer_profile,
                     False,
-                    backend_override="local",
+                    backend_override="provider",
                     catalog_owned_by=None,
                 )
                 logger.warning(
-                    "LLM stream: external 429; falling back to Ollama llm_model_id=%s",
+                    "LLM stream: external 429; falling back to local catalog provider llm_model_id=%s",
                     local_model,
                 )
                 continue
@@ -3707,15 +3707,15 @@ async def chat_completion(
         if catalog_owned_by:
             tool_context["parent_model_catalog_owned_by"] = catalog_owned_by
         smart_route_reason = ""
-        backend_override: Literal["local", "external"] | None = None
+        backend_override: Literal["provider", "provider_admin"] | None = None
         if isinstance(_raw_llm_be, str):
             lo = _raw_llm_be.strip().lower()
-            if lo == "local":
-                backend_override = "local"
-            elif lo == "external":
-                backend_override = "external"
+            if lo in ("provider",):
+                backend_override = "provider"
+            elif lo == "provider_admin":
+                backend_override = "provider_admin"
         if backend_override is None and not plain_completion and smart_llm_routing_enabled():
-            # Smart routing: 0–1 extra local router call (Ollama), then one main completion — never two externals.
+            # Smart routing: 0–1 extra local router call, then one main completion — never two externals.
             bo, smart_route_reason = await asyncio.to_thread(decide_smart_backend, messages)
             backend_override = bo
             logger.info("smart LLM route: %s -> backend=%s", smart_route_reason, bo)
@@ -3731,7 +3731,7 @@ async def chat_completion(
 
         if plain_completion:
             merged_tools: list[Any] = []
-            logger.debug("chat_completion: agent_plain_completion (no tools forwarded to Ollama)")
+            logger.debug("chat_completion: agent_plain_completion (no tools forwarded to local provider)")
         else:
             merged_tools = _merge_tools(body.get("tools"))
         routed_category: str | None = None
@@ -3956,7 +3956,7 @@ async def chat_completion(
         options = {
             k: v
             for k, v in body.items()
-            if k not in ("messages", "model", "tools", "stream", *_BODY_KEYS_STRIP_FROM_OLLAMA)
+            if k not in ("messages", "model", "tools", "stream", *_BODY_KEYS_STRIP_FROM_LLM)
         }
 
         if (
@@ -4298,7 +4298,7 @@ async def chat_completion(
                     except httpx.HTTPStatusError as e:
                         last_failover = e
                         sc = e.response.status_code
-                        if llm_backend == "external" and external_llm_should_failover(sc):
+                        if llm_backend == "provider_admin" and external_llm_should_failover(sc):
                             logger.warning(
                                 "LLM external attempt failed (status=%s); trying next endpoint",
                                 sc,
@@ -4321,21 +4321,21 @@ async def chat_completion(
                             last_failover.response.text, max_len=600
                         )
                         if (
-                            llm_backend == "external"
+                            llm_backend == "provider_admin"
                             and last_failover.response.status_code == 429
                         ):
-                            local_model = ollama_model_for_profile(profile_key)
+                            local_model = profile_default_model_id(profile_key)
                             attempts, llm_backend = llm_chat_transport(
                                 local_model,
                                 profile_key,
                                 False,
-                                backend_override="local",
+                                backend_override="provider",
                                 catalog_owned_by=None,
                             )
                             model = local_model
                             logger.warning(
                                 "LLM external: all endpoints returned 429 (quota/rate limit); "
-                                "falling back to Ollama for this request (llm_model_id=%s). Next rounds use Ollama.",
+                                "falling back to local catalog provider for this request (llm_model_id=%s). Next rounds use local.",
                                 local_model,
                             )
                             continue
@@ -4411,7 +4411,7 @@ async def chat_completion(
                 except httpx.HTTPStatusError as e:
                     if e.response.status_code in (400, 422):
                         logger.warning(
-                            "Ollama rejected tool_choice=required (status=%s); keeping first completion. body~=%s",
+                            "Local provider rejected tool_choice=required (status=%s); keeping first completion. body~=%s",
                             e.response.status_code,
                             _redact_provider_error_text_for_log(e.response.text, max_len=320),
                         )

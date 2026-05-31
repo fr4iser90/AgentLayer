@@ -3,8 +3,10 @@ Unified OpenAI-compatible LLM catalog providers.
 
 Every chat stack is a :class:`CatalogProviderSpec` with the same fetch + route logic. Configure via:
 
-- **Env bootstrap**: ``LLM_PROVIDER_1_BASE_URL``, ``LLM_PROVIDER_2_*``, … (``provider_1``, ``provider_2``, …), or
-- **Admin → Interfaces → LLM-Endpoints** (``external_1``, ``external_2``, … in DB).
+- **Env**: ``LLM_PROVIDER_1_BASE_URL``, ``LLM_PROVIDER_2_*``, … → ``provider_1``, ``provider_2``, …
+- **Admin → Interfaces → LLM-Endpoints** → ``provider_33``, ``provider_34``, … (``32 + db_row_id``)
+
+Special id ``provider_failover`` tries all enabled admin endpoints in order.
 
 No per-vendor Python modules. Pick provider + model in the UI → ``agent_model_catalog_owned_by``.
 """
@@ -20,14 +22,17 @@ from typing import Any, Literal
 import httpx
 
 from apps.backend.infrastructure.db import db
-from apps.backend.infrastructure.llm_env_providers import EnvLlmProviderRow, parse_llm_env_providers
+from apps.backend.infrastructure.llm_env_providers import (
+    LLM_ENV_PROVIDER_MAX,
+    EnvLlmProviderRow,
+    parse_llm_env_providers,
+)
 
 logger = logging.getLogger(__name__)
 
-LlmStack = Literal["external"]
+LlmStack = Literal["provider_env", "provider_admin"]
 
-_EXTERNAL_LEGACY_ID = "external"
-_EXTERNAL_PREFIX = "external_"
+PROVIDER_FAILOVER_ID = "provider_failover"
 
 _HDR_NAME_TOKEN = re.compile(r"^[!#$%&'*+.0-9A-Z^_`a-z|~-]{1,128}\Z")
 
@@ -52,29 +57,30 @@ class CatalogProviderSpec:
     db_endpoint_id: int | None = None
 
 
+def db_catalog_provider_id(endpoint_id: int) -> str:
+    """Stable catalog id for an admin DB endpoint row (env slots use ``provider_1`` … ``provider_32``)."""
+    return f"provider_{LLM_ENV_PROVIDER_MAX + int(endpoint_id)}"
+
+
+def parse_db_catalog_provider_id(provider_id: str) -> int | None:
+    pid = (provider_id or "").strip().lower()
+    if not pid.startswith("provider_"):
+        return None
+    suffix = pid[len("provider_") :]
+    if not suffix.isdigit():
+        return None
+    slot = int(suffix)
+    if slot <= LLM_ENV_PROVIDER_MAX:
+        return None
+    return slot - LLM_ENV_PROVIDER_MAX
+
+
 def normalize_catalog_provider_id(raw: Any) -> str | None:
     if raw is None:
         return None
     s = str(raw).strip().lower()
     t = "".join(c for c in s if c.isalnum() or c in "_-")[:64]
-    if not t:
-        return None
-    if t == "llamacpp":
-        t = "llama_cpp"
-    return t
-
-
-def external_provider_id(endpoint_id: int) -> str:
-    return f"{_EXTERNAL_PREFIX}{int(endpoint_id)}"
-
-
-def parse_external_provider_id(provider_id: str) -> int | None:
-    if not provider_id.startswith(_EXTERNAL_PREFIX):
-        return None
-    suffix = provider_id[len(_EXTERNAL_PREFIX) :]
-    if suffix.isdigit():
-        return int(suffix)
-    return None
+    return t or None
 
 
 def merge_model_catalog_rows(*row_lists: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -228,7 +234,7 @@ def _db_endpoint_spec(row: dict[str, Any]) -> CatalogProviderSpec:
     bu = normalize_external_llm_base_url(_strip_opt(row.get("base_url"))) or ""
     header = _strip_opt(row.get("api_header_name")) or "Authorization"
     return CatalogProviderSpec(
-        provider_id=external_provider_id(eid),
+        provider_id=db_catalog_provider_id(eid),
         label=(_strip_opt(row.get("label")) or f"LLM #{eid}")[:128],
         base_url=bu,
         api_key=_strip_opt(row.get("api_key")) or "",
@@ -396,16 +402,16 @@ def route_chat_by_catalog_provider(
     if not pid:
         raise ValueError("Invalid catalog provider id.")
 
-    if pid == _EXTERNAL_LEGACY_ID:
-        from apps.backend.infrastructure.operator_settings import _external_llm_chat_attempts
+    if pid == PROVIDER_FAILOVER_ID:
+        from apps.backend.infrastructure.operator_settings import _admin_llm_chat_attempts
 
-        attempts = _external_llm_chat_attempts(profile_key, is_override, model_from_resolution)
+        attempts = _admin_llm_chat_attempts(profile_key, is_override, model_from_resolution)
         if not attempts:
             raise ValueError(
-                "Legacy provider id 'external' has no LLM endpoints — use external_N from the catalog "
-                "or add endpoints in Admin → Interfaces."
+                "provider_failover has no admin LLM endpoints — add endpoints under Admin → Interfaces "
+                "or pick a specific provider id (provider_33, …)."
             )
-        return attempts, "external"
+        return attempts, "provider_admin"
 
     spec = get_provider_spec(pid)
     if spec is None:
@@ -430,7 +436,8 @@ def route_chat_by_catalog_provider(
         chat_url,
         model,
     )
-    return [(chat_url, headers, model)], "external"
+    stack: LlmStack = "provider_admin" if spec.source == "db" else "provider_env"
+    return [(chat_url, headers, model)], stack
 
 
 def first_env_provider_id() -> str | None:
@@ -438,12 +445,11 @@ def first_env_provider_id() -> str | None:
     return rows[0].provider_id if rows else None
 
 
-def first_db_external_provider_id() -> str | None:
+def first_admin_provider_id() -> str | None:
     for row in db.external_llm_endpoints_list_all():
         if _strip_opt(row.get("base_url")):
-            return external_provider_id(int(row["id"]))
+            return db_catalog_provider_id(int(row["id"]))
     return None
-
 
 def invalidate_provider_specs_cache() -> None:
     global _SPECS_CACHE

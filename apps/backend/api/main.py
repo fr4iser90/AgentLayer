@@ -1,4 +1,4 @@
-"""OpenAI-compatible HTTP API: proxies to Ollama and executes local tools."""
+"""OpenAI-compatible HTTP API: catalog LLM providers and local tools."""
 
 from __future__ import annotations
 
@@ -94,6 +94,7 @@ from apps.backend.api.rag_api import router as rag_router
 from apps.backend.api.codebase_api import router as codebase_router
 from apps.backend.domain.plugin_system.registry import get_registry
 from apps.backend.infrastructure.user_data_api import router as user_data_router
+from apps.backend.infrastructure.delegate_api import router as delegate_router
 from apps.backend.infrastructure.memory_api import router as memory_router
 from apps.backend.infrastructure.user_secrets_api import router as user_secrets_router
 from apps.backend.api.conversations_api import router as conversations_router
@@ -287,6 +288,7 @@ app.include_router(user_secrets_router)
 app.include_router(conversations_router)
 app.include_router(dashboard_router)
 app.include_router(user_data_router)
+app.include_router(delegate_router)
 app.include_router(memory_router)
 app.include_router(tools_router)
 app.include_router(rag_router)
@@ -954,20 +956,20 @@ def health():
 
 
 def merge_model_catalog_rows(
-    ollama_rows: list[dict[str, Any]],
+    env_provider_rows: list[dict[str, Any]],
     llama_cpp_rows: list[dict[str, Any]],
     *more: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     """Re-export: dedupe by ``(owned_by, id)``; same id on different providers stays separate."""
     from apps.backend.infrastructure.model_catalog_providers import merge_model_catalog_rows as _merge
 
-    return _merge(ollama_rows, llama_cpp_rows, *more)
+    return _merge(env_provider_rows, llama_cpp_rows, *more)
 
 
 @app.get("/v1/models")
 async def models_proxy():
     """
-    OpenAI-style model list: all catalog providers (Ollama, llama.cpp, each external LLM endpoint).
+    OpenAI-style model list: all catalog providers (``provider_1``, ``provider_2``, external endpoints, …).
 
     One provider failing does not remove rows from others. ``agentlayer`` keys match row ``owned_by``.
     """

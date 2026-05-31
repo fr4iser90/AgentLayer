@@ -113,8 +113,8 @@ export function AdminInterfacesAutomationSection() {
           onChange={(e) => s.setSchedulerLlmBackend(e.target.value)}
         >
           <option value="inherit">{t("admin:ifAutoLlmInherit")}</option>
-          <option value="ollama">ollama</option>
-          <option value="external">external</option>
+          <option value="provider">{t("admin:ifAutoLlmProvider")}</option>
+          <option value="provider_admin">{t("admin:ifAutoLlmProviderAdmin")}</option>
         </select>
         <label className="mt-4 block text-xs text-surface-muted" htmlFor="hb-tools">
           {t("admin:ifAutoToolsMode")}

@@ -8,6 +8,7 @@ import pytest
 
 from apps.backend.infrastructure.model_catalog_providers import (
     CatalogProviderSpec,
+    db_catalog_provider_id,
     merge_model_catalog_rows,
     route_chat_by_catalog_provider,
 )
@@ -32,7 +33,7 @@ def test_route_env_provider_spec() -> None:
             "default",
             is_override=True,
         )
-    assert stack == "external"
+    assert stack == "provider_env"
     assert len(attempts) == 1
     url, headers, model = attempts[0]
     assert url.endswith("/v1/chat/completions")
@@ -40,9 +41,9 @@ def test_route_env_provider_spec() -> None:
     assert "Content-Type" in headers
 
 
-def test_route_external_n_spec() -> None:
+def test_route_admin_provider_spec() -> None:
     spec = CatalogProviderSpec(
-        provider_id="external_7",
+        provider_id=db_catalog_provider_id(7),
         label="OpenAI proxy",
         base_url="https://api.example.com/v1",
         api_key="sk-test",
@@ -56,12 +57,12 @@ def test_route_external_n_spec() -> None:
         return_value=spec,
     ):
         attempts, stack = route_chat_by_catalog_provider(
-            "external_7",
+            db_catalog_provider_id(7),
             "",
             "default",
             is_override=False,
         )
-    assert stack == "external"
+    assert stack == "provider_admin"
     assert attempts[0][2] == "gpt-4o-mini"
 
 

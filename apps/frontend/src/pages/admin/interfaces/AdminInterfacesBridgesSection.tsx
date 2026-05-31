@@ -63,14 +63,14 @@ export function AdminInterfacesBridgesSection() {
           placeholder={t("admin:messagePrefixPlaceholder")}
         />
         <label className="mt-3 block text-xs text-surface-muted" htmlFor="model">
-          {t("admin:ollamaModelIdLabel")}
+          {t("admin:catalogModelIdLabel")}
         </label>
         <input
           id="model"
           className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
           value={s.chatModel}
           onChange={(e) => s.setChatModel(e.target.value)}
-          placeholder={t("admin:ollamaModelIdPlaceholder")}
+          placeholder={t("admin:catalogModelIdPlaceholder")}
         />
         <button
           type="button"
@@ -136,14 +136,14 @@ export function AdminInterfacesBridgesSection() {
           placeholder={t("admin:messagePrefixPlaceholder")}
         />
         <label className="mt-3 block text-xs text-surface-muted" htmlFor="tg-model">
-          {t("admin:ollamaModelIdLabel")}
+          {t("admin:catalogModelIdLabel")}
         </label>
         <input
           id="tg-model"
           className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
           value={s.tgChatModel}
           onChange={(e) => s.setTgChatModel(e.target.value)}
-          placeholder={t("admin:ollamaModelIdPlaceholder")}
+          placeholder={t("admin:catalogModelIdPlaceholder")}
         />
         <button
           type="button"

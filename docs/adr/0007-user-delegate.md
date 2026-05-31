@@ -80,14 +80,18 @@ Store validated JSON on:
 Recommended top-level keys:
 
 ```yaml
-communication:   # how much to explain, not literary style
-engineering:     # security_first, prefer_tests, …
-autonomy:        # can_merge_prs, can_force_push, can_fix_minor_issues, …
+communication:   # directness, detail_level, ask_before_major_changes
+engineering:     # security_first, prefer_tests, primary_goal, priorities
+autonomy:        # can_merge_prs, can_force_push, can_fix_minor_issues
+decisioning:     # risk_tolerance: low | medium | high
+escalation:      # ask_on_production_changes, ask_on_database_migrations, ask_on_security_findings
 goals:           # stable intent list (strings)
-notes:           # optional short free text (capped)
+notes:           # optional short free text on user_delegate row only (capped)
 ```
 
-**Merge rule:** For the same key path, **workspace overrides global**. Inject merged **goals + engineering + autonomy** into delegate decision and (optionally) unattended agent system blocks — not the entire raw chat history into persona storage.
+Constants: `DEFAULT_USER_DELEGATE_CONFIG`, `DEFAULT_WORKSPACE_DELEGATE_CONFIG` (`delegate_config_schema.py`).
+
+**Merge rule:** For the same key path, **workspace overrides global**. Workspace **goals** and non-empty **priorities** replace global lists. Inject merged config into delegate decision blocks — not observations or chat history.
 
 Size caps (initial): ≤ 8 KiB global config, ≤ 4 KiB workspace config (serialized JSON).
 

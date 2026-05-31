@@ -21,7 +21,7 @@ def test_infer_ambiguous_returns_none() -> None:
     with patch.object(
         mcr,
         "build_model_provider_index",
-        return_value={"dup": ["ollama", "llama_cpp"]},
+        return_value={"dup": ["provider_1", "llama_cpp"]},
     ):
         mcr.invalidate_model_catalog_cache()
         assert mcr.infer_catalog_owned_by("dup") is None

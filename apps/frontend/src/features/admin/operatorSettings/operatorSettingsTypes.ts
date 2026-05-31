@@ -20,7 +20,7 @@ export type OperatorPublic = {
   dashboard_upload_effective_max_bytes?: number;
   dashboard_upload_effective_allowed_mime?: string[];
   llm_smart_routing_enabled?: boolean;
-  llm_router_ollama_model?: string;
+  llm_router_model?: string;
   llm_router_local_confidence_min?: number;
   llm_router_timeout_sec?: number;
   llm_route_long_prompt_chars?: number;

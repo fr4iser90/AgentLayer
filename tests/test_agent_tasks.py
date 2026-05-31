@@ -58,7 +58,7 @@ def test_delegate_passes_artifact_refs_to_subagent() -> None:
                 "artifact_refs": [aid],
                 "requirements": ["read-only"],
             },
-            context={"parent_effective_model": "m", "parent_model_catalog_owned_by": "ollama"},
+            context={"parent_effective_model": "m", "parent_model_catalog_owned_by": "provider_1"},
         )
     mock_run.assert_called_once()
     kw = mock_run.call_args.kwargs

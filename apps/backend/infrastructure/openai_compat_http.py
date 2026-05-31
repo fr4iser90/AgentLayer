@@ -1,6 +1,6 @@
 """Serialized HTTP helpers for **OpenAI-compatible** LLM endpoints.
 
-Used for ``/v1/chat/completions`` and related POST/GET regardless of vendor: **Ollama**,
+Used for ``/v1/chat/completions`` and related POST/GET regardless of vendor: **catalog providers**,
 **llama.cpp** (OpenAI server), operator-configured **external** APIs, etc.
 
 A single process-wide lock limits concurrent blocking HTTP (small GPUs / shared hosts).

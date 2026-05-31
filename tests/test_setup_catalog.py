@@ -28,24 +28,24 @@ def test_rank_chat_model_ids_prefers_chat_over_embed() -> None:
 
 def test_build_setup_catalog_splits_models() -> None:
     merged = [
-        {"id": "llama3", "owned_by": "ollama"},
-        {"id": "nomic-embed-text", "owned_by": "ollama"},
+        {"id": "llama3", "owned_by": "provider_1"},
+        {"id": "nomic-embed-text", "owned_by": "provider_1"},
     ]
     agentlayer = {
-        "ollama": {"reachable": True, "detail": None},
+        "provider_1": {"reachable": True, "detail": None},
         "embedding": {"reachable": False, "configured": True},
     }
     spec = MagicMock(
-        provider_id="ollama",
-        label="Ollama",
+        provider_id="provider_1",
+        label="provider_1",
         source="env",
-        base_url="http://ollama:11434",
+        base_url="http://host:11434",
         api_key=None,
     )
     with (
         patch.object(mod, "fetch_full_model_catalog", return_value=(merged, agentlayer)),
         patch.object(mod, "list_provider_specs", return_value=[spec]),
-        patch.object(mod, "pick_reachable_catalog_provider", return_value="ollama"),
+        patch.object(mod, "pick_reachable_catalog_provider", return_value="provider_1"),
     ):
         out = mod.build_setup_catalog()
     assert out["any_chat_reachable"] is True
@@ -94,9 +94,9 @@ def test_enrich_setup_embedding_meta_not_configured() -> None:
 
 def test_apply_setup_preferences_syncs_db() -> None:
     spec = MagicMock(
-        provider_id="ollama",
-        label="Ollama",
-        base_url="http://ollama:11434",
+        provider_id="provider_1",
+        label="provider_1",
+        base_url="http://host:11434",
         api_key="",
     )
     rows = [{"id": "llama3"}, {"id": "nomic-embed-text"}]
@@ -114,7 +114,7 @@ def test_apply_setup_preferences_syncs_db() -> None:
     ):
         out = mod.apply_setup_preferences(
             SetupPreferencesBody(
-                primary_provider_id="ollama",
+                primary_provider_id="provider_1",
                 model_agent="llama3",
                 model_coding="llama3",
                 model_default="llama3",
@@ -124,4 +124,4 @@ def test_apply_setup_preferences_syncs_db() -> None:
     sync.assert_called_once()
     row = sync.call_args[0][0][0]
     assert row["model_agent"] == "llama3"
-    assert row["base_url"] == "http://ollama:11434"
+    assert row["base_url"] == "http://host:11434"

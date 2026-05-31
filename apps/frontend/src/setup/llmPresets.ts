@@ -1,7 +1,7 @@
 /** OpenAI-compatible LLM endpoint presets for setup / admin (base URL + hints). */
 
 export type LlmPresetId =
-  | "ollama"
+  | "provider_1"
   | "llama_cpp"
   | "openai"
   | "openrouter"
@@ -25,14 +25,14 @@ export type LlmPresetConfig = {
 
 export const LLM_PRESETS: readonly LlmPresetConfig[] = [
   {
-    id: "ollama",
-    labelKey: "llmPresetOllamaLabel",
-    endpointLabel: "Ollama",
-    baseUrl: "http://ollama:11434",
-    modelPlaceholderKey: "llmPresetOllamaModelPlaceholder",
+    id: "provider_1",
+    labelKey: "llmPresetProvider1Label",
+    endpointLabel: "provider_1",
+    baseUrl: "",
+    modelPlaceholderKey: "llmPresetProvider1ModelPlaceholder",
     apiKeyRequired: false,
-    apiKeyHintKey: "llmPresetOllamaApiKeyHint",
-    helpKey: "llmPresetOllamaHelp",
+    apiKeyHintKey: "llmPresetProvider1ApiKeyHint",
+    helpKey: "llmPresetProvider1Help",
   },
   {
     id: "llama_cpp",
@@ -108,4 +108,4 @@ export function getLlmPreset(id: LlmPresetId): LlmPresetConfig {
   return PRESET_BY_ID[id] ?? PRESET_BY_ID.custom;
 }
 
-export const DEFAULT_LLM_PRESET: LlmPresetId = "ollama";
+export const DEFAULT_LLM_PRESET: LlmPresetId = "provider_1";

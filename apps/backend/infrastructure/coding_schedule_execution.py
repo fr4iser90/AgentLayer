@@ -79,7 +79,7 @@ def _provider_configured(provider_id: str) -> bool:
 
 def _pick_schedule_catalog_provider() -> str | None:
     """
-    Prefer a reachable coding stack for background jobs (llama.cpp before Ollama).
+    Prefer a reachable coding stack for background jobs (llama.cpp before env providers).
 
     Falls back to the first configured provider when health probes fail.
     Override with env ``AGENT_SCHEDULE_LLM_PROVIDER`` (e.g. ``provider_1``).
