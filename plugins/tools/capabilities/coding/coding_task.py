@@ -7,6 +7,7 @@ import uuid
 from typing import Any, Callable, cast
 
 from plugins.tools.capabilities.platform._embedded_subagent import run_embedded_subagent_sync
+from apps.backend.domain.delegate_enforcement import subagent_reject_reason
 
 __version__ = "1.0.0"
 TOOL_ID = "coding_task"
@@ -54,13 +55,19 @@ def coding_task(arguments: dict[str, Any], context: dict[str, Any] | None = None
                     block += "Original instructions:\n" + prev_p.strip() + "\n"
                 block += "\n---\nThis run (follow these now):\n"
                 prompt = (block + prompt).strip()
+        reject = subagent_reject_reason(
+            agent_id="coding_plan",
+            requirements=arguments.get("requirements"),
+        )
+        if reject:
+            return json.dumps({"ok": False, "error": reject}, ensure_ascii=False)
         return run_embedded_subagent_sync(
             subagent_agent_id="coding_plan",
             prompt=prompt,
             context=context,
             tool_name="coding_task",
             description=(arguments.get("description") or "Plan sub-agent").strip()[:200],
-            max_rounds=arguments.get("max_rounds"),
+            requirements=arguments.get("requirements"),
         )
 
     description = (arguments.get("description") or "").strip()
@@ -109,12 +116,20 @@ def coding_task(arguments: dict[str, Any], context: dict[str, Any] | None = None
     return json.dumps(
         {
             "ok": True,
+            "mode": "register_only",
+            "executed": False,
             "task_id": new_id,
             "description": description,
             "status": "pending",
+            "warning": (
+                "No sub-agent was started — this only registered a task id. "
+                "For real execution use agent_delegate with run_subagent=true "
+                "or coding_task with run_plan_subagent=true."
+            ),
             "detail": (
-                f"Task {new_id!r} registered. "
-                "Use run_plan_subagent=true or agent_delegate for a live sub-agent run."
+                f"Task {new_id!r} registered only (no code was run). "
+                "Use agent_delegate (run_subagent=true) for security_auditor/coding, "
+                "or coding_task with run_plan_subagent=true for read-only planning."
             ),
         },
         ensure_ascii=False,
@@ -149,10 +164,6 @@ TOOLS: list[dict[str, Any]] = [
                     "run_plan_subagent": {
                         "type": "boolean",
                         "description": "If true, run a bounded read-only coding_plan sub-agent (requires prompt).",
-                    },
-                    "max_rounds": {
-                        "type": "integer",
-                        "description": "Max tool rounds for plan subagent (1–8, default 4) when run_plan_subagent is true",
                     },
                 },
                 "required": ["description", "prompt"],

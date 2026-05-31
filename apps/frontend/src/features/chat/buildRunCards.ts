@@ -83,10 +83,11 @@ function findRunningSubagentCard(
 }
 
 function applySubagentStep(card: RunCard, e: AgentTimelineEntry): void {
-  if (!card.details.includes(e)) card.details.push(e);
+  // Done phases are lifecycle markers only; recentSteps holds the human-readable label once.
   if (e.stepPhase === "done") {
     return;
   }
+  if (!card.details.includes(e)) card.details.push(e);
   const label = e.text.trim();
   if (label) {
     card.currentStep = label;

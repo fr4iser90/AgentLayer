@@ -119,6 +119,11 @@ def coding_replace(arguments: dict[str, Any], context: dict | None = None) -> st
     )
 
 
+def tool_step_detail(arguments: dict[str, Any]) -> str:
+    path = str(arguments.get("path") or "").strip().replace("\\", "/")
+    return path.rsplit("/", 1)[-1] if path else ""
+
+
 HANDLERS: dict[str, Callable[[dict[str, Any]], str]] = {
     "coding_replace": coding_replace,
 }

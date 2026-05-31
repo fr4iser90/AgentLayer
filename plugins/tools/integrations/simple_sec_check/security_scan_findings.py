@@ -57,7 +57,6 @@ _FINDINGS_PARAMS = {
 
 
 def security_scan_findings(arguments: dict[str, Any], context: dict | None = None) -> str:
-    _ = context
     poll_path = str(arguments.get("poll_path") or arguments.get("findings_poll_path") or "").strip()
     scan_id = str(arguments.get("scan_id") or arguments.get("id") or "").strip()
     explicit_params = findings_query_params(arguments)
@@ -107,6 +106,17 @@ def security_scan_findings(arguments: dict[str, Any], context: dict | None = Non
             "run with offset or pagination.next_path; do not poll until scan completes."
         ]
 
+    artifact_fields = _findings_artifact_fields(context, sid, summary, findings, arguments)
+    guidance = agent_guidance_for_status(
+        None,
+        data=api_data,
+        findings=findings,
+        extra=pagination_hint or None,
+    )
+    extra = artifact_fields.pop("agent_guidance_extra", None)
+    if extra:
+        guidance = merge_agent_guidance(guidance, extra)
+
     return dump_ok(
         {
             "ok": True,
@@ -117,14 +127,55 @@ def security_scan_findings(arguments: dict[str, Any], context: dict | None = Non
             "summary": summary,
             "pagination": pagination,
             "response": data,
-            "agent_guidance": agent_guidance_for_status(
-                None,
-                data=api_data,
-                findings=findings,
-                extra=pagination_hint or None,
-            ),
+            "agent_guidance": guidance,
+            **artifact_fields,
         }
     )
+
+
+def _findings_artifact_fields(
+    context: dict | None,
+    scan_id: str | None,
+    summary: Any,
+    findings: list[dict[str, Any]],
+    arguments: dict[str, Any],
+) -> dict[str, Any]:
+    if not scan_id or not findings:
+        return {}
+    from apps.backend.domain.ssc_scan_artifact import maybe_persist_ssc_scan_artifact
+
+    sev = str(arguments.get("severity") or arguments.get("findings_severity") or "").strip()
+    artifact_id = maybe_persist_ssc_scan_artifact(
+        context,
+        scan_id=str(scan_id),
+        summary=summary,
+        findings=findings,
+        severity_filter=sev or None,
+    )
+    if not artifact_id:
+        return {}
+    return {
+        "artifact_id": artifact_id,
+        "agent_guidance_extra": [
+            f"Scan artifact persisted: artifact_id={artifact_id}. "
+            "Pass to agent_delegate artifact_refs when delegating fixes to coding."
+        ],
+    }
+
+
+def tool_step_detail(arguments: dict[str, Any]) -> str:
+    parts: list[str] = []
+    sid = str(arguments.get("scan_id") or "").strip()
+    if sid:
+        parts.append(f"scan_id={sid}")
+    sev = str(arguments.get("severity") or arguments.get("findings_severity") or "").strip()
+    if sev:
+        parts.append(f"severity={sev}")
+    if arguments.get("limit") is not None:
+        parts.append(f"limit={arguments.get('limit')}")
+    if arguments.get("offset") is not None:
+        parts.append(f"offset={arguments.get('offset')}")
+    return " ".join(parts)
 
 
 HANDLERS: dict[str, Callable[..., str]] = {

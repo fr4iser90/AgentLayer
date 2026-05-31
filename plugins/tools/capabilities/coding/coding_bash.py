@@ -224,6 +224,10 @@ def coding_bash(arguments: dict[str, Any], context: dict | None = None) -> str:
     return json.dumps(payload, ensure_ascii=False)
 
 
+def tool_step_detail(arguments: dict[str, Any]) -> str:
+    return str(arguments.get("command") or "").strip()
+
+
 HANDLERS: dict[str, Callable[[dict[str, Any]], str]] = {
     "coding_bash": coding_bash,
 }

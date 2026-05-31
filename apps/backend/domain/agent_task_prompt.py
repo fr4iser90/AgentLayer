@@ -34,8 +34,82 @@ def format_requirements_block(requirements: Any) -> str:
         lines = [str(x).strip() for x in requirements if str(x).strip()]
         if not lines:
             return ""
-        return "Requirements:\n" + "\n".join(f"- {ln}" for ln in lines)
+        mode_hints = _delegate_mode_hints_from_requirements(lines)
+        body = "Requirements:\n" + "\n".join(f"- {ln}" for ln in lines)
+        if mode_hints:
+            body = mode_hints + "\n\n" + body
+        return body
     return ""
+
+
+def parse_delegate_mode(requirements: Any) -> str | None:
+    if requirements is None:
+        return None
+    if isinstance(requirements, str):
+        requirements = [requirements]
+    if not isinstance(requirements, list):
+        return None
+    for ln in requirements:
+        low = str(ln).lower().strip()
+        if low.startswith("mode:"):
+            mode = low.split(":", 1)[1].strip()
+            return mode or None
+    return None
+
+
+_GIT_FORENSICS_PROMPT_SIGNALS = (
+    "git branch",
+    "git log",
+    "git status",
+    "diff_stat",
+    "commits on",
+    "check branch",
+    "verify branch",
+    "branch and commit",
+    "branch status",
+)
+
+
+def infer_plan_delegate_mode(prompt: str, requirements: Any = None) -> str | None:
+    mode = parse_delegate_mode(requirements)
+    if mode:
+        return mode
+    low = (prompt or "").lower()
+    if any(sig in low for sig in _GIT_FORENSICS_PROMPT_SIGNALS):
+        return "git_forensics"
+    return None
+
+
+_DELEGATE_MODE_HINTS: dict[str, str] = {
+    "git_forensics": (
+        "## Delegate mode: git_forensics\n"
+        "Workflow (strict order):\n"
+        "1. ``coding_git_read``: branch, status, log, **diff_stat**\n"
+        "2. ``coding_read_file`` on paths from diff_stat or the task\n"
+        "3. ``coding_search`` **only** with ``path_prefix`` set to a **changed file's directory** "
+        "(e.g. ``plugins/tools/capabilities/coding/`` — never ``apps``, ``plugins``, or ``scripts`` alone)\n"
+        "Do **not** use ``retrieve_context``, ``coding_semantic_search``, or repo-wide grep before step 1–2."
+    ),
+    "fix_from_artifact": (
+        "## Delegate mode: fix_from_artifact\n"
+        "Fix **only** paths from ``[Referenced artifacts]`` (``paths``, ``high_paths``, or ``findings[].path``).\n"
+        "Workflow: checkout the ``branch: …`` requirement when present → ``coding_read_file`` each path → "
+        "patch → commit → push **that** branch. Verify with ``coding_git_read`` log and re-read edited files "
+        "before finishing."
+    ),
+}
+
+
+def _delegate_mode_hints_from_requirements(lines: list[str]) -> str:
+    hints: list[str] = []
+    for ln in lines:
+        low = ln.lower().strip()
+        if low.startswith("mode:"):
+            mode = low.split(":", 1)[1].strip()
+            block = _DELEGATE_MODE_HINTS.get(mode)
+            if block and block not in hints:
+                hints.append(block)
+    return "\n\n".join(hints)
 
 
 def build_artifact_context_block(

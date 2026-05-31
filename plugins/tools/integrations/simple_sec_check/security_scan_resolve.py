@@ -12,6 +12,7 @@ from plugins.tools.integrations.simple_sec_check.ssc_common import (
     base_url,
     bool_arg,
     dump_ok,
+    merge_agent_guidance,
     normalize_findings,
     request,
     resolve_repo_url,
@@ -79,31 +80,52 @@ def security_scan_resolve(arguments: dict[str, Any], context: dict | None = None
     scan_id = api_data.get("scan_id") or api_data.get("id") if api_data else None
     defer = st in ("started", "scanning", "queued", "running", "pending")
     findings = normalize_findings(api_data) if st == "ready" else []
-    return dump_ok(
-        {
-            "ok": True,
-            "http_status": status_code,
-            "base_url": base_url(),
-            "repo_url": repo_url,
-            "branch": branch or None,
-            "status": st,
-            "scan_id": scan_id,
-            "defer": defer,
-            "end_run_recommended": defer,
-            "target_id": api_data.get("target_id") if api_data else None,
-            "commit_sha": api_data.get("commit_sha") if api_data else None,
-            "status_poll_path": api_data.get("status_poll_path") if api_data else None,
-            "findings_poll_path": api_data.get("findings_poll_path") if api_data else None,
-            "progress": api_data.get("progress") if api_data else None,
-            "summary": api_data.get("summary") if api_data else None,
-            "pagination": api_data.get("pagination") if api_data else None,
-            "findings": findings,
-            "response": data,
-            "agent_guidance": agent_guidance_for_status(
-                st, data=api_data, findings=findings
-            ),
-        }
-    )
+    payload: dict[str, Any] = {
+        "ok": True,
+        "http_status": status_code,
+        "base_url": base_url(),
+        "repo_url": repo_url,
+        "branch": branch or None,
+        "status": st,
+        "scan_id": scan_id,
+        "defer": defer,
+        "end_run_recommended": defer,
+        "target_id": api_data.get("target_id") if api_data else None,
+        "commit_sha": api_data.get("commit_sha") if api_data else None,
+        "status_poll_path": api_data.get("status_poll_path") if api_data else None,
+        "findings_poll_path": api_data.get("findings_poll_path") if api_data else None,
+        "progress": api_data.get("progress") if api_data else None,
+        "summary": api_data.get("summary") if api_data else None,
+        "pagination": api_data.get("pagination") if api_data else None,
+        "findings": findings,
+        "response": data,
+        "agent_guidance": agent_guidance_for_status(
+            st, data=api_data, findings=findings
+        ),
+    }
+    if st == "ready" and scan_id:
+        from apps.backend.domain.ssc_scan_artifact import maybe_persist_ssc_scan_artifact
+
+        sev = str(arguments.get("findings_severity") or arguments.get("severity") or "").strip()
+        artifact_id = maybe_persist_ssc_scan_artifact(
+            context,
+            scan_id=str(scan_id),
+            summary=payload.get("summary"),
+            findings=findings,
+            repo_url=repo_url,
+            branch=branch or None,
+            severity_filter=sev or None,
+        )
+        if artifact_id:
+            payload["artifact_id"] = artifact_id
+            payload["agent_guidance"] = merge_agent_guidance(
+                payload.get("agent_guidance") or [],
+                [
+                    f"Scan artifact persisted: artifact_id={artifact_id}. "
+                    "Parent should pass this to agent_delegate artifact_refs when delegating fixes to coding."
+                ],
+            )
+    return dump_ok(payload)
 
 
 HANDLERS: dict[str, Callable[..., str]] = {

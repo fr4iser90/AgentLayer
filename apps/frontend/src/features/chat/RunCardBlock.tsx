@@ -4,6 +4,11 @@ import type { RunCard } from "./buildRunCards";
 
 type Props = {
   card: RunCard;
+  /** Controlled expand state (survives parent remounts when lifted to ChatPage). */
+  expanded?: boolean;
+  onExpandedChange?: (expanded: boolean) => void;
+  /** Flip expand/collapse without passing the next boolean (used with lifted state). */
+  onToggleExpanded?: () => void;
   defaultExpanded?: boolean;
 };
 
@@ -25,16 +30,49 @@ function iconForKind(kind: RunCard["kind"]): string {
   return "🔧";
 }
 
-function formatDuration(ms: number | undefined, runningLabel: string): string | null {
+const COLLAPSED_PREVIEW_RUNNING = 2;
+const COLLAPSED_PREVIEW_DONE = 1;
+
+function formatDuration(ms: number | undefined): string | null {
   if (ms == null || ms < 0) return null;
   if (ms < 1000) return `${ms}ms`;
   if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
   return `${(ms / 60000).toFixed(1)}min`;
 }
 
-export function RunCardBlock({ card, defaultExpanded = false }: Props) {
+/** Last 1–2 step labels shown while the card stays collapsed. */
+function collapsedStepPreview(card: RunCard): string[] {
+  const steps = allSubagentStepLabels(card);
+  if (steps.length > 0) {
+    const max = card.status === "running" ? COLLAPSED_PREVIEW_RUNNING : COLLAPSED_PREVIEW_DONE;
+    return steps.slice(-max);
+  }
+  const cur = card.currentStep?.trim();
+  return cur ? [cur] : [];
+}
+
+function allSubagentStepLabels(card: RunCard): string[] {
+  return card.details
+    .filter((d) => d.kind === "subagent_step")
+    .map((d) => d.text.trim())
+    .filter(Boolean);
+}
+
+export function RunCardBlock({
+  card,
+  expanded: expandedProp,
+  onExpandedChange,
+  onToggleExpanded,
+  defaultExpanded = false,
+}: Props) {
   const { t } = useTranslation(["chat"]);
-  const [expanded, setExpanded] = useState(defaultExpanded && card.status === "running");
+  const [expandedLocal, setExpandedLocal] = useState(defaultExpanded);
+  const expanded = expandedProp ?? expandedLocal;
+  const setExpanded = (next: boolean | ((v: boolean) => boolean)) => {
+    const value = typeof next === "function" ? next(expanded) : next;
+    if (onExpandedChange) onExpandedChange(value);
+    else setExpandedLocal(value);
+  };
 
   const title =
     card.kind === "subagent" && card.agentId
@@ -43,7 +81,8 @@ export function RunCardBlock({ card, defaultExpanded = false }: Props) {
         ? t(`chat:runCardIndex_${card.indexMode}`, { defaultValue: card.title })
         : card.title;
 
-  const duration = formatDuration(card.durationMs, t("chat:running"));
+  const duration = formatDuration(card.durationMs);
+  const previewSteps = !expanded ? collapsedStepPreview(card) : [];
   const statusLabel =
     card.status === "running"
       ? t("chat:runCardStatusRunning")
@@ -69,8 +108,8 @@ export function RunCardBlock({ card, defaultExpanded = false }: Props) {
     meta.push(t("chat:runCardStepCount", { count: card.stepCount }));
   }
 
-  const showRecentInDetails =
-    card.recentSteps && card.recentSteps.length > 0 && card.status !== "running";
+  const allSteps = card.kind === "subagent" ? allSubagentStepLabels(card) : [];
+  const expandableDetails = card.kind === "subagent" ? allSteps.length > 0 : card.details.length > 0;
 
   return (
     <div
@@ -91,37 +130,73 @@ export function RunCardBlock({ card, defaultExpanded = false }: Props) {
           {card.subtitle ? (
             <p className="mt-1 text-[11px] leading-snug text-neutral-400">{card.subtitle}</p>
           ) : null}
-          {card.status === "running" && card.currentStep ? (
-            <p className="mt-1 truncate text-[11px] leading-snug text-sky-300/90">{card.currentStep}</p>
+          {!expanded && previewSteps.length > 0 ? (
+            <ul className="mt-1 space-y-0.5" aria-live="polite">
+              {previewSteps.map((step, i) => {
+                const isLatest = i === previewSteps.length - 1;
+                const running = card.status === "running";
+                return (
+                  <li
+                    key={`preview-${i}-${step}`}
+                    className="flex min-w-0 items-baseline gap-1 truncate text-[11px] leading-snug"
+                  >
+                    {running ? (
+                      isLatest ? (
+                        <span className="shrink-0 text-sky-400/90">→</span>
+                      ) : (
+                        <span className="shrink-0 text-neutral-600">·</span>
+                      )
+                    ) : (
+                      <span className="shrink-0 text-emerald-400/70">✓</span>
+                    )}
+                    <span
+                      className={
+                        running && isLatest
+                          ? "truncate text-sky-300/90"
+                          : "truncate text-neutral-500"
+                      }
+                    >
+                      {step}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
           ) : null}
-          {card.details.length > 0 || showRecentInDetails ? (
+          {expandableDetails ? (
             <button
               type="button"
               className="mt-1.5 text-[10px] text-sky-400/90 hover:text-sky-300 hover:underline"
-              onClick={() => setExpanded((v) => !v)}
+              onClick={() => {
+                if (onToggleExpanded) onToggleExpanded();
+                else setExpanded(!expanded);
+              }}
             >
               {expanded ? t("chat:runCardHideDetails") : t("chat:runCardShowDetails")}
             </button>
           ) : null}
           {expanded ? (
             <ul className="mt-2 space-y-1 border-t border-white/5 pt-2">
-              {showRecentInDetails
-                ? card.recentSteps!.map((step, i) => (
+              {allSteps.length > 0
+                ? allSteps.map((step, i) => (
                     <li key={`step-${i}`} className="text-[10px] leading-snug text-neutral-500">
-                      <span className="text-emerald-400/70">✓</span>
+                      {card.status !== "running" ? (
+                        <span className="text-emerald-400/70">✓</span>
+                      ) : (
+                        <span className="text-sky-400/70">→</span>
+                      )}
                       <span className="text-neutral-400"> {step}</span>
                     </li>
                   ))
-                : null}
-              {card.details.map((d) => (
-                <li key={d.id} className="text-[10px] leading-snug text-neutral-500">
-                  <span className="font-medium uppercase tracking-wide text-surface-muted">
-                    {d.kind}
-                  </span>
-                  {d.toolName ? <span className="text-indigo-300/80"> {d.toolName}</span> : null}
-                  {d.text ? <span className="text-neutral-400"> — {d.text}</span> : null}
-                </li>
-              ))}
+                : card.details.map((d) => (
+                    <li key={d.id} className="text-[10px] leading-snug text-neutral-500">
+                      <span className="font-medium uppercase tracking-wide text-surface-muted">
+                        {d.kind}
+                      </span>
+                      {d.toolName ? <span className="text-indigo-300/80"> {d.toolName}</span> : null}
+                      {d.text ? <span className="text-neutral-400"> — {d.text}</span> : null}
+                    </li>
+                  ))}
             </ul>
           ) : null}
         </div>
@@ -140,7 +215,7 @@ export function RunCardsRow({ cards }: RunCardsRowProps) {
     <li className="flex w-full justify-center">
       <div className="flex w-full max-w-[min(100%,42rem)] flex-col gap-2">
         {cards.map((c) => (
-          <RunCardBlock key={c.id} card={c} defaultExpanded={c.status === "running"} />
+          <RunCardBlock key={c.id} card={c} />
         ))}
       </div>
     </li>

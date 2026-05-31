@@ -142,6 +142,15 @@ async def put_conversation(
         if "model_catalog_owned_by" in fs:
             prefs["model_catalog_owned_by"] = body.model_catalog_owned_by
         if "active_task_id" in fs:
+            if body.active_task_id is not None:
+                tenant_id = db_mod.user_tenant_id(user.id)
+                trow = agent_tasks_store.get_task(
+                    task_id=body.active_task_id, tenant_id=tenant_id
+                )
+                if not trow or not user_may_access_task_row(
+                    user_id=user.id, tenant_id=tenant_id, row=trow
+                ):
+                    raise HTTPException(status_code=404, detail="task not found")
             prefs["active_task_id"] = body.active_task_id
     data = conversation_replace(
         user.id,

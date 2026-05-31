@@ -298,6 +298,34 @@ def coding_bash_strict_enabled() -> bool:
     return bool(getattr(config, "CODING_BASH_STRICT", False))
 
 
+def unattended_coding_bash_reject_reason(command: str) -> str | None:
+    """
+    Pre-flight for ``agent_unattended`` ``coding_bash`` calls (same policy as the tool).
+
+    - Always applies the blocklist (``is_blocked``).
+    - When ``AGENT_CODING_BASH_STRICT=true``, applies ``strict_mode_reject_reason`` /
+      ``AGENT_CODING_BASH_ALLOWED_PREFIXES`` (single allowlist source — not duplicated in agent.py).
+    - Otherwise only rejects empty commands and obvious model prose (not a second hardcoded allowlist).
+    """
+    cmd = (command or "").strip()
+    if not cmd:
+        return (
+            'coding_bash requires {"command": "…"} — empty command is not allowed. '
+            'Example: {"command": "git status"} or {"command": "ls -la"}.'
+        )
+    blocked = is_blocked(cmd)
+    if blocked:
+        return blocked
+    if coding_bash_strict_enabled():
+        return strict_mode_reject_reason(cmd)
+    sl = cmd.lower()
+    if " now i need" in sl or cmd.endswith(":"):
+        return f"Invalid shell command (looks like prose, not a command): {cmd[:120]!r}"
+    if not _first_word(cmd):
+        return f"Invalid shell command (not a one-liner): {cmd[:120]!r}"
+    return None
+
+
 def _env_key_allowed(key: str) -> bool:
     ku = key.upper()
     if ku in _SAFE_ENV_KEYS:

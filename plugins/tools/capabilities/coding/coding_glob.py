@@ -112,6 +112,10 @@ def coding_glob(arguments: dict[str, Any], context: dict | None = None) -> str:
     return json.dumps(payload, ensure_ascii=False)
 
 
+def tool_step_detail(arguments: dict[str, Any]) -> str:
+    return str(arguments.get("pattern") or "").strip()
+
+
 HANDLERS: dict[str, Callable[[dict[str, Any]], str]] = {
     "coding_glob": coding_glob,
 }

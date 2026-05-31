@@ -74,27 +74,70 @@ AGENT_MODEL_OVERRIDE_ANONYMOUS = _env_bool("AGENT_MODEL_OVERRIDE_ANONYMOUS", Fal
 MAX_TOOL_ROUNDS_CAP = max(256, _env_int("AGENT_MAX_TOOL_ROUNDS_CAP", 16384))
 
 
-def _resolve_max_tool_rounds() -> int:
-    """``AGENT_MAX_TOOL_ROUNDS``: positive = limit (capped at ``MAX_TOOL_ROUNDS_CAP``); 0 or negative = use cap (\"practical unlimited\" for local runs)."""
-    raw = (os.environ.get("AGENT_MAX_TOOL_ROUNDS") or "").strip()
-    if not raw:
-        return 8
+def _parse_tool_rounds_env(raw: str, *, env_name: str) -> int | None:
+    """Parse ``AGENT_MAX_TOOL_ROUNDS`` / ``SUBAGENT_MAX_TOOL_ROUNDS``: empty → None; <=0 → cap; else clamped."""
+    if not raw.strip():
+        return None
     try:
-        v = int(raw)
+        v = int(raw.strip())
     except ValueError:
-        logger.warning("invalid AGENT_MAX_TOOL_ROUNDS %r — using default 8", raw)
-        return 8
+        logger.warning("invalid %s %r — ignored", env_name, raw)
+        return None
     if v <= 0:
         logger.info(
-            "AGENT_MAX_TOOL_ROUNDS=%s → using high cap %s tool rounds (override with AGENT_MAX_TOOL_ROUNDS_CAP)",
-            raw,
+            "%s=%s → using high cap %s tool rounds (override with AGENT_MAX_TOOL_ROUNDS_CAP)",
+            env_name,
+            raw.strip(),
             MAX_TOOL_ROUNDS_CAP,
         )
         return MAX_TOOL_ROUNDS_CAP
     return max(1, min(v, MAX_TOOL_ROUNDS_CAP))
 
 
+def _resolve_max_tool_rounds() -> int:
+    """``AGENT_MAX_TOOL_ROUNDS``: positive = limit (capped); 0 or negative = cap; unset = 8."""
+    raw = (os.environ.get("AGENT_MAX_TOOL_ROUNDS") or "").strip()
+    if not raw:
+        return 8
+    parsed = _parse_tool_rounds_env(raw, env_name="AGENT_MAX_TOOL_ROUNDS")
+    return parsed if parsed is not None else 8
+
+
 MAX_TOOL_ROUNDS = _resolve_max_tool_rounds()
+
+
+def _resolve_subagent_max_tool_rounds() -> int:
+    """``SUBAGENT_MAX_TOOL_ROUNDS`` overrides ``AGENT_MAX_TOOL_ROUNDS`` for ``agent_delegate`` sub-agents only."""
+    raw = (os.environ.get("SUBAGENT_MAX_TOOL_ROUNDS") or "").strip()
+    if raw:
+        parsed = _parse_tool_rounds_env(raw, env_name="SUBAGENT_MAX_TOOL_ROUNDS")
+        if parsed is not None:
+            return parsed
+    return MAX_TOOL_ROUNDS
+
+
+SUBAGENT_MAX_TOOL_ROUNDS = _resolve_subagent_max_tool_rounds()
+
+
+def _resolve_subagent_timeout_sec() -> float | None:
+    """``SUBAGENT_TIMEOUT_SEC``: positive = wall-clock cap for ``agent_delegate`` runs; unset or <=0 = no limit."""
+    raw = (os.environ.get("SUBAGENT_TIMEOUT_SEC") or "").strip()
+    if not raw:
+        return None
+    try:
+        v = float(raw)
+    except ValueError:
+        logger.warning(
+            "invalid SUBAGENT_TIMEOUT_SEC %r — no sub-agent wall-clock timeout",
+            raw,
+        )
+        return None
+    if v <= 0:
+        return None
+    return v
+
+
+SUBAGENT_TIMEOUT_SEC = _resolve_subagent_timeout_sec()
 # Phase 1 (coding-agent-roadmap): break identical tool failure loops (e.g. empty JSON / same parameter error).
 AGENT_TOOL_THRASH_ENABLED = _env_bool("AGENT_TOOL_THRASH_ENABLED", True)
 AGENT_TOOL_THRASH_STREAK_MAX = max(2, _env_int("AGENT_TOOL_THRASH_STREAK_MAX", 10))

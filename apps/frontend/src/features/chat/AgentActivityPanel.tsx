@@ -55,14 +55,14 @@ export function AgentActivityPanel({
       ? "min-h-[7rem] max-h-[min(11rem,28vh)] overflow-y-auto overscroll-contain px-2.5 py-1.5"
       : "min-h-0 max-h-32 overflow-y-auto overscroll-contain px-2.5 py-1.5";
 
-  const visible = showSubagents
-    ? entries
-    : entries.filter(
+  const visible = (showSubagents ? entries : entries.filter(
         (e) =>
           e.kind !== "subagent_start" &&
           e.kind !== "subagent_done" &&
           e.kind !== "subagent_step"
-      );
+      )).filter(
+    (e) => e.kind !== "subagent_step" || e.stepPhase !== "done"
+  );
 
   return (
     <div

@@ -35,8 +35,8 @@ export function buildRunCardsFromTimeline(entries) {
     if (e.kind === "subagent_step") {
       const card = findRunningSubagent(e);
       if (card) {
-        card.details.push(e);
         if (e.stepPhase !== "done") {
+          card.details.push(e);
           const label = e.text.trim();
           if (label) {
             card.currentStep = label;
@@ -107,6 +107,11 @@ assert(subagentRun[0].stepCount === 2, "two tool starts");
 assert(subagentRun[0].recentSteps?.length === 2, "two step labels from starts");
 assert(subagentRun[0].recentSteps?.[0]?.includes("friends_db"), "first step label");
 assert(!subagentRun[0].currentStep, "no live step when done");
+assert(
+  subagentRun[0].details.every((d) => d.stepPhase !== "done"),
+  "done phases omitted from card details"
+);
+assert(subagentRun[0].details.filter((d) => d.kind === "subagent_step").length === 2, "start steps only in details");
 
 const indexRun = buildRunCardsFromTimeline([
   { id: "a", kind: "index_start", text: "Docs index", indexMode: "docs" },

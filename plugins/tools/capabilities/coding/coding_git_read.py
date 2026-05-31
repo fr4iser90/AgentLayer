@@ -186,6 +186,14 @@ def coding_git_read(arguments: dict[str, Any], context: dict | None = None) -> s
 
 
 
+def tool_step_detail(arguments: dict[str, Any]) -> str:
+    op = str(arguments.get("operation") or arguments.get("subcommand") or "").strip()
+    path = str(arguments.get("path") or "").strip().replace("\\", "/")
+    if op and path:
+        return f"{op} {path.rsplit('/', 1)[-1]}"
+    return op or path
+
+
 HANDLERS: dict[str, Callable[..., str]] = {
     "coding_git_read": coding_git_read,
 }

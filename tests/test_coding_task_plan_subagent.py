@@ -62,8 +62,8 @@ class TestCodingTaskPlanSubagent(unittest.TestCase):
                     return_value={"id": uuid.uuid4()},
                 ):
                     with patch(
-                        "apps.backend.infrastructure.agent_runs_store.insert_run_start",
-                        return_value={},
+                        "apps.backend.infrastructure.agent_runs_store.insert_run_start_resilient",
+                        return_value=({"id": uuid.uuid4()}, []),
                     ):
                         with patch(
                             "apps.backend.infrastructure.agent_runs_store.finish_run",
@@ -74,7 +74,6 @@ class TestCodingTaskPlanSubagent(unittest.TestCase):
                                     "run_plan_subagent": True,
                                     "prompt": "List entrypoints",
                                     "description": "plan",
-                                    "max_rounds": 2,
                                 },
                                 context=ctx,
                             )
@@ -89,7 +88,9 @@ class TestCodingTaskPlanSubagent(unittest.TestCase):
         b0 = bodies[0]
         self.assertEqual(b0.get("agent_id"), "coding_plan")
         self.assertEqual(b0.get("workspace_id"), str(ws_id))
-        self.assertEqual(b0.get("agent_max_tool_rounds"), 2)
+        from apps.backend.core import config
+
+        self.assertEqual(b0.get("agent_max_tool_rounds"), config.SUBAGENT_MAX_TOOL_ROUNDS)
         self.assertEqual(b0.get("agent_parent_run_id"), "parent-run-abc")
         self.assertEqual(
             b0.get("agent_tool_name_allowlist"),
@@ -140,8 +141,8 @@ class TestCodingTaskPlanSubagent(unittest.TestCase):
                         return_value={"id": uuid.uuid4()},
                     ):
                         with patch(
-                            "apps.backend.infrastructure.agent_runs_store.insert_run_start",
-                            return_value={},
+                            "apps.backend.infrastructure.agent_runs_store.insert_run_start_resilient",
+                            return_value=({"id": uuid.uuid4()}, []),
                         ):
                             with patch(
                                 "apps.backend.infrastructure.agent_runs_store.finish_run",

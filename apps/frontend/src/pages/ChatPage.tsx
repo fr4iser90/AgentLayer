@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
+import { fetchTask, setConversationActiveTask } from "../lib/tasksApi";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { apiFetch, addUsageTotals, emptyTokenUsage, fetchSessionRuntime, type ChatContextMeta, type SessionRuntimePayload, type TokenUsageTotals, type WorkspaceApiRecord } from "../lib/api";
 import {
@@ -330,6 +331,7 @@ export function ChatPage() {
   const lastModelSelectionRef = useRef("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedTurnId, setSelectedTurnId] = useState<string | null>(null);
+  const [expandedRunCardIds, setExpandedRunCardIds] = useState<Set<string>>(() => new Set());
   const toolStartTimesRef = useRef<Map<string, number>>(new Map());
   const subagentStartTimesRef = useRef<Map<string, number>>(new Map());
   const agentTurnBaselineRef = useRef<UiMessage[] | null>(null);
@@ -424,6 +426,29 @@ export function ChatPage() {
     setActiveTaskId(tid);
   }, [activeThreadId, activeThread?.activeTaskId]);
 
+  useEffect(() => {
+    if (!activeTaskId || !auth.accessToken || !activeThreadId) return;
+    let cancelled = false;
+    void (async () => {
+      const detail = await fetchTask(auth, activeTaskId);
+      if (cancelled || detail) return;
+      setActiveTaskId(null);
+      setThreads((prev) =>
+        prev.map((th) =>
+          th.id === activeThreadId ? { ...th, activeTaskId: null } : th
+        )
+      );
+      try {
+        await setConversationActiveTask(auth, activeThreadId, null);
+      } catch {
+        /* best-effort server sync */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTaskId, activeThreadId, auth]);
+
   const messages = activeThread?.messages ?? [];
   const displayMessages = useMemo(
     () =>
@@ -481,6 +506,15 @@ export function ChatPage() {
     document.getElementById(`msg-${userMessageId}`)?.scrollIntoView({
       behavior: "smooth",
       block: "start",
+    });
+  }, []);
+
+  const toggleRunCardExpanded = useCallback((cardId: string) => {
+    setExpandedRunCardIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(cardId)) next.delete(cardId);
+      else next.add(cardId);
+      return next;
     });
   }, []);
 
@@ -1659,12 +1693,18 @@ export function ChatPage() {
         if (typ === "agent.tool_start") {
           const toolName = String(msg.name ?? "tool");
           const summary = typeof msg.summary === "string" ? msg.summary.trim() : undefined;
+          const toolLabel = typeof msg.label === "string" ? msg.label.trim() : undefined;
+          const stepLabel = typeof msg.step_label === "string" ? msg.step_label.trim() : undefined;
           toolStartTimesRef.current.set(toolName, Date.now());
-          appendAgentLine("tool_start", summary ? formatToolStepLabel(toolName, summary) : `→ ${toolName}`, {
-            toolName,
-            toolSummary: summary,
-            streamOffset: assistantStreamOffset(),
-          });
+          appendAgentLine(
+            "tool_start",
+            formatToolStepLabel(toolName, summary, toolLabel, stepLabel) || `→ ${toolName}`,
+            {
+              toolName,
+              toolSummary: summary,
+              streamOffset: assistantStreamOffset(),
+            },
+          );
           return;
         }
         if (typ === "agent.tool_done") {
@@ -2579,7 +2619,7 @@ export function ChatPage() {
 
                   return (
                     <AssistantTurnBlock
-                      key={m.id ?? `${i}-assistant-${m.content.slice(0, 24)}`}
+                      key={turnId ? `assistant-turn-${turnId}` : (m.id ?? `${i}-assistant`)}
                       content={m.content}
                       timelineEntries={timelineEntries}
                       running={inFlight && !hasStreamBody}
@@ -2588,6 +2628,8 @@ export function ChatPage() {
                       selectedByProposalId={proposalSelectionMap}
                       onSelectProposalOption={handleSelectProposalOption}
                       onSecretSaved={handleSecretSaved}
+                      expandedRunCardIds={expandedRunCardIds}
+                      onToggleRunCardExpanded={toggleRunCardExpanded}
                     />
                   );
                 })}
@@ -2597,7 +2639,7 @@ export function ChatPage() {
                 displayMessages.length > 0 &&
                 displayMessages[displayMessages.length - 1]?.role === "user" ? (
                   <AssistantTurnBlock
-                    key={`assistant-inflight-${latestTurnId}`}
+                    key={`assistant-turn-${latestTurnId}`}
                     content=""
                     timelineEntries={timelineForTurn(activeThread, latestTurnId)}
                     running
@@ -2605,6 +2647,8 @@ export function ChatPage() {
                     selectedByProposalId={proposalSelectionMap}
                     onSelectProposalOption={handleSelectProposalOption}
                     onSecretSaved={handleSecretSaved}
+                    expandedRunCardIds={expandedRunCardIds}
+                    onToggleRunCardExpanded={toggleRunCardExpanded}
                   />
                 ) : null}
                 {loading &&

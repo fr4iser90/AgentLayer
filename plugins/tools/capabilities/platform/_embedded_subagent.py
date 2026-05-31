@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeout
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 DELEGATABLE_AGENT_IDS = frozenset({"coding", "coding_plan", "security_auditor"})
 
@@ -22,6 +25,12 @@ _PLAN_READONLY_TOOLS = [
     "coding_symbols",
     "coding_lsp",
     "project_explain",
+]
+
+_PLAN_GIT_FORENSICS_TOOLS = [
+    "coding_git_read",
+    "coding_read_file",
+    "coding_search",
 ]
 
 
@@ -51,10 +60,10 @@ def build_delegate_agents_catalog_snippet() -> str:
         lines.append(f"- **{aid}** ({name}): {desc}")
     lines.append("")
     lines.append(
-        "Pick the specialist by task (SSC/findings → security_auditor; "
-        "edits/bash/push → coding; read-only exploration → coding_plan). "
+        "Pick the specialist by task (see descriptions above). "
+        "Pass `artifact_refs` when follow-up work needs prior sub-agent or tool outputs. "
         "Summarize the sub-agent result for the user (prefer `artifact_id` + short summary; "
-        "do not paste raw `assistant_excerpt`). Use `task_*` tools for backlog, `artifact_refs` on delegate."
+        "do not paste raw `assistant_excerpt`). Use `task_*` tools for backlog."
     )
     return "\n".join(lines)
 
@@ -100,6 +109,12 @@ def _forward_subagent_tool_event(
         summary = ev.get("summary")
         if isinstance(summary, str) and summary.strip():
             payload["summary"] = summary.strip()
+        step_label = ev.get("step_label")
+        if isinstance(step_label, str) and step_label.strip():
+            payload["step_label"] = step_label.strip()
+        label = ev.get("label")
+        if isinstance(label, str) and label.strip():
+            payload["label"] = label.strip()
     notify(payload)
 
 
@@ -143,7 +158,16 @@ def run_embedded_subagent_sync(
             except Exception:
                 parent_tid = 1
 
-    from apps.backend.domain.agent_task_prompt import enrich_delegate_prompt
+    from apps.backend.domain.agent_task_prompt import (
+        enrich_delegate_prompt,
+        infer_plan_delegate_mode,
+        parse_delegate_mode,
+    )
+    from apps.backend.domain.delegate_enforcement import (
+        load_delegate_allowed_paths,
+        parse_requirement_value,
+        subagent_reject_reason,
+    )
 
     prompt = (prompt or "").strip()
     if not prompt:
@@ -158,6 +182,16 @@ def run_embedded_subagent_sync(
         raw_req = ctx.get("delegate_requirements")
         if isinstance(raw_req, list):
             reqs = raw_req
+
+    reject = subagent_reject_reason(agent_id=aid, requirements=reqs)
+    if reject:
+        return json.dumps({"ok": False, "error": reject}, ensure_ascii=False)
+
+    delegate_mode = parse_delegate_mode(reqs)
+    if aid == "coding_plan":
+        delegate_mode = delegate_mode or infer_plan_delegate_mode(prompt, reqs)
+        if delegate_mode == "git_forensics" and not parse_delegate_mode(reqs):
+            reqs = list(reqs or []) + ["mode: git_forensics"]
     if parent_tid is not None:
         prompt = enrich_delegate_prompt(
             tenant_id=int(parent_tid),
@@ -168,16 +202,13 @@ def run_embedded_subagent_sync(
 
     from apps.backend.core import config
 
-    max_r = config.MAX_TOOL_ROUNDS
+    max_r = config.SUBAGENT_MAX_TOOL_ROUNDS
     if max_rounds is not None:
-        try:
-            client_v = int(max_rounds)
-            if client_v <= 0:
-                max_r = config.MAX_TOOL_ROUNDS
-            else:
-                max_r = max(1, min(client_v, config.MAX_TOOL_ROUNDS))
-        except (TypeError, ValueError):
-            pass
+        logger.debug(
+            "ignoring agent_delegate max_rounds=%r — server uses SUBAGENT_MAX_TOOL_ROUNDS=%s",
+            max_rounds,
+            max_r,
+        )
 
     parent_model, parent_catalog = _parent_llm_from_context(context)
     if not parent_model or not parent_catalog:
@@ -202,10 +233,29 @@ def run_embedded_subagent_sync(
         "agent_plain_completion": False,
         "agent_unattended": True,
     }
+    handoff_collector: list[str] = []
+    body["agent_handoff_artifact_collector"] = handoff_collector
     if aid == "coding_plan" and tool_allowlist is None:
-        body["agent_tool_name_allowlist"] = list(_PLAN_READONLY_TOOLS)
+        if delegate_mode == "git_forensics":
+            body["agent_tool_name_allowlist"] = list(_PLAN_GIT_FORENSICS_TOOLS)
+        else:
+            body["agent_tool_name_allowlist"] = list(_PLAN_READONLY_TOOLS)
     elif tool_allowlist:
         body["agent_tool_name_allowlist"] = list(tool_allowlist)
+    if delegate_mode:
+        body["agent_delegate_mode"] = delegate_mode
+        if delegate_mode == "git_forensics":
+            body["agent_plan_delegate_mode"] = delegate_mode
+    if delegate_mode == "fix_from_artifact" and aid == "coding" and parent_tid is not None:
+        allowed_paths = load_delegate_allowed_paths(
+            tenant_id=int(parent_tid),
+            artifact_refs=refs,
+        )
+        if allowed_paths:
+            body["agent_delegate_allowed_paths"] = allowed_paths
+        branch = parse_requirement_value(reqs, "branch")
+        if branch:
+            body["agent_delegate_required_branch"] = branch
 
     sub_run_id = str(uuid.uuid4())
     ws = ctx.get("workspace")
@@ -246,11 +296,22 @@ def run_embedded_subagent_sync(
     tid_task = task_id or ctx.get("agent_task_id")
     task_uuid: uuid.UUID | None = None
     if isinstance(tid_task, str) and tid_task.strip():
-        body["agent_active_task_id"] = tid_task.strip()
-        try:
-            task_uuid = uuid.UUID(tid_task.strip())
-        except (ValueError, TypeError):
-            task_uuid = None
+        if parent_tid is not None and parent_uid is not None:
+            from apps.backend.domain.agent_run_persistence import resolve_valid_active_task_id
+
+            _valid_task, task_uuid = resolve_valid_active_task_id(
+                tenant_id=int(parent_tid),
+                user_id=parent_uid,
+                candidate=tid_task.strip(),
+            )
+            if _valid_task:
+                body["agent_active_task_id"] = _valid_task
+        else:
+            try:
+                task_uuid = uuid.UUID(tid_task.strip())
+                body["agent_active_task_id"] = tid_task.strip()
+            except (ValueError, TypeError):
+                task_uuid = None
 
     body["agent_run_id"] = sub_run_id
     # Parent cancel_event is bound to the main asyncio loop; never pass it into
@@ -303,60 +364,181 @@ def run_embedded_subagent_sync(
     err_msg: str | None = None
     excerpt_len = 0
     finish_reason: str | None = None
+    problems: list[str] = []
+    _subagent_timeout = config.SUBAGENT_TIMEOUT_SEC
     try:
         with ThreadPoolExecutor(max_workers=1) as pool:
-            data = pool.submit(_thread_entry).result(timeout=600.0)
-        ch0 = (data.get("choices") or [{}])[0]
-        msg = ch0.get("message") or {}
-        content = msg.get("content") or ""
-        if not isinstance(content, str):
-            content = str(content) if content is not None else ""
-        content = content.strip()
-        excerpt_len = len(content)
-        finish_reason = ch0.get("finish_reason")
-        ok = True
-        excerpt = content[:12000]
-        artifact_id: str | None = None
-        if parent_uid is not None and parent_tid is not None and excerpt:
-            from apps.backend.infrastructure import agent_artifacts_store, agent_tasks_store
-
-            art = agent_artifacts_store.create_artifact(
-                tenant_id=int(parent_tid),
-                created_by_user_id=parent_uid,
-                kind="subagent_report",
-                summary=(description or aid)[:500],
-                content={"text": excerpt, "assistant_excerpt": excerpt, "agent_id": aid},
-                workspace_id=ws_uuid,
-                created_by_task_id=task_uuid,
-                created_by_run_id=uuid.UUID(sub_run_id),
+            _future = pool.submit(_thread_entry)
+            if _subagent_timeout is None:
+                data = _future.result()
+            else:
+                data = _future.result(timeout=_subagent_timeout)
+        if not isinstance(data, dict):
+            err_msg = f"sub-agent returned unexpected payload type: {type(data).__name__}"
+            problems.append(err_msg)
+            result = json.dumps(
+                {
+                    "ok": False,
+                    "error": err_msg,
+                    "problems": problems,
+                    "subagent_run_id": sub_run_id,
+                    "agent_id": aid,
+                    "hint": (
+                        "Report these problems to the user. Do not claim the sub-agent completed the work."
+                    ),
+                },
+                ensure_ascii=False,
             )
-            artifact_id = str(art.get("id") or "")
-            if task_uuid and artifact_id:
-                agent_tasks_store.update_task(
-                    task_id=task_uuid,
-                    tenant_id=int(parent_tid),
-                    append_artifact_ref=artifact_id,
-                    status="in_progress",
+        elif data.get("error"):
+            err_msg = str(data.get("error") or "sub-agent error")[:800]
+            problems.append(err_msg)
+            ctx_meta = data.get("agentlayer_context") or {}
+            if isinstance(ctx_meta, dict):
+                for w in ctx_meta.get("run_persist_warnings") or []:
+                    if isinstance(w, str) and w.strip():
+                        problems.append(w.strip())
+                if ctx_meta.get("run_persisted") is False:
+                    problems.append(
+                        "agent run was not persisted (audit/trace incomplete)"
+                    )
+            result = json.dumps(
+                {
+                    "ok": False,
+                    "error": err_msg,
+                    "problems": problems,
+                    "subagent_run_id": sub_run_id,
+                    "agent_id": aid,
+                    "hint": (
+                        "Report these problems to the user. Do not claim the sub-agent completed the work."
+                    ),
+                },
+                ensure_ascii=False,
+            )
+        else:
+            ctx_meta = data.get("agentlayer_context") or {}
+            if isinstance(ctx_meta, dict):
+                for w in ctx_meta.get("run_persist_warnings") or []:
+                    if isinstance(w, str) and w.strip():
+                        problems.append(w.strip())
+                if ctx_meta.get("run_persisted") is False:
+                    problems.append(
+                        "agent run was not persisted (audit/trace incomplete)"
+                    )
+            ch0 = (data.get("choices") or [{}])[0]
+            msg = ch0.get("message") or {}
+            content = msg.get("content") or ""
+            if not isinstance(content, str):
+                content = str(content) if content is not None else ""
+            content = content.strip()
+            excerpt_len = len(content)
+            finish_reason = ch0.get("finish_reason")
+            if not content:
+                err_msg = "sub-agent finished with empty assistant content"
+                if finish_reason:
+                    err_msg += f" (finish_reason={finish_reason})"
+                problems.append(err_msg)
+                result = json.dumps(
+                    {
+                        "ok": False,
+                        "error": err_msg,
+                        "problems": problems,
+                        "subagent_run_id": sub_run_id,
+                        "agent_id": aid,
+                        "finish_reason": finish_reason,
+                        "hint": (
+                            "Tell the user the sub-agent did not produce output and why. "
+                            "Retry with agent_delegate or fix workspace/model issues."
+                        ),
+                    },
+                    ensure_ascii=False,
                 )
-        payload: dict[str, Any] = {
-            "ok": True,
-            "mode": "embedded_subagent",
-            "agent_id": aid,
-            "assistant_excerpt": excerpt,
-            "finish_reason": finish_reason,
-            "subagent_run_id": sub_run_id,
-            "detail": "Sub-agent finished. Prefer artifact_id summary for the user; do not paste raw excerpt verbatim.",
-        }
-        if artifact_id:
-            payload["artifact_id"] = artifact_id
-            payload["artifact_summary"] = (description or aid)[:500]
-        result = json.dumps(payload, ensure_ascii=False)
+            else:
+                ok = True
+                excerpt = content[:12000]
+                artifact_id: str | None = None
+                if parent_uid is not None and parent_tid is not None and excerpt:
+                    from apps.backend.infrastructure import (
+                        agent_artifacts_store,
+                        agent_tasks_store,
+                    )
+
+                    try:
+                        art = agent_artifacts_store.create_artifact(
+                            tenant_id=int(parent_tid),
+                            created_by_user_id=parent_uid,
+                            kind="subagent_report",
+                            summary=(description or aid)[:500],
+                            content={
+                                "text": excerpt,
+                                "assistant_excerpt": excerpt,
+                                "agent_id": aid,
+                            },
+                            workspace_id=ws_uuid,
+                            created_by_task_id=task_uuid,
+                            created_by_run_id=uuid.UUID(sub_run_id),
+                        )
+                        artifact_id = str(art.get("id") or "")
+                        if task_uuid and artifact_id:
+                            agent_tasks_store.update_task(
+                                task_id=task_uuid,
+                                tenant_id=int(parent_tid),
+                                append_artifact_ref=artifact_id,
+                                status="in_progress",
+                            )
+                    except Exception as art_exc:
+                        problems.append(f"artifact persist failed: {art_exc}"[:400])
+                detail = (
+                    "Sub-agent finished. Prefer artifact_id summary for the user; "
+                    "do not paste raw assistant_excerpt verbatim."
+                )
+                if problems:
+                    detail += " Problems: " + "; ".join(problems)
+                payload: dict[str, Any] = {
+                    "ok": True,
+                    "mode": "embedded_subagent",
+                    "agent_id": aid,
+                    "assistant_excerpt": excerpt,
+                    "finish_reason": finish_reason,
+                    "subagent_run_id": sub_run_id,
+                    "detail": detail,
+                }
+                if problems:
+                    payload["problems"] = problems
+                if handoff_collector:
+                    payload["handoff_artifact_ids"] = list(handoff_collector)
+                if artifact_id:
+                    payload["artifact_id"] = artifact_id
+                    payload["artifact_summary"] = (description or aid)[:500]
+                result = json.dumps(payload, ensure_ascii=False)
     except FuturesTimeout:
-        err_msg = "sub-agent timed out after 600s"
-        result = json.dumps({"ok": False, "error": err_msg}, ensure_ascii=False)
+        _t = _subagent_timeout if _subagent_timeout is not None else 0
+        err_msg = f"sub-agent timed out after {_t:g}s"
+        problems = [err_msg]
+        result = json.dumps(
+            {
+                "ok": False,
+                "error": err_msg,
+                "problems": problems,
+                "subagent_run_id": sub_run_id,
+                "agent_id": aid,
+                "hint": "Tell the user the sub-agent timed out; suggest retry or smaller scope.",
+            },
+            ensure_ascii=False,
+        )
     except Exception as e:
         err_msg = f"sub-agent failed: {e}"[:800]
-        result = json.dumps({"ok": False, "error": err_msg}, ensure_ascii=False)
+        problems = [err_msg]
+        result = json.dumps(
+            {
+                "ok": False,
+                "error": err_msg,
+                "problems": problems,
+                "subagent_run_id": sub_run_id,
+                "agent_id": aid,
+                "hint": "Tell the user what failed and why; do not claim success.",
+            },
+            ensure_ascii=False,
+        )
     finally:
         if callable(notify):
             notify(
@@ -367,6 +549,7 @@ def run_embedded_subagent_sync(
                     "tool_name": tool_name,
                     "ok": ok,
                     "detail": err_msg or (f"finished ({excerpt_len} chars)" if ok else "finished"),
+                    "problems": problems or None,
                     "result_chars": excerpt_len if ok else None,
                 }
             )

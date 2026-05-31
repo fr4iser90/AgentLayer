@@ -9,6 +9,7 @@ from typing import Any
 
 from psycopg.types.json import Json
 
+from apps.backend.domain.agent_task_access import user_may_access_task_row
 from apps.backend.infrastructure.db import db
 from apps.backend.dashboard import db as dashboard_db
 
@@ -266,6 +267,30 @@ def _pref_workspace_allowed(cur: Any, user_id: uuid.UUID, wid: uuid.UUID) -> boo
         (wid, user_id),
     )
     return cur.fetchone() is not None
+
+
+def _pref_active_task_allowed(
+    cur: Any, user_id: uuid.UUID, tenant_id: int, tid: uuid.UUID
+) -> bool:
+    cur.execute(
+        """
+        SELECT tenant_id, created_by_user_id, workspace_id
+        FROM agent_tasks WHERE id = %s
+        """,
+        (tid,),
+    )
+    row = cur.fetchone()
+    if not row:
+        return False
+    return user_may_access_task_row(
+        user_id=user_id,
+        tenant_id=tenant_id,
+        row={
+            "tenant_id": row[0],
+            "created_by_user_id": row[1],
+            "workspace_id": row[2],
+        },
+    )
 
 
 def _fetch_messages(cur: Any, conversation_id: uuid.UUID) -> list[dict[str, Any]]:
@@ -625,8 +650,11 @@ def conversation_replace(
                         except (ValueError, TypeError):
                             parts.append("active_task_id = NULL")
                         else:
-                            parts.append("active_task_id = %s")
-                            args.append(tid)
+                            if _pref_active_task_allowed(cur, user_id, tenant_id, tid):
+                                parts.append("active_task_id = %s")
+                                args.append(tid)
+                            else:
+                                parts.append("active_task_id = NULL")
             parts.append("updated_at = now()")
             if shared:
                 args.append(conversation_id)

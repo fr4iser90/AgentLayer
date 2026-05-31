@@ -90,6 +90,11 @@ def coding_list_dir(arguments: dict[str, Any], context: dict | None = None) -> s
     )
 
 
+def tool_step_detail(arguments: dict[str, Any]) -> str:
+    path = str(arguments.get("path") or "").strip().replace("\\", "/")
+    return path.rsplit("/", 1)[-1] if path else ""
+
+
 HANDLERS: dict[str, Callable[[dict[str, Any]], str]] = {
     "coding_list_dir": coding_list_dir,
 }

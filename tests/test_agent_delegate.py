@@ -80,8 +80,8 @@ def test_delegate_invokes_security_auditor() -> None:
                 return_value={"id": art_id},
             ):
                 with patch(
-                    "apps.backend.infrastructure.agent_runs_store.insert_run_start",
-                    return_value={},
+                    "apps.backend.infrastructure.agent_runs_store.insert_run_start_resilient",
+                    return_value=({"id": uuid.uuid4()}, []),
                 ):
                     with patch(
                         "apps.backend.infrastructure.agent_runs_store.finish_run",

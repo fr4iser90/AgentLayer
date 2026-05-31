@@ -42,6 +42,8 @@ There is **no** registry meta tool list in this agent; read schemas from **tools
 
 Structure findings as: **Summary** → **Severity / likelihood** (your judgment) → **Evidence** → **Recommendations** → **Optional verification steps** (commands the user or **Build** agent can run).
 
+When a scan is **ready**, tool JSON may include ``artifact_id`` (``ssc_scan`` kind). Summarize findings for the user; for fix handoff, the orchestrator passes that ``artifact_id`` via ``agent_delegate`` ``artifact_refs`` to **coding** — listed ``high_paths`` / ``findings`` are the scope, not repo-wide grep.
+
 Valid JSON for every tool call. Reuse prior tool output; do not repeat identical tool+arguments (empty ``{}`` can normalize the same and trigger loop guards).
 
 **Safety:** never run commands intended to damage the host or data (e.g. ``rm -rf /``).

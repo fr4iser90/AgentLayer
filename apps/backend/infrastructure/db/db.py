@@ -504,6 +504,18 @@ def log_tool_invocation(
                         )
                     except (ValueError, TypeError):
                         run_uuid = None
+                if run_uuid is not None and tenant_id is not None:
+                    from apps.backend.infrastructure import agent_runs_store
+
+                    if not agent_runs_store.run_exists(
+                        run_id=run_uuid, tenant_id=int(tenant_id)
+                    ):
+                        logger.warning(
+                            "tool_invocation %s: agent_run_id %s not in agent_runs; logging without run link",
+                            tool_name,
+                            run_uuid,
+                        )
+                        run_uuid = None
                 cur.execute(
                     """
                     INSERT INTO tool_invocations

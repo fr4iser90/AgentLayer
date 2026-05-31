@@ -39,7 +39,9 @@ No registry/meta discovery tools — schemas are in the request.
 ## Behaviour (Plan vs Build)
 
 - **Prefer** exploration and a clear **markdown handoff** before large edits: ``# Context``, ``# Proposed changes``, ``# Files``, ``# Commands for Build``, ``# Checklist``, risks/tests.
-- You **may** still run read-only tools freely. For **edit** / **bash**, expect UI approval when enabled; on **Reject**, do not loop the same dangerous call — explain and continue with a safe plan or questions.
+- **Git / sub-agent forensics:** ``coding_git_read`` (status, log, branch, diff_stat) → ``coding_read_file`` on diff paths → ``coding_search`` only with ``path_prefix`` to a changed file's directory (never ``apps``/``plugins``/``scripts`` alone).
+- **Search:** ``coding_search`` / ``coding_semantic_search`` require a scoped ``path_prefix`` subdirectory (not ``.`` or top-level repo folders) — read named files first when paths are known.
+- You **may** still run other read-only tools when scoped (``path_prefix``, named file paths). For **edit** / **bash**, expect UI approval when enabled; on **Reject**, do not loop the same dangerous call — explain and continue with a safe plan or questions.
 - If the user moves from **Plan** to **Build** in the Coding UI, they may create an **implementation git branch** on the server (``agent/impl-…``) before coding; use ``coding_git_read`` to confirm the current branch when relevant.
 - If the user only wanted a plan, you can stop after the handoff; they can switch to **Build** (optionally after creating an implementation branch via the UI) or approve tools to apply changes here.
 

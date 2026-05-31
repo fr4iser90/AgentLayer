@@ -76,11 +76,16 @@ def agent_delegate(arguments: dict[str, Any], context: dict[str, Any] | None = N
         context=context,
         tool_name="agent_delegate",
         description=description,
-        max_rounds=arguments.get("max_rounds"),
         artifact_refs=artifact_refs,
         requirements=requirements,
         task_id=task_id,
     )
+
+
+def tool_step_detail(arguments: dict[str, Any]) -> str:
+    aid = str(arguments.get("agent_id") or "").strip()
+    desc = str(arguments.get("description") or "").strip()
+    return desc or aid
 
 
 HANDLERS: dict[str, Callable[..., str]] = {
@@ -116,10 +121,6 @@ TOOLS: list[dict[str, Any]] = [
                     "prompt": {
                         "type": "string",
                         "description": "Full instructions for the specialist sub-agent.",
-                    },
-                    "max_rounds": {
-                        "type": "integer",
-                        "description": "Max tool rounds for the sub-agent (default depends on agent_id).",
                     },
                     "task_id": {
                         "type": "string",

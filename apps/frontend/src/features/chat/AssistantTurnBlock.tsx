@@ -20,6 +20,8 @@ type Props = {
   selectedByProposalId: Map<string, string | null>;
   onSelectProposalOption: (proposal: Proposal, option: ProposalOption) => void;
   onSecretSaved: (promptId: string, serviceKey: string) => void;
+  expandedRunCardIds?: ReadonlySet<string>;
+  onToggleRunCardExpanded?: (cardId: string) => void;
 };
 
 function InterleavedStreamBody({
@@ -28,12 +30,16 @@ function InterleavedStreamBody({
   selectedByProposalId,
   onSelectProposalOption,
   onSecretSaved,
+  expandedRunCardIds,
+  onToggleRunCardExpanded,
 }: {
   segments: TurnSegment[];
   auth: AuthContextValue;
   selectedByProposalId: Map<string, string | null>;
   onSelectProposalOption: (proposal: Proposal, option: ProposalOption) => void;
   onSecretSaved: (promptId: string, serviceKey: string) => void;
+  expandedRunCardIds?: ReadonlySet<string>;
+  onToggleRunCardExpanded?: (cardId: string) => void;
 }) {
   return (
     <div className="flex flex-col gap-3">
@@ -62,9 +68,14 @@ function InterleavedStreamBody({
         }
         return (
           <RunCardBlock
-            key={`card-${seg.card.id}-${i}`}
+            key={seg.card.id}
             card={seg.card}
-            defaultExpanded={seg.card.status === "running"}
+            expanded={expandedRunCardIds?.has(seg.card.id)}
+            onToggleExpanded={
+              onToggleRunCardExpanded
+                ? () => onToggleRunCardExpanded(seg.card.id)
+                : undefined
+            }
           />
         );
       })}
@@ -82,6 +93,8 @@ export function AssistantTurnBlock({
   selectedByProposalId,
   onSelectProposalOption,
   onSecretSaved,
+  expandedRunCardIds,
+  onToggleRunCardExpanded,
 }: Props) {
   const { t } = useTranslation(["chat"]);
   const segments = buildInterleavedTurnSegments(content, timelineEntries);
@@ -118,6 +131,8 @@ export function AssistantTurnBlock({
             selectedByProposalId={selectedByProposalId}
             onSelectProposalOption={onSelectProposalOption}
             onSecretSaved={onSecretSaved}
+            expandedRunCardIds={expandedRunCardIds}
+            onToggleRunCardExpanded={onToggleRunCardExpanded}
           />
         ) : running ? (
           <p className="text-neutral-300">{t("chat:agentRunning")}</p>

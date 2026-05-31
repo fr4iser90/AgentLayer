@@ -675,41 +675,6 @@ def _is_git_pull_command(command: str) -> bool:
     return c == "git pull" or c.startswith("git pull ")
 
 
-def _looks_like_shell_command(command: str) -> bool:
-    s = (command or "").strip()
-    if not s or len(s) > 400:
-        return False
-    sl = s.lower()
-    if " now i need" in sl or s.endswith(":"):
-        return False
-    if sl in ("ls", "pwd"):
-        return True
-    return any(
-        sl.startswith(p)
-        for p in (
-            "git ",
-            "gh ",
-            "npm ",
-            "pnpm ",
-            "yarn ",
-            "npx ",
-            "cd ",
-            "cat ",
-            "mkdir ",
-            "touch ",
-            "cp ",
-            "mv ",
-            "find ",
-            "grep ",
-            "python",
-            "ruff ",
-            "pytest",
-            "docker ",
-            "make ",
-        )
-    )
-
-
 def _unattended_blocked_tool_json(
     name: str,
     args: dict[str, Any],
@@ -760,18 +725,50 @@ def _unattended_blocked_tool_json(
                 },
                 ensure_ascii=False,
             )
-        if not _looks_like_shell_command(cmd):
+        from plugins.tools.capabilities.coding.coding_bash_policy import (
+            unattended_coding_bash_reject_reason,
+        )
+
+        reject = unattended_coding_bash_reject_reason(cmd)
+        if reject:
             return json.dumps(
                 {
                     "ok": False,
                     "error": (
-                        f"Invalid shell command (not a one-liner): {cmd[:120]!r}. "
-                        "Send a real command or use coding_git_sync for pull."
+                        f"{reject} "
+                        "Use coding_git_sync for pull or a real shell one-liner."
                     ),
                 },
                 ensure_ascii=False,
             )
     return None
+
+
+def _blocked_tool_json(
+    name: str,
+    args: dict[str, Any],
+    tool_context: dict[str, Any],
+) -> str | None:
+    agent = str(tool_context.get("agent_id") or "").strip()
+    if agent == "coding_plan":
+        from apps.backend.domain.coding_plan_search_policy import coding_plan_tool_blocked
+
+        blocked_msg = coding_plan_tool_blocked(name, args, tool_context)
+        if blocked_msg:
+            return json.dumps({"ok": False, "error": blocked_msg}, ensure_ascii=False)
+    if agent == "coding":
+        from apps.backend.domain.delegate_enforcement import coding_delegate_tool_blocked
+
+        blocked_msg = coding_delegate_tool_blocked(name, args, tool_context)
+        if blocked_msg:
+            return json.dumps({"ok": False, "error": blocked_msg}, ensure_ascii=False)
+    if agent == "general":
+        from apps.backend.domain.delegate_enforcement import general_orchestrator_tool_blocked
+
+        blocked_msg = general_orchestrator_tool_blocked(name, args, tool_context)
+        if blocked_msg:
+            return json.dumps({"ok": False, "error": blocked_msg}, ensure_ascii=False)
+    return _unattended_blocked_tool_json(name, args, tool_context)
 
 
 def _unattended_mark_git_pull_done(
@@ -1488,6 +1485,42 @@ def _tool_result_summary(result: str | None) -> tuple[bool | None, str | None]:
     return False, None
 
 
+def _tool_result_followup_hint(tool_name: str, result: str | None) -> str | None:
+    """System hint when a tool result needs explicit operator follow-up (sub-agent issues, register-only tasks)."""
+    if not result or not str(result).strip().startswith("{"):
+        return None
+    try:
+        o = json.loads(result)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(o, dict):
+        return None
+    if tool_name == "coding_task" and o.get("mode") == "register_only":
+        warn = o.get("warning") or o.get("detail")
+        if isinstance(warn, str) and warn.strip():
+            return (
+                "coding_task did **not** run a sub-agent — it only registered a task id. "
+                f"{warn.strip()} Use **agent_delegate** with run_subagent=true for real execution."
+            )
+    problems = o.get("problems")
+    prob_lines: list[str] = []
+    if isinstance(problems, list):
+        prob_lines = [str(p).strip() for p in problems if isinstance(p, str) and str(p).strip()]
+    if o.get("ok") is False:
+        err = o.get("error")
+        if isinstance(err, str) and err.strip():
+            prob_lines.insert(0, err.strip())
+        hint = o.get("hint")
+        if isinstance(hint, str) and hint.strip():
+            prob_lines.append(hint.strip())
+        if prob_lines:
+            who = tool_name or "tool"
+            return f"{who} failed: " + " | ".join(prob_lines[:5])
+    if prob_lines and tool_name in ("agent_delegate", "coding_task"):
+        return f"{tool_name} completed with warnings: " + " | ".join(prob_lines[:5])
+    return None
+
+
 async def _emit_secret_prompt_from_tool_result(
     tool_name: str,
     result: str | None,
@@ -1771,12 +1804,16 @@ _CODING_PLAN_TOOL_DISCIPLINE = """## **Plan** discipline (this stack)
 
 - Tool names follow the **permission groups** mapped in your system prompt: read/list/glob/grep → exploration; **edit** + **bash** + **task** + **lsp** → same ``coding_*`` names as Build; destructive steps may require UI approval (**ask**) when the client enables it.
 - Default stance: **analyze first**, then a markdown handoff; apply edits or shell only after approval or when the user clearly wants execution here.
+- **Git / sub-agent debug:** use ``coding_git_read`` (status, log, branch, diff_stat) and ``coding_read_file`` on named paths — **not** repo-wide ``coding_search`` without ``path_prefix``.
+- **Search on Plan:** ``coding_search`` requires ``path_prefix`` scoped to a subdirectory; use ``retrieve_context`` for open exploration.
 - Reuse existing tool results in the transcript — no identical tool+arguments spam.
 """
 
 _SECURITY_AUDITOR_TOOL_DISCIPLINE = """## **Security auditor** discipline (this stack)
 
 - Same ``coding_*`` / ``project_*`` (and optional RAG) surface as in your system prompt; **edit** and **bash** may require UI approval (**ask**) when the client enables it — prefer read-only passes first.
+- **SSC is source of truth:** ``security_scan_resolve`` / ``security_scan_findings`` return structured paths — use those for evidence, not repo-wide ``coding_search``.
+- When a scan is **ready**, note ``artifact_id`` in the tool response (``ssc_scan`` artifact) for fix handoff via ``agent_delegate`` ``artifact_refs``.
 - Stay within **authorized scope** (workspace + user-named targets). No open-ended internet-wide scanning or replication-style objectives.
 - Reuse existing tool results in the transcript — no identical tool+arguments spam.
 """
@@ -1787,6 +1824,13 @@ _CODING_BUILD_TOOL_DISCIPLINE = """## **Build** discipline (this stack)
 - Map work to permission groups (read, list, glob, grep, edit, bash, task, lsp) as in your system prompt; call with complete JSON.
 - Destructive tools may require UI approval when enabled — **ask** semantics for **edit** / **bash** when the client enables them.
 - Do not re-list or re-read the same path when that output is already in the transcript; proceed to edit, bash, or a new path.
+"""
+
+_CODING_FIX_ARTIFACT_DISCIPLINE = """## **fix_from_artifact** (this run)
+
+- Edit **only** paths from ``[Referenced artifacts]`` — enforcement blocks other files.
+- When ``branch: …`` is in requirements: checkout, commit, and push **that** branch only.
+- After edits: ``coding_git_read`` log + re-read each changed file before claiming success.
 """
 
 _TOOL_DISCIPLINE_BY_PRESET: dict[str, str] = {
@@ -1820,7 +1864,10 @@ def _agent_behavior_flags(agent_id: str | None) -> dict[str, Any]:
 
 
 def _append_tool_usage_discipline(
-    messages: list[dict[str, Any]], *, agent_id: str | None = None
+    messages: list[dict[str, Any]],
+    *,
+    agent_id: str | None = None,
+    delegate_mode: str | None = None,
 ) -> list[dict[str, Any]]:
     flags = _agent_behavior_flags(agent_id)
     preset = flags.get("tool_discipline_preset")
@@ -1828,6 +1875,11 @@ def _append_tool_usage_discipline(
         snippet = _TOOL_DISCIPLINE_BY_PRESET[preset].strip()
     else:
         snippet = _TOOL_USAGE_DISCIPLINE.strip()
+    mode = (delegate_mode or "").strip().lower()
+    if mode == "fix_from_artifact" and str(agent_id or "").strip() == "coding":
+        snippet = "\n\n".join(
+            s for s in (_CODING_FIX_ARTIFACT_DISCIPLINE.strip(), snippet) if s
+        )
     secrets_snippet = _SECRETS_CREDENTIAL_DISCIPLINE.strip()
     combined = "\n\n".join(s for s in (secrets_snippet, snippet) if s)
     if not combined:
@@ -2257,53 +2309,10 @@ def _parse_tool_arguments(raw: str | dict | None) -> dict[str, Any]:
 def _format_normalized_tool_args_for_recap(
     name: str, norm: dict[str, Any], *, max_len: int = 400
 ) -> str:
-    """Single-line summary of normalized tool arguments (shared by round digest + tool recap)."""
-    bits: list[str] = []
-    for key in (
-        "command",
-        "pattern",
-        "path",
-        "path_prefix",
-        "query",
-        "prompt",
-        "operation",
-        "rel",
-        "glob",
-        "patch_text",
-        "old_string",
-        "new_string",
-        "include_files",
-        "include_directories",
-    ):
-        if key not in norm:
-            continue
-        val = norm.get(key)
-        if isinstance(val, str):
-            u = val.strip().replace("\n", "\\n")
-            if not u:
-                continue
-            if len(u) > 140:
-                u = u[:140] + "…"
-            bits.append(f"{key}={u}")
-        elif isinstance(val, (bool, int, float)):
-            bits.append(f"{key}={val}")
-    nl = (name or "").lower()
-    if nl == "coding_glob" and not str(norm.get("pattern") or "").strip():
-        bits.insert(0, "pattern=<missing>")
-    if nl == "coding_search" and not str(norm.get("query") or "").strip():
-        bits.insert(0, "query=<missing>")
-    if bits:
-        line = " ".join(bits)
-    else:
-        try:
-            compact = json.dumps(norm, ensure_ascii=False, sort_keys=True, default=str)
-        except TypeError:
-            compact = repr(norm)
-        line = compact if compact.strip() not in ("{}", "") else "(empty)"
-    line = line.replace("\n", " ")
-    if len(line) > max_len:
-        line = line[:max_len] + "…"
-    return line
+    """Single-line summary for logs/events — from plugin ``tool_step_detail`` when defined."""
+    from apps.backend.domain.tool_step_label import recap_line_for_tool
+
+    return recap_line_for_tool(name, norm, max_len=max_len)
 
 
 def _unwrap_fenced_json(text: str) -> str:
@@ -3035,12 +3044,19 @@ def _completion_attach_agent_run_id(
     agent_run_id: str,
     *,
     context_meta: dict[str, Any] | None = None,
+    run_persisted: bool | None = None,
+    run_persist_warnings: list[str] | None = None,
 ) -> dict[str, Any]:
     if isinstance(data, dict):
-        if agent_run_id:
+        if agent_run_id and (run_persisted is None or run_persisted):
             data["agent_run_id"] = agent_run_id
-        if context_meta:
-            data["agentlayer_context"] = context_meta
+        meta = dict(context_meta or {})
+        if run_persisted is not None:
+            meta["run_persisted"] = run_persisted
+        if run_persist_warnings:
+            meta["run_persist_warnings"] = list(run_persist_warnings)
+        if meta:
+            data["agentlayer_context"] = meta
     return data
 
 
@@ -3304,6 +3320,22 @@ async def chat_completion(
     agent_require_workspace_verify = _coerce_body_bool(
         body.pop("agent_require_workspace_verify", None), False
     )
+    _raw_plan_delegate_mode = body.pop("agent_plan_delegate_mode", None)
+    _raw_delegate_mode = body.pop("agent_delegate_mode", None)
+    agent_delegate_mode: str | None = None
+    for raw in (_raw_delegate_mode, _raw_plan_delegate_mode):
+        if isinstance(raw, str) and raw.strip():
+            agent_delegate_mode = raw.strip()
+            break
+    _raw_delegate_paths = body.pop("agent_delegate_allowed_paths", None)
+    delegate_allowed_paths: list[str] | None = None
+    if isinstance(_raw_delegate_paths, list):
+        delegate_allowed_paths = [str(p).strip() for p in _raw_delegate_paths if str(p).strip()]
+    _raw_delegate_branch = body.pop("agent_delegate_required_branch", None)
+    delegate_required_branch: str | None = None
+    if isinstance(_raw_delegate_branch, str):
+        delegate_required_branch = _raw_delegate_branch.strip() or None
+    _handoff_collector = body.pop("agent_handoff_artifact_collector", None)
 
     from apps.backend.domain.identity import set_workspace, get_identity
     workspace_id = body.pop("workspace_id", None)
@@ -3474,6 +3506,18 @@ async def chat_completion(
     _abf = _agent_behavior_flags(agent_id if isinstance(agent_id, str) else None)
     tool_context["agent_coding_tools_permission_ask"] = _abf["coding_tools_permission_ask"]
     tool_context["agent_unattended"] = agent_unattended
+    if isinstance(agent_id, str) and agent_id.strip():
+        tool_context["agent_id"] = agent_id.strip()
+    if agent_delegate_mode:
+        tool_context["agent_delegate_mode"] = agent_delegate_mode
+        if agent_delegate_mode == "git_forensics":
+            tool_context["agent_plan_delegate_mode"] = agent_delegate_mode
+    if delegate_allowed_paths:
+        tool_context["agent_delegate_allowed_paths"] = delegate_allowed_paths
+    if delegate_required_branch:
+        tool_context["agent_delegate_required_branch"] = delegate_required_branch
+    if isinstance(_handoff_collector, list):
+        tool_context["handoff_artifact_collector"] = _handoff_collector
     _raw_conversation_id = body.pop("conversation_id", None)
     conversation_uuid: uuid.UUID | None = None
     if _raw_conversation_id is not None:
@@ -3485,8 +3529,10 @@ async def chat_completion(
             except (ValueError, TypeError):
                 conversation_uuid = None
     active_task_id: str | None = None
+    _task_uuid_for_run: uuid.UUID | None = None
+    _active_task_candidate: str | None = None
     if isinstance(_active_task_body, str) and _active_task_body.strip():
-        active_task_id = _active_task_body.strip()
+        _active_task_candidate = _active_task_body.strip()
     elif conversation_uuid is not None and user_id is not None:
         try:
             from apps.backend.infrastructure.db import db
@@ -3500,9 +3546,33 @@ async def chat_completion(
                     row = cur.fetchone()
                 conn.commit()
             if row and row[0]:
-                active_task_id = str(row[0])
+                _active_task_candidate = str(row[0])
         except Exception:
             pass
+    if _active_task_candidate and user_id is not None and tenant_id is not None:
+        from apps.backend.domain.agent_run_persistence import (
+            clear_conversation_active_task,
+            resolve_valid_active_task_id,
+        )
+
+        active_task_id, _task_uuid_for_run = resolve_valid_active_task_id(
+            tenant_id=int(tenant_id),
+            user_id=user_id,
+            candidate=_active_task_candidate,
+        )
+        if active_task_id is None and conversation_uuid is not None:
+            if _active_task_candidate == _active_task_body or _active_task_candidate:
+                clear_conversation_active_task(
+                    conversation_id=conversation_uuid, user_id=user_id
+                )
+    elif _active_task_candidate:
+        active_task_id = _active_task_candidate
+        try:
+            _task_uuid_for_run = uuid.UUID(_active_task_candidate)
+        except (ValueError, TypeError):
+            _task_uuid_for_run = None
+    else:
+        _task_uuid_for_run = None
     if active_task_id:
         tool_context["agent_task_id"] = active_task_id
     if (
@@ -3531,35 +3601,31 @@ async def chat_completion(
             _ws_uuid_for_run = uuid.UUID(str(workspace_id).strip())
         except (ValueError, TypeError):
             _ws_uuid_for_run = None
-    _task_uuid_for_run: uuid.UUID | None = None
-    if active_task_id:
-        try:
-            _task_uuid_for_run = uuid.UUID(active_task_id)
-        except (ValueError, TypeError):
-            _task_uuid_for_run = None
     _parent_run_uuid: uuid.UUID | None = None
     if parent_agent_run_id:
         try:
             _parent_run_uuid = uuid.UUID(parent_agent_run_id)
         except (ValueError, TypeError):
             _parent_run_uuid = None
+    _run_persisted = False
+    _run_persist_warnings: list[str] = []
     if user_id is not None and tenant_id is not None:
-        try:
-            from apps.backend.infrastructure import agent_runs_store
+        from apps.backend.infrastructure import agent_runs_store
 
-            agent_runs_store.insert_run_start(
-                run_id=uuid.UUID(agent_run_id),
-                tenant_id=int(tenant_id),
-                user_id=user_id,
-                agent_id=agent_id if isinstance(agent_id, str) else None,
-                task_id=_task_uuid_for_run,
-                parent_run_id=_parent_run_uuid,
-                conversation_id=conversation_uuid,
-                workspace_id=_ws_uuid_for_run,
-                embedded_subagent=embedded_subagent,
-            )
-        except Exception:
-            logger.debug("agent_runs insert skipped", exc_info=True)
+        _run_row, _run_persist_warnings = agent_runs_store.insert_run_start_resilient(
+            run_id=uuid.UUID(agent_run_id),
+            tenant_id=int(tenant_id),
+            user_id=user_id,
+            agent_id=agent_id if isinstance(agent_id, str) else None,
+            task_id=_task_uuid_for_run,
+            parent_run_id=_parent_run_uuid,
+            conversation_id=conversation_uuid,
+            workspace_id=_ws_uuid_for_run,
+            embedded_subagent=embedded_subagent,
+        )
+        _run_persisted = bool(_run_row)
+        for _w in _run_persist_warnings:
+            logger.warning("agent_run persist: %s", _w)
     parent_short = _short_run_id(parent_agent_run_id) if parent_agent_run_id else None
     logger.info(
         "run_start run_id=%s agent=%s parent=%s workspace=%s unattended=%s",
@@ -3583,15 +3649,24 @@ async def chat_completion(
         set_agent_task_id,
     )
 
-    _run_ctx_tok = set_agent_run_id(agent_run_id)
+    _run_ctx_tok = set_agent_run_id(agent_run_id if _run_persisted else None)
     _task_ctx_tok = set_agent_task_id(active_task_id)
     _run_finish_status = "succeeded"
     _run_finish_error: str | None = None
 
     try:
 
-        max_tool_rounds_eff = config.MAX_TOOL_ROUNDS
-        if _raw_max_rounds is not None:
+        max_tool_rounds_eff = (
+            config.SUBAGENT_MAX_TOOL_ROUNDS
+            if embedded_subagent
+            else config.MAX_TOOL_ROUNDS
+        )
+        # AGENT_MAX_TOOL_ROUNDS=0 → MAX_TOOL_ROUNDS == MAX_TOOL_ROUNDS_CAP; ignore lower body caps.
+        if (
+            not embedded_subagent
+            and _raw_max_rounds is not None
+            and config.MAX_TOOL_ROUNDS < config.MAX_TOOL_ROUNDS_CAP
+        ):
             try:
                 client_v = int(_raw_max_rounds)
                 if client_v <= 0:
@@ -3948,7 +4023,11 @@ async def chat_completion(
         elif not config.AGENT_LOG_TOOL_PIPELINE:
             _log_tools_request_estimate("chat_completions", tools_for_request)
         if not plain_completion and tools_for_request:
-            messages = _append_tool_usage_discipline(messages, agent_id=agent_id)
+            messages = _append_tool_usage_discipline(
+                messages,
+                agent_id=agent_id,
+                delegate_mode=agent_delegate_mode,
+            )
         pause_between_rounds = _coerce_body_bool(body.get("agent_pause_between_rounds"), False)
         if pause_between_rounds and control_queue is None:
             pause_between_rounds = False
@@ -4557,7 +4636,11 @@ async def chat_completion(
                         }
                     )
                 return _completion_attach_agent_run_id(
-                    data, agent_run_id, context_meta=_context_prep_meta or None
+                    data,
+                    agent_run_id,
+                    context_meta=_context_prep_meta or None,
+                    run_persisted=_run_persisted,
+                    run_persist_warnings=_run_persist_warnings or None,
                 )
             messages.append(msg)
 
@@ -4583,112 +4666,202 @@ async def chat_completion(
                         _prev_args,
                         args,
                     )
+                blocked: str | None = None
+                if name == "coding_bash":
+                    from plugins.tools.capabilities.coding.coding_bash_redirect import (
+                        redirect_coding_bash_command,
+                    )
+
+                    _ws = tool_context.get("workspace") if tool_context else None
+                    _root = (
+                        str(_ws.get("path")).strip()
+                        if isinstance(_ws, dict) and _ws.get("path")
+                        else None
+                    )
+                    _cmd = str(args.get("command") or "")
+                    _redir = redirect_coding_bash_command(_cmd, workspace_root=_root)
+                    if isinstance(_redir, str):
+                        blocked = json.dumps({"ok": False, "error": _redir}, ensure_ascii=False)
+                        logger.info(
+                            "tool_blocked run_id=%s agent=%s round=%d tool=%s readlike_bash %s",
+                            _short_run_id(agent_run_id),
+                            agent_id if isinstance(agent_id, str) else "-",
+                            round_i + 1,
+                            name,
+                            _cmd[:200],
+                        )
+                    elif isinstance(_redir, tuple):
+                        _prev_name = name
+                        name, args = _redir[0], dict(_redir[1])
+                        logger.info(
+                            "tool_redirect run_id=%s agent=%s round=%d %s -> %s %r",
+                            _short_run_id(agent_run_id),
+                            agent_id if isinstance(agent_id, str) else "-",
+                            round_i + 1,
+                            _prev_name,
+                            name,
+                            args,
+                        )
                 tool_call_id = tc.get("id") or ""
                 args_line = _format_normalized_tool_args_for_recap(name, args, max_len=200)
-                logger.info(
-                    "tool_exec run_id=%s agent=%s round=%d tool=%s %s",
-                    _short_run_id(agent_run_id),
-                    agent_id if isinstance(agent_id, str) else "-",
-                    round_i + 1,
-                    name,
-                    args_line,
-                )
-                if cancel_event is not None and cancel_event.is_set():
+                if blocked is None:
+                    blocked = _blocked_tool_json(name, args, tool_context)
+                if blocked is not None:
+                    result = blocked
+                    logger.info(
+                        "tool_blocked run_id=%s agent=%s round=%d tool=%s %s",
+                        _short_run_id(agent_run_id),
+                        agent_id if isinstance(agent_id, str) else "-",
+                        round_i + 1,
+                        name,
+                        args_line,
+                    )
+                else:
+                    logger.info(
+                        "tool_exec run_id=%s agent=%s round=%d tool=%s %s",
+                        _short_run_id(agent_run_id),
+                        agent_id if isinstance(agent_id, str) else "-",
+                        round_i + 1,
+                        name,
+                        args_line,
+                    )
+                    if cancel_event is not None and cancel_event.is_set():
+                        if event_emit:
+                            await event_emit(
+                                {
+                                    "type": "agent.cancelled",
+                                    "agent_run_id": agent_run_id,
+                                    "phase": "before_tool",
+                                    "round": round_i + 1,
+                                    "name": name,
+                                }
+                            )
+                        raise AgentChatCancelled()
                     if event_emit:
-                        await event_emit(
-                            {
-                                "type": "agent.cancelled",
-                                "agent_run_id": agent_run_id,
-                                "phase": "before_tool",
-                                "round": round_i + 1,
-                                "name": name,
-                            }
+                        from apps.backend.domain.tool_step_label import format_tool_step_label_from_args
+
+                        _tool_label: str | None = None
+                        try:
+                            _tool_label = get_registry().display_label_for_tool(name)
+                        except Exception:
+                            _tool_label = None
+                        _step_label = format_tool_step_label_from_args(
+                            name,
+                            args,
+                            tool_label=_tool_label,
                         )
-                    raise AgentChatCancelled()
-                if event_emit:
-                    await event_emit(
-                        {
+                        _tool_start_ev: dict[str, Any] = {
                             "type": "agent.tool_start",
                             "agent_run_id": agent_run_id,
                             "round": round_i + 1,
                             "name": name,
                             "summary": args_line,
+                            "step_label": _step_label,
                         }
-                    )
-                tctx = set_tool_invocation_messages(list(messages))
-                try:
-                    perm_always = tool_context.get("permission_always_allow_tools")
-                    if not isinstance(perm_always, set):
-                        perm_always = set()
-                        tool_context["permission_always_allow_tools"] = perm_always
-                    need_gate = (
-                        permission_ask
-                        and not bool(tool_context.get("agent_unattended"))
-                        and bool(tool_context.get("agent_coding_tools_permission_ask"))
-                        and name in _CODING_TOOLS_PERMISSION_ASK
-                        and name not in perm_always
-                    )
-                    if need_gate and control_queue is None:
-                        logger.warning(
-                            "agent_permission_ask set but no control_queue; executing %s without approval",
-                            name,
+                        if _tool_label:
+                            _tool_start_ev["label"] = _tool_label
+                        await event_emit(_tool_start_ev)
+                    tctx = set_tool_invocation_messages(list(messages))
+                    try:
+                        perm_always = tool_context.get("permission_always_allow_tools")
+                        if not isinstance(perm_always, set):
+                            perm_always = set()
+                            tool_context["permission_always_allow_tools"] = perm_always
+                        need_gate = (
+                            permission_ask
+                            and not bool(tool_context.get("agent_unattended"))
+                            and bool(tool_context.get("agent_coding_tools_permission_ask"))
+                            and name in _CODING_TOOLS_PERMISSION_ASK
+                            and name not in perm_always
                         )
-                    if need_gate and control_queue is not None:
-                        preview = json.dumps(args, ensure_ascii=False, default=str)[:2000]
-                        rid = str(uuid.uuid4())
-                        rep, fb_msg = await _wait_for_tool_permission_reply(
-                            control_queue=control_queue,
-                            cancel_event=cancel_event,
-                            event_emit=event_emit,
-                            agent_run_id=agent_run_id,
-                            request_id=rid,
-                            tool_name=name,
-                            args_preview=preview,
-                            round_i=round_i,
-                            handle_control=handle_control_dict,
-                        )
-                        if rep == "reject":
-                            rej: dict[str, Any] = {
-                                "ok": False,
-                                "error": "User rejected permission for this tool call.",
-                            }
-                            if fb_msg:
-                                rej["user_message"] = fb_msg
-                            result = json.dumps(rej, ensure_ascii=False)
-                        else:
-                            if rep == "always":
-                                perm_always.add(name)
-                            blocked = _unattended_blocked_tool_json(name, args, tool_context)
-                            result = (
-                                blocked
-                                if blocked is not None
-                                else await _thread_with_cancel(
+                        if need_gate and control_queue is None:
+                            logger.warning(
+                                "agent_permission_ask set but no control_queue; executing %s without approval",
+                                name,
+                            )
+                        if need_gate and control_queue is not None:
+                            preview = json.dumps(args, ensure_ascii=False, default=str)[:2000]
+                            rid = str(uuid.uuid4())
+                            rep, fb_msg = await _wait_for_tool_permission_reply(
+                                control_queue=control_queue,
+                                cancel_event=cancel_event,
+                                event_emit=event_emit,
+                                agent_run_id=agent_run_id,
+                                request_id=rid,
+                                tool_name=name,
+                                args_preview=preview,
+                                round_i=round_i,
+                                handle_control=handle_control_dict,
+                            )
+                            if rep == "reject":
+                                rej: dict[str, Any] = {
+                                    "ok": False,
+                                    "error": "User rejected permission for this tool call.",
+                                }
+                                if fb_msg:
+                                    rej["user_message"] = fb_msg
+                                result = json.dumps(rej, ensure_ascii=False)
+                            else:
+                                if rep == "always":
+                                    perm_always.add(name)
+                                result = await _thread_with_cancel(
                                     cancel_event,
                                     execute_tool,
                                     name,
                                     args,
                                     context=tool_context,
                                 )
-                            )
-                    else:
-                        blocked = _unattended_blocked_tool_json(name, args, tool_context)
-                        result = (
-                            blocked
-                            if blocked is not None
-                            else await _thread_with_cancel(
+                        else:
+                            result = await _thread_with_cancel(
                                 cancel_event,
                                 execute_tool,
                                 name,
                                 args,
                                 context=tool_context,
                             )
-                        )
-                finally:
-                    reset_tool_invocation_messages(tctx)
+                    finally:
+                        reset_tool_invocation_messages(tctx)
                 ok_sum, err_sum = _tool_result_summary(result)
+                if (
+                    name == "coding_git_read"
+                    and ok_sum
+                    and str(
+                        tool_context.get("agent_delegate_mode")
+                        or tool_context.get("agent_plan_delegate_mode")
+                        or ""
+                    ).strip().lower()
+                    == "git_forensics"
+                ):
+                    op = str(args.get("operation") or args.get("subcommand") or "").strip().lower()
+                    if op in ("diff_stat", "diff-stat", "diff"):
+                        tool_context["plan_git_diff_seen"] = True
                 git_hint = _unattended_mark_git_pull_done(name, result or "", tool_context)
                 if git_hint:
                     messages.append({"role": "system", "content": git_hint[:2500]})
+                follow_hint = _tool_result_followup_hint(name, result)
+                if follow_hint:
+                    messages.append({"role": "system", "content": follow_hint[:2500]})
+                if ok_sum:
+                    from apps.backend.domain.delegate_enforcement import (
+                        extract_artifact_ids_from_tool_result,
+                        extract_handoff_artifact_ids,
+                    )
+
+                    coll = tool_context.get("handoff_artifact_collector")
+                    if isinstance(coll, list):
+                        for aid in extract_artifact_ids_from_tool_result(result or ""):
+                            if aid and aid not in coll:
+                                coll.append(aid)
+                    if str(tool_context.get("agent_id") or "") == "general":
+                        if name == "agent_delegate" and ok_sum:
+                            sub_aid = str(args.get("agent_id") or "").strip()
+                            refs = args.get("artifact_refs")
+                            if sub_aid == "coding" and isinstance(refs, list) and refs:
+                                tool_context.pop("orchestrator_pending_artifact_refs", None)
+                        elif blocked is None:
+                            pending = extract_handoff_artifact_ids(result or "")
+                            if pending:
+                                tool_context["orchestrator_pending_artifact_refs"] = pending
                 record_schedule_tool_event(
                     round_num=round_i + 1,
                     tool_name=name,
@@ -4706,7 +4879,7 @@ async def chat_completion(
                     vr = _format_workspace_verify_recap(result)
                     if vr:
                         verify_recap_line = vr
-                if event_emit:
+                if event_emit and blocked is None:
                     await _apply_workspace_tool_bind_side_effects(
                         tool_name=name,
                         result=result or "",
@@ -4763,7 +4936,7 @@ async def chat_completion(
                         )
                         if tool_context.get("agent_unattended"):
                             record_schedule_abort("repeated_tool_loop")
-                if event_emit:
+                if event_emit and blocked is None:
                     await _emit_secret_prompt_from_tool_result(
                         name,
                         result,
@@ -4831,12 +5004,16 @@ async def chat_completion(
                 }
             )
         return _completion_attach_agent_run_id(
-            data, agent_run_id, context_meta=_context_prep_meta or None
+            data,
+            agent_run_id,
+            context_meta=_context_prep_meta or None,
+            run_persisted=_run_persisted,
+            run_persist_warnings=_run_persist_warnings or None,
         )
     finally:
         reset_agent_run_id(_run_ctx_tok)
         reset_agent_task_id(_task_ctx_tok)
-        if user_id is not None and tenant_id is not None:
+        if user_id is not None and tenant_id is not None and _run_persisted:
             try:
                 from apps.backend.infrastructure import agent_runs_store
 
@@ -4846,7 +5023,7 @@ async def chat_completion(
                     error=_run_finish_error,
                 )
             except Exception:
-                logger.debug("agent_runs finish skipped", exc_info=True)
+                logger.warning("agent_runs finish failed run_id=%s", agent_run_id, exc_info=True)
         reset_capability_confirmed(_cap_cf_tok)
         from apps.backend.domain.identity import reset_workspace
         if workspace_token:

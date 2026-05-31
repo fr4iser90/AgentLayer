@@ -316,6 +316,14 @@ def coding_search(arguments: dict[str, Any], context: dict | None = None) -> str
     return json.dumps(py, ensure_ascii=False)
 
 
+def tool_step_detail(arguments: dict[str, Any]) -> str:
+    q = str(arguments.get("query") or "").strip()
+    pp = str(arguments.get("path_prefix") or "").strip()
+    if q and pp:
+        return f"{q} ({pp})"
+    return q or pp
+
+
 HANDLERS: dict[str, Callable[[dict[str, Any]], str]] = {
     "coding_search": coding_search,
 }

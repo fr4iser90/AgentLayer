@@ -186,6 +186,7 @@ class ToolRegistry:
         self._router_cat_TOOL_LABEL: dict[str, str] = {}
         self._router_cat_TOOL_DESCRIPTION: dict[str, str] = {}
         self._capability_index: dict[str, list[dict[str, Any]]] = {}
+        self._tool_step_detail_fns: dict[str, Any] = {}
 
     def load_all(self) -> None:
         with self._lock:
@@ -194,6 +195,7 @@ class ToolRegistry:
             acc_h: dict[str, Handler] = {}
             acc_tools: list[dict[str, Any]] = []
             acc_meta: list[dict[str, Any]] = []
+            acc_step_detail: dict[str, Any] = {}
             router = _RouterAccum()
             scan_stats: dict[str, int] = {"cron_skipped": 0}
 
@@ -256,6 +258,7 @@ class ToolRegistry:
                         handlers=acc_h,
                         tools=acc_tools,
                         meta=acc_meta,
+                        step_detail_fns=acc_step_detail,
                         file_sha256=digest,
                         router=router,
                         scan_stats=scan_stats,
@@ -272,6 +275,7 @@ class ToolRegistry:
             self._handlers = acc_h
             self._chat_tool_specs = acc_tools
             self._tools_meta = acc_meta
+            self._tool_step_detail_fns = dict(acc_step_detail)
             self._router_cat_tools = {k: frozenset(v) for k, v in router.tools.items()}
             self._router_cat_TOOL_TRIGGERS = {k: frozenset(v) for k, v in router.TOOL_TRIGGERS.items()}
             self._router_cat_order = list(router.order)
@@ -289,6 +293,7 @@ class ToolRegistry:
         self._router_cat_TOOL_LABEL = {}
         self._router_cat_TOOL_DESCRIPTION = {}
         self._capability_index = {}
+        self._tool_step_detail_fns = {}
 
     def _purge_dynamic_tool_modules(self) -> None:
         for key in list(sys.modules):
@@ -303,6 +308,7 @@ class ToolRegistry:
         tools: list[dict[str, Any]],
         meta: list[dict[str, Any]],
         *,
+        step_detail_fns: dict[str, Any] | None = None,
         file_sha256: str | None = None,
         router: _RouterAccum | None = None,
         scan_stats: dict[str, int] | None = None,
@@ -351,6 +357,20 @@ class ToolRegistry:
 
         handlers.update(pending_handlers)
         tools.extend(pending_specs)
+
+        _detail_by_name = getattr(mod, "TOOL_STEP_DETAIL_BY_NAME", None)
+        _mod_detail_fn = getattr(mod, "tool_step_detail", None)
+        if step_detail_fns is not None:
+            for tn in tool_names:
+                fn = None
+                if isinstance(_detail_by_name, dict):
+                    cand = _detail_by_name.get(tn)
+                    if callable(cand):
+                        fn = cand
+                if fn is None and callable(_mod_detail_fn):
+                    fn = _mod_detail_fn
+                if fn is not None:
+                    step_detail_fns[tn] = fn
 
         if not tool_names:
             # HANDLERS present but no TOOLS → cron-only module; scheduled_job_registry may pick it up
@@ -609,6 +629,36 @@ class ToolRegistry:
                 if isinstance(tlist, list) and n in tlist:
                     return dict(entry)
         return None
+
+    def display_label_for_tool(self, registered_function_name: str) -> str | None:
+        """User-facing label from plugin ``TOOL_UI`` / ``TOOL_LABEL`` (not hard-coded in chat UI)."""
+        entry = self.meta_entry_for_tool_name(registered_function_name)
+        if not entry:
+            return None
+        ui = entry.get("ui")
+        if isinstance(ui, dict):
+            dn = ui.get("display_name")
+            if isinstance(dn, str) and dn.strip():
+                return dn.strip()
+        return None
+
+    def tool_step_detail_for(self, registered_function_name: str, arguments: dict[str, Any]) -> str:
+        """Call plugin ``tool_step_detail`` when registered for this tool name."""
+        n = (registered_function_name or "").strip()
+        if not n:
+            return ""
+        with self._lock:
+            fn = self._tool_step_detail_fns.get(n)
+        if not callable(fn):
+            return ""
+        try:
+            out = fn(dict(arguments or {}))
+        except Exception:
+            logger.debug("tool_step_detail failed for %r", n, exc_info=True)
+            return ""
+        if out is None:
+            return ""
+        return str(out).strip()
 
     def run_tool(self, name: str, arguments: dict[str, Any], context: dict | None = None) -> str:
         with self._lock:

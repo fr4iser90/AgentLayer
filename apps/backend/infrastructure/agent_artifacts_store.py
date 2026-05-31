@@ -46,6 +46,18 @@ def create_artifact(
         body["text"] = text_field[:_MAX_CONTENT_CHARS]
         body["truncated"] = True
     summ = (summary or "").strip()[:_MAX_SUMMARY_CHARS] or kind[:200]
+    task_fk = created_by_task_id
+    if task_fk is not None:
+        from apps.backend.infrastructure import agent_tasks_store
+
+        if not agent_tasks_store.get_task(task_id=task_fk, tenant_id=tenant_id):
+            task_fk = None
+    run_fk = created_by_run_id
+    if run_fk is not None:
+        from apps.backend.infrastructure import agent_runs_store
+
+        if not agent_runs_store.run_exists(run_id=run_fk, tenant_id=tenant_id):
+            run_fk = None
     with db.pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
@@ -65,8 +77,8 @@ def create_artifact(
                     summ,
                     Json(body),
                     (content_ref or "").strip()[:2000] or None,
-                    created_by_task_id,
-                    created_by_run_id,
+                    task_fk,
+                    run_fk,
                     Json(dict(metadata or {})),
                 ),
             )

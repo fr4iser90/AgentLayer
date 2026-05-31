@@ -131,6 +131,11 @@ def coding_read_file(arguments: dict[str, Any], context: dict | None = None) -> 
     )
 
 
+def tool_step_detail(arguments: dict[str, Any]) -> str:
+    path = str(arguments.get("path") or "").strip().replace("\\", "/")
+    return path.rsplit("/", 1)[-1] if path else ""
+
+
 HANDLERS: dict[str, Callable[[dict[str, Any]], str]] = {
     "coding_read_file": coding_read_file,
 }

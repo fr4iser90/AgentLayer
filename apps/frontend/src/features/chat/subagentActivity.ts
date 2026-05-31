@@ -42,8 +42,10 @@ export function handleSubagentWsEvent(
     const aid = String(msg.agent_id ?? "subagent").trim();
     const tool = typeof msg.tool === "string" ? msg.tool : undefined;
     const summary = typeof msg.summary === "string" ? msg.summary : undefined;
+    const toolLabel = typeof msg.label === "string" ? msg.label.trim() : undefined;
+    const stepLabel = typeof msg.step_label === "string" ? msg.step_label.trim() : undefined;
     const phase = msg.phase === "done" ? "done" : "start";
-    const label = formatToolStepLabel(tool, summary);
+    const label = formatToolStepLabel(tool, summary, toolLabel, stepLabel);
     append("subagent_step", label, {
       subagentAgentId: aid,
       subagentRunId: sid,
