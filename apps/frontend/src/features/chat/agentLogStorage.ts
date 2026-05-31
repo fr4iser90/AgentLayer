@@ -160,6 +160,16 @@ export function appendTimelineEntry(
       ...(entry.filesDone != null ? { filesDone: entry.filesDone } : {}),
       ...(entry.filesTotal != null ? { filesTotal: entry.filesTotal } : {}),
       ...(entry.runStatus != null ? { runStatus: entry.runStatus } : {}),
+      ...(entry.compactionPhase != null ? { compactionPhase: entry.compactionPhase } : {}),
+      ...(entry.providerPromptTokens != null
+        ? { providerPromptTokens: entry.providerPromptTokens }
+        : {}),
+      ...(entry.softLimitTokens != null ? { softLimitTokens: entry.softLimitTokens } : {}),
+      ...(entry.contextWindowTokens != null
+        ? { contextWindowTokens: entry.contextWindowTokens }
+        : {}),
+      ...(entry.toolRoundsDropped != null ? { toolRoundsDropped: entry.toolRoundsDropped } : {}),
+      ...(entry.budgetSource != null ? { budgetSource: entry.budgetSource } : {}),
       ...(entry.streamOffset != null && entry.streamOffset >= 0
         ? { streamOffset: entry.streamOffset }
         : {}),

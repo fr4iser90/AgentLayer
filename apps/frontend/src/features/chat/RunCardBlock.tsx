@@ -15,18 +15,21 @@ type Props = {
 function borderForKind(kind: RunCard["kind"]): string {
   if (kind === "subagent") return "border-indigo-500/45";
   if (kind === "index") return "border-violet-500/45";
+  if (kind === "compaction") return "border-amber-500/45";
   return "border-sky-500/35";
 }
 
 function bgForKind(kind: RunCard["kind"]): string {
   if (kind === "subagent") return "bg-indigo-950/25";
   if (kind === "index") return "bg-violet-950/20";
+  if (kind === "compaction") return "bg-amber-950/20";
   return "bg-sky-950/15";
 }
 
 function iconForKind(kind: RunCard["kind"]): string {
   if (kind === "subagent") return "🤖";
   if (kind === "index") return "📇";
+  if (kind === "compaction") return "📦";
   return "🔧";
 }
 
@@ -75,7 +78,11 @@ export function RunCardBlock({
   };
 
   const title =
-    card.kind === "subagent" && card.agentId
+    card.kind === "compaction"
+      ? card.compactionPhase === "history"
+        ? t("chat:runCardCompactionHistory")
+        : t("chat:runCardCompactionLoop")
+      : card.kind === "subagent" && card.agentId
       ? t(`chat:runCardAgent_${card.agentId}`, { defaultValue: card.title })
       : card.kind === "index" && card.indexMode
         ? t(`chat:runCardIndex_${card.indexMode}`, { defaultValue: card.title })
@@ -102,6 +109,18 @@ export function RunCardBlock({
         total: card.filesTotal,
       })
     );
+  } else if (card.kind === "compaction") {
+    if (card.providerPromptTokens != null && card.softLimitTokens != null) {
+      meta.push(
+        t("chat:runCardCompactionTokens", {
+          prompt: card.providerPromptTokens.toLocaleString(),
+          soft: card.softLimitTokens.toLocaleString(),
+        })
+      );
+    }
+    if (card.toolRoundsDropped != null && card.toolRoundsDropped > 0) {
+      meta.push(t("chat:runCardCompactionRounds", { count: card.toolRoundsDropped }));
+    }
   } else if (card.indexPhase) {
     meta.push(card.indexPhase);
   } else if (card.stepCount != null && card.stepCount > 0) {
@@ -109,7 +128,26 @@ export function RunCardBlock({
   }
 
   const allSteps = card.kind === "subagent" ? allSubagentStepLabels(card) : [];
-  const expandableDetails = card.kind === "subagent" ? allSteps.length > 0 : card.details.length > 0;
+  const compactionDetailLines =
+    card.kind === "compaction"
+      ? [
+          card.subtitle,
+          card.contextWindowTokens
+            ? t("chat:runCardCompactionWindow", {
+                count: card.contextWindowTokens.toLocaleString(),
+              })
+            : null,
+          card.budgetSource
+            ? t("chat:runCardCompactionSource", { source: card.budgetSource })
+            : null,
+        ].filter((x): x is string => Boolean(x && x.trim()))
+      : [];
+  const expandableDetails =
+    card.kind === "compaction"
+      ? compactionDetailLines.length > 0
+      : card.kind === "subagent"
+        ? allSteps.length > 0
+        : card.details.length > 0;
 
   return (
     <div
@@ -177,7 +215,13 @@ export function RunCardBlock({
           ) : null}
           {expanded ? (
             <ul className="mt-2 space-y-1 border-t border-white/5 pt-2">
-              {allSteps.length > 0
+              {card.kind === "compaction"
+                ? compactionDetailLines.map((line, i) => (
+                    <li key={`cmp-${i}`} className="text-[10px] leading-snug text-neutral-400">
+                      {line}
+                    </li>
+                  ))
+                : allSteps.length > 0
                 ? allSteps.map((step, i) => (
                     <li key={`step-${i}`} className="text-[10px] leading-snug text-neutral-500">
                       {card.status !== "running" ? (

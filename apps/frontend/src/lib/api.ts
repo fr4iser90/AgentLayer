@@ -32,26 +32,34 @@ export type McpServerRuntime = {
 
 export type ChatContextBudget = {
   prep_enabled?: boolean;
-  budget_tokens?: number;
-  soft_limit_tokens?: number;
-  hard_limit_tokens?: number;
+  budget_from?: string;
+  soft_limit_ratio?: number;
+  hard_limit_ratio?: number;
+  fallback_budget_tokens?: number | null;
   max_messages?: number;
   compaction_enabled?: boolean;
+  agent_loop_trim_enabled?: boolean;
 };
 
 export type ChatContextMeta = {
-  estimated_prompt_tokens?: number;
+  provider_prompt_tokens?: number;
   budget_tokens?: number;
+  context_window_tokens?: number;
+  budget_source?: string | null;
   soft_limit_tokens?: number;
   hard_limit_tokens?: number;
+  soft_limit_ratio?: number;
+  hard_limit_ratio?: number;
   messages_in_prompt?: number;
   messages_dropped?: number;
   messages_capped?: number;
   compaction_applied?: boolean;
+  loop_compaction_applied?: boolean;
   summary_active?: boolean;
   summary_covers_messages?: number;
   at_soft_limit?: boolean;
   at_hard_limit?: boolean;
+  tool_rounds_dropped?: number;
 };
 
 export type SessionRuntimePayload = {

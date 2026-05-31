@@ -2275,34 +2275,11 @@ def _tools_for_chat_request(
     return out
 
 
-def _tools_payload_size_estimate(tools: list[Any]) -> tuple[int, int, int]:
-    """
-    (json_char_count, est_tokens_low, est_tokens_high) for the tools[] array as sent in the request.
-
-    Heuristic only: chars/4 .. chars/3 — not the model tokenizer; real usage depends on the backend.
-    """
+def _tools_payload_json_chars(tools: list[Any]) -> int:
+    """Serialized ``tools[]`` JSON length (chars) for debug logs — not token count."""
     if not tools:
-        return 0, 0, 0
-    raw = json.dumps(tools, ensure_ascii=False, separators=(",", ":"))
-    c = len(raw)
-    lo = (c + 3) // 4
-    hi = (c + 2) // 3
-    return c, lo, hi
-
-
-def _log_tools_request_estimate(TOOL_LABEL: str, tools: list[Any]) -> None:
-    if not config.AGENT_LOG_TOOLS_REQUEST_ESTIMATE:
-        return
-    n = len(tools)
-    jc, lo, hi = _tools_payload_size_estimate(tools)
-    logger.info(
-        "tools request %s: tool_defs=%d json_chars=%d est_tokens~%d-%d (heuristic, not tokenizer)",
-        TOOL_LABEL,
-        n,
-        jc,
-        lo,
-        hi,
-    )
+        return 0
+    return len(json.dumps(tools, ensure_ascii=False, separators=(",", ":")))
 
 
 def _parse_tool_arguments(raw: str | dict | None) -> dict[str, Any]:
@@ -2787,9 +2764,8 @@ def _log_agent_tools_pipeline(
     )
     pin_part = f"+pin{pinned_count}" if pinned_count else ""
     size_part = ""
-    if config.AGENT_LOG_TOOLS_REQUEST_ESTIMATE and tools_for_request:
-        jc, lo, hi = _tools_payload_size_estimate(tools_for_request)
-        size_part = f" json~{jc} tok~{lo}-{hi}"
+    if tools_for_request:
+        size_part = f" json~{_tools_payload_json_chars(tools_for_request)}"
     cat = routed_category or "full"
     names_bit = ""
     if forward_names and len(forward_names) <= 24:
@@ -3691,8 +3667,11 @@ async def chat_completion(
 
         _chat_history_raw = list(body.get("messages") or [])
         _context_prep_meta: dict[str, Any] = {}
+        _compaction_attempt: tuple[str, dict[str, str], str] | None = None
+        _prep_context_budget = None
         if config.CHAT_CONTEXT_PREP_ENABLED and _chat_history_raw:
             from apps.backend.infrastructure.chat_context import prepare_chat_history_for_llm
+            from apps.backend.infrastructure.context_budget import resolve_context_budget
             from apps.backend.infrastructure.operator_settings import llm_chat_transport
 
             _prep_model, _, _prep_profile, _prep_override = resolve_effective_model(
@@ -3712,7 +3691,6 @@ async def chat_completion(
                     is_override=_prep_override,
                     catalog_owned_by=_prep_catalog,
                 )
-            _compaction_attempt: tuple[str, dict[str, str], str] | None = None
             if _prep_catalog:
                 try:
                     _prep_attempts, _ = llm_chat_transport(
@@ -3726,12 +3704,18 @@ async def chat_completion(
                 except ValueError as e:
                     logger.warning("chat context compaction: LLM transport unavailable: %s", e)
 
+            _prep_context_budget = resolve_context_budget(
+                str(_prep_model or ""),
+                catalog_owned_by=_prep_catalog,
+            )
+
             _chat_history_raw, _ctx_meta = await prepare_chat_history_for_llm(
                 _chat_history_raw,
                 conversation_id=conversation_uuid,
                 user_id=user_id if isinstance(user_id, uuid.UUID) else None,
                 compaction_model=_prep_model,
                 compaction_attempt=_compaction_attempt,
+                context_budget=_prep_context_budget,
             )
             body["messages"] = _chat_history_raw
             _context_prep_meta = _ctx_meta.as_dict()
@@ -3794,6 +3778,39 @@ async def chat_completion(
         tool_context["parent_effective_model"] = model
         if catalog_owned_by:
             tool_context["parent_model_catalog_owned_by"] = catalog_owned_by
+        from apps.backend.infrastructure.context_budget import resolve_context_budget, usage_prompt_tokens
+        from apps.backend.infrastructure.chat_context import apply_budget_to_meta, ContextPrepMeta, update_meta_from_provider_usage
+
+        _context_budget = resolve_context_budget(
+            str(model or ""),
+            catalog_owned_by=catalog_owned_by if isinstance(catalog_owned_by, str) else None,
+        )
+        tool_context["_context_budget"] = _context_budget
+        if _compaction_attempt is not None:
+            tool_context["_compaction_model"] = str(model or "")
+            tool_context["_compaction_attempt"] = _compaction_attempt
+        if _context_budget is not None:
+            _meta_obj = ContextPrepMeta()
+            apply_budget_to_meta(_meta_obj, _context_budget)
+            for key, val in _meta_obj.as_dict().items():
+                if val is not None and val != "" and val != 0:
+                    _context_prep_meta[key] = val
+            tool_context["chat_context_meta"] = _context_prep_meta
+            logger.info(
+                "chat context budget: model=%r window=%d soft=%d hard=%d source=%s",
+                model,
+                _context_budget.context_window_tokens,
+                _context_budget.soft_limit_tokens,
+                _context_budget.hard_limit_tokens,
+                _context_budget.source,
+            )
+        elif str(model or "").strip():
+            logger.warning(
+                "chat context budget: no context window for model=%r provider=%r — "
+                "set CHAT_CONTEXT_MODEL_BUDGET_OVERRIDES or ensure GET /v1/models exposes n_ctx",
+                model,
+                catalog_owned_by,
+            )
         smart_route_reason = ""
         backend_override: Literal["provider", "provider_admin"] | None = None
         if isinstance(_raw_llm_be, str):
@@ -4032,9 +4049,6 @@ async def chat_completion(
                 routed_category or "full",
                 forward_names,
             )
-            _log_tools_request_estimate("chat_completions", tools_for_request)
-        elif not config.AGENT_LOG_TOOL_PIPELINE:
-            _log_tools_request_estimate("chat_completions", tools_for_request)
         if not plain_completion and tools_for_request:
             messages = _append_tool_usage_discipline(
                 messages,
@@ -4185,6 +4199,14 @@ async def chat_completion(
         if event_emit:
             await event_emit(
                 {
+                    "type": "agent.context_update",
+                    "agent_run_id": agent_run_id,
+                    "context": dict(tool_context.get("chat_context_meta") or {}),
+                }
+            )
+        if event_emit:
+            await event_emit(
+                {
                     "type": "agent.session",
                     "agent_run_id": agent_run_id,
                     "routed_category": routed_category,
@@ -4212,12 +4234,111 @@ async def chat_completion(
         doom_count = 0
         force_no_tools_round = False
         force_no_tools_reason: str | None = None  # "thrash" | "doom"
+
+        async def _emit_context_ws(
+            *,
+            compacted: bool = False,
+            phase: str = "loop",
+            reason: str = "",
+            round_num: int | None = None,
+        ) -> None:
+            if not event_emit:
+                return
+            ctx = dict(tool_context.get("chat_context_meta") or {})
+            await event_emit(
+                {
+                    "type": "agent.context_update",
+                    "agent_run_id": agent_run_id,
+                    "context": ctx,
+                }
+            )
+            if not compacted:
+                return
+            await event_emit(
+                {
+                    "type": "agent.context_compacted",
+                    "agent_run_id": agent_run_id,
+                    "phase": phase,
+                    "reason": reason,
+                    "round": round_num,
+                    "context": ctx,
+                    "provider_prompt_tokens": ctx.get("provider_prompt_tokens"),
+                    "soft_limit_tokens": ctx.get("soft_limit_tokens"),
+                    "context_window_tokens": ctx.get("context_window_tokens"),
+                    "tool_rounds_dropped": ctx.get("tool_rounds_dropped"),
+                    "budget_source": ctx.get("budget_source"),
+                    "summary_active": ctx.get("summary_active"),
+                }
+            )
+
+        async def _enforce_agent_context_budget(
+            reason: str,
+            provider_prompt_tokens: int | None,
+            *,
+            round_num: int | None = None,
+        ) -> None:
+            nonlocal _context_prep_meta
+            from apps.backend.infrastructure.chat_context_loop import apply_agent_loop_context_budget
+
+            budget = tool_context.get("_context_budget")
+            new_msgs, loop_sum, patch = await apply_agent_loop_context_budget(
+                messages,
+                context_budget=budget,
+                provider_prompt_tokens=provider_prompt_tokens,
+                loop_summary=str(tool_context.get("agent_loop_context_summary") or ""),
+                compaction_model=str(tool_context.get("_compaction_model") or model or ""),
+                compaction_attempt=tool_context.get("_compaction_attempt"),
+            )
+            if new_msgs is not messages:
+                messages[:] = new_msgs
+            if loop_sum:
+                tool_context["agent_loop_context_summary"] = loop_sum
+            if provider_prompt_tokens is not None and provider_prompt_tokens > 0:
+                tool_context["last_provider_prompt_tokens"] = provider_prompt_tokens
+            compacted = bool(
+                patch.get("loop_compaction_applied") or patch.get("trim_applied")
+            )
+            if compacted or patch:
+                _context_prep_meta.update({k: v for k, v in patch.items() if v is not None})
+            if compacted:
+                _context_prep_meta["compaction_applied"] = True
+                _context_prep_meta["loop_compaction_applied"] = bool(
+                    patch.get("loop_compaction_applied")
+                )
+                logger.info("chat context budget (%s): %s", reason, patch)
+            if provider_prompt_tokens is not None and budget is not None:
+                _meta_obj = ContextPrepMeta()
+                apply_budget_to_meta(_meta_obj, budget)
+                update_meta_from_provider_usage(_meta_obj, budget, provider_prompt_tokens)
+                for key in (
+                    "provider_prompt_tokens",
+                    "at_soft_limit",
+                    "at_hard_limit",
+                ):
+                    _context_prep_meta[key] = getattr(_meta_obj, key)
+            tool_context["chat_context_meta"] = _context_prep_meta
+            if (
+                compacted
+                or provider_prompt_tokens is not None
+                or _context_prep_meta.get("context_window_tokens")
+            ):
+                await _emit_context_ws(
+                    compacted=compacted,
+                    phase="loop",
+                    reason=reason,
+                    round_num=round_num,
+                )
+
         if not plain_completion and tools_for_request:
             messages.append(
                 {
                     "role": "system",
                     "content": _agent_tool_budget_system_message(max_tool_rounds_eff),
                 }
+            )
+            await _enforce_agent_context_budget(
+                "before_tool_loop",
+                tool_context.get("last_provider_prompt_tokens"),
             )
         for round_i in range(max_tool_rounds_eff):
             await drain_control_queue()
@@ -4292,6 +4413,12 @@ async def chat_completion(
                         max_tool_rounds_eff,
                     )
             allowed_names = _names_from_tool_list(tools_for_round)
+
+            await _enforce_agent_context_budget(
+                f"round_{round_i + 1}_pre_llm",
+                tool_context.get("last_provider_prompt_tokens"),
+                round_num=round_i + 1,
+            )
 
             if event_emit:
                 await event_emit(
@@ -4592,6 +4719,13 @@ async def chat_completion(
                 ]
                 usage_raw = data.get("usage") if isinstance(data, dict) else None
                 usage_out = usage_raw if isinstance(usage_raw, dict) else None
+                _prompt_tok = usage_prompt_tokens(usage_out) if usage_out else None
+                if _prompt_tok is not None:
+                    await _enforce_agent_context_budget(
+                        f"round_{round_i + 1}_post_llm",
+                        _prompt_tok,
+                        round_num=round_i + 1,
+                    )
                 await event_emit(
                     {
                         "type": "agent.llm_round",
@@ -4958,6 +5092,12 @@ async def chat_completion(
 
             if verify_recap_line:
                 messages.append({"role": "system", "content": verify_recap_line[:2500]})
+
+            await _enforce_agent_context_budget(
+                f"round_{round_i + 1}_post_tools",
+                tool_context.get("last_provider_prompt_tokens"),
+                round_num=round_i + 1,
+            )
 
             if (
                 pause_between_rounds

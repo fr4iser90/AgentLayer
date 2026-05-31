@@ -8,6 +8,7 @@ from typing import Any
 
 from apps.backend.infrastructure import operator_settings
 from apps.backend.infrastructure.db import db
+from apps.backend.infrastructure.embedding_chunking import chunk_text_for_embedding
 from apps.backend.infrastructure.embedding_client import embed_one
 from apps.backend.domain.identity import get_identity
 
@@ -50,7 +51,7 @@ def ingest_for_user(
     raw = (text or "").strip()
     if not raw:
         raise ValueError("text is required")
-    chunks = chunk_text(raw, rs["chunk_size"], rs["chunk_overlap"])
+    chunks = chunk_text_for_embedding(raw, rs["chunk_size"], rs["chunk_overlap"])
     if not chunks:
         raise ValueError("no chunks after splitting")
     indexed: list[tuple[int, str, list[float]]] = []

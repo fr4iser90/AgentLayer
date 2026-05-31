@@ -13,9 +13,11 @@ import httpx
 from apps.backend.api.rag import embed_one, ingest_for_user
 from apps.backend.infrastructure import operator_settings
 from apps.backend.infrastructure.db import db
+from apps.backend.infrastructure.embedding_chunking import effective_embed_max_input_tokens
 from apps.backend.infrastructure.embedding_client import (
     format_embedding_http_error,
     format_embedding_request_error,
+    log_embedding_http_error,
 )
 
 logger = logging.getLogger(__name__)
@@ -30,6 +32,7 @@ def compute_rag_ingest_fingerprint() -> str:
             str(int(rs.get("embedding_dim") or 0)),
             str(int(rs.get("chunk_size") or 0)),
             str(int(rs.get("chunk_overlap") or 0)),
+            str(effective_embed_max_input_tokens()),
         ]
     )
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
@@ -142,7 +145,7 @@ def ingest_markdown_paths(
         except ValueError as e:
             errors.append({"path": rel, "error": str(e)})
         except httpx.HTTPStatusError as e:
-            logger.warning("RAG ingest embedding HTTP error path=%s: %s", rel, e)
+            log_embedding_http_error(e, context=f"RAG ingest path={rel}")
             errors.append({"path": rel, "error": format_embedding_http_error(e)})
         except httpx.RequestError as e:
             logger.warning("RAG ingest embedding unreachable path=%s: %s", rel, e)

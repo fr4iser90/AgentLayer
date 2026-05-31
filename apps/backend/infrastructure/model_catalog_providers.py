@@ -267,7 +267,12 @@ def list_provider_specs(*, force_refresh: bool = False) -> list[CatalogProviderS
             specs.append(sp)
             seen.add(sp.provider_id)
 
-    for row in db.external_llm_endpoints_list_all():
+    try:
+        db_rows = db.external_llm_endpoints_list_all()
+    except RuntimeError:
+        logger.debug("list_provider_specs: DB pool not ready — env providers only")
+        db_rows = []
+    for row in db_rows:
         sp = _db_endpoint_spec(row)
         if sp.provider_id in seen:
             continue
@@ -340,6 +345,8 @@ def fetch_models_for_provider(
 
 
 def _parse_models_payload(data: dict[str, Any], owned_by: str) -> list[dict[str, Any]]:
+    from apps.backend.infrastructure.context_budget import extract_context_length_from_model_item
+
     out: list[dict[str, Any]] = []
     for item in data.get("data") or []:
         if not isinstance(item, dict):
@@ -347,13 +354,15 @@ def _parse_models_payload(data: dict[str, Any], owned_by: str) -> list[dict[str,
         mid = item.get("id")
         if not isinstance(mid, str) or not mid.strip():
             continue
-        out.append(
-            {
-                "id": mid.strip(),
-                "object": item.get("object") if isinstance(item.get("object"), str) else "model",
-                "owned_by": owned_by,
-            }
-        )
+        row: dict[str, Any] = {
+            "id": mid.strip(),
+            "object": item.get("object") if isinstance(item.get("object"), str) else "model",
+            "owned_by": owned_by,
+        }
+        ctx = extract_context_length_from_model_item(item)
+        if ctx:
+            row["context_length"] = ctx
+        out.append(row)
     return out
 
 
@@ -390,6 +399,42 @@ def build_model_provider_index() -> dict[str, list[str]]:
         if ob not in index[mid]:
             index[mid].append(ob)
     return index
+
+
+def lookup_model_context_length(model_id: str, catalog_owned_by: str) -> int | None:
+    """Context window for ``model_id`` on a specific catalog provider."""
+    mid = (model_id or "").strip()
+    ob = normalize_catalog_provider_id(catalog_owned_by)
+    if not mid or not ob:
+        return None
+
+    # Prefer a direct GET /v1/models on the routed provider (llama.cpp meta.n_ctx, …).
+    spec = get_provider_spec(ob)
+    if spec is not None:
+        rows, meta = fetch_models_for_provider(spec)
+        if meta.get("reachable"):
+            for row in rows:
+                if str(row.get("id") or "").strip() != mid:
+                    continue
+                n = row.get("context_length")
+                if isinstance(n, int) and n > 0:
+                    return n
+        else:
+            logger.debug(
+                "lookup_model_context_length: provider %s unreachable (%s)",
+                ob,
+                meta.get("detail"),
+            )
+
+    for row in fetch_full_model_catalog()[0]:
+        if str(row.get("id") or "").strip() != mid:
+            continue
+        if normalize_catalog_provider_id(row.get("owned_by")) != ob:
+            continue
+        n = row.get("context_length")
+        if isinstance(n, int) and n > 0:
+            return n
+    return None
 
 
 def route_chat_by_catalog_provider(

@@ -180,8 +180,6 @@ AGENT_TOOL_CHOICE_REQUIRED_RETRY = _env_bool("AGENT_TOOL_CHOICE_REQUIRED_RETRY",
 AGENT_LOG_LLM_ROUNDS = _env_bool("AGENT_LOG_LLM_ROUNDS", True)
 AGENT_LOG_ASSISTANT_PREVIEW_CHARS = _env_int("AGENT_LOG_ASSISTANT_PREVIEW_CHARS", 0)
 AGENT_LOG_LARGE_CONTEXT_CHARS = _env_int("AGENT_LOG_LARGE_CONTEXT_CHARS", 120_000)
-# Log serialized tools[] size + rough token bounds before chat/completions.
-AGENT_LOG_TOOLS_REQUEST_ESTIMATE = _env_bool("AGENT_LOG_TOOLS_REQUEST_ESTIMATE", True)
 # One-line tool funnel (allowlist → pre-rank schemas → ranking → forwarded to LLM).
 AGENT_LOG_TOOL_PIPELINE = _env_bool("AGENT_LOG_TOOL_PIPELINE", True)
 # Repeat full tools[] name list on every llm_round log (noisy; default off).
@@ -224,7 +222,11 @@ AGENT_STREAM_REPETITION_TAIL_WINDOW = max(500, _env_int("AGENT_STREAM_REPETITION
 CHAT_CONTEXT_PREP_ENABLED = _env_bool("CHAT_CONTEXT_PREP_ENABLED", True)
 CHAT_CONTEXT_MAX_MESSAGES = max(8, _env_int("CHAT_CONTEXT_MAX_MESSAGES", 48))
 CHAT_CONTEXT_MAX_MESSAGE_CHARS = max(2000, _env_int("CHAT_CONTEXT_MAX_MESSAGE_CHARS", 16_000))
-CHAT_CONTEXT_DEFAULT_BUDGET_TOKENS = max(8000, _env_int("CHAT_CONTEXT_DEFAULT_BUDGET_TOKENS", 128_000))
+# Optional fallback context window (tokens) when provider model metadata has no context_length.
+# Default 0 = disabled — compaction ratios use provider catalog or CHAT_CONTEXT_MODEL_BUDGET_OVERRIDES only.
+CHAT_CONTEXT_DEFAULT_BUDGET_TOKENS = max(0, _env_int("CHAT_CONTEXT_DEFAULT_BUDGET_TOKENS", 0))
+# JSON map model_id → context window tokens, e.g. {"Qwen3.6-...gguf":131072}
+CHAT_CONTEXT_MODEL_BUDGET_OVERRIDES = (os.environ.get("CHAT_CONTEXT_MODEL_BUDGET_OVERRIDES") or "").strip()
 CHAT_CONTEXT_SOFT_LIMIT_RATIO = max(
     0.3, min(0.95, float(os.environ.get("CHAT_CONTEXT_SOFT_LIMIT_RATIO", "0.6")))
 )
@@ -237,6 +239,11 @@ CHAT_CONTEXT_COMPACTION_MODEL = (os.environ.get("CHAT_CONTEXT_COMPACTION_MODEL")
 CHAT_CONTEXT_COMPACTION_MAX_INPUT_CHARS = max(
     5000, _env_int("CHAT_CONTEXT_COMPACTION_MAX_INPUT_CHARS", 80_000)
 )
+CHAT_CONTEXT_AGENT_LOOP_TRIM_ENABLED = _env_bool("CHAT_CONTEXT_AGENT_LOOP_TRIM_ENABLED", True)
+CHAT_CONTEXT_TOOL_RESULT_MAX_CHARS = max(
+    1000, _env_int("CHAT_CONTEXT_TOOL_RESULT_MAX_CHARS", 8000)
+)
+CHAT_CONTEXT_KEEP_RECENT_TOOL_ROUNDS = max(2, _env_int("CHAT_CONTEXT_KEEP_RECENT_TOOL_ROUNDS", 6))
 
 AGENT_TOOLS_RANKING_ENABLED = _env_bool("AGENT_TOOLS_RANKING_ENABLED", True)
 AGENT_TOOLS_MAX_RANKING = max(1, int(os.environ.get("AGENT_TOOLS_MAX_RANKING", "10")))
@@ -496,6 +503,8 @@ PIDEA_DEFAULT_TIMEOUT_MS = _env_int("PIDEA_DEFAULT_TIMEOUT_MS", 30_000)
 # Embeddings only (RAG, memory, Qdrant code index, tool ranking). Not used for chat.
 # Numbered env: EMBEDDING_PROVIDER_1_BASE_URL, EMBEDDING_PROVIDER_1_API_KEY, …
 # Active provider: Admin → Interfaces → Memory & RAG (or auto: first configured).
+# Max tokens per /v1/embeddings request (llama.cpp ubatch); RAG chunks stay under this.
+EMBEDDING_MAX_INPUT_TOKENS = max(32, min(_env_int("EMBEDDING_MAX_INPUT_TOKENS", 512), 8192))
 
 # --- MCP (Model Context Protocol, stdio servers; optional) ---
 AGENT_MCP_ENABLED = _env_bool("AGENT_MCP_ENABLED", False)

@@ -48,6 +48,7 @@ import {
 import { AgentActivityPanel } from "../features/chat/AgentActivityPanel";
 import { AssistantTurnBlock } from "../features/chat/AssistantTurnBlock";
 import { indexActivityToTimeline, type IndexActivityEvent } from "../features/chat/indexActivity";
+import { compactionEventToTimeline } from "../features/chat/compactionActivity";
 import { buildInterleavedTurnSegments } from "../features/chat/interleavedTurnSegments";
 import { timelineForTurn, userTurnIdBeforeAssistant } from "../features/chat/turnRunCards";
 import {
@@ -1570,7 +1571,21 @@ export function ChatPage() {
           const mr = msg.model_resolution != null ? String(msg.model_resolution) : "";
           appendAgentLine("session", [em && `model: ${em}`, mr && `(${mr})`].filter(Boolean).join(" "));
           if (msg.context && typeof msg.context === "object") {
-            setChatContextMeta(msg.context as ChatContextMeta);
+            const ctx = msg.context as ChatContextMeta;
+            setChatContextMeta(ctx);
+            if (ctx.compaction_applied && ctx.summary_active) {
+              const { kind, text, extras } = compactionEventToTimeline({
+                phase: "history",
+                provider_prompt_tokens: ctx.provider_prompt_tokens,
+                soft_limit_tokens: ctx.soft_limit_tokens,
+                context_window_tokens: ctx.context_window_tokens,
+                budget_source: ctx.budget_source ?? undefined,
+              });
+              appendAgentLine(kind, text, {
+                ...extras,
+                streamOffset: assistantStreamOffset(),
+              });
+            }
           }
           if (msg.agent_auto_routed === true && msg.effective_agent_id != null) {
             const aid = String(msg.effective_agent_id).trim();
@@ -1616,6 +1631,61 @@ export function ChatPage() {
               }
             }
           }
+          return;
+        }
+        if (typ === "agent.context_update") {
+          if (msg.context && typeof msg.context === "object") {
+            setChatContextMeta(msg.context as ChatContextMeta);
+          }
+          return;
+        }
+        if (typ === "agent.context_compacted") {
+          if (msg.context && typeof msg.context === "object") {
+            setChatContextMeta(msg.context as ChatContextMeta);
+          } else {
+            setChatContextMeta((prev) => ({
+              ...(prev ?? {}),
+              provider_prompt_tokens:
+                msg.provider_prompt_tokens != null
+                  ? Number(msg.provider_prompt_tokens)
+                  : prev?.provider_prompt_tokens,
+              soft_limit_tokens:
+                msg.soft_limit_tokens != null
+                  ? Number(msg.soft_limit_tokens)
+                  : prev?.soft_limit_tokens,
+              context_window_tokens:
+                msg.context_window_tokens != null
+                  ? Number(msg.context_window_tokens)
+                  : prev?.context_window_tokens,
+              tool_rounds_dropped:
+                msg.tool_rounds_dropped != null
+                  ? Number(msg.tool_rounds_dropped)
+                  : prev?.tool_rounds_dropped,
+              budget_source:
+                msg.budget_source != null ? String(msg.budget_source) : prev?.budget_source,
+              loop_compaction_applied: true,
+              compaction_applied: true,
+              at_soft_limit: true,
+            }));
+          }
+          const { kind, text, extras } = compactionEventToTimeline({
+            phase: msg.phase != null ? String(msg.phase) : "loop",
+            reason: msg.reason != null ? String(msg.reason) : undefined,
+            round: msg.round != null ? Number(msg.round) : undefined,
+            provider_prompt_tokens:
+              msg.provider_prompt_tokens != null ? Number(msg.provider_prompt_tokens) : undefined,
+            soft_limit_tokens:
+              msg.soft_limit_tokens != null ? Number(msg.soft_limit_tokens) : undefined,
+            context_window_tokens:
+              msg.context_window_tokens != null ? Number(msg.context_window_tokens) : undefined,
+            tool_rounds_dropped:
+              msg.tool_rounds_dropped != null ? Number(msg.tool_rounds_dropped) : undefined,
+            budget_source: msg.budget_source != null ? String(msg.budget_source) : undefined,
+          });
+          appendAgentLine(kind, text, {
+            ...extras,
+            streamOffset: assistantStreamOffset(),
+          });
           return;
         }
         if (typ === "agent.llm_round_start") {
@@ -1682,6 +1752,19 @@ export function ChatPage() {
           appendAgentLine("llm", `${r}${ex ? ` — ${ex}` : ""}`);
           if (msg.usage != null) {
             setTokenUsage((prev) => addUsageTotals(prev, msg.usage));
+            const usageRaw = msg.usage as Record<string, unknown>;
+            const promptTok =
+              typeof usageRaw.prompt_tokens === "number"
+                ? usageRaw.prompt_tokens
+                : typeof usageRaw.prompt === "number"
+                  ? usageRaw.prompt
+                  : null;
+            if (promptTok != null && promptTok > 0) {
+              setChatContextMeta((prev) => ({
+                ...(prev ?? {}),
+                provider_prompt_tokens: promptTok,
+              }));
+            }
           }
           return;
         }

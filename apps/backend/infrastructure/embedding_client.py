@@ -6,10 +6,15 @@ Active provider: ``rag_embedding_provider_id`` in operator settings (Admin UI), 
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any
 
 import httpx
+
+logger = logging.getLogger(__name__)
+
+_EMBED_HTTP_ERROR_BODY_MAX = 2000
 
 from apps.backend.core import config as cfgmod
 from apps.backend.infrastructure import operator_settings
@@ -18,6 +23,10 @@ from apps.backend.infrastructure.embedding_catalog_providers import (
     list_embedding_provider_specs,
     resolve_active_embedding_provider_id,
     resolve_active_embedding_spec,
+)
+from apps.backend.infrastructure.embedding_chunking import (
+    remember_embedding_limits_from_error_body,
+    truncate_text_for_embedding,
 )
 from apps.backend.infrastructure.openai_compat_http import http_post_json
 
@@ -211,8 +220,44 @@ def clear_embedding_health_cache() -> None:
     invalidate_embedding_catalog_cache()
 
 
+def embedding_http_response_snippet(
+    exc: httpx.HTTPStatusError,
+    *,
+    max_len: int = _EMBED_HTTP_ERROR_BODY_MAX,
+) -> str:
+    try:
+        raw = exc.response.text or ""
+    except Exception:
+        return ""
+    text = raw.strip()
+    if not text:
+        return ""
+    if len(text) <= max_len:
+        return text
+    return text[:max_len] + "…"
+
+
 def format_embedding_http_error(exc: httpx.HTTPStatusError) -> str:
-    return f"Embedding API HTTP error: {exc!s}"
+    status = exc.response.status_code
+    url = str(exc.request.url) if exc.request is not None else "?"
+    body = embedding_http_response_snippet(exc)
+    msg = f"Embedding API HTTP error: status={status} url={url}"
+    if body:
+        msg = f"{msg} body={body}"
+    return msg
+
+
+def log_embedding_http_error(exc: httpx.HTTPStatusError, *, context: str = "") -> None:
+    prefix = f"{context}: " if context else ""
+    body = embedding_http_response_snippet(exc)
+    remember_embedding_limits_from_error_body(body)
+    logger.warning(
+        "%sembedding HTTP status=%s url=%s body=%s",
+        prefix,
+        exc.response.status_code,
+        str(exc.request.url) if exc.request is not None else "?",
+        body or "(empty)",
+    )
 
 
 def format_embedding_request_error(exc: httpx.RequestError) -> str:
@@ -220,7 +265,7 @@ def format_embedding_request_error(exc: httpx.RequestError) -> str:
 
 
 def embed_one(text: str) -> list[float]:
-    raw = (text or "").strip()
+    raw = truncate_text_for_embedding((text or "").strip())
     if not raw:
         raise ValueError("embedding text is empty")
 
@@ -239,7 +284,11 @@ def embed_one(text: str) -> list[float]:
             headers=headers,
             timeout=timeout,
         )
-    except httpx.HTTPStatusError:
+    except httpx.HTTPStatusError as e:
+        log_embedding_http_error(
+            e,
+            context=f"embed_one model={model!r} input_chars={len(raw)}",
+        )
         raise
     except httpx.RequestError as e:
         raise ValueError(f"embeddings request failed ({url}): {e!s}") from e

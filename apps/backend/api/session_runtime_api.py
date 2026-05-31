@@ -46,14 +46,12 @@ async def get_session_runtime(
         "mcp": mcp,
         "context": {
             "prep_enabled": config.CHAT_CONTEXT_PREP_ENABLED,
-            "budget_tokens": config.CHAT_CONTEXT_DEFAULT_BUDGET_TOKENS,
-            "soft_limit_tokens": int(
-                config.CHAT_CONTEXT_DEFAULT_BUDGET_TOKENS * config.CHAT_CONTEXT_SOFT_LIMIT_RATIO
-            ),
-            "hard_limit_tokens": int(
-                config.CHAT_CONTEXT_DEFAULT_BUDGET_TOKENS * config.CHAT_CONTEXT_HARD_LIMIT_RATIO
-            ),
+            "budget_from": "provider_model_context_length",
+            "soft_limit_ratio": config.CHAT_CONTEXT_SOFT_LIMIT_RATIO,
+            "hard_limit_ratio": config.CHAT_CONTEXT_HARD_LIMIT_RATIO,
+            "fallback_budget_tokens": config.CHAT_CONTEXT_DEFAULT_BUDGET_TOKENS or None,
             "max_messages": config.CHAT_CONTEXT_MAX_MESSAGES,
             "compaction_enabled": config.CHAT_CONTEXT_COMPACTION_ENABLED,
+            "agent_loop_trim_enabled": config.CHAT_CONTEXT_AGENT_LOOP_TRIM_ENABLED,
         },
     }

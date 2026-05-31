@@ -20,14 +20,26 @@ export function SessionRuntimeBar({ runtime, usage, contextMeta, className = "",
   const mcp = runtime?.mcp;
   const budget = runtime?.context;
   const hasUsage = usage.total > 0 || usage.rounds > 0;
-  const estimated = contextMeta?.estimated_prompt_tokens ?? 0;
+  const providerPrompt = contextMeta?.provider_prompt_tokens;
+  const hasProviderPrompt = providerPrompt != null && providerPrompt > 0;
+  const windowTokens = contextMeta?.context_window_tokens ?? contextMeta?.budget_tokens ?? 0;
   const softLimit =
-    contextMeta?.soft_limit_tokens ?? budget?.soft_limit_tokens ?? 0;
+    contextMeta?.soft_limit_tokens ??
+    (windowTokens > 0 && budget?.soft_limit_ratio
+      ? Math.floor(windowTokens * budget.soft_limit_ratio)
+      : 0);
   const hardLimit =
-    contextMeta?.hard_limit_tokens ?? budget?.hard_limit_tokens ?? 0;
+    contextMeta?.hard_limit_tokens ??
+    (windowTokens > 0 && budget?.hard_limit_ratio
+      ? Math.floor(windowTokens * budget.hard_limit_ratio)
+      : 0);
   const showContext =
     Boolean(budget?.prep_enabled) &&
-    (estimated > 0 || Boolean(contextMeta?.summary_active) || Boolean(contextMeta?.at_soft_limit));
+    (windowTokens > 0 ||
+      softLimit > 0 ||
+      hasProviderPrompt ||
+      Boolean(contextMeta?.summary_active) ||
+      Boolean(contextMeta?.at_soft_limit));
   if (!mcp && !hasUsage && !showContext) return null;
 
   const servers = mcp?.servers ?? [];
@@ -39,7 +51,7 @@ export function SessionRuntimeBar({ runtime, usage, contextMeta, className = "",
       ? "hard"
       : contextMeta?.at_soft_limit
         ? "soft"
-        : estimated > 0 && softLimit > 0 && estimated >= softLimit
+        : hasProviderPrompt && softLimit > 0 && providerPrompt >= softLimit
           ? "soft"
           : null;
 
@@ -98,12 +110,19 @@ export function SessionRuntimeBar({ runtime, usage, contextMeta, className = "",
               }`}
               title={t("chat:contextBudgetTitle")}
             >
-              {t("chat:contextBudgetUsage", {
-                est: estimated.toLocaleString(),
-                soft: softLimit.toLocaleString(),
-              })}
+              {hasProviderPrompt
+                ? t("chat:contextBudgetUsage", {
+                    prompt: providerPrompt.toLocaleString(),
+                    soft: softLimit.toLocaleString(),
+                  })
+                : t("chat:contextBudgetPending", {
+                    soft: softLimit.toLocaleString(),
+                  })}
               {contextMeta?.summary_active ? (
                 <span className="ml-1 text-violet-300/85">{t("chat:contextCompacted")}</span>
+              ) : null}
+              {contextMeta?.loop_compaction_applied ? (
+                <span className="ml-1 text-amber-300/85">{t("chat:contextLoopCompacted")}</span>
               ) : null}
               {contextMeta?.messages_dropped ? (
                 <span className="ml-1 text-neutral-500">

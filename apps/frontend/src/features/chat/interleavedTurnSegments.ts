@@ -31,6 +31,7 @@ function isSecretPromptAnchor(e: AgentTimelineEntry): boolean {
 }
 
 function isCardAnchorEntry(e: AgentTimelineEntry): boolean {
+  if (e.kind === "compaction_done") return true;
   if (e.kind === "subagent_start" || e.kind === "index_start") return true;
   if (e.kind !== "tool_start" || !e.toolName) return false;
   const tool = e.toolName;

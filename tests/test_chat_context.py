@@ -1,4 +1,4 @@
-"""Tests for chat context preparation (trim, cap, token estimate)."""
+"""Tests for chat context preparation (trim, cap)."""
 
 from __future__ import annotations
 
@@ -6,7 +6,6 @@ import asyncio
 
 from apps.backend.infrastructure.chat_context import (
     cap_message_content,
-    estimate_tokens,
     message_content_text,
     prepare_chat_history_for_llm,
 )
@@ -19,7 +18,7 @@ def test_prepare_trims_sliding_window_when_over_max(monkeypatch):
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_COMPACTION_ENABLED", False)
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_MAX_MESSAGES", 4)
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_MAX_MESSAGE_CHARS", 10_000)
-    monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_DEFAULT_BUDGET_TOKENS", 128_000)
+    monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_DEFAULT_BUDGET_TOKENS", 0)
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_SOFT_LIMIT_RATIO", 0.6)
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_HARD_LIMIT_RATIO", 0.85)
 
@@ -41,7 +40,7 @@ def test_prepare_caps_oversized_message(monkeypatch):
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_COMPACTION_ENABLED", False)
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_MAX_MESSAGES", 48)
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_MAX_MESSAGE_CHARS", 500)
-    monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_DEFAULT_BUDGET_TOKENS", 128_000)
+    monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_DEFAULT_BUDGET_TOKENS", 0)
 
     big = "x" * 2000
 
@@ -53,8 +52,7 @@ def test_prepare_caps_oversized_message(monkeypatch):
     assert "truncated" in message_content_text(out[0]["content"]).lower()
 
 
-def test_estimate_tokens_and_cap():
-    assert estimate_tokens("hello world") >= 2
+def test_cap_message_content():
     capped, was = cap_message_content("a" * 1000, 200)
     assert was is True
     assert len(str(capped)) < 1000

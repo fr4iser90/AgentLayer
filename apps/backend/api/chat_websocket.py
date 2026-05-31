@@ -22,7 +22,7 @@ Client → server JSON:
         the server emits ``agent.llm_delta`` events (``delta`` text chunks) before ``agent.llm_round`` / tools.
 
 Server → client JSON events (subset):
-  - ``agent.session``, ``agent.llm_round_start``, ``agent.llm_delta`` (token chunks when ``agent_stream_llm``), ``agent.llm_round`` (optional ``usage`` when the LLM returns OpenAI-style token counts), ``agent.tool_start``,
+  - ``agent.session``, ``agent.context_update``, ``agent.context_compacted``, ``agent.llm_round_start``, ``agent.llm_delta`` (token chunks when ``agent_stream_llm``), ``agent.llm_round`` (optional ``usage`` when the LLM returns OpenAI-style token counts), ``agent.tool_start``,
     ``agent.tool_done``, ``agent.secret_prompt``, ``agent.permission_ask``, ``agent.subagent_start``, ``agent.subagent_step``,
     ``agent.subagent_done``,
     ``agent.done``, ``agent.cancelled``

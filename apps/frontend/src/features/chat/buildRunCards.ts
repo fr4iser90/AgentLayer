@@ -2,7 +2,7 @@ import type { AgentTimelineEntry, IndexRunMode } from "./chatThreadStorage";
 import { activityForTurn } from "./agentLogStorage";
 import type { ChatThread, UiMessage } from "./chatThreadStorage";
 
-export type RunCardKind = "subagent" | "index" | "tool";
+export type RunCardKind = "subagent" | "index" | "tool" | "compaction";
 export type RunCardStatus = "running" | "done" | "failed";
 
 export type RunCard = {
@@ -25,6 +25,12 @@ export type RunCard = {
   stepCount?: number;
   /** Completed steps (newest last), capped when building. */
   recentSteps?: string[];
+  compactionPhase?: "history" | "loop";
+  providerPromptTokens?: number;
+  softLimitTokens?: number;
+  contextWindowTokens?: number;
+  toolRoundsDropped?: number;
+  budgetSource?: string;
   details: AgentTimelineEntry[];
 };
 
@@ -132,6 +138,25 @@ export function buildRunCardsFromTimeline(entries: AgentTimelineEntry[]): RunCar
   const openTools = new Map<string, RunCard>();
 
   for (const e of entries) {
+    if (e.kind === "compaction_done") {
+      cards.push({
+        id: e.id,
+        kind: "compaction",
+        status: "done",
+        title: e.compactionPhase === "history" ? "Chat history compacted" : "Tool context compacted",
+        subtitle: e.text.trim() || undefined,
+        compactionPhase: e.compactionPhase,
+        providerPromptTokens: e.providerPromptTokens,
+        softLimitTokens: e.softLimitTokens,
+        contextWindowTokens: e.contextWindowTokens,
+        toolRoundsDropped: e.toolRoundsDropped,
+        budgetSource: e.budgetSource,
+        durationMs: e.durationMs,
+        details: [e],
+      });
+      continue;
+    }
+
     if (e.kind === "subagent_start") {
       cards.push({
         id: e.id,

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 
 import apps.backend.core.config as cfgmod
@@ -114,3 +115,13 @@ def test_embedding_request_headers_from_spec() -> None:
     spec = _spec(api_key="db-secret", api_header_name="X-Custom-Auth")
     h = embedding_client._auth_headers_for_spec(spec)
     assert h["X-Custom-Auth"] == "db-secret"
+
+
+def test_format_embedding_http_error_includes_response_body() -> None:
+    request = httpx.Request("POST", "https://embed.example/v1/embeddings")
+    response = httpx.Response(500, request=request, text='{"error":"cuda OOM"}')
+    exc = httpx.HTTPStatusError("Server error", request=request, response=response)
+    msg = embedding_client.format_embedding_http_error(exc)
+    assert "status=500" in msg
+    assert "embed.example" in msg
+    assert "cuda OOM" in msg

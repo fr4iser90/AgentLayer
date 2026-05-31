@@ -9,6 +9,10 @@ from dataclasses import dataclass
 from typing import Any
 
 from apps.backend.core.config import config
+from apps.backend.infrastructure.context_budget import (
+    ContextBudget,
+    should_compact_by_usage,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -20,41 +24,77 @@ _SUMMARY_SYSTEM_PREFIX = (
 
 @dataclass
 class ContextPrepMeta:
-    estimated_prompt_tokens: int = 0
+    provider_prompt_tokens: int = 0
     budget_tokens: int = 0
+    context_window_tokens: int = 0
+    budget_source: str = ""
     soft_limit_tokens: int = 0
     hard_limit_tokens: int = 0
+    soft_limit_ratio: float = 0.0
+    hard_limit_ratio: float = 0.0
     messages_in_prompt: int = 0
     messages_dropped: int = 0
     messages_capped: int = 0
     compaction_applied: bool = False
+    loop_compaction_applied: bool = False
     summary_active: bool = False
     summary_covers_messages: int = 0
     at_soft_limit: bool = False
     at_hard_limit: bool = False
+    tool_rounds_dropped: int = 0
 
     def as_dict(self) -> dict[str, Any]:
         return {
-            "estimated_prompt_tokens": self.estimated_prompt_tokens,
+            "provider_prompt_tokens": self.provider_prompt_tokens,
             "budget_tokens": self.budget_tokens,
+            "context_window_tokens": self.context_window_tokens,
+            "budget_source": self.budget_source or None,
             "soft_limit_tokens": self.soft_limit_tokens,
             "hard_limit_tokens": self.hard_limit_tokens,
+            "soft_limit_ratio": self.soft_limit_ratio,
+            "hard_limit_ratio": self.hard_limit_ratio,
             "messages_in_prompt": self.messages_in_prompt,
             "messages_dropped": self.messages_dropped,
             "messages_capped": self.messages_capped,
             "compaction_applied": self.compaction_applied,
+            "loop_compaction_applied": self.loop_compaction_applied,
             "summary_active": self.summary_active,
             "summary_covers_messages": self.summary_covers_messages,
             "at_soft_limit": self.at_soft_limit,
             "at_hard_limit": self.at_hard_limit,
+            "tool_rounds_dropped": self.tool_rounds_dropped,
         }
 
 
-def estimate_tokens(text: str) -> int:
-    """Rough token estimate (~4 chars per token for Latin text)."""
-    if not text:
-        return 0
-    return max(1, len(text) // 4)
+def apply_budget_to_meta(meta: ContextPrepMeta, budget: ContextBudget | None) -> None:
+    if budget is None:
+        meta.budget_tokens = 0
+        meta.context_window_tokens = 0
+        meta.soft_limit_tokens = 0
+        meta.hard_limit_tokens = 0
+        meta.soft_limit_ratio = float(config.CHAT_CONTEXT_SOFT_LIMIT_RATIO)
+        meta.hard_limit_ratio = float(config.CHAT_CONTEXT_HARD_LIMIT_RATIO)
+        meta.budget_source = ""
+        return
+    meta.budget_tokens = budget.context_window_tokens
+    meta.context_window_tokens = budget.context_window_tokens
+    meta.soft_limit_tokens = budget.soft_limit_tokens
+    meta.hard_limit_tokens = budget.hard_limit_tokens
+    meta.soft_limit_ratio = budget.soft_ratio
+    meta.hard_limit_ratio = budget.hard_ratio
+    meta.budget_source = budget.source
+
+
+def update_meta_from_provider_usage(
+    meta: ContextPrepMeta,
+    budget: ContextBudget | None,
+    provider_prompt_tokens: int | None,
+) -> None:
+    if provider_prompt_tokens is not None and provider_prompt_tokens > 0:
+        meta.provider_prompt_tokens = provider_prompt_tokens
+    at_soft, at_hard = should_compact_by_usage(budget, provider_prompt_tokens)
+    meta.at_soft_limit = at_soft
+    meta.at_hard_limit = at_hard
 
 
 def message_content_text(content: Any) -> str:
@@ -139,14 +179,6 @@ def _cap_history(messages: list[dict[str, Any]], max_chars: int) -> tuple[list[d
             capped_count += 1
         out.append({**m, "content": new_content})
     return out, capped_count
-
-
-def _estimate_messages_tokens(messages: list[dict[str, Any]]) -> int:
-    total = 0
-    for m in messages:
-        total += estimate_tokens(message_content_text(m.get("content")))
-        total += 4
-    return total
 
 
 def _format_messages_for_compaction(messages: list[dict[str, Any]], *, max_chars: int) -> str:
@@ -299,19 +331,18 @@ async def prepare_chat_history_for_llm(
     user_id: uuid.UUID | None = None,
     compaction_model: str = "",
     compaction_attempt: tuple[str, dict[str, str], str] | None = None,
+    context_budget: ContextBudget | None = None,
+    provider_prompt_tokens: int | None = None,
 ) -> tuple[list[dict[str, Any]], ContextPrepMeta]:
-    """Cap, trim, and optionally compact chat history before LLM injection."""
+    """Cap, trim, and optionally compact stored chat history before LLM injection."""
     import asyncio
 
     meta = ContextPrepMeta()
-    budget = config.CHAT_CONTEXT_DEFAULT_BUDGET_TOKENS
-    meta.budget_tokens = budget
-    meta.soft_limit_tokens = int(budget * config.CHAT_CONTEXT_SOFT_LIMIT_RATIO)
-    meta.hard_limit_tokens = int(budget * config.CHAT_CONTEXT_HARD_LIMIT_RATIO)
+    apply_budget_to_meta(meta, context_budget)
+    update_meta_from_provider_usage(meta, context_budget, provider_prompt_tokens)
 
     if not config.CHAT_CONTEXT_PREP_ENABLED:
         meta.messages_in_prompt = len(messages)
-        meta.estimated_prompt_tokens = _estimate_messages_tokens(messages)
         return list(messages), meta
 
     original_len = len(messages)
@@ -328,15 +359,11 @@ async def prepare_chat_history_for_llm(
             summary_covers = 0
 
     recent_n = config.CHAT_CONTEXT_RECENT_VERBATIM_MESSAGES
-    est = _estimate_messages_tokens(hist)
-    meta.estimated_prompt_tokens = est
-    meta.at_soft_limit = est >= meta.soft_limit_tokens
-    meta.at_hard_limit = est >= meta.hard_limit_tokens
-
+    at_soft, _at_hard = should_compact_by_usage(context_budget, provider_prompt_tokens)
     need_compaction = (
         config.CHAT_CONTEXT_COMPACTION_ENABLED
         and conversation_id is not None
-        and (len(hist) > config.CHAT_CONTEXT_MAX_MESSAGES or est >= meta.soft_limit_tokens)
+        and (len(hist) > config.CHAT_CONTEXT_MAX_MESSAGES or at_soft)
     )
 
     if need_compaction and len(hist) > recent_n:
@@ -376,9 +403,6 @@ async def prepare_chat_history_for_llm(
         meta.summary_covers_messages = summary_covers
 
     meta.messages_in_prompt = len(hist)
-    meta.estimated_prompt_tokens = _estimate_messages_tokens(hist)
-    meta.at_soft_limit = meta.estimated_prompt_tokens >= meta.soft_limit_tokens
-    meta.at_hard_limit = meta.estimated_prompt_tokens >= meta.hard_limit_tokens
     meta.messages_dropped = max(meta.messages_dropped, max(0, original_len - len(hist)))
 
     return hist, meta

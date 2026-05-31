@@ -59,6 +59,13 @@ export type AgentTimelineEntry = {
   filesDone?: number;
   filesTotal?: number;
   runStatus?: "running" | "done" | "failed";
+  /** ``compaction_done`` — history (pre-run) or loop (mid-run). */
+  compactionPhase?: "history" | "loop";
+  providerPromptTokens?: number;
+  softLimitTokens?: number;
+  contextWindowTokens?: number;
+  toolRoundsDropped?: number;
+  budgetSource?: string;
   /** Assistant message char index when this event started (for inline stream interleaving). */
   streamOffset?: number;
 };
