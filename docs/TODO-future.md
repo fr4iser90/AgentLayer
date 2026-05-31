@@ -100,6 +100,22 @@ Order below is **recommended implementation priority** (security and correctness
 
 ---
 
+## User Delegate (Stellvertreter)
+
+Delegated **decision authority** (not chat persona): global `user_delegate`, per-workspace overlay, Auto-Respond after idle timeout, audit + hard caps. Learning only via observe → suggest → user confirms.
+
+- **ADR:** [`docs/adr/0007-user-delegate.md`](adr/0007-user-delegate.md)
+- **Full checklist:** [`docs/planning/user-delegate-roadmap.md`](planning/user-delegate-roadmap.md)
+
+### Priority snapshot
+
+- [ ] **P0:** Schema + `/v1/user/delegate` + workspace delegate API + Settings UI (Stellvertreter)
+- [ ] **P1:** Chat Auto-Respond (checkbox, idle sec, delegate decision call, `[Stand-in · auto]`, `delegate_runs` audit, chain limits)
+- [ ] **P2:** Reuse delegate merge in scheduler jobs + active task context
+- [ ] **P3–P5:** Observations, suggestion inbox, optional decision-example retrieval
+
+---
+
 ## Notes
 
 - Ollama monitoring may remain **limited** until a clear hook surface exists; document constraints when implementing.
