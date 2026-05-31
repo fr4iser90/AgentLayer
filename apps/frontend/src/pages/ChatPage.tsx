@@ -108,6 +108,10 @@ import {
 } from "../features/chat/groupThreadsForSidebar";
 import { SessionRuntimeBar } from "../features/chat/SessionRuntimeBar";
 import {
+  getChatComposerHeaderCollapsed,
+  setChatComposerHeaderCollapsed,
+} from "../features/chat/chatComposerHeaderPrefs";
+import {
   getChatProjectPanelOpen,
   setChatProjectPanelOpen,
 } from "../features/chat/chatProjectPanelPrefs";
@@ -299,6 +303,7 @@ export function ChatPage() {
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
   const [showWorkspaceMcpModal, setShowWorkspaceMcpModal] = useState(false);
   const [workspaceScopeHint, setWorkspaceScopeHint] = useState<string | null>(null);
+  const [composerHeaderCollapsed, setComposerHeaderCollapsed] = useState(false);
   const [projectPanelOpen, setProjectPanelOpen] = useState(false);
   const [projectTreeRefreshKey, setProjectTreeRefreshKey] = useState(0);
   const [showSubagentsInActivity, setShowSubagentsInActivity] = useState(true);
@@ -337,9 +342,37 @@ export function ChatPage() {
   const runChatHttpRef = useRef<(queued?: QueuedComposerMessage, opts?: SendTurnOptions) => Promise<void>>(async () => {});
   const runAgentWsRef = useRef<(queued?: QueuedComposerMessage, opts?: SendTurnOptions) => Promise<void>>(async () => {});
   const threadsRef = useRef(threads);
+  const persistAgentLogTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [agentStreamLlmUi, setAgentStreamLlmUi] = useState(() => getAgentStreamLlm());
   activeThreadIdRef.current = activeThreadId;
   threadsRef.current = threads;
+
+  const flushPersistAgentLog = useCallback(() => {
+    if (persistAgentLogTimerRef.current) {
+      clearTimeout(persistAgentLogTimerRef.current);
+      persistAgentLogTimerRef.current = null;
+    }
+    const tid = activeThreadIdRef.current;
+    if (!tid) return;
+    const th = threadsRef.current.find((t) => t.id === tid);
+    if (!th) return;
+    void putConversation(auth, th).catch(() => {});
+  }, [auth]);
+
+  const schedulePersistAgentLog = useCallback(() => {
+    if (persistAgentLogTimerRef.current) clearTimeout(persistAgentLogTimerRef.current);
+    persistAgentLogTimerRef.current = setTimeout(() => {
+      persistAgentLogTimerRef.current = null;
+      flushPersistAgentLog();
+    }, 1200);
+  }, [flushPersistAgentLog]);
+
+  useEffect(
+    () => () => {
+      if (persistAgentLogTimerRef.current) clearTimeout(persistAgentLogTimerRef.current);
+    },
+    []
+  );
 
   const bumpComposerQueue = useCallback(() => {
     setComposerQueueVersion((v) => v + 1);
@@ -464,6 +497,25 @@ export function ChatPage() {
     [model, modelProvider, defaultSelectValue, modelRows]
   );
 
+  const composerHeaderSummary = useMemo(() => {
+    const projectLabel = selectedWorkspace?.name ?? t("chat:noProject");
+    const modeLabel =
+      mode === "agent" ? t("chat:replyModeAgent") : t("chat:replyModeChat");
+    const row = modelRows.find((r) => modelCatalogSelectValue(r) === modelSelectValue);
+    const modelLabel = row
+      ? modelOptionLabel(row, modelCatalogAgentlayer)
+      : model.trim() || t("chat:loadingModels");
+    return `${projectLabel} · ${modeLabel} · ${modelLabel}`;
+  }, [
+    selectedWorkspace?.name,
+    mode,
+    modelRows,
+    modelSelectValue,
+    modelCatalogAgentlayer,
+    model,
+    t,
+  ]);
+
   useEffect(() => {
     if (modelSelectValue.includes(":")) {
       lastModelSelectionRef.current = modelSelectValue;
@@ -512,8 +564,17 @@ export function ChatPage() {
 
   useEffect(() => {
     if (!userId) return;
+    setComposerHeaderCollapsed(getChatComposerHeaderCollapsed(userId));
     setProjectPanelOpen(getChatProjectPanelOpen(userId));
     setShowSubagentsInActivity(getShowSubagentsInActivity(userId));
+  }, [userId]);
+
+  const toggleComposerHeaderCollapsed = useCallback(() => {
+    setComposerHeaderCollapsed((prev) => {
+      const next = !prev;
+      setChatComposerHeaderCollapsed(userId, next);
+      return next;
+    });
   }, [userId]);
 
   useEffect(() => {
@@ -875,8 +936,9 @@ export function ChatPage() {
           return { ...t, agentLog: next, updatedAt: Date.now() };
         })
       );
+      schedulePersistAgentLog();
     },
-    []
+    [schedulePersistAgentLog]
   );
 
   const handleSecretSaved = useCallback((promptId: string, serviceKey: string) => {
@@ -1010,6 +1072,19 @@ export function ChatPage() {
       ];
       nextTitle = firstUser ? titleFromFirstMessage(userContent) : thread.title;
       archivePatch = archiveTurnBeforeNewPrompt(thread);
+    }
+
+    if (!isResend && (thread.agentLog?.length ?? 0) > 0) {
+      void putConversation(auth, {
+        ...thread,
+        messages: nextMessages,
+        ...archivePatch,
+        title: nextTitle,
+        model: routed.model,
+        modelProvider: routed.provider,
+        messageCount: nextMessages.length,
+        updatedAt: Date.now(),
+      }).catch(() => {});
     }
 
     const userContentForApi = buildUserMessageContent(sendDraft, sendAttachments);
@@ -1274,6 +1349,19 @@ export function ChatPage() {
       archivePatch = archiveTurnBeforeNewPrompt(thread);
     }
 
+    if (!isResend && (thread.agentLog?.length ?? 0) > 0) {
+      void putConversation(auth, {
+        ...thread,
+        messages: nextMessages,
+        ...archivePatch,
+        title: nextTitle,
+        model: routed.model,
+        modelProvider: routed.provider,
+        messageCount: nextMessages.length,
+        updatedAt: Date.now(),
+      }).catch(() => {});
+    }
+
     if (!buildUserMessageContent(sendDraft, sendAttachments)) return;
 
     inFlightTurnRef.current = {
@@ -1316,6 +1404,10 @@ export function ChatPage() {
       if (finished) return;
       finished = true;
       agentTurnFinishRef.current = null;
+      if (persistAgentLogTimerRef.current) {
+        clearTimeout(persistAgentLogTimerRef.current);
+        persistAgentLogTimerRef.current = null;
+      }
       setLoading(false);
       const skipDrain = skipQueueDrainOnFinishRef.current;
       if (skipDrain) {
@@ -2065,12 +2157,59 @@ export function ChatPage() {
           </div>
         ) : (
           <>
-        <div className="shrink-0 border-b border-surface-border px-4 py-3 sm:px-6">
-          <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
-            <p className="truncate text-sm font-medium text-white">{activeThread?.title ?? t("chat:defaultThreadTitle")}</p>
+        <div
+          className={[
+            "shrink-0 border-b border-surface-border px-4 sm:px-6",
+            composerHeaderCollapsed ? "py-2" : "py-3",
+          ].join(" ")}
+        >
+          <div
+            className={[
+              "flex min-w-0 flex-wrap items-center gap-2",
+              composerHeaderCollapsed ? "" : "mb-2",
+            ].join(" ")}
+          >
+            <p className="min-w-0 flex-1 truncate text-sm font-medium text-white">
+              {activeThread?.title ?? t("chat:defaultThreadTitle")}
+            </p>
             {activeThread ? <DashboardChatVisibilityBadge thread={activeThread} /> : null}
+            <button
+              type="button"
+              className="shrink-0 rounded-lg border border-surface-border bg-black/30 px-2 py-1 text-[10px] font-medium text-neutral-300 hover:bg-white/10"
+              aria-expanded={!composerHeaderCollapsed}
+              aria-controls="chat-composer-header-panel"
+              title={
+                composerHeaderCollapsed
+                  ? t("chat:expandComposerHeader")
+                  : t("chat:collapseComposerHeader")
+              }
+              onClick={toggleComposerHeaderCollapsed}
+            >
+              {composerHeaderCollapsed ? "▼" : "▲"}
+            </button>
           </div>
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_17.5rem] lg:items-stretch">
+          {composerHeaderCollapsed ? (
+            <p className="mt-1 truncate text-[10px] leading-snug text-surface-muted" title={composerHeaderSummary}>
+              {composerHeaderSummary}
+            </p>
+          ) : null}
+          {composerHeaderCollapsed && workspaceScopeHint && selectedWorkspaceId ? (
+            <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-amber-600/40 bg-amber-950/30 px-3 py-2">
+              <p className="min-w-0 flex-1 text-[11px] leading-snug text-amber-100/95">{workspaceScopeHint}</p>
+              <button
+                type="button"
+                className="shrink-0 text-[11px] text-surface-muted hover:text-neutral-200"
+                onClick={() => setWorkspaceScopeHint(null)}
+              >
+                {t("chat:dismiss")}
+              </button>
+            </div>
+          ) : null}
+          {!composerHeaderCollapsed ? (
+          <div
+            id="chat-composer-header-panel"
+            className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_17.5rem] lg:items-stretch"
+          >
             <div className="min-w-0 space-y-2">
               <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
                 <div className="min-w-0 flex-1 sm:min-w-[10rem] sm:max-w-[20rem]">
@@ -2311,6 +2450,7 @@ export function ChatPage() {
               </div>
             </div>
           </div>
+          ) : null}
         </div>
 
         {dashboardChatId ? (

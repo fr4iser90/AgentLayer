@@ -119,9 +119,7 @@ export function RunCardBlock({ card, defaultExpanded = false }: Props) {
                     {d.kind}
                   </span>
                   {d.toolName ? <span className="text-indigo-300/80"> {d.toolName}</span> : null}
-                  {d.text && d.kind !== "subagent_step" ? (
-                    <span className="text-neutral-400"> — {d.text}</span>
-                  ) : null}
+                  {d.text ? <span className="text-neutral-400"> — {d.text}</span> : null}
                 </li>
               ))}
             </ul>

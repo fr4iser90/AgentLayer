@@ -1,4 +1,4 @@
-FROM node:20-bookworm-slim AS agent_ui_builder
+FROM node:22-bookworm-slim AS agent_ui_builder
 
 WORKDIR /build/apps/frontend
 COPY apps/frontend/package.json apps/frontend/package-lock.json* ./

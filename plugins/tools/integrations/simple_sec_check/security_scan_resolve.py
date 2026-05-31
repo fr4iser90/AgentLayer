@@ -74,9 +74,11 @@ def security_scan_resolve(arguments: dict[str, Any], context: dict | None = None
     if isinstance(data, dict) and data.get("ok") is False:
         return dump_ok(data)
 
-    st = ssc_status(data if isinstance(data, dict) else None)
-    scan_id = data.get("scan_id") or data.get("id") if isinstance(data, dict) else None
+    api_data = data if isinstance(data, dict) else None
+    st = ssc_status(api_data)
+    scan_id = api_data.get("scan_id") or api_data.get("id") if api_data else None
     defer = st in ("started", "scanning", "queued", "running", "pending")
+    findings = normalize_findings(api_data) if st == "ready" else []
     return dump_ok(
         {
             "ok": True,
@@ -88,16 +90,18 @@ def security_scan_resolve(arguments: dict[str, Any], context: dict | None = None
             "scan_id": scan_id,
             "defer": defer,
             "end_run_recommended": defer,
-            "target_id": data.get("target_id") if isinstance(data, dict) else None,
-            "commit_sha": data.get("commit_sha") if isinstance(data, dict) else None,
-            "status_poll_path": data.get("status_poll_path") if isinstance(data, dict) else None,
-            "findings_poll_path": data.get("findings_poll_path") if isinstance(data, dict) else None,
-            "progress": data.get("progress") if isinstance(data, dict) else None,
-            "summary": data.get("summary") if isinstance(data, dict) else None,
-            "pagination": data.get("pagination") if isinstance(data, dict) else None,
-            "findings": normalize_findings(data) if st == "ready" else [],
+            "target_id": api_data.get("target_id") if api_data else None,
+            "commit_sha": api_data.get("commit_sha") if api_data else None,
+            "status_poll_path": api_data.get("status_poll_path") if api_data else None,
+            "findings_poll_path": api_data.get("findings_poll_path") if api_data else None,
+            "progress": api_data.get("progress") if api_data else None,
+            "summary": api_data.get("summary") if api_data else None,
+            "pagination": api_data.get("pagination") if api_data else None,
+            "findings": findings,
             "response": data,
-            "agent_guidance": agent_guidance_for_status(st),
+            "agent_guidance": agent_guidance_for_status(
+                st, data=api_data, findings=findings
+            ),
         }
     )
 

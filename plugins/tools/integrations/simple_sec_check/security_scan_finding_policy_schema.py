@@ -24,11 +24,14 @@ TOOL_LABEL = "SimpleSecCheck: policy schema"
 TOOL_DESCRIPTION = "Fetch finding-policy JSON schema from SimpleSecCheck (per-tool field rules)."
 TOOL_TRIGGERS = ("finding-policy", "policy schema", "ssc schema")
 
-_POLICY_SCHEMA_GUIDANCE = [
-    "Call once per agent session before editing .scanning/finding-policy.json; reuse the cached schema.",
-    "Workflow: schema → security_scan_resolve (findings) → merge policy (validate fields per tool) → fixes → security_scan_agent_callback.",
-    "Scanner ignores root-level dedupe in repo policy; only semgrep.dedupe (and semgrep.severity_overrides) apply.",
-]
+
+def _guidance_from_api(data: dict[str, Any]) -> list[str]:
+    raw = data.get("agent_guidance")
+    if isinstance(raw, list):
+        return [str(x).strip() for x in raw if str(x).strip()]
+    if isinstance(raw, str) and raw.strip():
+        return [raw.strip()]
+    return []
 
 
 def _tools_query_param(arguments: dict[str, Any]) -> str | None:
@@ -57,10 +60,12 @@ def security_scan_finding_policy_schema(
         return dump_ok(data)
     schema = data
     notes = None
+    agent_guidance: list[str] = []
     if isinstance(data, dict):
         if "schema" in data and isinstance(data["schema"], dict):
             schema = data["schema"]
         notes = data.get("notes")
+        agent_guidance = _guidance_from_api(data)
     return dump_ok(
         {
             "ok": True,
@@ -69,7 +74,7 @@ def security_scan_finding_policy_schema(
             "tools_filter": tools,
             "schema": schema,
             "notes": notes,
-            "agent_guidance": list(_POLICY_SCHEMA_GUIDANCE),
+            "agent_guidance": agent_guidance,
         }
     )
 
@@ -85,8 +90,8 @@ TOOLS: list[dict[str, Any]] = [
             "name": "security_scan_finding_policy_schema",
             "TOOL_DESCRIPTION": (
                 "GET SimpleSecCheck finding-policy schema (per-tool accepted_findings fields). "
-                "No scan_id. Call once per session before resolve-scan when updating "
-                ".scanning/finding-policy.json; optional tools filter (e.g. semgrep,gitleaks)."
+                "No scan_id. Follow agent_guidance and notes in the tool response (from SSC). "
+                "Optional tools filter (e.g. semgrep,gitleaks)."
                 + NO_WAIT_SUFFIX
             ),
             "parameters": {

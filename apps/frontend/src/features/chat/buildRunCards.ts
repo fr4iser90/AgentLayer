@@ -85,14 +85,13 @@ function findRunningSubagentCard(
 function applySubagentStep(card: RunCard, e: AgentTimelineEntry): void {
   if (!card.details.includes(e)) card.details.push(e);
   if (e.stepPhase === "done") {
-    const label = e.text.trim();
-    if (label) {
-      card.recentSteps = [...(card.recentSteps ?? []), label].slice(-RECENT_STEPS_MAX);
-    }
     return;
   }
   const label = e.text.trim();
-  if (label) card.currentStep = label;
+  if (label) {
+    card.currentStep = label;
+    card.recentSteps = [...(card.recentSteps ?? []), label].slice(-RECENT_STEPS_MAX);
+  }
   card.stepCount = (card.stepCount ?? 0) + 1;
 }
 

@@ -9,8 +9,10 @@ from plugins.tools.integrations.simple_sec_check.ssc_common import (
     END_RUN_GUIDANCE,
     MAX_FINDINGS_LIMIT,
     NO_WAIT_SUFFIX,
+    agent_guidance_for_status,
     dump_ok,
     findings_query_params,
+    merge_agent_guidance,
     normalize_findings,
     request,
     split_path_query,
@@ -78,7 +80,10 @@ def security_scan_findings(arguments: dict[str, Any], context: dict | None = Non
 
     if isinstance(data, dict) and data.get("ok") is False:
         if data.get("retry_later"):
-            data.setdefault("agent_guidance", ["Scan not ready yet. " + END_RUN_GUIDANCE])
+            data["agent_guidance"] = merge_agent_guidance(
+                data.get("agent_guidance") or [],
+                ["Scan not ready yet. " + END_RUN_GUIDANCE],
+            )
         return dump_ok(data)
 
     cap = None
@@ -94,6 +99,14 @@ def security_scan_findings(arguments: dict[str, Any], context: dict | None = Non
     summary = data.get("summary") if isinstance(data, dict) else None
     sid = scan_id or (data.get("scan_id") if isinstance(data, dict) else None)
 
+    api_data = data if isinstance(data, dict) else None
+    pagination_hint: list[str] = []
+    if isinstance(pagination, dict) and pagination.get("has_more"):
+        pagination_hint = [
+            "pagination.has_more is true — call security_scan_findings again in this or a later "
+            "run with offset or pagination.next_path; do not poll until scan completes."
+        ]
+
     return dump_ok(
         {
             "ok": True,
@@ -104,10 +117,12 @@ def security_scan_findings(arguments: dict[str, Any], context: dict | None = Non
             "summary": summary,
             "pagination": pagination,
             "response": data,
-            "agent_guidance": [
-                "If pagination.has_more is true, call again in this or a later run with "
-                "offset or pagination.next_path — do not loop until scan completes."
-            ],
+            "agent_guidance": agent_guidance_for_status(
+                None,
+                data=api_data,
+                findings=findings,
+                extra=pagination_hint or None,
+            ),
         }
     )
 

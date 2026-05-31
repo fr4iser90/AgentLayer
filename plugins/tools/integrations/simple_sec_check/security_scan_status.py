@@ -53,7 +53,9 @@ def security_scan_status(arguments: dict[str, Any], context: dict | None = None)
                 data.get("vulnerabilities_found") if isinstance(data, dict) else None
             ),
             "scan": data,
-            "agent_guidance": agent_guidance_for_status(st),
+            "agent_guidance": agent_guidance_for_status(
+                st, data=data if isinstance(data, dict) else None
+            ),
         }
     )
 

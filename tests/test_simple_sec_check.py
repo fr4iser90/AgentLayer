@@ -123,6 +123,31 @@ def test_security_scan_resolve_ready_includes_findings():
     assert out["defer"] is False
     assert len(out["findings"]) == 1
     assert out["findings"][0]["severity"] == "HIGH"
+    guidance = " ".join(out["agent_guidance"])
+    assert "security_scan_finding_policy_schema" in guidance
+    assert "finding-policy.json" in guidance
+    assert "nosec" in guidance.lower()
+
+
+@patch.dict("os.environ", {"SSC_API_KEY": "ssc_test"}, clear=False)
+def test_security_scan_resolve_merges_api_agent_guidance():
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "status": "ready",
+        "scan_id": "done-2",
+        "agent_guidance": ["SSC custom FP workflow note."],
+        "findings": [{"severity": "HIGH", "path": "a.py", "rule_id": "r1"}],
+    }
+    mock_resp.content = b"{}"
+    with patch("plugins.tools.integrations.simple_sec_check.ssc_common.httpx.Client") as client_cls:
+        client_cls.return_value.__enter__.return_value.request.return_value = mock_resp
+        out = json.loads(
+            security_scan_resolve({"repo_url": "https://github.com/org/repo.git"}, None)
+        )
+    guidance = out["agent_guidance"]
+    assert "SSC custom FP workflow note." in guidance
+    assert any("security_scan_finding_policy_schema" in g for g in guidance)
 
 
 @patch.dict("os.environ", {"SSC_API_KEY": "ssc_test"}, clear=False)
@@ -220,6 +245,7 @@ def test_security_scan_findings_poll_path():
     params = client.request.call_args.kwargs["params"]
     assert int(params["limit"]) == 25
     assert int(params["offset"]) == 25
+    assert "security_scan_finding_policy_schema" in " ".join(out["agent_guidance"])
 
 
 @patch.dict("os.environ", {"SSC_API_KEY": "ssc_test"}, clear=False)
@@ -229,6 +255,7 @@ def test_security_scan_finding_policy_schema():
     mock_resp.json.return_value = {
         "semgrep": {"accepted_findings": [{"fields": ["rule_id", "path_regex"]}]},
         "notes": ["root dedupe ignored"],
+        "agent_guidance": ["Call before editing .scanning/finding-policy.json"],
     }
     mock_resp.content = b"{}"
     with patch("plugins.tools.integrations.simple_sec_check.ssc_common.httpx.Client") as client_cls:
@@ -242,7 +269,7 @@ def test_security_scan_finding_policy_schema():
     assert client.request.call_args.kwargs["params"]["tools"] == "semgrep,gitleaks"
     assert "semgrep" in out["schema"]
     assert out["notes"] == ["root dedupe ignored"]
-    assert out["agent_guidance"]
+    assert out["agent_guidance"] == ["Call before editing .scanning/finding-policy.json"]
 
 
 @patch.dict("os.environ", {"SSC_API_KEY": "ssc_test"}, clear=False)

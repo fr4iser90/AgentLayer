@@ -36,12 +36,12 @@ export function buildRunCardsFromTimeline(entries) {
       const card = findRunningSubagent(e);
       if (card) {
         card.details.push(e);
-        if (e.stepPhase === "done") {
-          if (e.text.trim()) {
-            card.recentSteps = [...(card.recentSteps ?? []), e.text.trim()].slice(-8);
+        if (e.stepPhase !== "done") {
+          const label = e.text.trim();
+          if (label) {
+            card.currentStep = label;
+            card.recentSteps = [...(card.recentSteps ?? []), label].slice(-8);
           }
-        } else {
-          if (e.text.trim()) card.currentStep = e.text.trim();
           card.stepCount = (card.stepCount ?? 0) + 1;
         }
       }
@@ -104,7 +104,8 @@ assert(subagentRun[0].status === "done", "subagent done");
 assert(subagentRun[0].agentId === "coding", "agent id");
 assert(subagentRun[0].subtitle === "HIGH Security Fixes", "task subtitle preserved");
 assert(subagentRun[0].stepCount === 2, "two tool starts");
-assert(subagentRun[0].recentSteps?.length === 1, "one completed step");
+assert(subagentRun[0].recentSteps?.length === 2, "two step labels from starts");
+assert(subagentRun[0].recentSteps?.[0]?.includes("friends_db"), "first step label");
 assert(!subagentRun[0].currentStep, "no live step when done");
 
 const indexRun = buildRunCardsFromTimeline([

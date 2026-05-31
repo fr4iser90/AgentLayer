@@ -18,6 +18,8 @@
   "renamePrompt": "Chat title",
   "prompts": "Prompts",
   "conversationPromptsAria": "Conversation prompts",
+  "collapseComposerHeader": "Hide settings",
+  "expandComposerHeader": "Show settings",
   "agentActivity": "Agent activity",
   "subagents": "Sub-agents",
   "noActivityYet": "No activity for this prompt yet.",

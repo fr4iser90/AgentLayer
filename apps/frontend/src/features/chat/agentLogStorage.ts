@@ -54,6 +54,35 @@ export function serializeAgentLogPayload(thread: Pick<ChatThread, "agentLog" | "
   };
 }
 
+/** Total timeline rows in ``current`` plus archived turns (for merge heuristics). */
+export function agentLogPayloadEntryCount(
+  agentLog: AgentTimelineEntry[] | undefined,
+  turnLogs: AgentTurnLog[] | undefined
+): number {
+  const current = agentLog?.length ?? 0;
+  const archived = (turnLogs ?? []).reduce((n, t) => n + (t.entries?.length ?? 0), 0);
+  return current + archived;
+}
+
+/** Keep whichever side has more activity rows (avoid empty server overwrite after reload). */
+export function mergeAgentLogPreferRicher(
+  server: Pick<ChatThread, "agentLog" | "turnLogs">,
+  local: Pick<ChatThread, "agentLog" | "turnLogs">
+): Pick<ChatThread, "agentLog" | "turnLogs"> {
+  const serverN = agentLogPayloadEntryCount(server.agentLog, server.turnLogs);
+  const localN = agentLogPayloadEntryCount(local.agentLog, local.turnLogs);
+  if (localN > serverN) {
+    return {
+      agentLog: local.agentLog ?? [],
+      turnLogs: local.turnLogs ?? [],
+    };
+  }
+  return {
+    agentLog: server.agentLog ?? [],
+    turnLogs: server.turnLogs ?? [],
+  };
+}
+
 /** Activity entries for a selected user message turn. */
 export function activityForTurn(
   thread: Pick<ChatThread, "messages" | "agentLog" | "turnLogs">,
@@ -121,6 +150,10 @@ export function appendTimelineEntry(
       ...(entry.durationMs != null ? { durationMs: entry.durationMs } : {}),
       ...(entry.resultChars != null ? { resultChars: entry.resultChars } : {}),
       ...(entry.subagentAgentId != null ? { subagentAgentId: entry.subagentAgentId } : {}),
+      ...(entry.subagentRunId != null ? { subagentRunId: entry.subagentRunId } : {}),
+      ...(entry.toolSummary != null ? { toolSummary: entry.toolSummary } : {}),
+      ...(entry.stepPhase != null ? { stepPhase: entry.stepPhase } : {}),
+      ...(entry.toolRound != null ? { toolRound: entry.toolRound } : {}),
       ...(entry.nested === true ? { nested: true } : {}),
       ...(entry.indexMode != null ? { indexMode: entry.indexMode } : {}),
       ...(entry.indexPhase != null ? { indexPhase: entry.indexPhase } : {}),

@@ -275,6 +275,42 @@ def normalize_findings(data: Any, *, cap: int | None = None) -> list[dict[str, A
     return out
 
 
+FINDINGS_FP_GUIDANCE: tuple[str, ...] = (
+    "Accepted false positives: call security_scan_finding_policy_schema({}) first, then add "
+    "accepted_findings to .scanning/finding-policy.json using schema/notes/agent_guidance from "
+    "that response.",
+    "Do not use # nosec, .sgignore, or .bandit for SimpleSecCheck rescans — remote scan uses "
+    ".scanning/finding-policy.json only.",
+    "Real code bugs: patch source, commit+push, then security_scan_agent_callback.",
+)
+
+
+def guidance_from_api(data: dict[str, Any] | None) -> list[str]:
+    if not isinstance(data, dict):
+        return []
+    raw = data.get("agent_guidance")
+    if raw is None:
+        return []
+    if isinstance(raw, str):
+        s = raw.strip()
+        return [s] if s else []
+    if isinstance(raw, list):
+        return [str(x).strip() for x in raw if str(x).strip()]
+    return []
+
+
+def merge_agent_guidance(*parts: list[str] | tuple[str, ...]) -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for part in parts:
+        for item in part:
+            s = str(item).strip()
+            if s and s not in seen:
+                seen.add(s)
+                out.append(s)
+    return out
+
+
 def ssc_status(data: dict[str, Any] | None) -> str | None:
     if not isinstance(data, dict):
         return None
@@ -282,21 +318,33 @@ def ssc_status(data: dict[str, Any] | None) -> str | None:
     return str(st).strip().lower() if st is not None else None
 
 
-def agent_guidance_for_status(st: str | None) -> list[str]:
+def agent_guidance_for_status(
+    st: str | None,
+    *,
+    data: dict[str, Any] | None = None,
+    findings: list[Any] | None = None,
+    extra: list[str] | None = None,
+) -> list[str]:
+    status_lines: list[str] = []
     if st in ("started", "scanning", "queued", "running", "pending"):
-        return [END_RUN_GUIDANCE]
-    if st == "ready":
-        return [
+        status_lines = [END_RUN_GUIDANCE]
+    elif st == "ready":
+        status_lines = [
             "Findings may be in this response. For more pages use security_scan_findings "
             "with offset or pagination.next_path — then end the run."
         ]
-    if st in ("completed",):
-        return [
+    elif st in ("completed",):
+        status_lines = [
             "Scan complete. Use security_scan_findings(scan_id) for paginated issues, then end the run."
         ]
-    if st in ("failed", "cancelled", "error"):
-        return ["Scan did not succeed; report status to the user and end the run."]
-    return []
+    elif st in ("failed", "cancelled", "error"):
+        status_lines = ["Scan did not succeed; report status to the user and end the run."]
+
+    if data is None and findings is None and extra is None:
+        return status_lines
+
+    fp = list(FINDINGS_FP_GUIDANCE) if findings else []
+    return merge_agent_guidance(guidance_from_api(data), status_lines, fp, extra or [])
 
 
 def dump_ok(payload: dict[str, Any]) -> str:

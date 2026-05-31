@@ -9,6 +9,7 @@ import type {
 } from "./chatThreadStorage";
 import {
   assignMissingUserMessageIds,
+  mergeAgentLogPreferRicher,
   parseAgentLogPayload,
   serializeAgentLogPayload,
 } from "./agentLogStorage";
@@ -116,6 +117,8 @@ export function mergeServerThreadWithLocal(
     });
     merged = { ...merged, messages };
   }
+  const agentLogPatch = mergeAgentLogPreferRicher(server, local);
+  merged = { ...merged, ...agentLogPatch };
   return merged;
 }
 
