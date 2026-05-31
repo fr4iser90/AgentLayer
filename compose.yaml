@@ -10,6 +10,7 @@
 #
 # Modell mit Tool Calling (z. B. llama3.1, qwen2.5).
 services:
+  # NOTE: Internal Docker networking only. Use HTTPS/proxy for external access.
   postgres:
     # pgvector extension required for RAG (migration 6). Existing volumes: backup before switching image if needed.
     image: pgvector/pgvector:pg16
@@ -27,6 +28,7 @@ services:
       timeout: 5s
       retries: 15
       start_period: 10s
+  # NOTE: Internal Docker networking only. Use HTTPS/proxy for external access.
   qdrant:
     image: qdrant/qdrant:v1.9.0
     container_name: agent-layer-qdrant
@@ -66,6 +68,7 @@ services:
       timeout: 10s
       retries: 10
       start_period: 30s
+  # NOTE: Internal Docker networking only. Use HTTPS/proxy for external access.
   agent-layer:
     build:
       context: .

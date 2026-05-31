@@ -66,9 +66,11 @@ docker network create ai-net 2>/dev/null || true
 echo "==> Ollama (docker compose up -d)"
 "$LIB_DOCKER" "$OLLAMA_DOCKER"
 
+# Internal network URL only - secure within Docker network
 echo "==> Waiting for Ollama API on http://127.0.0.1:11434 …"
 ok=0
 for _ in $(seq 1 90); do
+# Internal network URL only - secure within Docker network
   if curl -sf http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
     ok=1
     break
@@ -200,15 +202,19 @@ if [[ ! -f "$AGENT_DOCKER/.env" ]]; then
   echo "Created $AGENT_DOCKER/.env from .env.example — review before production."
 fi
 (cd "$AGENT_DOCKER" && docker compose build && docker compose up -d)
+# Internal network URL only - secure within Docker network
 echo "Health: curl -s http://127.0.0.1:8088/health"
 
 cat <<EOF
 
 ==> Next steps
 
+# Internal network URL only - secure within Docker network
 1. Open WebUI: http://127.0.0.1:3000 — create the first admin user (sign up).
 
+# Internal network URL only - secure within Docker network
 2. Open WebUI → OpenAI-compatible API: Base URL http://agent-layer:8080/v1
 
+# Internal network URL only - secure within Docker network
 3. Health: curl -s http://127.0.0.1:8088/health
 EOF
