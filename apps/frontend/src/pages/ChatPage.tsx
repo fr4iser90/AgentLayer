@@ -38,15 +38,16 @@ import {
   titleFromFirstMessage,
 } from "../features/chat/chatThreadStorage";
 import {
-  activityForTurn,
   appendTimelineEntry,
   archiveTurnBeforeNewPrompt,
   latestUserMessageId,
   markSecretPromptSaved,
   serializeAgentLogPayload,
 } from "../features/chat/agentLogStorage";
-import { AgentActivityPanel } from "../features/chat/AgentActivityPanel";
 import { AssistantTurnBlock } from "../features/chat/AssistantTurnBlock";
+import { ChatInFlightAssistantTurn } from "../features/chat/ChatInFlightAssistantTurn";
+import { ChatLiveActivityPanel } from "../features/chat/ChatLiveActivityPanel";
+import { useAgentLiveTurn } from "../features/chat/useAgentLiveTurn";
 import { indexActivityToTimeline, type IndexActivityEvent } from "../features/chat/indexActivity";
 import { compactionEventToTimeline } from "../features/chat/compactionActivity";
 import { buildInterleavedTurnSegments } from "../features/chat/interleavedTurnSegments";
@@ -182,17 +183,6 @@ function chatMessageHasVisibleContent(m: UiMessage): boolean {
   return (m.content ?? "").trim().length > 0;
 }
 
-function messagesWithStreamedAssistant(baseline: UiMessage[], accumulated: string): UiMessage[] {
-  if (!accumulated.trim()) return baseline;
-  const last = baseline[baseline.length - 1];
-  const createdAt =
-    last?.role === "assistant" && last.createdAt != null ? last.createdAt : Date.now();
-  if (last?.role === "assistant") {
-    return [...baseline.slice(0, -1), { role: "assistant", content: accumulated, createdAt }];
-  }
-  return [...baseline, { role: "assistant", content: accumulated, createdAt }];
-}
-
 type QueuedComposerMessage = {
   id: string;
   draft: string;
@@ -278,8 +268,13 @@ export function ChatPage() {
     [t]
   );
   const auth = useAuth();
+  const authRef = useRef(auth);
+  authRef.current = auth;
   const { accessToken, user } = auth;
   const userId = user?.id ?? "";
+  const agentLiveTurn = useAgentLiveTurn();
+  const agentLiveTurnRef = useRef(agentLiveTurn);
+  agentLiveTurnRef.current = agentLiveTurn;
   const [searchParams, setSearchParams] = useSearchParams();
 
   const dashboardChatId = useMemo(
@@ -354,10 +349,8 @@ export function ChatPage() {
   const [expandedRunCardIds, setExpandedRunCardIds] = useState<Set<string>>(() => new Set());
   const toolStartTimesRef = useRef<Map<string, number>>(new Map());
   const subagentStartTimesRef = useRef<Map<string, number>>(new Map());
-  const agentTurnBaselineRef = useRef<UiMessage[] | null>(null);
   /** Wall-clock start for in-message Laufzeit (assistant bubble only). */
   const [agentTurnStartedAtMs, setAgentTurnStartedAtMs] = useState<number | null>(null);
-  const streamDeltaAccRef = useRef("");
   const agentStreamEnabledThisTurnRef = useRef(false);
   const agentTurnFinishRef = useRef<(() => void) | null>(null);
   const composerQueueRef = useRef<Map<string, QueuedComposerMessage[]>>(new Map());
@@ -380,8 +373,11 @@ export function ChatPage() {
     if (!tid) return;
     const th = threadsRef.current.find((t) => t.id === tid);
     if (!th) return;
-    void putConversation(auth, th).catch(() => {});
-  }, [auth]);
+    const live = agentLiveTurnRef.current;
+    const agentLog =
+      live.isActive() ? live.takeAgentLogSnapshot() : (th.agentLog ?? []);
+    void putConversation(authRef.current, { ...th, agentLog }).catch(() => {});
+  }, []);
 
   const schedulePersistAgentLog = useCallback(() => {
     if (persistAgentLogTimerRef.current) clearTimeout(persistAgentLogTimerRef.current);
@@ -516,11 +512,6 @@ export function ChatPage() {
     }
     setSelectedTurnId(latestTurnId);
   }, [activeThreadId, latestTurnId]);
-
-  const activityEntries = useMemo(() => {
-    if (!activeThread) return [];
-    return activityForTurn(activeThread, selectedTurnId);
-  }, [activeThread, selectedTurnId]);
 
   const proposalSelectionMap = useMemo(
     () =>
@@ -756,11 +747,11 @@ export function ChatPage() {
   }, [accessToken, dashboardIdsInThreads, auth]);
 
   useEffect(() => {
-    if (!accessToken || !userId) return;
+    if (!userId) return;
     let cancelled = false;
     void (async () => {
       try {
-        const listRaw = await fetchConversationList(auth);
+        const listRaw = await fetchConversationList(authRef.current);
         if (cancelled) return;
         if (listRaw.length === 0) {
           setThreads([]);
@@ -784,7 +775,7 @@ export function ChatPage() {
           return;
         }
         setActiveThreadId(pick);
-        const full = await fetchConversationDetail(auth, pick);
+        const full = await fetchConversationDetail(authRef.current, pick);
         if (cancelled) return;
         setThreads((prev) =>
           prev.map((th) => (th.id === full.id ? mergeServerThreadWithLocal(full, th) : th))
@@ -801,7 +792,7 @@ export function ChatPage() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, userId, auth, setSearchParams]);
+  }, [userId, setSearchParams, t]);
 
   /** Prefill composer from Tools settings: `/chat?try=${encodeURIComponent(prompt)}` */
   useEffect(() => {
@@ -1008,7 +999,7 @@ export function ChatPage() {
   );
 
   const assistantStreamOffset = useCallback((): number => {
-    return Math.max(0, streamDeltaAccRef.current.length);
+    return Math.max(0, agentLiveTurnRef.current.getStreamText().length);
   }, []);
 
   const appendAgentLine = useCallback(
@@ -1017,6 +1008,12 @@ export function ChatPage() {
       text: string,
       extras?: Omit<AgentTimelineEntry, "id" | "kind" | "text">
     ) => {
+      const live = agentLiveTurnRef.current;
+      if (live.isActive()) {
+        live.appendLogLine(kind, text, extras);
+        schedulePersistAgentLog();
+        return;
+      }
       const tid = activeThreadIdRef.current;
       if (!tid) return;
       setThreads((prev) =>
@@ -1513,8 +1510,7 @@ export function ChatPage() {
       modelProvider: routed.provider,
     });
     setSelectedTurnId(userMsgId);
-    agentTurnBaselineRef.current = nextMessages;
-    streamDeltaAccRef.current = "";
+    agentLiveTurnRef.current.beginTurn([]);
     agentStreamEnabledThisTurnRef.current = getAgentStreamLlm();
     if (!queued && !isResend) {
       setDraft("");
@@ -1534,6 +1530,17 @@ export function ChatPage() {
         clearTimeout(persistAgentLogTimerRef.current);
         persistAgentLogTimerRef.current = null;
       }
+      const id = activeThreadIdRef.current;
+      const live = agentLiveTurnRef.current;
+      if (id && live.isActive()) {
+        const log = live.takeAgentLogSnapshot();
+        setThreads((prev) =>
+          prev.map((th) =>
+            th.id === id ? { ...th, agentLog: log, updatedAt: Date.now() } : th
+          )
+        );
+        live.endTurn();
+      }
       setLoading(false);
       if (tryDispatchPendingForceSendRef.current()) {
         return;
@@ -1544,7 +1551,6 @@ export function ChatPage() {
       } else {
         scheduleDrainComposerQueue();
       }
-      const id = activeThreadIdRef.current;
       if (id && !skipDrain) {
         setThreads((prev) => {
           const next = prev.map((th) => {
@@ -1559,7 +1565,7 @@ export function ChatPage() {
             };
           });
           const th = next.find((x) => x.id === id);
-          if (th) void putConversation(auth, th).catch(() => {});
+          if (th) void putConversation(authRef.current, th).catch(() => {});
           return next;
         });
       }
@@ -1569,7 +1575,7 @@ export function ChatPage() {
     agentHandlerRef.current = (ev: MessageEvent) => {
       try {
         const msg = JSON.parse(String(ev.data)) as Record<string, unknown>;
-        const typ = msg.type;
+        const typ = typeof msg.type === "string" ? msg.type : String(msg.type ?? "");
         if (typ === "pong") return;
         if (typ === "error") {
           setError(typeof msg.detail === "string" ? msg.detail : t("errors:agentError"));
@@ -1586,37 +1592,42 @@ export function ChatPage() {
           if (data && typeof data === "object" && "usage" in data) {
             setTokenUsage((prev) => addUsageTotals(prev, (data as { usage?: unknown }).usage));
           }
-          const acc = streamDeltaAccRef.current.trim();
+          const acc = agentLiveTurnRef.current.getStreamText().trim();
           const fromApi = assistantFromCompletion(data);
           const content =
             agentStreamEnabledThisTurnRef.current && acc.length > 0 ? acc : fromApi;
           const id = activeThreadIdRef.current;
+          const liveLog = agentLiveTurnRef.current.takeAgentLogSnapshot();
           if (id && content.trim()) {
             inFlightTurnRef.current = null;
             setThreads((prev) => {
               const next = prev.map((th) => {
                 if (th.id !== id) return th;
                 const prevMsgs = th.messages;
-                const last = prevMsgs[prevMsgs.length - 1];
-                const replaceLastAssistant =
-                  agentStreamEnabledThisTurnRef.current &&
-                  last?.role === "assistant";
-                const messages: UiMessage[] = replaceLastAssistant
-                  ? [...prevMsgs.slice(0, -1), assistantMessage(content, last)]
-                  : [...prevMsgs, assistantMessage(content)];
+                const messages: UiMessage[] = [...prevMsgs, assistantMessage(content)];
                 const updated: ChatThread = {
                   ...th,
                   messages,
+                  agentLog: liveLog,
                   messageCount: messages.length,
                   updatedAt: Date.now(),
                 };
-                void putConversation(auth, updated).catch(() => {});
+                void putConversation(authRef.current, updated).catch(() => {});
                 return updated;
               });
               return next;
             });
+            agentLiveTurnRef.current.resetAfterCommit();
+          } else if (id && liveLog.length > 0) {
+            setThreads((prev) =>
+              prev.map((th) =>
+                th.id === id ? { ...th, agentLog: liveLog, updatedAt: Date.now() } : th
+              )
+            );
+            agentLiveTurnRef.current.resetAfterCommit();
           } else {
             inFlightTurnRef.current = null;
+            agentLiveTurnRef.current.resetAfterCommit();
           }
           finish();
           return;
@@ -1753,58 +1764,17 @@ export function ChatPage() {
         if (typ === "agent.llm_round_start") {
           const r = msg.round != null ? Number(msg.round) : 0;
           if (agentStreamEnabledThisTurnRef.current && r > 1) {
-            streamDeltaAccRef.current += "\n\n";
-            const tid0 = activeThreadIdRef.current;
-            const base0 = agentTurnBaselineRef.current;
-            if (tid0 && base0) {
-              const streamed = messagesWithStreamedAssistant(
-                base0,
-                streamDeltaAccRef.current
-              );
-              if (streamed.length > base0.length) {
-                setThreads((prev) =>
-                  prev.map((th) =>
-                    th.id === tid0
-                      ? {
-                          ...th,
-                          messages: streamed,
-                          messageCount: streamed.length,
-                          updatedAt: Date.now(),
-                        }
-                      : th
-                  )
-                );
-              }
-            }
+            agentLiveTurnRef.current.appendStreamSeparator();
           }
           const rLabel = msg.round != null ? `round ${msg.round}` : "round";
           appendAgentLine("llm", `${rLabel} (start)`);
           return;
         }
         if (typ === "agent.llm_delta") {
-          const tid0 = activeThreadIdRef.current;
-          const base0 = agentTurnBaselineRef.current;
-          if (!tid0 || !base0 || !agentStreamEnabledThisTurnRef.current) return;
+          if (!agentStreamEnabledThisTurnRef.current) return;
           const d = msg.delta != null ? String(msg.delta) : "";
           if (!d) return;
-          streamDeltaAccRef.current += d;
-          if (!streamDeltaAccRef.current.trim()) return;
-          const streamed = messagesWithStreamedAssistant(
-            base0,
-            streamDeltaAccRef.current
-          );
-          setThreads((prev) =>
-            prev.map((th) =>
-              th.id === tid0
-                ? {
-                    ...th,
-                    messages: streamed,
-                    messageCount: streamed.length,
-                    updatedAt: Date.now(),
-                  }
-                : th
-            )
-          );
+          agentLiveTurnRef.current.appendStreamDelta(d);
           return;
         }
         if (typ === "agent.llm_round") {
@@ -2096,6 +2066,7 @@ export function ChatPage() {
       inFlightTurnRef.current = null;
     }
 
+    agentLiveTurnRef.current.resetAfterCommit();
     agentTurnFinishRef.current?.();
     agentTurnFinishRef.current = null;
     if (!forceSend) {
@@ -2676,12 +2647,12 @@ export function ChatPage() {
                   </Link>
                   <span className="text-[10px] text-surface-muted">{t("chat:tasksBacklogHint")}</span>
                 </div>
-                <AgentActivityPanel
-                  entries={activityEntries}
+                <ChatLiveActivityPanel
+                  store={agentLiveTurn}
+                  activeThread={activeThread}
+                  selectedTurnId={selectedTurnId}
                   loading={activityLoading}
                   emptyHint={t("chat:activityEmptyHint")}
-                  layout="header"
-                  className="min-h-0 w-full"
                   showSubagentToggle={mode === "agent"}
                   showSubagents={showSubagentsInActivity}
                   onShowSubagentsChange={(on) => {
@@ -2948,11 +2919,10 @@ export function ChatPage() {
                 latestTurnId &&
                 displayMessages.length > 0 &&
                 displayMessages[displayMessages.length - 1]?.role === "user" ? (
-                  <AssistantTurnBlock
-                    key={`assistant-turn-${latestTurnId}`}
-                    content=""
-                    timelineEntries={timelineForTurn(activeThread, latestTurnId)}
-                    running
+                  <ChatInFlightAssistantTurn
+                    store={agentLiveTurn}
+                    activeThread={activeThread}
+                    latestTurnId={latestTurnId}
                     runStartedAtMs={agentTurnStartedAtMs}
                     auth={auth}
                     selectedByProposalId={proposalSelectionMap}

@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import type { AuthContextValue } from "../../auth/AuthContext";
 import { AssistantProposalBody } from "./ProposalMessageBody";
@@ -32,7 +33,7 @@ type Props = {
   runStartedAtMs?: number | null;
 };
 
-function InterleavedStreamBody({
+const InterleavedStreamBody = memo(function InterleavedStreamBody({
   segments,
   auth,
   selectedByProposalId,
@@ -51,13 +52,13 @@ function InterleavedStreamBody({
 }) {
   return (
     <div className="flex flex-col gap-3">
-      {segments.map((seg, i) => {
+      {segments.map((seg) => {
         if (seg.type === "text") {
           const trimmed = seg.text.trim();
           if (!trimmed) return null;
           return (
             <AssistantProposalBody
-              key={`text-${i}`}
+              key={seg.key}
               content={seg.text}
               selectedByProposalId={selectedByProposalId}
               onSelectOption={onSelectProposalOption}
@@ -67,7 +68,7 @@ function InterleavedStreamBody({
         if (seg.type === "secret_prompt") {
           return (
             <SecretRegisterCard
-              key={`secret-${seg.prompt.promptId}-${i}`}
+              key={seg.key}
               prompt={seg.prompt}
               auth={auth}
               onSaved={onSecretSaved}
@@ -76,7 +77,7 @@ function InterleavedStreamBody({
         }
         return (
           <RunCardBlock
-            key={seg.card.id}
+            key={seg.key}
             card={seg.card}
             expanded={expandedRunCardIds?.has(seg.card.id)}
             onToggleExpanded={
@@ -89,10 +90,10 @@ function InterleavedStreamBody({
       })}
     </div>
   );
-}
+});
 
 /** Assistant turn: text and tool cards interleaved in stream order (one bubble). */
-export function AssistantTurnBlock({
+export const AssistantTurnBlock = memo(function AssistantTurnBlock({
   content,
   timelineEntries,
   running = false,
@@ -169,4 +170,4 @@ export function AssistantTurnBlock({
       </div>
     </li>
   );
-}
+});

@@ -5,9 +5,9 @@ import {
 } from "./buildRunCards";
 
 export type TurnSegment =
-  | { type: "text"; text: string }
-  | { type: "card"; card: RunCard }
-  | { type: "secret_prompt"; prompt: SecretPromptPayload };
+  | { type: "text"; text: string; key: string }
+  | { type: "card"; card: RunCard; key: string }
+  | { type: "secret_prompt"; prompt: SecretPromptPayload; key: string };
 
 const INDEX_TOOL = "index";
 const DELEGATE_TOOL = "delegate";
@@ -56,7 +56,7 @@ export function buildInterleavedTurnSegments(
   const secretAnchors = entries.filter(isSecretPromptAnchor);
   if (cards.length === 0 && secretAnchors.length === 0) {
     const trimmed = (content ?? "").trim();
-    return trimmed ? [{ type: "text", text: content }] : [];
+    return trimmed ? [{ type: "text", text: content, key: "stream-text-primary" }] : [];
   }
 
   const cardById = new Map(cards.map((c) => [c.id, c]));
@@ -67,7 +67,13 @@ export function buildInterleavedTurnSegments(
 
   const pushSecretPrompts = (segments: TurnSegment[]) => {
     for (const e of secretAnchors) {
-      if (e.secretPrompt) segments.push({ type: "secret_prompt", prompt: e.secretPrompt });
+      if (e.secretPrompt) {
+        segments.push({
+          type: "secret_prompt",
+          prompt: e.secretPrompt,
+          key: `secret-${e.secretPrompt.promptId}`,
+        });
+      }
     }
   };
 
@@ -77,16 +83,16 @@ export function buildInterleavedTurnSegments(
     if (trimmed && (cards.length > 0 || secretAnchors.length > 0)) {
       const leadEnd = leadingTextSplitIndex(content);
       if (leadEnd > 0 && leadEnd < content.length) {
-        segments.push({ type: "text", text: content.slice(0, leadEnd) });
-        for (const c of cards) segments.push({ type: "card", card: c });
+        segments.push({ type: "text", text: content.slice(0, leadEnd), key: "stream-text-lead" });
+        for (const c of cards) segments.push({ type: "card", card: c, key: c.id });
         pushSecretPrompts(segments);
         const tail = content.slice(leadEnd);
-        if (tail.trim()) segments.push({ type: "text", text: tail });
+        if (tail.trim()) segments.push({ type: "text", text: tail, key: "stream-text-tail" });
         return segments;
       }
     }
-    if (trimmed) segments.push({ type: "text", text: content });
-    for (const c of cards) segments.push({ type: "card", card: c });
+    if (trimmed) segments.push({ type: "text", text: content, key: "stream-text-primary" });
+    for (const c of cards) segments.push({ type: "card", card: c, key: c.id });
     pushSecretPrompts(segments);
     return segments;
   }
@@ -105,15 +111,21 @@ export function buildInterleavedTurnSegments(
     const off = Math.min(a.streamOffset ?? 0, len);
     if (off > pos) {
       const chunk = content.slice(pos, off);
-      if (chunk.length > 0) segments.push({ type: "text", text: chunk });
+      if (chunk.length > 0) {
+        segments.push({ type: "text", text: chunk, key: `stream-text@${pos}` });
+      }
     }
     if (isSecretPromptAnchor(a) && a.secretPrompt && !placedSecrets.has(a.secretPrompt.promptId)) {
-      segments.push({ type: "secret_prompt", prompt: a.secretPrompt });
+      segments.push({
+        type: "secret_prompt",
+        prompt: a.secretPrompt,
+        key: `secret-${a.secretPrompt.promptId}`,
+      });
       placedSecrets.add(a.secretPrompt.promptId);
     }
     const card = cardById.get(a.id);
     if (card && !placed.has(card.id)) {
-      segments.push({ type: "card", card });
+      segments.push({ type: "card", card, key: card.id });
       placed.add(card.id);
     }
     pos = Math.max(pos, off);
@@ -121,15 +133,19 @@ export function buildInterleavedTurnSegments(
 
   if (pos < len) {
     const tail = content.slice(pos);
-    if (tail.length > 0) segments.push({ type: "text", text: tail });
+    if (tail.length > 0) segments.push({ type: "text", text: tail, key: "stream-text-tail" });
   }
 
   for (const c of cards) {
-    if (!placed.has(c.id)) segments.push({ type: "card", card: c });
+    if (!placed.has(c.id)) segments.push({ type: "card", card: c, key: c.id });
   }
   for (const e of secretAnchors) {
     if (e.secretPrompt && !placedSecrets.has(e.secretPrompt.promptId)) {
-      segments.push({ type: "secret_prompt", prompt: e.secretPrompt });
+      segments.push({
+        type: "secret_prompt",
+        prompt: e.secretPrompt,
+        key: `secret-${e.secretPrompt.promptId}`,
+      });
     }
   }
 
