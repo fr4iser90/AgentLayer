@@ -355,6 +355,8 @@ export function ChatPage() {
   const toolStartTimesRef = useRef<Map<string, number>>(new Map());
   const subagentStartTimesRef = useRef<Map<string, number>>(new Map());
   const agentTurnBaselineRef = useRef<UiMessage[] | null>(null);
+  /** Wall-clock start for in-message Laufzeit (assistant bubble only). */
+  const [agentTurnStartedAtMs, setAgentTurnStartedAtMs] = useState<number | null>(null);
   const streamDeltaAccRef = useRef("");
   const agentStreamEnabledThisTurnRef = useRef(false);
   const agentTurnFinishRef = useRef<(() => void) | null>(null);
@@ -386,7 +388,7 @@ export function ChatPage() {
     persistAgentLogTimerRef.current = setTimeout(() => {
       persistAgentLogTimerRef.current = null;
       flushPersistAgentLog();
-    }, 1200);
+    }, 2500);
   }, [flushPersistAgentLog]);
 
   useEffect(
@@ -561,6 +563,26 @@ export function ChatPage() {
     [model, modelProvider, defaultSelectValue, modelRows]
   );
 
+  const sessionRuntimeMcpAddon = useMemo(() => {
+    if (
+      !selectedWorkspaceId ||
+      !selectedWorkspace ||
+      selectedWorkspace.access_role === "viewer"
+    ) {
+      return null;
+    }
+    return (
+      <button
+        type="button"
+        className="ml-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded border border-white/15 px-1 text-[11px] font-medium text-sky-300/95 hover:bg-white/10"
+        title={t("workspace:editMcpServersWorkspaceOnlyTitle")}
+        onClick={() => setShowWorkspaceMcpModal(true)}
+      >
+        +
+      </button>
+    );
+  }, [selectedWorkspaceId, selectedWorkspace, t]);
+
   const composerHeaderSummary = useMemo(() => {
     const projectLabel = selectedWorkspace?.name ?? t("chat:noProject");
     const modeLabel =
@@ -614,17 +636,25 @@ export function ChatPage() {
     };
   }, []);
 
+  const sessionRuntimeQuery = useMemo(
+    () => ({
+      workspaceId: selectedWorkspaceId,
+      model: (model || defaultModel).trim() || null,
+      modelCatalogOwnedBy: (modelProvider || "").trim() || null,
+    }),
+    [selectedWorkspaceId, model, modelProvider, defaultModel]
+  );
+
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const wsParam = selectedWorkspaceId ? selectedWorkspaceId : null;
-      const r = await fetchSessionRuntime(auth, wsParam);
+      const r = await fetchSessionRuntime(auth, sessionRuntimeQuery);
       if (!cancelled) setSessionRuntime(r);
     })();
     return () => {
       cancelled = true;
     };
-  }, [auth, selectedWorkspaceId]);
+  }, [auth, sessionRuntimeQuery]);
 
   useEffect(() => {
     if (!userId) return;
@@ -1466,7 +1496,15 @@ export function ChatPage() {
 
     setError(null);
     setLoading(true);
+    setAgentTurnStartedAtMs(Date.now());
     setTokenUsage(emptyTokenUsage());
+    void fetchSessionRuntime(auth, {
+      workspaceId: selectedWorkspaceId,
+      model: routed.model,
+      modelCatalogOwnedBy: routed.provider ?? null,
+    }).then((r) => {
+      if (r) setSessionRuntime(r);
+    });
     patchThread(tid, {
       messages: nextMessages,
       ...archivePatch,
@@ -1491,6 +1529,7 @@ export function ChatPage() {
       if (finished) return;
       finished = true;
       agentTurnFinishRef.current = null;
+      setAgentTurnStartedAtMs(null);
       if (persistAgentLogTimerRef.current) {
         clearTimeout(persistAgentLogTimerRef.current);
         persistAgentLogTimerRef.current = null;
@@ -1586,6 +1625,13 @@ export function ChatPage() {
           const em = msg.effective_model != null ? String(msg.effective_model) : "";
           const mr = msg.model_resolution != null ? String(msg.model_resolution) : "";
           appendAgentLine("session", [em && `model: ${em}`, mr && `(${mr})`].filter(Boolean).join(" "));
+          void fetchSessionRuntime(auth, {
+            workspaceId: selectedWorkspaceId,
+            model: (em || sessionRuntimeQuery.model || "").trim() || null,
+            modelCatalogOwnedBy: sessionRuntimeQuery.modelCatalogOwnedBy,
+          }).then((r) => {
+            if (r) setSessionRuntime(r);
+          });
           if (msg.context && typeof msg.context === "object") {
             const ctx = msg.context as ChatContextMeta;
             setChatContextMeta(ctx);
@@ -1922,6 +1968,7 @@ export function ChatPage() {
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      setAgentTurnStartedAtMs(null);
       setLoading(false);
       scheduleDrainComposerQueue();
     }
@@ -2448,6 +2495,17 @@ export function ChatPage() {
               </button>
             </div>
           ) : null}
+          {mode === "agent" ? (
+            <SessionRuntimeBar
+              runtime={sessionRuntime}
+              usage={tokenUsage}
+              contextMeta={chatContextMeta}
+              agentRunning={activityLoading}
+              agentMode
+              className={composerHeaderCollapsed ? "mt-2 w-full" : "mb-2 w-full lg:hidden"}
+              mcpAddon={sessionRuntimeMcpAddon}
+            />
+          ) : null}
           {!composerHeaderCollapsed ? (
           <div
             id="chat-composer-header-panel"
@@ -2640,26 +2698,17 @@ export function ChatPage() {
               </div>
             )}
             <div className="flex min-w-0 flex-col gap-2 lg:border-l lg:border-surface-border lg:pl-4">
-              <SessionRuntimeBar
-                runtime={sessionRuntime}
-                usage={tokenUsage}
-                contextMeta={chatContextMeta}
-                className="w-full"
-                mcpAddon={
-                  selectedWorkspaceId &&
-                  selectedWorkspace &&
-                  selectedWorkspace.access_role !== "viewer" ? (
-                    <button
-                      type="button"
-                      className="ml-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded border border-white/15 px-1 text-[11px] font-medium text-sky-300/95 hover:bg-white/10"
-                      title={t("workspace:editMcpServersWorkspaceOnlyTitle")}
-                      onClick={() => setShowWorkspaceMcpModal(true)}
-                    >
-                      +
-                    </button>
-                  ) : null
-                }
-              />
+              {mode === "agent" ? (
+                <SessionRuntimeBar
+                  runtime={sessionRuntime}
+                  usage={tokenUsage}
+                  contextMeta={chatContextMeta}
+                  agentRunning={activityLoading}
+                  agentMode
+                  className="hidden w-full lg:block"
+                  mcpAddon={sessionRuntimeMcpAddon}
+                />
+              ) : null}
               <div className="w-full">
                 <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
                   {t("chat:replyModeLabel")}
@@ -2878,7 +2927,8 @@ export function ChatPage() {
                       key={turnId ? `assistant-turn-${turnId}` : (m.id ?? `${i}-assistant`)}
                       content={m.content}
                       timelineEntries={timelineEntries}
-                      running={inFlight && !hasStreamBody}
+                      running={inFlight}
+                      runStartedAtMs={inFlight ? agentTurnStartedAtMs : null}
                       createdAt={m.createdAt}
                       auth={auth}
                       selectedByProposalId={proposalSelectionMap}
@@ -2903,6 +2953,7 @@ export function ChatPage() {
                     content=""
                     timelineEntries={timelineForTurn(activeThread, latestTurnId)}
                     running
+                    runStartedAtMs={agentTurnStartedAtMs}
                     auth={auth}
                     selectedByProposalId={proposalSelectionMap}
                     onSelectProposalOption={handleSelectProposalOption}
@@ -3158,8 +3209,7 @@ export function ChatPage() {
                 const j = (await r.json()) as { workspaces?: WorkspaceApiRecord[] };
                 setWorkspaces(j.workspaces ?? []);
               }
-              const wsParam = selectedWorkspaceId ? selectedWorkspaceId : null;
-              setSessionRuntime(await fetchSessionRuntime(auth, wsParam));
+              setSessionRuntime(await fetchSessionRuntime(auth, sessionRuntimeQuery));
             } catch {
               /* ignore */
             }

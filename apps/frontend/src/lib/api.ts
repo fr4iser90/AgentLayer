@@ -1,4 +1,5 @@
 import type { AuthContextValue } from "../auth/AuthContext";
+import { accessTokenNeedsRefresh } from "../auth/tokenRefresh";
 
 export type AgentDefinition = {
   id: string;
@@ -74,6 +75,11 @@ export type SessionRuntimePayload = {
     scope?: "global" | "workspace";
   };
   context?: ChatContextBudget;
+  /** Resolved window/soft/hard for ``model`` (provider catalog / overrides). */
+  context_budget?: Pick<
+    ChatContextMeta,
+    "context_window_tokens" | "soft_limit_tokens" | "hard_limit_tokens" | "budget_source"
+  > | null;
 };
 
 export type TokenUsageTotals = {
@@ -107,13 +113,29 @@ export function addUsageTotals(prev: TokenUsageTotals, usage: unknown): TokenUsa
   };
 }
 
+export type FetchSessionRuntimeOpts = {
+  workspaceId?: string | null;
+  model?: string | null;
+  modelCatalogOwnedBy?: string | null;
+};
+
 export async function fetchSessionRuntime(
   auth: Pick<AuthContextValue, "accessToken" | "refresh">,
-  workspaceId?: string | null
+  opts?: string | null | FetchSessionRuntimeOpts
 ): Promise<SessionRuntimePayload | null> {
-  const wid = typeof workspaceId === "string" ? workspaceId.trim() : "";
-  const qs = wid ? `?workspace_id=${encodeURIComponent(wid)}` : "";
-  const r = await apiFetch(`/v1/session/runtime${qs}`, auth);
+  const o: FetchSessionRuntimeOpts =
+    typeof opts === "string" || opts == null
+      ? { workspaceId: opts ?? null }
+      : (opts ?? {});
+  const params = new URLSearchParams();
+  const wid = typeof o.workspaceId === "string" ? o.workspaceId.trim() : "";
+  if (wid) params.set("workspace_id", wid);
+  const model = typeof o.model === "string" ? o.model.trim() : "";
+  if (model) params.set("model", model);
+  const owned = typeof o.modelCatalogOwnedBy === "string" ? o.modelCatalogOwnedBy.trim() : "";
+  if (owned) params.set("model_catalog_owned_by", owned);
+  const qs = params.toString();
+  const r = await apiFetch(`/v1/session/runtime${qs ? `?${qs}` : ""}`, auth);
   if (!r.ok) return null;
   return r.json() as Promise<SessionRuntimePayload>;
 }
@@ -224,8 +246,34 @@ export async function patchWorkspace(
 }
 
 /**
- * Authenticated fetch with one retry after POST /auth/refresh on 401.
+ * Authenticated fetch: refresh before JWT expiry (no 401 noise), then one retry on 401.
+ * Concurrent refreshes share a single in-flight POST /auth/refresh.
  */
+let refreshInFlight: Promise<string | null> | null = null;
+
+export function sharedRefresh(
+  refresh: Pick<AuthContextValue, "refresh">["refresh"]
+): Promise<string | null> {
+  if (!refreshInFlight) {
+    refreshInFlight = refresh().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
+}
+
+async function bearerForRequest(
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">
+): Promise<string | null> {
+  let token = auth.accessToken;
+  if (!token) return null;
+  if (accessTokenNeedsRefresh(token)) {
+    const next = await sharedRefresh(auth.refresh);
+    if (next) token = next;
+  }
+  return token;
+}
+
 export async function apiFetch(
   path: string,
   auth: Pick<AuthContextValue, "accessToken" | "refresh">,
@@ -247,11 +295,12 @@ export async function apiFetch(
     return fetch(url, { ...init, credentials: "include", headers });
   };
 
-  let token = auth.accessToken;
+  let token = await bearerForRequest(auth);
   let res = await run(token);
   if (res.status === 401) {
-    const next = await auth.refresh();
+    const next = await sharedRefresh(auth.refresh);
     if (next) {
+      token = next;
       res = await run(next);
     }
   }

@@ -19,6 +19,8 @@ router = APIRouter(prefix="/v1/session", tags=["session"])
 @router.get("/runtime")
 async def get_session_runtime(
     workspace_id: str | None = Query(None, max_length=128),
+    model: str | None = Query(None, max_length=512),
+    model_catalog_owned_by: str | None = Query(None, max_length=64),
     _user=Depends(get_current_user),
 ) -> dict[str, Any]:
     """
@@ -42,6 +44,20 @@ async def get_session_runtime(
     except Exception:
         logger.exception("session runtime: mcp_runtime_status failed")
         mcp = {"enabled": False, "import_ok": False, "agent_ids": [], "servers": [], "error": "status_failed"}
+    context_budget: dict[str, Any] | None = None
+    mid = (model or "").strip()
+    owned = (model_catalog_owned_by or "").strip() or None
+    if mid:
+        from apps.backend.infrastructure.context_budget import resolve_context_budget
+
+        budget = resolve_context_budget(mid, catalog_owned_by=owned)
+        if budget is not None:
+            context_budget = {
+                "context_window_tokens": budget.context_window_tokens,
+                "soft_limit_tokens": budget.soft_limit_tokens,
+                "hard_limit_tokens": budget.hard_limit_tokens,
+                "budget_source": budget.source,
+            }
     return {
         "mcp": mcp,
         "context": {
@@ -54,4 +70,5 @@ async def get_session_runtime(
             "compaction_enabled": config.CHAT_CONTEXT_COMPACTION_ENABLED,
             "agent_loop_trim_enabled": config.CHAT_CONTEXT_AGENT_LOOP_TRIM_ENABLED,
         },
+        "context_budget": context_budget,
     }

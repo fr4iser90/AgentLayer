@@ -185,7 +185,11 @@ def run_embedded_subagent_sync(
         if isinstance(raw_req, list):
             reqs = raw_req
 
-    reject = subagent_reject_reason(agent_id=aid, requirements=reqs)
+    reject = subagent_reject_reason(
+        agent_id=aid,
+        requirements=reqs,
+        artifact_refs=refs,
+    )
     if reject:
         return json.dumps({"ok": False, "error": reject}, ensure_ascii=False)
 
@@ -253,8 +257,19 @@ def run_embedded_subagent_sync(
             tenant_id=int(parent_tid),
             artifact_refs=refs,
         )
-        if allowed_paths:
-            body["agent_delegate_allowed_paths"] = allowed_paths
+        if not allowed_paths:
+            return json.dumps(
+                {
+                    "ok": False,
+                    "error": (
+                        "fix_from_artifact: referenced artifacts contain no file paths "
+                        "(paths, high_paths, or findings[].path). Re-run the specialist scan or "
+                        "delegate to coding without mode: fix_from_artifact for open-ended fixes."
+                    ),
+                },
+                ensure_ascii=False,
+            )
+        body["agent_delegate_allowed_paths"] = allowed_paths
         branch = parse_requirement_value(reqs, "branch")
         if branch:
             body["agent_delegate_required_branch"] = branch

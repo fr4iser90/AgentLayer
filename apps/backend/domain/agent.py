@@ -111,6 +111,20 @@ _CODING_READ_TOOL_PINS = frozenset(
         "retrieve_context",
     }
 )
+_SECURITY_AUDITOR_READ_PINS = frozenset(
+    {
+        "read_file",
+        "search",
+        "glob",
+        "list_dir",
+        "retrieve_context",
+        "git_read",
+        "findings",
+        "resolve",
+        "start",
+        "status",
+    }
+)
 
 
 def _partition_tool_specs_by_name(
@@ -155,6 +169,8 @@ def _pinned_tools_for_agent(agent_id: str | None) -> frozenset[str]:
         pins = pins | frozenset({"delegate"})
     if aid in ("coding", "coding_plan"):
         pins = pins | _CODING_READ_TOOL_PINS
+    if aid == "security_auditor":
+        pins = pins | _SECURITY_AUDITOR_READ_PINS
     return pins
 
 

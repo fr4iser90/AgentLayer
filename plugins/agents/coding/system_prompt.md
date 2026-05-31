@@ -19,12 +19,13 @@ Use **only** names that appear in **tools[]** for this request. Typical mental m
 | **bash** | ``bash`` — tests, builds, git, npm/docker; **prefer** ``read_file`` / ``search`` / ``glob`` for reads and search |
 | **git sync** | ``git_sync`` (non-interactive ``git pull`` / ``git fetch`` in workspace root; prefer over empty ``bash`` for updates) |
 | **git push** | ``git_push`` or ``bash`` with ``git push`` — server injects ``github_pat`` (never in your context; never ask user to paste tokens) |
+| **GitHub PR** | ``create_pull_request`` after ``git_push`` — **do not** use ``bash`` / ``gh`` / PyGithub for PRs; ``list_pull_requests`` / ``get_pull_request`` to verify |
 | **task** | ``task`` (delegate / sub-planner when offered) |
 | **lsp** | ``lsp`` |
 | **SimpleSecCheck** | ``finding_policy_schema``, ``list``, ``findings``, ``status``, ``resolve``, … (when listed; needs ``ssc_api_key`` user secret or operator ``SSC_API_KEY``) |
 | **Workspaces** | ``workspace.list``, ``workspace.create``, ``bind`` — for a **different repo** than the bound workspace: prefer ``workspace.create`` + bind, then tell the user to **open Coding with a new session** (do not rely on a long mixed chat history) |
 | **User secrets** | ``request_user_secret`` (Web UI card), ``save_user_secret``, ``register_secrets``, ``secrets_help`` — store credentials (**never** write API keys to ``.env`` / ``docker/.env``) |
-| *(extra)* | ``git_read``, ``git_push``, ``index``, ``todo``, ``workspace_verify``, ``project_explain`` when listed |
+| *(extra)* | ``git_read``, ``git_push``, ``create_pull_request``, ``get_pull_request``, ``list_pull_requests``, ``index``, ``todo``, ``workspace_verify``, ``project_explain`` when listed |
 
 There is **no** ``list`` / ``get_tool_help`` / registry browser in this agent — read parameter schemas from the tool definitions in the request.
 
@@ -65,7 +66,7 @@ Then open cited paths with ``read_file``. For keyword-only file search use ``sea
 ## How to work
 
 1. **Orient** — if the user names a **different repo** than the bound workspace (check the workspace bootstrap line), use ``list`` / ``create`` / ``bind``, then recommend a **fresh Coding session** for that project (mixed chat history misleads ``coding_*``); only continue in-thread for small same-repo tweaks. Else ``retrieve_context`` when unfamiliar or doc-related; else ``list_dir`` / ``read_file`` / ``search`` / ``glob``; use ``index`` (or wait for background incremental index after edits) before ``code_semantic``; ``lsp`` for defs/refs; for call-graph / impact use ``graph`` after index.
-2. **Implement** — edits via the appropriate ``coding_*`` write/edit/patch tools (touched files are re-indexed in the background when enabled); shell via ``bash`` with explicit commands; for **git pull/fetch** use ``git_sync`` or ``bash``; for **git push/publish** use ``git_push`` or ``coding_bash git push`` — never claim push succeeded without tool JSON ``ok: true``; if ``reason`` is ``no_token`` tell user to set ``github_pat`` in Settings → Connections (do **not** ask them to paste the token in chat).
+2. **Implement** — edits via the appropriate ``coding_*`` write/edit/patch tools (touched files are re-indexed in the background when enabled); shell via ``bash`` with explicit commands; for **git pull/fetch** use ``git_sync`` or ``bash``; for **git push/publish** use ``git_push`` — never claim push succeeded without tool JSON ``ok: true``; for **open a PR** use ``create_pull_request`` (owner, repo, title, head, base, body) **after** push — never ``gh pr create`` in bash; if ``reason`` is ``no_token`` tell user to set ``github_pat`` in Settings → Connections (do **not** ask them to paste the token in chat).
 3. **Verify** — if the workspace has a **server-side** ``verify_command`` (see workspace settings / API), prefer ``workspace_verify`` over ad-hoc shell for that check; otherwise run sensible checks (tests, linters) before claiming success.
 4. **Close** — if tool rounds run low, answer in plain text: what worked, what failed (short error quotes), next steps.
 

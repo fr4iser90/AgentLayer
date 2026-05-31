@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from typing import Any, Callable, cast
 
 from apps.backend.domain.embedded_subagent import (
@@ -33,6 +34,19 @@ def _truthy(v: Any) -> bool:
         return False
     s = str(v).strip().lower()
     return s in ("1", "true", "yes", "on")
+
+
+def _sanitize_task_id(raw: Any) -> str | None:
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s or len(s) > 64:
+        return None
+    try:
+        uuid.UUID(s)
+        return s
+    except (ValueError, TypeError):
+        return None
 
 
 def delegate(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> str:
@@ -69,7 +83,7 @@ def delegate(arguments: dict[str, Any], context: dict[str, Any] | None = None) -
     requirements = arguments.get("requirements")
     if not isinstance(requirements, list):
         requirements = None
-    task_id = (arguments.get("task_id") or "").strip() or None
+    task_id = _sanitize_task_id(arguments.get("task_id"))
 
     return run_embedded_subagent_sync(
         subagent_agent_id=agent_id,

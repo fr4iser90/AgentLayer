@@ -85,6 +85,29 @@ def test_reject_plan_for_fix_from_artifact() -> None:
     assert "coding_plan is read-only" in msg
 
 
+def test_reject_coding_fix_from_artifact_without_refs() -> None:
+    msg = subagent_reject_reason(
+        agent_id="coding",
+        requirements=["mode: fix_from_artifact", "branch: security/fix"],
+        artifact_refs=None,
+    )
+    assert msg is not None
+    assert "artifact_refs" in msg
+
+
+def test_fix_from_artifact_allows_read_when_no_paths() -> None:
+    ctx = {"agent_delegate_mode": "fix_from_artifact", "agent_delegate_allowed_paths": []}
+    assert coding_delegate_tool_blocked("search", {"query": "x"}, ctx) is None
+    assert coding_delegate_tool_blocked("read_file", {"path": "apps/foo.py"}, ctx) is None
+    msg = coding_delegate_tool_blocked(
+        "edit",
+        {"path": "apps/foo.py", "old_string": "a", "new_string": "b"},
+        ctx,
+    )
+    assert msg is not None
+    assert "no paths" in msg
+
+
 def test_handoff_artifact_ids_from_delegate_payload() -> None:
     raw = '{"ok": true, "handoff_artifact_ids": ["id-1", "id-2"]}'
     assert extract_handoff_artifact_ids(raw) == ["id-1", "id-2"]

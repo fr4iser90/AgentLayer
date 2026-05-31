@@ -201,10 +201,12 @@ def coding_delegate_tool_blocked(
     allowed_norm = [normalize_repo_path(str(p)) for p in allowed if str(p).strip()]
 
     if not allowed_norm:
-        return (
-            "fix_from_artifact: no paths in referenced artifacts. "
-            "Pass artifact_refs from the prior specialist run, or list paths in the artifact content."
-        )
+        if name in _EDIT_TOOLS or name in ("git_push",):
+            return (
+                "fix_from_artifact: no paths in referenced artifacts. "
+                "Pass artifact_refs from the prior specialist run, or list paths in the artifact content."
+            )
+        return None
 
     if name in _EDIT_TOOLS:
         if name == "apply_patch":
@@ -294,10 +296,31 @@ def extract_artifact_ids_from_tool_result(result: str) -> list[str]:
     return [x for x in out if x]
 
 
+def _artifact_ref_ids(artifact_refs: Any) -> list[str]:
+    if artifact_refs is None:
+        return []
+    if isinstance(artifact_refs, str):
+        artifact_refs = [artifact_refs]
+    if not isinstance(artifact_refs, list):
+        return []
+    out: list[str] = []
+    for item in artifact_refs:
+        s = str(item).strip()
+        if not s:
+            continue
+        try:
+            uuid.UUID(s)
+            out.append(s)
+        except (ValueError, TypeError):
+            continue
+    return out
+
+
 def subagent_reject_reason(
     *,
     agent_id: str,
     requirements: Any,
+    artifact_refs: Any = None,
 ) -> str | None:
     """Reject invalid specialist + mode combinations before spawning a sub-run."""
     mode = parse_delegate_mode(requirements)
@@ -306,4 +329,11 @@ def subagent_reject_reason(
             "coding_plan is read-only. For fix_from_artifact use agent_delegate with agent_id=coding, "
             "artifact_refs from the prior run, and requirements including mode: fix_from_artifact and branch: <name>."
         )
+    if mode == "fix_from_artifact" and agent_id == "coding":
+        refs = _artifact_ref_ids(artifact_refs)
+        if not refs:
+            return (
+                "fix_from_artifact requires artifact_refs from a prior specialist run (e.g. security_auditor "
+                "ssc_scan artifact_id). For open-ended repo fixes, delegate to coding without mode: fix_from_artifact."
+            )
     return None

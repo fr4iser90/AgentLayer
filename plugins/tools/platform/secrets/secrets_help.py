@@ -50,7 +50,9 @@ def secrets_help(arguments: dict[str, Any]) -> str:
         )
     if topic in ("github", "gh", "pat"):
         hints.append(
-            'GitHub: `service_key` **`github_pat`** — JSON `{"token":"ghp_…"}` (oder nur den Token-String). Operator kann stattdessen `GITHUB_TOKEN` in docker/.env setzen.'
+            'GitHub: `service_key` **`github_pat`** — JSON `{"token":"ghp_…"}` (oder nur den Token-String). '
+            "Für `git_push` + `create_pull_request`: classic PAT mit **repo** oder fine-grained mit Contents + Pull requests (write). "
+            "Operator kann stattdessen `GITHUB_TOKEN` in docker/.env setzen."
         )
     if topic in ("calendar", "ics", "caldav", "nextcloud"):
         hints.append(

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import type {
   ChatContextMeta,
   SessionRuntimePayload,
@@ -10,50 +10,174 @@ type Props = {
   runtime: SessionRuntimePayload | null;
   usage: TokenUsageTotals;
   contextMeta?: ChatContextMeta | null;
+  agentRunning?: boolean;
+  /** Agent-Modus: Kontext + Tokens immer anzeigen (auch 0 / —). */
+  agentMode?: boolean;
   className?: string;
-  /** e.g. a &quot;+&quot; control to edit workspace-scoped MCP (parent owns modal). */
   mcpAddon?: ReactNode;
 };
 
-export function SessionRuntimeBar({ runtime, usage, contextMeta, className = "", mcpAddon }: Props) {
+function mergeContextMeta(
+  contextMeta: ChatContextMeta | null | undefined,
+  runtime: SessionRuntimePayload | null
+): ChatContextMeta | null {
+  const cb = runtime?.context_budget;
+  if (!contextMeta && !cb) return null;
+  const base = { ...(contextMeta ?? {}) };
+  if (cb) {
+    if (base.context_window_tokens == null && cb.context_window_tokens != null) {
+      base.context_window_tokens = cb.context_window_tokens;
+    }
+    if (base.soft_limit_tokens == null && cb.soft_limit_tokens != null) {
+      base.soft_limit_tokens = cb.soft_limit_tokens;
+    }
+    if (base.hard_limit_tokens == null && cb.hard_limit_tokens != null) {
+      base.hard_limit_tokens = cb.hard_limit_tokens;
+    }
+    if (!base.budget_source && cb.budget_source) {
+      base.budget_source = cb.budget_source;
+    }
+    if (base.budget_tokens == null && cb.context_window_tokens != null) {
+      base.budget_tokens = cb.context_window_tokens;
+    }
+  }
+  return base;
+}
+
+function resolveSoftLimit(
+  meta: ChatContextMeta | null,
+  budget: SessionRuntimePayload["context"] | undefined
+): number {
+  if (meta?.soft_limit_tokens != null && meta.soft_limit_tokens > 0) {
+    return meta.soft_limit_tokens;
+  }
+  const window =
+    meta?.context_window_tokens ?? meta?.budget_tokens ?? budget?.fallback_budget_tokens ?? 0;
+  if (window > 0 && budget?.soft_limit_ratio) {
+    return Math.floor(window * budget.soft_limit_ratio);
+  }
+  return 0;
+}
+
+function resolveWindowTokens(
+  meta: ChatContextMeta | null,
+  budget: SessionRuntimePayload["context"] | undefined
+): number {
+  return (
+    meta?.context_window_tokens ?? meta?.budget_tokens ?? budget?.fallback_budget_tokens ?? 0
+  );
+}
+
+export function SessionRuntimeBar({
+  runtime,
+  usage,
+  contextMeta,
+  agentRunning = false,
+  agentMode = false,
+  className = "",
+  mcpAddon,
+}: Props) {
   const { t } = useTranslation(["workspace", "dashboard", "chat"]);
   const mcp = runtime?.mcp;
   const budget = runtime?.context;
-  const hasUsage = usage.total > 0 || usage.rounds > 0;
-  const providerPrompt = contextMeta?.provider_prompt_tokens;
+  const mergedMeta = mergeContextMeta(contextMeta, runtime);
+  const prepEnabled = budget?.prep_enabled !== false;
+
+  const metaPrompt = mergedMeta?.provider_prompt_tokens;
+  const usagePrompt = usage.prompt > 0 ? usage.prompt : null;
+  const providerPrompt =
+    metaPrompt != null && metaPrompt > 0
+      ? metaPrompt
+      : usagePrompt != null
+        ? usagePrompt
+        : null;
   const hasProviderPrompt = providerPrompt != null && providerPrompt > 0;
-  const windowTokens = contextMeta?.context_window_tokens ?? contextMeta?.budget_tokens ?? 0;
-  const softLimit =
-    contextMeta?.soft_limit_tokens ??
-    (windowTokens > 0 && budget?.soft_limit_ratio
-      ? Math.floor(windowTokens * budget.soft_limit_ratio)
-      : 0);
-  const hardLimit =
-    contextMeta?.hard_limit_tokens ??
-    (windowTokens > 0 && budget?.hard_limit_ratio
-      ? Math.floor(windowTokens * budget.hard_limit_ratio)
-      : 0);
+  const windowTokens = resolveWindowTokens(mergedMeta, budget);
+  const softLimit = resolveSoftLimit(mergedMeta, budget);
+
   const showContext =
-    Boolean(budget?.prep_enabled) &&
-    (windowTokens > 0 ||
-      softLimit > 0 ||
-      hasProviderPrompt ||
-      Boolean(contextMeta?.summary_active) ||
-      Boolean(contextMeta?.at_soft_limit));
-  if (!mcp && !hasUsage && !showContext) return null;
+    agentMode ||
+    (prepEnabled &&
+      (agentRunning ||
+        windowTokens > 0 ||
+        softLimit > 0 ||
+        hasProviderPrompt ||
+        Boolean(mergedMeta?.summary_active) ||
+        Boolean(mergedMeta?.at_soft_limit)));
+
+  const showTokens = agentMode || usage.total > 0 || usage.rounds > 0;
+
+  const showBar = Boolean(mcp) || showContext || showTokens;
+
+  if (!showBar) return null;
 
   const servers = mcp?.servers ?? [];
   const connected = servers.filter((s) => s.connected).length;
   const scope = mcp?.scope;
 
   const contextWarn =
-    contextMeta?.at_hard_limit
+    mergedMeta?.at_hard_limit
       ? "hard"
-      : contextMeta?.at_soft_limit
+      : mergedMeta?.at_soft_limit
         ? "soft"
-        : hasProviderPrompt && softLimit > 0 && providerPrompt >= softLimit
+        : hasProviderPrompt && softLimit > 0 && providerPrompt! >= softLimit
           ? "soft"
           : null;
+
+  const budgetSource = (mergedMeta?.budget_source || "").trim();
+  const messagesInPrompt =
+    mergedMeta?.messages_in_prompt != null && mergedMeta.messages_in_prompt > 0
+      ? mergedMeta.messages_in_prompt
+      : null;
+
+  const contextTitle = [
+    t("chat:contextBudgetTitle"),
+    budgetSource ? `source: ${budgetSource}` : "",
+    windowTokens > 0 ? `window: ${windowTokens.toLocaleString()}` : "",
+    softLimit > 0 ? `soft: ${softLimit.toLocaleString()}` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const contextLine = (() => {
+    if (windowTokens <= 0) return <>{t("chat:contextBudgetWaiting")}</>;
+    const windowStr = windowTokens.toLocaleString();
+    const extras: ReactNode[] = [];
+    if (softLimit > 0 && softLimit !== windowTokens) {
+      extras.push(
+        <span key="soft" className="text-neutral-500">
+          {t("chat:contextSoftHint", { soft: softLimit.toLocaleString() })}
+        </span>
+      );
+    }
+    if (messagesInPrompt != null && !hasProviderPrompt) {
+      extras.push(
+        <span key="msgs" className="text-neutral-500">
+          {t("chat:contextMessagesHint", { count: messagesInPrompt })}
+        </span>
+      );
+    }
+    if (budgetSource) {
+      extras.push(
+        <span key="src" className="text-neutral-500">
+          {t("chat:contextBudgetSourceHint", { source: budgetSource })}
+        </span>
+      );
+    }
+    const main =
+      hasProviderPrompt && windowTokens > 0
+        ? t("chat:contextBudgetUsage", {
+            prompt: providerPrompt!.toLocaleString(),
+            window: windowStr,
+          })
+        : t("chat:contextBudgetPending", { window: windowStr });
+    return (
+      <Fragment>
+        {main}
+        {extras}
+      </Fragment>
+    );
+  })();
 
   return (
     <div
@@ -108,31 +232,24 @@ export function SessionRuntimeBar({ runtime, usage, contextMeta, className = "",
                     ? "text-amber-300/90"
                     : "text-neutral-200"
               }`}
-              title={t("chat:contextBudgetTitle")}
+              title={contextTitle}
             >
-              {hasProviderPrompt
-                ? t("chat:contextBudgetUsage", {
-                    prompt: providerPrompt.toLocaleString(),
-                    soft: softLimit.toLocaleString(),
-                  })
-                : t("chat:contextBudgetPending", {
-                    soft: softLimit.toLocaleString(),
-                  })}
-              {contextMeta?.summary_active ? (
+              {contextLine}
+              {mergedMeta?.summary_active ? (
                 <span className="ml-1 text-violet-300/85">{t("chat:contextCompacted")}</span>
               ) : null}
-              {contextMeta?.loop_compaction_applied ? (
+              {mergedMeta?.loop_compaction_applied ? (
                 <span className="ml-1 text-amber-300/85">{t("chat:contextLoopCompacted")}</span>
               ) : null}
-              {contextMeta?.messages_dropped ? (
+              {mergedMeta?.messages_dropped ? (
                 <span className="ml-1 text-neutral-500">
-                  {t("chat:contextDropped", { count: contextMeta.messages_dropped })}
+                  {t("chat:contextDropped", { count: mergedMeta.messages_dropped })}
                 </span>
               ) : null}
             </span>
           </>
         ) : null}
-        {hasUsage ? (
+        {showTokens ? (
           <>
             <span className="text-neutral-600">·</span>
             <span className="font-semibold uppercase tracking-wide text-surface-muted">{t("dashboard:tokens")}</span>

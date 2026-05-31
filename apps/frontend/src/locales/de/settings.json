@@ -133,7 +133,7 @@
   "toolsCategoryOutdoor": "Outdoor",
   "toolsCategorySystem": "System & Admin",
   "toolsHintGmail": "Gmail verbinden, um E-Mails zu suchen und zusammenzufassen.",
-  "toolsHintGithub": "GitHub-Token hinzufügen, um Repositories zu durchsuchen und Dateien zu lesen.",
+  "toolsHintGithub": "GitHub-Token hinzufügen, um Branches zu pushen, Pull Requests zu öffnen sowie Repos zu durchsuchen und Dateien zu lesen.",
   "toolsHintGoogleCalendar": "Kalender-URL hinzufügen, damit Termine gelistet werden können.",
   "toolsHintOpenweather": "OpenWeather-API-Key für Live-Wetter hinzufügen.",
   "toolsCategoryStats": "{{total}} Pakete · {{ready}}/{{total}} bereit · {{enabled}} aktiviert · {{needSetup}} Setup nötig",

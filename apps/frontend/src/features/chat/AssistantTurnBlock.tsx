@@ -11,6 +11,7 @@ import {
 } from "./interleavedTurnSegments";
 import type { AgentTimelineEntry } from "./chatThreadStorage";
 import type { Proposal, ProposalOption } from "../../lib/proposalParser";
+import { TurnElapsedRuntime } from "./TurnElapsedRuntime";
 
 type Props = {
   content: string;
@@ -27,6 +28,8 @@ type Props = {
   messagePosition?: number;
   feedbackRating?: "up" | "down" | null;
   standInAuto?: boolean;
+  /** Wall-clock start of this in-flight turn (ms); shows elapsed Laufzeit in the bubble only. */
+  runStartedAtMs?: number | null;
 };
 
 function InterleavedStreamBody({
@@ -104,6 +107,7 @@ export function AssistantTurnBlock({
   messagePosition,
   feedbackRating,
   standInAuto = false,
+  runStartedAtMs = null,
 }: Props) {
   const { t } = useTranslation(["chat"]);
   const segments = buildInterleavedTurnSegments(content, timelineEntries);
@@ -138,6 +142,9 @@ export function AssistantTurnBlock({
             <span className="font-normal normal-case text-surface-muted">{timeLabel}</span>
           ) : null}
         </span>
+        {running && runStartedAtMs != null ? (
+          <TurnElapsedRuntime startedAtMs={runStartedAtMs} className="mb-2" />
+        ) : null}
         {hasStreamBody ? (
           <InterleavedStreamBody
             segments={segments}
@@ -149,7 +156,7 @@ export function AssistantTurnBlock({
             onToggleRunCardExpanded={onToggleRunCardExpanded}
           />
         ) : running ? (
-          <p className="text-neutral-300">{t("chat:agentRunning")}</p>
+          <p className="text-neutral-300/90">{t("chat:agentRunning")}</p>
         ) : null}
         {!running && messagePosition != null ? (
           <MessageFeedbackButtons

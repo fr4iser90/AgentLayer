@@ -4,9 +4,14 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+import {
+  accessTokenNeedsRefresh,
+  msUntilProactiveRefresh,
+} from "./tokenRefresh";
 
 export type AuthUser = {
   id: string;
@@ -65,6 +70,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null);
+  const accessTokenRef = useRef<string | null>(null);
+  const proactiveRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const refreshRef = useRef<() => Promise<string | null>>(async () => null);
+
+  accessTokenRef.current = accessToken;
 
   const refreshSetupStatus = useCallback(async (): Promise<SetupStatus | null> => {
     try {
@@ -78,6 +88,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const clearProactiveRefreshTimer = useCallback(() => {
+    if (proactiveRefreshTimerRef.current) {
+      clearTimeout(proactiveRefreshTimerRef.current);
+      proactiveRefreshTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleProactiveRefresh = useCallback(
+    (token: string | null) => {
+      clearProactiveRefreshTimer();
+      if (!token) return;
+      const delay = msUntilProactiveRefresh(token);
+      if (delay == null) return;
+      proactiveRefreshTimerRef.current = setTimeout(() => {
+        proactiveRefreshTimerRef.current = null;
+        void refreshRef.current();
+      }, delay);
+    },
+    [clearProactiveRefreshTimer]
+  );
+
   const refresh = useCallback(async (): Promise<string | null> => {
     const r = await fetch("/auth/refresh", {
       method: "POST",
@@ -88,12 +119,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (r.ok) {
       const d = (await r.json()) as AuthPayload;
       applyAuthPayload(d, setAccessToken, setUser);
+      scheduleProactiveRefresh(d.access_token);
       return d.access_token;
     }
+    clearProactiveRefreshTimer();
     setAccessToken(null);
     setUser(null);
     return null;
-  }, []);
+  }, [clearProactiveRefreshTimer, scheduleProactiveRefresh]);
+
+  refreshRef.current = refresh;
 
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
     const r = await fetch("/auth/login", {
@@ -109,8 +144,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const d = (await r.json()) as AuthPayload;
     applyAuthPayload(d, setAccessToken, setUser);
+    scheduleProactiveRefresh(d.access_token);
     return true;
-  }, []);
+  }, [scheduleProactiveRefresh]);
 
   const completeSetup = useCallback(
     async (
@@ -142,10 +178,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       const d = (await r.json()) as AuthPayload;
       applyAuthPayload(d, setAccessToken, setUser);
+      scheduleProactiveRefresh(d.access_token);
       await refreshSetupStatus();
       return { ok: true };
     },
-    [refreshSetupStatus]
+    [refreshSetupStatus, scheduleProactiveRefresh]
   );
 
   useEffect(() => {
@@ -156,12 +193,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })();
   }, [refresh, refreshSetupStatus]);
 
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      const tok = accessTokenRef.current;
+      if (tok && accessTokenNeedsRefresh(tok)) {
+        void refreshRef.current();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
+
+  useEffect(() => () => clearProactiveRefreshTimer(), [clearProactiveRefreshTimer]);
+
   const logout = useCallback(async () => {
+    clearProactiveRefreshTimer();
     await fetch("/auth/logout", { method: "POST", credentials: "include" });
     setAccessToken(null);
     setUser(null);
     window.location.href = "/app/login";
-  }, []);
+  }, [clearProactiveRefreshTimer]);
 
   const value = useMemo(
     () => ({
