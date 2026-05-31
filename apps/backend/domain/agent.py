@@ -102,6 +102,15 @@ _AGENT_GIT_NETWORK_TOOL_NAMES = frozenset(
         "coding_git_sync",
     }
 )
+_CODING_READ_TOOL_PINS = frozenset(
+    {
+        "coding_read_file",
+        "coding_search",
+        "coding_glob",
+        "coding_list_dir",
+        "retrieve_context",
+    }
+)
 
 
 def _partition_tool_specs_by_name(
@@ -140,9 +149,12 @@ def _git_network_tools_for_agent(agent_id: str | None) -> frozenset[str]:
 
 def _pinned_tools_for_agent(agent_id: str | None) -> frozenset[str]:
     """Tools always prepended to ranked tools[] (credentials + git push/sync)."""
+    aid = (agent_id or "").strip()
     pins = _credential_tools_for_agent(agent_id) | _git_network_tools_for_agent(agent_id)
-    if (agent_id or "").strip() == "general":
+    if aid == "general":
         pins = pins | frozenset({"agent_delegate"})
+    if aid in ("coding", "coding_plan"):
+        pins = pins | _CODING_READ_TOOL_PINS
     return pins
 
 
@@ -1800,10 +1812,10 @@ _TOOL_USAGE_DISCIPLINE = """## Tool usage (discipline)
 - Prefer concrete workspace tools (`coding_git_sync`, `coding_bash`, `coding_read_file`, `fs_read_file`, GitHub-related tools) over plugin meta tools (`create_tool`, …) unless the user explicitly asks to build or install a plugin.
 """
 
-_CODING_PLAN_TOOL_DISCIPLINE = """## **Plan** discipline (this stack)
+_CODING_PLAN_TOOL_DISCIPLINE = """## **Plan** discipline (Plan-style)
 
-- Tool names follow the **permission groups** mapped in your system prompt: read/list/glob/grep → exploration; **edit** + **bash** + **task** + **lsp** → same ``coding_*`` names as Build; destructive steps may require UI approval (**ask**) when the client enables it.
-- Default stance: **analyze first**, then a markdown handoff; apply edits or shell only after approval or when the user clearly wants execution here.
+- **Read-only:** no ``coding_bash``, no ``coding_git_sync``/``coding_git_push``, no edit tools (``coding_write_file``, ``coding_edit``, ``coding_replace``, ``coding_apply_patch``). Use Build (``coding``) or ``agent_delegate`` with ``agent_id=coding`` for shell and writes.
+- Default stance: **analyze first**, then a markdown handoff for Build.
 - **Git / sub-agent debug:** use ``coding_git_read`` (status, log, branch, diff_stat) and ``coding_read_file`` on named paths — **not** repo-wide ``coding_search`` without ``path_prefix``.
 - **Search on Plan:** ``coding_search`` requires ``path_prefix`` scoped to a subdirectory; use ``retrieve_context`` for open exploration.
 - Reuse existing tool results in the transcript — no identical tool+arguments spam.
@@ -1822,6 +1834,7 @@ _CODING_BUILD_TOOL_DISCIPLINE = """## **Build** discipline (this stack)
 
 - Use only ``coding_*`` / ``project_explain`` from **tools[]** — no registry meta tools.
 - Map work to permission groups (read, list, glob, grep, edit, bash, task, lsp) as in your system prompt; call with complete JSON.
+- Prefer ``coding_read_file``, ``coding_search``, and ``coding_glob`` over shell for reads/search; prefer ``coding_git_sync`` for git pull/fetch.
 - Destructive tools may require UI approval when enabled — **ask** semantics for **edit** / **bash** when the client enables them.
 - Do not re-list or re-read the same path when that output is already in the transcript; proceed to edit, bash, or a new path.
 """
@@ -4667,41 +4680,6 @@ async def chat_completion(
                         args,
                     )
                 blocked: str | None = None
-                if name == "coding_bash":
-                    from plugins.tools.capabilities.coding.coding_bash_redirect import (
-                        redirect_coding_bash_command,
-                    )
-
-                    _ws = tool_context.get("workspace") if tool_context else None
-                    _root = (
-                        str(_ws.get("path")).strip()
-                        if isinstance(_ws, dict) and _ws.get("path")
-                        else None
-                    )
-                    _cmd = str(args.get("command") or "")
-                    _redir = redirect_coding_bash_command(_cmd, workspace_root=_root)
-                    if isinstance(_redir, str):
-                        blocked = json.dumps({"ok": False, "error": _redir}, ensure_ascii=False)
-                        logger.info(
-                            "tool_blocked run_id=%s agent=%s round=%d tool=%s readlike_bash %s",
-                            _short_run_id(agent_run_id),
-                            agent_id if isinstance(agent_id, str) else "-",
-                            round_i + 1,
-                            name,
-                            _cmd[:200],
-                        )
-                    elif isinstance(_redir, tuple):
-                        _prev_name = name
-                        name, args = _redir[0], dict(_redir[1])
-                        logger.info(
-                            "tool_redirect run_id=%s agent=%s round=%d %s -> %s %r",
-                            _short_run_id(agent_run_id),
-                            agent_id if isinstance(agent_id, str) else "-",
-                            round_i + 1,
-                            _prev_name,
-                            name,
-                            args,
-                        )
                 tool_call_id = tc.get("id") or ""
                 args_line = _format_normalized_tool_args_for_recap(name, args, max_len=200)
                 if blocked is None:

@@ -24,6 +24,25 @@ _GIT_FORENSICS_BLOCKED_TOOLS = frozenset(
     }
 )
 
+# Plan-equivalent: no shell or file writes in Plan mode (use Build / coding agent).
+_PLAN_DENIED_TOOLS = frozenset(
+    {
+        "coding_bash",
+        "coding_git_sync",
+        "coding_git_push",
+        "coding_write_file",
+        "coding_edit",
+        "coding_replace",
+        "coding_apply_patch",
+    }
+)
+
+_PLAN_DENIED_MESSAGE = (
+    "Plan agent is read-only ( Plan-style): {tool} is not available here. "
+    "Use coding_read_file, coding_search, coding_glob, coding_git_read, and coding_lsp for exploration. "
+    "For shell, git pull/push, or file edits switch to the Build (coding) agent or delegate with agent_id=coding."
+)
+
 
 def _normalize_path_prefix(args: dict[str, Any]) -> str:
     return str(args.get("path_prefix") or "").strip().replace("\\", "/").rstrip("/")
@@ -92,8 +111,10 @@ def coding_plan_tool_blocked(
     args: dict[str, Any],
     tool_context: dict[str, Any] | None = None,
 ) -> str | None:
-    """All Plan-agent tool guards (search scope, git_forensics allowlist)."""
+    """All Plan-agent tool guards (read-only denylist, search scope, git_forensics)."""
     name = (tool_name or "").strip()
+    if name in _PLAN_DENIED_TOOLS:
+        return _PLAN_DENIED_MESSAGE.format(tool=name)
     mode = _plan_delegate_mode(tool_context)
     if mode == "git_forensics" and name in _GIT_FORENSICS_BLOCKED_TOOLS:
         return (

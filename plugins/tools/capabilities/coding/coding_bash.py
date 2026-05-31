@@ -50,9 +50,9 @@ TOOL_TRIGGERS = (
 TOOL_CAPABILITIES = ("coding.execute",)
 TOOL_LABEL = "Coding: Bash"
 TOOL_DESCRIPTION = (
-    "Run a shell command within the coding workspace. "
-    "Output is truncated if too large; use workdir to set the directory. "
-    "Supports timeout. Dangerous commands (rm -rf /, curl|sh, git clean -fdx, etc.) are blocked."
+    "Run a shell command within the coding workspace (tests, builds, git, npm, docker, …). "
+    "Prefer coding_read_file, coding_search, and coding_glob for reads and search; "
+    "prefer coding_git_sync for git pull/fetch. Output is truncated; use workdir instead of cd."
 )
 
 DEFAULT_TIMEOUT = 120
@@ -105,9 +105,9 @@ def coding_bash(arguments: dict[str, Any], context: dict | None = None) -> str:
             },
             ensure_ascii=False,
         )
-    blocked = is_blocked(command)
-    if blocked:
-        return json.dumps({"ok": False, "error": blocked}, ensure_ascii=False)
+    policy_err = is_blocked(command)
+    if policy_err:
+        return json.dumps({"ok": False, "error": policy_err}, ensure_ascii=False)
     if coding_bash_strict_enabled():
         strict_err = strict_mode_reject_reason(command)
         if strict_err:

@@ -198,6 +198,16 @@ type SendTurnOptions = {
   resendUserMsgId?: string;
 };
 
+type ApplyInFlightRestoreOpts = {
+  restoreComposer?: boolean;
+  rewindUserMessage?: boolean;
+};
+
+type AbortInFlightOpts = {
+  /** Cancel without restoring the in-flight draft; keep user message and strip partial assistant. */
+  forceSend?: boolean;
+};
+
 type InFlightTurnSnapshot = {
   threadId: string;
   userMsgId: string;
@@ -325,6 +335,9 @@ export function ChatPage() {
   const inFlightTurnRef = useRef<InFlightTurnSnapshot | null>(null);
   /** Skip draining the composer queue after cancel-restore (user may edit before re-sending). */
   const skipQueueDrainOnFinishRef = useRef(false);
+  /** After interrupting a turn, send this message as soon as the in-flight turn finishes. */
+  const pendingForceSendRef = useRef<QueuedComposerMessage | null>(null);
+  const tryDispatchPendingForceSendRef = useRef<() => boolean>(() => false);
   /** In-flight HTTP chat completion (stream or JSON). */
   const chatAbortControllerRef = useRef<AbortController | null>(null);
   const activeThreadIdRef = useRef<string | null>(null);
@@ -1012,9 +1025,12 @@ export function ChatPage() {
   );
 
   const applyInFlightRestore = useCallback(
-    (snapshot: InFlightTurnSnapshot) => {
+    (snapshot: InFlightTurnSnapshot, opts?: ApplyInFlightRestoreOpts) => {
       const tid = snapshot.threadId;
-      if (snapshot.rewindUserMessage) {
+      const rewind =
+        opts?.rewindUserMessage ?? snapshot.rewindUserMessage;
+      const restoreComposer = opts?.restoreComposer ?? rewind;
+      if (restoreComposer) {
         setDraft(snapshot.draft);
         setPendingAttachments([...snapshot.attachments]);
       }
@@ -1026,7 +1042,7 @@ export function ChatPage() {
       setThreads((prev) => {
         const next = prev.map((th) => {
           if (th.id !== tid) return th;
-          const messages = snapshot.rewindUserMessage
+          const messages = rewind
             ? [...snapshot.priorMessages]
             : stripTrailingAssistantsAfterLastUser(
                 th.messages.length ? th.messages : snapshot.priorMessages
@@ -1035,10 +1051,8 @@ export function ChatPage() {
             ...th,
             messages,
             title: snapshot.priorTitle,
-            agentLog: snapshot.rewindUserMessage ? [...snapshot.priorAgentLog] : [],
-            turnLogs: snapshot.rewindUserMessage
-              ? [...snapshot.priorTurnLogs]
-              : th.turnLogs,
+            agentLog: rewind ? [...snapshot.priorAgentLog] : [],
+            turnLogs: rewind ? [...snapshot.priorTurnLogs] : th.turnLogs,
             messageCount: messages.length,
             updatedAt: Date.now(),
           };
@@ -1050,6 +1064,25 @@ export function ChatPage() {
     },
     [auth]
   );
+
+  const tryDispatchPendingForceSend = useCallback(() => {
+    const pending = pendingForceSendRef.current;
+    if (!pending) return false;
+    pendingForceSendRef.current = null;
+    cancelAgentTurnRef.current = false;
+    skipQueueDrainOnFinishRef.current = false;
+    const tid = activeThreadIdRef.current;
+    if (!tid) return true;
+    const thread = threadsRef.current.find((x) => x.id === tid);
+    const chatMode = thread?.mode ?? "agent";
+    queueMicrotask(() => {
+      void (chatMode === "chat"
+        ? runChatHttpRef.current(pending)
+        : runAgentWsRef.current(pending));
+    });
+    return true;
+  }, []);
+  tryDispatchPendingForceSendRef.current = tryDispatchPendingForceSend;
 
   const runChatHttp = useCallback(async (queued?: QueuedComposerMessage, opts?: SendTurnOptions) => {
     if (!accessToken || !activeThreadId) return;
@@ -1274,6 +1307,9 @@ export function ChatPage() {
         chatAbortControllerRef.current = null;
       }
       setLoading(false);
+      if (tryDispatchPendingForceSendRef.current()) {
+        return;
+      }
       if (!skipQueueDrainOnFinishRef.current) {
         scheduleDrainComposerQueue();
       } else {
@@ -1443,6 +1479,9 @@ export function ChatPage() {
         persistAgentLogTimerRef.current = null;
       }
       setLoading(false);
+      if (tryDispatchPendingForceSendRef.current()) {
+        return;
+      }
       const skipDrain = skipQueueDrainOnFinishRef.current;
       if (skipDrain) {
         skipQueueDrainOnFinishRef.current = false;
@@ -1869,7 +1908,8 @@ export function ChatPage() {
     void (mode === "chat" ? runChatHttp() : runAgentWs());
   };
 
-  const abortInFlightTurn = useCallback(() => {
+  const abortInFlightTurn = useCallback((opts?: AbortInFlightOpts) => {
+    const forceSend = opts?.forceSend ?? false;
     chatAbortControllerRef.current?.abort();
     chatAbortControllerRef.current = null;
     cancelAgentTurnRef.current = true;
@@ -1877,13 +1917,19 @@ export function ChatPage() {
 
     const snapshot = inFlightTurnRef.current;
     if (snapshot && snapshot.threadId === activeThreadIdRef.current) {
-      applyInFlightRestore(snapshot);
+      if (forceSend) {
+        applyInFlightRestore(snapshot, { restoreComposer: false, rewindUserMessage: false });
+      } else {
+        applyInFlightRestore(snapshot);
+      }
       inFlightTurnRef.current = null;
     }
 
     agentTurnFinishRef.current?.();
     agentTurnFinishRef.current = null;
-    setLoading(false);
+    if (!forceSend) {
+      setLoading(false);
+    }
     const w = wsRef.current;
     if (w?.readyState === WebSocket.OPEN) {
       try {
@@ -2073,6 +2119,39 @@ export function ChatPage() {
     if (!activeThreadId || !loading || !(model || defaultModel) || !accessToken) return false;
     return composerHasContent;
   }, [activeThreadId, loading, model, defaultModel, accessToken, composerHasContent]);
+
+  const canForceSend = canQueue;
+
+  const onForceSend = useCallback(() => {
+    if (!activeThreadId || !composerHasContent) return;
+    if (!(model || defaultModel) || !accessToken) return;
+    const item: QueuedComposerMessage = {
+      id: newMessageId(),
+      draft,
+      attachments: [...pendingAttachments],
+    };
+    if (!loading) {
+      void (mode === "chat" ? runChatHttp(item) : runAgentWs(item));
+      return;
+    }
+    pendingForceSendRef.current = item;
+    setDraft("");
+    setPendingAttachments([]);
+    abortInFlightTurn({ forceSend: true });
+  }, [
+    abortInFlightTurn,
+    accessToken,
+    activeThreadId,
+    composerHasContent,
+    defaultModel,
+    draft,
+    loading,
+    mode,
+    model,
+    pendingAttachments,
+    runAgentWs,
+    runChatHttp,
+  ]);
 
   if (!hydrated || !userId) {
     return (
@@ -2795,7 +2874,9 @@ export function ChatPage() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
-                    if (canSend) onSend();
+                    if (loading && (e.metaKey || e.ctrlKey) && canForceSend) {
+                      onForceSend();
+                    } else if (canSend) onSend();
                     else if (canQueue) onQueue();
                   }
                 }}
@@ -2818,9 +2899,20 @@ export function ChatPage() {
                       <button
                         type="button"
                         className="rounded-lg border border-violet-500/50 bg-violet-950/40 px-4 py-2 text-sm font-medium text-violet-100 hover:bg-violet-900/50"
+                        title={t("chat:composerQueueAddTitle")}
                         onClick={() => onQueue()}
                       >
                         {t("chat:composerQueueAdd")}
+                      </button>
+                    ) : null}
+                    {canForceSend ? (
+                      <button
+                        type="button"
+                        className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
+                        title={t("chat:composerForceSendTitle")}
+                        onClick={() => onForceSend()}
+                      >
+                        {t("chat:composerForceSend")}
                       </button>
                     ) : null}
                     <button

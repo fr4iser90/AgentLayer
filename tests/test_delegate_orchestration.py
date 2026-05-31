@@ -71,6 +71,23 @@ def test_git_forensics_blocks_retrieve_context() -> None:
     assert "git_forensics" in msg
 
 
+def test_plan_denies_bash_and_edit_tools() -> None:
+    from apps.backend.domain.coding_plan_search_policy import coding_plan_tool_blocked
+
+    for tool in (
+        "coding_bash",
+        "coding_git_sync",
+        "coding_write_file",
+        "coding_edit",
+        "coding_replace",
+        "coding_apply_patch",
+    ):
+        msg = coding_plan_tool_blocked(tool, {"command": "git pull"})
+        assert msg is not None
+        assert "read-only" in msg.lower()
+        assert tool in msg
+
+
 def test_infer_git_forensics_from_prompt() -> None:
     from apps.backend.domain.agent_task_prompt import infer_plan_delegate_mode
 

@@ -58,6 +58,27 @@ def test_security_auditor_agent_resolves_domains_and_rag_capability() -> None:
     assert "rag_search" in names
 
 
+def test_coding_plan_agent_read_only_allowlist() -> None:
+    from apps.backend.domain.agent_registry import get_agent_registry
+
+    a = get_agent_registry().get_agent("coding_plan")
+    assert a is not None
+    names = a["tool_names"]
+    assert "coding_read_file" in names
+    assert "coding_search" in names
+    assert "coding_git_read" in names
+    for denied in (
+        "coding_bash",
+        "coding_git_sync",
+        "coding_git_push",
+        "coding_write_file",
+        "coding_edit",
+        "coding_replace",
+        "coding_apply_patch",
+    ):
+        assert denied not in names
+
+
 def test_agent_behavior_flags_come_from_plugins_not_ids() -> None:
     from apps.backend.domain.agent import _agent_behavior_flags
 

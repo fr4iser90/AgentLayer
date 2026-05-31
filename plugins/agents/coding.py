@@ -25,7 +25,7 @@ Use **only** names that appear in **tools[]** for this request. Typical mental m
 | **retrieve** | ``retrieve_context`` — grep + semantic + **docs (RAG)** + optional memory in one call (**prefer first** when exploring or asking about product/docs) |
 | **grep** | ``coding_search`` (text search); also ``coding_semantic_search`` / ``coding_symbols`` when offered |
 | **edit** | ``coding_write_file``, ``coding_edit``, ``coding_replace``, ``coding_apply_patch`` |
-| **bash** | ``coding_bash`` |
+| **bash** | ``coding_bash`` — tests, builds, git, npm/docker; **prefer** ``coding_read_file`` / ``coding_search`` / ``coding_glob`` for reads and search |
 | **git sync** | ``coding_git_sync`` (non-interactive ``git pull`` / ``git fetch`` in workspace root; prefer over empty ``coding_bash`` for updates) |
 | **git push** | ``coding_git_push`` or ``coding_bash`` with ``git push`` — server injects ``github_pat`` (never in your context; never ask user to paste tokens) |
 | **task** | ``coding_task`` (delegate / sub-planner when offered) |
