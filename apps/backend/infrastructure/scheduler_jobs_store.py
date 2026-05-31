@@ -103,18 +103,18 @@ def list_jobs_for_user(
     with db.pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
-                f"""
+                """
                 SELECT j.id, j.tenant_id, j.created_by_user_id, j.execution_user_id, j.dashboard_id,
                        j.execution_target, j.title, j.instructions, j.interval_minutes, j.enabled,
                        j.coding_workflow, j.last_run_at, j.created_at, j.updated_at
                 FROM scheduler_jobs j
                 WHERE j.tenant_id = %s
                   AND j.deleted_at IS NULL
-                {ws_filter}
-                {role_filter}
+                {}
+                {}
                 ORDER BY j.created_at DESC
                 LIMIT %s
-                """,
+                """.format(ws_filter, role_filter),
                 params,
             )
             rows = cur.fetchall()
@@ -168,15 +168,15 @@ def list_jobs_for_tenant(
     with db.pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
-                f"""
+                """
                 SELECT j.id, j.tenant_id, j.created_by_user_id, j.execution_user_id, j.dashboard_id,
                        j.execution_target, j.title, j.instructions, j.interval_minutes, j.enabled,
                        j.coding_workflow, j.last_run_at, j.deleted_at, j.created_at, j.updated_at
                 FROM scheduler_jobs j
-                {where}
+                {}
                 ORDER BY j.created_at DESC
                 LIMIT %s
-                """,
+                """.format(where),
                 params,
             )
             rows = cur.fetchall()

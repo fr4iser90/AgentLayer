@@ -68,8 +68,8 @@ def list_workspaces_for_user(user) -> list[dict[str, Any]]:
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                f"""
-                SELECT {WORKSPACE_SELECT_SQL}
+                """
+                SELECT ''' + WORKSPACE_SELECT_SQL + '''
                 FROM project_workspaces
                 WHERE owner_user_id = %s
                 ORDER BY name ASC
