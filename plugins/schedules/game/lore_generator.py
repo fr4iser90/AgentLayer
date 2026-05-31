@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from pathlib import Path
 from typing import Any
 
@@ -50,11 +51,46 @@ OK      → wenn alles passt
 CONFLICT → wenn es Widersprüche gibt
 """
 
+# Common prompt injection patterns (compiled once at module load)
+_PATTERNS_LIST = [
+    r"(?i)ignore\s+(previous|above|all|the\s+above)",
+    r"(?i)system\s*(instruction|override|prompt|note)",
+    r"(?i)from\s+now\s+on",
+    r"(?i)you\s+are\s+now",
+    r"(?i)change\s+your\s+(rules|behavior|instructions|policy)",
+    r"(?i)disregard\s+(all|your|the\s+above)",
+    r"(?i)new\s+(role|instruction|directive)",
+    r"(?i)act\s+as",
+    r"(?i)pretend\s+to\s+be",
+    r"(?i)start\s+saying",
+]
+_SANITIZATION_RE = re.compile("|".join(_PATTERNS_LIST))
+
+
+def _sanitize_prompt_input(value: str) -> str:
+    """Sanitize user input for safe inclusion in LLM prompts.
+
+    Removes or escapes characters that could be used for prompt injection
+    (e.g. role-switching instructions, system overrides).
+    """
+    if not value:
+        return value
+    # Strip leading/trailing whitespace
+    cleaned = value.strip()
+    # Remove null bytes and control characters except newline/tab
+    cleaned = "".join(ch for ch in cleaned if ch in " \t\n\r" or (ord(ch) > 31))
+    # Remove common prompt injection patterns
+    cleaned = _SANITIZATION_RE.sub("", cleaned)
+    # Truncate excessively long context to prevent prompt overflow attacks
+    if len(cleaned) > 2000:
+        cleaned = cleaned[:2000] + " [... truncated]"
+    return cleaned
+
 
 def generate_lore(arguments: dict[str, Any]) -> str:
     """
     Generate consistent game lore, automatically check consistency, save to lore bible
-    
+
     Parameters:
         topic: Lore topic to generate (world, faction, character, location, history)
         name: Name of the element
@@ -62,7 +98,12 @@ def generate_lore(arguments: dict[str, Any]) -> str:
     """
     topic = arguments.get('topic', 'general')
     name = arguments.get('name', 'unknown')
-    context = arguments.get('context', '')
+    raw_context = arguments.get('context', '')
+
+    # Sanitize context input to prevent prompt injection
+    context = _sanitize_prompt_input(raw_context)
+    if raw_context and context != raw_context:
+        logger.warning("Prompt injection attempt detected in context input – sanitized")
 
     logger.info(f"Generating lore: {topic} / {name}")
 
