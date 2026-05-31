@@ -12,6 +12,7 @@ export type RunCard = {
   title: string;
   subtitle?: string;
   agentId?: string;
+  subagentRunId?: string;
   toolName?: string;
   indexMode?: IndexRunMode;
   durationMs?: number;
@@ -19,6 +20,11 @@ export type RunCard = {
   indexPhase?: string;
   filesDone?: number;
   filesTotal?: number;
+  /** Latest live step while status=running (e.g. "Reading friends_db.py"). */
+  currentStep?: string;
+  stepCount?: number;
+  /** Completed steps (newest last), capped when building. */
+  recentSteps?: string[];
   details: AgentTimelineEntry[];
 };
 
@@ -54,12 +60,51 @@ function isFailedText(text: string): boolean {
   return t.includes("failed") || t.includes("error") || t.startsWith("failed:");
 }
 
+const RECENT_STEPS_MAX = 8;
+
+function findRunningSubagentCard(
+  cards: RunCard[],
+  subagentRunId: string | undefined,
+  agentId: string | undefined
+): RunCard | null {
+  if (subagentRunId) {
+    for (let i = cards.length - 1; i >= 0; i--) {
+      const c = cards[i];
+      if (c.kind === "subagent" && c.status === "running" && c.subagentRunId === subagentRunId) {
+        return c;
+      }
+    }
+  }
+  return findLastRunningCard(
+    cards,
+    "subagent",
+    (c) => !agentId || c.agentId === agentId
+  );
+}
+
+function applySubagentStep(card: RunCard, e: AgentTimelineEntry): void {
+  if (!card.details.includes(e)) card.details.push(e);
+  if (e.stepPhase === "done") {
+    const label = e.text.trim();
+    if (label) {
+      card.recentSteps = [...(card.recentSteps ?? []), label].slice(-RECENT_STEPS_MAX);
+    }
+    return;
+  }
+  const label = e.text.trim();
+  if (label) card.currentStep = label;
+  card.stepCount = (card.stepCount ?? 0) + 1;
+}
+
 function completeSubagentCard(card: RunCard, done: AgentTimelineEntry): void {
   card.status = isFailedText(done.text) ? "failed" : "done";
   card.durationMs = done.durationMs ?? card.durationMs;
   card.resultChars = done.resultChars ?? card.resultChars;
+  card.currentStep = undefined;
   if (!card.details.includes(done)) card.details.push(done);
-  if (done.text.trim()) card.subtitle = done.text.trim();
+  if (isFailedText(done.text) && done.text.trim()) {
+    card.subtitle = done.text.trim();
+  }
 }
 
 function completeIndexCard(card: RunCard, done: AgentTimelineEntry): void {
@@ -95,17 +140,20 @@ export function buildRunCardsFromTimeline(entries: AgentTimelineEntry[]): RunCar
         title: agentRunCardTitle(e.subagentAgentId),
         subtitle: e.text.trim() || undefined,
         agentId: e.subagentAgentId,
+        subagentRunId: e.subagentRunId,
         details: [e],
       });
       continue;
     }
 
+    if (e.kind === "subagent_step") {
+      const card = findRunningSubagentCard(cards, e.subagentRunId, e.subagentAgentId);
+      if (card) applySubagentStep(card, e);
+      continue;
+    }
+
     if (e.kind === "subagent_done") {
-      const card = findLastRunningCard(
-        cards,
-        "subagent",
-        (c) => !e.subagentAgentId || c.agentId === e.subagentAgentId
-      );
+      const card = findRunningSubagentCard(cards, e.subagentRunId, e.subagentAgentId);
       if (card) completeSubagentCard(card, e);
       else {
         cards.push({

@@ -28,14 +28,18 @@ function runNode(script) {
 }
 
 async function main() {
-  console.log("[test] 1/2 validate-i18n.mjs (locale key parity)…");
+  console.log("[test] 1/3 validate-i18n.mjs (locale key parity)…");
   await runNode(join(__dirname, "validate-i18n.mjs"));
 
-  console.log("[test] 2/2 scan-i18n-ui.mjs (routes + hardcoded UI + t-shadowing)…");
+  console.log("[test] 2/3 scan-i18n-ui.mjs (routes + hardcoded UI + t-shadowing)…");
   const { ok, ui, routes } = await runScanI18nUi();
   if (!ok) {
     process.exit(1);
   }
+
+  console.log("[test] 3/3 test-proposal-parser.mjs…");
+  await runNode(join(__dirname, "test-proposal-parser.mjs"));
+
   console.log(
     `[test] All frontend i18n checks passed (${ui.report.hardcoded.length === 0 ? "no" : "some"} hardcoded issues, routes OK).`
   );

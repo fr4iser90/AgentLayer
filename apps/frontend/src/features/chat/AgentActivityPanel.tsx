@@ -57,7 +57,12 @@ export function AgentActivityPanel({
 
   const visible = showSubagents
     ? entries
-    : entries.filter((e) => e.kind !== "subagent_start" && e.kind !== "subagent_done");
+    : entries.filter(
+        (e) =>
+          e.kind !== "subagent_start" &&
+          e.kind !== "subagent_done" &&
+          e.kind !== "subagent_step"
+      );
 
   return (
     <div

@@ -44,6 +44,13 @@ export type AgentTimelineEntry = {
   resultChars?: number;
   /** Sub-agent registry id (e.g. coding_plan) when ``kind`` is subagent_* . */
   subagentAgentId?: string;
+  /** Embedded sub-agent run id (matches ``subagent_run_id`` WebSocket field). */
+  subagentRunId?: string;
+  /** Normalized args summary from backend (e.g. ``path=apps/.../friends_db.py``). */
+  toolSummary?: string;
+  /** ``subagent_step`` phase: start | done */
+  stepPhase?: "start" | "done";
+  toolRound?: number;
   /** Indent in activity panel (delegated run). */
   nested?: boolean;
   /** ``index_start`` / ``index_done`` / ``coding_index`` tool runs. */

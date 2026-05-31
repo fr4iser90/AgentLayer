@@ -116,6 +116,7 @@ import {
   setShowSubagentsInActivity as persistShowSubagentsPref,
 } from "../features/chat/chatSubagentPrefs";
 import { handleSubagentWsEvent } from "../features/chat/subagentActivity";
+import { formatToolStepLabel } from "../features/chat/toolStepLabel";
 import { CodingWorkspacePanels } from "../features/workspace/CodingWorkspacePanels";
 import { WorkspaceRetrievalBar } from "../features/workspace/WorkspaceRetrievalBar";
 import { WorkspaceMcpModal } from "../features/workspace/WorkspaceMcpModal";
@@ -1565,9 +1566,11 @@ export function ChatPage() {
         }
         if (typ === "agent.tool_start") {
           const toolName = String(msg.name ?? "tool");
+          const summary = typeof msg.summary === "string" ? msg.summary.trim() : undefined;
           toolStartTimesRef.current.set(toolName, Date.now());
-          appendAgentLine("tool_start", `→ ${toolName}`, {
+          appendAgentLine("tool_start", summary ? formatToolStepLabel(toolName, summary) : `→ ${toolName}`, {
             toolName,
+            toolSummary: summary,
             streamOffset: assistantStreamOffset(),
           });
           return;

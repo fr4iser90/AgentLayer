@@ -122,6 +122,7 @@
   "runCardStatusFailed": "Failed",
   "runCardResultChars": "{{count}} chars",
   "runCardFilesProgress": "{{done}}/{{total}} files",
+  "runCardStepCount": "{{count}} steps",
   "runCardShowDetails": "Show details",
   "runCardHideDetails": "Hide details",
   "runCardAgent_coding": "Coding agent",
@@ -137,6 +138,7 @@
   "secretCardSaveFailed": "Could not save secret.",
   "secretCardFillRequired": "Please fill in all required fields.",
   "secretCardValueLabel": "Secret value",
-  "secretCardOpenConnections": "Settings → Connections"
+  "secretCardOpenConnections": "Settings → Connections",
+  "proposalParseError": "Some option cards could not be loaded (invalid JSON from the assistant). Pick an option by typing its label, or ask the agent to resend the proposal. ({{count}} block(s) failed)"
 }
 

@@ -122,6 +122,7 @@
   "runCardStatusFailed": "Fehlgeschlagen",
   "runCardResultChars": "{{count}} Zeichen",
   "runCardFilesProgress": "{{done}}/{{total}} Dateien",
+  "runCardStepCount": "{{count}} Schritte",
   "runCardShowDetails": "Details anzeigen",
   "runCardHideDetails": "Details ausblenden",
   "runCardAgent_coding": "Coding-Agent",
@@ -137,6 +138,7 @@
   "secretCardSaveFailed": "Secret konnte nicht gespeichert werden.",
   "secretCardFillRequired": "Bitte alle Pflichtfelder ausfüllen.",
   "secretCardValueLabel": "Secret-Wert",
-  "secretCardOpenConnections": "Einstellungen → Verbindungen"
+  "secretCardOpenConnections": "Einstellungen → Verbindungen",
+  "proposalParseError": "Einige Options-Karten konnten nicht geladen werden (ungültiges JSON vom Assistenten). Wähle eine Option per Text oder bitte den Agenten, den Vorschlag erneut zu senden. ({{count}} Block/Blöcke fehlgeschlagen)"
 }
 

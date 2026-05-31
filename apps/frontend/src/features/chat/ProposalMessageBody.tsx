@@ -1,5 +1,7 @@
+import { useTranslation } from "react-i18next";
 import {
-  extractProposals,
+  hasProposal,
+  parseProposalContent,
   stripProposalBlocks,
   type Proposal,
   type ProposalOption,
@@ -105,18 +107,46 @@ type AssistantProposalBodyProps = {
   onSelectOption: (proposal: Proposal, option: ProposalOption) => void;
 };
 
+function ProposalParseErrorBanner({ count }: { count: number }) {
+  const { t } = useTranslation(["chat"]);
+  return (
+    <p
+      className="my-2 rounded-lg border border-amber-700/40 bg-amber-950/35 px-3 py-2 text-xs text-amber-100/90"
+      role="status"
+    >
+      {t("chat:proposalParseError", { count })}
+    </p>
+  );
+}
+
 export function AssistantProposalBody({
   content,
   selectedByProposalId,
   onSelectOption,
 }: AssistantProposalBodyProps) {
-  const proposals = extractProposals(content);
+  const { proposals, failedBlockCount } = parseProposalContent(content);
+  const bodyText = stripProposalBlocks(content);
+  const showParseError = failedBlockCount > 0;
+
   if (proposals.length === 0) {
-    return <div className="whitespace-pre-wrap">{content}</div>;
+    return (
+      <div className="space-y-2">
+        {bodyText ? <div className="whitespace-pre-wrap">{bodyText}</div> : null}
+        {showParseError ? <ProposalParseErrorBanner count={failedBlockCount} /> : null}
+        {!bodyText && !showParseError && hasProposal(content) ? (
+          <ProposalParseErrorBanner count={1} />
+        ) : null}
+        {!bodyText && !showParseError && !hasProposal(content) ? (
+          <div className="whitespace-pre-wrap">{content}</div>
+        ) : null}
+      </div>
+    );
   }
+
   return (
     <div className="space-y-2">
-      <div className="whitespace-pre-wrap">{stripProposalBlocks(content)}</div>
+      {bodyText ? <div className="whitespace-pre-wrap">{bodyText}</div> : null}
+      {showParseError ? <ProposalParseErrorBanner count={failedBlockCount} /> : null}
       {proposals.map((p) => (
         <ProposalCard
           key={p.id}

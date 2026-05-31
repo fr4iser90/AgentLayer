@@ -75,6 +75,34 @@ def _parent_llm_from_context(context: dict[str, Any] | None) -> tuple[str | None
     return model, owned
 
 
+def _forward_subagent_tool_event(
+    notify: Any,
+    *,
+    sub_run_id: str,
+    agent_id: str,
+    ev: dict[str, Any],
+) -> None:
+    """Map embedded ``agent.tool_*`` events to ``agent.subagent_step`` for the parent WS."""
+    if not callable(notify):
+        return
+    typ = ev.get("type")
+    if typ not in ("agent.tool_start", "agent.tool_done"):
+        return
+    payload: dict[str, Any] = {
+        "type": "agent.subagent_step",
+        "subagent_run_id": sub_run_id,
+        "agent_id": agent_id,
+        "phase": "start" if typ == "agent.tool_start" else "done",
+        "tool": ev.get("name"),
+        "round": ev.get("round"),
+    }
+    if typ == "agent.tool_start":
+        summary = ev.get("summary")
+        if isinstance(summary, str) and summary.strip():
+            payload["summary"] = summary.strip()
+    notify(payload)
+
+
 def run_embedded_subagent_sync(
     *,
     subagent_agent_id: str,
@@ -244,10 +272,18 @@ def run_embedded_subagent_sync(
             }
         )
 
+    def _subagent_event_bridge(ev: dict[str, Any]) -> None:
+        _forward_subagent_tool_event(
+            notify, sub_run_id=sub_run_id, agent_id=aid, ev=ev
+        )
+
+    async def _subagent_event_emit(ev: dict[str, Any]) -> None:
+        _subagent_event_bridge(ev)
+
     async def _runner() -> dict[str, Any]:
         return await chat_completion(
             body,
-            event_emit=None,
+            event_emit=_subagent_event_emit if callable(notify) else None,
             control_queue=None,
             cancel_event=ce,
             embedded_subagent=True,

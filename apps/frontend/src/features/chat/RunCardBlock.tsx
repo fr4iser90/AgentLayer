@@ -65,7 +65,12 @@ export function RunCardBlock({ card, defaultExpanded = false }: Props) {
     );
   } else if (card.indexPhase) {
     meta.push(card.indexPhase);
+  } else if (card.stepCount != null && card.stepCount > 0) {
+    meta.push(t("chat:runCardStepCount", { count: card.stepCount }));
   }
+
+  const showRecentInDetails =
+    card.recentSteps && card.recentSteps.length > 0 && card.status !== "running";
 
   return (
     <div
@@ -86,7 +91,10 @@ export function RunCardBlock({ card, defaultExpanded = false }: Props) {
           {card.subtitle ? (
             <p className="mt-1 text-[11px] leading-snug text-neutral-400">{card.subtitle}</p>
           ) : null}
-          {card.details.length > 0 ? (
+          {card.status === "running" && card.currentStep ? (
+            <p className="mt-1 truncate text-[11px] leading-snug text-sky-300/90">{card.currentStep}</p>
+          ) : null}
+          {card.details.length > 0 || showRecentInDetails ? (
             <button
               type="button"
               className="mt-1.5 text-[10px] text-sky-400/90 hover:text-sky-300 hover:underline"
@@ -97,13 +105,23 @@ export function RunCardBlock({ card, defaultExpanded = false }: Props) {
           ) : null}
           {expanded ? (
             <ul className="mt-2 space-y-1 border-t border-white/5 pt-2">
+              {showRecentInDetails
+                ? card.recentSteps!.map((step, i) => (
+                    <li key={`step-${i}`} className="text-[10px] leading-snug text-neutral-500">
+                      <span className="text-emerald-400/70">✓</span>
+                      <span className="text-neutral-400"> {step}</span>
+                    </li>
+                  ))
+                : null}
               {card.details.map((d) => (
                 <li key={d.id} className="text-[10px] leading-snug text-neutral-500">
                   <span className="font-medium uppercase tracking-wide text-surface-muted">
                     {d.kind}
                   </span>
                   {d.toolName ? <span className="text-indigo-300/80"> {d.toolName}</span> : null}
-                  {d.text ? <span className="text-neutral-400"> — {d.text}</span> : null}
+                  {d.text && d.kind !== "subagent_step" ? (
+                    <span className="text-neutral-400"> — {d.text}</span>
+                  ) : null}
                 </li>
               ))}
             </ul>

@@ -1,4 +1,4 @@
-/** @typedef {{ id: string; kind: string; text: string; toolName?: string; durationMs?: number; resultChars?: number; subagentAgentId?: string; indexMode?: string; runStatus?: string; filesDone?: number; filesTotal?: number }} Entry */
+/** @typedef {{ id: string; kind: string; text: string; toolName?: string; durationMs?: number; resultChars?: number; subagentAgentId?: string; subagentRunId?: string; stepPhase?: string; indexMode?: string; runStatus?: string; filesDone?: number; filesTotal?: number }} Entry */
 
 /**
  * @param {Entry[]} entries
@@ -7,6 +7,18 @@ export function buildRunCardsFromTimeline(entries) {
   const cards = [];
   const openTools = new Map();
 
+  function findRunningSubagent(e) {
+    if (e.subagentRunId) {
+      const byId = [...cards].reverse().find(
+        (c) => c.kind === "subagent" && c.status === "running" && c.subagentRunId === e.subagentRunId
+      );
+      if (byId) return byId;
+    }
+    return [...cards].reverse().find(
+      (c) => c.kind === "subagent" && c.status === "running" && (!e.subagentAgentId || c.agentId === e.subagentAgentId)
+    );
+  }
+
   for (const e of entries) {
     if (e.kind === "subagent_start") {
       cards.push({
@@ -14,17 +26,33 @@ export function buildRunCardsFromTimeline(entries) {
         kind: "subagent",
         status: "running",
         agentId: e.subagentAgentId,
+        subagentRunId: e.subagentRunId,
+        subtitle: e.text.trim() || undefined,
         details: [e],
       });
       continue;
     }
+    if (e.kind === "subagent_step") {
+      const card = findRunningSubagent(e);
+      if (card) {
+        card.details.push(e);
+        if (e.stepPhase === "done") {
+          if (e.text.trim()) {
+            card.recentSteps = [...(card.recentSteps ?? []), e.text.trim()].slice(-8);
+          }
+        } else {
+          if (e.text.trim()) card.currentStep = e.text.trim();
+          card.stepCount = (card.stepCount ?? 0) + 1;
+        }
+      }
+      continue;
+    }
     if (e.kind === "subagent_done") {
-      const card = [...cards].reverse().find(
-        (c) => c.kind === "subagent" && c.status === "running" && (!e.subagentAgentId || c.agentId === e.subagentAgentId)
-      );
+      const card = findRunningSubagent(e);
       if (card) {
         card.status = e.text.toLowerCase().includes("failed") ? "failed" : "done";
         card.durationMs = e.durationMs;
+        card.currentStep = undefined;
         card.details.push(e);
       }
       continue;
@@ -65,12 +93,19 @@ function assert(cond, msg) {
 }
 
 const subagentRun = buildRunCardsFromTimeline([
-  { id: "1", kind: "subagent_start", text: "Starting", subagentAgentId: "coding" },
-  { id: "2", kind: "subagent_done", text: "finished (100 chars)", subagentAgentId: "coding", durationMs: 4500, resultChars: 100 },
+  { id: "1", kind: "subagent_start", text: "HIGH Security Fixes", subagentAgentId: "coding", subagentRunId: "run-a" },
+  { id: "2", kind: "subagent_step", text: "Reading friends_db.py", subagentAgentId: "coding", subagentRunId: "run-a", stepPhase: "start" },
+  { id: "3", kind: "subagent_step", text: "Reading friends_db.py", subagentAgentId: "coding", subagentRunId: "run-a", stepPhase: "done" },
+  { id: "4", kind: "subagent_step", text: "Editing agent_tasks_store.py", subagentAgentId: "coding", subagentRunId: "run-a", stepPhase: "start" },
+  { id: "5", kind: "subagent_done", text: "finished (100 chars)", subagentAgentId: "coding", subagentRunId: "run-a", durationMs: 4500, resultChars: 100 },
 ]);
 assert(subagentRun.length === 1, "one subagent card");
 assert(subagentRun[0].status === "done", "subagent done");
 assert(subagentRun[0].agentId === "coding", "agent id");
+assert(subagentRun[0].subtitle === "HIGH Security Fixes", "task subtitle preserved");
+assert(subagentRun[0].stepCount === 2, "two tool starts");
+assert(subagentRun[0].recentSteps?.length === 1, "one completed step");
+assert(!subagentRun[0].currentStep, "no live step when done");
 
 const indexRun = buildRunCardsFromTimeline([
   { id: "a", kind: "index_start", text: "Docs index", indexMode: "docs" },

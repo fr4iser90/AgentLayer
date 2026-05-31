@@ -4612,6 +4612,7 @@ async def chat_completion(
                             "agent_run_id": agent_run_id,
                             "round": round_i + 1,
                             "name": name,
+                            "summary": args_line,
                         }
                     )
                 tctx = set_tool_invocation_messages(list(messages))
