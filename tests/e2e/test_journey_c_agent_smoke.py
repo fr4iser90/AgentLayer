@@ -93,8 +93,15 @@ def test_websocket_agent_tool_smoke(admin_client: E2EClient) -> None:
         if not ws:
             pytest.skip("agentlayer-self workspace not available for coding tool smoke")
 
+        models_resp = admin_client.get_json("/v1/models")
+        model_rows = models_resp.get("data") if isinstance(models_resp, dict) else None
+        if not model_rows:
+            pytest.skip("no LLM models in catalog (GET /v1/models)")
+        catalog_model = model_rows[0]
+
         chat_body: dict[str, Any] = {
-            "model": "e2e-mock",
+            "model": catalog_model["id"],
+            "agent_model_catalog_owned_by": catalog_model.get("owned_by"),
             "messages": [{"role": "user", "content": "List the workspace root directory."}],
             "agent_id": "general",
             "workspace_id": str(ws["id"]),

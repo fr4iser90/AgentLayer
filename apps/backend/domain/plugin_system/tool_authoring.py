@@ -257,7 +257,8 @@ def validate_tool_registry_exports(source: str) -> str | None:
     mod_name = f"_agent_tool_validate_{uuid.uuid4().hex}"
     path: str | None = None
     try:
-        fd, path = tempfile.mkstemp(suffix=".py", text=True, mode=0o600)
+        fd, path = tempfile.mkstemp(suffix=".py", text=True)
+        os.chmod(path, 0o600)
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             f.write(source)
         spec = importlib.util.spec_from_file_location(mod_name, path)

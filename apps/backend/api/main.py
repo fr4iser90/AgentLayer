@@ -202,6 +202,14 @@ async def lifespan(_app: FastAPI):
             "(e.g. https://openwebui.example) to prevent wildcard CORS. "
             "Without it, browsers will block credentials."
         )
+    from apps.backend.infrastructure.e2e_mock_llm import e2e_mock_llm_enabled
+
+    if e2e_mock_llm_enabled():
+        logger.warning(
+            "AGENT_E2E_MOCK_LLM is enabled: all chat/completions are stubbed "
+            "(list_dir then 'E2E mock LLM complete.'). Agents will NOT call git_push or other real tools. "
+            "Disable for normal use; enable only for E2E tests."
+        )
     get_registry()
 
     async def _startup_rag_background() -> None:

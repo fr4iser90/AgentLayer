@@ -108,4 +108,6 @@ def safe_mkstemp(
         The caller is responsible for closing the file descriptor and
         deleting the file when done.
     """
-    return tempfile.mkstemp(suffix=suffix, prefix=prefix, dir=dir, text=text, mode=mode)
+    fd, path = tempfile.mkstemp(suffix=suffix, prefix=prefix, dir=dir, text=text)
+    os.chmod(path, mode)
+    return fd, path

@@ -229,10 +229,10 @@ CHAT_CONTEXT_DEFAULT_BUDGET_TOKENS = max(0, _env_int("CHAT_CONTEXT_DEFAULT_BUDGE
 # JSON map model_id → context window tokens, e.g. {"Qwen3.6-...gguf":131072}
 CHAT_CONTEXT_MODEL_BUDGET_OVERRIDES = (os.environ.get("CHAT_CONTEXT_MODEL_BUDGET_OVERRIDES") or "").strip()
 CHAT_CONTEXT_SOFT_LIMIT_RATIO = max(
-    0.3, min(0.95, float(os.environ.get("CHAT_CONTEXT_SOFT_LIMIT_RATIO", "0.6")))
+    0.3, min(0.95, float(os.environ.get("CHAT_CONTEXT_SOFT_LIMIT_RATIO", "0.8")))
 )
 CHAT_CONTEXT_HARD_LIMIT_RATIO = max(
-    0.4, min(0.98, float(os.environ.get("CHAT_CONTEXT_HARD_LIMIT_RATIO", "0.85")))
+    0.4, min(0.98, float(os.environ.get("CHAT_CONTEXT_HARD_LIMIT_RATIO", "0.95")))
 )
 CHAT_CONTEXT_RECENT_VERBATIM_MESSAGES = max(4, _env_int("CHAT_CONTEXT_RECENT_VERBATIM_MESSAGES", 12))
 CHAT_CONTEXT_COMPACTION_ENABLED = _env_bool("CHAT_CONTEXT_COMPACTION_ENABLED", True)

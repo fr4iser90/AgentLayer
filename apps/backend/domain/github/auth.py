@@ -105,7 +105,8 @@ def askpass_extra_env(token: str) -> tuple[dict[str, str], list[str]]:
     token_file.close()
     os.chmod(token_file.name, stat.S_IRUSR | stat.S_IWUSR)
 
-    askpass_fd, askpass_path = tempfile.mkstemp(prefix="al-git-ask-", suffix=".sh", mode=0o600)
+    askpass_fd, askpass_path = tempfile.mkstemp(prefix="al-git-ask-", suffix=".sh")
+    os.chmod(askpass_path, stat.S_IRUSR | stat.S_IWUSR)
     # Password prompt → PAT; username prompt → GitHub HTTPS convention (never returned to LLM).
     script = (
         "#!/bin/sh\n"
