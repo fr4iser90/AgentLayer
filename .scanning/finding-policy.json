@@ -3,99 +3,32 @@
   "updated": "2025-01-15T10:00:00Z",
   "bandit": {
     "accepted_findings": [
-      {
-        "rule_id": "B605",
-        "path_regex": ".*\\.py$",
-        "reason": "False Positive: function call with default argument 'function' is a legitimate pattern in this codebase for factory functions and dependency injection."
-      },
-      {
-        "rule_id": "B608",
-        "path_regex": ".*\\.py$",
-        "reason": "False Positive: hardcoded SQL query string constant (type='SQL') is a static schema definition used with parameterized queries only."
-      },
-      {
-        "rule_id": "B105",
-        "path_regex": ".*test.*|.*spec.*|.*config\\.py$",
-        "reason": "Acceptable: hardcoded password in test fixtures and configuration files used only in CI/development environments."
-      },
-      {
-        "rule_id": "B106",
-        "path_regex": ".*test.*|.*spec.*|.*config\\.py$",
-        "reason": "Acceptable: hardcoded password in test/fixture files and development config only."
-      },
-      {
-        "rule_id": "B311",
-        "path_regex": ".*\\.py$",
-        "reason": "False Positive: XML parsing is limited to trusted internal formats with no user-supplied input."
-      },
-      {
-        "rule_id": "B602",
-        "path_regex": ".*test.*|.*spec.*",
-        "reason": "Acceptable: subprocess call in test code only for integration testing."
-      },
-      {
-        "rule_id": "B110",
-        "path_regex": ".*\\.py$",
-        "reason": "Acceptable: subprocess with shell=True used only in controlled internal tooling with sanitized arguments."
-      }
+      { "rule_id": "B605", "path_regex": ".*\\.py$", "reason": "False Positive: function call with default argument 'function' is a legitimate pattern in this codebase for factory functions and dependency injection." },
+      { "rule_id": "B608", "path_regex": ".*\\.py$", "reason": "False Positive: hardcoded SQL query string constant (type='SQL') is a static schema definition used with parameterized queries only." },
+      { "rule_id": "B105", "path_regex": ".*test.*|.*spec.*|.*config\\.py$", "reason": "Acceptable: hardcoded password in test fixtures and configuration files used only in CI/development environments." },
+      { "rule_id": "B106", "path_regex": ".*test.*|.*spec.*|.*config\\.py$", "reason": "Acceptable: hardcoded password in test/fixture files and development config only." },
+      { "rule_id": "B311", "path_regex": ".*\\.py$", "reason": "False Positive: XML parsing is limited to trusted internal formats with no user-supplied input." },
+      { "rule_id": "B602", "path_regex": ".*test.*|.*spec.*", "reason": "Acceptable: subprocess call in test code only for integration testing." },
+      { "rule_id": "B110", "path_regex": ".*\\.py$", "reason": "Acceptable: subprocess with shell=True used only in controlled internal tooling with sanitized arguments." }
     ]
   },
   "codeql": {
     "accepted_findings": [
-      {
-        "rule_id": "python/.*",
-        "path_regex": ".*\\.pyi$|.*generated/.*",
-        "reason": "Informational: Python CodeQL queries in type stub files (.pyi) and generated code — no runtime execution path."
-      },
-      {
-        "rule_id": "js/xss/.*",
-        "path_regex": ".*\\.svelte$|.*\\.vue$",
-        "reason": "False Positive: Svelte/Vue use reactive bindings preventing XSS."
-      },
-      {
-        "rule_id": "js/sql-injection",
-        "path_regex": ".*\\.test\\.js$|.*\\.spec\\.ts$",
-        "reason": "Acceptable: SQL injection query in test file only with mock database."
-      },
-      {
-        "rule_id": "js/path-traversal",
-        "path_regex": ".*static/.*|.*assets/.*",
-        "reason": "False Positive: File access restricted to known static asset directories with normalization."
-      },
-      {
-        "rule_id": "js/information-exposure",
-        "path_regex": ".*health\\.py$|.*status\\.js$",
-        "reason": "Acceptable: Health check endpoints intentionally expose version/status for monitoring."
-      },
-      {
-        "rule_id": "typescript/.*",
-        "path_regex": ".*\\.d\\.ts$",
-        "reason": "Acceptable: TypeScript declaration files .d.ts are type-only, no executable code."
-      },
-      {
-        "rule_id": "go/.*",
-        "path_regex": ".*_test\\.go$",
-        "reason": "Acceptable: Go security queries in test files only with controlled inputs."
-      }
+      { "rule_id": "python/.*", "path_regex": ".*\\.pyi$|.*generated/.*", "reason": "Informational: Python CodeQL queries in type stub files (.pyi) and generated code — no runtime execution path." },
+      { "rule_id": "js/xss/.*", "path_regex": ".*\\.svelte$|.*\\.vue$", "reason": "False Positive: Svelte/Vue use reactive bindings preventing XSS." },
+      { "rule_id": "js/sql-injection", "path_regex": ".*\\.test\\.js$|.*\\.spec\\.ts$", "reason": "Acceptable: SQL injection query in test file only with mock database." },
+      { "rule_id": "js/path-traversal", "path_regex": ".*static/.*|.*assets/.*", "reason": "False Positive: File access restricted to known static asset directories with normalization." },
+      { "rule_id": "js/information-exposure", "path_regex": ".*health\\.py$|.*status\\.js$", "reason": "Acceptable: Health check endpoints intentionally expose version/status for monitoring." },
+      { "rule_id": "typescript/.*", "path_regex": ".*\\.d\\.ts$", "reason": "Acceptable: TypeScript declaration files .d.ts are type-only, no executable code." },
+      { "rule_id": "go/.*", "path_regex": ".*_test\\.go$", "reason": "Acceptable: Go security queries in test files only with controlled inputs." }
     ]
   },
   "semgrep": {
-    "dedupe": {
-      "enabled": true,
-      "max_deduped_per_rule": 50,
-      "time_window_minutes": 1440
-    },
+    "dedupe": { "enabled": true, "max_deduped_per_rule": 50, "time_window_minutes": 1440 },
     "accepted_findings": [
-      {
-        "rule_id": "python\\.sqlalchemy\\.security\\.sqlalchemy-execute-raw-query\\.sqlalchemy-execute-raw-query",
-        "path_regex": ".*run_traces_admin_api\\.py$",
-        "reason": "Accepted: Raw query uses named parameters via TextualSQL prepared statement pattern."
-      },
-      {
-        "rule_id": "python\\.sqlalchemy\\.security\\.sqlalchemy-execute-raw-query\\.sqlalchemy-execute-raw-query",
-        "path_regex": ".*workspace_resolver\\.py$",
-        "reason": "Accepted: workspace_resolver.py uses parameterized TextualSQL with named :param bindings."
-      }
+      { "rule_id": "python\\.sqlalchemy\\.security\\.sqlalchemy-execute-raw-query\\.sqlalchemy-execute-raw-query", "path_regex": ".*run_traces_admin_api\\.py$", "reason": "Accepted: Raw query uses named parameters via TextualSQL prepared statement pattern." },
+      { "rule_id": "python\\.sqlalchemy\\.security\\.sqlalchemy-execute-raw-query\\.sqlalchemy-execute-raw-query", "path_regex": ".*workspace_resolver\\.py$", "reason": "Accepted: workspace_resolver.py uses parameterized TextualSQL with named :param bindings." }
     ]
   }
 }
+
