@@ -55,11 +55,46 @@ function collapsedStepPreview(card: RunCard): string[] {
   return cur ? [cur] : [];
 }
 
+type SubagentStepRow = { label: string; failed: boolean };
+
+function allSubagentStepRows(card: RunCard): SubagentStepRow[] {
+  const steps = card.details.filter((d) => d.kind === "subagent_step");
+  const rows: SubagentStepRow[] = [];
+  for (const d of steps) {
+    if (d.stepPhase !== "start") continue;
+    const label = d.text.trim();
+    if (!label) continue;
+    const tool = d.toolName;
+    const failedDone = steps.find(
+      (x) => x.stepPhase === "done" && x.toolOk === false && tool && x.toolName === tool
+    );
+    if (failedDone) {
+      rows.push({ label: failedDone.text.trim() || label, failed: true });
+      continue;
+    }
+    const done = steps.find(
+      (x) => x.stepPhase === "done" && tool && x.toolName === tool
+    );
+    if (!done || done.toolOk !== false) {
+      rows.push({ label, failed: false });
+    }
+  }
+  for (const d of steps) {
+    if (d.stepPhase !== "done" || d.toolOk !== false) continue;
+    const tool = d.toolName;
+    const hasStart = steps.some(
+      (x) => x.stepPhase === "start" && tool && x.toolName === tool
+    );
+    if (!hasStart) {
+      const label = d.text.trim();
+      if (label) rows.push({ label, failed: true });
+    }
+  }
+  return rows;
+}
+
 function allSubagentStepLabels(card: RunCard): string[] {
-  return card.details
-    .filter((d) => d.kind === "subagent_step")
-    .map((d) => d.text.trim())
-    .filter(Boolean);
+  return allSubagentStepRows(card).map((r) => r.label);
 }
 
 export function RunCardBlock({
@@ -185,6 +220,10 @@ export function RunCardBlock({
               {previewSteps.map((step, i) => {
                 const isLatest = i === previewSteps.length - 1;
                 const running = card.status === "running";
+                const stepRows = allSubagentStepRows(card);
+                const failed =
+                  card.kind === "subagent" &&
+                  stepRows[i]?.failed === true;
                 return (
                   <li
                     key={`preview-${i}-${step}`}
@@ -196,6 +235,10 @@ export function RunCardBlock({
                       ) : (
                         <span className="shrink-0 text-neutral-600">·</span>
                       )
+                    ) : failed ? (
+                      <span className="shrink-0 text-rose-400/90" title={t("chat:runCardStepFailed")}>
+                        ✗
+                      </span>
                     ) : (
                       <span className="shrink-0 text-emerald-400/70">✓</span>
                     )}
@@ -233,15 +276,22 @@ export function RunCardBlock({
                       {line}
                     </li>
                   ))
-                : allSteps.length > 0
-                ? allSteps.map((step, i) => (
+                : allSubagentStepRows(card).length > 0
+                ? allSubagentStepRows(card).map((row, i) => (
                     <li key={`step-${i}`} className="text-[10px] leading-snug text-neutral-500">
-                      {card.status !== "running" ? (
-                        <span className="text-emerald-400/70">✓</span>
-                      ) : (
+                      {card.status === "running" ? (
                         <span className="text-sky-400/70">→</span>
+                      ) : row.failed ? (
+                        <span className="text-rose-400/90" title={t("chat:runCardStepFailed")}>
+                          ✗
+                        </span>
+                      ) : (
+                        <span className="text-emerald-400/70">✓</span>
                       )}
-                      <span className="text-neutral-400"> {step}</span>
+                      <span className={row.failed ? "text-rose-200/85" : "text-neutral-400"}>
+                        {" "}
+                        {row.label}
+                      </span>
                     </li>
                   ))
                 : card.details.map((d) => (

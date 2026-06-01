@@ -1532,8 +1532,14 @@ export function ChatPage() {
       }
       const id = activeThreadIdRef.current;
       const live = agentLiveTurnRef.current;
+      let pendingAgentLog: AgentTimelineEntry[] | null = null;
       if (id && live.isActive()) {
         const log = live.takeAgentLogSnapshot();
+        pendingAgentLog = log;
+        const th = threadsRef.current.find((t) => t.id === id);
+        if (th && log.length > 0) {
+          void putConversation(authRef.current, { ...th, agentLog: log }).catch(() => {});
+        }
         setThreads((prev) =>
           prev.map((th) =>
             th.id === id ? { ...th, agentLog: log, updatedAt: Date.now() } : th
@@ -1565,7 +1571,13 @@ export function ChatPage() {
             };
           });
           const th = next.find((x) => x.id === id);
-          if (th) void putConversation(authRef.current, th).catch(() => {});
+          if (th) {
+            const toSave =
+              pendingAgentLog && pendingAgentLog.length > 0
+                ? { ...th, agentLog: pendingAgentLog }
+                : th;
+            void putConversation(authRef.current, toSave).catch(() => {});
+          }
           return next;
         });
       }
@@ -1620,9 +1632,16 @@ export function ChatPage() {
             agentLiveTurnRef.current.resetAfterCommit();
           } else if (id && liveLog.length > 0) {
             setThreads((prev) =>
-              prev.map((th) =>
-                th.id === id ? { ...th, agentLog: liveLog, updatedAt: Date.now() } : th
-              )
+              prev.map((th) => {
+                if (th.id !== id) return th;
+                const updated: ChatThread = {
+                  ...th,
+                  agentLog: liveLog,
+                  updatedAt: Date.now(),
+                };
+                void putConversation(authRef.current, updated).catch(() => {});
+                return updated;
+              })
             );
             agentLiveTurnRef.current.resetAfterCommit();
           } else {
@@ -1864,6 +1883,12 @@ export function ChatPage() {
         if (typ === "agent.tool_done") {
           const n = msg.name != null ? String(msg.name) : "tool";
           const ch = msg.result_chars != null ? Number(msg.result_chars) : undefined;
+          const toolOk =
+            msg.result_ok === false ? false : msg.result_ok === true ? true : undefined;
+          const toolError =
+            typeof msg.result_error === "string" && msg.result_error.trim()
+              ? msg.result_error.trim().slice(0, 500)
+              : undefined;
           let durationMs = msg.duration_ms != null ? Number(msg.duration_ms) : null;
           if (durationMs == null || durationMs < 0) {
             const startTime = toolStartTimesRef.current.get(n);
@@ -1873,6 +1898,9 @@ export function ChatPage() {
             }
           }
           const parts: string[] = [];
+          if (toolOk === false) {
+            parts.push(toolError ? `failed: ${toolError}` : "failed");
+          }
           if (ch != null && ch > 0) parts.push(`${ch} chars`);
           if (durationMs != null && durationMs >= 0) {
             parts.push(
@@ -1885,6 +1913,8 @@ export function ChatPage() {
           }
           appendAgentLine("tool_done", `${n}${parts.length ? ` (${parts.join(", ")})` : ""}`, {
             toolName: n,
+            toolOk,
+            toolError,
             durationMs: durationMs ?? undefined,
             resultChars: ch,
           });

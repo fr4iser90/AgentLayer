@@ -54,6 +54,24 @@ def test_coding_git_read_operations(tmp_path: Path) -> None:
     assert d.get("ok") is True
     assert "hello.txt" in d.get("output", "")
 
+    subprocess.run(
+        ["git", "-C", str(root), "tag", "v0.1.0"],
+        check=True,
+        capture_output=True,
+    )
+    (root / "hello.txt").write_text("world3\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(root), "add", "hello.txt"], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-C", str(root), "commit", "-m", "after tag"],
+        check=True,
+        capture_output=True,
+    )
+    ranged = git_read({"operation": "log", "since_ref": "v0.1.0", "max_commits": 10}, context=ctx)
+    r = json.loads(ranged)
+    assert r.get("ok") is True
+    assert r.get("rev_range") == "v0.1.0..HEAD"
+    assert "after tag" in r.get("output", "")
+
 
 def test_coding_git_read_not_a_repo(tmp_path: Path) -> None:
     if not _have_git():

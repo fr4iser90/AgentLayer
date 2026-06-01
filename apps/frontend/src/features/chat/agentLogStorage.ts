@@ -153,6 +153,8 @@ export function appendTimelineEntry(
       ...(entry.subagentRunId != null ? { subagentRunId: entry.subagentRunId } : {}),
       ...(entry.toolSummary != null ? { toolSummary: entry.toolSummary } : {}),
       ...(entry.stepPhase != null ? { stepPhase: entry.stepPhase } : {}),
+      ...(entry.toolOk != null ? { toolOk: entry.toolOk } : {}),
+      ...(entry.toolError != null ? { toolError: entry.toolError } : {}),
       ...(entry.toolRound != null ? { toolRound: entry.toolRound } : {}),
       ...(entry.nested === true ? { nested: true } : {}),
       ...(entry.indexMode != null ? { indexMode: entry.indexMode } : {}),

@@ -56,6 +56,17 @@ def _safe_rel_path(raw: Any) -> str | None:
     return p
 
 
+def _safe_git_ref(raw: Any) -> str | None:
+    if raw is None:
+        return None
+    ref = str(raw).strip()
+    if not ref or ref.startswith("-"):
+        return None
+    if any(ch in ref for ch in (";", "|", "&", "$", "`", "\n", "\r", "\x00")):
+        return None
+    return ref
+
+
 def _run_git(
     root: Path,
     args: list[str],
@@ -147,17 +158,35 @@ def git_read(arguments: dict[str, Any], context: dict | None = None) -> str:
         except (TypeError, ValueError):
             n = 25
         n = max(1, min(n, MAX_LOG_COMMITS))
-        code, out, _ = _run_git(
-            root,
-            [
-                "log",
-                f"-n{n}",
-                "--no-color",
-                "--date=short",
-                "--pretty=format:%h %ad %d %s",
-            ],
-            timeout=timeout_s,
-        )
+        since_ref = _safe_git_ref(arguments.get("since_ref"))
+        until_ref = _safe_git_ref(arguments.get("until_ref"))
+        if arguments.get("since_ref") and since_ref is None:
+            return json.dumps(
+                {"ok": False, "error": "since_ref must be a safe git ref (tag, branch, or SHA)"},
+                ensure_ascii=False,
+            )
+        if arguments.get("until_ref") and until_ref is None:
+            return json.dumps(
+                {"ok": False, "error": "until_ref must be a safe git ref (tag, branch, or SHA)"},
+                ensure_ascii=False,
+            )
+        rev_range: str | None = None
+        if since_ref and until_ref:
+            rev_range = f"{since_ref}..{until_ref}"
+        elif since_ref:
+            rev_range = f"{since_ref}..HEAD"
+        elif until_ref:
+            rev_range = until_ref
+        log_args = [
+            "log",
+            f"-n{n}",
+            "--no-color",
+            "--date=short",
+            "--pretty=format:%h %ad %d %s",
+        ]
+        if rev_range:
+            log_args.append(rev_range)
+        code, out, _ = _run_git(root, log_args, timeout=timeout_s)
     elif op == "diff_stat":
         code, out, _ = _run_git(root, ["diff", "--stat", "--no-color"], timeout=timeout_s)
     else:  # diff
@@ -173,16 +202,21 @@ def git_read(arguments: dict[str, Any], context: dict | None = None) -> str:
         code, out, _ = _run_git(root, args, timeout=timeout_s)
 
     preview, cut = _tail(out, MAX_OUTPUT_BYTES)
-    return json.dumps(
-        {
-            "ok": code == 0,
-            "operation": op,
-            "exit_code": code,
-            "output": preview,
-            "truncated": cut,
-        },
-        ensure_ascii=False,
-    )
+    payload = {
+        "ok": code == 0,
+        "operation": op,
+        "exit_code": code,
+        "output": preview,
+        "truncated": cut,
+    }
+    if op == "log":
+        if since_ref:
+            payload["since_ref"] = since_ref
+        if until_ref:
+            payload["until_ref"] = until_ref
+        if rev_range:
+            payload["rev_range"] = rev_range
+    return json.dumps(payload, ensure_ascii=False)
 
 
 
@@ -214,6 +248,17 @@ TOOLS: list[dict[str, Any]] = [
                     "max_commits": {
                         "type": "integer",
                         "description": "For log: number of commits (1–100, default 25)",
+                    },
+                    "since_ref": {
+                        "type": "string",
+                        "description": (
+                            "For log: start ref for changelog range (e.g. v1.0.0); "
+                            "uses since_ref..HEAD when until_ref is omitted"
+                        ),
+                    },
+                    "until_ref": {
+                        "type": "string",
+                        "description": "For log: end ref (optional; with since_ref uses since_ref..until_ref)",
                     },
                     "path": {
                         "type": "string",

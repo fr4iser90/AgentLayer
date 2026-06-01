@@ -50,6 +50,10 @@ export type AgentTimelineEntry = {
   toolSummary?: string;
   /** ``subagent_step`` phase: start | done */
   stepPhase?: "start" | "done";
+  /** Tool JSON ``ok`` on ``stepPhase=done`` (from ``agent.tool_done`` / sub-agent bridge). */
+  toolOk?: boolean;
+  /** Tool error excerpt on failed ``stepPhase=done``. */
+  toolError?: string;
   toolRound?: number;
   /** Indent in activity panel (delegated run). */
   nested?: boolean;

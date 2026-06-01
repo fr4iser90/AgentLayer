@@ -47,6 +47,29 @@ def test_forward_tool_done_omits_summary() -> None:
     assert "summary" not in out[0]
 
 
+def test_forward_tool_done_includes_failure_from_result() -> None:
+    out: list[dict] = []
+
+    def notify(payload: dict) -> None:
+        out.append(payload)
+
+    _forward_subagent_tool_event(
+        notify,
+        sub_run_id="abc",
+        agent_id="coding",
+        ev={
+            "type": "agent.tool_done",
+            "name": "git_push",
+            "round": 2,
+            "result_ok": False,
+            "result_error": "[Errno 13] Permission denied: '/tmp/al-git-ask-x.sh'",
+        },
+    )
+    assert out[0]["phase"] == "done"
+    assert out[0]["ok"] is False
+    assert "Permission denied" in out[0]["error"]
+
+
 def test_forward_ignores_other_events() -> None:
     out: list[dict] = []
 

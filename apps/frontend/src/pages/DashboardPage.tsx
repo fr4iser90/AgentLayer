@@ -28,6 +28,7 @@ import type {
   DashboardDataAgentlayer,
   DashboardDetail,
   DashboardMemberRow,
+  DashboardPublicShareRow,
   DashboardSummary,
 } from "../features/dashboard/types";
 
@@ -148,6 +149,14 @@ export function DashboardPage() {
   const [blockSharePick, setBlockSharePick] = useState<Record<string, boolean>>({});
   const [blockSharesBusy, setBlockSharesBusy] = useState(false);
   const [blockSharesErr, setBlockSharesErr] = useState<string | null>(null);
+  const [publicShares, setPublicShares] = useState<DashboardPublicShareRow[]>([]);
+  const [publicSharePick, setPublicSharePick] = useState<Record<string, boolean>>({});
+  const [publicShareLabel, setPublicShareLabel] = useState("");
+  const [publicShareExpiresAt, setPublicShareExpiresAt] = useState("");
+  const [publicSharePassword, setPublicSharePassword] = useState("");
+  const [publicSharesBusy, setPublicSharesBusy] = useState(false);
+  const [publicSharesErr, setPublicSharesErr] = useState<string | null>(null);
+  const [createdPublicLink, setCreatedPublicLink] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [activeHubOverride, setActiveHubOverride] = useState<DashboardHubId | null>(null);
   const [toolCatalogNames, setToolCatalogNames] = useState<string[]>([]);
@@ -412,6 +421,31 @@ export function DashboardPage() {
   }, [selectedId, canManageMembers, auth]);
 
   useEffect(() => {
+    if (!selectedId || !canManageMembers) {
+      setPublicShares([]);
+      setPublicSharesErr(null);
+      setCreatedPublicLink(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const res = await apiFetch(`/v1/dashboards/${selectedId}/public-shares`, auth);
+      if (!res.ok) {
+        if (!cancelled) setPublicSharesErr(await res.text());
+        return;
+      }
+      const j = (await res.json()) as { shares?: DashboardPublicShareRow[] };
+      if (!cancelled) {
+        setPublicSharesErr(null);
+        setPublicShares(j.shares ?? []);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId, canManageMembers, auth]);
+
+  useEffect(() => {
     if (!settingsOpen || !detail) return;
     let cancelled = false;
     setToolsCatalogErr(null);
@@ -570,6 +604,97 @@ export function DashboardPage() {
       setBlockGrants((prev) => prev.filter((g) => g.user_id !== userId));
     } finally {
       setBlockSharesBusy(false);
+    }
+  };
+
+  const createPublicShare = async () => {
+    if (!selectedId) return;
+    setPublicSharesBusy(true);
+    setPublicSharesErr(null);
+    setCreatedPublicLink(null);
+    try {
+      const ids = Object.entries(publicSharePick)
+        .filter(([, v]) => v)
+        .map(([k]) => k);
+      let expiresIso: string | undefined;
+      if (publicShareExpiresAt.trim()) {
+        const d = new Date(publicShareExpiresAt);
+        if (Number.isNaN(d.getTime())) {
+          setPublicSharesErr(t("dashboard:publicShareExpiresInvalid"));
+          return;
+        }
+        expiresIso = d.toISOString();
+      }
+      const pw = publicSharePassword.trim();
+      if (pw && pw.length < 4) {
+        setPublicSharesErr(t("dashboard:publicSharePasswordTooShort"));
+        return;
+      }
+      const res = await apiFetch(`/v1/dashboards/${selectedId}/public-shares`, auth, {
+        method: "POST",
+        body: JSON.stringify({
+          block_ids: ids,
+          label: publicShareLabel.trim(),
+          expires_at: expiresIso,
+          password: pw || undefined,
+        }),
+      });
+      const raw = await res.text();
+      if (!res.ok) {
+        setPublicSharesErr(raw);
+        return;
+      }
+      const j = JSON.parse(raw) as {
+        share?: DashboardPublicShareRow;
+        token?: string;
+      };
+      if (j.share) {
+        setPublicShares((prev) => [j.share!, ...prev]);
+      }
+      if (j.token) {
+        setCreatedPublicLink(`/app/dashboard/shared?t=${j.token}`);
+      }
+      setPublicShareLabel("");
+      setPublicShareExpiresAt("");
+      setPublicSharePassword("");
+      setPublicSharePick({});
+    } catch (e) {
+      setPublicSharesErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPublicSharesBusy(false);
+    }
+  };
+
+  const revokePublicShare = async (shareId: string) => {
+    if (!selectedId) return;
+    setPublicSharesBusy(true);
+    setPublicSharesErr(null);
+    try {
+      const res = await apiFetch(
+        `/v1/dashboards/${selectedId}/public-shares/${shareId}`,
+        auth,
+        { method: "DELETE" }
+      );
+      if (!res.ok) {
+        setPublicSharesErr(await res.text());
+        return;
+      }
+      setPublicShares((prev) =>
+        prev.map((s) =>
+          s.id === shareId ? { ...s, revoked_at: new Date().toISOString() } : s
+        )
+      );
+    } finally {
+      setPublicSharesBusy(false);
+    }
+  };
+
+  const copyPublicShareUrl = async (urlPath: string) => {
+    const full = `${window.location.origin}${urlPath}`;
+    try {
+      await navigator.clipboard.writeText(full);
+    } catch {
+      window.prompt(t("dashboard:publicShareCopyPrompt"), full);
     }
   };
 
@@ -1542,6 +1667,155 @@ export function DashboardPage() {
                         </button>
                       </li>
                     ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className="mt-4 rounded-xl border border-violet-500/25 bg-violet-950/15 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-violet-200/90">
+                  {t("dashboard:publicShareTitle")}
+                </p>
+                <p className="mt-1 text-xs text-surface-muted">{t("dashboard:publicShareIntro")}</p>
+                {publicSharesErr ? <p className="mt-2 text-xs text-red-300">{publicSharesErr}</p> : null}
+                {createdPublicLink ? (
+                  <div className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-950/20 p-3 text-xs text-emerald-100">
+                    <p className="font-medium">{t("dashboard:publicShareCreatedOnce")}</p>
+                    <p className="mt-2 break-all font-mono text-[11px] text-emerald-50/90">
+                      {window.location.origin}
+                      {createdPublicLink}
+                    </p>
+                    <button
+                      type="button"
+                      className="mt-2 rounded-md bg-emerald-700/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-600"
+                      onClick={() => void copyPublicShareUrl(createdPublicLink)}
+                    >
+                      {t("dashboard:publicShareCopyLink")}
+                    </button>
+                  </div>
+                ) : null}
+                <div className="mt-3 flex flex-wrap items-end gap-2">
+                  <div className="min-w-[200px] flex-1">
+                    <label className="mb-1 block text-[10px] text-surface-muted">
+                      {t("dashboard:publicShareLabelField")}
+                    </label>
+                    <input
+                      type="text"
+                      value={publicShareLabel}
+                      onChange={(e) => setPublicShareLabel(e.target.value)}
+                      placeholder={t("dashboard:publicShareLabelPlaceholder")}
+                      className="w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-violet-500/50"
+                    />
+                  </div>
+                  <div className="min-w-[180px]">
+                    <label className="mb-1 block text-[10px] text-surface-muted">
+                      {t("dashboard:publicShareExpiresLabel")}
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={publicShareExpiresAt}
+                      onChange={(e) => setPublicShareExpiresAt(e.target.value)}
+                      className="w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-violet-500/50"
+                    />
+                  </div>
+                  <div className="min-w-[160px]">
+                    <label className="mb-1 block text-[10px] text-surface-muted">
+                      {t("dashboard:publicSharePasswordField")}
+                    </label>
+                    <input
+                      type="password"
+                      value={publicSharePassword}
+                      onChange={(e) => setPublicSharePassword(e.target.value)}
+                      placeholder={t("dashboard:publicSharePasswordOptional")}
+                      className="w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-violet-500/50"
+                      autoComplete="new-password"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    disabled={publicSharesBusy}
+                    className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-50"
+                    onClick={() => void createPublicShare()}
+                  >
+                    {publicSharesBusy ? "…" : t("dashboard:publicShareCreate")}
+                  </button>
+                </div>
+                <p className="mt-3 text-[10px] uppercase tracking-wide text-surface-muted">
+                  {t("dashboard:publicShareBlocksHint")}
+                </p>
+                {gridLayout.blocks.length === 0 ? (
+                  <p className="mt-1 text-xs text-surface-muted">{t("dashboard:noBlocksInLayoutYet")}</p>
+                ) : (
+                  <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto rounded-lg border border-white/5 p-2 text-sm">
+                    {gridLayout.blocks.map((b) => {
+                      const id = typeof b.id === "string" ? b.id : String(b.id ?? "");
+                      const props =
+                        b.props && typeof b.props === "object" && !Array.isArray(b.props)
+                          ? (b.props as { title?: string })
+                          : {};
+                      const label = props.title?.trim() || b.type || id;
+                      if (!id) return null;
+                      return (
+                        <li key={`ps-${id}`} className="flex items-center gap-2">
+                          <input
+                            id={`pshare-${id}`}
+                            type="checkbox"
+                            checked={!!publicSharePick[id]}
+                            onChange={(e) =>
+                              setPublicSharePick((prev) => ({ ...prev, [id]: e.target.checked }))
+                            }
+                            className="rounded border-surface-border"
+                          />
+                          <label htmlFor={`pshare-${id}`} className="cursor-pointer text-neutral-200">
+                            <span className="text-surface-muted">{b.type}</span> · {label}
+                          </label>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                {publicShares.length === 0 ? (
+                  <p className="mt-3 text-xs text-surface-muted">{t("dashboard:publicSharesNoneYet")}</p>
+                ) : (
+                  <ul className="mt-3 divide-y divide-white/5 text-sm">
+                    {publicShares.map((s) => {
+                      const revoked = Boolean(s.revoked_at);
+                      const scopeLabel =
+                        s.scope === "blocks" || s.block_ids.length > 0
+                          ? t("dashboard:publicShareScopeBlocks", { count: s.block_ids.length })
+                          : t("dashboard:publicShareScopeFull");
+                      const expLabel =
+                        s.expires_at && !revoked
+                          ? t("dashboard:publicShareExpiresAt", {
+                              date: new Date(s.expires_at).toLocaleString(),
+                            })
+                          : null;
+                      return (
+                        <li
+                          key={s.id}
+                          className="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0"
+                        >
+                          <span className="text-neutral-200">
+                            {s.label || t("dashboard:publicShareUntitled")}{" "}
+                            <span className="text-surface-muted">
+                              ({scopeLabel}
+                              {s.password_protected ? ` · ${t("dashboard:publicSharePasswordProtected")}` : ""}
+                              {expLabel ? ` · ${expLabel}` : ""}
+                              {revoked ? ` · ${t("dashboard:publicShareRevoked")}` : ""})
+                            </span>
+                          </span>
+                          {!revoked ? (
+                            <button
+                              type="button"
+                              disabled={publicSharesBusy}
+                              className="text-xs text-red-300 hover:underline disabled:opacity-50"
+                              onClick={() => void revokePublicShare(s.id)}
+                            >
+                              {t("dashboard:publicShareRevoke")}
+                            </button>
+                          ) : null}
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </div>

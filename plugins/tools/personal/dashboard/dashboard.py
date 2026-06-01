@@ -6,9 +6,11 @@ import builtins
 import json
 import uuid
 from copy import deepcopy
+from datetime import datetime
 from typing import Any, Callable
 
 from apps.backend.dashboard import db as dashboard_db
+from apps.backend.dashboard import public_share
 from apps.backend.dashboard.data_paths import apply_data_patches, top_level_key
 from apps.backend.dashboard.tool_dashboard_resolve import resolve_dashboard_id
 from apps.backend.domain.identity import get_identity
@@ -19,8 +21,9 @@ TOOL_BUCKET = "meta"
 TOOL_DOMAIN = "dashboard"
 TOOL_LABEL = "Dashboards (generic)"
 TOOL_DESCRIPTION = (
-    "List dashboards, read ui_layout + data, patch block data by path, and adjust layout "
-    "(add/remove blocks, grid, props). Works for any kind; prefer kind-specific tools "
+    "List dashboards, read ui_layout + data, patch block data by path, adjust layout "
+    "(add/remove blocks, grid, props), and create public read-only share links. "
+    "Works for any kind; prefer kind-specific tools "
     "(ideas_*, pets_*, shopping_list_*) when available. Use dashboard_id from [Dashboard context] "
     "when the user has the board open. Does not create new dashboards — use the app catalog."
 )
@@ -482,11 +485,66 @@ def patch_layout(arguments: dict[str, Any]) -> str:
     )
 
 
+def create_public_share(arguments: dict[str, Any]) -> str:
+    """Create a public read-only link (optional block scope, expiry, password). Owner/co-owner only."""
+    ident = _identity()
+    if ident is None:
+        return _err("No user identity — dashboard tools need an authenticated chat user.")
+    tid, uid = ident
+    wid, res_err = resolve_dashboard_id(uid, tid, arguments.get("dashboard_id"))
+    if wid is None:
+        return _err(res_err or "dashboard_id required")
+
+    block_ids_raw = arguments.get("block_ids")
+    block_ids: list[str] = []
+    if isinstance(block_ids_raw, builtins.list):
+        block_ids = [str(x).strip() for x in block_ids_raw if str(x).strip()]
+
+    label = str(arguments.get("label") or "").strip()[:200]
+    password_raw = arguments.get("password")
+    pw = str(password_raw).strip() if password_raw is not None else ""
+
+    expires_at = None
+    raw_exp = arguments.get("expires_at")
+    if raw_exp is not None and str(raw_exp).strip():
+        try:
+            expires_at = datetime.fromisoformat(str(raw_exp).strip().replace("Z", "+00:00"))
+        except ValueError:
+            return _err("expires_at must be ISO-8601 datetime")
+
+    created = public_share.public_share_create(
+        uid,
+        tid,
+        wid,
+        block_ids=block_ids,
+        label=label,
+        expires_at=expires_at,
+        password=pw or None,
+    )
+    if created is None:
+        return _err(
+            "could not create public share (need owner/co-owner, valid block_ids, password min 4 chars if set)"
+        )
+    raw_token, meta = created
+    return json.dumps(
+        {
+            "ok": True,
+            "dashboard_id": str(wid),
+            "share": meta,
+            "token": raw_token,
+            "url_path": f"/app/dashboard/shared?t={raw_token}",
+            "hint": "Give the user url_path once; the token is not stored and cannot be retrieved later.",
+        },
+        ensure_ascii=False,
+    )
+
+
 HANDLERS: dict[str, Callable[[dict[str, Any]], str]] = {
     "list": list,
     "read": read,
     "patch_data": patch_data,
     "patch_layout": patch_layout,
+    "create_public_share": create_public_share,
 }
 
 TOOLS: list[dict[str, Any]] = [
@@ -584,6 +642,44 @@ TOOLS: list[dict[str, Any]] = [
                     },
                 },
                 "required": ["ops"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_public_share",
+            "TOOL_DESCRIPTION": (
+                "Create a public read-only share link for a dashboard (no login required). "
+                "Empty block_ids = entire board; otherwise only listed layout block ids (e.g. gallery blocks). "
+                "Optional ISO expires_at and password (min 4 chars). Returns token and url_path once — owner/co-owner only."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "dashboard_id": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": "UUID; omit if unambiguous (single dashboard).",
+                    },
+                    "block_ids": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "TOOL_DESCRIPTION": "Layout block ids to expose; empty = full dashboard",
+                    },
+                    "label": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": "Optional label for the owner (e.g. dog album for friends)",
+                    },
+                    "expires_at": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": "Optional ISO-8601 expiry datetime",
+                    },
+                    "password": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": "Optional link password (min 4 characters)",
+                    },
+                },
+                "required": [],
             },
         },
     },

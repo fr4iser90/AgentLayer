@@ -1,8 +1,9 @@
 import type { ChangeEvent, Dispatch, SetStateAction } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
+import { GalleryImage } from "./GalleryImage";
 import { formatDateTimeLocal } from "../../lib/formatDateTime";
 import type { UiBlock, UiLayout } from "./types";
 import { EmbedBlockBody } from "./EmbedBlock";
@@ -61,75 +62,6 @@ export function DashboardBlockTile(props: {
       setData={props.setData}
       readOnly={props.readOnly === true}
       dashboardId={props.dashboardId ?? null}
-    />
-  );
-}
-
-const WS_FILE_PREFIX = "wsfile:";
-
-function GalleryImage(props: { url: string; alt: string }) {
-  const { t } = useTranslation(["dashboard"]);
-  const auth = useAuth();
-  const { url, alt } = props;
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
-  const blobRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!url.startsWith(WS_FILE_PREFIX)) {
-      if (blobRef.current) {
-        URL.revokeObjectURL(blobRef.current);
-        blobRef.current = null;
-      }
-      setBlobUrl(null);
-      return;
-    }
-    const id = url.slice(WS_FILE_PREFIX.length).trim();
-    if (!id) {
-      if (blobRef.current) {
-        URL.revokeObjectURL(blobRef.current);
-        blobRef.current = null;
-      }
-      setBlobUrl(null);
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      const res = await apiFetch(`/v1/dashboards/files/${id}/content`, auth);
-      if (!res.ok || cancelled) return;
-      const b = await res.blob();
-      if (cancelled) return;
-      if (blobRef.current) URL.revokeObjectURL(blobRef.current);
-      const created = URL.createObjectURL(b);
-      blobRef.current = created;
-      setBlobUrl(created);
-    })();
-    return () => {
-      cancelled = true;
-      if (blobRef.current) {
-        URL.revokeObjectURL(blobRef.current);
-        blobRef.current = null;
-      }
-    };
-  }, [url, auth, auth.accessToken]);
-
-  if (url.startsWith(WS_FILE_PREFIX)) {
-    if (!blobUrl) {
-      return (
-        <div className="flex h-full items-center justify-center text-xs text-surface-muted">
-          {t("dashboard:imageLoading")}
-        </div>
-      );
-    }
-    return <img src={blobUrl} alt={alt} className="h-full w-full object-cover" />;
-  }
-  return (
-    <img
-      src={url}
-      alt={alt}
-      className="h-full w-full object-cover"
-      onError={(e) => {
-        (e.target as HTMLImageElement).style.display = "none";
-      }}
     />
   );
 }

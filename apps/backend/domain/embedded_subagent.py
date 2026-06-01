@@ -117,6 +117,15 @@ def _forward_subagent_tool_event(
         label = ev.get("label")
         if isinstance(label, str) and label.strip():
             payload["label"] = label.strip()
+    else:
+        result_ok = ev.get("result_ok")
+        if result_ok is True:
+            payload["ok"] = True
+        elif result_ok is False:
+            payload["ok"] = False
+        result_error = ev.get("result_error")
+        if isinstance(result_error, str) and result_error.strip():
+            payload["error"] = result_error.strip()[:500]
     notify(payload)
 
 

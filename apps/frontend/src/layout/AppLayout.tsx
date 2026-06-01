@@ -1,4 +1,4 @@
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import { UserMenu } from "../components/UserMenu";
@@ -21,7 +21,18 @@ const signInClass =
 export function AppLayout() {
   const { t, i18n } = useTranslation();
   const { accessToken, user, loading } = useAuth();
+  const location = useLocation();
   const signedIn = !!accessToken && !!user;
+  const isPublicDashboardShare = location.pathname.includes("/dashboard/shared");
+
+  if (isPublicDashboardShare) {
+    return (
+      <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-neutral-950">
+        <Outlet />
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden">
       <header className="flex shrink-0 items-center gap-3 border-b border-surface-border bg-surface-raised px-4 py-3">

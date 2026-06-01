@@ -73,8 +73,10 @@ export interface DashboardDetail extends DashboardSummary {
   ui_layout: UiLayout | Record<string, unknown>;
   /** Template payload; may include ``_agentlayer`` for AgentLayer agent settings. */
   data: Record<string, unknown>;
-  /** ``granular`` = subset of blocks via block-shares (not full dashboard member). */
-  access_scope?: "full" | "granular";
+  /** ``public`` on token-based shared views. */
+  access_scope?: "full" | "granular" | "public";
+  /** Label set by owner when creating a public share link. */
+  share_label?: string;
   allowed_block_ids?: string[];
   /** True when the granular grant has ``edit`` (can PATCH shared blocks); omitted for full members. */
   granular_can_write?: boolean;
@@ -94,4 +96,17 @@ export interface DashboardBlockGrantRow {
   /** ``view`` = read-only blocks; ``edit`` = can update content/layout for shared blocks only. */
   permission?: "view" | "edit";
   created_at: string;
+}
+
+export interface DashboardPublicShareRow {
+  id: string;
+  label: string;
+  block_ids: string[];
+  /** ``full`` = entire dashboard; ``blocks`` = subset only */
+  scope: "full" | "blocks";
+  expires_at: string | null;
+  revoked_at: string | null;
+  created_at: string;
+  password_protected?: boolean;
+  url_path?: string;
 }

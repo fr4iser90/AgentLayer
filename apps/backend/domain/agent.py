@@ -696,145 +696,6 @@ def _infer_shell_command_from_user_text(user_text: str) -> str | None:
     return None
 
 
-def _is_git_pull_command(command: str) -> bool:
-    c = (command or "").strip().lower()
-    if not c:
-        return False
-    return c == "git pull" or c.startswith("git pull ")
-
-
-def _unattended_blocked_tool_json(
-    name: str,
-    args: dict[str, Any],
-    tool_context: dict[str, Any],
-) -> str | None:
-    if not tool_context.get("agent_unattended"):
-        return None
-    if tool_context.get("schedule_git_pull_done"):
-        if name == "git_sync" and str(args.get("operation") or "pull").strip().lower() == "pull":
-            pr = tool_context.get("schedule_git_pull_result") or "completed"
-            return json.dumps(
-                {
-                    "ok": False,
-                    "error": (
-                        f"Git pull already completed this run ({pr}). "
-                        "Do NOT run pull again. Next: agent/doc-* branch, then "
-                        "coding_write_file docs/MAINTENANCE_REPORT.md."
-                    ),
-                    "pull_result": pr,
-                },
-                ensure_ascii=False,
-            )
-        if name == "bash":
-            cmd = str(args.get("command") or "").strip()
-            if _is_git_pull_command(cmd):
-                pr = tool_context.get("schedule_git_pull_result") or "completed"
-                return json.dumps(
-                    {
-                        "ok": False,
-                        "error": (
-                            f"Git pull already completed this run ({pr}). "
-                            "Use coding_write_file for docs/MAINTENANCE_REPORT.md."
-                        ),
-                        "pull_result": pr,
-                    },
-                    ensure_ascii=False,
-                )
-    if name == "bash":
-        cmd = str(args.get("command") or "").strip()
-        if not cmd:
-            return json.dumps(
-                {
-                    "ok": False,
-                    "error": (
-                        'coding_bash requires {"command": "…"} — empty {} is not allowed '
-                        "for scheduled runs. Example: {\"command\": \"git checkout -b agent/doc-20260517\"}."
-                    ),
-                },
-                ensure_ascii=False,
-            )
-        from apps.backend.domain.coding.bash_policy import (
-            unattended_coding_bash_reject_reason,
-        )
-
-        reject = unattended_coding_bash_reject_reason(cmd)
-        if reject:
-            return json.dumps(
-                {
-                    "ok": False,
-                    "error": (
-                        f"{reject} "
-                        "Use coding_git_sync for pull or a real shell one-liner."
-                    ),
-                },
-                ensure_ascii=False,
-            )
-    return None
-
-
-def _blocked_tool_json(
-    name: str,
-    args: dict[str, Any],
-    tool_context: dict[str, Any],
-) -> str | None:
-    agent = str(tool_context.get("agent_id") or "").strip()
-    if agent == "coding_plan":
-        from apps.backend.domain.coding_plan_search_policy import coding_plan_tool_blocked
-
-        blocked_msg = coding_plan_tool_blocked(name, args, tool_context)
-        if blocked_msg:
-            return json.dumps({"ok": False, "error": blocked_msg}, ensure_ascii=False)
-    if agent == "coding":
-        from apps.backend.domain.delegate_enforcement import coding_delegate_tool_blocked
-
-        blocked_msg = coding_delegate_tool_blocked(name, args, tool_context)
-        if blocked_msg:
-            return json.dumps({"ok": False, "error": blocked_msg}, ensure_ascii=False)
-    if agent == "general":
-        from apps.backend.domain.delegate_enforcement import general_orchestrator_tool_blocked
-
-        blocked_msg = general_orchestrator_tool_blocked(name, args, tool_context)
-        if blocked_msg:
-            return json.dumps({"ok": False, "error": blocked_msg}, ensure_ascii=False)
-    return _unattended_blocked_tool_json(name, args, tool_context)
-
-
-def _unattended_mark_git_pull_done(
-    name: str,
-    result: str,
-    tool_context: dict[str, Any],
-) -> str | None:
-    """If a pull succeeded, set context flags and return a system hint for the model."""
-    if not tool_context.get("agent_unattended"):
-        return None
-    try:
-        o = json.loads(result)
-    except json.JSONDecodeError:
-        return None
-    if not isinstance(o, dict) or o.get("ok") is not True:
-        return None
-    pull_result: str | None = None
-    if name == "git_sync" and str(o.get("operation") or "").strip().lower() == "pull":
-        pull_result = str(o.get("pull_result") or "completed")
-    elif name == "bash":
-        cmd = str(o.get("command") or "")
-        if _is_git_pull_command(cmd) and int(o.get("exit_code") or 0) == 0:
-            pull_result = str(o.get("pull_result") or "completed")
-    if not pull_result:
-        return None
-    tool_context["schedule_git_pull_done"] = True
-    tool_context["schedule_git_pull_result"] = pull_result
-    msg = str(o.get("message") or "").strip()
-    steps = o.get("next_steps")
-    step_txt = ""
-    if isinstance(steps, list) and steps:
-        step_txt = " Next: " + "; ".join(str(x) for x in steps[:3])
-    return (
-        f"[Schedule git] Pull complete (pull_result={pull_result}). "
-        f"{msg} Do NOT call coding_git_sync pull or coding_bash git pull again.{step_txt}"
-    )
-
-
 def _normalize_tool_call_arguments(
     name: str,
     args: dict[str, Any],
@@ -4863,117 +4724,95 @@ async def chat_completion(
                         _prev_args,
                         args,
                     )
-                blocked: str | None = None
                 tool_call_id = tc.get("id") or ""
                 args_line = _format_normalized_tool_args_for_recap(name, args, max_len=200)
-                if blocked is None:
-                    blocked = _blocked_tool_json(name, args, tool_context)
-                if blocked is not None:
-                    result = blocked
-                    logger.info(
-                        "tool_blocked run_id=%s agent=%s round=%d tool=%s %s",
-                        _short_run_id(agent_run_id),
-                        agent_id if isinstance(agent_id, str) else "-",
-                        round_i + 1,
-                        name,
-                        args_line,
-                    )
-                else:
-                    logger.info(
-                        "tool_exec run_id=%s agent=%s round=%d tool=%s %s",
-                        _short_run_id(agent_run_id),
-                        agent_id if isinstance(agent_id, str) else "-",
-                        round_i + 1,
-                        name,
-                        args_line,
-                    )
-                    if cancel_event is not None and cancel_event.is_set():
-                        if event_emit:
-                            await event_emit(
-                                {
-                                    "type": "agent.cancelled",
-                                    "agent_run_id": agent_run_id,
-                                    "phase": "before_tool",
-                                    "round": round_i + 1,
-                                    "name": name,
-                                }
-                            )
-                        raise AgentChatCancelled()
+                logger.info(
+                    "tool_exec run_id=%s agent=%s round=%d tool=%s %s",
+                    _short_run_id(agent_run_id),
+                    agent_id if isinstance(agent_id, str) else "-",
+                    round_i + 1,
+                    name,
+                    args_line,
+                )
+                if cancel_event is not None and cancel_event.is_set():
                     if event_emit:
-                        from apps.backend.domain.tool_step_label import format_tool_step_label_from_args
+                        await event_emit(
+                            {
+                                "type": "agent.cancelled",
+                                "agent_run_id": agent_run_id,
+                                "phase": "before_tool",
+                                "round": round_i + 1,
+                                "name": name,
+                            }
+                        )
+                    raise AgentChatCancelled()
+                if event_emit:
+                    from apps.backend.domain.tool_step_label import format_tool_step_label_from_args
 
-                        _tool_label: str | None = None
-                        try:
-                            _tool_label = get_registry().display_label_for_tool(name)
-                        except Exception:
-                            _tool_label = None
-                        _step_label = format_tool_step_label_from_args(
-                            name,
-                            args,
-                            tool_label=_tool_label,
-                        )
-                        _tool_start_ev: dict[str, Any] = {
-                            "type": "agent.tool_start",
-                            "agent_run_id": agent_run_id,
-                            "round": round_i + 1,
-                            "name": name,
-                            "summary": args_line,
-                            "step_label": _step_label,
-                        }
-                        if _tool_label:
-                            _tool_start_ev["label"] = _tool_label
-                        await event_emit(_tool_start_ev)
-                    tctx = set_tool_invocation_messages(list(messages))
+                    _tool_label: str | None = None
                     try:
-                        perm_always = tool_context.get("permission_always_allow_tools")
-                        if not isinstance(perm_always, set):
-                            perm_always = set()
-                            tool_context["permission_always_allow_tools"] = perm_always
-                        need_gate = (
-                            permission_ask
-                            and not bool(tool_context.get("agent_unattended"))
-                            and bool(tool_context.get("agent_coding_tools_permission_ask"))
-                            and name in _CODING_TOOLS_PERMISSION_ASK
-                            and name not in perm_always
+                        _tool_label = get_registry().display_label_for_tool(name)
+                    except Exception:
+                        _tool_label = None
+                    _step_label = format_tool_step_label_from_args(
+                        name,
+                        args,
+                        tool_label=_tool_label,
+                    )
+                    _tool_start_ev: dict[str, Any] = {
+                        "type": "agent.tool_start",
+                        "agent_run_id": agent_run_id,
+                        "round": round_i + 1,
+                        "name": name,
+                        "summary": args_line,
+                        "step_label": _step_label,
+                    }
+                    if _tool_label:
+                        _tool_start_ev["label"] = _tool_label
+                    await event_emit(_tool_start_ev)
+                tctx = set_tool_invocation_messages(list(messages))
+                try:
+                    perm_always = tool_context.get("permission_always_allow_tools")
+                    if not isinstance(perm_always, set):
+                        perm_always = set()
+                        tool_context["permission_always_allow_tools"] = perm_always
+                    need_gate = (
+                        permission_ask
+                        and not bool(tool_context.get("agent_unattended"))
+                        and bool(tool_context.get("agent_coding_tools_permission_ask"))
+                        and name in _CODING_TOOLS_PERMISSION_ASK
+                        and name not in perm_always
+                    )
+                    if need_gate and control_queue is None:
+                        logger.warning(
+                            "agent_permission_ask set but no control_queue; executing %s without approval",
+                            name,
                         )
-                        if need_gate and control_queue is None:
-                            logger.warning(
-                                "agent_permission_ask set but no control_queue; executing %s without approval",
-                                name,
-                            )
-                        if need_gate and control_queue is not None:
-                            preview = json.dumps(args, ensure_ascii=False, default=str)[:2000]
-                            rid = str(uuid.uuid4())
-                            rep, fb_msg = await _wait_for_tool_permission_reply(
-                                control_queue=control_queue,
-                                cancel_event=cancel_event,
-                                event_emit=event_emit,
-                                agent_run_id=agent_run_id,
-                                request_id=rid,
-                                tool_name=name,
-                                args_preview=preview,
-                                round_i=round_i,
-                                handle_control=handle_control_dict,
-                            )
-                            if rep == "reject":
-                                rej: dict[str, Any] = {
-                                    "ok": False,
-                                    "error": "User rejected permission for this tool call.",
-                                }
-                                if fb_msg:
-                                    rej["user_message"] = fb_msg
-                                result = json.dumps(rej, ensure_ascii=False)
-                            else:
-                                if rep == "always":
-                                    perm_always.add(name)
-                                result = await _thread_with_cancel(
-                                    cancel_event,
-                                    execute_tool,
-                                    name,
-                                    args,
-                                    context=tool_context,
-                                )
+                    if need_gate and control_queue is not None:
+                        preview = json.dumps(args, ensure_ascii=False, default=str)[:2000]
+                        rid = str(uuid.uuid4())
+                        rep, fb_msg = await _wait_for_tool_permission_reply(
+                            control_queue=control_queue,
+                            cancel_event=cancel_event,
+                            event_emit=event_emit,
+                            agent_run_id=agent_run_id,
+                            request_id=rid,
+                            tool_name=name,
+                            args_preview=preview,
+                            round_i=round_i,
+                            handle_control=handle_control_dict,
+                        )
+                        if rep == "reject":
+                            rej: dict[str, Any] = {
+                                "ok": False,
+                                "error": "User rejected permission for this tool call.",
+                            }
+                            if fb_msg:
+                                rej["user_message"] = fb_msg
+                            result = json.dumps(rej, ensure_ascii=False)
                         else:
+                            if rep == "always":
+                                perm_always.add(name)
                             result = await _thread_with_cancel(
                                 cancel_event,
                                 execute_tool,
@@ -4981,8 +4820,16 @@ async def chat_completion(
                                 args,
                                 context=tool_context,
                             )
-                    finally:
-                        reset_tool_invocation_messages(tctx)
+                    else:
+                        result = await _thread_with_cancel(
+                            cancel_event,
+                            execute_tool,
+                            name,
+                            args,
+                            context=tool_context,
+                        )
+                finally:
+                    reset_tool_invocation_messages(tctx)
                 ok_sum, err_sum = _tool_result_summary(result)
                 if (
                     name == "git_read"
@@ -4997,9 +4844,6 @@ async def chat_completion(
                     op = str(args.get("operation") or args.get("subcommand") or "").strip().lower()
                     if op in ("diff_stat", "diff-stat", "diff"):
                         tool_context["plan_git_diff_seen"] = True
-                git_hint = _unattended_mark_git_pull_done(name, result or "", tool_context)
-                if git_hint:
-                    messages.append({"role": "system", "content": git_hint[:2500]})
                 follow_hint = _tool_result_followup_hint(name, result)
                 if follow_hint:
                     messages.append({"role": "system", "content": follow_hint[:2500]})
@@ -5020,7 +4864,7 @@ async def chat_completion(
                             refs = args.get("artifact_refs")
                             if sub_aid == "coding" and isinstance(refs, list) and refs:
                                 tool_context.pop("orchestrator_pending_artifact_refs", None)
-                        elif blocked is None:
+                        else:
                             pending = extract_handoff_artifact_ids(result or "")
                             if pending:
                                 tool_context["orchestrator_pending_artifact_refs"] = pending
@@ -5041,7 +4885,7 @@ async def chat_completion(
                     vr = _format_workspace_verify_recap(result)
                     if vr:
                         verify_recap_line = vr
-                if event_emit and blocked is None:
+                if event_emit:
                     await _apply_workspace_tool_bind_side_effects(
                         tool_name=name,
                         result=result or "",
@@ -5098,7 +4942,7 @@ async def chat_completion(
                         )
                         if tool_context.get("agent_unattended"):
                             record_schedule_abort("repeated_tool_loop")
-                if event_emit and blocked is None:
+                if event_emit:
                     await _emit_secret_prompt_from_tool_result(
                         name,
                         result,

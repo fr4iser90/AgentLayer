@@ -6,6 +6,8 @@ export type SubagentActivityExtras = Pick<
   | "toolName"
   | "toolSummary"
   | "stepPhase"
+  | "toolOk"
+  | "toolError"
   | "toolRound"
   | "durationMs"
   | "resultChars"
@@ -45,7 +47,17 @@ export function handleSubagentWsEvent(
     const toolLabel = typeof msg.label === "string" ? msg.label.trim() : undefined;
     const stepLabel = typeof msg.step_label === "string" ? msg.step_label.trim() : undefined;
     const phase = msg.phase === "done" ? "done" : "start";
-    const label = formatToolStepLabel(tool, summary, toolLabel, stepLabel);
+    const toolOk =
+      msg.ok === false ? false : msg.ok === true ? true : undefined;
+    const toolError =
+      typeof msg.error === "string" && msg.error.trim()
+        ? msg.error.trim().slice(0, 500)
+        : undefined;
+    let label = formatToolStepLabel(tool, summary, toolLabel, stepLabel);
+    if (phase === "done" && toolOk === false) {
+      const errBit = toolError || "failed";
+      label = label ? `${label} — ${errBit}` : errBit;
+    }
     append("subagent_step", label, {
       subagentAgentId: aid,
       subagentRunId: sid,
@@ -53,6 +65,8 @@ export function handleSubagentWsEvent(
       toolName: tool,
       toolSummary: summary,
       stepPhase: phase,
+      toolOk,
+      toolError,
       toolRound: msg.round != null ? Number(msg.round) : undefined,
     });
     return true;

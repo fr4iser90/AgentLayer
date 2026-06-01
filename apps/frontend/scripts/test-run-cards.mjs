@@ -35,7 +35,16 @@ export function buildRunCardsFromTimeline(entries) {
     if (e.kind === "subagent_step") {
       const card = findRunningSubagent(e);
       if (card) {
-        if (e.stepPhase !== "done") {
+        if (e.stepPhase === "done" && e.toolOk === false) {
+          card.details.push(e);
+          const label = e.text.trim();
+          if (label) {
+            const rs = card.recentSteps ?? [];
+            card.recentSteps = (rs.length ? [...rs.slice(0, -1), label] : [label]).slice(-8);
+            card.subtitle = label;
+          }
+          card.status = "failed";
+        } else if (e.stepPhase !== "done") {
           card.details.push(e);
           const label = e.text.trim();
           if (label) {
@@ -50,7 +59,11 @@ export function buildRunCardsFromTimeline(entries) {
     if (e.kind === "subagent_done") {
       const card = findRunningSubagent(e);
       if (card) {
-        card.status = e.text.toLowerCase().includes("failed") ? "failed" : "done";
+        const toolFailed = card.details.some(
+          (d) => d.kind === "subagent_step" && d.stepPhase === "done" && d.toolOk === false
+        );
+        card.status =
+          e.text.toLowerCase().includes("failed") || toolFailed ? "failed" : "done";
         card.durationMs = e.durationMs;
         card.currentStep = undefined;
         card.details.push(e);
@@ -112,6 +125,36 @@ assert(
   "done phases omitted from card details"
 );
 assert(subagentRun[0].details.filter((d) => d.kind === "subagent_step").length === 2, "start steps only in details");
+
+const failedPush = buildRunCardsFromTimeline([
+  { id: "1", kind: "subagent_start", text: "push policy", subagentAgentId: "coding", subagentRunId: "run-b" },
+  {
+    id: "2",
+    kind: "subagent_step",
+    text: "Coding: Git push",
+    subagentAgentId: "coding",
+    subagentRunId: "run-b",
+    stepPhase: "start",
+    toolName: "git_push",
+  },
+  {
+    id: "3",
+    kind: "subagent_step",
+    text: "Coding: Git push — permission denied",
+    subagentAgentId: "coding",
+    subagentRunId: "run-b",
+    stepPhase: "done",
+    toolName: "git_push",
+    toolOk: false,
+    toolError: "permission denied",
+  },
+  { id: "4", kind: "subagent_done", text: "finished", subagentAgentId: "coding", subagentRunId: "run-b", durationMs: 1000 },
+]);
+assert(failedPush[0].status === "failed", "subagent card failed when a tool step failed");
+assert(
+  failedPush[0].recentSteps?.some((s) => s.includes("permission denied")),
+  "failed tool error visible in recent steps"
+);
 
 const indexRun = buildRunCardsFromTimeline([
   { id: "a", kind: "index_start", text: "Docs index", indexMode: "docs" },

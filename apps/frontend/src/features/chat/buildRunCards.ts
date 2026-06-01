@@ -89,8 +89,20 @@ function findRunningSubagentCard(
 }
 
 function applySubagentStep(card: RunCard, e: AgentTimelineEntry): void {
-  // Done phases are lifecycle markers only; recentSteps holds the human-readable label once.
   if (e.stepPhase === "done") {
+    if (e.toolOk !== false) {
+      return;
+    }
+    if (!card.details.includes(e)) card.details.push(e);
+    const label = e.text.trim();
+    if (label) {
+      const rs = card.recentSteps ?? [];
+      card.recentSteps = (rs.length ? [...rs.slice(0, -1), label] : [label]).slice(
+        -RECENT_STEPS_MAX
+      );
+      card.subtitle = label;
+    }
+    card.status = "failed";
     return;
   }
   if (!card.details.includes(e)) card.details.push(e);
@@ -102,8 +114,15 @@ function applySubagentStep(card: RunCard, e: AgentTimelineEntry): void {
   card.stepCount = (card.stepCount ?? 0) + 1;
 }
 
+function subagentCardHasFailedToolStep(card: RunCard): boolean {
+  return card.details.some(
+    (d) => d.kind === "subagent_step" && d.stepPhase === "done" && d.toolOk === false
+  );
+}
+
 function completeSubagentCard(card: RunCard, done: AgentTimelineEntry): void {
-  card.status = isFailedText(done.text) ? "failed" : "done";
+  card.status =
+    isFailedText(done.text) || subagentCardHasFailedToolStep(card) ? "failed" : "done";
   card.durationMs = done.durationMs ?? card.durationMs;
   card.resultChars = done.resultChars ?? card.resultChars;
   card.subagentRunId = card.subagentRunId ?? done.subagentRunId;
@@ -280,7 +299,8 @@ export function buildRunCardsFromTimeline(entries: AgentTimelineEntry[]): RunCar
       const tool = e.toolName;
       const open = openTools.get(tool);
       if (open) {
-        open.status = isFailedText(e.text) ? "failed" : "done";
+        open.status =
+          e.toolOk === false || isFailedText(e.text) ? "failed" : "done";
         open.durationMs = e.durationMs ?? open.durationMs;
         open.resultChars = e.resultChars ?? open.resultChars;
         if (!open.details.includes(e)) open.details.push(e);

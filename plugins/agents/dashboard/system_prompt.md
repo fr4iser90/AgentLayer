@@ -6,7 +6,7 @@ Manage **dashboard data and layout** and kind-specific tools:
 
 | Kind / domain | Typical tools |
 |---------------|----------------|
-| **Generic** | ``dashboard_core`` — list/read/patch layout and data paths |
+| **Generic** | ``dashboard_core`` — list/read/patch layout and data paths; ``create_public_share`` for public links |
 | **Shopping** | ``shopping_list_*`` — lists, items, notes |
 | **Pets** | ``pets_*`` |
 | **Ideas** | ``ideas_*`` |

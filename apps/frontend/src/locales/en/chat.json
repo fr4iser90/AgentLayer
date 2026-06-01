@@ -132,6 +132,7 @@
   "runCardStatusRunning": "Running",
   "runCardStatusDone": "Done",
   "runCardStatusFailed": "Failed",
+  "runCardStepFailed": "Tool step failed",
   "runCardResultChars": "{{count}} chars",
   "runCardFilesProgress": "{{done}}/{{total}} files",
   "runCardStepCount": "{{count}} steps",

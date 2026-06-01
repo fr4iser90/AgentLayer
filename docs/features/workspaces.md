@@ -30,6 +30,20 @@ Backend stores them in `user_dashboards` (created by `dashboard/**/migrations/00
 
 Sharing UI is in `interfaces/agent-ui/src/pages/DashboardPage.tsx` (Settings drawer).
 
+### Public read-only links (no account)
+
+Owner/co-owner can create token links under **Settings → Öffentlicher Link / Public link**:
+
+- Empty block selection = entire dashboard read-only
+- Selected blocks = same filtering as granular tenant block-shares
+- URL: `/app/dashboard/shared?t=<token>` (token shown once on create)
+- Optional **expiry** (`expires_at` ISO) and **password** (min 4 chars; sent as header `X-Dashboard-Share-Password` on public views)
+- **Gallery presentation:** when the shared layout contains only `gallery` / `hero` / `markdown` blocks, `/app/dashboard/shared` renders a full-width album view (no app nav, no dashboard grid). Mixed boards (e.g. pets table + gallery) still use the grid layout.
+- API: `GET /v1/dashboards/shared/{token}`, file content via `GET /v1/dashboards/shared/{token}/files/{id}/content`
+- Revoke: `DELETE /v1/dashboards/{dashboard_id}/public-shares/{share_id}`
+
+Agent tool: `create_public_share` in `plugins/tools/personal/dashboard/dashboard.py` (same options as API).
+
 ## Frontend
 
 - Page: `interfaces/agent-ui/src/pages/DashboardPage.tsx`
@@ -79,6 +93,7 @@ Module: `plugins/tools/capabilities/platform/dashboard_core/dashboard_core.py`
 | `read` | `ui_layout`, `data`, `block_ids` (large payloads may truncate) |
 | `patch_data` | `{path, value}` patches on `data` (dotted paths; granular shares: allowed keys only) |
 | `patch_layout` | `add_block`, `remove_block`, `set_grid`, `set_props` (not for granular block-only shares) |
+| `create_public_share` | Public read-only link; optional `block_ids`, `expires_at`, `password` (returns `token` + `url_path` once) |
 
 Capabilities: `dashboard.read`, `dashboard.write`. Prefer kind-specific tools when they exist.
 

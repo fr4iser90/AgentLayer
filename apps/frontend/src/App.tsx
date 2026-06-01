@@ -31,6 +31,7 @@ import { ToolsSettings } from "./pages/settings/ToolsSettings";
 import SharesSettings from "./pages/settings/SharesSettings";
 import { StudioPage } from "./pages/StudioPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { DashboardPublicSharePage } from "./pages/DashboardPublicSharePage";
 import { LoginPage } from "./pages/LoginPage";
 import { SetupWizardPage } from "./pages/SetupWizardPage";
 import { MySchedulesPage } from "./pages/MySchedulesPage";
@@ -49,6 +50,7 @@ export function App() {
           <Route element={<AppLayout />}>
             <Route path="login" element={<LoginPage />} />
             <Route path="setup" element={<SetupWizardPage />} />
+            <Route path="dashboard/shared" element={<DashboardPublicSharePage />} />
             <Route element={<RequireSession />}>
               <Route path="/" element={<HomePage />} />
               <Route path="chat" element={<ChatPage />} />

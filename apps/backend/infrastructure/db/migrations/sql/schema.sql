@@ -71,6 +71,24 @@ CREATE TABLE dashboard_block_share_grants (
 CREATE INDEX idx_dashboard_block_shares_dashboard ON dashboard_block_share_grants (dashboard_id);
 CREATE INDEX idx_dashboard_block_shares_viewer ON dashboard_block_share_grants (viewer_user_id);
 
+CREATE TABLE dashboard_public_share_tokens (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  dashboard_id UUID NOT NULL REFERENCES user_dashboards(id) ON DELETE CASCADE,
+  tenant_id BIGINT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL,
+  label TEXT NOT NULL DEFAULT '',
+  block_ids TEXT[] NOT NULL DEFAULT '{}',
+  expires_at TIMESTAMPTZ NULL,
+  created_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  revoked_at TIMESTAMPTZ NULL,
+  password_hash TEXT NULL
+);
+
+CREATE UNIQUE INDEX uq_dashboard_public_share_token_hash ON dashboard_public_share_tokens (token_hash);
+CREATE INDEX idx_dashboard_public_share_dashboard ON dashboard_public_share_tokens (dashboard_id, tenant_id)
+  WHERE revoked_at IS NULL;
+
 CREATE TABLE tenant_dashboard_installed_template_kinds (
   tenant_id BIGINT PRIMARY KEY REFERENCES tenants(id) ON DELETE CASCADE,
   kinds TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[]

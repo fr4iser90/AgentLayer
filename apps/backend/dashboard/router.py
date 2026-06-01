@@ -17,7 +17,7 @@ from apps.backend.infrastructure.operator_settings import (
     effective_dashboard_upload_mime,
 )
 from apps.backend.dashboard import db as dashboard_db
-from apps.backend.dashboard import file_storage, files_db
+from apps.backend.dashboard import file_storage, files_db, public_share
 from apps.backend.dashboard.bootstrap import ensure_dashboard_schema, dashboard_tables_exist
 from apps.backend.dashboard.upload_bytes import normalized_content_type, sniff_image_mime
 from apps.backend.infrastructure.public_error import http_500_detail
@@ -57,6 +57,27 @@ class DashboardBlockShareBody(BaseModel):
     email: str = Field(..., min_length=3, max_length=254)
     block_ids: list[str] = Field(default_factory=list)
     permission: str = Field(default="view", max_length=8)
+
+
+class DashboardPublicShareCreateBody(BaseModel):
+    """Create a public read-only link. Empty ``block_ids`` = entire dashboard."""
+
+    block_ids: list[str] = Field(default_factory=list)
+    label: str = Field(default="", max_length=200)
+    expires_at: str | None = Field(
+        default=None,
+        description="Optional ISO-8601 expiry (UTC). Omit for no expiry.",
+    )
+    password: str | None = Field(
+        default=None,
+        max_length=128,
+        description="Optional link password (min 4 chars). Omit for open links.",
+    )
+
+
+def _share_password_from_request(request: Request) -> str | None:
+    raw = (request.headers.get(public_share.SHARE_PASSWORD_HEADER) or "").strip()
+    return raw or None
 
 
 class DashboardInstallBody(BaseModel):
@@ -148,6 +169,59 @@ async def dashboard_upload_limits(request: Request):
         "max_file_bytes": effective_dashboard_upload_max_bytes(),
         "allowed_mime": sorted(effective_dashboard_upload_mime()),
     }
+
+
+@router.get("/shared/{token}")
+async def get_shared_dashboard(token: str, request: Request):
+    """Public read-only dashboard view via share token (no auth)."""
+    _require_schema()
+    raw = (token or "").strip()
+    if len(raw) < 16:
+        raise HTTPException(status_code=404, detail="share not found")
+    result = public_share.public_share_get_dashboard(
+        raw, password=_share_password_from_request(request)
+    )
+    if result.status == "not_found":
+        raise HTTPException(status_code=404, detail="share not found or expired")
+    if result.status == "password_required":
+        return {
+            "ok": True,
+            "password_required": True,
+            "share_label": result.share_label,
+        }
+    if result.status == "invalid_password":
+        raise HTTPException(status_code=401, detail="invalid_password")
+    return {"ok": True, "dashboard": result.dashboard}
+
+
+@router.get("/shared/{token}/files/{file_id}/content")
+async def shared_dashboard_file_content(
+    token: str, file_id: uuid.UUID, request: Request
+):
+    """Serve uploaded gallery images referenced in a public share (no auth)."""
+    _require_schema()
+    raw = (token or "").strip()
+    if len(raw) < 16:
+        raise HTTPException(status_code=404, detail="file not found")
+    pw = _share_password_from_request(request)
+    view = public_share.public_share_get_dashboard(raw, password=pw)
+    if view.status == "password_required":
+        raise HTTPException(status_code=401, detail="password_required")
+    if view.status == "invalid_password":
+        raise HTTPException(status_code=401, detail="invalid_password")
+    if view.status == "not_found":
+        raise HTTPException(status_code=404, detail="file not found")
+    meta = public_share.public_share_file_access(raw, file_id, password=pw)
+    if not meta:
+        raise HTTPException(status_code=404, detail="file not found")
+    try:
+        data = file_storage.read_bytes(config.dashboard_upload_dir(), meta["storage_relpath"])
+    except (OSError, ValueError):
+        raise HTTPException(status_code=404, detail="file not found") from None
+    return Response(
+        content=data,
+        media_type=meta.get("content_type") or "application/octet-stream",
+    )
 
 
 @router.get("/files/{file_id}/content")
@@ -413,6 +487,71 @@ async def delete_dashboard_block_share(
     if not dashboard_db.block_share_grant_delete(user.id, tid, dashboard_id, viewer_user_id):
         raise HTTPException(status_code=404, detail="grant not found")
     return {"ok": True, "removed": True}
+
+
+@router.get("/{dashboard_id}/public-shares")
+async def list_dashboard_public_shares(request: Request, dashboard_id: uuid.UUID):
+    _require_schema()
+    user = await get_current_user(request)
+    tid = db.user_tenant_id(user.id)
+    if not dashboard_db.dashboard_can_manage_members(user.id, tid, dashboard_id):
+        raise HTTPException(status_code=403, detail="only owner or co-owner can list public shares")
+    items = public_share.public_share_list(user.id, tid, dashboard_id)
+    return {"ok": True, "shares": items}
+
+
+@router.post("/{dashboard_id}/public-shares")
+async def create_dashboard_public_share(
+    request: Request, dashboard_id: uuid.UUID, body: DashboardPublicShareCreateBody
+):
+    _require_schema()
+    user = await get_current_user(request)
+    tid = db.user_tenant_id(user.id)
+    expires_at = None
+    if body.expires_at:
+        raw_exp = body.expires_at.strip()
+        if raw_exp:
+            try:
+                expires_at = datetime.fromisoformat(raw_exp.replace("Z", "+00:00"))
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail="expires_at must be ISO-8601") from e
+    if body.password is not None and body.password.strip() and len(body.password.strip()) < 4:
+        raise HTTPException(status_code=400, detail="password must be at least 4 characters")
+    created = public_share.public_share_create(
+        user.id,
+        tid,
+        dashboard_id,
+        block_ids=body.block_ids,
+        label=body.label,
+        expires_at=expires_at,
+        password=body.password,
+    )
+    if created is None:
+        raise HTTPException(
+            status_code=400,
+            detail="could not create share (check block ids or permissions)",
+        )
+    raw_token, meta = created
+    share_url = f"/app/dashboard/shared?t={raw_token}"
+    return {
+        "ok": True,
+        "share": {**meta, "url_path": share_url},
+        "token": raw_token,
+    }
+
+
+@router.delete("/{dashboard_id}/public-shares/{share_id}")
+async def revoke_dashboard_public_share(
+    request: Request, dashboard_id: uuid.UUID, share_id: uuid.UUID
+):
+    _require_schema()
+    user = await get_current_user(request)
+    tid = db.user_tenant_id(user.id)
+    if not dashboard_db.dashboard_can_manage_members(user.id, tid, dashboard_id):
+        raise HTTPException(status_code=403, detail="only owner or co-owner can revoke public shares")
+    if not public_share.public_share_revoke(user.id, tid, dashboard_id, share_id):
+        raise HTTPException(status_code=404, detail="share not found")
+    return {"ok": True, "revoked": True}
 
 
 @router.get("/{dashboard_id}")
