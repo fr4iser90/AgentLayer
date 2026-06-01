@@ -1398,7 +1398,13 @@ def _sanitize_final_completion_assistant_content(data: dict[str, Any]) -> bool:
         if not _agent_final_text_looks_like_placeholder_tool_markup(raw):
             return False
         stripped = _strip_prose_fake_tool_markup(raw)
-        msg["content"] = stripped if stripped.strip() else ""
+        if stripped.strip():
+            msg["content"] = stripped
+        else:
+            msg["content"] = (
+                "_(The model returned tool-call markup instead of plain text — no readable answer was produced. "
+                "Send a follow-up message to continue; tool results from earlier rounds are still in the transcript.)_"
+            )
         msg.pop("tool_calls", None)
         ch0["message"] = msg
         ch_list[0] = ch0
