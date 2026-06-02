@@ -97,6 +97,38 @@ function allSubagentStepLabels(card: RunCard): string[] {
   return allSubagentStepRows(card).map((r) => r.label);
 }
 
+function compactionCardSubtitle(
+  card: RunCard,
+  t: ReturnType<typeof useTranslation<["chat"]>>["t"]
+): string | undefined {
+  if (card.compactionPhase === "history") {
+    const parts: string[] = [t("chat:compactionHistorySubtitle")];
+    if (card.messagesCompacted != null && card.messagesCompacted > 0) {
+      parts.push(t("chat:runCardCompactionMessages", { count: card.messagesCompacted }));
+    }
+    if (card.contextWindowTokens != null && card.contextWindowTokens > 0) {
+      parts.push(
+        t("chat:runCardCompactionWindow", {
+          count: card.contextWindowTokens.toLocaleString(),
+        })
+      );
+    }
+    if (card.budgetSource?.trim()) {
+      parts.push(t("chat:runCardCompactionSource", { source: card.budgetSource.trim() }));
+    }
+    return parts.join(" · ");
+  }
+  const parts: string[] = [];
+  if (card.toolRoundsDropped != null && card.toolRoundsDropped > 0) {
+    parts.push(t("chat:runCardCompactionRounds", { count: card.toolRoundsDropped }));
+  }
+  if (card.toolRound != null && card.toolRound > 0) {
+    parts.push(t("chat:compactionLoopAfterRound", { round: card.toolRound }));
+  }
+  if (parts.length > 0) return parts.join(" · ");
+  return card.subtitle?.trim() || undefined;
+}
+
 export function RunCardBlock({
   card,
   expanded: expandedProp,
@@ -124,6 +156,9 @@ export function RunCardBlock({
         ? t(`chat:runCardIndex_${card.indexMode}`, { defaultValue: card.title })
         : card.title;
 
+  const compactionSubtitle =
+    card.kind === "compaction" ? compactionCardSubtitle(card, t) : undefined;
+
   const duration = formatDuration(card.durationMs);
   const previewSteps = !expanded ? collapsedStepPreview(card) : [];
   const statusLabel =
@@ -146,16 +181,16 @@ export function RunCardBlock({
       })
     );
   } else if (card.kind === "compaction") {
-    if (card.providerPromptTokens != null && card.softLimitTokens != null) {
-      meta.push(
-        t("chat:runCardCompactionTokens", {
-          prompt: card.providerPromptTokens.toLocaleString(),
-          soft: card.softLimitTokens.toLocaleString(),
-        })
-      );
-    }
-    if (card.toolRoundsDropped != null && card.toolRoundsDropped > 0) {
-      meta.push(t("chat:runCardCompactionRounds", { count: card.toolRoundsDropped }));
+    if (card.compactionPhase === "loop") {
+      const prompt = card.providerPromptTokens ?? 0;
+      if (prompt > 0 && card.softLimitTokens != null) {
+        meta.push(
+          t("chat:runCardCompactionTokens", {
+            prompt: prompt.toLocaleString(),
+            soft: card.softLimitTokens.toLocaleString(),
+          })
+        );
+      }
     }
   } else if (card.indexPhase) {
     meta.push(card.indexPhase);
@@ -167,13 +202,13 @@ export function RunCardBlock({
   const compactionDetailLines =
     card.kind === "compaction"
       ? [
-          card.subtitle,
-          card.contextWindowTokens
+          compactionSubtitle,
+          card.compactionPhase === "loop" && card.contextWindowTokens
             ? t("chat:runCardCompactionWindow", {
                 count: card.contextWindowTokens.toLocaleString(),
               })
             : null,
-          card.budgetSource
+          card.compactionPhase === "loop" && card.budgetSource
             ? t("chat:runCardCompactionSource", { source: card.budgetSource })
             : null,
         ].filter((x): x is string => Boolean(x && x.trim()))
@@ -201,8 +236,10 @@ export function RunCardBlock({
               <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400" />
             ) : null}
           </div>
-          {card.subtitle ? (
-            <p className="mt-1 text-[11px] leading-snug text-neutral-400">{card.subtitle}</p>
+          {compactionSubtitle ?? card.subtitle ? (
+            <p className="mt-1 text-[11px] leading-snug text-neutral-400">
+              {compactionSubtitle ?? card.subtitle}
+            </p>
           ) : null}
           {card.kind === "subagent" && card.subagentRunId ? (
             <p className="mt-1 text-[10px]">

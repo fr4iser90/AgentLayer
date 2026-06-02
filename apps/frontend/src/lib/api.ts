@@ -53,6 +53,7 @@ export type ChatContextMeta = {
   hard_limit_ratio?: number;
   messages_in_prompt?: number;
   messages_dropped?: number;
+  messages_compacted_this_run?: number;
   messages_capped?: number;
   compaction_applied?: boolean;
   loop_compaction_applied?: boolean;

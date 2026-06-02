@@ -33,6 +33,41 @@ def test_prepare_trims_sliding_window_when_over_max(monkeypatch):
     assert out[-1]["content"] == "msg 9"
 
 
+def test_prepare_records_messages_compacted_this_run(monkeypatch):
+    import uuid
+
+    from apps.backend.core import config as cfg
+
+    monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_PREP_ENABLED", True)
+    monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_COMPACTION_ENABLED", True)
+    monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_MAX_MESSAGES", 4)
+    monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_RECENT_VERBATIM_MESSAGES", 2)
+    monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_MAX_MESSAGE_CHARS", 10_000)
+    monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_DEFAULT_BUDGET_TOKENS", 0)
+    monkeypatch.setattr(
+        "apps.backend.infrastructure.chat_context._run_compaction_llm",
+        lambda **_: "summary",
+    )
+    monkeypatch.setattr(
+        "apps.backend.infrastructure.chat_context._load_summary_state",
+        lambda _cid: ("", 0),
+    )
+    monkeypatch.setattr(
+        "apps.backend.infrastructure.chat_context._save_summary_state",
+        lambda *a, **k: None,
+    )
+
+    hist = [{"role": "user" if i % 2 == 0 else "assistant", "content": f"msg {i}"} for i in range(8)]
+
+    async def _run():
+        return await prepare_chat_history_for_llm(hist, conversation_id=uuid.uuid4())
+
+    out, meta = asyncio.run(_run())
+    assert meta.compaction_applied is True
+    assert meta.messages_compacted_this_run == 6
+    assert len(out) == 3  # summary system + 2 recent verbatim
+
+
 def test_prepare_caps_oversized_message(monkeypatch):
     from apps.backend.core import config as cfg
 

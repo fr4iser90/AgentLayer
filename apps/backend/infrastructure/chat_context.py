@@ -34,6 +34,7 @@ class ContextPrepMeta:
     hard_limit_ratio: float = 0.0
     messages_in_prompt: int = 0
     messages_dropped: int = 0
+    messages_compacted_this_run: int = 0
     messages_capped: int = 0
     compaction_applied: bool = False
     loop_compaction_applied: bool = False
@@ -55,6 +56,7 @@ class ContextPrepMeta:
             "hard_limit_ratio": self.hard_limit_ratio,
             "messages_in_prompt": self.messages_in_prompt,
             "messages_dropped": self.messages_dropped,
+            "messages_compacted_this_run": self.messages_compacted_this_run,
             "messages_capped": self.messages_capped,
             "compaction_applied": self.compaction_applied,
             "loop_compaction_applied": self.loop_compaction_applied,
@@ -391,6 +393,7 @@ async def prepare_chat_history_for_llm(
                     message_count=summary_covers,
                 )
             meta.compaction_applied = True
+            meta.messages_compacted_this_run = len(to_compact)
         hist = hist[-recent_n:]
     elif len(hist) > config.CHAT_CONTEXT_MAX_MESSAGES:
         dropped = len(hist) - config.CHAT_CONTEXT_MAX_MESSAGES

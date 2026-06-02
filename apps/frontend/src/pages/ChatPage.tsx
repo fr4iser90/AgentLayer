@@ -1668,10 +1668,11 @@ export function ChatPage() {
             if (ctx.compaction_applied && ctx.summary_active) {
               const { kind, text, extras } = compactionEventToTimeline({
                 phase: "history",
-                provider_prompt_tokens: ctx.provider_prompt_tokens,
-                soft_limit_tokens: ctx.soft_limit_tokens,
                 context_window_tokens: ctx.context_window_tokens,
                 budget_source: ctx.budget_source ?? undefined,
+                messages_dropped: ctx.messages_dropped,
+                messages_compacted_this_run: ctx.messages_compacted_this_run,
+                summary_covers_messages: ctx.summary_covers_messages,
               });
               appendAgentLine(kind, text, {
                 ...extras,
@@ -1760,19 +1761,32 @@ export function ChatPage() {
               at_soft_limit: true,
             }));
           }
+          const ctx =
+            msg.context && typeof msg.context === "object"
+              ? (msg.context as ChatContextMeta)
+              : undefined;
           const { kind, text, extras } = compactionEventToTimeline({
             phase: msg.phase != null ? String(msg.phase) : "loop",
             reason: msg.reason != null ? String(msg.reason) : undefined,
             round: msg.round != null ? Number(msg.round) : undefined,
             provider_prompt_tokens:
-              msg.provider_prompt_tokens != null ? Number(msg.provider_prompt_tokens) : undefined,
+              msg.provider_prompt_tokens != null
+                ? Number(msg.provider_prompt_tokens)
+                : ctx?.provider_prompt_tokens,
             soft_limit_tokens:
-              msg.soft_limit_tokens != null ? Number(msg.soft_limit_tokens) : undefined,
+              msg.soft_limit_tokens != null
+                ? Number(msg.soft_limit_tokens)
+                : ctx?.soft_limit_tokens,
             context_window_tokens:
-              msg.context_window_tokens != null ? Number(msg.context_window_tokens) : undefined,
+              msg.context_window_tokens != null
+                ? Number(msg.context_window_tokens)
+                : ctx?.context_window_tokens,
             tool_rounds_dropped:
-              msg.tool_rounds_dropped != null ? Number(msg.tool_rounds_dropped) : undefined,
-            budget_source: msg.budget_source != null ? String(msg.budget_source) : undefined,
+              msg.tool_rounds_dropped != null
+                ? Number(msg.tool_rounds_dropped)
+                : ctx?.tool_rounds_dropped,
+            budget_source:
+              msg.budget_source != null ? String(msg.budget_source) : ctx?.budget_source ?? undefined,
           });
           appendAgentLine(kind, text, {
             ...extras,

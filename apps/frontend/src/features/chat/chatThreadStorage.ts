@@ -70,6 +70,8 @@ export type AgentTimelineEntry = {
   contextWindowTokens?: number;
   toolRoundsDropped?: number;
   budgetSource?: string;
+  /** History compaction: messages summarized this run (or dropped from prompt). */
+  messagesCompacted?: number;
   /** Assistant message char index when this event started (for inline stream interleaving). */
   streamOffset?: number;
 };

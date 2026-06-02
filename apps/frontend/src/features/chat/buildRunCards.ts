@@ -31,6 +31,8 @@ export type RunCard = {
   contextWindowTokens?: number;
   toolRoundsDropped?: number;
   budgetSource?: string;
+  messagesCompacted?: number;
+  toolRound?: number;
   details: AgentTimelineEntry[];
 };
 
@@ -171,6 +173,8 @@ export function buildRunCardsFromTimeline(entries: AgentTimelineEntry[]): RunCar
         contextWindowTokens: e.contextWindowTokens,
         toolRoundsDropped: e.toolRoundsDropped,
         budgetSource: e.budgetSource,
+        messagesCompacted: e.messagesCompacted,
+        toolRound: e.toolRound,
         durationMs: e.durationMs,
         details: [e],
       });
