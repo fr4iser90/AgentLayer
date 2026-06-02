@@ -51,13 +51,23 @@
         "id": "pets-album-0",
         "type": "gallery",
         "grid": { "x": 0, "y": 21, "w": 6, "h": 8 },
-        "props": { "dataPath": "albums.0.photos", "title": "Album 1" }
+        "props": {
+          "dataPath": "albums.0.photos",
+          "title": "Album 1",
+          "galleryColumns": 3,
+          "galleryAspect": "square"
+        }
       },
       {
         "id": "pets-album-1",
         "type": "gallery",
         "grid": { "x": 6, "y": 21, "w": 6, "h": 8 },
-        "props": { "dataPath": "albums.1.photos", "title": "Album 2" }
+        "props": {
+          "dataPath": "albums.1.photos",
+          "title": "Album 2",
+          "galleryColumns": 3,
+          "galleryAspect": "square"
+        }
       },
       {
         "id": "pets-notes",

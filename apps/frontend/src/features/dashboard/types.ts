@@ -36,6 +36,10 @@ export interface UiBlock {
     placeholder?: string;
     /** gallery / hero section label */
     title?: string;
+    /** gallery: columns at large breakpoints (2–5, default 3) */
+    galleryColumns?: number;
+    /** gallery: tile aspect ratio */
+    galleryAspect?: "square" | "video" | "auto";
   };
 }
 

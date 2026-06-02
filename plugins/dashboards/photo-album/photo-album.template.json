@@ -6,7 +6,12 @@
         "id": "gallery-main",
         "type": "gallery",
         "grid": { "x": 0, "y": 0, "w": 12, "h": 10 },
-        "props": { "dataPath": "photos", "title": "Photos" }
+        "props": {
+          "dataPath": "photos",
+          "title": "Photos",
+          "galleryColumns": 4,
+          "galleryAspect": "square"
+        }
       },
       {
         "id": "album-notes",

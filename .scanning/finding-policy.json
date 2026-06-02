@@ -1,34 +1,154 @@
 {
-    "version": "1",
-    "updated": "2025-01-15T10:00:00Z",
-    "bandit": {
-      "accepted_findings": [
-        { "rule_id": "B605", "path_regex": ".*\\.py$", "reason": "False Positive: function call with default argument 'function' is a legitimate pattern in this codebase for factory functions and dependency injection." },
-        { "rule_id": "B608", "path_regex": ".*\\.py$", "reason": "False Positive: hardcoded SQL query string constant (type='SQL') is a static schema definition used with parameterized queries only." },
-        { "rule_id": "B105", "path_regex": ".*test.*|.*spec.*|.*config\\.py$", "reason": "Acceptable: hardcoded password in test fixtures and configuration files used only in CI/development environments." },
-        { "rule_id": "B106", "path_regex": ".*test.*|.*spec.*|.*config\\.py$", "reason": "Acceptable: hardcoded password in test/fixture files and development config only." },
-        { "rule_id": "B311", "path_regex": ".*\\.py$", "reason": "False Positive: XML parsing is limited to trusted internal formats with no user-supplied input." },
-        { "rule_id": "B602", "path_regex": ".*test.*|.*spec.*", "reason": "Acceptable: subprocess call in test code only for integration testing." },
-        { "rule_id": "B110", "path_regex": ".*\\.py$", "reason": "Acceptable: subprocess with shell=True used only in controlled internal tooling with sanitized arguments." }
-      ]
+  "version": "1",
+  "updated": "2026-06-02T12:00:00Z",
+  "bandit": {
+    "accepted_findings": [
+      {
+        "rule_id": "B608",
+        "path_regex": "apps/backend/.*\\.py$",
+        "message_regex": "Possible SQL injection",
+        "reason": "False positive: SQL strings are built from compile-time constants (column lists, whitelisted SET fragments, static WHERE clauses). User-controlled values are always passed as psycopg %s parameters; dynamic OR/SET parts use only server-side whitelists."
+      },
+      {
+        "rule_id": "B105",
+        "path_regex": "apps/backend/api/main\\.py$",
+        "message_regex": "bearer",
+        "reason": "False positive: OAuth2 token_type literal 'bearer' in auth responses, not a credential."
+      },
+      {
+        "rule_id": "B105",
+        "path_regex": "apps/backend/dashboard/public_share\\.py$",
+        "message_regex": "X-Dashboard-Share-Password",
+        "reason": "False positive: HTTP header name constant for dashboard share auth, not a secret value."
+      },
+      {
+        "rule_id": "B105",
+        "path_regex": "apps/backend/dashboard/router\\.py$",
+        "message_regex": "True",
+        "reason": "False positive: JSON field password_required (boolean), not a hardcoded password."
+      },
+      {
+        "rule_id": "B105",
+        "path_regex": "apps/backend/domain/github/auth\\.py$",
+        "message_regex": "github_pat",
+        "reason": "False positive: user-secret service key identifier string, not a PAT value."
+      },
+      {
+        "rule_id": "B105",
+        "path_regex": "apps/backend/domain/plugin_system/tool_ui_icons\\.py$",
+        "message_regex": "key-round",
+        "reason": "False positive: Lucide icon name for secrets-related tools, not a password."
+      },
+      {
+        "rule_id": "B105",
+        "path_regex": "apps/backend/domain/security_scan/common\\.py$",
+        "message_regex": "ssc_api_key",
+        "reason": "False positive: settings key name for SimpleSecCheck API key storage, not the key itself."
+      },
+      {
+        "rule_id": "B105",
+        "path_regex": "apps/backend/infrastructure/operator_settings\\.py$",
+        "message_regex": "None",
+        "reason": "False positive: default None placeholders in operator settings row dict; keys like discord_bot_token hold no literal secret."
+      },
+      {
+        "rule_id": "B105",
+        "path_regex": "apps/backend/infrastructure/secret_otp_bundle\\.py$",
+        "message_regex": "DEIN_|du@gmail|app_password|github_pat_xxx|ics_url",
+        "reason": "False positive: German placeholder examples in generated curl snippets for OTP secret registration; not real credentials."
+      },
+      {
+        "rule_id": "B110",
+        "path_regex": "apps/backend/.*\\.py$",
+        "message_regex": "Try, Except, Pass",
+        "reason": "Acceptable: intentional best-effort cleanup (shutdown, WebSocket close, cache invalidation, optional telemetry) where failure must not block other teardown."
+      },
+      {
+        "rule_id": "B112",
+        "path_regex": "apps/backend/.*\\.py$",
+        "message_regex": "Try, Except, Continue",
+        "reason": "Acceptable: skip malformed preset/config/mail entries when iterating filesystem or protocol data; errors are isolated per item."
+      },
+      {
+        "rule_id": "B311",
+        "path_regex": "apps/backend/domain/studio_jobs\\.py$",
+        "message_regex": "pseudo-random",
+        "reason": "False positive: random.randint seeds ComfyUI KSampler nodes for image generation reproducibility, not security-sensitive tokens."
+      },
+      {
+        "rule_id": "B404",
+        "path_regex": "apps/backend/domain/coding/lsp_client\\.py$|apps/backend/domain/security_scan/common\\.py$|apps/backend/infrastructure/workspace_git\\.py$",
+        "reason": "Acceptable: subprocess used for LSP servers (operator-configured command), fixed git -C invocations, and git remote discovery; required product functionality."
+      },
+      {
+        "rule_id": "B603",
+        "path_regex": "apps/backend/domain/coding/lsp_client\\.py$|apps/backend/domain/security_scan/common\\.py$|apps/backend/infrastructure/workspace_git\\.py$",
+        "reason": "Acceptable: subprocess arguments are fixed argv lists (git) or operator-controlled LSP command from AGENT_LSP_SERVER_CMD; workspace paths are validated before git calls."
+      },
+      {
+        "rule_id": "B607",
+        "path_regex": "apps/backend/domain/security_scan/common\\.py$",
+        "message_regex": "partial executable",
+        "reason": "False positive: git resolved via PATH is intentional; command is a fixed ['git', '-C', path, ...] argv list with no shell."
+      }
+    ]
+  },
+  "codeql": {
+    "accepted_findings": [
+      {
+        "rule_id": "python/.*",
+        "path_regex": ".*\\.pyi$|.*generated/.*",
+        "reason": "Informational: Python CodeQL queries in type stub files (.pyi) and generated code — no runtime execution path."
+      },
+      {
+        "rule_id": "js/xss/.*",
+        "path_regex": ".*\\.svelte$|.*\\.vue$",
+        "reason": "False Positive: Svelte/Vue use reactive bindings preventing XSS."
+      },
+      {
+        "rule_id": "js/sql-injection",
+        "path_regex": ".*\\.test\\.js$|.*\\.spec\\.ts$",
+        "reason": "Acceptable: SQL injection query in test file only with mock database."
+      },
+      {
+        "rule_id": "js/path-traversal",
+        "path_regex": ".*static/.*|.*assets/.*",
+        "reason": "False Positive: File access restricted to known static asset directories with normalization."
+      },
+      {
+        "rule_id": "js/information-exposure",
+        "path_regex": ".*health\\.py$|.*status\\.js$",
+        "reason": "Acceptable: Health check endpoints intentionally expose version/status for monitoring."
+      },
+      {
+        "rule_id": "typescript/.*",
+        "path_regex": ".*\\.d\\.ts$",
+        "reason": "Acceptable: TypeScript declaration files .d.ts are type-only, no executable code."
+      },
+      {
+        "rule_id": "go/.*",
+        "path_regex": ".*_test\\.go$",
+        "reason": "Acceptable: Go security queries in test files only with controlled inputs."
+      }
+    ]
+  },
+  "semgrep": {
+    "dedupe": {
+      "enabled": true,
+      "max_deduped_per_rule": 50,
+      "time_window_minutes": 1440
     },
-    "codeql": {
-      "accepted_findings": [
-        { "rule_id": "python/.*", "path_regex": ".*\\.pyi$|.*generated/.*", "reason": "Informational: Python CodeQL queries in type stub files (.pyi) and generated code — no runtime execution path." },
-        { "rule_id": "js/xss/.*", "path_regex": ".*\\.svelte$|.*\\.vue$", "reason": "False Positive: Svelte/Vue use reactive bindings preventing XSS." },
-        { "rule_id": "js/sql-injection", "path_regex": ".*\\.test\\.js$|.*\\.spec\\.ts$", "reason": "Acceptable: SQL injection query in test file only with mock database." },
-        { "rule_id": "js/path-traversal", "path_regex": ".*static/.*|.*assets/.*", "reason": "False Positive: File access restricted to known static asset directories with normalization." },
-        { "rule_id": "js/information-exposure", "path_regex": ".*health\\.py$|.*status\\.js$", "reason": "Acceptable: Health check endpoints intentionally expose version/status for monitoring." },
-        { "rule_id": "typescript/.*", "path_regex": ".*\\.d\\.ts$", "reason": "Acceptable: TypeScript declaration files .d.ts are type-only, no executable code." },
-        { "rule_id": "go/.*", "path_regex": ".*_test\\.go$", "reason": "Acceptable: Go security queries in test files only with controlled inputs." }
-      ]
-    },
-    "semgrep": {
-      "dedupe": { "enabled": true, "max_deduped_per_rule": 50, "time_window_minutes": 1440 },
-      "accepted_findings": [
-        { "rule_id": "python\\.sqlalchemy\\.security\\.sqlalchemy-execute-raw-query\\.sqlalchemy-execute-raw-query", "path_regex": ".*run_traces_admin_api\\.py$", "reason": "Accepted: Raw query uses named parameters via TextualSQL prepared statement pattern." },
-        { "rule_id": "python\\.sqlalchemy\\.security\\.sqlalchemy-execute-raw-query\\.sqlalchemy-execute-raw-query", "path_regex": ".*workspace_resolver\\.py$", "reason": "Accepted: workspace_resolver.py uses parameterized TextualSQL with named :param bindings." }
-      ]
-    }
+    "accepted_findings": [
+      {
+        "rule_id": "python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query",
+        "path_regex": ".*run_traces_admin_api\\.py$",
+        "reason": "Accepted: Raw query uses named parameters via TextualSQL prepared statement pattern."
+      },
+      {
+        "rule_id": "python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query",
+        "path_regex": ".*workspace_resolver\\.py$",
+        "reason": "Accepted: workspace_resolver.py uses parameterized TextualSQL with named :param bindings."
+      }
+    ]
   }
-  
+}
