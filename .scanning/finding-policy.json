@@ -223,6 +223,11 @@
   "eslint": {
     "accepted_findings": [
       {
+        "path_regex": "apps/frontend/src/pages/admin/AdminSchedules\\.tsx$|apps/frontend/src/pages/MySchedulesPage\\.tsx$",
+        "message_regex": "Unused eslint-disable.*no-alert",
+        "reason": "False positive: stale no-alert disable when no-alert is not enabled in security-scan eslint config; window.confirm is intentional delete UX (directives removed in source)."
+      },
+      {
         "rule_id": "security/detect-object-injection",
         "path_regex": "apps/frontend/.*\\.(ts|tsx|js|jsx|mjs)$",
         "reason": "False positive: dynamic Record/object indexing uses API/schema keys or numeric indices; prototype-pollution paths blocked where user paths are accepted (dashboardDataPaths guards __proto__/constructor/prototype)."
@@ -242,32 +247,44 @@
   "npm_audit": {
     "accepted_findings": [
       {
-        "message_regex": "esbuild|GHSA-67mh|development server|CORS",
-        "reason": "Accepted risk: esbuild dev-server CORS issue affects local `vite` dev only; production ships vite build output via backend static files, not esbuild serve."
+        "rule_id": "esbuild",
+        "path_regex": "node_modules/esbuild",
+        "message_regex": "development server|CORS|any website",
+        "reason": "Accepted risk: GHSA-67mh-4wv8-2f99 affects esbuild serve dev mode only; production Docker image serves prebuilt vite dist via uvicorn, not esbuild listen."
       },
       {
-        "message_regex": "postcss|GHSA-5gfm|</style>",
-        "reason": "Accepted risk: PostCSS stringify XSS requires attacker-controlled CSS through an app that embeds user CSS in <style>; frontend uses compiled Tailwind build output, not user-supplied raw CSS AST round-trip."
+        "rule_id": "postcss",
+        "path_regex": "node_modules/postcss",
+        "message_regex": "</style>|XSS|Stringify",
+        "reason": "Accepted risk: GHSA-qx2v-qp2m-jg93 requires parsing attacker-controlled CSS and embedding stringify output in HTML <style>; Tailwind build pipeline does not round-trip untrusted user CSS."
       },
       {
-        "message_regex": "vite|\\.map|source.?map|fs\\.strict",
-        "reason": "Accepted risk: Vite dev-server .map path traversal requires --host exposure and predictable paths; production Docker image serves prebuilt dist without Vite dev server."
+        "rule_id": "vite",
+        "path_regex": "node_modules/vite",
+        "message_regex": "\\.map|Path Traversal|optimized",
+        "reason": "Accepted risk: GHSA-4w7w-66w2-5vf9 requires Vite dev server with --host and predictable .map paths; production uses vite build only, no dev server in container."
       }
     ]
   },
   "owasp_dependency_check": {
     "accepted_findings": [
       {
-        "message_regex": "esbuild|GHSA-67mh|development server|CORS",
-        "reason": "Accepted risk: esbuild dev-server CORS issue affects local `vite` dev only; production ships vite build output via backend static files, not esbuild serve."
+        "rule_id": "GHSA-67mh-4wv8-2f99",
+        "path_regex": "esbuild:.*",
+        "message_regex": "esbuild|development server|CORS",
+        "reason": "Accepted risk: transitive esbuild 0.21.x via vite dev toolchain; dev-server CORS not exposed in production deploy."
       },
       {
-        "message_regex": "postcss|GHSA-5gfm|</style>",
-        "reason": "Accepted risk: PostCSS stringify XSS requires attacker-controlled CSS through an app that embeds user CSS in <style>; frontend uses compiled Tailwind build output, not user-supplied raw CSS AST round-trip."
+        "rule_id": "GHSA-qx2v-qp2m-jg93",
+        "path_regex": "postcss:.*",
+        "message_regex": "PostCSS|</style>",
+        "reason": "Accepted risk: devDependency postcss 8.5.x used at build time for Tailwind; no user-supplied CSS AST embedding in runtime app."
       },
       {
-        "message_regex": "vite|\\.map|source.?map|fs\\.strict",
-        "reason": "Accepted risk: Vite dev-server .map path traversal requires --host exposure and predictable paths; production Docker image serves prebuilt dist without Vite dev server."
+        "rule_id": "GHSA-4w7w-66w2-5vf9",
+        "path_regex": "vite:.*",
+        "message_regex": "\\.map|Path Traversal|fs\\.strict",
+        "reason": "Accepted risk: vite 5.4.x dev-server .map traversal; mitigated by not binding dev server to network in production and shipping static dist only."
       }
     ]
   },

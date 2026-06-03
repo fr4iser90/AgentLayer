@@ -277,7 +277,6 @@ export function MySchedulesPage() {
   };
 
   const hardDelete = async (jobId: string) => {
-    // eslint-disable-next-line no-alert
     if (!window.confirm(t("admin:schedulesPermanentDeleteConfirm"))) return;
     const res = await apiFetch(`/v1/user/scheduler-jobs/${jobId}`, auth, { method: "DELETE" });
     const j = (await res.json().catch(() => null)) as any;
