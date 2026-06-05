@@ -3,5 +3,6 @@
   "label": "Haustiere",
   "description": "Tiere mit Geburtstag, Impfungen, Entwurmung und Tierarzt-Notizen — Basis für Fälligkeiten und Erinnerungen (später per Agent/Reminder anbindbar).",
   "template": "pets.template.json",
-  "schema_sql": "migrations/001_user_dashboards.sql"
+  "schema_sql": "migrations/001_user_dashboards.sql",
+  "setup": "pets.setup.json"
 }

@@ -73,10 +73,28 @@ export type DashboardDataAgentlayer = {
   allowed_tools?: string[];
 };
 
+export interface DashboardOnboardingStep {
+  id: string;
+  label: string;
+  tool_hint?: string;
+}
+
+export interface DashboardOnboarding {
+  version?: number;
+  kind?: string;
+  greeting: string;
+  agent_prompt?: string;
+  steps?: DashboardOnboardingStep[];
+  suggested_tools?: string[];
+  chat_starters?: string[];
+}
+
 export interface DashboardDetail extends DashboardSummary {
   ui_layout: UiLayout | Record<string, unknown>;
   /** Template payload; may include ``_agentlayer`` for AgentLayer agent settings. */
   data: Record<string, unknown>;
+  /** Kind-specific setup manifest (computed server-side). */
+  onboarding?: DashboardOnboarding;
   /** ``public`` on token-based shared views. */
   access_scope?: "full" | "granular" | "public";
   /** Label set by owner when creating a public share link. */

@@ -85,6 +85,10 @@ type Props = {
   dashboardTitle?: string;
   /** Dashboard viewers: show history but do not send or edit. */
   readOnly?: boolean;
+  /** When set, pre-fill the composer (e.g. onboarding starter). */
+  composeDraft?: string;
+  /** Increment to push ``composeDraft`` into the textarea again. */
+  composeDraftSeed?: number;
 };
 
 /**
@@ -92,7 +96,13 @@ type Props = {
  * create via API (`POST /v1/user/conversations` with `dashboard_id` + `shared: true`) if all members should see it.
  * Same completion API + `agent_dashboard_context` as the full Chat page.
  */
-export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = false }: Props) {
+export function DashboardEmbeddedChat({
+  dashboardId,
+  dashboardTitle,
+  readOnly = false,
+  composeDraft,
+  composeDraftSeed = 0,
+}: Props) {
   const { t } = useTranslation(["dashboard", "errors"]);
   const auth = useAuth();
   const { accessToken } = auth;
@@ -112,6 +122,12 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
   const lastModelSelectionRef = useRef("");
   const endRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!composeDraftSeed || !composeDraft?.trim()) return;
+    setDraft(composeDraft);
+    setOpen(true);
+  }, [composeDraft, composeDraftSeed]);
 
   const models = useMemo(() => modelRows.map((r) => r.id), [modelRows]);
 
@@ -414,7 +430,9 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
     accessToken,
     auth,
     draft,
-    modelValue,
+    modelSelectValue,
+    defaultSelectValue,
+    modelBeforeFirstSend,
     pendingAttachments,
     modelRows,
     payloadBase,
@@ -423,6 +441,7 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
     thread,
     dashboardId,
     dashboardTitle,
+    t,
   ]);
 
   const hasComposerPayload =
@@ -435,7 +454,8 @@ export function DashboardEmbeddedChat({ dashboardId, dashboardTitle, readOnly = 
     !sendLoading &&
     !!accessToken &&
     !initLoading &&
-    !!modelValue.trim();
+    modelRows.length > 0 &&
+    !!(modelSelectValue || defaultSelectValue).trim();
 
   return (
     <div className="flex h-full min-h-0 flex-col rounded-xl border border-surface-border bg-surface-raised/40">

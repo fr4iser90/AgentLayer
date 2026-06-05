@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "kind": "pets",
+  "greeting": {
+    "de": "Willkommen bei deinem Haustier-Dashboard! Hier kannst du Tiere, Impfungen, Tierarzt und Fotos an einem Ort pflegen.",
+    "en": "Welcome to your pets dashboard! Track animals, vaccinations, vet notes, and photos in one place."
+  },
+  "agent_prompt": {
+    "de": "Du richtest ein neues Haustier-Dashboard ein. Begrüße kurz, erkläre Hero/Tabelle/Notizen/Fotos. Biete an: (1) Tier per Name/Rasse/Geburtstag eintragen (pets_add_pet), (2) frei erzählen — du strukturierst in Zeilen, (3) Hero-Bild oder Album-Foto wenn der Nutzer URLs oder Uploads nennt. Stelle maximal eine klare Frage pro Nachricht. Kein Schema installieren.",
+    "en": "You are onboarding a new pets dashboard. Greet briefly; explain hero, table, notes, and photo albums. Offer: (1) add a pet row with name/species/birthday (pets_add_pet), (2) free-form stories you turn into rows, (3) hero or album photos when the user provides URLs or uploads. One clear question per message. Do not install schema."
+  },
+  "steps": [
+    {
+      "id": "add_pet",
+      "label": { "de": "Tier hinzufügen", "en": "Add a pet" },
+      "tool_hint": "pets_add_pet"
+    },
+    {
+      "id": "tell_about_pets",
+      "label": { "de": "Erzähl mir von deinen Tieren", "en": "Tell me about your pets" },
+      "tool_hint": "pets_add_pet"
+    },
+    {
+      "id": "hero_photo",
+      "label": { "de": "Hero-Bild setzen", "en": "Set a hero photo" },
+      "tool_hint": "pets_patch_hero"
+    },
+    {
+      "id": "notes",
+      "label": { "de": "Allgemeine Notizen", "en": "General notes" },
+      "tool_hint": "pets_patch_notes"
+    }
+  ],
+  "suggested_tools": ["pets"],
+  "chat_starters": {
+    "de": [
+      "Ich habe einen Golden Retriever namens Max, geboren 2020-03-15.",
+      "Füge meine Katze Mimi hinzu — Europäisch Kurzhaar, nächste Impfung im Juni."
+    ],
+    "en": [
+      "I have a golden retriever named Max, born 2020-03-15.",
+      "Add my cat Mimi — European shorthair, next vaccination in June."
+    ]
+  }
+}

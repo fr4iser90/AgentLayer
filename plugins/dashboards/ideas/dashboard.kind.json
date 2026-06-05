@@ -3,5 +3,6 @@
   "label": "Ideen & Memos",
   "description": "Schnelle Einfälle und Notizen sammeln: Tabelle mit Status und Tags, dazu ein großes Notizfeld — übersichtlich im Raster, später per Agent durchsuchbar.",
   "template": "ideas.template.json",
-  "schema_sql": "migrations/001_user_dashboards.sql"
+  "schema_sql": "migrations/001_user_dashboards.sql",
+  "setup": "ideas.setup.json"
 }

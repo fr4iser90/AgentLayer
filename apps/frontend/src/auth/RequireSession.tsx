@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Navigate, Outlet } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "./AuthContext";
 
@@ -19,15 +19,8 @@ export function RequireSession() {
 
   if (!accessToken) {
     const target =
-      setupStatus?.needs_setup || setupStatus?.needs_provider_wizard
-        ? "/app/setup"
-        : "/app/login";
-    window.location.replace(target);
-    return (
-      <div className="flex h-full min-h-0 flex-1 items-center justify-center px-4 text-sm text-surface-muted">
-        {t("auth:redirectingToSignIn")}
-      </div>
-    );
+      setupStatus?.needs_setup || setupStatus?.needs_provider_wizard ? "/setup" : "/login";
+    return <Navigate to={target} replace />;
   }
 
   return (

@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "kind": "todo",
+  "greeting": {
+    "de": "Deine Task-Liste — Aufgaben abhaken, optional Fälligkeit, Notizen darunter.",
+    "en": "Your task list — check off tasks, optional due hints, and notes below."
+  },
+  "agent_prompt": {
+    "de": "Onboarding für todo (Task-Liste). Nutze todo_add_tasks für Checkbox-Aufgaben. Notizen in data.notes mit patch_data wenn der Nutzer will. Nicht mit ideas oder shopping verwechseln. Kein Schema installieren.",
+    "en": "Onboarding for todo task lists. Use todo_add_tasks for checkbox tasks. Notes in data.notes with patch_data if needed. Do not confuse with ideas or shopping. Do not install schema."
+  },
+  "steps": [
+    {
+      "id": "add_tasks",
+      "label": { "de": "Aufgaben anlegen", "en": "Add tasks" },
+      "tool_hint": "todo_add_tasks"
+    },
+    {
+      "id": "notes",
+      "label": { "de": "Notizen ergänzen", "en": "Add notes" },
+      "tool_hint": "patch_data"
+    }
+  ],
+  "suggested_tools": ["todo", "dashboard"],
+  "chat_starters": {
+    "de": [
+      "Heute: E-Mails, Sport, Einkaufen — als Tasks anlegen.",
+      "Projekt X: Design review bis Freitag, Deploy nächste Woche."
+    ],
+    "en": [
+      "Today: email, workout, groceries — add as tasks.",
+      "Project X: design review by Friday, deploy next week."
+    ]
+  }
+}

@@ -45,6 +45,7 @@ class KindBundle:
     description: str | None
     template: Path | None
     schema_sql: Path | None
+    setup: Path | None
 
 
 def _parse_bundle(marker: Path) -> KindBundle | None:
@@ -97,6 +98,18 @@ def _parse_bundle(marker: Path) -> KindBundle | None:
             logger.warning("schema_sql file missing: %s (%s)", schema_sql, marker)
             schema_sql = None
 
+    setup: Path | None = None
+    u_rel = raw.get("setup")
+    if isinstance(u_rel, str) and u_rel.strip():
+        try:
+            setup = _safe_relative_file(bundle_dir, u_rel, "setup")
+        except ValueError as e:
+            logger.warning("%s in %s", e, marker)
+            setup = None
+        if setup is not None and not setup.is_file():
+            logger.warning("setup file missing: %s (%s)", setup, marker)
+            setup = None
+
     return KindBundle(
         bundle_dir=bundle_dir,
         kind=kind_n,
@@ -104,6 +117,7 @@ def _parse_bundle(marker: Path) -> KindBundle | None:
         description=description,
         template=template,
         schema_sql=schema_sql,
+        setup=setup,
     )
 
 
@@ -155,6 +169,7 @@ def kind_catalog() -> list[dict[str, Any]]:
                 "description": desc,
                 "has_template": bool(b.template and b.template.is_file()),
                 "has_schema": bool(b.schema_sql and b.schema_sql.is_file()),
+                "has_setup": bool(b.setup and b.setup.is_file()),
             }
         )
     return rows

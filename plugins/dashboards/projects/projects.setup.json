@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "kind": "projects",
+  "greeting": {
+    "de": "Dein Projects-Portfolio ist bereit. Hier trackst du Repos, verknüpfst Coding-Workspaces und startest Runs.",
+    "en": "Your projects portfolio is ready. Track repos, link coding workspaces, and queue agent runs here."
+  },
+  "agent_prompt": {
+    "de": "Onboarding für ein Projects-Dashboard. Frage ob der Nutzer GitHub-Repos importieren will (projects_import_github mit import_all oder repo_full_names — github_pat nötig), manuell Projekte eintragen (projects_add_rows), oder Workspaces später verknüpfen (projects_link_workspace). Erkläre Run-Now kurz. Kein Schema installieren.",
+    "en": "Onboarding for a projects dashboard. Ask if the user wants GitHub import (projects_import_github with import_all or repo_full_names — needs github_pat), manual rows (projects_add_rows), or link workspaces later (projects_link_workspace). Mention Run now briefly. Do not install schema."
+  },
+  "steps": [
+    {
+      "id": "import_github",
+      "label": { "de": "GitHub-Repos importieren", "en": "Import from GitHub" },
+      "tool_hint": "projects_import_github"
+    },
+    {
+      "id": "add_manual",
+      "label": { "de": "Projekt manuell eintragen", "en": "Add a project manually" },
+      "tool_hint": "projects_add_rows"
+    },
+    {
+      "id": "link_workspace",
+      "label": { "de": "Workspace verknüpfen / klonen", "en": "Link or clone workspace" },
+      "tool_hint": "projects_link_workspace"
+    }
+  ],
+  "suggested_tools": ["projects", "workspaces"],
+  "chat_starters": {
+    "de": [
+      "Importiere alle meine GitHub-Repos.",
+      "Füge AgentLayer als Projekt hinzu: https://github.com/fr4iser90/AgentLayer"
+    ],
+    "en": [
+      "Import all my GitHub repositories.",
+      "Add AgentLayer: https://github.com/fr4iser90/AgentLayer"
+    ]
+  }
+}

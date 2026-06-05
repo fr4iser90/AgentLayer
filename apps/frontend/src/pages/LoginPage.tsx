@@ -5,16 +5,12 @@ import { SETUP_WIZARD_ACTIVE_KEY, useAuth } from "../auth/AuthContext";
 
 export function LoginPage() {
   const { t } = useTranslation(["auth"]);
-  const { accessToken, loading, setupStatus, refreshSetupStatus, login } = useAuth();
+  const { accessToken, loading, setupStatus, login } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-
-  useEffect(() => {
-    void refreshSetupStatus();
-  }, [refreshSetupStatus]);
 
   useEffect(() => {
     if (!loading && setupStatus?.needs_setup) {

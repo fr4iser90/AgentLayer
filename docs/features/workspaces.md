@@ -85,7 +85,7 @@ For built-in kinds with dedicated tools (`pets`, `ideas`, `shopping_list`), `das
 
 ### Generic tools (any kind)
 
-Module: `plugins/tools/capabilities/platform/dashboard_core/dashboard_core.py`
+Module: `plugins/tools/personal/dashboard/dashboard.py`
 
 | Tool | Purpose |
 |------|---------|

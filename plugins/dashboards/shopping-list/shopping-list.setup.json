@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "kind": "shopping_list",
+  "greeting": {
+    "de": "Deine Einkaufsliste — Artikel abhaken, Notizen und optional Preise dokumentieren.",
+    "en": "Your shopping list — check off items, add notes, and optionally log prices."
+  },
+  "agent_prompt": {
+    "de": "Onboarding für shopping_list. Frage wofür die Liste ist (Supermarkt, Baumarkt, …). Nutze shopping_list_add_items für Artikel. Notizen via read dann patch wenn nötig mit patch_data. Keine Live-Preise vom Web. Kein Schema installieren.",
+    "en": "Onboarding for shopping_list. Ask what the list is for (groceries, hardware, …). Use shopping_list_add_items. Notes via patch_data if needed. No live web prices. Do not install schema."
+  },
+  "steps": [
+    {
+      "id": "add_items",
+      "label": { "de": "Artikel hinzufügen", "en": "Add items" },
+      "tool_hint": "shopping_list_add_items"
+    },
+    {
+      "id": "store_prefs",
+      "label": { "de": "Lieblingsladen / Marke notieren", "en": "Note store or brand prefs" },
+      "tool_hint": "patch_data"
+    }
+  ],
+  "suggested_tools": ["shopping_list", "dashboard"],
+  "chat_starters": {
+    "de": [
+      "Milch, Brot, Eier, Kaffee — Wocheneinkauf.",
+      "Schrauben M6, Dübel, Klebeband für das Regal."
+    ],
+    "en": [
+      "Milk, bread, eggs, coffee — weekly groceries.",
+      "M6 screws, wall plugs, tape for the shelf project."
+    ]
+  }
+}

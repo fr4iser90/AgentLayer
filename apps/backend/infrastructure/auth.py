@@ -4,6 +4,7 @@ JWT Access + Refresh Tokens, BCrypt Password Hashing, Permission System
 """
 from __future__ import annotations
 
+import hashlib
 import os
 import bcrypt
 import jwt
@@ -66,47 +67,78 @@ def create_access_token(user_id: uuid.UUID, role: str) -> str:
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
+def hash_refresh_token(token: str) -> str:
+    """Fixed-length digest for indexed DB lookup (not bcrypt — refresh tokens are high-entropy)."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
 def create_refresh_token(user_id: uuid.UUID) -> tuple[str, str]:
-    """Create long-lived refresh token, returns (token, token_hash)"""
+    """Create long-lived refresh token, returns (token, token_hash)."""
     token = uuid.uuid4().hex
-    token_hash = hash_password(token)
-    return token, token_hash
+    return token, hash_refresh_token(token)
 
 
 def validate_refresh_token(token: str) -> Optional[User]:
-    """Validate refresh token and return user if valid"""
+    """Validate refresh token and return user if valid."""
+    raw = (token or "").strip()
+    if not raw:
+        return None
+    digest = hash_refresh_token(raw)
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("""
-                SELECT user_id, token_hash, expires_at
+            cur.execute(
+                """
+                SELECT user_id FROM refresh_tokens
+                WHERE token_hash = %s AND expires_at > NOW()
+                LIMIT 1
+                """,
+                (digest,),
+            )
+            row = cur.fetchone()
+            if row:
+                return get_user_by_id(row[0])
+            # Legacy rows (bcrypt) until users re-login; avoid full-table scan on modern tokens.
+            cur.execute(
+                """
+                SELECT user_id, token_hash
                 FROM refresh_tokens
-                WHERE expires_at > NOW()
-            """)
-            
-            for row in cur.fetchall():
-                user_id, token_hash, expires_at = row
-                if verify_password(token, token_hash):
+                WHERE expires_at > NOW() AND token_hash LIKE '$2%%'
+                """
+            )
+            for user_id, token_hash in cur.fetchall():
+                if verify_password(raw, token_hash):
                     return get_user_by_id(user_id)
-    
     return None
 
 
 def revoke_refresh_token(token: str) -> bool:
     """Delete refresh session matching the raw token (e.g. on logout). Returns True if a row was removed."""
-    if not (token or "").strip():
+    raw = (token or "").strip()
+    if not raw:
         return False
+    digest = hash_refresh_token(raw)
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
+                DELETE FROM refresh_tokens
+                WHERE token_hash = %s AND expires_at > NOW()
+                RETURNING id
+                """,
+                (digest,),
+            )
+            if cur.fetchone():
+                conn.commit()
+                return True
+            cur.execute(
+                """
                 SELECT id, token_hash
                 FROM refresh_tokens
-                WHERE expires_at > NOW()
+                WHERE expires_at > NOW() AND token_hash LIKE '$2%%'
                 """
             )
-            for row in cur.fetchall():
-                rid, token_hash = row
-                if verify_password(token, token_hash):
+            for rid, token_hash in cur.fetchall():
+                if verify_password(raw, token_hash):
                     cur.execute("DELETE FROM refresh_tokens WHERE id = %s", (rid,))
                     conn.commit()
                     return True

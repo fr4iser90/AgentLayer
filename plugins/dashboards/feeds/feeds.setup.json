@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "kind": "feeds",
+  "greeting": {
+    "de": "Dein RSS-Board — Feed-URLs sammeln und per Agent zusammenfassen lassen.",
+    "en": "Your RSS board — collect feed URLs and summarize them with the agent."
+  },
+  "agent_prompt": {
+    "de": "Onboarding für feeds. Hilf Feed-URLs in data.feeds einzutragen (patch_data). Dann rss_summarize für Markdown-Zusammenfassung. Kein Schema installieren.",
+    "en": "Onboarding for feeds. Help add feed URLs to data.feeds (patch_data). Then rss_summarize for markdown summary. Do not install schema."
+  },
+  "steps": [
+    {
+      "id": "add_feeds",
+      "label": { "de": "RSS-Feeds hinzufügen", "en": "Add RSS feeds" },
+      "tool_hint": "patch_data"
+    },
+    {
+      "id": "summarize",
+      "label": { "de": "Feeds zusammenfassen", "en": "Summarize feeds" },
+      "tool_hint": "rss_summarize"
+    }
+  ],
+  "suggested_tools": ["rss", "dashboard"],
+  "chat_starters": {
+    "de": [
+      "Füge https://hnrss.org/frontpage hinzu und fasse die Feeds zusammen.",
+      "Welche Tech-Blogs empfiehlst du als RSS für dieses Board?"
+    ],
+    "en": [
+      "Add https://hnrss.org/frontpage and summarize my feeds.",
+      "Which tech blogs should I add as RSS feeds?"
+    ]
+  }
+}

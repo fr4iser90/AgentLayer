@@ -3,6 +3,7 @@
   "label": "Feeds",
   "description": "RSS feed list + summaries (dashboard-first).",
   "template": "feeds.template.json",
-  "schema_sql": "migrations/001_user_dashboards.sql"
+  "schema_sql": "migrations/001_user_dashboards.sql",
+  "setup": "feeds.setup.json"
 }
 

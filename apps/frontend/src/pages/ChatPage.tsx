@@ -59,6 +59,7 @@ import {
 } from "../lib/proposalParser";
 import { TurnNavigator, TurnNavigatorHorizontal, buildTurnItems } from "../features/chat/TurnNavigator";
 import { useChatScroll } from "../features/chat/useChatScroll";
+import { CollapsibleSidebarShell } from "../layout/CollapsibleSidebarShell";
 
 /** Dashboard-linked thread: show whether other members see messages (shared) or only you (personal). */
 function DashboardChatVisibilityBadge({ thread }: { thread: Pick<ChatThread, "dashboardId" | "shared"> }) {
@@ -318,6 +319,7 @@ export function ChatPage() {
   const [composerHeaderCollapsed, setComposerHeaderCollapsed] = useState(false);
   const [messageFeedback, setMessageFeedback] = useState<Map<number, "up" | "down">>(new Map());
   const [projectPanelOpen, setProjectPanelOpen] = useState(false);
+  const [threadSidebarOpen, setThreadSidebarOpen] = useState(false);
   const [projectTreeRefreshKey, setProjectTreeRefreshKey] = useState(0);
   const [showSubagentsInActivity, setShowSubagentsInActivity] = useState(true);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
@@ -884,6 +886,19 @@ export function ChatPage() {
     },
     [activeThreadId, auth, setSearchParams]
   );
+
+  const handleSelectThread = useCallback(
+    async (id: string) => {
+      await selectThread(id);
+      setThreadSidebarOpen(false);
+    },
+    [selectThread]
+  );
+
+  const closeProjectPanel = useCallback(() => {
+    setProjectPanelOpen(false);
+    if (userId) setChatProjectPanelOpen(userId, false);
+  }, [userId]);
 
   const patchThread = useCallback((id: string, patch: Partial<ChatThread>) => {
     setThreads((prev) =>
@@ -2348,103 +2363,124 @@ export function ChatPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-surface">
-      <aside className="flex h-full min-h-0 w-[280px] shrink-0 flex-col border-r border-surface-border bg-[#111]">
-        <div className="shrink-0 border-b border-surface-border p-3">
-          <button
-            type="button"
-            onClick={() => void startNewChat()}
-            className="w-full rounded-lg border border-surface-border bg-white/5 px-3 py-2 text-left text-sm text-neutral-200 hover:bg-white/10"
-          >
-            {t("chat:newChat")}
-          </button>
-          <p className="mt-2 text-[11px] leading-snug text-surface-muted">
-            Agent: WebSocket mit mehreren Runden. Chats sync zum Server.
-          </p>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-2 py-2">
-          <p className="px-2 pb-1 text-xs font-medium uppercase tracking-wide text-surface-muted">
-            {t("chat:sidebarTitle")}
-          </p>
-          <p className="mb-2 px-2 text-[10px] leading-snug text-surface-muted/80">
-            {t("chat:sidebarHint")}{" "}
-            <span className="text-amber-200/90">{t("chat:sharedBadge")}</span>
-          </p>
-          <div className="flex flex-col gap-3">
-            {sidebarGroups.map((g) => (
-              <section
-                key={g.kind === "dashboard" ? `ws-${g.dashboardId}` : `src-${g.source}`}
-                className="min-w-0"
-              >
-                <p className="px-2 pb-1 text-[10px] font-medium uppercase tracking-wide text-surface-muted/90">
-                  {g.label}
-                </p>
-                <ul className="flex flex-col gap-1">
-                  {g.threads.map((thread) => (
-                    <li key={thread.id}>
-                      <div
-                        className={`group flex items-start gap-1 rounded-md px-2 py-2 ${
-                          thread.id === activeThreadId ? "bg-white/10" : "hover:bg-white/5"
-                        }`}
-                      >
-                        <button
-                          type="button"
-                          className="min-w-0 flex-1 text-left text-sm text-neutral-200"
-                          onClick={() => void selectThread(thread.id)}
-                        >
-                          <span className="flex flex-wrap items-start gap-1.5">
-                            <span className="line-clamp-2 min-w-0 flex-1 text-left">{thread.title}</span>
-                            <DashboardChatVisibilityBadge thread={thread} />
-                          </span>
-                          <span className="mt-0.5 block text-[10px] text-surface-muted">
-                            {new Date(thread.updatedAt).toLocaleString(undefined, {
-                              month: "short",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
-                        </button>
-                        <div className="flex shrink-0 flex-col gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                          <button
-                            type="button"
-                            className="rounded px-1 text-[10px] text-surface-muted hover:text-white"
-                            title={t("chat:rename")}
-                            onClick={() => renameThread(thread.id)}
-                          >
-                            Ren
-                          </button>
-                          <button
-                            type="button"
-                            className="rounded px-1 text-[10px] text-surface-muted hover:text-white"
-                            title={t("chat:copyLinkJson")}
-                            onClick={() => void shareThread(thread)}
-                          >
-                            Share
-                          </button>
-                          <button
-                            type="button"
-                            className="rounded px-1 text-[10px] text-red-400/90 hover:text-red-300"
-                            title={t("chat:delete")}
-                            onClick={() => void deleteThread(thread.id)}
-                          >
-                            Del
-                          </button>
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ))}
+    <CollapsibleSidebarShell
+      className="bg-surface"
+      mobileOpen={threadSidebarOpen}
+      onMobileOpenChange={setThreadSidebarOpen}
+      sidebarAriaLabel={t("chat:sidebarTitle")}
+      closeSidebarAriaLabel={t("chat:closeChatsSidebar")}
+      sidebar={
+        <>
+          <div className="shrink-0 border-b border-surface-border p-3">
+            <button
+              type="button"
+              onClick={() => {
+                void startNewChat();
+                setThreadSidebarOpen(false);
+              }}
+              className="w-full rounded-lg border border-surface-border bg-white/5 px-3 py-2 text-left text-sm text-neutral-200 hover:bg-white/10"
+            >
+              {t("chat:newChat")}
+            </button>
+            <p className="mt-2 text-[11px] leading-snug text-surface-muted">
+              Agent: WebSocket mit mehreren Runden. Chats sync zum Server.
+            </p>
           </div>
-        </div>
-      </aside>
 
+          <div className="flex-1 overflow-y-auto px-2 py-2">
+            <p className="px-2 pb-1 text-xs font-medium uppercase tracking-wide text-surface-muted">
+              {t("chat:sidebarTitle")}
+            </p>
+            <p className="mb-2 px-2 text-[10px] leading-snug text-surface-muted/80">
+              {t("chat:sidebarHint")}{" "}
+              <span className="text-amber-200/90">{t("chat:sharedBadge")}</span>
+            </p>
+            <div className="flex flex-col gap-3">
+              {sidebarGroups.map((g) => (
+                <section
+                  key={g.kind === "dashboard" ? `ws-${g.dashboardId}` : `src-${g.source}`}
+                  className="min-w-0"
+                >
+                  <p className="px-2 pb-1 text-[10px] font-medium uppercase tracking-wide text-surface-muted/90">
+                    {g.label}
+                  </p>
+                  <ul className="flex flex-col gap-1">
+                    {g.threads.map((thread) => (
+                      <li key={thread.id}>
+                        <div
+                          className={`group flex items-start gap-1 rounded-md px-2 py-2 ${
+                            thread.id === activeThreadId ? "bg-white/10" : "hover:bg-white/5"
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            className="min-w-0 flex-1 text-left text-sm text-neutral-200"
+                            onClick={() => void handleSelectThread(thread.id)}
+                          >
+                            <span className="flex flex-wrap items-start gap-1.5">
+                              <span className="line-clamp-2 min-w-0 flex-1 text-left">{thread.title}</span>
+                              <DashboardChatVisibilityBadge thread={thread} />
+                            </span>
+                            <span className="mt-0.5 block text-[10px] text-surface-muted">
+                              {new Date(thread.updatedAt).toLocaleString(undefined, {
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </button>
+                          <div className="flex shrink-0 flex-col gap-0.5 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
+                            <button
+                              type="button"
+                              className="rounded px-1 text-[10px] text-surface-muted hover:text-white"
+                              title={t("chat:rename")}
+                              onClick={() => renameThread(thread.id)}
+                            >
+                              Ren
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded px-1 text-[10px] text-surface-muted hover:text-white"
+                              title={t("chat:copyLinkJson")}
+                              onClick={() => void shareThread(thread)}
+                            >
+                              Share
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded px-1 text-[10px] text-red-400/90 hover:text-red-300"
+                              title={t("chat:delete")}
+                              onClick={() => void deleteThread(thread.id)}
+                            >
+                              Del
+                            </button>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ))}
+            </div>
+          </div>
+        </>
+      }
+    >
       <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {!activeThreadId ? (
-          <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-6 py-12 text-center">
+          <>
+            <div className="flex shrink-0 items-center gap-2 border-b border-surface-border px-4 py-2 md:hidden">
+              <button
+                type="button"
+                className="rounded-lg border border-surface-border bg-black/30 px-2.5 py-1.5 text-[11px] font-medium text-neutral-300 hover:bg-white/10"
+                aria-expanded={threadSidebarOpen}
+                onClick={() => setThreadSidebarOpen(true)}
+              >
+                {t("chat:openChatsSidebarShort")}
+              </button>
+            </div>
+            <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-4 py-12 text-center sm:px-6">
             <p className="max-w-md text-sm text-surface-muted">
               {t("chat:noConversationOpenLead")}{" "}
               <strong className="text-neutral-400">{t("chat:noConversationOpenBoldNone")}</strong>{" "}
@@ -2454,12 +2490,16 @@ export function ChatPage() {
             </p>
             <button
               type="button"
-              onClick={() => void startNewChat()}
+              onClick={() => {
+                void startNewChat();
+                setThreadSidebarOpen(false);
+              }}
               className="rounded-lg border border-surface-border bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/15"
             >
               {t("chat:newChat")}
             </button>
-          </div>
+            </div>
+          </>
         ) : (
           <>
         <div
@@ -2474,6 +2514,15 @@ export function ChatPage() {
               composerHeaderCollapsed ? "" : "mb-2",
             ].join(" ")}
           >
+            <button
+              type="button"
+              className="shrink-0 rounded-lg border border-surface-border bg-black/30 px-2.5 py-1.5 text-[11px] font-medium text-neutral-300 hover:bg-white/10 md:hidden"
+              aria-expanded={threadSidebarOpen}
+              aria-label={t("chat:openChatsSidebar")}
+              onClick={() => setThreadSidebarOpen(true)}
+            >
+              {t("chat:openChatsSidebarShort")}
+            </button>
             <p className="min-w-0 flex-1 truncate text-sm font-medium text-white">
               {activeThread?.title ?? t("chat:defaultThreadTitle")}
             </p>
@@ -2862,6 +2911,7 @@ export function ChatPage() {
                 changesRefreshKey={projectTreeRefreshKey}
                 variant="chat"
                 readOnly={selectedWorkspace?.access_role === "viewer"}
+                onMobileClose={closeProjectPanel}
               />
             ) : null}
             {userTurns.length > 0 ? (
@@ -2875,7 +2925,7 @@ export function ChatPage() {
             ) : null}
             <div
               ref={scrollContainerRef}
-              className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-6 py-6"
+              className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-6 sm:px-6"
             >
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -3000,7 +3050,7 @@ export function ChatPage() {
           </div>
         </div>
 
-        <div className="shrink-0 border-t border-surface-border bg-[#0c0c0c] px-6 py-4">
+        <div className="shrink-0 border-t border-surface-border bg-[#0c0c0c] px-4 py-4 sm:px-6">
           <div className="relative mx-auto max-w-3xl">
             {showScrollFab ? (
               <button
@@ -3247,6 +3297,6 @@ export function ChatPage() {
           if (!deletingProject) setDeleteProjectTarget(null);
         }}
       />
-    </div>
+    </CollapsibleSidebarShell>
   );
 }

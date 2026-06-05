@@ -12,6 +12,7 @@ import {
   accessTokenNeedsRefresh,
   msUntilProactiveRefresh,
 } from "./tokenRefresh";
+import { fetchWithTimeout } from "./fetchWithTimeout";
 
 export type AuthUser = {
   id: string;
@@ -31,6 +32,34 @@ export type SetupStatus = {
 
 /** Set while setup steps 2–3 are in progress (survives brief redirects). */
 export const SETUP_WIZARD_ACTIVE_KEY = "agentlayer.setup.wizardActive";
+
+const SETUP_STATUS_CACHE_KEY = "agentlayer.setupStatus";
+
+function readCachedSetupStatus(): SetupStatus | null {
+  try {
+    const raw = sessionStorage.getItem(SETUP_STATUS_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as SetupStatus;
+    if (parsed.needs_setup) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedSetupStatus(status: SetupStatus): void {
+  if (status.needs_setup) return;
+  try {
+    sessionStorage.setItem(SETUP_STATUS_CACHE_KEY, JSON.stringify(status));
+  } catch {
+    /* quota / private mode */
+  }
+}
+
+/** Stable after first-start + provider wizard — safe to skip repeat fetches within the session. */
+function isSetupStatusStable(status: SetupStatus): boolean {
+  return !status.needs_setup && status.needs_provider_wizard !== true;
+}
 
 type AuthPayload = {
   access_token: string;
@@ -69,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null);
+  const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(() => readCachedSetupStatus());
   const accessTokenRef = useRef<string | null>(null);
   const proactiveRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refreshRef = useRef<() => Promise<string | null>>(async () => null);
@@ -78,10 +107,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshSetupStatus = useCallback(async (): Promise<SetupStatus | null> => {
     try {
-      const r = await fetch("/auth/setup-status");
+      const r = await fetchWithTimeout("/auth/setup-status");
       if (!r.ok) return null;
       const d = (await r.json()) as SetupStatus;
       setSetupStatus(d);
+      writeCachedSetupStatus(d);
       return d;
     } catch {
       return null;
@@ -110,7 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const refresh = useCallback(async (): Promise<string | null> => {
-    const r = await fetch("/auth/refresh", {
+    const r = await fetchWithTimeout("/auth/refresh", {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -185,13 +215,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [refreshSetupStatus, scheduleProactiveRefresh]
   );
 
+  const bootstrapSetupStatus = useCallback(async (): Promise<SetupStatus | null> => {
+    const cached = readCachedSetupStatus();
+    if (cached && isSetupStatusStable(cached)) {
+      setSetupStatus(cached);
+      return cached;
+    }
+    return refreshSetupStatus();
+  }, [refreshSetupStatus]);
+
   useEffect(() => {
     void (async () => {
-      await refreshSetupStatus();
-      await refresh();
-      setLoading(false);
+      try {
+        await Promise.all([bootstrapSetupStatus(), refresh()]);
+      } finally {
+        setLoading(false);
+      }
     })();
-  }, [refresh, refreshSetupStatus]);
+  }, [refresh, bootstrapSetupStatus]);
 
   useEffect(() => {
     const onVisible = () => {

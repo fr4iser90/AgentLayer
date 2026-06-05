@@ -364,14 +364,31 @@ def _inject_dashboard_context(
         note = (
             f"[Dashboard context] The user opened this dashboard in the app. "
             f"dashboard_id={wid!s}, kind={k!r}, title={title!r}, access_role={role!r}. "
-            f"For shopping_list_* tools, use this dashboard_id when the user means 'this list' "
-            f"and does not clearly mean a different list; for pets_* when kind is pets, or ideas_* "
-            f"when kind is ideas, use the same id. If unsure which list, call shopping_list_dashboards; "
-            f"for pets boards pets_dashboards; for ideas boards ideas_dashboards."
+            f"For kind-specific tools, use this dashboard_id when the user means 'this board': "
+            f"shopping_list_* (shopping_list), pets_*, ideas_*, projects_*, tasks_*. "
+            f"If unsure which board, call the matching *_dashboards list tool first."
         )
         extra = _dashboard_data_agent_instructions(ws.get("data"))
         if extra:
             note = note + "\n\n[Dashboard-specific agent instructions]\n" + extra
+        try:
+            from apps.backend.dashboard.setup import onboarding_for_dashboard
+
+            ob = onboarding_for_dashboard(ws, "de")
+            if ob is None:
+                ob = onboarding_for_dashboard(ws, "en")
+            if ob:
+                ap = (ob.get("agent_prompt") or "").strip()
+                if ap:
+                    note = note + "\n\n[Dashboard onboarding — follow when user sets up or board is new]\n" + ap
+                steps = ob.get("steps") or []
+                if steps:
+                    labels = [str(s.get("label") or s.get("id") or "") for s in steps if isinstance(s, dict)]
+                    labels = [x for x in labels if x]
+                    if labels:
+                        note = note + "\nSetup steps to offer: " + "; ".join(labels)
+        except Exception:
+            pass
     out = list(messages)
     if not out:
         return [{"role": "system", "content": note}]

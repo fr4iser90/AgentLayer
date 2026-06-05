@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "kind": "friends",
+  "greeting": {
+    "de": "Dein Freunde-Board — Kontakte, Geburtstage, Discord und Notizen an einem Ort.",
+    "en": "Your friends board — contacts, birthdays, Discord, and notes in one place."
+  },
+  "agent_prompt": {
+    "de": "Onboarding für friends. Nutze patch_data auf data.friends (Tabelle) und data.notes. Frage nach ersten Kontakten (Name, Geburtstag, Discord). Kein Schema installieren.",
+    "en": "Onboarding for friends. Use patch_data on data.friends (table) and data.notes. Ask for first contacts (name, birthday, Discord). Do not install schema."
+  },
+  "steps": [
+    {
+      "id": "add_contact",
+      "label": { "de": "Kontakt eintragen", "en": "Add a contact" },
+      "tool_hint": "patch_data"
+    },
+    {
+      "id": "birthdays",
+      "label": { "de": "Geburtstage pflegen", "en": "Track birthdays" },
+      "tool_hint": "patch_data"
+    }
+  ],
+  "suggested_tools": ["dashboard", "calendar"],
+  "chat_starters": {
+    "de": [
+      "Trage Max ein — Geburtstag 1990-05-12, Discord max#1234.",
+      "Liste meine engsten Freunde mit Geburtstagen an."
+    ],
+    "en": [
+      "Add Max — birthday 1990-05-12, Discord max#1234.",
+      "Set up my close friends with birthdays."
+    ]
+  }
+}

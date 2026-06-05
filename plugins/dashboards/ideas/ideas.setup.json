@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "kind": "ideas",
+  "greeting": {
+    "de": "Dein Ideen-Board ist bereit — sammle Einfälle in der Tabelle und längere Gedanken im Scratchpad.",
+    "en": "Your ideas board is ready — capture sparks in the table and longer thoughts in the scratchpad."
+  },
+  "agent_prompt": {
+    "de": "Onboarding für ideas. Biete: (1) Idee mit Titel/Tags/Status eintragen (ideas_add_rows), (2) Brainstorm ins Scratchpad (ideas_patch_scratchpad), (3) bestehende Idee aktualisieren (ideas_patch_idea). Eine Frage pro Nachricht. Kein Schema installieren.",
+    "en": "Onboarding for ideas. Offer: (1) add idea rows with title/tags/status (ideas_add_rows), (2) brainstorm into scratchpad (ideas_patch_scratchpad), (3) update an idea (ideas_patch_idea). One question per message. Do not install schema."
+  },
+  "steps": [
+    {
+      "id": "add_idea",
+      "label": { "de": "Idee hinzufügen", "en": "Add an idea" },
+      "tool_hint": "ideas_add_rows"
+    },
+    {
+      "id": "scratchpad",
+      "label": { "de": "Brainstorm / Scratchpad", "en": "Brainstorm in scratchpad" },
+      "tool_hint": "ideas_patch_scratchpad"
+    }
+  ],
+  "suggested_tools": ["ideas"],
+  "chat_starters": {
+    "de": [
+      "Füge eine Idee hinzu: Agent-Setup für Dashboards automatisieren.",
+      "Schreib ins Scratchpad: Themen für nächste Woche sammeln."
+    ],
+    "en": [
+      "Add an idea: automate dashboard agent setup.",
+      "Write to scratchpad: themes to explore next week."
+    ]
+  }
+}

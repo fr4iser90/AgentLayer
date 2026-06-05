@@ -1,6 +1,9 @@
 {
   "loadingChats": "Loading chats…",
   "newChat": "+ New chat",
+  "openChatsSidebar": "Open chat list",
+  "closeChatsSidebar": "Close chat list",
+  "openChatsSidebarShort": "Chats",
   "sidebarTitle": "Your chats",
   "sidebarHint": "Empty threads stay hidden until you open them or send a message. Dashboard rows marked {{shared}} are older team chats (or API); new assistants are private by default.",
   "sharedBadge": "Shared",

@@ -3,5 +3,6 @@
   "label": "Photo album",
   "description": "Gallery grid and album notes.",
   "template": "photo-album.template.json",
-  "schema_sql": "migrations/001_user_dashboards.sql"
+  "schema_sql": "migrations/001_user_dashboards.sql",
+  "setup": "photo-album.setup.json"
 }

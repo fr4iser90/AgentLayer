@@ -45,9 +45,10 @@ export function KanbanBlockBody(props: {
   setData: Dispatch<SetStateAction<Record<string, unknown>>>;
   sectionTitle: string;
   readOnly: boolean;
+  displayMode?: "grid" | "expanded";
 }) {
   const { t } = useTranslation(["dashboard"]);
-  const { dp, data, setData, sectionTitle, readOnly } = props;
+  const { dp, data, setData, sectionTitle, readOnly, displayMode = "grid" } = props;
   const { columns } = readKanban(dp ? getPath(data, dp) : undefined);
 
   const write = (next: { columns: KanbanColumn[] }) => {
@@ -123,19 +124,38 @@ export function KanbanBlockBody(props: {
 
   return (
     <section className="rounded-xl border border-surface-border bg-surface-raised/60 p-3 md:p-4">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-medium text-white">{sectionTitle}</h3>
-        {!readOnly ? (
-          <button
-            type="button"
-            className="rounded-md bg-sky-600/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
-            onClick={addColumn}
-          >
-            {t("dashboard:kanbanAddColumn")}
-          </button>
-        ) : null}
-      </div>
-      <div className="flex min-h-[120px] gap-3 overflow-x-auto pb-1">
+      {displayMode === "grid" ? (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-medium text-white">{sectionTitle}</h3>
+          {!readOnly ? (
+            <button
+              type="button"
+              className="rounded-md bg-sky-600/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
+              onClick={addColumn}
+            >
+              {t("dashboard:kanbanAddColumn")}
+            </button>
+          ) : null}
+        </div>
+      ) : (
+        !readOnly ? (
+          <div className="mb-3 flex justify-end">
+            <button
+              type="button"
+              className="rounded-md bg-sky-600/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
+              onClick={addColumn}
+            >
+              {t("dashboard:kanbanAddColumn")}
+            </button>
+          </div>
+        ) : null
+      )}
+      <div
+        className={[
+          "flex gap-3 overflow-x-auto pb-1",
+          displayMode === "expanded" ? "min-h-[min(60vh,520px)]" : "min-h-[120px]",
+        ].join(" ")}
+      >
         {columns.map((col, ci) => (
           <div
             key={col.id}

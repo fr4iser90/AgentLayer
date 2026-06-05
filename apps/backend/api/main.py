@@ -121,6 +121,7 @@ from apps.backend.api.friends_api import router as friends_router
 from apps.backend.api.shares_api import router as shares_router
 from apps.backend.api.workspaces_api import router as workspaces_router
 from apps.backend.api.workspaces_admin_api import router as workspaces_admin_router
+from apps.backend.api.github_api import router as github_router
 from apps.backend.api.agents_api import router as agents_router
 from apps.backend.api.agents_admin_api import router as agents_admin_router
 from apps.backend.api.tools_admin_api import router as tools_admin_router
@@ -334,6 +335,7 @@ app.include_router(friends_router)
 app.include_router(shares_router)
 app.include_router(workspaces_router)
 app.include_router(workspaces_admin_router)
+app.include_router(github_router)
 
 
 # Auth Endpoints

@@ -3,5 +3,6 @@
   "label": "Shopping list",
   "description": "Checklist-style rows with notes.",
   "template": "shopping-list.template.json",
-  "schema_sql": "migrations/001_user_dashboards.sql"
+  "schema_sql": "migrations/001_user_dashboards.sql",
+  "setup": "shopping-list.setup.json"
 }

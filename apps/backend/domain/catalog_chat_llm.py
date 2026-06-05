@@ -27,6 +27,16 @@ def invalidate_reachable_catalog_cache() -> None:
     _reachable_cache.clear()
 
 
+def cached_llm_reachable() -> bool | None:
+    """Return cached LLM reachability when fresh; ``None`` if unknown (never probes)."""
+    pref_key: tuple[str, ...] = ()
+    now = time.monotonic()
+    cached = _reachable_cache.get(pref_key)
+    if cached is not None and now - cached[0] <= _REACHABLE_CACHE_TTL_SEC:
+        return cached[1] is not None
+    return None
+
+
 def _normalize_profile(profile_key: str) -> str:
     pk = (profile_key or "default").strip().lower()
     return pk if pk in _PROFILE_KEYS else "default"

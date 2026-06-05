@@ -74,6 +74,24 @@ def parse_github_pat(raw: str) -> str:
     return s
 
 
+def github_pat_for_user_id(user_id: Any) -> str | None:
+    """Explicit user lookup for HTTP handlers (``user.id`` from auth). Not identity-context."""
+    from apps.backend.infrastructure.db import db
+    import uuid as _uuid
+
+    if user_id is None:
+        return None
+    try:
+        uid = user_id if isinstance(user_id, _uuid.UUID) else _uuid.UUID(str(user_id))
+    except (ValueError, TypeError):
+        return None
+    raw = db.user_secret_get_plaintext(uid, USER_SECRET_KEY)
+    if not raw:
+        return None
+    tok = parse_github_pat(raw)
+    return tok or None
+
+
 def github_pat_for_current_user() -> str | None:
     from apps.backend.domain.identity import get_identity
     from apps.backend.infrastructure.db import db

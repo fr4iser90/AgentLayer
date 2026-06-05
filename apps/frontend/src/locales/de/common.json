@@ -47,6 +47,10 @@
   },
   "studio": {
     "title": "Bildgenerierung",
+    "openPresetsSidebar": "Preset-Liste öffnen",
+    "closePresetsSidebar": "Preset-Liste schließen",
+    "openPresetsSidebarShort": "Presets",
+    "presetsSidebarAria": "Studio-Presets",
     "inpaint": "Inpaint",
     "subtitle": "ComfyUI-Workflows. Presets und Checkpoints kommen vom Server-Katalog; ComfyUI-URLs in Operator-Settings / .env konfigurieren.",
     "catalogFromServer": "Katalog vom Server",

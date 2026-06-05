@@ -19,6 +19,8 @@ from apps.backend.infrastructure.operator_settings import (
 from apps.backend.dashboard import db as dashboard_db
 from apps.backend.dashboard import file_storage, files_db, public_share
 from apps.backend.dashboard.bootstrap import ensure_dashboard_schema, dashboard_tables_exist
+from apps.backend.dashboard.projects_import import import_repos_into_projects_dashboard
+from apps.backend.dashboard.setup import attach_onboarding, onboarding_for_kind
 from apps.backend.dashboard.upload_bytes import normalized_content_type, sniff_image_mime
 from apps.backend.infrastructure.public_error import http_500_detail
 
@@ -75,9 +77,32 @@ class DashboardPublicShareCreateBody(BaseModel):
     )
 
 
+class GithubRepoImportItem(BaseModel):
+    full_name: str = Field(..., min_length=1, max_length=256)
+    clone_url: str = Field(..., min_length=1, max_length=2048)
+    html_url: str | None = Field(default=None, max_length=2048)
+    default_branch: str = Field(default="main", max_length=255)
+    description: str | None = Field(default=None, max_length=2000)
+    name: str | None = Field(default=None, max_length=256)
+
+
+class ProjectsImportBody(BaseModel):
+    repos: list[GithubRepoImportItem] = Field(..., min_length=1, max_length=200)
+    create_workspaces: bool = False
+    skip_existing: bool = True
+    data_path: str | None = Field(default=None, max_length=64)
+
+
 def _share_password_from_request(request: Request) -> str | None:
     raw = (request.headers.get(public_share.SHARE_PASSWORD_HEADER) or "").strip()
     return raw or None
+
+
+def _preferred_lang(request: Request) -> str:
+    raw = (request.headers.get("accept-language") or "").strip().lower()
+    if raw.startswith("de") or ",de" in raw:
+        return "de"
+    return "en"
 
 
 class DashboardInstallBody(BaseModel):
@@ -380,7 +405,19 @@ async def create_dashboard(request: Request, body: DashboardCreateBody):
         ui_layout=body.ui_layout,
         data=body.data,
     )
-    return {"ok": True, "dashboard": row}
+    lang = _preferred_lang(request)
+    return {"ok": True, "dashboard": attach_onboarding(row, lang)}
+
+
+@router.get("/kinds/{kind}/onboarding")
+async def get_kind_onboarding(request: Request, kind: str):
+    """Localized onboarding manifest for a dashboard kind (no row required)."""
+    _require_schema()
+    await get_current_user(request)
+    ob = onboarding_for_kind(kind, _preferred_lang(request))
+    if not ob:
+        raise HTTPException(status_code=404, detail="no onboarding for this kind")
+    return {"ok": True, "onboarding": ob}
 
 
 @router.get("/{dashboard_id}/members")
@@ -562,7 +599,7 @@ async def get_dashboard(request: Request, dashboard_id: uuid.UUID):
     row = dashboard_db.dashboard_get(user.id, tid, dashboard_id)
     if not row:
         raise HTTPException(status_code=404, detail="dashboard not found")
-    return {"ok": True, "dashboard": row}
+    return {"ok": True, "dashboard": attach_onboarding(row, _preferred_lang(request))}
 
 
 @router.patch("/{dashboard_id}")
@@ -583,6 +620,28 @@ async def patch_dashboard(
     if not row:
         raise HTTPException(status_code=404, detail="dashboard not found")
     return {"ok": True, "dashboard": row}
+
+
+@router.post("/{dashboard_id}/import-projects")
+async def import_projects_from_github(
+    request: Request, dashboard_id: uuid.UUID, body: ProjectsImportBody
+):
+    """Append GitHub repo rows to a projects dashboard (optional workspace clone)."""
+    _require_schema()
+    user = await get_current_user(request)
+    tid = db.user_tenant_id(user.id)
+    result = import_repos_into_projects_dashboard(
+        user,
+        tid,
+        dashboard_id,
+        repos=[r.model_dump() for r in body.repos],
+        create_workspaces=body.create_workspaces,
+        skip_existing=body.skip_existing,
+        data_path=body.data_path,
+    )
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail=result.get("error") or "import failed")
+    return result
 
 
 @router.delete("/{dashboard_id}")

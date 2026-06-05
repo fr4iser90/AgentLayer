@@ -3,5 +3,6 @@
   "label": "Persönlich / Dashboard",
   "description": "Hero, eingebetteter Kalender (z. B. Google), Task-Liste und Rich-Markdown — ein Board für den Tag.",
   "template": "personal-dashboard.template.json",
-  "schema_sql": "migrations/001_user_dashboards.sql"
+  "schema_sql": "migrations/001_user_dashboards.sql",
+  "setup": "personal-dashboard.setup.json"
 }

@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "kind": "photo_album",
+  "greeting": {
+    "de": "Dein Foto-Album — Galerie-Block für Bilder und Platz für Album-Notizen.",
+    "en": "Your photo album — gallery block for images and space for album notes."
+  },
+  "agent_prompt": {
+    "de": "Onboarding für photo_album. Erkläre: Bilder per Upload im Dashboard (Speichern vor Upload) oder wsfile-URLs. Nutze patch_data für photos/notes. Kein Schema installieren.",
+    "en": "Onboarding for photo_album. Explain: upload images in the dashboard UI (save first) or wsfile URLs. Use patch_data for photos/notes. Do not install schema."
+  },
+  "steps": [
+    {
+      "id": "upload",
+      "label": { "de": "Fotos hochladen", "en": "Upload photos" },
+      "tool_hint": "dashboard UI gallery"
+    },
+    {
+      "id": "caption",
+      "label": { "de": "Album-Notizen", "en": "Album notes" },
+      "tool_hint": "patch_data"
+    }
+  ],
+  "suggested_tools": ["dashboard"],
+  "chat_starters": {
+    "de": [
+      "Hilf mir, Album-Notizen für den Urlaub 2025 zu schreiben.",
+      "Wie lade ich Fotos in die Galerie hoch?"
+    ],
+    "en": [
+      "Help me write album notes for vacation 2025.",
+      "How do I upload photos to the gallery?"
+    ]
+  }
+}

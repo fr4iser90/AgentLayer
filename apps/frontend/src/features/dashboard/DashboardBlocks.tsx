@@ -10,6 +10,7 @@ import type { UiBlock, UiLayout } from "./types";
 import { EmbedBlockBody } from "./EmbedBlock";
 import { KanbanBlockBody, RichMarkdownBlockBody } from "./KanbanRichMarkdownBlocks";
 import { ChartBlockBody, SparklineBlockBody } from "./chart/ChartBlockViews";
+import { ProjectWorkspaceControls } from "./ProjectWorkspaceControls";
 import { getPath, setPath } from "./dashboardDataPaths";
 import {
   EXECUTION_TARGET_OPTIONS,
@@ -55,6 +56,7 @@ export function DashboardBlockTile(props: {
   setData: Dispatch<SetStateAction<Record<string, unknown>>>;
   readOnly?: boolean;
   dashboardId?: string | null;
+  displayMode?: "grid" | "expanded";
 }) {
   return (
     <BlockView
@@ -63,6 +65,7 @@ export function DashboardBlockTile(props: {
       setData={props.setData}
       readOnly={props.readOnly === true}
       dashboardId={props.dashboardId ?? null}
+      displayMode={props.displayMode ?? "grid"}
     />
   );
 }
@@ -550,9 +553,11 @@ function BlockView(props: {
   setData: Dispatch<SetStateAction<Record<string, unknown>>>;
   dashboardId: string | null;
   readOnly: boolean;
+  displayMode?: "grid" | "expanded";
 }) {
-  const { block, data, setData, dashboardId, readOnly } = props;
+  const { block, data, setData, dashboardId, readOnly, displayMode = "grid" } = props;
   const { t } = useTranslation(["dashboard", "admin"]);
+  const auth = useAuth();
   const dp = block.props.dataPath || "";
 
   if (block.type === "hero") {
@@ -600,6 +605,7 @@ function BlockView(props: {
         setData={setData}
         sectionTitle={block.props.title || t("dashboard:chartFallback")}
         readOnly={readOnly}
+        displayMode={displayMode}
       />
     );
   }
@@ -624,6 +630,7 @@ function BlockView(props: {
         setData={setData}
         sectionTitle={block.props.title || t("dashboard:kanbanFallback")}
         readOnly={readOnly}
+        displayMode={displayMode}
       />
     );
   }
@@ -693,9 +700,12 @@ function BlockView(props: {
     const rows: Row[] = Array.isArray(rowsUnknown)
       ? (rowsUnknown as Row[])
       : [];
-    const cols = block.props.columns || [];
+    const cols = (block.props.columns || []).filter(
+      (c: { field?: string }) => c?.field !== "workspace_id"
+    );
     const enableRowDetail = block.props.enableRowDetail === true;
     const enableRunNow = block.props.enableRunNow === true;
+    const enableWorkspaceLink = enableRunNow && block.props.enableWorkspaceLink !== false;
     const defaultWorkspaceId =
       typeof block.props.workspaceId === "string" ? block.props.workspaceId.trim() : "";
     const searchEnabled = block.props.enableSearch === true;
@@ -747,6 +757,7 @@ function BlockView(props: {
       const title = String((detailRow as any)?.title ?? "").trim();
       const remote = String((detailRow as any)?.remote_url ?? "").trim();
       const path = String((detailRow as any)?.project_path ?? "").trim();
+      const rowWorkspace = String((detailRow as any)?.workspace_id ?? "").trim();
       const lines = [
         `${t("dashboard:project")}: ${title || t("dashboard:untitled")}`,
         remote ? `${t("dashboard:remote")}: ${remote}` : "",
@@ -756,10 +767,22 @@ function BlockView(props: {
         "",
       ].filter(Boolean);
       setRunNowInstructions(lines.join("\n"));
+      setRunNowWorkspaceId(rowWorkspace || defaultWorkspaceId);
       setRunNowMsg(null);
       setRecentRuns(null);
       setRecentRunsErr(null);
-    }, [enableRunNow, detailRowId, detailRow]);
+    }, [enableRunNow, detailRowId, detailRow, defaultWorkspaceId, t]);
+
+    const updateDetailRowFields = (patch: Record<string, unknown>) => {
+      if (!detailRowId) return;
+      setData((d) => {
+        const list = [...((getPath(d, dp) as Row[]) || [])];
+        const idx = list.findIndex((x) => String((x as any)?.id ?? "") === detailRowId);
+        if (idx < 0) return d;
+        list[idx] = { ...(list[idx] || {}), ...patch };
+        return setPath(d, dp, list);
+      });
+    };
 
     const refreshRecentRuns = async () => {
       if (!enableRunNow) return;
@@ -957,6 +980,22 @@ function BlockView(props: {
                 </button>
               </div>
 
+              {enableWorkspaceLink ? (
+                <ProjectWorkspaceControls
+                  auth={auth}
+                  workspaceId={runNowWorkspaceId}
+                  remoteUrl={String((detailRow as any)?.remote_url ?? "")}
+                  readOnly={readOnly}
+                  onWorkspaceChange={(wid, projectPath) => {
+                    setRunNowWorkspaceId(wid);
+                    updateDetailRowFields({
+                      workspace_id: wid,
+                      ...(projectPath ? { project_path: projectPath } : {}),
+                    });
+                  }}
+                />
+              ) : null}
+
               {enableRunNow ? (
                 <div className="mb-4 rounded-xl border border-surface-border bg-black/20 p-3">
                   <div className="mb-2 flex items-center justify-between gap-2">
@@ -1006,15 +1045,23 @@ function BlockView(props: {
                       {runNowBusy ? t("dashboard:queueing") : t("dashboard:queueRun")}
                     </button>
                   </div>
-                  <label className="mb-2 block text-[11px] text-surface-muted">
-                    {t("dashboard:workspaceIdUuid")}
-                    <input
-                      value={runNowWorkspaceId}
-                      onChange={(e) => setRunNowWorkspaceId(e.target.value)}
-                      className="mt-1 w-full rounded-lg border border-surface-border bg-black/30 px-3 py-1.5 font-mono text-xs text-neutral-100 outline-none focus:border-violet-400/60"
-                      placeholder={t("dashboard:workspaceUuidPlaceholder")}
-                    />
-                  </label>
+                  {!enableWorkspaceLink ? (
+                    <label className="mb-2 block text-[11px] text-surface-muted">
+                      {t("dashboard:workspaceIdUuid")}
+                      <input
+                        value={runNowWorkspaceId}
+                        onChange={(e) => setRunNowWorkspaceId(e.target.value)}
+                        className="mt-1 w-full rounded-lg border border-surface-border bg-black/30 px-3 py-1.5 font-mono text-xs text-neutral-100 outline-none focus:border-violet-400/60"
+                        placeholder={t("dashboard:workspaceUuidPlaceholder")}
+                      />
+                    </label>
+                  ) : runNowWorkspaceId ? (
+                    <p className="mb-2 truncate font-mono text-[10px] text-surface-muted">
+                      {runNowWorkspaceId}
+                    </p>
+                  ) : (
+                    <p className="mb-2 text-xs text-amber-300/90">{t("dashboard:workspaceRequiredForRun")}</p>
+                  )}
                   <textarea
                     value={runNowInstructions}
                     onChange={(e) => setRunNowInstructions(e.target.value)}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import { SchemaForm } from "../components/SchemaForm";
+import { CollapsibleSidebarShell } from "../layout/CollapsibleSidebarShell";
 
 type CatalogPreset = {
   run_key: string;
@@ -47,6 +48,7 @@ export function StudioPage() {
   const [jobLoading, setJobLoading] = useState(false);
   const [jobError, setJobError] = useState<string | null>(null);
   const [jobResult, setJobResult] = useState<unknown>(null);
+  const [presetSidebarOpen, setPresetSidebarOpen] = useState(false);
 
   const preset = useMemo(
     () => catalog?.presets?.find((p) => p.run_key === selectedRunKey),
@@ -55,6 +57,11 @@ export function StudioPage() {
 
   const txt2img = catalog?.presets?.find((p) => p.kind === "txt2img");
   const inpaint = catalog?.presets?.find((p) => p.kind === "inpaint");
+
+  const selectPreset = useCallback((runKey: string) => {
+    setSelectedRunKey(runKey);
+    setPresetSidebarOpen(false);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -77,7 +84,7 @@ export function StudioPage() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken]);
+  }, [accessToken, t]);
 
   useEffect(() => {
     if (!preset) return;
@@ -138,51 +145,73 @@ export function StudioPage() {
     (jobResult as { primary_image?: { data_url?: string } }).primary_image?.data_url;
   const previewUrl = typeof previewUrlRaw === "string" && previewUrlRaw ? previewUrlRaw : undefined;
 
+  const presetButtonClass = (runKey: string, extra = "") =>
+    [
+      "w-full rounded-lg border px-3 py-2 text-left text-sm",
+      selectedRunKey === runKey
+        ? "border-white/30 bg-white/10 text-white"
+        : "border-transparent text-neutral-400 hover:bg-white/5",
+      extra,
+    ]
+      .filter(Boolean)
+      .join(" ");
+
   return (
-    <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-surface">
-      <aside className="flex h-full min-h-0 w-56 shrink-0 flex-col overflow-y-auto border-r border-surface-border bg-[#111] p-3">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-surface-muted">
-          {t("common:studio.title")}
-        </p>
-        {txt2img ? (
+    <CollapsibleSidebarShell
+      className="bg-surface"
+      mobileOpen={presetSidebarOpen}
+      onMobileOpenChange={setPresetSidebarOpen}
+      sidebarAriaLabel={t("common:studio.presetsSidebarAria")}
+      closeSidebarAriaLabel={t("common:studio.closePresetsSidebar")}
+      desktopWidthClass="md:w-56"
+      sidebar={
+        <div className="flex h-full min-h-0 flex-col overflow-y-auto p-3">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-surface-muted">
+            {t("common:studio.title")}
+          </p>
+          {txt2img ? (
+            <button
+              type="button"
+              onClick={() => selectPreset(txt2img.run_key)}
+              className={presetButtonClass(txt2img.run_key, "mb-1")}
+            >
+              <div className="font-medium">{txt2img.title}</div>
+              <div className="text-xs text-surface-muted">{txt2img.engine ?? "comfyui"}</div>
+            </button>
+          ) : null}
+
+          <p className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wide text-surface-muted">
+            {t("common:studio.inpaint")}
+          </p>
+          {inpaint ? (
+            <button
+              type="button"
+              onClick={() => selectPreset(inpaint.run_key)}
+              className={presetButtonClass(inpaint.run_key)}
+            >
+              <div className="font-medium">{inpaint.title}</div>
+              <div className="text-xs text-surface-muted">{inpaint.engine ?? "comfyui"}</div>
+            </button>
+          ) : null}
+        </div>
+      }
+    >
+      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto p-4 md:p-8">
+        <div className="flex flex-wrap items-start gap-2">
           <button
             type="button"
-            onClick={() => setSelectedRunKey(txt2img.run_key)}
-            className={[
-              "mb-1 w-full rounded-lg border px-3 py-2 text-left text-sm",
-              selectedRunKey === txt2img.run_key
-                ? "border-white/30 bg-white/10 text-white"
-                : "border-transparent text-neutral-400 hover:bg-white/5",
-            ].join(" ")}
+            className="shrink-0 rounded-lg border border-surface-border bg-black/30 px-2.5 py-1.5 text-[11px] font-medium text-neutral-300 hover:bg-white/10 md:hidden"
+            aria-expanded={presetSidebarOpen}
+            aria-label={t("common:studio.openPresetsSidebar")}
+            onClick={() => setPresetSidebarOpen(true)}
           >
-            <div className="font-medium">{txt2img.title}</div>
-            <div className="text-xs text-surface-muted">{txt2img.engine ?? "comfyui"}</div>
+            {t("common:studio.openPresetsSidebarShort")}
           </button>
-        ) : null}
-
-        <p className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wide text-surface-muted">
-          {t("common:studio.inpaint")}
-        </p>
-        {inpaint ? (
-          <button
-            type="button"
-            onClick={() => setSelectedRunKey(inpaint.run_key)}
-            className={[
-              "w-full rounded-lg border px-3 py-2 text-left text-sm",
-              selectedRunKey === inpaint.run_key
-                ? "border-white/30 bg-white/10 text-white"
-                : "border-transparent text-neutral-400 hover:bg-white/5",
-            ].join(" ")}
-          >
-            <div className="font-medium">{inpaint.title}</div>
-            <div className="text-xs text-surface-muted">{inpaint.engine ?? "comfyui"}</div>
-          </button>
-        ) : null}
-      </aside>
-
-      <div className="min-w-0 flex-1 overflow-y-auto p-8">
-        <h1 className="text-2xl font-semibold text-white">{t("common:studio.title")}</h1>
-        <p className="mt-1 max-w-2xl text-sm text-surface-muted">{t("common:studio.subtitle")}</p>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-2xl font-semibold text-white">{t("common:studio.title")}</h1>
+            <p className="mt-1 max-w-2xl text-sm text-surface-muted">{t("common:studio.subtitle")}</p>
+          </div>
+        </div>
 
         {catalogError ? (
           <p className="mt-4 rounded-lg border border-red-900/50 bg-red-950/40 px-3 py-2 text-sm text-red-200">
@@ -268,6 +297,6 @@ export function StudioPage() {
           <p className="mt-8 text-surface-muted">{t("common:studio.noPresetSelected")}</p>
         ) : null}
       </div>
-    </div>
+    </CollapsibleSidebarShell>
   );
 }

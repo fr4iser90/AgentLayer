@@ -47,6 +47,10 @@
   },
   "studio": {
     "title": "Image generation",
+    "openPresetsSidebar": "Open preset list",
+    "closePresetsSidebar": "Close preset list",
+    "openPresetsSidebarShort": "Presets",
+    "presetsSidebarAria": "Studio presets",
     "inpaint": "Inpaint",
     "subtitle": "ComfyUI-backed workflows. Presets and checkpoints come from the server catalog; configure ComfyUI URLs in operator settings / env.",
     "catalogFromServer": "Catalog from server",

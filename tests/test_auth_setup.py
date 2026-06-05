@@ -51,11 +51,31 @@ def test_build_setup_status_needs_llm() -> None:
         patch.object(mod, "is_first_start", return_value=False),
         patch.object(mod, "catalog_llm_configured", return_value=False),
         patch.object(mod, "setup_preferences_saved", return_value=False),
+        patch.object(mod, "cached_llm_reachable", return_value=None),
     ):
         st = mod.build_setup_status()
     assert st["needs_setup"] is False
     assert st["needs_llm"] is True
     assert st["needs_provider_wizard"] is True
+    assert st["llm_reachable"] is False
+
+
+def test_catalog_llm_configured_uses_specs_not_probe() -> None:
+    spec = MagicMock(base_url="http://llm.local/v1")
+    with patch.object(mod, "list_provider_specs", return_value=[spec]):
+        assert mod.catalog_llm_configured() is True
+
+
+def test_build_setup_status_does_not_live_probe_llm() -> None:
+    with (
+        patch.object(mod, "is_first_start", return_value=False),
+        patch.object(mod, "catalog_llm_configured", return_value=True),
+        patch.object(mod, "setup_preferences_saved", return_value=True),
+        patch.object(mod, "cached_llm_reachable", return_value=True),
+    ):
+        st = mod.build_setup_status()
+    assert st["llm_reachable"] is True
+    assert st["needs_llm"] is False
 
 
 def test_build_setup_status_provider_wizard_done() -> None:

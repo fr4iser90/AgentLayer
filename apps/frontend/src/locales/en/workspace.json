@@ -1,5 +1,6 @@
 {
   "selectProjectBrowseFiles": "Select a project to browse files.",
+  "projectFilesTitle": "Project files",
   "mcpModalTitle": "Workspace MCP (stdio)",
   "mcpModalDescription": "Saved only on {{workspaceName}}. Non-empty list replaces global server config for chats in this workspace. Commands run on the AgentLayer server (needs uv / uvx there).",
   "addViaUv": "Add via uv",

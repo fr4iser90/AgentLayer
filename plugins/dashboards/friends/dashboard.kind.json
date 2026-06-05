@@ -3,5 +3,6 @@
   "label": "Freunde",
   "description": "Kontakte mit Geburtstag, Discord-ID, Vorlieben — Basis für Geschenkideen, Erinnerungen oder Bot-Nachrichten (später per Agent/Automation anbindbar).",
   "template": "friends.template.json",
-  "schema_sql": "migrations/001_user_dashboards.sql"
+  "schema_sql": "migrations/001_user_dashboards.sql",
+  "setup": "friends.setup.json"
 }

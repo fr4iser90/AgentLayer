@@ -12,10 +12,16 @@ import i18n from "../i18n/config";
 import { useAuth } from "../auth/AuthContext";
 import { apiFetch } from "../lib/api";
 import { DashboardEmbeddedChat } from "../features/dashboard/DashboardEmbeddedChat";
+import {
+  DashboardOnboardingBanner,
+  isOnboardingDismissed,
+} from "../features/dashboard/DashboardOnboardingBanner";
 import { DashboardGridCanvas } from "../features/dashboard/DashboardGridCanvas";
 import { DashboardSettingsDrawer } from "../features/dashboard/DashboardSettingsDrawer";
 import { DashboardHubNavigator } from "../features/dashboard/DashboardHubNavigator";
 import { DashboardOverviewPanel } from "../features/dashboard/DashboardOverviewPanel";
+import { ProjectsImportModal } from "../features/dashboard/ProjectsImportModal";
+import { CollapsibleSidebarShell } from "../layout/CollapsibleSidebarShell";
 import {
   DEFAULT_HUBS,
   groupDashboardsByHub,
@@ -128,7 +134,12 @@ export function DashboardPage() {
   const [list, setList] = useState<DashboardSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [hubPanel, setHubPanel] = useState<HubPanel>("home");
+  const [actionsSidebarOpen, setActionsSidebarOpen] = useState(false);
   const [newWsModalOpen, setNewWsModalOpen] = useState(false);
+  const [projectsImportOpen, setProjectsImportOpen] = useState(false);
+  const [onboardingHidden, setOnboardingHidden] = useState(false);
+  const [chatComposeDraft, setChatComposeDraft] = useState("");
+  const [chatComposeDraftSeed, setChatComposeDraftSeed] = useState(0);
   const [catalogQuery, setCatalogQuery] = useState("");
   const [detail, setDetail] = useState<DashboardDetail | null>(null);
   const [data, setData] = useState<Record<string, unknown>>({});
@@ -352,6 +363,7 @@ export function DashboardPage() {
 
   useLayoutEffect(() => {
     setLayoutEditMode(false);
+    setOnboardingHidden(false);
     if (!selectedId) {
       setDetail(null);
       setData({});
@@ -765,18 +777,22 @@ export function DashboardPage() {
       setError(await res.text());
       return;
     }
-    const j = (await res.json()) as { dashboard?: { id: string } };
+    const j = (await res.json()) as { dashboard?: DashboardDetail & { id: string } };
     if (j.dashboard?.id) {
       setNewWsModalOpen(false);
       setHubPanel("home");
       await loadList();
       setLayoutEditMode(false);
-      setDetail(null);
-      setData({});
-      setTitle("");
+      setDetail(j.dashboard as DashboardDetail);
+      setData(
+        j.dashboard.data && typeof j.dashboard.data === "object" ? { ...j.dashboard.data } : {}
+      );
+      setTitle(j.dashboard.title || labelForKind(kind, kindCatalog));
       setError(null);
-      setLayoutDraft({ version: 1, blocks: [] });
+      const ul = asUiLayout(j.dashboard.ui_layout);
+      setLayoutDraft(ul ?? { version: 1, blocks: [] });
       setSelectedId(j.dashboard.id);
+      setOnboardingHidden(false);
     }
   };
 
@@ -797,6 +813,7 @@ export function DashboardPage() {
   const openCatalog = () => {
     setSelectedId(null);
     setHubPanel("catalog");
+    setActionsSidebarOpen(false);
   };
 
   const selectDashboard = (id: string) => {
@@ -809,6 +826,7 @@ export function DashboardPage() {
     setLayoutDraft({ version: 1, blocks: [] });
     setSelectedId(id);
     setHubPanel("home");
+    setActionsSidebarOpen(false);
   };
 
   const addToolToDashboardAllowlist = useCallback(
@@ -963,8 +981,8 @@ export function DashboardPage() {
     );
   }
 
-  const sidebar = (
-    <aside className="flex w-full shrink-0 flex-col border-surface-border bg-surface-raised/40 md:w-44 md:border-r">
+  const dashboardActionsSidebar = (
+    <div className="flex h-full min-h-0 flex-col overflow-y-auto">
       <div className="flex flex-col gap-1 p-2">
         <p className="px-2.5 pt-1 text-xs font-semibold uppercase tracking-wide text-surface-muted">
           {t("dashboard:actions")}
@@ -975,6 +993,7 @@ export function DashboardPage() {
             setNewWsModalOpen(true);
             setHubPanel("home");
             setSelectedId(null);
+            setActionsSidebarOpen(false);
           }}
           className="rounded-lg px-2.5 py-2 text-left text-xs text-neutral-200 transition hover:bg-white/5"
         >
@@ -985,6 +1004,7 @@ export function DashboardPage() {
           onClick={() => {
             setSelectedId(null);
             setHubPanel("overview");
+            setActionsSidebarOpen(false);
           }}
           className={[
             "rounded-lg px-2.5 py-2 text-left text-xs transition hover:bg-white/5",
@@ -1012,7 +1032,7 @@ export function DashboardPage() {
           {t("dashboard:catalogTitle")}
         </button>
       </div>
-    </aside>
+    </div>
   );
 
   const overviewMain = (
@@ -1249,6 +1269,15 @@ export function DashboardPage() {
                         {saving ? t("dashboard:saving") : t("admin:save")}
                       </button>
                     ) : null}
+                    {canEditContent && detail?.kind === "projects" && selectedId ? (
+                      <button
+                        type="button"
+                        className="rounded-lg border border-violet-500/40 bg-violet-950/25 px-4 py-2 text-sm text-violet-100 hover:bg-violet-900/35"
+                        onClick={() => setProjectsImportOpen(true)}
+                      >
+                        {t("dashboard:importFromGithub")}
+                      </button>
+                    ) : null}
                     {detail ? (
                       <button
                         type="button"
@@ -1281,6 +1310,21 @@ export function DashboardPage() {
                     {subtitleForDashboardKind(detail!.kind, kindCatalog)}
                   </span>
                 </p>
+                {detail?.onboarding &&
+                !isViewer &&
+                !onboardingHidden &&
+                !isOnboardingDismissed(selectedId!) ? (
+                  <DashboardOnboardingBanner
+                    dashboardId={selectedId!}
+                    onboarding={detail.onboarding}
+                    readOnly={isViewer}
+                    onStartChat={(msg) => {
+                      setChatComposeDraft(msg);
+                      setChatComposeDraftSeed((n) => n + 1);
+                    }}
+                    onDismiss={() => setOnboardingHidden(true)}
+                  />
+                ) : null}
                 <DashboardGridCanvas
                   key={selectedId}
                   layout={gridLayout}
@@ -1296,13 +1340,15 @@ export function DashboardPage() {
             </div>
           </div>
           {dashboardReady ? (
-            <aside className="flex min-h-[min(380px,50vh)] w-full shrink-0 flex-col border-t border-surface-border bg-[#0d0d0d]/80 lg:min-h-0 lg:w-[min(400px,36vw)] lg:max-w-md lg:border-t-0 lg:border-l lg:border-surface-border">
+            <aside className="flex w-full shrink-0 flex-col border-t border-surface-border bg-[#0d0d0d]/80 lg:min-h-0 lg:w-[min(400px,36vw)] lg:max-w-md lg:border-t-0 lg:border-l lg:border-surface-border">
               <div className="flex min-h-[280px] flex-1 flex-col p-3 md:p-4 lg:min-h-0 lg:max-h-[calc(100vh-7rem)]">
                 <DashboardEmbeddedChat
                   key={selectedId}
                   dashboardId={selectedId}
                   dashboardTitle={title || detail?.title}
                   readOnly={isViewer}
+                  composeDraft={chatComposeDraft}
+                  composeDraftSeed={chatComposeDraftSeed}
                 />
               </div>
             </aside>
@@ -1328,9 +1374,32 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-0 md:flex-row">
-      {sidebar}
-      {main}
+    <>
+      <CollapsibleSidebarShell
+        className="bg-surface"
+        mobileOpen={actionsSidebarOpen}
+        onMobileOpenChange={setActionsSidebarOpen}
+        sidebarAriaLabel={t("dashboard:actions")}
+        closeSidebarAriaLabel={t("dashboard:closeActionsSidebar")}
+        desktopWidthClass="md:w-44"
+        sidebarSurfaceClass="bg-surface-raised/40"
+        sidebar={dashboardActionsSidebar}
+      >
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <div className="flex shrink-0 items-center gap-2 border-b border-surface-border px-4 py-2 md:hidden">
+            <button
+              type="button"
+              className="rounded-lg border border-surface-border bg-black/30 px-2.5 py-1.5 text-[11px] font-medium text-neutral-300 hover:bg-white/10"
+              aria-expanded={actionsSidebarOpen}
+              aria-label={t("dashboard:openActionsSidebar")}
+              onClick={() => setActionsSidebarOpen(true)}
+            >
+              {t("dashboard:openActionsSidebarShort")}
+            </button>
+          </div>
+          {main}
+        </div>
+      </CollapsibleSidebarShell>
 
       {dashboardReady && detail ? (
         <DashboardSettingsDrawer
@@ -1848,6 +1917,20 @@ export function DashboardPage() {
         </DashboardSettingsDrawer>
       ) : null}
 
+      {projectsImportOpen && selectedId ? (
+        <ProjectsImportModal
+          open={projectsImportOpen}
+          onClose={() => setProjectsImportOpen(false)}
+          auth={auth}
+          dashboardId={selectedId}
+          onImported={(nextData) => {
+            setData({ ...nextData });
+            setDetail((prev) => (prev ? { ...prev, data: nextData } : prev));
+            setProjectsImportOpen(false);
+          }}
+        />
+      ) : null}
+
       {newWsModalOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="presentation">
           <div
@@ -1953,6 +2036,6 @@ export function DashboardPage() {
           </div>
         </div>
       ) : null}
-    </div>
+    </>
   );
 }

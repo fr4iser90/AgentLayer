@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "kind": "personal_dashboard",
+  "greeting": {
+    "de": "Dein persönliches Tages-Dashboard: Hero, Kalender, Tasks und Notizen — lass uns es einrichten.",
+    "en": "Your personal day board: hero, calendar, tasks, and notes — let's set it up."
+  },
+  "agent_prompt": {
+    "de": "Onboarding für personal_dashboard. Biete: (1) Google-Kalender Embed-URL in calendar_embed, (2) erste Tasks in tasks-Tabelle via patch_data, (3) Tagesnotizen in day_notes, (4) optional Hero-Bild/Überschrift. Nutze patch_data/patch_layout. Kein Schema installieren.",
+    "en": "Onboarding for personal_dashboard. Offer: (1) Google Calendar embed URL into calendar_embed, (2) first tasks via patch_data, (3) day notes in day_notes, (4) optional hero image/headline. Use patch_data/patch_layout. Do not install schema."
+  },
+  "steps": [
+    {
+      "id": "calendar",
+      "label": { "de": "Kalender einbinden", "en": "Connect calendar" },
+      "tool_hint": "patch_data"
+    },
+    {
+      "id": "tasks",
+      "label": { "de": "Erste Tasks anlegen", "en": "Add first tasks" },
+      "tool_hint": "patch_data"
+    },
+    {
+      "id": "notes",
+      "label": { "de": "Tagesnotizen schreiben", "en": "Write day notes" },
+      "tool_hint": "patch_data"
+    },
+    {
+      "id": "hero",
+      "label": { "de": "Hero / Kopfzeile", "en": "Hero banner" },
+      "tool_hint": "patch_data"
+    }
+  ],
+  "suggested_tools": ["dashboard"],
+  "chat_starters": {
+    "de": [
+      "Hilf mir, meinen Google-Kalender einzubinden.",
+      "Lege drei Tasks für heute an: E-Mails, Sport, Einkaufen."
+    ],
+    "en": [
+      "Help me embed my Google Calendar.",
+      "Add three tasks for today: email, workout, groceries."
+    ]
+  }
+}

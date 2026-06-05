@@ -18,7 +18,8 @@ from fastapi import HTTPException, Request
 from apps.backend.core.config import AGENT_SETUP_TOKEN
 
 from apps.backend.domain.admin_setup import is_first_start, try_create_initial_admin_from_env
-from apps.backend.domain.catalog_chat_llm import pick_reachable_catalog_provider
+from apps.backend.domain.catalog_chat_llm import cached_llm_reachable
+from apps.backend.infrastructure.model_catalog_providers import list_provider_specs
 from apps.backend.infrastructure.auth import User, insert_user_with_cursor
 from apps.backend.dashboard.db import ensure_default_dashboard_for_new_user
 from apps.backend.infrastructure.db import db
@@ -201,7 +202,11 @@ def create_first_admin(*, email: str, password: str) -> User:
 
 
 def catalog_llm_configured() -> bool:
-    return pick_reachable_catalog_provider() is not None
+    """True when an LLM endpoint is configured (env/DB). No live HTTP probe — safe for /auth/setup-status."""
+    for spec in list_provider_specs():
+        if (spec.base_url or "").strip():
+            return True
+    return False
 
 
 def setup_preferences_saved() -> bool:
@@ -222,7 +227,8 @@ def build_setup_status() -> dict[str, Any]:
     llm_configured = catalog_llm_configured() if not needs_admin else False
     needs_llm = not needs_admin and not llm_configured
     needs_provider_wizard = not needs_admin and not setup_preferences_saved()
-    llm_reachable = llm_configured
+    reachable = cached_llm_reachable()
+    llm_reachable = reachable if reachable is not None else False
     src = setup_token_source()
     return {
         "needs_setup": needs_admin,

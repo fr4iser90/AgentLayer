@@ -113,9 +113,10 @@ export function ChartBlockBody(props: {
   setData: Dispatch<SetStateAction<Record<string, unknown>>>;
   sectionTitle: string;
   readOnly: boolean;
+  displayMode?: "grid" | "expanded";
 }) {
   const { t } = useTranslation(["dashboard"]);
-  const { dp, data, setData, sectionTitle, readOnly } = props;
+  const { dp, data, setData, sectionTitle, readOnly, displayMode = "grid" } = props;
   const chart = readChartData(dp ? getPath(data, dp) : undefined);
 
   const chartData = useMemo(() => {
@@ -169,8 +170,18 @@ export function ChartBlockBody(props: {
 
   return (
     <section className="rounded-xl border border-surface-border bg-surface-raised/60 p-4">
-      <h3 className="mb-3 text-sm font-medium text-white">{sectionTitle}</h3>
-      <div className="h-56 min-h-[200px] w-full md:h-64">{el}</div>
+      {displayMode === "grid" ? (
+        <h3 className="mb-3 text-sm font-medium text-white">{sectionTitle}</h3>
+      ) : null}
+      <div
+        className={
+          displayMode === "expanded"
+            ? "h-[min(60vh,560px)] min-h-[280px] w-full"
+            : "h-56 min-h-[200px] w-full md:h-64"
+        }
+      >
+        {el}
+      </div>
       {!readOnly ? (
         <div className="dashboard-grid-no-drag mt-4 space-y-3 border-t border-white/5 pt-4">
           <div>

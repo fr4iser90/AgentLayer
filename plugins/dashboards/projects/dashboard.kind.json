@@ -3,6 +3,7 @@
   "label": "Projects",
   "description": "A portfolio of projects (repos) with quick notes and lightweight metadata.",
   "template": "projects.template.json",
-  "schema_sql": "migrations/001_user_dashboards.sql"
+  "schema_sql": "migrations/001_user_dashboards.sql",
+  "setup": "projects.setup.json"
 }
 

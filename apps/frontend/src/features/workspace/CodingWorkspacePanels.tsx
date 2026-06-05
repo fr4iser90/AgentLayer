@@ -48,13 +48,15 @@ type Props = {
   variant?: "build" | "chat";
   /** When true, hide git Changes tab (e.g. viewer-only projects). */
   readOnly?: boolean;
+  /** Mobile chat overlay: close handler for the full-screen project panel. */
+  onMobileClose?: () => void;
 };
 
 const SHELL_CLASS_BUILD =
   "flex max-h-[40vh] min-h-0 shrink-0 flex-col border-b border-surface-border bg-[#0a0a0a] lg:h-full lg:max-h-none lg:w-[min(100%,480px)] lg:shrink-0 lg:flex-row lg:border-b-0 lg:border-r";
 
 const SHELL_CLASS_CHAT =
-  "flex h-full min-h-0 w-[min(100%,300px)] shrink-0 flex-col border-r border-surface-border bg-[#0a0a0a]";
+  "fixed inset-0 z-30 flex min-h-0 flex-col bg-[#0a0a0a] md:static md:z-auto md:h-full md:w-[min(100%,300px)] md:shrink-0 md:border-r md:border-surface-border";
 
 function diffLineClass(line: string): string {
   if (line.startsWith("+++") || line.startsWith("---")) return "text-neutral-500";
@@ -123,6 +125,7 @@ export function CodingWorkspacePanels({
   changesRefreshKey = 0,
   variant = "build",
   readOnly = false,
+  onMobileClose,
 }: Props) {
   const { t } = useTranslation(["dashboard", "workspace"]);
   const shellClass = variant === "chat" ? SHELL_CLASS_CHAT : SHELL_CLASS_BUILD;
@@ -317,7 +320,19 @@ export function CodingWorkspacePanels({
 
   return (
     <div className={shellClass}>
-      <div className="flex min-h-0 w-full flex-col border-surface-border lg:w-52 lg:shrink-0 lg:border-r">
+      {variant === "chat" && onMobileClose ? (
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-surface-border px-3 py-2 md:hidden">
+          <p className="min-w-0 truncate text-sm font-medium text-white">{t("workspace:projectFilesTitle")}</p>
+          <button
+            type="button"
+            className="shrink-0 rounded-md px-2 py-1 text-xs text-surface-muted hover:bg-white/5 hover:text-neutral-200"
+            onClick={onMobileClose}
+          >
+            {t("dashboard:close")}
+          </button>
+        </div>
+      ) : null}
+      <div className="flex min-h-0 w-full flex-1 flex-col border-surface-border lg:w-52 lg:shrink-0 lg:border-r">
         <div className="shrink-0 border-b border-surface-border px-2 py-2">
           <PanelTabs
             panelTab={panelTab}

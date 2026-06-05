@@ -11,21 +11,26 @@ from typing import Any, Callable
 
 from apps.backend.dashboard import db as dashboard_db
 from apps.backend.dashboard import public_share
+from apps.backend.dashboard.bundle import bundles_by_kind
+from apps.backend.dashboard.create_helpers import (
+    create_dashboard_payload,
+    default_title_for_kind,
+    validate_create_kind,
+)
 from apps.backend.dashboard.data_paths import apply_data_patches, top_level_key
 from apps.backend.dashboard.tool_dashboard_resolve import resolve_dashboard_id
 from apps.backend.domain.identity import get_identity
 
 __version__ = "1.0.0"
-TOOL_ID = "dashboard_core"
+TOOL_ID = "dashboard"
 TOOL_BUCKET = "meta"
 TOOL_DOMAIN = "dashboard"
 TOOL_LABEL = "Dashboards (generic)"
 TOOL_DESCRIPTION = (
-    "List dashboards, read ui_layout + data, patch block data by path, adjust layout "
-    "(add/remove blocks, grid, props), and create public read-only share links. "
-    "Works for any kind; prefer kind-specific tools "
-    "(ideas_*, pets_*, shopping_list_*) when available. Use dashboard_id from [Dashboard context] "
-    "when the user has the board open. Does not create new dashboards — use the app catalog."
+    "List dashboards, create boards for any catalog kind, read ui_layout + data, patch block data by path, "
+    "adjust layout (add/remove blocks, grid, props), and create public read-only share links. "
+    "Works for any kind; prefer kind-specific tools (ideas_*, pets_*, shopping_list_*, projects_*) "
+    "for data updates when available. Use dashboard_id from [Dashboard context] when the user has the board open."
 )
 TOOL_TRIGGERS = (
     "dashboard",
@@ -350,6 +355,36 @@ def _apply_layout_ops(
     return ul, dt, None
 
 
+def _kinds_hint() -> str:
+    return ", ".join(sorted(bundles_by_kind().keys()))
+
+
+def create_dashboard(arguments: dict[str, Any]) -> str:
+    """Create or reuse a dashboard for any catalog kind; returns onboarding when available."""
+    ident = _identity()
+    if ident is None:
+        return _err("No user identity — dashboard tools need an authenticated chat user.")
+    tid, uid = ident
+
+    kind = str(arguments.get("kind") or "").strip().lower()
+    kerr = validate_create_kind(kind)
+    if kerr:
+        return _err(kerr)
+
+    payload = create_dashboard_payload(
+        uid,
+        tid,
+        kind=kind,
+        default_title=default_title_for_kind(kind),
+        arguments=arguments,
+    )
+    if payload is None:
+        return _err(
+            f"Multiple {kind} dashboards exist — pass dashboard_id or set only_if_none=false with an explicit title."
+        )
+    return json.dumps(payload, ensure_ascii=False)
+
+
 def list(arguments: dict[str, Any]) -> str:
     del arguments
     ident = _identity()
@@ -540,6 +575,7 @@ def create_public_share(arguments: dict[str, Any]) -> str:
 
 
 HANDLERS: dict[str, Callable[[dict[str, Any]], str]] = {
+    "create_dashboard": create_dashboard,
     "list": list,
     "read": read,
     "patch_data": patch_data,
@@ -548,6 +584,41 @@ HANDLERS: dict[str, Callable[[dict[str, Any]], str]] = {
 }
 
 TOOLS: list[dict[str, Any]] = [
+    {
+        "type": "function",
+        "function": {
+            "name": "create_dashboard",
+            "TOOL_DESCRIPTION": (
+                "Create or reuse a dashboard for any catalog kind — the only create tool (no pets_create_dashboard etc.). "
+                "Pass kind (required). When only_if_none=true (default), reuse the sole existing board of that kind. "
+                "Response may include onboarding (greeting, agent_prompt, steps, suggested_tools) and setup_hint — "
+                "when present, run the setup conversation from that payload: greet, offer steps one at a time, "
+                "use the suggested kind-specific tools for data, do not install schema (install-templates is operator UI only). "
+                f"Catalog kinds: {_kinds_hint()}, custom."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": (
+                            "Dashboard kind (required), e.g. pets, projects, ideas, shopping_list, "
+                            "todo, feeds, friends, photo_album, personal_dashboard, custom"
+                        ),
+                    },
+                    "title": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": "Dashboard title; default is the catalog label for the kind",
+                    },
+                    "only_if_none": {
+                        "type": "boolean",
+                        "TOOL_DESCRIPTION": "Reuse existing board when user has exactly one of that kind (default true)",
+                    },
+                },
+                "required": ["kind"],
+            },
+        },
+    },
     {
         "type": "function",
         "function": {

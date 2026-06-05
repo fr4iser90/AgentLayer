@@ -1,6 +1,9 @@
 {
   "loadingChats": "Chats werden geladen…",
   "newChat": "+ Neuer Chat",
+  "openChatsSidebar": "Chatliste öffnen",
+  "closeChatsSidebar": "Chatliste schließen",
+  "openChatsSidebarShort": "Chats",
   "sidebarTitle": "Deine Chats",
   "sidebarHint": "Leere Threads bleiben verborgen, bis du sie öffnest oder eine Nachricht sendest. Dashboard-Zeilen mit {{shared}} sind ältere Team-Chats (oder API); neue Assistenten sind standardmäßig privat.",
   "sharedBadge": "Geteilt",
