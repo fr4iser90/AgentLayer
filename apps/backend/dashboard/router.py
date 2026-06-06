@@ -27,7 +27,6 @@ from apps.backend.dashboard.layout_proposals import (
     get_latest_proposal_set,
     get_proposal_set,
 )
-from apps.backend.dashboard.projects_import import import_repos_into_projects_dashboard
 from apps.backend.dashboard.setup import attach_onboarding, onboarding_for_kind
 from apps.backend.dashboard.upload_bytes import normalized_content_type, sniff_image_mime
 from apps.backend.infrastructure.public_error import http_500_detail
@@ -45,6 +44,7 @@ def _require_schema() -> None:
 
 class DashboardCreateBody(BaseModel):
     kind: str = Field(default="custom", max_length=64)
+    template_id: str | None = Field(default=None, max_length=64)
     title: str = Field(default="", max_length=500)
     ui_layout: dict[str, Any] | None = None
     data: dict[str, Any] | None = None
@@ -85,22 +85,6 @@ class DashboardPublicShareCreateBody(BaseModel):
     )
 
 
-class GithubRepoImportItem(BaseModel):
-    full_name: str = Field(..., min_length=1, max_length=256)
-    clone_url: str = Field(..., min_length=1, max_length=2048)
-    html_url: str | None = Field(default=None, max_length=2048)
-    default_branch: str = Field(default="main", max_length=255)
-    description: str | None = Field(default=None, max_length=2000)
-    name: str | None = Field(default=None, max_length=256)
-
-
-class ProjectsImportBody(BaseModel):
-    repos: list[GithubRepoImportItem] = Field(..., min_length=1, max_length=200)
-    create_workspaces: bool = False
-    skip_existing: bool = True
-    data_path: str | None = Field(default=None, max_length=64)
-
-
 def _share_password_from_request(request: Request) -> str | None:
     raw = (request.headers.get(public_share.SHARE_PASSWORD_HEADER) or "").strip()
     return raw or None
@@ -121,6 +105,7 @@ class DashboardInstallBody(BaseModel):
 
 class DashboardFromTemplateBody(BaseModel):
     kind: str = Field(default="custom", max_length=64)
+    template_id: str | None = Field(default=None, max_length=64)
     title: str = Field(default="", max_length=500)
     ui_layout: dict[str, Any] = Field(default_factory=dict)
     initial_data: dict[str, Any] | None = Field(default=None)
@@ -385,19 +370,28 @@ async def dashboard_file_upload(
 
 @router.get("")
 async def list_dashboards(request: Request):
-    from apps.backend.dashboard.bundle import kind_catalog, kinds_with_schema_sql, kinds_with_templates
+    from apps.backend.dashboard.bundle import (
+        kind_catalog,
+        kinds_with_schema_sql,
+        kinds_with_templates,
+        template_catalog,
+        template_ids_with_templates,
+    )
 
     user = await get_current_user(request)
-    cat = kind_catalog()
+    cat = template_catalog()
     template_kinds = kinds_with_templates()
+    template_ids = template_ids_with_templates()
     if not dashboard_tables_exist():
         return {
             "ok": True,
             "dashboards": [],
             "schema_installed": False,
-            "kind_catalog": cat,
+            "kind_catalog": kind_catalog(),
+            "template_catalog": cat,
             "schema_install_offers": kinds_with_schema_sql(),
             "template_kinds": template_kinds,
+            "template_ids": template_ids,
             "installed_template_kinds": [],
         }
     tid = db.user_tenant_id(user.id)
@@ -407,22 +401,42 @@ async def list_dashboards(request: Request):
         "ok": True,
         "dashboards": items,
         "schema_installed": True,
-        "kind_catalog": cat,
+        "kind_catalog": kind_catalog(),
+        "template_catalog": cat,
         "schema_install_offers": [],
         "template_kinds": template_kinds,
+        "template_ids": template_ids,
         "installed_template_kinds": installed_kinds,
     }
 
 
+@router.get("/templates/catalog")
+async def list_template_catalog(request: Request):
+    """Gallery templates (``template_id`` primary; ``kind`` legacy mirror)."""
+    from apps.backend.dashboard.bundle import template_catalog
+
+    await get_current_user(request)
+    return {"ok": True, "templates": template_catalog()}
+
+
 @router.post("")
 async def create_dashboard(request: Request, body: DashboardCreateBody):
+    from apps.backend.dashboard.create_helpers import resolve_create_target
+
     _require_schema()
     user = await get_current_user(request)
     tid = db.user_tenant_id(user.id)
+    kind, template_id, err = resolve_create_target(
+        template_id=body.template_id,
+        kind=body.kind,
+    )
+    if err:
+        raise HTTPException(status_code=400, detail=err)
     row = dashboard_db.dashboard_create(
         user.id,
         tid,
-        kind=body.kind,
+        kind=kind,
+        template_id=template_id,
         title=body.title,
         ui_layout=body.ui_layout,
         data=body.data,
@@ -434,11 +448,20 @@ async def create_dashboard(request: Request, body: DashboardCreateBody):
 @router.post("/from-template")
 async def create_dashboard_from_template(request: Request, body: DashboardFromTemplateBody):
     """Create a new dashboard from an exported layout snapshot (copy, not live sync)."""
+    from apps.backend.dashboard.create_helpers import resolve_create_target
+
     _require_schema()
     user = await get_current_user(request)
     tid = db.user_tenant_id(user.id)
-    ul, dt, err = validate_template_import(
+    kind, template_id, cerr = resolve_create_target(
+        template_id=body.template_id,
         kind=body.kind,
+    )
+    if cerr:
+        raise HTTPException(status_code=400, detail=cerr)
+    ul, dt, err = validate_template_import(
+        kind=kind,
+        template_id=template_id,
         ui_layout=body.ui_layout,
         data=body.initial_data,
     )
@@ -447,7 +470,8 @@ async def create_dashboard_from_template(request: Request, body: DashboardFromTe
     row = dashboard_db.dashboard_create(
         user.id,
         tid,
-        kind=body.kind,
+        kind=kind,
+        template_id=template_id,
         title=body.title,
         ui_layout=ul,
         data=dt,
@@ -649,6 +673,7 @@ async def export_dashboard_template(request: Request, dashboard_id: uuid.UUID):
         raise HTTPException(status_code=404, detail="dashboard not found")
     payload = export_template_payload(
         kind=str(row.get("kind") or "custom"),
+        template_id=str(row.get("template_id") or "") or None,
         title=str(row.get("title") or ""),
         ui_layout=row.get("ui_layout") if isinstance(row.get("ui_layout"), dict) else {},
         data=row.get("data") if isinstance(row.get("data"), dict) else {},
@@ -787,28 +812,6 @@ async def patch_dashboard(
     if not row:
         raise HTTPException(status_code=404, detail="dashboard not found")
     return {"ok": True, "dashboard": row}
-
-
-@router.post("/{dashboard_id}/import-projects")
-async def import_projects_from_github(
-    request: Request, dashboard_id: uuid.UUID, body: ProjectsImportBody
-):
-    """Append GitHub repo rows to a projects dashboard (optional workspace clone)."""
-    _require_schema()
-    user = await get_current_user(request)
-    tid = db.user_tenant_id(user.id)
-    result = import_repos_into_projects_dashboard(
-        user,
-        tid,
-        dashboard_id,
-        repos=[r.model_dump() for r in body.repos],
-        create_workspaces=body.create_workspaces,
-        skip_existing=body.skip_existing,
-        data_path=body.data_path,
-    )
-    if not result.get("ok"):
-        raise HTTPException(status_code=400, detail=result.get("error") or "import failed")
-    return result
 
 
 @router.delete("/{dashboard_id}")

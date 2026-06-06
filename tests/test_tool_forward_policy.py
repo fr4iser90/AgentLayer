@@ -12,10 +12,7 @@ from apps.backend.domain.tool_forward_policy import (
     build_tool_forward_plan,
     build_tool_triggers_map,
     compute_tool_forward_limits,
-    dashboard_layout_proposal_nudge_needed,
     infer_model_tier,
-    is_propose_layouts_tool,
-    layout_proposal_intent,
     pinned_tools_for_agent,
     resolve_pin_names,
 )
@@ -60,11 +57,11 @@ def test_resolve_pin_names_filters_allowlist(monkeypatch):
         "apps.backend.domain.tool_forward_policy.get_agent_registry",
         lambda: FakeReg(),
     )
-    pins = resolve_pin_names("dashboard", ("patch_data",))
+    pins = resolve_pin_names("dashboard")
     assert pins == frozenset({"dashboard.read", "propose_layouts"})
 
 
-def test_build_tool_forward_plan_pins_dashboard_tools(monkeypatch):
+def test_build_tool_forward_plan_pins_yaml_tools(monkeypatch):
     specs = [_spec(n) for n in ("dashboard.read", "propose_layouts", "patch_layout", "list", "other_a", "other_b")]
 
     class FakeReg:
@@ -106,34 +103,6 @@ def test_build_tool_forward_plan_pins_dashboard_tools(monkeypatch):
     assert len(plan.forward_names) <= plan.max_tool_count
 
 
-def test_layout_intent_adds_pins(monkeypatch):
-    specs = [_spec("dashboard.read"), _spec("propose_layouts"), _spec("zzz")]
-
-    monkeypatch.setattr(
-        "apps.backend.domain.agent_tools._pinned_tools_for_agent",
-        lambda aid: frozenset(),
-    )
-    monkeypatch.setattr(
-        "apps.backend.domain.tool_forward_policy._rank_tools_by_user_input",
-        lambda tools, text, triggers: tools,
-    )
-
-    plan = build_tool_forward_plan(
-        ToolForwardContext(
-            agent_id=None,
-            model_id="m",
-            context_window_tokens=16_000,
-            model_tier="standard",
-            user_text="bitte layout vorschläge",
-            tool_specs=specs,
-            ranking_enabled=False,
-            full_schema_preference=False,
-        )
-    )
-    assert "dashboard.read" in plan.forward_names
-    assert "propose_layouts" in plan.forward_names
-
-
 def test_apply_schema_modes_to_specs_catalog_vs_full():
     specs = [_spec("a"), _spec("b")]
     out = apply_schema_modes_to_specs(
@@ -148,65 +117,76 @@ def test_apply_schema_modes_to_specs_catalog_vs_full():
     assert "abbreviated" in b_desc.lower() or "catalog" in b_desc.lower()
 
 
-def test_build_tool_triggers_map_includes_extras():
+def test_build_tool_triggers_map_from_plugin_domains():
     triggers = build_tool_triggers_map(["propose_layouts", "patch_layout"])
-    assert "layout" in triggers.get("propose_layouts", ())
-    assert "grid" in triggers.get("patch_layout", ())
+    pl = triggers.get("propose_layouts", ())
+    assert pl
+    assert triggers.get("patch_layout") == pl
 
 
-def test_layout_proposal_intent_german_variants():
-    assert layout_proposal_intent("Zeig mir 3 Layout-Varianten")
-    assert not layout_proposal_intent("wie viele projekte habe ich")
-
-
-def test_dashboard_layout_proposal_nudge_needed():
-    names = frozenset({"dashboard.read", "propose_layouts", "patch_layout"})
-    assert dashboard_layout_proposal_nudge_needed(
-        agent_id="dashboard",
-        layout_proposal_required=True,
-        propose_layouts_done=False,
-        nudge_count=0,
-        forwarded_tool_names=names,
-    )
-    assert not dashboard_layout_proposal_nudge_needed(
-        agent_id="dashboard",
-        layout_proposal_required=True,
-        propose_layouts_done=True,
-        nudge_count=0,
-        forwarded_tool_names=names,
-    )
-    assert not dashboard_layout_proposal_nudge_needed(
-        agent_id="dashboard",
-        layout_proposal_required=True,
-        propose_layouts_done=False,
-        nudge_count=2,
-        forwarded_tool_names=names,
-    )
-    assert not dashboard_layout_proposal_nudge_needed(
-        agent_id="coding",
-        layout_proposal_required=True,
-        propose_layouts_done=False,
-        nudge_count=0,
-        forwarded_tool_names=names,
-    )
-
-
-def test_is_propose_layouts_tool():
-    assert is_propose_layouts_tool("propose_layouts")
-    assert is_propose_layouts_tool("dashboard.propose_layouts")
-    assert not is_propose_layouts_tool("patch_layout")
-
-
-def test_pinned_tools_for_agent_dashboard(monkeypatch):
+def test_pinned_tools_from_yaml_only(monkeypatch):
     class FakeReg:
         def get_agent(self, aid: str):
-            return {
-                "tool_names": ["dashboard.read", "propose_layouts"],
-                "pinned_tools": ["dashboard.read"],
-            }
+            if aid == "dashboard":
+                return {
+                    "tool_names": ["dashboard.read", "propose_layouts"],
+                    "pinned_tools": ["dashboard.read"],
+                }
+            if aid == "coding":
+                return {"tool_names": ["read_file"], "pinned_tools": []}
+            return None
 
     monkeypatch.setattr(
         "apps.backend.domain.tool_forward_policy.get_agent_registry",
         lambda: FakeReg(),
     )
     assert pinned_tools_for_agent("dashboard") == frozenset({"dashboard.read"})
+    assert pinned_tools_for_agent("coding") == frozenset()
+
+
+def test_yaml_pins_forwarded_not_keyword_gates(monkeypatch):
+    specs = [
+        _spec(n)
+        for n in (
+            "dashboard.read",
+            "resolve",
+            "list_update",
+            "list_append",
+            "task_create",
+            "propose_layouts",
+            "other",
+        )
+    ]
+
+    monkeypatch.setattr(
+        "apps.backend.domain.agent_tools._pinned_tools_for_agent",
+        lambda aid: frozenset(
+            {
+                "dashboard.read",
+                "list_append",
+                "list_update",
+                "resolve",
+                "task_create",
+                "propose_layouts",
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        "apps.backend.domain.tool_forward_policy._rank_tools_by_user_input",
+        lambda tools, text, triggers: tools,
+    )
+
+    plan = build_tool_forward_plan(
+        ToolForwardContext(
+            agent_id="dashboard",
+            model_id="qwen2.5:7b",
+            context_window_tokens=32_000,
+            model_tier="weak_local",
+            user_text="zeig security scan status auf dem board",
+            tool_specs=specs,
+            ranking_enabled=False,
+            full_schema_preference=False,
+        )
+    )
+    for pin in ("resolve", "list_update", "task_create", "dashboard.read", "propose_layouts"):
+        assert pin in plan.forward_names

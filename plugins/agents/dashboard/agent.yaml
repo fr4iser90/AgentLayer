@@ -1,16 +1,23 @@
 id: dashboard
 name: Dashboard
 icon: 📊
-description: Dashboard boards — layout (section, card_grid, KPIs), data patches, projects portfolios
+description: Dashboard boards — layout, generic list_* data, integration tools, compute KPIs
 requires_workspace: false
 execution_context: auto
 min_role: user
 tool_discipline_preset: dashboard
 tool_domains:
   - dashboard
-  - projects
+  - github
+  - security_scan
+  - workspace
+  - agent_tasks
 pinned_tools:
   - dashboard.read
+  - list_append
+  - list_update
+  - resolve
+  - task_create
   - propose_layouts
   - patch_layout
   - patch_data

@@ -173,6 +173,10 @@ from apps.backend.infrastructure.project_runs_runner import (
     start_project_runs_worker,
     stop_project_runs_worker,
 )
+from apps.backend.infrastructure.agent_tasks_runner import (
+    start_agent_tasks_worker,
+    stop_agent_tasks_worker,
+)
 from apps.backend.integrations import discord_bridge, telegram_bridge
 
 # Optional out-of-band gateways (Telegram, Discord, …). New bridges: start/stop here like below;
@@ -259,6 +263,10 @@ async def lifespan(_app: FastAPI):
     except Exception:
         logger.exception("Project runs worker failed to start (optional)")
     try:
+        start_agent_tasks_worker()
+    except Exception:
+        logger.exception("Agent tasks worker failed to start (optional)")
+    try:
         discord_bridge.start_background()
     except Exception:
         logger.exception("Discord bridge failed to start (optional)")
@@ -298,6 +306,10 @@ async def lifespan(_app: FastAPI):
         pass
     try:
         stop_project_runs_worker()
+    except Exception:
+        pass
+    try:
+        stop_agent_tasks_worker()
     except Exception:
         pass
     db.close_pool()

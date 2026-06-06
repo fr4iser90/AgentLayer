@@ -23,25 +23,32 @@ def export_template_payload(
     title: str,
     ui_layout: dict[str, Any],
     data: dict[str, Any],
+    template_id: str | None = None,
 ) -> dict[str, Any]:
     """Anonymized layout snippet suitable for from-template import."""
     ul = copy.deepcopy(ui_layout) if isinstance(ui_layout, dict) else {"version": 1, "blocks": []}
     dt = _strip_agentlayer_meta(copy.deepcopy(data) if isinstance(data, dict) else {})
-    return {
+    out: dict[str, Any] = {
         "kind": (kind or "custom").strip() or "custom",
         "title": (title or "").strip() or "Dashboard",
         "ui_layout": ul,
         "initial_data": dt,
         "block_count": count_layout_blocks(ul),
     }
+    tid = (template_id or "").strip()
+    if tid:
+        out["template_id"] = tid
+    return out
 
 
 def validate_template_import(
     *,
     kind: str,
+    template_id: str | None = None,
     ui_layout: dict[str, Any] | None,
     data: dict[str, Any] | None,
 ) -> tuple[dict[str, Any], dict[str, Any], str | None]:
+    _ = kind, template_id
     if not isinstance(ui_layout, dict):
         return {}, {}, "ui_layout must be an object"
     blocks = ui_layout.get("blocks")

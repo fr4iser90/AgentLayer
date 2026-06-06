@@ -22,6 +22,25 @@ def normalize_nested_layout(raw: Any) -> dict[str, Any]:
     return {"version": 2, "blocks": blocks}
 
 
+def iter_layout_blocks(ui_layout: dict[str, Any] | None):
+    """Yield every block dict (root + nested sections), depth-first."""
+    if not isinstance(ui_layout, dict):
+        return
+    blocks = ui_layout.get("blocks")
+    if not isinstance(blocks, list):
+        return
+    for b in blocks:
+        if not isinstance(b, dict):
+            continue
+        yield b
+        if str(b.get("type") or "").strip().lower() == "section":
+            props = b.get("props") if isinstance(b.get("props"), dict) else {}
+            nested = normalize_nested_layout(props.get("nested"))
+            for nb in nested.get("blocks") or []:
+                if isinstance(nb, dict):
+                    yield nb
+
+
 def flatten_block_ids(ui_layout: dict[str, Any] | None) -> list[str]:
     if not isinstance(ui_layout, dict):
         return []
@@ -133,6 +152,19 @@ def find_block_by_id(ui_layout: dict[str, Any], block_id: str) -> dict[str, Any]
                 if isinstance(nb, dict) and str(nb.get("id") or "").strip() == bid:
                     return nb
     return None
+
+
+def primary_list_data_path(ui_layout: dict[str, Any] | None, *, fallback: str = "items") -> str:
+    """First table/card_grid ``dataPath`` in layout (any dashboard)."""
+    for block in iter_layout_blocks(ui_layout):
+        btype = str(block.get("type") or "").strip().lower()
+        if btype not in ("table", "card_grid"):
+            continue
+        props = block.get("props") if isinstance(block.get("props"), dict) else {}
+        dp = str(props.get("dataPath") or "").strip()
+        if dp:
+            return dp
+    return fallback
 
 
 def data_paths_from_blocks(blocks: list[Any]) -> list[str]:

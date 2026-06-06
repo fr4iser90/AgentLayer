@@ -30,6 +30,23 @@ export interface ColumnDef {
   options?: string[];
 }
 
+/** Declarative stat recompute (backend ``data_compute``). */
+export type StatComputeSpec = {
+  op: "count" | "count_where" | "count_nonempty" | "sum";
+  from?: string;
+  source?: string;
+  field?: string;
+  where?: Array<{
+    field: string;
+    eq?: string;
+    neq?: string;
+    in?: string[];
+    not_in?: string[];
+    nonempty?: boolean;
+    empty?: boolean;
+  }>;
+};
+
 export interface UiBlock {
   id: string;
   type: BlockType;
@@ -61,6 +78,8 @@ export interface UiLayout {
 export interface DashboardSummary {
   id: string;
   kind: string;
+  /** Gallery template used at create time (e.g. projects-v1); null for legacy/custom. */
+  template_id?: string | null;
   title: string;
   updated_at: string;
   created_at: string;

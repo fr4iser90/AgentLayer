@@ -15,7 +15,7 @@ from apps.backend.dashboard.layout_data_init import (
     new_proposal_id,
     new_proposal_set_id,
 )
-from apps.backend.dashboard.projects_kpi import projects_data_path, sync_projects_kpis_in_data
+from apps.backend.dashboard.data_compute import finalize_dashboard_data
 from apps.backend.dashboard.template_ops import validate_template_import
 
 _TTL_SEC = 3600
@@ -240,9 +240,10 @@ def apply_layout_proposal(
     }
     data["_agentlayer"] = meta
     new_data = merge_data_for_layout(data, proposal.ui_layout)
-    kind = (ws.get("kind") or "").strip().lower()
-    if kind == "projects":
-        new_data = sync_projects_kpis_in_data(new_data, projects_data_path(ws))
+    new_data = finalize_dashboard_data(
+        new_data,
+        proposal.ui_layout if isinstance(proposal.ui_layout, dict) else None,
+    )
     updated = dashboard_db.dashboard_update(
         user_id,
         tenant_id,

@@ -16,8 +16,8 @@ from apps.backend.domain.identity import get_identity, reset_identity, set_ident
 from apps.backend.infrastructure.conversations_db import conversation_append_message, conversation_create
 from apps.backend.dashboard import db as dashboard_db
 from apps.backend.dashboard.tool_dashboard_resolve import (
-    resolve_dashboard_id_for_kind,
-    dashboard_rows_for_kind,
+    dashboard_rows_for_gallery,
+    resolve_dashboard_id,
 )
 
 __version__ = "0.1.0"
@@ -26,7 +26,7 @@ TOOL_BUCKET = "productivity"
 TOOL_DOMAIN = "rss"
 TOOL_LABEL = "RSS feeds"
 TOOL_DESCRIPTION = (
-    "Read and update RSS feed dashboards (kind feeds). Use this to fetch + summarize enabled feed URLs and "
+    "Legacy — prefer dashboard.list_* / dashboard.read on any board. Read and update RSS feed dashboards (kind feeds). Use this to fetch + summarize enabled feed URLs and "
     "store the latest markdown summary back into the dashboard (latest_summary + history)."
 )
 TOOL_TRIGGERS = ("rss", "feed", "feeds", "news", "summary", "summarize feeds", "rss summary")
@@ -62,7 +62,7 @@ def boards(arguments: dict[str, Any]) -> str:
     if ident is None:
         return _err("No user identity — feeds tools need an authenticated chat user.")
     tid, uid = ident
-    rows = dashboard_rows_for_kind(uid, tid, "feeds")
+    rows = dashboard_rows_for_gallery(uid, tid, kind="feeds", template_id="feeds-v1")
     out = [{"id": str(r.get("id", "")), "title": (r.get("title") or "").strip()} for r in rows]
     return json.dumps({"ok": True, "dashboards": out}, ensure_ascii=False)
 
@@ -131,18 +131,13 @@ def summarize(arguments: dict[str, Any]) -> str:
         return _err("No user identity — feeds tools need an authenticated chat user.")
     tenant_id, caller_uid = ident
 
-    wid, res_err = resolve_dashboard_id_for_kind(
-        caller_uid, tenant_id, kind="feeds", raw_dashboard_id=arguments.get("dashboard_id")
-    )
+    wid, res_err = resolve_dashboard_id(caller_uid, tenant_id, arguments.get("dashboard_id"))
     if wid is None:
         return _err(res_err or "dashboard_id required")
 
     ws = dashboard_db.dashboard_get(caller_uid, tenant_id, wid)
     if ws is None:
         return _err("dashboard not found or no access")
-    if (ws.get("kind") or "").strip() != "feeds":
-        return _err("dashboard is not a feeds kind")
-
     language = str(arguments.get("language") or "de").strip().lower()
     max_items = arguments.get("max_items_per_feed")
     try:

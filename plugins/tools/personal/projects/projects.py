@@ -7,19 +7,24 @@ import uuid
 from typing import Any, Callable
 
 from apps.backend.dashboard import db as dashboard_db
-from apps.backend.dashboard.projects_kpi import sync_projects_kpis_in_data
-from apps.backend.dashboard.projects_import import (
-    import_repos_into_projects_dashboard,
-    link_project_row_workspace,
-)
+from apps.backend.dashboard.list_ops import append_list_rows, update_list_row
 from apps.backend.dashboard.tool_dashboard_resolve import (
-    dashboard_rows_for_kind,
-    resolve_dashboard_id_for_kind,
+    dashboard_rows_for_gallery,
+    resolve_dashboard_id,
 )
 from apps.backend.domain.github.repos import list_user_repos
 from apps.backend.domain.identity import get_identity
-from apps.backend.domain.workspace.workspace_common import normalize_git_url
+from apps.backend.domain.workspace.workspace_common import (
+    find_workspace_by_name,
+    list_workspaces_for_user,
+    normalize_git_url,
+)
 from apps.backend.infrastructure.db import db
+from apps.backend.infrastructure.workspace_service import (
+    WorkspaceCreateError,
+    create_project_workspace_for_user,
+    slug_from_git_url,
+)
 
 __version__ = "1.0.0"
 TOOL_ID = "projects"
@@ -27,13 +32,8 @@ TOOL_BUCKET = "productivity"
 TOOL_DOMAIN = "projects"
 TOOL_LABEL = "Projects portfolio"
 TOOL_DESCRIPTION = (
-    "Create and manage projects dashboards (kind projects): portfolio rows in projects[] "
-    "(title, remote_url, project_path, tags, status, security, workspace_id), GitHub import, "
-    "and link rows to coding workspaces. Card grid and table blocks both use dataPath projects — "
-    "use dashboard.patch_layout for layout (section, card_grid, stat, hero). "
-    "dashboard_id is optional when the user has exactly one projects board; call projects.dashboards "
-    "when ambiguous. Prefer [Dashboard context] when present. GitHub import uses the user's own "
-    "github_pat secret (Settings → Connections)."
+    "Legacy projects portfolio helpers. Prefer github.list_repos + dashboard.list_* + workspace.create. "
+    "Rows: title, remote_url, project_path, tags, status, security, workspace_id."
 )
 TOOL_TRIGGERS = (
     "project",
@@ -80,12 +80,6 @@ def _acting_user(uid: uuid.UUID) -> Any:
     except Exception:
         pass
     return u
-
-
-def _ensure_projects(ws: dict[str, Any]) -> str | None:
-    if (ws.get("kind") or "").strip().lower() != "projects":
-        return "dashboard is not a projects kind"
-    return None
 
 
 def _can_write(ws: dict[str, Any]) -> bool:
@@ -146,7 +140,7 @@ def dashboards(arguments: dict[str, Any]) -> str:
     if ident is None:
         return _err("No user identity — projects tools need an authenticated chat user.")
     tid, uid = ident
-    rows = dashboard_rows_for_kind(uid, tid, "projects")
+    rows = dashboard_rows_for_gallery(uid, tid, kind="projects", template_id="projects-v1")
     out = [{"id": str(r.get("id", "")), "title": (r.get("title") or "").strip()} for r in rows]
     return json.dumps({"ok": True, "dashboards": out}, ensure_ascii=False)
 
@@ -157,19 +151,13 @@ def read(arguments: dict[str, Any]) -> str:
         return _err("No user identity — projects tools need an authenticated chat user.")
     tid, uid = ident
 
-    wid, res_err = resolve_dashboard_id_for_kind(
-        uid, tid, kind="projects", raw_dashboard_id=arguments.get("dashboard_id")
-    )
+    wid, res_err = resolve_dashboard_id(uid, tid, arguments.get("dashboard_id"))
     if wid is None:
         return _err(res_err or "dashboard_id required")
 
     ws = dashboard_db.dashboard_get(uid, tid, wid)
     if ws is None:
         return _err("dashboard not found or no access")
-    bad = _ensure_projects(ws)
-    if bad:
-        return _err(bad)
-
     dp, projects = _projects_list(ws)
     slim = [
         {
@@ -203,9 +191,7 @@ def add_rows(arguments: dict[str, Any]) -> str:
         return _err("No user identity — projects tools need an authenticated chat user.")
     tid, uid = ident
 
-    wid, res_err = resolve_dashboard_id_for_kind(
-        uid, tid, kind="projects", raw_dashboard_id=arguments.get("dashboard_id")
-    )
+    wid, res_err = resolve_dashboard_id(uid, tid, arguments.get("dashboard_id"))
     if wid is None:
         return _err(res_err or "dashboard_id required")
 
@@ -214,10 +200,6 @@ def add_rows(arguments: dict[str, Any]) -> str:
         return _err("dashboard not found or no access")
     if not _can_write(ws):
         return _err("read-only access")
-    bad = _ensure_projects(ws)
-    if bad:
-        return _err(bad)
-
     raw_rows = arguments.get("rows")
     if not isinstance(raw_rows, list) or not raw_rows:
         return _err("rows must be a non-empty array")
@@ -226,29 +208,109 @@ def add_rows(arguments: dict[str, Any]) -> str:
     if len(projects) + len(raw_rows) > _MAX_PROJECTS:
         return _err(f"at most {_MAX_PROJECTS} project rows per dashboard")
 
-    added: list[dict[str, Any]] = []
+    normalized: list[dict[str, Any]] = []
     for entry in raw_rows[: _MAX_BATCH]:
         if not isinstance(entry, dict):
             continue
         norm = _normalize_row(entry)
         if norm:
-            projects.append(norm)
-            added.append(norm)
+            normalized.append(norm)
 
-    if not added:
+    if not normalized:
         return _err("no valid rows (need title or remote_url per row)")
 
-    data = dict(ws.get("data") or {})
-    data[dp] = projects
-    data = sync_projects_kpis_in_data(data, dp)
-    updated = dashboard_db.dashboard_update(uid, tid, wid, data=data)
-    if updated is None:
-        return _err("could not update dashboard")
+    result = append_list_rows(uid, tid, wid, list_path=dp, rows=normalized, list_fallback=dp)
+    if not result.get("ok"):
+        return _err(str(result.get("error") or "could not update dashboard"))
 
     return json.dumps(
-        {"ok": True, "dashboard_id": str(wid), "added_count": len(added), "added": added},
+        {
+            "ok": True,
+            "dashboard_id": str(wid),
+            "added_count": result.get("added_count", 0),
+            "added": result.get("added") or [],
+            "deprecated": "prefer dashboard.list_append",
+        },
         ensure_ascii=False,
     )
+
+
+def _normalize_remote(url: str) -> str:
+    n = normalize_git_url(url)
+    return (n or url or "").strip().rstrip("/").lower()
+
+
+def _find_workspace_for_remote(user, remote: str) -> dict[str, Any] | None:
+    target = _normalize_remote(remote)
+    if not target:
+        return None
+    for ws in list_workspaces_for_user(user):
+        gu = _normalize_remote(str(ws.get("git_url") or ""))
+        if gu and gu == target:
+            return ws
+    return None
+
+
+def _rows_from_github_repos(
+    user,
+    repos: list[dict[str, Any]],
+    *,
+    create_workspaces: bool,
+) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
+    rows: list[dict[str, Any]] = []
+    workspace_errors: list[dict[str, str]] = []
+    for repo in repos:
+        if not isinstance(repo, dict):
+            continue
+        full_name = str(repo.get("full_name") or "").strip()
+        clone_url = str(repo.get("clone_url") or repo.get("remote_url") or "").strip()
+        if not clone_url and full_name:
+            clone_url = normalize_git_url(full_name) or ""
+        if not clone_url:
+            continue
+        title = str(repo.get("name") or "").strip() or (
+            full_name.split("/")[-1] if full_name else ""
+        )
+        branch = str(repo.get("default_branch") or "main").strip() or "main"
+        tags = str(repo.get("description") or "").strip()[:240]
+        workspace_id = ""
+        project_path = ""
+        ws = _find_workspace_for_remote(user, clone_url)
+        if ws:
+            workspace_id = str(ws.get("id") or "")
+            project_path = str(ws.get("path") or "")
+        elif create_workspaces:
+            base_name = slug_from_git_url(clone_url)
+            name = base_name
+            for attempt in range(5):
+                try:
+                    created = create_project_workspace_for_user(
+                        user,
+                        name=name,
+                        source="git",
+                        git_url=clone_url,
+                        git_branch=branch,
+                    )
+                    workspace_id = str(created.get("id") or "")
+                    project_path = str(created.get("path") or "")
+                    break
+                except WorkspaceCreateError as e:
+                    if "already exists" in e.message.lower() or "unique" in e.message.lower():
+                        name = f"{base_name}-{attempt + 1}"
+                        continue
+                    workspace_errors.append({"repo": full_name or clone_url, "error": e.message})
+                    break
+        rows.append(
+            {
+                "pinned": False,
+                "title": title,
+                "remote_url": clone_url,
+                "project_path": project_path,
+                "tags": tags,
+                "workspace_id": workspace_id,
+            }
+        )
+    return rows, workspace_errors
 
 
 def list_github_repos(arguments: dict[str, Any]) -> str:
@@ -286,11 +348,9 @@ def import_github(arguments: dict[str, Any]) -> str:
     tid, uid = ident
     user = _acting_user(uid)
 
-    wid, res_err = resolve_dashboard_id_for_kind(
-        uid, tid, kind="projects", raw_dashboard_id=arguments.get("dashboard_id")
-    )
+    wid, res_err = resolve_dashboard_id(uid, tid, arguments.get("dashboard_id"))
     if wid is None:
-        return _err(res_err or "dashboard_id required — call create_dashboard with kind=projects first")
+        return _err(res_err or "dashboard_id required")
 
     create_workspaces = arguments.get("create_workspaces")
     if isinstance(create_workspaces, str):
@@ -351,13 +411,21 @@ def import_github(arguments: dict[str, Any]) -> str:
         return _err("no repositories to import")
 
     repos_to_import = repos_to_import[:_MAX_IMPORT_REPOS]
-    result = import_repos_into_projects_dashboard(
-        user,
+    list_path = str(arguments.get("list_path") or "").strip() or None
+    rows, workspace_errors = _rows_from_github_repos(
+        user, repos_to_import, create_workspaces=create_workspaces
+    )
+    if not rows:
+        err = workspace_errors[0]["error"] if workspace_errors else "no rows to import"
+        return _err(err)
+
+    result = append_list_rows(
+        uid,
         tid,
         wid,
-        repos=repos_to_import,
-        create_workspaces=create_workspaces,
-        skip_existing=skip_existing,
+        list_path=list_path,
+        rows=rows,
+        dedupe_field="remote_url" if skip_existing else None,
     )
     if not result.get("ok"):
         return _err(str(result.get("error") or "import failed"))
@@ -365,10 +433,12 @@ def import_github(arguments: dict[str, Any]) -> str:
     return json.dumps(
         {
             "ok": True,
+            "deprecated": "prefer github.list_repos + dashboard.list_append",
             "dashboard_id": str(wid),
+            "list_path": result.get("list_path"),
             "added_count": result.get("added_count", 0),
             "skipped_count": result.get("skipped_count", 0),
-            "workspace_errors": result.get("workspace_errors") or [],
+            "workspace_errors": workspace_errors,
             "added": result.get("added") or [],
             "skipped": result.get("skipped") or [],
         },
@@ -383,9 +453,7 @@ def link_workspace(arguments: dict[str, Any]) -> str:
     tid, uid = ident
     user = _acting_user(uid)
 
-    wid, res_err = resolve_dashboard_id_for_kind(
-        uid, tid, kind="projects", raw_dashboard_id=arguments.get("dashboard_id")
-    )
+    wid, res_err = resolve_dashboard_id(uid, tid, arguments.get("dashboard_id"))
     if wid is None:
         return _err(res_err or "dashboard_id required")
 
@@ -410,14 +478,73 @@ def link_workspace(arguments: dict[str, Any]) -> str:
     else:
         create_ws = bool(create_ws)
 
-    result = link_project_row_workspace(
-        user,
+    list_path = str(arguments.get("list_path") or "").strip() or None
+
+    ws_row = dashboard_db.dashboard_get(uid, tid, wid)
+    if ws_row is None:
+        return _err("dashboard not found")
+    dp, projects = _projects_list(ws_row)
+    if list_path:
+        dp = list_path
+    proj = next(
+        (p for p in projects if isinstance(p, dict) and str(p.get("id") or "") == project_row_id),
+        None,
+    )
+    if proj is None:
+        return _err(f"row not found: {project_row_id}")
+
+    ws: dict[str, Any] | None = None
+    wid_arg = str(arguments.get("workspace_id") or "").strip()
+    wname = str(arguments.get("workspace_name") or arguments.get("name") or "").strip()
+    if wid_arg:
+        for candidate in list_workspaces_for_user(user):
+            if str(candidate.get("id") or "") == wid_arg:
+                ws = candidate
+                break
+        if ws is None:
+            return _err(f"workspace not found: {wid_arg}")
+    elif wname:
+        ws = find_workspace_by_name(list_workspaces_for_user(user), wname)
+        if ws is None:
+            return _err(f"workspace not found by name: {wname}")
+    elif create_ws:
+        remote = str(proj.get("remote_url") or "").strip()
+        if not remote:
+            return _err("row has no remote_url to clone")
+        base_name = slug_from_git_url(remote)
+        name = base_name
+        last_err = "git clone failed"
+        for attempt in range(5):
+            try:
+                ws = create_project_workspace_for_user(
+                    user,
+                    name=name,
+                    source="git",
+                    git_url=remote,
+                    git_branch="main",
+                )
+                break
+            except WorkspaceCreateError as e:
+                last_err = e.message
+                if "already exists" in e.message.lower() or "unique" in e.message.lower():
+                    name = f"{base_name}-{attempt + 1}"
+                    continue
+                return _err(e.message)
+        if ws is None:
+            return _err(last_err)
+    else:
+        return _err("pass workspace_id, workspace_name, or create_workspace=true")
+
+    result = update_list_row(
+        uid,
         tid,
         wid,
-        project_row_id=project_row_id,
-        workspace_id=str(arguments.get("workspace_id") or "").strip() or None,
-        workspace_name=str(arguments.get("workspace_name") or arguments.get("name") or "").strip() or None,
-        create_workspace=create_ws,
+        list_path=dp,
+        row_id=project_row_id,
+        patch={
+            "workspace_id": str(ws.get("id") or ""),
+            "project_path": str(ws.get("path") or ""),
+        },
     )
     if not result.get("ok"):
         return _err(str(result.get("error") or "link failed"))
@@ -464,7 +591,7 @@ TOOLS: list[dict[str, Any]] = [
             "name": "add_rows",
             "TOOL_DESCRIPTION": (
                 "Append project rows manually (title, remote_url, tags, optional workspace_id). "
-                "For bulk GitHub import use import_github instead."
+                "For bulk GitHub import use github.list_repos then dashboard.list_append."
             ),
             "parameters": {
                 "type": "object",
@@ -486,7 +613,7 @@ TOOLS: list[dict[str, Any]] = [
             "name": "list_github_repos",
             "TOOL_DESCRIPTION": (
                 "List GitHub repos visible to the user (requires github_pat in Settings → Connections). "
-                "Use before import_github to pick repo_full_names."
+                "Deprecated — prefer github.list_repos."
             ),
             "parameters": {
                 "type": "object",
@@ -502,8 +629,7 @@ TOOLS: list[dict[str, Any]] = [
         "function": {
             "name": "import_github",
             "TOOL_DESCRIPTION": (
-                "Import GitHub repos into the projects table. Pass repo_full_names or import_all=true. "
-                "Optionally clone as coding workspaces (create_workspaces). Uses per-user github_pat only."
+                "Legacy: fetch GitHub repos then dashboard.list_append. Prefer github.list_repos + dashboard.list_append."
             ),
             "parameters": {
                 "type": "object",

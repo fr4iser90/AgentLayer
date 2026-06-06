@@ -9,7 +9,7 @@ from json import JSONDecoder
 from typing import Any
 
 from apps.backend.domain.agent_io import _parse_tool_intent_from_content, _text_blobs_from_message
-from apps.backend.domain.tool_forward_policy import is_propose_layouts_tool
+from apps.backend.domain.dashboard_agent_guards import is_propose_layouts_tool
 from apps.backend.infrastructure.stream_repetition_guard import guard_assistant_text
 
 _SIMULATION_CUT_MARKERS: tuple[str, ...] = (

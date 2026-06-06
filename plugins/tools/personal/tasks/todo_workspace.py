@@ -9,8 +9,8 @@ from typing import Any, Callable
 from apps.backend.domain.identity import get_identity
 from apps.backend.dashboard import db as dashboard_db
 from apps.backend.dashboard.tool_dashboard_resolve import (
-    resolve_dashboard_id_for_kind,
-    dashboard_rows_for_kind,
+    dashboard_rows_for_gallery,
+    resolve_dashboard_id,
 )
 
 __version__ = "1.0.0"
@@ -19,7 +19,7 @@ TOOL_BUCKET = "productivity"
 TOOL_DOMAIN = "tasks"
 TOOL_LABEL = "Task list"
 TOOL_DESCRIPTION = (
-    "Read and update task-list dashboards (kind todo): checkbox tasks (title, optional due text), "
+    "Legacy — prefer dashboard.list_* / dashboard.read on any board. Read and update task-list dashboards (kind todo): checkbox tasks (title, optional due text), "
     "and markdown notes. This is the correct tool for todos / tasks / checklists — not ideas or shopping. "
     "dashboard_id is optional when the user has exactly one todo board; if several exist, call "
     "todo_dashboards or pass dashboard_id. Prefer [Dashboard context] when present."
@@ -55,11 +55,6 @@ def _identity() -> tuple[int, uuid.UUID] | None:
         return None
     return (tid, uid)
 
-
-def _ensure_todo(ws: dict[str, Any]) -> str | None:
-    if (ws.get("kind") or "").strip() != "todo":
-        return "dashboard is not a todo (task list) kind"
-    return None
 
 
 def _clip(s: str, max_len: int) -> str:
@@ -120,7 +115,7 @@ def boards(arguments: dict[str, Any]) -> str:
     if ident is None:
         return _err("No user identity — todo tools need an authenticated chat user.")
     tid, uid = ident
-    rows = dashboard_rows_for_kind(uid, tid, "todo")
+    rows = dashboard_rows_for_gallery(uid, tid, kind="todo", template_id="todo-v1")
     out = [{"id": str(r.get("id", "")), "title": (r.get("title") or "").strip()} for r in rows]
     return json.dumps({"ok": True, "dashboards": out}, ensure_ascii=False)
 
@@ -132,19 +127,13 @@ def read(arguments: dict[str, Any]) -> str:
         return _err("No user identity — todo tools need an authenticated chat user.")
     tid, uid = ident
 
-    wid, res_err = resolve_dashboard_id_for_kind(
-        uid, tid, kind="todo", raw_dashboard_id=arguments.get("dashboard_id")
-    )
+    wid, res_err = resolve_dashboard_id(uid, tid, arguments.get("dashboard_id"))
     if wid is None:
         return _err(res_err or "dashboard_id required")
 
     ws = dashboard_db.dashboard_get(uid, tid, wid)
     if ws is None:
         return _err("dashboard not found or no access")
-    bad = _ensure_todo(ws)
-    if bad:
-        return _err(bad)
-
     data = ws.get("data") if isinstance(ws.get("data"), dict) else {}
     tasks = data.get("tasks")
     if not isinstance(tasks, list):
@@ -179,19 +168,13 @@ def add_tasks(arguments: dict[str, Any]) -> str:
         return _err("No user identity — todo tools need an authenticated chat user.")
     tid, uid = ident
 
-    wid, res_err = resolve_dashboard_id_for_kind(
-        uid, tid, kind="todo", raw_dashboard_id=arguments.get("dashboard_id")
-    )
+    wid, res_err = resolve_dashboard_id(uid, tid, arguments.get("dashboard_id"))
     if wid is None:
         return _err(res_err or "dashboard_id required")
 
     ws = dashboard_db.dashboard_get(uid, tid, wid)
     if ws is None:
         return _err("dashboard not found or no access")
-    bad = _ensure_todo(ws)
-    if bad:
-        return _err(bad)
-
     data = dict(ws.get("data")) if isinstance(ws.get("data"), dict) else {}
     cur = data.get("tasks")
     if not isinstance(cur, list):

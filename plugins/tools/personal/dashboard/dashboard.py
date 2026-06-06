@@ -11,11 +11,14 @@ from typing import Any, Callable
 
 from apps.backend.dashboard import db as dashboard_db
 from apps.backend.dashboard import public_share
-from apps.backend.dashboard.bundle import bundles_by_kind
+from apps.backend.dashboard.bundle import bundles_by_kind, bundles_by_template_id
 from apps.backend.dashboard.create_helpers import (
     create_dashboard_payload,
     default_title_for_kind,
+    default_title_for_template_id,
+    resolve_create_target,
     validate_create_kind,
+    validate_template_id,
 )
 from apps.backend.dashboard.data_paths import apply_data_patches, top_level_key
 from apps.backend.dashboard.tool_dashboard_resolve import resolve_dashboard_id
@@ -25,10 +28,14 @@ from apps.backend.dashboard.layout_tree import (
     resolve_blocks_target,
 )
 from apps.backend.dashboard.pins import pin_block_to_dashboard
-from apps.backend.dashboard.projects_kpi import (
-    patches_touch_projects_list,
-    projects_data_path,
-    sync_projects_kpis_in_data,
+from apps.backend.dashboard.data_compute import (
+    finalize_dashboard_data,
+    patches_should_recompute_stats,
+)
+from apps.backend.dashboard.list_ops import (
+    append_list_rows,
+    delete_list_row,
+    update_list_row,
 )
 from apps.backend.dashboard.layout_proposals import store_proposal_set
 from apps.backend.dashboard.template_ops import export_template_payload, validate_template_import
@@ -40,10 +47,10 @@ TOOL_BUCKET = "meta"
 TOOL_DOMAIN = "dashboard"
 TOOL_LABEL = "Dashboards (generic)"
 TOOL_DESCRIPTION = (
-    "List dashboards, create boards for any catalog kind, read ui_layout + data, patch block data by path, "
-    "adjust layout (add/remove blocks, grid, props), and create public read-only share links. "
-    "Works for any kind; prefer kind-specific tools (ideas_*, pets_*, shopping_list_*, projects_*) "
-    "for data updates when available. Use dashboard_id from [Dashboard context] when the user has the board open."
+    "List dashboards, create boards for any catalog kind, read ui_layout + data, append/update/delete list rows "
+    "by list_path, patch block data by path, adjust layout (add/remove blocks, grid, props), and create public "
+    "read-only share links. Works for any board — no kind gate. Integration tools enrich lists; "
+    "KPI stat blocks use props.compute. Use dashboard_id from [Dashboard context] when open."
 )
 TOOL_TRIGGERS = (
     "dashboard",
@@ -512,29 +519,48 @@ def _kinds_hint() -> str:
     return ", ".join(sorted(bundles_by_kind().keys()))
 
 
+def _template_ids_hint() -> str:
+    return ", ".join(sorted(bundles_by_template_id().keys()))
+
+
 def create_dashboard(arguments: dict[str, Any]) -> str:
-    """Create or reuse a dashboard for any catalog kind; returns onboarding when available."""
+    """Create or reuse a dashboard (prefer ``template_id``; ``kind`` is legacy)."""
     ident = _identity()
     if ident is None:
         return _err("No user identity — dashboard tools need an authenticated chat user.")
     tid, uid = ident
 
-    kind = str(arguments.get("kind") or "").strip().lower()
-    kerr = validate_create_kind(kind)
-    if kerr:
-        return _err(kerr)
+    template_id_raw = str(arguments.get("template_id") or "").strip().lower()
+    kind_raw = str(arguments.get("kind") or "").strip().lower()
+    kind, template_id, cerr = resolve_create_target(
+        template_id=template_id_raw or None,
+        kind=kind_raw or None,
+    )
+    if cerr:
+        return _err(cerr)
 
+    default_title = (
+        default_title_for_template_id(template_id)
+        if template_id
+        else default_title_for_kind(kind)
+    )
     payload = create_dashboard_payload(
         uid,
         tid,
         kind=kind,
-        default_title=default_title_for_kind(kind),
+        template_id=template_id,
+        default_title=default_title,
         arguments=arguments,
     )
     if payload is None:
+        label = template_id or kind
         return _err(
-            f"Multiple {kind} dashboards exist — pass dashboard_id or set only_if_none=false with an explicit title."
+            f"Multiple {label} dashboards exist — pass dashboard_id or set only_if_none=false with an explicit title."
         )
+    if template_id_raw:
+        payload["hint_create"] = "prefer template_id over kind= for new boards"
+    elif kind_raw:
+        payload["deprecated"] = "kind= is legacy — prefer template_id= from template catalog"
     return json.dumps(payload, ensure_ascii=False)
 
 
@@ -549,6 +575,7 @@ def list(arguments: dict[str, Any]) -> str:
         {
             "id": str(r.get("id", "")),
             "kind": (r.get("kind") or "").strip(),
+            "template_id": r.get("template_id"),
             "title": (r.get("title") or "").strip(),
             "access_role": (r.get("access_role") or "owner").strip(),
         }
@@ -574,6 +601,7 @@ def read(arguments: dict[str, Any]) -> str:
         "ok": True,
         "dashboard_id": str(wid),
         "kind": ws.get("kind") or "",
+        "template_id": ws.get("template_id"),
         "title": ws.get("title") or "",
         "access_role": ws.get("access_role") or "owner",
         "access_scope": ws.get("access_scope") or "full",
@@ -615,10 +643,11 @@ def patch_data(arguments: dict[str, Any]) -> str:
     new_data, perr = apply_data_patches(data, patches, allowed_top_keys=allowed)
     if perr:
         return _err(perr)
-    if (ws.get("kind") or "").strip().lower() == "projects":
-        dp = projects_data_path(ws)
-        if patches_touch_projects_list(patches, dp):
-            new_data = sync_projects_kpis_in_data(new_data, dp)
+    if patches_should_recompute_stats(patches, ws.get("ui_layout")):
+        new_data = finalize_dashboard_data(
+            new_data,
+            ws.get("ui_layout") if isinstance(ws.get("ui_layout"), dict) else None,
+        )
     updated = dashboard_db.dashboard_update(uid, tid, wid, data=new_data)
     if updated is None:
         return _err("could not update dashboard (viewer or conflict)")
@@ -754,6 +783,7 @@ def export_template(arguments: dict[str, Any]) -> str:
         return _err("dashboard not found")
     payload = export_template_payload(
         kind=str(row.get("kind") or "custom"),
+        template_id=str(row.get("template_id") or "") or None,
         title=str(row.get("title") or ""),
         ui_layout=row.get("ui_layout") if isinstance(row.get("ui_layout"), dict) else {},
         data=row.get("data") if isinstance(row.get("data"), dict) else {},
@@ -766,7 +796,12 @@ def import_layout(arguments: dict[str, Any]) -> str:
     if ident is None:
         return _err("No user identity — dashboard tools need an authenticated chat user.")
     tid, uid = ident
-    kind = str(arguments.get("kind") or "custom").strip().lower()
+    kind, template_id, cerr = resolve_create_target(
+        template_id=str(arguments.get("template_id") or "").strip().lower() or None,
+        kind=str(arguments.get("kind") or "custom").strip().lower(),
+    )
+    if cerr:
+        return _err(cerr)
     title = str(arguments.get("title") or "Dashboard").strip()[:500]
     ul = arguments.get("ui_layout")
     if not isinstance(ul, dict):
@@ -774,11 +809,22 @@ def import_layout(arguments: dict[str, Any]) -> str:
     initial = arguments.get("initial_data")
     if initial is None:
         initial = arguments.get("data")
-    ul_clean, dt_clean, err = validate_template_import(kind=kind, ui_layout=ul, data=initial)
+    ul_clean, dt_clean, err = validate_template_import(
+        kind=kind,
+        template_id=template_id,
+        ui_layout=ul,
+        data=initial,
+    )
     if err:
         return _err(err)
     row = dashboard_db.dashboard_create(
-        uid, tid, kind=kind, title=title, ui_layout=ul_clean, data=dt_clean
+        uid,
+        tid,
+        kind=kind,
+        template_id=template_id,
+        title=title,
+        ui_layout=ul_clean,
+        data=dt_clean,
     )
     return json.dumps({"ok": True, "dashboard": row}, ensure_ascii=False, default=str)
 
@@ -901,10 +947,97 @@ def pin_block(arguments: dict[str, Any]) -> str:
     return json.dumps(result, ensure_ascii=False, default=str)
 
 
+def list_append(arguments: dict[str, Any]) -> str:
+    ident = _identity()
+    if ident is None:
+        return _err("No user identity — dashboard tools need an authenticated chat user.")
+    tid, uid = ident
+    wid, res_err = resolve_dashboard_id(uid, tid, arguments.get("dashboard_id"))
+    if wid is None:
+        return _err(res_err or "dashboard_id required")
+
+    raw_rows = arguments.get("rows")
+    if not isinstance(raw_rows, builtins.list) or not raw_rows:
+        return _err("rows must be a non-empty array of objects")
+
+    list_path = str(arguments.get("list_path") or "").strip() or None
+    dedupe_field = str(arguments.get("dedupe_field") or "").strip() or None
+    result = append_list_rows(
+        uid,
+        tid,
+        wid,
+        list_path=list_path,
+        rows=[r for r in raw_rows if isinstance(r, dict)],
+        dedupe_field=dedupe_field,
+    )
+    if not result.get("ok"):
+        return _err(str(result.get("error") or "append failed"))
+    return json.dumps(result, ensure_ascii=False, default=str)
+
+
+def list_update(arguments: dict[str, Any]) -> str:
+    ident = _identity()
+    if ident is None:
+        return _err("No user identity — dashboard tools need an authenticated chat user.")
+    tid, uid = ident
+    wid, res_err = resolve_dashboard_id(uid, tid, arguments.get("dashboard_id"))
+    if wid is None:
+        return _err(res_err or "dashboard_id required")
+
+    row_id = str(arguments.get("row_id") or "").strip()
+    patch = arguments.get("patch")
+    if not row_id:
+        return _err("row_id is required")
+    if not isinstance(patch, dict) or not patch:
+        return _err("patch must be a non-empty object")
+
+    list_path = str(arguments.get("list_path") or "").strip() or None
+    result = update_list_row(
+        uid,
+        tid,
+        wid,
+        list_path=list_path,
+        row_id=row_id,
+        patch=patch,
+    )
+    if not result.get("ok"):
+        return _err(str(result.get("error") or "update failed"))
+    return json.dumps(result, ensure_ascii=False, default=str)
+
+
+def list_delete(arguments: dict[str, Any]) -> str:
+    ident = _identity()
+    if ident is None:
+        return _err("No user identity — dashboard tools need an authenticated chat user.")
+    tid, uid = ident
+    wid, res_err = resolve_dashboard_id(uid, tid, arguments.get("dashboard_id"))
+    if wid is None:
+        return _err(res_err or "dashboard_id required")
+
+    row_id = str(arguments.get("row_id") or "").strip()
+    if not row_id:
+        return _err("row_id is required")
+
+    list_path = str(arguments.get("list_path") or "").strip() or None
+    result = delete_list_row(
+        uid,
+        tid,
+        wid,
+        list_path=list_path,
+        row_id=row_id,
+    )
+    if not result.get("ok"):
+        return _err(str(result.get("error") or "delete failed"))
+    return json.dumps(result, ensure_ascii=False, default=str)
+
+
 HANDLERS: dict[str, Callable[[dict[str, Any]], str]] = {
     "create_dashboard": create_dashboard,
     "list": list,
     "read": read,
+    "list_append": list_append,
+    "list_update": list_update,
+    "list_delete": list_delete,
     "patch_data": patch_data,
     "patch_layout": patch_layout,
     "create_public_share": create_public_share,
@@ -920,21 +1053,26 @@ TOOLS: list[dict[str, Any]] = [
         "function": {
             "name": "create_dashboard",
             "TOOL_DESCRIPTION": (
-                "Create or reuse a dashboard for any catalog kind — the only create tool (no pets_create_dashboard etc.). "
-                "Pass kind (required). When only_if_none=true (default), reuse the sole existing board of that kind. "
-                "Response may include onboarding (greeting, agent_prompt, steps, suggested_tools) and setup_hint — "
-                "when present, run the setup conversation from that payload: greet, offer steps one at a time, "
-                "use the suggested kind-specific tools for data, do not install schema (install-templates is operator UI only). "
-                f"Catalog kinds: {_kinds_hint()}, custom."
+                "Create or reuse a dashboard from the template gallery or empty custom board. "
+                "Prefer template_id (e.g. projects-v1, personal_dashboard-v1); kind= is legacy. "
+                "When only_if_none=true (default), reuse the sole existing board with same template_id/kind. "
+                "Response may include onboarding — run setup from that payload when present. "
+                f"Gallery template_ids: {_template_ids_hint()}, custom for blank."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "template_id": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": (
+                            "Gallery template id (preferred), e.g. projects-v1, pets-v1, custom for empty board"
+                        ),
+                    },
                     "kind": {
                         "type": "string",
                         "TOOL_DESCRIPTION": (
-                            "Dashboard kind (required), e.g. pets, projects, ideas, shopping_list, "
-                            "todo, feeds, friends, photo_album, personal_dashboard, custom"
+                            "Legacy mirror — use template_id instead. "
+                            "e.g. pets, projects, ideas, shopping_list, todo, feeds, friends, photo_album, personal_dashboard, custom"
                         ),
                     },
                     "title": {
@@ -946,7 +1084,7 @@ TOOLS: list[dict[str, Any]] = [
                         "TOOL_DESCRIPTION": "Reuse existing board when user has exactly one of that kind (default true)",
                     },
                 },
-                "required": ["kind"],
+                "required": [],
             },
         },
     },
@@ -993,11 +1131,83 @@ TOOLS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "list_append",
+            "TOOL_DESCRIPTION": (
+                "Append rows to any list in dashboard data (table/card_grid dataPath). "
+                "Omit list_path to use the first table/card_grid block in ui_layout. "
+                "Each row is an object; missing id is auto-generated. Recomputes stat blocks with props.compute."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "dashboard_id": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": "UUID; omit if unambiguous.",
+                    },
+                    "list_path": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": "Top-level or dotted path to the list (e.g. repos, projects, events)",
+                    },
+                    "rows": {
+                        "type": "array",
+                        "TOOL_DESCRIPTION": "Objects to append",
+                        "items": {"type": "object"},
+                    },
+                    "dedupe_field": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": "Optional row field — skip append when value already exists in list",
+                    },
+                },
+                "required": ["rows"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_update",
+            "TOOL_DESCRIPTION": (
+                "Patch one row in a dashboard list by row id. Recomputes stat blocks with props.compute."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "dashboard_id": {"type": "string"},
+                    "list_path": {"type": "string"},
+                    "row_id": {"type": "string", "TOOL_DESCRIPTION": "Row id field (default id)"},
+                    "patch": {
+                        "type": "object",
+                        "TOOL_DESCRIPTION": "Fields to merge into the row",
+                    },
+                },
+                "required": ["row_id", "patch"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_delete",
+            "TOOL_DESCRIPTION": "Remove one row from a dashboard list by row id.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "dashboard_id": {"type": "string"},
+                    "list_path": {"type": "string"},
+                    "row_id": {"type": "string"},
+                },
+                "required": ["row_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "patch_data",
             "TOOL_DESCRIPTION": (
                 "Patch dashboard data by dotted paths (e.g. notes, tasks, chart labels). "
                 "Each patch: {path, value}. Does not change layout. "
-                "For ideas/pets/shopping_list prefer ideas_*, pets_*, shopping_list_* when available."
+                "Prefer list_append/list_update for table rows; use patch_data for non-list fields."
             ),
             "parameters": {
                 "type": "object",

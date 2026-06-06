@@ -9,8 +9,8 @@ from typing import Any, Callable
 from apps.backend.domain.identity import get_identity
 from apps.backend.dashboard import db as dashboard_db
 from apps.backend.dashboard.tool_dashboard_resolve import (
-    resolve_dashboard_id_for_kind,
-    dashboard_rows_for_kind,
+    dashboard_rows_for_gallery,
+    resolve_dashboard_id,
 )
 
 __version__ = "1.0.0"
@@ -19,7 +19,7 @@ TOOL_BUCKET = "productivity"
 TOOL_DOMAIN = "ideas"
 TOOL_LABEL = "Ideas & memos"
 TOOL_DESCRIPTION = (
-    "Read and update ideas dashboards (kind ideas): idea table (title, tags, status, snippet, pinned) "
+    "Legacy — prefer dashboard.list_* / dashboard.read on any board. Read and update ideas dashboards (kind ideas): idea table (title, tags, status, snippet, pinned) "
     "and markdown scratchpad. dashboard_id is optional when the user has exactly one ideas board; "
     "if several exist, call ideas_dashboards or pass dashboard_id. Prefer [Dashboard context] when present. "
     "Stored JSON only — no web search unless you use other tools."
@@ -58,11 +58,6 @@ def _identity() -> tuple[int, uuid.UUID] | None:
     return (tid, uid)
 
 
-def _ensure_ideas(ws: dict[str, Any]) -> str | None:
-    if (ws.get("kind") or "").strip() != "ideas":
-        return "dashboard is not an ideas kind"
-    return None
-
 
 def _clip(s: str, max_len: int) -> str:
     t = (s or "").strip()
@@ -99,7 +94,7 @@ def boards(arguments: dict[str, Any]) -> str:
     if ident is None:
         return _err("No user identity — ideas tools need an authenticated chat user.")
     tid, uid = ident
-    rows = dashboard_rows_for_kind(uid, tid, "ideas")
+    rows = dashboard_rows_for_gallery(uid, tid, kind="ideas", template_id="ideas-v1")
     out = [{"id": str(r.get("id", "")), "title": (r.get("title") or "").strip()} for r in rows]
     return json.dumps({"ok": True, "dashboards": out}, ensure_ascii=False)
 
@@ -111,19 +106,13 @@ def read(arguments: dict[str, Any]) -> str:
         return _err("No user identity — ideas tools need an authenticated chat user.")
     tid, uid = ident
 
-    wid, res_err = resolve_dashboard_id_for_kind(
-        uid, tid, kind="ideas", raw_dashboard_id=arguments.get("dashboard_id")
-    )
+    wid, res_err = resolve_dashboard_id(uid, tid, arguments.get("dashboard_id"))
     if wid is None:
         return _err(res_err or "dashboard_id required")
 
     ws = dashboard_db.dashboard_get(uid, tid, wid)
     if ws is None:
         return _err("dashboard not found or no access")
-    bad = _ensure_ideas(ws)
-    if bad:
-        return _err(bad)
-
     data = ws.get("data") if isinstance(ws.get("data"), dict) else {}
     ideas = data.get("ideas")
     if not isinstance(ideas, list):
@@ -155,19 +144,13 @@ def add_rows(arguments: dict[str, Any]) -> str:
         return _err("No user identity — ideas tools need an authenticated chat user.")
     tid, uid = ident
 
-    wid, res_err = resolve_dashboard_id_for_kind(
-        uid, tid, kind="ideas", raw_dashboard_id=arguments.get("dashboard_id")
-    )
+    wid, res_err = resolve_dashboard_id(uid, tid, arguments.get("dashboard_id"))
     if wid is None:
         return _err(res_err or "dashboard_id required")
 
     ws = dashboard_db.dashboard_get(uid, tid, wid)
     if ws is None:
         return _err("dashboard not found or no access")
-    bad = _ensure_ideas(ws)
-    if bad:
-        return _err(bad)
-
     data = dict(ws.get("data")) if isinstance(ws.get("data"), dict) else {}
     cur_raw = data.get("ideas")
     cur: list[dict[str, Any]] = [dict(x) for x in cur_raw] if isinstance(cur_raw, list) else []
@@ -224,19 +207,13 @@ def patch_idea(arguments: dict[str, Any]) -> str:
         return _err("No user identity — ideas tools need an authenticated chat user.")
     tid, uid = ident
 
-    wid, res_err = resolve_dashboard_id_for_kind(
-        uid, tid, kind="ideas", raw_dashboard_id=arguments.get("dashboard_id")
-    )
+    wid, res_err = resolve_dashboard_id(uid, tid, arguments.get("dashboard_id"))
     if wid is None:
         return _err(res_err or "dashboard_id required")
 
     ws = dashboard_db.dashboard_get(uid, tid, wid)
     if ws is None:
         return _err("dashboard not found or no access")
-    bad = _ensure_ideas(ws)
-    if bad:
-        return _err(bad)
-
     data = dict(ws.get("data")) if isinstance(ws.get("data"), dict) else {}
     ideas_raw = data.get("ideas")
     ideas: list[dict[str, Any]] = [dict(x) for x in ideas_raw] if isinstance(ideas_raw, list) else []
@@ -309,19 +286,13 @@ def patch_scratchpad(arguments: dict[str, Any]) -> str:
         return _err("No user identity — ideas tools need an authenticated chat user.")
     tid, uid = ident
 
-    wid, res_err = resolve_dashboard_id_for_kind(
-        uid, tid, kind="ideas", raw_dashboard_id=arguments.get("dashboard_id")
-    )
+    wid, res_err = resolve_dashboard_id(uid, tid, arguments.get("dashboard_id"))
     if wid is None:
         return _err(res_err or "dashboard_id required")
 
     ws = dashboard_db.dashboard_get(uid, tid, wid)
     if ws is None:
         return _err("dashboard not found or no access")
-    bad = _ensure_ideas(ws)
-    if bad:
-        return _err(bad)
-
     data = dict(ws.get("data")) if isinstance(ws.get("data"), dict) else {}
     cur = data.get("scratchpad")
     if not isinstance(cur, str):

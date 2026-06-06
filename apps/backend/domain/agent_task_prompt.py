@@ -97,6 +97,13 @@ _DELEGATE_MODE_HINTS: dict[str, str] = {
         "patch → commit → push **that** branch. Verify with ``git_read`` log and re-read edited files "
         "before finishing."
     ),
+    "security_dashboard_sync": (
+        "## Task mode: security_dashboard_sync\n"
+        "Sync SSC scan fields onto dashboard list rows (generic ``list_update``).\n"
+        "Workflow: ``dashboard.read`` for ``dashboard_id`` in requirements → for each ``repo_url: …`` line: "
+        "``delegate`` ``agent_id=security_auditor`` with resolve/scan for that URL → ``list_update`` patch on the "
+        "matching row (match by ``remote_url``). No layout changes unless explicitly requested."
+    ),
 }
 
 

@@ -4,5 +4,6 @@
   "description": "Checkbox tasks with optional due hints and a notes area — same pattern as shopping list.",
   "template": "tasks.template.json",
   "schema_sql": "migrations/001_user_dashboards.sql",
-  "setup": "todo.setup.json"
+  "setup": "todo.setup.json",
+  "template_id": "todo-v1"
 }

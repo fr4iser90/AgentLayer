@@ -6,14 +6,14 @@
     "en": "Your projects portfolio is ready — repos as cards or a table, KPIs on top, runs from the detail panel."
   },
   "agent_prompt": {
-    "de": "Onboarding für kind projects. Zuerst dashboard.read (Layout + data). Daten: projects.import_github (github_pat), projects.add_rows, projects.link_workspace. Felder in projects[]: title, remote_url, tags, status, security, pinned. Layout: dashboard.patch_layout — hero/stat/card_grid/section/table; card_grid und table teilen dataPath projects. KPI stat_* synchronisieren sich automatisch bei Änderungen an projects[] (add_rows, import, link, patch_data). Run-Now über Karte/Zeile im UI (enableRunNow). Kein Schema installieren.",
-    "en": "Onboarding for kind projects. Start with dashboard.read (layout + data). Data: projects.import_github (github_pat), projects.add_rows, projects.link_workspace. Row fields: title, remote_url, tags, status, security, pinned. Layout: dashboard.patch_layout — hero/stat/card_grid/section/table; card_grid and table share dataPath projects. KPI stat_* blocks auto-sync when projects[] changes (add_rows, import, link, patch_data). Run now from card/row detail in UI (enableRunNow). Do not install schema."
+    "de": "Onboarding für kind projects (Template-Beispiel). Zuerst dashboard.read. Daten: github.list_repos → dashboard.list_append; security_scan.resolve → dashboard.list_update; workspace.create für Klone. Layout: hero/stat/card_grid/section/table. KPIs via props.compute.",
+    "en": "Onboarding for kind projects (template example). Start with dashboard.read. Data: github.list_repos then dashboard.list_append; security_scan.resolve then dashboard.list_update; workspace.create for clones. Layout: dashboard.patch_layout. KPI stat blocks use props.compute on any list dataPath."
   },
   "steps": [
     {
       "id": "import_github",
       "label": { "de": "GitHub-Repos importieren", "en": "Import from GitHub" },
-      "tool_hint": "projects.import_github"
+      "tool_hint": "github.list_repos"
     },
     {
       "id": "add_manual",

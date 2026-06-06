@@ -4,5 +4,6 @@
   "description": "Checklist-style rows with notes.",
   "template": "shopping-list.template.json",
   "schema_sql": "migrations/001_user_dashboards.sql",
-  "setup": "shopping-list.setup.json"
+  "setup": "shopping-list.setup.json",
+  "template_id": "shopping_list-v1"
 }

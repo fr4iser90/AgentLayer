@@ -48,7 +48,7 @@ export function DashboardHubNavigator(props: {
   setActiveHubId: (id: DashboardHubId) => void;
   selectedId: string | null;
   onSelectDashboard: (id: string) => void;
-  kindLabelFor: (kind: string) => string;
+  kindLabelFor: (kind: string, templateId?: string | null) => string;
   dashboardUnreadCount?: (id: string) => number;
 }) {
   const { t } = useTranslation(["dashboard"]);
@@ -97,7 +97,11 @@ export function DashboardHubNavigator(props: {
     return hubItems.filter((w) => {
       const t = (w.title || "").toLowerCase();
       const k = (w.kind || "").toLowerCase();
-      return t.includes(q) || k.includes(q) || kindLabelFor(w.kind).toLowerCase().includes(q);
+      return (
+        t.includes(q) ||
+        k.includes(q) ||
+        kindLabelFor(w.kind, w.template_id).toLowerCase().includes(q)
+      );
     });
   }, [hubItems, query, kindLabelFor]);
 
@@ -105,7 +109,7 @@ export function DashboardHubNavigator(props: {
     const mk = (w: DashboardSummary): Entry => ({
       id: w.id,
       label: w.title || w.kind,
-      kindLabel: kindLabelFor(w.kind),
+      kindLabel: kindLabelFor(w.kind, w.template_id),
       accessNote:
         w.access_role === "viewer"
           ? "read-only"

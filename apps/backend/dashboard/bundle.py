@@ -10,7 +10,7 @@ from typing import Any, Iterator
 
 logger = logging.getLogger(__name__)
 
-_KIND_MARKER = "dashboard.kind.json"
+_KIND_MARKERS = ("dashboard.kind.json", "template.manifest.json")
 
 
 def dashboard_tree_root() -> Path:
@@ -37,9 +37,10 @@ def _safe_relative_file(bundle_dir: Path, rel: str, label: str) -> Path:
 
 @dataclass(frozen=True)
 class KindBundle:
-    """One domain folder (e.g. shopping-list, todo) described by ``dashboard.kind.json``."""
+    """One gallery bundle (``dashboard.kind.json`` or ``template.manifest.json``)."""
 
     bundle_dir: Path
+    template_id: str
     kind: str
     label: str | None
     description: str | None
@@ -63,6 +64,12 @@ def _parse_bundle(marker: Path) -> KindBundle | None:
         logger.warning("skip dashboard.kind.json (missing kind): %s", marker)
         return None
     kind_n = kind.strip().lower()
+
+    template_id_raw = raw.get("template_id")
+    if isinstance(template_id_raw, str) and template_id_raw.strip():
+        template_id = template_id_raw.strip().lower()
+    else:
+        template_id = f"{kind_n}-v1"
 
     label: str | None = None
     lab_raw = raw.get("label")
@@ -112,6 +119,7 @@ def _parse_bundle(marker: Path) -> KindBundle | None:
 
     return KindBundle(
         bundle_dir=bundle_dir,
+        template_id=template_id,
         kind=kind_n,
         label=label,
         description=description,
@@ -125,14 +133,20 @@ def iter_kind_bundles() -> Iterator[KindBundle]:
     root = dashboard_tree_root()
     if not root.is_dir():
         return
-    for marker in sorted(root.rglob(_KIND_MARKER)):
-        b = _parse_bundle(marker)
-        if b is not None:
-            yield b
+    seen_dirs: set[str] = set()
+    for marker_name in _KIND_MARKERS:
+        for marker in sorted(root.rglob(marker_name)):
+            key = str(marker.parent.resolve())
+            if key in seen_dirs:
+                continue
+            b = _parse_bundle(marker)
+            if b is not None:
+                seen_dirs.add(key)
+                yield b
 
 
 def bundles_by_kind() -> dict[str, KindBundle]:
-    """First ``dashboard.kind.json`` per ``kind`` wins (paths sorted for stable order)."""
+    """First bundle per ``kind`` wins (paths sorted for stable order)."""
     out: dict[str, KindBundle] = {}
     for b in iter_kind_bundles():
         if b.kind in out:
@@ -147,6 +161,22 @@ def bundles_by_kind() -> dict[str, KindBundle]:
     return out
 
 
+def bundles_by_template_id() -> dict[str, KindBundle]:
+    """First bundle per ``template_id`` wins."""
+    out: dict[str, KindBundle] = {}
+    for b in iter_kind_bundles():
+        if b.template_id in out:
+            logger.warning(
+                "duplicate template_id %r — keeping %s, ignoring %s",
+                b.template_id,
+                out[b.template_id].bundle_dir,
+                b.bundle_dir,
+            )
+            continue
+        out[b.template_id] = b
+    return out
+
+
 def _fallback_label(kind: str) -> str:
     k = (kind or "").strip().lower()
     if not k:
@@ -155,16 +185,22 @@ def _fallback_label(kind: str) -> str:
 
 
 def kind_catalog() -> list[dict[str, Any]]:
-    """UI + API: one row per discovered ``kind`` with flags (labels from ``dashboard.kind.json`` or generic)."""
+    """Legacy catalog keyed by ``kind`` — prefer ``template_catalog()``."""
+    return template_catalog()
+
+
+def template_catalog() -> list[dict[str, Any]]:
+    """UI + API: one row per gallery template (``template_id`` primary key)."""
     rows: list[dict[str, Any]] = []
-    for k, b in sorted(bundles_by_kind().items()):
+    for tid, b in sorted(bundles_by_template_id().items()):
         lab = (b.label or "").strip() if b.label else ""
         if not lab:
-            lab = _fallback_label(k)
+            lab = _fallback_label(b.kind)
         desc = (b.description or "").strip() if b.description else ""
         rows.append(
             {
-                "kind": k,
+                "template_id": tid,
+                "kind": b.kind,
                 "label": lab,
                 "description": desc,
                 "has_template": bool(b.template and b.template.is_file()),
@@ -173,6 +209,14 @@ def kind_catalog() -> list[dict[str, Any]]:
             }
         )
     return rows
+
+
+def template_path_for_template_id(template_id: str) -> Path | None:
+    tid = (template_id or "").strip().lower()
+    b = bundles_by_template_id().get(tid)
+    if not b or not b.template:
+        return None
+    return b.template if b.template.is_file() else None
 
 
 def template_path_for_kind(kind: str) -> Path | None:
@@ -191,9 +235,18 @@ def kinds_with_schema_sql() -> list[str]:
 
 
 def kinds_with_templates() -> list[str]:
-    """Kinds that can be created from a template file (sidebar offers)."""
+    """Legacy: kinds with on-disk layout templates."""
     return sorted(
-        k for k, b in bundles_by_kind().items() if b.template and b.template.is_file()
+        b.kind for b in bundles_by_template_id().values() if b.template and b.template.is_file()
+    )
+
+
+def template_ids_with_templates() -> list[str]:
+    """Template ids that can be instantiated from gallery files."""
+    return sorted(
+        tid
+        for tid, b in bundles_by_template_id().items()
+        if b.template and b.template.is_file()
     )
 
 

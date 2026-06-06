@@ -17,6 +17,7 @@ tool_domains:
   - clocks
   - secrets
   - agent_tasks
+  - dashboard
   - tool_help
   - shared
 tool_capability_any:

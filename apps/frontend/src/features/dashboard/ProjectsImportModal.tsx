@@ -19,10 +19,42 @@ type Props = {
   onClose: () => void;
   auth: Pick<AuthContextValue, "accessToken" | "refresh">;
   dashboardId: string;
+  listPath?: string | null;
   onImported: (dashboardData: Record<string, unknown>) => void;
 };
 
-export function ProjectsImportModal({ open, onClose, auth, dashboardId, onImported }: Props) {
+async function runTool(
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">,
+  name: string,
+  args: Record<string, unknown>
+): Promise<{ ok: boolean; error?: string; [key: string]: unknown }> {
+  const r = await apiFetch("/tools/run", auth, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, arguments: args }),
+  });
+  const body = (await r.json().catch(() => null)) as { result?: string; detail?: string } | null;
+  if (!r.ok) {
+    return { ok: false, error: String(body?.detail ?? r.status) };
+  }
+  try {
+    const raw = body?.result;
+    const parsed =
+      typeof raw === "string" ? (JSON.parse(raw) as Record<string, unknown>) : (raw as Record<string, unknown>);
+    return { ok: parsed?.ok === true, error: String(parsed?.error ?? ""), ...parsed };
+  } catch {
+    return { ok: false, error: "invalid tool response" };
+  }
+}
+
+export function ProjectsImportModal({
+  open,
+  onClose,
+  auth,
+  dashboardId,
+  listPath,
+  onImported,
+}: Props) {
   const { t } = useTranslation(["dashboard", "errors", "admin"]);
   const [repos, setRepos] = useState<GithubRepoRow[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -96,40 +128,65 @@ export function ProjectsImportModal({ open, onClose, auth, dashboardId, onImport
     setImporting(true);
     setError(null);
     setResultMsg(null);
+    const workspaceErrors: string[] = [];
     try {
-      const r = await apiFetch(`/v1/dashboards/${encodeURIComponent(dashboardId)}/import-projects`, auth, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          repos: picked,
-          create_workspaces: createWorkspaces,
-          skip_existing: skipExisting,
-        }),
-      });
-      const j = (await r.json().catch(() => null)) as {
+      const rows: Array<Record<string, unknown>> = [];
+      for (const r of picked) {
+        let workspaceId = "";
+        let projectPath = "";
+        if (createWorkspaces) {
+          const ws = await runTool(auth, "workspace.create", {
+            name: r.name || r.full_name.split("/").pop() || "repo",
+            source: "git",
+            git_url: r.clone_url,
+            git_branch: r.default_branch || "main",
+            bind: false,
+          });
+          if (!ws.ok) {
+            workspaceErrors.push(`${r.full_name}: ${ws.error ?? "workspace failed"}`);
+          } else {
+            const w = ws.workspace as { id?: string; path?: string } | undefined;
+            workspaceId = String(w?.id ?? "");
+            projectPath = String(w?.path ?? "");
+          }
+        }
+        rows.push({
+          pinned: false,
+          title: r.name || r.full_name.split("/").pop() || r.full_name,
+          remote_url: r.clone_url,
+          tags: r.description?.slice(0, 240) ?? "",
+          workspace_id: workspaceId,
+          project_path: projectPath,
+        });
+      }
+
+      const appendArgs: Record<string, unknown> = {
+        dashboard_id: dashboardId,
+        rows,
+      };
+      if (listPath?.trim()) appendArgs.list_path = listPath.trim();
+      if (skipExisting) appendArgs.dedupe_field = "remote_url";
+
+      const payload = await runTool(auth, "dashboard.list_append", appendArgs);
+      if (!payload.ok) {
+        setError(String(payload.error ?? t("errors:generic")));
+        return;
+      }
+      const added = Number(payload.added_count ?? 0);
+      const skipped = Number(payload.skipped_count ?? 0);
+      setResultMsg(t("dashboard:importResult", { added, skipped }));
+
+      const dashRes = await apiFetch(`/v1/dashboards/${encodeURIComponent(dashboardId)}`, auth);
+      const dashBody = (await dashRes.json().catch(() => null)) as {
         ok?: boolean;
-        added_count?: number;
-        skipped_count?: number;
-        workspace_errors?: Array<{ repo: string; error: string }>;
         dashboard?: { data?: Record<string, unknown> };
         detail?: string;
       };
-      if (!r.ok || !j?.ok) {
-        setError(String(j?.detail ?? r.status));
-        return;
+      if (dashRes.ok && dashBody?.dashboard?.data && typeof dashBody.dashboard.data === "object") {
+        onImported(dashBody.dashboard.data);
       }
-      const added = Number(j.added_count ?? 0);
-      const skipped = Number(j.skipped_count ?? 0);
-      setResultMsg(
-        t("dashboard:importResult", { added, skipped })
-      );
-      if (j.dashboard?.data && typeof j.dashboard.data === "object") {
-        onImported(j.dashboard.data);
-      }
-      if (Array.isArray(j.workspace_errors) && j.workspace_errors.length > 0) {
-        setError(
-          j.workspace_errors.map((e) => `${e.repo}: ${e.error}`).join("; ")
-        );
+      if (workspaceErrors.length > 0) {
+        setError(workspaceErrors.join("; "));
       }
     } catch (e) {
       setError(String(e));

@@ -4,6 +4,6 @@
   "description": "RSS feed list + summaries (dashboard-first).",
   "template": "feeds.template.json",
   "schema_sql": "migrations/001_user_dashboards.sql",
-  "setup": "feeds.setup.json"
+  "setup": "feeds.setup.json",
+  "template_id": "feeds-v1"
 }
-

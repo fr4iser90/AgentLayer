@@ -45,6 +45,7 @@ CREATE TABLE user_dashboards (
   tenant_id BIGINT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   owner_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   kind TEXT NOT NULL DEFAULT 'custom',
+  template_id TEXT NULL,
   title TEXT NOT NULL DEFAULT '',
   ui_layout JSONB NOT NULL DEFAULT '{}'::jsonb,
   data JSONB NOT NULL DEFAULT '{}'::jsonb,
@@ -55,6 +56,8 @@ CREATE TABLE user_dashboards (
 CREATE INDEX idx_user_dashboards_tenant ON user_dashboards (tenant_id);
 CREATE INDEX idx_user_dashboards_owner ON user_dashboards (owner_user_id, created_at DESC);
 CREATE INDEX idx_user_dashboards_updated ON user_dashboards (updated_at DESC);
+CREATE INDEX idx_user_dashboards_template_id ON user_dashboards (tenant_id, template_id)
+  WHERE template_id IS NOT NULL;
 
 CREATE TABLE dashboard_block_share_grants (
   id BIGSERIAL PRIMARY KEY,

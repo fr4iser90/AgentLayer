@@ -9,8 +9,8 @@ from typing import Any, Callable
 from apps.backend.domain.identity import get_identity
 from apps.backend.dashboard import db as dashboard_db
 from apps.backend.dashboard.tool_dashboard_resolve import (
-    resolve_dashboard_id_for_kind,
-    dashboard_rows_for_kind,
+    dashboard_rows_for_gallery,
+    resolve_dashboard_id,
 )
 
 __version__ = "1.0.0"
@@ -19,7 +19,7 @@ TOOL_BUCKET = "productivity"
 TOOL_DOMAIN = "pets"
 TOOL_LABEL = "Pets dashboard"
 TOOL_DESCRIPTION = (
-    "Read and update pets dashboards (kind pets): hero image, animals table, markdown notes, photo albums. "
+    "Legacy — prefer dashboard.list_* / dashboard.read on any board. Read and update pets dashboards (kind pets): hero image, animals table, markdown notes, photo albums. "
     "dashboard_id is optional when the user has exactly one pets board (same rule as other dashboard tools); "
     "if several exist, pass dashboard_id after listing. Prefer [Dashboard context] when present. "
     "Stored dashboard JSON only — no external vet APIs. "
@@ -108,11 +108,6 @@ def _identity() -> tuple[int, uuid.UUID] | None:
     return (tid, uid)
 
 
-def _ensure_pets(ws: dict[str, Any]) -> str | None:
-    if (ws.get("kind") or "").strip() != "pets":
-        return "dashboard is not a pets kind"
-    return None
-
 
 def _clip(s: str, max_len: int) -> str:
     t = (s or "").strip()
@@ -131,7 +126,7 @@ def boards(arguments: dict[str, Any]) -> str:
     if ident is None:
         return _err("No user identity — pets tools need an authenticated chat user.")
     tid, uid = ident
-    rows = dashboard_rows_for_kind(uid, tid, "pets")
+    rows = dashboard_rows_for_gallery(uid, tid, kind="pets", template_id="pets-v1")
     out = [{"id": str(r.get("id", "")), "title": (r.get("title") or "").strip()} for r in rows]
     return json.dumps({"ok": True, "dashboards": out}, ensure_ascii=False)
 
@@ -143,19 +138,13 @@ def read(arguments: dict[str, Any]) -> str:
         return _err("No user identity — pets tools need an authenticated chat user.")
     tid, uid = ident
 
-    wid, res_err = resolve_dashboard_id_for_kind(
-        uid, tid, kind="pets", raw_dashboard_id=arguments.get("dashboard_id")
-    )
+    wid, res_err = resolve_dashboard_id(uid, tid, arguments.get("dashboard_id"))
     if wid is None:
         return _err(res_err or "dashboard_id required")
 
     ws = dashboard_db.dashboard_get(uid, tid, wid)
     if ws is None:
         return _err("dashboard not found or no access")
-    bad = _ensure_pets(ws)
-    if bad:
-        return _err(bad)
-
     data = ws.get("data") if isinstance(ws.get("data"), dict) else {}
     pets = data.get("pets")
     if not isinstance(pets, list):
@@ -207,19 +196,13 @@ def patch_pet(arguments: dict[str, Any]) -> str:
         return _err("No user identity — pets tools need an authenticated chat user.")
     tid, uid = ident
 
-    wid, res_err = resolve_dashboard_id_for_kind(
-        uid, tid, kind="pets", raw_dashboard_id=arguments.get("dashboard_id")
-    )
+    wid, res_err = resolve_dashboard_id(uid, tid, arguments.get("dashboard_id"))
     if wid is None:
         return _err(res_err or "dashboard_id required")
 
     ws = dashboard_db.dashboard_get(uid, tid, wid)
     if ws is None:
         return _err("dashboard not found or no access")
-    bad = _ensure_pets(ws)
-    if bad:
-        return _err(bad)
-
     data = dict(ws.get("data")) if isinstance(ws.get("data"), dict) else {}
     pets_raw = data.get("pets")
     pets: list[dict[str, Any]] = [dict(x) for x in pets_raw] if isinstance(pets_raw, list) else []
@@ -277,19 +260,13 @@ def add_pet(arguments: dict[str, Any]) -> str:
         return _err("No user identity — pets tools need an authenticated chat user.")
     tid, uid = ident
 
-    wid, res_err = resolve_dashboard_id_for_kind(
-        uid, tid, kind="pets", raw_dashboard_id=arguments.get("dashboard_id")
-    )
+    wid, res_err = resolve_dashboard_id(uid, tid, arguments.get("dashboard_id"))
     if wid is None:
         return _err(res_err or "dashboard_id required")
 
     ws = dashboard_db.dashboard_get(uid, tid, wid)
     if ws is None:
         return _err("dashboard not found or no access")
-    bad = _ensure_pets(ws)
-    if bad:
-        return _err(bad)
-
     data = dict(ws.get("data")) if isinstance(ws.get("data"), dict) else {}
     pets_raw = data.get("pets")
     pets: list[dict[str, Any]] = [dict(x) for x in pets_raw] if isinstance(pets_raw, list) else []
@@ -342,19 +319,13 @@ def append_photo(arguments: dict[str, Any]) -> str:
         return _err("No user identity — pets tools need an authenticated chat user.")
     tid, uid = ident
 
-    wid, res_err = resolve_dashboard_id_for_kind(
-        uid, tid, kind="pets", raw_dashboard_id=arguments.get("dashboard_id")
-    )
+    wid, res_err = resolve_dashboard_id(uid, tid, arguments.get("dashboard_id"))
     if wid is None:
         return _err(res_err or "dashboard_id required")
 
     ws = dashboard_db.dashboard_get(uid, tid, wid)
     if ws is None:
         return _err("dashboard not found or no access")
-    bad = _ensure_pets(ws)
-    if bad:
-        return _err(bad)
-
     data = dict(ws.get("data")) if isinstance(ws.get("data"), dict) else {}
     albums_raw = data.get("albums")
     if not isinstance(albums_raw, list) or not albums_raw:
@@ -410,19 +381,13 @@ def patch_hero(arguments: dict[str, Any]) -> str:
         return _err("No user identity — pets tools need an authenticated chat user.")
     tid, uid = ident
 
-    wid, res_err = resolve_dashboard_id_for_kind(
-        uid, tid, kind="pets", raw_dashboard_id=arguments.get("dashboard_id")
-    )
+    wid, res_err = resolve_dashboard_id(uid, tid, arguments.get("dashboard_id"))
     if wid is None:
         return _err(res_err or "dashboard_id required")
 
     ws = dashboard_db.dashboard_get(uid, tid, wid)
     if ws is None:
         return _err("dashboard not found or no access")
-    bad = _ensure_pets(ws)
-    if bad:
-        return _err(bad)
-
     allowed: dict[str, str] = {}
     if "url" in patch:
         allowed["url"] = _clip(str(patch.get("url") or ""), _MAX_HERO_URL)
@@ -467,19 +432,13 @@ def patch_notes(arguments: dict[str, Any]) -> str:
         return _err("No user identity — pets tools need an authenticated chat user.")
     tid, uid = ident
 
-    wid, res_err = resolve_dashboard_id_for_kind(
-        uid, tid, kind="pets", raw_dashboard_id=arguments.get("dashboard_id")
-    )
+    wid, res_err = resolve_dashboard_id(uid, tid, arguments.get("dashboard_id"))
     if wid is None:
         return _err(res_err or "dashboard_id required")
 
     ws = dashboard_db.dashboard_get(uid, tid, wid)
     if ws is None:
         return _err("dashboard not found or no access")
-    bad = _ensure_pets(ws)
-    if bad:
-        return _err(bad)
-
     data = dict(ws.get("data")) if isinstance(ws.get("data"), dict) else {}
     cur = data.get("notes")
     if not isinstance(cur, str):

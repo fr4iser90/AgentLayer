@@ -4,6 +4,6 @@
   "description": "A portfolio of projects (repos) with quick notes and lightweight metadata.",
   "template": "projects.template.json",
   "schema_sql": "migrations/001_user_dashboards.sql",
-  "setup": "projects.setup.json"
+  "setup": "projects.setup.json",
+  "template_id": "projects-v1"
 }
-

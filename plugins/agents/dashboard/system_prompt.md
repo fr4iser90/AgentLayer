@@ -53,8 +53,8 @@ Use ``patch_layout`` only for small targeted edits or after the user explicitly 
 
 ### Projects portfolio recipe
 
-1. **Data:** ``projects.add_rows`` / ``projects.import_github`` / ``dashboard.patch_data`` on ``projects[]`` (fields: ``title``, ``remote_url``, ``tags``, ``status``, ``security``, ``pinned``, ``workspace_id``, ``project_path``).
-2. **KPIs:** ``stat`` blocks — values **auto-sync** from ``projects[]`` on ``add_rows`` / import / link / ``patch_data`` (``stat_projects``, ``stat_linked``, ``stat_active``).
+1. **Data:** ``dashboard.list_append`` / ``list_update`` / ``list_delete`` on any ``dataPath``. External data: separate tools only (``github.list_repos``, ``security_scan.resolve``, ``workspace.create``) — then map results into rows via dashboard tools. Never mix provider + dashboard in one tool name.
+2. **KPIs:** ``stat`` blocks with ``props.compute`` — values **auto-sync** when source lists change (``patch_data``, import, etc.). Example: ``{"op":"count","from":"projects"}``, ``count_where``, ``count_nonempty``, ``sum``. No hardcoded KPI names — bind each stat block to any list path.
 3. **Cards:** ``card_grid`` with ``data_path: "projects"`` (often inside a ``section`` titled "Repositories").
 4. **Table:** optional second view on the same ``projects`` list for editing rows.
 5. **Run now:** enabled on ``card_grid``/``table`` props; user opens row/card detail in the UI.
@@ -83,6 +83,20 @@ Example ops (after ``read`` gives a section id or after adding section in a prio
 ```
 
 New ``kind: projects`` boards from ``create_dashboard`` may already include hero, KPIs, section + card_grid + table — use ``read`` before duplicating blocks.
+
+### Security data on the board (no layout-only)
+
+When the user asks for **security overview**, **scan status**, **issues**, **SSC/SimpleSec**, or **clean vs critical projects**:
+
+1. ``dashboard.read`` — list rows (e.g. ``projects``) with ``remote_url`` / repo identifiers.
+2. **Do not** claim you lack security tools — you have ``resolve`` (``security_scan``) and ``list_update``.
+3. For **many repos**: create a **task** instead of scanning everything inline:
+   - ``task_create`` with ``assigned_agent_id: general``, ``status: queued`` (admin) or ``draft`` (user must approve via ``task_update`` → ``queued``)
+   - ``requirements``: include ``mode: security_dashboard_sync``, ``dashboard_id: <id>``, and one line per repo ``repo_url: …``
+4. Optional **local** single-row demo: ``resolve`` with ``repo_url`` → ``list_update`` with a ``patch`` of scan fields on that row.
+5. KPIs: use existing ``stat`` blocks with ``props.compute`` on fields you wrote (e.g. count_where on a severity label) — only call ``propose_layouts`` if the user also wants layout variants.
+
+Never use bulk/hybrid tools. Loop ``resolve`` + ``list_update`` per row (or delegate via task).
 
 ## Rules
 

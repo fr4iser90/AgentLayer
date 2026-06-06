@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from apps.backend.dashboard.bundle import template_path_for_kind
+from apps.backend.dashboard.bundle import template_path_for_kind, template_path_for_template_id
 
 _CUSTOM_UI: dict[str, Any] = {
     "version": 1,
@@ -34,7 +34,14 @@ def _load_kind_template(path: Path) -> tuple[dict[str, Any], dict[str, Any]] | N
     return None
 
 
-def defaults_for_kind(kind: str) -> tuple[dict[str, Any], dict[str, Any]]:
+def defaults_for_kind(kind: str, *, template_id: str | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
+    tid = (template_id or "").strip().lower()
+    if tid:
+        path = template_path_for_template_id(tid)
+        if path:
+            t = _load_kind_template(path)
+            if t:
+                return t
     k = (kind or "custom").strip().lower()
     if k == "custom":
         return copy.deepcopy(_CUSTOM_UI), copy.deepcopy(_CUSTOM_DATA)

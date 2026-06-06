@@ -20,42 +20,6 @@ logger = logging.getLogger(__name__)
 
 SchemaMode = Literal["full", "catalog"]
 
-# Logical pin candidates (resolved against agent allowlist at runtime).
-_DASHBOARD_PIN_CANDIDATES: tuple[str, ...] = (
-    "dashboard.read",
-    "propose_layouts",
-    "patch_layout",
-    "patch_data",
-    "list",
-)
-
-_TOOL_TRIGGER_EXTRAS: dict[str, tuple[str, ...]] = {
-    "propose_layouts": (
-        "layout",
-        "variant",
-        "vorschlag",
-        "vorschläge",
-        "proposal",
-        "redesign",
-        "option",
-        "ui layout",
-    ),
-    "patch_layout": ("layout", "grid", "block", "widget", "kanban", "card"),
-    "dashboard.read": ("dashboard", "board", "layout", "block"),
-    "patch_data": ("data", "patch", "update", "field"),
-}
-
-_LAYOUT_INTENT_KEYWORDS: tuple[str, ...] = (
-    "layout",
-    "variant",
-    "vorschlag",
-    "vorschläge",
-    "redesign",
-    "darstellung",
-    "option",
-    "ui ",
-)
-
 
 @dataclass
 class ToolForwardContext:
@@ -84,8 +48,8 @@ class ToolForwardPlan:
     meta: dict[str, Any] = field(default_factory=dict)
 
 
-def resolve_pin_names(agent_id: str | None, candidates: tuple[str, ...]) -> frozenset[str]:
-    """Map pin candidates to registered names present in the agent allowlist."""
+def resolve_pin_names(agent_id: str | None) -> frozenset[str]:
+    """``pinned_tools`` from agent plugin yaml, intersected with the agent allowlist."""
     aid = (agent_id or "").strip()
     if not aid:
         return frozenset()
@@ -94,23 +58,15 @@ def resolve_pin_names(agent_id: str | None, candidates: tuple[str, ...]) -> froz
         return frozenset()
     allowed = frozenset(str(x).strip() for x in (ag.get("tool_names") or []) if str(x).strip())
     yaml_pins = ag.get("pinned_tools")
-    want: list[str] = []
-    if isinstance(yaml_pins, list):
-        want.extend(str(x).strip() for x in yaml_pins if str(x).strip())
-    if not want:
-        want.extend(candidates)
+    if not isinstance(yaml_pins, list):
+        return frozenset()
+    want = [str(x).strip() for x in yaml_pins if str(x).strip()]
     return frozenset(n for n in want if n in allowed)
 
 
 def pinned_tools_for_agent(agent_id: str | None) -> frozenset[str]:
-    """Agent-specific pins (yaml + built-in defaults)."""
-    aid = (agent_id or "").strip()
-    pins: set[str] = set()
-    if aid == "dashboard":
-        pins.update(resolve_pin_names(aid, _DASHBOARD_PIN_CANDIDATES))
-    elif aid:
-        pins.update(resolve_pin_names(aid, ()))
-    return frozenset(pins)
+    """Agent yaml pins only — no agent-id branches or core defaults."""
+    return resolve_pin_names(agent_id)
 
 
 def infer_model_tier(*, model_id: str, catalog_owned_by: str | None = None) -> str:
@@ -171,25 +127,19 @@ def _estimate_tool_spec_tokens(spec: Any, *, full_schema: bool) -> int:
 
 
 def build_tool_triggers_map(tool_names: list[str]) -> dict[str, tuple[str, ...]]:
+    """Per-tool trigger substrings from plugin ``TOOL_TRIGGERS`` (domain-level)."""
     reg = get_registry()
     out: dict[str, tuple[str, ...]] = {}
     for name in tool_names:
-        parts: list[str] = list(_TOOL_TRIGGER_EXTRAS.get(name, ()))
         entry = reg.meta_entry_for_tool_name(name)
-        if entry:
-            dom = entry.get("domain")
-            if isinstance(dom, str) and dom.strip():
-                dom_tr = reg.domain_trigger_substrings(dom.strip().lower())
-                parts.extend(dom_tr)
-        if parts:
-            seen: set[str] = set()
-            uniq: list[str] = []
-            for p in parts:
-                pl = p.strip().lower()
-                if pl and pl not in seen:
-                    seen.add(pl)
-                    uniq.append(pl)
-            out[name] = tuple(uniq)
+        if not entry:
+            continue
+        dom = entry.get("domain")
+        if not isinstance(dom, str) or not dom.strip():
+            continue
+        dom_tr = reg.domain_trigger_substrings(dom.strip().lower())
+        if dom_tr:
+            out[name] = dom_tr
     return out
 
 
@@ -203,43 +153,7 @@ def _prefer_full_schema_names(agent_id: str | None) -> frozenset[str]:
     raw = ag.get("tool_forward_prefer_full_schema")
     if isinstance(raw, list):
         return frozenset(str(x).strip() for x in raw if str(x).strip())
-    if aid == "dashboard":
-        return frozenset({"propose_layouts", "patch_layout", "dashboard.read"})
     return frozenset()
-
-
-def layout_proposal_intent(user_text: str) -> bool:
-    """True when the user likely wants layout options / redesign (not a tiny patch)."""
-    tl = (user_text or "").lower()
-    return any(k in tl for k in _LAYOUT_INTENT_KEYWORDS)
-
-
-def _layout_intent(user_text: str) -> bool:
-    return layout_proposal_intent(user_text)
-
-
-def is_propose_layouts_tool(name: str) -> bool:
-    n = (name or "").strip()
-    return n == "propose_layouts" or n.endswith(".propose_layouts")
-
-
-def dashboard_layout_proposal_nudge_needed(
-    *,
-    agent_id: str | None,
-    layout_proposal_required: bool,
-    propose_layouts_done: bool,
-    nudge_count: int,
-    forwarded_tool_names: set[str] | frozenset[str],
-    max_nudges: int = 2,
-) -> bool:
-    """Whether to reject a text-only turn and force ``propose_layouts`` next round."""
-    if (agent_id or "").strip() != "dashboard":
-        return False
-    if not layout_proposal_required or propose_layouts_done:
-        return False
-    if nudge_count >= max(1, int(max_nudges)):
-        return False
-    return "propose_layouts" in forwarded_tool_names
 
 
 def _cap_ranked_pool(
@@ -278,10 +192,6 @@ def build_tool_forward_plan(ctx: ToolForwardContext) -> ToolForwardPlan:
 
     specs = list(ctx.tool_specs or [])
     pin_names = _pinned_tools_for_agent(ctx.agent_id)
-    if _layout_intent(ctx.user_text):
-        allowed_names = {_tool_spec_name(s) for s in specs if _tool_spec_name(s)}
-        layout_pins = {n for n in ("propose_layouts", "dashboard.read") if n in allowed_names}
-        pin_names = pin_names | frozenset(layout_pins)
 
     pinned_specs, pool = _partition_tool_specs_by_name(specs, pin_names)
     pin_names_found = [_tool_spec_name(s) for s in pinned_specs if _tool_spec_name(s)]

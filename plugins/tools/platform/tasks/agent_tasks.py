@@ -12,6 +12,7 @@ from apps.backend.domain.agent_task_access import (
 )
 from apps.backend.domain.identity import get_identity
 from apps.backend.infrastructure import agent_artifacts_store, agent_tasks_store
+from apps.backend.domain.task_approval import normalize_new_task_status
 from apps.backend.infrastructure.db import db
 
 __version__ = "1.0.0"
@@ -83,6 +84,11 @@ def task_create(arguments: dict[str, Any], context: dict[str, Any] | None = None
         except (ValueError, TypeError):
             pass
     try:
+        role = db.user_role(user_id)
+        eff_status, approval_hint = normalize_new_task_status(
+            requested=str(arguments.get("status") or "draft"),
+            user_role=role,
+        )
         row = agent_tasks_store.create_task(
             tenant_id=tenant_id,
             created_by_user_id=user_id,
@@ -92,7 +98,7 @@ def task_create(arguments: dict[str, Any], context: dict[str, Any] | None = None
             workspace_id=ws_id,
             parent_task_id=parent_id,
             conversation_id=conv_id,
-            status=str(arguments.get("status") or "draft"),  # type: ignore[arg-type]
+            status=eff_status,  # type: ignore[arg-type]
             priority=str(arguments.get("priority") or "normal"),  # type: ignore[arg-type]
             assigned_agent_id=str(arguments.get("assigned_agent_id") or "") or None,
             requirements=arguments.get("requirements") if isinstance(arguments.get("requirements"), list) else None,
@@ -100,7 +106,10 @@ def task_create(arguments: dict[str, Any], context: dict[str, Any] | None = None
         )
     except ValueError as e:
         return _err(str(e))
-    return _ok({"task": agent_tasks_store.row_to_public(row)})
+    payload = {"task": agent_tasks_store.row_to_public(row)}
+    if approval_hint:
+        payload["approval_hint"] = approval_hint
+    return _ok(payload)
 
 
 def task_list(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> str:
@@ -153,10 +162,11 @@ def task_update(arguments: dict[str, Any], context: dict[str, Any] | None = None
     row = agent_tasks_store.get_task(task_id=task_id, tenant_id=tenant_id)
     if not row or not user_may_access_task_row(user_id=user_id, tenant_id=tenant_id, row=row):
         return _err("task not found")
+    new_status = str(arguments["status"]).strip() if arguments.get("status") else None
     updated = agent_tasks_store.update_task(
         task_id=task_id,
         tenant_id=tenant_id,
-        status=str(arguments["status"]).strip() if arguments.get("status") else None,  # type: ignore[arg-type]
+        status=new_status,  # type: ignore[arg-type]
         goal=str(arguments["goal"]).strip() if arguments.get("goal") else None,
         priority=str(arguments["priority"]).strip() if arguments.get("priority") else None,  # type: ignore[arg-type]
         assigned_agent_id=str(arguments["assigned_agent_id"]) if "assigned_agent_id" in arguments else None,

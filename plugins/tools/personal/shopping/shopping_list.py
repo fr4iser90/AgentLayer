@@ -9,8 +9,8 @@ from typing import Any, Callable
 from apps.backend.domain.identity import get_identity
 from apps.backend.dashboard import db as dashboard_db
 from apps.backend.dashboard.tool_dashboard_resolve import (
-    resolve_dashboard_id_for_kind,
-    dashboard_rows_for_kind,
+    dashboard_rows_for_gallery,
+    resolve_dashboard_id,
 )
 
 __version__ = "1.1.0"
@@ -19,7 +19,7 @@ TOOL_BUCKET = "productivity"
 TOOL_DOMAIN = "shopping"
 TOOL_LABEL = "Shopping list"
 TOOL_DESCRIPTION = (
-    "Read and update shopping list dashboards (kind shopping_list): lists, items, notes, "
+    "Legacy — prefer dashboard.list_* / dashboard.read on any board. Read and update shopping list dashboards (kind shopping_list): lists, items, notes, "
     "store/brand preferences (data.preferences), and append-only price snapshots (data.price_log). "
     "dashboard_id is optional when the user has exactly one shopping_list board; if several exist, "
     "call shopping_list_dashboards or pass dashboard_id. Prefer [Dashboard context] when present. "
@@ -50,11 +50,6 @@ def _identity() -> tuple[int, uuid.UUID] | None:
         return None
     return (tid, uid)
 
-
-def _ensure_shopping(ws: dict[str, Any]) -> str | None:
-    if (ws.get("kind") or "").strip() != "shopping_list":
-        return "dashboard is not a shopping_list kind"
-    return None
 
 
 def _normalize_row(entry: dict[str, Any]) -> dict[str, Any] | None:
@@ -91,7 +86,7 @@ def boards(arguments: dict[str, Any]) -> str:
     if ident is None:
         return _err("No user identity — shopping list tools need an authenticated chat user.")
     tid, uid = ident
-    rows = dashboard_rows_for_kind(uid, tid, "shopping_list")
+    rows = dashboard_rows_for_gallery(uid, tid, kind="shopping_list", template_id="shopping_list-v1")
     out = [{"id": str(r.get("id", "")), "title": (r.get("title") or "").strip()} for r in rows]
     return json.dumps({"ok": True, "dashboards": out}, ensure_ascii=False)
 
@@ -103,19 +98,13 @@ def read(arguments: dict[str, Any]) -> str:
         return _err("No user identity — shopping list tools need an authenticated chat user.")
     tid, uid = ident
 
-    wid, res_err = resolve_dashboard_id_for_kind(
-        uid, tid, kind="shopping_list", raw_dashboard_id=arguments.get("dashboard_id")
-    )
+    wid, res_err = resolve_dashboard_id(uid, tid, arguments.get("dashboard_id"))
     if wid is None:
         return _err(res_err or "dashboard_id required")
 
     ws = dashboard_db.dashboard_get(uid, tid, wid)
     if ws is None:
         return _err("dashboard not found or no access")
-    bad = _ensure_shopping(ws)
-    if bad:
-        return _err(bad)
-
     data = ws.get("data") if isinstance(ws.get("data"), dict) else {}
     items = data.get("items")
     if not isinstance(items, list):
@@ -155,19 +144,13 @@ def add_items(arguments: dict[str, Any]) -> str:
         return _err("No user identity — shopping list tools need an authenticated chat user.")
     tid, uid = ident
 
-    wid, res_err = resolve_dashboard_id_for_kind(
-        uid, tid, kind="shopping_list", raw_dashboard_id=arguments.get("dashboard_id")
-    )
+    wid, res_err = resolve_dashboard_id(uid, tid, arguments.get("dashboard_id"))
     if wid is None:
         return _err(res_err or "dashboard_id required")
 
     ws = dashboard_db.dashboard_get(uid, tid, wid)
     if ws is None:
         return _err("dashboard not found or no access")
-    bad = _ensure_shopping(ws)
-    if bad:
-        return _err(bad)
-
     data = dict(ws.get("data")) if isinstance(ws.get("data"), dict) else {}
     cur = data.get("items")
     if not isinstance(cur, list):

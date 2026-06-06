@@ -35,7 +35,7 @@ function StatCard(props: { label: string; value: string; sub?: string }) {
 
 export function DashboardOverviewPanel(props: {
   list: DashboardSummary[];
-  kindLabelFor: (kind: string) => string;
+  kindLabelFor: (kind: string, templateId?: string | null) => string;
   onOpenDashboard: (id: string) => void;
   dashboardUnreadCount?: (id: string) => number;
 }) {
@@ -106,7 +106,7 @@ export function DashboardOverviewPanel(props: {
               key={kind}
               className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-neutral-200"
             >
-              <span className="text-white">{kindLabelFor(kind)}</span>
+              <span className="text-white">{kindLabelFor(kind, undefined)}</span>
               <span className="text-surface-muted"> · {n}</span>
             </li>
           ))}
@@ -135,7 +135,9 @@ export function DashboardOverviewPanel(props: {
                         </span>
                       ) : null}
                     </span>
-                    <span className="mt-1 text-xs text-surface-muted">{kindLabelFor(w.kind)}</span>
+                    <span className="mt-1 text-xs text-surface-muted">
+                      {kindLabelFor(w.kind, w.template_id)}
+                    </span>
                     <span className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-white/45">
                       <span className="rounded border border-white/10 px-1.5 py-0.5">{accessHint(w.access_role, t)}</span>
                       <span>{t("dashboard:updatedPrefix")} {relativeActivity(w.updated_at, t)}</span>

@@ -22,7 +22,6 @@ from apps.backend.infrastructure.openai_compat_http import http_post_chat_comple
 from apps.backend.infrastructure.openai_stream_aggregate import stream_chat_completions_aggregate
 from apps.backend.infrastructure.stream_repetition_guard import apply_repetition_guard_to_completion
 from apps.backend.domain.plugin_system.registry import get_registry
-from apps.backend.dashboard import db as dashboard_db
 from apps.backend.domain.plugin_system.capability_governance import parse_user_capability_confirm
 from apps.backend.domain.plugin_system.capability_index import filter_merged_tools_by_capabilities
 from apps.backend.domain.plugin_system.tool_routing import (
@@ -824,20 +823,16 @@ async def chat_completion(
                 ranking_user_text = c if isinstance(c, str) else None
                 break
 
+        from apps.backend.domain.agent_turn_hooks import turn_hooks_for_agent
         from apps.backend.domain.tool_forward_policy import (
             ToolForwardContext,
             apply_schema_modes_to_specs,
             build_tool_forward_plan,
-            dashboard_layout_proposal_nudge_needed,
             infer_model_tier,
-            is_propose_layouts_tool,
-            layout_proposal_intent,
         )
 
-        if agent_id == "dashboard" and (ranking_user_text or "").strip():
-            tool_context["dashboard_layout_proposal_required"] = layout_proposal_intent(
-                ranking_user_text or ""
-            )
+        turn_hooks = turn_hooks_for_agent(agent_id if isinstance(agent_id, str) else None)
+        turn_hooks.prepare_tool_context(tool_context, ranking_user_text=ranking_user_text)
 
         _ctx_win = 0
         if _context_budget is not None:
@@ -1313,17 +1308,13 @@ async def chat_completion(
                     payload_base["stream_options"] = {**so, "include_usage": True}
             if tools_for_round:
                 payload_base["tools"] = tools_for_round
-                if tool_context.pop("_force_tool_choice_propose_layouts", False):
-                    if "propose_layouts" in allowed_names:
-                        payload_base["tool_choice"] = {
-                            "type": "function",
-                            "function": {"name": "propose_layouts"},
-                        }
-                        logger.info(
-                            "dashboard layout guard: tool_choice=propose_layouts (round %d/%d)",
-                            round_i + 1,
-                            max_tool_rounds_eff,
-                        )
+                turn_hooks.apply_payload_tool_choice(
+                    payload_base,
+                    tool_context,
+                    allowed_names=allowed_names,
+                    round_i=round_i,
+                    max_rounds=max_tool_rounds_eff,
+                )
 
             last_failover: httpx.HTTPStatusError | None = None
             last_transport_error: httpx.RequestError | None = None
@@ -1454,21 +1445,17 @@ async def chat_completion(
                 )
             )
 
-            if (
-                not tool_calls
-                and agent_id == "dashboard"
-                and tools_for_round
-            ):
-                from apps.backend.domain.assistant_display_sanitize import (
-                    sanitize_assistant_display_text,
-                    synthetic_dashboard_tool_calls_from_message,
-                )
-
-                recovered = synthetic_dashboard_tool_calls_from_message(
+            if not tool_calls and tools_for_round:
+                recovered = turn_hooks.recover_tool_calls_from_message(
                     msg,
                     allowed_tool_names=allowed_names,
+                    tools_for_round=tools_for_round,
                 )
                 if recovered:
+                    from apps.backend.domain.assistant_display_sanitize import (
+                        sanitize_assistant_display_text,
+                    )
+
                     tool_calls = recovered
                     had_native_tool_calls = False
                     msg = dict(msg)
@@ -1482,7 +1469,7 @@ async def chat_completion(
                     if isinstance(ch_list, list) and ch_list and isinstance(ch_list[0], dict):
                         ch_list[0] = choice0
                     logger.info(
-                        "dashboard: recovered propose_layouts tool_call from assistant text (round %d)",
+                        "agent turn hook: recovered tool_call(s) from assistant text (round %d)",
                         round_i + 1,
                     )
 
@@ -1668,39 +1655,20 @@ async def chat_completion(
                         round_i + 1,
                         max_tool_rounds_eff,
                     )
-                if agent_id == "dashboard":
-                    from apps.backend.domain.assistant_display_sanitize import (
-                        sanitize_completion_for_dashboard_agent,
-                    )
-
-                    if sanitize_completion_for_dashboard_agent(data):
-                        logger.info(
-                            "dashboard: sanitized assistant display text (round %s/%s)",
-                            round_i + 1,
-                            max_tool_rounds_eff,
-                        )
-                _layout_nudges = int(tool_context.get("dashboard_layout_proposal_nudges") or 0)
-                if dashboard_layout_proposal_nudge_needed(
-                    agent_id=agent_id if isinstance(agent_id, str) else None,
-                    layout_proposal_required=bool(
-                        tool_context.get("dashboard_layout_proposal_required")
-                    ),
-                    propose_layouts_done=bool(tool_context.get("dashboard_propose_layouts_done")),
-                    nudge_count=_layout_nudges,
-                    forwarded_tool_names=allowed_names,
-                ):
-                    tool_context["dashboard_layout_proposal_nudges"] = _layout_nudges + 1
-                    tool_context["_force_tool_choice_propose_layouts"] = True
-                    messages.append(msg)
-                    messages.append(
-                        {"role": "system", "content": _DASHBOARD_LAYOUT_PROPOSAL_NUDGE}
-                    )
+                if turn_hooks.sanitize_completion(data):
                     logger.info(
-                        "dashboard layout guard: rejected text-only round %d — nudge %d, "
-                        "forcing propose_layouts next round",
+                        "agent turn hook: sanitized assistant display text (round %s/%s)",
                         round_i + 1,
-                        _layout_nudges + 1,
+                        max_tool_rounds_eff,
                     )
+                nudge_content = turn_hooks.maybe_nudge_text_only_turn(
+                    tool_context,
+                    allowed_names=allowed_names,
+                    round_i=round_i,
+                )
+                if nudge_content:
+                    messages.append(msg)
+                    messages.append({"role": "system", "content": nudge_content})
                     continue
                 if event_emit:
                     await event_emit(
@@ -1978,16 +1946,14 @@ async def chat_completion(
                         ev_done["result_ok"] = ok_sum
                     if err_sum:
                         ev_done["result_error"] = err_sum[:500]
-                    if is_propose_layouts_tool(name) and ok_sum:
-                        tool_context["dashboard_propose_layouts_done"] = True
-                        try:
-                            _prop = json.loads(result or "")
-                            if isinstance(_prop, dict) and _prop.get("proposal_set_id"):
-                                ev_done["proposal_set_id"] = str(_prop["proposal_set_id"])
-                                if _prop.get("dashboard_id"):
-                                    ev_done["dashboard_id"] = str(_prop["dashboard_id"])
-                        except Exception:
-                            pass
+                    hook_extras = turn_hooks.on_tool_done(
+                        tool_context,
+                        name=name,
+                        result=result or "",
+                        ok_sum=ok_sum,
+                    )
+                    if hook_extras:
+                        ev_done.update(hook_extras)
                     await event_emit(ev_done)
                 messages.append(
                     {

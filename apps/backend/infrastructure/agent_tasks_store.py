@@ -247,6 +247,24 @@ def list_tasks(
     return [dict(r) for r in rows]
 
 
+def fetch_queued_tasks(*, limit: int = 10) -> list[dict[str, Any]]:
+    """Queued root tasks for the background runner (oldest first)."""
+    lim = max(1, min(50, int(limit)))
+    sql = """
+        SELECT * FROM agent_tasks
+        WHERE status = 'queued'
+          AND (parent_task_id IS NULL OR parent_task_id = id)
+        ORDER BY updated_at ASC
+        LIMIT %s
+    """
+    with db.pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(sql, (lim,))
+            rows = cur.fetchall()
+        conn.commit()
+    return [dict(r) for r in rows]
+
+
 def list_subtasks(
     *,
     tenant_id: int,

@@ -14,19 +14,45 @@
         "id": "projects-stat-count",
         "type": "stat",
         "grid": { "x": 0, "y": 5, "w": 4, "h": 4 },
-        "props": { "dataPath": "stat_projects", "title": "Projects" }
+        "props": {
+          "dataPath": "stat_projects",
+          "title": "Projects",
+          "compute": { "op": "count", "from": "projects" }
+        }
       },
       {
         "id": "projects-stat-linked",
         "type": "stat",
         "grid": { "x": 4, "y": 5, "w": 4, "h": 4 },
-        "props": { "dataPath": "stat_linked", "title": "Linked workspaces" }
+        "props": {
+          "dataPath": "stat_linked",
+          "title": "Linked workspaces",
+          "compute": { "op": "count_nonempty", "from": "projects", "field": "workspace_id" }
+        }
       },
       {
         "id": "projects-stat-active",
         "type": "stat",
         "grid": { "x": 8, "y": 5, "w": 4, "h": 4 },
-        "props": { "dataPath": "stat_active", "title": "Active" }
+        "props": {
+          "dataPath": "stat_active",
+          "title": "Active",
+          "compute": {
+            "op": "count_where",
+            "from": "projects",
+            "where": [{ "field": "status", "not_in": ["archived", "inactive", "paused", "done", "completed"] }]
+          }
+        }
+      },
+      {
+        "id": "projects-stat-critical",
+        "type": "stat",
+        "grid": { "x": 0, "y": 9, "w": 4, "h": 3 },
+        "props": {
+          "dataPath": "stat_critical",
+          "title": "Critical (SSC)",
+          "compute": { "op": "sum", "from": "projects", "field": "security_snapshot.critical" }
+        }
       },
       {
         "id": "projects-section",
@@ -71,7 +97,7 @@
       {
         "id": "projects-table",
         "type": "table",
-        "grid": { "x": 0, "y": 21, "w": 12, "h": 8 },
+        "grid": { "x": 0, "y": 24, "w": 12, "h": 8 },
         "props": {
           "dataPath": "projects",
           "enableSearch": true,
@@ -100,7 +126,7 @@
       {
         "id": "project-notes",
         "type": "markdown",
-        "grid": { "x": 0, "y": 34, "w": 12, "h": 4 },
+        "grid": { "x": 0, "y": 37, "w": 12, "h": 4 },
         "props": {
           "dataPath": "notes",
           "placeholder": "Notes for this portfolio…"
@@ -113,6 +139,7 @@
     "stat_projects": { "value": "0", "label": "Total repos", "suffix": "", "trend": "" },
     "stat_linked": { "value": "0", "label": "With workspace", "suffix": "", "trend": "" },
     "stat_active": { "value": "0", "label": "Active", "suffix": "", "trend": "" },
+    "stat_critical": { "value": "0", "label": "Critical (SSC)", "suffix": "", "trend": "" },
     "projects": [],
     "notes": ""
   }

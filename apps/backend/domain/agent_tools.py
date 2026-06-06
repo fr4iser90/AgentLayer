@@ -176,10 +176,9 @@ def _pinned_tools_for_agent(agent_id: str | None) -> frozenset[str]:
         pins = pins | _CODING_READ_TOOL_PINS
     if aid == "security_auditor":
         pins = pins | _SECURITY_AUDITOR_READ_PINS
-    if aid == "dashboard":
-        from apps.backend.domain.tool_forward_policy import pinned_tools_for_agent
+    from apps.backend.domain.tool_forward_policy import pinned_tools_for_agent
 
-        pins = pins | pinned_tools_for_agent(aid)
+    pins = pins | pinned_tools_for_agent(aid)
     return pins
 
 

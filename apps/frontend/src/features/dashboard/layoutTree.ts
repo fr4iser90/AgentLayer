@@ -25,6 +25,42 @@ export function flattenBlockIds(layout: UiLayout | null | undefined): string[] {
 }
 
 /** All blocks with optional dataPath (root + nested sections). */
+/** True when layout has a table or card_grid block (GitHub import target). */
+/** First table/card_grid dataPath in layout (matches backend primary_list_data_path). */
+export function primaryListDataPath(layout: UiLayout | null | undefined): string | null {
+  if (!layout?.blocks?.length) return null;
+  const walk = (blocks: UiBlock[]): string | null => {
+    for (const b of blocks) {
+      if (b.type === "table" || b.type === "card_grid") {
+        const dp = b.props.dataPath?.trim();
+        if (dp) return dp;
+      }
+      if (b.type === "section") {
+        const nested = normalizeNestedLayout(b.props.nested);
+        const inner = walk(nested.blocks);
+        if (inner) return inner;
+      }
+    }
+    return null;
+  };
+  return walk(layout.blocks);
+}
+
+export function layoutHasImportableList(layout: UiLayout | null | undefined): boolean {
+  if (!layout?.blocks?.length) return false;
+  const walk = (blocks: UiBlock[]): boolean => {
+    for (const b of blocks) {
+      if (b.type === "table" || b.type === "card_grid") return true;
+      if (b.type === "section") {
+        const nested = normalizeNestedLayout(b.props.nested);
+        if (walk(nested.blocks)) return true;
+      }
+    }
+    return false;
+  };
+  return walk(layout.blocks);
+}
+
 export function flattenBlocksWithDataPath(
   layout: UiLayout | null | undefined
 ): { id: string; dataPath: string }[] {

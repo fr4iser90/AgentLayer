@@ -4,5 +4,6 @@
   "description": "Gallery grid and album notes.",
   "template": "photo-album.template.json",
   "schema_sql": "migrations/001_user_dashboards.sql",
-  "setup": "photo-album.setup.json"
+  "setup": "photo-album.setup.json",
+  "template_id": "photo_album-v1"
 }

@@ -30,7 +30,12 @@ import {
   hubForSelectedId,
   type DashboardHubId,
 } from "../features/dashboard/dashboardHubNav";
-import { findBlockById, updateBlockById } from "../features/dashboard/layoutTree";
+import {
+  findBlockById,
+  layoutHasImportableList,
+  primaryListDataPath,
+  updateBlockById,
+} from "../features/dashboard/layoutTree";
 import type {
   UiBlock,
   UiLayout,
@@ -50,6 +55,7 @@ function asUiLayout(raw: unknown): UiLayout | null {
 }
 
 type KindCatalogRow = {
+  template_id?: string;
   kind: string;
   label: string;
   description: string;
@@ -71,11 +77,18 @@ function parseKindCatalog(raw: unknown): KindCatalogRow[] {
     const o = x as Record<string, unknown>;
     const kind = typeof o.kind === "string" ? o.kind.trim().toLowerCase() : "";
     if (!kind) continue;
+    const templateId =
+      typeof o.template_id === "string" && o.template_id.trim()
+        ? o.template_id.trim().toLowerCase()
+        : kind === "custom"
+          ? undefined
+          : `${kind}-v1`;
     const label =
       typeof o.label === "string" && o.label.trim() ? o.label.trim() : humanizeKindId(kind);
     const description =
       typeof o.description === "string" && o.description.trim() ? o.description.trim() : "";
     out.push({
+      template_id: templateId,
       kind,
       label,
       description,
@@ -83,21 +96,36 @@ function parseKindCatalog(raw: unknown): KindCatalogRow[] {
       has_schema: o.has_schema === true,
     });
   }
-  out.sort((a, b) => a.kind.localeCompare(b.kind));
+  out.sort((a, b) => a.label.localeCompare(b.label));
   return out;
 }
 
-function labelForKind(kind: string, catalog: KindCatalogRow[]): string {
+function catalogLabel(
+  kind: string,
+  catalog: KindCatalogRow[],
+  templateId?: string | null
+): string {
+  const tid = (templateId || "").trim().toLowerCase();
+  if (tid) {
+    const byTid = catalog.find((r) => r.template_id === tid);
+    if (byTid?.label) return byTid.label;
+  }
   const k = (kind || "").trim().toLowerCase();
   const row = catalog.find((r) => r.kind === k);
-  if (row) return row.label;
+  if (row?.label) return row.label;
   return humanizeKindId(kind);
 }
 
-function subtitleForDashboardKind(kind: string, catalog: KindCatalogRow[]): string {
-  const row = catalog.find((r) => r.kind === (kind || "").trim().toLowerCase());
-  if (row?.label) return row.label;
-  return humanizeKindId(kind);
+function labelForKind(kind: string, catalog: KindCatalogRow[]): string {
+  return catalogLabel(kind, catalog);
+}
+
+function subtitleForDashboardKind(
+  kind: string,
+  catalog: KindCatalogRow[],
+  templateId?: string | null
+): string {
+  return catalogLabel(kind, catalog, templateId);
 }
 
 function normalizeKindList(raw: unknown): string[] | null {
@@ -284,6 +312,7 @@ export function DashboardPage() {
     if (custom) return [custom, ...rest];
     const synthetic: KindCatalogRow = {
       kind: "custom",
+      template_id: "custom",
       label: t("dashboard:customKindLabel"),
       description: "",
       has_template: true,
@@ -306,12 +335,15 @@ export function DashboardPage() {
       dashboards?: DashboardSummary[];
       schema_installed?: boolean;
       kind_catalog?: unknown;
+      template_catalog?: unknown;
       installed_template_kinds?: unknown;
     };
     setList(j.dashboards || []);
     const installed = typeof j.schema_installed === "boolean" ? j.schema_installed : true;
     setSchemaInstalled(installed);
-    setKindCatalog(parseKindCatalog(j.kind_catalog));
+    const catalogRaw =
+      j.template_catalog !== undefined ? j.template_catalog : j.kind_catalog;
+    setKindCatalog(parseKindCatalog(catalogRaw));
     if (!installed) setInstalledTemplateKinds([]);
     else setInstalledTemplateKinds(normalizeKindList(j.installed_template_kinds));
   }, [auth]);
@@ -747,6 +779,10 @@ export function DashboardPage() {
         method: "POST",
         body: JSON.stringify({
           kind: parsed.kind || "custom",
+          template_id:
+            typeof (parsed as { template_id?: string }).template_id === "string"
+              ? (parsed as { template_id?: string }).template_id
+              : undefined,
           title: parsed.title || "Imported dashboard",
           ui_layout: parsed.ui_layout || parsed,
           initial_data: parsed.initial_data,
@@ -914,13 +950,14 @@ export function DashboardPage() {
     setData(detail.data && typeof detail.data === "object" ? { ...detail.data } : {});
   };
 
-  const createWs = async (kind: string) => {
+  const createWs = async (row: KindCatalogRow) => {
     setError(null);
     const res = await apiFetch("/v1/dashboards", auth, {
       method: "POST",
       body: JSON.stringify({
-        kind,
-        title: labelForKind(kind, kindCatalog),
+        kind: row.kind,
+        template_id: row.template_id || undefined,
+        title: row.label || labelForKind(row.kind, kindCatalog),
       }),
     });
     if (!res.ok) {
@@ -937,7 +974,7 @@ export function DashboardPage() {
       setData(
         j.dashboard.data && typeof j.dashboard.data === "object" ? { ...j.dashboard.data } : {}
       );
-      setTitle(j.dashboard.title || labelForKind(kind, kindCatalog));
+      setTitle(j.dashboard.title || row.label || labelForKind(row.kind, kindCatalog));
       setError(null);
       const ul = asUiLayout(j.dashboard.ui_layout);
       setLayoutDraft(ul ?? { version: 1, blocks: [] });
@@ -1283,7 +1320,7 @@ export function DashboardPage() {
       ) : null}
       <DashboardOverviewPanel
         list={list}
-        kindLabelFor={(k) => subtitleForDashboardKind(k, kindCatalog)}
+        kindLabelFor={(k, tid) => subtitleForDashboardKind(k, kindCatalog, tid)}
         onOpenDashboard={(id) => selectDashboard(id)}
         dashboardUnreadCount={dashboardUnreadCount}
       />
@@ -1299,7 +1336,7 @@ export function DashboardPage() {
         setActiveHubId={(id) => setActiveHubOverride(id)}
         selectedId={selectedId}
         onSelectDashboard={(id) => selectDashboard(id)}
-        kindLabelFor={(k) => subtitleForDashboardKind(k, kindCatalog)}
+        kindLabelFor={(k, tid) => subtitleForDashboardKind(k, kindCatalog, tid)}
         dashboardUnreadCount={dashboardUnreadCount}
       />
       <div className="grid gap-4 sm:grid-cols-2">
@@ -1412,7 +1449,7 @@ export function DashboardPage() {
                     <button
                       type="button"
                       className="rounded-lg border border-surface-border px-3 py-1.5 text-sm text-neutral-200 hover:bg-white/5"
-                      onClick={() => void createWs(row.kind)}
+                      onClick={() => void createWs(row)}
                     >
                       {t("dashboard:catalogCreateDashboardBtn")}
                     </button>
@@ -1454,7 +1491,7 @@ export function DashboardPage() {
                 setActiveHubId={(id) => setActiveHubOverride(id)}
                 selectedId={selectedId}
                 onSelectDashboard={(id) => selectDashboard(id)}
-                kindLabelFor={(k) => subtitleForDashboardKind(k, kindCatalog)}
+                kindLabelFor={(k, tid) => subtitleForDashboardKind(k, kindCatalog, tid)}
               />
             </div>
             {!dashboardReady ? (
@@ -1510,7 +1547,7 @@ export function DashboardPage() {
                         {saving ? t("dashboard:saving") : t("admin:save")}
                       </button>
                     ) : null}
-                    {canEditContent && detail?.kind === "projects" && selectedId ? (
+                    {canEditContent && selectedId && layoutHasImportableList(uiLayout) ? (
                       <button
                         type="button"
                         className="rounded-lg border border-violet-500/40 bg-violet-950/25 px-4 py-2 text-sm text-violet-100 hover:bg-violet-900/35"
@@ -1548,7 +1585,7 @@ export function DashboardPage() {
                 <p className="mb-4 text-xs text-surface-muted">
                   Template:{" "}
                   <span className="text-white/80">
-                    {subtitleForDashboardKind(detail!.kind, kindCatalog)}
+                    {subtitleForDashboardKind(detail!.kind, kindCatalog, detail!.template_id)}
                   </span>
                 </p>
                 {detail?.onboarding &&
@@ -1666,7 +1703,7 @@ export function DashboardPage() {
       {dashboardReady && detail ? (
         <DashboardSettingsDrawer
           open={settingsOpen}
-          title={`Settings — ${detail.title || subtitleForDashboardKind(detail.kind, kindCatalog)}`}
+          title={`Settings — ${detail.title || subtitleForDashboardKind(detail.kind, kindCatalog, detail.template_id)}`}
           onClose={() => setSettingsOpen(false)}
         >
           <div className="space-y-4">
@@ -2219,6 +2256,7 @@ export function DashboardPage() {
           onClose={() => setProjectsImportOpen(false)}
           auth={auth}
           dashboardId={selectedId}
+          listPath={primaryListDataPath(uiLayout)}
           onImported={(nextData) => {
             setData({ ...nextData });
             setDetail((prev) => (prev ? { ...prev, data: nextData } : prev));
@@ -2261,7 +2299,7 @@ export function DashboardPage() {
                     <button
                       type="button"
                       className="w-full rounded-lg border border-surface-border px-3 py-2 text-left text-sm text-white hover:bg-white/5"
-                      onClick={() => void createWs(row.kind)}
+                      onClick={() => void createWs(row)}
                     >
                       {row.label}
                     </button>

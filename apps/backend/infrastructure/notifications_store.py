@@ -16,6 +16,7 @@ _KINDS = frozenset(
         "scheduler_job_done",
         "scheduler_job_failed",
         "dashboard_agent_update",
+        "dashboard_layout_proposals",
     }
 )
 _SEVERITIES = frozenset({"info", "warning", "error", "action_required"})

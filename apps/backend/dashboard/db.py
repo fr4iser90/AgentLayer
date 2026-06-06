@@ -250,7 +250,7 @@ def _dashboard_update_granular(
                       AND g.tenant_id = w.tenant_id
                       AND g.permission = 'edit'
                   )
-                RETURNING w.id, w.kind, w.title, w.ui_layout, w.data, w.created_at, w.updated_at
+                RETURNING w.id, w.kind, w.template_id, w.title, w.ui_layout, w.data, w.created_at, w.updated_at
                 """,
                 args,
             )
@@ -288,10 +288,12 @@ def dashboard_create(
     *,
     kind: str,
     title: str,
+    template_id: str | None = None,
     ui_layout: dict[str, Any] | None = None,
     data: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    du, dd = defaults_for_kind(kind)
+    tpl = (template_id or "").strip().lower() or None
+    du, dd = defaults_for_kind(kind, template_id=tpl)
     if ui_layout is not None:
         du = ui_layout
     if data is not None:
@@ -302,12 +304,20 @@ def dashboard_create(
             cur.execute(
                 """
                 INSERT INTO user_dashboards (
-                  tenant_id, owner_user_id, kind, title, ui_layout, data
+                  tenant_id, owner_user_id, kind, template_id, title, ui_layout, data
                 )
-                VALUES (%s, %s, %s, %s, %s, %s)
-                RETURNING id, kind, title, ui_layout, data, created_at, updated_at
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                RETURNING id, kind, template_id, title, ui_layout, data, created_at, updated_at
                 """,
-                (tenant_id, user_id, kind.strip() or "custom", label, Json(du), Json(dd)),
+                (
+                    tenant_id,
+                    user_id,
+                    kind.strip() or "custom",
+                    tpl,
+                    label,
+                    Json(du),
+                    Json(dd),
+                ),
             )
             row = cur.fetchone()
         conn.commit()
@@ -345,11 +355,13 @@ def ensure_default_dashboard_for_new_user(user_id: uuid.UUID, tenant_id: int) ->
         return
     preferred = "personal_dashboard"
     kind = preferred if template_path_for_kind(preferred) is not None else "custom"
+    tpl = f"{preferred}-v1" if kind == preferred else None
     try:
         dashboard_create(
             user_id,
             tenant_id,
             kind=kind,
+            template_id=tpl,
             title="Personal dashboard",
         )
     except Exception:
@@ -365,7 +377,7 @@ def dashboard_list(user_id: uuid.UUID, tenant_id: int, limit: int = 200) -> list
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT w.id, w.kind, w.title, w.updated_at, w.created_at,
+                SELECT w.id, w.kind, w.template_id, w.title, w.updated_at, w.created_at,
                   CASE
                     WHEN w.owner_user_id = %s THEN 'owner'
                     WHEN m.role IS NOT NULL THEN m.role::text
@@ -399,16 +411,18 @@ def dashboard_list(user_id: uuid.UUID, tenant_id: int, limit: int = 200) -> list
         wid = r[0]
         if not isinstance(wid, uuid.UUID):
             wid = uuid.UUID(str(wid))
-        role = (r[5] or "owner").strip().lower()
+        role = (r[6] or "owner").strip().lower()
         if role not in ("owner", "co_owner", "editor", "viewer"):
             role = "owner"
+        tpl = r[2]
         out.append(
             {
                 "id": str(wid),
                 "kind": r[1],
-                "title": r[2] or "",
-                "updated_at": r[3].isoformat() if isinstance(r[3], datetime) else str(r[3]),
-                "created_at": r[4].isoformat() if isinstance(r[4], datetime) else str(r[4]),
+                "template_id": (tpl or "").strip() if isinstance(tpl, str) else None,
+                "title": r[3] or "",
+                "updated_at": r[4].isoformat() if isinstance(r[4], datetime) else str(r[4]),
+                "created_at": r[5].isoformat() if isinstance(r[5], datetime) else str(r[5]),
                 "access_role": role,
             }
         )
@@ -425,9 +439,11 @@ def _row_dict(r: dict[str, Any]) -> dict[str, Any]:
     dt = r.get("data")
     ca = r.get("created_at")
     ua = r.get("updated_at")
+    tpl = r.get("template_id")
     return {
         "id": str(wid),
         "kind": r.get("kind") or "",
+        "template_id": (tpl or "").strip() if isinstance(tpl, str) and tpl else None,
         "title": r.get("title") or "",
         "ui_layout": ul if isinstance(ul, dict) else {},
         "data": dt if isinstance(dt, dict) else {},
@@ -444,7 +460,7 @@ def dashboard_get(user_id: uuid.UUID, tenant_id: int, dashboard_id: uuid.UUID) -
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
                 """
-                SELECT id, kind, title, ui_layout, data, created_at, updated_at
+                SELECT id, kind, template_id, title, ui_layout, data, created_at, updated_at
                 FROM user_dashboards
                 WHERE id = %s AND tenant_id = %s
                 """,
@@ -528,7 +544,7 @@ def dashboard_update(
                         AND m.role IN ('editor', 'co_owner')
                     )
                   )
-                RETURNING w.id, w.kind, w.title, w.ui_layout, w.data, w.created_at, w.updated_at
+                RETURNING w.id, w.kind, w.template_id, w.title, w.ui_layout, w.data, w.created_at, w.updated_at
                 """,
                 args,
             )
