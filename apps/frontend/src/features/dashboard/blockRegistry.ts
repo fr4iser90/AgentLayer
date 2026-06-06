@@ -279,6 +279,14 @@ export function blockShellClassForType(type: BlockType): string {
   return SHELL_HEIGHT_CLASS[shellHeight];
 }
 
+/** When ``fillGrid`` is true, block content stretches with the grid cell (no fixed max-height shell). */
+export function blockShellClassForBlock(block: UiBlock): string {
+  if (block.props.fillGrid === true) {
+    return "flex h-full min-h-0 flex-col overflow-hidden";
+  }
+  return blockShellClassForType(block.type);
+}
+
 export function blockSupportsExpand(type: BlockType): boolean {
   return getGridBlockDefinition(type)?.supportsExpand === true;
 }

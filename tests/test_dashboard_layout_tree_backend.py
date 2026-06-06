@@ -5,6 +5,7 @@ from __future__ import annotations
 from apps.backend.dashboard.layout_tree import (
     count_layout_blocks,
     filter_layout_blocks,
+    find_block_in_layout,
     flatten_block_ids,
 )
 
@@ -54,3 +55,30 @@ def test_filter_layout_blocks_keeps_section_with_allowed_children() -> None:
     nested = filtered[0]["props"]["nested"]["blocks"]
     assert len(nested) == 1
     assert nested[0]["id"] == "a"
+
+
+def test_find_block_in_layout_root_and_nested() -> None:
+    ul = {
+        "version": 2,
+        "blocks": [
+            {"id": "root_a", "type": "hero", "grid": {}, "props": {"title": "Hero"}},
+            {
+                "id": "sec_1",
+                "type": "section",
+                "grid": {},
+                "props": {
+                    "nested": {
+                        "version": 2,
+                        "blocks": [{"id": "inner_b", "type": "stat", "grid": {}, "props": {}}],
+                    }
+                },
+            },
+        ],
+    }
+    root = find_block_in_layout(ul, "root_a")
+    assert root is not None
+    assert root["type"] == "hero"
+    inner = find_block_in_layout(ul, "inner_b")
+    assert inner is not None
+    assert inner["type"] == "stat"
+    assert find_block_in_layout(ul, "missing") is None

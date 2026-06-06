@@ -407,6 +407,32 @@ def _inject_dashboard_context(
                         note = note + "\nSetup steps to offer: " + "; ".join(labels)
         except Exception:
             pass
+        block_raw = raw.get("block_id")
+        if isinstance(block_raw, str) and block_raw.strip():
+            try:
+                from apps.backend.dashboard.layout_tree import find_block_in_layout
+
+                blk = find_block_in_layout(
+                    ws.get("ui_layout") if isinstance(ws.get("ui_layout"), dict) else {},
+                    block_raw.strip(),
+                )
+            except Exception:
+                blk = None
+            if blk:
+                btype = str(blk.get("type") or "").strip()
+                props = blk.get("props") if isinstance(blk.get("props"), dict) else {}
+                btitle = str(props.get("title") or "").strip()
+                data_path = str(props.get("dataPath") or props.get("data_path") or "").strip()
+                note = (
+                    note
+                    + f"\n\n[Focused dashboard block] The user pinned block_id={block_raw.strip()!r} "
+                    f"for this chat turn. type={btype!r}"
+                    + (f", title={btitle!r}" if btitle else "")
+                    + (f", dataPath={data_path!r}" if data_path else "")
+                    + ". When they ask to change 'this block', 'diesen Block', or similar, use "
+                    "dashboard.patch_layout with set_props/set_grid on this block_id (and dashboard.read first if needed). "
+                    "Do not redesign the whole board unless they ask for a full layout proposal."
+                )
     out = list(messages)
     if not out:
         return [{"role": "system", "content": note}]

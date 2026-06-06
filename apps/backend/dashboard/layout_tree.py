@@ -51,6 +51,27 @@ def count_layout_blocks(ui_layout: dict[str, Any] | None) -> int:
     return len(flatten_block_ids(ui_layout))
 
 
+def find_block_in_layout(ui_layout: dict[str, Any] | None, block_id: str) -> dict[str, Any] | None:
+    bid = str(block_id or "").strip()
+    if not bid or not isinstance(ui_layout, dict):
+        return None
+    blocks = ui_layout.get("blocks")
+    if not isinstance(blocks, list):
+        return None
+    for b in blocks:
+        if not isinstance(b, dict):
+            continue
+        if str(b.get("id") or "").strip() == bid:
+            return b
+        if str(b.get("type") or "").strip().lower() == "section":
+            props = b.get("props") if isinstance(b.get("props"), dict) else {}
+            nested = normalize_nested_layout(props.get("nested"))
+            for nb in nested.get("blocks") or []:
+                if isinstance(nb, dict) and str(nb.get("id") or "").strip() == bid:
+                    return nb
+    return None
+
+
 def section_nested_props(section_block: dict[str, Any]) -> dict[str, Any]:
     props = section_block.setdefault("props", {})
     if not isinstance(props, dict):

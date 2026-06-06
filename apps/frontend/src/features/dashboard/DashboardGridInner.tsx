@@ -10,11 +10,10 @@ import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 
 import {
-  GRID_BLOCK_DEFINITIONS,
   NESTED_GRID_BLOCK_DEFINITIONS,
   ROOT_GRID_TOOLBAR_DEFINITIONS,
   blockDataPathPrefix,
-  blockShellClassForType,
+  blockShellClassForBlock,
   blockSupportsExpand,
   createGridBlock,
   initialDataPatchForBlock,
@@ -22,6 +21,7 @@ import {
   type GridBlockDefinition,
 } from "./blockRegistry";
 import { BlockExpandModal } from "./BlockExpandModal";
+import { BlockSettingsModal } from "./BlockSettingsModal";
 import { AgentUpdateBadge } from "./AgentUpdateBadge";
 import type { BlockType, UiBlock, UiLayout } from "./types";
 import { DashboardBlockTile } from "./DashboardBlocks";
@@ -33,7 +33,13 @@ import {
   GRID_ROW_HEIGHT,
   MAX_BLOCKS_TOTAL,
 } from "./gridConfig";
-import { blockTypeLabel, countLayoutBlocks, sectionHasUnreadNested } from "./layoutTree";
+import {
+  blockTypeLabel,
+  countLayoutBlocks,
+  findBlockById,
+  sectionHasUnreadNested,
+  updateBlockById,
+} from "./layoutTree";
 
 function usedDataPaths(blocks: UiBlock[]): Set<string> {
   const s = new Set<string>();
@@ -117,6 +123,13 @@ export type DashboardGridInnerProps = {
   embedded?: boolean;
   /** Pin block to another dashboard (live dashboard_ref) */
   onPinBlock?: (blockId: string) => void;
+  /** Focus block in embedded dashboard chat (agent context). */
+  onPinBlockToChat?: (blockId: string) => void;
+  chatFocusedBlockId?: string | null;
+  /** Persist block props (auto-save when not in layout edit mode). */
+  onBlockPropsSave?: (blockId: string, nextProps: UiBlock["props"]) => void | Promise<void>;
+  blockSettingsAutoSave?: boolean;
+  blockSettingsSaving?: boolean;
   /** Block ids with unread agent-update notifications */
   unreadBlockIds?: Set<string>;
   /** Pulse/highlight one block (e.g. from ?block= deep link) */
@@ -141,6 +154,11 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
     hideToolbar = false,
     embedded = false,
     onPinBlock,
+    onPinBlockToChat,
+    chatFocusedBlockId = null,
+    onBlockPropsSave,
+    blockSettingsAutoSave = false,
+    blockSettingsSaving = false,
     unreadBlockIds,
     highlightBlockId,
     onBlockSeen,
@@ -148,11 +166,17 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
   const { width, containerRef, mounted } = useContainerWidth();
   const [expandedBlockId, setExpandedBlockId] = useState<string | null>(null);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+  const [settingsBlockId, setSettingsBlockId] = useState<string | null>(null);
 
   const toolbarDefinitions =
     depth === 0 ? ROOT_GRID_TOOLBAR_DEFINITIONS : NESTED_GRID_BLOCK_DEFINITIONS;
   const effectiveRootLayout = rootLayout ?? layout;
   const effectiveSetRootLayout = setRootLayout ?? setLayout;
+
+  const settingsBlock = useMemo(() => {
+    if (!settingsBlockId) return null;
+    return findBlockById(effectiveRootLayout, settingsBlockId);
+  }, [effectiveRootLayout, settingsBlockId]);
 
   const expandedBlock = useMemo(() => {
     if (!expandedBlockId) return null;
@@ -271,7 +295,14 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
         >
           {layout.blocks.map((b) => {
             const canExpand = blockSupportsExpand(b.type);
-            const showBlockToolbar = editMode || canExpand || Boolean(onPinBlock);
+            const canConfigureBlock =
+              Boolean(onBlockPropsSave) && b.type !== "dashboard_ref" && b.type !== "share_widget";
+            const showBlockToolbar =
+              editMode ||
+              canExpand ||
+              Boolean(onPinBlock) ||
+              Boolean(onPinBlockToChat) ||
+              canConfigureBlock;
             const isSelected = selectedBlockId === b.id;
             const hasUnread =
               (unreadBlockIds?.has(b.id) ?? false) ||
@@ -298,7 +329,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                 }}
               >
                 {hasUnread ? <AgentUpdateBadge title={badgeTitle} pulse={isHighlighted} /> : null}
-                <div className={blockShellClassForType(b.type)}>
+                <div className={blockShellClassForBlock(b)}>
                   {showBlockToolbar || editMode ? (
                     <div className="dashboard-grid-drag-handle sticky top-0 z-10 flex cursor-grab items-center gap-2 border-b border-white/5 bg-surface-raised/95 px-2 py-1 active:cursor-grabbing">
                       <span className="min-w-0 flex-1 truncate text-[10px] font-medium uppercase tracking-wide text-surface-muted">
@@ -319,10 +350,39 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                             {t("dashboard:blockExpand")}
                           </button>
                         ) : null}
+                        {onPinBlockToChat && b.type !== "dashboard_ref" ? (
+                          <button
+                            type="button"
+                            className={[
+                              "dashboard-grid-no-drag rounded px-2 py-0.5 text-xs",
+                              chatFocusedBlockId === b.id
+                                ? "bg-emerald-900/60 text-emerald-100"
+                                : "text-emerald-200 hover:bg-emerald-950/50",
+                            ].join(" ")}
+                            title={t("dashboard:pinBlockToChatHint")}
+                            onClick={() => onPinBlockToChat(b.id)}
+                          >
+                            {chatFocusedBlockId === b.id
+                              ? t("dashboard:pinBlockToChatActive")
+                              : t("dashboard:pinBlockToChat")}
+                          </button>
+                        ) : null}
+                        {canConfigureBlock ? (
+                          <button
+                            type="button"
+                            className="dashboard-grid-no-drag rounded px-2 py-0.5 text-xs text-amber-200 hover:bg-amber-950/50"
+                            title={t("dashboard:blockSettingsTitle")}
+                            aria-label={t("dashboard:blockSettingsTitle")}
+                            onClick={() => setSettingsBlockId(b.id)}
+                          >
+                            ⚙
+                          </button>
+                        ) : null}
                         {onPinBlock && b.type !== "dashboard_ref" ? (
                           <button
                             type="button"
                             className="dashboard-grid-no-drag rounded px-2 py-0.5 text-xs text-violet-200 hover:bg-violet-950/50"
+                            title={t("dashboard:pinBlockHint")}
                             onClick={() => onPinBlock(b.id)}
                           >
                             {t("dashboard:pinBlock")}
@@ -389,6 +449,27 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
           onClose={() => setExpandedBlockId(null)}
         />
       ) : null}
+      {settingsBlock ? (
+        <BlockSettingsModal
+          block={settingsBlock}
+          data={data}
+          autoSave={blockSettingsAutoSave}
+          saving={blockSettingsSaving}
+          onClose={() => setSettingsBlockId(null)}
+          onSave={async (nextProps) => {
+            if (onBlockPropsSave) {
+              await onBlockPropsSave(settingsBlock.id, nextProps);
+            } else {
+              effectiveSetRootLayout((prev) =>
+                updateBlockById(prev, settingsBlock.id, (b) => ({
+                  ...b,
+                  props: { ...b.props, ...nextProps },
+                }))
+              );
+            }
+          }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -403,6 +484,11 @@ export function DashboardGridCanvas(props: {
   dashboardId?: string | null;
   hideToolbar?: boolean;
   onPinBlock?: (blockId: string) => void;
+  onPinBlockToChat?: (blockId: string) => void;
+  chatFocusedBlockId?: string | null;
+  onBlockPropsSave?: (blockId: string, nextProps: UiBlock["props"]) => void | Promise<void>;
+  blockSettingsAutoSave?: boolean;
+  blockSettingsSaving?: boolean;
   unreadBlockIds?: Set<string>;
   highlightBlockId?: string | null;
   onBlockSeen?: (blockId: string) => void;

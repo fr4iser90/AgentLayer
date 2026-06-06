@@ -57,6 +57,54 @@ export function countLayoutBlocks(layout: UiLayout | null | undefined): number {
   return flattenBlockIds(layout).length;
 }
 
+export function findBlockById(
+  layout: UiLayout | null | undefined,
+  blockId: string
+): UiBlock | null {
+  const bid = blockId.trim();
+  if (!bid || !layout?.blocks?.length) return null;
+  for (const b of layout.blocks) {
+    if (b.id === bid) return b;
+    if (b.type === "section") {
+      const nested = normalizeNestedLayout(b.props.nested);
+      const hit = nested.blocks.find((nb) => nb.id === bid);
+      if (hit) return hit;
+    }
+  }
+  return null;
+}
+
+export function updateBlockById(
+  layout: UiLayout,
+  blockId: string,
+  patch: (block: UiBlock) => UiBlock
+): UiLayout {
+  const bid = blockId.trim();
+  if (!bid) return layout;
+  let changed = false;
+  const mapBlocks = (blocks: UiBlock[]): UiBlock[] =>
+    blocks.map((b) => {
+      if (b.id === bid) {
+        changed = true;
+        return patch(b);
+      }
+      if (b.type === "section") {
+        const nested = normalizeNestedLayout(b.props.nested);
+        const nextNestedBlocks = mapBlocks(nested.blocks);
+        if (nextNestedBlocks !== nested.blocks) {
+          changed = true;
+          return {
+            ...b,
+            props: { ...b.props, nested: { ...nested, blocks: nextNestedBlocks } },
+          };
+        }
+      }
+      return b;
+    });
+  const blocks = mapBlocks(layout.blocks);
+  return changed ? { ...layout, blocks } : layout;
+}
+
 export function blockTypeLabel(type: string): string {
   if (type === "rich_markdown") return "Rich MD";
   if (type === "section") return "Section";

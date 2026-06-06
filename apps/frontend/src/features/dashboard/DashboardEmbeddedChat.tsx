@@ -97,6 +97,10 @@ type Props = {
   initialProposalSetId?: string | null;
   /** After user applies a layout proposal. */
   onLayoutApplied?: () => void;
+  /** Block pinned from grid toolbar — agent gets block_id in context. */
+  focusedBlockId?: string | null;
+  focusedBlockLabel?: string | null;
+  onClearFocusedBlock?: () => void;
 };
 
 /**
@@ -113,6 +117,9 @@ export function DashboardEmbeddedChat({
   dashboardData = {},
   initialProposalSetId = null,
   onLayoutApplied,
+  focusedBlockId = null,
+  focusedBlockLabel = null,
+  onClearFocusedBlock,
 }: Props) {
   const { t } = useTranslation(["dashboard", "errors", "chat"]);
   const auth = useAuth();
@@ -486,6 +493,7 @@ export function DashboardEmbeddedChat({
           content: toApiContent(x.content),
         })),
         dashboardId,
+        focusedBlockId,
         conversationId: nextThread.id,
         disabledTools,
         onSlow: () => {
@@ -543,6 +551,7 @@ export function DashboardEmbeddedChat({
     thread,
     dashboardId,
     dashboardTitle,
+    focusedBlockId,
     reloadThreadOptions,
     t,
   ]);
@@ -610,6 +619,25 @@ export function DashboardEmbeddedChat({
             </div>
           ) : (
             <>
+              {focusedBlockId && !readOnly ? (
+                <div className="mx-3 mt-2 flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-950/25 px-2 py-1.5 text-[11px] text-emerald-100">
+                  <span className="min-w-0 flex-1 truncate">
+                    {t("dashboard:chatFocusedBlock", {
+                      label: focusedBlockLabel?.trim() || focusedBlockId,
+                    })}
+                  </span>
+                  {onClearFocusedBlock ? (
+                    <button
+                      type="button"
+                      className="shrink-0 rounded px-1.5 py-0.5 text-emerald-200/80 hover:bg-emerald-900/50 hover:text-white"
+                      onClick={onClearFocusedBlock}
+                      title={t("dashboard:chatFocusedBlockClear")}
+                    >
+                      ×
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
               {showThreadPicker ? (
                 <div className="shrink-0 px-3 pt-2">
                   <label className="mb-0.5 block text-[10px] text-surface-muted">

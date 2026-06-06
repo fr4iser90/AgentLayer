@@ -36,6 +36,8 @@ export type RunDashboardAgentTurnOpts = {
   provider: string | null | undefined;
   messages: Array<{ role: string; content: unknown }>;
   dashboardId: string;
+  /** Pinned block for agent context (patch_layout / set_props). */
+  focusedBlockId?: string | null;
   conversationId?: string;
   disabledTools?: string[];
   /** Abort the turn if the LLM does not finish within this window (default 5 min). */
@@ -115,7 +117,10 @@ export function runDashboardAgentTurn(opts: RunDashboardAgentTurnOpts): Promise<
             messages,
             agent_id: "dashboard",
             agent_stream_llm: true,
-            agent_dashboard_context: { dashboard_id: dashboardId },
+            agent_dashboard_context: {
+              dashboard_id: dashboardId,
+              ...(focusedBlockId?.trim() ? { block_id: focusedBlockId.trim() } : {}),
+            },
             ...(conversationId ? { conversation_id: conversationId } : {}),
             ...(disabledTools.length ? { agent_disabled_tools: disabledTools } : {}),
             agent_model_catalog_owned_by: provider ?? undefined,

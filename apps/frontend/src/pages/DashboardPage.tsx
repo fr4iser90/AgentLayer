@@ -30,7 +30,9 @@ import {
   hubForSelectedId,
   type DashboardHubId,
 } from "../features/dashboard/dashboardHubNav";
+import { findBlockById, updateBlockById } from "../features/dashboard/layoutTree";
 import type {
+  UiBlock,
   UiLayout,
   DashboardBlockGrantRow,
   DashboardDataAgentlayer,
@@ -146,6 +148,7 @@ export function DashboardPage() {
   const [onboardingHidden, setOnboardingHidden] = useState(false);
   const [chatComposeDraft, setChatComposeDraft] = useState("");
   const [chatComposeDraftSeed, setChatComposeDraftSeed] = useState(0);
+  const [chatFocusedBlockId, setChatFocusedBlockId] = useState<string | null>(null);
   const [catalogQuery, setCatalogQuery] = useState("");
   const [detail, setDetail] = useState<DashboardDetail | null>(null);
   const [data, setData] = useState<Record<string, unknown>>({});
@@ -216,6 +219,22 @@ export function DashboardPage() {
     () => (layoutEditMode ? layoutDraft : uiLayout ?? { version: 1, blocks: [] }),
     [layoutEditMode, layoutDraft, uiLayout]
   );
+
+  const chatFocusedBlock = useMemo(() => {
+    if (!chatFocusedBlockId) return null;
+    return findBlockById(gridLayout, chatFocusedBlockId);
+  }, [chatFocusedBlockId, gridLayout]);
+
+  const chatFocusedBlockLabel = useMemo(() => {
+    if (!chatFocusedBlock) return chatFocusedBlockId;
+    const custom = chatFocusedBlock.props.title?.trim();
+    if (custom) return custom;
+    return chatFocusedBlock.type.replace(/_/g, " ");
+  }, [chatFocusedBlock, chatFocusedBlockId]);
+
+  useEffect(() => {
+    setChatFocusedBlockId(null);
+  }, [selectedId]);
 
   const agentSystemPromptExtra = useMemo(() => {
     const raw = data._agentlayer;
@@ -972,6 +991,65 @@ export function DashboardPage() {
     [selectedId, markDashboardSeen, refreshSummary]
   );
 
+  const persistBlockProps = useCallback(
+    async (blockId: string, nextProps: UiBlock["props"]) => {
+      if (!selectedId || !detail || !canEditContent) return;
+      const base =
+        layoutEditMode && layoutDraft.blocks.length > 0
+          ? layoutDraft
+          : (asUiLayout(detail.ui_layout) ?? { version: 1, blocks: [] });
+      const nextLayout = updateBlockById(base, blockId, (b) => ({
+        ...b,
+        props: { ...b.props, ...nextProps },
+      }));
+
+      if (layoutEditMode) {
+        setLayoutDraft(nextLayout);
+        return;
+      }
+
+      setSaving(true);
+      setError(null);
+      try {
+        const res = await apiFetch(`/v1/dashboards/${selectedId}`, auth, {
+          method: "PATCH",
+          body: JSON.stringify({ ui_layout: nextLayout }),
+        });
+        if (!res.ok) {
+          setError(await res.text());
+          return;
+        }
+        const j = (await res.json()) as { dashboard?: DashboardDetail };
+        if (j.dashboard) {
+          setDetail(j.dashboard);
+          const ul = asUiLayout(j.dashboard.ui_layout);
+          setLayoutDraft(ul ?? nextLayout);
+        }
+      } finally {
+        setSaving(false);
+      }
+    },
+    [auth, canEditContent, detail, layoutDraft, layoutEditMode, selectedId]
+  );
+
+  const pinBlockToChat = useCallback(
+    (blockId: string) => {
+      const next = chatFocusedBlockId === blockId ? null : blockId;
+      setChatFocusedBlockId(next);
+      if (!next) return;
+      const block = findBlockById(gridLayout, blockId);
+      const label =
+        block?.props.title?.trim() ||
+        (block?.type ? block.type.replace(/_/g, " ") : "") ||
+        blockId;
+      setChatComposeDraft(
+        t("dashboard:chatFocusedBlockStarter", { label })
+      );
+      setChatComposeDraftSeed((n) => n + 1);
+    },
+    [chatFocusedBlockId, gridLayout, t]
+  );
+
   useEffect(() => {
     const id = searchParams.get("id")?.trim();
     if (!id || loading) return;
@@ -1503,6 +1581,11 @@ export function DashboardPage() {
                   onPinBlock={
                     selectedId && pinTargetOptions.length > 0 ? openPinModal : undefined
                   }
+                  onPinBlockToChat={!isViewer ? pinBlockToChat : undefined}
+                  chatFocusedBlockId={chatFocusedBlockId}
+                  onBlockPropsSave={canEditContent ? persistBlockProps : undefined}
+                  blockSettingsAutoSave={canEditContent && !layoutEditMode}
+                  blockSettingsSaving={saving}
                 />
               </>
             )}
@@ -1525,6 +1608,9 @@ export function DashboardPage() {
                     void refreshSummary();
                     clearProposalsQuery();
                   }}
+                  focusedBlockId={chatFocusedBlockId}
+                  focusedBlockLabel={chatFocusedBlockLabel}
+                  onClearFocusedBlock={() => setChatFocusedBlockId(null)}
                 />
               </div>
             </aside>
