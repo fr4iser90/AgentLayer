@@ -54,6 +54,7 @@ export function runDashboardAgentTurn(opts: RunDashboardAgentTurnOpts): Promise<
     provider,
     messages,
     dashboardId,
+    focusedBlockId,
     conversationId,
     disabledTools = [],
     timeoutMs = 300_000,
