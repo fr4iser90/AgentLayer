@@ -19,16 +19,13 @@ import {
 } from "../features/dashboard/DashboardOnboardingBanner";
 import { DashboardGridCanvas } from "../features/dashboard/DashboardGridCanvas";
 import { DashboardSettingsDrawer } from "../features/dashboard/DashboardSettingsDrawer";
-import { DashboardHubNavigator } from "../features/dashboard/DashboardHubNavigator";
+import { DashboardSidebarNav } from "../features/dashboard/DashboardSidebarNav";
 import { DashboardOverviewPanel } from "../features/dashboard/DashboardOverviewPanel";
 import { ProjectsImportModal } from "../features/dashboard/ProjectsImportModal";
 import { CollapsibleSidebarShell } from "../layout/CollapsibleSidebarShell";
 import { useNotificationContext } from "../features/notifications/NotificationProvider";
 import {
-  DEFAULT_HUBS,
   groupDashboardsByHub,
-  hubForSelectedId,
-  type DashboardHubId,
 } from "../features/dashboard/dashboardHubNav";
 import {
   findBlockById,
@@ -206,7 +203,6 @@ export function DashboardPage() {
   const [publicSharesErr, setPublicSharesErr] = useState<string | null>(null);
   const [createdPublicLink, setCreatedPublicLink] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [activeHubOverride, setActiveHubOverride] = useState<DashboardHubId | null>(null);
   const [toolCatalogNames, setToolCatalogNames] = useState<string[]>([]);
   const [toolsCatalogErr, setToolsCatalogErr] = useState<string | null>(null);
   const [manualToolName, setManualToolName] = useState("");
@@ -582,17 +578,6 @@ export function DashboardPage() {
   }, [list]);
 
   const groupedByHub = useMemo(() => groupDashboardsByHub(list), [list]);
-  const selectedHubId = useMemo(
-    () => hubForSelectedId(groupedByHub, selectedId),
-    [groupedByHub, selectedId]
-  );
-  const effectiveHubId = activeHubOverride ?? selectedHubId ?? "other";
-
-  // Clear hub-tab override only when the selected dashboard changes — not when the user
-  // picks another hub tab while a dashboard stays open (that was resetting to Pets, etc.).
-  useEffect(() => {
-    setActiveHubOverride(null);
-  }, [selectedId]);
 
   const catalogRows = useMemo(() => {
     const q = catalogQuery.trim().toLowerCase();
@@ -1257,57 +1242,67 @@ export function DashboardPage() {
     );
   }
 
-  const dashboardActionsSidebar = (
-    <div className="flex h-full min-h-0 flex-col overflow-y-auto">
-      <div className="flex flex-col gap-1 p-2">
-        <p className="px-2.5 pt-1 text-xs font-semibold uppercase tracking-wide text-surface-muted">
+  const dashboardSidebar = (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="shrink-0 border-b border-surface-border p-2">
+        <p className="px-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wide text-surface-muted">
           {t("dashboard:actions")}
         </p>
-        <button
-          type="button"
-          onClick={() => {
-            setNewWsModalOpen(true);
-            setHubPanel("home");
-            setSelectedId(null);
-            setActionsSidebarOpen(false);
-          }}
-          className="rounded-lg px-2.5 py-2 text-left text-xs text-neutral-200 transition hover:bg-white/5"
-        >
-          {t("dashboard:createNew")}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setSelectedId(null);
-            setHubPanel("overview");
-            setActionsSidebarOpen(false);
-          }}
-          className={[
-            "rounded-lg px-2.5 py-2 text-left text-xs transition hover:bg-white/5",
-            !selectedId && hubPanel === "overview" ? "bg-white/10 text-white" : "text-neutral-200",
-          ].join(" ")}
-        >
-          {t("dashboard:overviewTitle")}
-        </button>
-        <button
-          type="button"
-          disabled
-          className="cursor-not-allowed rounded-lg px-2.5 py-2 text-left text-xs text-white/30"
-          title={t("dashboard:comingSoon")}
-        >
-          {t("dashboard:import")}
-        </button>
-        <button
-          type="button"
-          onClick={() => openCatalog()}
-          className={[
-            "rounded-lg px-2.5 py-2 text-left text-xs transition hover:bg-white/5",
-            !selectedId && hubPanel === "catalog" ? "bg-white/10 text-white" : "text-neutral-200",
-          ].join(" ")}
-        >
-          {t("dashboard:catalogTitle")}
-        </button>
+        <div className="flex flex-col gap-0.5">
+          <button
+            type="button"
+            onClick={() => {
+              setNewWsModalOpen(true);
+              setHubPanel("home");
+              setSelectedId(null);
+              setActionsSidebarOpen(false);
+            }}
+            className="rounded-md px-2 py-1.5 text-left text-xs text-neutral-200 transition hover:bg-white/5"
+          >
+            {t("dashboard:createNew")}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedId(null);
+              setHubPanel("overview");
+              setActionsSidebarOpen(false);
+            }}
+            className={[
+              "rounded-md px-2 py-1.5 text-left text-xs transition hover:bg-white/5",
+              !selectedId && hubPanel === "overview" ? "bg-white/10 text-white" : "text-neutral-200",
+            ].join(" ")}
+          >
+            {t("dashboard:overviewTitle")}
+          </button>
+          <button
+            type="button"
+            disabled
+            className="cursor-not-allowed rounded-md px-2 py-1.5 text-left text-xs text-white/30"
+            title={t("dashboard:comingSoon")}
+          >
+            {t("dashboard:import")}
+          </button>
+          <button
+            type="button"
+            onClick={() => openCatalog()}
+            className={[
+              "rounded-md px-2 py-1.5 text-left text-xs transition hover:bg-white/5",
+              !selectedId && hubPanel === "catalog" ? "bg-white/10 text-white" : "text-neutral-200",
+            ].join(" ")}
+          >
+            {t("dashboard:catalogTitle")}
+          </button>
+        </div>
       </div>
+      <DashboardSidebarNav
+        list={list}
+        grouped={groupedByHub}
+        selectedId={selectedId}
+        onSelectDashboard={(id) => selectDashboard(id)}
+        kindLabelFor={(k, tid) => subtitleForDashboardKind(k, kindCatalog, tid)}
+        dashboardUnreadCount={dashboardUnreadCount}
+      />
     </div>
   );
 
@@ -1329,16 +1324,10 @@ export function DashboardPage() {
 
   const hubHomeMain = (
     <div className="mx-auto max-w-3xl space-y-8 py-6">
-      <DashboardHubNavigator
-        hubs={DEFAULT_HUBS}
-        grouped={groupedByHub}
-        activeHubId={effectiveHubId}
-        setActiveHubId={(id) => setActiveHubOverride(id)}
-        selectedId={selectedId}
-        onSelectDashboard={(id) => selectDashboard(id)}
-        kindLabelFor={(k, tid) => subtitleForDashboardKind(k, kindCatalog, tid)}
-        dashboardUnreadCount={dashboardUnreadCount}
-      />
+      <div>
+        <h1 className="text-xl font-semibold text-white">{t("dashboard:hubHomeTitle")}</h1>
+        <p className="mt-1 text-sm text-surface-muted">{t("dashboard:hubHomeSubtitle")}</p>
+      </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <button
           type="button"
@@ -1483,17 +1472,6 @@ export function DashboardPage() {
                 {error}
               </div>
             ) : null}
-            <div className="mb-4">
-              <DashboardHubNavigator
-                hubs={DEFAULT_HUBS}
-                grouped={groupedByHub}
-                activeHubId={effectiveHubId}
-                setActiveHubId={(id) => setActiveHubOverride(id)}
-                selectedId={selectedId}
-                onSelectDashboard={(id) => selectDashboard(id)}
-                kindLabelFor={(k, tid) => subtitleForDashboardKind(k, kindCatalog, tid)}
-              />
-            </div>
             {!dashboardReady ? (
             <p className="text-sm text-surface-muted">{t("dashboard:loading")}</p>
             ) : (
@@ -1678,11 +1656,11 @@ export function DashboardPage() {
         className="bg-surface"
         mobileOpen={actionsSidebarOpen}
         onMobileOpenChange={setActionsSidebarOpen}
-        sidebarAriaLabel={t("dashboard:actions")}
+        sidebarAriaLabel={t("dashboard:sidebarNavAria")}
         closeSidebarAriaLabel={t("dashboard:closeActionsSidebar")}
-        desktopWidthClass="md:w-44"
+        desktopWidthClass="md:w-64"
         sidebarSurfaceClass="bg-surface-raised/40"
-        sidebar={dashboardActionsSidebar}
+        sidebar={dashboardSidebar}
       >
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <div className="flex shrink-0 items-center gap-2 border-b border-surface-border px-4 py-2 md:hidden">
