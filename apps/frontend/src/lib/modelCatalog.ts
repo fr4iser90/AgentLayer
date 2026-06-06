@@ -171,6 +171,15 @@ export function modelOptionLabel(row: ModelRow, agentlayer?: ModelCatalogAgentla
   return `${row.id} (${label})`;
 }
 
+/** Short id for compact UI (sidebar, session bar) — no provider suffix. */
+export function compactModelDisplayName(modelId: string, maxLen = 26): string {
+  const raw = (modelId || "").trim();
+  if (!raw) return "";
+  const base = raw.replace(/\.gguf$/i, "").split("/").pop() || raw;
+  if (base.length <= maxLen) return base;
+  return `${base.slice(0, Math.max(8, maxLen - 1))}…`;
+}
+
 export function modelCatalogSelectValue(row: ModelRow): string {
   const ob = normalizeCatalogRoutingToken(row.owned_by ?? "") ?? "unknown";
   return `${ob}:${row.id}`;

@@ -7,8 +7,10 @@ import {
   fetchModelCatalog,
   formatModelCatalogHint,
   composerSelectValueForThread,
+  compactModelDisplayName,
   modelCatalogSelectValue,
   modelOptionLabel,
+  parseModelCatalogSelection,
   resolveSendModelRouting,
   type ModelRow,
 } from "../../lib/modelCatalog";
@@ -33,6 +35,11 @@ import { sanitizeDashboardAssistantText } from "./dashboardChatDisplay";
 import { DashboardLayoutProposalInline } from "./DashboardLayoutProposalInline";
 import { DashboardLayoutProposalPanel } from "./DashboardLayoutProposalPanel";
 import { fetchActiveLayoutProposalSet } from "./layoutProposalShared";
+import { DashboardEmbeddedThreadMenu } from "./DashboardEmbeddedThreadMenu";
+import {
+  getEmbeddedChatSessionOpen,
+  setEmbeddedChatSessionOpen,
+} from "./embeddedChatSessionPrefs";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -123,7 +130,7 @@ export function DashboardEmbeddedChat({
 }: Props) {
   const { t } = useTranslation(["dashboard", "errors", "chat"]);
   const auth = useAuth();
-  const { accessToken } = auth;
+  const { accessToken, user } = auth;
   const [open, setOpen] = useState(true);
   const [modelRows, setModelRows] = useState<ModelRow[]>([]);
   const [modelsCatalogReady, setModelsCatalogReady] = useState(false);
@@ -143,7 +150,24 @@ export function DashboardEmbeddedChat({
   const [modelBeforeFirstSend, setModelBeforeFirstSend] = useState("");
   const lastModelSelectionRef = useRef("");
   const endRef = useRef<HTMLDivElement>(null);
+  const draftTextareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [sessionOpen, setSessionOpen] = useState(false);
+
+  useEffect(() => {
+    setSessionOpen(getEmbeddedChatSessionOpen(user?.id, dashboardId));
+  }, [user?.id, dashboardId]);
+
+  const setSessionOpenPersisted = useCallback(
+    (next: boolean | ((prev: boolean) => boolean)) => {
+      setSessionOpen((prev) => {
+        const value = typeof next === "function" ? next(prev) : next;
+        setEmbeddedChatSessionOpen(user?.id, dashboardId, value);
+        return value;
+      });
+    },
+    [dashboardId, user?.id]
+  );
   const [activeProposalSetId, setActiveProposalSetId] = useState<string | null>(null);
   const [enlargeProposalId, setEnlargeProposalId] = useState<string | null>(null);
 
@@ -559,6 +583,27 @@ export function DashboardEmbeddedChat({
   const showThreadPicker =
     !initLoading && (readOnly ? threadOptions.length > 0 : !noSharedChatYet);
 
+  const compactModelLabel = useMemo(() => {
+    const sel = modelSelectValue || defaultSelectValue;
+    const row = modelRows.find((r) => modelCatalogSelectValue(r) === sel);
+    if (row) return compactModelDisplayName(row.id);
+    const parsed = parseModelCatalogSelection(sel);
+    return compactModelDisplayName(parsed.modelId || sel);
+  }, [defaultSelectValue, modelRows, modelSelectValue]);
+
+  const compactThreadLabel = useMemo(() => {
+    if (!thread?.id) return t("dashboard:embeddedChatDraftThread");
+    return thread.title?.trim() || t("dashboard:embeddedChatUntitledThread");
+  }, [thread, t]);
+
+  useEffect(() => {
+    const el = draftTextareaRef.current;
+    if (!el) return;
+    el.style.height = "0px";
+    const next = Math.min(el.scrollHeight, 168);
+    el.style.height = `${Math.max(40, next)}px`;
+  }, [draft, open]);
+
   const hasComposerPayload =
     draft.trim().length > 0 ||
     pendingAttachments.some((a) => a.kind === "image" || a.kind === "textfile");
@@ -589,24 +634,55 @@ export function DashboardEmbeddedChat({
       </button>
       {open ? (
         <div className="flex min-h-0 flex-1 flex-col border-t border-surface-border">
-          <div className="flex shrink-0 items-start justify-between gap-2 px-3 pt-2">
-            <p className="min-w-0 flex-1 text-[11px] leading-snug text-surface-muted">
-              {readOnly
-                ? t("dashboard:embeddedChatTeamHint")
-                : t("dashboard:embeddedChatPrivateHint")}
-            </p>
-            {!readOnly ? (
+          {!initLoading && !initErr && !(noSharedChatYet && !thread) ? (
+            <div className="flex shrink-0 items-center gap-2 border-b border-white/5 px-3 py-1.5">
+              <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
+                {showThreadPicker ? (
+                  <DashboardEmbeddedThreadMenu
+                    threads={threadOptions}
+                    activeThreadId={thread?.id ?? null}
+                    readOnly={readOnly}
+                    disabled={threadSwitchBusy || sendLoading || newChatBusy}
+                    draftLabel={t("dashboard:embeddedChatDraftThread")}
+                    formatLabel={formatThreadOptionLabel}
+                    triggerLabel={compactThreadLabel}
+                    onSelect={(id) => void switchDashboardThread(id)}
+                  />
+                ) : (
+                  <span className="truncate text-[10px] text-neutral-300">{compactThreadLabel}</span>
+                )}
+                <span className="shrink-0 text-[10px] text-white/25">·</span>
+                <button
+                  type="button"
+                  className="min-w-0 truncate text-[10px] text-surface-muted hover:text-white"
+                  title={t("dashboard:embeddedChatSessionToggleHint")}
+                  onClick={() => setSessionOpenPersisted((o) => !o)}
+                >
+                  {compactModelLabel}
+                </button>
+              </div>
+              {!readOnly ? (
+                <button
+                  type="button"
+                  disabled={sendLoading || newChatBusy}
+                  title={t("dashboard:embeddedChatNewThreadHint")}
+                  className="shrink-0 rounded border border-white/10 px-2 py-0.5 text-[10px] text-neutral-200 hover:bg-white/5 disabled:opacity-40"
+                  onClick={() => void startNewDashboardChat()}
+                >
+                  {newChatBusy ? t("dashboard:loading") : t("dashboard:embeddedChatNewThread")}
+                </button>
+              ) : null}
               <button
                 type="button"
-                disabled={sendLoading || newChatBusy || initLoading}
-                title={t("dashboard:embeddedChatNewThreadHint")}
-                className="shrink-0 rounded-md border border-white/15 bg-black/30 px-2 py-1 text-[10px] font-medium text-neutral-200 hover:bg-white/10 disabled:opacity-40"
-                onClick={() => void startNewDashboardChat()}
+                className="shrink-0 rounded border border-white/10 px-2 py-0.5 text-[10px] text-neutral-300 hover:bg-white/5"
+                aria-expanded={sessionOpen}
+                title={t("dashboard:embeddedChatSessionToggleHint")}
+                onClick={() => setSessionOpenPersisted((o) => !o)}
               >
-                {newChatBusy ? t("dashboard:loading") : t("dashboard:embeddedChatNewThread")}
+                {sessionOpen ? t("dashboard:embeddedChatSessionHide") : t("dashboard:embeddedChatSessionShow")}
               </button>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
           {initLoading ? (
             <div className="px-3 py-4 text-sm text-surface-muted">{t("dashboard:embeddedChatLoading")}</div>
           ) : noSharedChatYet && !thread ? (
@@ -619,108 +695,18 @@ export function DashboardEmbeddedChat({
             </div>
           ) : (
             <>
-              {focusedBlockId && !readOnly ? (
-                <div className="mx-3 mt-2 flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-950/25 px-2 py-1.5 text-[11px] text-emerald-100">
-                  <span className="min-w-0 flex-1 truncate">
-                    {t("dashboard:chatFocusedBlock", {
-                      label: focusedBlockLabel?.trim() || focusedBlockId,
-                    })}
-                  </span>
-                  {onClearFocusedBlock ? (
-                    <button
-                      type="button"
-                      className="shrink-0 rounded px-1.5 py-0.5 text-emerald-200/80 hover:bg-emerald-900/50 hover:text-white"
-                      onClick={onClearFocusedBlock}
-                      title={t("dashboard:chatFocusedBlockClear")}
-                    >
-                      ×
-                    </button>
-                  ) : null}
-                </div>
-              ) : null}
-              {showThreadPicker ? (
-                <div className="shrink-0 px-3 pt-2">
-                  <label className="mb-0.5 block text-[10px] text-surface-muted">
-                    {t("dashboard:embeddedChatThreadLabel")}
-                  </label>
-                  <select
-                    className="w-full rounded-lg border border-surface-border bg-black/30 px-2 py-1.5 text-xs text-white"
-                    value={thread?.id ?? ""}
-                    disabled={
-                      readOnly
-                        ? threadOptions.length <= 1 || threadSwitchBusy || sendLoading
-                        : threadSwitchBusy || sendLoading || newChatBusy
-                    }
-                    onChange={(e) => void switchDashboardThread(e.target.value)}
-                  >
-                    {!readOnly ? (
-                      <option value="">{t("dashboard:embeddedChatDraftThread")}</option>
-                    ) : null}
-                    {threadOptions.map((row) => (
-                      <option key={row.id} value={row.id}>
-                        {formatThreadOptionLabel(row, {
-                          shared: t("chat:visibilitySharedLabel"),
-                          personal: t("chat:visibilityPersonalLabel"),
-                          untitled: t("dashboard:embeddedChatUntitledThread"),
-                        })}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : null}
-              <div className="shrink-0 px-3 pt-2">
-                <label className="mb-0.5 block text-[10px] text-surface-muted">{t("dashboard:modelLabel")}</label>
-                <select
-                  className="w-full rounded-lg border border-surface-border bg-black/30 px-2 py-1.5 text-xs text-white"
-                  value={modelSelectValue}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (thread) {
-                      const { model, modelProvider } = applyModelCatalogSelection(v, modelRows);
-                      setModelOnThread(v);
-                      if (!readOnly) {
-                        void putConversation(auth, {
-                          ...thread,
-                          model,
-                          modelProvider,
-                          updatedAt: Date.now(),
-                        }).catch(() => {});
-                      }
-                    } else {
-                      lastModelSelectionRef.current = v;
-                      setModelBeforeFirstSend(v);
-                    }
-                  }}
-                  disabled={readOnly || !modelsCatalogReady || modelRows.length === 0}
-                >
-                  {!modelsCatalogReady ? (
-                    <option value="">{t("dashboard:loading")}</option>
-                  ) : modelRows.length === 0 ? (
-                    <option value="">{modelsCatalogHint ?? t("dashboard:noModels")}</option>
-                  ) : (
-                    modelRows.map((row) => (
-                      <option key={modelCatalogSelectValue(row)} value={modelCatalogSelectValue(row)}>
-                        {modelOptionLabel(row)}
-                      </option>
-                    ))
-                  )}
-                </select>
-                {modelsCatalogReady && modelsCatalogHint ? (
-                  <p className="mt-1 text-[10px] leading-snug text-amber-300/90">{modelsCatalogHint}</p>
-                ) : null}
-              </div>
               {sendErr ? (
-                <div className="mx-3 mt-2 rounded border border-red-500/40 bg-red-950/30 px-2 py-1.5 text-xs text-red-200">
+                <div className="mx-3 mt-2 shrink-0 rounded border border-red-500/40 bg-red-950/30 px-2 py-1.5 text-xs text-red-200">
                   {sendErr}
                 </div>
               ) : null}
               {sendSlowHint && sendLoading ? (
-                <div className="mx-3 mt-2 rounded border border-amber-500/30 bg-amber-950/20 px-2 py-1.5 text-xs text-amber-200">
+                <div className="mx-3 mt-2 shrink-0 rounded border border-amber-500/30 bg-amber-950/20 px-2 py-1.5 text-xs text-amber-200">
                   {sendSlowHint}
                 </div>
               ) : null}
               <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
-                <div className="max-h-[min(320px,40vh)] overflow-y-auto rounded-lg border border-white/10 bg-black/20 px-2 py-2 text-sm lg:max-h-[min(480px,calc(100vh-280px))]">
+                <div className="min-h-[120px] rounded-lg border border-white/10 bg-black/20 px-2 py-2 text-sm">
                   {messages.length === 0 ? (
                     <p className="text-xs text-surface-muted">
                       {thread
@@ -766,6 +752,51 @@ export function DashboardEmbeddedChat({
                   )}
                 </div>
               </div>
+              {sessionOpen ? (
+                <div className="shrink-0 space-y-2 border-t border-white/5 bg-black/20 px-3 py-2">
+                  <label className="block">
+                    <span className="mb-0.5 block text-[10px] text-surface-muted">{t("dashboard:modelLabel")}</span>
+                    <select
+                      className="w-full rounded-lg border border-surface-border bg-black/40 px-2 py-1.5 text-xs text-white"
+                      value={modelSelectValue}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (thread) {
+                          const { model, modelProvider } = applyModelCatalogSelection(v, modelRows);
+                          setModelOnThread(v);
+                          if (!readOnly) {
+                            void putConversation(auth, {
+                              ...thread,
+                              model,
+                              modelProvider,
+                              updatedAt: Date.now(),
+                            }).catch(() => {});
+                          }
+                        } else {
+                          lastModelSelectionRef.current = v;
+                          setModelBeforeFirstSend(v);
+                        }
+                      }}
+                      disabled={readOnly || !modelsCatalogReady || modelRows.length === 0}
+                    >
+                      {!modelsCatalogReady ? (
+                        <option value="">{t("dashboard:loading")}</option>
+                      ) : modelRows.length === 0 ? (
+                        <option value="">{modelsCatalogHint ?? t("dashboard:noModels")}</option>
+                      ) : (
+                        modelRows.map((row) => (
+                          <option key={modelCatalogSelectValue(row)} value={modelCatalogSelectValue(row)}>
+                            {modelOptionLabel(row)}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                    {modelsCatalogReady && modelsCatalogHint ? (
+                      <p className="mt-1 text-[10px] leading-snug text-amber-300/90">{modelsCatalogHint}</p>
+                    ) : null}
+                  </label>
+                </div>
+              ) : null}
               <div className="shrink-0 border-t border-surface-border p-3">
                 <input
                   ref={fileInputRef}
@@ -779,6 +810,25 @@ export function DashboardEmbeddedChat({
                     void addPickedFiles(files);
                   }}
                 />
+                {focusedBlockId && !readOnly ? (
+                  <div className="mb-2 flex max-w-full items-center gap-1.5 rounded-md border border-emerald-500/25 bg-emerald-950/20 px-2 py-1 text-[10px] text-emerald-100">
+                    <span className="shrink-0 text-emerald-400/90">◎</span>
+                    <span className="min-w-0 truncate">
+                      {focusedBlockLabel?.trim() || focusedBlockId}
+                    </span>
+                    {onClearFocusedBlock ? (
+                      <button
+                        type="button"
+                        className="shrink-0 rounded px-1 text-emerald-200/70 hover:bg-emerald-900/40 hover:text-white"
+                        onClick={onClearFocusedBlock}
+                        title={t("dashboard:chatFocusedBlockClear")}
+                        aria-label={t("dashboard:chatFocusedBlockClear")}
+                      >
+                        ×
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
                 {pendingAttachments.length > 0 ? (
                   <ul className="mb-2 flex flex-wrap gap-1.5">
                     {pendingAttachments.map((a, idx) => (
@@ -802,20 +852,21 @@ export function DashboardEmbeddedChat({
                     ))}
                   </ul>
                 ) : null}
-                <div className="flex gap-2">
+                <div className="flex items-end gap-2 rounded-lg border border-surface-border bg-black/30 p-2">
                   <button
                     type="button"
                     disabled={readOnly || sendLoading}
-                    className="shrink-0 rounded-lg border border-white/10 bg-black/30 px-2.5 py-2 text-surface-muted hover:bg-white/5 hover:text-white disabled:opacity-40"
+                    className="shrink-0 rounded-lg border border-white/10 px-2.5 py-2 text-surface-muted hover:bg-white/5 hover:text-white disabled:opacity-40"
                     title={t("dashboard:attachTitle")}
                     aria-label={t("dashboard:attach")}
                     onClick={() => fileInputRef.current?.click()}
                   >
                     +
                   </button>
-                  <input
-                    type="text"
+                  <textarea
+                    ref={draftTextareaRef}
                     value={draft}
+                    rows={1}
                     onChange={(e) => setDraft(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
@@ -824,7 +875,7 @@ export function DashboardEmbeddedChat({
                       }
                     }}
                     placeholder={t("dashboard:messagePlaceholder")}
-                    className="min-w-0 flex-1 rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-500/50"
+                    className="min-h-[40px] min-w-0 flex-1 resize-none bg-transparent py-1.5 text-sm leading-snug text-white outline-none placeholder:text-surface-muted"
                     disabled={readOnly || sendLoading}
                   />
                   <button
@@ -836,6 +887,9 @@ export function DashboardEmbeddedChat({
                     {t("dashboard:send")}
                   </button>
                 </div>
+                {!readOnly ? (
+                  <p className="mt-1 text-[9px] text-surface-muted">{t("dashboard:embeddedChatComposerHint")}</p>
+                ) : null}
               </div>
             </>
           )}
