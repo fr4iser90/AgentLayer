@@ -939,6 +939,8 @@ def pidea_effective_enabled() -> bool:
 
 
 def public_dict() -> dict[str, Any]:
+    from apps.backend.media.operator_media_settings import media_settings_public_fields
+
     r = _cached_row()
     dtok = (r.get("discord_bot_token") or "").strip()
     ttok = (r.get("telegram_bot_token") or "").strip()
@@ -1022,6 +1024,7 @@ def public_dict() -> dict[str, Any]:
         "workspace_reindex_after_git_pull": bool(r.get("workspace_reindex_after_git_pull", False)),
         "workspace_nightly_reindex_enabled": bool(r.get("workspace_nightly_reindex_enabled", False)),
         "workspace_index_on_attach_enabled": bool(r.get("workspace_index_on_attach_enabled", False)),
+        **media_settings_public_fields(),
     }
 
 
@@ -1103,6 +1106,13 @@ class OperatorSettingsPatch(BaseModel):
     workspace_reindex_after_git_pull: bool | None = None
     workspace_nightly_reindex_enabled: bool | None = None
     workspace_index_on_attach_enabled: bool | None = None
+    media_library_enabled: bool | None = None
+    media_user_upload_enabled: bool | None = None
+    media_sharing_enabled: bool | None = None
+    media_default_user_quota_mb: int | None = Field(default=None, ge=1, le=50_000)
+    media_upload_max_file_mb: int | None = Field(default=None, ge=1, le=512)
+    media_upload_allowed_mime: str | None = Field(default=None, max_length=2000)
+    media_embed_allowed_hosts: str | None = Field(default=None, max_length=4000)
 
 
 def scheduler_jobs_worker_settings() -> tuple[bool, float]:
@@ -1455,6 +1465,20 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
     if "workspace_index_on_attach_enabled" in patch:
         r["workspace_index_on_attach_enabled"] = bool(patch["workspace_index_on_attach_enabled"])
 
+    media_patch = {
+        k: patch[k]
+        for k in (
+            "media_library_enabled",
+            "media_user_upload_enabled",
+            "media_sharing_enabled",
+            "media_default_user_quota_mb",
+            "media_upload_max_file_mb",
+            "media_upload_allowed_mime",
+            "media_embed_allowed_hosts",
+        )
+        if k in patch
+    }
+
     _maybe_align_pgvector_embedding_dim(r, patch)
 
     with db.pool().connection() as conn:
@@ -1632,6 +1656,10 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
                     tuple(extra_params),
                 )
             conn.commit()
+    if media_patch:
+        from apps.backend.media.operator_media_settings import apply_media_operator_patch
+
+        apply_media_operator_patch(media_patch)
     _invalidate()
     try:
         from apps.backend.infrastructure.embedding_client import invalidate_embedding_catalog_cache

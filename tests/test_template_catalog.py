@@ -39,7 +39,15 @@ class TestTemplateCatalog(unittest.TestCase):
         self.assertEqual(tid, "projects-v1")
         self.assertEqual(kind, "projects")
 
-    def test_template_catalog_api_shape(self) -> None:
+    def test_media_station_template_resolves(self) -> None:
+        path = template_path_for_template_id("media_station-v1")
+        self.assertIsNotNone(path)
+        self.assertTrue(path.is_file())  # type: ignore[union-attr]
+        kind, tid, err = resolve_create_target(template_id="media_station-v1", kind="custom")
+        self.assertIsNone(err)
+        self.assertEqual(tid, "media_station-v1")
+        self.assertEqual(kind, "media_station")
+
         rows = template_catalog()
         projects = next((r for r in rows if r.get("template_id") == "projects-v1"), None)
         self.assertIsNotNone(projects)

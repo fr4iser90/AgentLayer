@@ -19,6 +19,9 @@ type UserRow = {
   telegram_user_id?: string | null;
   workspace_quota?: number;
   workspace_self_allowed?: boolean;
+  media_storage_quota_mb?: number | null;
+  media_enabled?: boolean | null;
+  media_upload_enabled?: boolean | null;
 };
 
 function rowLabel(r: UserRow): string {
@@ -131,6 +134,48 @@ export function AdminUsers() {
       await loadUsers();
     } catch (e) {
       setListErr(e instanceof Error ? e.message : t("admin:workspaceQuotaUpdateFailed"));
+    } finally {
+      setSavingUserId(null);
+    }
+  }
+
+  async function patchMediaStorageQuota(userId: string, quotaMb: number) {
+    setSavingUserId(userId);
+    setListErr(null);
+    try {
+      const res = await apiFetch(`/v1/admin/users/${userId}`, auth, {
+        method: "PATCH",
+        body: JSON.stringify({ media_storage_quota_mb: quotaMb }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { detail?: unknown };
+      if (!res.ok) {
+        setListErr(typeof data.detail === "string" ? data.detail : t("admin:mediaQuotaUpdateFailed"));
+        return;
+      }
+      await loadUsers();
+    } catch (e) {
+      setListErr(e instanceof Error ? e.message : t("admin:mediaQuotaUpdateFailed"));
+    } finally {
+      setSavingUserId(null);
+    }
+  }
+
+  async function patchMediaEnabled(userId: string, enabled: boolean) {
+    setSavingUserId(userId);
+    setListErr(null);
+    try {
+      const res = await apiFetch(`/v1/admin/users/${userId}`, auth, {
+        method: "PATCH",
+        body: JSON.stringify({ media_enabled: enabled }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { detail?: unknown };
+      if (!res.ok) {
+        setListErr(typeof data.detail === "string" ? data.detail : t("admin:mediaEnabledUpdateFailed"));
+        return;
+      }
+      await loadUsers();
+    } catch (e) {
+      setListErr(e instanceof Error ? e.message : t("admin:mediaEnabledUpdateFailed"));
     } finally {
       setSavingUserId(null);
     }
@@ -275,6 +320,8 @@ export function AdminUsers() {
                 <th className="px-4 py-3 font-medium">{t("admin:usersColTenant")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColRole")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColQuota")}</th>
+                <th className="px-4 py-3 font-medium">{t("admin:usersColMediaQuota")}</th>
+                <th className="px-4 py-3 font-medium">{t("admin:usersColMedia")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColSelfEdit")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColDiscord")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColTelegram")}</th>
@@ -284,19 +331,19 @@ export function AdminUsers() {
             <tbody>
               {listLoading ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-6 text-center text-surface-muted">
+                  <td colSpan={10} className="px-4 py-6 text-center text-surface-muted">
                     {t("admin:loading")}
                   </td>
                 </tr>
               ) : listErr ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-6 text-center text-red-400">
+                  <td colSpan={10} className="px-4 py-6 text-center text-red-400">
                     {listErr}
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-6 text-center text-surface-muted">
+                  <td colSpan={10} className="px-4 py-6 text-center text-surface-muted">
                     {t("admin:usersNoUsers")}
                   </td>
                 </tr>
@@ -360,6 +407,41 @@ export function AdminUsers() {
                             void patchWorkspaceQuota(r.id, next);
                           }}
                         />
+                      </td>
+                      <td className="px-4 py-3">
+                        <input
+                          type="number"
+                          min={1}
+                          max={50000}
+                          className="w-20 rounded-md border border-surface-border bg-black/20 px-2 py-1 text-xs text-white"
+                          value={r.media_storage_quota_mb ?? ""}
+                          placeholder={t("admin:usersMediaQuotaPlaceholder")}
+                          disabled={saving}
+                          title={t("admin:usersMediaQuotaPlaceholder")}
+                          onChange={(e) => {
+                            const next = parseInt(e.target.value, 10);
+                            if (!Number.isFinite(next) || next < 1 || next > 50000) return;
+                            void patchMediaStorageQuota(r.id, next);
+                          }}
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <select
+                          className="rounded-md border border-surface-border bg-black/20 px-2 py-1 text-xs text-white"
+                          value={
+                            r.media_enabled === true ? "on" : r.media_enabled === false ? "off" : "inherit"
+                          }
+                          disabled={saving}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (v === "inherit") return;
+                            void patchMediaEnabled(r.id, v === "on");
+                          }}
+                        >
+                          <option value="inherit">{t("admin:usersMediaInherit")}</option>
+                          <option value="on">{t("admin:usersMediaOn")}</option>
+                          <option value="off">{t("admin:usersMediaOff")}</option>
+                        </select>
                       </td>
                       <td className="px-4 py-3">
                         <input

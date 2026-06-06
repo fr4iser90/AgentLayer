@@ -84,6 +84,16 @@ export type OperatorPublic = {
   workspace_reindex_after_git_pull?: boolean;
   workspace_nightly_reindex_enabled?: boolean;
   workspace_index_on_attach_enabled?: boolean;
+  media_library_enabled?: boolean;
+  media_user_upload_enabled?: boolean;
+  media_sharing_enabled?: boolean;
+  media_default_user_quota_mb?: number | null;
+  media_upload_max_file_mb?: number | null;
+  media_upload_allowed_mime?: string;
+  media_embed_allowed_hosts?: string;
+  media_effective_upload_max_bytes?: number;
+  media_effective_upload_allowed_mime?: string[];
+  media_effective_default_quota_mb?: number;
   detail?: unknown;
 };
 

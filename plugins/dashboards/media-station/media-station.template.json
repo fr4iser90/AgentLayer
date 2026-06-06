@@ -1,0 +1,55 @@
+{
+  "kind": "media_station",
+  "description": "Template for kind media_station — player queue + library index.",
+  "ui_layout": {
+    "version": 1,
+    "blocks": [
+      {
+        "id": "station-player",
+        "type": "media_player",
+        "grid": { "x": 0, "y": 0, "w": 8, "h": 12 },
+        "props": {
+          "dataPath": "media_queue",
+          "title": "Now playing",
+          "showQueue": true
+        }
+      },
+      {
+        "id": "station-library",
+        "type": "table",
+        "grid": { "x": 8, "y": 0, "w": 4, "h": 12 },
+        "props": {
+          "dataPath": "library",
+          "title": "Library",
+          "enableSearch": true,
+          "searchPlaceholder": "Search library…",
+          "columns": [
+            { "field": "title", "kind": "text", "label": "Title" },
+            { "field": "artist", "kind": "text", "label": "Artist" },
+            { "field": "source_kind", "kind": "text", "label": "Source" },
+            { "field": "media_ref", "kind": "text", "label": "Ref" }
+          ]
+        }
+      },
+      {
+        "id": "station-notes",
+        "type": "markdown",
+        "grid": { "x": 0, "y": 12, "w": 12, "h": 4 },
+        "props": {
+          "dataPath": "station_notes",
+          "placeholder": "Station notes — moods, genres, links…"
+        }
+      }
+    ]
+  },
+  "initial_data": {
+    "media_queue": {
+      "now_playing_id": null,
+      "items": [],
+      "shuffle": false,
+      "repeat": "off"
+    },
+    "library": [],
+    "station_notes": ""
+  }
+}

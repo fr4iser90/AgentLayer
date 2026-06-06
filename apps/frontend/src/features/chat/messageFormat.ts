@@ -2,10 +2,12 @@
 
 export type PendingAttachment =
   | { kind: "image"; name: string; dataUrl: string }
+  | { kind: "audio"; name: string; dataUrl: string }
   | { kind: "textfile"; name: string; text: string }
   | { kind: "unsupported"; name: string; hint: string };
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+const MAX_AUDIO_BYTES = 52_428_800;
 const MAX_TEXT_BYTES = 256 * 1024;
 
 function readFileAsDataURL(f: File): Promise<string> {
@@ -44,6 +46,22 @@ export async function filesToAttachments(files: FileList | File[]): Promise<Pend
       out.push({ kind: "image", name: f.name, dataUrl });
       continue;
     }
+    if (
+      f.type.startsWith("audio/") ||
+      /\.(mp3|m4a|mp4|flac|ogg|wav|aac)$/i.test(f.name)
+    ) {
+      if (f.size > MAX_AUDIO_BYTES) {
+        out.push({
+          kind: "unsupported",
+          name: f.name,
+          hint: "Audio too large (max 50 MB).",
+        });
+        continue;
+      }
+      const dataUrl = await readFileAsDataURL(f);
+      out.push({ kind: "audio", name: f.name, dataUrl });
+      continue;
+    }
     if (f.type === "application/zip" || f.name.toLowerCase().endsWith(".zip")) {
       out.push({
         kind: "unsupported",
@@ -75,12 +93,19 @@ export function buildUserMessageContent(
   const t = text.trim();
   if (t) lines.push(t);
   const imageParts: Array<Record<string, unknown>> = [];
+  const audioParts: Array<Record<string, unknown>> = [];
   for (const a of attachments) {
     if (a.kind === "image") {
       // Server-only hint so tools (e.g. run_iterative_html_build) can persist uploads/hero.png etc.
       imageParts.push({
         type: "image_url",
         image_url: { url: a.dataUrl },
+        agent_filename: a.name,
+      });
+    } else if (a.kind === "audio") {
+      audioParts.push({
+        type: "agent_audio",
+        audio_url: { url: a.dataUrl },
         agent_filename: a.name,
       });
     } else if (a.kind === "textfile") {
@@ -96,6 +121,9 @@ export function buildUserMessageContent(
   }
   for (const im of imageParts) {
     parts.push(im);
+  }
+  for (const au of audioParts) {
+    parts.push(au);
   }
   if (parts.length === 0) return "";
   if (parts.length === 1 && parts[0].type === "text") {
@@ -130,6 +158,7 @@ type Part = {
   type?: string;
   text?: string;
   image_url?: { url?: string };
+  audio_url?: { url?: string };
   agent_filename?: string;
 };
 
@@ -140,7 +169,7 @@ export function parseContentParts(content: string): { plain: string; parts: Part
     const p = JSON.parse(s) as unknown;
     if (!Array.isArray(p)) return { plain: content, parts: null };
     const parts = p as Part[];
-    if (!parts.some((x) => x.type === "image_url" || x.type === "text")) {
+    if (!parts.some((x) => x.type === "image_url" || x.type === "agent_audio" || x.type === "text")) {
       return { plain: content, parts: null };
     }
     return { plain: "", parts };
@@ -188,6 +217,14 @@ export function userMessageToComposerState(content: string): {
             ? p.agent_filename.trim()
             : "image",
           dataUrl: p.image_url.url,
+        });
+      } else if (p.type === "agent_audio" && p.audio_url?.url) {
+        attachments.push({
+          kind: "audio",
+          name: typeof p.agent_filename === "string" && p.agent_filename.trim()
+            ? p.agent_filename.trim()
+            : "audio",
+          dataUrl: p.audio_url.url,
         });
       }
     }

@@ -25,6 +25,8 @@ const DEFAULT_KIND_TO_HUB: Record<string, DashboardHubId> = {
   pets: "pets",
   photo_album: "media",
   "photo-album": "media",
+  media_station: "media",
+  "media-station": "media",
   shopping_list: "home",
   todo: "home",
   tasks: "home",
@@ -38,7 +40,7 @@ const DEFAULT_KIND_TO_HUB: Record<string, DashboardHubId> = {
 const DEFAULT_TITLE_INCLUDES: Record<DashboardHubId, string[]> = {
   pets: ["pet", "pets", "haustier", "tier", "hund", "katze"],
   family: ["family", "fam", "kinder", "kind", "eltern", "friends", "kontakte"],
-  media: ["album", "photo", "foto", "gallery", "media", "video"],
+  media: ["album", "photo", "foto", "gallery", "media", "video", "music", "station", "playlist"],
   home: ["home", "haushalt", "shopping", "einkauf", "todo", "tasks", "putzen", "wohnung"],
   work: ["work", "job", "projekt", "project", "client", "kunden", "meeting"],
   other: [],

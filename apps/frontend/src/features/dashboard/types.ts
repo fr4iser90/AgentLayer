@@ -11,6 +11,7 @@ export type BlockType =
   | "kanban"
   | "rich_markdown"
   | "embed"
+  | "media_player"
   | "section"
   | "card_grid"
   | "dashboard_ref"

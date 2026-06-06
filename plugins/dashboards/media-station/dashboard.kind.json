@@ -1,0 +1,9 @@
+{
+  "kind": "media_station",
+  "label": "Media station",
+  "description": "Personal music station — player queue, library table, and upload sharing.",
+  "template": "media-station.template.json",
+  "schema_sql": "migrations/001_user_dashboards.sql",
+  "setup": "media-station.setup.json",
+  "template_id": "media_station-v1"
+}

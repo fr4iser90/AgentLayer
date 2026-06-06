@@ -474,6 +474,50 @@ def WORKSPACE_upload_env_allowed_mime() -> frozenset[str]:
     return frozenset(x.strip().lower() for x in raw.split(",") if x.strip())
 
 
+def dashboard_upload_dir() -> Path:
+    """Gallery uploads (alias for ``WORKSPACE_upload_dir``)."""
+    return WORKSPACE_upload_dir()
+
+
+# --- Media library (user uploads + embed refs; bytes on disk under media_uploads/) ---
+MEDIA_DEFAULT_USER_QUOTA_MB = max(1, min(_env_int("AGENT_MEDIA_DEFAULT_USER_QUOTA_MB", 500), 50_000))
+MEDIA_UPLOAD_MAX_FILE_MB = max(1, min(_env_int("AGENT_MEDIA_UPLOAD_MAX_FILE_MB", 50), 512))
+
+
+def media_upload_dir() -> Path:
+    raw = (os.environ.get("AGENT_MEDIA_UPLOAD_DIR") or "").strip()
+    if raw:
+        return Path(raw).expanduser()
+    return Path(DATA_DIR) / "media_uploads"
+
+
+def media_upload_env_allowed_mime() -> frozenset[str]:
+    raw = (
+        os.environ.get("AGENT_MEDIA_UPLOAD_ALLOWED_MIME")
+        or "audio/mpeg,audio/mp4,audio/flac,audio/ogg,audio/wav,video/mp4"
+    ).strip()
+    return frozenset(x.strip().lower() for x in raw.split(",") if x.strip())
+
+
+def media_embed_env_allowed_hosts() -> frozenset[str]:
+    raw = (
+        os.environ.get("AGENT_MEDIA_EMBED_ALLOWED_HOSTS")
+        or "www.youtube.com,youtube.com,www.youtube-nocookie.com,player.vimeo.com"
+    ).strip()
+    return frozenset(x.strip().lower() for x in raw.split(",") if x.strip())
+
+
+def media_stream_env_allowed_hosts() -> frozenset[str]:
+    raw = (
+        os.environ.get("AGENT_MEDIA_STREAM_ALLOWED_HOSTS")
+        or (
+            "mdr.de,www.mdr.de,cast.addradio.de,listen.streamtheworld.com,"
+            "playerservices.streamtheworld.com,icecast.mdradio.de,stream.radio.co"
+        )
+    ).strip()
+    return frozenset(x.strip().lower() for x in raw.split(",") if x.strip())
+
+
 # create_tool limits / codegen (CREATE_TOOL_ENABLED is set above with TOOLS_EXTRA_DIR).
 CREATE_TOOL_MAX_BYTES = _env_int("AGENT_CREATE_TOOL_MAX_BYTES", 120_000)
 # When create_tool is called without ``source``, catalog LLM generates the module (LLM_AUX_PROVIDER_ID).

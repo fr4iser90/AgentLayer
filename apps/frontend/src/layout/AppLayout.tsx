@@ -4,6 +4,8 @@ import { useAuth } from "../auth/AuthContext";
 import { UserMenu } from "../components/UserMenu";
 import { NotificationBell } from "../components/NotificationBell";
 import { NotificationProvider } from "../features/notifications/NotificationProvider";
+import { GlobalMediaProvider } from "../features/media/GlobalMediaProvider";
+import { MediaMiniPlayer } from "../features/media/MediaMiniPlayer";
 import { SUPPORTED } from "../i18n/config";
 
 const GITHUB_REPO =
@@ -107,6 +109,7 @@ export function AppLayout() {
       <div className="min-h-0 flex-1 overflow-hidden [&>*]:h-full [&>*]:min-h-0">
         <Outlet />
       </div>
+      <MediaMiniPlayer />
       <footer className="shrink-0 border-t border-surface-border bg-surface-raised/80 px-4 py-2">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-surface-muted">
           <a
@@ -132,9 +135,11 @@ export function AppLayout() {
     </div>
   );
 
-  if (signedIn) {
-    return <NotificationProvider enabled={signedIn}>{shell}</NotificationProvider>;
-  }
+  const wrappedShell = signedIn ? (
+    <NotificationProvider enabled={signedIn}>{shell}</NotificationProvider>
+  ) : (
+    shell
+  );
 
-  return shell;
+  return <GlobalMediaProvider enabled={signedIn}>{wrappedShell}</GlobalMediaProvider>;
 }

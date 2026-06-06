@@ -561,6 +561,19 @@ async def chat_completion(
         from apps.backend.infrastructure.chat_secret_ingress import ingress_openai_messages_inplace
 
         ingress_openai_messages_inplace(messages, tenant_id=int(tenant_id), user_id=user_id)
+        _ingested_audio: list[dict[str, Any]] = []
+        if user_id is not None and tenant_id is not None and isinstance(user_id, uuid.UUID):
+            from apps.backend.domain.chat_audio_attachments import (
+                format_ingested_audio_system_block,
+                ingest_chat_audio_attachments,
+            )
+
+            _ingested_audio = ingest_chat_audio_attachments(
+                messages, tenant_id=int(tenant_id), user_id=user_id
+            )
+            _audio_block = format_ingested_audio_system_block(_ingested_audio)
+            if _audio_block:
+                messages = _append_system_block(messages, _audio_block)
         messages = _inject_dashboard_context(messages, dashboard_ctx)
         if agent_id:
             messages = _inject_agent_system_prompt(messages, agent_id)
@@ -575,6 +588,16 @@ async def chat_completion(
             tasks_snip = build_agent_tasks_context_snippet(active_task_id=active_task_id)
             if tasks_snip:
                 messages = _append_system_block(messages, tasks_snip)
+        if agent_id in ("general", "dashboard") and user_id is not None and tenant_id is not None:
+            from apps.backend.domain.media_chat_prompt import build_media_library_context_snippet
+
+            _media_snip = build_media_library_context_snippet(
+                user_id=user_id if isinstance(user_id, uuid.UUID) else None,
+                tenant_id=int(tenant_id),
+                ingested_audio=_ingested_audio,
+            )
+            if _media_snip:
+                messages = _append_system_block(messages, _media_snip)
         if agent_id and agent_id in config.AGENT_SKILLS_PROMPT_AGENT_IDS:
             from apps.backend.infrastructure.skills_prompt import load_combined_skills_prompt
 

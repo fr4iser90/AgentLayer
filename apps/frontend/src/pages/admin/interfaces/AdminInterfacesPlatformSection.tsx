@@ -67,6 +67,93 @@ export function AdminInterfacesPlatformSection() {
               onChange={(e) => s.setUploadMime(e.target.value)}
               placeholder={t("admin:ifPlatformMimePlaceholder")}
             />
+          </section>
+
+          <section className="mt-8 rounded-xl border border-surface-border bg-surface-raised p-5">
+            <h2 className="text-sm font-medium text-white">{t("admin:ifPlatformMediaTitle")}</h2>
+            <p className="mt-2 text-xs text-surface-muted">{t("admin:ifPlatformMediaIntro")}</p>
+            {s.mediaEffUploadBytes != null ? (
+              <p className="mt-2 text-xs text-surface-muted">
+                {t("admin:ifPlatformMediaEffective", {
+                  bytes: s.mediaEffUploadBytes,
+                  mime: s.mediaEffUploadMime.join(", ") || "—",
+                  quotaMb: s.mediaEffDefaultQuotaMb ?? "—",
+                })}
+              </p>
+            ) : null}
+            <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-white">
+              <input
+                type="checkbox"
+                className="rounded border-surface-border"
+                checked={s.mediaLibraryEnabled}
+                onChange={(e) => s.setMediaLibraryEnabled(e.target.checked)}
+              />
+              {t("admin:ifPlatformMediaLibraryEnabled")}
+            </label>
+            <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-white">
+              <input
+                type="checkbox"
+                className="rounded border-surface-border"
+                checked={s.mediaUserUploadEnabled}
+                onChange={(e) => s.setMediaUserUploadEnabled(e.target.checked)}
+              />
+              {t("admin:ifPlatformMediaUploadEnabled")}
+            </label>
+            <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-white">
+              <input
+                type="checkbox"
+                className="rounded border-surface-border"
+                checked={s.mediaSharingEnabled}
+                onChange={(e) => s.setMediaSharingEnabled(e.target.checked)}
+              />
+              {t("admin:ifPlatformMediaSharingEnabled")}
+            </label>
+            <label className="mt-4 block text-xs text-surface-muted" htmlFor="media-quota-mb">
+              {t("admin:ifPlatformMediaDefaultQuotaMb")}
+            </label>
+            <input
+              id="media-quota-mb"
+              type="number"
+              min={1}
+              max={50000}
+              className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+              value={s.mediaDefaultQuotaMb}
+              onChange={(e) => s.setMediaDefaultQuotaMb(e.target.value)}
+              placeholder={t("admin:ifPlatformMediaQuotaPlaceholder")}
+            />
+            <label className="mt-4 block text-xs text-surface-muted" htmlFor="media-upload-mb">
+              {t("admin:ifPlatformMediaUploadMaxMb")}
+            </label>
+            <input
+              id="media-upload-mb"
+              type="number"
+              min={1}
+              max={512}
+              className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+              value={s.mediaUploadMaxMb}
+              onChange={(e) => s.setMediaUploadMaxMb(e.target.value)}
+              placeholder={t("admin:ifPlatformUploadMbPlaceholder")}
+            />
+            <label className="mt-4 block text-xs text-surface-muted" htmlFor="media-mime">
+              {t("admin:ifPlatformMediaUploadMime")}
+            </label>
+            <input
+              id="media-mime"
+              className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+              value={s.mediaUploadMime}
+              onChange={(e) => s.setMediaUploadMime(e.target.value)}
+              placeholder={t("admin:ifPlatformMimePlaceholder")}
+            />
+            <label className="mt-4 block text-xs text-surface-muted" htmlFor="media-embed-hosts">
+              {t("admin:ifPlatformMediaEmbedHosts")}
+            </label>
+            <input
+              id="media-embed-hosts"
+              className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+              value={s.mediaEmbedHosts}
+              onChange={(e) => s.setMediaEmbedHosts(e.target.value)}
+              placeholder={t("admin:ifPlatformMediaEmbedHostsPlaceholder")}
+            />
           </section>          <section className="mt-6 rounded-lg border border-surface-border p-4">
             <h3 className="text-sm font-medium text-white">{t("admin:ifPlatformWorkspacesTitle")}</h3>
             <p className="mt-1 text-xs text-surface-muted">{t("admin:ifPlatformWorkspacesIntro")}</p>

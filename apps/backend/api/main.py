@@ -102,6 +102,7 @@ from apps.backend.infrastructure.memory_api import router as memory_router
 from apps.backend.infrastructure.user_secrets_api import router as user_secrets_router
 from apps.backend.api.conversations_api import router as conversations_router
 from apps.backend.dashboard.router import router as dashboard_router
+from apps.backend.media.router import router as media_router
 from apps.backend.infrastructure.log_redaction import (
     apply_http_client_log_levels,
     install_log_redaction_filters,
@@ -321,6 +322,7 @@ app.include_router(conversations_router)
 app.include_router(message_feedback_router)
 app.include_router(message_feedback_admin_router)
 app.include_router(dashboard_router)
+app.include_router(media_router)
 app.include_router(user_data_router)
 app.include_router(notifications_router)
 app.include_router(delegate_router)
@@ -746,6 +748,10 @@ class AdminPatchUserBody(BaseModel):
     tenant_id: int | None = Field(default=None, ge=1)
     workspace_quota: int | None = Field(default=None, ge=1, le=1000)
     workspace_self_allowed: bool | None = None
+    media_storage_quota_mb: int | None = Field(default=None, ge=1, le=50_000)
+    media_enabled: bool | None = None
+    media_upload_enabled: bool | None = None
+    media_sharing_enabled: bool | None = None
 
 
 @app.get("/v1/admin/tenants")
@@ -774,7 +780,7 @@ async def admin_list_users(request: Request):
 async def admin_patch_user(request: Request, user_id: uuid.UUID, body: AdminPatchUserBody):
     """Update ``tenant_id``, ``workspace_quota``, ``workspace_self_allowed``. Admin only."""
     await require_admin(request)
-    if body.tenant_id is None and body.workspace_quota is None and body.workspace_self_allowed is None:
+    if body.tenant_id is None and body.workspace_quota is None and body.workspace_self_allowed is None and body.media_storage_quota_mb is None and body.media_enabled is None and body.media_upload_enabled is None and body.media_sharing_enabled is None:
         raise HTTPException(status_code=400, detail="no fields to patch")
     u = get_user_by_id(user_id)
     if not u:
@@ -796,6 +802,30 @@ async def admin_patch_user(request: Request, user_id: uuid.UUID, body: AdminPatc
         db.query(
             "UPDATE users SET workspace_self_allowed = %s WHERE id = %s",
             (body.workspace_self_allowed, user_id),
+        )
+
+    if body.media_storage_quota_mb is not None:
+        db.query(
+            "UPDATE users SET media_storage_quota_mb = %s WHERE id = %s",
+            (body.media_storage_quota_mb, user_id),
+        )
+
+    if body.media_enabled is not None:
+        db.query(
+            "UPDATE users SET media_enabled = %s WHERE id = %s",
+            (body.media_enabled, user_id),
+        )
+
+    if body.media_upload_enabled is not None:
+        db.query(
+            "UPDATE users SET media_upload_enabled = %s WHERE id = %s",
+            (body.media_upload_enabled, user_id),
+        )
+
+    if body.media_sharing_enabled is not None:
+        db.query(
+            "UPDATE users SET media_sharing_enabled = %s WHERE id = %s",
+            (body.media_sharing_enabled, user_id),
         )
 
     return {

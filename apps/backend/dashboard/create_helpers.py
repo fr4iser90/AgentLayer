@@ -35,7 +35,7 @@ def validate_create_kind(kind: str) -> str | None:
     """Return an error message, or ``None`` when ``kind`` is allowed (legacy API)."""
     k = (kind or "").strip().lower()
     if not k:
-        return "kind is required (e.g. pets, projects, ideas, shopping_list, todo, feeds, friends, photo_album, personal_dashboard, custom)"
+        return "kind is required (e.g. pets, projects, ideas, shopping_list, todo, feeds, friends, photo_album, media_station, personal_dashboard, custom)"
     if k == "custom":
         return None
     if k not in bundles_by_kind():

@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "kind": "media_station",
+  "greeting": {
+    "de": "Deine Media-Station — Queue abspielen, Uploads und YouTube-Embeds verwalten, legal teilen.",
+    "en": "Your media station — play a queue, manage uploads and YouTube embeds, share legally."
+  },
+  "agent_prompt": {
+    "de": "Onboarding für media_station. Mediathek muss vom Operator aktiv sein. Nutzer können im media_player-Block Tracks hochladen oder Embeds hinzufügen; media_enqueue/media_list/media_quota für Queue und Library. Uploads teilen nur mit gesetzter license (owned, cc-by, …) via media_share_grant. Kein YouTube-Download. Kein Schema installieren.",
+    "en": "Onboarding for media_station. Operator must enable the media library. Users upload tracks or add embeds in the media_player block; use media_enqueue, media_list, media_quota for queue and library. Share uploads only with license set (owned, cc-by, …) via media_share_grant. No YouTube ripping. Do not install schema."
+  },
+  "steps": [
+    {
+      "id": "enable_check",
+      "label": { "de": "Mediathek-Status prüfen", "en": "Check media library status" },
+      "tool_hint": "media_quota"
+    },
+    {
+      "id": "queue",
+      "label": { "de": "Queue befüllen", "en": "Fill the queue" },
+      "tool_hint": "media_enqueue"
+    },
+    {
+      "id": "library",
+      "label": { "de": "Library-Tabelle pflegen", "en": "Maintain library table" },
+      "tool_hint": "list_append"
+    }
+  ],
+  "suggested_tools": ["media", "dashboard"],
+  "chat_starters": {
+    "de": [
+      "Füge https://www.youtube.com/embed/dQw4w9WgXcQ zur Queue hinzu.",
+      "Zeig mir meine Mediathek und wie viel Speicher ich noch habe.",
+      "Erstelle eine Fokus-Playlist mit ruhigen Tracks aus meinen Uploads."
+    ],
+    "en": [
+      "Add https://www.youtube.com/embed/dQw4w9WgXcQ to my queue.",
+      "Show my media library and remaining storage quota.",
+      "Build a focus playlist from my uploaded tracks."
+    ]
+  }
+}

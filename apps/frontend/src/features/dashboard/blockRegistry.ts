@@ -181,6 +181,22 @@ export const GRID_BLOCK_DEFINITIONS: GridBlockDefinition[] = [
     createInitialData: () => ({ url: "", title: "", height: 480 }),
   }),
   gridDef({
+    type: "media_player",
+    dataPathPrefix: "media_queue",
+    addLabelKey: "dashboard:addMediaPlayer",
+    defaultGrid: { w: 8, h: 10 },
+    minGrid: { minW: 4, minH: 6 },
+    mobileStack: true,
+    shellHeight: "tall",
+    createProps: (dataPath) => ({ dataPath, title: "", showQueue: true }),
+    createInitialData: () => ({
+      now_playing_id: null,
+      items: [],
+      shuffle: false,
+      repeat: "off",
+    }),
+  }),
+  gridDef({
     type: "section",
     dataPathPrefix: "section",
     addLabelKey: "dashboard:addSection",

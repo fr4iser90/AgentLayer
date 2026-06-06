@@ -8,6 +8,7 @@ import { GalleryBlockBody } from "./gallery/GalleryBlockBody";
 import { formatDateTimeLocal } from "../../lib/formatDateTime";
 import type { UiBlock, UiLayout } from "./types";
 import { EmbedBlockBody } from "./EmbedBlock";
+import { MediaPlayerBlockBody } from "./MediaPlayerBlock";
 import { KanbanBlockBody, RichMarkdownBlockBody } from "./KanbanRichMarkdownBlocks";
 import { ChartBlockBody, SparklineBlockBody } from "./chart/ChartBlockViews";
 import { CardGridBlockBody } from "./CardGridBlock";
@@ -704,6 +705,19 @@ function BlockView(props: {
         setData={setData}
         sectionTitle={block.props.title || "Embed"}
         readOnly={readOnly}
+      />
+    );
+  }
+
+  if (block.type === "media_player") {
+    return (
+      <MediaPlayerBlockBody
+        dp={dp}
+        data={data}
+        setData={setData}
+        sectionTitle={block.props.title || t("dashboard:mediaPlayerFallback")}
+        readOnly={readOnly}
+        dashboardId={dashboardId}
       />
     );
   }

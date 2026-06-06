@@ -18,8 +18,16 @@ tool_domains:
   - secrets
   - agent_tasks
   - dashboard
+  - media
   - tool_help
   - shared
+pinned_tools:
+  - media_list
+  - media_quota
+  - media_enqueue
+  - media_add_stream
+  - media_add_embed
+  - media_set_now_playing
 tool_capability_any:
   - coding.read
   - coding.lsp

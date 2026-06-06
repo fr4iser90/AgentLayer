@@ -86,6 +86,7 @@ _BLOCK_TYPES = frozenset({
     "sparkline",
     "kanban",
     "embed",
+    "media_player",
     "section",
     "schedules",
     "card_grid",
@@ -105,6 +106,7 @@ _BLOCK_PREFIX = {
     "kanban": "kanban",
     "rich_markdown": "rich_md",
     "embed": "embed",
+    "media_player": "media_queue",
     "section": "section",
     "schedules": "schedules",
     "card_grid": "cards",
@@ -217,6 +219,15 @@ def _default_data_for_block(block_type: str, data_path: str) -> dict[str, Any]:
         }
     if block_type == "embed":
         return {data_path: {"url": "", "title": ""}}
+    if block_type == "media_player":
+        return {
+            data_path: {
+                "now_playing_id": None,
+                "items": [],
+                "shuffle": False,
+                "repeat": "off",
+            }
+        }
     if block_type == "section":
         return {}
     if block_type == "schedules":
@@ -1072,7 +1083,7 @@ TOOLS: list[dict[str, Any]] = [
                         "type": "string",
                         "TOOL_DESCRIPTION": (
                             "Legacy mirror — use template_id instead. "
-                            "e.g. pets, projects, ideas, shopping_list, todo, feeds, friends, photo_album, personal_dashboard, custom"
+                            "e.g. pets, projects, ideas, shopping_list, todo, feeds, friends, photo_album, media_station, personal_dashboard, custom"
                         ),
                     },
                     "title": {

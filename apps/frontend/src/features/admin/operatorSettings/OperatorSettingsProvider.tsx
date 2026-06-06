@@ -36,6 +36,16 @@ function useOperatorSettingsState() {
   const [uploadMime, setUploadMime] = useState("");
   const [uploadEffBytes, setUploadEffBytes] = useState<number | null>(null);
   const [uploadEffMime, setUploadEffMime] = useState<string[]>([]);
+  const [mediaLibraryEnabled, setMediaLibraryEnabled] = useState(false);
+  const [mediaUserUploadEnabled, setMediaUserUploadEnabled] = useState(false);
+  const [mediaSharingEnabled, setMediaSharingEnabled] = useState(false);
+  const [mediaDefaultQuotaMb, setMediaDefaultQuotaMb] = useState("");
+  const [mediaUploadMaxMb, setMediaUploadMaxMb] = useState("");
+  const [mediaUploadMime, setMediaUploadMime] = useState("");
+  const [mediaEmbedHosts, setMediaEmbedHosts] = useState("");
+  const [mediaEffUploadBytes, setMediaEffUploadBytes] = useState<number | null>(null);
+  const [mediaEffUploadMime, setMediaEffUploadMime] = useState<string[]>([]);
+  const [mediaEffDefaultQuotaMb, setMediaEffDefaultQuotaMb] = useState<number | null>(null);
   const [extLlmEndpoints, setExtLlmEndpoints] = useState<ExternalLlmEndpointUI[]>([]);
   const [llmSmartRouting, setLlmSmartRouting] = useState(false);
   const [llmRouterModel, setLlmRouterModel] = useState("nemotron-3-nano:4b");
@@ -169,6 +179,30 @@ function useOperatorSettingsState() {
         Array.isArray(op.dashboard_upload_effective_allowed_mime)
           ? op.dashboard_upload_effective_allowed_mime
           : []
+      );
+      setMediaLibraryEnabled(!!op.media_library_enabled);
+      setMediaUserUploadEnabled(!!op.media_user_upload_enabled);
+      setMediaSharingEnabled(!!op.media_sharing_enabled);
+      setMediaDefaultQuotaMb(
+        op.media_default_user_quota_mb != null && Number.isFinite(Number(op.media_default_user_quota_mb))
+          ? String(op.media_default_user_quota_mb)
+          : ""
+      );
+      setMediaUploadMaxMb(
+        op.media_upload_max_file_mb != null && Number.isFinite(Number(op.media_upload_max_file_mb))
+          ? String(op.media_upload_max_file_mb)
+          : ""
+      );
+      setMediaUploadMime((op.media_upload_allowed_mime ?? "").trim());
+      setMediaEmbedHosts((op.media_embed_allowed_hosts ?? "").trim());
+      setMediaEffUploadBytes(
+        typeof op.media_effective_upload_max_bytes === "number" ? op.media_effective_upload_max_bytes : null
+      );
+      setMediaEffUploadMime(
+        Array.isArray(op.media_effective_upload_allowed_mime) ? op.media_effective_upload_allowed_mime : []
+      );
+      setMediaEffDefaultQuotaMb(
+        typeof op.media_effective_default_quota_mb === "number" ? op.media_effective_default_quota_mb : null
       );
       setLlmSmartRouting(!!op.llm_smart_routing_enabled);
       setLlmRouterModel((op.llm_router_model ?? "nemotron-3-nano:4b").trim() || "nemotron-3-nano:4b");
@@ -609,6 +643,33 @@ function useOperatorSettingsState() {
       patch.workspace_reindex_after_git_pull = workspaceReindexAfterGitPull;
       patch.workspace_nightly_reindex_enabled = workspaceNightlyReindexEnabled;
       patch.workspace_index_on_attach_enabled = workspaceIndexOnAttachEnabled;
+      patch.media_library_enabled = mediaLibraryEnabled;
+      patch.media_user_upload_enabled = mediaUserUploadEnabled;
+      patch.media_sharing_enabled = mediaSharingEnabled;
+      const mdq = mediaDefaultQuotaMb.trim();
+      if (mdq === "") {
+        patch.media_default_user_quota_mb = null;
+      } else {
+        const n = Number(mdq);
+        if (!Number.isFinite(n) || n < 1) {
+          setSaveMsg({ ok: false, text: t("admin:operatorSaveMediaQuotaInvalid") });
+          return;
+        }
+        patch.media_default_user_quota_mb = Math.min(50_000, Math.floor(n));
+      }
+      const mum = mediaUploadMaxMb.trim();
+      if (mum === "") {
+        patch.media_upload_max_file_mb = null;
+      } else {
+        const n = Number(mum);
+        if (!Number.isFinite(n) || n < 1) {
+          setSaveMsg({ ok: false, text: t("admin:operatorSaveMediaUploadInvalid") });
+          return;
+        }
+        patch.media_upload_max_file_mb = Math.min(512, Math.floor(n));
+      }
+      patch.media_upload_allowed_mime = mediaUploadMime.trim() === "" ? null : mediaUploadMime.trim();
+      patch.media_embed_allowed_hosts = mediaEmbedHosts.trim() === "" ? null : mediaEmbedHosts.trim();
       const mgHops = Number(memGraphMaxHops.trim());
       const mgScore = Number(memGraphMinScore.trim());
       const mgBullets = Number(memGraphMaxBullets.trim());
@@ -808,6 +869,23 @@ function useOperatorSettingsState() {
     setUploadMime,
     uploadEffBytes,
     uploadEffMime,
+    mediaLibraryEnabled,
+    setMediaLibraryEnabled,
+    mediaUserUploadEnabled,
+    setMediaUserUploadEnabled,
+    mediaSharingEnabled,
+    setMediaSharingEnabled,
+    mediaDefaultQuotaMb,
+    setMediaDefaultQuotaMb,
+    mediaUploadMaxMb,
+    setMediaUploadMaxMb,
+    mediaUploadMime,
+    setMediaUploadMime,
+    mediaEmbedHosts,
+    setMediaEmbedHosts,
+    mediaEffUploadBytes,
+    mediaEffUploadMime,
+    mediaEffDefaultQuotaMb,
     extLlmEndpoints,
     setExtLlmEndpoints,
     llmSmartRouting,

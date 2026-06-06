@@ -1,0 +1,77 @@
+"""System prompt snippet so agents know how to use the media library from chat."""
+
+from __future__ import annotations
+
+import uuid
+from typing import Any
+
+from apps.backend.dashboard import db as dashboard_db
+from apps.backend.media import media_db, media_policy
+
+
+def build_media_library_context_snippet(
+    *,
+    user_id: uuid.UUID | None,
+    tenant_id: int | None,
+    ingested_audio: list[dict[str, Any]] | None = None,
+) -> str:
+    if user_id is None or tenant_id is None:
+        return ""
+    if not media_db.media_tables_exist():
+        return ""
+    if not media_policy.effective_media_library_enabled(user_id=user_id):
+        return (
+            "Media library is disabled by the operator. Tell the user to enable it under "
+            "Admin → Interfaces → Platform (media library + uploads)."
+        )
+
+    snap = media_policy.media_quota_snapshot(user_id=user_id, tenant_id=tenant_id)
+    boards = dashboard_db.dashboard_list(user_id, tenant_id, limit=40)
+    media_boards = [b for b in boards if (b.get("kind") or "").strip() == "media_station"]
+    has_player = False
+    for b in boards:
+        ul = b.get("ui_layout") if isinstance(b.get("ui_layout"), dict) else {}
+        blocks = ul.get("blocks") if isinstance(ul.get("blocks"), list) else []
+        for bl in blocks:
+            if isinstance(bl, dict) and str(bl.get("type") or "").strip() == "media_player":
+                has_player = True
+                break
+        if has_player:
+            break
+
+    lines = [
+        "## Media library (music / radio / queue)",
+        "You have media_* tools when this agent includes the media domain.",
+        "Workflow:",
+        "1. media_quota — check library_enabled, upload_enabled, remaining_bytes.",
+        "2. media_list — list uploads, embeds, and external_link streams in the user's library "
+        "(reuse saved streams; do not web_search again if already in the library).",
+        "3. User MP3/audio in chat: attachments are auto-ingested to the library; use media_enqueue with media_item_id.",
+        "4. YouTube/Vimeo: media_add_embed or media_enqueue with external_url (embed allowlist).",
+        "5. Internet radio / HTTPS stream (MDR Jump, icecast): use web_search to find the official "
+        "HTTPS stream URL, then media_add_stream and media_enqueue with play_now=true "
+        "(stream host must be allowlisted).",
+        "6. media_enqueue updates a dashboard media_player queue; playback continues in the app footer mini-player for uploads and streams.",
+        "7. dashboard_id: omit when the user has exactly one board; prefer a media_station board when several exist.",
+        "No YouTube downloading. Do not claim you lack audio tools when media_* are available.",
+    ]
+    lines.append(
+        f"Quota: used {snap.get('used_bytes', 0)} / {snap.get('quota_bytes', 0)} bytes; "
+        f"upload_enabled={snap.get('upload_enabled')}."
+    )
+    if media_boards:
+        titles = ", ".join(
+            f"{b.get('title') or 'Media station'} ({b.get('id')})" for b in media_boards[:5]
+        )
+        lines.append(f"Media-station dashboards: {titles}.")
+    elif not has_player:
+        lines.append(
+            "User may need a dashboard with a media_player block (template media_station-v1) before enqueue works."
+        )
+    if ingested_audio:
+        lines.append("Just ingested from this message:")
+        for it in ingested_audio:
+            lines.append(
+                f"- {it.get('title')}: media_item_id={it.get('media_item_id')} — enqueue with play_now=true."
+            )
+    return "\n".join(lines)

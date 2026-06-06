@@ -8,12 +8,19 @@ min_role: user
 tool_discipline_preset: dashboard
 tool_domains:
   - dashboard
+  - media
   - github
   - security_scan
   - workspace
   - agent_tasks
 pinned_tools:
   - dashboard.read
+  - media_list
+  - media_quota
+  - media_enqueue
+  - media_add_stream
+  - media_add_embed
+  - media_set_now_playing
   - list_append
   - list_update
   - resolve
