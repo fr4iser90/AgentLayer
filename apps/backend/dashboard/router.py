@@ -22,6 +22,11 @@ from apps.backend.dashboard.block_ref import render_block_from_dashboard
 from apps.backend.dashboard.bootstrap import ensure_dashboard_schema, dashboard_tables_exist
 from apps.backend.dashboard.pins import pin_block_to_dashboard
 from apps.backend.dashboard.template_ops import export_template_payload, validate_template_import
+from apps.backend.dashboard.layout_proposals import (
+    apply_layout_proposal,
+    get_latest_proposal_set,
+    get_proposal_set,
+)
 from apps.backend.dashboard.projects_import import import_repos_into_projects_dashboard
 from apps.backend.dashboard.setup import attach_onboarding, onboarding_for_kind
 from apps.backend.dashboard.upload_bytes import normalized_content_type, sniff_image_mime
@@ -692,6 +697,65 @@ async def pin_dashboard_block(
             detail="could not pin (check edit access on target and read access on source block)",
         )
     return result
+
+
+@router.get("/{dashboard_id}/layout-proposals/active")
+async def get_active_layout_proposals(request: Request, dashboard_id: uuid.UUID):
+    """Latest non-expired layout proposal set for this user and dashboard."""
+    _require_schema()
+    user = await get_current_user(request)
+    tid = db.user_tenant_id(user.id)
+    row = dashboard_db.dashboard_get(user.id, tid, dashboard_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="dashboard not found")
+    pset = get_latest_proposal_set(tenant_id=tid, user_id=user.id, dashboard_id=dashboard_id)
+    if pset is None:
+        return {"ok": True, "proposal_set": None}
+    return {"ok": True, "proposal_set": pset.to_dict(include_layouts=True)}
+
+
+@router.get("/{dashboard_id}/layout-proposals/{set_id}")
+async def get_layout_proposal_set(
+    request: Request, dashboard_id: uuid.UUID, set_id: str
+):
+    _require_schema()
+    user = await get_current_user(request)
+    tid = db.user_tenant_id(user.id)
+    row = dashboard_db.dashboard_get(user.id, tid, dashboard_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="dashboard not found")
+    pset = get_proposal_set(
+        tenant_id=tid,
+        user_id=user.id,
+        dashboard_id=dashboard_id,
+        set_id=set_id.strip(),
+    )
+    if pset is None:
+        raise HTTPException(status_code=404, detail="proposal set not found or expired")
+    return {"ok": True, "proposal_set": pset.to_dict(include_layouts=True)}
+
+
+@router.post("/{dashboard_id}/layout-proposals/{set_id}/{proposal_id}/apply")
+async def apply_layout_proposal_endpoint(
+    request: Request,
+    dashboard_id: uuid.UUID,
+    set_id: str,
+    proposal_id: str,
+):
+    _require_schema()
+    user = await get_current_user(request)
+    tid = db.user_tenant_id(user.id)
+    updated, err = apply_layout_proposal(
+        tenant_id=tid,
+        user_id=user.id,
+        dashboard_id=dashboard_id,
+        set_id=set_id.strip(),
+        proposal_id=proposal_id.strip(),
+    )
+    if err:
+        code = 404 if "not found" in err.lower() else 400
+        raise HTTPException(status_code=code, detail=err)
+    return {"ok": True, "dashboard": attach_onboarding(updated, _preferred_lang(request))}
 
 
 @router.get("/{dashboard_id}")

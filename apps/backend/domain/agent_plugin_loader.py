@@ -53,6 +53,10 @@ def definition_from_yaml(agent_dir: Path, yaml_path: Path) -> dict[str, Any] | N
         return None
 
     tool_domains = [d.lower() for d in _as_str_list(data.get("tool_domains"))]
+    pinned_tools = [str(x).strip() for x in _as_str_list(data.get("pinned_tools")) if str(x).strip()]
+    prefer_full = [
+        str(x).strip() for x in _as_str_list(data.get("tool_forward_prefer_full_schema")) if str(x).strip()
+    ]
     tool_capability_any = _as_str_list(data.get("tool_capability_any"))
     preset_val = data.get("tool_discipline_preset")
     preset_norm = str(preset_val).strip().lower() if preset_val else None
@@ -86,6 +90,8 @@ def definition_from_yaml(agent_dir: Path, yaml_path: Path) -> dict[str, Any] | N
         "coding_tools_permission_ask": bool(data.get("coding_tools_permission_ask", False)),
         "tool_discipline_preset": preset_norm,
         "tool_domains": tool_domains,
+        "pinned_tools": pinned_tools,
+        "tool_forward_prefer_full_schema": prefer_full,
         "tool_capability_any": tool_capability_any,
         "tool_include_introspection": bool(data.get("tool_include_introspection", False)),
         "source_kind": "yaml",

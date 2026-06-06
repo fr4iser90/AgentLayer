@@ -401,6 +401,7 @@ export function DashboardGridCanvas(props: {
   editMode: boolean;
   contentReadOnly?: boolean;
   dashboardId?: string | null;
+  hideToolbar?: boolean;
   onPinBlock?: (blockId: string) => void;
   unreadBlockIds?: Set<string>;
   highlightBlockId?: string | null;

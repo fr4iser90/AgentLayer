@@ -167,6 +167,12 @@
   "noModels": "Keine Modelle.",
   "embeddedChatEmptyWithThread": "Stell Fragen oder hänge Bilder an (+) — gleiche multimodale Messages wie im Haupt-Chat.",
   "embeddedChatEmptyNoThread": "Noch keine Konversation — sende unten, um deinen privaten Thread zu erstellen (erste Nachricht wird gespeichert).",
+  "embeddedChatSlowHint": "Noch aktiv — große Layout-Vorschläge können bei lokalen Modellen einige Minuten dauern.",
+  "embeddedChatThreadLabel": "Konversation",
+  "embeddedChatDraftThread": "Neue Konversation (noch nicht gespeichert)",
+  "embeddedChatUntitledThread": "Unbenannter Chat",
+  "embeddedChatNewThread": "Neuer Chat",
+  "embeddedChatNewThreadHint": "Weiteren privaten Assistenten-Thread starten. Zwischen Threads oben in der Liste wechseln.",
   "you": "Du",
   "assistant": "Assistant",
   "attachmentSkip": " (skip)",
@@ -383,6 +389,19 @@
   "publicSharePasswordPlaceholder": "Passwort",
   "publicShareWrongPassword": "Falsches Passwort.",
   "publicShareUnlock": "Anzeigen",
-  "publicGallerySection": "Album {{n}}"
+  "publicGallerySection": "Album {{n}}",
+  "layoutProposalsTitle": "Layout-Vorschau",
+  "layoutProposalsSubtitle": "Große Vorschau — hier übernehmen oder schließen und die Karten im Chat nutzen.",
+  "layoutProposalsInlineHint": "Layout-Optionen",
+  "layoutProposalsLoading": "Vorschau wird geladen…",
+  "layoutProposalsEnlarge": "Große Vorschau für {{title}}",
+  "layoutProposalsEnlargeShort": "Vorschau",
+  "layoutProposalsApplyConfirm": "Bestätigen",
+  "layoutProposalsClose": "Schließen",
+  "layoutProposalsApply": "Layout übernehmen",
+  "layoutProposalsCancel": "Abbrechen",
+  "layoutProposalsConfirm": "Live-Layout durch „{{title}}“ ersetzen?",
+  "layoutProposalsEmpty": "Keine Vorschläge in diesem Set (evtl. abgelaufen).",
+  "layoutProposalsInvalid": "Vorschlags-Layouts konnten nicht geladen werden."
 }
 

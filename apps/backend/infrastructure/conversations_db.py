@@ -507,24 +507,6 @@ def conversation_create(
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT id FROM chat_conversations
-                    WHERE dashboard_id = %s AND shared = true
-                    LIMIT 1
-                    """,
-                    (dashboard_id,),
-                )
-                existing = cur.fetchone()
-                if existing is not None:
-                    eid = existing[0]
-                    if not isinstance(eid, uuid.UUID):
-                        eid = uuid.UUID(str(eid))
-                    conn.commit()
-                    got = conversation_get(user_id, eid)
-                    if got:
-                        return got
-                    raise RuntimeError("conversation_create: existing shared row invisible")
-                cur.execute(
-                    """
                     SELECT owner_user_id, tenant_id FROM user_dashboards
                     WHERE id = %s AND tenant_id = %s
                     """,

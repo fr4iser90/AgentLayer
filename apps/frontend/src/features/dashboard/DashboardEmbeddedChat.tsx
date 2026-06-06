@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
-import { apiFetch } from "../../lib/api";
 import {
   applyModelCatalogSelection,
   defaultModelCatalogSelectValue,
@@ -18,6 +17,7 @@ import {
   createConversation,
   fetchConversationDetail,
   fetchConversationList,
+  mapListItemToThread,
   putConversation,
 } from "../chat/conversationsApi";
 import { getDisabledToolNames } from "../settings/toolPrefs";
@@ -28,42 +28,44 @@ import {
   parseContentParts,
   toApiContent,
 } from "../chat/messageFormat";
-import { streamOpenAiChatChunks } from "../chat/openaiSseStream";
-
-function assistantFromCompletion(data: unknown): string {
-  if (!data || typeof data !== "object") return "";
-  const d = data as {
-    choices?: Array<{ message?: { content?: unknown } }>;
-  };
-  const c = d.choices?.[0]?.message?.content;
-  if (typeof c === "string") return c;
-  if (Array.isArray(c)) {
-    return c
-      .map((part: unknown) => {
-        if (part && typeof part === "object" && "text" in part) {
-          return String((part as { text?: string }).text ?? "");
-        }
-        return "";
-      })
-      .join("");
-  }
-  return "";
-}
+import { runDashboardAgentTurn } from "./dashboardAgentWs";
+import { sanitizeDashboardAssistantText } from "./dashboardChatDisplay";
+import { DashboardLayoutProposalInline } from "./DashboardLayoutProposalInline";
+import { DashboardLayoutProposalPanel } from "./DashboardLayoutProposalPanel";
+import { fetchActiveLayoutProposalSet } from "./layoutProposalShared";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
-/** Which dashboard-scoped conversation to open in this panel. */
-function pickDashboardConversationRow(
-  list: { id?: unknown; shared?: boolean }[],
+function dashboardThreadsForPanel(
+  list: Record<string, unknown>[],
   readOnly: boolean
-): { id?: unknown; shared?: boolean } {
-  if (list.length === 0) return {};
+): ChatThread[] {
+  const mapped = list.map(mapListItemToThread);
+  const filtered = readOnly ? mapped.filter((t) => t.shared === true) : mapped;
+  return [...filtered].sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+function pickDefaultDashboardThread(threads: ChatThread[], readOnly: boolean): ChatThread | null {
+  if (threads.length === 0) return null;
   if (readOnly) {
-    const shared = list.find((x) => x.shared === true);
-    return shared ?? list[0]!;
+    return threads.find((t) => t.shared === true) ?? threads[0]!;
   }
-  const personal = list.find((x) => x.shared !== true);
-  return personal ?? list.find((x) => x.shared === true) ?? list[0]!;
+  return threads.find((t) => t.shared !== true) ?? threads[0]!;
+}
+
+function formatThreadOptionLabel(
+  row: ChatThread,
+  labels: { shared: string; personal: string; untitled: string }
+): string {
+  const prefix =
+    row.shared === true
+      ? `${labels.shared}: `
+      : row.dashboardId
+        ? `${labels.personal}: `
+        : "";
+  const title = row.title.trim() || labels.untitled;
+  const n = row.messageCount ?? row.messages.length;
+  return n > 0 ? `${prefix}${title} (${n})` : `${prefix}${title}`;
 }
 
 function formatUserBubbleForList(raw: string): string {
@@ -89,12 +91,18 @@ type Props = {
   composeDraft?: string;
   /** Increment to push ``composeDraft`` into the textarea again. */
   composeDraftSeed?: number;
+  /** Live dashboard data for layout preview cards. */
+  dashboardData?: Record<string, unknown>;
+  /** From notification / URL ``?proposals=`` — shows inline cards, no auto-modal. */
+  initialProposalSetId?: string | null;
+  /** After user applies a layout proposal. */
+  onLayoutApplied?: () => void;
 };
 
 /**
  * Dashboard assistant: **personal** thread by default (only you). A **shared** team thread is optional:
  * create via API (`POST /v1/user/conversations` with `dashboard_id` + `shared: true`) if all members should see it.
- * Same completion API + `agent_dashboard_context` as the full Chat page.
+ * Agent WebSocket (tools enabled) + `agent_dashboard_context`, same as full Chat agent mode.
  */
 export function DashboardEmbeddedChat({
   dashboardId,
@@ -102,8 +110,11 @@ export function DashboardEmbeddedChat({
   readOnly = false,
   composeDraft,
   composeDraftSeed = 0,
+  dashboardData = {},
+  initialProposalSetId = null,
+  onLayoutApplied,
 }: Props) {
-  const { t } = useTranslation(["dashboard", "errors"]);
+  const { t } = useTranslation(["dashboard", "errors", "chat"]);
   const auth = useAuth();
   const { accessToken } = auth;
   const [open, setOpen] = useState(true);
@@ -116,27 +127,47 @@ export function DashboardEmbeddedChat({
   const [draft, setDraft] = useState("");
   const [sendLoading, setSendLoading] = useState(false);
   const [sendErr, setSendErr] = useState<string | null>(null);
+  const [sendSlowHint, setSendSlowHint] = useState<string | null>(null);
+  const [newChatBusy, setNewChatBusy] = useState(false);
+  const [threadSwitchBusy, setThreadSwitchBusy] = useState(false);
+  const [threadOptions, setThreadOptions] = useState<ChatThread[]>([]);
   const [noSharedChatYet, setNoSharedChatYet] = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const [modelBeforeFirstSend, setModelBeforeFirstSend] = useState("");
   const lastModelSelectionRef = useRef("");
   const endRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [activeProposalSetId, setActiveProposalSetId] = useState<string | null>(null);
+  const [enlargeProposalId, setEnlargeProposalId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialProposalSetId?.trim()) {
+      setActiveProposalSetId(initialProposalSetId.trim());
+      return;
+    }
+    if (readOnly) return;
+    let cancelled = false;
+    void (async () => {
+      const ps = await fetchActiveLayoutProposalSet(auth, dashboardId);
+      if (cancelled || !ps?.set_id) return;
+      setActiveProposalSetId(ps.set_id);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [auth, dashboardId, initialProposalSetId, readOnly]);
+
+  const handleLayoutApplied = useCallback(() => {
+    setActiveProposalSetId(null);
+    setEnlargeProposalId(null);
+    onLayoutApplied?.();
+  }, [onLayoutApplied]);
 
   useEffect(() => {
     if (!composeDraftSeed || !composeDraft?.trim()) return;
     setDraft(composeDraft);
     setOpen(true);
   }, [composeDraft, composeDraftSeed]);
-
-  const models = useMemo(() => modelRows.map((r) => r.id), [modelRows]);
-
-  const payloadBase = useMemo(
-    () => ({
-      agent_dashboard_context: { dashboard_id: dashboardId },
-    }),
-    [dashboardId]
-  );
 
   useEffect(() => {
     let cancelled = false;
@@ -162,6 +193,14 @@ export function DashboardEmbeddedChat({
     };
   }, []);
 
+  const reloadThreadOptions = useCallback(async () => {
+    if (!accessToken || !dashboardId) return [] as ChatThread[];
+    const list = await fetchConversationList(auth, { dashboardId });
+    const options = dashboardThreadsForPanel(list, readOnly);
+    setThreadOptions(options);
+    return options;
+  }, [accessToken, auth, dashboardId, readOnly]);
+
   useEffect(() => {
     if (!accessToken || !dashboardId) {
       setInitLoading(false);
@@ -171,20 +210,15 @@ export function DashboardEmbeddedChat({
     setInitLoading(true);
     setInitErr(null);
     setThread(null);
+    setThreadOptions([]);
     setNoSharedChatYet(false);
     void (async () => {
       try {
-        const list = await fetchConversationList(auth, { dashboardId });
+        const options = await reloadThreadOptions();
         if (cancelled) return;
-        if (list.length > 0) {
-          // Viewers: prefer the shared team thread if present. Editors: prefer personal (private) thread.
-          const row = pickDashboardConversationRow(
-            list as { id?: unknown; shared?: boolean }[],
-            readOnly
-          ) as { id?: string };
-          const id = String(row.id ?? "");
-          if (!id) throw new Error("missing conversation id");
-          const full = await fetchConversationDetail(auth, id);
+        const pick = pickDefaultDashboardThread(options, readOnly);
+        if (pick?.id) {
+          const full = await fetchConversationDetail(auth, pick.id);
           if (cancelled) return;
           setThread(full);
           return;
@@ -206,7 +240,41 @@ export function DashboardEmbeddedChat({
     return () => {
       cancelled = true;
     };
-  }, [accessToken, auth, readOnly, dashboardId, dashboardTitle]);
+  }, [accessToken, auth, readOnly, dashboardId, reloadThreadOptions]);
+
+  const switchDashboardThread = useCallback(
+    async (conversationId: string) => {
+      if (sendLoading || newChatBusy || threadSwitchBusy) return;
+      if (!conversationId) {
+        if (readOnly) return;
+        setThread(null);
+        setDraft("");
+        setPendingAttachments([]);
+        setSendErr(null);
+        setSendSlowHint(null);
+        setActiveProposalSetId(null);
+        setEnlargeProposalId(null);
+        return;
+      }
+      if (thread?.id === conversationId) return;
+      setThreadSwitchBusy(true);
+      setSendErr(null);
+      setSendSlowHint(null);
+      try {
+        const full = await fetchConversationDetail(auth, conversationId);
+        setThread(full);
+        setDraft("");
+        setPendingAttachments([]);
+        setActiveProposalSetId(null);
+        setEnlargeProposalId(null);
+      } catch (e) {
+        setSendErr(e instanceof Error ? e.message : String(e));
+      } finally {
+        setThreadSwitchBusy(false);
+      }
+    },
+    [auth, newChatBusy, readOnly, sendLoading, thread?.id, threadSwitchBusy]
+  );
 
   const messages: Msg[] = useMemo(() => {
     if (!thread) return [];
@@ -229,7 +297,7 @@ export function DashboardEmbeddedChat({
     if (open && endRef.current) {
       endRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages, open, sendLoading]);
+  }, [messages, open, sendLoading, activeProposalSetId]);
 
   const defaultSelectValue = useMemo(
     () => defaultModelCatalogSelectValue(modelRows),
@@ -270,6 +338,69 @@ export function DashboardEmbeddedChat({
     [modelRows]
   );
 
+  const startNewDashboardChat = useCallback(async () => {
+    if (readOnly || sendLoading || newChatBusy || !accessToken) return;
+    const routed = resolveSendModelRouting(modelRows, {
+      lastSelection: lastModelSelectionRef.current,
+      modelSelectValue,
+      defaultSelectValue,
+      threadModel: (thread?.model || modelBeforeFirstSend || modelRows[0]?.id || "").trim(),
+      threadProvider: thread?.modelProvider,
+    });
+    if (!routed) {
+      setSendErr(t("dashboard:resolveModelProviderFailed"));
+      return;
+    }
+    const mdl = routed.model;
+    const provider = routed.provider;
+    const title = dashboardTitle?.trim()
+      ? t("dashboard:assistantTitleWithDashboard", { title: dashboardTitle.trim() })
+      : t("dashboard:assistantTitleFallback");
+    setNewChatBusy(true);
+    setSendErr(null);
+    setSendSlowHint(null);
+    try {
+      const created = await createConversation(auth, {
+        title,
+        mode: "chat",
+        model: mdl,
+        messages: [],
+        agent_log: [],
+        dashboard_id: dashboardId,
+        shared: false,
+        model_catalog_owned_by: provider,
+      });
+      lastModelSelectionRef.current = routed.selectValue;
+      setThread({ ...created, model: mdl, modelProvider: provider });
+      setDraft("");
+      setPendingAttachments([]);
+      setActiveProposalSetId(null);
+      setEnlargeProposalId(null);
+      setModelBeforeFirstSend(routed.selectValue);
+      await reloadThreadOptions();
+    } catch (e) {
+      setSendErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setNewChatBusy(false);
+    }
+  }, [
+    accessToken,
+    auth,
+    dashboardId,
+    dashboardTitle,
+    defaultSelectValue,
+    modelBeforeFirstSend,
+    modelRows,
+    modelSelectValue,
+    newChatBusy,
+    readOnly,
+    sendLoading,
+    t,
+    reloadThreadOptions,
+    thread?.model,
+    thread?.modelProvider,
+  ]);
+
   const send = useCallback(async () => {
     if (readOnly) return;
     const userContent = buildUserMessageContent(draft, pendingAttachments);
@@ -307,6 +438,7 @@ export function DashboardEmbeddedChat({
         });
         prev = { ...created, model: mdl, modelProvider: provider };
         setThread(prev);
+        void reloadThreadOptions();
       } catch (e) {
         setSendErr(e instanceof Error ? e.message : String(e));
         return;
@@ -329,6 +461,8 @@ export function DashboardEmbeddedChat({
     const attachSnap = pendingAttachments;
     setDraft("");
     setPendingAttachments([]);
+    setSendErr(null);
+    setSendSlowHint(null);
     setSendLoading(true);
     try {
       await putConversation(auth, nextThread);
@@ -342,84 +476,51 @@ export function DashboardEmbeddedChat({
     }
     try {
       const disabledTools = getDisabledToolNames();
-      const payload = {
+      const assistantCreatedAt = Date.now();
+      const content = await runDashboardAgentTurn({
+        accessToken: accessToken!,
         model: mdl,
+        provider,
         messages: nextMessages.map((x) => ({
           role: x.role,
           content: toApiContent(x.content),
         })),
-        stream: true,
-        agent_id: "dashboard",
-        agent_plain_completion: true,
-        stream_options: { include_usage: true },
-        ...payloadBase,
-        ...(disabledTools.length ? { agent_disabled_tools: disabledTools } : {}),
-        agent_model_catalog_owned_by: provider,
-      };
-      const res = await apiFetch("/v1/chat/completions", auth, {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        let detail = res.statusText;
-        try {
-          const errBody = (await res.json()) as { detail?: unknown };
-          if (errBody.detail != null) detail = String(errBody.detail);
-        } catch {
-          /* */
-        }
-        setSendErr(detail);
-        setThread(nextThread);
-        setDraft(draftSnap);
-        setPendingAttachments(attachSnap);
-        setSendLoading(false);
-        return;
-      }
-      const ctype = (res.headers.get("content-type") || "").toLowerCase();
-      if (ctype.includes("text/event-stream")) {
-        let acc = "";
-        const assistantCreatedAt = Date.now();
-        try {
-          for await (const chunk of streamOpenAiChatChunks(res)) {
-            if (chunk.kind === "usage") continue;
-            acc += chunk.text;
-            setThread({
-              ...nextThread,
-              messages: [...nextMessages, { role: "assistant", content: acc, createdAt: assistantCreatedAt }],
-              updatedAt: Date.now(),
-            });
+        dashboardId,
+        conversationId: nextThread.id,
+        disabledTools,
+        onSlow: () => {
+          setSendSlowHint(t("dashboard:embeddedChatSlowHint"));
+        },
+        onDelta: (acc) => {
+          const clean = sanitizeDashboardAssistantText(acc);
+          setThread({
+            ...nextThread,
+            messages: [...nextMessages, { role: "assistant", content: clean, createdAt: assistantCreatedAt }],
+            updatedAt: Date.now(),
+          });
+        },
+        onToolDone: (ev) => {
+          const isPropose =
+            ev.name === "propose_layouts" ||
+            ev.name === "dashboard.propose_layouts" ||
+            ev.name.endsWith(".propose_layouts");
+          if (isPropose && ev.proposalSetId && ev.ok !== false) {
+            setActiveProposalSetId(ev.proposalSetId);
           }
-        } catch (streamErr) {
-          setSendErr(streamErr instanceof Error ? streamErr.message : String(streamErr));
-          setThread(nextThread);
-          setDraft(draftSnap);
-          setPendingAttachments(attachSnap);
-          setSendLoading(false);
-          return;
-        }
-        const withAssistant: ChatThread = {
-          ...nextThread,
-          messages: [
-            ...nextMessages,
-            { role: "assistant", content: acc.trim() || "(empty)", createdAt: assistantCreatedAt },
-          ],
-          updatedAt: Date.now(),
-        };
-        setThread(withAssistant);
-        await putConversation(auth, withAssistant);
-      } else {
-        const data = await res.json();
-        const content = assistantFromCompletion(data);
-        const withAssistant: ChatThread = {
-          ...nextThread,
-          messages: content.trim()
-            ? [...nextMessages, { role: "assistant", content, createdAt: Date.now() }]
-            : nextMessages,
-          updatedAt: Date.now(),
-        };
-        setThread(withAssistant);
-        await putConversation(auth, withAssistant);
-      }
+        },
+      });
+      const finalContent = sanitizeDashboardAssistantText(content.trim() || "(empty)");
+      const withAssistant: ChatThread = {
+        ...nextThread,
+        messages: [
+          ...nextMessages,
+          { role: "assistant", content: finalContent || "(empty)", createdAt: assistantCreatedAt },
+        ],
+        updatedAt: Date.now(),
+      };
+      setThread(withAssistant);
+      await putConversation(auth, withAssistant);
+      void reloadThreadOptions();
     } catch (e) {
       setSendErr(e instanceof Error ? e.message : String(e));
       setThread(nextThread);
@@ -437,14 +538,17 @@ export function DashboardEmbeddedChat({
     modelBeforeFirstSend,
     pendingAttachments,
     modelRows,
-    payloadBase,
     readOnly,
     sendLoading,
     thread,
     dashboardId,
     dashboardTitle,
+    reloadThreadOptions,
     t,
   ]);
+
+  const showThreadPicker =
+    !initLoading && (readOnly ? threadOptions.length > 0 : !noSharedChatYet);
 
   const hasComposerPayload =
     draft.trim().length > 0 ||
@@ -476,11 +580,24 @@ export function DashboardEmbeddedChat({
       </button>
       {open ? (
         <div className="flex min-h-0 flex-1 flex-col border-t border-surface-border">
-          <p className="shrink-0 px-3 pt-2 text-[11px] leading-snug text-surface-muted">
-            {readOnly
-              ? t("dashboard:embeddedChatTeamHint")
-              : t("dashboard:embeddedChatPrivateHint")}
-          </p>
+          <div className="flex shrink-0 items-start justify-between gap-2 px-3 pt-2">
+            <p className="min-w-0 flex-1 text-[11px] leading-snug text-surface-muted">
+              {readOnly
+                ? t("dashboard:embeddedChatTeamHint")
+                : t("dashboard:embeddedChatPrivateHint")}
+            </p>
+            {!readOnly ? (
+              <button
+                type="button"
+                disabled={sendLoading || newChatBusy || initLoading}
+                title={t("dashboard:embeddedChatNewThreadHint")}
+                className="shrink-0 rounded-md border border-white/15 bg-black/30 px-2 py-1 text-[10px] font-medium text-neutral-200 hover:bg-white/10 disabled:opacity-40"
+                onClick={() => void startNewDashboardChat()}
+              >
+                {newChatBusy ? t("dashboard:loading") : t("dashboard:embeddedChatNewThread")}
+              </button>
+            ) : null}
+          </div>
           {initLoading ? (
             <div className="px-3 py-4 text-sm text-surface-muted">{t("dashboard:embeddedChatLoading")}</div>
           ) : noSharedChatYet && !thread ? (
@@ -493,6 +610,36 @@ export function DashboardEmbeddedChat({
             </div>
           ) : (
             <>
+              {showThreadPicker ? (
+                <div className="shrink-0 px-3 pt-2">
+                  <label className="mb-0.5 block text-[10px] text-surface-muted">
+                    {t("dashboard:embeddedChatThreadLabel")}
+                  </label>
+                  <select
+                    className="w-full rounded-lg border border-surface-border bg-black/30 px-2 py-1.5 text-xs text-white"
+                    value={thread?.id ?? ""}
+                    disabled={
+                      readOnly
+                        ? threadOptions.length <= 1 || threadSwitchBusy || sendLoading
+                        : threadSwitchBusy || sendLoading || newChatBusy
+                    }
+                    onChange={(e) => void switchDashboardThread(e.target.value)}
+                  >
+                    {!readOnly ? (
+                      <option value="">{t("dashboard:embeddedChatDraftThread")}</option>
+                    ) : null}
+                    {threadOptions.map((row) => (
+                      <option key={row.id} value={row.id}>
+                        {formatThreadOptionLabel(row, {
+                          shared: t("chat:visibilitySharedLabel"),
+                          personal: t("chat:visibilityPersonalLabel"),
+                          untitled: t("dashboard:embeddedChatUntitledThread"),
+                        })}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
               <div className="shrink-0 px-3 pt-2">
                 <label className="mb-0.5 block text-[10px] text-surface-muted">{t("dashboard:modelLabel")}</label>
                 <select
@@ -539,6 +686,11 @@ export function DashboardEmbeddedChat({
                   {sendErr}
                 </div>
               ) : null}
+              {sendSlowHint && sendLoading ? (
+                <div className="mx-3 mt-2 rounded border border-amber-500/30 bg-amber-950/20 px-2 py-1.5 text-xs text-amber-200">
+                  {sendSlowHint}
+                </div>
+              ) : null}
               <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
                 <div className="max-h-[min(320px,40vh)] overflow-y-auto rounded-lg border border-white/10 bg-black/20 px-2 py-2 text-sm lg:max-h-[min(480px,calc(100vh-280px))]">
                   {messages.length === 0 ? (
@@ -566,6 +718,20 @@ export function DashboardEmbeddedChat({
                       ))}
                       {sendLoading ? (
                         <li className="text-xs text-sky-300/80">…</li>
+                      ) : null}
+                      {activeProposalSetId && !readOnly ? (
+                        <li className="rounded-md border border-emerald-500/20 bg-emerald-950/10 px-2 py-1.5">
+                          <span className="mb-1 block text-[9px] font-medium uppercase text-surface-muted">
+                            {t("dashboard:assistant")}
+                          </span>
+                          <DashboardLayoutProposalInline
+                            dashboardId={dashboardId}
+                            setId={activeProposalSetId}
+                            data={dashboardData}
+                            onEnlarge={(proposalId) => setEnlargeProposalId(proposalId)}
+                            onApplied={handleLayoutApplied}
+                          />
+                        </li>
                       ) : null}
                       <div ref={endRef} />
                     </ul>
@@ -646,6 +812,16 @@ export function DashboardEmbeddedChat({
             </>
           )}
         </div>
+      ) : null}
+      {enlargeProposalId && activeProposalSetId ? (
+        <DashboardLayoutProposalPanel
+          dashboardId={dashboardId}
+          setId={activeProposalSetId}
+          data={dashboardData}
+          initialProposalId={enlargeProposalId}
+          onApplied={handleLayoutApplied}
+          onClose={() => setEnlargeProposalId(null)}
+        />
       ) : null}
     </div>
   );

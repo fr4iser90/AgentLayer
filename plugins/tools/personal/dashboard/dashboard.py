@@ -30,6 +30,7 @@ from apps.backend.dashboard.projects_kpi import (
     projects_data_path,
     sync_projects_kpis_in_data,
 )
+from apps.backend.dashboard.layout_proposals import store_proposal_set
 from apps.backend.dashboard.template_ops import export_template_payload, validate_template_import
 from apps.backend.domain.identity import get_identity
 
@@ -50,9 +51,14 @@ TOOL_TRIGGERS = (
     "board",
     "ui layout",
     "layout",
+    "variant",
+    "vorschlag",
+    "proposal",
+    "redesign",
     "kanban",
     "chart block",
     "widget",
+    "card grid",
 )
 TOOL_CAPABILITIES = ("dashboard.read", "dashboard.write")
 
@@ -777,6 +783,93 @@ def import_layout(arguments: dict[str, Any]) -> str:
     return json.dumps({"ok": True, "dashboard": row}, ensure_ascii=False, default=str)
 
 
+def _normalize_proposal_ui_layout(raw: Any) -> dict[str, Any] | None:
+    """Accept ``{version, blocks}`` or a bare blocks array from weaker models."""
+    if isinstance(raw, builtins.list):
+        return {"version": 1, "blocks": raw}
+    if isinstance(raw, dict):
+        blocks = raw.get("blocks")
+        if isinstance(blocks, builtins.list):
+            out = dict(raw)
+            if "version" not in out:
+                out["version"] = 1
+            return out
+    return None
+
+
+def propose_layouts(arguments: dict[str, Any]) -> str:
+    """Store up to three validated layout proposals for user preview (does not apply)."""
+    ident = _identity()
+    if ident is None:
+        return _err("No user identity — dashboard tools need an authenticated chat user.")
+    tid, uid = ident
+    wid, res_err = resolve_dashboard_id(uid, tid, arguments.get("dashboard_id"))
+    if wid is None:
+        return _err(res_err or "dashboard_id required")
+    ws = dashboard_db.dashboard_get(uid, tid, wid)
+    if ws is None:
+        return _err("dashboard not found or no access")
+    if not _can_write(ws):
+        return _err("read-only access — cannot propose layout changes")
+    if ws.get("access_scope") == "granular":
+        return _err("granular block share cannot change layout")
+    proposals = arguments.get("proposals")
+    if not isinstance(proposals, builtins.list) or not proposals:
+        return _err("proposals must be a non-empty array of {title, summary, ui_layout}")
+    normalized: list[dict[str, Any]] = []
+    for i, raw in enumerate(proposals):
+        if not isinstance(raw, dict):
+            return _err(f"proposal[{i}] must be an object")
+        row = dict(raw)
+        ul = _normalize_proposal_ui_layout(row.get("ui_layout"))
+        if ul is None:
+            return _err(
+                f"proposal[{i}].ui_layout must be {{version, blocks}} or a blocks array — "
+                "not a flat list of blocks at the top level without wrapping"
+            )
+        row["ui_layout"] = ul
+        normalized.append(row)
+    kind = str(ws.get("kind") or "custom").strip().lower()
+    pset, perr = store_proposal_set(
+        tenant_id=tid,
+        user_id=uid,
+        dashboard_id=wid,
+        kind=kind,
+        proposals=normalized,
+    )
+    if perr or pset is None:
+        return _err(perr or "could not store proposals")
+    from apps.backend.infrastructure.notifications_service import emit_notification
+
+    emit_notification(
+        tenant_id=tid,
+        user_id=uid,
+        kind="dashboard_layout_proposals",
+        severity="info",
+        title=f"Layout options: {(ws.get('title') or 'Dashboard').strip() or 'Dashboard'}",
+        body="The assistant prepared layout proposals — open the dashboard to preview and apply.",
+        link_path=f"/app/dashboard?id={wid}&proposals={pset.set_id}",
+        source_ref={"dashboard_id": str(wid), "proposal_set_id": pset.set_id},
+    )
+    return json.dumps(
+        {
+            "ok": True,
+            "dashboard_id": str(wid),
+            "proposal_set_id": pset.set_id,
+            "proposal_count": len(pset.proposals),
+            "proposals": [
+                {"id": p.id, "title": p.title, "summary": p.summary}
+                for p in pset.proposals
+            ],
+            "hint": (
+                "Tell the user to pick a layout in the dashboard preview panel. "
+                "Do not call patch_layout until they confirm a choice."
+            ),
+        },
+        ensure_ascii=False,
+    )
+
+
 def pin_block(arguments: dict[str, Any]) -> str:
     ident = _identity()
     if ident is None:
@@ -817,6 +910,7 @@ HANDLERS: dict[str, Callable[[dict[str, Any]], str]] = {
     "create_public_share": create_public_share,
     "export_template": export_template,
     "import_layout": import_layout,
+    "propose_layouts": propose_layouts,
     "pin_block": pin_block,
 }
 
@@ -1028,6 +1122,38 @@ TOOLS: list[dict[str, Any]] = [
                     "initial_data": {"type": "object"},
                 },
                 "required": ["ui_layout"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "propose_layouts",
+            "TOOL_DESCRIPTION": (
+                "Propose up to three complete ui_layout alternatives for the user to preview in the UI. "
+                "Each proposal: {title, summary, ui_layout} where ui_layout is "
+                "{version: 1, blocks: [{id, type, grid, props?, data_path?, children?}, ...]} — "
+                "NOT a bare array of blocks. Use native tool_calls only; never paste this JSON in chat text. "
+                "Does not change the live board — user applies one via the preview cards in chat. "
+                "Use after dashboard.read when the user wants layout options or a redesign. "
+                "Prefer exactly 3 distinct options (e.g. card-focused, table-focused, KPI hero)."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "dashboard_id": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": "UUID; omit if unambiguous.",
+                    },
+                    "proposals": {
+                        "type": "array",
+                        "TOOL_DESCRIPTION": (
+                            "1–3 objects: title (short), summary (one line), ui_layout (full layout JSON)"
+                        ),
+                        "items": {"type": "object"},
+                    },
+                },
+                "required": ["proposals"],
             },
         },
     },

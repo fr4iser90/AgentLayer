@@ -1,16 +1,21 @@
 id: dashboard
 name: Dashboard
 icon: 📊
-description: Dashboard boards — layout (section, card_grid, KPIs), data patches, shopping, pets, ideas, projects portfolios
+description: Dashboard boards — layout (section, card_grid, KPIs), data patches, projects portfolios
 requires_workspace: false
 execution_context: auto
 min_role: user
+tool_discipline_preset: dashboard
 tool_domains:
   - dashboard
-  - shopping
-  - pets
-  - ideas
   - projects
-  - tasks
-  - rss
-  - calendar
+pinned_tools:
+  - dashboard.read
+  - propose_layouts
+  - patch_layout
+  - patch_data
+  - list
+tool_forward_prefer_full_schema:
+  - dashboard.read
+  - propose_layouts
+  - patch_layout

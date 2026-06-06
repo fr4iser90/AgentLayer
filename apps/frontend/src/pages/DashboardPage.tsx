@@ -128,7 +128,7 @@ type HubPanel = "home" | "catalog" | "overview";
 export function DashboardPage() {
   const { t } = useTranslation(["dashboard", "admin"]);
   const auth = useAuth();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { dashboardUnreadCount, blockUnreadIds, markDashboardSeen, refreshSummary } =
     useNotificationContext();
   const highlightBlockId = searchParams.get("block")?.trim() || null;
@@ -404,6 +404,19 @@ export function DashboardPage() {
     const ul = asUiLayout(detail.ui_layout);
     setLayoutDraft(ul ?? { version: 1, blocks: [] });
   }, [detail, layoutEditMode]);
+
+  const clearProposalsQuery = useCallback(() => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("proposals");
+        return next;
+      },
+      { replace: true }
+    );
+  }, [setSearchParams]);
+
+  const proposalSetIdFromUrl = searchParams.get("proposals")?.trim() || null;
 
   useEffect(() => {
     if (detail?.access_role === "viewer") setLayoutEditMode(false);
@@ -1505,6 +1518,13 @@ export function DashboardPage() {
                   readOnly={isViewer}
                   composeDraft={chatComposeDraft}
                   composeDraftSeed={chatComposeDraftSeed}
+                  dashboardData={data}
+                  initialProposalSetId={proposalSetIdFromUrl}
+                  onLayoutApplied={() => {
+                    void loadDetail(selectedId);
+                    void refreshSummary();
+                    clearProposalsQuery();
+                  }}
                 />
               </div>
             </aside>

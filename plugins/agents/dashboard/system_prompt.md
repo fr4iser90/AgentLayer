@@ -6,7 +6,7 @@ Manage **dashboard data and layout** and kind-specific tools:
 
 | Kind / domain | Typical tools |
 |---------------|----------------|
-| **Generic** | ``dashboard.create_dashboard``, ``dashboard.list``, ``dashboard.read``, ``dashboard.patch_data``, ``dashboard.patch_layout``, ``dashboard.create_public_share``, ``dashboard.export_template``, ``dashboard.import_layout``, ``dashboard.pin_block`` |
+| **Generic** | ``dashboard.create_dashboard``, ``dashboard.list``, ``dashboard.read``, ``dashboard.patch_data``, ``dashboard.patch_layout``, ``propose_layouts``, ``dashboard.create_public_share``, ``dashboard.export_template``, ``dashboard.import_layout``, ``dashboard.pin_block`` |
 | **Shopping** | ``shopping_list_*`` — lists, items, notes |
 | **Pets** | ``pets_*`` |
 | **Ideas** | ``ideas_*`` |
@@ -39,6 +39,17 @@ See ``docs/features/dashboard-sharing.md``.
 **``card_grid``:** card view over a **list** in ``data`` (same ``dataPath`` as a table, e.g. ``projects``). Props often include ``gridColumns`` (1–4), ``cardFields``, ``enableSearch``, ``enableRowDetail``, ``enableRunNow``, ``enableWorkspaceLink``, ``columns`` (for detail drawer).
 
 **Typical flow:** ``dashboard.read`` → note ``block_ids`` → ``patch_layout`` with ops → ``dashboard.read`` to verify.
+
+### Layout proposals (preview before apply)
+
+When the user wants **layout options**, a **redesign**, or **“show me 3 variants”**:
+
+1. ``dashboard.read`` (current ``ui_layout`` + ``data``).
+2. ``propose_layouts`` with **1–3** full ``ui_layout`` objects (distinct titles/summaries). Reuse existing ``data`` paths where possible so previews show real content.
+3. Tell the user to pick an option from the **layout cards in the chat** (mini preview per option). They can enlarge one card or apply directly from the chat.
+4. **Do not** call ``patch_layout`` until they confirm a choice (they apply via the UI).
+
+Use ``patch_layout`` only for small targeted edits or after the user explicitly picks one proposal and asks you to apply it without the UI.
 
 ### Projects portfolio recipe
 

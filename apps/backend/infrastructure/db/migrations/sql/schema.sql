@@ -624,11 +624,11 @@ CREATE TABLE chat_conversations (
 CREATE INDEX idx_chat_conv_user_updated ON chat_conversations (user_id, updated_at DESC);
 CREATE INDEX idx_chat_conv_tenant ON chat_conversations (tenant_id);
 CREATE INDEX idx_chat_conv_dashboard ON chat_conversations (dashboard_id);
-CREATE UNIQUE INDEX uq_chat_conv_user_dashboard_personal
-  ON chat_conversations (user_id, dashboard_id)
+CREATE INDEX idx_chat_conv_user_dashboard_personal_updated
+  ON chat_conversations (user_id, dashboard_id, updated_at DESC)
   WHERE dashboard_id IS NOT NULL AND shared = false;
-CREATE UNIQUE INDEX uq_chat_conv_dashboard_shared
-  ON chat_conversations (dashboard_id)
+CREATE INDEX idx_chat_conv_dashboard_shared_updated
+  ON chat_conversations (dashboard_id, updated_at DESC)
   WHERE dashboard_id IS NOT NULL AND shared = true;
 
 CREATE TABLE chat_messages (

@@ -167,6 +167,12 @@
   "noModels": "No models.",
   "embeddedChatEmptyWithThread": "Ask questions or attach images (+) — same multimodal messages as the main Chat page.",
   "embeddedChatEmptyNoThread": "No conversation yet — send below to create your private thread (first message is stored).",
+  "embeddedChatSlowHint": "Still working — large layout proposals can take a few minutes on local models.",
+  "embeddedChatThreadLabel": "Conversation",
+  "embeddedChatDraftThread": "New conversation (unsaved)",
+  "embeddedChatUntitledThread": "Untitled chat",
+  "embeddedChatNewThread": "New chat",
+  "embeddedChatNewThreadHint": "Start another private assistant thread for this dashboard. Switch threads in the list above.",
   "you": "You",
   "assistant": "Assistant",
   "attachmentSkip": " (skip)",
@@ -383,6 +389,19 @@
   "publicSharePasswordPlaceholder": "Password",
   "publicShareWrongPassword": "Wrong password.",
   "publicShareUnlock": "View",
-  "publicGallerySection": "Album {{n}}"
+  "publicGallerySection": "Album {{n}}",
+  "layoutProposalsTitle": "Layout preview",
+  "layoutProposalsSubtitle": "Full-size preview — apply here or close and use the cards in chat.",
+  "layoutProposalsInlineHint": "Layout options",
+  "layoutProposalsLoading": "Loading layout previews…",
+  "layoutProposalsEnlarge": "Open full preview for {{title}}",
+  "layoutProposalsEnlargeShort": "Preview",
+  "layoutProposalsApplyConfirm": "Confirm",
+  "layoutProposalsClose": "Close",
+  "layoutProposalsApply": "Apply layout",
+  "layoutProposalsCancel": "Cancel",
+  "layoutProposalsConfirm": "Replace the live layout with “{{title}}”?",
+  "layoutProposalsEmpty": "No proposals in this set (it may have expired).",
+  "layoutProposalsInvalid": "Could not load proposal layouts."
 }
 

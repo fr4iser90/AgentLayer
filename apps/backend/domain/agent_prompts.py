@@ -255,6 +255,23 @@ _SECURITY_AUDITOR_TOOL_DISCIPLINE = """## **Security auditor** discipline (this 
 - Reuse existing tool results in the transcript — no identical tool+arguments spam.
 """
 
+_DASHBOARD_TOOL_DISCIPLINE = """## **Dashboard** discipline
+
+- Use **native tool_calls** only — never paste JSON like ``{"name": "…", "arguments": {…}}`` in assistant text.
+- Prefer ``dashboard_id`` from **[Dashboard context]**; call ``dashboard.read`` before layout changes when you need current ``ui_layout`` + ``data``.
+- For layout **options** or **redesigns**: call ``propose_layouts`` with 1–3 proposals. Each ``ui_layout`` must be ``{version: 1, blocks: [...]}`` (not a bare block array). The user picks via **preview cards in chat** — do **not** ask "1, 2 or 3?" in prose.
+- Never paste ``{"name": "propose_layouts", ...}`` in assistant text. No simulated user replies, no ``[Thought]`` / planning monologue in the final message.
+- Reuse prior tool JSON in the transcript; do not repeat identical ``read`` calls.
+"""
+
+_DASHBOARD_LAYOUT_PROPOSAL_NUDGE = """**Layout proposals required** — the user asked for layout options/variants.
+
+Your last reply was text-only; that does **not** show preview cards in the chat.
+
+**Next step (mandatory):** call ``propose_layouts`` with **1–3** complete ``ui_layout`` objects (reuse ``data`` paths from ``dashboard.read``). Each proposal: ``title``, ``summary``, ``ui_layout``.
+
+Do **not** describe designs in prose again. After the tool succeeds, give a **short** line pointing to the preview cards."""
+
 _CODING_BUILD_TOOL_DISCIPLINE = """## **Build** discipline (this stack)
 
 - Use only ``coding_*`` / ``project_explain`` from **tools[]** — no registry meta tools.
@@ -275,6 +292,7 @@ _TOOL_DISCIPLINE_BY_PRESET: dict[str, str] = {
     "coding_plan": _CODING_PLAN_TOOL_DISCIPLINE,
     "coding_build": _CODING_BUILD_TOOL_DISCIPLINE,
     "security_auditor": _SECURITY_AUDITOR_TOOL_DISCIPLINE,
+    "dashboard": _DASHBOARD_TOOL_DISCIPLINE,
 }
 
 
@@ -730,6 +748,7 @@ __all__ = [
     '_CODING_BUILD_TOOL_DISCIPLINE',
     '_CODING_FIX_ARTIFACT_DISCIPLINE',
     '_CODING_PLAN_TOOL_DISCIPLINE',
+    '_DASHBOARD_LAYOUT_PROPOSAL_NUDGE',
     '_SECRETS_CREDENTIAL_DISCIPLINE',
     '_SECURITY_AUDITOR_TOOL_DISCIPLINE',
     '_TOOL_USAGE_DISCIPLINE',

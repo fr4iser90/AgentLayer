@@ -42,7 +42,7 @@ class ConversationCreateBody(BaseModel):
     messages: list[MessageItem] = Field(default_factory=list)
     agent_log: AgentLogPayload = Field(default_factory=list)
     dashboard_id: uuid.UUID | None = None
-    """When true with ``dashboard_id``, creates the one shared thread per dashboard (all members see it)."""
+    """When true with ``dashboard_id``, creates a shared team thread (all members with access can see it)."""
     shared: bool = False
     agent_id: str | None = Field(default=None, max_length=128)
     workspace_id: uuid.UUID | None = None

@@ -540,6 +540,15 @@ class ToolRegistry:
         with self._lock:
             return self._router_cat_tools.get(category.strip().lower(), frozenset())
 
+    def domain_trigger_substrings(self, domain: str) -> tuple[str, ...]:
+        """Module-level ``TOOL_TRIGGERS`` substrings for a ``TOOL_DOMAIN`` (lowercase)."""
+        key = (domain or "").strip().lower()
+        if not key:
+            return ()
+        with self._lock:
+            raw = self._router_cat_TOOL_TRIGGERS.get(key, frozenset())
+        return tuple(sorted(str(x).strip().lower() for x in raw if str(x).strip()))
+
     def _router_category_order(self) -> list[str]:
         """Call with ``self._lock`` held."""
         known = frozenset(self._router_cat_tools.keys())

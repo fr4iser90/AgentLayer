@@ -808,61 +808,76 @@ async def chat_completion(
 
         if not tools_full_schema and agent_unattended and _raw_tool_allow:
             tools_full_schema = True
-        tools_allowlist_count = len(merged_tools)
-        tools_for_request = _tools_for_chat_request(merged_tools, full_schema=tools_full_schema)
-        if not config.AGENT_LOG_TOOL_PIPELINE and tools_full_schema and tools_for_request:
-            logger.info(
-                "tools request: built full schemas for %d tools pre-ranking (agent_unattended=%s)",
-                len(tools_for_request),
-                agent_unattended,
-            )
         if config.AGENT_TOOLS_DENYLIST:
             deny = config.AGENT_TOOLS_DENYLIST
-            tools_for_request = [
+            merged_tools = [
                 t
-                for t in tools_for_request
+                for t in merged_tools
                 if (n := _tool_spec_name(t)) is None or n not in deny
             ]
+        tools_allowlist_count = len(merged_tools)
 
-        # Tool Ranking: sort by semantic similarity to user input (Phase 1)
-        pin_names = _pinned_tools_for_agent(agent_id)
-        if pin_names:
-            pinned_specs, tools_for_ranking = _partition_tool_specs_by_name(
-                tools_for_request, pin_names
+        ranking_user_text: str | None = None
+        for msg in reversed(body.get("messages", [])):
+            if msg.get("role") == "user":
+                c = msg.get("content")
+                ranking_user_text = c if isinstance(c, str) else None
+                break
+
+        from apps.backend.domain.tool_forward_policy import (
+            ToolForwardContext,
+            apply_schema_modes_to_specs,
+            build_tool_forward_plan,
+            dashboard_layout_proposal_nudge_needed,
+            infer_model_tier,
+            is_propose_layouts_tool,
+            layout_proposal_intent,
+        )
+
+        if agent_id == "dashboard" and (ranking_user_text or "").strip():
+            tool_context["dashboard_layout_proposal_required"] = layout_proposal_intent(
+                ranking_user_text or ""
             )
-        else:
-            pinned_specs, tools_for_ranking = [], tools_for_request
-        tools_pre_rank_count = len(tools_for_request)
-        tools_rank_pool_count = len(tools_for_ranking)
-        if tools_ranking_enabled and tools_for_ranking:
-            try:
-                # Get last user message for ranking (do not name this ``last_user_text`` — shadows imported helper).
-                ranking_user_text: str | None = None
-                for msg in reversed(body.get("messages", [])):
-                    if msg.get("role") == "user":
-                        c = msg.get("content")
-                        ranking_user_text = c if isinstance(c, str) else None
-                        break
-                if ranking_user_text:
-                    # Get tool triggers from registry
-                    reg = get_registry()
-                    tool_triggers: dict[str, tuple[str, ...]] = {}
-                    # For now, use empty triggers - will be enhanced in Phase 2
-                    tools_for_ranking = _rank_tools_by_user_input(
-                        tools_for_ranking,
-                        ranking_user_text,
-                        tool_triggers,
-                    )
-            except Exception as e:
-                logger.warning(f"Tool ranking failed, using unranked tools: {e}")
-        tools_pinned_count = len(pinned_specs)
-        tools_ranked_count = len(tools_for_ranking)
-        if pinned_specs:
-            tools_for_request = pinned_specs + tools_for_ranking
-        elif tools_for_ranking is not tools_for_request:
-            tools_for_request = tools_for_ranking
 
-        forward_names = [n for t in tools_for_request if (n := _tool_spec_name(t))]
+        _ctx_win = 0
+        if _context_budget is not None:
+            _ctx_win = int(_context_budget.context_window_tokens or 0)
+        _model_tier = infer_model_tier(
+            model_id=str(model or ""),
+            catalog_owned_by=catalog_owned_by if isinstance(catalog_owned_by, str) else None,
+        )
+        _tf_plan = build_tool_forward_plan(
+            ToolForwardContext(
+                agent_id=agent_id if isinstance(agent_id, str) else None,
+                model_id=str(model or ""),
+                context_window_tokens=_ctx_win,
+                model_tier=_model_tier,
+                user_text=ranking_user_text or "",
+                tool_specs=merged_tools,
+                ranking_enabled=tools_ranking_enabled,
+                full_schema_preference=tools_full_schema,
+            )
+        )
+        tools_for_request = apply_schema_modes_to_specs(
+            _tf_plan.forward_specs,
+            _tf_plan.schema_mode_per_tool,
+            default_full_schema=tools_full_schema,
+        )
+        tools_pre_rank_count = tools_allowlist_count
+        tools_rank_pool_count = int(_tf_plan.meta.get("rank_pool_count") or 0)
+        tools_pinned_count = len(_tf_plan.pins_included)
+        tools_ranked_count = max(0, len(tools_for_request) - tools_pinned_count)
+
+        forward_names = list(_tf_plan.forward_names)
+        if not config.AGENT_LOG_TOOL_PIPELINE and tools_for_request:
+            logger.info(
+                "tool forward: tier=%s window=%d allowlist=%d forward=%d pins=%s",
+                _model_tier,
+                _ctx_win,
+                tools_allowlist_count,
+                len(forward_names),
+                _tf_plan.pins_included,
+            )
         if config.AGENT_LOG_TOOL_PIPELINE:
             _log_agent_tools_pipeline(
                 agent_run_id=agent_run_id,
@@ -1298,6 +1313,17 @@ async def chat_completion(
                     payload_base["stream_options"] = {**so, "include_usage": True}
             if tools_for_round:
                 payload_base["tools"] = tools_for_round
+                if tool_context.pop("_force_tool_choice_propose_layouts", False):
+                    if "propose_layouts" in allowed_names:
+                        payload_base["tool_choice"] = {
+                            "type": "function",
+                            "function": {"name": "propose_layouts"},
+                        }
+                        logger.info(
+                            "dashboard layout guard: tool_choice=propose_layouts (round %d/%d)",
+                            round_i + 1,
+                            max_tool_rounds_eff,
+                        )
 
             last_failover: httpx.HTTPStatusError | None = None
             last_transport_error: httpx.RequestError | None = None
@@ -1427,6 +1453,38 @@ async def chat_completion(
                     allowed_tool_names=allowed_names,
                 )
             )
+
+            if (
+                not tool_calls
+                and agent_id == "dashboard"
+                and tools_for_round
+            ):
+                from apps.backend.domain.assistant_display_sanitize import (
+                    sanitize_assistant_display_text,
+                    synthetic_dashboard_tool_calls_from_message,
+                )
+
+                recovered = synthetic_dashboard_tool_calls_from_message(
+                    msg,
+                    allowed_tool_names=allowed_names,
+                )
+                if recovered:
+                    tool_calls = recovered
+                    had_native_tool_calls = False
+                    msg = dict(msg)
+                    msg["tool_calls"] = recovered
+                    raw_c = msg.get("content")
+                    if isinstance(raw_c, str):
+                        msg["content"] = sanitize_assistant_display_text(raw_c) or ""
+                    choice0 = dict(choice0)
+                    choice0["message"] = msg
+                    ch_list = data.get("choices")
+                    if isinstance(ch_list, list) and ch_list and isinstance(ch_list[0], dict):
+                        ch_list[0] = choice0
+                    logger.info(
+                        "dashboard: recovered propose_layouts tool_call from assistant text (round %d)",
+                        round_i + 1,
+                    )
 
             # Some models return only assistant text (TEXT_NO_TOOLS) even when tools[] is present.
             # OpenAI-compatible: retry once with tool_choice=required so the backend emits tool_calls.
@@ -1610,6 +1668,40 @@ async def chat_completion(
                         round_i + 1,
                         max_tool_rounds_eff,
                     )
+                if agent_id == "dashboard":
+                    from apps.backend.domain.assistant_display_sanitize import (
+                        sanitize_completion_for_dashboard_agent,
+                    )
+
+                    if sanitize_completion_for_dashboard_agent(data):
+                        logger.info(
+                            "dashboard: sanitized assistant display text (round %s/%s)",
+                            round_i + 1,
+                            max_tool_rounds_eff,
+                        )
+                _layout_nudges = int(tool_context.get("dashboard_layout_proposal_nudges") or 0)
+                if dashboard_layout_proposal_nudge_needed(
+                    agent_id=agent_id if isinstance(agent_id, str) else None,
+                    layout_proposal_required=bool(
+                        tool_context.get("dashboard_layout_proposal_required")
+                    ),
+                    propose_layouts_done=bool(tool_context.get("dashboard_propose_layouts_done")),
+                    nudge_count=_layout_nudges,
+                    forwarded_tool_names=allowed_names,
+                ):
+                    tool_context["dashboard_layout_proposal_nudges"] = _layout_nudges + 1
+                    tool_context["_force_tool_choice_propose_layouts"] = True
+                    messages.append(msg)
+                    messages.append(
+                        {"role": "system", "content": _DASHBOARD_LAYOUT_PROPOSAL_NUDGE}
+                    )
+                    logger.info(
+                        "dashboard layout guard: rejected text-only round %d — nudge %d, "
+                        "forcing propose_layouts next round",
+                        round_i + 1,
+                        _layout_nudges + 1,
+                    )
+                    continue
                 if event_emit:
                     await event_emit(
                         {
@@ -1886,6 +1978,16 @@ async def chat_completion(
                         ev_done["result_ok"] = ok_sum
                     if err_sum:
                         ev_done["result_error"] = err_sum[:500]
+                    if is_propose_layouts_tool(name) and ok_sum:
+                        tool_context["dashboard_propose_layouts_done"] = True
+                        try:
+                            _prop = json.loads(result or "")
+                            if isinstance(_prop, dict) and _prop.get("proposal_set_id"):
+                                ev_done["proposal_set_id"] = str(_prop["proposal_set_id"])
+                                if _prop.get("dashboard_id"):
+                                    ev_done["dashboard_id"] = str(_prop["dashboard_id"])
+                        except Exception:
+                            pass
                     await event_emit(ev_done)
                 messages.append(
                     {
