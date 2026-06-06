@@ -14,7 +14,9 @@ import {
   resolveSendModelRouting,
   type ModelRow,
 } from "../../lib/modelCatalog";
+import { archiveTurnBeforeNewPrompt } from "../chat/agentLogStorage";
 import type { ChatThread, UiMessage } from "../chat/chatThreadStorage";
+import { newMessageId } from "../chat/chatThreadStorage";
 import {
   createConversation,
   fetchConversationDetail,
@@ -22,7 +24,7 @@ import {
   mapListItemToThread,
   putConversation,
 } from "../chat/conversationsApi";
-import { getDisabledToolNames } from "../settings/toolPrefs";
+import { MessageTurnActivity } from "../chat/MessageTurnActivity";
 import type { PendingAttachment } from "../chat/messageFormat";
 import {
   buildUserMessageContent,
@@ -30,7 +32,13 @@ import {
   parseContentParts,
   toApiContent,
 } from "../chat/messageFormat";
-import { runDashboardAgentTurn } from "./dashboardAgentWs";
+import { useAgentChatWs } from "../chat/useAgentChatWs";
+import {
+  useAgentLiveLog,
+  useAgentLiveTurn,
+  useAgentStreamText,
+} from "../chat/useAgentLiveTurn";
+import { getDisabledToolNames } from "../settings/toolPrefs";
 import { sanitizeDashboardAssistantText } from "./dashboardChatDisplay";
 import { DashboardLayoutProposalInline } from "./DashboardLayoutProposalInline";
 import { DashboardLayoutProposalPanel } from "./DashboardLayoutProposalPanel";
@@ -128,9 +136,17 @@ export function DashboardEmbeddedChat({
   focusedBlockLabel = null,
   onClearFocusedBlock,
 }: Props) {
-  const { t } = useTranslation(["dashboard", "errors", "chat"]);
+  const { t } = useTranslation(["dashboard", "errors", "chat", "admin"]);
   const auth = useAuth();
   const { accessToken, user } = auth;
+  const agentLiveTurn = useAgentLiveTurn();
+  const agentWs = useAgentChatWs({
+    accessToken,
+    liveTurn: agentLiveTurn,
+    pausedStepLabel: t("chat:pausedStepMode"),
+  });
+  const inFlightStream = useAgentStreamText(agentLiveTurn);
+  const inFlightLog = useAgentLiveLog(agentLiveTurn);
   const [open, setOpen] = useState(true);
   const [modelRows, setModelRows] = useState<ModelRow[]>([]);
   const [modelsCatalogReady, setModelsCatalogReady] = useState(false);
@@ -328,7 +344,7 @@ export function DashboardEmbeddedChat({
     if (open && endRef.current) {
       endRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages, open, sendLoading, activeProposalSetId]);
+  }, [messages, open, sendLoading, activeProposalSetId, inFlightStream]);
 
   const defaultSelectValue = useMemo(
     () => defaultModelCatalogSelectValue(modelRows),
@@ -476,12 +492,15 @@ export function DashboardEmbeddedChat({
       }
     }
     const userCreatedAt = Date.now();
+    const userMsgId = newMessageId();
+    const archivePatch = archiveTurnBeforeNewPrompt(prev);
     const nextMessages: UiMessage[] = [
       ...prev.messages,
-      { role: "user", content: userContent, createdAt: userCreatedAt },
+      { role: "user", content: userContent, id: userMsgId, createdAt: userCreatedAt },
     ];
     const nextThread: ChatThread = {
       ...prev,
+      ...archivePatch,
       model: mdl,
       modelProvider: provider,
       messages: nextMessages,
@@ -508,28 +527,26 @@ export function DashboardEmbeddedChat({
     try {
       const disabledTools = getDisabledToolNames();
       const assistantCreatedAt = Date.now();
-      const content = await runDashboardAgentTurn({
-        accessToken: accessToken!,
-        model: mdl,
-        provider,
-        messages: nextMessages.map((x) => ({
-          role: x.role,
-          content: toApiContent(x.content),
-        })),
-        dashboardId,
-        focusedBlockId,
-        conversationId: nextThread.id,
-        disabledTools,
+      agentLiveTurn.beginTurn([]);
+      const { content } = await agentWs.runTurn({
+        body: {
+          model: mdl,
+          messages: nextMessages.map((x) => ({
+            role: x.role,
+            content: toApiContent(x.content),
+          })),
+          agent_id: "dashboard",
+          agent_stream_llm: true,
+          agent_dashboard_context: {
+            dashboard_id: dashboardId,
+            ...(focusedBlockId?.trim() ? { block_id: focusedBlockId.trim() } : {}),
+          },
+          conversation_id: nextThread.id,
+          ...(disabledTools.length ? { agent_disabled_tools: disabledTools } : {}),
+          agent_model_catalog_owned_by: provider ?? undefined,
+        },
         onSlow: () => {
           setSendSlowHint(t("dashboard:embeddedChatSlowHint"));
-        },
-        onDelta: (acc) => {
-          const clean = sanitizeDashboardAssistantText(acc);
-          setThread({
-            ...nextThread,
-            messages: [...nextMessages, { role: "assistant", content: clean, createdAt: assistantCreatedAt }],
-            updatedAt: Date.now(),
-          });
         },
         onToolDone: (ev) => {
           const isPropose =
@@ -541,19 +558,28 @@ export function DashboardEmbeddedChat({
           }
         },
       });
+      const liveLog = agentLiveTurn.takeAgentLogSnapshot();
       const finalContent = sanitizeDashboardAssistantText(content.trim() || "(empty)");
       const withAssistant: ChatThread = {
         ...nextThread,
         messages: [
           ...nextMessages,
-          { role: "assistant", content: finalContent || "(empty)", createdAt: assistantCreatedAt },
+          {
+            role: "assistant",
+            content: finalContent || "(empty)",
+            id: newMessageId(),
+            createdAt: assistantCreatedAt,
+          },
         ],
+        agentLog: liveLog,
         updatedAt: Date.now(),
       };
+      agentLiveTurn.resetAfterCommit();
       setThread(withAssistant);
       await putConversation(auth, withAssistant);
       void reloadThreadOptions();
     } catch (e) {
+      agentLiveTurn.endTurn();
       setSendErr(e instanceof Error ? e.message : String(e));
       setThread(nextThread);
       setDraft(draftSnap);
@@ -577,6 +603,8 @@ export function DashboardEmbeddedChat({
     dashboardTitle,
     focusedBlockId,
     reloadThreadOptions,
+    agentLiveTurn,
+    agentWs,
     t,
   ]);
 
@@ -731,7 +759,17 @@ export function DashboardEmbeddedChat({
                         </li>
                       ))}
                       {sendLoading ? (
-                        <li className="text-xs text-sky-300/80">…</li>
+                        <li className="rounded-md border border-white/10 bg-[#1a1a1a] px-2 py-1.5 text-xs text-neutral-200">
+                          <span className="mb-0.5 block text-[9px] font-medium uppercase text-surface-muted">
+                            {t("dashboard:assistant")}
+                          </span>
+                          <MessageTurnActivity entries={inFlightLog} running />
+                          {inFlightStream.trim() ? (
+                            <div className="mt-1 whitespace-pre-wrap">
+                              {sanitizeDashboardAssistantText(inFlightStream)}
+                            </div>
+                          ) : null}
+                        </li>
                       ) : null}
                       {activeProposalSetId && !readOnly ? (
                         <li className="rounded-md border border-emerald-500/20 bg-emerald-950/10 px-2 py-1.5">
@@ -878,6 +916,15 @@ export function DashboardEmbeddedChat({
                     className="min-h-[40px] min-w-0 flex-1 resize-none bg-transparent py-1.5 text-sm leading-snug text-white outline-none placeholder:text-surface-muted"
                     disabled={readOnly || sendLoading}
                   />
+                  {sendLoading ? (
+                    <button
+                      type="button"
+                      onClick={() => agentWs.cancelTurn()}
+                      className="shrink-0 rounded-lg border border-white/15 px-3 py-2 text-sm text-neutral-200 hover:bg-white/5"
+                    >
+                      {t("admin:cancel")}
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     disabled={!canSend}
