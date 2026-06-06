@@ -21,7 +21,7 @@
       "tool_hint": "patch_data"
     }
   ],
-  "suggested_tools": ["dashboard", "calendar"],
+  "suggested_tools": ["dashboard", "calendar", "shares"],
   "chat_starters": {
     "de": [
       "Trage Max ein — Geburtstag 1990-05-12, Discord max#1234.",

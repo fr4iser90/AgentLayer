@@ -28,7 +28,7 @@ In **`operator_settings`** ( **Admin → Interfaces** or `GET/PATCH /v1/admin/op
 
 - **`rag_enabled`** — master switch for ingest and search
 - **`rag_embedding_model`** — embedding **model id** (OpenAI-compatible `/v1/embeddings` at `EMBEDDING_BASE_URL`)
-- **`rag_embedding_dim`** — must match `rag_chunks.embedding` column (e.g. 768)
+- **`rag_embedding_dim`** — `0` until the embedding model is probed; then matches the live model output and `rag_chunks.embedding` pgvector width (no hardcoded default — e.g. 768 for nomic-embed, 1024 for bge-m3). On model/dim change, pgvector columns are migrated automatically and stored vectors are purged (re-ingest docs).
 - **`rag_chunk_size`**, **`rag_chunk_overlap`**, **`rag_top_k`**, **`rag_embed_timeout_sec`**
 - **`rag_tenant_shared_domains`** — comma list; tenant-wide domains for search without per-user filter
 - **`docs_root`** — optional filesystem root for startup / `ingest-docs` when body omits `docs_root` (default: `<repo>/docs` in the image)

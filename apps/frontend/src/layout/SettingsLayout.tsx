@@ -32,6 +32,12 @@ export function SettingsLayout() {
             {t("settings:connectionsTitle")}
           </NavLink>
           <NavLink
+            to="/settings/notifications"
+            className={({ isActive }) => `${subLink} ${isActive ? subLinkActive : subLinkIdle}`}
+          >
+            {t("settings:notificationsTitle")}
+          </NavLink>
+          <NavLink
             to="/settings/tools"
             className={({ isActive }) => `${subLink} ${isActive ? subLinkActive : subLinkIdle}`}
           >

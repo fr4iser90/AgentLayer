@@ -10,7 +10,11 @@ export type BlockType =
   | "sparkline"
   | "kanban"
   | "rich_markdown"
-  | "embed";
+  | "embed"
+  | "section"
+  | "card_grid"
+  | "dashboard_ref"
+  | "share_widget";
 
 export interface GridPos {
   x: number;
@@ -34,17 +38,23 @@ export interface UiBlock {
     dataPath?: string;
     columns?: ColumnDef[];
     placeholder?: string;
-    /** gallery / hero section label */
+    /** gallery / hero / section label */
     title?: string;
     /** gallery: columns at large breakpoints (2–5, default 3) */
     galleryColumns?: number;
     /** gallery: tile aspect ratio */
     galleryAspect?: "square" | "video" | "auto";
+    /** section: nested grid layout (max depth 2) */
+    nested?: UiLayout;
+    /** section: hide inner grid when true */
+    collapsed?: boolean;
+    /** table and projects-specific props — see DashboardBlocks */
+    [key: string]: unknown;
   };
 }
 
 export interface UiLayout {
-  version: number;
+  version: 1 | 2;
   blocks: UiBlock[];
 }
 

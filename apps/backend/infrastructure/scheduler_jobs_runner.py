@@ -105,21 +105,36 @@ async def _run_chat_agent_job(row: dict[str, Any], *, agent_id: str) -> None:
         return
 
     id_tok = set_identity(tenant_id, user_id)
+    failed = False
+    err_text: str | None = None
     try:
         await chat_completion(
             body,
             bearer_user_role=role if role in ("user", "admin") else None,
         )
-    except Exception:
+    except Exception as e:
+        failed = True
+        err_text = str(e)[:500] if str(e) else "chat job failed"
         logger.exception(
             "scheduler_jobs: chat job failed job_id=%s user=%s agent_id=%s",
             job_id,
             user_id,
             agent_id,
         )
-        return
     finally:
         reset_identity(id_tok)
+
+    if failed:
+        from apps.backend.infrastructure.notifications_service import notify_scheduler_job_finished
+
+        notify_scheduler_job_finished(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            row=row,
+            success=False,
+            error=err_text,
+        )
+        return
 
     if scheduler_jobs_store.mark_job_last_run(job_id=job_id, tenant_id=tenant_id):
         logger.info(
@@ -127,6 +142,14 @@ async def _run_chat_agent_job(row: dict[str, Any], *, agent_id: str) -> None:
             job_id,
             user_id,
             agent_id,
+        )
+        from apps.backend.infrastructure.notifications_service import notify_scheduler_job_finished
+
+        notify_scheduler_job_finished(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            row=row,
+            success=True,
         )
     else:
         logger.warning("scheduler_jobs: could not mark last_run_at job_id=%s", job_id)

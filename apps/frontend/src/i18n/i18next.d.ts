@@ -10,6 +10,7 @@ import type auth from "../locales/en/auth.json";
 import type settings from "../locales/en/settings.json";
 import type tasks from "../locales/en/tasks.json";
 import type dashboard from "../locales/en/dashboard.json";
+import type notifications from "../locales/en/notifications.json";
 import type workspace from "../locales/en/workspace.json";
 
 declare module "i18next" {
@@ -26,6 +27,7 @@ declare module "i18next" {
       settings: typeof settings;
       tasks: typeof tasks;
       dashboard: typeof dashboard;
+      notifications: typeof notifications;
       workspace: typeof workspace;
     };
   }

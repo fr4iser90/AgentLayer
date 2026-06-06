@@ -14,6 +14,11 @@ from apps.backend.core.config import config
 from apps.backend.infrastructure.db import db
 from apps.backend.dashboard import file_storage, files_db
 from apps.backend.dashboard.defaults import defaults_for_kind
+from apps.backend.dashboard.layout_tree import (
+    data_paths_from_blocks,
+    filter_layout_blocks,
+    flatten_block_ids,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -100,27 +105,14 @@ def _filter_ui_layout(layout: dict[str, Any], allowed: frozenset[str]) -> dict[s
     blocks = layout.get("blocks")
     if not isinstance(blocks, list):
         return dict(layout)
-    nb = [
-        b
-        for b in blocks
-        if isinstance(b, dict) and str(b.get("id") or "").strip() in allowed
-    ]
+    nb = filter_layout_blocks(blocks, allowed)
     out = dict(layout)
     out["blocks"] = nb
     return out
 
 
 def _data_paths_from_blocks(blocks: list[Any]) -> list[str]:
-    paths: list[str] = []
-    for b in blocks:
-        if not isinstance(b, dict):
-            continue
-        props = b.get("props")
-        if isinstance(props, dict):
-            dp = str(props.get("dataPath") or "").strip()
-            if dp:
-                paths.append(dp)
-    return paths
+    return data_paths_from_blocks(blocks)
 
 
 def _filter_data_for_visible_blocks(
@@ -679,16 +671,7 @@ def member_add(
 
 
 def _layout_block_ids(ui_layout: dict[str, Any]) -> set[str]:
-    out: set[str] = set()
-    blocks = ui_layout.get("blocks")
-    if not isinstance(blocks, list):
-        return out
-    for b in blocks:
-        if isinstance(b, dict):
-            bid = str(b.get("id") or "").strip()
-            if bid:
-                out.add(bid)
-    return out
+    return set(flatten_block_ids(ui_layout))
 
 
 def block_share_grants_list(

@@ -19,6 +19,18 @@ from apps.backend.dashboard.create_helpers import (
 )
 from apps.backend.dashboard.data_paths import apply_data_patches, top_level_key
 from apps.backend.dashboard.tool_dashboard_resolve import resolve_dashboard_id
+from apps.backend.dashboard.layout_tree import (
+    count_layout_blocks,
+    data_paths_from_blocks,
+    resolve_blocks_target,
+)
+from apps.backend.dashboard.pins import pin_block_to_dashboard
+from apps.backend.dashboard.projects_kpi import (
+    patches_touch_projects_list,
+    projects_data_path,
+    sync_projects_kpis_in_data,
+)
+from apps.backend.dashboard.template_ops import export_template_payload, validate_template_import
 from apps.backend.domain.identity import get_identity
 
 __version__ = "1.0.0"
@@ -46,7 +58,7 @@ TOOL_CAPABILITIES = ("dashboard.read", "dashboard.write")
 
 _MAX_PATCHES = 40
 _MAX_LAYOUT_OPS = 20
-_MAX_BLOCKS = 48
+_MAX_BLOCKS = 64
 _MAX_READ_JSON = 200_000
 
 _BLOCK_TYPES = frozenset({
@@ -61,6 +73,11 @@ _BLOCK_TYPES = frozenset({
     "sparkline",
     "kanban",
     "embed",
+    "section",
+    "schedules",
+    "card_grid",
+    "dashboard_ref",
+    "share_widget",
 })
 
 _BLOCK_PREFIX = {
@@ -75,6 +92,9 @@ _BLOCK_PREFIX = {
     "kanban": "kanban",
     "rich_markdown": "rich_md",
     "embed": "embed",
+    "section": "section",
+    "schedules": "schedules",
+    "card_grid": "cards",
 }
 
 _DEFAULT_TABLE_COLUMNS = [
@@ -105,14 +125,9 @@ def _allowed_data_keys(ws: dict[str, Any]) -> set[str] | None:
     ul = ws.get("ui_layout") if isinstance(ws.get("ui_layout"), dict) else {}
     blocks = ul.get("blocks") if isinstance(ul.get("blocks"), builtins.list) else []
     keys: set[str] = set()
-    for b in blocks:
-        if not isinstance(b, dict):
-            continue
-        props = b.get("props")
-        if isinstance(props, dict):
-            dp = str(props.get("dataPath") or "").strip()
-            if dp:
-                keys.add(top_level_key(dp))
+    for dp in data_paths_from_blocks(blocks):
+        if dp:
+            keys.add(top_level_key(dp))
     return keys
 
 
@@ -189,6 +204,12 @@ def _default_data_for_block(block_type: str, data_path: str) -> dict[str, Any]:
         }
     if block_type == "embed":
         return {data_path: {"url": "", "title": ""}}
+    if block_type == "section":
+        return {}
+    if block_type == "schedules":
+        return {}
+    if block_type == "card_grid":
+        return {data_path: []}
     return {}
 
 
@@ -237,6 +258,45 @@ def _make_block(
     elif block_type == "embed":
         w, h = max(w, 4), max(h, 6)
         base_props = {"dataPath": data_path, "title": "Embed"}
+    elif block_type == "section":
+        w, h = max(w, 4), max(h, 5)
+        base_props = {
+            "title": "Section",
+            "nested": {"version": 2, "blocks": []},
+            "collapsed": False,
+        }
+    elif block_type == "schedules":
+        w, h = max(w, 4), max(h, 4)
+        base_props = {"scope": "dashboard", "executionTarget": "all"}
+    elif block_type == "card_grid":
+        w, h = max(w, 4), max(h, 5)
+        base_props = {
+            "dataPath": data_path,
+            "title": "Projects",
+            "gridColumns": 3,
+            "cardFields": ["title", "remote_url", "tags", "status", "security"],
+            "enableSearch": True,
+            "enableRowDetail": True,
+            "enableRunNow": False,
+            "enableWorkspaceLink": True,
+        }
+    elif block_type == "dashboard_ref":
+        w, h = max(w, 4), max(h, 5)
+        base_props = {
+            "title": "Linked block",
+            "sourceDashboardId": "",
+            "sourceBlockId": "",
+            "sourceLabel": "",
+        }
+    elif block_type == "share_widget":
+        w, h = max(w, 4), max(h, 4)
+        base_props = {
+            "title": "Friend share",
+            "resourceType": "google_calendar",
+            "friendUserId": "",
+            "friendDisplayName": "",
+            "daysAhead": 7,
+        }
     elif block_type == "table":
         base_props = {"dataPath": data_path, "columns": list(_DEFAULT_TABLE_COLUMNS)}
     elif block_type == "markdown":
@@ -265,6 +325,81 @@ def _clamp_grid(grid: dict[str, Any]) -> dict[str, int]:
     }
 
 
+def _all_data_paths_in_layout(ui_layout: dict[str, Any]) -> set[str]:
+    blocks = ui_layout.get("blocks") if isinstance(ui_layout.get("blocks"), builtins.list) else []
+    return set(data_paths_from_blocks(blocks))
+
+
+def _unique_data_path_in_layout(
+    prefix: str, ui_layout: dict[str, Any], data: dict[str, Any]
+) -> str:
+    used = _all_data_paths_in_layout(ui_layout)
+    for k in data:
+        used.add(k)
+    for _ in range(80):
+        p = f"{prefix}_{uuid.uuid4().hex[:6]}"
+        if p not in used:
+            return p
+    return f"{prefix}_{uuid.uuid4().hex[:8]}"
+
+
+def _remove_block_from_layout(ui_layout: dict[str, Any], block_id: str) -> bool:
+    bid = block_id.strip()
+    blocks = ui_layout.get("blocks")
+    if not isinstance(blocks, builtins.list):
+        return False
+    for b in blocks:
+        if not isinstance(b, dict):
+            continue
+        if str(b.get("type") or "").strip().lower() == "section":
+            props = b.get("props") if isinstance(b.get("props"), dict) else {}
+            nested = props.get("nested") if isinstance(props.get("nested"), dict) else {}
+            nested_blocks = nested.get("blocks")
+            if isinstance(nested_blocks, builtins.list):
+                before = len(nested_blocks)
+                nested_blocks[:] = [
+                    x
+                    for x in nested_blocks
+                    if not (isinstance(x, dict) and str(x.get("id") or "").strip() == bid)
+                ]
+                if len(nested_blocks) < before:
+                    return True
+    before_root = len(blocks)
+    blocks[:] = [
+        b for b in blocks if not (isinstance(b, dict) and str(b.get("id") or "").strip() == bid)
+    ]
+    return len(blocks) < before_root
+
+
+def _find_block_in_layout(ui_layout: dict[str, Any], block_id: str) -> dict[str, Any] | None:
+    bid = block_id.strip()
+    blocks = ui_layout.get("blocks")
+    if not isinstance(blocks, builtins.list):
+        return None
+    for b in blocks:
+        if isinstance(b, dict) and str(b.get("id") or "").strip() == bid:
+            return b
+        if isinstance(b, dict) and str(b.get("type") or "").strip().lower() == "section":
+            props = b.get("props") if isinstance(b.get("props"), dict) else {}
+            nested = props.get("nested") if isinstance(props.get("nested"), dict) else {}
+            for nb in nested.get("blocks") or []:
+                if isinstance(nb, dict) and str(nb.get("id") or "").strip() == bid:
+                    return nb
+    return None
+
+
+def _sync_layout_version(ui_layout: dict[str, Any]) -> None:
+    blocks = ui_layout.get("blocks") if isinstance(ui_layout.get("blocks"), builtins.list) else []
+    for b in blocks:
+        if isinstance(b, dict) and str(b.get("type") or "").strip().lower() == "section":
+            ui_layout["version"] = 2
+            return
+    if int(ui_layout.get("version") or 1) == 2:
+        ui_layout["version"] = 2
+    else:
+        ui_layout["version"] = 1
+
+
 def _apply_layout_ops(
     ui_layout: dict[str, Any],
     data: dict[str, Any],
@@ -274,27 +409,46 @@ def _apply_layout_ops(
 ) -> tuple[dict[str, Any], dict[str, Any], str | None]:
     ul = deepcopy(ui_layout) if isinstance(ui_layout, dict) else {"version": 1, "blocks": []}
     dt = deepcopy(data) if isinstance(data, dict) else {}
-    blocks = ul.get("blocks")
-    if not isinstance(blocks, builtins.list):
-        blocks = []
-        ul["blocks"] = blocks
-    ul["version"] = 1
+    if not isinstance(ul.get("blocks"), builtins.list):
+        ul["blocks"] = []
 
     for i, op in enumerate(ops):
         if not isinstance(op, dict):
             return ul, dt, f"ops[{i}] must be an object"
         kind = str(op.get("op") or "").strip().lower()
+        parent_raw = str(op.get("parent_block_id") or "").strip()
+        parent_block_id = parent_raw or None
+
         if kind == "add_block":
             btype = str(op.get("type") or "").strip().lower()
             if btype not in _BLOCK_TYPES:
                 return ul, dt, f"ops[{i}]: invalid type {btype!r}"
-            if len(blocks) >= _MAX_BLOCKS:
-                return ul, dt, f"ops[{i}]: max {_MAX_BLOCKS} blocks"
+            if btype == "section" and parent_block_id:
+                return ul, dt, f"ops[{i}]: cannot nest section inside section"
+            if count_layout_blocks(ul) >= _MAX_BLOCKS:
+                return ul, dt, f"ops[{i}]: max {_MAX_BLOCKS} blocks (including nested)"
+            target_blocks, terr = resolve_blocks_target(ul, parent_block_id)
+            if terr:
+                return ul, dt, f"ops[{i}]: {terr}"
+            assert target_blocks is not None
             prefix = _BLOCK_PREFIX.get(btype, "block")
             dp = str(op.get("data_path") or "").strip()
-            if not dp:
-                dp = _unique_data_path(prefix, blocks, dt)
-            y = max((int(b.get("grid", {}).get("y", 0) or 0) + int(b.get("grid", {}).get("h", 0) or 0)) for b in blocks if isinstance(b, dict)) if blocks else 0
+            if btype in ("section", "schedules", "dashboard_ref", "share_widget"):
+                dp = ""
+            elif not dp:
+                dp = _unique_data_path_in_layout(prefix, ul, dt)
+            y = (
+                max(
+                    (
+                        int(b.get("grid", {}).get("y", 0) or 0)
+                        + int(b.get("grid", {}).get("h", 0) or 0)
+                    )
+                    for b in target_blocks
+                    if isinstance(b, dict)
+                )
+                if target_blocks
+                else 0
+            )
             nb = _make_block(
                 btype,
                 dp,
@@ -302,8 +456,8 @@ def _apply_layout_ops(
                 grid=op.get("grid") if isinstance(op.get("grid"), dict) else None,
                 props=op.get("props") if isinstance(op.get("props"), dict) else None,
             )
-            blocks.append(nb)
-            for k, v in _default_data_for_block(btype, dp).items():
+            target_blocks.append(nb)
+            for k, v in _default_data_for_block(btype, dp or prefix).items():
                 if k not in dt:
                     dt[k] = v
         elif kind == "remove_block":
@@ -312,7 +466,8 @@ def _apply_layout_ops(
                 return ul, dt, f"ops[{i}]: block_id required"
             if allowed_block_ids is not None and bid not in allowed_block_ids:
                 return ul, dt, f"ops[{i}]: block_id not in allowed blocks"
-            blocks[:] = [b for b in blocks if isinstance(b, dict) and str(b.get("id") or "") != bid]
+            if not _remove_block_from_layout(ul, bid):
+                return ul, dt, f"ops[{i}]: unknown block_id {bid!r}"
         elif kind == "set_grid":
             bid = str(op.get("block_id") or "").strip()
             grid = op.get("grid")
@@ -320,14 +475,10 @@ def _apply_layout_ops(
                 return ul, dt, f"ops[{i}]: block_id and grid object required"
             if allowed_block_ids is not None and bid not in allowed_block_ids:
                 return ul, dt, f"ops[{i}]: block_id not in allowed blocks"
-            found = False
-            for b in blocks:
-                if isinstance(b, dict) and str(b.get("id") or "") == bid:
-                    b["grid"] = _clamp_grid(grid)
-                    found = True
-                    break
+            found = _find_block_in_layout(ul, bid)
             if not found:
                 return ul, dt, f"ops[{i}]: unknown block_id {bid!r}"
+            found["grid"] = _clamp_grid(grid)
         elif kind == "set_props":
             bid = str(op.get("block_id") or "").strip()
             props = op.get("props")
@@ -335,23 +486,19 @@ def _apply_layout_ops(
                 return ul, dt, f"ops[{i}]: block_id and props object required"
             if allowed_block_ids is not None and bid not in allowed_block_ids:
                 return ul, dt, f"ops[{i}]: block_id not in allowed blocks"
-            found = False
-            for b in blocks:
-                if isinstance(b, dict) and str(b.get("id") or "") == bid:
-                    cur = b.get("props") if isinstance(b.get("props"), dict) else {}
-                    merged = dict(cur)
-                    for k, v in props.items():
-                        if k == "dataPath":
-                            continue
-                        merged[k] = v
-                    b["props"] = merged
-                    found = True
-                    break
+            found = _find_block_in_layout(ul, bid)
             if not found:
                 return ul, dt, f"ops[{i}]: unknown block_id {bid!r}"
+            cur = found.get("props") if isinstance(found.get("props"), dict) else {}
+            merged = dict(cur)
+            for k, v in props.items():
+                if k == "dataPath":
+                    continue
+                merged[k] = v
+            found["props"] = merged
         else:
             return ul, dt, f"ops[{i}]: unknown op {kind!r} (use add_block, remove_block, set_grid, set_props)"
-    ul["blocks"] = blocks
+    _sync_layout_version(ul)
     return ul, dt, None
 
 
@@ -462,9 +609,23 @@ def patch_data(arguments: dict[str, Any]) -> str:
     new_data, perr = apply_data_patches(data, patches, allowed_top_keys=allowed)
     if perr:
         return _err(perr)
+    if (ws.get("kind") or "").strip().lower() == "projects":
+        dp = projects_data_path(ws)
+        if patches_touch_projects_list(patches, dp):
+            new_data = sync_projects_kpis_in_data(new_data, dp)
     updated = dashboard_db.dashboard_update(uid, tid, wid, data=new_data)
     if updated is None:
         return _err("could not update dashboard (viewer or conflict)")
+    from apps.backend.infrastructure.notifications_service import notify_dashboard_agent_update
+
+    notify_dashboard_agent_update(
+        tenant_id=tid,
+        user_id=uid,
+        dashboard_id=wid,
+        dashboard_title=str(ws.get("title") or ""),
+        patches=patches,
+        ui_layout=ws.get("ui_layout") if isinstance(ws.get("ui_layout"), dict) else None,
+    )
     return json.dumps(
         {
             "ok": True,
@@ -574,6 +735,79 @@ def create_public_share(arguments: dict[str, Any]) -> str:
     )
 
 
+def export_template(arguments: dict[str, Any]) -> str:
+    ident = _identity()
+    if ident is None:
+        return _err("No user identity — dashboard tools need an authenticated chat user.")
+    tid, uid = ident
+    wid, res_err = resolve_dashboard_id(uid, tid, arguments)
+    if wid is None:
+        return _err(res_err or "dashboard_id required")
+    row = dashboard_db.dashboard_get(uid, tid, wid)
+    if not row:
+        return _err("dashboard not found")
+    payload = export_template_payload(
+        kind=str(row.get("kind") or "custom"),
+        title=str(row.get("title") or ""),
+        ui_layout=row.get("ui_layout") if isinstance(row.get("ui_layout"), dict) else {},
+        data=row.get("data") if isinstance(row.get("data"), dict) else {},
+    )
+    return json.dumps({"ok": True, "template": payload, "dashboard_id": str(wid)}, ensure_ascii=False)
+
+
+def import_layout(arguments: dict[str, Any]) -> str:
+    ident = _identity()
+    if ident is None:
+        return _err("No user identity — dashboard tools need an authenticated chat user.")
+    tid, uid = ident
+    kind = str(arguments.get("kind") or "custom").strip().lower()
+    title = str(arguments.get("title") or "Dashboard").strip()[:500]
+    ul = arguments.get("ui_layout")
+    if not isinstance(ul, dict):
+        return _err("ui_layout object is required")
+    initial = arguments.get("initial_data")
+    if initial is None:
+        initial = arguments.get("data")
+    ul_clean, dt_clean, err = validate_template_import(kind=kind, ui_layout=ul, data=initial)
+    if err:
+        return _err(err)
+    row = dashboard_db.dashboard_create(
+        uid, tid, kind=kind, title=title, ui_layout=ul_clean, data=dt_clean
+    )
+    return json.dumps({"ok": True, "dashboard": row}, ensure_ascii=False, default=str)
+
+
+def pin_block(arguments: dict[str, Any]) -> str:
+    ident = _identity()
+    if ident is None:
+        return _err("No user identity — dashboard tools need an authenticated chat user.")
+    tid, uid = ident
+    target_raw = arguments.get("target_dashboard_id") or arguments.get("dashboard_id")
+    source_raw = arguments.get("source_dashboard_id")
+    block_id = str(arguments.get("source_block_id") or "").strip()
+    if not target_raw or not source_raw or not block_id:
+        return _err("target_dashboard_id, source_dashboard_id, and source_block_id are required")
+    try:
+        target_id = uuid.UUID(str(target_raw).strip())
+        source_id = uuid.UUID(str(source_raw).strip())
+    except ValueError:
+        return _err("invalid dashboard uuid")
+    parent = str(arguments.get("parent_block_id") or "").strip() or None
+    title = str(arguments.get("title") or "").strip() or None
+    result = pin_block_to_dashboard(
+        uid,
+        tid,
+        target_id,
+        source_dashboard_id=source_id,
+        source_block_id=block_id,
+        parent_block_id=parent,
+        title=title,
+    )
+    if not result:
+        return _err("could not pin block (edit access on target, read access on source)")
+    return json.dumps(result, ensure_ascii=False, default=str)
+
+
 HANDLERS: dict[str, Callable[[dict[str, Any]], str]] = {
     "create_dashboard": create_dashboard,
     "list": list,
@@ -581,6 +815,9 @@ HANDLERS: dict[str, Callable[[dict[str, Any]], str]] = {
     "patch_data": patch_data,
     "patch_layout": patch_layout,
     "create_public_share": create_public_share,
+    "export_template": export_template,
+    "import_layout": import_layout,
+    "pin_block": pin_block,
 }
 
 TOOLS: list[dict[str, Any]] = [
@@ -692,7 +929,8 @@ TOOLS: list[dict[str, Any]] = [
             "TOOL_DESCRIPTION": (
                 "Change dashboard layout with guarded ops: add_block, remove_block, set_grid, set_props. "
                 "add_block types: table, markdown, rich_markdown, gallery, hero, timeline, stat, chart, "
-                "sparkline, kanban, embed. Initializes empty data for new blocks. "
+                "sparkline, kanban, embed, section, schedules, card_grid, dashboard_ref, share_widget. Optional parent_block_id on add_block "
+                "to place inside a section (not section-in-section). Initializes empty data for new blocks. "
                 "Not for granular block-only shares."
             ),
             "parameters": {
@@ -705,9 +943,12 @@ TOOLS: list[dict[str, Any]] = [
                     "ops": {
                         "type": "array",
                         "TOOL_DESCRIPTION": (
-                            "add_block: {op,type,data_path?,grid?,props?}; "
+                            "add_block: {op,type,data_path?,parent_block_id?,grid?,props?} — "
+                            "parent_block_id = section block id for nested blocks; "
                             "remove_block: {op,block_id}; set_grid: {op,block_id,grid}; "
-                            "set_props: {op,block_id,props}"
+                            "set_props: {op,block_id,props}. "
+                            "card_grid: use data_path matching list in data (e.g. projects). "
+                            "section: props.nested.blocks holds inner layout after adds."
                         ),
                         "items": {"type": "object"},
                     },
@@ -751,6 +992,63 @@ TOOLS: list[dict[str, Any]] = [
                     },
                 },
                 "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "export_template",
+            "TOOL_DESCRIPTION": (
+                "Export a dashboard layout + data snapshot (kind, ui_layout, initial_data) for copying to another board."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "dashboard_id": {"type": "string", "TOOL_DESCRIPTION": "Source dashboard UUID"},
+                },
+                "required": ["dashboard_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "import_layout",
+            "TOOL_DESCRIPTION": (
+                "Create a new dashboard from a layout snapshot (copy, not live sync). "
+                "Pass kind, title, ui_layout, and optional initial_data."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "kind": {"type": "string", "TOOL_DESCRIPTION": "Usually custom or a catalog kind"},
+                    "title": {"type": "string"},
+                    "ui_layout": {"type": "object"},
+                    "initial_data": {"type": "object"},
+                },
+                "required": ["ui_layout"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "pin_block",
+            "TOOL_DESCRIPTION": (
+                "Pin a block from another dashboard onto a target board as a live dashboard_ref. "
+                "Requires edit on target and read on source block."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target_dashboard_id": {"type": "string"},
+                    "source_dashboard_id": {"type": "string"},
+                    "source_block_id": {"type": "string"},
+                    "parent_block_id": {"type": "string", "TOOL_DESCRIPTION": "Optional section id on target"},
+                    "title": {"type": "string"},
+                },
+                "required": ["target_dashboard_id", "source_dashboard_id", "source_block_id"],
             },
         },
     },

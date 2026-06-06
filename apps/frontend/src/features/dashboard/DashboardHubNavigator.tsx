@@ -49,6 +49,7 @@ export function DashboardHubNavigator(props: {
   selectedId: string | null;
   onSelectDashboard: (id: string) => void;
   kindLabelFor: (kind: string) => string;
+  dashboardUnreadCount?: (id: string) => number;
 }) {
   const { t } = useTranslation(["dashboard"]);
   const {
@@ -59,6 +60,7 @@ export function DashboardHubNavigator(props: {
     selectedId,
     onSelectDashboard,
     kindLabelFor,
+    dashboardUnreadCount,
   } = props;
 
   const [query, setQuery] = useState("");
@@ -256,6 +258,7 @@ export function DashboardHubNavigator(props: {
                 const isSelected = selectedId === e.id;
                 const isActive = idx === activeIndex;
                 const fav = favIds.includes(e.id);
+                const unread = dashboardUnreadCount?.(e.id) ?? 0;
                 return (
                   <li key={e.id} className="flex items-stretch gap-1">
                     <button
@@ -270,7 +273,14 @@ export function DashboardHubNavigator(props: {
                       ].join(" ")}
                       onClick={() => onSelectDashboard(e.id)}
                     >
-                      <span className="block truncate font-medium">{e.label}</span>
+                      <span className="block truncate font-medium">
+                        {e.label}
+                        {unread > 0 ? (
+                          <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[9px] font-bold text-black align-middle">
+                            {unread > 9 ? "9+" : unread}
+                          </span>
+                        ) : null}
+                      </span>
                       <span className="block truncate text-[10px] text-white/35">
                         {e.kindLabel}
                         {e.accessNote ? ` · ${e.accessNote}` : ""}

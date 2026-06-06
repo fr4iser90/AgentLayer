@@ -161,6 +161,14 @@ def ensure_rag_embedding_aligned(*, log_prefix: str = "rag_embedding_sync") -> d
     dim_changed = probed_dim != current_dim
     summary["embedding_dim"] = probed_dim
 
+    try:
+        from apps.backend.infrastructure.pgvector_embedding_dim import ensure_pgvector_embedding_dim
+
+        summary["pgvector"] = ensure_pgvector_embedding_dim(probed_dim, log_prefix=log_prefix)
+    except Exception as e:
+        logger.warning("%s: pgvector dim alignment failed: %s", log_prefix, e)
+        summary["pgvector_error"] = str(e)[:300]
+
     if not model_changed and not dim_changed:
         summary["ok"] = True
         summary["note"] = "model and dim already aligned with provider"

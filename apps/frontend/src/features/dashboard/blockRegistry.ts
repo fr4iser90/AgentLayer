@@ -1,8 +1,8 @@
 import type { TFunction } from "i18next";
 import type { BlockType, ColumnDef, UiBlock } from "./types";
+import { GRID_MOBILE_STACK_MAX_WIDTH } from "./gridConfig";
 
-/** Below this container width (px), grid blocks stack full width. Matches Tailwind `md`. */
-export const GRID_MOBILE_STACK_MAX_WIDTH = 768;
+export { GRID_MOBILE_STACK_MAX_WIDTH };
 
 const DEFAULT_TABLE_COLUMNS: ColumnDef[] = [
   { field: "done", kind: "checkbox", label: "" },
@@ -38,7 +38,7 @@ function gridDef(definition: GridBlockDefinition): GridBlockDefinition {
   return definition;
 }
 
-/** Block types that can be added from the grid editor toolbar. */
+/** Root grid toolbar — includes section container. */
 export const GRID_BLOCK_DEFINITIONS: GridBlockDefinition[] = [
   gridDef({
     type: "table",
@@ -180,7 +180,87 @@ export const GRID_BLOCK_DEFINITIONS: GridBlockDefinition[] = [
     createProps: (dataPath) => ({ dataPath, title: "" }),
     createInitialData: () => ({ url: "", title: "", height: 480 }),
   }),
+  gridDef({
+    type: "section",
+    dataPathPrefix: "section",
+    addLabelKey: "dashboard:addSection",
+    defaultGrid: { w: 12, h: 10 },
+    minGrid: { minW: 4, minH: 5 },
+    mobileStack: true,
+    shellHeight: "tall",
+    createProps: () => ({
+      title: "",
+      nested: { version: 2, blocks: [] },
+      collapsed: false,
+    }),
+    createInitialData: () => ({}),
+  }),
+  gridDef({
+    type: "card_grid",
+    dataPathPrefix: "cards",
+    addLabelKey: "dashboard:addCardGrid",
+    defaultGrid: { w: 12, h: 10 },
+    minGrid: { minW: 4, minH: 5 },
+    mobileStack: true,
+    shellHeight: "tall",
+    supportsExpand: true,
+    expandTitleFallbackKey: "dashboard:cardGridFallback",
+    createProps: (dataPath) => ({
+      dataPath,
+      title: "",
+      gridColumns: 3,
+      cardFields: ["title", "remote_url", "tags", "status", "security"],
+      enableSearch: true,
+      enableRowDetail: true,
+      enableRunNow: false,
+      enableWorkspaceLink: true,
+    }),
+    createInitialData: () => [],
+  }),
+  gridDef({
+    type: "share_widget",
+    dataPathPrefix: "share_widget",
+    addLabelKey: "dashboard:addShareWidget",
+    defaultGrid: { w: 6, h: 5 },
+    minGrid: { minW: 3, minH: 4 },
+    mobileStack: true,
+    shellHeight: "default",
+    createProps: () => ({
+      title: "Friend share",
+      resourceType: "google_calendar",
+      friendUserId: "",
+      friendDisplayName: "",
+      daysAhead: 7,
+    }),
+    createInitialData: () => ({}),
+  }),
+  gridDef({
+    type: "dashboard_ref",
+    dataPathPrefix: "ref",
+    addLabelKey: "dashboard:addDashboardRef",
+    defaultGrid: { w: 6, h: 6 },
+    minGrid: { minW: 3, minH: 4 },
+    mobileStack: true,
+    shellHeight: "default",
+    createProps: () => ({
+      title: "Linked block",
+      sourceDashboardId: "",
+      sourceBlockId: "",
+      sourceLabel: "",
+    }),
+    createInitialData: () => ({}),
+  }),
 ];
+
+/** Root grid toolbar — excludes pin-only ref blocks from manual add. */
+export const ROOT_GRID_TOOLBAR_DEFINITIONS = GRID_BLOCK_DEFINITIONS.filter(
+  (d) => d.type !== "dashboard_ref",
+);
+
+/** Inner section toolbar — no nested sections or remote refs. */
+export const NESTED_GRID_BLOCK_DEFINITIONS = GRID_BLOCK_DEFINITIONS.filter(
+  (d) => d.type !== "section" && d.type !== "dashboard_ref",
+);
 
 const GRID_BLOCK_REGISTRY = Object.fromEntries(
   GRID_BLOCK_DEFINITIONS.map((d) => [d.type, d])
@@ -238,6 +318,16 @@ export function createGridBlock(type: BlockType, dataPath: string, y: number): U
   };
 }
 
+export function createGridBlockAt(
+  type: BlockType,
+  dataPath: string,
+  y: number,
+  version: 1 | 2 = 2
+): { block: UiBlock; layoutVersion: 1 | 2 } {
+  const block = createGridBlock(type, dataPath, y);
+  return { block, layoutVersion: type === "section" ? 2 : version };
+}
+
 export function initialDataPatchForBlock(
   type: BlockType,
   dataPath: string,
@@ -245,6 +335,8 @@ export function initialDataPatchForBlock(
 ): Record<string, unknown> {
   const definition = getGridBlockDefinition(type);
   if (!definition) return { [dataPath]: "" };
+  if (type === "section") return {};
+  if (type === "card_grid") return { [dataPath]: [] };
   return { [dataPath]: definition.createInitialData(t) };
 }
 

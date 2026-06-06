@@ -108,7 +108,12 @@
   "sharesWhatYouShare": "Was du mit ihnen teilst",
   "sharesWhatTheyShare": "Was sie mit dir teilen",
   "sharesAccessGranted": "✓ Zugriff gewährt",
-  "sharesNotShared": "Nicht geteilt"
+  "sharesNotShared": "Nicht geteilt",
+  "sharesDaysAhead": "Tage im Voraus (optional)",
+  "sharesDaysAheadPlaceholder": "Leer = unbegrenzt",
+  "sharesDaysAheadValue": "Max. {{count}} Tage",
+  "sharesExpiresAt": "Läuft ab am (optional)",
+  "sharesSavePolicy": "Scope speichern"
   ,
   "toolsLoadFailed": "Tools konnten nicht geladen werden",
   "toolsTitle": "Tools",
@@ -306,6 +311,24 @@
   "delegateEscalateDb": "Bei DB-Migrationen stoppen und fragen",
   "delegateEscalateSecurity": "Bei Security-Findings stoppen und fragen (aus = Auto-Fix erlaubt)",
   "delegatePrimaryGoal": "Primärziel (bei Konflikten)",
-  "delegatePrioritiesHelp": "Prioritäten, ein Token pro Zeile: security, stability, maintainability, speed"
+  "delegatePrioritiesHelp": "Prioritäten, ein Token pro Zeile: security, stability, maintainability, speed",
+  "notificationsTitle": "Benachrichtigungen",
+  "notificationsIntro": "In-App-Benachrichtigungen sind immer aktiv. Telegram oder Discord optional (Operator-Bot + Verknüpfung unter Verbindungen).",
+  "notificationsLoading": "Laden…",
+  "notificationsSaved": "Einstellungen gespeichert.",
+  "notificationsSaving": "Speichern…",
+  "notificationsSave": "Speichern",
+  "notificationsWebTitle": "Web (In-App)",
+  "notificationsWebHint": "Glocke und Dashboard-Badges — immer aktiv.",
+  "notificationsLinkTelegram": "Telegram-User-ID verknüpfen unter",
+  "notificationsLinkDiscord": "Discord-User-ID verknüpfen unter",
+  "notificationsTelegramEnable": "Telegram (ausgehend)",
+  "notificationsTelegramEnableHint": "DM über den Operator-Telegram-Bot.",
+  "notificationsDiscordEnable": "Discord (ausgehend)",
+  "notificationsDiscordEnableHint": "DM über den Operator-Discord-Bot.",
+  "notificationsSchedules": "Hintergrund-Schedules",
+  "notificationsDashboard": "Dashboard-Agent-Updates",
+  "notificationsFailuresOnly": "Extern: nur Fehler & Warnungen",
+  "notificationsFailuresOnlyHint": "Wenn aktiv: erfolgreiche Runs und Routine-Dashboard-Edits nur in der App (Fehler gehen extern raus, wenn Kanal an ist)."
 }
 

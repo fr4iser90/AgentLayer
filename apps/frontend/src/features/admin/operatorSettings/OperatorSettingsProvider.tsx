@@ -263,7 +263,7 @@ function useOperatorSettingsState() {
         setRagEmbeddingStatusHint(null);
       }
       setRagEmbeddingDim(
-        op.rag_embedding_dim != null && Number.isFinite(op.rag_embedding_dim) ? String(op.rag_embedding_dim) : "768"
+        op.rag_embedding_dim != null && Number.isFinite(op.rag_embedding_dim) ? String(op.rag_embedding_dim) : ""
       );
       setRagChunkSize(
         op.rag_chunk_size != null && Number.isFinite(op.rag_chunk_size) ? String(op.rag_chunk_size) : "1200"

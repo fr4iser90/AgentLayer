@@ -10,7 +10,7 @@ tags: [runbook, troubleshooting]
 
 - **`rag_enabled`** on in **Admin → Interfaces** (`operator_settings`)
 - Docs ingested via `POST /v1/admin/rag/ingest` or batch `POST /v1/admin/rag/ingest-docs`
-- **`rag_embedding_dim`** matches the DB column (e.g. `vector(768)`) and the Ollama embedding model output
+- **`rag_embedding_dim`** matches the embedding model output and the pgvector column (`vector(N)`; default deployment width 1024 after schema_050). Changing the model in Admin auto-probes dim and migrates pgvector when needed.
 
 ## Discord gateway DNS failures
 

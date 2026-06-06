@@ -8,9 +8,10 @@ import uuid
 from typing import Any, Callable
 
 from apps.backend.domain.identity import get_identity
+from apps.backend.domain.shares.policy import effective_days_ahead
 from apps.backend.infrastructure.db.share_permissions_db import (
     SHARE_RESOURCE_GOOGLE_CALENDAR,
-    share_permission_check_resolved,
+    share_permission_get,
 )
 
 from apps.backend.domain.friends.common import (
@@ -114,14 +115,22 @@ def calendar(arguments: dict[str, Any]) -> Any:
         try:
             from plugins.tools.personal.calendar.ics import calendar_ics
             
+            requested_days = arguments.get("days", 7)
+            effective_days = effective_days_ahead(
+                grant.get("policy"),
+                requested_days if requested_days is not None else None,
+            )
             calendar_result = calendar_ics({
                 "ics_url": ics_url,
-                "days": arguments.get("days", 7)
+                "days": effective_days,
             })
-            
+
             res = {
                 "friend_name": friend_display_name,
-                "calendar": calendar_result
+                "days_requested": requested_days,
+                "days_effective": effective_days,
+                "share_policy": grant.get("policy") or {},
+                "calendar": calendar_result,
             }
             logger.info("✅ get_friend_calendar RESULT: %s", res)
             return json.dumps(res, ensure_ascii=False)

@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n/config";
 import { useAuth } from "../auth/AuthContext";
@@ -22,6 +23,7 @@ import { DashboardHubNavigator } from "../features/dashboard/DashboardHubNavigat
 import { DashboardOverviewPanel } from "../features/dashboard/DashboardOverviewPanel";
 import { ProjectsImportModal } from "../features/dashboard/ProjectsImportModal";
 import { CollapsibleSidebarShell } from "../layout/CollapsibleSidebarShell";
+import { useNotificationContext } from "../features/notifications/NotificationProvider";
 import {
   DEFAULT_HUBS,
   groupDashboardsByHub,
@@ -126,6 +128,10 @@ type HubPanel = "home" | "catalog" | "overview";
 export function DashboardPage() {
   const { t } = useTranslation(["dashboard", "admin"]);
   const auth = useAuth();
+  const [searchParams] = useSearchParams();
+  const { dashboardUnreadCount, blockUnreadIds, markDashboardSeen, refreshSummary } =
+    useNotificationContext();
+  const highlightBlockId = searchParams.get("block")?.trim() || null;
   const [schemaInstalled, setSchemaInstalled] = useState<boolean | null>(null);
   const [installBusy, setInstallBusy] = useState(false);
   const [installModalRow, setInstallModalRow] = useState<KindCatalogRow | null>(null);
@@ -173,6 +179,11 @@ export function DashboardPage() {
   const [toolCatalogNames, setToolCatalogNames] = useState<string[]>([]);
   const [toolsCatalogErr, setToolsCatalogErr] = useState<string | null>(null);
   const [manualToolName, setManualToolName] = useState("");
+  const [pinModalOpen, setPinModalOpen] = useState(false);
+  const [pinSourceBlockId, setPinSourceBlockId] = useState<string | null>(null);
+  const [pinTargetId, setPinTargetId] = useState("");
+  const [pinBusy, setPinBusy] = useState(false);
+  const [templateBusy, setTemplateBusy] = useState(false);
 
   const selectedIdRef = useRef<string | null>(selectedId);
   selectedIdRef.current = selectedId;
@@ -185,6 +196,20 @@ export function DashboardPage() {
   const isPrimaryOwner = accessRole === "owner";
   const canManageMembers = accessRole === "owner" || accessRole === "co_owner";
   const canEditContent = !isViewer;
+
+  const pinTargetOptions = useMemo(
+    () =>
+      list.filter(
+        (w) =>
+          w.id !== selectedId &&
+          w.access_role !== "viewer" &&
+          (w.access_role === "owner" ||
+            w.access_role === "editor" ||
+            w.access_role === "co_owner" ||
+            !w.access_role),
+      ),
+    [list, selectedId],
+  );
 
   const uiLayout = useMemo(() => asUiLayout(detail?.ui_layout), [detail]);
   const gridLayout = useMemo(
@@ -619,6 +644,99 @@ export function DashboardPage() {
     }
   };
 
+  const openPinModal = (blockId: string) => {
+    setPinSourceBlockId(blockId);
+    const preferred =
+      pinTargetOptions.find((w) => w.kind === "personal_dashboard")?.id ||
+      pinTargetOptions[0]?.id ||
+      "";
+    setPinTargetId(preferred);
+    setPinModalOpen(true);
+  };
+
+  const confirmPinBlock = async () => {
+    if (!selectedId || !pinSourceBlockId || !pinTargetId) return;
+    setPinBusy(true);
+    setError(null);
+    try {
+      const res = await apiFetch(`/v1/dashboards/${pinTargetId}/pin-block`, auth, {
+        method: "POST",
+        body: JSON.stringify({
+          source_dashboard_id: selectedId,
+          source_block_id: pinSourceBlockId,
+        }),
+      });
+      if (!res.ok) {
+        setError(await res.text());
+        return;
+      }
+      setPinModalOpen(false);
+      setPinSourceBlockId(null);
+      alert(t("dashboard:pinBlockSuccess"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("dashboard:pinBlockFailed"));
+    } finally {
+      setPinBusy(false);
+    }
+  };
+
+  const exportTemplate = async () => {
+    if (!selectedId) return;
+    setTemplateBusy(true);
+    try {
+      const res = await apiFetch(`/v1/dashboards/${selectedId}/export-template`, auth);
+      if (!res.ok) {
+        setError(await res.text());
+        return;
+      }
+      const j = await res.json();
+      const text = JSON.stringify(j.template ?? j, null, 2);
+      await navigator.clipboard.writeText(text);
+      alert(t("dashboard:templateExportDone"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setTemplateBusy(false);
+    }
+  };
+
+  const importTemplateFile = async (file: File) => {
+    setTemplateBusy(true);
+    setError(null);
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text) as {
+        kind?: string;
+        title?: string;
+        ui_layout?: Record<string, unknown>;
+        initial_data?: Record<string, unknown>;
+      };
+      const res = await apiFetch("/v1/dashboards/from-template", auth, {
+        method: "POST",
+        body: JSON.stringify({
+          kind: parsed.kind || "custom",
+          title: parsed.title || "Imported dashboard",
+          ui_layout: parsed.ui_layout || parsed,
+          initial_data: parsed.initial_data,
+        }),
+      });
+      if (!res.ok) {
+        setError(await res.text());
+        return;
+      }
+      const j = (await res.json()) as { dashboard?: DashboardDetail & { id: string } };
+      if (j.dashboard?.id) {
+        await loadList();
+        setSelectedId(j.dashboard.id);
+        alert(t("dashboard:templateImportDone"));
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setTemplateBusy(false);
+    }
+  };
+
   const createPublicShare = async () => {
     if (!selectedId) return;
     setPublicSharesBusy(true);
@@ -817,7 +935,10 @@ export function DashboardPage() {
   };
 
   const selectDashboard = (id: string) => {
-    if (id === selectedId) return;
+    if (id === selectedId) {
+      void markDashboardSeen(id);
+      return;
+    }
     setLayoutEditMode(false);
     setDetail(null);
     setData({});
@@ -827,7 +948,34 @@ export function DashboardPage() {
     setSelectedId(id);
     setHubPanel("home");
     setActionsSidebarOpen(false);
+    void markDashboardSeen(id);
   };
+
+  const markBlockSeen = useCallback(
+    (blockId: string) => {
+      if (!selectedId || !blockId.trim()) return;
+      void markDashboardSeen(selectedId, [blockId.trim()]).then(() => refreshSummary());
+    },
+    [selectedId, markDashboardSeen, refreshSummary]
+  );
+
+  useEffect(() => {
+    const id = searchParams.get("id")?.trim();
+    if (!id || loading) return;
+    if (list.some((w) => w.id === id) && id !== selectedId) {
+      selectDashboard(id);
+    }
+  }, [searchParams, list, loading, selectedId]);
+
+  useEffect(() => {
+    if (!dashboardReady || !highlightBlockId) return;
+    const el = document.querySelector(`[data-block-id="${CSS.escape(highlightBlockId)}"]`);
+    if (el) {
+      window.setTimeout(() => {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 120);
+    }
+  }, [dashboardReady, highlightBlockId, gridLayout.blocks.length]);
 
   const addToolToDashboardAllowlist = useCallback(
     (name: string) => {
@@ -1046,6 +1194,7 @@ export function DashboardPage() {
         list={list}
         kindLabelFor={(k) => subtitleForDashboardKind(k, kindCatalog)}
         onOpenDashboard={(id) => selectDashboard(id)}
+        dashboardUnreadCount={dashboardUnreadCount}
       />
     </div>
   );
@@ -1060,6 +1209,7 @@ export function DashboardPage() {
         selectedId={selectedId}
         onSelectDashboard={(id) => selectDashboard(id)}
         kindLabelFor={(k) => subtitleForDashboardKind(k, kindCatalog)}
+        dashboardUnreadCount={dashboardUnreadCount}
       />
       <div className="grid gap-4 sm:grid-cols-2">
         <button
@@ -1334,6 +1484,12 @@ export function DashboardPage() {
                   editMode={layoutEditMode && canEditContent}
                   contentReadOnly={isViewer}
                   dashboardId={selectedId}
+                  unreadBlockIds={selectedId ? blockUnreadIds(selectedId) : undefined}
+                  highlightBlockId={highlightBlockId}
+                  onBlockSeen={markBlockSeen}
+                  onPinBlock={
+                    selectedId && pinTargetOptions.length > 0 ? openPinModal : undefined
+                  }
                 />
               </>
             )}
@@ -1424,6 +1580,39 @@ export function DashboardPage() {
                 </p>
               </div>
             </div>
+
+            {canEditContent ? (
+              <div className="rounded-xl border border-surface-border bg-black/20 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-surface-muted">
+                  {t("dashboard:templateExport")} / {t("dashboard:templateImport")}
+                </p>
+                <p className="mt-1 text-xs text-surface-muted">{t("dashboard:templateImportHint")}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={templateBusy}
+                    className="rounded-lg border border-surface-border px-3 py-2 text-sm text-neutral-200 hover:bg-white/5 disabled:opacity-50"
+                    onClick={() => void exportTemplate()}
+                  >
+                    {t("dashboard:templateExport")}
+                  </button>
+                  <label className="cursor-pointer rounded-lg bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-500">
+                    {t("dashboard:templateImport")}
+                    <input
+                      type="file"
+                      accept="application/json,.json"
+                      className="sr-only"
+                      disabled={templateBusy}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) void importTemplateFile(f);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+            ) : null}
 
             <div className="rounded-xl border border-surface-border bg-black/20 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-surface-muted">
@@ -1640,6 +1829,7 @@ export function DashboardPage() {
                   <span className="text-white/85">{t("dashboard:blockSharingIntroPrefix")}</span>{" "}
                   {t("dashboard:blockSharingIntroBody")}
                 </p>
+                <p className="mt-2 text-xs text-sky-200/80">{t("dashboard:blockSharingListHint")}</p>
                 {blockSharesErr ? <p className="mt-2 text-xs text-red-300">{blockSharesErr}</p> : null}
                 <div className="mt-3 flex flex-wrap items-end gap-2">
                   <div className="min-w-[200px] flex-1">
@@ -2031,6 +2221,49 @@ export function DashboardPage() {
                 onClick={() => void runInstallTemplates(installModalRow.kind)}
               >
                 {installBusy ? t("dashboard:installing") : t("dashboard:install")}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {pinModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full max-w-md rounded-xl border border-surface-border bg-surface-raised p-6 shadow-xl"
+          >
+            <h2 className="text-lg font-semibold text-white">{t("dashboard:pinBlockTitle")}</h2>
+            <label className="mt-4 block text-sm text-surface-muted">
+              {t("dashboard:pinBlockTarget")}
+              <select
+                value={pinTargetId}
+                onChange={(e) => setPinTargetId(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white"
+              >
+                {pinTargetOptions.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.title || w.kind}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                className="rounded-lg border border-surface-border px-4 py-2 text-sm text-neutral-200"
+                onClick={() => setPinModalOpen(false)}
+              >
+                {t("admin:cancel")}
+              </button>
+              <button
+                type="button"
+                disabled={pinBusy || !pinTargetId}
+                className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-50"
+                onClick={() => void confirmPinBlock()}
+              >
+                {pinBusy ? "…" : t("dashboard:pinBlockConfirm")}
               </button>
             </div>
           </div>

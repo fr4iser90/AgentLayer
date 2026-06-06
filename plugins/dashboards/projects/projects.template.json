@@ -1,13 +1,77 @@
 {
   "kind": "projects",
-  "description": "Template for kind projects — copied into DB on create.",
+  "description": "Template for kind projects — portfolio with hero, KPIs, card grid, table, schedules.",
   "ui_layout": {
-    "version": 1,
+    "version": 2,
     "blocks": [
+      {
+        "id": "projects-hero",
+        "type": "hero",
+        "grid": { "x": 0, "y": 0, "w": 12, "h": 5 },
+        "props": { "dataPath": "hero", "title": "Portfolio" }
+      },
+      {
+        "id": "projects-stat-count",
+        "type": "stat",
+        "grid": { "x": 0, "y": 5, "w": 4, "h": 4 },
+        "props": { "dataPath": "stat_projects", "title": "Projects" }
+      },
+      {
+        "id": "projects-stat-linked",
+        "type": "stat",
+        "grid": { "x": 4, "y": 5, "w": 4, "h": 4 },
+        "props": { "dataPath": "stat_linked", "title": "Linked workspaces" }
+      },
+      {
+        "id": "projects-stat-active",
+        "type": "stat",
+        "grid": { "x": 8, "y": 5, "w": 4, "h": 4 },
+        "props": { "dataPath": "stat_active", "title": "Active" }
+      },
+      {
+        "id": "projects-section",
+        "type": "section",
+        "grid": { "x": 0, "y": 9, "w": 12, "h": 12 },
+        "props": {
+          "title": "Repositories",
+          "collapsed": false,
+          "nested": {
+            "version": 2,
+            "blocks": [
+              {
+                "id": "projects-cards",
+                "type": "card_grid",
+                "grid": { "x": 0, "y": 0, "w": 12, "h": 10 },
+                "props": {
+                  "dataPath": "projects",
+                  "title": "Projects",
+                  "gridColumns": 3,
+                  "cardFields": ["title", "remote_url", "tags", "status", "security"],
+                  "enableSearch": true,
+                  "searchPlaceholder": "Search projects…",
+                  "enableRowDetail": true,
+                  "enableRunNow": true,
+                  "enableWorkspaceLink": true,
+                  "workspaceId": "",
+                  "columns": [
+                    { "field": "pinned", "kind": "checkbox", "label": "" },
+                    { "field": "title", "kind": "text", "label": "Project" },
+                    { "field": "remote_url", "kind": "text", "label": "Remote" },
+                    { "field": "project_path", "kind": "text", "label": "Local path" },
+                    { "field": "tags", "kind": "text", "label": "Tags" },
+                    { "field": "status", "kind": "text", "label": "Status" },
+                    { "field": "security", "kind": "text", "label": "Security" }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      },
       {
         "id": "projects-table",
         "type": "table",
-        "grid": { "x": 0, "y": 0, "w": 12, "h": 9 },
+        "grid": { "x": 0, "y": 21, "w": 12, "h": 8 },
         "props": {
           "dataPath": "projects",
           "enableSearch": true,
@@ -21,20 +85,22 @@
             { "field": "title", "kind": "text", "label": "Project" },
             { "field": "remote_url", "kind": "text", "label": "Remote" },
             { "field": "project_path", "kind": "text", "label": "Local path" },
-            { "field": "tags", "kind": "text", "label": "Tags" }
+            { "field": "tags", "kind": "text", "label": "Tags" },
+            { "field": "status", "kind": "text", "label": "Status" },
+            { "field": "security", "kind": "text", "label": "Security" }
           ]
         }
       },
       {
         "id": "projects-schedules",
         "type": "schedules",
-        "grid": { "x": 0, "y": 9, "w": 12, "h": 5 },
+        "grid": { "x": 0, "y": 29, "w": 12, "h": 5 },
         "props": { "scope": "both", "executionTarget": "coding" }
       },
       {
         "id": "project-notes",
         "type": "markdown",
-        "grid": { "x": 0, "y": 14, "w": 12, "h": 4 },
+        "grid": { "x": 0, "y": 34, "w": 12, "h": 4 },
         "props": {
           "dataPath": "notes",
           "placeholder": "Notes for this portfolio…"
@@ -43,8 +109,11 @@
     ]
   },
   "initial_data": {
+    "hero": { "url": "", "caption": "", "headline": "My Projects" },
+    "stat_projects": { "value": "0", "label": "Total repos", "suffix": "", "trend": "" },
+    "stat_linked": { "value": "0", "label": "With workspace", "suffix": "", "trend": "" },
+    "stat_active": { "value": "0", "label": "Active", "suffix": "", "trend": "" },
     "projects": [],
     "notes": ""
   }
 }
-

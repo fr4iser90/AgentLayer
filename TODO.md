@@ -1,191 +1,151 @@
-# RAG & Embeddings: Architektur-Analyse und Roadmap
-
-Dieses Dokument fasst den **Ist-Zustand**, die **Lücken** (Ollama-Hardcoding, fehlende Workspace-Scopes im Doc-RAG) und einen **Umsetzungsplan** zusammen — damit alle Provider gleichberechtigt werden können, Indexing/Retrieval klar getrennt sind, und RAG pro Workspace optional per UI aktivierbar wird.
+**Kurz:** Der Agent kann dich heute **nur sehr begrenzt** proaktiv erreichen — nicht als generisches „Task fertig“-System über alle Kanäle. Discord/Telegram sind primär **Eingang + Antwort im gleichen Thread**; echtes Outbound gibt es fast nur beim **Operator-Scheduler → Telegram**.
 
 ---
 
-## 1. Executive Summary
+## Was schon existiert
 
-| Bereich | Heute | Ziel |
-|--------|--------|------|
-| **Embeddings** | Nur **Ollama** (`POST …/api/embed` bzw. Legacy `/api/embeddings`), Basis-URL aus `OLLAMA_BASE_URL`, Modell aus `rag_ollama_model`. | **Einheitlicher Embedding-Provider** (Ollama, OpenAI-kompatibel `/v1/embeddings`, Azure, ggf. weitere) — **unabhängig** vom Chat-Completion-Provider. |
-| **Doc-RAG (Produkt-Doku & Nutzer-Ingest)** | **Postgres + pgvector**, Tabellen `rag_documents` / `rag_chunks`; Scope **tenant + user_id**, Domains; `agentlayer_docs` tenant-weit via Allowlist. | Gleiches oder erweitertes Schema mit **`workspace_id`** (nullable = global/legacy), klarer **Indexing-Pipeline** + **Retrieval-API**. |
-| **Code-Semantik (Coding-Agent)** | **Qdrant**-Collection, Filter **`workspace_id`** in Payload; Embeddings **wieder Ollama** in `code_index_qdrant._embed_text`. | Derselbe Embedding-Provider wie Doc-RAG; optional **eigene Collection pro Workspace** oder weiter **ein Collection + Filter** (Trade-off siehe §6). |
-| **Memory / Graph** | Nutzt `ollama_embed_one` aus `apps/backend/api/rag.py`. | Auf gemeinsamen Embedding-Provider umstellen. |
-| **Frontend** | RAG über Operator-Settings (`rag_*`), kein Workspace-Toggle für Doc-RAG. | UI: Workspace → „Semantic index“ / „RAG für dieses Projekt“ + Status (letzte Indexierung, Fehler). |
+| Mechanismus | Proaktiv? | Kanal |
+|-------------|-----------|--------|
+| **Discord/Telegram Bridge** | Nein (Antwort auf deine Nachricht) | Gleicher Chat |
+| **Operator-Scheduler** (`scheduler.py`) | Ja, wenn LLM nicht `SCHEDULER_OK` sagt | **Nur Telegram** (wenn `telegram_user_id` verlinkt) |
+| **`scheduler_jobs`** (Hintergrund-Jobs) | Nein | Nur Log + `last_run_at` / `scheduler_job_runs` |
+| **Chat WebSocket** (`agent.done`) | Nur während offener Session | Web-UI |
+| **Delegate Auto-Respond** | Nein (synthetische Chat-Turns) | Web-Chat |
 
-**Wichtig:** „Alle Provider gleich behandeln“ betrifft primär **Embeddings**, nicht zwingend die **Vektordatenbank**: Chat-Provider (OpenAI, Anthropic, …) und Embedding-API sind in der Praxis oft **getrennte Produkte/Keys**. Sauber ist: **ein abstraktes `EmbeddingClient`**, konfigurierbar pro Tenant oder global (Operator), optional Override pro Workspace.
+Der Scheduler-Prompt erwartet explizit JSON wie `{"notify":true,"message":"..."}` — das ist das einzige etablierte Outbound-Muster:
 
----
+```148:154:apps/backend/infrastructure/scheduler.py
+    sys_prompt = (
+        "You are in SCHEDULER mode (background check). "
+        "If there is nothing that needs the user's attention, reply with exactly one line: SCHEDULER_OK\n"
+        "If something needs attention, reply with compact JSON: "
+        '{"notify":true,"message":"...","severity":"low|medium|high"} '
+        "or plain text.\n"
+```
 
-## 2. Ist-Zustand (Code-Pfade)
+Verlinkung läuft über **Settings → Connections** (Telegram/Discord User-ID). Es gibt **keine** User-Prefs wie „bei Job X immer Discord“ und **kein** Agent-Tool `notify_user`.
 
-### 2.1 Doc-RAG (Markdown, `agentlayer_docs`, Admin-Ingest)
-
-- **Service:** `apps/backend/api/rag.py` — Chunking, `ollama_embed_one`, `ingest_for_user`, `search_for_identity`.
-- **Öffentliche Fassade:** `apps/backend/infrastructure/rag.py` re-exportiert dieselben Funktionen.
-- **HTTP:** `apps/backend/api/rag_api.py` — `POST /v1/admin/rag/ingest`, `…/ingest-docs`.
-- **Bootstrap:** `apps/backend/domain/rag_docs_file_ingest.py` — läuft `docs/**/*.md` → Domain `agentlayer_docs`, **Ollama-Probe** vor Batch.
-- **Tool:** `plugins/tools/capabilities/knowledge/rag/rag.py` — nur **Suche** (`rag_search`), keine Workspace-Bindung.
-- **Persistenz:** `apps/backend/infrastructure/db/db.py` — `rag_document_and_chunks_insert`, `rag_vector_search` (Cosine `<=>`).
-- **Konfiguration:** `apps/backend/infrastructure/operator_settings.py` — `rag_enabled`, `rag_ollama_model`, `rag_embedding_dim`, Chunk-Parameter, `rag_tenant_shared_domains`.
-
-**Semantik:** Retrieval filtert nach `tenant_id` + `user_id` **oder** (bei Domain in `rag_tenant_shared_domains`) nur `tenant_id` + Domain — **kein** `project_workspaces.id`.
-
-### 2.2 Code-Index + Qdrant
-
-- **`apps/backend/infrastructure/code_index_qdrant.py`:** eigene `_embed_text` → wieder **nur Ollama** `/api/embed` (ohne die robusten Fallbacks aus `ollama_embed_one`).
-- **Tools:** `index`, `semantic_search` — `workspace_id` aus Workspace-Kontext, Qdrant-Payload-Filter.
-
-### 2.3 Memory
-
-- **`apps/backend/api/memory.py`:** importiert `ollama_embed_one` — gleiche Ollama-Kopplung.
-
-### 2.4 Workspaces (Domänenmodell)
-
-- Tabelle **`project_workspaces`** (`schema_040_project_workspaces.py` u. a.) — `id`, `owner_user_id`, `path`, …
-- Coding-Flow kennt **Workspace-Pfad und UUID**; Doc-RAG **nicht**.
+Dashboard-Badges für Agent-Updates existieren nicht — nur Status-Badges in `CardGridBlock` (Projekt-Status, nicht „ungelesen vom Agent“).
 
 ---
 
-## 3. Problemstellung (warum „hardcoded Ollama“ weh tut)
+## Wie es sein *sollte* (Empfehlung)
 
-1. **Asymmetrie zum Chat-LLM:** Nutzer wählt z. B. OpenAI/Anthropic für Antworten — Embeddings laufen trotzdem über **Ollama** und `OLLAMA_BASE_URL`. Das ist operationell und mental ein **zweiter Stack**.
-2. **Duplizierte / schwächere Pfade:** `code_index_qdrant._embed_text` ist **nicht** identisch zu `ollama_embed_one` (keine Legacy-Endpunkte, keine Dimensionsprüfung wie im RAG-Pfad).
-3. **Dimension ist global:** `rag_embedding_dim` ist ein **einziges** Schema für pgvector-Spalte, Qdrant-Vektorgröße und Memory — ein Wechsel des Embedding-Modells erzwingt **Reindex/Migration**, ist aber aktuell nirgends als Workflow modelliert.
-4. **Doc-RAG ist nicht projektgebunden:** Alles hängt an **Domain-Strings** und **User/Tenant**, nicht an `project_workspaces` — für „RAG pro Repo“ fehlt ein Schlüssel.
+### 1. Ein generisches **Notification-Event**, viele **Delivery-Adapter**
 
----
+Nicht „Agent schreibt direkt Telegram“, sondern:
 
-## 4. Begriffe: Indexing vs. Retrieval (sauber trennen)
+```
+Agent/Scheduler/Job fertig
+  → Event: { user_id, kind, severity, title, body, deep_link, source_ref }
+  → NotificationService
+       → In-App Inbox (immer)
+       → optional: Telegram / Discord DM / E-Mail
+```
 
-| Schicht | Verantwortung | Heutige Module (Orientierung) |
-|--------|----------------|-------------------------------|
-| **Ingest / Indexing** | Rohtext holen → chunken → **embedden** → in Vector-Store schreiben (+ Metadaten). | `ingest_for_user`, `ingest_markdown_tree`, `index` + Qdrant upsert |
-| **Retrieval** | Query embedden → ANN-Suche → Post-Filter (ACL, workspace, domain) → Ranking optional reranken. | `search_for_identity`, `rag_vector_search`, `QdrantCodeIndex.search` |
-| **Embedding-Provider** | „String(s) → `list[float]`“ mit Timeout, Batch, Normalisierung, Dim-Check. | Soll **neu** zentral sein; heute: `ollama_embed_one` + Qdrant-Duplikat |
+**Vorteil:** Einmal implementiert für Scheduler-Jobs, Coding-Runs, Dashboard-`patch_data`, Delegate-Eskalation.
 
-**Ziel:** Indexing und Retrieval rufen **dieselbe** Embedding-Abstraktion auf; keine direkten `httpx`-Calls zu Ollama außerhalb eines Adapters.
+### 2. **Defaults: nicht überall**
 
----
+„Überall standardmäßig an“ ist zu laut und teuer (Rate-Limits, Spam).
 
-## 5. Zielbild: Embedding-Provider (alle „Provider“ gleich)
+Sinnvolle Defaults:
 
-### 5.1 Minimales Interface (konzeptionell)
+| Kanal | Default | Begründung |
+|-------|---------|------------|
+| **Web (In-App)** | **An** | Immer verfügbar, kein externes Setup |
+| **Telegram** | Aus, bis verlinkt | Bereits angebunden |
+| **Discord** | Aus, bis verlinkt | Braucht DM/Thread-Kontext |
+| **E-Mail** | Aus | Für seltene/high-severity |
 
-- `embed_one(text: str) -> list[float]`
-- optional `embed_many(texts: list[str]) -> list[list[float]]` (Kosten/Latenz, OpenAI batch)
+**Wo konfigurieren:**
 
-### 5.2 Backends (Priorität)
+- **Global:** Settings → **Notifications** (nicht Connections — das bleibt „Account verknüpfen“)
+- **Pro Job:** beim Schedule: `notify_on: never | failure | always`, `channels: [web, telegram]`
+- **Pro Dashboard:** optional in `data._agentlayer`: „Agent-Updates hier → Badge + Inbox“
 
-1. **Ollama** — bestehende URLs/Body-Varianten in **einem** Adapter (`ollama_embed_one` → refactor).
-2. **OpenAI-kompatibel** — `POST {base}/v1/embeddings` mit `input` + `model` (viele Gateways, LM Studio, vLLM, Azure mit angepasster Base-URL).
-3. **Azure OpenAI Embeddings** — oft separater Pfad (API-Version, Header); kann zweiter Adapter oder Konfiguration auf demselben HTTP-Client sein.
+Connections = *kann* senden; Notifications = *wann* und *wohin*.
 
-### 5.3 Konfiguration (Vorschlag)
+### 3. **Chat und Dashboard sind komplementär, nicht entweder/oder**
 
-Operator-Settings erweitern oder ersetzen durch etwas in der Art:
+| Situation | UX |
+|-----------|-----|
+| Du warst im Chat aktiv | Ergebnis im Thread + optional kurze Push |
+| Hintergrund-Job / Scheduler | **Inbox** + Push (wenn konfiguriert) |
+| Agent hat **Dashboard-Daten** geändert | **Badge am Block/Board** + Eintrag in Inbox |
+| Du öffnest Dashboard/Block | Badge weg (`last_seen_at`) |
 
-- `embedding_provider`: `ollama` | `openai_compat` | …
-- `embedding_base_url`, `embedding_api_key` (secret, nicht in Logs), `embedding_model`
-- `embedding_dim` (weiterhin konsistent mit DB/Qdrant)
-- Optional: **`embedding_batch_size`**, Timeout
+**Dashboard-Badges** sind hier stark:
 
-**Hinweis:** `rag_ollama_model` kann deprecated alias → `embedding_model` wenn `provider=ollama`.
+- Dot/`!` am Block-Titel oder Board in der Sidebar
+- Tooltip: „Agent hat KPIs aktualisiert · vor 2 Min“
+- Klick → Block fokussieren oder Diff/Activity-Panel
 
-Chat-Provider (`llm_primary_backend`, …) bleiben **orthogonal**; nur wenn ihr bewusst „ein Klick: alles von Anbieter X“ wollt, braucht ihr **Presets**, die sowohl Completion- als auch Embedding-Felder setzen.
+Das passt zu eurem Modell (viele Boards, Pins, `dashboard_ref`) besser als alles in einen Chat zu quetschen.
 
----
+Technisch minimal:
 
-## 6. Workspace-spezifisches RAG & Qdrant
+```json
+// dashboard.data._agentlayer oder separater activity_store
+{
+  "activity": [
+    {
+      "id": "...",
+      "at": "ISO",
+      "block_id": "stat_projects",
+      "kind": "agent_patch_data",
+      "summary": "3 Projekte verlinkt",
+      "read": false
+    }
+  ]
+}
+```
 
-### 6.1 Doc-RAG an Workspace binden
+Frontend: `unreadCount(block_id)` aus `activity` + `user_last_seen`.
 
-- **Schema:** `rag_documents.workspace_id UUID NULL REFERENCES project_workspaces(id) ON DELETE CASCADE`  
-  - `NULL` = heutiges Verhalten (global/tenant/user-Domains) oder explizit „Plattform-Doku“.
-- **Suche:** Filter erweitern: wenn Kontext **Workspace aktiv** → nur Chunks mit `workspace_id = :ws` **oder** explizit tenant-weite Domains ohne Workspace (Policy festlegen).
-- **Tenant-shared:** `agentlayer_docs` kann `workspace_id IS NULL` bleiben (weiterhin für alle im Tenant).
+### 4. **Wann der Agent *proaktiv* schreiben darf**
 
-### 6.2 Qdrant für Coding
+Klare Regeln gegen Spam:
 
-- **Heute:** eine Collection, `workspace_id` im Payload — skaliert gut für den Start.
-- **Später:** pro Workspace eigene Collection → einfacheres Löschen/Quota, höhere Isolation; mehr Ops-Komplexität.
-
-Embeddings für Code-Index **müssen** nach Provider-Umstellung **dieselbe Dim** und idealerweise **dieselbe Modell-Familie** wie Doc-RAG nutzen, sonst sind Cross-Suche oder gemeinsame Ops schwerer.
-
----
-
-## 7. Frontend (UI)
-
-Kurzfristig:
-
-- Workspace-Detail oder Coding-Panel: **Toggle** „Semantische Suche / RAG für dieses Workspace“ (speichert in `project_workspaces` JSON oder neue Spalten `rag_enabled`, `last_rag_index_at`, `rag_error`).
-- Anzeige: angebundener Vector-Store (pgvector / Qdrant erreichbar), letzte Indexierung.
-
-Mittelfristig:
-
-- **„Indexierung starten“** (triggert Backend-Job: Workspace-Pfad einlesen, chunken, embedden, schreiben).
-- Fortschritt / Fehler aus **Job-Tabelle** oder Polling — vermeidet Timeouts bei großen Repos.
-
----
-
-## 8. Roadmap / Checkliste (umsetzbar in Phasen)
-
-### Phase A — Technische Schulden (ohne Schema-Bruch)
-
-- [ ] **Ein Embedding-Modul:** Alle Aufrufer (`rag.py`, `memory.py`, `code_index_qdrant.py`) nutzen **eine** Implementierung (Dim-Check, Retries, Timeouts).
-- [ ] **Qdrant `_embed_text`** auf dieselbe Logik wie `ollama_embed_one` umstellen oder komplett durch zentrale Funktion ersetzen.
-- [ ] **Tests:** Mock HTTP für `openai_compat` + Ollama-Payload-Varianten; Regression für `rag_vector_search` Filter.
-
-### Phase B — Embedding-Provider abstrahieren
-
-- [ ] Interface + Factory aus `operator_settings` / Env.
-- [ ] **OpenAI-kompatibler** Embeddings-Adapter (`/v1/embeddings`).
-- [ ] Operator-Settings + Admin-UI-Felder: Provider-Typ, Base-URL, Modell, Dim, API-Key-Handling (bestehende Secrets-Patterns im Projekt nutzen).
-- [ ] **Dokumentation** (`docs/features/rag.md`): Pfade aktualisieren, Migration von `rag_ollama_model` beschreiben.
-
-### Phase C — Workspace-Scope für Doc-RAG
-
-- [ ] Migration: `rag_documents.workspace_id` (+ Index `(tenant_id, workspace_id, domain)`).
-- [ ] Ingest-APIs: optional `workspace_id` (nur Owner/ACL).
-- [ ] `rag_search` Tool: `workspace_id` aus **Agent-Kontext** (wie Coding-Tools), Filter in SQL.
-- [ ] Frontend-Toggle + Anzeige Status.
-
-### Phase D — Indexing als Job / besserer Agent-Flow
-
-- [ ] Background-Job oder async Task für große Repos (statt synchroner HTTP nur).
-- [ ] Idempotenz: Content-Hash pro Chunk/Datei (teilweise schon `content_sha256` auf Document-Ebene — ggf. feingranularer für Updates).
-- [ ] Optional: **Hybrid-Suche** (BM25 + vector) später — nicht Blocker für Phase B/C.
-
-### Phase E — Härtefälle
-
-- [ ] **Modellwechsel:** Operator-Warnung wenn `embedding_dim` / bestehende Vektoren inkonsistent; Admin-„Reindex erzwingen“.
-- [ ] **Kosten:** Rate-Limits / Batch für Cloud-Embeddings.
-- [ ] **Multi-Tenant-Isolation:** API-Keys pro Tenant (falls später nötig) — aktuell eher Operator-weit.
+1. **Severity:** `info` → nur In-App; `action_required` → Push erlaubt
+2. **Daily cap** pro User/Kanal (wie `scheduler_outbound_daily` — Pattern existiert)
+3. **Dedup:** gleicher Job/Block nicht alle 5 Min erneut pingen
+4. **Quiet hours** (optional, User-Timezone)
+5. Agent-Tool **`notify_user`** nur mit `{ severity, message, link }` — Backend entscheidet Kanäle nach Prefs, nicht das LLM
 
 ---
 
-## 9. Offene Designentscheidungen (bewusst nicht vorentschieden)
+## Konkrete Phasen (passend zu eurem Stand)
 
-1. Soll **ein** Embedding-Setup für **gesamte Instanz** reichen, oder **pro Tenant** / **pro Workspace**?
-2. Doc-RAG komplett nach **Qdrant** verlagern vs. **pgvector** behalten (ihr habt beides — Doppel-Ops vs. ein System)?
-3. Soll `rag_search` für Coding **nur** Workspace-RAG sein, oder Weiterleitung an **Code-Qdrant** (zwei Retrieval-Backends hinter einem Tool)?
+**P0 — schnell, hoher Nutzen**
+
+- In-App **Notification-Inbox** (Bell in Header)
+- Events aus: `scheduler_jobs` finished/failed, Coding-Schedule-Runs
+- Dashboard: Sidebar-Dot + Block-Badge bei Agent-`patch_data` / KPI-Sync
+
+**P1**
+
+- User Notification-Prefs (Web default on, Telegram opt-in)
+- Scheduler-Jobs: `notify_on` + Kanalwahl
+- `notify_user`-Tool für Agent (backend-gated)
+
+**P2**
+
+- Discord DM outbound (schwieriger als Telegram — braucht DM-Channel oder letzten Bridge-Chat)
+- Digest-Modus („3 Updates gebündelt“)
+- Deep links: Chat-Thread, Dashboard+Block, Job-Run-Detail
 
 ---
 
-## 10. Referenz (Dateien)
+## Antwort auf deine konkreten Fragen
 
-| Thema | Pfad |
-|-------|------|
-| RAG Core | `apps/backend/api/rag.py` |
-| RAG HTTP | `apps/backend/api/rag_api.py` |
-| Doc-Ingest Tree | `apps/backend/domain/rag_docs_file_ingest.py` |
-| RAG Tool | `plugins/tools/capabilities/knowledge/rag/rag.py` |
-| Qdrant Code | `apps/backend/infrastructure/code_index_qdrant.py` |
-| Coding Index Tool | `plugins/tools/capabilities/coding/coding_index.py` |
-| Operator RAG-Keys | `apps/backend/infrastructure/operator_settings.py` |
-| Feature-Doku | `docs/features/rag.md` |
+1. **Kann der Agent schon anschreiben wenn fertig?**  
+   Nur beim **Operator-Scheduler → Telegram**, und nur wenn der Check „Aufmerksamkeit nötig“ meldet. Normale Agent-Läufe und `scheduler_jobs` **nicht**.
 
----
+2. **Default Discord/Telegram/Web überall?**  
+   **Nein.** Default: **Web-Inbox + Dashboard-Badges**. Externe Kanäle **opt-in** nach Verlinkung in Connections.
 
-*Stand: Analyse auf Basis des Repos (Mai 2026). Bei Schema-Änderungen bitte Migrationsversionen und `schema.sql` synchron halten.*
+3. **Immer im Chat vs. Dashboard-Badges?**  
+   **Beides:** Chat für dialogische Tasks; **Badges + Inbox** für strukturierte/background Updates an Boards und Blocks. Das skaliert besser bei mehreren Dashboards und Inbox-Aggregation.
+
+Wenn du das umsetzen willst, würde ich mit **P0 (In-App + Dashboard-Badges + Job-finished Events)** starten — wenig Risiko, sofort spürbar, und Telegram/Discord später als Adapter draufsetzen. Dafür müsstest du in **Agent mode** wechseln.

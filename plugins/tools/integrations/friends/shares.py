@@ -1,5 +1,7 @@
 """
-List share permissions between you and friends (what you share / what they share with you).
+Manage share permissions between you and friends (grant, revoke, list, check).
+
+One tool for all resource types — calendar, GitHub, notes, etc.
 """
 
 from __future__ import annotations
@@ -9,20 +11,25 @@ import uuid
 from typing import Any, Callable
 
 from apps.backend.domain.identity import get_identity
+from apps.backend.domain.shares.catalog import (
+    catalog_for_api,
+    canonical_resource_type,
+    resource_type_label,
+)
+from apps.backend.domain.shares.policy import normalize_policy
 from apps.backend.infrastructure.db.share_permissions_db import (
     SHARE_RESOURCE_GOOGLE_CALENDAR,
     list_shares_between,
     list_shares_by_grantee,
     list_shares_by_owner,
     share_permission_check_resolved,
+    share_permission_get,
+    share_permission_set,
 )
 
-from apps.backend.domain.friends.common import (
-    resource_type_label,
-    resolve_friend_by_name,
-)
+from apps.backend.domain.friends.common import resolve_friend_by_name
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 TOOL_ID = "shares"
 TOOL_BUCKET = "core"
 TOOL_DOMAIN = "friends"
@@ -38,6 +45,13 @@ TOOL_TRIGGERS = (
     "zugriff auf",
     "wer darf",
     "wer hat zugriff",
+    "teile meinen",
+    "teile mein",
+    "kalender teilen",
+    "share my calendar",
+    "grant access",
+    "revoke access",
+    "entziehe zugriff",
 )
 TOOL_CAPABILITIES = ("friends.shares", "default")
 
@@ -53,6 +67,8 @@ def _normalize_share_rows(rows: list[dict[str, Any]], *, direction: str) -> list
             {
                 "resource_type": resource_type,
                 "resource_label": resource_type_label(resource_type),
+                "resource_identifier": row.get("resource_identifier") or "primary",
+                "policy": row.get("policy") or {},
                 "peer_user_id": str(peer_id) if peer_id else None,
                 "peer_display_name": row.get("display_name") or row.get("email"),
                 "peer_email": row.get("email"),
@@ -76,29 +92,159 @@ def _group_shares_by_peer(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             {
                 "resource_type": row["resource_type"],
                 "resource_label": row["resource_label"],
+                "resource_identifier": row.get("resource_identifier") or "primary",
+                "policy": row.get("policy") or {},
             }
         )
     return list(grouped.values())
 
 
+def _resolve_friend_or_error(
+    requesting_user_id: uuid.UUID,
+    arguments: dict[str, Any],
+) -> tuple[dict[str, Any] | None, str | None]:
+    name_query = (
+        arguments.get("entity")
+        or arguments.get("name")
+        or arguments.get("friend")
+        or arguments.get("friend_name")
+    )
+    if not name_query:
+        return None, "name or friend parameter is required for this action"
+    friend = resolve_friend_by_name(requesting_user_id, str(name_query))
+    if not friend:
+        return None, f"Could not find {name_query} in your friends list."
+    return friend, None
+
+
+def _action_grant(requesting_user_id: uuid.UUID, arguments: dict[str, Any]) -> dict[str, Any]:
+    friend, err = _resolve_friend_or_error(requesting_user_id, arguments)
+    if err or not friend:
+        return {"ok": False, "result": err}
+
+    resource_type = arguments.get("resource_type")
+    if not resource_type:
+        return {"ok": False, "result": "resource_type is required for grant (e.g. google_calendar)"}
+
+    canonical = canonical_resource_type(str(resource_type))
+    if not canonical:
+        catalog = catalog_for_api()
+        ids = [r["id"] for r in catalog]
+        return {
+            "ok": False,
+            "result": f"Unknown resource_type '{resource_type}'. Known types: {', '.join(ids)}",
+        }
+
+    raw_policy = arguments.get("policy")
+    if raw_policy is None and arguments.get("days_ahead") is not None:
+        raw_policy = {"days_ahead": arguments.get("days_ahead")}
+    if raw_policy is None and arguments.get("expires_at"):
+        raw_policy = {"expires_at": arguments.get("expires_at")}
+
+    clean_policy, policy_err = normalize_policy(canonical, raw_policy if isinstance(raw_policy, dict) else {})
+    if policy_err:
+        return {"ok": False, "result": policy_err}
+
+    identifier = str(arguments.get("resource_identifier") or "primary").strip().lower()
+    friend_user_id = uuid.UUID(friend["friend_user_id"])
+
+    share_permission_set(
+        owner_user_id=requesting_user_id,
+        grantee_user_id=friend_user_id,
+        resource_type=canonical,
+        resource_identifier=identifier,
+        allowed=True,
+        policy=clean_policy,
+    )
+
+    return {
+        "ok": True,
+        "result": f"Granted {resource_type_label(canonical)} access to {friend.get('display_name') or friend.get('email')}.",
+        "grant": {
+            "friend_user_id": str(friend_user_id),
+            "resource_type": canonical,
+            "resource_identifier": identifier,
+            "policy": clean_policy,
+        },
+    }
+
+
+def _action_revoke(requesting_user_id: uuid.UUID, arguments: dict[str, Any]) -> dict[str, Any]:
+    friend, err = _resolve_friend_or_error(requesting_user_id, arguments)
+    if err or not friend:
+        return {"ok": False, "result": err}
+
+    resource_type = arguments.get("resource_type")
+    if not resource_type:
+        return {"ok": False, "result": "resource_type is required for revoke"}
+
+    canonical = canonical_resource_type(str(resource_type))
+    if not canonical:
+        return {"ok": False, "result": f"Unknown resource_type '{resource_type}'"}
+
+    identifier = str(arguments.get("resource_identifier") or "primary").strip().lower()
+    friend_user_id = uuid.UUID(friend["friend_user_id"])
+
+    share_permission_set(
+        owner_user_id=requesting_user_id,
+        grantee_user_id=friend_user_id,
+        resource_type=canonical,
+        resource_identifier=identifier,
+        allowed=False,
+    )
+
+    return {
+        "ok": True,
+        "result": f"Revoked {resource_type_label(canonical)} access for {friend.get('display_name') or friend.get('email')}.",
+    }
+
+
+def _action_check(requesting_user_id: uuid.UUID, arguments: dict[str, Any]) -> dict[str, Any]:
+    friend, err = _resolve_friend_or_error(requesting_user_id, arguments)
+    if err or not friend:
+        return {"ok": False, "result": err}
+
+    resource_type = arguments.get("resource_type")
+    if not resource_type:
+        return {"ok": False, "result": "resource_type is required for check"}
+
+    canonical = canonical_resource_type(str(resource_type))
+    if not canonical:
+        return {"ok": False, "result": f"Unknown resource_type '{resource_type}'"}
+
+    identifier = str(arguments.get("resource_identifier") or "primary").strip().lower()
+    friend_user_id = uuid.UUID(friend["friend_user_id"])
+
+    direction = str(arguments.get("direction") or "incoming").strip().lower()
+    if direction == "outgoing":
+        owner_id, grantee_id = requesting_user_id, friend_user_id
+    else:
+        owner_id, grantee_id = friend_user_id, requesting_user_id
+
+    grant = share_permission_get(
+        owner_user_id=owner_id,
+        grantee_user_id=grantee_id,
+        resource_type=canonical,
+        resource_identifier=identifier,
+    )
+
+    return {
+        "ok": True,
+        "allowed": grant is not None,
+        "direction": direction,
+        "grant": grant,
+        "friend": {
+            "user_id": str(friend_user_id),
+            "display_name": friend.get("display_name") or friend.get("email"),
+        },
+    }
+
+
 def _shares_for_friend(requesting_user_id: uuid.UUID, friend_user_id: uuid.UUID) -> dict[str, Any]:
     between = list_shares_between(requesting_user_id, friend_user_id)
-    outgoing = [
-        {
-            "resource_type": rt,
-            "resource_label": resource_type_label(rt),
-            "granted": True,
-        }
-        for rt in between.get("outgoing") or []
-    ]
-    incoming = [
-        {
-            "resource_type": rt,
-            "resource_label": resource_type_label(rt),
-            "granted": True,
-        }
-        for rt in between.get("incoming") or []
-    ]
+    outgoing = between.get("outgoing_grants") or []
+    incoming = between.get("incoming_grants") or []
+
     calendar_incoming = share_permission_check_resolved(
         owner_user_id=friend_user_id,
         grantee_user_id=requesting_user_id,
@@ -110,66 +256,98 @@ def _shares_for_friend(requesting_user_id: uuid.UUID, friend_user_id: uuid.UUID)
         resource_type=SHARE_RESOURCE_GOOGLE_CALENDAR,
     )
     return {
-        "you_share_with_them": outgoing,
-        "they_share_with_you": incoming,
+        "you_share_with_them": [
+            {
+                "resource_type": g.get("resource_type"),
+                "resource_label": resource_type_label(str(g.get("resource_type") or "")),
+                "resource_identifier": g.get("resource_identifier") or "primary",
+                "policy": g.get("policy") or {},
+                "granted": True,
+            }
+            for g in outgoing
+        ],
+        "they_share_with_you": [
+            {
+                "resource_type": g.get("resource_type"),
+                "resource_label": resource_type_label(str(g.get("resource_type") or "")),
+                "resource_identifier": g.get("resource_identifier") or "primary",
+                "policy": g.get("policy") or {},
+                "granted": True,
+            }
+            for g in incoming
+        ],
         "calendar_access_you_have": calendar_incoming,
         "calendar_access_they_have": calendar_outgoing,
     }
 
 
+def _action_list(requesting_user_id: uuid.UUID, arguments: dict[str, Any]) -> dict[str, Any]:
+    name_query = (
+        arguments.get("entity")
+        or arguments.get("name")
+        or arguments.get("friend")
+        or arguments.get("friend_name")
+    )
+    if name_query:
+        friend = resolve_friend_by_name(requesting_user_id, str(name_query))
+        if not friend:
+            return {
+                "ok": False,
+                "result": f"Could not find {name_query} in your friends list.",
+            }
+        friend_user_id = uuid.UUID(friend["friend_user_id"])
+        return {
+            "ok": True,
+            "friend": {
+                "user_id": str(friend_user_id),
+                "display_name": friend.get("display_name") or friend.get("email"),
+                "email": friend.get("email"),
+            },
+            **_shares_for_friend(requesting_user_id, friend_user_id),
+            "catalog": catalog_for_api(),
+        }
+
+    outgoing = _normalize_share_rows(
+        list_shares_by_owner(requesting_user_id),
+        direction="outgoing",
+    )
+    incoming = _normalize_share_rows(
+        list_shares_by_grantee(requesting_user_id),
+        direction="incoming",
+    )
+    return {
+        "ok": True,
+        "outgoing_by_friend": _group_shares_by_peer(outgoing),
+        "incoming_by_friend": _group_shares_by_peer(incoming),
+        "outgoing_count": len(outgoing),
+        "incoming_count": len(incoming),
+        "catalog": catalog_for_api(),
+    }
+
+
 def shares(arguments: dict[str, Any]) -> str:
-    """Return share permissions for one friend or summarize all friend shares."""
+    """Grant, revoke, list, or check friend share permissions."""
     _tid, requesting_user_id = get_identity()
     if not requesting_user_id:
         return json.dumps({"error": "no user identity available"}, ensure_ascii=False)
 
-    try:
-        name_query = (
-            arguments.get("entity")
-            or arguments.get("name")
-            or arguments.get("friend")
-            or arguments.get("friend_name")
-        )
-        if name_query:
-            friend = resolve_friend_by_name(requesting_user_id, str(name_query))
-            if not friend:
-                return json.dumps(
-                    {
-                        "ok": False,
-                        "result": f"Could not find {name_query} in your friends list.",
-                    },
-                    ensure_ascii=False,
-                )
-            friend_user_id = uuid.UUID(friend["friend_user_id"])
-            payload = {
-                "ok": True,
-                "friend": {
-                    "user_id": str(friend_user_id),
-                    "display_name": friend.get("display_name") or friend.get("email"),
-                    "email": friend.get("email"),
-                },
-                **_shares_for_friend(requesting_user_id, friend_user_id),
-            }
-            return json.dumps(payload, ensure_ascii=False)
-
-        outgoing = _normalize_share_rows(
-            list_shares_by_owner(requesting_user_id),
-            direction="outgoing",
-        )
-        incoming = _normalize_share_rows(
-            list_shares_by_grantee(requesting_user_id),
-            direction="incoming",
-        )
+    action = str(arguments.get("action") or "list").strip().lower()
+    handlers = {
+        "list": _action_list,
+        "grant": _action_grant,
+        "revoke": _action_revoke,
+        "check": _action_check,
+    }
+    handler = handlers.get(action)
+    if not handler:
         return json.dumps(
-            {
-                "ok": True,
-                "outgoing_by_friend": _group_shares_by_peer(outgoing),
-                "incoming_by_friend": _group_shares_by_peer(incoming),
-                "outgoing_count": len(outgoing),
-                "incoming_count": len(incoming),
-            },
+            {"ok": False, "error": f"unknown action '{action}'; use list, grant, revoke, or check"},
             ensure_ascii=False,
         )
+
+    try:
+        payload = handler(requesting_user_id, arguments)
+        return json.dumps(payload, ensure_ascii=False, default=str)
     except Exception as e:
         return json.dumps({"error": str(e)}, ensure_ascii=False)
 
@@ -184,23 +362,55 @@ TOOLS: list[dict[str, Any]] = [
         "function": {
             "name": "shares",
             "TOOL_DESCRIPTION": (
-                "List what you share with friends and what friends share with you "
-                "(Google Calendar, GitHub, Todoist, notes, roadmap). "
-                "Pass a friend name or email for one person; omit name for a full summary."
+                "Manage friend share permissions: grant, revoke, list, or check access to resources "
+                "(google_calendar, github_activity, todoist, notes, roadmap). "
+                "Use action=grant to share e.g. calendar with days_ahead:7. "
+                "Use action=list without name for full summary; with friend name for one person."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["list", "grant", "revoke", "check"],
+                        "TOOL_DESCRIPTION": "list (default), grant, revoke, or check permission.",
+                    },
                     "name": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": (
-                            "Optional friend name or email. When set, returns bidirectional share "
-                            "status for that friend only."
-                        ),
+                        "TOOL_DESCRIPTION": "Friend name or email (required for grant/revoke/check; optional for list).",
                     },
                     "entity": {
                         "type": "string",
                         "TOOL_DESCRIPTION": "Auto-filled name/email from the trigger system.",
+                    },
+                    "resource_type": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": (
+                            "Resource id from catalog: google_calendar, github_activity, todoist, notes, roadmap."
+                        ),
+                    },
+                    "resource_identifier": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": "Usually 'primary' (default).",
+                    },
+                    "policy": {
+                        "type": "object",
+                        "TOOL_DESCRIPTION": (
+                            "Optional scope, e.g. {\"days_ahead\": 7, \"expires_at\": \"2026-06-11T00:00:00Z\"}."
+                        ),
+                    },
+                    "days_ahead": {
+                        "type": "integer",
+                        "TOOL_DESCRIPTION": "Shortcut for policy.days_ahead when granting calendar access.",
+                    },
+                    "expires_at": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": "Shortcut for policy.expires_at (ISO-8601 UTC).",
+                    },
+                    "direction": {
+                        "type": "string",
+                        "enum": ["incoming", "outgoing"],
+                        "TOOL_DESCRIPTION": "For check: incoming = they share with you; outgoing = you share with them.",
                     },
                 },
             },

@@ -96,6 +96,7 @@ from apps.backend.domain.plugin_system.registry import get_registry
 from apps.backend.infrastructure.user_data_api import router as user_data_router
 from apps.backend.api.message_feedback_api import admin_router as message_feedback_admin_router
 from apps.backend.api.message_feedback_api import router as message_feedback_router
+from apps.backend.api.notifications_api import router as notifications_router
 from apps.backend.infrastructure.delegate_api import router as delegate_router
 from apps.backend.infrastructure.memory_api import router as memory_router
 from apps.backend.infrastructure.user_secrets_api import router as user_secrets_router
@@ -309,6 +310,7 @@ app.include_router(message_feedback_router)
 app.include_router(message_feedback_admin_router)
 app.include_router(dashboard_router)
 app.include_router(user_data_router)
+app.include_router(notifications_router)
 app.include_router(delegate_router)
 app.include_router(memory_router)
 app.include_router(tools_router)

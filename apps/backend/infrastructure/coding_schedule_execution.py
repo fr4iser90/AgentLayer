@@ -500,6 +500,16 @@ async def run_coding_schedule_row(
                 error=err_msg,
                 summary=summary,
             )
+            from apps.backend.infrastructure.notifications_service import notify_scheduler_job_finished
+
+            notify_scheduler_job_finished(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                row=row,
+                success=False,
+                error=err_msg,
+                run_id=str(run_id),
+            )
             return False, err_msg
 
         status, outcome = _evaluate_run_status(
@@ -522,6 +532,16 @@ async def run_coding_schedule_row(
             status=status,
             error=None,
             summary=summary,
+        )
+        from apps.backend.infrastructure.notifications_service import notify_scheduler_job_finished
+
+        notify_scheduler_job_finished(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            row=row,
+            success=status != "failed",
+            error=outcome if status == "failed" else None,
+            run_id=str(run_id),
         )
         if status == "failed":
             return False, err_msg or outcome or "schedule run failed"

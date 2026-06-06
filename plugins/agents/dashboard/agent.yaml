@@ -1,7 +1,7 @@
 id: dashboard
 name: Dashboard
 icon: 📊
-description: Shopping lists, pets, ideas, projects portfolios, and generic dashboard layout/data tools — use with agent_dashboard_context
+description: Dashboard boards — layout (section, card_grid, KPIs), data patches, shopping, pets, ideas, projects portfolios
 requires_workspace: false
 execution_context: auto
 min_role: user

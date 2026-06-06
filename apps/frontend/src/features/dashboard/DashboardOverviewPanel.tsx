@@ -37,9 +37,10 @@ export function DashboardOverviewPanel(props: {
   list: DashboardSummary[];
   kindLabelFor: (kind: string) => string;
   onOpenDashboard: (id: string) => void;
+  dashboardUnreadCount?: (id: string) => number;
 }) {
   const { t } = useTranslation(["dashboard"]);
-  const { list, kindLabelFor, onOpenDashboard } = props;
+  const { list, kindLabelFor, onOpenDashboard, dashboardUnreadCount } = props;
 
   const grouped = useMemo(() => groupDashboardsByHub(list), [list]);
 
@@ -126,7 +127,14 @@ export function DashboardOverviewPanel(props: {
                     onClick={() => onOpenDashboard(w.id)}
                     className="flex w-full flex-col rounded-xl border border-surface-border bg-surface-raised p-4 text-left transition hover:border-sky-500/35 hover:bg-white/[0.03]"
                   >
-                    <span className="font-medium text-white">{w.title || w.kind}</span>
+                    <span className="font-medium text-white">
+                      {w.title || w.kind}
+                      {(dashboardUnreadCount?.(w.id) ?? 0) > 0 ? (
+                        <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[9px] font-bold text-black align-middle">
+                          !
+                        </span>
+                      ) : null}
+                    </span>
                     <span className="mt-1 text-xs text-surface-muted">{kindLabelFor(w.kind)}</span>
                     <span className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-white/45">
                       <span className="rounded border border-white/10 px-1.5 py-0.5">{accessHint(w.access_role, t)}</span>

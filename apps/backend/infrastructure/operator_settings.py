@@ -20,12 +20,65 @@ from apps.backend.infrastructure.db import db
 
 logger = logging.getLogger(__name__)
 
+_PGVECTOR_DIM_CACHE: tuple[float, int] | None = None
+_PGVECTOR_DIM_CACHE_TTL_SEC = 30.0
+
+
 def _normalize_rag_embedding_model(raw: Any) -> str:
     return (str(raw or "").strip())[:256]
 
 
 def _rag_embedding_model_from_row(r: dict[str, Any]) -> str:
     return _normalize_rag_embedding_model(r.get("rag_embedding_model"))
+
+
+def _coerce_rag_embedding_dim(v: Any) -> int:
+    """Return a bounded dim from an explicit value, or ``0`` when unset/invalid."""
+    try:
+        n = int(v)
+    except (TypeError, ValueError):
+        return 0
+    if 32 <= n <= 4096:
+        return n
+    return 0
+
+
+def _invalidate_pgvector_dim_cache() -> None:
+    global _PGVECTOR_DIM_CACHE
+    _PGVECTOR_DIM_CACHE = None
+
+
+def _deployment_pgvector_dim_cached() -> int:
+    """Live ``vector(N)`` width from Postgres; ``0`` when unknown (cached briefly)."""
+    global _PGVECTOR_DIM_CACHE
+    now = time.monotonic()
+    if (
+        _PGVECTOR_DIM_CACHE is not None
+        and now - _PGVECTOR_DIM_CACHE[0] <= _PGVECTOR_DIM_CACHE_TTL_SEC
+    ):
+        return _PGVECTOR_DIM_CACHE[1]
+    dim = 0
+    try:
+        from apps.backend.infrastructure.pgvector_embedding_dim import deployment_pgvector_embedding_dim
+
+        probed = deployment_pgvector_embedding_dim()
+        if probed is not None and 32 <= int(probed) <= 4096:
+            dim = int(probed)
+    except Exception:
+        pass
+    _PGVECTOR_DIM_CACHE = (now, dim)
+    return dim
+
+
+def _rag_embedding_dim_from_row(r: dict[str, Any]) -> int:
+    """
+    Effective embedding width: stored operator setting, else live pgvector column, else ``0`` (unset).
+    """
+    stored = _coerce_rag_embedding_dim(r.get("rag_embedding_dim"))
+    if stored >= 32:
+        return stored
+    pg = _deployment_pgvector_dim_cached()
+    return pg if pg >= 32 else 0
 
 
 _CACHE: tuple[float, dict[str, Any]] | None = None
@@ -35,6 +88,7 @@ _TTL_SEC = 2.0
 def _invalidate() -> None:
     global _CACHE
     _CACHE = None
+    _invalidate_pgvector_dim_cache()
     try:
         from apps.backend.infrastructure.embedding_client import clear_embedding_health_cache
 
@@ -126,7 +180,7 @@ def _fetch_row() -> dict[str, Any]:
         "memory_enabled": True,
         "rag_enabled": True,
         "rag_embedding_model": "",
-        "rag_embedding_dim": 768,
+        "rag_embedding_dim": 0,
         "rag_chunk_size": 1200,
         "rag_chunk_overlap": 200,
         "rag_top_k": 8,
@@ -255,7 +309,7 @@ def _fetch_row() -> dict[str, Any]:
         "memory_enabled": bool(row[32]) if row[32] is not None else True,
         "rag_enabled": bool(row[33]) if row[33] is not None else True,
         "rag_embedding_model": _normalize_rag_embedding_model(row[34]),
-        "rag_embedding_dim": int(row[35]) if row[35] is not None else 768,
+        "rag_embedding_dim": int(row[35]) if row[35] is not None else 0,
         "rag_chunk_size": int(row[36]) if row[36] is not None else 1200,
         "rag_chunk_overlap": int(row[37]) if row[37] is not None else 200,
         "rag_top_k": int(row[38]) if row[38] is not None else 8,
@@ -560,7 +614,7 @@ def rag_settings() -> dict[str, Any]:
     return {
         "enabled": bool(r.get("rag_enabled", True)),
         "embedding_model": _rag_embedding_model_from_row(r),
-        "embedding_dim": _bound_int(r.get("rag_embedding_dim"), 768, 32, 4096),
+        "embedding_dim": _rag_embedding_dim_from_row(r),
         "chunk_size": _bound_int(r.get("rag_chunk_size"), 1200, 200, 8000),
         "chunk_overlap": _bound_int(r.get("rag_chunk_overlap"), 200, 0, 2000),
         "top_k": _bound_int(r.get("rag_top_k"), 8, 1, 50),
@@ -929,7 +983,7 @@ def public_dict() -> dict[str, Any]:
         "rag_enabled": bool(r.get("rag_enabled", True)),
         **embedding_api_public_fields(),
         "rag_embedding_model": _rag_embedding_model_from_row(r),
-        "rag_embedding_dim": _bound_int(r.get("rag_embedding_dim"), 768, 32, 4096),
+        "rag_embedding_dim": _rag_embedding_dim_from_row(r),
         "rag_chunk_size": _bound_int(r.get("rag_chunk_size"), 1200, 200, 8000),
         "rag_chunk_overlap": _bound_int(r.get("rag_chunk_overlap"), 200, 0, 2000),
         "rag_top_k": _bound_int(r.get("rag_top_k"), 8, 1, 50),
@@ -1104,6 +1158,23 @@ def apply_interface_hints(body: InterfaceHintsPayload) -> None:
     _invalidate()
 
 
+def _maybe_align_pgvector_embedding_dim(r: dict[str, Any], patch: dict[str, Any]) -> None:
+    """Migrate pgvector columns when embedding model/dim changes in operator settings."""
+    if "rag_embedding_dim" not in patch and "rag_embedding_model" not in patch:
+        return
+    if not (r.get("rag_embedding_model") or "").strip():
+        return
+    target = _rag_embedding_dim_from_row(r)
+    if target < 32:
+        return
+    try:
+        from apps.backend.infrastructure.pgvector_embedding_dim import ensure_pgvector_embedding_dim
+
+        ensure_pgvector_embedding_dim(target, log_prefix="operator_settings")
+    except Exception as e:
+        logger.warning("operator_settings: pgvector dim alignment failed: %s", e)
+
+
 def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
     patch = body.model_dump(exclude_unset=True)
     if not patch:
@@ -1257,13 +1328,13 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
         r["rag_embedding_model"] = _normalize_rag_embedding_model(patch["rag_embedding_model"])
     if "rag_embedding_dim" in patch:
         v = patch["rag_embedding_dim"]
-        r["rag_embedding_dim"] = _bound_int(v, 768, 32, 4096) if v is not None else 768
+        r["rag_embedding_dim"] = _coerce_rag_embedding_dim(v) if v is not None else 0
     elif "rag_embedding_model" in patch and (r.get("rag_embedding_model") or "").strip():
         try:
             from apps.backend.infrastructure.embedding_client import probe_embedding_output_dim
 
             probed = probe_embedding_output_dim(model_id=r["rag_embedding_model"])
-            r["rag_embedding_dim"] = _bound_int(probed, 768, 32, 4096)
+            r["rag_embedding_dim"] = _coerce_rag_embedding_dim(probed)
             logger.info(
                 "operator_settings: rag_embedding_dim auto-synced to %s for model %r",
                 r["rag_embedding_dim"],
@@ -1384,6 +1455,8 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
     if "workspace_index_on_attach_enabled" in patch:
         r["workspace_index_on_attach_enabled"] = bool(patch["workspace_index_on_attach_enabled"])
 
+    _maybe_align_pgvector_embedding_dim(r, patch)
+
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute("INSERT INTO operator_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING")
@@ -1497,7 +1570,7 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
                     bool(r.get("memory_enabled", True)),
                     bool(r.get("rag_enabled", True)),
                     _rag_embedding_model_from_row(r),
-                    _bound_int(r.get("rag_embedding_dim"), 768, 32, 4096),
+                    _coerce_rag_embedding_dim(r.get("rag_embedding_dim")),
                     _bound_int(r.get("rag_chunk_size"), 1200, 200, 8000),
                     _bound_int(r.get("rag_chunk_overlap"), 200, 0, 2000),
                     _bound_int(r.get("rag_top_k"), 8, 1, 50),

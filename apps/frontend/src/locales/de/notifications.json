@@ -1,0 +1,18 @@
+{
+  "bellTitle": "Benachrichtigungen",
+  "inboxTitle": "Benachrichtigungen",
+  "empty": "Noch keine Benachrichtigungen.",
+  "markAllRead": "Alle gelesen",
+  "open": "Öffnen",
+  "dismiss": "Erledigt",
+  "agentUpdateBadge": "Agent-Update",
+  "agentUpdateBadgeSection": "Update in diesem Abschnitt",
+  "settingsLink": "Benachrichtigungs-Einstellungen…",
+  "justNow": "gerade eben",
+  "minutesAgo_one": "vor {{count}} Min.",
+  "minutesAgo_other": "vor {{count}} Min.",
+  "hoursAgo_one": "vor {{count}} Std.",
+  "hoursAgo_other": "vor {{count}} Std.",
+  "daysAgo_one": "vor {{count}} Tag",
+  "daysAgo_other": "vor {{count}} Tagen"
+}

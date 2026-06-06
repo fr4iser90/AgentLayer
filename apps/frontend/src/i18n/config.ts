@@ -16,6 +16,8 @@ import deDashboard from "../locales/de/dashboard.json";
 import enDashboard from "../locales/en/dashboard.json";
 import deErrors from "../locales/de/errors.json";
 import enErrors from "../locales/en/errors.json";
+import deNotifications from "../locales/de/notifications.json";
+import enNotifications from "../locales/en/notifications.json";
 import deSettings from "../locales/de/settings.json";
 import enSettings from "../locales/en/settings.json";
 import deSetup from "../locales/de/setup.json";
@@ -43,6 +45,7 @@ void i18n
         settings: enSettings,
         tasks: enTasks,
         dashboard: enDashboard,
+        notifications: enNotifications,
         workspace: enWorkspace,
       },
       de: {
@@ -56,13 +59,14 @@ void i18n
         settings: deSettings,
         tasks: deTasks,
         dashboard: deDashboard,
+        notifications: deNotifications,
         workspace: deWorkspace,
       },
     },
     fallbackLng: "en",
     supportedLngs: [...SUPPORTED],
     defaultNS: "common",
-    ns: ["common", "errors", "chat", "coding", "setup", "admin", "auth", "settings", "tasks", "dashboard", "workspace"],
+    ns: ["common", "errors", "chat", "coding", "setup", "admin", "auth", "settings", "tasks", "dashboard", "notifications", "workspace"],
     interpolation: { escapeValue: false },
     detection: {
       order: ["localStorage", "navigator"],

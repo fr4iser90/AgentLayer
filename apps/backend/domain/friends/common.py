@@ -10,20 +10,10 @@ from apps.backend.infrastructure.db import db
 
 CALENDAR_SECRET_KEYS: tuple[str, ...] = ("google_calendar", "calendar_ics")
 
-RESOURCE_TYPE_LABELS: dict[str, str] = {
-    "google_calendar": "Google Calendar",
-    "github_activity": "GitHub Activity",
-    "todoist": "Todoist",
-    "notes": "Notes",
-    "roadmap": "Project Roadmap",
-    # Legacy alias stored before UI used google_calendar.
-    "calendar": "Google Calendar",
-}
+def resource_type_label(resource_type: str, *, lang: str = "en") -> str:
+    from apps.backend.domain.shares.catalog import resource_type_label as _catalog_label
 
-
-def resource_type_label(resource_type: str) -> str:
-    key = (resource_type or "").strip().lower()
-    return RESOURCE_TYPE_LABELS.get(key, key or "unknown")
+    return _catalog_label(resource_type, lang=lang)
 
 
 def resolve_friend_by_name(user_id: uuid.UUID, name_query: str) -> dict[str, Any] | None:

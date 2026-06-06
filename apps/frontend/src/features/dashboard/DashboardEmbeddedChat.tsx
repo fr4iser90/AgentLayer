@@ -145,7 +145,9 @@ export function DashboardEmbeddedChat({
         const { rows, agentlayer } = await fetchModelCatalog();
         if (cancelled) return;
         setModelRows(rows);
-        setModelsCatalogHint(formatModelCatalogHint(agentlayer));
+        setModelsCatalogHint(
+          formatModelCatalogHint(agentlayer, { excludeUnreachableProviderHints: true })
+        );
       } catch {
         if (!cancelled) {
           setModelRows([]);
@@ -609,7 +611,7 @@ export function DashboardEmbeddedChat({
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    disabled={readOnly || sendLoading || !thread}
+                    disabled={readOnly || sendLoading}
                     className="shrink-0 rounded-lg border border-white/10 bg-black/30 px-2.5 py-2 text-surface-muted hover:bg-white/5 hover:text-white disabled:opacity-40"
                     title={t("dashboard:attachTitle")}
                     aria-label={t("dashboard:attach")}
@@ -629,7 +631,7 @@ export function DashboardEmbeddedChat({
                     }}
                     placeholder={t("dashboard:messagePlaceholder")}
                     className="min-w-0 flex-1 rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-500/50"
-                    disabled={readOnly || sendLoading || !thread}
+                    disabled={readOnly || sendLoading}
                   />
                   <button
                     type="button"

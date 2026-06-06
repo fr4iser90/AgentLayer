@@ -259,7 +259,7 @@ CREATE TABLE rag_chunks (
   document_id BIGINT NOT NULL REFERENCES rag_documents(id) ON DELETE CASCADE,
   chunk_index INT NOT NULL,
   content TEXT NOT NULL,
-  embedding vector(768) NOT NULL,
+  embedding vector(1024) NOT NULL,
   UNIQUE (document_id, chunk_index)
 );
 
@@ -310,7 +310,7 @@ CREATE TABLE user_memory_notes (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   deleted_at TIMESTAMPTZ NULL,
-  embedding vector(768) NOT NULL
+  embedding vector(1024) NOT NULL
 );
 
 CREATE INDEX idx_user_memory_notes_scope_updated
@@ -338,7 +338,7 @@ CREATE TABLE user_memory_graph_nodes (
   subject_key TEXT NULL,
   stability TEXT NOT NULL DEFAULT 'normal',
   priority REAL NOT NULL DEFAULT 0,
-  embedding vector(768),
+  embedding vector(1024),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   deleted_at TIMESTAMPTZ NULL
@@ -495,7 +495,7 @@ CREATE TABLE operator_settings (
   memory_enabled BOOLEAN NOT NULL DEFAULT true,
   rag_enabled BOOLEAN NOT NULL DEFAULT true,
   rag_embedding_model TEXT NOT NULL DEFAULT '',
-  rag_embedding_dim INTEGER NOT NULL DEFAULT 768,
+  rag_embedding_dim INTEGER NOT NULL DEFAULT 0,
   rag_chunk_size INTEGER NOT NULL DEFAULT 1200,
   rag_chunk_overlap INTEGER NOT NULL DEFAULT 200,
   rag_top_k INTEGER NOT NULL DEFAULT 8,

@@ -6,6 +6,7 @@ import uuid
 from typing import Any
 
 from apps.backend.dashboard import db as dashboard_db
+from apps.backend.dashboard.projects_kpi import projects_data_path, sync_projects_kpis_in_data
 from apps.backend.domain.workspace.workspace_common import list_workspaces_for_user, normalize_git_url
 from apps.backend.infrastructure.workspace_service import (
     WorkspaceCreateError,
@@ -31,17 +32,7 @@ def _find_workspace_for_remote(user, remote: str) -> dict[str, Any] | None:
 
 
 def _projects_data_path(dashboard: dict[str, Any]) -> str:
-    ul = dashboard.get("ui_layout") if isinstance(dashboard.get("ui_layout"), dict) else {}
-    blocks = ul.get("blocks") if isinstance(ul.get("blocks"), list) else []
-    for b in blocks:
-        if not isinstance(b, dict) or b.get("type") != "table":
-            continue
-        props = b.get("props") if isinstance(b.get("props"), dict) else {}
-        if props.get("enableRunNow") is True:
-            dp = str(props.get("dataPath") or "").strip()
-            if dp:
-                return dp
-    return "projects"
+    return projects_data_path(dashboard)
 
 
 def import_repos_into_projects_dashboard(
@@ -157,7 +148,7 @@ def import_repos_into_projects_dashboard(
             "workspace_errors": workspace_errors,
         }
 
-    new_data = {**data, dp: projects}
+    new_data = sync_projects_kpis_in_data({**data, dp: projects}, dp)
     updated = dashboard_db.dashboard_update(
         user.id,
         tenant_id,
@@ -275,11 +266,12 @@ def link_project_row_workspace(
     proj["project_path"] = str(ws.get("path") or "")
     projects[idx] = proj
 
+    new_data = sync_projects_kpis_in_data({**data, dp: projects}, dp)
     updated = dashboard_db.dashboard_update(
         user.id,
         tenant_id,
         dashboard_id,
-        data={**data, dp: projects},
+        data=new_data,
     )
     if not updated:
         return {"ok": False, "error": "could not save dashboard"}

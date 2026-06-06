@@ -108,7 +108,12 @@
   "sharesWhatYouShare": "What you share with them",
   "sharesWhatTheyShare": "What they share with you",
   "sharesAccessGranted": "✓ Access granted",
-  "sharesNotShared": "Not shared"
+  "sharesNotShared": "Not shared",
+  "sharesDaysAhead": "Days ahead (optional)",
+  "sharesDaysAheadPlaceholder": "Unlimited if empty",
+  "sharesDaysAheadValue": "Up to {{count}} days",
+  "sharesExpiresAt": "Expires at (optional)",
+  "sharesSavePolicy": "Save scope"
   ,
   "toolsLoadFailed": "Could not load tools",
   "toolsTitle": "Tools",
@@ -306,6 +311,24 @@
   "delegateEscalateDb": "Stop and ask on database migrations",
   "delegateEscalateSecurity": "Stop and ask on security findings (uncheck to allow auto-fix)",
   "delegatePrimaryGoal": "Primary goal (tie-breaker)",
-  "delegatePrioritiesHelp": "Priority order, one token per line: security, stability, maintainability, speed"
+  "delegatePrioritiesHelp": "Priority order, one token per line: security, stability, maintainability, speed",
+  "notificationsTitle": "Notifications",
+  "notificationsIntro": "In-app notifications are always on. Enable Telegram or Discord for outbound alerts (requires Admin bot + your account link under Connections).",
+  "notificationsLoading": "Loading…",
+  "notificationsSaved": "Notification preferences saved.",
+  "notificationsSaving": "Saving…",
+  "notificationsSave": "Save",
+  "notificationsWebTitle": "Web (in-app)",
+  "notificationsWebHint": "Bell icon and dashboard badges — always active.",
+  "notificationsLinkTelegram": "Link your Telegram user ID under",
+  "notificationsLinkDiscord": "Link your Discord user ID under",
+  "notificationsTelegramEnable": "Telegram outbound",
+  "notificationsTelegramEnableHint": "DM via the operator Telegram bot.",
+  "notificationsDiscordEnable": "Discord outbound",
+  "notificationsDiscordEnableHint": "DM via the operator Discord bot.",
+  "notificationsSchedules": "Background schedules",
+  "notificationsDashboard": "Dashboard agent updates",
+  "notificationsFailuresOnly": "External: failures & warnings only",
+  "notificationsFailuresOnlyHint": "When on, successful schedule runs and routine dashboard edits stay in-app only (failures always notify externally if the channel is on)."
 }
 

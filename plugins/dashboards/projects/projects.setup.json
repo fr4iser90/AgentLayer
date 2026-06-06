@@ -2,38 +2,45 @@
   "version": 1,
   "kind": "projects",
   "greeting": {
-    "de": "Dein Projects-Portfolio ist bereit. Hier trackst du Repos, verknüpfst Coding-Workspaces und startest Runs.",
-    "en": "Your projects portfolio is ready. Track repos, link coding workspaces, and queue agent runs here."
+    "de": "Dein Projects-Portfolio ist bereit — Repos als Karten oder Tabelle, KPIs oben, Runs aus dem Detail-Panel.",
+    "en": "Your projects portfolio is ready — repos as cards or a table, KPIs on top, runs from the detail panel."
   },
   "agent_prompt": {
-    "de": "Onboarding für ein Projects-Dashboard. Frage ob der Nutzer GitHub-Repos importieren will (projects_import_github mit import_all oder repo_full_names — github_pat nötig), manuell Projekte eintragen (projects_add_rows), oder Workspaces später verknüpfen (projects_link_workspace). Erkläre Run-Now kurz. Kein Schema installieren.",
-    "en": "Onboarding for a projects dashboard. Ask if the user wants GitHub import (projects_import_github with import_all or repo_full_names — needs github_pat), manual rows (projects_add_rows), or link workspaces later (projects_link_workspace). Mention Run now briefly. Do not install schema."
+    "de": "Onboarding für kind projects. Zuerst dashboard.read (Layout + data). Daten: projects.import_github (github_pat), projects.add_rows, projects.link_workspace. Felder in projects[]: title, remote_url, tags, status, security, pinned. Layout: dashboard.patch_layout — hero/stat/card_grid/section/table; card_grid und table teilen dataPath projects. KPI stat_* synchronisieren sich automatisch bei Änderungen an projects[] (add_rows, import, link, patch_data). Run-Now über Karte/Zeile im UI (enableRunNow). Kein Schema installieren.",
+    "en": "Onboarding for kind projects. Start with dashboard.read (layout + data). Data: projects.import_github (github_pat), projects.add_rows, projects.link_workspace. Row fields: title, remote_url, tags, status, security, pinned. Layout: dashboard.patch_layout — hero/stat/card_grid/section/table; card_grid and table share dataPath projects. KPI stat_* blocks auto-sync when projects[] changes (add_rows, import, link, patch_data). Run now from card/row detail in UI (enableRunNow). Do not install schema."
   },
   "steps": [
     {
       "id": "import_github",
       "label": { "de": "GitHub-Repos importieren", "en": "Import from GitHub" },
-      "tool_hint": "projects_import_github"
+      "tool_hint": "projects.import_github"
     },
     {
       "id": "add_manual",
       "label": { "de": "Projekt manuell eintragen", "en": "Add a project manually" },
-      "tool_hint": "projects_add_rows"
+      "tool_hint": "projects.add_rows"
     },
     {
       "id": "link_workspace",
       "label": { "de": "Workspace verknüpfen / klonen", "en": "Link or clone workspace" },
-      "tool_hint": "projects_link_workspace"
+      "tool_hint": "projects.link_workspace"
+    },
+    {
+      "id": "layout_portfolio",
+      "label": { "de": "Portfolio-Layout (Karten, KPIs)", "en": "Portfolio layout (cards, KPIs)" },
+      "tool_hint": "dashboard.patch_layout"
     }
   ],
-  "suggested_tools": ["projects", "workspaces"],
+  "suggested_tools": ["projects", "dashboard", "workspaces"],
   "chat_starters": {
     "de": [
       "Importiere alle meine GitHub-Repos.",
-      "Füge AgentLayer als Projekt hinzu: https://github.com/fr4iser90/AgentLayer"
+      "Zeig meine Projekte als Karten-Grid mit Status und Security-Badges.",
+      "Füge AgentLayer hinzu: https://github.com/fr4iser90/AgentLayer"
     ],
     "en": [
       "Import all my GitHub repositories.",
+      "Show my projects as a card grid with status and security badges.",
       "Add AgentLayer: https://github.com/fr4iser90/AgentLayer"
     ]
   }

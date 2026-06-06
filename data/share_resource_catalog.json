@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "resources": [
+    {
+      "id": "google_calendar",
+      "icon": "📅",
+      "label": { "en": "Google Calendar", "de": "Google Calendar" },
+      "aliases": ["calendar"],
+      "default_identifier": "primary",
+      "policy_fields": ["days_ahead", "expires_at"]
+    },
+    {
+      "id": "github_activity",
+      "icon": "🐙",
+      "label": { "en": "GitHub Activity", "de": "GitHub Activity" },
+      "default_identifier": "primary",
+      "policy_fields": ["expires_at"]
+    },
+    {
+      "id": "todoist",
+      "icon": "✅",
+      "label": { "en": "Todoist", "de": "Todoist" },
+      "default_identifier": "primary",
+      "policy_fields": ["expires_at"]
+    },
+    {
+      "id": "notes",
+      "icon": "📝",
+      "label": { "en": "Notes", "de": "Notizen" },
+      "default_identifier": "primary",
+      "policy_fields": ["expires_at"]
+    },
+    {
+      "id": "roadmap",
+      "icon": "🗺️",
+      "label": { "en": "Project Roadmap", "de": "Projekt-Roadmap" },
+      "default_identifier": "primary",
+      "policy_fields": ["expires_at"]
+    }
+  ]
+}

@@ -7,6 +7,7 @@ import uuid
 from typing import Any, Callable
 
 from apps.backend.dashboard import db as dashboard_db
+from apps.backend.dashboard.projects_kpi import sync_projects_kpis_in_data
 from apps.backend.dashboard.projects_import import (
     import_repos_into_projects_dashboard,
     link_project_row_workspace,
@@ -26,9 +27,11 @@ TOOL_BUCKET = "productivity"
 TOOL_DOMAIN = "projects"
 TOOL_LABEL = "Projects portfolio"
 TOOL_DESCRIPTION = (
-    "Create and manage projects dashboards (kind projects): portfolio table (title, remote_url, "
-    "project_path, tags, workspace_id), GitHub repo import, and link rows to coding workspaces. "
-    "dashboard_id is optional when the user has exactly one projects board; call projects_dashboards "
+    "Create and manage projects dashboards (kind projects): portfolio rows in projects[] "
+    "(title, remote_url, project_path, tags, status, security, workspace_id), GitHub import, "
+    "and link rows to coding workspaces. Card grid and table blocks both use dataPath projects — "
+    "use dashboard.patch_layout for layout (section, card_grid, stat, hero). "
+    "dashboard_id is optional when the user has exactly one projects board; call projects.dashboards "
     "when ambiguous. Prefer [Dashboard context] when present. GitHub import uses the user's own "
     "github_pat secret (Settings → Connections)."
 )
@@ -237,6 +240,7 @@ def add_rows(arguments: dict[str, Any]) -> str:
 
     data = dict(ws.get("data") or {})
     data[dp] = projects
+    data = sync_projects_kpis_in_data(data, dp)
     updated = dashboard_db.dashboard_update(uid, tid, wid, data=data)
     if updated is None:
         return _err("could not update dashboard")

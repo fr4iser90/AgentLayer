@@ -18,7 +18,10 @@ from apps.backend.infrastructure.operator_settings import (
 )
 from apps.backend.dashboard import db as dashboard_db
 from apps.backend.dashboard import file_storage, files_db, public_share
+from apps.backend.dashboard.block_ref import render_block_from_dashboard
 from apps.backend.dashboard.bootstrap import ensure_dashboard_schema, dashboard_tables_exist
+from apps.backend.dashboard.pins import pin_block_to_dashboard
+from apps.backend.dashboard.template_ops import export_template_payload, validate_template_import
 from apps.backend.dashboard.projects_import import import_repos_into_projects_dashboard
 from apps.backend.dashboard.setup import attach_onboarding, onboarding_for_kind
 from apps.backend.dashboard.upload_bytes import normalized_content_type, sniff_image_mime
@@ -109,6 +112,20 @@ class DashboardInstallBody(BaseModel):
     """Which bundle kinds to apply ``schema_sql`` for (nothing runs until you pick)."""
 
     kinds: list[str] = Field(default_factory=list)
+
+
+class DashboardFromTemplateBody(BaseModel):
+    kind: str = Field(default="custom", max_length=64)
+    title: str = Field(default="", max_length=500)
+    ui_layout: dict[str, Any] = Field(default_factory=dict)
+    initial_data: dict[str, Any] | None = Field(default=None)
+
+
+class DashboardPinBlockBody(BaseModel):
+    source_dashboard_id: str = Field(..., min_length=36, max_length=36)
+    source_block_id: str = Field(..., min_length=1, max_length=120)
+    parent_block_id: str | None = Field(default=None, max_length=120)
+    title: str | None = Field(default=None, max_length=200)
 
 
 @router.get("/install-status")
@@ -409,6 +426,31 @@ async def create_dashboard(request: Request, body: DashboardCreateBody):
     return {"ok": True, "dashboard": attach_onboarding(row, lang)}
 
 
+@router.post("/from-template")
+async def create_dashboard_from_template(request: Request, body: DashboardFromTemplateBody):
+    """Create a new dashboard from an exported layout snapshot (copy, not live sync)."""
+    _require_schema()
+    user = await get_current_user(request)
+    tid = db.user_tenant_id(user.id)
+    ul, dt, err = validate_template_import(
+        kind=body.kind,
+        ui_layout=body.ui_layout,
+        data=body.initial_data,
+    )
+    if err:
+        raise HTTPException(status_code=400, detail=err)
+    row = dashboard_db.dashboard_create(
+        user.id,
+        tid,
+        kind=body.kind,
+        title=body.title,
+        ui_layout=ul,
+        data=dt,
+    )
+    lang = _preferred_lang(request)
+    return {"ok": True, "dashboard": attach_onboarding(row, lang)}
+
+
 @router.get("/kinds/{kind}/onboarding")
 async def get_kind_onboarding(request: Request, kind: str):
     """Localized onboarding manifest for a dashboard kind (no row required)."""
@@ -589,6 +631,67 @@ async def revoke_dashboard_public_share(
     if not public_share.public_share_revoke(user.id, tid, dashboard_id, share_id):
         raise HTTPException(status_code=404, detail="share not found")
     return {"ok": True, "revoked": True}
+
+
+@router.get("/{dashboard_id}/export-template")
+async def export_dashboard_template(request: Request, dashboard_id: uuid.UUID):
+    """Export layout + data as an importable template snapshot."""
+    _require_schema()
+    user = await get_current_user(request)
+    tid = db.user_tenant_id(user.id)
+    row = dashboard_db.dashboard_get(user.id, tid, dashboard_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="dashboard not found")
+    payload = export_template_payload(
+        kind=str(row.get("kind") or "custom"),
+        title=str(row.get("title") or ""),
+        ui_layout=row.get("ui_layout") if isinstance(row.get("ui_layout"), dict) else {},
+        data=row.get("data") if isinstance(row.get("data"), dict) else {},
+    )
+    return {"ok": True, "template": payload}
+
+
+@router.get("/{dashboard_id}/blocks/{block_id}/render")
+async def render_dashboard_block(
+    request: Request, dashboard_id: uuid.UUID, block_id: str
+):
+    """Resolve one block + data slice for dashboard_ref rendering (ACL enforced)."""
+    _require_schema()
+    user = await get_current_user(request)
+    tid = db.user_tenant_id(user.id)
+    payload = render_block_from_dashboard(user.id, tid, dashboard_id, block_id)
+    if not payload:
+        raise HTTPException(status_code=404, detail="block not found or access denied")
+    return {"ok": True, **payload}
+
+
+@router.post("/{dashboard_id}/pin-block")
+async def pin_dashboard_block(
+    request: Request, dashboard_id: uuid.UUID, body: DashboardPinBlockBody
+):
+    """Add a dashboard_ref block pointing at a block from another accessible dashboard."""
+    _require_schema()
+    user = await get_current_user(request)
+    tid = db.user_tenant_id(user.id)
+    try:
+        source_id = uuid.UUID(body.source_dashboard_id.strip())
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid source_dashboard_id")
+    result = pin_block_to_dashboard(
+        user.id,
+        tid,
+        dashboard_id,
+        source_dashboard_id=source_id,
+        source_block_id=body.source_block_id,
+        parent_block_id=body.parent_block_id,
+        title=body.title,
+    )
+    if not result:
+        raise HTTPException(
+            status_code=400,
+            detail="could not pin (check edit access on target and read access on source block)",
+        )
+    return result
 
 
 @router.get("/{dashboard_id}")

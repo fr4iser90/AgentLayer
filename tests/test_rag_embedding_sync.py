@@ -50,4 +50,4 @@ def test_resolve_env_preferred_when_current_missing() -> None:
         env_preferred="custom-embed-v1",
     )
     assert model == "custom-embed-v1"
-    assert ".env" in reason
+    assert "MODEL_DEFAULT" in reason

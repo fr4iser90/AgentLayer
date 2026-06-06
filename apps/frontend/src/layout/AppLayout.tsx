@@ -2,6 +2,8 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import { UserMenu } from "../components/UserMenu";
+import { NotificationBell } from "../components/NotificationBell";
+import { NotificationProvider } from "../features/notifications/NotificationProvider";
 import { SUPPORTED } from "../i18n/config";
 
 const GITHUB_REPO =
@@ -33,7 +35,7 @@ export function AppLayout() {
     );
   }
 
-  return (
+  const shell = (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden">
       <header className="flex shrink-0 items-center gap-3 border-b border-surface-border bg-surface-raised px-4 py-3">
         <span className="shrink-0 text-sm font-semibold tracking-tight text-white">
@@ -96,7 +98,8 @@ export function AppLayout() {
           )}
         </nav>
         {loading ? null : signedIn ? (
-          <div className="ml-auto shrink-0">
+          <div className="ml-auto flex shrink-0 items-center gap-1">
+            <NotificationBell />
             <UserMenu />
           </div>
         ) : null}
@@ -128,4 +131,10 @@ export function AppLayout() {
       </footer>
     </div>
   );
+
+  if (signedIn) {
+    return <NotificationProvider enabled={signedIn}>{shell}</NotificationProvider>;
+  }
+
+  return shell;
 }

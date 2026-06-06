@@ -1,0 +1,18 @@
+{
+  "bellTitle": "Notifications",
+  "inboxTitle": "Notifications",
+  "empty": "No notifications yet.",
+  "markAllRead": "Mark all read",
+  "open": "Open",
+  "dismiss": "Dismiss",
+  "agentUpdateBadge": "Agent update",
+  "agentUpdateBadgeSection": "Update inside this section",
+  "settingsLink": "Notification settings…",
+  "justNow": "just now",
+  "minutesAgo_one": "{{count}} min ago",
+  "minutesAgo_other": "{{count}} min ago",
+  "hoursAgo_one": "{{count}} h ago",
+  "hoursAgo_other": "{{count}} h ago",
+  "daysAgo_one": "{{count}} d ago",
+  "daysAgo_other": "{{count}} d ago"
+}

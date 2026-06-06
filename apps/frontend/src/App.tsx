@@ -25,6 +25,7 @@ import { DocsPage } from "./pages/DocsPage";
 import { HomePage } from "./pages/HomePage";
 import { AgentSettings } from "./pages/settings/AgentSettings";
 import { DelegateSettings } from "./pages/settings/DelegateSettings";
+import { NotificationsSettings } from "./pages/settings/NotificationsSettings";
 import { ConnectionsSettings } from "./pages/settings/ConnectionsSettings";
 import { ProfileSettings } from "./pages/settings/ProfileSettings";
 import { ToolsSettings } from "./pages/settings/ToolsSettings";
@@ -65,6 +66,7 @@ export function App() {
                 <Route path="friends" element={<FriendsSettings />} />
                 <Route path="profile" element={<ProfileSettings />} />
                 <Route path="connections" element={<ConnectionsSettings />} />
+                <Route path="notifications" element={<NotificationsSettings />} />
                 <Route path="tools" element={<ToolsSettings />} />
                 <Route path="agent" element={<AgentSettings />} />
                 <Route path="delegate" element={<DelegateSettings />} />
