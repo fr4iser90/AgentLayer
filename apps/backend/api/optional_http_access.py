@@ -8,7 +8,13 @@ via ``http_identity``.
 
 from __future__ import annotations
 
+import re
 from typing import Any
+
+_MEDIA_STREAM_PATH_RE = re.compile(
+    r"^/v1/media/items/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/stream$",
+    re.IGNORECASE,
+)
 
 _MIDDLEWARE_PUBLIC_EXACT: frozenset[str] = frozenset(
     {
@@ -62,6 +68,11 @@ def is_identity_deferred_route(path: str, method: str) -> bool:
     ):
         return True
     return False
+
+
+def is_media_stream_route(path: str, method: str) -> bool:
+    """``<audio src>`` uses ``?token=`` — handler validates Bearer or query token."""
+    return (method or "").upper() == "GET" and bool(_MEDIA_STREAM_PATH_RE.match(path))
 
 
 def public_http_auth_policy() -> dict[str, Any]:

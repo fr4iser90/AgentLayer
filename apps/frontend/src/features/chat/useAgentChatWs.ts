@@ -12,6 +12,7 @@ export type AgentChatTurnBody = Record<string, unknown>;
 export type RunAgentChatTurnOpts = {
   body: AgentChatTurnBody;
   onToolDone?: (ev: AgentToolDoneEvent) => void;
+  onMediaPlay?: (payload: Record<string, unknown>) => void;
   /** Fired once after ``slowHintMs`` while the turn is still running (no hard abort). */
   onSlow?: (elapsedMs: number) => void;
   slowHintMs?: number;
@@ -85,6 +86,7 @@ export function useAgentChatWs(options: {
       const {
         body,
         onToolDone,
+        onMediaPlay,
         onSlow,
         slowHintMs = 90_000,
         streamEnabled = true,
@@ -106,6 +108,7 @@ export function useAgentChatWs(options: {
 
       const callbacks: AgentWsTurnCallbacks = {
         onToolDone,
+        onMediaPlay,
         streamEnabled,
       };
 

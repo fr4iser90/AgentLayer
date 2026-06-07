@@ -7,17 +7,23 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import Response
+from fastapi.responses import RedirectResponse, Response
 from pydantic import BaseModel, Field
 
 from apps.backend.core.config import config
 from apps.backend.dashboard import file_storage
 from apps.backend.dashboard import db as dashboard_db
 from apps.backend.dashboard.upload_bytes import normalized_content_type
-from apps.backend.infrastructure.auth import get_current_user, get_user_by_email
+from apps.backend.infrastructure.auth import (
+    User,
+    get_current_user,
+    get_user_by_email,
+    get_user_for_bearer_token,
+)
 from apps.backend.infrastructure.db import db
 from apps.backend.infrastructure.public_error import http_500_detail
 from apps.backend.media import media_db, media_policy
+from apps.backend.media.stream_probe import validate_stream_for_library
 from apps.backend.media.upload_bytes import sniff_media_mime
 
 router = APIRouter(prefix="/v1/media", tags=["media"])
@@ -83,9 +89,23 @@ def _public_item(row: dict[str, Any]) -> dict[str, Any]:
         out["access"] = row["access"]
     if row.get("share_permission"):
         out["share_permission"] = row["share_permission"]
-    if row.get("source_kind") == "upload":
+    if row.get("source_kind") in ("upload", "external_link"):
         out["stream_url"] = f"/v1/media/items/{row['id']}/stream"
     return out
+
+
+async def _user_for_media_stream(request: Request) -> User:
+    """Bearer header or ``?token=`` for ``<audio src>`` (no custom headers)."""
+    auth = request.headers.get("authorization") or ""
+    token = auth.removeprefix("Bearer ").strip()
+    if not token:
+        token = (request.query_params.get("token") or "").strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    user = get_user_for_bearer_token(token)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    return user
 
 
 def _stream_bytes(data: bytes, request: Request, content_type: str) -> Response:
@@ -121,6 +141,13 @@ def _stream_bytes(data: bytes, request: Request, content_type: str) -> Response:
 
 class MediaEmbedBody(BaseModel):
     external_url: str = Field(..., min_length=8, max_length=2048)
+    title: str = Field(default="", max_length=500)
+    artist: str = Field(default="", max_length=500)
+    dashboard_id: str | None = Field(default=None, max_length=36)
+
+
+class MediaStreamBody(BaseModel):
+    stream_url: str = Field(..., min_length=8, max_length=2048)
     title: str = Field(default="", max_length=500)
     artist: str = Field(default="", max_length=500)
     dashboard_id: str | None = Field(default=None, max_length=36)
@@ -292,6 +319,40 @@ async def media_add_embed(request: Request, body: MediaEmbedBody):
     return {"ok": True, "item": _public_item(row)}
 
 
+@router.post("/items/stream")
+async def media_add_stream(request: Request, body: MediaStreamBody):
+    _require_schema()
+    user = await get_current_user(request)
+    _require_library(user.id)
+    tid = db.user_tenant_id(user.id)
+
+    url = body.stream_url.strip()
+    if not media_policy.stream_url_allowed(url):
+        raise HTTPException(status_code=400, detail="stream URL not allowed")
+    probe_err = validate_stream_for_library(url)
+    if probe_err:
+        raise HTTPException(status_code=400, detail=probe_err)
+
+    dash_uuid: uuid.UUID | None = None
+    if body.dashboard_id and body.dashboard_id.strip():
+        try:
+            dash_uuid = uuid.UUID(body.dashboard_id.strip())
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail="invalid dashboard_id") from e
+        _optional_dashboard(user.id, tid, dash_uuid)
+
+    row = media_db.item_insert_external_link(
+        tenant_id=tid,
+        owner_user_id=user.id,
+        dashboard_id=dash_uuid,
+        external_url=url,
+        embed_provider=media_policy.stream_provider_for_url(url),
+        title=body.title.strip(),
+        artist=body.artist.strip(),
+    )
+    return {"ok": True, "item": _public_item(row)}
+
+
 @router.get("/items/{item_id}")
 async def media_get_item(request: Request, item_id: uuid.UUID):
     _require_schema()
@@ -334,11 +395,22 @@ async def media_patch_item(request: Request, item_id: uuid.UUID, body: MediaLice
 @router.get("/items/{item_id}/stream")
 async def media_stream_item(request: Request, item_id: uuid.UUID):
     _require_schema()
-    user = await get_current_user(request)
+    user = await _user_for_media_stream(request)
     _require_library(user.id)
     tid = db.user_tenant_id(user.id)
     row, share_perm, is_owner = media_db.item_get_with_access(item_id, user.id, tid)
-    if not row or row.get("source_kind") != "upload":
+    if not row:
+        raise HTTPException(status_code=404, detail="media stream not found")
+
+    kind = (row.get("source_kind") or "").strip()
+    if kind == "external_link":
+        url = (row.get("external_url") or "").strip()
+        if not url or not media_policy.stream_url_allowed(url):
+            raise HTTPException(status_code=404, detail="media stream not found")
+        # Browser follows redirect; avoids server-side proxy DNS/network limits in Docker.
+        return RedirectResponse(url=url, status_code=307)
+
+    if kind != "upload":
         raise HTTPException(status_code=404, detail="media stream not found")
     relpath = row.get("storage_relpath") or ""
     if not relpath:

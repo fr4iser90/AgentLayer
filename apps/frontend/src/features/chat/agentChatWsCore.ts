@@ -36,6 +36,8 @@ export type AgentToolDoneEvent = {
 
 export type AgentWsTurnCallbacks = {
   onToolDone?: (ev: AgentToolDoneEvent) => void;
+  /** Footer mini-player after successful ``media_enqueue`` with ``now_playing_id``. */
+  onMediaPlay?: (payload: Record<string, unknown>) => void;
   streamEnabled?: boolean;
 };
 
@@ -183,6 +185,11 @@ export function handleAgentWsMessage(msg: Record<string, unknown>, ctx: HandlerC
     return;
   }
 
+  if (typ === "agent.media_play") {
+    callbacks.onMediaPlay?.(msg);
+    return;
+  }
+
   if (typ === "agent.tool_start") {
     const toolName = String(msg.name ?? "tool");
     const summary = typeof msg.summary === "string" ? msg.summary.trim() : undefined;
@@ -249,6 +256,9 @@ export function handleAgentWsMessage(msg: Record<string, unknown>, ctx: HandlerC
       dashboardId: dashId,
       ok: toolOk,
     });
+    if (n === "media_enqueue" && toolOk !== false && msg.media_play) {
+      callbacks.onMediaPlay?.(msg.media_play as Record<string, unknown>);
+    }
     return;
   }
 

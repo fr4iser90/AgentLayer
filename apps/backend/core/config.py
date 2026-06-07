@@ -510,7 +510,8 @@ def media_stream_env_allowed_hosts() -> frozenset[str]:
         os.environ.get("AGENT_MEDIA_STREAM_ALLOWED_HOSTS")
         or (
             "mdr.de,www.mdr.de,cast.addradio.de,listen.streamtheworld.com,"
-            "playerservices.streamtheworld.com,icecast.mdradio.de,stream.radio.co"
+            "playerservices.streamtheworld.com,icecast.mdradio.de,stream.radio.co,"
+            "akamaized.net,mdr-radio-hls.akamaized.net"
         )
     ).strip()
     return frozenset(x.strip().lower() for x in raw.split(",") if x.strip())

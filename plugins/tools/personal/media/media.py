@@ -12,6 +12,7 @@ from apps.backend.dashboard.layout_tree import iter_layout_blocks
 from apps.backend.dashboard.tool_dashboard_resolve import resolve_dashboard_id
 from apps.backend.domain.identity import get_identity
 from apps.backend.media import media_db, media_policy
+from apps.backend.media.stream_probe import validate_stream_for_library
 
 __version__ = "0.1.0"
 TOOL_ID = "media"
@@ -187,6 +188,9 @@ def _insert_url_item(
             artist=artist,
         )
     if media_policy.stream_url_allowed(url):
+        probe_err = validate_stream_for_library(url)
+        if probe_err:
+            raise ValueError(probe_err)
         return media_db.item_insert_external_link(
             tenant_id=tid,
             owner_user_id=uid,
@@ -328,6 +332,9 @@ def add_stream(arguments: dict[str, Any]) -> str:
         return _err("stream_url required")
     if not media_policy.stream_url_allowed(url):
         return _err("stream URL not allowed (HTTPS + allowlisted radio/stream host)")
+    probe_err = validate_stream_for_library(url)
+    if probe_err:
+        return _err(probe_err)
     dash_raw = arguments.get("dashboard_id")
     dash_uuid: uuid.UUID | None = None
     if dash_raw:
@@ -428,6 +435,7 @@ def enqueue(arguments: dict[str, Any]) -> str:
             "item": queue_item,
             "queue_length": len(q["items"]),
             "now_playing_id": q.get("now_playing_id"),
+            "queue": q,
         },
         ensure_ascii=False,
     )
@@ -569,8 +577,6 @@ def delete_item(arguments: dict[str, Any]) -> str:
     row = media_db.item_get_owned(mid, uid, tid)
     if not row:
         return _err("media item not found")
-    if row.get("source_kind") != "upload":
-        return _err("only upload items can be deleted via this tool (embeds: remove from queue)")
     relpath = media_db.item_soft_delete(mid, uid, tid)
     if relpath is None:
         return _err("could not delete item")
@@ -824,7 +830,8 @@ TOOLS: list[dict[str, Any]] = [
         "function": {
             "name": "media_add_stream",
             "TOOL_DESCRIPTION": (
-                "Add HTTPS live audio stream (internet radio, icecast) to library as external_link. "
+                "Add HTTPS live audio stream (internet radio, icecast, HLS) to library as external_link. "
+                "URL is probed before save (must be reachable, valid audio/HLS, HLS needs CORS). "
                 "Use media_enqueue with the returned media_item_id to play."
             ),
             "parameters": {
@@ -908,11 +915,11 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "media_delete_item",
-            "TOOL_DESCRIPTION": "Soft-delete an owned upload from the media library (not embeds).",
+            "TOOL_DESCRIPTION": "Soft-delete an owned item from the media library (upload, radio stream, or embed).",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "media_item_id": {"type": "string", "TOOL_DESCRIPTION": "Upload item UUID."},
+                    "media_item_id": {"type": "string", "TOOL_DESCRIPTION": "Library item UUID."},
                 },
                 "required": ["media_item_id"],
             },

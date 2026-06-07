@@ -1984,7 +1984,14 @@ async def chat_completion(
                     )
                     if hook_extras:
                         ev_done.update(hook_extras)
+                    media_ev = media_play_websocket_event(name, result)
+                    if media_ev:
+                        ev_done["media_play"] = {
+                            k: v for k, v in media_ev.items() if k != "type"
+                        }
                     await event_emit(ev_done)
+                    if media_ev:
+                        await event_emit(media_ev)
                 messages.append(
                     {
                         "role": "tool",

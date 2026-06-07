@@ -56,6 +56,7 @@ from apps.backend.infrastructure.operator_settings import (
 )
 from apps.backend.api.optional_http_access import (
     is_identity_deferred_route,
+    is_media_stream_route,
     middleware_path_is_public,
     public_http_auth_policy,
 )
@@ -945,6 +946,9 @@ async def auth_middleware(request: Request, call_next):
 
     # Handlers resolve Bearer (JWT / API key) themselves; see public_http_auth_policy
     if is_identity_deferred_route(path, request.method):
+        return await call_next(request)
+
+    if is_media_stream_route(path, request.method):
         return await call_next(request)
 
     # All other endpoints require valid auth

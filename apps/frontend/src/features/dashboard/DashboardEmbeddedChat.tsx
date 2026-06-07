@@ -33,6 +33,8 @@ import {
   toApiContent,
 } from "../chat/messageFormat";
 import { useAgentChatWs } from "../chat/useAgentChatWs";
+import { applyMediaPlayFromWs } from "../media/applyMediaPlayFromWs";
+import { useOptionalGlobalMedia } from "../media/GlobalMediaProvider";
 import {
   useAgentLiveLog,
   useAgentLiveTurn,
@@ -139,6 +141,9 @@ export function DashboardEmbeddedChat({
   const { t } = useTranslation(["dashboard", "errors", "chat", "admin"]);
   const auth = useAuth();
   const { accessToken, user } = auth;
+  const globalMedia = useOptionalGlobalMedia();
+  const globalMediaRef = useRef(globalMedia);
+  globalMediaRef.current = globalMedia;
   const agentLiveTurn = useAgentLiveTurn();
   const agentWs = useAgentChatWs({
     accessToken,
@@ -557,6 +562,7 @@ export function DashboardEmbeddedChat({
             setActiveProposalSetId(ev.proposalSetId);
           }
         },
+        onMediaPlay: (payload) => applyMediaPlayFromWs(globalMediaRef.current, payload),
       });
       const liveLog = agentLiveTurn.takeAgentLogSnapshot();
       const finalContent = sanitizeDashboardAssistantText(content.trim() || "(empty)");

@@ -121,6 +121,8 @@ import {
   threadsVisibleInSidebar,
 } from "../features/chat/groupThreadsForSidebar";
 import { SessionRuntimeBar } from "../features/chat/SessionRuntimeBar";
+import { useOptionalGlobalMedia } from "../features/media/GlobalMediaProvider";
+import { applyMediaPlayFromWs } from "../features/media/applyMediaPlayFromWs";
 import {
   getChatComposerHeaderCollapsed,
   setChatComposerHeaderCollapsed,
@@ -273,6 +275,9 @@ export function ChatPage() {
   const { accessToken, user } = auth;
   const userId = user?.id ?? "";
   const agentChatSession = getAgentChatSession();
+  const globalMedia = useOptionalGlobalMedia();
+  const globalMediaRef = useRef(globalMedia);
+  globalMediaRef.current = globalMedia;
   const agentLiveTurn = agentChatSession.liveTurn;
   const agentLiveTurnRef = useRef(agentLiveTurn);
   agentLiveTurnRef.current = agentLiveTurn;
@@ -1943,11 +1948,21 @@ export function ChatPage() {
           );
           return;
         }
+        if (typ === "agent.media_play") {
+          applyMediaPlayFromWs(globalMediaRef.current, msg as Record<string, unknown>);
+          return;
+        }
         if (typ === "agent.tool_done") {
           const n = msg.name != null ? String(msg.name) : "tool";
           const ch = msg.result_chars != null ? Number(msg.result_chars) : undefined;
           const toolOk =
             msg.result_ok === false ? false : msg.result_ok === true ? true : undefined;
+          if (n === "media_enqueue" && toolOk !== false && msg.media_play) {
+            applyMediaPlayFromWs(
+              globalMediaRef.current,
+              msg.media_play as Record<string, unknown>
+            );
+          }
           const toolError =
             typeof msg.result_error === "string" && msg.result_error.trim()
               ? msg.result_error.trim().slice(0, 500)
