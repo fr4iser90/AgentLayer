@@ -26,6 +26,12 @@ export function SettingsLayout() {
             {t("settings:profileTitle")}
           </NavLink>
           <NavLink
+            to="/settings/voice"
+            className={({ isActive }) => `${subLink} ${isActive ? subLinkActive : subLinkIdle}`}
+          >
+            {t("settings:voiceTitle")}
+          </NavLink>
+          <NavLink
             to="/settings/connections"
             className={({ isActive }) => `${subLink} ${isActive ? subLinkActive : subLinkIdle}`}
           >

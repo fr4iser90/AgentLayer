@@ -65,6 +65,7 @@ async def chat_completion(
     tool_domain_header: str | None = None,
     model_profile_header: str | None = None,
     model_override_header: str | None = None,
+    user_timezone_header: str | None = None,
     bearer_user_role: str | None = None,
     event_emit: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
     control_queue: asyncio.Queue | None = None,
@@ -611,6 +612,14 @@ async def chat_completion(
         if isinstance(pf, dict):
             _apply_tool_prefetch(messages, pf)
         messages = apply_user_persona_system(messages)
+        from apps.backend.domain.current_time_context import apply_current_time_context
+
+        messages = apply_current_time_context(
+            messages,
+            user_id,
+            tenant_id,
+            request_timezone=user_timezone_header,
+        )
         messages = _inject_user_memory_context(messages, dashboard_ctx)
         messages = _inject_user_secrets_bootstrap(messages, user_id)
         messages = _inject_workspace_bound_context(

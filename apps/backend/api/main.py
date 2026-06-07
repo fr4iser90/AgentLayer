@@ -104,6 +104,8 @@ from apps.backend.infrastructure.user_secrets_api import router as user_secrets_
 from apps.backend.api.conversations_api import router as conversations_router
 from apps.backend.dashboard.router import router as dashboard_router
 from apps.backend.media.router import router as media_router
+from apps.backend.api.voice_api import router as voice_router
+from apps.backend.api.voice_realtime_websocket import router as voice_realtime_ws_router
 from apps.backend.infrastructure.log_redaction import (
     apply_http_client_log_levels,
     install_log_redaction_filters,
@@ -324,6 +326,8 @@ app.include_router(message_feedback_router)
 app.include_router(message_feedback_admin_router)
 app.include_router(dashboard_router)
 app.include_router(media_router)
+app.include_router(voice_router)
+app.include_router(voice_realtime_ws_router)
 app.include_router(user_data_router)
 app.include_router(notifications_router)
 app.include_router(delegate_router)
@@ -1326,6 +1330,7 @@ async def chat_completions(request: Request):
     tool_dom_hdr = (request.headers.get("X-Agent-Tool-Domain") or "").strip() or None
     model_prof = (request.headers.get("X-Agent-Model-Profile") or "").strip() or None
     model_ovr = (request.headers.get("X-Agent-Model-Override") or "").strip() or None
+    user_tz = (request.headers.get("X-User-Timezone") or "").strip() or None
 
     try:
         result = await chat_completion(
@@ -1334,6 +1339,7 @@ async def chat_completions(request: Request):
             tool_domain_header=tool_dom_hdr,
             model_profile_header=model_prof,
             model_override_header=model_ovr,
+            user_timezone_header=user_tz,
             bearer_user_role=_bearer_user_role_from_request(request),
             stream_requested=want_stream,
         )

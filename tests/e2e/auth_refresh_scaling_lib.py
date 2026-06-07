@@ -93,13 +93,23 @@ def cleanup_refresh_tokens(user_email: str) -> bool:
     if not shutil.which("docker"):
         return False
     container = (os.environ.get("AGENT_E2E_POSTGRES_CONTAINER") or "agent-layer-postgres").strip()
-    safe_email = user_email.strip().lower().replace("'", "''")
-    sql = (
-        "DELETE FROM refresh_tokens WHERE user_id = "
-        f"(SELECT id FROM users WHERE email = '{safe_email}' LIMIT 1);"
-    )
+    email = user_email.strip().lower()
     proc = subprocess.run(
-        ["docker", "exec", container, "psql", "-U", "agent", "-d", "agent", "-c", sql],
+        [
+            "docker",
+            "exec",
+            container,
+            "psql",
+            "-U",
+            "agent",
+            "-d",
+            "agent",
+            "-v",
+            f"user_email={email}",
+            "-c",
+            "DELETE FROM refresh_tokens WHERE user_id = "
+            "(SELECT id FROM users WHERE email = :'user_email' LIMIT 1);",
+        ],
         capture_output=True,
         text=True,
         timeout=30,

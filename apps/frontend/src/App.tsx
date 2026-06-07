@@ -28,6 +28,7 @@ import { DelegateSettings } from "./pages/settings/DelegateSettings";
 import { NotificationsSettings } from "./pages/settings/NotificationsSettings";
 import { ConnectionsSettings } from "./pages/settings/ConnectionsSettings";
 import { ProfileSettings } from "./pages/settings/ProfileSettings";
+import { VoiceSettings } from "./pages/settings/VoiceSettings";
 import { ToolsSettings } from "./pages/settings/ToolsSettings";
 import SharesSettings from "./pages/settings/SharesSettings";
 import { StudioPage } from "./pages/StudioPage";
@@ -65,6 +66,7 @@ export function App() {
                 <Route index element={<Navigate to="/settings/profile" replace />} />
                 <Route path="friends" element={<FriendsSettings />} />
                 <Route path="profile" element={<ProfileSettings />} />
+                <Route path="voice" element={<VoiceSettings />} />
                 <Route path="connections" element={<ConnectionsSettings />} />
                 <Route path="notifications" element={<NotificationsSettings />} />
                 <Route path="tools" element={<ToolsSettings />} />

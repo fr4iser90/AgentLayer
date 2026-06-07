@@ -154,7 +154,189 @@ export function AdminInterfacesPlatformSection() {
               onChange={(e) => s.setMediaEmbedHosts(e.target.value)}
               placeholder={t("admin:ifPlatformMediaEmbedHostsPlaceholder")}
             />
-          </section>          <section className="mt-6 rounded-lg border border-surface-border p-4">
+          </section>
+
+          <section className="mt-8 rounded-xl border border-surface-border bg-surface-raised p-5">
+            <h2 className="text-sm font-medium text-white">{t("admin:ifPlatformVoiceTitle")}</h2>
+            <p className="mt-2 text-xs text-surface-muted">{t("admin:ifPlatformVoiceIntro")}</p>
+            <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-white">
+              <input
+                type="checkbox"
+                className="rounded border-surface-border"
+                checked={s.voiceEnabled}
+                onChange={(e) => s.setVoiceEnabled(e.target.checked)}
+              />
+              {t("admin:ifPlatformVoiceEnabled")}
+            </label>
+            <div className="mt-4 rounded-lg border border-white/10 bg-black/15 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs font-medium text-surface-muted">{t("admin:ifPlatformVoiceEndpoint")}</span>
+                {s.voiceApiBaseSource === "env" ? (
+                  <span className="text-xs text-amber-300/90">{t("admin:ifPlatformVoiceBaseUrlFromEnv")}</span>
+                ) : s.voiceApiBaseEffective ? (
+                  <span className="font-mono text-xs text-neutral-500">{t("admin:ifMemActive")}</span>
+                ) : null}
+              </div>
+              <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs text-surface-muted" htmlFor="voice-stt-provider-id">
+                    {t("admin:ifPlatformVoiceSttProvider")}
+                  </label>
+                  <select
+                    id="voice-stt-provider-id"
+                    className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                    value={s.voiceSttProviderId || s.voiceSttProviderIdEffective || ""}
+                    onChange={(e) => s.setVoiceSttProviderId(e.target.value)}
+                    disabled={s.voiceSttProviders.length === 0}
+                  >
+                    <option value="">{t("admin:ifPlatformVoiceSttProviderAuto")}</option>
+                    {s.voiceSttProviders.map((p) => (
+                      <option key={`stt-${p.provider_id}`} value={p.provider_id}>
+                        {p.label} ({p.provider_id})
+                      </option>
+                    ))}
+                  </select>
+                  {s.voiceSttApiBaseEffective ? (
+                    <p className="mt-1 font-mono text-[10px] text-neutral-400">{s.voiceSttApiBaseEffective}</p>
+                  ) : null}
+                </div>
+                <div>
+                  <label className="block text-xs text-surface-muted" htmlFor="voice-tts-provider-id">
+                    {t("admin:ifPlatformVoiceTtsProvider")}
+                  </label>
+                  <select
+                    id="voice-tts-provider-id"
+                    className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                    value={s.voiceTtsProviderId || s.voiceTtsProviderIdEffective || ""}
+                    onChange={(e) => s.setVoiceTtsProviderId(e.target.value)}
+                    disabled={s.voiceTtsProviders.length === 0}
+                  >
+                    <option value="">{t("admin:ifPlatformVoiceTtsProviderAuto")}</option>
+                    {s.voiceTtsProviders.map((p) => (
+                      <option key={`tts-${p.provider_id}`} value={p.provider_id}>
+                        {p.label} ({p.provider_id})
+                      </option>
+                    ))}
+                  </select>
+                  {s.voiceTtsApiBaseEffective ? (
+                    <p className="mt-1 font-mono text-[10px] text-neutral-400">{s.voiceTtsApiBaseEffective}</p>
+                  ) : null}
+                </div>
+              </div>
+              <p className="mt-2 text-xs text-surface-muted">{t("admin:ifPlatformVoiceSttTtsEnvHint")}</p>
+              <label className="mt-2 block text-xs text-surface-muted" htmlFor="voice-api-base">
+                {t("admin:ifPlatformVoiceApiBase")}
+              </label>
+              <input
+                id="voice-api-base"
+                className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white disabled:opacity-50"
+                value={
+                  s.voiceApiBaseSource === "env"
+                    ? (s.voiceApiBaseEffective ?? "")
+                    : s.voiceApiBaseUrl
+                }
+                onChange={(e) => s.setVoiceApiBaseUrl(e.target.value)}
+                placeholder={t("admin:ifPlatformVoiceApiBasePlaceholder")}
+                disabled={s.voiceApiBaseSource === "env"}
+              />
+              {s.voiceApiBaseSource === "env" ? (
+                <p className="mt-1 text-xs text-surface-muted">
+                  <span className="font-mono">VOICE_STT_PROVIDER_N_*</span> /{" "}
+                  <span className="font-mono">VOICE_TTS_PROVIDER_N_*</span> {t("admin:ifMemInDotenv")}{" "}
+                  <span className="font-mono">.env</span>
+                </p>
+              ) : s.voiceApiBaseEffective ? (
+                <p className="mt-1 text-xs text-surface-muted">
+                  {t("admin:ifMemEffectiveAfterSave")}{" "}
+                  <span className="font-mono text-neutral-300">{s.voiceApiBaseEffective}</span>
+                </p>
+              ) : null}
+              <p className="mt-3 text-xs text-surface-muted">
+                {t("admin:ifPlatformVoiceApiKey")}{" "}
+                {s.voiceApiKeyConfigured ? t("admin:ifMemKeyStored") : t("admin:ifMemKeyEmpty")}
+                {s.voiceApiKeySource === "env" ? (
+                  <span className="text-amber-300/90"> {t("admin:ifMemFromEnv")}</span>
+                ) : null}
+              </p>
+              <label className="mt-2 block text-xs text-surface-muted" htmlFor="voice-api-key">
+                {t("admin:ifPlatformVoiceApiKey")}
+              </label>
+              <input
+                id="voice-api-key"
+                type="password"
+                className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white disabled:opacity-50"
+                value={s.voiceApiKey}
+                onChange={(e) => s.setVoiceApiKey(e.target.value)}
+                placeholder={t("admin:ifPlatformVoiceApiKeyPlaceholder")}
+                autoComplete="off"
+                disabled={s.voiceApiKeySource === "env"}
+              />
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <label className="block text-xs text-surface-muted">
+                {t("admin:ifPlatformVoiceSttModel")}
+                <input
+                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  value={s.voiceSttModel}
+                  onChange={(e) => s.setVoiceSttModel(e.target.value)}
+                />
+              </label>
+              <label className="block text-xs text-surface-muted">
+                {t("admin:ifPlatformVoiceTtsModel")}
+                <input
+                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  value={s.voiceTtsModel}
+                  onChange={(e) => s.setVoiceTtsModel(e.target.value)}
+                />
+              </label>
+            </div>
+            <label className="mt-4 block text-xs text-surface-muted">
+              {t("admin:ifPlatformVoiceTtsVoice")}
+              <input
+                className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                value={s.voiceTtsVoice}
+                onChange={(e) => s.setVoiceTtsVoice(e.target.value)}
+              />
+            </label>
+            <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-white">
+              <input
+                type="checkbox"
+                className="rounded border-surface-border"
+                checked={s.voiceBridgeTelegram}
+                onChange={(e) => s.setVoiceBridgeTelegram(e.target.checked)}
+              />
+              {t("admin:ifPlatformVoiceBridgeTelegram")}
+            </label>
+            <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-white">
+              <input
+                type="checkbox"
+                className="rounded border-surface-border"
+                checked={s.voiceBridgeDiscord}
+                onChange={(e) => s.setVoiceBridgeDiscord(e.target.checked)}
+              />
+              {t("admin:ifPlatformVoiceBridgeDiscord")}
+            </label>
+            <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-white">
+              <input
+                type="checkbox"
+                className="rounded border-surface-border"
+                checked={s.voiceRealtimeEnabled}
+                onChange={(e) => s.setVoiceRealtimeEnabled(e.target.checked)}
+              />
+              {t("admin:ifPlatformVoiceRealtime")}
+            </label>
+            <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-white">
+              <input
+                type="checkbox"
+                className="rounded border-surface-border"
+                checked={s.voiceDiscordVcEnabled}
+                onChange={(e) => s.setVoiceDiscordVcEnabled(e.target.checked)}
+              />
+              {t("admin:ifPlatformVoiceDiscordVc")}
+            </label>
+          </section>
+
+          <section className="mt-6 rounded-lg border border-surface-border p-4">
             <h3 className="text-sm font-medium text-white">{t("admin:ifPlatformWorkspacesTitle")}</h3>
             <p className="mt-1 text-xs text-surface-muted">{t("admin:ifPlatformWorkspacesIntro")}</p>
             <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-white">

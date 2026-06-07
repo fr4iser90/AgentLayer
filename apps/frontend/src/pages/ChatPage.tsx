@@ -65,6 +65,12 @@ import {
 import { TurnNavigator, TurnNavigatorHorizontal, buildTurnItems } from "../features/chat/TurnNavigator";
 import { useChatScroll } from "../features/chat/useChatScroll";
 import { CollapsibleSidebarShell } from "../layout/CollapsibleSidebarShell";
+import { fetchVoiceStatus, transcribeVoiceBlob, type VoiceStatus } from "../features/voice/voiceApi";
+import { VoiceMicButton } from "../features/voice/VoiceMicButton";
+import { useVoicePlayback } from "../features/voice/useVoicePlayback";
+import { useVoiceRealtime } from "../features/voice/useVoiceRealtime";
+import { useVoiceHandsFree } from "../features/voice/useVoiceHandsFree";
+import { VoiceHandsFreeBar } from "../features/voice/VoiceHandsFreeBar";
 
 /** Dashboard-linked thread: show whether other members see messages (shared) or only you (personal). */
 function DashboardChatVisibilityBadge({ thread }: { thread: Pick<ChatThread, "dashboardId" | "shared"> }) {
@@ -312,6 +318,17 @@ export function ChatPage() {
   const [sessionRuntime, setSessionRuntime] = useState<SessionRuntimePayload | null>(null);
   const [tokenUsage, setTokenUsage] = useState<TokenUsageTotals>(() => emptyTokenUsage());
   const [chatContextMeta, setChatContextMeta] = useState<ChatContextMeta | null>(null);
+  const [voiceStatus, setVoiceStatus] = useState<VoiceStatus | null>(null);
+  const voiceStatusRef = useRef<VoiceStatus | null>(null);
+  voiceStatusRef.current = voiceStatus;
+  const voicePlayback = useVoicePlayback(auth);
+  const voiceSpeakRef = useRef(voicePlayback.speak);
+  voiceSpeakRef.current = voicePlayback.speak;
+  const voiceRealtime = useVoiceRealtime(accessToken);
+  const [handsFreeActive, setHandsFreeActive] = useState(false);
+  const handsFreeMode =
+    voiceStatus?.realtime_web &&
+    (voiceStatus.prefs.mode_web === "hands_free" || voiceStatus.prefs.mode_web === "realtime");
 
   const isAdminUser = (user?.role ?? "").toLowerCase() === "admin";
   /** Single Chat UI: General by default; Dashboard when ?dashboard= context. */
@@ -461,6 +478,75 @@ export function ChatPage() {
   }, [activeThreadId, auth]);
 
   useEffect(() => {
+    if (!accessToken) {
+      setVoiceStatus(null);
+      return;
+    }
+    void fetchVoiceStatus(auth).then(setVoiceStatus).catch(() => setVoiceStatus(null));
+  }, [accessToken, auth]);
+
+  const buildVoiceChatBodyRef = useRef<() => Record<string, unknown>>(() => ({}));
+  buildVoiceChatBodyRef.current = () => {
+    const tid = activeThreadIdRef.current;
+    const th = threadsRef.current.find((t) => t.id === tid);
+    const model = (th?.model || defaultModel).trim();
+    const disabledTools = getDisabledToolNames();
+    return {
+      model,
+      messages: (th?.messages ?? []).map((m) => ({
+        role: m.role,
+        content: toApiContent(m.content),
+      })),
+      agent_id: composerAgentId,
+      ...(selectedWorkspaceId ? { workspace_id: selectedWorkspaceId } : {}),
+      ...(tid ? { conversation_id: tid } : {}),
+      ...(activeTaskId ? { agent_active_task_id: activeTaskId } : {}),
+      ...agentDashboardPayload,
+      ...(disabledTools.length ? { agent_disabled_tools: disabledTools } : {}),
+      agent_model_catalog_owned_by: th?.modelProvider,
+    };
+  };
+
+  useEffect(() => {
+    voiceRealtime.setHandlers({
+      onTranscript: (text) => {
+        const id = activeThreadIdRef.current;
+        if (!id || !text.trim()) return;
+        const um: UiMessage = {
+          role: "user",
+          content: text,
+          id: newMessageId(),
+          createdAt: Date.now(),
+        };
+        setThreads((prev) =>
+          prev.map((th) =>
+            th.id === id
+              ? {
+                  ...th,
+                  messages: [...th.messages, um],
+                  messageCount: th.messages.length + 1,
+                  updatedAt: Date.now(),
+                }
+              : th
+          )
+        );
+      },
+      onReplyText: (text) => {
+        const id = activeThreadIdRef.current;
+        if (!id || !text.trim()) return;
+        setThreads((prev) =>
+          prev.map((th) => {
+            if (th.id !== id) return th;
+            const messages = [...th.messages, assistantMessage(text)];
+            return { ...th, messages, messageCount: messages.length, updatedAt: Date.now() };
+          })
+        );
+      },
+      onError: (d) => setError(d),
+    });
+  }, [voiceRealtime]);
+
+  useEffect(() => {
     if (!activeTaskId || !auth.accessToken || !activeThreadId) return;
     let cancelled = false;
     void (async () => {
@@ -496,6 +582,21 @@ export function ChatPage() {
   const mode: ChatMode = activeThread?.mode ?? "agent";
   const model = activeThread?.model ?? "";
   const modelProvider = activeThread?.modelProvider;
+
+  const handsFree = useVoiceHandsFree({
+    enabled: handsFreeActive && !!handsFreeMode && mode === "agent",
+    onUtterance: async (blob) => {
+      try {
+        await voiceRealtime.sendUtterance(blob, buildVoiceChatBodyRef.current());
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      }
+    },
+  });
+
+  useEffect(() => {
+    if (!handsFreeActive) voiceRealtime.disconnect();
+  }, [handsFreeActive, voiceRealtime]);
 
   const threadContentKey = `${activeThreadId ?? ""}:${messages.length}:${hydrated}`;
   const { scrollContainerRef, messagesEndRef, scrollToBottom, showScrollFab } = useChatScroll({
@@ -1680,6 +1781,10 @@ export function ChatPage() {
               );
             }
             agentLiveTurnRef.current.resetAfterCommit();
+            const vs = voiceStatusRef.current;
+            if (vs?.output_web && content.trim()) {
+              void voiceSpeakRef.current(content, { language: vs.prefs.language });
+            }
           } else if (id && liveLog.length > 0) {
             if (agentChatSession.isPageMounted()) {
               setThreads((prev) =>
@@ -3162,6 +3267,15 @@ export function ChatPage() {
                   </p>
                 </div>
               ) : null}
+              {handsFreeMode && mode === "agent" ? (
+                <VoiceHandsFreeBar
+                  active={handsFreeActive}
+                  listening={handsFree.listening}
+                  busy={voiceRealtime.busy}
+                  error={handsFree.error}
+                  onToggle={() => setHandsFreeActive((v) => !v)}
+                />
+              ) : null}
               {activeComposerQueue.length > 0 ? (
                 <ul className="mb-2 space-y-1 rounded-lg border border-violet-500/25 bg-violet-950/20 px-2 py-1.5">
                   <li className="text-[9px] font-medium uppercase tracking-wide text-violet-200/80">
@@ -3239,6 +3353,27 @@ export function ChatPage() {
                     <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
                   </svg>
                 </button>
+                {mode === "agent" &&
+                voiceStatus?.input_web &&
+                voiceStatus.prefs.mode_web === "push_to_talk" ? (
+                  <VoiceMicButton
+                    disabled={loading}
+                    busy={loading}
+                    title={t("chat:voiceMicTitle")}
+                    ariaLabel={t("chat:voiceMicAria")}
+                    transcribe={(blob) => transcribeVoiceBlob(auth, blob)}
+                    onError={(m) => setError(m)}
+                    onTranscript={async (transcript) => {
+                      if (voiceStatus.prefs.edit_transcript_before_send) {
+                        setDraft(transcript);
+                        return;
+                      }
+                      if (mode === "agent") {
+                        await runAgentWsRef.current({ id: newMessageId(), draft: transcript, attachments: [] });
+                      }
+                    }}
+                  />
+                ) : null}
                 {loading ? (
                   <div className="flex items-center gap-2">
                     {canQueue ? (

@@ -139,6 +139,87 @@ def _load_bridge_cfg() -> _BridgeCfg | None:
     return cfg
 
 
+def _first_audio_attachment(message: discord.Message) -> discord.Attachment | None:
+    for att in message.attachments:
+        ct = (att.content_type or "").lower()
+        name = (att.filename or "").lower()
+        if ct.startswith("audio/") or name.endswith((".ogg", ".opus", ".mp3", ".m4a", ".wav", ".webm")):
+            return att
+    return None
+
+
+async def _handle_discord_voice_message(
+    cfg: _BridgeCfg, message: discord.Message, attachment: discord.Attachment
+) -> None:
+    from apps.backend.domain.voice import stt, voice_policy
+    from apps.backend.domain.voice.bridge_reply import send_discord_agent_reply
+    from apps.backend.infrastructure.bridge_agent_turn import run_bridge_agent_turn
+
+    author_id = str(message.author.id)
+    linked = db.user_id_tenant_for_discord_global(author_id)
+    if linked is None:
+        await message.reply(
+            "Your Discord account is not linked in AgentLayer. "
+            "Open the web app → **Settings → Connections** → save your numeric Discord user ID."
+        )
+        return
+    user_id, tenant_id = linked
+    if not voice_policy.effective_voice_input(user_id=user_id, channel="discord"):
+        await message.reply(
+            "Voice input is disabled. Enable Voice under Settings in the web app (admin must enable Voice globally)."
+        )
+        return
+
+    try:
+        audio_bytes = await attachment.read()
+    except Exception as e:
+        logger.exception("discord_bridge: audio attachment read failed")
+        await message.reply(f"Could not read audio attachment: {e!s:.300}")
+        return
+
+    mime = (attachment.content_type or "audio/ogg").strip()
+    lang = voice_policy.effective_stt_language(user_id)
+    try:
+        stt_result = stt.transcribe_audio(audio_bytes, mime=mime, language=lang)
+    except ValueError as e:
+        await message.reply(f"Could not transcribe audio: {e!s:.400}")
+        return
+
+    prompt = stt_result.transcript
+    _ch_id = int(message.channel.id)
+    logger.info(
+        "discord_bridge: voice request (discord_user_id=%s, agentlayer_user=%s, chars=%d)",
+        author_id,
+        user_id,
+        len(prompt),
+    )
+    async with message.channel.typing():
+        try:
+            reply_text, _conv_id = await run_bridge_agent_turn(
+                user_id=user_id,
+                tenant_id=tenant_id,
+                prompt=prompt,
+                model=cfg.model,
+                catalog_owned_by=cfg.catalog_owned_by,
+                provider=BRIDGE_DISCORD,
+                scope_chat_id=_ch_id,
+                scope_thread_id=None,
+            )
+        except ValueError as e:
+            await message.reply(f"AgentLayer: {e!s:.1500}")
+            return
+        except Exception as e:
+            logger.exception("discord_bridge: voice chat completion failed")
+            await message.reply(f"Request failed: {e!s:.500}")
+            return
+    await send_discord_agent_reply(
+        message=message,
+        user_id=user_id,
+        reply_text=reply_text,
+        chunk_text_fn=_chunk_text,
+    )
+
+
 def _make_client(cfg: _BridgeCfg) -> discord.Client:
     intents = discord.Intents.default()
     intents.message_content = True
@@ -154,6 +235,12 @@ def _make_client(cfg: _BridgeCfg) -> discord.Client:
         async def on_message(self, message: discord.Message) -> None:
             if message.author.bot:
                 return
+
+            audio_att = _first_audio_attachment(message)
+            if audio_att is not None:
+                await _handle_discord_voice_message(cfg, message, audio_att)
+                return
+
             if not (message.content or "").strip():
                 if message.guild is not None and not _empty_text_hint["sent"]:
                     _empty_text_hint["sent"] = True
@@ -186,6 +273,20 @@ def _make_client(cfg: _BridgeCfg) -> discord.Client:
                 return
             user_id, tenant_id = linked
             _ch_id = int(message.channel.id)
+
+            if prompt.strip().lower().startswith("/voice"):
+                from apps.backend.integrations.discord_voice_session import handle_discord_voice_slash
+
+                reply = await handle_discord_voice_slash(
+                    message,
+                    user_id=user_id,
+                    tenant_id=tenant_id,
+                    prompt=prompt,
+                    cfg_model=cfg.model,
+                    cfg_catalog=cfg.catalog_owned_by,
+                )
+                await message.reply(reply)
+                return
 
             clear_tokens = frozenset(
                 {

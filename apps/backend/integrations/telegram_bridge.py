@@ -148,6 +148,7 @@ async def _run_polling_session(cfg: _BridgeCfg) -> None:
                 "(Settings → Connections), then send text with the configured prefix "
                 "(or any message if prefix is empty). "
                 "Context is kept across messages; `/clear` clears chat history (workspace binding stays). "
+                "Send voice notes when Voice is enabled (Settings → Voice). "
                 "Use `/workspace list` / `/workspace bind <uuid>` for repo tools; `/agent` to pick an agent."
             )
 
@@ -426,8 +427,113 @@ async def _run_polling_session(cfg: _BridgeCfg) -> None:
             logger.exception("telegram_bridge: photo upload failed user=%s", user_id)
             await msg.reply_text(f"Upload fehlgeschlagen: {e!s:.400}", **thread_kw)
 
+    async def on_voice(update: Any, context: ContextTypes.DEFAULT_TYPE) -> None:
+        msg = update.effective_message
+        user = update.effective_user
+        if not msg or not user or user.is_bot or not msg.voice:
+            return
+        author_id = str(user.id)
+        linked = db.user_id_tenant_for_telegram_global(author_id)
+        if linked is None:
+            await msg.reply_text(
+                "Your Telegram account is not linked in AgentLayer. "
+                "Open the web app → Settings → Connections → save your numeric Telegram user id."
+            )
+            return
+        user_id, tenant_id = linked
+        from apps.backend.domain.voice import stt, voice_policy
+        from apps.backend.domain.voice.bridge_reply import send_telegram_agent_reply
+        from apps.backend.infrastructure.bridge_agent_turn import run_bridge_agent_turn
+
+        if not voice_policy.effective_voice_input(user_id=user_id, channel="telegram"):
+            await msg.reply_text(
+                "Voice input is disabled. Ask your admin to enable Voice, then "
+                "Settings → Voice in the web app."
+            )
+            return
+
+        thread_kw: dict[str, Any] = {}
+        if getattr(msg, "message_thread_id", None) is not None:
+            thread_kw["message_thread_id"] = msg.message_thread_id
+        chat = msg.chat
+
+        try:
+            tg_file = await context.bot.get_file(msg.voice.file_id)
+            raw = await tg_file.download_as_bytearray()
+            audio_bytes = bytes(raw)
+        except Exception as e:
+            logger.exception("telegram_bridge: voice download failed")
+            await msg.reply_text(f"Could not download voice message: {e!s:.300}", **thread_kw)
+            return
+
+        lang = voice_policy.effective_stt_language(user_id)
+        try:
+            stt_result = stt.transcribe_audio(audio_bytes, mime="audio/ogg", language=lang)
+        except ValueError as e:
+            await msg.reply_text(f"Could not transcribe voice: {e!s:.400}", **thread_kw)
+            return
+
+        prompt = stt_result.transcript
+        logger.info(
+            "telegram_bridge: voice request (telegram_user_id=%s, agentlayer_user=%s, chars=%d)",
+            author_id,
+            user_id,
+            len(prompt),
+        )
+
+        async def _typing_heartbeat() -> None:
+            try:
+                while True:
+                    await context.bot.send_chat_action(
+                        chat_id=chat.id,
+                        action=ChatAction.TYPING,
+                        **thread_kw,
+                    )
+                    await asyncio.sleep(4.0)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.debug("telegram_bridge: voice typing heartbeat failed", exc_info=True)
+
+        typing_task = asyncio.create_task(_typing_heartbeat())
+        try:
+            try:
+                reply_text, _conv_id = await run_bridge_agent_turn(
+                    user_id=user_id,
+                    tenant_id=tenant_id,
+                    prompt=prompt,
+                    model=cfg.model,
+                    catalog_owned_by=cfg.catalog_owned_by,
+                    provider=BRIDGE_TELEGRAM,
+                    scope_chat_id=int(chat.id),
+                    scope_thread_id=getattr(msg, "message_thread_id", None),
+                )
+            except ValueError as e:
+                await msg.reply_text(f"AgentLayer: {e!s:.1500}", **thread_kw)
+                return
+            except Exception as e:
+                logger.exception("telegram_bridge: voice chat completion failed")
+                await msg.reply_text(f"Request failed: {e!s:.500}", **thread_kw)
+                return
+            await send_telegram_agent_reply(
+                msg=msg,
+                context=context,
+                chat=chat,
+                thread_kw=thread_kw,
+                user_id=user_id,
+                reply_text=reply_text,
+                chunk_text_fn=_chunk_text,
+            )
+        finally:
+            typing_task.cancel()
+            try:
+                await typing_task
+            except asyncio.CancelledError:
+                pass
+
     application.add_handler(CommandHandler("start", cmd_start))
     application.add_handler(MessageHandler(filters.PHOTO, on_photo))
+    application.add_handler(MessageHandler(filters.VOICE, on_voice))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
 
     async def _ptb_error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:

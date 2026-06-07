@@ -13,6 +13,7 @@ export const APP_ROUTES = [
   { path: "/app/tasks", page: "TasksPage", file: "pages/TasksPage.tsx", auth: "session" },
   { path: "/app/docs", page: "DocsPage", file: "pages/DocsPage.tsx", auth: "session" },
   { path: "/app/settings/profile", page: "ProfileSettings", file: "pages/settings/ProfileSettings.tsx", auth: "session" },
+  { path: "/app/settings/voice", page: "VoiceSettings", file: "pages/settings/VoiceSettings.tsx", auth: "session" },
   { path: "/app/settings/friends", page: "FriendsSettings", file: "pages/settings/FriendsSettings.tsx", auth: "session" },
   { path: "/app/settings/connections", page: "ConnectionsSettings", file: "pages/settings/ConnectionsSettings.tsx", auth: "session" },
   { path: "/app/settings/tools", page: "ToolsSettings", file: "pages/settings/ToolsSettings.tsx", auth: "session" },

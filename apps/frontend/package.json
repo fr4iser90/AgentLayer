@@ -23,7 +23,7 @@
     "react-grid-layout": "^2.2.3",
     "react-i18next": "^17.0.4",
     "react-markdown": "^9.1.0",
-    "react-router-dom": "^6.28.0",
+    "react-router-dom": "^6.30.4",
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {

@@ -939,6 +939,7 @@ def pidea_effective_enabled() -> bool:
 
 
 def public_dict() -> dict[str, Any]:
+    from apps.backend.domain.voice.operator_voice_settings import voice_settings_public_fields
     from apps.backend.media.operator_media_settings import media_settings_public_fields
 
     r = _cached_row()
@@ -1025,6 +1026,7 @@ def public_dict() -> dict[str, Any]:
         "workspace_nightly_reindex_enabled": bool(r.get("workspace_nightly_reindex_enabled", False)),
         "workspace_index_on_attach_enabled": bool(r.get("workspace_index_on_attach_enabled", False)),
         **media_settings_public_fields(),
+        **voice_settings_public_fields(),
     }
 
 
@@ -1113,6 +1115,21 @@ class OperatorSettingsPatch(BaseModel):
     media_upload_max_file_mb: int | None = Field(default=None, ge=1, le=512)
     media_upload_allowed_mime: str | None = Field(default=None, max_length=2000)
     media_embed_allowed_hosts: str | None = Field(default=None, max_length=4000)
+    voice_enabled: bool | None = None
+    voice_provider_id: str | None = Field(default=None, max_length=64)
+    voice_stt_provider_id: str | None = Field(default=None, max_length=64)
+    voice_tts_provider_id: str | None = Field(default=None, max_length=64)
+    voice_api_base_url: str | None = Field(default=None, max_length=2048)
+    voice_api_key: str | None = Field(default=None, max_length=4096)
+    voice_stt_model: str | None = Field(default=None, max_length=128)
+    voice_tts_model: str | None = Field(default=None, max_length=128)
+    voice_tts_voice: str | None = Field(default=None, max_length=64)
+    voice_max_seconds: int | None = Field(default=None, ge=5, le=600)
+    voice_max_bytes: int | None = Field(default=None, ge=64_000, le=52_428_800)
+    voice_bridge_telegram: bool | None = None
+    voice_bridge_discord: bool | None = None
+    voice_realtime_enabled: bool | None = None
+    voice_discord_vc_enabled: bool | None = None
 
 
 def operator_settings_patch_field_names() -> tuple[str, ...]:
@@ -1688,6 +1705,31 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
         from apps.backend.media.operator_media_settings import apply_media_operator_patch
 
         apply_media_operator_patch(media_patch)
+    voice_patch = {
+        k: patch[k]
+        for k in (
+            "voice_enabled",
+            "voice_provider_id",
+            "voice_stt_provider_id",
+            "voice_tts_provider_id",
+            "voice_api_base_url",
+            "voice_api_key",
+            "voice_stt_model",
+            "voice_tts_model",
+            "voice_tts_voice",
+            "voice_max_seconds",
+            "voice_max_bytes",
+            "voice_bridge_telegram",
+            "voice_bridge_discord",
+            "voice_realtime_enabled",
+            "voice_discord_vc_enabled",
+        )
+        if k in patch
+    }
+    if voice_patch:
+        from apps.backend.domain.voice.operator_voice_settings import apply_voice_operator_patch
+
+        apply_voice_operator_patch(voice_patch)
     _invalidate()
     try:
         from apps.backend.infrastructure.embedding_client import invalidate_embedding_catalog_cache

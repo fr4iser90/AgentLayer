@@ -163,6 +163,10 @@ async def chat_websocket(websocket: WebSocket) -> None:
             model_ovr = (
                 str(mo).strip() if isinstance(mo, str) and mo.strip() else None
             ) or (wh.get("x-agent-model-override") or "").strip() or None
+            utz = first.get("user_timezone_header")
+            user_tz = (
+                str(utz).strip() if isinstance(utz, str) and utz.strip() else None
+            ) or (wh.get("x-user-timezone") or "").strip() or None
             bearer = _bearer_from_ws(websocket)
             ws_user = get_user_for_bearer_token(bearer) if bearer else None
             bearer_role = ws_user.role.lower() if ws_user else None
@@ -176,6 +180,7 @@ async def chat_websocket(websocket: WebSocket) -> None:
                     tool_domain_header=tool_dom_hdr,
                     model_profile_header=model_prof,
                     model_override_header=model_ovr,
+                    user_timezone_header=user_tz,
                     bearer_user_role=bearer_role,
                     event_emit=emit,
                     control_queue=control_queue,

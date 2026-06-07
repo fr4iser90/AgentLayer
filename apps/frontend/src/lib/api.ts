@@ -1,5 +1,6 @@
 import type { AuthContextValue } from "../auth/AuthContext";
 import { accessTokenNeedsRefresh } from "../auth/tokenRefresh";
+import { detectUserTimezone, USER_TIMEZONE_HEADER } from "./userTimezone";
 
 export type AgentDefinition = {
   id: string;
@@ -292,6 +293,9 @@ export async function apiFetch(
     }
     if (token) {
       headers.set("Authorization", `Bearer ${token}`);
+    }
+    if (typeof window !== "undefined" && !headers.has(USER_TIMEZONE_HEADER)) {
+      headers.set(USER_TIMEZONE_HEADER, detectUserTimezone());
     }
     return fetch(url, { ...init, credentials: "include", headers });
   };

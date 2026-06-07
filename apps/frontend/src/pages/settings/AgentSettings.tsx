@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
+import { detectUserTimezone } from "../../lib/userTimezone";
 
 type PersonaResp = {
   ok?: boolean;
@@ -79,7 +80,8 @@ export function AgentSettings() {
         setDisplayName(String(r.display_name ?? ""));
         setPreferredOutputLanguage(String(r.preferred_output_language ?? ""));
         setLocale(String(r.locale ?? ""));
-        setTimezone(String(r.timezone ?? ""));
+        const savedTz = String(r.timezone ?? "").trim();
+        setTimezone(savedTz || detectUserTimezone());
         setTone(String(r.tone ?? ""));
         setVerbosity(String(r.verbosity ?? ""));
         setInteractionStyle(String(r.interaction_style ?? ""));

@@ -2088,6 +2088,31 @@ def _row_to_agent_profile(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def user_timezone_persist(
+    tenant_id: int,
+    user_id: uuid.UUID,
+    timezone_name: str,
+) -> None:
+    """Save IANA timezone from browser/client — used by chat and background jobs for this user."""
+    tz = (timezone_name or "").strip()
+    if not tz or len(tz) > 128:
+        return
+    with pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO user_agent_profile (user_id, tenant_id, timezone)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (user_id) DO UPDATE SET
+                  timezone = EXCLUDED.timezone,
+                  updated_at = now()
+                WHERE user_agent_profile.timezone IS DISTINCT FROM EXCLUDED.timezone
+                """,
+                (user_id, tenant_id, tz),
+            )
+        conn.commit()
+
+
 def user_agent_profile_get(user_id: uuid.UUID) -> dict[str, Any] | None:
     with pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:

@@ -622,27 +622,34 @@ def update_metadata(arguments: dict[str, Any]) -> str:
     artist = arguments.get("artist")
     if title is None and artist is None:
         return _err("title or artist required")
-    sets: list[str] = ["updated_at = now()"]
-    params: list[Any] = []
-    if title is not None:
-        sets.append("title = %s")
-        params.append(str(title).strip()[:500])
-    if artist is not None:
-        sets.append("artist = %s")
-        params.append(str(artist).strip()[:500])
-    params.extend([mid, tid, uid])
+    title_val = str(title).strip()[:500] if title is not None else None
+    artist_val = str(artist).strip()[:500] if artist is not None else None
+    if title_val is not None and artist_val is not None:
+        sql = """
+            UPDATE media_items SET title = %s, artist = %s, updated_at = now()
+            WHERE id = %s AND tenant_id = %s AND owner_user_id = %s AND deleted_at IS NULL
+            RETURNING id
+            """
+        params: tuple[Any, ...] = (title_val, artist_val, mid, tid, uid)
+    elif title_val is not None:
+        sql = """
+            UPDATE media_items SET title = %s, updated_at = now()
+            WHERE id = %s AND tenant_id = %s AND owner_user_id = %s AND deleted_at IS NULL
+            RETURNING id
+            """
+        params = (title_val, mid, tid, uid)
+    else:
+        sql = """
+            UPDATE media_items SET artist = %s, updated_at = now()
+            WHERE id = %s AND tenant_id = %s AND owner_user_id = %s AND deleted_at IS NULL
+            RETURNING id
+            """
+        params = (artist_val, mid, tid, uid)
     from apps.backend.infrastructure.db import db
 
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(
-                f"""
-                UPDATE media_items SET {", ".join(sets)}
-                WHERE id = %s AND tenant_id = %s AND owner_user_id = %s AND deleted_at IS NULL
-                RETURNING id
-                """,
-                tuple(params),
-            )
+            cur.execute(sql, params)
             row = cur.fetchone()
         conn.commit()
     if not row:

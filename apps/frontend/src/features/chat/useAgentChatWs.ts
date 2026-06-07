@@ -5,6 +5,7 @@ import {
   type AgentToolDoneEvent,
   type AgentWsTurnCallbacks,
 } from "./agentChatWsCore";
+import { detectUserTimezone } from "../../lib/userTimezone";
 import type { LiveTurnStore } from "./useAgentLiveTurn";
 
 export type AgentChatTurnBody = Record<string, unknown>;
@@ -165,7 +166,13 @@ export function useAgentChatWs(options: {
               turn.reject(new Error("Cancelled"));
               return;
             }
-            ws.send(JSON.stringify({ type: "chat", body }));
+            ws.send(
+              JSON.stringify({
+                type: "chat",
+                body,
+                user_timezone_header: detectUserTimezone(),
+              })
+            );
           } catch (e) {
             turn.reject(e instanceof Error ? e : new Error(String(e)));
           }

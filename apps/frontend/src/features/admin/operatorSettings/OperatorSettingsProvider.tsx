@@ -46,6 +46,36 @@ function useOperatorSettingsState() {
   const [mediaEffUploadBytes, setMediaEffUploadBytes] = useState<number | null>(null);
   const [mediaEffUploadMime, setMediaEffUploadMime] = useState<string[]>([]);
   const [mediaEffDefaultQuotaMb, setMediaEffDefaultQuotaMb] = useState<number | null>(null);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [voiceApiBaseUrl, setVoiceApiBaseUrl] = useState("https://api.openai.com/v1");
+  const [voiceApiBaseSource, setVoiceApiBaseSource] = useState<"env" | "operator_settings" | null>(
+    null
+  );
+  const [voiceApiBaseEffective, setVoiceApiBaseEffective] = useState<string | null>(null);
+  const [voiceApiKey, setVoiceApiKey] = useState("");
+  const [voiceApiKeyConfigured, setVoiceApiKeyConfigured] = useState(false);
+  const [voiceApiKeySource, setVoiceApiKeySource] = useState<"env" | "operator_settings" | null>(
+    null
+  );
+  const [voiceSttProviderId, setVoiceSttProviderId] = useState("");
+  const [voiceSttProviderIdEffective, setVoiceSttProviderIdEffective] = useState<string | null>(null);
+  const [voiceTtsProviderId, setVoiceTtsProviderId] = useState("");
+  const [voiceTtsProviderIdEffective, setVoiceTtsProviderIdEffective] = useState<string | null>(null);
+  const [voiceSttApiBaseEffective, setVoiceSttApiBaseEffective] = useState<string | null>(null);
+  const [voiceTtsApiBaseEffective, setVoiceTtsApiBaseEffective] = useState<string | null>(null);
+  const [voiceSttProviders, setVoiceSttProviders] = useState<
+    Array<{ provider_id: string; label: string; source: string; base_url: string }>
+  >([]);
+  const [voiceTtsProviders, setVoiceTtsProviders] = useState<
+    Array<{ provider_id: string; label: string; source: string; base_url: string }>
+  >([]);
+  const [voiceSttModel, setVoiceSttModel] = useState("whisper-1");
+  const [voiceTtsModel, setVoiceTtsModel] = useState("tts-1");
+  const [voiceTtsVoice, setVoiceTtsVoice] = useState("alloy");
+  const [voiceBridgeTelegram, setVoiceBridgeTelegram] = useState(true);
+  const [voiceBridgeDiscord, setVoiceBridgeDiscord] = useState(true);
+  const [voiceRealtimeEnabled, setVoiceRealtimeEnabled] = useState(false);
+  const [voiceDiscordVcEnabled, setVoiceDiscordVcEnabled] = useState(false);
   const [extLlmEndpoints, setExtLlmEndpoints] = useState<ExternalLlmEndpointUI[]>([]);
   const [llmSmartRouting, setLlmSmartRouting] = useState(false);
   const [llmRouterModel, setLlmRouterModel] = useState("nemotron-3-nano:4b");
@@ -204,6 +234,53 @@ function useOperatorSettingsState() {
       setMediaEffDefaultQuotaMb(
         typeof op.media_effective_default_quota_mb === "number" ? op.media_effective_default_quota_mb : null
       );
+      setVoiceEnabled(!!op.voice_enabled);
+      setVoiceApiBaseUrl((op.voice_api_base_url ?? "").trim());
+      setVoiceApiBaseSource(
+        op.voice_api_base_source === "env" || op.voice_api_base_source === "operator_settings"
+          ? op.voice_api_base_source
+          : null
+      );
+      setVoiceApiBaseEffective(
+        typeof op.voice_api_base_effective === "string" && op.voice_api_base_effective.trim()
+          ? op.voice_api_base_effective.trim()
+          : null
+      );
+      setVoiceApiKey("");
+      setVoiceApiKeyConfigured(!!op.voice_api_key_configured);
+      setVoiceApiKeySource(
+        op.voice_api_key_source === "env" || op.voice_api_key_source === "operator_settings"
+          ? op.voice_api_key_source
+          : null
+      );
+      setVoiceProviders(Array.isArray(op.voice_providers) ? op.voice_providers : []);
+      setVoiceSttProviderId((op.voice_stt_provider_id ?? "").trim());
+      setVoiceSttProviderIdEffective(
+        typeof op.voice_stt_provider_id_effective === "string" && op.voice_stt_provider_id_effective.trim()
+          ? op.voice_stt_provider_id_effective.trim()
+          : null
+      );
+      setVoiceTtsProviderId((op.voice_tts_provider_id ?? "").trim());
+      setVoiceTtsProviderIdEffective(
+        typeof op.voice_tts_provider_id_effective === "string" && op.voice_tts_provider_id_effective.trim()
+          ? op.voice_tts_provider_id_effective.trim()
+          : null
+      );
+      setVoiceSttApiBaseEffective(
+        typeof op.voice_stt_api_base_effective === "string" && op.voice_stt_api_base_effective.trim()
+          ? op.voice_stt_api_base_effective.trim()
+          : null
+      );
+      setVoiceTtsApiBaseEffective(
+        typeof op.voice_tts_api_base_effective === "string" && op.voice_tts_api_base_effective.trim()
+          ? op.voice_tts_api_base_effective.trim()
+          : null
+      );
+      setVoiceSttModel((op.voice_stt_model ?? "whisper-1").trim() || "whisper-1");
+      setVoiceTtsModel((op.voice_tts_model ?? "tts-1").trim() || "tts-1");
+      setVoiceTtsVoice((op.voice_tts_voice ?? "alloy").trim() || "alloy");
+      setVoiceBridgeTelegram(op.voice_bridge_telegram !== false);
+      setVoiceBridgeDiscord(op.voice_bridge_discord !== false);
       setLlmSmartRouting(!!op.llm_smart_routing_enabled);
       setLlmRouterModel((op.llm_router_model ?? "nemotron-3-nano:4b").trim() || "nemotron-3-nano:4b");
       setLlmRouterConfMin(
@@ -670,6 +747,20 @@ function useOperatorSettingsState() {
       }
       patch.media_upload_allowed_mime = mediaUploadMime.trim() === "" ? null : mediaUploadMime.trim();
       patch.media_embed_allowed_hosts = mediaEmbedHosts.trim() === "" ? null : mediaEmbedHosts.trim();
+      patch.voice_enabled = voiceEnabled;
+      patch.voice_stt_provider_id = voiceSttProviderId.trim() || null;
+      patch.voice_tts_provider_id = voiceTtsProviderId.trim() || null;
+      if (voiceApiBaseSource !== "env") {
+        patch.voice_api_base_url = voiceApiBaseUrl.trim() || null;
+      }
+      if (voiceApiKey.trim()) patch.voice_api_key = voiceApiKey.trim();
+      patch.voice_stt_model = voiceSttModel.trim() || "whisper-1";
+      patch.voice_tts_model = voiceTtsModel.trim() || "tts-1";
+      patch.voice_tts_voice = voiceTtsVoice.trim() || "alloy";
+      patch.voice_bridge_telegram = voiceBridgeTelegram;
+      patch.voice_bridge_discord = voiceBridgeDiscord;
+      patch.voice_realtime_enabled = voiceRealtimeEnabled;
+      patch.voice_discord_vc_enabled = voiceDiscordVcEnabled;
       const mgHops = Number(memGraphMaxHops.trim());
       const mgScore = Number(memGraphMinScore.trim());
       const mgBullets = Number(memGraphMaxBullets.trim());
@@ -886,6 +977,40 @@ function useOperatorSettingsState() {
     mediaEffUploadBytes,
     mediaEffUploadMime,
     mediaEffDefaultQuotaMb,
+    voiceEnabled,
+    setVoiceEnabled,
+    voiceApiBaseUrl,
+    setVoiceApiBaseUrl,
+    voiceApiBaseSource,
+    voiceApiBaseEffective,
+    voiceApiKey,
+    setVoiceApiKey,
+    voiceApiKeyConfigured,
+    voiceApiKeySource,
+    voiceSttProviderId,
+    setVoiceSttProviderId,
+    voiceSttProviderIdEffective,
+    voiceTtsProviderId,
+    setVoiceTtsProviderId,
+    voiceTtsProviderIdEffective,
+    voiceSttApiBaseEffective,
+    voiceTtsApiBaseEffective,
+    voiceSttProviders,
+    voiceTtsProviders,
+    voiceSttModel,
+    setVoiceSttModel,
+    voiceTtsModel,
+    setVoiceTtsModel,
+    voiceTtsVoice,
+    setVoiceTtsVoice,
+    voiceBridgeTelegram,
+    setVoiceBridgeTelegram,
+    voiceBridgeDiscord,
+    setVoiceBridgeDiscord,
+    voiceRealtimeEnabled,
+    setVoiceRealtimeEnabled,
+    voiceDiscordVcEnabled,
+    setVoiceDiscordVcEnabled,
     extLlmEndpoints,
     setExtLlmEndpoints,
     llmSmartRouting,
