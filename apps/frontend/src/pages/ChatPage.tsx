@@ -38,6 +38,7 @@ import {
   titleFromFirstMessage,
 } from "../features/chat/chatThreadStorage";
 import {
+  activityForTurn,
   appendTimelineEntry,
   archiveTurnBeforeNewPrompt,
   latestUserMessageId,
@@ -47,7 +48,11 @@ import {
 import { AssistantTurnBlock } from "../features/chat/AssistantTurnBlock";
 import { ChatInFlightAssistantTurn } from "../features/chat/ChatInFlightAssistantTurn";
 import { ChatLiveActivityPanel } from "../features/chat/ChatLiveActivityPanel";
-import { useAgentLiveTurn } from "../features/chat/useAgentLiveTurn";
+import { getAgentChatSession } from "../features/chat/agentChatSession";
+import {
+  persistDetachedAgentCompletion,
+  persistDetachedAgentLog,
+} from "../features/chat/detachedTurnPersist";
 import { indexActivityToTimeline, type IndexActivityEvent } from "../features/chat/indexActivity";
 import { compactionEventToTimeline } from "../features/chat/compactionActivity";
 import { buildInterleavedTurnSegments } from "../features/chat/interleavedTurnSegments";
@@ -137,12 +142,6 @@ import { shouldIsolateWorkspaceThread } from "../features/workspace/chatWorkspac
 import { confirmNewChatForWorkspace } from "../features/workspace/confirmWorkspaceScope";
 import { streamOpenAiChatChunks } from "../features/chat/openaiSseStream";
 import { formatMessageTime, inferMissingMessageTimestamps } from "../features/chat/messageTimestamps";
-
-
-function wsUrl(token: string): string {
-  const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${proto}//${window.location.host}/ws/v1/chat?token=${encodeURIComponent(token)}`;
-}
 
 /** `?dashboard=<uuid>` — validated; server re-checks access. */
 function parseDashboardQueryParam(raw: string | null): string | null {
@@ -273,7 +272,8 @@ export function ChatPage() {
   authRef.current = auth;
   const { accessToken, user } = auth;
   const userId = user?.id ?? "";
-  const agentLiveTurn = useAgentLiveTurn();
+  const agentChatSession = getAgentChatSession();
+  const agentLiveTurn = agentChatSession.liveTurn;
   const agentLiveTurnRef = useRef(agentLiveTurn);
   agentLiveTurnRef.current = agentLiveTurn;
   const [searchParams, setSearchParams] = useSearchParams();
@@ -331,7 +331,6 @@ export function ChatPage() {
   );
   const [deletingProject, setDeletingProject] = useState(false);
 
-  const wsRef = useRef<WebSocket | null>(null);
   const agentHandlerRef = useRef<(ev: MessageEvent) => void>(() => {});
   /** User cancelled before the chat frame was sent (e.g. while WebSocket connects). */
   const cancelAgentTurnRef = useRef(false);
@@ -853,11 +852,41 @@ export function ChatPage() {
   }, [workspaces, hydrated, threads, searchParams, setSearchParams, t]);
 
   useEffect(() => {
-    if (mode !== "agent" && wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
+    agentChatSession.setPageMounted(true);
+    return () => agentChatSession.setPageMounted(false);
+  }, [agentChatSession]);
+
+  useEffect(() => {
+    if (!hydrated || !activeThreadId) return;
+    const turn = agentChatSession.getActiveTurn();
+    if (
+      turn &&
+      turn.threadId === activeThreadId &&
+      agentChatSession.liveTurn.isActive()
+    ) {
+      setLoading(true);
+      setAgentTurnStartedAtMs(turn.startedAtMs);
+      setSelectedTurnId(turn.userMsgId);
+      return;
     }
-  }, [mode]);
+    try {
+      const raw = sessionStorage.getItem("agentlayer:active-agent-turn");
+      if (raw) {
+        const stored = JSON.parse(raw) as { threadId?: string };
+        if (stored.threadId === activeThreadId) {
+          sessionStorage.removeItem("agentlayer:active-agent-turn");
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [hydrated, activeThreadId, agentChatSession]);
+
+  useEffect(() => {
+    if (mode !== "agent") {
+      agentChatSession.closeSocket();
+    }
+  }, [mode, agentChatSession]);
 
   useEffect(() => {
     if (!loading) return;
@@ -1057,7 +1086,7 @@ export function ChatPage() {
         })
       );
     }
-    const ws = wsRef.current;
+    const ws = agentChatSession.getSocket();
     if (ws?.readyState === WebSocket.OPEN) {
       ws.send(
         JSON.stringify({
@@ -1068,7 +1097,7 @@ export function ChatPage() {
         })
       );
     }
-  }, []);
+  }, [agentChatSession]);
 
   const handleIndexActivity = useCallback(
     (ev: IndexActivityEvent) => {
@@ -1392,34 +1421,10 @@ export function ChatPage() {
   runChatHttpRef.current = runChatHttp;
 
   const ensureAgentWs = useCallback((): Promise<WebSocket> => {
-    return new Promise((resolve, reject) => {
-      const tok = accessToken;
-      if (!tok) {
-        reject(new Error(t("errors:notSignedIn")));
-        return;
-      }
-      const existing = wsRef.current;
-      if (existing?.readyState === WebSocket.OPEN) {
-        resolve(existing);
-        return;
-      }
-      if (existing) {
-        existing.close();
-        wsRef.current = null;
-      }
-      const ws = new WebSocket(wsUrl(tok));
-      ws.onopen = () => {
-        wsRef.current = ws;
-        ws.onmessage = (ev) => agentHandlerRef.current(ev);
-        resolve(ws);
-      };
-      ws.onerror = () => reject(new Error(t("errors:websocketFailed")));
-      ws.onclose = () => {
-        if (wsRef.current === ws) wsRef.current = null;
-        agentTurnFinishRef.current?.();
-      };
+    return agentChatSession.ensureSocket().catch(() => {
+      throw new Error(t("errors:websocketFailed"));
     });
-  }, [accessToken]);
+  }, [agentChatSession, t]);
 
   const runAgentWs = useCallback(async (queued?: QueuedComposerMessage, opts?: SendTurnOptions) => {
     if (!accessToken || !activeThreadId) return;
@@ -1508,7 +1513,8 @@ export function ChatPage() {
 
     setError(null);
     setLoading(true);
-    setAgentTurnStartedAtMs(Date.now());
+    const turnStartedAtMs = Date.now();
+    setAgentTurnStartedAtMs(turnStartedAtMs);
     setTokenUsage(emptyTokenUsage());
     void fetchSessionRuntime(auth, {
       workspaceId: selectedWorkspaceId,
@@ -1535,12 +1541,23 @@ export function ChatPage() {
     cancelAgentTurnRef.current = false;
     agentTurnFinishRef.current = null;
 
+    agentChatSession.beginTurn({
+      threadId: tid,
+      userMsgId,
+      startedAtMs: turnStartedAtMs,
+      streamEnabled: getAgentStreamLlm(),
+    });
+
     let finished = false;
     const finish = () => {
       if (finished) return;
       finished = true;
       agentTurnFinishRef.current = null;
-      setAgentTurnStartedAtMs(null);
+      agentChatSession.setFinishCallback(null);
+      agentChatSession.endTurn();
+      if (agentChatSession.isPageMounted()) {
+        setAgentTurnStartedAtMs(null);
+      }
       if (persistAgentLogTimerRef.current) {
         clearTimeout(persistAgentLogTimerRef.current);
         persistAgentLogTimerRef.current = null;
@@ -1554,25 +1571,31 @@ export function ChatPage() {
         const th = threadsRef.current.find((t) => t.id === id);
         if (th && log.length > 0) {
           void putConversation(authRef.current, { ...th, agentLog: log }).catch(() => {});
+        } else if (!agentChatSession.isPageMounted() && log.length > 0) {
+          void persistDetachedAgentLog(authRef.current, id, log).catch(() => {});
         }
-        setThreads((prev) =>
-          prev.map((th) =>
-            th.id === id ? { ...th, agentLog: log, updatedAt: Date.now() } : th
-          )
-        );
+        if (agentChatSession.isPageMounted()) {
+          setThreads((prev) =>
+            prev.map((th) =>
+              th.id === id ? { ...th, agentLog: log, updatedAt: Date.now() } : th
+            )
+          );
+        }
         live.endTurn();
       }
-      setLoading(false);
+      if (agentChatSession.isPageMounted()) {
+        setLoading(false);
+      }
       if (tryDispatchPendingForceSendRef.current()) {
         return;
       }
       const skipDrain = skipQueueDrainOnFinishRef.current;
       if (skipDrain) {
         skipQueueDrainOnFinishRef.current = false;
-      } else {
+      } else if (agentChatSession.isPageMounted()) {
         scheduleDrainComposerQueue();
       }
-      if (id && !skipDrain) {
+      if (id && !skipDrain && agentChatSession.isPageMounted()) {
         setThreads((prev) => {
           const next = prev.map((th) => {
             if (th.id !== id) return th;
@@ -1598,6 +1621,7 @@ export function ChatPage() {
       }
     };
     agentTurnFinishRef.current = finish;
+    agentChatSession.setFinishCallback(finish);
 
     agentHandlerRef.current = (ev: MessageEvent) => {
       try {
@@ -1627,37 +1651,47 @@ export function ChatPage() {
           const liveLog = agentLiveTurnRef.current.takeAgentLogSnapshot();
           if (id && content.trim()) {
             inFlightTurnRef.current = null;
-            setThreads((prev) => {
-              const next = prev.map((th) => {
-                if (th.id !== id) return th;
-                const prevMsgs = th.messages;
-                const messages: UiMessage[] = [...prevMsgs, assistantMessage(content)];
-                const updated: ChatThread = {
-                  ...th,
-                  messages,
-                  agentLog: liveLog,
-                  messageCount: messages.length,
-                  updatedAt: Date.now(),
-                };
-                void putConversation(authRef.current, updated).catch(() => {});
-                return updated;
+            if (agentChatSession.isPageMounted()) {
+              setThreads((prev) => {
+                const next = prev.map((th) => {
+                  if (th.id !== id) return th;
+                  const prevMsgs = th.messages;
+                  const messages: UiMessage[] = [...prevMsgs, assistantMessage(content)];
+                  const updated: ChatThread = {
+                    ...th,
+                    messages,
+                    agentLog: liveLog,
+                    messageCount: messages.length,
+                    updatedAt: Date.now(),
+                  };
+                  void putConversation(authRef.current, updated).catch(() => {});
+                  return updated;
+                });
+                return next;
               });
-              return next;
-            });
+            } else {
+              void persistDetachedAgentCompletion(authRef.current, id, content, liveLog).catch(
+                () => {}
+              );
+            }
             agentLiveTurnRef.current.resetAfterCommit();
           } else if (id && liveLog.length > 0) {
-            setThreads((prev) =>
-              prev.map((th) => {
-                if (th.id !== id) return th;
-                const updated: ChatThread = {
-                  ...th,
-                  agentLog: liveLog,
-                  updatedAt: Date.now(),
-                };
-                void putConversation(authRef.current, updated).catch(() => {});
-                return updated;
-              })
-            );
+            if (agentChatSession.isPageMounted()) {
+              setThreads((prev) =>
+                prev.map((th) => {
+                  if (th.id !== id) return th;
+                  const updated: ChatThread = {
+                    ...th,
+                    agentLog: liveLog,
+                    updatedAt: Date.now(),
+                  };
+                  void putConversation(authRef.current, updated).catch(() => {});
+                  return updated;
+                })
+              );
+            } else {
+              void persistDetachedAgentLog(authRef.current, id, liveLog).catch(() => {});
+            }
             agentLiveTurnRef.current.resetAfterCommit();
           } else {
             inFlightTurnRef.current = null;
@@ -1970,6 +2004,8 @@ export function ChatPage() {
       }
     };
 
+    agentChatSession.setMessageHandler((ev) => agentHandlerRef.current(ev));
+
     try {
       const ws = await ensureAgentWs();
       if (cancelAgentTurnRef.current) {
@@ -2128,18 +2164,13 @@ export function ChatPage() {
     agentLiveTurnRef.current.resetAfterCommit();
     agentTurnFinishRef.current?.();
     agentTurnFinishRef.current = null;
+    agentChatSession.setFinishCallback(null);
+    agentChatSession.endTurn();
     if (!forceSend) {
       setLoading(false);
     }
-    const w = wsRef.current;
-    if (w?.readyState === WebSocket.OPEN) {
-      try {
-        w.send(JSON.stringify({ type: "cancel" }));
-      } catch {
-        /* ignore */
-      }
-    }
-  }, [applyInFlightRestore]);
+    agentChatSession.sendCancel();
+  }, [agentChatSession, applyInFlightRestore]);
 
   const onCancelInFlight = useCallback(() => {
     abortInFlightTurn();
@@ -2944,10 +2975,14 @@ export function ChatPage() {
                     if (!chatMessageHasVisibleContent(m)) return null;
                     const isLastUser =
                       m.id != null && m.id === latestTurnId && lastUserMessageIndex(displayMessages) === i;
+                    const hasInterruptedActivity =
+                      Boolean(isLastUser) &&
+                      !turnHasAssistantAfter(displayMessages, m.id!) &&
+                      activityForTurn(activeThread!, m.id!).length > 0;
                     const showRetry =
                       Boolean(isLastUser) &&
                       !loading &&
-                      turnHasAssistantAfter(displayMessages, m.id!);
+                      (turnHasAssistantAfter(displayMessages, m.id!) || hasInterruptedActivity);
                     return (
                       <li
                         key={m.id ?? `${i}-user-${m.content.slice(0, 24)}`}

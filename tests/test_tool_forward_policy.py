@@ -35,12 +35,14 @@ def test_infer_model_tier():
     assert infer_model_tier(model_id="custom", catalog_owned_by="") == "standard"
 
 
-def test_compute_tool_forward_limits_uses_tier_cap():
+def test_compute_tool_forward_limits_uses_context_budget():
     tok, count = compute_tool_forward_limits(context_window_tokens=128_000, model_tier="weak_local")
-    assert tok >= 4000
-    assert count == 10
-    _, legacy_count = compute_tool_forward_limits(context_window_tokens=0, model_tier="weak_local")
-    assert legacy_count >= 1
+    # 128k × 10% → 12.8k tool token budget (clamped by BUDGET_MIN/MAX)
+    assert 4000 <= tok <= 32000
+    assert count == 256
+    tok0, count0 = compute_tool_forward_limits(context_window_tokens=0, model_tier="weak_local")
+    assert tok0 >= 4000
+    assert count0 == 256
 
 
 def test_resolve_pin_names_filters_allowlist(monkeypatch):
@@ -115,6 +117,45 @@ def test_apply_schema_modes_to_specs_catalog_vs_full():
     b_desc = out[1]["function"]["description"]
     assert a_params.get("properties", {}).get("x")
     assert "abbreviated" in b_desc.lower() or "catalog" in b_desc.lower()
+
+
+def test_introspection_pins_for_meta_inspect_agent(monkeypatch):
+    specs = [_spec(n) for n in ("settings_get", "settings_patch", "get_tool_help", "other")]
+
+    class FakeReg:
+        def get_agent(self, aid: str):
+            if aid != "operator":
+                return None
+            return {"tool_capability_any": ["meta.inspect", "operator.console"]}
+
+    monkeypatch.setattr(
+        "apps.backend.domain.tool_forward_policy.get_agent_registry",
+        lambda: FakeReg(),
+    )
+    monkeypatch.setattr(
+        "apps.backend.domain.agent_tools._pinned_tools_for_agent",
+        lambda aid: frozenset({"settings_get", "settings_patch"}),
+    )
+    monkeypatch.setattr(
+        "apps.backend.domain.tool_forward_policy._rank_tools_by_user_input",
+        lambda tools, text, triggers: tools,
+    )
+
+    plan = build_tool_forward_plan(
+        ToolForwardContext(
+            agent_id="operator",
+            model_id="qwen.gguf",
+            context_window_tokens=262_144,
+            model_tier="weak_local",
+            user_text="enable media library",
+            tool_specs=specs,
+            ranking_enabled=False,
+            full_schema_preference=False,
+        )
+    )
+    assert "get_tool_help" in plan.forward_names
+    assert "settings_get" in plan.forward_names
+    assert "settings_patch" in plan.forward_names
 
 
 def test_build_tool_triggers_map_from_plugin_domains():

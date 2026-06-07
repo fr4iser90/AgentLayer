@@ -8,9 +8,13 @@ from typing import Any, Callable, cast
 
 from apps.backend.domain.embedded_subagent import (
     DELEGATABLE_AGENT_IDS,
+    ADMIN_ONLY_DELEGATABLE_AGENT_IDS,
     build_delegate_agents_catalog_snippet,
+    caller_is_admin,
+    effective_delegatable_agent_ids,
     run_embedded_subagent_sync,
 )
+from apps.backend.domain.identity import get_identity
 
 __version__ = "1.0.0"
 TOOL_ID = "delegate"
@@ -23,8 +27,21 @@ TOOL_DESCRIPTION = (
     "Run a specialist sub-agent in the background and return its report. "
     "Use when the user needs security scans (security_auditor), repo edits/shell/git (coding), "
     "read-only codebase exploration (coding_plan), HTML/image creative work (creative), "
-    "or dashboard boards (dashboard). Requires run_subagent=true, agent_id, prompt."
+    "dashboard boards (dashboard), or operator/platform settings (operator, admin callers only). "
+    "Requires run_subagent=true, agent_id, prompt."
 )
+
+
+def _delegatable_ids_for_context(context: dict[str, Any] | None) -> frozenset[str]:
+    ctx = context or {}
+    uid = None
+    u = ctx.get("user")
+    if u is not None:
+        uid = getattr(u, "id", None)
+    if uid is None:
+        _tid, uid = get_identity()
+    is_adm = caller_is_admin(uid if isinstance(uid, uuid.UUID) else None)
+    return effective_delegatable_agent_ids(caller_is_admin=is_adm)
 
 
 def _truthy(v: Any) -> bool:
@@ -50,12 +67,18 @@ def _sanitize_task_id(raw: Any) -> str | None:
 
 
 def delegate(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> str:
+    allowed = _delegatable_ids_for_context(context)
     if _truthy(arguments.get("list_agents")):
+        uid = None
+        u = (context or {}).get("user")
+        if u is not None:
+            uid = getattr(u, "id", None)
+        is_adm = caller_is_admin(uid if isinstance(uid, uuid.UUID) else None)
         return json.dumps(
             {
                 "ok": True,
-                "catalog": build_delegate_agents_catalog_snippet(),
-                "agent_ids": sorted(DELEGATABLE_AGENT_IDS),
+                "catalog": build_delegate_agents_catalog_snippet(caller_is_admin=is_adm),
+                "agent_ids": sorted(allowed),
             },
             ensure_ascii=False,
         )
@@ -66,7 +89,7 @@ def delegate(arguments: dict[str, Any], context: dict[str, Any] | None = None) -
                 "ok": False,
                 "error": (
                     "Set run_subagent=true to execute. Required: agent_id "
-                    f"({', '.join(sorted(DELEGATABLE_AGENT_IDS))}), description, prompt. "
+                    f"({', '.join(sorted(allowed))}), description, prompt. "
                     "Or list_agents=true to see specialists."
                 ),
             },
@@ -126,8 +149,11 @@ TOOLS: list[dict[str, Any]] = [
                     },
                     "agent_id": {
                         "type": "string",
-                        "enum": sorted(DELEGATABLE_AGENT_IDS),
-                        "description": "Specialist to run: security_auditor (SSC/scans), coding (shell/edits/push), coding_plan (read-only).",
+                        "enum": sorted(DELEGATABLE_AGENT_IDS | ADMIN_ONLY_DELEGATABLE_AGENT_IDS),
+                        "description": (
+                            "Specialist to run: security_auditor, coding, coding_plan, creative, dashboard; "
+                            "operator (admin only — platform settings via settings_get / settings_patch)."
+                        ),
                     },
                     "description": {
                         "type": "string",

@@ -89,8 +89,12 @@ def compute_tool_forward_limits(
 ) -> tuple[int, int]:
     """
     Return (token_budget_estimate, max_tool_count).
-    Token budget is a coarse char/4 proxy for tools[] JSON size.
+
+    Token budget = fraction of context window (``AGENT_TOOLS_BUDGET_*``). How many tools
+    actually fit is decided in ``_cap_ranked_pool`` by summing per-tool estimates against
+    that budget. ``max_tool_count`` is only a safety ceiling.
     """
+    _ = model_tier
     window = max(0, int(context_window_tokens or 0))
     ratio = max(0.02, min(0.25, float(config.AGENT_TOOLS_BUDGET_RATIO)))
     min_tok = max(1000, int(config.AGENT_TOOLS_BUDGET_MIN_TOKENS))
@@ -101,16 +105,29 @@ def compute_tool_forward_limits(
     else:
         token_budget = min_tok
 
-    tier_caps = {
-        "strong": max(1, int(config.AGENT_TOOLS_COUNT_CAP_STRONG)),
-        "standard": max(1, int(config.AGENT_TOOLS_COUNT_CAP_STANDARD)),
-        "weak_local": max(1, int(config.AGENT_TOOLS_COUNT_CAP_WEAK)),
-    }
-    legacy = max(1, int(config.AGENT_TOOLS_MAX_RANKING))
     if window <= 0:
-        return token_budget, legacy
-    count_cap = tier_caps.get(model_tier, tier_caps["standard"])
-    return token_budget, count_cap
+        abs_max = max(1, int(config.AGENT_TOOLS_COUNT_CAP_ABSOLUTE))
+        return token_budget, abs_max
+
+    abs_max = max(1, int(config.AGENT_TOOLS_COUNT_CAP_ABSOLUTE))
+    return token_budget, abs_max
+
+
+def _introspection_pins_for_agent(agent_id: str | None, specs: list[Any]) -> frozenset[str]:
+    """Always forward meta introspection tools when the agent declares meta.inspect/discover."""
+    aid = (agent_id or "").strip()
+    if not aid:
+        return frozenset()
+    ag = get_agent_registry().get_agent(aid)
+    if not ag:
+        return frozenset()
+    caps = {str(c).strip() for c in (ag.get("tool_capability_any") or []) if str(c).strip()}
+    if "meta.inspect" not in caps and "meta.discover" not in caps:
+        return frozenset()
+    from apps.backend.domain.plugin_system.tool_routing import TOOL_INTROSPECTION
+
+    allowed = {_tool_spec_name(s) for s in specs if _tool_spec_name(s)}
+    return frozenset(n for n in TOOL_INTROSPECTION if n in allowed)
 
 
 def _estimate_tool_spec_tokens(spec: Any, *, full_schema: bool) -> int:
@@ -191,7 +208,9 @@ def build_tool_forward_plan(ctx: ToolForwardContext) -> ToolForwardPlan:
     from apps.backend.domain.agent_tools import _pinned_tools_for_agent
 
     specs = list(ctx.tool_specs or [])
-    pin_names = _pinned_tools_for_agent(ctx.agent_id)
+    pin_names = _pinned_tools_for_agent(ctx.agent_id) | _introspection_pins_for_agent(
+        ctx.agent_id, specs
+    )
 
     pinned_specs, pool = _partition_tool_specs_by_name(specs, pin_names)
     pin_names_found = [_tool_spec_name(s) for s in pinned_specs if _tool_spec_name(s)]

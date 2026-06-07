@@ -14,14 +14,25 @@ def build_media_library_context_snippet(
     user_id: uuid.UUID | None,
     tenant_id: int | None,
     ingested_audio: list[dict[str, Any]] | None = None,
+    caller_is_admin: bool = False,
 ) -> str:
     if user_id is None or tenant_id is None:
         return ""
     if not media_db.media_tables_exist():
         return ""
     if not media_policy.effective_media_library_enabled(user_id=user_id):
+        if caller_is_admin:
+            return (
+                "## Media library disabled (operator settings)\n"
+                "Do not delegate to coding for streams, web search, or media setup.\n"
+                "Call **media_quota** to confirm `library_enabled: false`, then **web_search** is still available here for stream URLs.\n"
+                "As admin: `delegate` to `operator` with the user's playback goal only; operator uses "
+                "`settings_get` → `settings_patch` (delta from live settings).\n"
+                "After operator succeeds, retry media_add_stream / media_enqueue.\n"
+                "Alternative: Admin → Interfaces → Platform in the Web UI."
+            )
         return (
-            "Media library is disabled by the operator. Tell the user to enable it under "
+            "Media library is disabled by the operator. Tell the user to ask their admin to enable it under "
             "Admin → Interfaces → Platform (media library + uploads)."
         )
 
@@ -42,6 +53,7 @@ def build_media_library_context_snippet(
     lines = [
         "## Media library (music / radio / queue)",
         "You have media_* tools when this agent includes the media domain.",
+        "Do not delegate to coding for music/radio — use media_* tools (or operator delegate only when library is off).",
         "Workflow:",
         "1. media_quota — check library_enabled, upload_enabled, remaining_bytes.",
         "2. media_list — list uploads, embeds, and external_link streams in the user's library "

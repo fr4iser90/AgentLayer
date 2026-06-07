@@ -23,7 +23,7 @@ export type LiveTurnStore = {
   takeAgentLogSnapshot: () => AgentTimelineEntry[];
 };
 
-function createLiveTurnStore(): LiveTurnStore {
+export function createLiveTurnStore(): LiveTurnStore {
   let streamText = "";
   let agentLog: AgentTimelineEntry[] = [];
   let active = false;

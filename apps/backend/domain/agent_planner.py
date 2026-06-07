@@ -582,7 +582,9 @@ async def chat_completion(
                 build_delegate_agents_catalog_snippet,
             )
 
-            messages = _append_system_block(messages, build_delegate_agents_catalog_snippet())
+            messages = _append_system_block(
+                messages, build_delegate_agents_catalog_snippet(caller_is_admin=_is_admin)
+            )
             from apps.backend.domain.agent_task_prompt import build_agent_tasks_context_snippet
 
             tasks_snip = build_agent_tasks_context_snippet(active_task_id=active_task_id)
@@ -595,6 +597,7 @@ async def chat_completion(
                 user_id=user_id if isinstance(user_id, uuid.UUID) else None,
                 tenant_id=int(tenant_id),
                 ingested_audio=_ingested_audio,
+                caller_is_admin=_is_admin,
             )
             if _media_snip:
                 messages = _append_system_block(messages, _media_snip)
@@ -1853,7 +1856,11 @@ async def chat_completion(
                     op = str(args.get("operation") or args.get("subcommand") or "").strip().lower()
                     if op in ("diff_stat", "diff-stat", "diff"):
                         tool_context["plan_git_diff_seen"] = True
-                follow_hint = _tool_result_followup_hint(name, result)
+                follow_hint = (
+                    None
+                    if name in PLANNER_NO_EXTRA_HINTS_AFTER_TOOL
+                    else _tool_result_followup_hint(name, result)
+                )
                 if follow_hint:
                     messages.append({"role": "system", "content": follow_hint[:2500]})
                 if ok_sum:
@@ -1988,7 +1995,11 @@ async def chat_completion(
                 recovery = _http_error_recovery_hint(name, result)
                 if recovery:
                     messages.append({"role": "system", "content": recovery})
-                param_recovery = _tool_parameter_recovery_hint(name, result or "")
+                param_recovery = (
+                    None
+                    if name in PLANNER_NO_EXTRA_HINTS_AFTER_TOOL
+                    else _tool_parameter_recovery_hint(name, result or "")
+                )
                 if param_recovery:
                     messages.append({"role": "system", "content": param_recovery})
                 st = "ok" if ok_sum is True else ("err" if ok_sum is False else "?")

@@ -16,6 +16,25 @@ DELEGATABLE_AGENT_IDS = frozenset(
     {"coding", "coding_plan", "security_auditor", "creative", "dashboard"}
 )
 
+ADMIN_ONLY_DELEGATABLE_AGENT_IDS = frozenset({"operator"})
+
+
+def caller_is_admin(user_id: uuid.UUID | None) -> bool:
+    if user_id is None:
+        return False
+    try:
+        from apps.backend.infrastructure.db import db as _db
+
+        return (_db.user_role(user_id) or "").strip().lower() == "admin"
+    except Exception:
+        return False
+
+
+def effective_delegatable_agent_ids(*, caller_is_admin: bool = False) -> frozenset[str]:
+    if caller_is_admin:
+        return DELEGATABLE_AGENT_IDS | ADMIN_ONLY_DELEGATABLE_AGENT_IDS
+    return DELEGATABLE_AGENT_IDS
+
 _PLAN_READONLY_TOOLS = [
     "list_dir",
     "read_file",
@@ -36,22 +55,23 @@ _PLAN_GIT_FORENSICS_TOOLS = [
 ]
 
 
-def build_delegate_agents_catalog_snippet() -> str:
+def build_delegate_agents_catalog_snippet(*, caller_is_admin: bool = False) -> str:
     """System-prompt block: which specialists exist and how to invoke them (no keyword routing)."""
     from apps.backend.domain.agent_registry import get_agent_registry
 
     reg = get_agent_registry()
+    allowed_ids = effective_delegatable_agent_ids(caller_is_admin=caller_is_admin)
     lines = [
         "## Specialist sub-agents",
         "You cannot run shell, git push, or security_scan tools directly. "
         "When the user needs those capabilities, call **`delegate`** with "
         "`run_subagent: true`, a specialist `agent_id`, and a full `prompt`. "
-        "Bind a workspace first (`create` / `bind`) — sub-agents inherit it. "
+        "Bind a workspace first (`create` / `bind`) — sub-agents inherit it (not required for operator). "
         "If `ssc_api_key` is listed as configured in the system context, do not ask the user to paste it.",
         "",
         "Available specialists:",
     ]
-    for aid in sorted(DELEGATABLE_AGENT_IDS):
+    for aid in sorted(allowed_ids):
         ag = reg.get_agent(aid)
         if not ag:
             continue
@@ -63,6 +83,8 @@ def build_delegate_agents_catalog_snippet() -> str:
     lines.append("")
     lines.append(
         "Pick the specialist by task (see descriptions above). "
+        "For operator/platform settings (media library flags, interfaces): admins may "
+        "`delegate` `agent_id=operator` — do not use coding for that. "
         "Pass `artifact_refs` when follow-up work needs prior sub-agent or tool outputs. "
         "Summarize the sub-agent result for the user (prefer `artifact_id` + short summary; "
         "do not paste raw `assistant_excerpt`). Use `task_*` tools for backlog."
@@ -146,15 +168,6 @@ def run_embedded_subagent_sync(
     from apps.backend.domain.identity import get_identity, reset_identity, set_identity
 
     aid = (subagent_agent_id or "").strip()
-    if aid not in DELEGATABLE_AGENT_IDS:
-        return json.dumps(
-            {
-                "ok": False,
-                "error": f"agent_id must be one of: {', '.join(sorted(DELEGATABLE_AGENT_IDS))}",
-            },
-            ensure_ascii=False,
-        )
-
     ctx = context or {}
     parent_tid, parent_uid = get_identity()
     u = ctx.get("user")
@@ -168,6 +181,18 @@ def run_embedded_subagent_sync(
                 parent_tid = _db.user_tenant_id(uid)
             except Exception:
                 parent_tid = 1
+
+    uid_check = parent_uid if isinstance(parent_uid, uuid.UUID) else None
+    is_admin = caller_is_admin(uid_check)
+    allowed_ids = effective_delegatable_agent_ids(caller_is_admin=is_admin)
+    if aid not in allowed_ids:
+        return json.dumps(
+            {
+                "ok": False,
+                "error": f"agent_id must be one of: {', '.join(sorted(allowed_ids))}",
+            },
+            ensure_ascii=False,
+        )
 
     from apps.backend.domain.agent_task_prompt import (
         enrich_delegate_prompt,

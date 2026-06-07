@@ -37,6 +37,8 @@ from apps.backend.infrastructure.operator_settings import (
     external_models_list_url,
     interface_hints_public,
     invalidate_operator_settings_cache,
+    operator_settings_patch_client_error,
+    operator_settings_patch_tool_parameters,
     public_dict as operator_settings_public_dict,
     resolve_external_llm_credentials_for_catalog,
 )
@@ -69,8 +71,12 @@ _CAP = ("operator.console",)
 AGENT_TOOL_META_BY_NAME = {}
 
 
-def _err(msg: str) -> str:
-    return json.dumps({"ok": False, "error": msg}, ensure_ascii=False)
+def _err(msg: str, **extra: Any) -> str:
+    return json.dumps({"ok": False, "error": msg, **extra}, ensure_ascii=False)
+
+
+def _err_obj(payload: dict[str, Any]) -> str:
+    return json.dumps(payload, ensure_ascii=False)
 
 
 def _ok(payload: dict[str, Any]) -> str:
@@ -126,22 +132,37 @@ def settings_patch(arguments: dict[str, Any]) -> str:
         return g_adm
     tid, uid = g_adm
     if not isinstance(arguments, dict) or not arguments:
-        return _err("non-empty JSON object required (PATCH fields only)")
+        return _err_obj(
+            operator_settings_patch_client_error(
+                "missing arguments: at least one OperatorSettingsPatch field as top-level JSON property",
+                reason="empty_arguments",
+            )
+        )
     resolved = resolve_placeholders_deep(dict(arguments), tenant_id=int(tid), user_id=uid)
     try:
         body = OperatorSettingsPatch.model_validate(resolved)
     except Exception as e:
-        return _err(f"invalid patch: {e}")
+        return _err_obj(
+            operator_settings_patch_client_error(
+                f"invalid field values: {e}",
+                reason="validation_failed",
+            )
+        )
     patch = body.model_dump(exclude_unset=True)
     if not patch:
-        return _err("no fields to patch (omit null-only if you meant no-op)")
+        return _err_obj(
+            operator_settings_patch_client_error(
+                "no effective changes: pass at least one key with a new value",
+                reason="empty_patch",
+            )
+        )
     try:
         apply_operator_settings_patch(body)
     except Exception as e:
         logger.exception("settings_patch")
         return _err(http_500_detail(e))
     consume_placeholders_in_obj(arguments, tenant_id=int(tid), user_id=uid)
-    return operator_settings_get({})
+    return settings_get({})
 
 
 def interfaces_get(arguments: dict[str, Any]) -> str:
@@ -905,8 +926,8 @@ TOOLS: list[dict[str, Any]] = [
     ),
     _tool_fn(
         "settings_patch",
-        "PATCH operator_settings; arguments must match OperatorSettingsPatch fields only.",
-        {"type": "object", "properties": {}, "additionalProperties": True},
+        "Partial update of operator_settings (OperatorSettingsPatch fields as top-level arguments).",
+        operator_settings_patch_tool_parameters(),
     ),
     _tool_fn(
         "interfaces_get",

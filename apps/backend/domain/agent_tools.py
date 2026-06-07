@@ -199,7 +199,6 @@ def _rank_tools_by_user_input(
     if not user_input or not tools:
         return tools
     
-    max_tools = config.AGENT_TOOLS_MAX_RANKING
     min_threshold = config.AGENT_TOOLS_MIN_SCORE_THRESHOLD
     fallback_all = config.AGENT_TOOLS_RANKING_FALLBACK_ALL
     
@@ -276,33 +275,26 @@ def _rank_tools_by_user_input(
     # 4. Sort by score (highest first)
     all_scores.sort(key=lambda x: x[1], reverse=True)
     
-    # 5. Check if scores are too low (fallback)
+    # 5. Check if scores are too low (fallback to unsorted pool)
     if all_scores:
         max_score = all_scores[0][1]
-        if max_score < min_threshold:
-            if fallback_all:
-                logfn = logger.debug if config.AGENT_LOG_TOOL_PIPELINE else logger.info
-                logfn(
-                    "Tool ranking: max score %.3f below threshold %s, falling back to all tools",
-                    max_score,
-                    min_threshold,
-                )
-                return tools
-            else:
-                # Still limit to max_tools even with low scores
-                top_indices = [s[0] for s in all_scores[:max_tools]]
-                return [tools[i] for i in top_indices]
-    
-    # 6. Return top N tools
-    top_indices = [s[0] for s in all_scores[:max_tools]]
-    ranked_tools = [tools[i] for i in top_indices]
+        if max_score < min_threshold and fallback_all:
+            logfn = logger.debug if config.AGENT_LOG_TOOL_PIPELINE else logger.info
+            logfn(
+                "Tool ranking: max score %.3f below threshold %s, falling back to all tools",
+                max_score,
+                min_threshold,
+            )
+            return tools
+
+    # 6. Return full allowlist sorted by relevance (forward count = context token budget)
+    ranked_tools = [tools[i] for i, _ in all_scores]
     
     logfn = logger.debug if config.AGENT_LOG_TOOL_PIPELINE else logger.info
     logfn(
-        "Tool ranking: ranked %d tools to top %d (max_score=%.3f)",
-        len(tools),
+        "Tool ranking: sorted %d tools by relevance (max_score=%.3f)",
         len(ranked_tools),
-        all_scores[0][1],
+        all_scores[0][1] if all_scores else 0.0,
     )
     
     return ranked_tools
@@ -804,6 +796,14 @@ def _normalize_tool_call_arguments(
                 v = out.get(alt)
                 if isinstance(v, str) and v.strip():
                     out["path"] = v.strip()
+                    break
+    elif n == "settings_patch":
+        # Alias unwrap only (malformed nesting) — no semantic inference; see settings_patch error payload.
+        if not out:
+            for alt in ("settings", "patch", "body", "changes", "values"):
+                nested = args.get(alt)
+                if isinstance(nested, dict) and nested:
+                    out = dict(nested)
                     break
     return out
 
@@ -1523,6 +1523,15 @@ _CODING_TOOLS_PERMISSION_ASK = frozenset(
         "replace",
     }
 )
+
+# Tool results passed to the LLM as-is — no extra system hints appended after these calls.
+PLANNER_NO_EXTRA_HINTS_AFTER_TOOL = frozenset(
+    {
+        "settings_patch",
+        "settings_get",
+        "get_tool_help",
+    }
+)
 __all__ = [
     '_AGENT_CREDENTIAL_TOOL_NAMES',
     '_AGENT_GIT_NETWORK_TOOL_NAMES',
@@ -1533,6 +1542,7 @@ __all__ = [
     '_BODY_KEYS_STRIP_FROM_LLM',
     '_CODING_READ_TOOL_PINS',
     '_CODING_TOOLS_PERMISSION_ASK',
+    'PLANNER_NO_EXTRA_HINTS_AFTER_TOOL',
     '_MAX_DASHBOARD_AGENT_INSTRUCTIONS_CHARS',
     '_MAX_DASHBOARD_TOOL_ALLOWLIST_LEN',
     '_ROUNDS_DIGEST_HEADER',

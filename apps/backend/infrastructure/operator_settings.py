@@ -1115,6 +1115,34 @@ class OperatorSettingsPatch(BaseModel):
     media_embed_allowed_hosts: str | None = Field(default=None, max_length=4000)
 
 
+def operator_settings_patch_field_names() -> tuple[str, ...]:
+    """Patchable operator_settings keys (single source of truth: ``OperatorSettingsPatch``)."""
+    return tuple(OperatorSettingsPatch.model_fields.keys())
+
+
+def operator_settings_patch_tool_parameters() -> dict[str, Any]:
+    """OpenAI ``tools[]`` parameters object generated from ``OperatorSettingsPatch``."""
+    schema = OperatorSettingsPatch.model_json_schema()
+    props = schema.get("properties")
+    if not isinstance(props, dict):
+        props = {}
+    return {
+        "type": "object",
+        "properties": props,
+        "additionalProperties": False,
+        "minProperties": 1,
+    }
+
+
+def operator_settings_patch_client_error(
+    error: str,
+    *,
+    reason: str = "invalid_arguments",
+) -> dict[str, Any]:
+    """Minimal tool error for ``settings_patch`` — no hints; use settings_get / get_tool_help separately."""
+    return {"ok": False, "error": error, "reason": reason}
+
+
 def scheduler_jobs_worker_settings() -> tuple[bool, float]:
     """Persisted ``scheduler_jobs`` + ``project_runs`` worker: enabled, run timeout hint (30–900 s)."""
     r = fetch_operator_settings_row()

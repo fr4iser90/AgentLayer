@@ -72,8 +72,8 @@ _MAX_QUEUE_ITEMS = 200
 _MAX_LIST = 100
 
 
-def _err(msg: str) -> str:
-    return json.dumps({"ok": False, "error": msg}, ensure_ascii=False)
+def _err(msg: str, **extra: Any) -> str:
+    return json.dumps({"ok": False, "error": msg, **extra}, ensure_ascii=False)
 
 
 def _identity() -> tuple[int, uuid.UUID] | None:
@@ -85,9 +85,12 @@ def _identity() -> tuple[int, uuid.UUID] | None:
 
 def _media_gate(user_id: uuid.UUID, *, write: bool = False) -> str | None:
     if not media_db.media_tables_exist():
-        return "media schema not installed (run migrations schema_080)"
+        return _err("media schema not installed (run migrations schema_080)", reason="schema_missing")
     if not media_policy.effective_media_library_enabled(user_id=user_id):
-        return "media library disabled by operator"
+        return _err(
+            "media library disabled by operator",
+            library_enabled=False,
+        )
     if write and not media_policy.effective_media_upload_enabled(user_id=user_id):
         # embed-only writes still allowed when upload disabled
         pass
@@ -250,7 +253,7 @@ def list_items(arguments: dict[str, Any]) -> str:
     tid, uid = ident
     gate = _media_gate(uid)
     if gate:
-        return _err(gate)
+        return gate
     sk = str(arguments.get("source_kind") or "").strip() or None
     if sk and sk not in ("embed", "upload", "external_link", "archive"):
         return _err("invalid source_kind")
@@ -273,9 +276,8 @@ def quota(arguments: dict[str, Any]) -> str:
     if ident is None:
         return _err("No user identity — media tools need an authenticated chat user.")
     tid, uid = ident
-    gate = _media_gate(uid)
-    if gate:
-        return _err(gate)
+    if not media_db.media_tables_exist():
+        return _err("media schema not installed (run migrations schema_080)", reason="schema_missing")
     snap = media_policy.media_quota_snapshot(user_id=uid, tenant_id=tid)
     snap["upload_enabled"] = media_policy.effective_media_upload_enabled(user_id=uid)
     return json.dumps({"ok": True, **snap}, ensure_ascii=False)
@@ -288,7 +290,7 @@ def add_embed(arguments: dict[str, Any]) -> str:
     tid, uid = ident
     gate = _media_gate(uid)
     if gate:
-        return _err(gate)
+        return gate
     url = str(arguments.get("external_url") or "").strip()
     if not url:
         return _err("external_url required")
@@ -320,7 +322,7 @@ def add_stream(arguments: dict[str, Any]) -> str:
     tid, uid = ident
     gate = _media_gate(uid)
     if gate:
-        return _err(gate)
+        return gate
     url = str(arguments.get("stream_url") or arguments.get("external_url") or "").strip()
     if not url:
         return _err("stream_url required")
@@ -352,7 +354,7 @@ def enqueue(arguments: dict[str, Any]) -> str:
     tid, uid = ident
     gate = _media_gate(uid)
     if gate:
-        return _err(gate)
+        return gate
     wid, res_err = _resolve_media_dashboard_id(uid, tid, arguments.get("dashboard_id"))
     if wid is None:
         return _err(res_err or "dashboard_id required")
@@ -438,7 +440,7 @@ def dequeue(arguments: dict[str, Any]) -> str:
     tid, uid = ident
     gate = _media_gate(uid)
     if gate:
-        return _err(gate)
+        return gate
     wid, res_err = _resolve_media_dashboard_id(uid, tid, arguments.get("dashboard_id"))
     if wid is None:
         return _err(res_err or "dashboard_id required")
@@ -513,7 +515,7 @@ def set_now_playing(arguments: dict[str, Any]) -> str:
     tid, uid = ident
     gate = _media_gate(uid)
     if gate:
-        return _err(gate)
+        return gate
     wid, res_err = _resolve_media_dashboard_id(uid, tid, arguments.get("dashboard_id"))
     if wid is None:
         return _err(res_err or "dashboard_id required")
@@ -556,7 +558,7 @@ def delete_item(arguments: dict[str, Any]) -> str:
     tid, uid = ident
     gate = _media_gate(uid)
     if gate:
-        return _err(gate)
+        return gate
     raw = arguments.get("media_item_id")
     if not raw:
         return _err("media_item_id required")
@@ -587,7 +589,7 @@ def update_metadata(arguments: dict[str, Any]) -> str:
     tid, uid = ident
     gate = _media_gate(uid)
     if gate:
-        return _err(gate)
+        return gate
     raw = arguments.get("media_item_id")
     if not raw:
         return _err("media_item_id required")
@@ -635,7 +637,7 @@ def set_license(arguments: dict[str, Any]) -> str:
     tid, uid = ident
     gate = _media_gate(uid)
     if gate:
-        return _err(gate)
+        return gate
     raw = arguments.get("media_item_id")
     if not raw:
         return _err("media_item_id required")
@@ -665,7 +667,7 @@ def share_grant(arguments: dict[str, Any]) -> str:
     tid, uid = ident
     gate = _media_gate(uid)
     if gate:
-        return _err(gate)
+        return gate
     if not media_policy.effective_media_sharing_enabled(user_id=uid):
         return _err("media sharing disabled")
     if not media_db.media_share_tables_exist():
@@ -715,7 +717,7 @@ def list_shares(arguments: dict[str, Any]) -> str:
     tid, uid = ident
     gate = _media_gate(uid)
     if gate:
-        return _err(gate)
+        return gate
     raw = arguments.get("media_item_id")
     mid: uuid.UUID | None = None
     if raw:
@@ -734,7 +736,7 @@ def revoke_share(arguments: dict[str, Any]) -> str:
     tid, uid = ident
     gate = _media_gate(uid)
     if gate:
-        return _err(gate)
+        return gate
     raw = arguments.get("grant_id")
     if not raw:
         return _err("grant_id required")

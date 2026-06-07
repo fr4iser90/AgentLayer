@@ -1,5 +1,6 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { AgentChatSessionProvider } from "../features/chat/AgentChatSessionProvider";
 import { useAuth } from "./AuthContext";
 
 /**
@@ -24,8 +25,10 @@ export function RequireSession() {
   }
 
   return (
-    <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
-      <Outlet />
-    </div>
+    <AgentChatSessionProvider>
+      <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
+        <Outlet />
+      </div>
+    </AgentChatSessionProvider>
   );
 }

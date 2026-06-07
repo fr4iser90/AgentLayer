@@ -7,8 +7,10 @@ import uuid
 from unittest.mock import AsyncMock, patch
 
 from apps.backend.domain.embedded_subagent import (
+    ADMIN_ONLY_DELEGATABLE_AGENT_IDS,
     DELEGATABLE_AGENT_IDS,
     build_delegate_agents_catalog_snippet,
+    effective_delegatable_agent_ids,
 )
 from plugins.tools.platform.agents.delegate import delegate
 
@@ -18,7 +20,42 @@ def test_delegatable_agent_ids() -> None:
     assert "coding" in DELEGATABLE_AGENT_IDS
     assert "creative" in DELEGATABLE_AGENT_IDS
     assert "dashboard" in DELEGATABLE_AGENT_IDS
+    assert "operator" in ADMIN_ONLY_DELEGATABLE_AGENT_IDS
+    assert "operator" not in DELEGATABLE_AGENT_IDS
     assert "general" not in DELEGATABLE_AGENT_IDS
+
+
+def test_effective_delegatable_includes_operator_for_admin() -> None:
+    base = effective_delegatable_agent_ids(caller_is_admin=False)
+    admin = effective_delegatable_agent_ids(caller_is_admin=True)
+    assert "operator" not in base
+    assert "operator" in admin
+
+
+def test_list_agents_includes_operator_for_admin() -> None:
+    uid = uuid.uuid4()
+    ctx = {"user": type("U", (), {"id": uid})()}
+    with patch(
+        "plugins.tools.platform.agents.delegate.caller_is_admin",
+        return_value=True,
+    ):
+        out = delegate({"list_agents": True}, context=ctx)
+    data = json.loads(out)
+    assert data.get("ok") is True
+    assert "operator" in data.get("agent_ids", [])
+
+
+def test_list_agents_excludes_operator_for_non_admin() -> None:
+    out = delegate({"list_agents": True}, context=None)
+    data = json.loads(out)
+    assert data.get("ok") is True
+    assert "operator" not in data.get("agent_ids", [])
+
+
+def test_catalog_snippet_mentions_operator_for_admin() -> None:
+    snip = build_delegate_agents_catalog_snippet(caller_is_admin=True)
+    assert "operator" in snip
+    assert "media library" in snip.lower() or "platform settings" in snip.lower()
 
 
 def test_catalog_snippet_lists_specialists() -> None:
