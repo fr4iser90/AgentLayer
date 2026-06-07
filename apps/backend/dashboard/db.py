@@ -82,6 +82,12 @@ def dashboard_access_ex(
             can_write = perm_raw == "edit"
             eff: AccessRole = "editor" if can_write else "viewer"
             return DashboardAccessDetail(eff, bf, can_write)
+
+    from apps.backend.domain.shares.dashboard_grant import friend_dashboard_access_detail
+
+    friend_access = friend_dashboard_access_detail(user_id, dashboard_id)
+    if friend_access is not None and friend_access.role is not None:
+        return friend_access
     return DashboardAccessDetail(None, None, False)
 
 
@@ -407,17 +413,20 @@ def dashboard_list(user_id: uuid.UUID, tenant_id: int, limit: int = 200) -> list
             rows = cur.fetchall()
         conn.commit()
     out: list[dict[str, Any]] = []
+    seen: set[str] = set()
     for r in rows:
         wid = r[0]
         if not isinstance(wid, uuid.UUID):
             wid = uuid.UUID(str(wid))
+        did = str(wid)
+        seen.add(did)
         role = (r[6] or "owner").strip().lower()
         if role not in ("owner", "co_owner", "editor", "viewer"):
             role = "owner"
         tpl = r[2]
         out.append(
             {
-                "id": str(wid),
+                "id": did,
                 "kind": r[1],
                 "template_id": (tpl or "").strip() if isinstance(tpl, str) else None,
                 "title": r[3] or "",
@@ -426,7 +435,16 @@ def dashboard_list(user_id: uuid.UUID, tenant_id: int, limit: int = 200) -> list
                 "access_role": role,
             }
         )
-    return out
+
+    from apps.backend.domain.shares.dashboard_grant import list_friend_shared_dashboards
+
+    for item in list_friend_shared_dashboards(user_id):
+        if item.get("id") in seen:
+            continue
+        seen.add(str(item.get("id")))
+        out.append(item)
+    out.sort(key=lambda x: str(x.get("updated_at") or ""), reverse=True)
+    return out[:limit]
 
 
 def _row_dict(r: dict[str, Any]) -> dict[str, Any]:
@@ -452,9 +470,18 @@ def _row_dict(r: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _dashboard_row_tenant_id(dashboard_id: uuid.UUID) -> int | None:
+    from apps.backend.domain.shares.dashboard_grant import dashboard_tenant_id
+
+    return dashboard_tenant_id(dashboard_id)
+
+
 def dashboard_get(user_id: uuid.UUID, tenant_id: int, dashboard_id: uuid.UUID) -> dict[str, Any] | None:
     d = dashboard_access_ex(user_id, tenant_id, dashboard_id)
     if d.role is None:
+        return None
+    row_tid = _dashboard_row_tenant_id(dashboard_id)
+    if row_tid is None:
         return None
     with db.pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
@@ -464,7 +491,7 @@ def dashboard_get(user_id: uuid.UUID, tenant_id: int, dashboard_id: uuid.UUID) -
                 FROM user_dashboards
                 WHERE id = %s AND tenant_id = %s
                 """,
-                (dashboard_id, tenant_id),
+                (dashboard_id, row_tid),
             )
             row = cur.fetchone()
         conn.commit()
@@ -497,12 +524,15 @@ def dashboard_update(
     d = dashboard_access_ex(user_id, tenant_id, dashboard_id)
     if d.role is None:
         return None
+    row_tid = _dashboard_row_tenant_id(dashboard_id)
+    if row_tid is None:
+        return None
     if d.allowed_block_ids is not None:
         if not d.granular_can_write:
             return None
         return _dashboard_update_granular(
             user_id,
-            tenant_id,
+            row_tid,
             dashboard_id,
             title=title,
             ui_layout=ui_layout,
@@ -526,7 +556,7 @@ def dashboard_update(
     if not sets:
         return dashboard_get(user_id, tenant_id, dashboard_id)
     sets.append("updated_at = now()")
-    args.extend([dashboard_id, tenant_id, user_id, user_id])
+    args.extend([dashboard_id, row_tid, user_id, user_id])
     with db.pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             # SECURITY: Column names in `sets` come from function parameters (ui_layout, data).

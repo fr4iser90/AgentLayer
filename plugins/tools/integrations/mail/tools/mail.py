@@ -15,7 +15,9 @@ from apps.backend.domain.mail.imap_common import (
     select_mailbox,
 )
 from apps.backend.domain.mail.providers import MAIL_PROVIDERS
+from apps.backend.domain.friends.common import resolve_contact_email
 from apps.backend.domain.mail.resolve import resolve_mail_session, sanitize_query
+from apps.backend.domain.mail.smtp_send import send_mail_message
 from apps.backend.domain.mail.search import search_uids
 
 __version__ = "2.0.0"
@@ -35,13 +37,13 @@ TOOL_TRIGGERS = (
 )
 TOOL_LABEL = "Mail"
 TOOL_DESCRIPTION = (
-    "Search and read email over IMAP. Works with Gmail, Outlook, GMX, Yahoo, Proton (Bridge). "
+    "Search, read, and send email (IMAP + SMTP). Works with Gmail, Outlook, GMX, Yahoo, Proton (Bridge). "
     "Credentials come from Settings → Connections; optional provider argument selects one when several are set."
 )
 TOOL_SECRETS_REQUIRED = tuple(
     sorted({k for spec in MAIL_PROVIDERS.values() for k in spec.secret_keys})
 )
-TOOL_CAPABILITIES = ("mail.read", "mail.search", "secrets.user")
+TOOL_CAPABILITIES = ("mail.read", "mail.search", "mail.send", "secrets.user")
 TOOL_RISK_LEVEL = 2
 TOOL_FAMILIES = ("communication", "productivity")
 
@@ -255,10 +257,83 @@ def collect_for_summary(arguments: dict[str, Any]) -> str:
     )
 
 
+def send(arguments: dict[str, Any]) -> str:
+    session = resolve_mail_session(arguments)
+    if isinstance(session, str):
+        return json.dumps({"ok": False, "error": session}, ensure_ascii=False)
+
+    to_raw = arguments.get("to") or arguments.get("email") or arguments.get("name")
+    to_list: list[str] = []
+    if isinstance(to_raw, list):
+        to_list = [str(x).strip() for x in to_raw if str(x).strip()]
+    elif to_raw is not None and str(to_raw).strip():
+        to_list = [str(to_raw).strip()]
+
+    resolved: list[str] = []
+    from apps.backend.domain.identity import get_identity
+
+    _tid, uid = get_identity()
+    for entry in to_list:
+        if "@" in entry:
+            resolved.append(entry.lower())
+            continue
+        if uid is not None:
+            em = resolve_contact_email(uid, entry)
+            if em:
+                resolved.append(em)
+                continue
+        return json.dumps(
+            {"ok": False, "error": f"could not resolve email for recipient {entry!r}"},
+            ensure_ascii=False,
+        )
+
+    subject = str(arguments.get("subject") or "").strip()
+    body = str(arguments.get("body") or arguments.get("body_text") or "").strip()
+    dry_run = bool(arguments.get("dry_run"))
+
+    if dry_run:
+        return json.dumps(
+            {
+                "ok": True,
+                "dry_run": True,
+                "provider": session.provider.id,
+                "from": session.email,
+                "to": resolved,
+                "subject": subject,
+                "body_text": body,
+            },
+            ensure_ascii=False,
+        )
+
+    try:
+        result = send_mail_message(
+            session,
+            to_addrs=resolved,
+            subject=subject,
+            body_text=body,
+            cc_addrs=arguments.get("cc") if isinstance(arguments.get("cc"), list) else None,
+        )
+    except ValueError as e:
+        return json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False)
+    except Exception as e:
+        return json.dumps({"ok": False, "error": f"SMTP send failed: {e!s}"}, ensure_ascii=False)
+
+    return json.dumps(result, ensure_ascii=False)
+
+
+def compose(arguments: dict[str, Any]) -> str:
+    """Draft an outbound email without sending (same as send with dry_run=true)."""
+    args = dict(arguments)
+    args["dry_run"] = True
+    return send(args)
+
+
 HANDLERS: dict[str, Callable[[dict[str, Any]], str]] = {
     "search": search,
     "read": read,
     "collect_for_summary": collect_for_summary,
+    "send": send,
+    "compose": compose,
 }
 
 TOOLS: list[dict[str, Any]] = [
@@ -315,6 +390,59 @@ TOOLS: list[dict[str, Any]] = [
                     "max_messages": {"type": "integer"},
                     "max_chars_per_message": {"type": "integer"},
                 },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "send",
+            "description": (
+                "Send a plain-text email via SMTP using the user's configured mail credentials. "
+                "Recipient can be an email or a friend/contact name (resolved from the address book). "
+                "Use dry_run=true to preview without sending."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "provider": {"type": "string"},
+                    "to": {
+                        "type": "string",
+                        "description": "Recipient email or contact name (e.g. Sandra)",
+                    },
+                    "email": {"type": "string", "description": "Alias for to"},
+                    "name": {"type": "string", "description": "Alias for to (contact name)"},
+                    "subject": {"type": "string"},
+                    "body": {"type": "string", "description": "Plain-text message body"},
+                    "body_text": {"type": "string", "description": "Alias for body"},
+                    "cc": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional CC addresses",
+                    },
+                    "dry_run": {
+                        "type": "boolean",
+                        "description": "If true, return draft only — do not send",
+                    },
+                },
+                "required": ["subject", "body"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "compose",
+            "description": "Draft an outbound email (preview only, does not send). Same parameters as mail.send.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "provider": {"type": "string"},
+                    "to": {"type": "string"},
+                    "subject": {"type": "string"},
+                    "body": {"type": "string"},
+                },
+                "required": ["to", "subject", "body"],
             },
         },
     },

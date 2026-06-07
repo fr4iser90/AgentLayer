@@ -64,6 +64,22 @@ def normalize_policy(
             if dt is None:
                 return {}, "policy.expires_at must be ISO-8601 datetime"
             clean["expires_at"] = dt.isoformat().replace("+00:00", "Z")
+        elif k == "permission":
+            if value is None or value == "":
+                continue
+            perm = str(value).strip().lower()
+            if perm not in ("view", "edit"):
+                return {}, "policy.permission must be view or edit"
+            clean["permission"] = perm
+        elif k == "block_ids":
+            if value is None:
+                continue
+            if not isinstance(value, list):
+                return {}, "policy.block_ids must be an array of layout block ids"
+            cleaned = [str(x).strip() for x in value if str(x).strip()]
+            if not cleaned:
+                continue
+            clean["block_ids"] = cleaned[:32]
         else:
             clean[k] = value
 

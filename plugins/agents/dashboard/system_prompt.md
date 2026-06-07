@@ -6,7 +6,7 @@ Manage **dashboard data and layout** and kind-specific tools:
 
 | Kind / domain | Typical tools |
 |---------------|----------------|
-| **Generic** | ``dashboard.create_dashboard``, ``dashboard.list``, ``dashboard.read``, ``dashboard.patch_data``, ``dashboard.patch_layout``, ``propose_layouts``, ``dashboard.create_public_share``, ``dashboard.export_template``, ``dashboard.import_layout``, ``dashboard.pin_block`` |
+| **Generic** | ``dashboard.create_dashboard``, ``dashboard.list``, ``dashboard.read``, ``dashboard.patch_data``, ``dashboard.patch_layout``, ``propose_layouts``, ``dashboard.create_public_share``, ``dashboard.invite_member``, ``dashboard.block_share_grant``, ``dashboard.export_template``, ``dashboard.import_layout``, ``dashboard.pin_block`` |
 | **Shopping** | ``shopping_list_*`` — lists, items, notes |
 | **Pets** | ``pets_*`` |
 | **Ideas** | ``ideas_*`` |
@@ -26,6 +26,11 @@ Use **ops** (not raw JSON edits): ``add_block``, ``remove_block``, ``set_grid``,
 
 - **Copy layout:** ``dashboard.export_template`` → ``dashboard.import_layout`` (snapshot, no live sync).
 - **Live pin:** ``dashboard.pin_block`` with ``target_dashboard_id``, ``source_dashboard_id``, ``source_block_id`` — adds ``dashboard_ref`` on target.
+- **Tenant member:** ``dashboard.invite_member`` (email/name, role editor for uploads).
+- **Gallery-only (same tenant):** ``dashboard.block_share_grant`` with ``gallery_only=true``, ``permission=edit``.
+- **Cross-tenant friend:** ``friends.send_request`` then ``friends.shares`` grant with ``resource_type: pets`` or ``dashboard``, ``resource_identifier: <dashboard_id>``, ``policy: {permission: edit, block_ids: [...]}``.
+- **Contact message:** ``message.send`` (channel ``auto``/``telegram``/``discord``/``email``) to contact name (e.g. Sandra). Set ``photo_upload_hint=true`` when they have edit access and should upload via Telegram bot.
+- **Email only:** ``mail.send`` / ``mail.compose`` when SMTP is preferred.
 - **Friend widget:** ``share_widget`` block with ``friendUserId`` + ``resourceType: google_calendar`` (requires friend share grant).
 
 See ``docs/features/dashboard-sharing.md``.

@@ -39,7 +39,10 @@ from apps.backend.dashboard.list_ops import (
 )
 from apps.backend.dashboard.layout_proposals import store_proposal_set
 from apps.backend.dashboard.template_ops import export_template_payload, validate_template_import
+from apps.backend.domain.friends.common import resolve_contact_email
 from apps.backend.domain.identity import get_identity
+from apps.backend.infrastructure.auth import get_user_by_email
+from apps.backend.infrastructure.db import db
 
 __version__ = "1.0.0"
 TOOL_ID = "dashboard"
@@ -727,6 +730,136 @@ def patch_layout(arguments: dict[str, Any]) -> str:
     )
 
 
+def _gallery_block_ids(ui_layout: dict[str, Any]) -> list[str]:
+    blocks = ui_layout.get("blocks") if isinstance(ui_layout.get("blocks"), builtins.list) else []
+    out: list[str] = []
+    for block in blocks:
+        if not isinstance(block, dict):
+            continue
+        if str(block.get("type") or "").strip().lower() == "gallery":
+            bid = str(block.get("id") or "").strip()
+            if bid:
+                out.append(bid)
+    return out
+
+
+def invite_member(arguments: dict[str, Any]) -> str:
+    """Add a tenant user as dashboard member (viewer/editor/co_owner) by email or contact name."""
+    ident = _identity()
+    if ident is None:
+        return _err("No user identity — dashboard tools need an authenticated chat user.")
+    tid, uid = ident
+    wid, res_err = resolve_dashboard_id(uid, tid, arguments.get("dashboard_id"))
+    if wid is None:
+        return _err(res_err or "dashboard_id required")
+
+    email_raw = str(arguments.get("email") or arguments.get("name") or "").strip()
+    if not email_raw:
+        return _err("email or name is required")
+    email = email_raw.lower() if "@" in email_raw else (resolve_contact_email(uid, email_raw) or "")
+    if not email:
+        return _err(f"could not resolve email for {email_raw!r}")
+
+    role = str(arguments.get("role") or "editor").strip().lower()
+    if role not in ("viewer", "editor", "co_owner"):
+        return _err("role must be viewer, editor, or co_owner")
+
+    target = get_user_by_email(email)
+    if target is None:
+        return _err(
+            f"no AgentLayer account for {email} — send a friend request first or ask them to register"
+        )
+    if db.user_tenant_id(target.id) != tid:
+        return _err(
+            "user must be in the same tenant — use friends.shares with resource_type pets/dashboard "
+            "for cross-tenant friends"
+        )
+
+    ok = dashboard_db.member_add(uid, tid, wid, target.id, role)
+    if not ok:
+        return _err("could not add member (need owner/co-owner, valid role, user not primary owner)")
+    members = dashboard_db.members_list(uid, tid, wid)
+    return json.dumps(
+        {
+            "ok": True,
+            "dashboard_id": str(wid),
+            "member_email": email,
+            "role": role,
+            "members": members,
+            "hint": "Member can open the dashboard in the app sidebar and upload gallery photos when role is editor.",
+        },
+        ensure_ascii=False,
+    )
+
+
+def block_share_grant(arguments: dict[str, Any]) -> str:
+    """Grant another tenant user access to selected layout blocks (e.g. gallery albums only)."""
+    ident = _identity()
+    if ident is None:
+        return _err("No user identity — dashboard tools need an authenticated chat user.")
+    tid, uid = ident
+    wid, res_err = resolve_dashboard_id(uid, tid, arguments.get("dashboard_id"))
+    if wid is None:
+        return _err(res_err or "dashboard_id required")
+
+    email_raw = str(arguments.get("email") or arguments.get("name") or "").strip()
+    if not email_raw:
+        return _err("email or name is required")
+    email = email_raw.lower() if "@" in email_raw else (resolve_contact_email(uid, email_raw) or "")
+    if not email:
+        return _err(f"could not resolve email for {email_raw!r}")
+
+    target = get_user_by_email(email)
+    if target is None:
+        return _err(f"no AgentLayer account for {email}")
+
+    ws = dashboard_db.dashboard_get(uid, tid, wid)
+    if ws is None:
+        return _err("dashboard not found or no access")
+
+    block_ids_raw = arguments.get("block_ids")
+    block_ids: list[str] = []
+    if isinstance(block_ids_raw, builtins.list):
+        block_ids = [str(x).strip() for x in block_ids_raw if str(x).strip()]
+    if arguments.get("gallery_only") is True and not block_ids:
+        ul = ws.get("ui_layout") if isinstance(ws.get("ui_layout"), dict) else {}
+        block_ids = _gallery_block_ids(ul)
+        if not block_ids:
+            return _err("dashboard has no gallery blocks — pass block_ids explicitly")
+
+    if not block_ids:
+        return _err("block_ids is required (or set gallery_only=true)")
+
+    perm = str(arguments.get("permission") or "edit").strip().lower()
+    if perm not in ("view", "edit"):
+        return _err("permission must be view or edit")
+
+    ok = dashboard_db.block_share_grant_upsert(
+        uid,
+        tid,
+        wid,
+        viewer_user_id=target.id,
+        block_ids=block_ids,
+        permission=perm,
+    )
+    if not ok:
+        return _err(
+            "could not save block share (check block ids, same tenant, viewer is not owner)"
+        )
+    grants = dashboard_db.block_share_grants_list(uid, tid, wid)
+    return json.dumps(
+        {
+            "ok": True,
+            "dashboard_id": str(wid),
+            "viewer_email": email,
+            "block_ids": block_ids,
+            "permission": perm,
+            "grants": grants,
+        },
+        ensure_ascii=False,
+    )
+
+
 def create_public_share(arguments: dict[str, Any]) -> str:
     """Create a public read-only link (optional block scope, expiry, password). Owner/co-owner only."""
     ident = _identity()
@@ -1052,6 +1185,8 @@ HANDLERS: dict[str, Callable[[dict[str, Any]], str]] = {
     "patch_data": patch_data,
     "patch_layout": patch_layout,
     "create_public_share": create_public_share,
+    "invite_member": invite_member,
+    "block_share_grant": block_share_grant,
     "export_template": export_template,
     "import_layout": import_layout,
     "propose_layouts": propose_layouts,
@@ -1304,6 +1439,62 @@ TOOLS: list[dict[str, Any]] = [
                     "password": {
                         "type": "string",
                         "TOOL_DESCRIPTION": "Optional link password (min 4 characters)",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "invite_member",
+            "TOOL_DESCRIPTION": (
+                "Invite another user to a dashboard as viewer, editor, or co_owner (same tenant). "
+                "Pass email or a contact/friend name. Editors can upload gallery photos. "
+                "For friends in another tenant use friends.shares with resource_type pets or dashboard."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "dashboard_id": {"type": "string", "TOOL_DESCRIPTION": "Optional UUID"},
+                    "email": {"type": "string", "TOOL_DESCRIPTION": "Recipient email"},
+                    "name": {"type": "string", "TOOL_DESCRIPTION": "Friend/contact name if email unknown"},
+                    "role": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": "viewer, editor (default), or co_owner",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "block_share_grant",
+            "TOOL_DESCRIPTION": (
+                "Share only specific layout blocks with another user (same tenant), e.g. photo galleries. "
+                "Set gallery_only=true to auto-pick all gallery blocks. permission=edit allows uploads."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "dashboard_id": {"type": "string", "TOOL_DESCRIPTION": "Optional UUID"},
+                    "email": {"type": "string", "TOOL_DESCRIPTION": "Viewer email"},
+                    "name": {"type": "string", "TOOL_DESCRIPTION": "Friend/contact name if email unknown"},
+                    "block_ids": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "TOOL_DESCRIPTION": "Layout block ids from dashboard.read",
+                    },
+                    "gallery_only": {
+                        "type": "boolean",
+                        "TOOL_DESCRIPTION": "When true, share all gallery blocks (ignores empty block_ids)",
+                    },
+                    "permission": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": "view or edit (default edit for uploads)",
                     },
                 },
                 "required": [],

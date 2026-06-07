@@ -6,8 +6,6 @@ import logging
 import uuid
 from typing import Any
 
-import httpx
-
 from apps.backend.core.config import PUBLIC_BASE_URL
 from apps.backend.infrastructure import notification_prefs_store
 from apps.backend.infrastructure.db import db
@@ -85,48 +83,12 @@ def should_deliver_external(
     return True
 
 
-def _telegram_send_text(token: str, chat_id: int, text: str) -> None:
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
-    with httpx.Client(timeout=45.0) as client:
-        r = client.post(url, json={"chat_id": chat_id, "text": text[:4000]})
-        r.raise_for_status()
-
-
-def _discord_send_dm(token: str, recipient_id: str, text: str) -> None:
-    headers = {"Authorization": f"Bot {token}", "Content-Type": "application/json"}
-    with httpx.Client(timeout=45.0) as client:
-        r = client.post(
-            "https://discord.com/api/v10/users/@me/channels",
-            headers=headers,
-            json={"recipient_id": str(recipient_id).strip()},
-        )
-        r.raise_for_status()
-        ch = r.json()
-        channel_id = ch.get("id") if isinstance(ch, dict) else None
-        if not channel_id:
-            raise RuntimeError("discord DM channel create returned no id")
-        msg = client.post(
-            f"https://discord.com/api/v10/channels/{channel_id}/messages",
-            headers=headers,
-            json={"content": text[:2000]},
-        )
-        msg.raise_for_status()
-
-
-def _operator_telegram_token() -> str | None:
-    row = operator_settings.fetch_operator_settings_row()
-    if not row.get("telegram_bot_enabled"):
-        return None
-    tok = (row.get("telegram_bot_token") or "").strip()
-    return tok or None
-
-
-def _operator_discord_token() -> str | None:
-    row = operator_settings.fetch_operator_settings_row()
-    if not row.get("discord_bot_enabled"):
-        return None
-    tok = (row.get("discord_bot_token") or "").strip()
-    return tok or None
+from apps.backend.domain.comms.outbound import (
+    discord_send_dm,
+    operator_discord_token,
+    operator_telegram_token,
+    telegram_send_text,
+)
 
 
 def deliver_external(*, user_id: uuid.UUID, notification: dict[str, Any]) -> None:
@@ -146,11 +108,11 @@ def deliver_external(*, user_id: uuid.UUID, notification: dict[str, Any]) -> Non
         if notification_prefs_store.outbound_cap_reached(user_id=user_id, channel="telegram"):
             logger.info("notification delivery: telegram daily cap user=%s", user_id)
         else:
-            tok = _operator_telegram_token()
+            tok = operator_telegram_token()
             tg_uid = db.user_telegram_user_id_get(user_id)
             if tok and tg_uid:
                 try:
-                    _telegram_send_text(tok, int(str(tg_uid).strip()), text)
+                    telegram_send_text(token=tok, chat_id=int(str(tg_uid).strip()), text=text)
                     notification_prefs_store.outbound_increment(user_id=user_id, channel="telegram")
                     logger.info("notification delivery: telegram ok user=%s", user_id)
                 except Exception:
@@ -161,11 +123,11 @@ def deliver_external(*, user_id: uuid.UUID, notification: dict[str, Any]) -> Non
         if notification_prefs_store.outbound_cap_reached(user_id=user_id, channel="discord"):
             logger.info("notification delivery: discord daily cap user=%s", user_id)
         else:
-            tok = _operator_discord_token()
+            tok = operator_discord_token()
             dc_uid = db.user_discord_user_id_get(user_id)
             if tok and dc_uid:
                 try:
-                    _discord_send_dm(tok, dc_uid, text)
+                    discord_send_dm(token=tok, recipient_id=dc_uid, text=text)
                     notification_prefs_store.outbound_increment(user_id=user_id, channel="discord")
                     logger.info("notification delivery: discord ok user=%s", user_id)
                 except Exception:

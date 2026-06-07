@@ -36,6 +36,22 @@
       "label": { "en": "Project Roadmap", "de": "Projekt-Roadmap" },
       "default_identifier": "primary",
       "policy_fields": ["expires_at"]
+    },
+    {
+      "id": "dashboard",
+      "icon": "📋",
+      "label": { "en": "Dashboard board", "de": "Dashboard-Board" },
+      "aliases": ["board"],
+      "default_identifier": "primary",
+      "policy_fields": ["permission", "block_ids", "expires_at"]
+    },
+    {
+      "id": "pets",
+      "icon": "🐾",
+      "label": { "en": "Pets dashboard", "de": "Haustier-Dashboard" },
+      "aliases": ["haustier", "haustiere", "pet"],
+      "default_identifier": "primary",
+      "policy_fields": ["permission", "block_ids", "expires_at"]
     }
   ]
 }

@@ -200,7 +200,8 @@ def friends_list(user_id: uuid.UUID) -> list[dict[str, Any]]:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
                 """
-                SELECT f.id, f.friend_user_id, f.relation, f.note, f.created_at, u.email, u.display_name, u.discord_user_id
+                SELECT f.id, f.friend_user_id, f.relation, f.note, f.created_at,
+                       u.email, u.display_name, u.discord_user_id, u.telegram_user_id
                 FROM friends f
                 JOIN users u ON f.friend_user_id = u.id
                 WHERE f.user_id = %s

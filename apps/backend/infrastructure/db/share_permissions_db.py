@@ -22,9 +22,13 @@ SHARE_RESOURCE_GITHUB_ACTIVITY = "github_activity"
 SHARE_RESOURCE_TODOIST = "todoist"
 SHARE_RESOURCE_NOTES = "notes"
 SHARE_RESOURCE_ROADMAP = "roadmap"
+SHARE_RESOURCE_DASHBOARD = "dashboard"
+SHARE_RESOURCE_PETS = "pets"
 
 SHARE_RESOURCE_ALIASES: dict[str, tuple[str, ...]] = {
     SHARE_RESOURCE_GOOGLE_CALENDAR: ("calendar",),
+    SHARE_RESOURCE_DASHBOARD: ("board",),
+    SHARE_RESOURCE_PETS: ("haustier", "haustiere", "pet"),
 }
 
 

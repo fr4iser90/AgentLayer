@@ -22,6 +22,7 @@ import asyncio
 import logging
 import threading
 import time
+import uuid
 from dataclasses import dataclass
 from typing import Any
 
@@ -351,7 +352,82 @@ async def _run_polling_session(cfg: _BridgeCfg) -> None:
         .concurrent_updates(True)
         .build()
     )
+    async def on_photo(update: Any, context: ContextTypes.DEFAULT_TYPE) -> None:
+        msg = update.effective_message
+        user = update.effective_user
+        if not msg or not user or user.is_bot or not msg.photo:
+            return
+        author_id = str(user.id)
+        linked = db.user_id_tenant_for_telegram_global(author_id)
+        if linked is None:
+            await msg.reply_text(
+                "Telegram ist nicht verknüpft. Web-App → Einstellungen → Verbindungen → Telegram-User-ID speichern."
+            )
+            return
+        user_id, tenant_id = linked
+        thread_kw: dict[str, Any] = {}
+        if getattr(msg, "message_thread_id", None) is not None:
+            thread_kw["message_thread_id"] = msg.message_thread_id
+
+        from apps.backend.domain.comms.telegram_dashboard_upload import (
+            list_telegram_upload_targets,
+            upload_image_bytes,
+        )
+
+        targets = list_telegram_upload_targets(user_id)
+        if not targets:
+            await msg.reply_text(
+                "📷 Kein bearbeitbares Dashboard mit Foto-Album gefunden. "
+                "Du brauchst Bearbeitungs-Recht (z. B. friends.shares mit permission=edit).",
+                **thread_kw,
+            )
+            return
+
+        caption = (msg.caption or "").strip()
+        target: dict[str, Any] | None = None
+        if len(targets) == 1:
+            target = targets[0]
+        else:
+            for cand in targets:
+                if cand.get("dashboard_id") and str(cand["dashboard_id"]) in caption:
+                    target = cand
+                    break
+            if target is None:
+                lines = "\n".join(
+                    f"• {t.get('title') or 'Dashboard'} — `{t.get('dashboard_id')}`"
+                    for t in targets[:6]
+                )
+                await msg.reply_text(
+                    "Mehrere Upload-Ziele aktiv. Optional Dashboard-ID in die Bildunterschrift setzen:\n"
+                    f"{lines}",
+                    **thread_kw,
+                )
+                return
+
+        try:
+            photo = msg.photo[-1]
+            tg_file = await context.bot.get_file(photo.file_id)
+            raw = await tg_file.download_as_bytearray()
+            image_bytes = bytes(raw)
+            result = upload_image_bytes(
+                uploader_user_id=user_id,
+                tenant_id=tenant_id,
+                dashboard_id=uuid.UUID(str(target["dashboard_id"])),
+                image_bytes=image_bytes,
+                original_name="telegram.jpg",
+                album_index=int(target.get("album_index") or 0),
+                caption=caption,
+            )
+            await msg.reply_text(
+                f"✅ Foto hochgeladen ({result.get('photos_count')} im Album).",
+                **thread_kw,
+            )
+        except Exception as e:
+            logger.exception("telegram_bridge: photo upload failed user=%s", user_id)
+            await msg.reply_text(f"Upload fehlgeschlagen: {e!s:.400}", **thread_kw)
+
     application.add_handler(CommandHandler("start", cmd_start))
+    application.add_handler(MessageHandler(filters.PHOTO, on_photo))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
 
     async def _ptb_error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
