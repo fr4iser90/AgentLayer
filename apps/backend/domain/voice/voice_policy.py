@@ -190,7 +190,10 @@ def effective_voice_output(*, user_id: uuid.UUID, channel: str) -> bool:
     prefs = user_voice_prefs_get(user_id)
     if not bool(prefs.get("output_enabled", False)):
         return False
-    mode_key = {"web": "mode_web", "telegram": "mode_telegram", "discord": "mode_discord"}.get(channel)
+    # Web: output_enabled alone controls TTS; mode_web is for input (push-to-talk / hands-free).
+    if channel == "web":
+        return True
+    mode_key = {"telegram": "mode_telegram", "discord": "mode_discord"}.get(channel)
     if not mode_key:
         return False
     mode = str(prefs.get(mode_key) or "text_only")

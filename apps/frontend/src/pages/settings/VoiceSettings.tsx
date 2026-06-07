@@ -109,6 +109,7 @@ export function VoiceSettings() {
             onChange={(e) => setPrefs((p) => ({ ...p, mode_web: e.target.value }))}
           >
             <option value="push_to_talk">{t("settings:voiceModePushToTalk")}</option>
+            <option value="toggle">{t("settings:voiceModeToggle")}</option>
             <option value="hands_free">{t("settings:voiceModeHandsFree")}</option>
             <option value="realtime">{t("settings:voiceModeRealtime")}</option>
           </select>

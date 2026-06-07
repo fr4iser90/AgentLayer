@@ -10,6 +10,7 @@ from typing import Any, Literal
 
 from apps.backend.infrastructure.voice_env_providers import (
     EnvVoiceProviderRow,
+    SttApiStyle,
     VoiceRole,
     parse_voice_stt_env_providers,
     parse_voice_tts_env_providers,
@@ -37,6 +38,8 @@ class VoiceProviderSpec:
     model_stt: str = "whisper-1"
     model_tts: str = "tts-1"
     model_tts_voice: str = "alloy"
+    stt_api_style: SttApiStyle = "openai"
+    stt_transcribe_path: str | None = None
     source: str = "env"
 
 
@@ -58,6 +61,8 @@ def _env_row_spec(row: EnvVoiceProviderRow) -> VoiceProviderSpec:
             api_key=row.api_key,
             api_header_name=row.api_header_name,
             model_stt=row.model[:128],
+            stt_api_style=row.stt_api_style,
+            stt_transcribe_path=row.stt_transcribe_path,
             source=row.source,
         )
     return VoiceProviderSpec(

@@ -66,6 +66,8 @@ import { TurnNavigator, TurnNavigatorHorizontal, buildTurnItems } from "../featu
 import { useChatScroll } from "../features/chat/useChatScroll";
 import { CollapsibleSidebarShell } from "../layout/CollapsibleSidebarShell";
 import { fetchVoiceStatus, transcribeVoiceBlob, type VoiceStatus } from "../features/voice/voiceApi";
+import { ChatComposerTextarea } from "../features/chat/ChatComposerTextarea";
+import { ChatComposerVoiceControls } from "../features/voice/ChatComposerVoiceControls";
 import { VoiceMicButton } from "../features/voice/VoiceMicButton";
 import { useVoicePlayback } from "../features/voice/useVoicePlayback";
 import { useVoiceRealtime } from "../features/voice/useVoiceRealtime";
@@ -319,6 +321,8 @@ export function ChatPage() {
   const [tokenUsage, setTokenUsage] = useState<TokenUsageTotals>(() => emptyTokenUsage());
   const [chatContextMeta, setChatContextMeta] = useState<ChatContextMeta | null>(null);
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus | null>(null);
+  const [voiceTranscribing, setVoiceTranscribing] = useState(false);
+  const composerTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const voiceStatusRef = useRef<VoiceStatus | null>(null);
   voiceStatusRef.current = voiceStatus;
   const voicePlayback = useVoicePlayback(auth);
@@ -689,7 +693,11 @@ export function ChatPage() {
     const modelLabel = row
       ? modelOptionLabel(row, modelCatalogAgentlayer)
       : model.trim() || t("chat:loadingModels");
-    return `${projectLabel} · ${modeLabel} · ${modelLabel}`;
+    const voiceBits: string[] = [];
+    if (voiceStatus?.output_web) voiceBits.push(t("chat:voiceSummaryTtsOn"));
+    if (voiceStatus?.input_web) voiceBits.push(t("chat:voiceSummarySttOn"));
+    const voiceSuffix = voiceBits.length ? ` · ${voiceBits.join(", ")}` : "";
+    return `${projectLabel} · ${modeLabel} · ${modelLabel}${voiceSuffix}`;
   }, [
     selectedWorkspace?.name,
     mode,
@@ -697,6 +705,8 @@ export function ChatPage() {
     modelSelectValue,
     modelCatalogAgentlayer,
     model,
+    voiceStatus?.output_web,
+    voiceStatus?.input_web,
     t,
   ]);
 
@@ -1783,7 +1793,10 @@ export function ChatPage() {
             agentLiveTurnRef.current.resetAfterCommit();
             const vs = voiceStatusRef.current;
             if (vs?.output_web && content.trim()) {
-              void voiceSpeakRef.current(content, { language: vs.prefs.language });
+              void voiceSpeakRef.current(content, {
+                language: vs.prefs.language,
+                preferServer: Boolean(vs.api_configured),
+              });
             }
           } else if (id && liveLog.length > 0) {
             if (agentChatSession.isPageMounted()) {
@@ -2963,6 +2976,11 @@ export function ChatPage() {
                   {t("chat:agentLlmStreamHint")}
                 </p>
               </div>
+              <ChatComposerVoiceControls
+                auth={auth}
+                voiceStatus={voiceStatus}
+                onVoiceStatusChange={setVoiceStatus}
+              />
               <div className="w-full">
                 <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
                   {t("chat:modelLabel")}
@@ -3267,6 +3285,39 @@ export function ChatPage() {
                   </p>
                 </div>
               ) : null}
+              {voiceTranscribing ? (
+                <div
+                  className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl bg-black/60 backdrop-blur-[2px]"
+                  role="status"
+                  aria-live="polite"
+                  aria-busy="true"
+                >
+                  <div className="flex items-center gap-2.5 rounded-lg border border-white/10 bg-black/70 px-4 py-2.5 text-sm text-neutral-100">
+                    <svg
+                      className="h-4 w-4 shrink-0 animate-spin text-sky-400"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      aria-hidden
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                      />
+                    </svg>
+                    <span>{t("chat:voiceTranscribing")}</span>
+                  </div>
+                </div>
+              ) : null}
               {handsFreeMode && mode === "agent" ? (
                 <VoiceHandsFreeBar
                   active={handsFreeActive}
@@ -3325,25 +3376,23 @@ export function ChatPage() {
                   ))}
                 </ul>
               ) : null}
-              <textarea
-                className="min-h-[52px] w-full resize-none bg-transparent text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none"
-                placeholder={t("chat:composerPlaceholder")}
+              <ChatComposerTextarea
+                ref={composerTextareaRef}
                 value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                rows={2}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    if (loading && (e.metaKey || e.ctrlKey) && canForceSend) {
-                      onForceSend();
-                    } else if (canSend) onSend();
-                    else if (canQueue) onQueue();
-                  }
+                disabled={voiceTranscribing}
+                placeholder={t("chat:composerPlaceholder")}
+                onChange={setDraft}
+                canForceSend={loading && canForceSend}
+                onEnterForceSend={() => onForceSend()}
+                onEnterSend={() => {
+                  if (canSend) onSend();
+                  else if (canQueue) onQueue();
                 }}
               />
               <div className="mt-2 flex items-center justify-between gap-2">
                 <button
                   type="button"
+                  disabled={voiceTranscribing}
                   className="rounded-lg border border-white/10 bg-black/20 p-2 text-surface-muted hover:bg-white/5 hover:text-neutral-200 disabled:opacity-40"
                   title={t("chat:attachTitle")}
                   aria-label={t("chat:attachFiles")}
@@ -3355,17 +3404,24 @@ export function ChatPage() {
                 </button>
                 {mode === "agent" &&
                 voiceStatus?.input_web &&
-                voiceStatus.prefs.mode_web === "push_to_talk" ? (
+                (voiceStatus.prefs.mode_web === "push_to_talk" ||
+                  voiceStatus.prefs.mode_web === "toggle") ? (
                   <VoiceMicButton
-                    disabled={loading}
-                    busy={loading}
-                    title={t("chat:voiceMicTitle")}
-                    ariaLabel={t("chat:voiceMicAria")}
+                    disabled={loading || voiceTranscribing}
+                    busy={loading || voiceTranscribing}
+                    interaction={
+                      voiceStatus.prefs.mode_web === "toggle" ? "toggle" : "hold"
+                    }
+                    onTranscribeStart={() => setVoiceTranscribing(true)}
+                    onTranscribeEnd={() => setVoiceTranscribing(false)}
                     transcribe={(blob) => transcribeVoiceBlob(auth, blob)}
                     onError={(m) => setError(m)}
                     onTranscript={async (transcript) => {
                       if (voiceStatus.prefs.edit_transcript_before_send) {
                         setDraft(transcript);
+                        requestAnimationFrame(() => {
+                          composerTextareaRef.current?.focus();
+                        });
                         return;
                       }
                       if (mode === "agent") {
@@ -3407,7 +3463,7 @@ export function ChatPage() {
                 ) : (
                   <button
                     type="button"
-                    disabled={!canSend}
+                    disabled={!canSend || voiceTranscribing}
                     className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-40"
                     onClick={() => onSend()}
                   >

@@ -336,6 +336,7 @@
   "voiceDisabledOperator": "Voice is off or no VOICE_STT_PROVIDER_* / VOICE_TTS_PROVIDER_* configured. Admin → Interfaces → Platform.",
   "voiceModeWeb": "Web voice mode",
   "voiceModePushToTalk": "Push-to-talk (mic button)",
+  "voiceModeToggle": "Toggle (tap start / stop)",
   "voiceModeHandsFree": "Hands-free (auto-detect speech)",
   "voiceModeRealtime": "Realtime (same as hands-free)",
   "voiceInputEnabled": "Allow microphone / voice input",

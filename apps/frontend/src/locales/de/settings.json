@@ -336,6 +336,7 @@
   "voiceDisabledOperator": "Sprache ist aus oder kein VOICE_STT_PROVIDER_* / VOICE_TTS_PROVIDER_* konfiguriert. Admin → Interfaces → Platform.",
   "voiceModeWeb": "Web-Sprachmodus",
   "voiceModePushToTalk": "Push-to-talk (Mikro-Button)",
+  "voiceModeToggle": "Toggle (Tippen Start / Stopp)",
   "voiceModeHandsFree": "Freisprechen (Sprache automatisch erkennen)",
   "voiceModeRealtime": "Realtime (wie Freisprechen)",
   "voiceInputEnabled": "Mikrofon / Spracheingabe erlauben",

@@ -16,9 +16,12 @@ export type VoiceStatus = {
   ok: boolean;
   operator_enabled: boolean;
   api_configured: boolean;
+  stt_configured?: boolean;
+  tts_configured?: boolean;
   effective_enabled: boolean;
   input_web: boolean;
   output_web: boolean;
+  realtime_web?: boolean;
   prefs: VoicePrefs;
 };
 

@@ -9,6 +9,8 @@ from typing import Any, Literal
 VOICE_ENV_PROVIDER_MAX = 32
 
 VoiceRole = Literal["stt", "tts"]
+SttApiStyle = Literal["openai", "whisper_cpp"]
+TtsApiStyle = Literal["openai"]
 
 
 def strip_env_value(raw: str | None) -> str:
@@ -36,6 +38,8 @@ class EnvVoiceProviderRow:
     api_header_name: str
     model: str
     model_tts_voice: str | None = None
+    stt_api_style: SttApiStyle = "openai"
+    stt_transcribe_path: str | None = None
     source: str = "env"
 
 
@@ -45,6 +49,13 @@ def env_voice_provider_id(role: VoiceRole, index: int) -> str:
 
 def _env_prefix(role: VoiceRole) -> str:
     return "VOICE_STT_PROVIDER_" if role == "stt" else "VOICE_TTS_PROVIDER_"
+
+
+def _normalize_stt_api_style(raw: str | None) -> SttApiStyle:
+    s = (raw or "").strip().lower().replace("-", "_")
+    if s in ("whisper_cpp", "whispercpp", "whisper"):
+        return "whisper_cpp"
+    return "openai"
 
 
 def _read_numbered_env_row(role: VoiceRole, n: int) -> EnvVoiceProviderRow | None:
@@ -64,6 +75,13 @@ def _read_numbered_env_row(role: VoiceRole, n: int) -> EnvVoiceProviderRow | Non
             os.environ.get(f"{prefix}{n}_MODEL_STT")
         ) or "whisper-1"
         tts_voice = None
+        stt_style = _normalize_stt_api_style(
+            strip_opt(os.environ.get(f"{prefix}{n}_API_STYLE"))
+            or strip_opt(os.environ.get(f"{prefix}{n}_STT_API_STYLE"))
+        )
+        stt_path = strip_opt(os.environ.get(f"{prefix}{n}_TRANSCRIBE_PATH")) or strip_opt(
+            os.environ.get(f"{prefix}{n}_STT_PATH")
+        )
     else:
         model = strip_opt(os.environ.get(f"{prefix}{n}_MODEL")) or strip_opt(
             os.environ.get(f"{prefix}{n}_MODEL_TTS")
@@ -73,6 +91,8 @@ def _read_numbered_env_row(role: VoiceRole, n: int) -> EnvVoiceProviderRow | Non
             or strip_opt(os.environ.get(f"{prefix}{n}_VOICE"))
             or "alloy"
         )
+        stt_style = "openai"
+        stt_path = None
     return EnvVoiceProviderRow(
         role=role,
         index=n,
@@ -83,6 +103,8 @@ def _read_numbered_env_row(role: VoiceRole, n: int) -> EnvVoiceProviderRow | Non
         api_header_name=header[:128],
         model=(model or ("whisper-1" if role == "stt" else "tts-1"))[:128],
         model_tts_voice=tts_voice[:64] if tts_voice else None,
+        stt_api_style=stt_style,
+        stt_transcribe_path=(stt_path[:256] if stt_path else None),
         source="env",
     )
 
