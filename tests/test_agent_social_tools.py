@@ -20,15 +20,16 @@ class TestDashboardSharePolicy(unittest.TestCase):
         self.assertEqual(clean["permission"], "edit")
         self.assertEqual(clean["block_ids"], ["pets-album-0"])
 
-    def test_pets_resource_in_catalog(self) -> None:
+    def test_collection_resource_in_catalog(self) -> None:
         from apps.backend.domain.shares.catalog import canonical_resource_type
 
-        self.assertEqual(canonical_resource_type("haustier"), "pets")
+        self.assertEqual(canonical_resource_type("haustier"), "collection")
+        self.assertEqual(canonical_resource_type("pets"), "collection")
         self.assertEqual(canonical_resource_type("dashboard"), "dashboard")
 
 
 class TestGrantMatchesDashboard(unittest.TestCase):
-    def test_uuid_and_primary_pets(self) -> None:
+    def test_uuid_match(self) -> None:
         from apps.backend.domain.shares.dashboard_grant import grant_matches_dashboard
 
         wid = uuid.uuid4()
@@ -37,21 +38,13 @@ class TestGrantMatchesDashboard(unittest.TestCase):
                 dashboard_id=wid,
                 resource_type="dashboard",
                 resource_identifier=str(wid),
-                dashboard_kind="pets",
-            )
-        )
-        self.assertTrue(
-            grant_matches_dashboard(
-                dashboard_id=wid,
-                resource_type="pets",
-                resource_identifier="primary",
-                dashboard_kind="pets",
+                dashboard_kind="custom",
             )
         )
         self.assertFalse(
             grant_matches_dashboard(
                 dashboard_id=wid,
-                resource_type="pets",
+                resource_type="dashboard",
                 resource_identifier="primary",
                 dashboard_kind="custom",
             )
@@ -155,14 +148,15 @@ class TestMessageSendTool(unittest.TestCase):
         self.assertIn("Telegram-Bot", out.get("body", ""))
 
 
-class TestTelegramUploadPolicy(unittest.TestCase):
-    def test_edit_permission_on_pets_share(self) -> None:
+class TestCollectionSharePolicy(unittest.TestCase):
+    def test_edit_permission_on_collection_share(self) -> None:
         clean, err = share_policy.normalize_policy(
-            "pets",
-            {"permission": "edit", "block_ids": ["pets-album-0"]},
+            "collection",
+            {"permission": "edit", "list_keys": ["pets"]},
         )
         self.assertIsNone(err)
         self.assertEqual(clean.get("permission"), "edit")
+        self.assertEqual(clean.get("list_keys"), ["pets"])
 
 
 if __name__ == "__main__":

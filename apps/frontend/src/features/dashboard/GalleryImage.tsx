@@ -7,7 +7,7 @@ import {
   useDashboardPublicShare,
 } from "./DashboardPublicShareContext";
 
-const WS_FILE_PREFIX = "wsfile:";
+const FILE_REF_PREFIX = "file:";
 
 export function GalleryImage(props: { url: string; alt: string; className?: string }) {
   const { t } = useTranslation(["dashboard"]);
@@ -18,7 +18,7 @@ export function GalleryImage(props: { url: string; alt: string; className?: stri
   const blobRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!url.startsWith(WS_FILE_PREFIX)) {
+    if (!url.startsWith(FILE_REF_PREFIX)) {
       if (blobRef.current) {
         URL.revokeObjectURL(blobRef.current);
         blobRef.current = null;
@@ -26,7 +26,7 @@ export function GalleryImage(props: { url: string; alt: string; className?: stri
       setBlobUrl(null);
       return;
     }
-    const id = url.slice(WS_FILE_PREFIX.length).trim();
+    const id = url.slice(FILE_REF_PREFIX.length).trim();
     if (!id) {
       if (blobRef.current) {
         URL.revokeObjectURL(blobRef.current);
@@ -58,7 +58,7 @@ export function GalleryImage(props: { url: string; alt: string; className?: stri
     };
   }, [url, auth, auth.accessToken, publicShareToken, publicSharePassword]);
 
-  if (url.startsWith(WS_FILE_PREFIX)) {
+  if (url.startsWith(FILE_REF_PREFIX)) {
     if (!blobUrl) {
       return (
         <div className="flex h-full min-h-[120px] items-center justify-center text-xs text-surface-muted">

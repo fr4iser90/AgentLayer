@@ -17,7 +17,9 @@ from apps.backend.infrastructure.operator_settings import (
     effective_dashboard_upload_mime,
 )
 from apps.backend.dashboard import db as dashboard_db
-from apps.backend.dashboard import file_storage, files_db, public_share
+from apps.backend.dashboard import file_storage, public_share
+from apps.backend.domain.collections import attachments_db
+from apps.backend.domain.collections import db as col_db
 from apps.backend.dashboard.block_ref import render_block_from_dashboard
 from apps.backend.dashboard.bootstrap import ensure_dashboard_schema, dashboard_tables_exist
 from apps.backend.dashboard.pins import pin_block_to_dashboard
@@ -261,7 +263,7 @@ async def dashboard_file_content(request: Request, file_id: uuid.UUID):
     _require_schema()
     user = await get_current_user(request)
     tid = db.user_tenant_id(user.id)
-    meta = files_db.file_get_with_access(file_id, user.id, tid)
+    meta = attachments_db.attachment_get_with_access(file_id, user.id, tid)
     if not meta:
         raise HTTPException(status_code=404, detail="file not found")
     try:
@@ -279,7 +281,7 @@ async def dashboard_file_delete(request: Request, file_id: uuid.UUID):
     _require_schema()
     user = await get_current_user(request)
     tid = db.user_tenant_id(user.id)
-    rel = files_db.file_delete_with_access(file_id, user.id, tid)
+    rel = attachments_db.attachment_delete_with_access(file_id, user.id, tid)
     if rel is None:
         raise HTTPException(status_code=404, detail="file not found")
     file_storage.unlink_if_exists(config.dashboard_upload_dir(), rel)
@@ -342,28 +344,40 @@ async def dashboard_file_upload(
     except OSError as e:
         raise HTTPException(status_code=500, detail=http_500_detail(e)) from e
 
+    from apps.backend.domain.collections import service as domain_svc
+
+    bindings = domain_svc.resolve_bindings_for_dashboard(ws)
+    default_slug = next(iter(bindings.values()), None) if bindings else None
+    collection_id = None
+    if default_slug:
+        col = col_db.collection_get(user.id, default_slug)
+        if col:
+            collection_id = uuid.UUID(str(col["id"]))
+
     try:
-        row = files_db.file_insert(
+        row = col_db.attachment_insert(
             tenant_id=tid,
             owner_user_id=user.id,
-            dashboard_id=dashboard_id,
             storage_relpath=relpath,
             content_type=sniff,
             size_bytes=len(data),
             original_name=name,
+            collection_id=collection_id,
+            dashboard_id=dashboard_id,
         )
     except Exception:
         file_storage.unlink_if_exists(config.dashboard_upload_dir(), relpath)
         raise
 
+    gallery_ref = str(row.get("gallery_ref") or f"file:{row['id']}")
     return {
         "ok": True,
         "file": {
             "id": row["id"],
-            "dashboard_id": row["dashboard_id"],
+            "dashboard_id": str(dashboard_id),
             "content_type": row["content_type"],
             "size_bytes": row["size_bytes"],
-            "gallery_ref": f"wsfile:{row['id']}",
+            "gallery_ref": gallery_ref,
         },
     }
 

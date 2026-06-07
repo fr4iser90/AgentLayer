@@ -11,7 +11,7 @@ from apps.backend.infrastructure.db import db
 
 __version__ = "1.0.0"
 TOOL_ID = "info"
-TOOL_BUCKET = "core"
+TOOL_BUCKET = "comms"
 TOOL_DOMAIN = "friends"
 TOOL_TRIGGERS = (
     "wer ist",

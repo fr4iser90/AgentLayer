@@ -53,8 +53,12 @@ def test_dashboard_read_and_patch_data() -> None:
         "title": "Test",
         "ui_layout": {"version": 1, "blocks": []},
         "data": {"notes": "hello"},
+        "data_source": "domain",
         "access_role": "owner",
         "access_scope": "full",
+        "owner_user_id": str(uid),
+        "tenant_id": tid,
+        "view_bindings": {},
     }
 
     with (
@@ -68,8 +72,8 @@ def test_dashboard_read_and_patch_data() -> None:
             return_value=ws,
         ),
         patch(
-            "plugins.tools.personal.dashboard.dashboard.dashboard_db.dashboard_update",
-            return_value=ws,
+            "apps.backend.domain.collections.service.patch_fields",
+            return_value={"ok": True, "source": "domain", "applied": [{"path": "notes"}]},
         ) as mock_up,
     ):
         read_out = json.loads(mod.read({"dashboard_id": str(wid)}))
@@ -86,10 +90,8 @@ def test_dashboard_read_and_patch_data() -> None:
         )
     assert patch_out["ok"] is True
     mock_up.assert_called_once()
-    sent_data = mock_up.call_args.kwargs.get("data") or mock_up.call_args[1].get("data")
-    if sent_data is None and len(mock_up.call_args[0]) >= 4:
-        sent_data = mock_up.call_args[0][3]
-    assert sent_data["notes"] == "updated"
+    kw = mock_up.call_args.kwargs
+    assert kw.get("patches") == [{"path": "notes", "value": "updated"}]
 
 
 def test_dashboard_patch_layout_viewer() -> None:

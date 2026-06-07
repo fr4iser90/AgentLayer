@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from apps.backend.dashboard import public_share
+from apps.backend.domain.collections.attachments_db import file_ids_in_value
 
 
 def test_hash_share_token_deterministic() -> None:
@@ -21,13 +22,13 @@ def test_hash_share_password_bound_to_token_hash() -> None:
     assert a != c
 
 
-def test_wsfile_ids_in_nested_data() -> None:
+def test_file_ids_in_nested_data() -> None:
     data = {
-        "photos": [{"url": "wsfile:111", "caption": "a"}],
-        "albums": [{"photos": [{"url": "https://x.test/p.jpg"}, {"url": "wsfile:222"}]}],
+        "photos": [{"url": "file:111", "caption": "a"}],
+        "albums": [{"photos": [{"url": "https://x.test/p.jpg"}, {"url": "file:222"}]}],
         "notes": "plain",
     }
-    ids = public_share._wsfile_ids_in_value(data)
+    ids = file_ids_in_value(data)
     assert ids == {"111", "222"}
 
 

@@ -20,7 +20,7 @@ from apps.backend.dashboard.create_helpers import (
     validate_create_kind,
     validate_template_id,
 )
-from apps.backend.dashboard.data_paths import apply_data_patches, top_level_key
+from apps.backend.dashboard.data_paths import get_path, top_level_key
 from apps.backend.dashboard.tool_dashboard_resolve import resolve_dashboard_id
 from apps.backend.dashboard.layout_tree import (
     count_layout_blocks,
@@ -32,6 +32,7 @@ from apps.backend.dashboard.data_compute import (
     finalize_dashboard_data,
     patches_should_recompute_stats,
 )
+from apps.backend.dashboard.file_upload import upload_dashboard_image
 from apps.backend.dashboard.list_ops import (
     append_list_rows,
     delete_list_row,
@@ -165,7 +166,7 @@ def _truncate_for_read(obj: Any) -> Any:
     return {
         "_truncated": True,
         "chars": len(raw),
-        "hint": "Use narrower paths or kind-specific read tools; data too large for one response.",
+        "hint": "Use narrower data paths or dashboard.read with paths; payload too large for one response.",
     }
 
 
@@ -652,19 +653,36 @@ def patch_data(arguments: dict[str, Any]) -> str:
         return _err("patches must be a non-empty array of {path, value}")
     if len(patches) > _MAX_PATCHES:
         return _err(f"at most {_MAX_PATCHES} patches per call")
-    data = dict(ws.get("data") or {})
     allowed = _allowed_data_keys(ws)
-    new_data, perr = apply_data_patches(data, patches, allowed_top_keys=allowed)
-    if perr:
-        return _err(perr)
-    if patches_should_recompute_stats(patches, ws.get("ui_layout")):
-        new_data = finalize_dashboard_data(
-            new_data,
-            ws.get("ui_layout") if isinstance(ws.get("ui_layout"), dict) else None,
-        )
-    updated = dashboard_db.dashboard_update(uid, tid, wid, data=new_data)
-    if updated is None:
-        return _err("could not update dashboard (viewer or conflict)")
+    norm_patches: list[dict[str, Any]] = []
+    for p in patches:
+        if not isinstance(p, dict):
+            continue
+        path = str(p.get("path") or "").strip()
+        if not path:
+            continue
+        if allowed is not None and top_level_key(path) not in allowed:
+            return _err(f"granular share cannot write data.{top_level_key(path)!r}")
+        norm_patches.append({"path": path, "value": p.get("value")})
+
+    from apps.backend.domain.collections import service as domain_svc
+
+    owner_raw = ws.get("owner_user_id")
+    try:
+        owner_uid = uuid.UUID(str(owner_raw)) if owner_raw else uid
+    except (ValueError, TypeError):
+        owner_uid = uid
+    row_tid = int(ws.get("tenant_id") or tid)
+    bindings = domain_svc.resolve_bindings_for_dashboard(ws)
+    result = domain_svc.patch_fields(
+        owner_user_id=owner_uid,
+        tenant_id=row_tid,
+        bindings=bindings,
+        ui_layout=ws.get("ui_layout") if isinstance(ws.get("ui_layout"), dict) else None,
+        patches=norm_patches,
+    )
+    if not result.get("ok"):
+        return _err(str(result.get("error") or "domain patch failed"))
     from apps.backend.infrastructure.notifications_service import notify_dashboard_agent_update
 
     notify_dashboard_agent_update(
@@ -710,7 +728,28 @@ def patch_layout(arguments: dict[str, Any]) -> str:
     new_ul, new_data, lerr = _apply_layout_ops(ul, data, ops, allowed_block_ids=None)
     if lerr:
         return _err(lerr)
-    updated = dashboard_db.dashboard_update(uid, tid, wid, ui_layout=new_ul, data=new_data)
+    if new_data != data:
+        from apps.backend.domain.collections import service as domain_svc
+
+        owner_raw = ws.get("owner_user_id")
+        try:
+            owner_uid = uuid.UUID(str(owner_raw)) if owner_raw else uid
+        except (ValueError, TypeError):
+            owner_uid = uid
+        bindings = domain_svc.resolve_bindings_for_dashboard(ws)
+        patches = []
+        for key, val in new_data.items():
+            if get_path(data, key) != val:
+                patches.append({"path": key, "value": val})
+        if patches:
+            domain_svc.patch_fields(
+                owner_user_id=owner_uid,
+                tenant_id=int(ws.get("tenant_id") or tid),
+                bindings=bindings,
+                ui_layout=new_ul,
+                patches=patches,
+            )
+    updated = dashboard_db.dashboard_update(uid, tid, wid, ui_layout=new_ul)
     if updated is None:
         return _err("could not update dashboard (viewer or conflict)")
     blocks = new_ul.get("blocks") if isinstance(new_ul.get("blocks"), builtins.list) else []
@@ -771,7 +810,7 @@ def invite_member(arguments: dict[str, Any]) -> str:
         )
     if db.user_tenant_id(target.id) != tid:
         return _err(
-            "user must be in the same tenant — use friends.shares with resource_type pets/dashboard "
+            "user must be in the same tenant — use friends.shares with resource_type collection/dashboard "
             "for cross-tenant friends"
         )
 
@@ -1175,6 +1214,40 @@ def list_delete(arguments: dict[str, Any]) -> str:
     return json.dumps(result, ensure_ascii=False, default=str)
 
 
+def upload_file(arguments: dict[str, Any]) -> str:
+    ident = _identity()
+    if ident is None:
+        return _err("No user identity — dashboard tools need an authenticated chat user.")
+    tid, uid = ident
+    wid, res_err = resolve_dashboard_id(uid, tid, arguments.get("dashboard_id"))
+    if wid is None:
+        return _err(res_err or "dashboard_id required")
+
+    url = str(arguments.get("url") or "").strip() or None
+    b64 = arguments.get("base64_data")
+    base64_data = str(b64).strip() if b64 is not None and str(b64).strip() else None
+    if not url and not base64_data:
+        return _err("url or base64_data required")
+
+    append_list_path = str(arguments.get("append_list_path") or "").strip() or None
+    caption = str(arguments.get("caption") or "").strip()
+    original_name = str(arguments.get("original_name") or "upload.jpg").strip() or "upload.jpg"
+
+    result = upload_dashboard_image(
+        uid,
+        tid,
+        wid,
+        url=url,
+        base64_data=base64_data,
+        original_name=original_name,
+        append_list_path=append_list_path,
+        caption=caption,
+    )
+    if not result.get("ok"):
+        return _err(str(result.get("error") or "upload failed"))
+    return json.dumps(result, ensure_ascii=False, default=str)
+
+
 HANDLERS: dict[str, Callable[[dict[str, Any]], str]] = {
     "create_dashboard": create_dashboard,
     "list": list,
@@ -1182,6 +1255,7 @@ HANDLERS: dict[str, Callable[[dict[str, Any]], str]] = {
     "list_append": list_append,
     "list_update": list_update,
     "list_delete": list_delete,
+    "upload_file": upload_file,
     "patch_data": patch_data,
     "patch_layout": patch_layout,
     "create_public_share": create_public_share,
@@ -1252,7 +1326,7 @@ TOOLS: list[dict[str, Any]] = [
             "TOOL_DESCRIPTION": (
                 "Read one dashboard: kind, title, ui_layout, data JSON, block_ids. "
                 "Omit dashboard_id only when the user has exactly one board. "
-                "Prefer kind-specific read tools (ideas_read, pets_read) when kind matches."
+                "Use list_path from ui_layout block props.dataPath (e.g. pets, items, tasks, albums.0.photos)."
             ),
             "parameters": {
                 "type": "object",
@@ -1343,6 +1417,47 @@ TOOLS: list[dict[str, Any]] = [
                     "row_id": {"type": "string"},
                 },
                 "required": ["row_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "upload_file",
+            "TOOL_DESCRIPTION": (
+                "Upload an image to user_attachments; returns gallery_ref file:{uuid}. "
+                "Source: public url or base64_data. Optional append_list_path (e.g. albums.0.photos) "
+                "with caption. Otherwise patch_data hero.url or list_append manually."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "dashboard_id": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": "UUID; omit if unambiguous.",
+                    },
+                    "url": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": "Public HTTPS image URL (SSRF-safe fetch).",
+                    },
+                    "base64_data": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": "Base64 or data:image/...;base64,... payload.",
+                    },
+                    "original_name": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": "Filename hint (default upload.jpg).",
+                    },
+                    "append_list_path": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": "Optional list path to append {url, caption} row.",
+                    },
+                    "caption": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": "Caption when append_list_path is set.",
+                    },
+                },
+                "required": [],
             },
         },
     },
@@ -1452,7 +1567,7 @@ TOOLS: list[dict[str, Any]] = [
             "TOOL_DESCRIPTION": (
                 "Invite another user to a dashboard as viewer, editor, or co_owner (same tenant). "
                 "Pass email or a contact/friend name. Editors can upload gallery photos. "
-                "For friends in another tenant use friends.shares with resource_type pets or dashboard."
+                "For friends in another tenant use friends.shares with resource_type collection or dashboard."
             ),
             "parameters": {
                 "type": "object",

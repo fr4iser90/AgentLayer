@@ -46,12 +46,12 @@
       "policy_fields": ["permission", "block_ids", "expires_at"]
     },
     {
-      "id": "pets",
-      "icon": "🐾",
-      "label": { "en": "Pets dashboard", "de": "Haustier-Dashboard" },
-      "aliases": ["haustier", "haustiere", "pet"],
-      "default_identifier": "primary",
-      "policy_fields": ["permission", "block_ids", "expires_at"]
+      "id": "collection",
+      "icon": "🗂️",
+      "label": { "en": "Data collection", "de": "Daten-Collection" },
+      "aliases": ["pets", "haustier", "haustiere", "pet", "data"],
+      "default_identifier": "pets",
+      "policy_fields": ["permission", "list_keys", "expires_at"]
     }
   ]
 }

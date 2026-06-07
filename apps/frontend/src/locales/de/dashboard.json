@@ -336,7 +336,7 @@
   "catalogInstalledBadge": "Installiert",
   "catalogCreateDashboardBtn": "Neues Dashboard",
   "backToDashboards": "← Dashboards",
-  "agentPromptExtraPlaceholder": "z. B. Du hilfst bei Haustier-Pflege; nutze bevorzugt pets_* Tools mit dieser dashboard_id …",
+  "agentPromptExtraPlaceholder": "z. B. Du hilfst bei Haustier-Pflege; nutze dashboard.list_append und patch_data mit dieser dashboard_id …",
   "agentPromptExtraSavedHint": "Gespeichert unter data._agentlayer.system_prompt_extra (max. ca. 8000 Zeichen serverseitig).",
   "agentPromptScrollHint": "↓ Direkt darunter (eigene Karte): Tool-Präferenzen — bei kleinem Fenster nach unten scrollen.",
   "shareToolNamePlaceholder": "function_name",

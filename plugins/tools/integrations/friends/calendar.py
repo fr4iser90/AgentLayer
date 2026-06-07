@@ -21,7 +21,7 @@ from apps.backend.domain.friends.common import (
 
 __version__ = "1.0.0"
 TOOL_ID = "calendar"
-TOOL_BUCKET = "core"
+TOOL_BUCKET = "comms"
 TOOL_DOMAIN = "friends"
 TOOL_TRIGGERS = (
     "wann muss",

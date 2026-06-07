@@ -132,7 +132,7 @@ def setup_tool_payload(kind: str, lang: str = "en") -> dict[str, Any] | None:
         },
         "setup_hint": (
             "Run the onboarding conversation: greet the user using onboarding.preferred (or de/en), "
-            "offer the listed steps, and use the suggested kind-specific tools. "
+            "offer the listed steps, and use the suggested dashboard tools (list_append, patch_data, …). "
             "Do not install schema — only fill this board."
         ),
     }

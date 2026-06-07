@@ -38,7 +38,7 @@ TOOL_TRIGGERS = (
 TOOL_LABEL = "Mail"
 TOOL_DESCRIPTION = (
     "Search, read, and send email (IMAP + SMTP). Works with Gmail, Outlook, GMX, Yahoo, Proton (Bridge). "
-    "Credentials come from Settings → Connections; optional provider argument selects one when several are set."
+    "Credentials from Settings → Connections. Does not write dashboards — store notes via dashboard.patch_data if needed."
 )
 TOOL_SECRETS_REQUIRED = tuple(
     sorted({k for spec in MAIL_PROVIDERS.values() for k in spec.secret_keys})

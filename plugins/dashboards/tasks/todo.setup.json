@@ -6,14 +6,14 @@
     "en": "Your task list — check off tasks, optional due hints, and notes below."
   },
   "agent_prompt": {
-    "de": "Onboarding für todo (Task-Liste). Nutze todo_add_tasks für Checkbox-Aufgaben. Notizen in data.notes mit patch_data wenn der Nutzer will. Nicht mit ideas oder shopping verwechseln. Kein Schema installieren.",
-    "en": "Onboarding for todo task lists. Use todo_add_tasks for checkbox tasks. Notes in data.notes with patch_data if needed. Do not confuse with ideas or shopping. Do not install schema."
+    "de": "Onboarding für todo. dashboard.read, dann list_append für tasks (list_path aus Layout). Notizen mit patch_data auf data.notes. Kein Schema installieren.",
+    "en": "Onboarding for todo. dashboard.read, then list_append for tasks (list_path from layout). Notes with patch_data on data.notes. Do not install schema."
   },
   "steps": [
     {
       "id": "add_tasks",
       "label": { "de": "Aufgaben anlegen", "en": "Add tasks" },
-      "tool_hint": "todo_add_tasks"
+      "tool_hint": "list_append"
     },
     {
       "id": "notes",
@@ -21,7 +21,7 @@
       "tool_hint": "patch_data"
     }
   ],
-  "suggested_tools": ["todo", "dashboard"],
+  "suggested_tools": ["dashboard"],
   "chat_starters": {
     "de": [
       "Heute: E-Mails, Sport, Einkaufen — als Tasks anlegen.",

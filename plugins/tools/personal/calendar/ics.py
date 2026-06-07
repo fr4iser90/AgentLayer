@@ -29,7 +29,7 @@ TOOL_DOMAIN = "calendar"
 TOOL_LABEL = "Calendar"
 TOOL_DESCRIPTION = (
     "Read events from ICS/iCal URLs (Google Calendar secret link, Nextcloud, etc.). "
-    "Use for work shifts, hours, and time off when the user asks — no need for them to say \"calendar\" explicitly."
+    "Read-only connector — does not write dashboards; use dashboard.patch_data to save notes or events."
 )
 # Router: registry matches user text (lowercased) by **substring** against each entry; union of categories → tools[].
 # Keep triggers in this module only — not in ``tool_routing.py``.

@@ -6,14 +6,20 @@ tags: [dashboards, ui, sharing]
 
 ## What it is
 
-Dashboards are generic dashboards stored as:
+**Source of truth:** user data lives in the **domain layer** (`user_collections`, `collection_items`, `user_attachments`). Dashboards are **views/projections** only.
+
+Dashboard rows in `user_dashboards` store:
 
 - `ui_layout` (blocks + grid positions)
-- `data` (JSON payload for blocks)
+- `view_bindings` (optional map `dataPath → collection_slug`)
 - `kind` (template kind)
 - sharing/access (`access_role`)
 
-Backend stores them in `user_dashboards` (created by `dashboard/**/migrations/001_user_dashboards.sql`).
+On **read**, `dashboard_get` projects domain collections into the `data` shape the UI expects (`data_source: "domain"`). On **write**, `list_append`, `patch_data`, and uploads go through domain services — `user_dashboards.data` is **not** updated (legacy JSON may be imported once on first projection).
+
+Chat-only users can use `collection.*` tools without any dashboard (`collection.item_append(slug: "pets", …)`).
+
+Backend: `apps/backend/domain/collections/` (CRUD, bindings, projection, service). Migration: `schema_083_user_collections`.
 
 ## Backend
 
@@ -81,7 +87,7 @@ Helper functions:
 
 ## Agent tools (dashboard id)
 
-For built-in kinds with dedicated tools (`pets`, `ideas`, `shopping_list`), `dashboard_id` may be **omitted** when the user has exactly **one** dashboard of that `kind`; the server picks it automatically. If there are several, the tool returns a short list of `id` + `title` so the model can ask or pass the UUID. Logic: `src/dashboard/tool_dashboard_resolve.py`.
+`dashboard_id` may be **omitted** when the user has exactly **one** dashboard; the server picks it automatically. If there are several, the tool returns a short list of `id` + `title` so the model can ask or pass the UUID. If none exist, call `dashboard.create_dashboard` first. Logic: `apps/backend/dashboard/tool_dashboard_resolve.py`.
 
 ### Generic tools (any kind)
 
@@ -91,11 +97,29 @@ Module: `plugins/tools/personal/dashboard/dashboard.py`
 |------|---------|
 | `list` | All accessible boards (`id`, `kind`, `title`, `access_role`) |
 | `read` | `ui_layout`, `data`, `block_ids` (large payloads may truncate) |
-| `patch_data` | `{path, value}` patches on `data` (dotted paths; granular shares: allowed keys only) |
+| `list_append` | Append rows via domain (`list_path` + `rows`; dedupe optional) |
+| `list_update` | Update rows by `id` (domain) |
+| `list_delete` | Remove rows by `id` (domain) |
+| `upload_file` | Image → `user_attachments`; returns `file:{uuid}`; optional `append_list_path` |
+| `patch_data` | Scalar/list patches on domain collections (dotted paths; granular shares: allowed keys only) |
 | `patch_layout` | `add_block`, `remove_block`, `set_grid`, `set_props` (not for granular block-only shares) |
 | `create_public_share` | Public read-only link; optional `block_ids`, `expires_at`, `password` (returns `token` + `url_path` once) |
 
-Capabilities: `dashboard.read`, `dashboard.write`. Prefer kind-specific tools when they exist.
+Capabilities: `dashboard.read`, `dashboard.write`. Use `list_append` / `list_update` / `list_delete` for table rows; `list_path` comes from block `props.dataPath` in `ui_layout` (or pass explicitly, e.g. `pets`, `items`, `albums.0.photos`).
+
+### Domain tools (no dashboard required)
+
+Module: `plugins/tools/domain/collections/collections.py`
+
+| Tool | Purpose |
+|------|---------|
+| `collection.ensure` | Create or fetch a collection by `slug` |
+| `collection.item_append` | Append rows to a list key |
+| `collection.items_list` | List rows |
+| `collection.metadata_patch` | Patch scalar metadata on the collection |
+| `collection.item_update` / `collection.item_delete` | Row CRUD |
+
+Use these when the user has no board or when sharing data across multiple views (`view_bindings` / `props.collectionSlug`).
 
 ## Terminology: dashboard vs project path
 
@@ -119,12 +143,12 @@ Example block props:
 
 ## Files / uploads
 
-Uploads produce a `wsfile:<uuid>` reference.
+Uploads produce a `file:<uuid>` reference (`user_attachments`).
 
 - Upload endpoint: `POST /v1/dashboards/{dashboard_id}/files`
 - Content fetch: `GET /v1/dashboards/files/{id}/content`
 
-Frontend renders `wsfile:` via:
+Frontend renders `file:` via:
 
 - `interfaces/agent-ui/src/features/dashboard/DashboardBlocks.tsx` (`GalleryImage`)
 

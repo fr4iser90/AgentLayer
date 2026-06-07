@@ -16,34 +16,10 @@ PACKAGE_UI_DEFAULTS: dict[str, dict[str, Any]] = {
         "display_name": "Todos",
         "order": 20,
     },
-    "todo": {
-        "category": "productivity",
-        "display_name": "Task list",
-        "order": 21,
-        "tagline": "List, read, and add tasks on kind=todo dashboards",
-    },
     "calendar_ics": {
         "category": "productivity",
         "display_name": "Calendar",
         "order": 30,
-    },
-    "shopping_list": {
-        "category": "productivity",
-        "display_name": "Shopping list",
-        "order": 25,
-        "tagline": "List, read, and add items on shopping_list dashboards",
-    },
-    "pets": {
-        "category": "productivity",
-        "display_name": "Pets",
-        "order": 26,
-        "tagline": "Read and update pets dashboards (animals, notes, album photos)",
-    },
-    "ideas": {
-        "category": "productivity",
-        "display_name": "Ideas & memos",
-        "order": 27,
-        "tagline": "Read and update ideas dashboards (idea table + scratchpad)",
     },
     "clock": {
         "category": "productivity",
@@ -65,6 +41,18 @@ PACKAGE_UI_DEFAULTS: dict[str, dict[str, Any]] = {
         "category": "knowledge",
         "display_name": "Web Search",
         "order": 30,
+    },
+    "http": {
+        "category": "network",
+        "display_name": "HTTP",
+        "order": 5,
+        "tagline": "Generic SSRF-safe API calls with user-secret auth",
+    },
+    "connector": {
+        "category": "network",
+        "display_name": "API connector",
+        "order": 6,
+        "tagline": "Save and run reusable HTTP API profiles",
     },
     "github": {
         "category": "developer",

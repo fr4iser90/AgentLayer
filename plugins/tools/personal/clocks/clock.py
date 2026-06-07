@@ -13,7 +13,10 @@ TOOL_ID = "clock"
 TOOL_BUCKET = "comms"
 TOOL_DOMAIN = "clocks"
 TOOL_LABEL = "Clocks"
-TOOL_DESCRIPTION = "Current time and IANA timezone names (no database)."
+TOOL_DESCRIPTION = (
+    "Current time and IANA timezone names (no database). "
+    "Read-only — use dashboard.patch_data if the user wants time saved on a board."
+)
 TOOL_TRIGGERS = ("timezone", "utc", "what time", "clock", "zoneinfo")
 TOOL_CAPABILITIES = ("time.query",)
 

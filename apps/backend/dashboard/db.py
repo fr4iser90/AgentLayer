@@ -12,7 +12,6 @@ from psycopg.types.json import Json
 
 from apps.backend.core.config import config
 from apps.backend.infrastructure.db import db
-from apps.backend.dashboard import file_storage, files_db
 from apps.backend.dashboard.defaults import defaults_for_kind
 from apps.backend.dashboard.layout_tree import (
     data_paths_from_blocks,
@@ -230,16 +229,18 @@ def _dashboard_update_granular(
             new_ul = full_ul
             new_dt = full_dt
             if data is not None:
-                new_dt = _merge_granular_data(full_dt, data, full_ul, allowed)
+                _ = _merge_granular_data(full_dt, data, full_ul, allowed)
+                logger.debug(
+                    "granular data merge ignored for %s — use domain collections",
+                    dashboard_id,
+                )
             if ui_layout is not None:
                 new_ul = _merge_ui_layout_granular(full_ul, ui_layout, allowed)
-            if new_ul == full_ul and new_dt == full_dt:
+            if new_ul == full_ul:
                 conn.commit()
                 return dashboard_get(user_id, tenant_id, dashboard_id)
             sets.append("ui_layout = %s")
             args.append(Json(new_ul))
-            sets.append("data = %s")
-            args.append(Json(new_dt))
             sets.append("updated_at = now()")
             args.extend([dashboard_id, tenant_id, user_id])
             # SECURITY: Column names in `sets` come from function parameters
@@ -487,7 +488,8 @@ def dashboard_get(user_id: uuid.UUID, tenant_id: int, dashboard_id: uuid.UUID) -
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
                 """
-                SELECT id, kind, template_id, title, ui_layout, data, created_at, updated_at
+                SELECT id, kind, template_id, title, ui_layout, data, view_bindings,
+                       owner_user_id, tenant_id, created_at, updated_at
                 FROM user_dashboards
                 WHERE id = %s AND tenant_id = %s
                 """,
@@ -497,7 +499,35 @@ def dashboard_get(user_id: uuid.UUID, tenant_id: int, dashboard_id: uuid.UUID) -
         conn.commit()
     if not row:
         return None
-    out = _row_dict(dict(row))
+    raw = dict(row)
+    legacy_data = raw.get("data") if isinstance(raw.get("data"), dict) else {}
+    out = _row_dict(raw)
+    out["owner_user_id"] = str(raw.get("owner_user_id") or "")
+    out["tenant_id"] = int(raw.get("tenant_id") or row_tid)
+    vb = raw.get("view_bindings")
+    out["view_bindings"] = vb if isinstance(vb, dict) else {}
+
+    from apps.backend.domain.collections.projection import project_dashboard_data
+
+    owner_uid = raw.get("owner_user_id")
+    if isinstance(owner_uid, uuid.UUID):
+        owner_uuid = owner_uid
+    else:
+        try:
+            owner_uuid = uuid.UUID(str(owner_uid))
+        except (ValueError, TypeError):
+            owner_uuid = user_id
+
+    out["data"] = project_dashboard_data(
+        dashboard_id=dashboard_id,
+        owner_user_id=owner_uuid,
+        tenant_id=int(raw.get("tenant_id") or row_tid),
+        ui_layout=out.get("ui_layout") if isinstance(out.get("ui_layout"), dict) else {},
+        view_bindings=out["view_bindings"],
+        template_id=out.get("template_id"),
+        legacy_data=legacy_data,
+    )
+    out["data_source"] = "domain"
     out["access_role"] = d.role
     if d.allowed_block_ids is not None:
         ul = out.get("ui_layout") if isinstance(out.get("ui_layout"), dict) else {}
@@ -550,9 +580,12 @@ def dashboard_update(
     if ui_layout is not None:
         sets.append("ui_layout = %s")
         args.append(Json(ui_layout))
+    # Domain collections are source of truth — do not persist board content in user_dashboards.data.
     if data is not None:
-        sets.append("data = %s")
-        args.append(Json(data))
+        logger.debug(
+            "dashboard_update ignored data payload for %s (use domain collections)",
+            dashboard_id,
+        )
     if not sets:
         return dashboard_get(user_id, tenant_id, dashboard_id)
     sets.append("updated_at = now()")
@@ -601,11 +634,6 @@ def dashboard_delete(user_id: uuid.UUID, tenant_id: int, dashboard_id: uuid.UUID
         conn.commit()
     if not ok:
         return False
-
-    rels = files_db.files_delete_all_for_dashboard_owner(dashboard_id, user_id, tenant_id)
-    root = config.dashboard_upload_dir()
-    for rel in rels:
-        file_storage.unlink_if_exists(root, rel)
 
     with db.pool().connection() as conn:
         with conn.cursor() as cur:

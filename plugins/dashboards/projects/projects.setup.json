@@ -6,8 +6,8 @@
     "en": "Your projects portfolio is ready — repos as cards or a table, KPIs on top, runs from the detail panel."
   },
   "agent_prompt": {
-    "de": "Onboarding für kind projects (Template-Beispiel). Zuerst dashboard.read. Daten: github.list_repos → dashboard.list_append; security_scan.resolve → dashboard.list_update; workspace.create für Klone. Layout: hero/stat/card_grid/section/table. KPIs via props.compute.",
-    "en": "Onboarding for kind projects (template example). Start with dashboard.read. Data: github.list_repos then dashboard.list_append; security_scan.resolve then dashboard.list_update; workspace.create for clones. Layout: dashboard.patch_layout. KPI stat blocks use props.compute on any list dataPath."
+    "de": "Onboarding für kind projects. dashboard.read zuerst. Daten: github.list_repos → dashboard.list_append; security_scan.resolve → dashboard.list_update; workspaces.create für Klone, dann dashboard.list_update (workspace_id). Layout: dashboard.patch_layout.",
+    "en": "Onboarding for kind projects. Start with dashboard.read. Data: github.list_repos then dashboard.list_append; security_scan.resolve then dashboard.list_update; workspaces.create for clones then dashboard.list_update (workspace_id). Layout: dashboard.patch_layout."
   },
   "steps": [
     {
@@ -18,12 +18,12 @@
     {
       "id": "add_manual",
       "label": { "de": "Projekt manuell eintragen", "en": "Add a project manually" },
-      "tool_hint": "projects.add_rows"
+      "tool_hint": "list_append"
     },
     {
       "id": "link_workspace",
       "label": { "de": "Workspace verknüpfen / klonen", "en": "Link or clone workspace" },
-      "tool_hint": "projects.link_workspace"
+      "tool_hint": "workspaces.create"
     },
     {
       "id": "layout_portfolio",
@@ -31,7 +31,7 @@
       "tool_hint": "dashboard.patch_layout"
     }
   ],
-  "suggested_tools": ["projects", "dashboard", "workspaces"],
+  "suggested_tools": ["dashboard", "github", "workspaces"],
   "chat_starters": {
     "de": [
       "Importiere alle meine GitHub-Repos.",

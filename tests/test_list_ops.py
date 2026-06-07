@@ -14,11 +14,20 @@ from apps.backend.dashboard.list_ops import (
 )
 
 
-def _dashboard_row(*, data: dict | None = None, layout: dict | None = None) -> dict:
+def _dashboard_row(
+    *,
+    dashboard_id: uuid.UUID | None = None,
+    data: dict | None = None,
+    layout: dict | None = None,
+) -> dict:
     return {
+        "id": str(dashboard_id or uuid.uuid4()),
         "kind": "custom",
         "access_role": "owner",
         "access_scope": "full",
+        "owner_user_id": str(uuid.uuid4()),
+        "tenant_id": 1,
+        "view_bindings": {},
         "data": data or {},
         "ui_layout": layout
         or {
@@ -51,13 +60,21 @@ class TestListOps(unittest.TestCase):
         self.assertEqual(resolve_list_path(ws, None), "repos")
         self.assertEqual(resolve_list_path(ws, "events"), "events")
 
+    @patch("apps.backend.dashboard.list_ops.domain_svc.append_items")
+    @patch("apps.backend.dashboard.list_ops.domain_svc.resolve_bindings_for_dashboard")
     @patch("apps.backend.dashboard.list_ops.dashboard_db.dashboard_get")
-    @patch("apps.backend.dashboard.list_ops.dashboard_db.dashboard_update")
-    def test_append_recomputes_stats(self, mock_update, mock_get) -> None:
+    def test_append_writes_domain(self, mock_get, mock_bindings, mock_append) -> None:
         uid = uuid.uuid4()
         did = uuid.uuid4()
-        mock_get.return_value = _dashboard_row(data={"repos": [], "stat_total": {"value": 0}})
-        mock_update.return_value = {"id": str(did)}
+        mock_get.return_value = _dashboard_row(data={"repos": []})
+        mock_bindings.return_value = {"repos": "my-repos"}
+        mock_append.return_value = {
+            "ok": True,
+            "source": "domain",
+            "added_count": 1,
+            "total_count": 1,
+            "added": [{"id": "r_x", "title": "Alpha"}],
+        }
 
         result = append_list_rows(
             uid,
@@ -66,53 +83,66 @@ class TestListOps(unittest.TestCase):
             rows=[{"title": "Alpha", "remote_url": "https://github.com/a/b"}],
         )
         self.assertTrue(result.get("ok"))
-        self.assertEqual(result.get("added_count"), 1)
-        saved = mock_update.call_args.kwargs.get("data") or mock_update.call_args[0][3]
-        if isinstance(mock_update.call_args, tuple):
-            saved = mock_update.call_args[0][3] if len(mock_update.call_args[0]) > 3 else saved
-        # dashboard_update(user_id, tenant_id, dashboard_id, data=...)
-        saved = mock_update.call_args.kwargs["data"]
-        self.assertEqual(len(saved["repos"]), 1)
-        self.assertEqual(saved["stat_total"]["value"], "1")
+        self.assertEqual(result.get("source"), "domain")
+        mock_append.assert_called_once()
 
+    @patch("apps.backend.dashboard.list_ops.domain_svc.delete_item")
+    @patch("apps.backend.dashboard.list_ops.domain_svc.update_item")
+    @patch("apps.backend.dashboard.list_ops.domain_svc.resolve_bindings_for_dashboard")
     @patch("apps.backend.dashboard.list_ops.dashboard_db.dashboard_get")
-    @patch("apps.backend.dashboard.list_ops.dashboard_db.dashboard_update")
-    def test_update_and_delete_row(self, mock_update, mock_get) -> None:
+    def test_update_and_delete_row(self, mock_get, mock_bindings, mock_update, mock_delete) -> None:
         uid = uuid.uuid4()
         did = uuid.uuid4()
         row_id = "r_test123"
-        mock_get.return_value = _dashboard_row(
-            data={
-                "repos": [{"id": row_id, "title": "Old"}],
-                "stat_total": {"value": 1},
-            }
-        )
-        mock_update.return_value = {"id": str(did)}
+        mock_get.return_value = _dashboard_row(data={"repos": [{"id": row_id, "title": "Old"}]})
+        mock_bindings.return_value = {"repos": "my-repos"}
+        mock_update.return_value = {
+            "ok": True,
+            "source": "domain",
+            "row": {"id": row_id, "title": "New"},
+        }
+        mock_delete.return_value = {
+            "ok": True,
+            "source": "domain",
+            "collection_slug": "my-repos",
+        }
 
         upd = update_list_row(uid, 1, did, row_id=row_id, patch={"title": "New"})
         self.assertTrue(upd.get("ok"))
         self.assertEqual(upd["row"]["title"], "New")
 
-        mock_get.return_value = _dashboard_row(data={"repos": [{"id": row_id, "title": "New"}]})
-        deleted = delete_list_row(uid, 1, did, row_id=row_id)
+        with patch("apps.backend.domain.collections.db.collection_get") as mock_col:
+            with patch("apps.backend.domain.collections.db.items_list") as mock_items:
+                mock_col.return_value = {"id": str(uuid.uuid4())}
+                mock_items.return_value = []
+                deleted = delete_list_row(uid, 1, did, row_id=row_id)
         self.assertTrue(deleted.get("ok"))
         self.assertEqual(deleted.get("total_count"), 0)
 
 
 class TestListAppendDedupeField(unittest.TestCase):
-    @patch("apps.backend.dashboard.list_ops.dashboard_db.dashboard_update")
+    @patch("apps.backend.dashboard.list_ops.domain_svc.resolve_bindings_for_dashboard")
+    @patch("apps.backend.domain.collections.db.items_list")
+    @patch("apps.backend.domain.collections.db.collection_get")
     @patch("apps.backend.dashboard.list_ops.dashboard_db.dashboard_get")
-    def test_skips_duplicate_remote_url(self, mock_get, mock_update) -> None:
+    def test_skips_duplicate_remote_url(
+        self, mock_get, mock_col_get, mock_items_list, mock_bindings
+    ) -> None:
         uid = uuid.uuid4()
         did = uuid.uuid4()
         mock_get.return_value = _dashboard_row(
+            dashboard_id=did,
             data={
                 "repos": [
                     {"id": "r_existing", "remote_url": "https://github.com/org/existing.git"},
                 ]
-            }
+            },
         )
-        mock_update.return_value = {"id": str(did)}
+        mock_bindings.return_value = {"repos": "my-repos"}
+        mock_col_get.return_value = {"id": str(uuid.uuid4())}
+        mock_items_list.return_value = [
+            {"id": "r_existing", "remote_url": "https://github.com/org/existing.git"},
+        ]
 
         result = append_list_rows(
             uid,

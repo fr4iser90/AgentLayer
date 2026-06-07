@@ -31,8 +31,8 @@ TOOL_TRIGGERS = (
 TOOL_LABEL = "Messaging"
 TOOL_DESCRIPTION = (
     "Send a message to a friend or contact via Telegram, Discord, or email. "
-    "Uses operator Telegram/Discord bots (Admin → Interfaces) and linked user ids (Settings → Connections). "
-    "channel=auto tries telegram → discord → email."
+    "Uses operator bots (Admin → Interfaces) and linked ids (Settings → Connections). "
+    "channel=auto: telegram → discord → email. Outbound only — use dashboard.* to persist board data."
 )
 TOOL_CAPABILITIES = ("messaging.send", "mail.send", "friends.user")
 TOOL_RISK_LEVEL = 3

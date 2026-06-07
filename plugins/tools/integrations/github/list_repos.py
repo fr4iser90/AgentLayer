@@ -11,14 +11,14 @@ from plugins.tools.integrations.github._client import USER_SECRET_KEY
 
 __version__ = "1.0.0"
 TOOL_ID = "github_list_repos"
-TOOL_BUCKET = "integrations"
+TOOL_BUCKET = "network"
 TOOL_DOMAIN = "github"
 TOOL_CAPABILITIES = ("github.read",)
 TOOL_SECRETS_REQUIRED = (USER_SECRET_KEY,)
 TOOL_LABEL = "GitHub: List repositories"
 TOOL_DESCRIPTION = (
-    "List repositories visible to the user via github_pat. "
-    "Returns repo metadata only — use dashboard.list_append to add rows to a board."
+    "List GitHub repositories (github_pat). Read-only connector — "
+    "map rows and call dashboard.list_append; clone with workspaces.create."
 )
 TOOL_TRIGGERS = ("list repos", "github repos", "repositories", "repos importieren")
 

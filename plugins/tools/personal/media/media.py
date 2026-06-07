@@ -231,9 +231,24 @@ def _save_dashboard_data(
     ws: dict[str, Any],
     new_data: dict[str, Any],
 ) -> str | None:
-    updated = dashboard_db.dashboard_update(uid, tid, wid, data=new_data)
-    if updated is None:
-        return "could not update dashboard (viewer or conflict)"
+    from apps.backend.domain.collections import service as domain_svc
+
+    bindings = domain_svc.resolve_bindings_for_dashboard(ws)
+    old_data = ws.get("data") if isinstance(ws.get("data"), dict) else {}
+    patches: list[dict[str, Any]] = []
+    for key, val in new_data.items():
+        if old_data.get(key) != val:
+            patches.append({"path": key, "value": val})
+    if patches:
+        result = domain_svc.patch_fields(
+            owner_user_id=uid,
+            tenant_id=int(ws.get("tenant_id") or tid),
+            bindings=bindings,
+            ui_layout=ws.get("ui_layout") if isinstance(ws.get("ui_layout"), dict) else None,
+            patches=patches,
+        )
+        if not result.get("ok"):
+            return str(result.get("error") or "domain update failed")
     try:
         from apps.backend.infrastructure.notifications_service import notify_dashboard_agent_update
 

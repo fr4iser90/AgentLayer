@@ -59,6 +59,57 @@ CREATE INDEX idx_user_dashboards_updated ON user_dashboards (updated_at DESC);
 CREATE INDEX idx_user_dashboards_template_id ON user_dashboards (tenant_id, template_id)
   WHERE template_id IS NOT NULL;
 
+ALTER TABLE user_dashboards
+  ADD COLUMN IF NOT EXISTS view_bindings JSONB NOT NULL DEFAULT '{}'::jsonb;
+
+CREATE TABLE user_collections (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id BIGINT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  owner_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  slug TEXT NOT NULL,
+  title TEXT NOT NULL DEFAULT '',
+  schema_hint TEXT NULL,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (slug ~ '^[a-z][a-z0-9._-]{0,95}$'),
+  UNIQUE (owner_user_id, slug)
+);
+
+CREATE INDEX idx_user_collections_owner ON user_collections (owner_user_id, tenant_id);
+
+CREATE TABLE collection_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  collection_id UUID NOT NULL REFERENCES user_collections(id) ON DELETE CASCADE,
+  list_key TEXT NOT NULL DEFAULT 'items',
+  row_id TEXT NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (collection_id, list_key, row_id)
+);
+
+CREATE INDEX idx_collection_items_list ON collection_items (collection_id, list_key, sort_order);
+
+CREATE TABLE user_attachments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id BIGINT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  owner_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  collection_id UUID NULL REFERENCES user_collections(id) ON DELETE SET NULL,
+  collection_item_id UUID NULL REFERENCES collection_items(id) ON DELETE SET NULL,
+  dashboard_id UUID NULL REFERENCES user_dashboards(id) ON DELETE SET NULL,
+  storage_relpath TEXT NOT NULL UNIQUE,
+  content_type TEXT NOT NULL,
+  size_bytes BIGINT NOT NULL,
+  original_name TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_user_attachments_owner ON user_attachments (owner_user_id, created_at DESC);
+CREATE INDEX idx_user_attachments_collection ON user_attachments (collection_id);
+CREATE INDEX idx_user_attachments_dashboard ON user_attachments (dashboard_id);
+
 CREATE TABLE dashboard_block_share_grants (
   id BIGSERIAL PRIMARY KEY,
   dashboard_id UUID NOT NULL REFERENCES user_dashboards(id) ON DELETE CASCADE,
@@ -140,6 +191,23 @@ CREATE TABLE user_secrets (
 );
 
 CREATE INDEX idx_user_secrets_user ON user_secrets (user_id);
+
+CREATE TABLE user_connector_profiles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  profile_id TEXT NOT NULL,
+  label TEXT NOT NULL DEFAULT '',
+  base_url TEXT NOT NULL,
+  auth JSONB NOT NULL DEFAULT '{}'::jsonb,
+  default_headers JSONB NOT NULL DEFAULT '{}'::jsonb,
+  endpoints JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (user_id, profile_id),
+  CHECK (profile_id ~ '^[a-z][a-z0-9_-]{0,63}$')
+);
+
+CREATE INDEX idx_user_connector_profiles_user ON user_connector_profiles (user_id);
 
 CREATE TABLE secret_upload_otps (
   id BIGSERIAL PRIMARY KEY,
@@ -554,21 +622,6 @@ COMMENT ON COLUMN operator_settings.dashboard_upload_max_file_mb IS
   'Max upload size per file (MB); NULL = use AGENT_DASHBOARD_UPLOAD_MAX_MB.';
 COMMENT ON COLUMN operator_settings.dashboard_upload_allowed_mime IS
   'Comma-separated MIME allowlist; NULL = use AGENT_DASHBOARD_UPLOAD_ALLOWED_MIME.';
-
-CREATE TABLE dashboard_files (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id BIGINT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-  owner_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  dashboard_id UUID NOT NULL,
-  storage_relpath TEXT NOT NULL UNIQUE,
-  content_type TEXT NOT NULL,
-  size_bytes BIGINT NOT NULL,
-  original_name TEXT NOT NULL DEFAULT '',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX idx_dashboard_files_owner ON dashboard_files (owner_user_id, created_at DESC);
-CREATE INDEX idx_dashboard_files_dashboard ON dashboard_files (dashboard_id);
 
 CREATE TABLE dashboard_members (
   dashboard_id UUID NOT NULL REFERENCES user_dashboards(id) ON DELETE CASCADE,

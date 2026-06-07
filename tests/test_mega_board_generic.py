@@ -54,22 +54,59 @@ def _mega_layout() -> dict:
     }
 
 
+def _ws(*, did: uuid.UUID, layout: dict) -> dict:
+    return {
+        "id": str(did),
+        "kind": "custom",
+        "template_id": None,
+        "access_role": "owner",
+        "access_scope": "full",
+        "owner_user_id": str(uuid.uuid4()),
+        "tenant_id": 1,
+        "view_bindings": {},
+        "data": {"repos": [], "events": []},
+        "ui_layout": layout,
+    }
+
+
 class TestMegaBoardGeneric(unittest.TestCase):
-    @patch("apps.backend.dashboard.list_ops.dashboard_db.dashboard_update")
+    @patch("apps.backend.dashboard.list_ops.domain_svc.append_items")
+    @patch("apps.backend.dashboard.list_ops.domain_svc.resolve_bindings_for_dashboard")
     @patch("apps.backend.dashboard.list_ops.dashboard_db.dashboard_get")
-    def test_custom_board_two_lists_and_compute(self, mock_get, mock_update) -> None:
+    def test_custom_board_two_lists_and_compute(
+        self, mock_get, mock_bindings, mock_append
+    ) -> None:
         uid = uuid.uuid4()
         did = uuid.uuid4()
         layout = _mega_layout()
-        mock_get.return_value = {
-            "kind": "custom",
-            "template_id": None,
-            "access_role": "owner",
-            "access_scope": "full",
-            "data": {"repos": [], "events": [], "stat_repos": {"value": 0}, "stat_events_open": {"value": 0}},
-            "ui_layout": layout,
-        }
-        mock_update.return_value = {"id": str(did)}
+        mock_get.return_value = _ws(did=did, layout=layout)
+        mock_bindings.return_value = {"repos": "repos", "events": "events"}
+
+        repos: list[dict] = []
+        events: list[dict] = []
+
+        def _append(**kwargs: object) -> dict:
+            path = str(kwargs.get("list_path") or "")
+            rows = kwargs.get("rows") or []
+            if path == "repos":
+                repos.extend(rows)  # type: ignore[arg-type]
+                return {
+                    "ok": True,
+                    "source": "domain",
+                    "added_count": len(rows),  # type: ignore[arg-type]
+                    "total_count": len(repos),
+                }
+            if path == "events":
+                events.extend(rows)  # type: ignore[arg-type]
+                return {
+                    "ok": True,
+                    "source": "domain",
+                    "added_count": len(rows),  # type: ignore[arg-type]
+                    "total_count": len(events),
+                }
+            return {"ok": False, "error": "unknown path"}
+
+        mock_append.side_effect = _append
 
         r1 = append_list_rows(
             uid,
@@ -79,14 +116,9 @@ class TestMegaBoardGeneric(unittest.TestCase):
             rows=[{"title": "app-a", "remote_url": "https://github.com/o/a"}],
         )
         self.assertTrue(r1.get("ok"))
+        self.assertEqual(r1.get("source"), "domain")
+        self.assertEqual(len(repos), 1)
 
-        saved = mock_update.call_args.kwargs["data"]
-        self.assertEqual(len(saved["repos"]), 1)
-
-        mock_get.return_value = {
-            **mock_get.return_value,
-            "data": saved,
-        }
         r2 = append_list_rows(
             uid,
             1,
@@ -95,14 +127,9 @@ class TestMegaBoardGeneric(unittest.TestCase):
             rows=[{"title": "Launch", "status": "open"}, {"title": "Done thing", "status": "done"}],
         )
         self.assertTrue(r2.get("ok"))
-        saved2 = mock_update.call_args.kwargs["data"]
-        self.assertEqual(saved2["stat_repos"]["value"], "1")
-        self.assertEqual(saved2["stat_events_open"]["value"], "1")
+        self.assertEqual(len(events), 2)
 
-        finalized = finalize_dashboard_data(
-            {"repos": saved2["repos"], "events": saved2["events"]},
-            layout,
-        )
+        finalized = finalize_dashboard_data({"repos": repos, "events": events}, layout)
         self.assertEqual(finalized["stat_repos"]["value"], "1")
         self.assertEqual(finalized["stat_events_open"]["value"], "1")
 

@@ -16,7 +16,7 @@ from apps.backend.infrastructure.db.friends_db import (
 
 __version__ = "1.0.0"
 TOOL_ID = "request"
-TOOL_BUCKET = "core"
+TOOL_BUCKET = "comms"
 TOOL_DOMAIN = "friends"
 TOOL_TRIGGERS = (
     "freundschaft",
@@ -100,7 +100,7 @@ TOOLS: list[dict[str, Any]] = [
             "name": "send_request",
             "TOOL_DESCRIPTION": (
                 "Send a friend request to another AgentLayer user by email or contact name. "
-                "Required before friends.shares can grant dashboard/pets access across tenants."
+                "Required before friends.shares can grant collection/dashboard access across tenants."
             ),
             "parameters": {
                 "type": "object",

@@ -1,4 +1,4 @@
-"""Filesystem IO for ``dashboard_files.storage_relpath`` under the configured upload root."""
+"""Filesystem IO for ``user_attachments.storage_relpath`` under the configured upload root."""
 
 from __future__ import annotations
 

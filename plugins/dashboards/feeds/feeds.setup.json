@@ -6,8 +6,8 @@
     "en": "Your RSS board — collect feed URLs and summarize them with the agent."
   },
   "agent_prompt": {
-    "de": "Onboarding für feeds. Hilf Feed-URLs in data.feeds einzutragen (patch_data). Dann rss_summarize für Markdown-Zusammenfassung. Kein Schema installieren.",
-    "en": "Onboarding for feeds. Help add feed URLs to data.feeds (patch_data). Then rss_summarize for markdown summary. Do not install schema."
+    "de": "Onboarding für feeds. dashboard.read, Feed-URLs mit list_append auf data.feeds oder patch_data. Dann rss.summarize (persist_dashboard oder patch_data). Kein Schema installieren.",
+    "en": "Onboarding for feeds. dashboard.read, add feed URLs via list_append or patch_data. Then rss.summarize (persist_dashboard or patch_data). Do not install schema."
   },
   "steps": [
     {

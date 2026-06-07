@@ -34,12 +34,12 @@ Generic user-owned container with:
 Backend: `src/dashboard/db.py`, `src/dashboard/router.py`  
 Frontend: `interfaces/agent-ui/src/pages/DashboardPage.tsx`
 
-### wsfile:
+### file:
 
-Special URL prefix for dashboard uploads:
+Special URL prefix for domain attachments (`user_attachments`):
 
-- Example: `wsfile:<uuid>`
-- Used in gallery / hero blocks to reference uploaded files.
+- Example: `file:<uuid>`
+- Used in gallery / hero blocks to reference uploaded images.
 
 ### KB vs RAG vs Memory
 

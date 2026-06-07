@@ -12,7 +12,7 @@ from apps.backend.dashboard.db import DashboardAccessDetail
 from apps.backend.domain.shares.policy import grant_is_active
 from apps.backend.infrastructure.db.db import pool
 
-_DASHBOARD_RESOURCE_TYPES = ("dashboard", "pets")
+_DASHBOARD_RESOURCE_TYPES = ("dashboard",)
 
 
 def _row_policy(raw: Any) -> dict[str, Any]:
@@ -43,10 +43,7 @@ def grant_matches_dashboard(
 ) -> bool:
     ident = (resource_identifier or "primary").strip().lower()
     did = str(dashboard_id).strip().lower()
-    rt = (resource_type or "").strip().lower()
-    if ident == did:
-        return True
-    return rt == "pets" and dashboard_kind == "pets" and ident == "primary"
+    return ident == did
 
 
 def _access_from_policy(policy: dict[str, Any]) -> DashboardAccessDetail:

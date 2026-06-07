@@ -18,7 +18,7 @@ from apps.backend.dashboard.db import (
     dashboard_can_manage_members,
 )
 
-WS_FILE_PREFIX = "wsfile:"
+from apps.backend.domain.collections.attachments_db import file_ids_in_value
 SHARE_PASSWORD_HEADER = "X-Dashboard-Share-Password"
 
 
@@ -35,23 +35,6 @@ class PublicShareViewResult(NamedTuple):
     status: Literal["ok", "not_found", "password_required", "invalid_password"]
     dashboard: dict[str, Any] | None = None
     share_label: str = ""
-
-
-def _wsfile_ids_in_value(obj: Any) -> set[str]:
-    out: set[str] = set()
-    if isinstance(obj, str):
-        s = obj.strip()
-        if s.startswith(WS_FILE_PREFIX):
-            fid = s[len(WS_FILE_PREFIX) :].strip()
-            if fid:
-                out.add(fid)
-    elif isinstance(obj, dict):
-        for v in obj.values():
-            out |= _wsfile_ids_in_value(v)
-    elif isinstance(obj, list):
-        for v in obj:
-            out |= _wsfile_ids_in_value(v)
-    return out
 
 
 def _share_row_to_public(row: dict[str, Any]) -> dict[str, Any]:
@@ -271,7 +254,7 @@ def public_share_get_dashboard(
 def public_share_file_access(
     raw_token: str, file_id: uuid.UUID, *, password: str | None = None
 ) -> dict[str, Any] | None:
-    """Return file metadata when token grants read access to that wsfile reference."""
+    """Return file metadata when token grants read access to that file: reference."""
     row = _resolve_share_row(raw_token)
     if not row:
         return None
@@ -292,7 +275,7 @@ def public_share_file_access(
         filtered_dt = _filter_data_for_visible_blocks(dt, filtered_ul)
     else:
         filtered_dt = dt
-    visible_files = _wsfile_ids_in_value(filtered_dt)
+    visible_files = file_ids_in_value(filtered_dt)
     if str(file_id) not in visible_files:
         return None
     with db.pool().connection() as conn:
@@ -301,7 +284,7 @@ def public_share_file_access(
                 """
                 SELECT id, dashboard_id, storage_relpath, content_type,
                        size_bytes, original_name
-                FROM dashboard_files
+                FROM user_attachments
                 WHERE id = %s AND tenant_id = %s AND dashboard_id = %s
                 """,
                 (file_id, tenant_id, dash_id),

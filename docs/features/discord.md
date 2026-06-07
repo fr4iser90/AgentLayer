@@ -26,9 +26,7 @@ AgentLayer can run a Discord bridge that forwards messages (e.g. `!agent ...`) i
 
 Prefer “open in UI” for complex edits. Use tools for quick reads/patches:
 
-- pets: `pets_*`
-- shopping_list: `shopping_list_*`
-- ideas: `ideas_*`
+- All boards: `dashboard.read`, `dashboard.list_append`, `dashboard.patch_data`, …
 
 ## Troubleshooting
 

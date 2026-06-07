@@ -70,7 +70,10 @@ def resolve_dashboard_id(
         return wid, None
     rows = dashboard_db.dashboard_list(user_id, tenant_id, limit=limit)
     if not rows:
-        return None, "No dashboards yet — create one in the app first."
+        return None, (
+            "No dashboards yet — call dashboard.create_dashboard with template_id "
+            "(e.g. pets-v1, custom) or create one in the app first."
+        )
     if len(rows) == 1:
         rid = rows[0].get("id")
         try:

@@ -6,22 +6,22 @@
     "en": "Your ideas board is ready — capture sparks in the table and longer thoughts in the scratchpad."
   },
   "agent_prompt": {
-    "de": "Onboarding für ideas. Biete: (1) Idee mit Titel/Tags/Status eintragen (ideas_add_rows), (2) Brainstorm ins Scratchpad (ideas_patch_scratchpad), (3) bestehende Idee aktualisieren (ideas_patch_idea). Eine Frage pro Nachricht. Kein Schema installieren.",
-    "en": "Onboarding for ideas. Offer: (1) add idea rows with title/tags/status (ideas_add_rows), (2) brainstorm into scratchpad (ideas_patch_scratchpad), (3) update an idea (ideas_patch_idea). One question per message. Do not install schema."
+    "de": "Onboarding für ideas. dashboard.read, dann list_append auf die Ideen-Liste (list_path aus ui_layout), patch_data für scratchpad/notes. Eine Frage pro Nachricht. Kein Schema installieren.",
+    "en": "Onboarding for ideas. dashboard.read, then list_append on the ideas list (list_path from ui_layout), patch_data for scratchpad/notes. One question per message. Do not install schema."
   },
   "steps": [
     {
       "id": "add_idea",
       "label": { "de": "Idee hinzufügen", "en": "Add an idea" },
-      "tool_hint": "ideas_add_rows"
+      "tool_hint": "list_append"
     },
     {
       "id": "scratchpad",
       "label": { "de": "Brainstorm / Scratchpad", "en": "Brainstorm in scratchpad" },
-      "tool_hint": "ideas_patch_scratchpad"
+      "tool_hint": "patch_data"
     }
   ],
-  "suggested_tools": ["ideas"],
+  "suggested_tools": ["dashboard"],
   "chat_starters": {
     "de": [
       "Füge eine Idee hinzu: Agent-Setup für Dashboards automatisieren.",

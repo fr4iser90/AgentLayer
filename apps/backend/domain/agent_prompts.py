@@ -383,9 +383,8 @@ def _inject_dashboard_context(
         note = (
             f"[Dashboard context] The user opened this dashboard in the app. "
             f"dashboard_id={wid!s}, kind={k!r}, title={title!r}, access_role={role!r}. "
-            f"For kind-specific tools, use this dashboard_id when the user means 'this board': "
-            f"shopping_list_* (shopping_list), pets_*, ideas_*, projects_*, tasks_*. "
-            f"If unsure which board, call the matching *_dashboards list tool first."
+            f"Use this dashboard_id for all dashboard tools (read, list_append, patch_data, patch_layout, …). "
+            f"If unsure which board, call dashboard.list first."
         )
         extra = _dashboard_data_agent_instructions(ws.get("data"))
         if extra:

@@ -6,9 +6,9 @@ import uuid
 from typing import Any
 
 from apps.backend.dashboard import db as dashboard_db
-from apps.backend.dashboard.data_compute import finalize_dashboard_data
-from apps.backend.dashboard.data_paths import get_path, set_path, top_level_key
+from apps.backend.dashboard.data_paths import top_level_key
 from apps.backend.dashboard.layout_tree import data_paths_from_blocks, primary_list_data_path
+from apps.backend.domain.collections import service as domain_svc
 
 _MAX_ROWS = 2000
 _MAX_BATCH = 80
@@ -95,23 +95,30 @@ def append_list_rows(
     if allow_err:
         return {"ok": False, "error": allow_err}
 
-    data = dict(ws.get("data") or {}) if isinstance(ws.get("data"), dict) else {}
-    raw = get_path(data, dp)
-    current = list(raw) if isinstance(raw, list) else []
+    owner_raw = ws.get("owner_user_id")
+    try:
+        owner_uid = uuid.UUID(str(owner_raw)) if owner_raw else user_id
+    except (ValueError, TypeError):
+        owner_uid = user_id
+    row_tid = int(ws.get("tenant_id") or tenant_id)
 
-    if len(current) + len(rows) > _MAX_ROWS:
-        return {"ok": False, "error": f"at most {_MAX_ROWS} rows per list ({dp!r})"}
+    bindings = domain_svc.resolve_bindings_for_dashboard(ws)
+    from apps.backend.domain.collections.bindings import collection_slug_for_path
+    from apps.backend.domain.collections import db as col_db
 
+    slug = collection_slug_for_path(bindings, dp)
+    existing_vals: set[str] = set()
     dedupe_key = (dedupe_field or "").strip()
-    existing: set[str] = set()
-    if dedupe_key:
-        for item in current:
-            if isinstance(item, dict):
-                val = str(item.get(dedupe_key) or "").strip().lower()
-                if val:
-                    existing.add(val)
+    if dedupe_key and slug:
+        col = col_db.collection_get(owner_uid, slug)
+        if col:
+            for item in col_db.items_list(uuid.UUID(str(col["id"])), dp):
+                if isinstance(item, dict):
+                    v = str(item.get(dedupe_key) or "").strip().lower()
+                    if v:
+                        existing_vals.add(v)
 
-    added: list[dict[str, Any]] = []
+    norm_rows: list[dict[str, Any]] = []
     skipped: list[str] = []
     for entry in rows[:_MAX_BATCH]:
         norm = _normalize_row(entry)
@@ -119,44 +126,37 @@ def append_list_rows(
             continue
         if dedupe_key:
             val = str(norm.get(dedupe_key) or "").strip().lower()
-            if val and val in existing:
+            if val and val in existing_vals:
                 skipped.append(val)
                 continue
             if val:
-                existing.add(val)
-        current.append(norm)
-        added.append(norm)
-
-    if not added and skipped:
+                existing_vals.add(val)
+        norm_rows.append(norm)
+    if not norm_rows and skipped:
         return {
             "ok": False,
             "error": f"all rows skipped (duplicate {dedupe_key!r})",
             "skipped_count": len(skipped),
             "skipped": skipped,
         }
-    if not added:
+    if not norm_rows:
         return {"ok": False, "error": "no valid rows (each row must be a non-empty object)"}
 
-    out_data = set_path(data, dp, current)
-    layout = ws.get("ui_layout") if isinstance(ws.get("ui_layout"), dict) else None
-    out_data = finalize_dashboard_data(out_data, layout)
-
-    updated = dashboard_db.dashboard_update(user_id, tenant_id, dashboard_id, data=out_data)
-    if updated is None:
-        return {"ok": False, "error": "could not update dashboard"}
-
-    out: dict[str, Any] = {
-        "ok": True,
-        "dashboard_id": str(dashboard_id),
-        "list_path": dp,
-        "added_count": len(added),
-        "added": added,
-        "total_count": len(current),
-    }
+    result = domain_svc.append_items(
+        owner_user_id=owner_uid,
+        tenant_id=row_tid,
+        bindings=bindings,
+        ui_layout=ws.get("ui_layout") if isinstance(ws.get("ui_layout"), dict) else None,
+        list_path=dp,
+        rows=norm_rows,
+    )
+    if not result.get("ok"):
+        return result
+    result["dashboard_id"] = str(dashboard_id)
     if skipped:
-        out["skipped_count"] = len(skipped)
-        out["skipped"] = skipped
-    return out
+        result["skipped_count"] = len(skipped)
+        result["skipped"] = skipped
+    return result
 
 
 def update_list_row(
@@ -184,34 +184,23 @@ def update_list_row(
         return {"ok": False, "error": f"patch too large (max {_MAX_ROW_KEYS} keys)"}
 
     dp = resolve_list_path(ws, list_path, fallback=list_fallback)
-    data = dict(ws.get("data") or {}) if isinstance(ws.get("data"), dict) else {}
-    raw = get_path(data, dp)
-    current = list(raw) if isinstance(raw, list) else []
-
-    idx = next(
-        (i for i, r in enumerate(current) if isinstance(r, dict) and str(r.get("id") or "") == rid),
-        -1,
+    owner_raw = ws.get("owner_user_id")
+    try:
+        owner_uid = uuid.UUID(str(owner_raw)) if owner_raw else user_id
+    except (ValueError, TypeError):
+        owner_uid = user_id
+    bindings = domain_svc.resolve_bindings_for_dashboard(ws)
+    result = domain_svc.update_item(
+        owner_user_id=owner_uid,
+        bindings=bindings,
+        list_path=dp,
+        row_id=rid,
+        patch=patch,
     )
-    if idx < 0:
-        return {"ok": False, "error": f"row not found: {rid}"}
-
-    merged = {**dict(current[idx]), **patch, "id": rid}
-    current[idx] = merged
-    out_data = set_path(data, dp, current)
-    layout = ws.get("ui_layout") if isinstance(ws.get("ui_layout"), dict) else None
-    out_data = finalize_dashboard_data(out_data, layout)
-
-    updated = dashboard_db.dashboard_update(user_id, tenant_id, dashboard_id, data=out_data)
-    if updated is None:
-        return {"ok": False, "error": "could not update dashboard"}
-
-    return {
-        "ok": True,
-        "dashboard_id": str(dashboard_id),
-        "list_path": dp,
-        "row_id": rid,
-        "row": merged,
-    }
+    if not result.get("ok"):
+        return result
+    result["dashboard_id"] = str(dashboard_id)
+    return result
 
 
 def delete_list_row(
@@ -238,29 +227,28 @@ def delete_list_row(
     if allow_err:
         return {"ok": False, "error": allow_err}
 
-    data = dict(ws.get("data") or {}) if isinstance(ws.get("data"), dict) else {}
-    raw = get_path(data, dp)
-    current = list(raw) if isinstance(raw, list) else []
+    owner_raw = ws.get("owner_user_id")
+    try:
+        owner_uid = uuid.UUID(str(owner_raw)) if owner_raw else user_id
+    except (ValueError, TypeError):
+        owner_uid = user_id
+    bindings = domain_svc.resolve_bindings_for_dashboard(ws)
+    result = domain_svc.delete_item(
+        owner_user_id=owner_uid,
+        bindings=bindings,
+        list_path=dp,
+        row_id=rid,
+    )
+    if not result.get("ok"):
+        return result
+    col_slug = result.get("collection_slug")
+    total = 0
+    if col_slug:
+        from apps.backend.domain.collections import db as col_db
 
-    before = len(current)
-    current = [
-        r for r in current if not (isinstance(r, dict) and str(r.get("id") or "") == rid)
-    ]
-    if len(current) == before:
-        return {"ok": False, "error": f"row not found: {rid}"}
-
-    out_data = set_path(data, dp, current)
-    layout = ws.get("ui_layout") if isinstance(ws.get("ui_layout"), dict) else None
-    out_data = finalize_dashboard_data(out_data, layout)
-
-    updated = dashboard_db.dashboard_update(user_id, tenant_id, dashboard_id, data=out_data)
-    if updated is None:
-        return {"ok": False, "error": "could not update dashboard"}
-
-    return {
-        "ok": True,
-        "dashboard_id": str(dashboard_id),
-        "list_path": dp,
-        "row_id": rid,
-        "total_count": len(current),
-    }
+        col = col_db.collection_get(owner_uid, str(col_slug))
+        if col:
+            total = len(col_db.items_list(uuid.UUID(str(col["id"])), dp))
+    result["dashboard_id"] = str(dashboard_id)
+    result["total_count"] = total
+    return result

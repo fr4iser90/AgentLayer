@@ -31,7 +31,7 @@ from apps.backend.domain.friends.common import resolve_friend_by_name
 
 __version__ = "2.0.0"
 TOOL_ID = "shares"
-TOOL_BUCKET = "core"
+TOOL_BUCKET = "comms"
 TOOL_DOMAIN = "friends"
 TOOL_TRIGGERS = (
     "was teilt",
@@ -99,6 +99,23 @@ def _group_shares_by_peer(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return list(grouped.values())
 
 
+def _validate_collection_grant(
+    *,
+    owner_user_id: uuid.UUID,
+    resource_identifier: str,
+) -> str | None:
+    from apps.backend.domain.collections import db as col_db
+
+    ident = (resource_identifier or "").strip().lower()
+    if ident in ("", "primary"):
+        return "resource_identifier must be a collection slug (e.g. pets, shopping)"
+    if col_db.normalize_slug(ident) is None:
+        return "resource_identifier must be a valid collection slug (lowercase, a-z0-9._-)"
+    if col_db.collection_get(owner_user_id, ident) is None:
+        return f"collection '{ident}' not found — create it first (collection.ensure)"
+    return None
+
+
 def _validate_dashboard_grant(
     *,
     owner_user_id: uuid.UUID,
@@ -106,7 +123,7 @@ def _validate_dashboard_grant(
     resource_identifier: str,
     raw_policy: dict[str, Any],
 ) -> str | None:
-    if resource_type not in ("dashboard", "pets"):
+    if resource_type != "dashboard":
         return None
     from apps.backend.dashboard import db as dashboard_db
     from apps.backend.domain.shares.dashboard_grant import grant_matches_dashboard
@@ -114,28 +131,14 @@ def _validate_dashboard_grant(
 
     tid = user_tenant_id(owner_user_id)
     ident = (resource_identifier or "primary").strip().lower()
-    wid: uuid.UUID | None = None
-    if ident == "primary" and resource_type == "pets":
-        rows = dashboard_db.dashboard_list(owner_user_id, tid, limit=50)
-        pet_rows = [r for r in rows if str(r.get("kind") or "") == "pets"]
-        if len(pet_rows) != 1:
-            return (
-                "pets share with resource_identifier=primary requires exactly one pets dashboard; "
-                "pass the dashboard UUID as resource_identifier instead."
-            )
-        wid = uuid.UUID(str(pet_rows[0]["id"]))
-        identifier = str(wid)
-    else:
-        try:
-            wid = uuid.UUID(ident)
-        except ValueError:
-            return "resource_identifier must be a dashboard UUID (or primary for a single pets board)"
+    try:
+        wid = uuid.UUID(ident)
+    except ValueError:
+        return "resource_identifier must be a dashboard UUID"
 
     ws = dashboard_db.dashboard_get(owner_user_id, tid, wid)
     if ws is None:
         return "dashboard not found or you are not the owner"
-    if resource_type == "pets" and str(ws.get("kind") or "") != "pets":
-        return "resource_type pets requires a kind=pets dashboard"
 
     block_ids = raw_policy.get("block_ids")
     if isinstance(block_ids, list) and block_ids:
@@ -149,7 +152,7 @@ def _validate_dashboard_grant(
     elif not grant_matches_dashboard(
         dashboard_id=wid,
         resource_type=resource_type,
-        resource_identifier=identifier,
+        resource_identifier=ident,
         dashboard_kind=str(ws.get("kind") or ""),
     ):
         return "dashboard grant identifier does not match this board"
@@ -205,26 +208,22 @@ def _action_grant(requesting_user_id: uuid.UUID, arguments: dict[str, Any]) -> d
     identifier = str(arguments.get("resource_identifier") or "primary").strip().lower()
     friend_user_id = uuid.UUID(friend["friend_user_id"])
 
-    dash_err = _validate_dashboard_grant(
-        owner_user_id=requesting_user_id,
-        resource_type=canonical,
-        resource_identifier=identifier,
-        raw_policy=raw_policy if isinstance(raw_policy, dict) else {},
-    )
-    if dash_err:
-        return {"ok": False, "result": dash_err}
-    if canonical in ("dashboard", "pets") and identifier == "primary":
-        from apps.backend.dashboard import db as dashboard_db
-        from apps.backend.infrastructure.db.db import user_tenant_id
-
-        tid = user_tenant_id(requesting_user_id)
-        pet_rows = [
-            r
-            for r in dashboard_db.dashboard_list(requesting_user_id, tid, limit=50)
-            if str(r.get("kind") or "") == "pets"
-        ]
-        if len(pet_rows) == 1:
-            identifier = str(pet_rows[0]["id"]).strip().lower()
+    if canonical == "collection":
+        col_err = _validate_collection_grant(
+            owner_user_id=requesting_user_id,
+            resource_identifier=identifier,
+        )
+        if col_err:
+            return {"ok": False, "result": col_err}
+    else:
+        dash_err = _validate_dashboard_grant(
+            owner_user_id=requesting_user_id,
+            resource_type=canonical,
+            resource_identifier=identifier,
+            raw_policy=raw_policy if isinstance(raw_policy, dict) else {},
+        )
+        if dash_err:
+            return {"ok": False, "result": dash_err}
 
     share_permission_set(
         owner_user_id=requesting_user_id,
@@ -441,9 +440,9 @@ TOOLS: list[dict[str, Any]] = [
             "name": "shares",
             "TOOL_DESCRIPTION": (
                 "Manage friend share permissions: grant, revoke, list, or check access to resources "
-                "(google_calendar, github_activity, todoist, notes, roadmap, dashboard, pets). "
-                "For dashboard/pets: set resource_identifier to the dashboard UUID (or primary when you "
-                "have exactly one pets board). Optional policy: "
+                "(google_calendar, github_activity, todoist, notes, roadmap, dashboard, collection). "
+                "For dashboard: resource_identifier = dashboard UUID. "
+                "For collection: resource_identifier = slug (e.g. pets). Optional policy: "
                 "{permission: edit|view, block_ids: [layout block ids], expires_at: ISO}. "
                 "Use action=grant to share e.g. calendar with days_ahead:7. "
                 "Use action=list without name for full summary; with friend name for one person."
@@ -468,7 +467,7 @@ TOOLS: list[dict[str, Any]] = [
                         "type": "string",
                         "TOOL_DESCRIPTION": (
                             "Resource id from catalog: google_calendar, github_activity, todoist, notes, "
-                            "roadmap, dashboard, pets."
+                            "roadmap, dashboard, collection."
                         ),
                     },
                     "resource_identifier": {

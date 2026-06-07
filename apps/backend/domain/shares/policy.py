@@ -80,6 +80,15 @@ def normalize_policy(
             if not cleaned:
                 continue
             clean["block_ids"] = cleaned[:32]
+        elif k == "list_keys":
+            if value is None:
+                continue
+            if not isinstance(value, list):
+                return {}, "policy.list_keys must be an array of list keys"
+            cleaned = [str(x).strip() for x in value if str(x).strip()]
+            if not cleaned:
+                continue
+            clean["list_keys"] = cleaned[:32]
         else:
             clean[k] = value
 

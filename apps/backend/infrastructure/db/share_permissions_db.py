@@ -23,12 +23,12 @@ SHARE_RESOURCE_TODOIST = "todoist"
 SHARE_RESOURCE_NOTES = "notes"
 SHARE_RESOURCE_ROADMAP = "roadmap"
 SHARE_RESOURCE_DASHBOARD = "dashboard"
-SHARE_RESOURCE_PETS = "pets"
+SHARE_RESOURCE_COLLECTION = "collection"
 
 SHARE_RESOURCE_ALIASES: dict[str, tuple[str, ...]] = {
     SHARE_RESOURCE_GOOGLE_CALENDAR: ("calendar",),
     SHARE_RESOURCE_DASHBOARD: ("board",),
-    SHARE_RESOURCE_PETS: ("haustier", "haustiere", "pet"),
+    SHARE_RESOURCE_COLLECTION: ("pets", "haustier", "haustiere", "pet", "data"),
 }
 
 

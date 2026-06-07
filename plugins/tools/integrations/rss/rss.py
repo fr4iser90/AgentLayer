@@ -1,4 +1,4 @@
-"""RSS tools for `kind: feeds` dashboards — summarize enabled feed URLs into dashboard data."""
+"""RSS connector — fetch feeds, LLM-summarize; persist via dashboard or return to agent."""
 
 from __future__ import annotations
 
@@ -11,31 +11,28 @@ from typing import Any, Callable
 import feedparser
 import httpx
 
+from apps.backend.dashboard import db as dashboard_db
+from apps.backend.dashboard.tool_dashboard_resolve import resolve_dashboard_id
 from apps.backend.domain.agent import chat_completion
 from apps.backend.domain.identity import get_identity, reset_identity, set_identity
 from apps.backend.infrastructure.conversations_db import conversation_append_message, conversation_create
-from apps.backend.dashboard import db as dashboard_db
-from apps.backend.dashboard.tool_dashboard_resolve import (
-    dashboard_rows_for_gallery,
-    resolve_dashboard_id,
-)
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"
 TOOL_ID = "rss"
-TOOL_BUCKET = "productivity"
+TOOL_BUCKET = "network"
 TOOL_DOMAIN = "rss"
-TOOL_LABEL = "RSS feeds"
+TOOL_LABEL = "RSS"
 TOOL_DESCRIPTION = (
-    "Legacy — prefer dashboard.list_* / dashboard.read on any board. Read and update RSS feed dashboards (kind feeds). Use this to fetch + summarize enabled feed URLs and "
-    "store the latest markdown summary back into the dashboard (latest_summary + history)."
+    "Fetch RSS/Atom feeds and summarize with the chat model. "
+    "Feed URLs from dashboard.data.feeds (dashboard.read) or feed_urls argument. "
+    "Persist with persist_dashboard=true (default) or return markdown for dashboard.patch_data."
 )
 TOOL_TRIGGERS = ("rss", "feed", "feeds", "news", "summary", "summarize feeds", "rss summary")
-TOOL_CAPABILITIES = ("dashboard.feeds.read", "dashboard.feeds.write")
+TOOL_CAPABILITIES = ("rss.summarize",)
 TOOL_MIN_ROLE = "user"
 
 AGENT_TOOL_META_BY_NAME = {
-    "boards": {"min_role": "user", "capabilities": ("dashboard.feeds.read",)},
-    "summarize": {"min_role": "user", "capabilities": ("dashboard.feeds.write",)},
+    "summarize": {"min_role": "user", "capabilities": ("rss.summarize",)},
 }
 
 _MAX_FEEDS = 200
@@ -53,18 +50,6 @@ def _identity() -> tuple[int, uuid.UUID] | None:
     if uid is None:
         return None
     return (int(tid), uid)
-
-
-def boards(arguments: dict[str, Any]) -> str:
-    """List feeds dashboards for the current user."""
-    del arguments
-    ident = _identity()
-    if ident is None:
-        return _err("No user identity — feeds tools need an authenticated chat user.")
-    tid, uid = ident
-    rows = dashboard_rows_for_gallery(uid, tid, kind="feeds", template_id="feeds-v1")
-    out = [{"id": str(r.get("id", "")), "title": (r.get("title") or "").strip()} for r in rows]
-    return json.dumps({"ok": True, "dashboards": out}, ensure_ascii=False)
 
 
 def _coerce_feed_rows(data: dict[str, Any]) -> list[dict[str, Any]]:
@@ -87,6 +72,18 @@ def _coerce_feed_rows(data: dict[str, Any]) -> list[dict[str, Any]]:
             }
         )
     return rows
+
+
+def _feeds_from_arguments(arguments: dict[str, Any]) -> list[dict[str, Any]]:
+    raw_urls = arguments.get("feed_urls")
+    if isinstance(raw_urls, list) and raw_urls:
+        out: list[dict[str, Any]] = []
+        for u in raw_urls[:_MAX_FEEDS]:
+            url = str(u or "").strip()
+            if url:
+                out.append({"enabled": True, "title": "", "url": url, "tags": ""})
+        return out
+    return []
 
 
 async def _summarize_one(*, title: str, url: str, content: str, language: str) -> str:
@@ -119,37 +116,42 @@ async def _summarize_one(*, title: str, url: str, content: str, language: str) -
 
 
 def summarize(arguments: dict[str, Any]) -> str:
-    """
-    Fetch enabled RSS feeds from a feeds dashboard and write results back to dashboard.data.
-
-    Writes:
-    - data.latest_summary: markdown
-    - data.history: append {ts,title,summary,url}
-    """
     ident = _identity()
     if ident is None:
-        return _err("No user identity — feeds tools need an authenticated chat user.")
+        return _err("No user identity — rss.summarize needs an authenticated user.")
     tenant_id, caller_uid = ident
 
-    wid, res_err = resolve_dashboard_id(caller_uid, tenant_id, arguments.get("dashboard_id"))
-    if wid is None:
-        return _err(res_err or "dashboard_id required")
+    persist = arguments.get("persist_dashboard")
+    persist_dashboard = persist is not False and str(persist).lower() not in ("0", "false", "no")
 
-    ws = dashboard_db.dashboard_get(caller_uid, tenant_id, wid)
-    if ws is None:
-        return _err("dashboard not found or no access")
+    feeds = _feeds_from_arguments(arguments)
+    wid: uuid.UUID | None = None
+    data: dict[str, Any] = {}
+
+    if not feeds:
+        wid, res_err = resolve_dashboard_id(caller_uid, tenant_id, arguments.get("dashboard_id"))
+        if wid is None:
+            return _err(res_err or "dashboard_id required (or pass feed_urls)")
+        ws = dashboard_db.dashboard_get(caller_uid, tenant_id, wid)
+        if ws is None:
+            return _err("dashboard not found or no access")
+        data = ws.get("data") if isinstance(ws.get("data"), dict) else {}
+        feeds = _coerce_feed_rows(data)
+
+    enabled_only = bool(arguments.get("enabled_only", True))
+    if enabled_only:
+        feeds = [f for f in feeds if f.get("enabled")]
+    if not feeds:
+        return _err("no feeds — add URLs via dashboard.list_append on data.feeds or pass feed_urls")
+
     language = str(arguments.get("language") or "de").strip().lower()
     max_items = arguments.get("max_items_per_feed")
     try:
         max_items_i = int(max_items) if max_items is not None else 10
     except (TypeError, ValueError):
         return _err("max_items_per_feed must be an integer")
-    if max_items_i < 1:
-        max_items_i = 1
-    if max_items_i > _MAX_ITEMS_PER_FEED:
-        max_items_i = _MAX_ITEMS_PER_FEED
+    max_items_i = max(1, min(max_items_i, _MAX_ITEMS_PER_FEED))
 
-    enabled_only = bool(arguments.get("enabled_only", True))
     deliver_to_chat = bool(arguments.get("deliver_to_chat", False))
     conversation_id_raw = arguments.get("conversation_id")
     conversation_id: uuid.UUID | None = None
@@ -158,13 +160,6 @@ def summarize(arguments: dict[str, Any]) -> str:
             conversation_id = uuid.UUID(str(conversation_id_raw).strip())
         except (ValueError, TypeError):
             return _err("conversation_id must be a UUID when provided")
-
-    data = ws.get("data") if isinstance(ws.get("data"), dict) else {}
-    feeds = _coerce_feed_rows(data)
-    if enabled_only:
-        feeds = [f for f in feeds if f.get("enabled")]
-    if not feeds:
-        return _err("no feeds configured (add rows to data.feeds in the dashboard UI)")
 
     async def _run() -> dict[str, Any]:
         now = datetime.now(timezone.utc)
@@ -188,9 +183,10 @@ def summarize(arguments: dict[str, Any]) -> str:
                 for ent in entries:
                     a_url = str(getattr(ent, "link", "") or "").strip()
                     a_title = str(getattr(ent, "title", "") or "").strip() or "(untitled)"
-                    a_content = ""
                     try:
-                        a_content = str(getattr(ent, "summary", "") or getattr(ent, "description", "") or "")
+                        a_content = str(
+                            getattr(ent, "summary", "") or getattr(ent, "description", "") or ""
+                        )
                     except Exception:
                         a_content = ""
                     if not a_content.strip():
@@ -202,21 +198,13 @@ def summarize(arguments: dict[str, Any]) -> str:
                     if not summary:
                         continue
                     items_out.append(
-                        {
-                            "ts": ts,
-                            "title": a_title,
-                            "url": a_url or "",
-                            "summary": summary,
-                        }
+                        {"ts": ts, "title": a_title, "url": a_url or "", "summary": summary}
                     )
 
-        # Build markdown
         md = "# RSS Summary\n\n"
         md += f"Generated: {now.strftime('%Y-%m-%d %H:%M UTC')}\n\n"
         for it in items_out[:200]:
-            t = it.get("title") or ""
-            u = it.get("url") or ""
-            s = it.get("summary") or ""
+            t, u, s = it.get("title") or "", it.get("url") or "", it.get("summary") or ""
             if u:
                 md += f"## [{t}]({u})\n\n{s}\n\n---\n\n"
             else:
@@ -224,24 +212,63 @@ def summarize(arguments: dict[str, Any]) -> str:
         if not items_out:
             md += "_No items summarized._\n"
 
-        # Persist dashboard update
-        cur_data = dict(data) if isinstance(data, dict) else {}
-        hist = cur_data.get("history")
-        if not isinstance(hist, list):
-            hist = []
-        hist2 = list(hist) + items_out
-        if len(hist2) > _MAX_HISTORY:
-            hist2 = hist2[-_MAX_HISTORY:]
-        cur_data["latest_summary"] = md
-        cur_data["history"] = hist2
-        updated = dashboard_db.dashboard_update(caller_uid, tenant_id, wid, data=cur_data)
-        if updated is None:
-            return {"ok": False, "error": "failed to update dashboard (no write access?)"}
+        result: dict[str, Any] = {
+            "ok": True,
+            "items": len(items_out),
+            "errors": errors,
+            "markdown": md,
+            "history_items": items_out,
+        }
+        if wid is not None:
+            result["dashboard_id"] = str(wid)
 
-        delivered = False
-        conv_id_out: str | None = None
+        if persist_dashboard:
+            if wid is None:
+                return {
+                    "ok": False,
+                    "error": "persist_dashboard requires dashboard_id (or omit persist_dashboard to get markdown only)",
+                    "markdown": md,
+                }
+            from apps.backend.domain.collections import service as domain_svc
+
+            ws_full = dashboard_db.dashboard_get(caller_uid, tenant_id, wid)
+            if ws_full is None:
+                return {"ok": False, "error": "failed to update (no access?)"}
+            bindings = domain_svc.resolve_bindings_for_dashboard(ws_full)
+            owner_raw = ws_full.get("owner_user_id")
+            try:
+                owner_uid = (
+                    caller_uid
+                    if not owner_raw
+                    else uuid.UUID(str(owner_raw))
+                )
+            except (ValueError, TypeError):
+                owner_uid = caller_uid
+            patch_res = domain_svc.patch_fields(
+                owner_user_id=owner_uid,
+                tenant_id=int(ws_full.get("tenant_id") or tenant_id),
+                bindings=bindings,
+                ui_layout=ws_full.get("ui_layout") if isinstance(ws_full.get("ui_layout"), dict) else None,
+                patches=[{"path": "latest_summary", "value": md}],
+            )
+            if not patch_res.get("ok"):
+                return {"ok": False, "error": str(patch_res.get("error") or "domain persist failed")}
+            if items_out:
+                domain_svc.append_items(
+                    owner_user_id=owner_uid,
+                    tenant_id=int(ws_full.get("tenant_id") or tenant_id),
+                    bindings=bindings,
+                    ui_layout=ws_full.get("ui_layout") if isinstance(ws_full.get("ui_layout"), dict) else None,
+                    list_path="history",
+                    rows=items_out,
+                )
+            result["persisted"] = True
+            result["source"] = "domain"
+        else:
+            result["persisted"] = False
+            result["hint"] = "Use dashboard.patch_data to set latest_summary and append history"
+
         if deliver_to_chat:
-            # Personal chat thread (per-user). If no conversation_id is given, create a fresh one.
             conv_id = conversation_id
             if conv_id is None:
                 conv = conversation_create(
@@ -259,24 +286,13 @@ def summarize(arguments: dict[str, Any]) -> str:
                 except Exception:
                     conv_id = None
             if conv_id is not None:
-                delivered = conversation_append_message(
-                    caller_uid,
-                    conv_id,
-                    role="assistant",
-                    content=md,
+                result["delivered_to_chat"] = conversation_append_message(
+                    caller_uid, conv_id, role="assistant", content=md
                 )
-                conv_id_out = str(conv_id)
+                result["conversation_id"] = str(conv_id)
 
-        return {
-            "ok": True,
-            "dashboard_id": str(wid),
-            "items": len(items_out),
-            "errors": errors,
-            "delivered_to_chat": delivered,
-            "conversation_id": conv_id_out,
-        }
+        return result
 
-    # Ensure identity stays the same for nested chat_completion calls (tool execution is synchronous).
     id_tok = set_identity(tenant_id, caller_uid)
     try:
         out = json.loads(json.dumps(asyncio.run(_run()), ensure_ascii=False))
@@ -286,7 +302,6 @@ def summarize(arguments: dict[str, Any]) -> str:
 
 
 HANDLERS: dict[str, Callable[[dict[str, Any]], str]] = {
-    "boards": boards,
     "summarize": summarize,
 }
 
@@ -294,41 +309,35 @@ TOOLS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
-            "name": "boards",
-            "TOOL_DESCRIPTION": "List your feeds dashboards (kind feeds) with ids + titles.",
-            "parameters": {"type": "object", "properties": {}},
-        },
-    },
-    {
-        "type": "function",
-        "function": {
             "name": "summarize",
-            "TOOL_DESCRIPTION": (
-                "Fetch + summarize enabled RSS feeds from a feeds dashboard and write results back to "
-                "dashboard.data.latest_summary and dashboard.data.history."
+            "description": (
+                "Fetch and summarize RSS feeds. Sources: feed_urls or dashboard.data.feeds "
+                "(dashboard.read / list_append). persist_dashboard=false returns markdown only."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "dashboard_id": {
                         "type": "string",
-                        "TOOL_DESCRIPTION": "Feeds dashboard UUID. Optional if you only have one feeds dashboard.",
+                        "description": "Feeds board UUID; optional if only one board or using feed_urls.",
                     },
-                    "max_items_per_feed": {"type": "integer", "TOOL_DESCRIPTION": "Default 10 (max 15)."},
-                    "enabled_only": {"type": "boolean", "TOOL_DESCRIPTION": "Default true."},
-                    "language": {"type": "string", "TOOL_DESCRIPTION": "de or en (default de)."},
-                    "deliver_to_chat": {
+                    "feed_urls": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional RSS URLs (skips dashboard feed list).",
+                    },
+                    "persist_dashboard": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "If true, append the markdown summary to a personal chat conversation.",
+                        "description": "Write latest_summary + history to dashboard (default true).",
                     },
-                    "conversation_id": {
-                        "type": "string",
-                        "TOOL_DESCRIPTION": "Optional UUID of an existing personal conversation to append to.",
-                    },
+                    "max_items_per_feed": {"type": "integer", "description": "Default 10 (max 15)."},
+                    "enabled_only": {"type": "boolean", "description": "Default true for dashboard feeds."},
+                    "language": {"type": "string", "description": "de or en (default de)."},
+                    "deliver_to_chat": {"type": "boolean"},
+                    "conversation_id": {"type": "string"},
                 },
                 "required": [],
             },
         },
     },
 ]
-
