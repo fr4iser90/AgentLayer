@@ -260,9 +260,18 @@ async def _process_utterance(
         return
 
     try:
+        from apps.backend.domain.assistant_display_sanitize import sanitize_assistant_display_text
+        from apps.backend.domain.voice.speech_prep import prepare_speech_text
+
+        cleaned = sanitize_assistant_display_text(reply) or reply
+        speech = prepare_speech_text(
+            cleaned,
+            language=voice_policy.effective_stt_language(sess.agent_user_id),
+        )
+
         mp3, _mime = await loop.run_in_executor(
             None,
-            lambda: tts.synthesize_speech(reply, user_id=sess.agent_user_id),
+            lambda: tts.synthesize_speech(speech or cleaned, user_id=sess.agent_user_id),
         )
     except ValueError as e:
         await text_channel.send(f"TTS failed: {e!s:.200}")

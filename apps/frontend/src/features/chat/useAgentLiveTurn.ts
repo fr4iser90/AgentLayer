@@ -10,14 +10,17 @@ export type LiveLogAppend = Omit<AgentTimelineEntry, "id" | "kind" | "text"> & {
 
 export type LiveTurnStore = {
   subscribeStream: (cb: () => void) => () => void;
+  subscribeReasoningStream: (cb: () => void) => () => void;
   subscribeLog: (cb: () => void) => () => void;
   getStreamText: () => string;
+  getStreamReasoningText: () => string;
   getAgentLog: () => AgentTimelineEntry[];
   isActive: () => boolean;
   beginTurn: (initialLog?: AgentTimelineEntry[]) => void;
   endTurn: () => void;
   resetAfterCommit: () => void;
   appendStreamDelta: (delta: string) => void;
+  appendReasoningStreamDelta: (delta: string) => void;
   appendStreamSeparator: () => void;
   appendLogLine: (kind: string, text: string, extras?: LiveLogAppend) => void;
   takeAgentLogSnapshot: () => AgentTimelineEntry[];
@@ -25,18 +28,25 @@ export type LiveTurnStore = {
 
 export function createLiveTurnStore(): LiveTurnStore {
   let streamText = "";
+  let streamReasoningText = "";
   let agentLog: AgentTimelineEntry[] = [];
   let active = false;
 
   const streamListeners = new Set<() => void>();
+  const reasoningStreamListeners = new Set<() => void>();
   const logListeners = new Set<() => void>();
   let streamRaf: number | null = null;
+  let reasoningStreamRaf: number | null = null;
   let logRaf: number | null = null;
 
   const cancelRaf = () => {
     if (streamRaf != null) {
       cancelAnimationFrame(streamRaf);
       streamRaf = null;
+    }
+    if (reasoningStreamRaf != null) {
+      cancelAnimationFrame(reasoningStreamRaf);
+      reasoningStreamRaf = null;
     }
     if (logRaf != null) {
       cancelAnimationFrame(logRaf);
@@ -48,6 +58,10 @@ export function createLiveTurnStore(): LiveTurnStore {
     for (const l of streamListeners) l();
   };
 
+  const notifyReasoningStream = () => {
+    for (const l of reasoningStreamListeners) l();
+  };
+
   const notifyLog = () => {
     for (const l of logListeners) l();
   };
@@ -57,6 +71,14 @@ export function createLiveTurnStore(): LiveTurnStore {
     streamRaf = requestAnimationFrame(() => {
       streamRaf = null;
       notifyStream();
+    });
+  };
+
+  const scheduleReasoningStreamFlush = () => {
+    if (reasoningStreamRaf != null) return;
+    reasoningStreamRaf = requestAnimationFrame(() => {
+      reasoningStreamRaf = null;
+      notifyReasoningStream();
     });
   };
 
@@ -73,33 +95,44 @@ export function createLiveTurnStore(): LiveTurnStore {
       streamListeners.add(cb);
       return () => streamListeners.delete(cb);
     },
+    subscribeReasoningStream: (cb) => {
+      reasoningStreamListeners.add(cb);
+      return () => reasoningStreamListeners.delete(cb);
+    },
     subscribeLog: (cb) => {
       logListeners.add(cb);
       return () => logListeners.delete(cb);
     },
     getStreamText: () => streamText,
+    getStreamReasoningText: () => streamReasoningText,
     getAgentLog: () => agentLog,
     isActive: () => active,
     beginTurn: (initialLog: AgentTimelineEntry[] = []) => {
       cancelRaf();
       active = true;
       streamText = "";
+      streamReasoningText = "";
       agentLog = [...initialLog];
       notifyStream();
+      notifyReasoningStream();
       notifyLog();
     },
     endTurn: () => {
       cancelRaf();
       active = false;
       streamText = "";
+      streamReasoningText = "";
       notifyStream();
+      notifyReasoningStream();
     },
     resetAfterCommit: () => {
       cancelRaf();
       active = false;
       streamText = "";
+      streamReasoningText = "";
       agentLog = [];
       notifyStream();
+      notifyReasoningStream();
       notifyLog();
     },
     appendStreamDelta: (delta: string) => {
@@ -107,6 +140,12 @@ export function createLiveTurnStore(): LiveTurnStore {
       streamText += delta;
       if (!streamText.trim()) return;
       scheduleStreamFlush();
+    },
+    appendReasoningStreamDelta: (delta: string) => {
+      if (!delta) return;
+      streamReasoningText += delta;
+      if (!streamReasoningText.trim()) return;
+      scheduleReasoningStreamFlush();
     },
     appendStreamSeparator: () => {
       streamText += "\n\n";
@@ -136,6 +175,15 @@ export function useAgentLiveTurn(): LiveTurnStore {
 /** Subscribe to RAF-batched stream text (in-flight assistant body only). */
 export function useAgentStreamText(store: LiveTurnStore): string {
   return useSyncExternalStore(store.subscribeStream, store.getStreamText, () => "");
+}
+
+/** Subscribe to RAF-batched reasoning stream text (in-flight assistant turn). */
+export function useAgentStreamReasoning(store: LiveTurnStore): string {
+  return useSyncExternalStore(
+    store.subscribeReasoningStream,
+    store.getStreamReasoningText,
+    () => ""
+  );
 }
 
 /** Subscribe to RAF-batched live timeline (activity panel + in-flight turn cards). */

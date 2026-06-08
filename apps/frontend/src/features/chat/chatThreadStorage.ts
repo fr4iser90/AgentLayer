@@ -8,6 +8,8 @@ export type ChatSource = string;
 export type UiMessage = {
   role: "user" | "assistant";
   content: string;
+  /** Model reasoning/thinking when user enables show-reasoning (optional). */
+  reasoningContent?: string;
   id?: string;
   createdAt?: number;
 };

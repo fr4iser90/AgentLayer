@@ -63,6 +63,36 @@ def _strip_thought_blocks(text: str) -> str:
     return out
 
 
+def _extract_thought_blocks(text: str) -> tuple[str, str]:
+    """Split ``[Thought]`` / redacted thinking blocks into (display_content, reasoning_blob)."""
+    if not text:
+        return text, ""
+    reasoning_parts: list[str] = []
+
+    def _thought_replacer(match: re.Match[str]) -> str:
+        reasoning_parts.append(match.group(0).strip())
+        return ""
+
+    out = re.sub(
+        r"\[Thought\][\s\S]*?(?=\n{2,}|\Z)",
+        _thought_replacer,
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    def _redacted_replacer(match: re.Match[str]) -> str:
+        reasoning_parts.append(match.group(0).strip())
+        return ""
+
+    out = re.sub(
+        r"<think>[\s\S]*?(?:</think>|\Z)",
+        _redacted_replacer,
+        out,
+        flags=re.IGNORECASE,
+    )
+    return out, "\n\n".join(p for p in reasoning_parts if p)
+
+
 def _strip_embedded_tool_json_blobs(text: str) -> str:
     """Remove ``{"name": "propose_layouts", "arguments": {...}}`` style prose from display text."""
     if not text or "{" not in text:
@@ -144,6 +174,46 @@ def synthetic_dashboard_tool_calls_from_message(
             }
         ]
     return None
+
+
+def prepare_completion_assistant_for_client(data: dict[str, Any]) -> dict[str, Any]:
+    """Extract reasoning fields, move thought blocks out of content, sanitize display text."""
+    if not isinstance(data, dict):
+        return data
+    try:
+        ch_list = data.get("choices")
+        if not isinstance(ch_list, list) or not ch_list:
+            return data
+        ch0 = ch_list[0]
+        if not isinstance(ch0, dict):
+            return data
+        msg = ch0.get("message")
+        if not isinstance(msg, dict):
+            return data
+
+        reasoning_parts: list[str] = []
+        for key in ("reasoning_content", "reasoning", "thinking"):
+            v = msg.get(key)
+            if isinstance(v, str) and v.strip():
+                reasoning_parts.append(v.strip())
+            if key != "reasoning_content":
+                msg.pop(key, None)
+
+        raw = msg.get("content")
+        raw_text = raw if isinstance(raw, str) else ""
+        content_wo_thoughts, thought_blob = _extract_thought_blocks(raw_text)
+        if thought_blob:
+            reasoning_parts.append(thought_blob)
+
+        cleaned = sanitize_assistant_display_text(content_wo_thoughts)
+        msg["content"] = cleaned or "(empty)"
+        if reasoning_parts:
+            msg["reasoning_content"] = "\n\n".join(reasoning_parts)
+        ch0["message"] = msg
+        ch_list[0] = ch0
+    except (TypeError, KeyError, IndexError):
+        return data
+    return data
 
 
 def sanitize_completion_for_dashboard_agent(data: dict[str, Any]) -> bool:

@@ -212,6 +212,8 @@ AGENT_TOOLS_DENYLIST = frozenset(
 # Tool Ranking (Semantic Search based)
 # Chat tools[]: send full JSON Schema per tool (default on). Set false for compact catalog (empty parameters).
 AGENT_TOOLS_FULL_SCHEMA = _env_bool("AGENT_TOOLS_FULL_SCHEMA", True)
+# Tool loop round 2+: re-send tool names in catalog mode (no full JSON Schema) to save prompt tokens.
+AGENT_TOOLS_CATALOG_AFTER_FIRST_ROUND = _env_bool("AGENT_TOOLS_CATALOG_AFTER_FIRST_ROUND", True)
 
 # LLM text degeneration: abort when the same tail block repeats consecutively at stream end.
 AGENT_STREAM_REPETITION_GUARD = _env_bool("AGENT_STREAM_REPETITION_GUARD", True)
@@ -222,7 +224,10 @@ AGENT_STREAM_REPETITION_TAIL_WINDOW = max(500, _env_int("AGENT_STREAM_REPETITION
 # --- Chat context budget (anti-bloat for LLM prompts; full history stays in DB/UI) ---
 CHAT_CONTEXT_PREP_ENABLED = _env_bool("CHAT_CONTEXT_PREP_ENABLED", True)
 CHAT_CONTEXT_MAX_MESSAGES = max(8, _env_int("CHAT_CONTEXT_MAX_MESSAGES", 48))
-CHAT_CONTEXT_MAX_MESSAGE_CHARS = max(2000, _env_int("CHAT_CONTEXT_MAX_MESSAGE_CHARS", 16_000))
+# Per-message char cap = CHAT_CONTEXT_MAX_MESSAGE_RATIO × context_window × ~4 chars/token.
+CHAT_CONTEXT_MAX_MESSAGE_RATIO = max(
+    0.002, min(0.25, float(os.environ.get("CHAT_CONTEXT_MAX_MESSAGE_RATIO", "0.015")))
+)
 # Optional fallback context window (tokens) when provider model metadata has no context_length.
 # Default 0 = disabled — compaction ratios use provider catalog or CHAT_CONTEXT_MODEL_BUDGET_OVERRIDES only.
 CHAT_CONTEXT_DEFAULT_BUDGET_TOKENS = max(0, _env_int("CHAT_CONTEXT_DEFAULT_BUDGET_TOKENS", 0))
@@ -237,12 +242,14 @@ CHAT_CONTEXT_HARD_LIMIT_RATIO = max(
 CHAT_CONTEXT_RECENT_VERBATIM_MESSAGES = max(4, _env_int("CHAT_CONTEXT_RECENT_VERBATIM_MESSAGES", 12))
 CHAT_CONTEXT_COMPACTION_ENABLED = _env_bool("CHAT_CONTEXT_COMPACTION_ENABLED", True)
 CHAT_CONTEXT_COMPACTION_MODEL = (os.environ.get("CHAT_CONTEXT_COMPACTION_MODEL") or "").strip()
-CHAT_CONTEXT_COMPACTION_MAX_INPUT_CHARS = max(
-    5000, _env_int("CHAT_CONTEXT_COMPACTION_MAX_INPUT_CHARS", 80_000)
+# Compaction LLM input cap = ratio × context_window (chars via CHARS_PER_TOKEN_ESTIMATE).
+CHAT_CONTEXT_COMPACTION_INPUT_RATIO = max(
+    0.01, min(0.5, float(os.environ.get("CHAT_CONTEXT_COMPACTION_INPUT_RATIO", "0.08")))
 )
 CHAT_CONTEXT_AGENT_LOOP_TRIM_ENABLED = _env_bool("CHAT_CONTEXT_AGENT_LOOP_TRIM_ENABLED", True)
-CHAT_CONTEXT_TOOL_RESULT_MAX_CHARS = max(
-    1000, _env_int("CHAT_CONTEXT_TOOL_RESULT_MAX_CHARS", 8000)
+# Tool result message cap = ratio × context_window (chars).
+CHAT_CONTEXT_TOOL_RESULT_MAX_RATIO = max(
+    0.002, min(0.15, float(os.environ.get("CHAT_CONTEXT_TOOL_RESULT_MAX_RATIO", "0.008")))
 )
 CHAT_CONTEXT_KEEP_RECENT_TOOL_ROUNDS = max(2, _env_int("CHAT_CONTEXT_KEEP_RECENT_TOOL_ROUNDS", 6))
 
@@ -252,12 +259,12 @@ AGENT_TOOLS_TRIGGER_BOOST = max(0.0, min(1.0, float(os.environ.get("AGENT_TOOLS_
 AGENT_TOOLS_CONTEXT_BOOST = max(0.0, min(1.0, float(os.environ.get("AGENT_TOOLS_CONTEXT_BOOST", "0.05"))))
 AGENT_TOOLS_MIN_SCORE_THRESHOLD = max(0.0, min(1.0, float(os.environ.get("AGENT_TOOLS_MIN_SCORE_THRESHOLD", "0.1"))))
 AGENT_TOOLS_RANKING_FALLBACK_ALL = _env_bool("AGENT_TOOLS_RANKING_FALLBACK_ALL", True)
-# Dynamic tool forward budget (see tool_forward_policy.py)
-AGENT_TOOLS_BUDGET_RATIO = max(0.02, min(0.25, float(os.environ.get("AGENT_TOOLS_BUDGET_RATIO", "0.10"))))
-AGENT_TOOLS_BUDGET_MIN_TOKENS = max(1000, _env_int("AGENT_TOOLS_BUDGET_MIN_TOKENS", 4000))
-AGENT_TOOLS_BUDGET_MAX_TOKENS = max(4000, _env_int("AGENT_TOOLS_BUDGET_MAX_TOKENS", 32000))
-# Safety ceiling on forwarded tool count; real limit is BUDGET_* token sum in tool_forward_policy.
-AGENT_TOOLS_COUNT_CAP_ABSOLUTE = max(1, _env_int("AGENT_TOOLS_COUNT_CAP_ABSOLUTE", 256))
+# Dynamic tool forward budget — ratios of provider context window only (context_budget.py).
+AGENT_TOOLS_BUDGET_RATIO = max(0.01, min(0.25, float(os.environ.get("AGENT_TOOLS_BUDGET_RATIO", "0.06"))))
+# Max tools[] count ≈ ratio × context_window (safety ceiling; fit enforced by tools_budget_tokens).
+AGENT_TOOLS_COUNT_CAP_RATIO = max(
+    0.00001, min(0.01, float(os.environ.get("AGENT_TOOLS_COUNT_CAP_RATIO", "0.00012")))
+)
 
 
 def _resolve_database_url() -> str:

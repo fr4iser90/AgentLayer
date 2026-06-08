@@ -14,7 +14,13 @@ from apps.backend.infrastructure.chat_context import (
     _run_compaction_llm,
     cap_message_content,
 )
-from apps.backend.infrastructure.context_budget import ContextBudget, should_compact_by_usage
+from apps.backend.infrastructure.context_budget import (
+    ContextBudget,
+    compaction_input_max_chars_for_budget,
+    message_max_chars_for_budget,
+    should_compact_by_usage,
+    tool_result_max_chars_for_budget,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -63,11 +69,15 @@ def _rebuild_with_kept_indices(
 
 def _cap_tool_and_oversized_messages(
     messages: list[dict[str, Any]],
+    *,
+    context_budget: ContextBudget | None = None,
 ) -> tuple[list[dict[str, Any]], int]:
     out: list[dict[str, Any]] = []
     capped = 0
-    tool_max = config.CHAT_CONTEXT_TOOL_RESULT_MAX_CHARS
-    msg_max = config.CHAT_CONTEXT_MAX_MESSAGE_CHARS
+    tool_max = tool_result_max_chars_for_budget(context_budget)
+    msg_max = message_max_chars_for_budget(context_budget)
+    if tool_max is None or msg_max is None:
+        return list(messages), 0
     for m in messages:
         if not isinstance(m, dict):
             continue
@@ -110,7 +120,7 @@ async def apply_agent_loop_context_budget(
         patch["at_soft_limit"] = at_soft
         patch["at_hard_limit"] = at_hard
 
-    msgs, capped_n = _cap_tool_and_oversized_messages(messages)
+    msgs, capped_n = _cap_tool_and_oversized_messages(messages, context_budget=context_budget)
     patch["messages_capped"] = capped_n
 
     if context_budget is None:
@@ -128,7 +138,11 @@ async def apply_agent_loop_context_budget(
     prefix_len, groups = _find_tool_round_groups(msgs)
     if not groups:
         if at_soft:
-            tighter, extra = _cap_history(msgs, max(2000, config.CHAT_CONTEXT_MAX_MESSAGE_CHARS // 2))
+            half_msg = message_max_chars_for_budget(context_budget)
+            cap = (half_msg // 2) if half_msg else None
+            if cap is None:
+                return msgs, loop_summary, patch
+            tighter, extra = _cap_history(msgs, cap)
             patch["messages_capped"] += extra
             patch["trim_applied"] = extra > 0
             patch["loop_compaction_applied"] = extra > 0
@@ -151,10 +165,10 @@ async def apply_agent_loop_context_budget(
         for g in to_drop_groups:
             drop_indices.update(g)
         dropped_msgs = [msgs[i] for i in sorted(drop_indices)]
-        block = _format_messages_for_compaction(
-            dropped_msgs,
-            max_chars=config.CHAT_CONTEXT_COMPACTION_MAX_INPUT_CHARS // 2,
-        )
+        compact_cap = compaction_input_max_chars_for_budget(context_budget)
+        if compact_cap is None:
+            continue
+        block = _format_messages_for_compaction(dropped_msgs, max_chars=compact_cap // 2)
         if config.CHAT_CONTEXT_COMPACTION_ENABLED and compaction_attempt:
             summary = await asyncio.to_thread(
                 _run_compaction_llm,
@@ -162,13 +176,15 @@ async def apply_agent_loop_context_budget(
                 new_block=block,
                 compaction_model=compaction_model,
                 compaction_attempt=compaction_attempt,
+                compaction_max_chars=compact_cap,
             )
         else:
             summary = _compaction_text_fallback(summary, block)
         keep_indices = set(range(prefix_len))
         for g in groups:
             keep_indices.update(g)
-        note = (_OMIT_NOTE + summary.strip())[: config.CHAT_CONTEXT_COMPACTION_MAX_INPUT_CHARS]
+        note_cap = compact_cap or compaction_input_max_chars_for_budget(context_budget)
+        note = (_OMIT_NOTE + summary.strip())[: note_cap] if note_cap else (_OMIT_NOTE + summary.strip())
         msgs = _rebuild_with_kept_indices(
             msgs,
             keep_indices=keep_indices,

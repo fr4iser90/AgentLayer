@@ -4,6 +4,7 @@ import {
   handleAgentWsMessage,
   type AgentToolDoneEvent,
   type AgentWsTurnCallbacks,
+  type AgentWsTurnResult,
 } from "./agentChatWsCore";
 import { detectUserTimezone } from "../../lib/userTimezone";
 import type { LiveTurnStore } from "./useAgentLiveTurn";
@@ -20,9 +21,7 @@ export type RunAgentChatTurnOpts = {
   streamEnabled?: boolean;
 };
 
-export type AgentChatTurnResult = {
-  content: string;
-};
+export type AgentChatTurnResult = AgentWsTurnResult;
 
 /**
  * Persistent ``/ws/v1/chat`` connection — same lifecycle as ChatPage agent mode
@@ -121,10 +120,10 @@ export function useAgentChatWs(options: {
             turnActiveRef.current = false;
             clearSlowTimer();
           },
-          resolve: (content: string) => {
+          resolve: (result: AgentWsTurnResult) => {
             if (finished) return;
             turn.markFinished();
-            resolve({ content });
+            resolve(result);
           },
           reject: (err: Error) => {
             if (finished) return;

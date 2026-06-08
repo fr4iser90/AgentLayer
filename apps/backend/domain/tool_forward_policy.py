@@ -90,27 +90,18 @@ def compute_tool_forward_limits(
     """
     Return (token_budget_estimate, max_tool_count).
 
-    Token budget = fraction of context window (``AGENT_TOOLS_BUDGET_*``). How many tools
-    actually fit is decided in ``_cap_ranked_pool`` by summing per-tool estimates against
-    that budget. ``max_tool_count`` is only a safety ceiling.
+    Both values are ``ratio × provider context_window`` (see ``completion_quotas_from_window``).
+    When the window is unknown (0), returns ``(0, 0)`` so callers skip ranked tool forward.
     """
     _ = model_tier
     window = max(0, int(context_window_tokens or 0))
-    ratio = max(0.02, min(0.25, float(config.AGENT_TOOLS_BUDGET_RATIO)))
-    min_tok = max(1000, int(config.AGENT_TOOLS_BUDGET_MIN_TOKENS))
-    max_tok = max(min_tok, int(config.AGENT_TOOLS_BUDGET_MAX_TOKENS))
-    if window > 0:
-        raw = int(window * ratio)
-        token_budget = max(min_tok, min(max_tok, raw))
-    else:
-        token_budget = min_tok
-
     if window <= 0:
-        abs_max = max(1, int(config.AGENT_TOOLS_COUNT_CAP_ABSOLUTE))
-        return token_budget, abs_max
+        return 0, 0
 
-    abs_max = max(1, int(config.AGENT_TOOLS_COUNT_CAP_ABSOLUTE))
-    return token_budget, abs_max
+    from apps.backend.infrastructure.context_budget import completion_quotas_from_window
+
+    quotas = completion_quotas_from_window(window, source="tool_forward_inline")
+    return quotas.tools_budget_tokens, quotas.max_tool_count
 
 
 def _introspection_pins_for_agent(agent_id: str | None, specs: list[Any]) -> frozenset[str]:
@@ -243,6 +234,8 @@ def build_tool_forward_plan(ctx: ToolForwardContext) -> ToolForwardPlan:
     )
 
     forward_specs = pinned_specs + capped
+    if len(forward_specs) > max_count:
+        forward_specs = forward_specs[:max_count]
     forward_names = [n for s in forward_specs if (n := _tool_spec_name(s))]
 
     schema_modes: dict[str, SchemaMode] = {}

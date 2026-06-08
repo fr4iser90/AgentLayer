@@ -11,6 +11,8 @@ from typing import Any
 from apps.backend.core.config import config
 from apps.backend.infrastructure.context_budget import (
     ContextBudget,
+    compaction_input_max_chars_for_budget,
+    message_max_chars_for_budget,
     should_compact_by_usage,
 )
 
@@ -206,6 +208,7 @@ def _run_compaction_llm(
     new_block: str,
     compaction_model: str,
     compaction_attempt: tuple[str, dict[str, str], str] | None = None,
+    compaction_max_chars: int | None = None,
 ) -> str:
     from apps.backend.infrastructure.openai_compat_http import http_post_chat_completions
 
@@ -243,7 +246,12 @@ def _run_compaction_llm(
                     "Drop: filler, repeated tool noise, greetings. Be concise."
                 ),
             },
-            {"role": "user", "content": user_payload[: config.CHAT_CONTEXT_COMPACTION_MAX_INPUT_CHARS]},
+            {
+                "role": "user",
+                "content": user_payload[: compaction_max_chars]
+                if compaction_max_chars
+                else user_payload,
+            },
         ],
         "stream": False,
         "temperature": 0,
@@ -349,7 +357,10 @@ async def prepare_chat_history_for_llm(
 
     original_len = len(messages)
     hist = _normalize_history(messages)
-    hist, capped_n = _cap_history(hist, config.CHAT_CONTEXT_MAX_MESSAGE_CHARS)
+    msg_char_cap = message_max_chars_for_budget(context_budget)
+    capped_n = 0
+    if msg_char_cap is not None:
+        hist, capped_n = _cap_history(hist, msg_char_cap)
     meta.messages_capped = capped_n
 
     summary = ""
@@ -373,17 +384,26 @@ async def prepare_chat_history_for_llm(
         already = min(summary_covers, old_end)
         to_compact = hist[already:old_end]
         if to_compact:
-            block = _format_messages_for_compaction(
-                to_compact,
-                max_chars=config.CHAT_CONTEXT_COMPACTION_MAX_INPUT_CHARS // 2,
-            )
-            new_summary = await asyncio.to_thread(
-                _run_compaction_llm,
-                existing_summary=summary,
-                new_block=block,
-                compaction_model=compaction_model,
-                compaction_attempt=compaction_attempt,
-            )
+            compact_cap = compaction_input_max_chars_for_budget(context_budget)
+            if compact_cap is not None:
+                block = _format_messages_for_compaction(to_compact, max_chars=compact_cap // 2)
+                new_summary = await asyncio.to_thread(
+                    _run_compaction_llm,
+                    existing_summary=summary,
+                    new_block=block,
+                    compaction_model=compaction_model,
+                    compaction_attempt=compaction_attempt,
+                    compaction_max_chars=compact_cap,
+                )
+            else:
+                block = _compaction_text_fallback(
+                    summary,
+                    "\n".join(
+                        f"{str(m.get('role') or 'user').upper()}: {message_content_text(m.get('content'))[:500]}"
+                        for m in to_compact[:20]
+                    ),
+                )
+                new_summary = block
             summary = new_summary
             summary_covers = old_end
             if user_id is not None:

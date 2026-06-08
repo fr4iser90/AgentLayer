@@ -41,6 +41,7 @@ class OpenAIStreamAccumulator:
 
     __slots__ = (
         "_content_parts",
+        "_reasoning_parts",
         "_tool_calls_by_index",
         "_finish_reason",
         "usage",
@@ -50,6 +51,7 @@ class OpenAIStreamAccumulator:
 
     def __init__(self) -> None:
         self._content_parts: list[str] = []
+        self._reasoning_parts: list[str] = []
         self._tool_calls_by_index: dict[int, dict[str, Any]] = {}
         self._finish_reason: str | None = None
         self.usage: dict[str, Any] | None = None
@@ -63,17 +65,24 @@ def _accum_usage(acc: OpenAIStreamAccumulator, chunk: dict[str, Any]) -> None:
         acc.usage = u
 
 
-def stream_accumulator_feed(acc: OpenAIStreamAccumulator, chunk: dict[str, Any]) -> StreamFeedResult:
-    """Apply one chunk; return text delta for the client and whether to abort the HTTP stream."""
-    text_out_parts: list[str] = []
+@dataclass(frozen=True)
+class StreamFeedDelta:
+    content: str = ""
+    reasoning: str = ""
+
+
+def stream_accumulator_feed(acc: OpenAIStreamAccumulator, chunk: dict[str, Any]) -> tuple[StreamFeedDelta, bool]:
+    """Apply one chunk; return content/reasoning deltas for the client and whether to abort the HTTP stream."""
+    content_out_parts: list[str] = []
+    reasoning_out_parts: list[str] = []
     choices = chunk.get("choices") or []
     if not choices:
         _accum_usage(acc, chunk)
-        return StreamFeedResult("", False)
+        return StreamFeedDelta(), False
     ch0 = choices[0] if isinstance(choices[0], dict) else {}
     if not isinstance(ch0, dict):
         _accum_usage(acc, chunk)
-        return StreamFeedResult("", False)
+        return StreamFeedDelta(), False
     fr = ch0.get("finish_reason")
     if isinstance(fr, str) and fr:
         acc._finish_reason = fr
@@ -85,11 +94,11 @@ def stream_accumulator_feed(acc: OpenAIStreamAccumulator, chunk: dict[str, Any])
         acc._role = r
     c = delta.get("content")
     if isinstance(c, str) and c:
-        text_out_parts.append(c)
-    for k in ("reasoning", "thinking"):
+        content_out_parts.append(c)
+    for k in ("reasoning", "thinking", "reasoning_content"):
         v = delta.get(k)
         if isinstance(v, str) and v:
-            text_out_parts.append(v)
+            reasoning_out_parts.append(v)
     tcd = delta.get("tool_calls")
     if isinstance(tcd, list):
         for tc in tcd:
@@ -119,10 +128,13 @@ def stream_accumulator_feed(acc: OpenAIStreamAccumulator, chunk: dict[str, Any])
                     cur["function"]["arguments"] = prev_a + args
     _accum_usage(acc, chunk)
 
-    new_text = "".join(text_out_parts)
-    if new_text and not acc.repetition_aborted:
+    new_content = "".join(content_out_parts)
+    new_reasoning = "".join(reasoning_out_parts)
+    if new_reasoning and not acc.repetition_aborted:
+        acc._reasoning_parts.append(new_reasoning)
+    if new_content and not acc.repetition_aborted:
         prev = "".join(acc._content_parts)
-        candidate = prev + new_text
+        candidate = prev + new_content
         truncated, aborted = guard_assistant_text(candidate)
         if aborted:
             acc._content_parts = [truncated]
@@ -134,20 +146,25 @@ def stream_accumulator_feed(acc: OpenAIStreamAccumulator, chunk: dict[str, Any])
                 len(candidate),
                 len(truncated),
             )
-            return StreamFeedResult(emit, True)
-        acc._content_parts.append(new_text)
+            return StreamFeedDelta(content=emit, reasoning=new_reasoning), True
+        acc._content_parts.append(new_content)
 
-    return StreamFeedResult(new_text if not acc.repetition_aborted else "", False)
+    if acc.repetition_aborted:
+        return StreamFeedDelta(reasoning=new_reasoning), False
+    return StreamFeedDelta(content=new_content, reasoning=new_reasoning), False
 
 
 def stream_accumulator_build_completion(acc: OpenAIStreamAccumulator) -> dict[str, Any]:
     content = "".join(acc._content_parts)
+    reasoning = "".join(acc._reasoning_parts)
     tool_calls_list: list[dict[str, Any]] | None = None
     if acc._tool_calls_by_index:
         tool_calls_list = [acc._tool_calls_by_index[i] for i in sorted(acc._tool_calls_by_index)]
     msg: dict[str, Any] = {"role": acc._role or "assistant", "content": content if content else None}
     if msg["content"] is None and not tool_calls_list:
         msg["content"] = ""
+    if reasoning.strip():
+        msg["reasoning_content"] = reasoning
     if tool_calls_list:
         msg["tool_calls"] = tool_calls_list
     fin = acc._finish_reason
@@ -183,11 +200,14 @@ async def _feed_chunk_async(
     acc: OpenAIStreamAccumulator,
     obj: dict[str, Any],
     on_text_delta: Callable[[str], Awaitable[None]] | None,
+    on_reasoning_delta: Callable[[str], Awaitable[None]] | None = None,
 ) -> bool:
-    result = stream_accumulator_feed(acc, obj)
-    if result.text and on_text_delta is not None:
-        await on_text_delta(result.text)
-    return result.abort_stream
+    delta, abort_stream = stream_accumulator_feed(acc, obj)
+    if delta.content and on_text_delta is not None:
+        await on_text_delta(delta.content)
+    if delta.reasoning and on_reasoning_delta is not None:
+        await on_reasoning_delta(delta.reasoning)
+    return abort_stream
 
 
 async def stream_chat_completions_aggregate(
@@ -197,12 +217,14 @@ async def stream_chat_completions_aggregate(
     llm_backend: str,
     profile_key: str,
     on_text_delta: Callable[[str], Awaitable[None]] | None,
+    on_reasoning_delta: Callable[[str], Awaitable[None]] | None = None,
     cancel_event: Any | None = None,
     timeout: float = 600.0,
 ) -> tuple[dict[str, Any], bool, tuple[str, dict[str, str], str]]:
     """
     POST ``stream: true``, parse SSE/NDJSON, merge to a completion dict.
-    For each content delta, call ``on_text_delta`` (if set).
+    For each content delta, call ``on_text_delta`` (if set). Reasoning/thinking deltas use
+    ``on_reasoning_delta`` when set.
     """
     attempts_local = list(attempts_seq)
     lb = llm_backend
@@ -272,7 +294,9 @@ async def stream_chat_completions_aggregate(
                                         continue
                                     if not isinstance(obj, dict):
                                         continue
-                                    if await _feed_chunk_async(acc, obj, on_text_delta):
+                                    if await _feed_chunk_async(
+                                        acc, obj, on_text_delta, on_reasoning_delta
+                                    ):
                                         repetition_abort = True
                                         break
                                 if repetition_abort:
@@ -288,7 +312,9 @@ async def stream_chat_completions_aggregate(
                                     except json.JSONDecodeError:
                                         continue
                                     if isinstance(obj, dict):
-                                        if await _feed_chunk_async(acc, obj, on_text_delta):
+                                        if await _feed_chunk_async(
+                                        acc, obj, on_text_delta, on_reasoning_delta
+                                    ):
                                             repetition_abort = True
                                             break
                     data = stream_accumulator_build_completion(acc)

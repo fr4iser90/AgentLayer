@@ -36,13 +36,16 @@ def test_infer_model_tier():
 
 
 def test_compute_tool_forward_limits_uses_context_budget():
+    from apps.backend.core import config as cfg
+
+    cfg.config.AGENT_TOOLS_BUDGET_RATIO = 0.06
+    cfg.config.AGENT_TOOLS_COUNT_CAP_RATIO = 0.00012
     tok, count = compute_tool_forward_limits(context_window_tokens=128_000, model_tier="weak_local")
-    # 128k × 10% → 12.8k tool token budget (clamped by BUDGET_MIN/MAX)
-    assert 4000 <= tok <= 32000
-    assert count == 256
+    assert tok == int(128_000 * 0.06)
+    assert count == int(128_000 * 0.00012)
     tok0, count0 = compute_tool_forward_limits(context_window_tokens=0, model_tier="weak_local")
-    assert tok0 >= 4000
-    assert count0 == 256
+    assert tok0 == 0
+    assert count0 == 0
 
 
 def test_resolve_pin_names_filters_allowlist(monkeypatch):
@@ -91,7 +94,7 @@ def test_build_tool_forward_plan_pins_yaml_tools(monkeypatch):
         ToolForwardContext(
             agent_id="dashboard",
             model_id="qwen2.5:7b",
-            context_window_tokens=32_000,
+            context_window_tokens=262_144,
             model_tier="weak_local",
             user_text="zeig mir layout varianten",
             tool_specs=specs,
@@ -221,7 +224,7 @@ def test_yaml_pins_forwarded_not_keyword_gates(monkeypatch):
         ToolForwardContext(
             agent_id="dashboard",
             model_id="qwen2.5:7b",
-            context_window_tokens=32_000,
+            context_window_tokens=262_144,
             model_tier="weak_local",
             user_text="zeig security scan status auf dem board",
             tool_specs=specs,

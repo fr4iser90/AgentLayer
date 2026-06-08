@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import type { AuthContextValue } from "../../auth/AuthContext";
+import { getAgentShowReasoning } from "../settings/agentReasoningPrefs";
 import { AssistantProposalBody } from "./ProposalMessageBody";
 import type { RunCard } from "./buildRunCards";
 import { RunCardBlock } from "./RunCardBlock";
@@ -14,8 +15,23 @@ import type { AgentTimelineEntry } from "./chatThreadStorage";
 import type { Proposal, ProposalOption } from "../../lib/proposalParser";
 import { TurnElapsedRuntime } from "./TurnElapsedRuntime";
 
+const ReasoningPanel = memo(function ReasoningPanel({ text }: { text: string }) {
+  const { t } = useTranslation(["chat"]);
+  const trimmed = text.trim();
+  if (!trimmed || !getAgentShowReasoning()) return null;
+  return (
+    <details className="mb-3 rounded-md border border-white/5 bg-black/25 px-3 py-2 text-xs text-neutral-500">
+      <summary className="cursor-pointer select-none font-medium uppercase tracking-wide text-neutral-500">
+        {t("chat:reasoningPanelLabel")}
+      </summary>
+      <pre className="mt-2 whitespace-pre-wrap break-words font-sans text-neutral-500">{trimmed}</pre>
+    </details>
+  );
+});
+
 type Props = {
   content: string;
+  reasoningContent?: string;
   timelineEntries: AgentTimelineEntry[];
   running?: boolean;
   createdAt?: number;
@@ -95,6 +111,7 @@ const InterleavedStreamBody = memo(function InterleavedStreamBody({
 /** Assistant turn: text and tool cards interleaved in stream order (one bubble). */
 export const AssistantTurnBlock = memo(function AssistantTurnBlock({
   content,
+  reasoningContent,
   timelineEntries,
   running = false,
   createdAt,
@@ -146,6 +163,7 @@ export const AssistantTurnBlock = memo(function AssistantTurnBlock({
         {running && runStartedAtMs != null ? (
           <TurnElapsedRuntime startedAtMs={runStartedAtMs} className="mb-2" />
         ) : null}
+        <ReasoningPanel text={reasoningContent ?? ""} />
         {hasStreamBody ? (
           <InterleavedStreamBody
             segments={segments}

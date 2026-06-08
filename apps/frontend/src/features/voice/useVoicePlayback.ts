@@ -2,11 +2,18 @@ import { useCallback, useRef } from "react";
 import { apiFetch } from "../../lib/api";
 import type { AuthContextValue } from "../../auth/AuthContext";
 
+// Unicode Extended_Pictographic — covers emoji + ZWJ sequences (flags, skin tones, …).
+const EMOJI_RE =
+  /\p{Extended_Pictographic}(?:\uFE0F|\uFE0E)?(?:\u200D\p{Extended_Pictographic}(?:\uFE0F|\uFE0E)?)*/gu;
+
 function stripMarkdownForSpeech(text: string): string {
   return text
+    .replace(EMOJI_RE, " ")
     .replace(/```[\s\S]*?```/g, " ")
     .replace(/`[^`]+`/g, " ")
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/https?:\/\/\S+/g, " ")
     .replace(/[#*_~>|]/g, " ")
     .replace(/\s+/g, " ")
     .trim();

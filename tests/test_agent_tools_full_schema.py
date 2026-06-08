@@ -10,6 +10,15 @@ from apps.backend.domain.agent import (
 from apps.backend.infrastructure.coding_schedule_execution import CODING_SCHEDULE_TOOL_ALLOWLIST
 
 
+def test_catalog_tool_falls_back_to_description_field():
+    fn = {
+        "description": "Legacy description text",
+        "parameters": {"type": "object", "properties": {"x": {"type": "string"}}},
+    }
+    out = _catalog_tool_function("demo_tool", fn)
+    assert "Legacy description text" in out["function"]["description"]
+
+
 def test_catalog_tool_has_empty_properties():
     spec = _registry_tool_spec_by_registered_name("write_file")
     assert spec is not None

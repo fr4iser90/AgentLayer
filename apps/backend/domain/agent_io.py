@@ -820,6 +820,43 @@ def _raise_if_workspace_inaccessible(
         )
 
 
+def _attach_speech_text_to_completion(data: dict[str, Any]) -> dict[str, Any]:
+    """When web voice output is enabled, add a TTS-friendly ``speech_text`` field."""
+    if not isinstance(data, dict):
+        return data
+    try:
+        from apps.backend.domain.identity import get_identity
+        from apps.backend.domain.voice import voice_policy
+        from apps.backend.domain.voice.speech_prep import prepare_speech_text
+
+        _tid, uid = get_identity()
+        if uid is None or not voice_policy.effective_voice_output(user_id=uid, channel="web"):
+            return data
+        ch_list = data.get("choices")
+        if not isinstance(ch_list, list) or not ch_list:
+            return data
+        ch0 = ch_list[0]
+        if not isinstance(ch0, dict):
+            return data
+        msg = ch0.get("message")
+        if not isinstance(msg, dict):
+            return data
+        content = msg.get("content")
+        if not isinstance(content, str) or not content.strip():
+            return data
+        speech = prepare_speech_text(
+            content,
+            language=voice_policy.effective_stt_language(uid),
+        )
+        if speech:
+            data["speech_text"] = speech
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).debug("speech_text attach failed", exc_info=True)
+    return data
+
+
 def _completion_attach_agent_run_id(
     data: dict[str, Any],
     agent_run_id: str,
@@ -829,6 +866,10 @@ def _completion_attach_agent_run_id(
     run_persist_warnings: list[str] | None = None,
 ) -> dict[str, Any]:
     if isinstance(data, dict):
+        from apps.backend.domain.assistant_display_sanitize import prepare_completion_assistant_for_client
+
+        data = prepare_completion_assistant_for_client(data)
+        data = _attach_speech_text_to_completion(data)
         if agent_run_id and (run_persisted is None or run_persisted):
             data["agent_run_id"] = agent_run_id
         meta = dict(context_meta or {})

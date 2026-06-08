@@ -1,5 +1,10 @@
 /** Shared WebSocket agent-turn utilities (ChatPage + dashboard embedded chat). */
 
+import {
+  extractAssistantContentFromCompletion,
+  extractAssistantReasoningFromCompletion,
+  extractSpeechTextFromCompletion,
+} from "./assistantCompletionExtract";
 import { compactionEventToTimeline } from "./compactionActivity";
 import { formatToolStepLabel } from "./toolStepLabel";
 import type { LiveTurnStore } from "./useAgentLiveTurn";
@@ -10,21 +15,11 @@ export function agentChatWsUrl(token: string): string {
 }
 
 export function assistantFromAgentCompletion(data: unknown): string {
-  if (!data || typeof data !== "object") return "";
-  const d = data as { choices?: Array<{ message?: { content?: unknown } }> };
-  const c = d.choices?.[0]?.message?.content;
-  if (typeof c === "string") return c;
-  if (Array.isArray(c)) {
-    return c
-      .map((part: unknown) => {
-        if (part && typeof part === "object" && "text" in part) {
-          return String((part as { text?: string }).text ?? "");
-        }
-        return "";
-      })
-      .join("");
-  }
-  return "";
+  return extractAssistantContentFromCompletion(data);
+}
+
+export function reasoningFromAgentCompletion(data: unknown): string {
+  return extractAssistantReasoningFromCompletion(data);
 }
 
 export type AgentToolDoneEvent = {
@@ -41,8 +36,14 @@ export type AgentWsTurnCallbacks = {
   streamEnabled?: boolean;
 };
 
+export type AgentWsTurnResult = {
+  content: string;
+  reasoningContent?: string;
+  speechText?: string;
+};
+
 export type AgentWsTurnController = {
-  resolve: (content: string) => void;
+  resolve: (result: AgentWsTurnResult) => void;
   reject: (err: Error) => void;
   isFinished: () => boolean;
   markFinished: () => void;
@@ -95,7 +96,16 @@ export function handleAgentWsMessage(msg: Record<string, unknown>, ctx: HandlerC
     const acc = liveTurn.getStreamText().trim();
     const fromApi = assistantFromAgentCompletion(msg.data);
     const content = streamEnabled && acc.length > 0 ? acc : fromApi;
-    turn.resolve(content.trim() || fromApi.trim() || "(empty)");
+    const accReasoning = liveTurn.getStreamReasoningText().trim();
+    const fromApiReasoning = reasoningFromAgentCompletion(msg.data);
+    const reasoningContent =
+      streamEnabled && accReasoning.length > 0 ? accReasoning : fromApiReasoning;
+    const speechText = extractSpeechTextFromCompletion(msg.data);
+    turn.resolve({
+      content: content.trim() || fromApi.trim() || "(empty)",
+      ...(reasoningContent.trim() ? { reasoningContent: reasoningContent.trim() } : {}),
+      ...(speechText ? { speechText } : {}),
+    });
     return;
   }
 
@@ -172,6 +182,15 @@ export function handleAgentWsMessage(msg: Record<string, unknown>, ctx: HandlerC
 
   if (typ === "agent.llm_delta") {
     if (!streamEnabled) return;
+    const channel = msg.channel != null ? String(msg.channel) : "";
+    const reasoningDelta =
+      msg.reasoning_delta != null ? String(msg.reasoning_delta) : "";
+    if (channel === "reasoning" || reasoningDelta) {
+      const d = reasoningDelta || (msg.delta != null ? String(msg.delta) : "");
+      if (!d) return;
+      liveTurn.appendReasoningStreamDelta(d);
+      return;
+    }
     const d = msg.delta != null ? String(msg.delta) : "";
     if (!d) return;
     liveTurn.appendStreamDelta(d);

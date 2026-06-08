@@ -48,23 +48,34 @@ async def get_session_runtime(
     mid = (model or "").strip()
     owned = (model_catalog_owned_by or "").strip() or None
     if mid:
-        from apps.backend.infrastructure.context_budget import resolve_context_budget
+        from apps.backend.infrastructure.context_budget import (
+            completion_quotas_from_budget,
+            resolve_context_budget,
+        )
 
         budget = resolve_context_budget(mid, catalog_owned_by=owned)
         if budget is not None:
+            quotas = completion_quotas_from_budget(budget)
             context_budget = {
                 "context_window_tokens": budget.context_window_tokens,
                 "soft_limit_tokens": budget.soft_limit_tokens,
                 "hard_limit_tokens": budget.hard_limit_tokens,
                 "budget_source": budget.source,
+                "completion_quotas": quotas.as_dict(),
             }
     return {
         "mcp": mcp,
         "context": {
             "prep_enabled": config.CHAT_CONTEXT_PREP_ENABLED,
             "budget_from": "provider_model_context_length",
+            "quotas_managed_in": "apps/backend/infrastructure/context_budget.py",
             "soft_limit_ratio": config.CHAT_CONTEXT_SOFT_LIMIT_RATIO,
             "hard_limit_ratio": config.CHAT_CONTEXT_HARD_LIMIT_RATIO,
+            "tools_budget_ratio": config.AGENT_TOOLS_BUDGET_RATIO,
+            "tools_count_cap_ratio": config.AGENT_TOOLS_COUNT_CAP_RATIO,
+            "message_max_ratio": config.CHAT_CONTEXT_MAX_MESSAGE_RATIO,
+            "tool_result_max_ratio": config.CHAT_CONTEXT_TOOL_RESULT_MAX_RATIO,
+            "compaction_input_ratio": config.CHAT_CONTEXT_COMPACTION_INPUT_RATIO,
             "fallback_budget_tokens": config.CHAT_CONTEXT_DEFAULT_BUDGET_TOKENS or None,
             "max_messages": config.CHAT_CONTEXT_MAX_MESSAGES,
             "compaction_enabled": config.CHAT_CONTEXT_COMPACTION_ENABLED,

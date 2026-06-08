@@ -4,6 +4,10 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { detectUserTimezone } from "../../lib/userTimezone";
+import {
+  getAgentShowReasoning,
+  setAgentShowReasoning,
+} from "../../features/settings/agentReasoningPrefs";
 
 type PersonaResp = {
   ok?: boolean;
@@ -53,6 +57,7 @@ export function AgentSettings() {
 
   const [savingPersona, setSavingPersona] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [showReasoning, setShowReasoning] = useState(() => getAgentShowReasoning());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -185,6 +190,24 @@ export function AgentSettings() {
           {msg}
         </p>
       ) : null}
+
+      <section className="rounded-xl border border-surface-border bg-black/20 p-5">
+        <h2 className="text-sm font-medium text-white">{t("settings:showReasoningTitle")}</h2>
+        <p className="mt-1 text-xs text-surface-muted">{t("settings:showReasoningHelp")}</p>
+        <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-neutral-200">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-surface-border bg-black/40"
+            checked={showReasoning}
+            onChange={(e) => {
+              const on = e.target.checked;
+              setAgentShowReasoning(on);
+              setShowReasoning(on);
+            }}
+          />
+          {t("settings:showReasoningLabel")}
+        </label>
+      </section>
 
       <section className="rounded-xl border border-surface-border bg-surface-raised p-5">
         <h2 className="text-sm font-medium text-white">{t("settings:personaTitle")}</h2>

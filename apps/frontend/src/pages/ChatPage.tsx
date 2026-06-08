@@ -122,6 +122,11 @@ import {
 } from "../features/chat/messageFormat";
 import { UserMessageBubble } from "../features/chat/UserMessageBubble";
 import { getDisabledToolNames } from "../features/settings/toolPrefs";
+import {
+  extractAssistantContentFromCompletion,
+  extractAssistantReasoningFromCompletion,
+  extractSpeechTextFromCompletion,
+} from "../features/chat/assistantCompletionExtract";
 import { getAgentStreamLlm, setAgentStreamLlm } from "../features/settings/agentStreamPrefs";
 import {
   buildSidebarGroups,
@@ -170,23 +175,11 @@ function threadMessageCount(t: ChatThread): number {
 }
 
 function assistantFromCompletion(data: unknown): string {
-  if (!data || typeof data !== "object") return "";
-  const d = data as {
-    choices?: Array<{ message?: { content?: unknown } }>;
-  };
-  const c = d.choices?.[0]?.message?.content;
-  if (typeof c === "string") return c;
-  if (Array.isArray(c)) {
-    return c
-      .map((part: unknown) => {
-        if (part && typeof part === "object" && "text" in part) {
-          return String((part as { text?: string }).text ?? "");
-        }
-        return "";
-      })
-      .join("");
-  }
-  return "";
+  return extractAssistantContentFromCompletion(data);
+}
+
+function assistantReasoningFromCompletion(data: unknown): string {
+  return extractAssistantReasoningFromCompletion(data);
 }
 
 function chatMessageHasVisibleContent(m: UiMessage): boolean {
@@ -233,10 +226,17 @@ function queueItemPreview(item: QueuedComposerMessage): string {
   return `${text.slice(0, 117)}…`;
 }
 
-function assistantMessage(content: string, prior?: UiMessage | null): UiMessage {
+function assistantMessage(
+  content: string,
+  prior?: UiMessage | null,
+  reasoningContent?: string
+): UiMessage {
   const createdAt =
     prior?.role === "assistant" && prior.createdAt != null ? prior.createdAt : Date.now();
-  return { role: "assistant", content, createdAt };
+  const msg: UiMessage = { role: "assistant", content, createdAt };
+  const reasoning = reasoningContent?.trim();
+  if (reasoning) msg.reasoningContent = reasoning;
+  return msg;
 }
 
 function stripTrailingEmptyAssistantMessages(msgs: UiMessage[]): UiMessage[] {
@@ -1763,6 +1763,12 @@ export function ChatPage() {
           const fromApi = assistantFromCompletion(data);
           const content =
             agentStreamEnabledThisTurnRef.current && acc.length > 0 ? acc : fromApi;
+          const accReasoning = agentLiveTurnRef.current.getStreamReasoningText().trim();
+          const fromApiReasoning = assistantReasoningFromCompletion(data);
+          const reasoningContent =
+            agentStreamEnabledThisTurnRef.current && accReasoning.length > 0
+              ? accReasoning
+              : fromApiReasoning;
           const id = activeThreadIdRef.current;
           const liveLog = agentLiveTurnRef.current.takeAgentLogSnapshot();
           if (id && content.trim()) {
@@ -1772,7 +1778,10 @@ export function ChatPage() {
                 const next = prev.map((th) => {
                   if (th.id !== id) return th;
                   const prevMsgs = th.messages;
-                  const messages: UiMessage[] = [...prevMsgs, assistantMessage(content)];
+                  const messages: UiMessage[] = [
+                    ...prevMsgs,
+                    assistantMessage(content, undefined, reasoningContent),
+                  ];
                   const updated: ChatThread = {
                     ...th,
                     messages,
@@ -1792,8 +1801,9 @@ export function ChatPage() {
             }
             agentLiveTurnRef.current.resetAfterCommit();
             const vs = voiceStatusRef.current;
-            if (vs?.output_web && content.trim()) {
-              void voiceSpeakRef.current(content, {
+            const speechText = extractSpeechTextFromCompletion(data);
+            if (vs?.output_web && (speechText || content.trim())) {
+              void voiceSpeakRef.current(speechText || content, {
                 language: vs.prefs.language,
                 preferServer: Boolean(vs.api_configured),
               });
@@ -1977,6 +1987,15 @@ export function ChatPage() {
         }
         if (typ === "agent.llm_delta") {
           if (!agentStreamEnabledThisTurnRef.current) return;
+          const channel = msg.channel != null ? String(msg.channel) : "";
+          const reasoningDelta =
+            msg.reasoning_delta != null ? String(msg.reasoning_delta) : "";
+          if (channel === "reasoning" || reasoningDelta) {
+            const d = reasoningDelta || (msg.delta != null ? String(msg.delta) : "");
+            if (!d) return;
+            agentLiveTurnRef.current.appendReasoningStreamDelta(d);
+            return;
+          }
           const d = msg.delta != null ? String(msg.delta) : "";
           if (!d) return;
           agentLiveTurnRef.current.appendStreamDelta(d);
@@ -3164,6 +3183,7 @@ export function ChatPage() {
                     <AssistantTurnBlock
                       key={turnId ? `assistant-turn-${turnId}` : (m.id ?? `${i}-assistant`)}
                       content={m.content}
+                      reasoningContent={m.reasoningContent}
                       timelineEntries={timelineEntries}
                       running={inFlight}
                       runStartedAtMs={inFlight ? agentTurnStartedAtMs : null}

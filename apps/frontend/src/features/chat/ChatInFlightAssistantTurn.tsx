@@ -6,6 +6,7 @@ import type { AuthContextValue } from "../../auth/AuthContext";
 import type { Proposal, ProposalOption } from "../../lib/proposalParser";
 import {
   useAgentLiveLog,
+  useAgentStreamReasoning,
   useAgentStreamText,
   type LiveTurnStore,
 } from "./useAgentLiveTurn";
@@ -37,6 +38,7 @@ export const ChatInFlightAssistantTurn = memo(function ChatInFlightAssistantTurn
   onToggleRunCardExpanded,
 }: Props) {
   const streamText = useAgentStreamText(store);
+  const streamReasoning = useAgentStreamReasoning(store);
   const liveLog = useAgentLiveLog(store);
 
   const timelineEntries = useMemo(() => {
@@ -50,6 +52,7 @@ export const ChatInFlightAssistantTurn = memo(function ChatInFlightAssistantTurn
     <AssistantTurnBlock
       key={`assistant-turn-${latestTurnId}`}
       content={streamText}
+      reasoningContent={streamReasoning}
       timelineEntries={timelineEntries}
       running
       runStartedAtMs={runStartedAtMs}

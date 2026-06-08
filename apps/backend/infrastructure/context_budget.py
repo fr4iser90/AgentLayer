@@ -1,4 +1,8 @@
-"""Context window resolution (provider metadata) and usage-based budget limits."""
+"""Context window resolution (provider metadata) and per-completion quota slices.
+
+All completion quotas are **ratios × provider context window** — no fixed token
+ceilings. Configure ratios in ``apps/backend/core/config.py`` / ``.env``.
+"""
 
 from __future__ import annotations
 
@@ -10,6 +14,9 @@ from typing import Any
 from apps.backend.core.config import config
 
 logger = logging.getLogger(__name__)
+
+# Rough chars/token for cap limits derived from token quotas (OpenAI-style English).
+CHARS_PER_TOKEN_ESTIMATE = 4
 
 # llama.cpp OpenAI server exposes runtime window as ``meta.n_ctx`` (not top-level
 # ``context_length``). ``n_ctx_train`` is a fallback when ``n_ctx`` is absent.
@@ -99,10 +106,128 @@ class ContextBudget:
         return self.hard_limit_tokens / self.context_window_tokens
 
 
+def _quota_tokens(context_window_tokens: int, ratio: float) -> int:
+    """Token slice = ``ratio × provider context window`` (minimum 1 when window > 0)."""
+    window = max(1, int(context_window_tokens))
+    r = max(0.0, min(1.0, float(ratio)))
+    return max(1, int(window * r))
+
+
+def _quota_chars_from_tokens(token_quota: int) -> int:
+    return max(1, int(token_quota) * CHARS_PER_TOKEN_ESTIMATE)
+
+
+@dataclass(frozen=True)
+class CompletionQuotas:
+    """
+    Fixed percentage slices of one LLM completion request budget.
+
+    Manage ratios via env (see ``.env.example`` § Completion quotas). Values here are
+    always derived from ``context_window_tokens`` — never operator-fixed token counts.
+    """
+
+    context_window_tokens: int
+    source: str
+    soft_limit_tokens: int
+    hard_limit_tokens: int
+    tools_budget_tokens: int
+    max_tool_count: int
+    message_max_chars: int
+    tool_result_max_chars: int
+    compaction_input_max_chars: int
+
+    @property
+    def soft_ratio(self) -> float:
+        w = self.context_window_tokens
+        return self.soft_limit_tokens / w if w > 0 else 0.0
+
+    @property
+    def hard_ratio(self) -> float:
+        w = self.context_window_tokens
+        return self.hard_limit_tokens / w if w > 0 else 0.0
+
+    @property
+    def tools_budget_ratio(self) -> float:
+        w = self.context_window_tokens
+        return self.tools_budget_tokens / w if w > 0 else 0.0
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "context_window_tokens": self.context_window_tokens,
+            "source": self.source,
+            "soft_limit_tokens": self.soft_limit_tokens,
+            "hard_limit_tokens": self.hard_limit_tokens,
+            "tools_budget_tokens": self.tools_budget_tokens,
+            "max_tool_count": self.max_tool_count,
+            "message_max_chars": self.message_max_chars,
+            "tool_result_max_chars": self.tool_result_max_chars,
+            "compaction_input_max_chars": self.compaction_input_max_chars,
+            "soft_ratio": round(self.soft_ratio, 6),
+            "hard_ratio": round(self.hard_ratio, 6),
+            "tools_budget_ratio": round(self.tools_budget_ratio, 6),
+        }
+
+
+def completion_quotas_from_window(context_window_tokens: int, *, source: str) -> CompletionQuotas:
+    """Derive all per-completion slices from provider context window × configured ratios."""
+    budget = limits_from_context_window(context_window_tokens, source=source)
+    window = budget.context_window_tokens
+    tools_tok = _quota_tokens(window, config.AGENT_TOOLS_BUDGET_RATIO)
+    msg_tok = _quota_tokens(window, config.CHAT_CONTEXT_MAX_MESSAGE_RATIO)
+    tool_res_tok = _quota_tokens(window, config.CHAT_CONTEXT_TOOL_RESULT_MAX_RATIO)
+    compact_tok = _quota_tokens(window, config.CHAT_CONTEXT_COMPACTION_INPUT_RATIO)
+    max_tools = max(1, int(window * config.AGENT_TOOLS_COUNT_CAP_RATIO))
+    return CompletionQuotas(
+        context_window_tokens=window,
+        source=source,
+        soft_limit_tokens=budget.soft_limit_tokens,
+        hard_limit_tokens=budget.hard_limit_tokens,
+        tools_budget_tokens=tools_tok,
+        max_tool_count=max_tools,
+        message_max_chars=_quota_chars_from_tokens(msg_tok),
+        tool_result_max_chars=_quota_chars_from_tokens(tool_res_tok),
+        compaction_input_max_chars=_quota_chars_from_tokens(compact_tok),
+    )
+
+
+def completion_quotas_from_budget(budget: ContextBudget) -> CompletionQuotas:
+    return completion_quotas_from_window(budget.context_window_tokens, source=budget.source)
+
+
+def resolve_completion_quotas(
+    model_id: str | None,
+    *,
+    catalog_owned_by: str | None = None,
+) -> CompletionQuotas | None:
+    """Provider window → all completion quotas (None when context window unknown)."""
+    budget = resolve_context_budget(model_id, catalog_owned_by=catalog_owned_by)
+    if budget is None:
+        return None
+    return completion_quotas_from_budget(budget)
+
+
+def message_max_chars_for_budget(context_budget: ContextBudget | None) -> int | None:
+    if context_budget is None:
+        return None
+    return completion_quotas_from_budget(context_budget).message_max_chars
+
+
+def tool_result_max_chars_for_budget(context_budget: ContextBudget | None) -> int | None:
+    if context_budget is None:
+        return None
+    return completion_quotas_from_budget(context_budget).tool_result_max_chars
+
+
+def compaction_input_max_chars_for_budget(context_budget: ContextBudget | None) -> int | None:
+    if context_budget is None:
+        return None
+    return completion_quotas_from_budget(context_budget).compaction_input_max_chars
+
+
 def limits_from_context_window(context_window_tokens: int, *, source: str) -> ContextBudget:
     window = max(1, int(context_window_tokens))
-    soft = max(1, int(window * config.CHAT_CONTEXT_SOFT_LIMIT_RATIO))
-    hard = max(soft, int(window * config.CHAT_CONTEXT_HARD_LIMIT_RATIO))
+    soft = _quota_tokens(window, config.CHAT_CONTEXT_SOFT_LIMIT_RATIO)
+    hard = max(soft, _quota_tokens(window, config.CHAT_CONTEXT_HARD_LIMIT_RATIO))
     return ContextBudget(
         context_window_tokens=window,
         soft_limit_tokens=soft,

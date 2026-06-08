@@ -37,7 +37,15 @@ async def synthesize_for_bridge(
     if not should_send_voice_reply(user_id, channel):
         return None
     try:
-        return tts.synthesize_speech(text, user_id=user_id)
+        from apps.backend.domain.assistant_display_sanitize import sanitize_assistant_display_text
+        from apps.backend.domain.voice.speech_prep import prepare_speech_text
+
+        cleaned = sanitize_assistant_display_text(text) or text
+        speech = prepare_speech_text(
+            cleaned,
+            language=voice_policy.effective_stt_language(user_id),
+        )
+        return tts.synthesize_speech(speech or cleaned, user_id=user_id)
     except Exception:
         logger.exception("bridge voice TTS failed for user=%s channel=%s", user_id, channel)
         return None

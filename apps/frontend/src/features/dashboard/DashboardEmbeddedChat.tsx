@@ -533,7 +533,7 @@ export function DashboardEmbeddedChat({
       const disabledTools = getDisabledToolNames();
       const assistantCreatedAt = Date.now();
       agentLiveTurn.beginTurn([]);
-      const { content } = await agentWs.runTurn({
+      const { content, reasoningContent } = await agentWs.runTurn({
         body: {
           model: mdl,
           messages: nextMessages.map((x) => ({
@@ -573,6 +573,7 @@ export function DashboardEmbeddedChat({
           {
             role: "assistant",
             content: finalContent || "(empty)",
+            ...(reasoningContent?.trim() ? { reasoningContent: reasoningContent.trim() } : {}),
             id: newMessageId(),
             createdAt: assistantCreatedAt,
           },

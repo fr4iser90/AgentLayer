@@ -107,10 +107,21 @@ async def run_voice_realtime_turn(
         await emit({"type": "voice.done"})
         return
 
+    from apps.backend.domain.assistant_display_sanitize import sanitize_assistant_display_text
+    from apps.backend.domain.voice.speech_prep import prepare_speech_text
+
+    display_reply = sanitize_assistant_display_text(reply)
+    speech_text = prepare_speech_text(
+        display_reply or reply,
+        language=voice_policy.effective_stt_language(user_id),
+    )
+    if speech_text:
+        await emit({"type": "voice.speech_text", "text": speech_text})
+
     try:
         audio_out, out_mime = await loop.run_in_executor(
             None,
-            lambda: tts.synthesize_speech(reply, user_id=user_id),
+            lambda: tts.synthesize_speech(speech_text or display_reply or reply, user_id=user_id),
         )
     except ValueError as e:
         await emit({"type": "voice.error", "detail": str(e)})

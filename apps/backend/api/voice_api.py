@@ -115,7 +115,13 @@ def voice_tts_endpoint(request: Request, body: TtsBody) -> Response:
     if not voice_policy.effective_voice_output(user_id=uid, channel="web"):
         raise HTTPException(status_code=403, detail="voice output disabled")
     try:
-        audio, mime = tts.synthesize_speech(body.text, user_id=uid)
+        from apps.backend.domain.voice.speech_prep import prepare_speech_text
+
+        speech = prepare_speech_text(
+            body.text,
+            language=voice_policy.effective_stt_language(uid),
+        )
+        audio, mime = tts.synthesize_speech(speech or body.text, user_id=uid)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:

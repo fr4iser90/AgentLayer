@@ -134,6 +134,7 @@
   "activityEmptyHint": "Activity appears here when the agent runs tools or LLM rounds for the selected prompt.",
   "roleYou": "You",
   "roleAssistant": "Assistant",
+  "reasoningPanelLabel": "Reasoning",
   "messageCopy": "Copy",
   "messageCopyTitle": "Copy message text to clipboard",
   "messageCopyFailed": "Could not copy to clipboard.",

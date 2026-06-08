@@ -134,6 +134,7 @@
   "activityEmptyHint": "Aktivität erscheint hier, wenn der Agent Tools oder LLM-Runden für den gewählten Prompt ausführt.",
   "roleYou": "Du",
   "roleAssistant": "Assistent",
+  "reasoningPanelLabel": "Reasoning",
   "messageCopy": "Kopieren",
   "messageCopyTitle": "Nachrichtentext in die Zwischenablage kopieren",
   "messageCopyFailed": "Kopieren in die Zwischenablage fehlgeschlagen.",

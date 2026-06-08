@@ -667,12 +667,17 @@ async def chat_completion(
                 if val is not None and val != "" and val != 0:
                     _context_prep_meta[key] = val
             tool_context["chat_context_meta"] = _context_prep_meta
+            from apps.backend.infrastructure.context_budget import completion_quotas_from_budget
+
+            _quotas = completion_quotas_from_budget(_context_budget)
             logger.info(
-                "chat context budget: model=%r window=%d soft=%d hard=%d source=%s",
+                "chat context budget: model=%r window=%d soft=%d hard=%d tools=%d max_tools=%d source=%s",
                 model,
                 _context_budget.context_window_tokens,
                 _context_budget.soft_limit_tokens,
                 _context_budget.hard_limit_tokens,
+                _quotas.tools_budget_tokens,
+                _quotas.max_tool_count,
                 _context_budget.source,
             )
         elif str(model or "").strip():
@@ -1253,6 +1258,20 @@ async def chat_completion(
                 force_no_tools_reason = None
             else:
                 tools_for_round = list(tools_for_request)
+                if round_i > 0 and config.AGENT_TOOLS_CATALOG_AFTER_FIRST_ROUND and tools_for_round:
+                    catalog_modes = {
+                        n: "catalog"
+                        for spec in _tf_plan.forward_specs
+                        if isinstance(spec, dict)
+                        and isinstance(spec.get("function"), dict)
+                        and (n := str(spec["function"].get("name") or "").strip())
+                    }
+                    if catalog_modes:
+                        tools_for_round = apply_schema_modes_to_specs(
+                            _tf_plan.forward_specs,
+                            catalog_modes,
+                            default_full_schema=False,
+                        )
                 if max_tool_rounds_eff >= 3 and round_i == max_tool_rounds_eff - 2:
                     messages.append(
                         {
@@ -1330,6 +1349,19 @@ async def chat_completion(
                     }
                 )
 
+            async def _emit_llm_reasoning_delta(s: str) -> None:
+                if not s or event_emit is None:
+                    return
+                await event_emit(
+                    {
+                        "type": "agent.llm_delta",
+                        "agent_run_id": agent_run_id,
+                        "round": round_no,
+                        "channel": "reasoning",
+                        "reasoning_delta": s,
+                    }
+                )
+
             payload_base: dict[str, Any] = {
                 "messages": messages,
                 "stream": False,
@@ -1367,6 +1399,7 @@ async def chat_completion(
                             llm_backend=llm_backend,
                             profile_key=profile_key,
                             on_text_delta=_emit_llm_token_delta,
+                            on_reasoning_delta=_emit_llm_reasoning_delta,
                             cancel_event=cancel_event,
                         )
                     except AgentChatCancelled:

@@ -671,7 +671,7 @@ def _full_schema_tool_function(name: str, fn: dict[str, Any]) -> dict[str, Any]:
 
 def _catalog_tool_function(name: str, fn: dict[str, Any]) -> dict[str, Any]:
     """Small tools[] entry: TOOL_LABEL + TOOL_DESCRIPTION hint; minimal parameters (never full domain schemas)."""
-    desc = (fn.get("TOOL_DESCRIPTION") or "").strip()
+    desc = (fn.get("TOOL_DESCRIPTION") or fn.get("description") or "").strip()
     if _CATALOG_PARAM_HINT not in desc:
         desc = f"{desc}\n\n{_CATALOG_PARAM_HINT}".strip() if desc else _CATALOG_PARAM_HINT
     if name == "get_tool_help":

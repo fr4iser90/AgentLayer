@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from apps.backend.infrastructure.context_budget import (
+    CompletionQuotas,
     ContextBudget,
+    completion_quotas_from_window,
     extract_context_length_from_model_item,
     limits_from_context_window,
     resolve_context_budget,
@@ -77,6 +79,25 @@ def test_resolve_context_budget_operator_override(monkeypatch) -> None:
     assert isinstance(b, ContextBudget)
     assert b.context_window_tokens == 65536
     assert b.source == "operator_override"
+
+
+def test_completion_quotas_all_percentages_of_window(monkeypatch) -> None:
+    from apps.backend.core import config as cfg
+
+    monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_SOFT_LIMIT_RATIO", 0.8)
+    monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_HARD_LIMIT_RATIO", 0.95)
+    monkeypatch.setattr(cfg.config, "AGENT_TOOLS_BUDGET_RATIO", 0.06)
+    monkeypatch.setattr(cfg.config, "AGENT_TOOLS_COUNT_CAP_RATIO", 0.00012)
+    monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_MAX_MESSAGE_RATIO", 0.015)
+    monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_TOOL_RESULT_MAX_RATIO", 0.008)
+    monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_COMPACTION_INPUT_RATIO", 0.08)
+
+    q = completion_quotas_from_window(262_144, source="provider_catalog")
+    assert isinstance(q, CompletionQuotas)
+    assert q.tools_budget_tokens == int(262_144 * 0.06)
+    assert q.max_tool_count == int(262_144 * 0.00012)
+    assert q.soft_limit_tokens == int(262_144 * 0.8)
+    assert q.message_max_chars == int(262_144 * 0.015) * 4
 
 
 def test_lookup_model_context_length_direct_provider_fetch(monkeypatch) -> None:

@@ -9,6 +9,7 @@ from apps.backend.infrastructure.chat_context import (
     message_content_text,
     prepare_chat_history_for_llm,
 )
+from apps.backend.infrastructure.context_budget import limits_from_context_window
 
 
 def test_prepare_trims_sliding_window_when_over_max(monkeypatch):
@@ -17,7 +18,6 @@ def test_prepare_trims_sliding_window_when_over_max(monkeypatch):
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_PREP_ENABLED", True)
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_COMPACTION_ENABLED", False)
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_MAX_MESSAGES", 4)
-    monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_MAX_MESSAGE_CHARS", 10_000)
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_DEFAULT_BUDGET_TOKENS", 0)
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_SOFT_LIMIT_RATIO", 0.6)
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_HARD_LIMIT_RATIO", 0.85)
@@ -42,7 +42,6 @@ def test_prepare_records_messages_compacted_this_run(monkeypatch):
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_COMPACTION_ENABLED", True)
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_MAX_MESSAGES", 4)
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_RECENT_VERBATIM_MESSAGES", 2)
-    monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_MAX_MESSAGE_CHARS", 10_000)
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_DEFAULT_BUDGET_TOKENS", 0)
     monkeypatch.setattr(
         "apps.backend.infrastructure.chat_context._run_compaction_llm",
@@ -74,13 +73,17 @@ def test_prepare_caps_oversized_message(monkeypatch):
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_PREP_ENABLED", True)
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_COMPACTION_ENABLED", False)
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_MAX_MESSAGES", 48)
-    monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_MAX_MESSAGE_CHARS", 500)
+    monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_MAX_MESSAGE_RATIO", 0.0005)
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_DEFAULT_BUDGET_TOKENS", 0)
+    budget = limits_from_context_window(100_000, source="test")
 
     big = "x" * 2000
 
     async def _run():
-        return await prepare_chat_history_for_llm([{"role": "user", "content": big}])
+        return await prepare_chat_history_for_llm(
+            [{"role": "user", "content": big}],
+            context_budget=budget,
+        )
 
     out, meta = asyncio.run(_run())
     assert meta.messages_capped == 1
