@@ -458,7 +458,8 @@ def _apply_layout_ops(
             target_blocks, terr = resolve_blocks_target(ul, parent_block_id)
             if terr:
                 return ul, dt, f"ops[{i}]: {terr}"
-            assert target_blocks is not None
+            if target_blocks is None:
+                return ul, dt, f"ops[{i}]: internal block target resolution error"
             prefix = _BLOCK_PREFIX.get(btype, "block")
             dp = str(op.get("data_path") or "").strip()
             if btype in ("section", "schedules", "dashboard_ref", "share_widget"):

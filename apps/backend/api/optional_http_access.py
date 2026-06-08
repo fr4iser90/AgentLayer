@@ -16,6 +16,11 @@ _MEDIA_STREAM_PATH_RE = re.compile(
     re.IGNORECASE,
 )
 
+_DASHBOARD_PUBLIC_SHARE_PATH_RE = re.compile(
+    r"^/v1/dashboards/shared/[^/]{16,}(?:/files/[0-9a-f-]{36}/content)?$",
+    re.IGNORECASE,
+)
+
 _MIDDLEWARE_PUBLIC_EXACT: frozenset[str] = frozenset(
     {
         "/",
@@ -75,6 +80,11 @@ def is_media_stream_route(path: str, method: str) -> bool:
     return (method or "").upper() == "GET" and bool(_MEDIA_STREAM_PATH_RE.match(path))
 
 
+def is_dashboard_public_share_route(path: str, method: str) -> bool:
+    """Read-only dashboard share links (token in path; optional link password in handler)."""
+    return (method or "").upper() == "GET" and bool(_DASHBOARD_PUBLIC_SHARE_PATH_RE.match(path))
+
+
 def public_http_auth_policy() -> dict[str, Any]:
     """Machine-readable policy for ``GET /auth/policy``."""
     return {
@@ -88,6 +98,11 @@ def public_http_auth_policy() -> dict[str, Any]:
                 "exact_paths": sorted(_MIDDLEWARE_PUBLIC_EXACT),
                 "path_prefixes": ["/js/", "/app/"],
                 "post_path": "/v1/user/secrets/register-with-otp",
+                "get_path_patterns": [
+                    "/v1/media/items/{uuid}/stream",
+                    "/v1/dashboards/shared/{token}",
+                    "/v1/dashboards/shared/{token}/files/{uuid}/content",
+                ],
             },
             "identity_deferred_routes": {
                 "note": (

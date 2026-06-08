@@ -57,6 +57,12 @@
       },
       {
         "rule_id": "B105",
+        "path_regex": "apps/backend/domain/http_connector/auth\\.py$",
+        "message_regex": "Possible hardcoded password",
+        "reason": "False positive: empty-string initialization of a variable named password when parsing basic-auth secrets; actual credentials come from the secret store, not literals."
+      },
+      {
+        "rule_id": "B105",
         "path_regex": "tests/.*\\.py$",
         "message_regex": "Possible hardcoded password",
         "reason": "False positive: pytest uses dummy credentials (password1, pw, x, secret-value, app-password samples) to exercise auth/secret tools; never shipped to production."
@@ -75,9 +81,9 @@
       },
       {
         "rule_id": "B110",
-        "path_regex": "apps/backend/.*\\.py$|plugins/tools/.*\\.py$|tests/e2e/.*\\.py$",
+        "path_regex": "apps/backend/.*\\.py$|plugins/tools/.*\\.py$|scripts/diag/.*\\.py$|tests/e2e/.*\\.py$",
         "message_regex": "Try, Except, Pass",
-        "reason": "Acceptable: intentional best-effort cleanup (IMAP logout, optional reindex after git pull, search index teardown, verify-run persistence, e2e fixture teardown) where failure must not block the primary path."
+        "reason": "Acceptable: intentional best-effort cleanup (IMAP logout, optional reindex after git pull, search index teardown, verify-run persistence, e2e/diag fixture teardown, optional JSON detail in perf probes) where failure must not block the primary path."
       },
       {
         "rule_id": "B112",
@@ -93,19 +99,19 @@
       },
       {
         "rule_id": "B404",
-        "path_regex": "apps/backend/domain/coding/lsp_client\\.py$|apps/backend/domain/security_scan/common\\.py$|apps/backend/infrastructure/workspace_git\\.py$|apps/backend/infrastructure/workspace_retrieval_bootstrap\\.py$|apps/backend/infrastructure/workspace_service\\.py$|plugins/tools/integrations/github/.*\\.py$|plugins/tools/workspace/search/search\\.py$|plugins/tools/workspace/shell/.*\\.py$|tests/.*\\.py$",
-        "reason": "Acceptable: subprocess used for LSP, fixed git -C/clone argv lists, ripgrep workspace search, coding-shell tools, and test harnesses; required product functionality."
+        "path_regex": "apps/backend/domain/coding/lsp_client\\.py$|apps/backend/domain/security_scan/common\\.py$|apps/backend/domain/voice/stt_audio_convert\\.py$|apps/backend/infrastructure/workspace_git\\.py$|apps/backend/infrastructure/workspace_retrieval_bootstrap\\.py$|apps/backend/infrastructure/workspace_service\\.py$|plugins/tools/integrations/github/.*\\.py$|plugins/tools/workspace/search/search\\.py$|plugins/tools/workspace/shell/.*\\.py$|scripts/diag/.*\\.py$|tests/.*\\.py$",
+        "reason": "Acceptable: subprocess used for LSP, ffmpeg audio conversion (pipe argv, no shell), fixed git -C/clone argv lists, ripgrep workspace search, coding-shell tools, diag perf scripts, and test harnesses; required product functionality."
       },
       {
         "rule_id": "B603",
-        "path_regex": "apps/backend/domain/coding/lsp_client\\.py$|apps/backend/domain/security_scan/common\\.py$|apps/backend/infrastructure/workspace_git\\.py$|apps/backend/infrastructure/workspace_retrieval_bootstrap\\.py$|apps/backend/infrastructure/workspace_service\\.py$|plugins/tools/integrations/github/.*\\.py$|plugins/tools/workspace/search/search\\.py$|plugins/tools/workspace/shell/bash\\.py$|plugins/tools/workspace/shell/workspace_verify\\.py$|tests/.*\\.py$",
-        "reason": "Acceptable: subprocess uses shell=False with argv lists; git/rg use fixed executables; bash and workspace_verify use shlex.split plus coding bash blocklist and workspace path guards; tests invoke controlled git/npm fixtures."
+        "path_regex": "apps/backend/domain/coding/lsp_client\\.py$|apps/backend/domain/security_scan/common\\.py$|apps/backend/domain/voice/stt_audio_convert\\.py$|apps/backend/infrastructure/workspace_git\\.py$|apps/backend/infrastructure/workspace_retrieval_bootstrap\\.py$|apps/backend/infrastructure/workspace_service\\.py$|plugins/tools/integrations/github/.*\\.py$|plugins/tools/workspace/search/search\\.py$|plugins/tools/workspace/shell/bash\\.py$|plugins/tools/workspace/shell/workspace_verify\\.py$|scripts/diag/.*\\.py$|tests/.*\\.py$",
+        "reason": "Acceptable: subprocess uses shell=False with argv lists; ffmpeg/git/rg use fixed executables; bash and workspace_verify use shlex.split plus coding bash blocklist and workspace path guards; diag scripts invoke node/docker with fixed args; tests invoke controlled git/npm fixtures."
       },
       {
         "rule_id": "B607",
-        "path_regex": "apps/backend/domain/security_scan/common\\.py$|apps/backend/infrastructure/workspace_retrieval_bootstrap\\.py$|apps/backend/infrastructure/workspace_service\\.py$|plugins/tools/integrations/github/git_push\\.py$|tests/.*\\.py$",
+        "path_regex": "apps/backend/domain/security_scan/common\\.py$|apps/backend/domain/voice/stt_audio_convert\\.py$|apps/backend/infrastructure/workspace_retrieval_bootstrap\\.py$|apps/backend/infrastructure/workspace_service\\.py$|plugins/tools/integrations/github/git_push\\.py$|scripts/diag/.*\\.py$|tests/.*\\.py$",
         "message_regex": "partial executable",
-        "reason": "False positive: git/rg/npm resolved via PATH is intentional; commands are fixed argv lists with no shell."
+        "reason": "False positive: ffmpeg/git/rg/npm/node/docker resolved via PATH is intentional; commands are fixed argv lists with no shell."
       },
       {
         "rule_id": "B101",
@@ -204,9 +210,24 @@
         "reason": "False positive: regexes parse bounded agent tool-call syntax and setup validation; inputs are length-limited chat/tool payloads, not unbounded attacker-controlled megastrings."
       },
       {
+        "rule_id": "py/polynomial-redos",
+        "path_regex": "apps/backend/domain/assistant_display_sanitize\\.py$",
+        "reason": "False positive: thought-block stripping regex runs on LLM assistant output capped at 14_000 chars in sanitize_assistant_display_text; not unbounded attacker-controlled input."
+      },
+      {
+        "rule_id": "py/polynomial-redos",
+        "path_regex": "apps/backend/domain/voice/speech_prep\\.py$",
+        "reason": "False positive: markdown cleanup regex for TTS runs on assistant reply text with _SPEECH_MAX_CHARS=500 downstream; bounded LLM output, not a server-side ReDoS surface."
+      },
+      {
         "rule_id": "py/full-ssrf",
         "path_regex": "apps/backend/infrastructure/openai_stream_aggregate\\.py$",
         "reason": "False positive: outbound LLM base URL comes from operator-configured provider settings (trusted admin), not arbitrary end-user URL parameters."
+      },
+      {
+        "rule_id": "py/full-ssrf",
+        "path_regex": "apps/backend/media/stream_probe\\.py$",
+        "reason": "False positive: probe_stream_url rejects URLs failing media_policy.stream_url_allowed (HTTPS/HTTP + hostname allowlist) before httpx GET; intentional stream validation, not open SSRF."
       },
       {
         "rule_id": "py/incomplete-url-substring-sanitization",
@@ -217,6 +238,11 @@
         "rule_id": "py/clear-text-storage-sensitive-data",
         "path_regex": "plugins/schedules/game/lore_generator\\.py$",
         "reason": "False positive: generated lore text persisted to RAG may contain narrative 'password' wording; not storage of user credentials."
+      },
+      {
+        "rule_id": "py/clear-text-storage-sensitive-data",
+        "path_regex": "apps/backend/dashboard/file_storage\\.py$",
+        "reason": "False positive: write_bytes persists user attachment bytes to disk under path-validated upload root; CodeQL taint on generic data param, not credential storage."
       }
     ]
   },
@@ -241,6 +267,11 @@
         "rule_id": "react-hooks/exhaustive-deps",
         "path_regex": "apps/frontend/.*\\.(ts|tsx)$",
         "reason": "False positive: eslint-disable when react-hooks plugin is not loaded in security scan context; rule definition missing in CI eslint config, not a security defect."
+      },
+      {
+        "rule_id": "security/detect-unsafe-regex",
+        "path_regex": "apps/frontend/src/features/voice/useVoicePlayback\\.ts$",
+        "reason": "False positive: Unicode Extended_Pictographic emoji strip for browser TTS on short assistant text; client-side only, not server-side unbounded ReDoS."
       }
     ]
   },
@@ -301,6 +332,11 @@
         "rule_id": "python.lang.security.audit.formatted-sql-query.formatted-sql-query",
         "path_regex": "apps/backend/infrastructure/db/migrations/.*\\.py$",
         "reason": "False positive: Alembic migration DDL uses f-strings only for constant table/column names defined in the same revision file, not request-time user input."
+      },
+      {
+        "rule_id": "python.lang.security.audit.formatted-sql-query.formatted-sql-query",
+        "path_regex": "apps/backend/infrastructure/pgvector_embedding_dim\\.py$",
+        "reason": "False positive: pgvector dimension migration DDL uses f-strings for table/column/index names from compile-time _PGVECTOR_TARGETS constants and integer dim from operator embedding probe—not request-time user input."
       },
       {
         "rule_id": "javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket",

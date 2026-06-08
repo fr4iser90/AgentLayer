@@ -7,16 +7,29 @@ All operations are scoped to the authenticated chat identity (tenant_id + user_i
 from __future__ import annotations
 
 import uuid
+from contextlib import contextmanager
 from datetime import datetime
-from typing import Any
+from typing import Any, Iterator
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from apps.backend.domain.http_identity import resolve_chat_identity
+from apps.backend.domain.identity import reset_identity, set_identity
 from apps.backend.api import memory as memory_service
 
 router = APIRouter(prefix="/v1/user/memory", tags=["user-memory"])
+
+
+@contextmanager
+def _memory_request_identity(request: Request) -> Iterator[None]:
+    """Bind chat identity for memory_service (uses ``get_identity()`` internally)."""
+    uid, tid = resolve_chat_identity(request)
+    token = set_identity(tid, uid)
+    try:
+        yield
+    finally:
+        reset_identity(token)
 
 
 def _parse_uuid(raw: str | None) -> uuid.UUID | None:
@@ -42,7 +55,6 @@ class FactUpsertBody(BaseModel):
 
 @router.post("/facts/upsert")
 def upsert_fact(request: Request, body: FactUpsertBody) -> dict:
-    resolve_chat_identity(request)  # auth guard; memory_service uses identity internally
     wid = _parse_uuid(body.dashboard_id)
     exp: datetime | None = None
     if body.expires_at and body.expires_at.strip():
@@ -51,14 +63,15 @@ def upsert_fact(request: Request, body: FactUpsertBody) -> dict:
         except ValueError as e:
             raise HTTPException(status_code=400, detail="expires_at must be ISO timestamp") from e
     try:
-        fact = memory_service.fact_upsert_for_identity(
-            key=body.key,
-            value_json=body.value_json,
-            dashboard_id=wid,
-            confidence=body.confidence,
-            source=body.source,
-            expires_at=exp,
-        )
+        with _memory_request_identity(request):
+            fact = memory_service.fact_upsert_for_identity(
+                key=body.key,
+                value_json=body.value_json,
+                dashboard_id=wid,
+                confidence=body.confidence,
+                source=body.source,
+                expires_at=exp,
+            )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
@@ -68,10 +81,10 @@ def upsert_fact(request: Request, body: FactUpsertBody) -> dict:
 
 @router.get("/facts")
 def list_facts(request: Request, dashboard_id: str | None = None, prefix: str | None = None, limit: int = 50) -> dict:
-    resolve_chat_identity(request)
     wid = _parse_uuid(dashboard_id)
     try:
-        facts = memory_service.fact_list_for_identity(dashboard_id=wid, prefix=prefix, limit=limit)
+        with _memory_request_identity(request):
+            facts = memory_service.fact_list_for_identity(dashboard_id=wid, prefix=prefix, limit=limit)
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e)) from e
     return {"ok": True, "facts": facts, "count": len(facts)}
@@ -79,10 +92,10 @@ def list_facts(request: Request, dashboard_id: str | None = None, prefix: str | 
 
 @router.delete("/facts/{key}")
 def delete_fact(request: Request, key: str, dashboard_id: str | None = None) -> dict:
-    resolve_chat_identity(request)
     wid = _parse_uuid(dashboard_id)
     try:
-        ok = memory_service.fact_delete_for_identity(key=key, dashboard_id=wid)
+        with _memory_request_identity(request):
+            ok = memory_service.fact_delete_for_identity(key=key, dashboard_id=wid)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return {"ok": True, "deleted": bool(ok)}
@@ -97,15 +110,15 @@ class NoteAddBody(BaseModel):
 
 @router.post("/notes")
 def add_note(request: Request, body: NoteAddBody) -> dict:
-    resolve_chat_identity(request)
     wid = _parse_uuid(body.dashboard_id)
     try:
-        out = memory_service.note_add_for_identity(
-            text=body.text,
-            dashboard_id=wid,
-            tags=body.tags,
-            source=body.source,
-        )
+        with _memory_request_identity(request):
+            out = memory_service.note_add_for_identity(
+                text=body.text,
+                dashboard_id=wid,
+                tags=body.tags,
+                source=body.source,
+            )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
@@ -120,10 +133,10 @@ def search_notes(
     dashboard_id: str | None = None,
     limit: int = 10,
 ) -> dict:
-    resolve_chat_identity(request)
     wid = _parse_uuid(dashboard_id)
     try:
-        hits = memory_service.note_search_for_identity(query=query, dashboard_id=wid, limit=limit)
+        with _memory_request_identity(request):
+            hits = memory_service.note_search_for_identity(query=query, dashboard_id=wid, limit=limit)
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e)) from e
     return {"ok": True, "hits": hits, "count": len(hits)}
@@ -131,9 +144,9 @@ def search_notes(
 
 @router.delete("/notes/{note_id}")
 def delete_note(request: Request, note_id: int) -> dict:
-    resolve_chat_identity(request)
     try:
-        ok = memory_service.note_delete_for_identity(note_id=note_id)
+        with _memory_request_identity(request):
+            ok = memory_service.note_delete_for_identity(note_id=note_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return {"ok": True, "deleted": bool(ok)}
@@ -156,7 +169,6 @@ class GraphNodeBody(BaseModel):
 
 @router.post("/graph/nodes")
 def graph_add_node(request: Request, body: GraphNodeBody) -> dict:
-    resolve_chat_identity(request)
     wid = _parse_uuid(body.dashboard_id)
     lv: datetime | None = None
     if body.last_verified and body.last_verified.strip():
@@ -165,7 +177,8 @@ def graph_add_node(request: Request, body: GraphNodeBody) -> dict:
         except ValueError as e:
             raise HTTPException(status_code=400, detail="last_verified must be ISO timestamp") from e
     try:
-        row = memory_service.graph_node_add_for_identity(
+        with _memory_request_identity(request):
+            row = memory_service.graph_node_add_for_identity(
             dashboard_id=wid,
             kind=body.kind,
             label=body.label,
@@ -195,9 +208,9 @@ class GraphEdgeBody(BaseModel):
 
 @router.post("/graph/edges")
 def graph_add_edge(request: Request, body: GraphEdgeBody) -> dict:
-    resolve_chat_identity(request)
     try:
-        row = memory_service.graph_edge_add_for_identity(
+        with _memory_request_identity(request):
+            row = memory_service.graph_edge_add_for_identity(
             src_node_id=body.src_node_id,
             dst_node_id=body.dst_node_id,
             rel_type=body.rel_type,
@@ -212,10 +225,10 @@ def graph_add_edge(request: Request, body: GraphEdgeBody) -> dict:
 
 @router.get("/graph/nodes")
 def graph_list_nodes(request: Request, dashboard_id: str | None = None, limit: int = 100) -> dict:
-    resolve_chat_identity(request)
     wid = _parse_uuid(dashboard_id)
     try:
-        nodes = memory_service.graph_nodes_list_for_identity(dashboard_id=wid, limit=limit)
+        with _memory_request_identity(request):
+            nodes = memory_service.graph_nodes_list_for_identity(dashboard_id=wid, limit=limit)
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e)) from e
     return {"ok": True, "nodes": nodes, "count": len(nodes)}
@@ -223,9 +236,9 @@ def graph_list_nodes(request: Request, dashboard_id: str | None = None, limit: i
 
 @router.delete("/graph/nodes/{node_id}")
 def graph_delete_node(request: Request, node_id: int) -> dict:
-    resolve_chat_identity(request)
     try:
-        ok = memory_service.graph_node_delete_for_identity(node_id=node_id)
+        with _memory_request_identity(request):
+            ok = memory_service.graph_node_delete_for_identity(node_id=node_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return {"ok": True, "deleted": bool(ok)}
@@ -233,9 +246,9 @@ def graph_delete_node(request: Request, node_id: int) -> dict:
 
 @router.get("/graph/stats")
 def graph_stats(request: Request) -> dict:
-    resolve_chat_identity(request)
     try:
-        stats = memory_service.graph_stats_for_identity()
+        with _memory_request_identity(request):
+            stats = memory_service.graph_stats_for_identity()
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e)) from e
     return {"ok": True, **stats}
@@ -243,9 +256,9 @@ def graph_stats(request: Request) -> dict:
 
 @router.get("/graph/activation-log")
 def graph_activation_log(request: Request, limit: int = 100) -> dict:
-    resolve_chat_identity(request)
     try:
-        rows = memory_service.graph_activation_log_for_identity(limit=limit)
+        with _memory_request_identity(request):
+            rows = memory_service.graph_activation_log_for_identity(limit=limit)
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e)) from e
     return {"ok": True, "events": rows, "count": len(rows)}
@@ -259,10 +272,10 @@ class GraphProposeBody(BaseModel):
 
 @router.post("/graph/propose")
 def graph_propose(request: Request, body: GraphProposeBody) -> dict:
-    resolve_chat_identity(request)
     wid = _parse_uuid(body.dashboard_id)
     try:
-        out = memory_service.graph_propose_from_text_for_identity(
+        with _memory_request_identity(request):
+            out = memory_service.graph_propose_from_text_for_identity(
             text=body.text,
             dashboard_id=wid,
             apply=body.apply,
