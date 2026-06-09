@@ -122,6 +122,7 @@ export type BenchmarkScenarioResult = {
   scenario_id: string;
   profile_label: string;
   model?: string;
+  catalog_owned_by?: string;
   agent_id?: string;
   passed: boolean;
   skipped?: boolean;

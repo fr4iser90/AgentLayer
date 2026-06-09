@@ -65,6 +65,13 @@ function resolveInitialProviderModel(
   return current || envDefault;
 }
 
+function formatBenchmarkProviderModel(res: BenchmarkScenarioResult): string {
+  const provider = (res.profile_label || res.catalog_owned_by || "").trim();
+  const model = (res.model || "").trim();
+  if (provider && model) return `${provider} / ${model}`;
+  return provider || model || "—";
+}
+
 function resolveScenarioResponse(res: BenchmarkScenarioResult): string {
   return (res.assistant_content || res.assistant_excerpt || "").trim();
 }
@@ -95,9 +102,14 @@ function BenchmarkScenarioDetail({
         ? ctx.budget_tokens
         : null;
   const legacy = !res.scenario_prompt?.trim() && !res.assistant_content?.trim();
+  const noToolsForwarded =
+    contextWindow === 0 && (res.tool_call_count ?? 0) === 0 && !res.skipped;
 
   return (
     <div className="space-y-3 rounded-lg border border-white/10 bg-black/20 p-3 text-xs">
+      {noToolsForwarded ? (
+        <p className="text-amber-400/90">{t("admin:benchDetailNoToolsForwarded")}</p>
+      ) : null}
       {legacy && response ? (
         <p className="text-amber-400/90">{t("admin:benchDetailLegacyHint")}</p>
       ) : null}
@@ -993,7 +1005,7 @@ export function AdminBenchmarks() {
                     <tr className="text-surface-muted">
                       <th className="py-1 pr-2 w-8" aria-label={t("admin:benchColDetail")} />
                       <th className="py-1 pr-2">{t("admin:benchColScenario")}</th>
-                      <th className="py-1 pr-2">{t("admin:benchColProfile")}</th>
+                      <th className="py-1 pr-2">{t("admin:benchColProviderModel")}</th>
                       <th className="py-1 pr-2">{t("admin:benchColResult")}</th>
                       <th className="py-1 pr-2">{t("admin:benchColTools")}</th>
                       <th className="py-1 pr-2">{t("admin:benchColCompaction")}</th>
@@ -1037,7 +1049,9 @@ export function AdminBenchmarks() {
                               ) : null}
                             </td>
                             <td className="py-1.5 pr-2 font-mono">{res.scenario_id}</td>
-                            <td className="py-1.5 pr-2">{res.profile_label}</td>
+                            <td className="py-1.5 pr-2 font-mono text-[11px]">
+                              {formatBenchmarkProviderModel(res)}
+                            </td>
                             <td className="py-1.5 pr-2">
                               {res.run_metrics?.project_run_status
                                 ? `${res.run_metrics.project_run_status} · `
