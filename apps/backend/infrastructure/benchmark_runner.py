@@ -226,6 +226,20 @@ def _run_sync(
         run_client.close()
         run_client = None
 
+        def _persist_progress(report: Any) -> None:
+            try:
+                from tests.benchmarks.agent.harness import _bench_summary_from_report
+
+                summary = _bench_summary_from_report(report)
+                benchmark_runs_store.update_run(
+                    run_id,
+                    resource_prefix=report.resource_prefix or None,
+                    summary_json=summary,
+                    report_json=report.to_dict(),
+                )
+            except Exception:
+                logger.warning("benchmark progress persist failed", exc_info=True)
+
         report = run_benchmark(
             manifest_path=manifest,
             profiles_override=model_profiles,
@@ -236,16 +250,15 @@ def _run_sync(
             run_as_user_id=run_as_user_id,
             friend_user_id=friend_user_id,
             admin_user_id=admin_user_id,
+            on_progress=_persist_progress,
         )
 
         results_dir = _REPO_ROOT / "benchmarks" / "results"
         write_report(report, results_dir)
 
-        passed = sum(1 for r in report.results if r.passed and not r.skipped)
-        executed = sum(1 for r in report.results if not r.skipped)
         summary = {
-            "passed": passed,
-            "executed": executed,
+            "passed": sum(1 for r in report.results if r.passed and not r.skipped),
+            "executed": sum(1 for r in report.results if not r.skipped),
             "total": len(report.results),
             "skipped": sum(1 for r in report.results if r.skipped),
             "profiles_source": report.profiles_source,

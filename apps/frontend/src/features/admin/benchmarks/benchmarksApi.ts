@@ -118,6 +118,38 @@ export type BenchmarkRunSummary = {
   skipped?: number;
 };
 
+export type BenchmarkScenarioResult = {
+  scenario_id: string;
+  profile_label: string;
+  model?: string;
+  agent_id?: string;
+  passed: boolean;
+  skipped?: boolean;
+  score: number;
+  latency_ms: number;
+  tool_call_count: number;
+  tool_names?: string[];
+  failure_reason?: string | null;
+  error?: string | null;
+  agent_run_id?: string | null;
+  assistant_excerpt?: string;
+  scenario_prompt?: string;
+  assistant_content?: string;
+  assistant_content_truncated?: boolean;
+  run_metrics?: {
+    compaction_count?: number;
+    compaction_events?: Array<{ phase?: string; round?: number; reason?: string }>;
+    llm_round_count?: number;
+    context_utilization_pct?: number | null;
+    total_tokens?: number | null;
+    context_snapshot?: Record<string, unknown>;
+    timeline_summary?: Array<Record<string, unknown>>;
+    tool_invocations?: Array<Record<string, unknown>>;
+    capture_mode?: string;
+    project_run_status?: string;
+  } | null;
+};
+
 export type BenchmarkRun = {
   id: string;
   status: string;
@@ -132,26 +164,7 @@ export type BenchmarkRun = {
   finished_at?: string | null;
   created_at?: string;
   report_json?: {
-    results?: Array<{
-      scenario_id: string;
-      profile_label: string;
-      passed: boolean;
-      skipped?: boolean;
-      score: number;
-      latency_ms: number;
-      tool_call_count: number;
-      failure_reason?: string | null;
-      run_metrics?: {
-        compaction_count?: number;
-        compaction_events?: Array<{ phase?: string; round?: number; reason?: string }>;
-        llm_round_count?: number;
-        context_utilization_pct?: number | null;
-        total_tokens?: number | null;
-        context_snapshot?: Record<string, unknown>;
-        timeline_summary?: Array<Record<string, unknown>>;
-        capture_mode?: string;
-      } | null;
-    }>;
+    results?: BenchmarkScenarioResult[];
   } | null;
 };
 

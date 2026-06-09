@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
@@ -20,6 +20,7 @@ import {
   type BenchmarkRun,
   type BenchmarkRunReadiness,
   type BenchmarkScenario,
+  type BenchmarkScenarioResult,
   type BenchmarkSuite,
 } from "../../features/admin/benchmarks/benchmarksApi";
 import {
@@ -64,6 +65,105 @@ function resolveInitialProviderModel(
   return current || envDefault;
 }
 
+function resolveScenarioResponse(res: BenchmarkScenarioResult): string {
+  return (res.assistant_content || res.assistant_excerpt || "").trim();
+}
+
+function scenarioHasDiagnostics(res: BenchmarkScenarioResult): boolean {
+  return Boolean(
+    res.scenario_prompt?.trim() ||
+      resolveScenarioResponse(res) ||
+      res.agent_run_id ||
+      res.error ||
+      (res.tool_names?.length ?? 0) > 0
+  );
+}
+
+function BenchmarkScenarioDetail({
+  res,
+  t,
+}: {
+  res: BenchmarkScenarioResult;
+  t: (key: string) => string;
+}) {
+  const response = resolveScenarioResponse(res);
+  const ctx = res.run_metrics?.context_snapshot;
+  const contextWindow =
+    ctx && typeof ctx.context_window_tokens === "number"
+      ? ctx.context_window_tokens
+      : ctx && typeof ctx.budget_tokens === "number"
+        ? ctx.budget_tokens
+        : null;
+  const legacy = !res.scenario_prompt?.trim() && !res.assistant_content?.trim();
+
+  return (
+    <div className="space-y-3 rounded-lg border border-white/10 bg-black/20 p-3 text-xs">
+      {legacy && response ? (
+        <p className="text-amber-400/90">{t("admin:benchDetailLegacyHint")}</p>
+      ) : null}
+      {legacy && !response ? (
+        <p className="text-surface-muted">{t("admin:benchDetailLegacyHint")}</p>
+      ) : null}
+      <div className="grid gap-3 md:grid-cols-2">
+        <div>
+          <div className="mb-1 font-medium text-surface-muted">{t("admin:benchDetailPrompt")}</div>
+          <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 font-mono text-[11px] text-white/90">
+            {res.scenario_prompt?.trim() || t("admin:benchDetailNone")}
+          </pre>
+        </div>
+        <div>
+          <div className="mb-1 font-medium text-surface-muted">
+            {t("admin:benchDetailResponse")}
+            {res.assistant_content_truncated ? (
+              <span className="ml-2 font-normal text-amber-400/80">
+                ({t("admin:benchDetailTruncated")})
+              </span>
+            ) : null}
+          </div>
+          <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 font-mono text-[11px] text-white/90">
+            {response || t("admin:benchDetailNone")}
+          </pre>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-x-6 gap-y-1 text-surface-muted">
+        <span>
+          {t("admin:benchDetailTools")}:{" "}
+          <span className="font-mono text-white/80">
+            {(res.tool_names?.length ?? 0) > 0
+              ? res.tool_names!.join(", ")
+              : t("admin:benchDetailNoTools")}
+          </span>
+        </span>
+        {res.run_metrics?.capture_mode ? (
+          <span>
+            {t("admin:benchDetailCaptureMode")}:{" "}
+            <span className="font-mono text-white/80">{res.run_metrics.capture_mode}</span>
+          </span>
+        ) : null}
+        {contextWindow != null ? (
+          <span>
+            {t("admin:benchDetailContextWindow")}:{" "}
+            <span className="font-mono text-white/80">{contextWindow}</span>
+          </span>
+        ) : null}
+      </div>
+      {res.error ? (
+        <p className="text-red-400">
+          {t("admin:benchDetailError")}: {res.error}
+        </p>
+      ) : null}
+      {res.agent_run_id ? (
+        <Link
+          to={`/app/admin/run-traces?run=${encodeURIComponent(res.agent_run_id)}`}
+          className="inline-block text-sky-400 hover:underline"
+        >
+          {t("admin:benchDetailRunTrace")} · {res.agent_run_id.slice(0, 8)}…
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
 export function AdminBenchmarks() {
   const { t } = useTranslation(["admin"]);
   const auth = useAuth();
@@ -88,6 +188,7 @@ export function AdminBenchmarks() {
   const [runs, setRuns] = useState<BenchmarkRun[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<BenchmarkRun | null>(null);
+  const [expandedResultKey, setExpandedResultKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
@@ -280,6 +381,7 @@ export function AdminBenchmarks() {
   }, [tab, loadRuns]);
 
   useEffect(() => {
+    setExpandedResultKey(null);
     if (!selectedId) {
       setDetail(null);
       return;
@@ -304,30 +406,48 @@ export function AdminBenchmarks() {
     }
   }, [auth, selectedId, t]);
 
+  const selectedRun = useMemo(
+    () => runs.find((r) => r.id === selectedId) ?? null,
+    [runs, selectedId]
+  );
+
   const pollRunning = useMemo(
     () => runs.some((r) => r.status === "queued" || r.status === "running"),
     [runs]
   );
 
+  const shouldPollDetail = useMemo(
+    () =>
+      tab === "history" &&
+      Boolean(selectedId) &&
+      (pollRunning ||
+        selectedRun?.status === "queued" ||
+        selectedRun?.status === "running"),
+    [tab, selectedId, pollRunning, selectedRun]
+  );
+
   const wasPollingRef = useRef(false);
 
   useEffect(() => {
-    if (tab !== "history" || !pollRunning) return;
+    if (!shouldPollDetail) return;
+    void loadRuns();
+    void loadSelectedDetail();
     const id = window.setInterval(() => {
       void (async () => {
         await loadRuns();
         await loadSelectedDetail();
       })();
-    }, 4000);
+    }, 3000);
     return () => window.clearInterval(id);
-  }, [tab, pollRunning, loadRuns, loadSelectedDetail]);
+  }, [shouldPollDetail, loadRuns, loadSelectedDetail]);
 
   useEffect(() => {
-    if (wasPollingRef.current && !pollRunning && selectedId) {
+    if (wasPollingRef.current && !shouldPollDetail && selectedId) {
       void loadSelectedDetail();
+      void loadRuns();
     }
-    wasPollingRef.current = pollRunning;
-  }, [pollRunning, selectedId, loadSelectedDetail]);
+    wasPollingRef.current = shouldPollDetail;
+  }, [shouldPollDetail, selectedId, loadSelectedDetail, loadRuns]);
 
   const toggleProvider = (id: string) => {
     setSelectedProviderIds((prev) => {
@@ -402,6 +522,11 @@ export function AdminBenchmarks() {
       setTab("history");
       setSelectedId(run.id);
       await loadRuns();
+      try {
+        setDetail(await fetchBenchmarkRun(auth, run.id));
+      } catch {
+        /* detail poll will retry */
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : t("admin:benchStartFailed"));
     } finally {
@@ -855,9 +980,18 @@ export function AdminBenchmarks() {
                     prefix: {detail.resource_prefix}
                   </p>
                 ) : null}
+                {detail.status === "running" || detail.status === "queued" ? (
+                  <p className="mt-2 text-xs text-sky-400/90">
+                    {t("admin:benchRunLive")}
+                    {(detail.summary_json?.executed ?? 0) > 0
+                      ? ` · ${detail.summary_json?.passed ?? 0}/${detail.summary_json?.executed ?? 0} ${t("admin:benchRunLiveProgress")}`
+                      : ""}
+                  </p>
+                ) : null}
                 <table className="mt-4 w-full text-left text-xs">
                   <thead>
                     <tr className="text-surface-muted">
+                      <th className="py-1 pr-2 w-8" aria-label={t("admin:benchColDetail")} />
                       <th className="py-1 pr-2">{t("admin:benchColScenario")}</th>
                       <th className="py-1 pr-2">{t("admin:benchColProfile")}</th>
                       <th className="py-1 pr-2">{t("admin:benchColResult")}</th>
@@ -868,46 +1002,89 @@ export function AdminBenchmarks() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(detail.report_json?.results ?? []).map((res, i) => (
-                      <tr key={`${res.scenario_id}-${i}`} className="border-t border-white/5">
-                        <td className="py-1.5 pr-2 font-mono">{res.scenario_id}</td>
-                        <td className="py-1.5 pr-2">{res.profile_label}</td>
-                        <td className="py-1.5 pr-2">
-                          {res.run_metrics?.project_run_status
-                            ? `${res.run_metrics.project_run_status} · `
-                            : ""}
-                          {res.skipped ? "SKIP" : res.passed ? "PASS" : "FAIL"}
-                          {res.failure_reason ? (
-                            <span className="ml-1 text-surface-muted">— {res.failure_reason}</span>
-                          ) : null}
+                    {(detail.report_json?.results ?? []).length === 0 &&
+                    (detail.status === "running" || detail.status === "queued") ? (
+                      <tr>
+                        <td colSpan={8} className="py-3 text-surface-muted">
+                          {t("admin:benchRunWaitingResults")}
                         </td>
-                        <td className="py-1.5 pr-2">
-                          {res.tool_call_count ?? 0}
-                          {res.run_metrics?.llm_round_count != null
-                            ? ` · ${res.run_metrics.llm_round_count} llm`
-                            : ""}
-                        </td>
-                        <td className="py-1.5 pr-2">
-                          {res.run_metrics?.compaction_count ?? 0}
-                          {(res.run_metrics?.compaction_events?.length ?? 0) > 0 ? (
-                            <span className="ml-1 text-surface-muted">
-                              (
-                              {(res.run_metrics?.compaction_events ?? [])
-                                .map((e) => e.phase)
-                                .filter(Boolean)
-                                .join(", ")}
-                              )
-                            </span>
-                          ) : null}
-                        </td>
-                        <td className="py-1.5 pr-2">
-                          {res.run_metrics?.context_utilization_pct != null
-                            ? `${res.run_metrics.context_utilization_pct}%`
-                            : "—"}
-                        </td>
-                        <td className="py-1.5 pr-2">{Math.round(res.latency_ms)}</td>
                       </tr>
-                    ))}
+                    ) : null}
+                    {(detail.report_json?.results ?? []).map((res, i) => {
+                      const rowKey = `${res.scenario_id}-${i}`;
+                      const expanded = expandedResultKey === rowKey;
+                      const canExpand = scenarioHasDiagnostics(res) || Boolean(res.failure_reason);
+                      return (
+                        <Fragment key={rowKey}>
+                          <tr className="border-t border-white/5">
+                            <td className="py-1.5 pr-1 align-top">
+                              {canExpand ? (
+                                <button
+                                  type="button"
+                                  className="rounded px-1 text-surface-muted hover:bg-white/5 hover:text-white"
+                                  aria-expanded={expanded}
+                                  title={
+                                    expanded
+                                      ? t("admin:benchDetailCollapse")
+                                      : t("admin:benchDetailExpand")
+                                  }
+                                  onClick={() =>
+                                    setExpandedResultKey(expanded ? null : rowKey)
+                                  }
+                                >
+                                  {expanded ? "▾" : "▸"}
+                                </button>
+                              ) : null}
+                            </td>
+                            <td className="py-1.5 pr-2 font-mono">{res.scenario_id}</td>
+                            <td className="py-1.5 pr-2">{res.profile_label}</td>
+                            <td className="py-1.5 pr-2">
+                              {res.run_metrics?.project_run_status
+                                ? `${res.run_metrics.project_run_status} · `
+                                : ""}
+                              {res.skipped ? "SKIP" : res.passed ? "PASS" : "FAIL"}
+                              {res.failure_reason ? (
+                                <span className="ml-1 text-surface-muted">
+                                  — {res.failure_reason}
+                                </span>
+                              ) : null}
+                            </td>
+                            <td className="py-1.5 pr-2">
+                              {res.tool_call_count ?? 0}
+                              {res.run_metrics?.llm_round_count != null
+                                ? ` · ${res.run_metrics.llm_round_count} llm`
+                                : ""}
+                            </td>
+                            <td className="py-1.5 pr-2">
+                              {res.run_metrics?.compaction_count ?? 0}
+                              {(res.run_metrics?.compaction_events?.length ?? 0) > 0 ? (
+                                <span className="ml-1 text-surface-muted">
+                                  (
+                                  {(res.run_metrics?.compaction_events ?? [])
+                                    .map((e) => e.phase)
+                                    .filter(Boolean)
+                                    .join(", ")}
+                                  )
+                                </span>
+                              ) : null}
+                            </td>
+                            <td className="py-1.5 pr-2">
+                              {res.run_metrics?.context_utilization_pct != null
+                                ? `${res.run_metrics.context_utilization_pct}%`
+                                : "—"}
+                            </td>
+                            <td className="py-1.5 pr-2">{Math.round(res.latency_ms)}</td>
+                          </tr>
+                          {expanded ? (
+                            <tr className="border-t border-white/5">
+                              <td colSpan={8} className="py-2 pr-2">
+                                <BenchmarkScenarioDetail res={res} t={t} />
+                              </td>
+                            </tr>
+                          ) : null}
+                        </Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
               </>

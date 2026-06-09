@@ -12,7 +12,7 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import httpx
 import yaml
@@ -136,6 +136,18 @@ class ModelProfile:
     agent_id: str = "general"
 
 
+_ASSISTANT_CONTENT_MAX = 12_000
+
+
+def _store_assistant_content(content: str | None) -> tuple[str, str, bool]:
+    """Return (excerpt, stored_content, truncated)."""
+    text = (content or "").strip()
+    if len(text) <= _ASSISTANT_CONTENT_MAX:
+        return text[:400], text, False
+    clipped = text[:_ASSISTANT_CONTENT_MAX]
+    return text[:400], clipped, True
+
+
 @dataclass
 class ScenarioResult:
     run_id: str
@@ -154,6 +166,9 @@ class ScenarioResult:
     tool_names: list[str]
     agent_run_id: str | None
     assistant_excerpt: str
+    scenario_prompt: str = ""
+    assistant_content: str = ""
+    assistant_content_truncated: bool = False
     skipped: bool = False
     fixtures: list[str] = field(default_factory=list)
     error: str | None = None
@@ -539,7 +554,11 @@ def _skipped_result(
     profile: ModelProfile,
     reason: str,
     fixtures: list[str],
+    fixture_ctx: FixtureContext | None = None,
 ) -> ScenarioResult:
+    scenario_prompt = (
+        _render_scenario_prompt(scenario, fixture_ctx) if fixture_ctx is not None else ""
+    )
     return ScenarioResult(
         run_id=run_id,
         scenario_id=scenario.id,
@@ -557,6 +576,7 @@ def _skipped_result(
         tool_names=[],
         agent_run_id=None,
         assistant_excerpt="",
+        scenario_prompt=scenario_prompt,
         skipped=True,
         fixtures=fixtures,
         error="skipped",
@@ -595,11 +615,12 @@ def run_scenario(
             error="missing model",
         )
 
+    scenario_prompt = _render_scenario_prompt(scenario, fixture_ctx)
     body: dict[str, Any] = {
         "model": profile.model,
         "agent_model_catalog_owned_by": profile.catalog_owned_by,
         "agent_id": _effective_agent_id(profile, scenario),
-        "messages": [{"role": "user", "content": _render_scenario_prompt(scenario, fixture_ctx)}],
+        "messages": [{"role": "user", "content": scenario_prompt}],
         "agent_unattended": True,
         "agent_max_tool_rounds": scenario.max_tool_rounds,
         "stream": False,
@@ -709,6 +730,7 @@ def run_scenario(
         workspace_row=workspace_row,
     )
 
+    excerpt, stored_content, content_truncated = _store_assistant_content(content)
     return ScenarioResult(
         run_id=run_id,
         scenario_id=scenario.id,
@@ -725,12 +747,35 @@ def run_scenario(
         tool_call_count=len(tool_names),
         tool_names=tool_names,
         agent_run_id=agent_run_id,
-        assistant_excerpt=(content or "")[:400],
+        assistant_excerpt=excerpt,
+        scenario_prompt=scenario_prompt,
+        assistant_content=stored_content,
+        assistant_content_truncated=content_truncated,
         fixtures=fixture_list,
         error=error,
         http_status=http_status,
         run_metrics=run_metrics_obj.to_dict(),
     )
+
+
+def _bench_summary_from_report(report: BenchRunReport) -> dict[str, Any]:
+    passed = sum(1 for r in report.results if r.passed and not r.skipped)
+    executed = sum(1 for r in report.results if not r.skipped)
+    return {
+        "passed": passed,
+        "executed": executed,
+        "total": len(report.results),
+        "skipped": sum(1 for r in report.results if r.skipped),
+        "profiles_source": report.profiles_source,
+    }
+
+
+def _notify_progress(
+    report: BenchRunReport,
+    on_progress: Callable[[BenchRunReport], None] | None,
+) -> None:
+    if on_progress is not None:
+        on_progress(report)
 
 
 def run_benchmark(
@@ -745,6 +790,7 @@ def run_benchmark(
     run_as_user_id: uuid.UUID | str | None = None,
     friend_user_id: uuid.UUID | str | None = None,
     admin_user_id: uuid.UUID | str | None = None,
+    on_progress: Callable[[BenchRunReport], None] | None = None,
 ) -> BenchRunReport:
     load_bench_env()
     os.environ.setdefault("AGENT_E2E_BASE_URL", bench_base_url())
@@ -819,8 +865,13 @@ def run_benchmark(
         apply_fixtures(client, fixture_ctx, fixture_ids)
         report.fixtures_applied = sorted(fixture_ctx.applied)
         report.fixtures_skipped = dict(fixture_ctx.skipped)
+        _notify_progress(report, on_progress)
 
         from tests.benchmarks.agent.project_run_runner import run_project_run_scenario
+
+        def _record(result: ScenarioResult) -> None:
+            report.results.append(result)
+            _notify_progress(report, on_progress)
 
         for profile in profiles:
             for scenario in scenarios:
@@ -828,29 +879,31 @@ def run_benchmark(
                 if block and any(
                     fid in fixture_ctx.skipped for fid in scenario.requires
                 ):
-                    report.results.append(
+                    _record(
                         _skipped_result(
                             run_id=run_id,
                             scenario=scenario,
                             profile=profile,
                             reason=block,
                             fixtures=list(scenario.requires),
+                            fixture_ctx=fixture_ctx,
                         )
                     )
                     continue
                 if scenario.skip_without_env and not _env_truthy(scenario.skip_without_env):
-                    report.results.append(
+                    _record(
                         _skipped_result(
                             run_id=run_id,
                             scenario=scenario,
                             profile=profile,
                             reason=f"env {scenario.skip_without_env} not set",
                             fixtures=list(scenario.requires),
+                            fixture_ctx=fixture_ctx,
                         )
                     )
                     continue
                 if block:
-                    report.results.append(
+                    _record(
                         ScenarioResult(
                             run_id=run_id,
                             scenario_id=scenario.id,
@@ -874,7 +927,7 @@ def run_benchmark(
                     )
                     continue
 
-                report.results.append(
+                _record(
                     run_project_run_scenario(
                         client,
                         profile=profile,
