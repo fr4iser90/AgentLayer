@@ -24,15 +24,17 @@ from tests.benchmarks.agent.fixtures import (
     FixtureContext,
     apply_fixtures,
     collect_fixture_ids,
+    dashboard_id_for_scenario,
     fetch_dashboard,
     find_dashboard_by_title,
     fetch_git_changes,
     scenario_fixture_blocked,
+    workspace_id_for_scenario,
 )
 from tests.benchmarks.agent.metrics import RunMetrics, build_run_metrics
 from tests.benchmarks.agent.rubrics import RubricOutcome, evaluate_rubric
 from tests.benchmarks.agent.ws_runner import run_chat_via_websocket, timeline_capture_enabled
-from tests.e2e.support.helpers import E2EClient, load_dotenv, require_server
+from tests.e2e.support.helpers import E2EClient, load_dotenv, operator_self_editing_enabled, require_server
 
 logger = logging.getLogger(__name__)
 
@@ -420,10 +422,15 @@ def _render_scenario_prompt(scenario: AgentScenario, fixture_ctx: FixtureContext
     prompt = scenario.prompt
     if "{" not in prompt:
         return prompt
+    dash_id = dashboard_id_for_scenario(
+        fixture_ctx,
+        scenario.requires,
+        agent_id=scenario.agent_id,
+    )
     try:
         return prompt.format(
             prefix=fixture_ctx.prefix,
-            dashboard_id=fixture_ctx.dashboard_id or "",
+            dashboard_id=dash_id or "",
         )
     except KeyError:
         return prompt
@@ -444,8 +451,13 @@ def _dashboard_state_for_rubric(
     if scenario.rubric == "d1_dashboard_create":
         title = f"{fixture_ctx.prefix}create"
         return find_dashboard_by_title(client, title), title
-    if scenario.rubric == "d2_layout_patch" and fixture_ctx.dashboard_id:
-        return fetch_dashboard(client, fixture_ctx.dashboard_id), None
+    dash_id = dashboard_id_for_scenario(
+        fixture_ctx,
+        scenario.requires,
+        agent_id=scenario.agent_id,
+    )
+    if scenario.rubric == "d2_layout_patch" and dash_id:
+        return fetch_dashboard(client, dash_id), None
     return None, None
 
 
@@ -455,9 +467,11 @@ def _git_state_for_rubric(
     scenario: AgentScenario,
     fixture_ctx: FixtureContext,
 ) -> dict[str, Any] | None:
-    if scenario.rubric != "c2_small_edit" or not fixture_ctx.workspace_id:
+    if scenario.rubric != "c2_small_edit":
         return None
-    ws_id = fixture_ctx.workspace_id
+    ws_id = workspace_id_for_scenario(fixture_ctx, scenario.requires)
+    if not ws_id:
+        return None
     try:
         summary = fetch_git_changes(client, ws_id)
     except httpx.HTTPError:
@@ -584,11 +598,17 @@ def run_scenario(
         "agent_max_tool_rounds": scenario.max_tool_rounds,
         "stream": False,
     }
-    if fixture_ctx.workspace_id and scenario.requires:
-        body["workspace_id"] = fixture_ctx.workspace_id
+    ws_id = workspace_id_for_scenario(fixture_ctx, scenario.requires)
+    if ws_id and scenario.requires:
+        body["workspace_id"] = ws_id
     effective_agent = str(body["agent_id"] or "")
-    if fixture_ctx.dashboard_id and effective_agent == "dashboard":
-        body["agent_dashboard_context"] = {"dashboard_id": fixture_ctx.dashboard_id}
+    dash_id = dashboard_id_for_scenario(
+        fixture_ctx,
+        scenario.requires,
+        agent_id=effective_agent,
+    )
+    if dash_id and effective_agent == "dashboard":
+        body["agent_dashboard_context"] = {"dashboard_id": dash_id}
 
     timeout_s = float(scenario.timeout_s or defaults.get("timeout_s") or 120.0)
     t0 = time.perf_counter()
@@ -778,6 +798,18 @@ def run_benchmark(
         profiles_source=profiles_source,
     )
 
+    self_editing_restore_client: E2EClient | None = None
+    self_editing_prev: bool | None = None
+    if "agentlayer_self" in fixture_ids:
+        self_editing_restore_client = admin_client if admin_client is not None else client
+        if self_editing_restore_client.role == "admin":
+            self_editing_prev = operator_self_editing_enabled(self_editing_restore_client)
+            if not self_editing_prev:
+                self_editing_restore_client.patch_json(
+                    "/v1/admin/operator-settings",
+                    {"workspace_allow_self_editing": True},
+                )
+
     try:
         apply_fixtures(client, fixture_ctx, fixture_ids)
         report.fixtures_applied = sorted(fixture_ctx.applied)
@@ -857,6 +889,17 @@ def run_benchmark(
                     )
                 )
     finally:
+        if (
+            self_editing_restore_client is not None
+            and self_editing_prev is False
+        ):
+            try:
+                self_editing_restore_client.patch_json(
+                    "/v1/admin/operator-settings",
+                    {"workspace_allow_self_editing": False},
+                )
+            except httpx.HTTPError:
+                pass
         if provider_registry is not None:
             restore_client = admin_client if admin_client is not None else client
             try:

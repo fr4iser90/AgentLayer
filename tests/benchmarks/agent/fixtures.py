@@ -16,7 +16,7 @@ from tests.e2e.support.helpers import (
     ensure_user_b,
     find_workspace_by_name,
     git_clone_url,
-    temporary_self_editing_enabled,
+    operator_self_editing_enabled,
     wait_index_idle,
 )
 
@@ -29,6 +29,8 @@ class FixtureContext:
     prefix: str
     workspace_id: str | None = None
     workspace_name: str | None = None
+    workspace_by_fixture: dict[str, str] = field(default_factory=dict)
+    dashboard_by_fixture: dict[str, str] = field(default_factory=dict)
     indexed: bool = False
     user_b_id: str | None = None
     dashboard_id: str | None = None
@@ -44,6 +46,47 @@ class FixtureContext:
 
     def skip_reason(self, fixture_id: str) -> str | None:
         return self.skipped.get(fixture_id)
+
+
+def workspace_id_for_scenario(
+    ctx: FixtureContext,
+    requires: tuple[str, ...],
+) -> str | None:
+    """Pick workspace UUID when multiple fixture types ran in one benchmark."""
+    if "workspace_agentlayer_git" in requires:
+        wid = ctx.workspace_by_fixture.get("workspace_agentlayer_git")
+        if wid:
+            return wid
+    if "workspace_git" in requires or "workspace_indexed" in requires:
+        wid = ctx.workspace_by_fixture.get("workspace_git")
+        if wid:
+            return wid
+    if "agentlayer_self" in requires:
+        wid = ctx.workspace_by_fixture.get("agentlayer_self")
+        if wid:
+            return wid
+    if requires and ctx.workspace_id:
+        return ctx.workspace_id
+    return None
+
+
+def dashboard_id_for_scenario(
+    ctx: FixtureContext,
+    requires: tuple[str, ...],
+    *,
+    agent_id: str = "",
+) -> str | None:
+    if "dashboard_empty" in requires:
+        did = ctx.dashboard_by_fixture.get("dashboard_empty")
+        if did:
+            return did
+    if "dashboard_block_share" in requires:
+        did = ctx.dashboard_by_fixture.get("dashboard_block_share")
+        if did:
+            return did
+    if agent_id == "dashboard" and ctx.dashboard_id:
+        return ctx.dashboard_id
+    return None
 
 
 # fixture_id -> depends on other fixture ids
@@ -176,34 +219,44 @@ def _setup_agentlayer_self(client: E2EClient, ctx: FixtureContext) -> None:
             raise RuntimeError(
                 f"workspace {ws_name!r} not found — enable self-editing or set AGENT_BENCH_WORKSPACE_NAME"
             )
-        ctx.workspace_id = str(ws.get("id") or "") or None
+        ws_id = str(ws.get("id") or "") or None
+        ctx.workspace_id = ws_id
         ctx.workspace_name = ws_name
+        if ws_id:
+            ctx.workspace_by_fixture["agentlayer_self"] = ws_id
 
-    if client.role == "admin":
-        with temporary_self_editing_enabled(client):
-            _resolve()
-    else:
-        _resolve()
+    if client.role == "admin" and not operator_self_editing_enabled(client):
+        raise RuntimeError(
+            "agentlayer_self requires workspace_allow_self_editing for the benchmark run "
+            "(harness enables it when this fixture is requested)"
+        )
+    _resolve()
 
 
 def _setup_workspace_git(client: E2EClient, ctx: FixtureContext) -> None:
     ws_name = f"{ctx.prefix}git"
     git_url = (os.environ.get("AGENT_BENCH_GIT_URL") or git_clone_url()).strip()
     ws = ensure_git_workspace(client, name=ws_name, git_url=git_url)
-    ctx.workspace_id = str(ws.get("id") or "") or None
+    ws_id = str(ws.get("id") or "") or None
+    ctx.workspace_id = ws_id
     ctx.workspace_name = ws_name
     ctx.git_remote_url = git_url
     ctx.indexed = False
+    if ws_id:
+        ctx.workspace_by_fixture["workspace_git"] = ws_id
 
 
 def _setup_workspace_agentlayer_git(client: E2EClient, ctx: FixtureContext) -> None:
     ws_name = f"{ctx.prefix}agentlayer"
     git_url = agentlayer_bench_git_url()
     ws = ensure_git_workspace(client, name=ws_name, git_url=git_url)
-    ctx.workspace_id = str(ws.get("id") or "") or None
+    ws_id = str(ws.get("id") or "") or None
+    ctx.workspace_id = ws_id
     ctx.workspace_name = ws_name
     ctx.git_remote_url = git_url
     ctx.indexed = False
+    if ws_id:
+        ctx.workspace_by_fixture["workspace_agentlayer_git"] = ws_id
 
 
 def _setup_workspace_indexed(client: E2EClient, ctx: FixtureContext) -> None:
@@ -278,6 +331,7 @@ def _setup_dashboard_block_share(client: E2EClient, ctx: FixtureContext) -> None
     if not dash_id:
         raise RuntimeError(f"dashboard create failed: {created}")
     ctx.dashboard_id = dash_id
+    ctx.dashboard_by_fixture["dashboard_block_share"] = dash_id
     client.post_json(
         f"/v1/dashboards/{dash_id}/block-shares",
         {
@@ -328,6 +382,7 @@ def _setup_dashboard_empty(client: E2EClient, ctx: FixtureContext) -> None:
     if not dash_id:
         raise RuntimeError(f"dashboard create failed: {created}")
     ctx.dashboard_id = dash_id
+    ctx.dashboard_by_fixture["dashboard_empty"] = dash_id
 
 
 def _setup_ssc_secret(client: E2EClient, ctx: FixtureContext) -> None:

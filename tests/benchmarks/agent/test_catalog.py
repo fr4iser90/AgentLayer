@@ -61,7 +61,20 @@ def test_list_suites_detailed_matches_manifests():
         "coding",
         "security",
         "dashboards",
+        "full",
     }
+
+
+def test_full_suite_has_all_scenarios():
+    suite = describe_suite("full")
+    ids = [s["id"] for s in suite["scenarios"]]
+    assert len(ids) == 14
+    assert ids[0] == "S1_tool_catalog"
+    assert ids[-2:] == ["SEC1_scan_agentlayer", "SEC2_remediate_agentlayer"]
+    fixture_ids = {f["id"] for f in suite["fixtures"]}
+    assert "workspace_git" in fixture_ids
+    assert "agentlayer_self" in fixture_ids
+    assert "ssc_secret" in fixture_ids
 
 
 def test_dashboards_suite_has_d1_d2():

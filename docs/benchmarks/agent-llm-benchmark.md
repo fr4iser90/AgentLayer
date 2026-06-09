@@ -131,6 +131,7 @@ Phase 3: `benchmark_runs` PG table (schema_090) — used by **Admin → Observab
 | Workspace + index | `python scripts/run_agent_benchmark.py --manifest benchmarks/manifests/workspace.yaml` |
 | Social / share | `python scripts/run_agent_benchmark.py --manifest benchmarks/manifests/social.yaml` |
 | Gmail integration | `python scripts/run_agent_benchmark.py --manifest benchmarks/manifests/integrations.yaml` |
+| **Full regression** | `python scripts/run_agent_benchmark.py --manifest benchmarks/manifests/full.yaml` |
 | **Admin UI** | `/admin/benchmarks` — same suites, profile picker, run history |
 
 Scenarios declare **`requires: [fixture_ids]`**; fixtures live in `tests/benchmarks/agent/fixtures.py`. Optional fixtures (index, gmail) **skip** scenarios when prerequisites are missing instead of failing the whole run.

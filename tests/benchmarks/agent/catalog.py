@@ -17,6 +17,7 @@ _SUITE_MANIFESTS: dict[str, str] = {
     "coding": "benchmarks/manifests/coding.yaml",
     "security": "benchmarks/manifests/security.yaml",
     "dashboards": "benchmarks/manifests/dashboards.yaml",
+    "full": "benchmarks/manifests/full.yaml",
 }
 
 _SUITE_LABELS: dict[str, str] = {
@@ -27,6 +28,7 @@ _SUITE_LABELS: dict[str, str] = {
     "coding": "Coding (project_run, hours)",
     "security": "Security (AgentLayer repo + SimpleSecCheck)",
     "dashboards": "Dashboards (create + layout)",
+    "full": "Full regression (all domains, hours)",
 }
 
 _SUITE_DESCRIPTIONS: dict[str, str] = {
@@ -37,6 +39,7 @@ _SUITE_DESCRIPTIONS: dict[str, str] = {
     "coding": "Long-running coding agent via project_runs queue (poll, git diff, full metrics).",
     "security": "Clone fr4iser90/AgentLayer; SEC1 scan via chat, SEC2 remediation via project_run + security_scan.",
     "dashboards": "Agent creates a custom dashboard (D1) and patches markdown layout + data (D2).",
+    "full": "All scenarios in tier order: smoke → workspace → dashboards → social → integrations → coding → security. Expect hours per model; optional Gmail/index/SSC skip individually.",
 }
 
 _SCENARIO_META: dict[str, dict[str, Any]] = {

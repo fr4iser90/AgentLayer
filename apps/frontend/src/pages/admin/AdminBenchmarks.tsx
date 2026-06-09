@@ -110,7 +110,7 @@ export function AdminBenchmarks() {
 
   const benchProviders = useMemo(() => llmProviders.filter((p) => Boolean(p.base_url?.trim())), [llmProviders]);
 
-  const showFriendPicker = suite === "social";
+  const showFriendPicker = autoFixtures.has("friend_pair");
 
   const friendCandidates = useMemo(
     () => tenantUsers.filter((u) => u.id !== runAsUserId && u.role === "user"),
@@ -299,16 +299,40 @@ export function AdminBenchmarks() {
     })();
   }, [auth, selectedId, t]);
 
+  const loadSelectedDetail = useCallback(async () => {
+    if (!selectedId) return;
+    try {
+      const d = await fetchBenchmarkRun(auth, selectedId);
+      setDetail(d);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("admin:benchLoadFailed"));
+    }
+  }, [auth, selectedId, t]);
+
   const pollRunning = useMemo(
     () => runs.some((r) => r.status === "queued" || r.status === "running"),
     [runs]
   );
 
+  const wasPollingRef = useRef(false);
+
   useEffect(() => {
     if (tab !== "history" || !pollRunning) return;
-    const id = window.setInterval(() => void loadRuns(), 4000);
+    const id = window.setInterval(() => {
+      void (async () => {
+        await loadRuns();
+        await loadSelectedDetail();
+      })();
+    }, 4000);
     return () => window.clearInterval(id);
-  }, [tab, pollRunning, loadRuns]);
+  }, [tab, pollRunning, loadRuns, loadSelectedDetail]);
+
+  useEffect(() => {
+    if (wasPollingRef.current && !pollRunning && selectedId) {
+      void loadSelectedDetail();
+    }
+    wasPollingRef.current = pollRunning;
+  }, [pollRunning, selectedId, loadSelectedDetail]);
 
   const toggleProvider = (id: string) => {
     setSelectedProviderIds((prev) => {

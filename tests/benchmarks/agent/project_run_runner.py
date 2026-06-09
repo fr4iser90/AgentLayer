@@ -15,7 +15,7 @@ from tests.benchmarks.agent.harness import (
 )
 from tests.benchmarks.agent.metrics import RunMetrics, build_run_metrics
 from tests.benchmarks.agent.cases import AgentScenario
-from tests.benchmarks.agent.fixtures import FixtureContext
+from tests.benchmarks.agent.fixtures import FixtureContext, workspace_id_for_scenario
 from tests.benchmarks.agent.rubrics import RubricOutcome, evaluate_rubric
 from tests.e2e.support.helpers import E2EClient
 
@@ -75,7 +75,8 @@ def run_project_run_scenario(
     defaults: dict[str, Any],
 ) -> ScenarioResult:
     fixture_list = list(scenario.requires)
-    if not fixture_ctx.workspace_id:
+    ws_id = workspace_id_for_scenario(fixture_ctx, scenario.requires)
+    if not ws_id:
         return ScenarioResult(
             run_id=run_id,
             scenario_id=scenario.id,
@@ -121,7 +122,7 @@ def run_project_run_scenario(
 
     timeout_s = float(scenario.timeout_s or defaults.get("timeout_s") or 7200.0)
     coding_workflow = {
-        "workspace_id": fixture_ctx.workspace_id,
+        "workspace_id": ws_id,
         "agent_id": scenario.agent_id or "coding",
         "model": profile.model,
         "model_catalog_owned_by": profile.catalog_owned_by,
