@@ -7,9 +7,6 @@ requires_workspace: false
 schedulable: false
 execution_context: auto
 min_role: admin
-pinned_tools:
-  - settings_get
-  - settings_patch
 tool_capability_any:
   - operator.console
   - knowledge.retrieve

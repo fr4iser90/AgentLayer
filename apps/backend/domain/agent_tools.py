@@ -167,19 +167,9 @@ def _git_network_tools_for_agent(agent_id: str | None) -> frozenset[str]:
 
 
 def _pinned_tools_for_agent(agent_id: str | None) -> frozenset[str]:
-    """Tools always prepended to ranked tools[] (credentials + git push/sync)."""
-    aid = (agent_id or "").strip()
-    pins = _credential_tools_for_agent(agent_id) | _git_network_tools_for_agent(agent_id)
-    if aid == "general":
-        pins = pins | frozenset({"delegate"})
-    if aid in ("coding", "coding_plan"):
-        pins = pins | _CODING_READ_TOOL_PINS
-    if aid == "security_auditor":
-        pins = pins | _SECURITY_AUDITOR_READ_PINS
-    from apps.backend.domain.tool_forward_policy import pinned_tools_for_agent
-
-    pins = pins | pinned_tools_for_agent(aid)
-    return pins
+    """Deprecated — tool forward uses ranking only (no pins)."""
+    _ = agent_id
+    return frozenset()
 
 
 def _rank_tools_by_user_input(

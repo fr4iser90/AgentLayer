@@ -265,7 +265,7 @@ AGENT_TOOLS_RANKING_FALLBACK_ALL = _env_bool("AGENT_TOOLS_RANKING_FALLBACK_ALL",
 AGENT_TOOLS_BUDGET_RATIO = max(0.01, min(0.25, float(os.environ.get("AGENT_TOOLS_BUDGET_RATIO", "0.06"))))
 # Max tools[] count ≈ ratio × context_window (safety ceiling; fit enforced by tools_budget_tokens).
 AGENT_TOOLS_COUNT_CAP_RATIO = max(
-    0.00001, min(0.01, float(os.environ.get("AGENT_TOOLS_COUNT_CAP_RATIO", "0.00012")))
+    0.00001, min(0.01, float(os.environ.get("AGENT_TOOLS_COUNT_CAP_RATIO", "0.0004")))
 )
 
 

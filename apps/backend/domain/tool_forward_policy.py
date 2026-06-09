@@ -1,4 +1,4 @@
-"""Dynamic tool forward plan: pins, ranking cap, context budget, schema tiers."""
+"""Dynamic tool forward plan: ranking cap, context budget, schema tiers (no pins)."""
 
 from __future__ import annotations
 
@@ -10,7 +10,6 @@ from typing import Any, Literal
 from apps.backend.core.config import config
 from apps.backend.domain.agent_registry import get_agent_registry
 from apps.backend.domain.agent_tools import (
-    _partition_tool_specs_by_name,
     _rank_tools_by_user_input,
     _tool_spec_name,
 )
@@ -48,27 +47,6 @@ class ToolForwardPlan:
     meta: dict[str, Any] = field(default_factory=dict)
 
 
-def resolve_pin_names(agent_id: str | None) -> frozenset[str]:
-    """``pinned_tools`` from agent plugin yaml, intersected with the agent allowlist."""
-    aid = (agent_id or "").strip()
-    if not aid:
-        return frozenset()
-    ag = get_agent_registry().get_agent(aid)
-    if not ag:
-        return frozenset()
-    allowed = frozenset(str(x).strip() for x in (ag.get("tool_names") or []) if str(x).strip())
-    yaml_pins = ag.get("pinned_tools")
-    if not isinstance(yaml_pins, list):
-        return frozenset()
-    want = [str(x).strip() for x in yaml_pins if str(x).strip()]
-    return frozenset(n for n in want if n in allowed)
-
-
-def pinned_tools_for_agent(agent_id: str | None) -> frozenset[str]:
-    """Agent yaml pins only — no agent-id branches or core defaults."""
-    return resolve_pin_names(agent_id)
-
-
 def infer_model_tier(*, model_id: str, catalog_owned_by: str | None = None) -> str:
     """strong | standard | weak_local — caps tool count independent of context window."""
     mid = (model_id or "").lower()
@@ -102,23 +80,6 @@ def compute_tool_forward_limits(
 
     quotas = completion_quotas_from_window(window, source="tool_forward_inline")
     return quotas.tools_budget_tokens, quotas.max_tool_count
-
-
-def _introspection_pins_for_agent(agent_id: str | None, specs: list[Any]) -> frozenset[str]:
-    """Always forward meta introspection tools when the agent declares meta.inspect/discover."""
-    aid = (agent_id or "").strip()
-    if not aid:
-        return frozenset()
-    ag = get_agent_registry().get_agent(aid)
-    if not ag:
-        return frozenset()
-    caps = {str(c).strip() for c in (ag.get("tool_capability_any") or []) if str(c).strip()}
-    if "meta.inspect" not in caps and "meta.discover" not in caps:
-        return frozenset()
-    from apps.backend.domain.plugin_system.tool_routing import TOOL_INTROSPECTION
-
-    allowed = {_tool_spec_name(s) for s in specs if _tool_spec_name(s)}
-    return frozenset(n for n in TOOL_INTROSPECTION if n in allowed)
 
 
 def _estimate_tool_spec_tokens(spec: Any, *, full_schema: bool) -> int:
@@ -169,19 +130,15 @@ def _cap_ranked_pool(
     *,
     max_slots: int,
     token_budget: int,
-    pin_count: int,
     full_schema_pref: bool,
     prefer_full: frozenset[str],
 ) -> list[Any]:
     if max_slots <= 0:
         return []
-    slots = max(0, max_slots - pin_count)
-    if slots <= 0:
-        return []
     out: list[Any] = []
     used_tokens = 0
     for spec in ranked:
-        if len(out) >= slots:
+        if len(out) >= max_slots:
             break
         n = _tool_spec_name(spec)
         mode: SchemaMode = "full" if full_schema_pref and (n in prefer_full) else "catalog"
@@ -196,15 +153,7 @@ def _cap_ranked_pool(
 
 
 def build_tool_forward_plan(ctx: ToolForwardContext) -> ToolForwardPlan:
-    from apps.backend.domain.agent_tools import _pinned_tools_for_agent
-
     specs = list(ctx.tool_specs or [])
-    pin_names = _pinned_tools_for_agent(ctx.agent_id) | _introspection_pins_for_agent(
-        ctx.agent_id, specs
-    )
-
-    pinned_specs, pool = _partition_tool_specs_by_name(specs, pin_names)
-    pin_names_found = [_tool_spec_name(s) for s in pinned_specs if _tool_spec_name(s)]
 
     token_budget, max_count = compute_tool_forward_limits(
         context_window_tokens=ctx.context_window_tokens,
@@ -212,30 +161,25 @@ def build_tool_forward_plan(ctx: ToolForwardContext) -> ToolForwardPlan:
     )
 
     ranking_applied = False
-    ranked_pool = pool
-    if ctx.ranking_enabled and pool and (ctx.user_text or "").strip():
-        names = [_tool_spec_name(s) for s in pool if _tool_spec_name(s)]
+    ranked_pool = specs
+    if ctx.ranking_enabled and specs and (ctx.user_text or "").strip():
+        names = [_tool_spec_name(s) for s in specs if _tool_spec_name(s)]
         triggers = build_tool_triggers_map([n for n in names if n])
         try:
-            ranked_pool = _rank_tools_by_user_input(pool, ctx.user_text, triggers)
+            ranked_pool = _rank_tools_by_user_input(specs, ctx.user_text, triggers)
             ranking_applied = True
         except Exception:
             logger.warning("tool forward: ranking failed", exc_info=True)
-            ranked_pool = pool
+            ranked_pool = specs
 
     prefer_full = _prefer_full_schema_names(ctx.agent_id)
-    capped = _cap_ranked_pool(
+    forward_specs = _cap_ranked_pool(
         ranked_pool,
         max_slots=max_count,
         token_budget=token_budget,
-        pin_count=len(pinned_specs),
         full_schema_pref=ctx.full_schema_preference,
         prefer_full=prefer_full,
     )
-
-    forward_specs = pinned_specs + capped
-    if len(forward_specs) > max_count:
-        forward_specs = forward_specs[:max_count]
     forward_names = [n for s in forward_specs if (n := _tool_spec_name(s))]
 
     schema_modes: dict[str, SchemaMode] = {}
@@ -245,8 +189,8 @@ def build_tool_forward_plan(ctx: ToolForwardContext) -> ToolForwardPlan:
         if not n:
             continue
         if ctx.full_schema_preference:
-            mode: SchemaMode = "full" if (n in prefer_full or n in pin_names_found) else "catalog"
-            if ctx.model_tier == "weak_local" and n not in pin_names_found and n not in prefer_full:
+            mode: SchemaMode = "full" if n in prefer_full else "catalog"
+            if ctx.model_tier == "weak_local" and n not in prefer_full:
                 mode = "catalog"
         else:
             mode = "catalog"
@@ -261,13 +205,13 @@ def build_tool_forward_plan(ctx: ToolForwardContext) -> ToolForwardPlan:
         budget_tokens_used_estimate=used_est,
         max_tool_count=max_count,
         ranking_applied=ranking_applied,
-        pins_included=pin_names_found,
+        pins_included=[],
         meta={
             "model_tier": ctx.model_tier,
             "context_window_tokens": ctx.context_window_tokens,
             "allowlist_count": len(specs),
-            "rank_pool_count": len(pool),
-            "pinned_count": len(pinned_specs),
+            "rank_pool_count": len(specs),
+            "pinned_count": 0,
         },
     )
 
