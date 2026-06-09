@@ -6,6 +6,7 @@ import { formatToolStepLabel } from "./toolStepLabel";
 type Props = {
   entries: AgentTimelineEntry[];
   running?: boolean;
+  waitHint?: string | null;
 };
 
 function isStepKind(kind: string): boolean {
@@ -17,12 +18,13 @@ function isStepKind(kind: string): boolean {
     kind === "subagent_start" ||
     kind === "subagent_step" ||
     kind === "subagent_done" ||
-    kind === "wait"
+    kind === "wait" ||
+    kind === "llm_queue"
   );
 }
 
 /** LLM/tool/subagent steps in the assistant bubble (not context tokens — those stay in SessionRuntimeBar). */
-export function MessageTurnActivity({ entries, running = false }: Props) {
+export function MessageTurnActivity({ entries, running = false, waitHint = null }: Props) {
   const { t } = useTranslation(["chat"]);
   const cards = buildRunCardsFromTimeline(entries);
   const anchored = new Set(cards.flatMap((c) => c.details.map((d) => d.id)));
@@ -39,7 +41,7 @@ export function MessageTurnActivity({ entries, running = false }: Props) {
       {steps.length === 0 ? (
         <p className="flex items-center gap-1.5 text-[11px] text-violet-200/85">
           <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400" />
-          {t("chat:agentRunning")}
+          {waitHint?.trim() || t("chat:agentRunning")}
         </p>
       ) : (
         <ul className="space-y-1">
@@ -51,7 +53,9 @@ export function MessageTurnActivity({ entries, running = false }: Props) {
               <span className="text-[9px] font-medium uppercase tracking-wide text-surface-muted">
                 {e.kind === "llm"
                   ? t("chat:activityKindLlm")
-                  : e.kind === "session"
+                  : e.kind === "llm_queue"
+                    ? t("chat:activityKindLlmQueue")
+                    : e.kind === "session"
                     ? t("chat:activityKindSession")
                     : e.kind.startsWith("subagent")
                       ? t("chat:activityKindSub")
@@ -79,7 +83,7 @@ export function MessageTurnActivity({ entries, running = false }: Props) {
           {running ? (
             <li className="flex items-center gap-1.5 border-l-2 border-violet-500/30 pl-2 text-[11px] text-violet-200/80">
               <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400" />
-              {t("chat:running")}
+              {waitHint?.trim() || t("chat:running")}
             </li>
           ) : null}
         </ul>

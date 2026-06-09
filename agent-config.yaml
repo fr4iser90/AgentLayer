@@ -1,5 +1,0 @@
-# DEPRECATED — not loaded at runtime.
-# Agents live under plugins/agents/<id>/agent.yaml + system_prompt.md
-# See plugins/agents/README.md
-
-agents: {}

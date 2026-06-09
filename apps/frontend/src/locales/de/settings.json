@@ -116,8 +116,9 @@
   "sharesDaysAheadPlaceholder": "Leer = unbegrenzt",
   "sharesDaysAheadValue": "Max. {{count}} Tage",
   "sharesExpiresAt": "Läuft ab am (optional)",
-  "sharesSavePolicy": "Scope speichern"
-  ,
+  "sharesSavePolicy": "Scope speichern",
+  "sharesResourceType": "Ressourcen-ID",
+  "sharesAddResource": "Teilen",
   "toolsLoadFailed": "Tools konnten nicht geladen werden",
   "toolsTitle": "Tools",
   "toolsLoading": "Wird geladen…",

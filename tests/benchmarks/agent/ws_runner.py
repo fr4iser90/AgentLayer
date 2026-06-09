@@ -23,7 +23,6 @@ async def _run_chat_ws_async(
     base_url: str,
     token: str,
     body: dict[str, Any],
-    timeout_s: float,
 ) -> tuple[dict[str, Any], list[dict[str, Any]], str | None]:
     try:
         import websockets
@@ -39,11 +38,7 @@ async def _run_chat_ws_async(
     async with websockets.connect(ws_url, open_timeout=30, close_timeout=10) as ws:
         await ws.send(json.dumps({"type": "chat", "body": body}))
         while True:
-            try:
-                raw = await asyncio.wait_for(ws.recv(), timeout=timeout_s)
-            except asyncio.TimeoutError:
-                error = f"websocket idle timeout after {timeout_s}s"
-                break
+            raw = await ws.recv()
             try:
                 msg = json.loads(raw)
             except json.JSONDecodeError:
@@ -71,14 +66,12 @@ def run_chat_via_websocket(
     base_url: str,
     token: str,
     body: dict[str, Any],
-    timeout_s: float,
 ) -> tuple[dict[str, Any], list[dict[str, Any]], str | None]:
     return asyncio.run(
         _run_chat_ws_async(
             base_url=base_url,
             token=token,
             body=body,
-            timeout_s=timeout_s,
         )
     )
 

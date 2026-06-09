@@ -5,6 +5,7 @@ import type { AgentTimelineEntry } from "./chatThreadStorage";
 type Props = {
   entries: AgentTimelineEntry[];
   loading?: boolean;
+  loadingHint?: string | null;
   emptyHint?: string;
   showSubagentToggle?: boolean;
   showSubagents?: boolean;
@@ -15,6 +16,7 @@ type Props = {
 export const ChatAgentActivityPanel = memo(function ChatAgentActivityPanel({
   entries,
   loading,
+  loadingHint = null,
   emptyHint,
   showSubagentToggle,
   showSubagents,
@@ -24,6 +26,7 @@ export const ChatAgentActivityPanel = memo(function ChatAgentActivityPanel({
     <AgentActivityPanel
       entries={entries}
       loading={loading}
+      loadingHint={loadingHint}
       emptyHint={emptyHint}
       layout="header"
       className="min-h-0 w-full"

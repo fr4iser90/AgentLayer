@@ -188,12 +188,7 @@ def _action_grant(requesting_user_id: uuid.UUID, arguments: dict[str, Any]) -> d
 
     canonical = canonical_resource_type(str(resource_type))
     if not canonical:
-        catalog = catalog_for_api()
-        ids = [r["id"] for r in catalog]
-        return {
-            "ok": False,
-            "result": f"Unknown resource_type '{resource_type}'. Known types: {', '.join(ids)}",
-        }
+        return {"ok": False, "result": "resource_type must be a non-empty id (letters, digits, _, ., -)"}
 
     raw_policy = arguments.get("policy")
     if raw_policy is None and arguments.get("days_ahead") is not None:
@@ -257,7 +252,7 @@ def _action_revoke(requesting_user_id: uuid.UUID, arguments: dict[str, Any]) -> 
 
     canonical = canonical_resource_type(str(resource_type))
     if not canonical:
-        return {"ok": False, "result": f"Unknown resource_type '{resource_type}'"}
+        return {"ok": False, "result": "resource_type must be a non-empty id (letters, digits, _, ., -)"}
 
     identifier = str(arguments.get("resource_identifier") or "primary").strip().lower()
     friend_user_id = uuid.UUID(friend["friend_user_id"])
@@ -287,7 +282,7 @@ def _action_check(requesting_user_id: uuid.UUID, arguments: dict[str, Any]) -> d
 
     canonical = canonical_resource_type(str(resource_type))
     if not canonical:
-        return {"ok": False, "result": f"Unknown resource_type '{resource_type}'"}
+        return {"ok": False, "result": "resource_type must be a non-empty id (letters, digits, _, ., -)"}
 
     identifier = str(arguments.get("resource_identifier") or "primary").strip().lower()
     friend_user_id = uuid.UUID(friend["friend_user_id"])
@@ -439,11 +434,11 @@ TOOLS: list[dict[str, Any]] = [
         "function": {
             "name": "shares",
             "TOOL_DESCRIPTION": (
-                "Manage friend share permissions: grant, revoke, list, or check access to resources "
-                "(google_calendar, github_activity, todoist, notes, roadmap, dashboard, collection). "
+                "Manage friend share permissions: grant, revoke, list, or check access to any resource "
+                "(resource_type is a free id, e.g. google_calendar, my_notes, dashboard). "
                 "For dashboard: resource_identifier = dashboard UUID. "
-                "For collection: resource_identifier = slug (e.g. pets). Optional policy: "
-                "{permission: edit|view, block_ids: [layout block ids], expires_at: ISO}. "
+                "For collection: resource_identifier = slug. Optional policy: "
+                "{permission: edit|view, block_ids: [...], list_keys: [...], days_ahead, expires_at}. "
                 "Use action=grant to share e.g. calendar with days_ahead:7. "
                 "Use action=list without name for full summary; with friend name for one person."
             ),
@@ -466,8 +461,7 @@ TOOLS: list[dict[str, Any]] = [
                     "resource_type": {
                         "type": "string",
                         "TOOL_DESCRIPTION": (
-                            "Resource id from catalog: google_calendar, github_activity, todoist, notes, "
-                            "roadmap, dashboard, collection."
+                            "Resource id to share (any lowercase id: google_calendar, notes, my_widget, …)."
                         ),
                     },
                     "resource_identifier": {

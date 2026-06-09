@@ -170,7 +170,6 @@ def serialize_scenario(sc: AgentScenario) -> dict[str, Any]:
         "requires": list(sc.requires),
         "expected_tools": meta.get("expected_tools") or [],
         "max_tool_rounds": sc.max_tool_rounds,
-        "timeout_s": sc.timeout_s,
         "skip_without_env": sc.skip_without_env,
     }
 

@@ -2,7 +2,7 @@ import { memo, useMemo } from "react";
 import { activityForTurn } from "./agentLogStorage";
 import type { ChatThread } from "./chatThreadStorage";
 import { ChatAgentActivityPanel } from "./ChatAgentActivityPanel";
-import { useAgentLiveLog, type LiveTurnStore } from "./useAgentLiveTurn";
+import { useAgentLiveLog, useAgentWaitHint, type LiveTurnStore } from "./useAgentLiveTurn";
 
 type Props = {
   store: LiveTurnStore;
@@ -27,6 +27,7 @@ export const ChatLiveActivityPanel = memo(function ChatLiveActivityPanel({
   onShowSubagentsChange,
 }: Props) {
   const liveLog = useAgentLiveLog(store);
+  const waitHint = useAgentWaitHint(store);
 
   const entries = useMemo(() => {
     if (!activeThread) return [];
@@ -41,6 +42,7 @@ export const ChatLiveActivityPanel = memo(function ChatLiveActivityPanel({
     <ChatAgentActivityPanel
       entries={entries}
       loading={loading}
+      loadingHint={waitHint}
       emptyHint={emptyHint}
       showSubagentToggle={showSubagentToggle}
       showSubagents={showSubagents}

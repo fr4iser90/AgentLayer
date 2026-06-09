@@ -5,10 +5,13 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from apps.backend.domain.shares.catalog import resource_catalog_entry
-
 _DAYS_AHEAD_MIN = 1
 _DAYS_AHEAD_MAX = 366
+
+# Same policy keys for every resource type — no per-type whitelist.
+_ALLOWED_POLICY_FIELDS = frozenset(
+    {"days_ahead", "expires_at", "permission", "block_ids", "list_keys"}
+)
 
 
 def _parse_expires_at(raw: Any) -> datetime | None:
@@ -33,19 +36,17 @@ def normalize_policy(
     policy: dict[str, Any] | None,
 ) -> tuple[dict[str, Any], str | None]:
     """Return (clean_policy, error_message). Empty dict is valid."""
+    _ = resource_type
     if policy is None:
         return {}, None
     if not isinstance(policy, dict):
         return {}, "policy must be an object"
 
-    entry = resource_catalog_entry(resource_type)
-    allowed_fields = set(entry.get("policy_fields") or []) if entry else {"days_ahead", "expires_at"}
-
     clean: dict[str, Any] = {}
     for key, value in policy.items():
         k = str(key).strip()
-        if k not in allowed_fields:
-            return {}, f"policy field '{k}' is not allowed for resource '{resource_type}'"
+        if k not in _ALLOWED_POLICY_FIELDS:
+            return {}, f"policy field '{k}' is not allowed"
 
         if k == "days_ahead":
             if value is None or value == "":

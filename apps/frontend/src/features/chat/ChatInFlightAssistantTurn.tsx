@@ -8,6 +8,7 @@ import {
   useAgentLiveLog,
   useAgentStreamReasoning,
   useAgentStreamText,
+  useAgentWaitHint,
   type LiveTurnStore,
 } from "./useAgentLiveTurn";
 
@@ -40,6 +41,7 @@ export const ChatInFlightAssistantTurn = memo(function ChatInFlightAssistantTurn
   const streamText = useAgentStreamText(store);
   const streamReasoning = useAgentStreamReasoning(store);
   const liveLog = useAgentLiveLog(store);
+  const waitHint = useAgentWaitHint(store);
 
   const timelineEntries = useMemo(() => {
     if (!activeThread || !latestTurnId) return [];
@@ -56,6 +58,7 @@ export const ChatInFlightAssistantTurn = memo(function ChatInFlightAssistantTurn
       timelineEntries={timelineEntries}
       running
       runStartedAtMs={runStartedAtMs}
+      waitHint={waitHint}
       auth={auth}
       selectedByProposalId={selectedByProposalId}
       onSelectProposalOption={onSelectProposalOption}

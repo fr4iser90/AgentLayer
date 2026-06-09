@@ -11,6 +11,7 @@ import {
   fetchBenchmarkLlmProviders,
   fetchBenchmarkRuns,
   fetchBenchmarkSuites,
+  deleteBenchmarkRun,
   startBenchmarkRun,
   userOptionLabel,
   type AdminUserRow,
@@ -204,6 +205,7 @@ export function AdminBenchmarks() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
+  const [deletingRunId, setDeletingRunId] = useState<string | null>(null);
   const scenariosInitialized = useRef(false);
 
   const suiteDetail = useMemo(
@@ -543,6 +545,29 @@ export function AdminBenchmarks() {
       setError(e instanceof Error ? e.message : t("admin:benchStartFailed"));
     } finally {
       setStarting(false);
+    }
+  };
+
+  const onDeleteRun = async (run: BenchmarkRun) => {
+    if (run.status === "queued" || run.status === "running") {
+      setError(t("admin:benchDeleteRunActive"));
+      return;
+    }
+    const label = run.suite || run.id.slice(0, 8);
+    if (!window.confirm(t("admin:benchDeleteRunConfirm", { suite: label }))) return;
+    setDeletingRunId(run.id);
+    setError(null);
+    try {
+      await deleteBenchmarkRun(auth, run.id);
+      if (selectedId === run.id) {
+        setSelectedId(null);
+        setDetail(null);
+      }
+      await loadRuns();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("admin:benchDeleteRunFailed"));
+    } finally {
+      setDeletingRunId(null);
     }
   };
 
@@ -901,10 +926,6 @@ export function AdminBenchmarks() {
                             <p className="text-surface-muted">{t("admin:benchPrompt")}</p>
                             <p className="whitespace-pre-wrap text-white/90">{sc.prompt}</p>
                             <p className="text-surface-muted">{t("admin:benchRubric")}: {sc.rubric}</p>
-                            <p className="text-surface-muted">
-                              {t("admin:benchTimeout")}: {sc.timeout_s}s · {t("admin:benchMaxTools")}:{" "}
-                              {sc.max_tool_rounds}
-                            </p>
                           </div>
                         ) : null}
                       </div>
@@ -953,25 +974,63 @@ export function AdminBenchmarks() {
                 <p className="p-3 text-xs text-surface-muted">{t("admin:benchNone")}</p>
               ) : (
                 runs.map((r) => (
-                  <button
+                  <div
                     key={r.id}
-                    type="button"
-                    onClick={() => setSelectedId(r.id)}
-                    className={`block w-full border-b border-white/5 px-3 py-2 text-left text-sm hover:bg-white/5 ${
+                    className={`flex items-stretch border-b border-white/5 ${
                       selectedId === r.id ? "bg-white/10" : ""
                     }`}
                   >
-                    <div className="font-medium text-white">{r.suite}</div>
-                    <div className="text-xs text-surface-muted">
-                      {r.status}
-                      {r.summary_json
-                        ? ` · ${r.summary_json.passed}/${r.summary_json.executed} pass`
-                        : ""}
-                      {r.user_id
-                        ? ` · ${tenantUsers.find((u) => u.id === r.user_id)?.email || r.user_id.slice(0, 8)}`
-                        : ""}
-                    </div>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedId(r.id)}
+                      className="min-w-0 flex-1 px-3 py-2 text-left text-sm hover:bg-white/5"
+                    >
+                      <div className="font-medium text-white">{r.suite}</div>
+                      <div className="text-xs text-surface-muted">
+                        {r.status}
+                        {r.summary_json
+                          ? ` · ${r.summary_json.passed}/${r.summary_json.executed} pass`
+                          : ""}
+                        {r.user_id
+                          ? ` · ${tenantUsers.find((u) => u.id === r.user_id)?.email || r.user_id.slice(0, 8)}`
+                          : ""}
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={
+                        deletingRunId === r.id ||
+                        r.status === "queued" ||
+                        r.status === "running"
+                      }
+                      title={
+                        r.status === "queued" || r.status === "running"
+                          ? t("admin:benchDeleteRunActive")
+                          : t("admin:benchDeleteRun")
+                      }
+                      aria-label={t("admin:benchDeleteRun")}
+                      onClick={() => void onDeleteRun(r)}
+                      className="shrink-0 px-2 text-surface-muted hover:bg-rose-950/40 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-30"
+                    >
+                      {deletingRunId === r.id ? (
+                        <span className="text-[10px]">…</span>
+                      ) : (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          className="h-4 w-4"
+                          aria-hidden
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 ))
               )}
             </div>

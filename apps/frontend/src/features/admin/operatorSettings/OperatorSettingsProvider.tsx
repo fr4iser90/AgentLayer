@@ -484,6 +484,7 @@ function useOperatorSettingsState() {
             model_vlm?: string | null;
             model_agent?: string | null;
             model_coding?: string | null;
+            max_parallel?: number;
           }>;
         };
         const raw = epData.endpoints ?? [];
@@ -500,6 +501,10 @@ function useOperatorSettingsState() {
             modelVlm: (x.model_vlm ?? "").trim(),
             modelAgent: (x.model_agent ?? "").trim(),
             modelCoding: (x.model_coding ?? "").trim(),
+            maxParallel:
+              typeof x.max_parallel === "number" && Number.isFinite(x.max_parallel)
+                ? Math.max(1, Math.min(64, Math.floor(x.max_parallel)))
+                : 1,
           }))
         );
       } else {
@@ -830,6 +835,7 @@ function useOperatorSettingsState() {
             model_vlm: r.modelVlm.trim() || null,
             model_agent: r.modelAgent.trim() || null,
             model_coding: r.modelCoding.trim() || null,
+            max_parallel: Math.max(1, Math.min(64, Math.floor(r.maxParallel || 1))),
           };
           if (r.id != null) o.id = r.id;
           const k = r.apiKey.trim();

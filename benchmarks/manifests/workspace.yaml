@@ -8,5 +8,3 @@ scenarios:
   - W2_find_octocat_no_index
   - W2_find_octocat_indexed
 
-defaults:
-  timeout_s: 420

@@ -36,7 +36,18 @@ class EnvLlmProviderRow:
     model_vlm: str | None = None
     model_agent: str | None = None
     model_coding: str | None = None
+    max_parallel: int = 1
     source: str = "env"
+
+
+def _parse_max_parallel(raw: str | None) -> int:
+    if raw is None or not str(raw).strip():
+        return 1
+    try:
+        n = int(str(raw).strip())
+    except ValueError:
+        return 1
+    return max(1, min(64, n))
 
 
 def env_provider_id(index: int) -> str:
@@ -63,6 +74,7 @@ def _read_numbered_env_row(n: int) -> EnvLlmProviderRow | None:
         model_vlm=strip_opt(os.environ.get(f"{_ENV_PREFIX}{n}_MODEL_VLM")),
         model_agent=strip_opt(os.environ.get(f"{_ENV_PREFIX}{n}_MODEL_AGENT")),
         model_coding=strip_opt(os.environ.get(f"{_ENV_PREFIX}{n}_MODEL_CODING")),
+        max_parallel=_parse_max_parallel(os.environ.get(f"{_ENV_PREFIX}{n}_MAX_PARALLEL")),
         source="env",
     )
 

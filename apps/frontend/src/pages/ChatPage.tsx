@@ -49,6 +49,7 @@ import { AssistantTurnBlock } from "../features/chat/AssistantTurnBlock";
 import { ChatInFlightAssistantTurn } from "../features/chat/ChatInFlightAssistantTurn";
 import { ChatLiveActivityPanel } from "../features/chat/ChatLiveActivityPanel";
 import { getAgentChatSession } from "../features/chat/agentChatSession";
+import { llmSlotWaitMessage } from "../features/chat/agentChatWsCore";
 import {
   persistDetachedAgentCompletion,
   persistDetachedAgentLog,
@@ -1976,7 +1977,18 @@ export function ChatPage() {
           });
           return;
         }
+        if (typ === "agent.llm_slot_wait") {
+          const live = agentLiveTurnRef.current;
+          const text = llmSlotWaitMessage(msg);
+          live.setWaitHint(text);
+          const waited = msg.waited_sec != null ? Number(msg.waited_sec) : 0;
+          if (waited < 0.5) {
+            appendAgentLine("llm_queue", text);
+          }
+          return;
+        }
         if (typ === "agent.llm_round_start") {
+          agentLiveTurnRef.current.setWaitHint(null);
           const r = msg.round != null ? Number(msg.round) : 0;
           if (agentStreamEnabledThisTurnRef.current && r > 1) {
             agentLiveTurnRef.current.appendStreamSeparator();
@@ -1987,6 +1999,7 @@ export function ChatPage() {
         }
         if (typ === "agent.llm_delta") {
           if (!agentStreamEnabledThisTurnRef.current) return;
+          agentLiveTurnRef.current.setWaitHint(null);
           const channel = msg.channel != null ? String(msg.channel) : "";
           const reasoningDelta =
             msg.reasoning_delta != null ? String(msg.reasoning_delta) : "";

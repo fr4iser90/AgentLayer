@@ -37,3 +37,6 @@ def invalidate_model_catalog_cache() -> None:
     from apps.backend.infrastructure.model_catalog_providers import invalidate_provider_specs_cache
 
     invalidate_provider_specs_cache()
+    from apps.backend.infrastructure.llm_concurrency import invalidate_llm_concurrency_cache
+
+    invalidate_llm_concurrency_cache()

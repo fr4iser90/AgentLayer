@@ -2444,6 +2444,7 @@ def external_llm_endpoints_list_all() -> list[dict[str, Any]]:
                 SELECT id, sort_order, enabled, label, base_url, api_key,
                        api_header_name,
                        model_default, model_vlm, model_agent, model_coding,
+                       max_parallel,
                        created_at, updated_at
                 FROM operator_external_llm_endpoints
                 ORDER BY sort_order ASC, id ASC
@@ -2461,6 +2462,7 @@ def external_llm_endpoints_list_all() -> list[dict[str, Any]]:
         d["id"] = int(d["id"])
         d["sort_order"] = int(d["sort_order"])
         d["enabled"] = bool(d["enabled"])
+        d["max_parallel"] = max(1, min(64, int(d.get("max_parallel") or 1)))
         out.append(d)
     return out
 
@@ -2478,6 +2480,7 @@ def external_llm_endpoint_by_id(endpoint_id: int) -> dict[str, Any] | None:
                 SELECT id, sort_order, enabled, label, base_url, api_key,
                        api_header_name,
                        model_default, model_vlm, model_agent, model_coding,
+                       max_parallel,
                        created_at, updated_at
                 FROM operator_external_llm_endpoints
                 WHERE id = %s
@@ -2492,6 +2495,7 @@ def external_llm_endpoint_by_id(endpoint_id: int) -> dict[str, Any] | None:
     d["id"] = int(d["id"])
     d["sort_order"] = int(d["sort_order"])
     d["enabled"] = bool(d["enabled"])
+    d["max_parallel"] = max(1, min(64, int(d.get("max_parallel") or 1)))
     return d
 
 
@@ -2534,6 +2538,11 @@ def external_llm_endpoints_sync(rows: list[dict[str, Any]]) -> None:
                 mv = raw.get("model_vlm")
                 ma = raw.get("model_agent")
                 mc = raw.get("model_coding")
+                mp_raw = raw.get("max_parallel")
+                try:
+                    max_parallel = max(1, min(64, int(mp_raw if mp_raw is not None else 1)))
+                except (TypeError, ValueError):
+                    max_parallel = 1
                 md_v = (str(md).strip() if md is not None else None) or None
                 mv_v = (str(mv).strip() if mv is not None else None) or None
                 ma_v = (str(ma).strip() if ma is not None else None) or None
@@ -2553,7 +2562,7 @@ def external_llm_endpoints_sync(rows: list[dict[str, Any]]) -> None:
                         """
                         INSERT INTO operator_external_llm_endpoints (
                           sort_order, enabled, label, base_url, api_key, api_header_name,
-                          model_default, model_vlm, model_agent, model_coding, updated_at
+                          model_default, model_vlm, model_agent, model_coding, max_parallel, updated_at
                         ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now())
                         """,
                         (
@@ -2567,6 +2576,7 @@ def external_llm_endpoints_sync(rows: list[dict[str, Any]]) -> None:
                             mv_v,
                             ma_v,
                             mc_v,
+                            max_parallel,
                         ),
                     )
                 else:
@@ -2604,6 +2614,7 @@ def external_llm_endpoints_sync(rows: list[dict[str, Any]]) -> None:
                           model_vlm = %s,
                           model_agent = %s,
                           model_coding = %s,
+                          max_parallel = %s,
                           updated_at = now()
                         WHERE id = %s
                         """,
@@ -2618,6 +2629,7 @@ def external_llm_endpoints_sync(rows: list[dict[str, Any]]) -> None:
                             mv_v,
                             ma_v,
                             mc_v,
+                            max_parallel,
                             eid,
                         ),
                     )

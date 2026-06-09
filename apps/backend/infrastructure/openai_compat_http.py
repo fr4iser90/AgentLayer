@@ -1,9 +1,6 @@
-"""Serialized HTTP helpers for **OpenAI-compatible** LLM endpoints.
+"""HTTP helpers for **OpenAI-compatible** LLM endpoints.
 
-Used for ``/v1/chat/completions`` and related POST/GET regardless of vendor: **catalog providers**,
-**llama.cpp** (OpenAI server), operator-configured **external** APIs, etc.
-
-A single process-wide lock limits concurrent blocking HTTP (small GPUs / shared hosts).
+Per-provider concurrency slots (``llm_concurrency``) replace the former process-wide lock.
 Async call sites should use ``await asyncio.to_thread(http_post_json, ...)`` (see ``domain.agent``).
 """
 
@@ -11,14 +8,16 @@ from __future__ import annotations
 
 import copy
 import logging
-import threading
 from typing import Any
 
 import httpx
 
+from apps.backend.infrastructure.llm_concurrency import llm_slot
+
 logger = logging.getLogger(__name__)
 
-LLM_HTTP_SERIALIZE_LOCK = threading.Lock()
+# Back-compat for tests/docs that referenced the old global lock.
+LLM_HTTP_SERIALIZE_LOCK = None  # noqa: N816 — removed; use llm_concurrency per provider
 
 
 def _openai_strict_tools(obj: Any) -> Any:
@@ -47,9 +46,10 @@ def http_post_json(
     *,
     headers: dict[str, str] | None = None,
     timeout: float = 600.0,
+    concurrency_provider_id: str | None = None,
 ) -> dict[str, Any]:
     h = headers or {"Content-Type": "application/json"}
-    with LLM_HTTP_SERIALIZE_LOCK:
+    with llm_slot(concurrency_provider_id):
         with httpx.Client(timeout=timeout) as client:
             resp = client.post(url, json=json_body, headers=h)
             resp.raise_for_status()
@@ -62,6 +62,7 @@ def http_post_chat_completions(
     *,
     headers: dict[str, str] | None = None,
     timeout: float = 600.0,
+    concurrency_provider_id: str | None = None,
 ) -> tuple[dict[str, Any], bool]:
     """
     POST to OpenAI-compatible ``…/chat/completions``.
@@ -75,7 +76,7 @@ def http_post_chat_completions(
     if "tools" in json_body:
         body = copy.deepcopy(json_body)
         body["tools"] = _openai_strict_tools(body["tools"])
-    with LLM_HTTP_SERIALIZE_LOCK:
+    with llm_slot(concurrency_provider_id):
         with httpx.Client(timeout=timeout) as client:
             resp = client.post(url, json=body, headers=h)
             resp.raise_for_status()
@@ -91,12 +92,11 @@ def http_get_json(
     """GET; returns ``(status, text_on_error, json_or_none)``."""
     h = headers or {}
     try:
-        with LLM_HTTP_SERIALIZE_LOCK:
-            with httpx.Client(timeout=timeout) as client:
-                r = client.get(url, headers=h)
-                if r.status_code != 200:
-                    return r.status_code, r.text, None
-                return 200, "", r.json()
+        with httpx.Client(timeout=timeout) as client:
+            r = client.get(url, headers=h)
+            if r.status_code != 200:
+                return r.status_code, r.text, None
+            return 200, "", r.json()
     except httpx.TimeoutException:
         return 408, "timeout", None
     except httpx.RequestError as e:

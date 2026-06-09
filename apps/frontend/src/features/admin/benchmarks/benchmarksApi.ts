@@ -45,7 +45,6 @@ export type BenchmarkScenario = {
   requires: string[];
   expected_tools: string[];
   max_tool_rounds: number;
-  timeout_s: number;
   skip_without_env?: string | null;
 };
 
@@ -260,6 +259,20 @@ export async function fetchBenchmarkRun(
   );
   if (!res.ok) throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
   return data.run as BenchmarkRun;
+}
+
+export async function deleteBenchmarkRun(
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">,
+  runId: string
+): Promise<void> {
+  const res = await apiFetch(`/v1/admin/benchmarks/runs/${encodeURIComponent(runId)}`, auth, {
+    method: "DELETE",
+  });
+  const data = await readJsonResponse<{ detail?: unknown }>(
+    res,
+    `Failed to delete run (HTTP ${res.status})`
+  );
+  if (!res.ok) throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
 }
 
 export type StartBenchmarkBody = {

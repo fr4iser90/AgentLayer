@@ -47,6 +47,7 @@ type Props = {
   standInAuto?: boolean;
   /** Wall-clock start of this in-flight turn (ms); shows elapsed Laufzeit in the bubble only. */
   runStartedAtMs?: number | null;
+  waitHint?: string | null;
 };
 
 const InterleavedStreamBody = memo(function InterleavedStreamBody({
@@ -126,6 +127,7 @@ export const AssistantTurnBlock = memo(function AssistantTurnBlock({
   feedbackRating,
   standInAuto = false,
   runStartedAtMs = null,
+  waitHint = null,
 }: Props) {
   const { t } = useTranslation(["chat"]);
   const segments = buildInterleavedTurnSegments(content, timelineEntries);
@@ -175,7 +177,7 @@ export const AssistantTurnBlock = memo(function AssistantTurnBlock({
             onToggleRunCardExpanded={onToggleRunCardExpanded}
           />
         ) : running ? (
-          <p className="text-neutral-300/90">{t("chat:agentRunning")}</p>
+          <p className="text-neutral-300/90">{waitHint?.trim() || t("chat:agentRunning")}</p>
         ) : null}
         {!running && messagePosition != null ? (
           <MessageFeedbackButtons

@@ -32,6 +32,7 @@ export function AdminInterfacesLlmSection() {
                       modelVlm: "",
                       modelAgent: "",
                       modelCoding: "",
+                      maxParallel: 1,
                     },
                   ])
                 }
@@ -181,6 +182,25 @@ export function AdminInterfacesLlmSection() {
                     {t("admin:ifMemKeyLabel")}{" "}
                     {ep.apiKeyConfigured ? t("admin:ifMemKeyStored") : t("admin:ifMemKeyEmpty")}
                   </p>
+                  <label className="mt-3 block text-xs text-surface-muted" htmlFor={`ep-mp-${ep.localKey}`}>
+                    {t("admin:ifLlmMaxParallelLabel")}
+                  </label>
+                  <input
+                    id={`ep-mp-${ep.localKey}`}
+                    type="number"
+                    min={1}
+                    max={64}
+                    step={1}
+                    className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                    value={ep.maxParallel}
+                    onChange={(e) => {
+                      const n = Math.max(1, Math.min(64, Math.floor(Number(e.target.value) || 1)));
+                      s.setExtLlmEndpoints((prev) =>
+                        prev.map((x, j) => (j === idx ? { ...x, maxParallel: n } : x))
+                      );
+                    }}
+                  />
+                  <p className="mt-1 text-xs text-surface-muted">{t("admin:ifLlmMaxParallelHint")}</p>
                   <label className="mt-2 block text-xs text-surface-muted" htmlFor={`ep-key-${ep.localKey}`}>
                     {t("admin:ifMemApiKeyLabel")}
                   </label>

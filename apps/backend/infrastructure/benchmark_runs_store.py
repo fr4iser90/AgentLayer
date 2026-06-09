@@ -134,3 +134,21 @@ def any_running(*, tenant_id: int) -> bool:
             found = cur.fetchone() is not None
         conn.commit()
     return found
+
+
+def delete_run(*, run_id: uuid.UUID, tenant_id: int) -> str:
+    """Delete a finished benchmark run. Returns ``deleted``, ``not_found``, or ``running``."""
+    row = get_run(run_id)
+    if not row or int(row.get("tenant_id") or 0) != tenant_id:
+        return "not_found"
+    if str(row.get("status") or "") in ("queued", "running"):
+        return "running"
+    with db.pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM benchmark_runs WHERE id = %s AND tenant_id = %s",
+                (run_id, tenant_id),
+            )
+            deleted = cur.rowcount > 0
+        conn.commit()
+    return "deleted" if deleted else "not_found"

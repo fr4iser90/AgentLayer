@@ -22,6 +22,7 @@ from typing import Any, Literal
 import httpx
 
 from apps.backend.infrastructure.db import db
+from apps.backend.infrastructure.llm_chat_attempt import make_llm_attempt
 from apps.backend.infrastructure.llm_env_providers import (
     LLM_ENV_PROVIDER_MAX,
     EnvLlmProviderRow,
@@ -53,6 +54,7 @@ class CatalogProviderSpec:
     model_vlm: str | None = None
     model_agent: str | None = None
     model_coding: str | None = None
+    max_parallel: int = 1
     source: str = "db"
     db_endpoint_id: int | None = None
 
@@ -223,6 +225,7 @@ def _env_row_spec(row: EnvLlmProviderRow) -> CatalogProviderSpec:
         model_vlm=row.model_vlm,
         model_agent=row.model_agent,
         model_coding=row.model_coding,
+        max_parallel=row.max_parallel,
         source=row.source,
     )
 
@@ -243,6 +246,7 @@ def _db_endpoint_spec(row: dict[str, Any]) -> CatalogProviderSpec:
         model_vlm=_strip_opt(row.get("model_vlm")),
         model_agent=_strip_opt(row.get("model_agent")),
         model_coding=_strip_opt(row.get("model_coding")),
+        max_parallel=max(1, min(64, int(row.get("max_parallel") or 1))),
         source="db",
         db_endpoint_id=eid,
     )
@@ -442,7 +446,7 @@ def route_chat_by_catalog_provider(
     model_from_resolution: str,
     profile_key: str,
     is_override: bool,
-) -> tuple[list[tuple[str, dict[str, str], str]], LlmStack]:
+) -> tuple[list[tuple[str, dict[str, str], str, str]], LlmStack]:
     pid = normalize_catalog_provider_id(catalog_owned_by)
     if not pid:
         raise ValueError("Invalid catalog provider id.")
@@ -482,7 +486,7 @@ def route_chat_by_catalog_provider(
         model,
     )
     stack: LlmStack = "provider_admin" if spec.source == "db" else "provider_env"
-    return [(chat_url, headers, model)], stack
+    return [make_llm_attempt(chat_url, headers, model, pid)], stack
 
 
 def first_env_provider_id() -> str | None:

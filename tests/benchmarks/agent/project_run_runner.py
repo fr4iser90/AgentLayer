@@ -31,13 +31,10 @@ def _terminal_status(status: str) -> bool:
 def poll_project_run(
     client: E2EClient,
     run_id: str,
-    *,
-    timeout_s: float,
 ) -> dict[str, Any]:
-    deadline = time.monotonic() + timeout_s
     poll_s = _poll_interval_s()
     last: dict[str, Any] = {}
-    while time.monotonic() < deadline:
+    while True:
         payload = client.get_json(f"/v1/project-runs/{run_id}")
         row = payload.get("run") if isinstance(payload, dict) else None
         if not isinstance(row, dict):
@@ -46,7 +43,6 @@ def poll_project_run(
         if _terminal_status(str(row.get("status") or "")):
             return row
         time.sleep(poll_s)
-    raise TimeoutError(f"project run {run_id} did not finish within {timeout_s}s (last={last.get('status')})")
 
 
 def _tools_to_invocations(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -120,7 +116,6 @@ def run_project_run_scenario(
             error="missing model",
         )
 
-    timeout_s = float(scenario.timeout_s or defaults.get("timeout_s") or 7200.0)
     coding_workflow = {
         "workspace_id": ws_id,
         "agent_id": scenario.agent_id or "coding",
@@ -144,11 +139,9 @@ def run_project_run_scenario(
         pr_id = str(project_row.get("id") or "")
         if not pr_id:
             raise RuntimeError(f"project run create failed: {created!r}")
-        project_row = poll_project_run(client, pr_id, timeout_s=timeout_s)
+        project_row = poll_project_run(client, pr_id)
     except httpx.HTTPStatusError as exc:
         error = f"HTTP {exc.response.status_code}: {exc.response.text[:500]}"
-    except TimeoutError as exc:
-        error = str(exc)
     except httpx.HTTPError as exc:
         error = str(exc)
     except RuntimeError as exc:

@@ -616,6 +616,7 @@ class ExternalLlmEndpointItem(BaseModel):
     model_vlm: str | None = None
     model_agent: str | None = None
     model_coding: str | None = None
+    max_parallel: int = Field(default=1, ge=1, le=64)
 
 
 class ExternalLlmEndpointsPutBody(BaseModel):
@@ -645,6 +646,7 @@ async def admin_get_external_llm_endpoints(request: Request):
                 "model_vlm": r.get("model_vlm"),
                 "model_agent": r.get("model_agent"),
                 "model_coding": r.get("model_coding"),
+                "max_parallel": int(r.get("max_parallel") or 1),
                 "created_at": r.get("created_at"),
                 "updated_at": r.get("updated_at"),
             }

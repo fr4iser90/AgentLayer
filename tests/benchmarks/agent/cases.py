@@ -20,7 +20,6 @@ class AgentScenario:
     security_scan: bool = False
     requires: tuple[str, ...] = ()
     max_tool_rounds: int = 5
-    timeout_s: float = 120.0
     skip_without_env: str | None = None
     bench_workspace_suffix: str | None = None
     bench_dashboard_title_suffix: str | None = None
@@ -55,7 +54,6 @@ TIER1_SCENARIOS: list[AgentScenario] = [
         ),
         rubric="s1_tool_catalog",
         max_tool_rounds=4,
-        timeout_s=120.0,
     ),
     AgentScenario(
         id="S2_simple_chat",
@@ -63,7 +61,6 @@ TIER1_SCENARIOS: list[AgentScenario] = [
         prompt="What is 17 + 25? Reply with the numeric result only.",
         rubric="s2_simple_chat",
         max_tool_rounds=0,
-        timeout_s=60.0,
     ),
     AgentScenario(
         id="S3_read_file",
@@ -75,7 +72,6 @@ TIER1_SCENARIOS: list[AgentScenario] = [
         rubric="s3_read_file",
         requires=("agentlayer_self",),
         max_tool_rounds=4,
-        timeout_s=180.0,
     ),
 ]
 
@@ -102,7 +98,6 @@ TIER2_SCENARIOS: list[AgentScenario] = [
         rubric="w1_git_readme",
         bench_workspace_suffix="git",
         max_tool_rounds=10,
-        timeout_s=300.0,
     ),
     AgentScenario(
         id="W2_find_octocat_no_index",
@@ -119,7 +114,6 @@ TIER2_SCENARIOS: list[AgentScenario] = [
         rubric="w2_find_octocat",
         bench_workspace_suffix="git",
         max_tool_rounds=12,
-        timeout_s=360.0,
     ),
     AgentScenario(
         id="W2_find_octocat_indexed",
@@ -138,7 +132,6 @@ TIER2_SCENARIOS: list[AgentScenario] = [
         rubric="w2_find_octocat_indexed",
         bench_workspace_suffix="git",
         max_tool_rounds=14,
-        timeout_s=420.0,
     ),
     AgentScenario(
         id="SOC1_block_share_visible",
@@ -158,7 +151,6 @@ TIER2_SCENARIOS: list[AgentScenario] = [
         requires=("friend_pair",),
         bench_dashboard_title_suffix="share",
         max_tool_rounds=12,
-        timeout_s=420.0,
     ),
     AgentScenario(
         id="D1_dashboard_create",
@@ -172,7 +164,6 @@ TIER2_SCENARIOS: list[AgentScenario] = [
         rubric="d1_dashboard_create",
         bench_dashboard_title_suffix="create",
         max_tool_rounds=8,
-        timeout_s=300.0,
     ),
     AgentScenario(
         id="D2_layout_patch",
@@ -187,7 +178,6 @@ TIER2_SCENARIOS: list[AgentScenario] = [
         rubric="d2_layout_patch",
         bench_dashboard_title_suffix="layout",
         max_tool_rounds=12,
-        timeout_s=420.0,
     ),
 ]
 
@@ -211,7 +201,6 @@ TIER3_SCENARIOS: list[AgentScenario] = [
         rubric="c1_bench_marker",
         bench_workspace_suffix="coding",
         max_tool_rounds=20,
-        timeout_s=float(os.environ.get("AGENT_BENCH_C1_TIMEOUT_S") or "3600"),
     ),
     AgentScenario(
         id="C2_small_edit",
@@ -235,7 +224,6 @@ TIER3_SCENARIOS: list[AgentScenario] = [
         rubric="c2_small_edit",
         bench_workspace_suffix="c2",
         max_tool_rounds=16,
-        timeout_s=float(os.environ.get("AGENT_BENCH_C2_TIMEOUT_S") or "1800"),
     ),
 ]
 
@@ -260,7 +248,6 @@ TIER4_SCENARIOS: list[AgentScenario] = [
         requires=("ssc_secret",),
         bench_workspace_suffix="agentlayer",
         max_tool_rounds=12,
-        timeout_s=900.0,
     ),
     AgentScenario(
         id="SEC2_remediate_agentlayer",
@@ -287,7 +274,6 @@ TIER4_SCENARIOS: list[AgentScenario] = [
         requires=("ssc_secret",),
         bench_workspace_suffix="agentlayer",
         max_tool_rounds=32,
-        timeout_s=float(os.environ.get("AGENT_BENCH_SEC2_TIMEOUT_S") or "7200"),
     ),
 ]
 
@@ -302,7 +288,6 @@ INTEGRATION_SCENARIOS: list[AgentScenario] = [
         rubric="int1_gmail_connected",
         requires=("gmail_secret",),
         max_tool_rounds=4,
-        timeout_s=180.0,
     ),
 ]
 

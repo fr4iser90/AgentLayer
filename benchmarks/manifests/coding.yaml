@@ -7,5 +7,3 @@ scenarios:
   - C1_bench_marker_file
   - C2_small_edit
 
-defaults:
-  timeout_s: 7200

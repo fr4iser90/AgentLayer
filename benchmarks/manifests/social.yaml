@@ -9,5 +9,3 @@ fixtures:
 scenarios:
   - SOC1_block_share_visible
 
-defaults:
-  timeout_s: 420

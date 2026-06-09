@@ -396,7 +396,7 @@ async def _thread_with_cancel(
 ) -> Any:
     """Run blocking work in a thread; abort promptly when ``cancel_event`` is set.
 
-    Still waits for the worker to finish when cancelled so ``LLM_HTTP_SERIALIZE_LOCK``
+    Still waits for the worker to finish when cancelled so per-provider LLM slots
     is released before returning.
     """
     if cancel_event is None:

@@ -12,7 +12,6 @@ from typing import Any
 
 from psycopg.rows import dict_row
 
-from apps.backend.domain.shares.catalog import resource_type_variants
 from apps.backend.domain.shares.policy import grant_is_active
 from apps.backend.infrastructure.db.db import pool
 
@@ -33,10 +32,10 @@ SHARE_RESOURCE_ALIASES: dict[str, tuple[str, ...]] = {
 
 
 def _resource_type_variants(resource_type: str) -> tuple[str, ...]:
-    variants = resource_type_variants(resource_type)
-    if variants:
-        return variants
-    canonical = (resource_type or "").strip().lower()
+    """Canonical id plus legacy DB aliases (backward compat for old grant rows)."""
+    from apps.backend.domain.shares.catalog import canonical_resource_type
+
+    canonical = canonical_resource_type(resource_type) or (resource_type or "").strip().lower()
     if not canonical:
         return ()
     aliases = SHARE_RESOURCE_ALIASES.get(canonical, ())

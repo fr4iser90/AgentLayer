@@ -798,7 +798,7 @@ def _admin_llm_chat_attempts(
     profile_key: str,
     is_override: bool,
     model_from_resolution: str,
-) -> list[tuple[str, dict[str, str], str]]:
+) -> list[tuple[str, dict[str, str], str, str]]:
     return _external_llm_chat_attempts(profile_key, is_override, model_from_resolution)
 
 
@@ -806,11 +806,14 @@ def _external_llm_chat_attempts(
     profile_key: str,
     is_override: bool,
     model_from_resolution: str,
-) -> list[tuple[str, dict[str, str], str]]:
+) -> list[tuple[str, dict[str, str], str, str]]:
+    from apps.backend.infrastructure.llm_chat_attempt import make_llm_attempt
+    from apps.backend.infrastructure.model_catalog_providers import db_catalog_provider_id
+
     pk = (profile_key or "default").strip().lower()
     if pk not in ("default", "vlm", "agent", "coding"):
         pk = "default"
-    attempts: list[tuple[str, dict[str, str], str]] = []
+    attempts: list[tuple[str, dict[str, str], str, str]] = []
     for row in db.external_llm_endpoints_list_all():
         bu = normalize_external_llm_base_url(_strip_opt(row.get("base_url")))
         key = _strip_opt(row.get("api_key")) or ""
@@ -819,7 +822,14 @@ def _external_llm_chat_attempts(
             continue
         chat_url = external_chat_completions_url(bu)
         headers = external_api_headers(bu, key)
-        attempts.append((chat_url, headers, ext_model))
+        attempts.append(
+            make_llm_attempt(
+                chat_url,
+                headers,
+                ext_model,
+                db_catalog_provider_id(int(row["id"])),
+            )
+        )
     return attempts
 
 
@@ -831,7 +841,7 @@ def llm_chat_transport(
     backend_override: Literal["provider", "provider_admin"] | None = None,
     catalog_owned_by: str | None = None,
 ) -> tuple[
-    list[tuple[str, dict[str, str], str]],
+    list[tuple[str, dict[str, str], str, str]],
     Literal["provider_env", "provider_admin"],
 ]:
     from apps.backend.infrastructure.model_catalog_providers import (

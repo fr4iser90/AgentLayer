@@ -20,12 +20,13 @@ class TestDashboardSharePolicy(unittest.TestCase):
         self.assertEqual(clean["permission"], "edit")
         self.assertEqual(clean["block_ids"], ["pets-album-0"])
 
-    def test_collection_resource_in_catalog(self) -> None:
+    def test_open_resource_type_normalization(self) -> None:
         from apps.backend.domain.shares.catalog import canonical_resource_type
 
-        self.assertEqual(canonical_resource_type("haustier"), "collection")
-        self.assertEqual(canonical_resource_type("pets"), "collection")
-        self.assertEqual(canonical_resource_type("dashboard"), "dashboard")
+        self.assertEqual(canonical_resource_type("my_custom_thing"), "my_custom_thing")
+        self.assertEqual(canonical_resource_type("Google-Calendar"), "google-calendar")
+        self.assertIsNone(canonical_resource_type(""))
+        self.assertIsNone(canonical_resource_type("bad id!"))
 
 
 class TestGrantMatchesDashboard(unittest.TestCase):

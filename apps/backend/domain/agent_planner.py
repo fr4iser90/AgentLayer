@@ -314,6 +314,7 @@ async def chat_completion(
     else:
         agent_run_id = str(uuid.uuid4())
     tool_context["agent_run_id"] = agent_run_id
+    _llm_wait_token = None
     if event_emit is not None:
         try:
             _loop = asyncio.get_running_loop()
@@ -324,6 +325,15 @@ async def chat_completion(
                 ev.setdefault("agent_run_id", agent_run_id)
                 asyncio.run_coroutine_threadsafe(event_emit(ev), _loop)
 
+            def _notify_llm_slot_wait(payload: dict[str, Any]) -> None:
+                ev = dict(payload)
+                ev.setdefault("parent_agent_run_id", agent_run_id)
+                ev.setdefault("agent_run_id", agent_run_id)
+                asyncio.run_coroutine_threadsafe(event_emit(ev), _loop)
+
+            from apps.backend.infrastructure.llm_concurrency import bind_llm_wait_notifier
+
+            _llm_wait_token = bind_llm_wait_notifier(_notify_llm_slot_wait)
             tool_context["agent_subagent_notify"] = _agent_subagent_notify
         except RuntimeError:
             pass
@@ -504,7 +514,7 @@ async def chat_completion(
 
         _chat_history_raw = list(body.get("messages") or [])
         _context_prep_meta: dict[str, Any] = {}
-        _compaction_attempt: tuple[str, dict[str, str], str] | None = None
+        _compaction_attempt: tuple[str, dict[str, str], str, str] | None = None
         _prep_context_budget = None
         if config.CHAT_CONTEXT_PREP_ENABLED and _chat_history_raw:
             from apps.backend.infrastructure.chat_context import prepare_chat_history_for_llm
@@ -1114,7 +1124,7 @@ async def chat_completion(
                 }
             )
 
-        chosen: tuple[str, dict[str, str], str] | None = None
+        chosen: tuple[str, dict[str, str], str, str] | None = None
         thrash_key: str | None = None
         thrash_count = 0
         doom_key: str | None = None
@@ -1385,7 +1395,7 @@ async def chat_completion(
 
             last_failover: httpx.HTTPStatusError | None = None
             last_transport_error: httpx.RequestError | None = None
-            chosen: tuple[str, dict[str, str], str] | None = None
+            chosen: tuple[str, dict[str, str], str, str] | None = None
             data: dict[str, Any] = {}
             tools_omitted = False
             while True:
@@ -1411,7 +1421,10 @@ async def chat_completion(
                     chosen = chosen_t
                     model = chosen[2]
                     break
-                for b_url, b_headers, b_model in attempts:
+                for attempt in attempts:
+                    from apps.backend.infrastructure.llm_chat_attempt import unpack_llm_attempt
+
+                    b_url, b_headers, b_model, b_provider = unpack_llm_attempt(attempt)
                     pl = dict(payload_base)
                     pl["model"] = b_model
                     try:
@@ -1422,8 +1435,9 @@ async def chat_completion(
                             pl,
                             headers=b_headers,
                             timeout=600.0,
+                            concurrency_provider_id=b_provider or None,
                         )
-                        chosen = (b_url, b_headers, b_model)
+                        chosen = attempt
                         model = b_model
                         break
                     except httpx.RequestError as e:
@@ -2100,6 +2114,10 @@ async def chat_completion(
             run_persist_warnings=_run_persist_warnings or None,
         )
     finally:
+        if _llm_wait_token is not None:
+            from apps.backend.infrastructure.llm_concurrency import reset_llm_wait_notifier
+
+            reset_llm_wait_notifier(_llm_wait_token)
         reset_agent_run_id(_run_ctx_tok)
         reset_agent_task_id(_task_ctx_tok)
         if user_id is not None and tenant_id is not None and _run_persisted:

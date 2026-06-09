@@ -99,7 +99,7 @@ async def apply_agent_loop_context_budget(
     provider_prompt_tokens: int | None,
     loop_summary: str = "",
     compaction_model: str = "",
-    compaction_attempt: tuple[str, dict[str, str], str] | None = None,
+    compaction_attempt: tuple[str, dict[str, str], str, str] | None = None,
 ) -> tuple[list[dict[str, Any]], str, dict[str, Any]]:
     """Compact tool transcript when provider-reported prompt tokens exceed soft ratio."""
     patch: dict[str, Any] = {

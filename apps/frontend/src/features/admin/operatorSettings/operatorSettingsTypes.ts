@@ -135,6 +135,7 @@ export type ExternalLlmEndpointUI = {
   modelVlm: string;
   modelAgent: string;
   modelCoding: string;
+  maxParallel: number;
 };
 
 export function detailMessage(data: unknown): string {

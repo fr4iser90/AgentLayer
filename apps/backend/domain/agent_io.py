@@ -973,7 +973,7 @@ def _format_workspace_verify_recap(tool_result_json: str) -> str | None:
 
 
 async def _async_iter_chat_completion_sse(
-    attempts_seq: list[tuple[str, dict[str, str], str]],
+    attempts_seq: list[tuple[str, dict[str, str], str, str]],
     payload_base: dict[str, Any],
     *,
     llm_backend: str,
@@ -984,6 +984,9 @@ async def _async_iter_chat_completion_sse(
     OpenAI-compatible POST with ``stream: true``; yield raw response bytes (typically SSE) from the first
     successful endpoint, with the same external failover / local 429 fallback behaviour as blocking calls.
     """
+    from apps.backend.infrastructure.llm_chat_attempt import unpack_llm_attempt
+    from apps.backend.infrastructure.llm_concurrency import llm_slot_async
+
     attempts_local = list(attempts_seq)
     lb = llm_backend
     outer_profile = profile_key
@@ -992,35 +995,37 @@ async def _async_iter_chat_completion_sse(
         last_http: tuple[int, str, str] | None = None  # status, body, url
         last_trans: httpx.RequestError | None = None
         async with httpx.AsyncClient(timeout=timeout_cfg) as client:
-            for b_url, b_headers, b_model in attempts_local:
+            for attempt in attempts_local:
+                b_url, b_headers, b_model, b_provider = unpack_llm_attempt(attempt)
                 pl: dict[str, Any] = dict(payload_base)
                 pl["stream"] = True
                 pl["model"] = b_model
                 h = dict(b_headers) if b_headers else {"Content-Type": "application/json"}
                 try:
-                    async with client.stream("POST", b_url, json=pl, headers=h) as resp:
-                        if resp.status_code >= 400:
-                            err_body = (await resp.aread()).decode("utf-8", errors="replace")
-                            if lb == "provider_admin" and external_llm_should_failover(resp.status_code):
-                                logger.warning(
-                                    "LLM stream: external status=%s; trying next endpoint url=%s",
+                    async with llm_slot_async(b_provider or None):
+                        async with client.stream("POST", b_url, json=pl, headers=h) as resp:
+                            if resp.status_code >= 400:
+                                err_body = (await resp.aread()).decode("utf-8", errors="replace")
+                                if lb == "provider_admin" and external_llm_should_failover(resp.status_code):
+                                    logger.warning(
+                                        "LLM stream: external status=%s; trying next endpoint url=%s",
+                                        resp.status_code,
+                                        b_url,
+                                    )
+                                    last_http = (resp.status_code, err_body, b_url)
+                                    continue
+                                err_red = _redact_provider_error_text_for_log(err_body, max_len=600)
+                                logger.error(
+                                    "LLM stream failed (%s): status=%s url=%s body=%s",
+                                    lb,
                                     resp.status_code,
                                     b_url,
+                                    err_red,
                                 )
-                                last_http = (resp.status_code, err_body, b_url)
-                                continue
-                            err_red = _redact_provider_error_text_for_log(err_body, max_len=600)
-                            logger.error(
-                                "LLM stream failed (%s): status=%s url=%s body=%s",
-                                lb,
-                                resp.status_code,
-                                b_url,
-                                err_red,
-                            )
-                            resp.raise_for_status()
-                        async for chunk in resp.aiter_raw():
-                            if chunk:
-                                yield chunk
+                                resp.raise_for_status()
+                            async for chunk in resp.aiter_raw():
+                                if chunk:
+                                    yield chunk
                     return
                 except httpx.HTTPStatusError:
                     raise

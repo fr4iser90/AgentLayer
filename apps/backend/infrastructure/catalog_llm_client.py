@@ -102,4 +102,10 @@ def post_catalog_chat_completions(
         url,
         effective_model,
     )
-    return http_post_chat_completions(url, body, headers=headers, timeout=timeout)
+    return http_post_chat_completions(
+        url,
+        body,
+        headers=headers,
+        timeout=timeout,
+        concurrency_provider_id=spec.provider_id,
+    )

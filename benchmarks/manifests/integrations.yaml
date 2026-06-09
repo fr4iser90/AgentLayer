@@ -9,5 +9,3 @@ fixtures:
 scenarios:
   - INT1_gmail_connected
 
-defaults:
-  timeout_s: 180

@@ -49,8 +49,10 @@ def _env_int(key: str, default: int) -> int:
 
 # --- Unified LLM providers (OpenAI-compatible) ---
 # Numbered env rows: LLM_PROVIDER_1_BASE_URL, LLM_PROVIDER_1_LABEL, LLM_PROVIDER_1_API_KEY,
-# LLM_PROVIDER_1_API_HEADER_NAME (default Authorization), optional _MODEL_DEFAULT/_VLM/_AGENT/_CODING.
+# LLM_PROVIDER_1_API_HEADER_NAME (default Authorization), optional _MODEL_DEFAULT/_VLM/_AGENT/_CODING,
+# optional LLM_PROVIDER_N_MAX_PARALLEL (1–64, default 1).
 # Parsed by :mod:`llm_env_providers`; registered as provider_1, provider_2, … in the catalog.
+LLM_HTTP_MAX_PARALLEL_DEFAULT = max(1, min(64, _env_int("LLM_HTTP_MAX_PARALLEL_DEFAULT", 4)))
 LLM_AUX_PROVIDER_ID = (os.environ.get("LLM_AUX_PROVIDER_ID") or "").strip() or None
 LLM_ROUTER_PROVIDER_ID = (os.environ.get("LLM_ROUTER_PROVIDER_ID") or "").strip() or None
 LLM_AUX_MODEL = (os.environ.get("LLM_AUX_MODEL") or "").strip() or None

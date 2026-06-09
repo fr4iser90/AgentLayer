@@ -39,10 +39,10 @@ class ShareSetBody(BaseModel):
 
 @router.get("/catalog")
 async def get_share_catalog(request: Request, lang: str = "en"):
-    """Resource types available for friend sharing (labels, icons, policy fields)."""
+    """No fixed resource list — share any resource_type string; policy keys are generic."""
     await get_current_user(request)
-    code = (lang or "en").strip().lower()[:2]
-    return {"ok": True, "resources": catalog_for_api(lang=code)}
+    _ = lang
+    return {"ok": True, "resources": catalog_for_api()}
 
 
 @router.post("/set")
@@ -63,7 +63,7 @@ async def set_share_permission(request: Request, body: ShareSetBody):
 
     canonical = canonical_resource_type(body.resource_type)
     if not canonical:
-        raise HTTPException(status_code=400, detail="unknown resource_type")
+        raise HTTPException(status_code=400, detail="invalid resource_type")
 
     clean_policy, policy_err = normalize_policy(canonical, body.policy)
     if policy_err:

@@ -35,9 +35,10 @@ def test_route_env_provider_spec() -> None:
         )
     assert stack == "provider_env"
     assert len(attempts) == 1
-    url, headers, model = attempts[0]
+    url, headers, model, provider_id = attempts[0]
     assert url.endswith("/v1/chat/completions")
     assert model == "llama3.2"
+    assert provider_id == "provider_1"
     assert "Content-Type" in headers
 
 

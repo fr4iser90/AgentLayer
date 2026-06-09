@@ -153,6 +153,8 @@
   "contextLoopCompacted": "· tool context compacted",
   "contextDropped": "· {{count}} trimmed",
   "agentRunning": "Agent running (LLM / tools)…",
+  "llmSlotWait": "All LLM slots busy ({{max}} parallel) — waiting {{waited}}s…",
+  "activityKindLlmQueue": "Queue",
   "generatingReply": "Generating a reply…",
   "pausedStepMode": "Paused (step mode)",
   "activityKindSub": "Sub",

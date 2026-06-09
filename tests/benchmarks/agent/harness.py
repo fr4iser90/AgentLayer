@@ -111,14 +111,14 @@ def resolve_bench_clients(
     )
 
     if run_as_user_id:
-        run_client = E2EClient.for_user_id(run_as_user_id)
+        run_client = E2EClient.for_user_id(run_as_user_id, timeout=None)
     else:
         email, password = bench_credentials()
-        run_client = E2EClient.login(email, password)
+        run_client = E2EClient.login(email, password, timeout=None)
 
     admin_client: Any | None = None
     if admin_user_id:
-        admin_client = E2EClient.for_user_id(admin_user_id)
+        admin_client = E2EClient.for_user_id(admin_user_id, timeout=None)
     elif run_client.role == "admin":
         admin_client = run_client
 
@@ -630,7 +630,6 @@ def run_scenario(
         body["workspace_id"] = ws_id
     effective_agent = str(body["agent_id"] or "")
 
-    timeout_s = float(scenario.timeout_s or defaults.get("timeout_s") or 120.0)
     t0 = time.perf_counter()
     error: str | None = None
     http_status: int | None = None
@@ -646,7 +645,6 @@ def run_scenario(
                 base_url=bench_base_url(),
                 token=client.token,
                 body=body,
-                timeout_s=timeout_s,
             )
             if ws_err and not data:
                 error = ws_err
@@ -665,7 +663,7 @@ def run_scenario(
             resp = client.http.post(
                 "/v1/chat/completions",
                 json=body,
-                timeout=timeout_s,
+                timeout=None,
             )
             http_status = resp.status_code
             if resp.status_code >= 400:
@@ -673,8 +671,6 @@ def run_scenario(
             else:
                 payload = resp.json()
                 data = payload if isinstance(payload, dict) else {}
-        except httpx.TimeoutException:
-            error = f"timeout after {timeout_s}s"
         except httpx.HTTPError as exc:
             error = str(exc)
 

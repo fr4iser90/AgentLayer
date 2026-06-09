@@ -39,6 +39,7 @@ import {
   useAgentLiveLog,
   useAgentLiveTurn,
   useAgentStreamText,
+  useAgentWaitHint,
 } from "../chat/useAgentLiveTurn";
 import { getDisabledToolNames } from "../settings/toolPrefs";
 import { sanitizeDashboardAssistantText } from "./dashboardChatDisplay";
@@ -152,6 +153,7 @@ export function DashboardEmbeddedChat({
   });
   const inFlightStream = useAgentStreamText(agentLiveTurn);
   const inFlightLog = useAgentLiveLog(agentLiveTurn);
+  const inFlightWaitHint = useAgentWaitHint(agentLiveTurn);
   const [open, setOpen] = useState(true);
   const [modelRows, setModelRows] = useState<ModelRow[]>([]);
   const [modelsCatalogReady, setModelsCatalogReady] = useState(false);
@@ -770,7 +772,11 @@ export function DashboardEmbeddedChat({
                           <span className="mb-0.5 block text-[9px] font-medium uppercase text-surface-muted">
                             {t("dashboard:assistant")}
                           </span>
-                          <MessageTurnActivity entries={inFlightLog} running />
+                          <MessageTurnActivity
+                            entries={inFlightLog}
+                            running
+                            waitHint={inFlightWaitHint}
+                          />
                           {inFlightStream.trim() ? (
                             <div className="mt-1 whitespace-pre-wrap">
                               {sanitizeDashboardAssistantText(inFlightStream)}

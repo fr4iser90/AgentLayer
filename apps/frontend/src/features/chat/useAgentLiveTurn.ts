@@ -12,9 +12,11 @@ export type LiveTurnStore = {
   subscribeStream: (cb: () => void) => () => void;
   subscribeReasoningStream: (cb: () => void) => () => void;
   subscribeLog: (cb: () => void) => () => void;
+  subscribeWaitHint: (cb: () => void) => () => void;
   getStreamText: () => string;
   getStreamReasoningText: () => string;
   getAgentLog: () => AgentTimelineEntry[];
+  getWaitHint: () => string | null;
   isActive: () => boolean;
   beginTurn: (initialLog?: AgentTimelineEntry[]) => void;
   endTurn: () => void;
@@ -23,6 +25,7 @@ export type LiveTurnStore = {
   appendReasoningStreamDelta: (delta: string) => void;
   appendStreamSeparator: () => void;
   appendLogLine: (kind: string, text: string, extras?: LiveLogAppend) => void;
+  setWaitHint: (hint: string | null) => void;
   takeAgentLogSnapshot: () => AgentTimelineEntry[];
 };
 
@@ -30,11 +33,13 @@ export function createLiveTurnStore(): LiveTurnStore {
   let streamText = "";
   let streamReasoningText = "";
   let agentLog: AgentTimelineEntry[] = [];
+  let waitHint: string | null = null;
   let active = false;
 
   const streamListeners = new Set<() => void>();
   const reasoningStreamListeners = new Set<() => void>();
   const logListeners = new Set<() => void>();
+  const waitHintListeners = new Set<() => void>();
   let streamRaf: number | null = null;
   let reasoningStreamRaf: number | null = null;
   let logRaf: number | null = null;
@@ -64,6 +69,10 @@ export function createLiveTurnStore(): LiveTurnStore {
 
   const notifyLog = () => {
     for (const l of logListeners) l();
+  };
+
+  const notifyWaitHint = () => {
+    for (const l of waitHintListeners) l();
   };
 
   const scheduleStreamFlush = () => {
@@ -103,9 +112,14 @@ export function createLiveTurnStore(): LiveTurnStore {
       logListeners.add(cb);
       return () => logListeners.delete(cb);
     },
+    subscribeWaitHint: (cb) => {
+      waitHintListeners.add(cb);
+      return () => waitHintListeners.delete(cb);
+    },
     getStreamText: () => streamText,
     getStreamReasoningText: () => streamReasoningText,
     getAgentLog: () => agentLog,
+    getWaitHint: () => waitHint,
     isActive: () => active,
     beginTurn: (initialLog: AgentTimelineEntry[] = []) => {
       cancelRaf();
@@ -113,6 +127,7 @@ export function createLiveTurnStore(): LiveTurnStore {
       streamText = "";
       streamReasoningText = "";
       agentLog = [...initialLog];
+      waitHint = null;
       notifyStream();
       notifyReasoningStream();
       notifyLog();
@@ -122,8 +137,10 @@ export function createLiveTurnStore(): LiveTurnStore {
       active = false;
       streamText = "";
       streamReasoningText = "";
+      waitHint = null;
       notifyStream();
       notifyReasoningStream();
+      notifyWaitHint();
     },
     resetAfterCommit: () => {
       cancelRaf();
@@ -131,12 +148,18 @@ export function createLiveTurnStore(): LiveTurnStore {
       streamText = "";
       streamReasoningText = "";
       agentLog = [];
+      waitHint = null;
       notifyStream();
       notifyReasoningStream();
       notifyLog();
+      notifyWaitHint();
     },
     appendStreamDelta: (delta: string) => {
       if (!delta) return;
+      if (waitHint) {
+        waitHint = null;
+        notifyWaitHint();
+      }
       streamText += delta;
       if (!streamText.trim()) return;
       scheduleStreamFlush();
@@ -154,6 +177,10 @@ export function createLiveTurnStore(): LiveTurnStore {
     appendLogLine: (kind: string, text: string, extras?: LiveLogAppend) => {
       agentLog = appendTimelineEntry(agentLog, { kind, text, ...extras });
       scheduleLogFlush();
+    },
+    setWaitHint: (hint: string | null) => {
+      waitHint = hint;
+      notifyWaitHint();
     },
     takeAgentLogSnapshot: () => [...agentLog],
   };
@@ -189,4 +216,9 @@ export function useAgentStreamReasoning(store: LiveTurnStore): string {
 /** Subscribe to RAF-batched live timeline (activity panel + in-flight turn cards). */
 export function useAgentLiveLog(store: LiveTurnStore): AgentTimelineEntry[] {
   return useSyncExternalStore(store.subscribeLog, store.getAgentLog, () => []);
+}
+
+/** In-flight status when all LLM concurrency slots are busy. */
+export function useAgentWaitHint(store: LiveTurnStore): string | null {
+  return useSyncExternalStore(store.subscribeWaitHint, store.getWaitHint, () => null);
 }

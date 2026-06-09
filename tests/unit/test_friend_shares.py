@@ -27,10 +27,10 @@ class TestSharePolicy(unittest.TestCase):
         self.assertIsNone(err)
         self.assertEqual(clean["days_ahead"], 7)
 
-    def test_rejects_days_ahead_for_notes(self) -> None:
+    def test_accepts_days_ahead_for_any_resource(self) -> None:
         clean, err = share_policy.normalize_policy("notes", {"days_ahead": 7})
-        self.assertIsNotNone(err)
-        self.assertEqual(clean, {})
+        self.assertIsNone(err)
+        self.assertEqual(clean["days_ahead"], 7)
 
     def test_grant_expires_at(self) -> None:
         future = (datetime.now(UTC) + timedelta(days=1)).isoformat().replace("+00:00", "Z")

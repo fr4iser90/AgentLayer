@@ -47,6 +47,27 @@ function grantForResource(
   return grants?.find((g) => g.resource_type === resourceId);
 }
 
+function resourceTypesForFriend(friendShares: FriendShares): string[] {
+  const ids = new Set<string>();
+  for (const id of friendShares.outgoing) {
+    if (id) ids.add(id);
+  }
+  for (const id of friendShares.incoming) {
+    if (id) ids.add(id);
+  }
+  for (const g of friendShares.outgoing_grants || []) {
+    if (g.resource_type) ids.add(g.resource_type);
+  }
+  for (const g of friendShares.incoming_grants || []) {
+    if (g.resource_type) ids.add(g.resource_type);
+  }
+  return Array.from(ids).sort();
+}
+
+function displayResourceName(resourceId: string, catalog: CatalogResource[]): string {
+  return catalog.find((r) => r.id === resourceId)?.name || resourceId.replace(/_/g, " ");
+}
+
 export default function SharesSettings() {
   const { t, i18n } = useTranslation(["settings"]);
   const auth = useAuth();
@@ -61,6 +82,7 @@ export default function SharesSettings() {
   const [selectedFriend, setSelectedFriend] = useState<ShareItem | null>(null);
   const [friendShares, setFriendShares] = useState<FriendShares | null>(null);
   const [policyDraft, setPolicyDraft] = useState<Record<string, SharePolicy>>({});
+  const [newResourceType, setNewResourceType] = useState("");
 
   const lang = (i18n.language || "en").slice(0, 2);
 
@@ -183,7 +205,7 @@ export default function SharesSettings() {
   }
 
   function catalogName(resourceId: string): string {
-    return catalog.find((r) => r.id === resourceId)?.name || resourceId;
+    return displayResourceName(resourceId, catalog);
   }
 
   function groupByUser(shares: ShareItem[]) {
@@ -325,28 +347,23 @@ export default function SharesSettings() {
             <div>
               <h4 className="text-sm font-medium mb-4 text-white">{t("settings:sharesWhatYouShare")}</h4>
               <div className="space-y-4">
-                {catalog.map((resource) => {
-                  const enabled = friendShares.outgoing.includes(resource.id);
-                  const grant = grantForResource(friendShares.outgoing_grants, resource.id);
-                  const draft = policyDraft[resource.id] || grant?.policy || {};
-                  const showDays = resource.policy_fields.includes("days_ahead");
-                  const showExpiry = resource.policy_fields.includes("expires_at");
+                {resourceTypesForFriend(friendShares).map((resourceId) => {
+                  const enabled = friendShares.outgoing.includes(resourceId);
+                  const grant = grantForResource(friendShares.outgoing_grants, resourceId);
+                  const draft = policyDraft[resourceId] || grant?.policy || {};
 
                   return (
                     <div
-                      key={resource.id}
+                      key={resourceId}
                       className="rounded-lg border border-surface-border/60 p-3 space-y-3"
                     >
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="text-xl">{resource.icon}</div>
-                          <span className="text-white">{resource.name}</span>
-                        </div>
+                        <span className="text-white">{displayResourceName(resourceId, catalog)}</span>
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input
                             type="checkbox"
                             checked={enabled}
-                            onChange={(e) => void toggleShare(resource.id, e.target.checked)}
+                            onChange={(e) => void toggleShare(resourceId, e.target.checked)}
                             disabled={saving}
                             className="sr-only peer"
                           />
@@ -354,60 +371,56 @@ export default function SharesSettings() {
                         </label>
                       </div>
 
-                      {enabled && (showDays || showExpiry) && (
+                      {enabled && (
                         <div className="grid gap-3 sm:grid-cols-2 pl-1">
-                          {showDays && (
-                            <label className="block text-sm">
-                              <span className="text-surface-muted">{t("settings:sharesDaysAhead")}</span>
-                              <input
-                                type="number"
-                                min={1}
-                                max={366}
-                                value={draft.days_ahead ?? ""}
-                                placeholder={t("settings:sharesDaysAheadPlaceholder")}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setPolicyDraft((prev) => ({
-                                    ...prev,
-                                    [resource.id]: {
-                                      ...prev[resource.id],
-                                      days_ahead: val ? Number(val) : undefined,
-                                    },
-                                  }));
-                                }}
-                                className="mt-1 w-full rounded-md border border-surface-border bg-surface px-2 py-1.5 text-white text-sm"
-                              />
-                            </label>
-                          )}
-                          {showExpiry && (
-                            <label className="block text-sm">
-                              <span className="text-surface-muted">{t("settings:sharesExpiresAt")}</span>
-                              <input
-                                type="datetime-local"
-                                value={
-                                  draft.expires_at
-                                    ? draft.expires_at.slice(0, 16)
-                                    : ""
-                                }
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setPolicyDraft((prev) => ({
-                                    ...prev,
-                                    [resource.id]: {
-                                      ...prev[resource.id],
-                                      expires_at: val ? new Date(val).toISOString() : undefined,
-                                    },
-                                  }));
-                                }}
-                                className="mt-1 w-full rounded-md border border-surface-border bg-surface px-2 py-1.5 text-white text-sm"
-                              />
-                            </label>
-                          )}
+                          <label className="block text-sm">
+                            <span className="text-surface-muted">{t("settings:sharesDaysAhead")}</span>
+                            <input
+                              type="number"
+                              min={1}
+                              max={366}
+                              value={draft.days_ahead ?? ""}
+                              placeholder={t("settings:sharesDaysAheadPlaceholder")}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setPolicyDraft((prev) => ({
+                                  ...prev,
+                                  [resourceId]: {
+                                    ...prev[resourceId],
+                                    days_ahead: val ? Number(val) : undefined,
+                                  },
+                                }));
+                              }}
+                              className="mt-1 w-full rounded-md border border-surface-border bg-surface px-2 py-1.5 text-white text-sm"
+                            />
+                          </label>
+                          <label className="block text-sm">
+                            <span className="text-surface-muted">{t("settings:sharesExpiresAt")}</span>
+                            <input
+                              type="datetime-local"
+                              value={
+                                draft.expires_at
+                                  ? draft.expires_at.slice(0, 16)
+                                  : ""
+                              }
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setPolicyDraft((prev) => ({
+                                  ...prev,
+                                  [resourceId]: {
+                                    ...prev[resourceId],
+                                    expires_at: val ? new Date(val).toISOString() : undefined,
+                                  },
+                                }));
+                              }}
+                              className="mt-1 w-full rounded-md border border-surface-border bg-surface px-2 py-1.5 text-white text-sm"
+                            />
+                          </label>
                           <div className="sm:col-span-2">
                             <button
                               type="button"
                               disabled={saving}
-                              onClick={() => void savePolicy(resource.id)}
+                              onClick={() => void savePolicy(resourceId)}
                               className="text-sm text-sky-400 hover:text-sky-300 disabled:opacity-50"
                             >
                               {t("settings:sharesSavePolicy")}
@@ -418,30 +431,51 @@ export default function SharesSettings() {
                     </div>
                   );
                 })}
+                <div className="flex flex-wrap items-end gap-2 pt-2 border-t border-surface-border/60">
+                  <label className="block text-sm flex-1 min-w-[12rem]">
+                    <span className="text-surface-muted">{t("settings:sharesResourceType")}</span>
+                    <input
+                      type="text"
+                      value={newResourceType}
+                      placeholder="google_calendar, my_notes, …"
+                      onChange={(e) => setNewResourceType(e.target.value)}
+                      className="mt-1 w-full rounded-md border border-surface-border bg-surface px-2 py-1.5 text-white text-sm"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    disabled={saving || !newResourceType.trim()}
+                    onClick={() => {
+                      const id = newResourceType.trim().toLowerCase().replace(/\s+/g, "_");
+                      void toggleShare(id, true);
+                      setNewResourceType("");
+                    }}
+                    className="rounded-md bg-emerald-700 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+                  >
+                    {t("settings:sharesAddResource")}
+                  </button>
+                </div>
               </div>
             </div>
 
             <div className="border-t border-surface-border pt-6">
               <h4 className="text-sm font-medium mb-4 text-white">{t("settings:sharesWhatTheyShare")}</h4>
               <div className="space-y-3">
-                {catalog.map((resource) => {
-                  const grant = grantForResource(friendShares.incoming_grants, resource.id);
-                  const enabled = friendShares.incoming.includes(resource.id);
+                {resourceTypesForFriend(friendShares).map((resourceId) => {
+                  const grant = grantForResource(friendShares.incoming_grants, resourceId);
+                  const enabled = friendShares.incoming.includes(resourceId);
                   return (
                     <div
-                      key={`in-${resource.id}`}
+                      key={`in-${resourceId}`}
                       className="flex items-center justify-between py-2"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="text-xl">{resource.icon}</div>
-                        <div>
-                          <span className="text-white">{resource.name}</span>
-                          {enabled && grant?.policy?.days_ahead && (
-                            <div className="text-xs text-surface-muted">
-                              {t("settings:sharesDaysAheadValue", { count: grant.policy.days_ahead })}
-                            </div>
-                          )}
-                        </div>
+                      <div>
+                        <span className="text-white">{displayResourceName(resourceId, catalog)}</span>
+                        {enabled && grant?.policy?.days_ahead && (
+                          <div className="text-xs text-surface-muted">
+                            {t("settings:sharesDaysAheadValue", { count: grant.policy.days_ahead })}
+                          </div>
+                        )}
                       </div>
                       <div className="text-sm">
                         {enabled ? (
@@ -455,6 +489,9 @@ export default function SharesSettings() {
                     </div>
                   );
                 })}
+                {resourceTypesForFriend(friendShares).length === 0 && (
+                  <p className="text-sm text-surface-muted">{t("settings:sharesNotShared")}</p>
+                )}
               </div>
             </div>
           </div>

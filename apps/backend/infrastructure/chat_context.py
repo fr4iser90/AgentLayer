@@ -207,21 +207,23 @@ def _run_compaction_llm(
     existing_summary: str,
     new_block: str,
     compaction_model: str,
-    compaction_attempt: tuple[str, dict[str, str], str] | None = None,
+    compaction_attempt: tuple[str, dict[str, str], str, str] | None = None,
     compaction_max_chars: int | None = None,
 ) -> str:
+    from apps.backend.infrastructure.llm_chat_attempt import unpack_llm_attempt
     from apps.backend.infrastructure.openai_compat_http import http_post_chat_completions
 
     override = (config.CHAT_CONTEXT_COMPACTION_MODEL or "").strip()
     model_id = override or compaction_model.strip()
     headers: dict[str, str] | None = None
     url = ""
+    provider_id: str | None = None
     if compaction_attempt and not override:
-        url, headers, attempt_model = compaction_attempt
+        url, headers, attempt_model, provider_id = unpack_llm_attempt(compaction_attempt)
         if attempt_model.strip():
             model_id = attempt_model.strip()
     elif compaction_attempt and override:
-        url, headers, _ = compaction_attempt
+        url, headers, _, provider_id = unpack_llm_attempt(compaction_attempt)
     if not url:
         logger.warning(
             "chat context compaction: no LLM transport for model %r — using text fallback",
@@ -258,7 +260,13 @@ def _run_compaction_llm(
         "max_tokens": 2000,
     }
     try:
-        data, _ = http_post_chat_completions(url, payload, headers=headers, timeout=90.0)
+        data, _ = http_post_chat_completions(
+            url,
+            payload,
+            headers=headers,
+            timeout=90.0,
+            concurrency_provider_id=provider_id,
+        )
         choices = data.get("choices") or []
         if choices and isinstance(choices[0], dict):
             msg = choices[0].get("message") or {}
@@ -340,7 +348,7 @@ async def prepare_chat_history_for_llm(
     conversation_id: uuid.UUID | None = None,
     user_id: uuid.UUID | None = None,
     compaction_model: str = "",
-    compaction_attempt: tuple[str, dict[str, str], str] | None = None,
+    compaction_attempt: tuple[str, dict[str, str], str, str] | None = None,
     context_budget: ContextBudget | None = None,
     provider_prompt_tokens: int | None = None,
 ) -> tuple[list[dict[str, Any]], ContextPrepMeta]:

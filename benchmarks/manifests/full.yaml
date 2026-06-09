@@ -22,5 +22,3 @@ scenarios:
   - SEC1_scan_agentlayer
   - SEC2_remediate_agentlayer
 
-defaults:
-  timeout_s: 7200

@@ -7,11 +7,9 @@ Unified permission layer for sharing resources with confirmed friends — one ma
 ```
 share_permissions (DB)
   owner_user_id, grantee_user_id
-  resource_type, resource_identifier
+  resource_type, resource_identifier   ← any id you choose (google_calendar, my_notes, …)
   is_allowed, revoked_at
   policy JSONB  →  { "days_ahead": 7, "expires_at": "2026-06-11T00:00:00Z" }
-
-share_resource_catalog.json  →  labels, icons, allowed policy fields
 
 API  /v1/shares/set | /check | /outgoing | /incoming | /friend/{id} | /catalog
 
@@ -38,8 +36,8 @@ Dashboard sharing (members, block grants, public tokens) stays separate; can be 
 
 | Area | Path |
 |------|------|
-| Catalog | `data/share_resource_catalog.json` |
-| Policy helpers | `apps/backend/domain/shares/policy.py`, `catalog.py` |
+| Type normalization | `apps/backend/domain/shares/catalog.py` |
+| Policy helpers | `apps/backend/domain/shares/policy.py` |
 | DB | `apps/backend/infrastructure/db/share_permissions_db.py` |
 | API | `apps/backend/api/shares_api.py` |
 | Tool | `plugins/tools/integrations/friends/shares.py` |

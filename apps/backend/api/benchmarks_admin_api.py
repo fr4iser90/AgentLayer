@@ -134,6 +134,21 @@ async def get_benchmark_run(request: Request, run_id: uuid.UUID) -> dict:
     return {"ok": True, "run": _public_run_detail(row)}
 
 
+@router.delete("/runs/{run_id}")
+async def delete_benchmark_run(request: Request, run_id: uuid.UUID) -> dict:
+    admin = await require_admin(request)
+    tid = db.user_tenant_id(admin.id)
+    outcome = benchmark_runs_store.delete_run(run_id=run_id, tenant_id=tid)
+    if outcome == "not_found":
+        raise HTTPException(status_code=404, detail="benchmark run not found")
+    if outcome == "running":
+        raise HTTPException(
+            status_code=409,
+            detail="benchmark run is still queued or running",
+        )
+    return {"ok": True, "deleted": str(run_id)}
+
+
 @router.post("/runs")
 async def post_start_benchmark(request: Request, body: StartBenchmarkBody) -> dict:
     admin = await require_admin(request)

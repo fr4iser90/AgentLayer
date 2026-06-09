@@ -1,5 +1,6 @@
 /** Shared WebSocket agent-turn utilities (ChatPage + dashboard embedded chat). */
 
+import i18n from "../../i18n/config";
 import {
   extractAssistantContentFromCompletion,
   extractAssistantReasoningFromCompletion,
@@ -69,6 +70,23 @@ function appendAgentLine(
 
 function assistantStreamOffset(liveTurn: LiveTurnStore): number {
   return Math.max(0, liveTurn.getStreamText().length);
+}
+
+export function llmSlotWaitMessage(msg: Record<string, unknown>): string {
+  const waited = msg.waited_sec != null ? Number(msg.waited_sec) : 0;
+  const max = msg.max_parallel != null ? Number(msg.max_parallel) : 1;
+  const w = waited >= 10 ? Math.round(waited) : Math.round(waited * 10) / 10;
+  return i18n.t("chat:llmSlotWait", { waited: w, max: Math.max(1, max) });
+}
+
+function handleLlmSlotWait(msg: Record<string, unknown>, liveTurn: LiveTurnStore): void {
+  if (!liveTurn.isActive()) return;
+  const text = llmSlotWaitMessage(msg);
+  liveTurn.setWaitHint(text);
+  const waited = msg.waited_sec != null ? Number(msg.waited_sec) : 0;
+  if (waited < 0.5) {
+    liveTurn.appendLogLine("llm_queue", text);
+  }
 }
 
 /** Dispatch one parsed WebSocket agent event (shared between Chat and dashboard). */
@@ -171,6 +189,7 @@ export function handleAgentWsMessage(msg: Record<string, unknown>, ctx: HandlerC
   }
 
   if (typ === "agent.llm_round_start") {
+    liveTurn.setWaitHint(null);
     const r = msg.round != null ? Number(msg.round) : 0;
     if (streamEnabled && r > 1) {
       liveTurn.appendStreamSeparator();
@@ -182,6 +201,7 @@ export function handleAgentWsMessage(msg: Record<string, unknown>, ctx: HandlerC
 
   if (typ === "agent.llm_delta") {
     if (!streamEnabled) return;
+    liveTurn.setWaitHint(null);
     const channel = msg.channel != null ? String(msg.channel) : "";
     const reasoningDelta =
       msg.reasoning_delta != null ? String(msg.reasoning_delta) : "";
@@ -278,6 +298,11 @@ export function handleAgentWsMessage(msg: Record<string, unknown>, ctx: HandlerC
     if (n === "media_enqueue" && toolOk !== false && msg.media_play) {
       callbacks.onMediaPlay?.(msg.media_play as Record<string, unknown>);
     }
+    return;
+  }
+
+  if (typ === "agent.llm_slot_wait") {
+    handleLlmSlotWait(msg, liveTurn);
     return;
   }
 

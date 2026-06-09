@@ -211,7 +211,7 @@ async def _feed_chunk_async(
 
 
 async def stream_chat_completions_aggregate(
-    attempts_seq: list[tuple[str, dict[str, str], str]],
+    attempts_seq: list[tuple[str, dict[str, str], str, str]],
     payload_base: dict[str, Any],
     *,
     llm_backend: str,
@@ -220,12 +220,15 @@ async def stream_chat_completions_aggregate(
     on_reasoning_delta: Callable[[str], Awaitable[None]] | None = None,
     cancel_event: Any | None = None,
     timeout: float = 600.0,
-) -> tuple[dict[str, Any], bool, tuple[str, dict[str, str], str]]:
+) -> tuple[dict[str, Any], bool, tuple[str, dict[str, str], str, str]]:
     """
     POST ``stream: true``, parse SSE/NDJSON, merge to a completion dict.
     For each content delta, call ``on_text_delta`` (if set). Reasoning/thinking deltas use
     ``on_reasoning_delta`` when set.
     """
+    from apps.backend.infrastructure.llm_chat_attempt import unpack_llm_attempt
+    from apps.backend.infrastructure.llm_concurrency import llm_slot_async
+
     attempts_local = list(attempts_seq)
     lb = llm_backend
     outer_profile = profile_key
@@ -243,7 +246,8 @@ async def stream_chat_completions_aggregate(
         last_http: tuple[int, str, str] | None = None
         last_trans: httpx.RequestError | None = None
         async with httpx.AsyncClient(timeout=timeout_cfg) as client:
-            for b_url, b_headers, b_model in attempts_local:
+            for attempt in attempts_local:
+                b_url, b_headers, b_model, b_provider = unpack_llm_attempt(attempt)
                 pl = dict(payload_base)
                 pl["stream"] = True
                 pl["model"] = b_model
@@ -253,72 +257,73 @@ async def stream_chat_completions_aggregate(
                     acc = OpenAIStreamAccumulator()
                     carry = ""
                     repetition_abort = False
-                    async with client.stream("POST", b_url, json=body, headers=h) as resp:
-                        if resp.status_code >= 400:
-                            err_body = (await resp.aread()).decode("utf-8", errors="replace")
-                            if lb == "provider_admin" and external_llm_should_failover(resp.status_code):
-                                logger.warning(
-                                    "LLM stream agg: external status=%s; next endpoint url=%s",
+                    async with llm_slot_async(b_provider or None):
+                        async with client.stream("POST", b_url, json=body, headers=h) as resp:
+                            if resp.status_code >= 400:
+                                err_body = (await resp.aread()).decode("utf-8", errors="replace")
+                                if lb == "provider_admin" and external_llm_should_failover(resp.status_code):
+                                    logger.warning(
+                                        "LLM stream agg: external status=%s; next endpoint url=%s",
+                                        resp.status_code,
+                                        b_url,
+                                    )
+                                    last_http = (resp.status_code, err_body, b_url)
+                                    continue
+                                err_red = err_body[:800] if err_body else ""
+                                logger.error(
+                                    "LLM stream agg failed (%s): status=%s url=%s body~=%s",
+                                    lb,
                                     resp.status_code,
                                     b_url,
+                                    err_red,
                                 )
-                                last_http = (resp.status_code, err_body, b_url)
-                                continue
-                            err_red = err_body[:800] if err_body else ""
-                            logger.error(
-                                "LLM stream agg failed (%s): status=%s url=%s body~=%s",
-                                lb,
-                                resp.status_code,
-                                b_url,
-                                err_red,
-                            )
-                            resp.raise_for_status()
-                        async for raw in resp.aiter_bytes():
-                            if repetition_abort:
-                                break
-                            if _cancelled():
-                                from apps.backend.domain.agent import AgentChatCancelled
-
-                                raise AgentChatCancelled()
-                            carry += raw.decode("utf-8", errors="replace")
-                            while "\n\n" in carry:
+                                resp.raise_for_status()
+                            async for raw in resp.aiter_bytes():
                                 if repetition_abort:
                                     break
-                                sep = carry.index("\n\n")
-                                block = carry[:sep]
-                                carry = carry[sep + 2 :]
-                                for payload in _extract_sse_payloads(block):
-                                    try:
-                                        obj = json.loads(payload)
-                                    except json.JSONDecodeError:
-                                        continue
-                                    if not isinstance(obj, dict):
-                                        continue
-                                    if await _feed_chunk_async(
-                                        acc, obj, on_text_delta, on_reasoning_delta
-                                    ):
-                                        repetition_abort = True
+                                if _cancelled():
+                                    from apps.backend.domain.agent import AgentChatCancelled
+
+                                    raise AgentChatCancelled()
+                                carry += raw.decode("utf-8", errors="replace")
+                                while "\n\n" in carry:
+                                    if repetition_abort:
+                                        break
+                                    sep = carry.index("\n\n")
+                                    block = carry[:sep]
+                                    carry = carry[sep + 2 :]
+                                    for payload in _extract_sse_payloads(block):
+                                        try:
+                                            obj = json.loads(payload)
+                                        except json.JSONDecodeError:
+                                            continue
+                                        if not isinstance(obj, dict):
+                                            continue
+                                        if await _feed_chunk_async(
+                                            acc, obj, on_text_delta, on_reasoning_delta
+                                        ):
+                                            repetition_abort = True
+                                            break
+                                    if repetition_abort:
                                         break
                                 if repetition_abort:
                                     break
-                            if repetition_abort:
-                                break
-                        if not repetition_abort:
-                            trailing = carry.strip()
-                            if trailing:
-                                for payload in _extract_sse_payloads(trailing):
-                                    try:
-                                        obj = json.loads(payload)
-                                    except json.JSONDecodeError:
-                                        continue
-                                    if isinstance(obj, dict):
-                                        if await _feed_chunk_async(
-                                        acc, obj, on_text_delta, on_reasoning_delta
-                                    ):
-                                            repetition_abort = True
-                                            break
+                            if not repetition_abort:
+                                trailing = carry.strip()
+                                if trailing:
+                                    for payload in _extract_sse_payloads(trailing):
+                                        try:
+                                            obj = json.loads(payload)
+                                        except json.JSONDecodeError:
+                                            continue
+                                        if isinstance(obj, dict):
+                                            if await _feed_chunk_async(
+                                                acc, obj, on_text_delta, on_reasoning_delta
+                                            ):
+                                                repetition_abort = True
+                                                break
                     data = stream_accumulator_build_completion(acc)
-                    return data, False, (b_url, b_headers, b_model)
+                    return data, False, attempt
                 except httpx.HTTPStatusError:
                     raise
                 except httpx.RequestError as e:
