@@ -12,7 +12,6 @@ def test_gmail_secret_uses_existing_user_secret() -> None:
     client.get_json.return_value = {"services": ["gmail"]}
     ctx = FixtureContext(run_id="r", prefix="p-")
     _setup_gmail_secret(client, ctx)
-    assert ctx.gmail_service_key == "gmail"
     assert "gmail_secret" not in ctx.skipped
     client.post_json.assert_not_called()
 

@@ -19,12 +19,11 @@ import yaml
 
 from tests.benchmarks.agent.bench_profiles import BenchModelProfile, parse_profiles_from_env, profile_labels_filter
 from tests.benchmarks.agent.bench_provider_registry import register_bench_llm_providers
-from tests.benchmarks.agent.cases import AgentScenario, SCENARIO_BY_ID, scenarios_for_tier
+from tests.benchmarks.agent.cases import AgentScenario, SCENARIO_BY_ID, bench_dashboard_title, bench_workspace_name, scenarios_for_tier
 from tests.benchmarks.agent.fixtures import (
     FixtureContext,
     apply_fixtures,
     collect_fixture_ids,
-    dashboard_id_for_scenario,
     fetch_dashboard,
     find_dashboard_by_title,
     fetch_git_changes,
@@ -34,7 +33,7 @@ from tests.benchmarks.agent.fixtures import (
 from tests.benchmarks.agent.metrics import RunMetrics, build_run_metrics
 from tests.benchmarks.agent.rubrics import RubricOutcome, evaluate_rubric
 from tests.benchmarks.agent.ws_runner import run_chat_via_websocket, timeline_capture_enabled
-from tests.e2e.support.helpers import E2EClient, load_dotenv, operator_self_editing_enabled, require_server
+from tests.e2e.support.helpers import E2EClient, find_workspace_by_name, load_dotenv, operator_self_editing_enabled, require_server
 
 logger = logging.getLogger(__name__)
 
@@ -422,15 +421,10 @@ def _render_scenario_prompt(scenario: AgentScenario, fixture_ctx: FixtureContext
     prompt = scenario.prompt
     if "{" not in prompt:
         return prompt
-    dash_id = dashboard_id_for_scenario(
-        fixture_ctx,
-        scenario.requires,
-        agent_id=scenario.agent_id,
-    )
     try:
         return prompt.format(
             prefix=fixture_ctx.prefix,
-            dashboard_id=dash_id or "",
+            friend_email=fixture_ctx.user_b_email or "",
         )
     except KeyError:
         return prompt
@@ -448,17 +442,25 @@ def _dashboard_state_for_rubric(
     scenario: AgentScenario,
     fixture_ctx: FixtureContext,
 ) -> tuple[dict[str, Any] | None, str | None]:
+    expected_title = bench_dashboard_title(scenario, fixture_ctx.prefix)
     if scenario.rubric == "d1_dashboard_create":
-        title = f"{fixture_ctx.prefix}create"
+        title = expected_title or f"{fixture_ctx.prefix}create"
         return find_dashboard_by_title(client, title), title
-    dash_id = dashboard_id_for_scenario(
-        fixture_ctx,
-        scenario.requires,
-        agent_id=scenario.agent_id,
-    )
-    if scenario.rubric == "d2_layout_patch" and dash_id:
-        return fetch_dashboard(client, dash_id), None
+    if expected_title:
+        return find_dashboard_by_title(client, expected_title), expected_title
     return None, None
+
+
+def _workspace_row_for_rubric(
+    client: E2EClient,
+    *,
+    scenario: AgentScenario,
+    fixture_ctx: FixtureContext,
+) -> dict[str, Any] | None:
+    ws_name = bench_workspace_name(scenario, fixture_ctx.prefix)
+    if not ws_name:
+        return None
+    return find_workspace_by_name(client, ws_name)
 
 
 def _git_state_for_rubric(
@@ -467,9 +469,13 @@ def _git_state_for_rubric(
     scenario: AgentScenario,
     fixture_ctx: FixtureContext,
 ) -> dict[str, Any] | None:
-    if scenario.rubric != "c2_small_edit":
+    ws_name = bench_workspace_name(scenario, fixture_ctx.prefix)
+    if not ws_name:
         return None
-    ws_id = workspace_id_for_scenario(fixture_ctx, scenario.requires)
+    ws = find_workspace_by_name(client, ws_name)
+    if not ws:
+        return None
+    ws_id = str(ws.get("id") or "").strip()
     if not ws_id:
         return None
     try:
@@ -602,13 +608,6 @@ def run_scenario(
     if ws_id and scenario.requires:
         body["workspace_id"] = ws_id
     effective_agent = str(body["agent_id"] or "")
-    dash_id = dashboard_id_for_scenario(
-        fixture_ctx,
-        scenario.requires,
-        agent_id=effective_agent,
-    )
-    if dash_id and effective_agent == "dashboard":
-        body["agent_dashboard_context"] = {"dashboard_id": dash_id}
 
     timeout_s = float(scenario.timeout_s or defaults.get("timeout_s") or 120.0)
     t0 = time.perf_counter()
@@ -689,6 +688,11 @@ def run_scenario(
         scenario=scenario,
         fixture_ctx=fixture_ctx,
     )
+    workspace_row = _workspace_row_for_rubric(
+        client,
+        scenario=scenario,
+        fixture_ctx=fixture_ctx,
+    )
 
     rubric: RubricOutcome = evaluate_rubric(
         scenario.rubric,
@@ -702,6 +706,7 @@ def run_scenario(
         dashboard_state=dashboard_state,
         expected_title=expected_title,
         git_changes=git_changes,
+        workspace_row=workspace_row,
     )
 
     return ScenarioResult(

@@ -13,7 +13,7 @@ from tests.benchmarks.agent.catalog import (
 def test_catalog_lists_all_scenarios_and_fixtures():
     payload = catalog_payload()
     assert len(payload["scenarios"]) >= 10
-    assert len(payload["fixtures"]) >= 8
+    assert len(payload["fixtures"]) == 4
     ids = {s["id"] for s in payload["scenarios"]}
     assert "S1_tool_catalog" in ids
     assert "W2_find_octocat_indexed" in ids
@@ -27,19 +27,17 @@ def test_smoke_suite_has_three_scenarios():
     assert s1["expected_tools"]
 
 
-def test_workspace_fixtures_include_git():
+def test_workspace_suite_has_no_git_fixture():
     suite = describe_suite("workspace")
     fixture_ids = {f["id"] for f in suite["fixtures"]}
-    assert "workspace_git" in fixture_ids
+    assert fixture_ids == set()
+    w1 = next(s for s in suite["scenarios"] if s["id"] == "W1_git_readme_no_index")
+    assert "workspace.create" in w1["expected_tools"]
 
 
 def test_fixtures_for_subset_scenarios():
-    ids = fixtures_for_scenarios(
-        ["W2_find_octocat_indexed"],
-        manifest_fixtures=["workspace_git"],
-    )
-    assert "workspace_git" in ids
-    assert "workspace_indexed" in ids
+    ids = fixtures_for_scenarios(["S3_read_file"], manifest_fixtures=[])
+    assert ids == ["agentlayer_self"]
 
 
 def test_security_suite_has_sec_scenarios():
@@ -47,7 +45,7 @@ def test_security_suite_has_sec_scenarios():
     ids = {s["id"] for s in suite["scenarios"]}
     assert ids == {"SEC1_scan_agentlayer", "SEC2_remediate_agentlayer"}
     sec2 = next(s for s in suite["scenarios"] if s["id"] == "SEC2_remediate_agentlayer")
-    assert sec2["execution"] == "project_run"
+    assert sec2["execution"] == "chat"
     assert sec2["security_scan"] is True
 
 
@@ -72,9 +70,7 @@ def test_full_suite_has_all_scenarios():
     assert ids[0] == "S1_tool_catalog"
     assert ids[-2:] == ["SEC1_scan_agentlayer", "SEC2_remediate_agentlayer"]
     fixture_ids = {f["id"] for f in suite["fixtures"]}
-    assert "workspace_git" in fixture_ids
-    assert "agentlayer_self" in fixture_ids
-    assert "ssc_secret" in fixture_ids
+    assert fixture_ids == {"friend_pair", "agentlayer_self", "gmail_secret", "ssc_secret"}
 
 
 def test_dashboards_suite_has_d1_d2():
@@ -83,7 +79,7 @@ def test_dashboards_suite_has_d1_d2():
     assert ids == {"D1_dashboard_create", "D2_layout_patch"}
     d2 = next(s for s in suite["scenarios"] if s["id"] == "D2_layout_patch")
     assert d2["agent_id"] == "dashboard"
-    assert "dashboard_empty" in d2["requires"]
+    assert d2["requires"] == []
 
 
 def test_coding_suite_has_c1_c2():

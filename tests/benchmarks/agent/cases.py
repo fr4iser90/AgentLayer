@@ -5,6 +5,9 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
+from tests.benchmarks.agent.fixtures import agentlayer_bench_git_url
+from tests.e2e.support.helpers import git_clone_url
+
 
 @dataclass(frozen=True)
 class AgentScenario:
@@ -19,6 +22,27 @@ class AgentScenario:
     max_tool_rounds: int = 5
     timeout_s: float = 120.0
     skip_without_env: str | None = None
+    bench_workspace_suffix: str | None = None
+    bench_dashboard_title_suffix: str | None = None
+
+
+def _hello_git_url() -> str:
+    return (os.environ.get("AGENT_BENCH_GIT_URL") or git_clone_url()).strip()
+
+
+def _hello_git_branch() -> str:
+    return (os.environ.get("AGENT_BENCH_GIT_BRANCH") or "master").strip() or "master"
+
+
+def _agentlayer_git_branch() -> str:
+    return (os.environ.get("AGENT_BENCH_AGENTLAYER_GIT_BRANCH") or "main").strip() or "main"
+
+
+def _clone_workspace_step(*, prefix: str, suffix: str, git_url: str, git_branch: str) -> str:
+    return (
+        f'Use workspace.create with source=git, git_url="{git_url}", git_branch="{git_branch}", '
+        f'name exactly "{prefix}{suffix}", and bind=true. Do this before any file tools.\n\n'
+    )
 
 
 TIER1_SCENARIOS: list[AgentScenario] = [
@@ -55,8 +79,8 @@ TIER1_SCENARIOS: list[AgentScenario] = [
     ),
 ]
 
-_W2_FIND_OCTOCAT_PROMPT = (
-    "In this git workspace, find where 'Octocat' or the Hello World repository is mentioned. "
+_W2_FIND_OCTOCAT_BODY = (
+    "In that workspace, find where 'Octocat' or the Hello World repository is mentioned. "
     "Use workspace search or retrieval tools if available; otherwise read files. "
     "Reply with the file path and a short matching excerpt."
 )
@@ -66,44 +90,75 @@ TIER2_SCENARIOS: list[AgentScenario] = [
         id="W1_git_readme_no_index",
         tier=2,
         prompt=(
-            "Use read_file to read README.md at the repository root of the bound workspace. "
+            _clone_workspace_step(
+                prefix="{prefix}",
+                suffix="git",
+                git_url=_hello_git_url(),
+                git_branch=_hello_git_branch(),
+            )
+            + "Use read_file to read README.md at the repository root. "
             "Reply with the first non-empty line."
         ),
         rubric="w1_git_readme",
-        requires=("workspace_git",),
-        max_tool_rounds=4,
-        timeout_s=180.0,
+        bench_workspace_suffix="git",
+        max_tool_rounds=10,
+        timeout_s=300.0,
     ),
     AgentScenario(
         id="W2_find_octocat_no_index",
         tier=2,
-        prompt=_W2_FIND_OCTOCAT_PROMPT,
+        prompt=(
+            _clone_workspace_step(
+                prefix="{prefix}",
+                suffix="git",
+                git_url=_hello_git_url(),
+                git_branch=_hello_git_branch(),
+            )
+            + _W2_FIND_OCTOCAT_BODY
+        ),
         rubric="w2_find_octocat",
-        requires=("workspace_git",),
-        max_tool_rounds=6,
-        timeout_s=240.0,
+        bench_workspace_suffix="git",
+        max_tool_rounds=12,
+        timeout_s=360.0,
     ),
     AgentScenario(
         id="W2_find_octocat_indexed",
         tier=2,
-        prompt=_W2_FIND_OCTOCAT_PROMPT,
+        prompt=(
+            _clone_workspace_step(
+                prefix="{prefix}",
+                suffix="git",
+                git_url=_hello_git_url(),
+                git_branch=_hello_git_branch(),
+            )
+            + "Run a code index on the workspace (index tool or workspace index API via tools) "
+            "before searching.\n"
+            + _W2_FIND_OCTOCAT_BODY
+        ),
         rubric="w2_find_octocat_indexed",
-        requires=("workspace_git", "workspace_indexed"),
-        max_tool_rounds=6,
-        timeout_s=300.0,
+        bench_workspace_suffix="git",
+        max_tool_rounds=14,
+        timeout_s=420.0,
     ),
     AgentScenario(
         id="SOC1_block_share_visible",
         tier=2,
         agent_id="dashboard",
         prompt=(
-            "A dashboard was prepared with shared_notes='bench-visible'. "
-            "Using tools only if needed, confirm the shared_notes value and reply with exactly: bench-visible"
+            "Create a custom dashboard titled exactly \"{prefix}share\" with:\n"
+            "- data.shared_notes = bench-visible\n"
+            "- data.private_notes = bench-hidden\n"
+            "- one markdown block id bench-md-shared with props.dataPath shared_notes\n"
+            "- one markdown block id bench-md-private with props.dataPath private_notes\n"
+            "Then use dashboard.block_share_grant (or equivalent) to grant view on block "
+            "bench-md-shared to {friend_email}.\n"
+            "Finally read shared_notes and reply with exactly: bench-visible"
         ),
         rubric="soc1_share_data",
-        requires=("dashboard_block_share",),
-        max_tool_rounds=3,
-        timeout_s=120.0,
+        requires=("friend_pair",),
+        bench_dashboard_title_suffix="share",
+        max_tool_rounds=12,
+        timeout_s=420.0,
     ),
     AgentScenario(
         id="D1_dashboard_create",
@@ -115,7 +170,8 @@ TIER2_SCENARIOS: list[AgentScenario] = [
             "Reply with dashboard_id: … and title: … when done."
         ),
         rubric="d1_dashboard_create",
-        max_tool_rounds=6,
+        bench_dashboard_title_suffix="create",
+        max_tool_rounds=8,
         timeout_s=300.0,
     ),
     AgentScenario(
@@ -123,14 +179,15 @@ TIER2_SCENARIOS: list[AgentScenario] = [
         tier=2,
         agent_id="dashboard",
         prompt=(
-            "On dashboard {dashboard_id} (title \"{prefix}layout\"), use patch_layout to add one markdown "
-            "block with props.dataPath set to \"notes\". Use patch_data to set notes to exactly "
-            "\"bench-notes-ok\". Reply with block_added: yes"
+            "Create a new custom dashboard titled exactly \"{prefix}layout\" (kind custom). "
+            "Use patch_layout to add one markdown block with props.dataPath set to \"notes\". "
+            "Use patch_data to set notes to exactly \"bench-notes-ok\". "
+            "Reply with block_added: yes"
         ),
         rubric="d2_layout_patch",
-        requires=("dashboard_empty",),
-        max_tool_rounds=8,
-        timeout_s=300.0,
+        bench_dashboard_title_suffix="layout",
+        max_tool_rounds=12,
+        timeout_s=420.0,
     ),
 ]
 
@@ -138,24 +195,36 @@ TIER3_SCENARIOS: list[AgentScenario] = [
     AgentScenario(
         id="C1_bench_marker_file",
         tier=3,
-        execution="project_run",
+        execution="chat",
         agent_id="coding",
         prompt=(
-            "In the bound git workspace, create a new file bench-marker.txt at the repository "
-            "root containing exactly one line: bench-ok. Use write_file, edit, or apply_patch. "
+            _clone_workspace_step(
+                prefix="{prefix}",
+                suffix="coding",
+                git_url=_hello_git_url(),
+                git_branch=_hello_git_branch(),
+            )
+            + "Create a new file bench-marker.txt at the repository root containing exactly one line: "
+            "bench-ok. Use write_file, edit, or apply_patch. "
             "When the file exists with that content, reply with exactly: bench-ok"
         ),
         rubric="c1_bench_marker",
-        requires=("workspace_git",),
-        max_tool_rounds=24,
-        timeout_s=float(os.environ.get("AGENT_BENCH_C1_TIMEOUT_S") or "7200"),
+        bench_workspace_suffix="coding",
+        max_tool_rounds=20,
+        timeout_s=float(os.environ.get("AGENT_BENCH_C1_TIMEOUT_S") or "3600"),
     ),
     AgentScenario(
         id="C2_small_edit",
         tier=3,
         agent_id="coding",
         prompt=(
-            "In the bound git workspace:\n"
+            _clone_workspace_step(
+                prefix="{prefix}",
+                suffix="c2",
+                git_url=_hello_git_url(),
+                git_branch=_hello_git_branch(),
+            )
+            + "In that workspace:\n"
             "1. Create and checkout local branch bench-c2-edit (do not git push).\n"
             "2. Open the README at the repository root (README.md or README).\n"
             "3. Add one line containing exactly: bench-c2-ok "
@@ -164,8 +233,8 @@ TIER3_SCENARIOS: list[AgentScenario] = [
             "When the line is saved, reply with exactly: bench-c2-ok"
         ),
         rubric="c2_small_edit",
-        requires=("workspace_git",),
-        max_tool_rounds=12,
+        bench_workspace_suffix="c2",
+        max_tool_rounds=16,
         timeout_s=float(os.environ.get("AGENT_BENCH_C2_TIMEOUT_S") or "1800"),
     ),
 ]
@@ -175,26 +244,38 @@ TIER4_SCENARIOS: list[AgentScenario] = [
         id="SEC1_scan_agentlayer",
         tier=4,
         prompt=(
-            "This workspace is a clone of https://github.com/fr4iser90/AgentLayer. "
-            "Run a SimpleSecCheck security scan on the repository using security_scan_resolve "
+            _clone_workspace_step(
+                prefix="{prefix}",
+                suffix="agentlayer",
+                git_url=agentlayer_bench_git_url(),
+                git_branch=_agentlayer_git_branch(),
+            )
+            + "Run a SimpleSecCheck security scan on the repository using security_scan_resolve "
             "(or security_scan_start if resolve unavailable). Use the workspace git URL. "
-            "Do not poll status repeatedly in one turn — report scan_id and status from the first response. "
-            "Reply with lines: scan_id: … and status: …"
+            "Do not poll status repeatedly in one turn — report scan_id and status from the first "
+            "response. Reply with lines: scan_id: … and status: …"
         ),
         rubric="sec1_scan_agentlayer",
         agent_id="coding",
-        requires=("workspace_agentlayer_git", "ssc_secret"),
-        max_tool_rounds=8,
-        timeout_s=600.0,
+        requires=("ssc_secret",),
+        bench_workspace_suffix="agentlayer",
+        max_tool_rounds=12,
+        timeout_s=900.0,
     ),
     AgentScenario(
         id="SEC2_remediate_agentlayer",
         tier=4,
-        execution="project_run",
+        execution="chat",
         security_scan=True,
         agent_id="coding",
         prompt=(
-            "Security remediation on this AgentLayer workspace (https://github.com/fr4iser90/AgentLayer).\n\n"
+            _clone_workspace_step(
+                prefix="{prefix}",
+                suffix="agentlayer",
+                git_url=agentlayer_bench_git_url(),
+                git_branch=_agentlayer_git_branch(),
+            )
+            + "Security remediation on this AgentLayer workspace.\n\n"
             "1. coding_git_read; coding_git_sync pull (ff-only).\n"
             "2. Create branch agent/sec-bench-{today's YYYYMMDD}.\n"
             "3. security_scan_finding_policy_schema once; then security_scan_resolve/start on the repo.\n"
@@ -203,8 +284,9 @@ TIER4_SCENARIOS: list[AgentScenario] = [
             "6. No git push. Reply with scan_id, branch, and files changed."
         ),
         rubric="sec2_remediate_agentlayer",
-        requires=("workspace_agentlayer_git", "ssc_secret"),
-        max_tool_rounds=24,
+        requires=("ssc_secret",),
+        bench_workspace_suffix="agentlayer",
+        max_tool_rounds=32,
         timeout_s=float(os.environ.get("AGENT_BENCH_SEC2_TIMEOUT_S") or "7200"),
     ),
 ]
@@ -237,3 +319,17 @@ SCENARIO_BY_ID = {s.id: s for s in _ALL}
 def scenarios_for_tier(max_tier: int) -> list[AgentScenario]:
     tier = max(1, int(max_tier))
     return [s for s in _ALL if s.tier <= tier]
+
+
+def bench_workspace_name(scenario: AgentScenario, prefix: str) -> str | None:
+    suffix = (scenario.bench_workspace_suffix or "").strip()
+    if not suffix:
+        return None
+    return f"{prefix}{suffix}"
+
+
+def bench_dashboard_title(scenario: AgentScenario, prefix: str) -> str | None:
+    suffix = (scenario.bench_dashboard_title_suffix or "").strip()
+    if not suffix:
+        return None
+    return f"{prefix}{suffix}"

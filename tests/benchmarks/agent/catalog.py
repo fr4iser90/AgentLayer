@@ -33,13 +33,13 @@ _SUITE_LABELS: dict[str, str] = {
 
 _SUITE_DESCRIPTIONS: dict[str, str] = {
     "smoke": "Fast sanity checks: tool catalog, simple chat, read_file in self workspace.",
-    "workspace": "Git clone + optional RAG index; read README and search for Octocat.",
-    "social": "Friend pair + dashboard block share; agent confirms shared data.",
+    "workspace": "Agent clones git workspace, reads README, searches Octocat.",
+    "social": "Agent creates dashboard, block-shares to friend, confirms data.",
     "integrations": "Gmail secret fixture; skips when AGENT_BENCH_GMAIL_SECRET unset.",
-    "coding": "Long-running coding agent via project_runs queue (poll, git diff, full metrics).",
-    "security": "Clone fr4iser90/AgentLayer; SEC1 scan via chat, SEC2 remediation via project_run + security_scan.",
-    "dashboards": "Agent creates a custom dashboard (D1) and patches markdown layout + data (D2).",
-    "full": "All scenarios in tier order: smoke → workspace → dashboards → social → integrations → coding → security. Expect hours per model; optional Gmail/index/SSC skip individually.",
+    "coding": "Agent clones git workspace then coding edits (chat, long timeout).",
+    "security": "Agent clones AgentLayer repo; SSC scan + remediation via tools.",
+    "dashboards": "Agent creates dashboard (D1) and layout+data patch (D2).",
+    "full": "All scenarios — agent does product work; fixtures only secrets/friends/self-workspace.",
 }
 
 _SCENARIO_META: dict[str, dict[str, Any]] = {
@@ -63,26 +63,26 @@ _SCENARIO_META: dict[str, dict[str, Any]] = {
     },
     "W1_git_readme_no_index": {
         "title": "Git README",
-        "summary": "Read first line of README in cloned git workspace.",
-        "expected_tools": ["read_file"],
-        "rubric": "read_file on README.md",
+        "summary": "workspace.create clone Hello-World, read_file README.md.",
+        "expected_tools": ["workspace.create", "read_file"],
+        "rubric": "workspace.create + read_file + workspace exists",
     },
     "W2_find_octocat_no_index": {
         "title": "Find Octocat (no index)",
-        "summary": "Locate Octocat mention via grep/read without RAG index.",
-        "expected_tools": ["grep", "read_file", "retrieve_context"],
-        "rubric": "path + excerpt in reply",
+        "summary": "Agent clones repo, finds Octocat via grep/read.",
+        "expected_tools": ["workspace.create", "grep", "read_file", "retrieve_context"],
+        "rubric": "clone + path + excerpt in reply",
     },
     "W2_find_octocat_indexed": {
         "title": "Find Octocat (indexed)",
-        "summary": "Same task with workspace RAG index (select workspace index in benchmark run or include workspace_indexed fixture).",
-        "expected_tools": ["retrieve_context", "grep", "read_file"],
-        "rubric": "path + excerpt; index preferred",
+        "summary": "Agent clones, indexes workspace, then searches.",
+        "expected_tools": ["workspace.create", "index", "retrieve_context"],
+        "rubric": "clone + search + excerpt",
     },
     "SOC1_block_share_visible": {
         "title": "Block share visible",
-        "summary": "Confirm shared_notes=bench-visible on prepared dashboard (social/share).",
-        "expected_tools": ["dashboard.read", "patch_data"],
+        "summary": "Agent creates dashboard, block_share_grant to friend, confirms shared_notes.",
+        "expected_tools": ["create_dashboard", "block_share_grant", "dashboard.read"],
         "rubric": "reply exactly bench-visible",
     },
     "D1_dashboard_create": {
@@ -93,8 +93,8 @@ _SCENARIO_META: dict[str, dict[str, Any]] = {
     },
     "D2_layout_patch": {
         "title": "Patch layout",
-        "summary": "patch_layout markdown block dataPath notes + patch_data bench-notes-ok.",
-        "expected_tools": ["patch_layout", "patch_data"],
+        "summary": "Agent creates dashboard, patch_layout markdown notes + patch_data bench-notes-ok.",
+        "expected_tools": ["create_dashboard", "patch_layout", "patch_data"],
         "rubric": "markdown notes block + data.notes in API",
     },
     "INT1_gmail_connected": {
@@ -105,9 +105,9 @@ _SCENARIO_META: dict[str, dict[str, Any]] = {
     },
     "C1_bench_marker_file": {
         "title": "Create bench-marker.txt",
-        "summary": "Coding agent via project_runs: write bench-marker.txt with bench-ok (hours OK).",
-        "expected_tools": ["write_file", "edit", "apply_patch"],
-        "rubric": "git change + bench-ok reply; polls until project_run completes",
+        "summary": "Agent clones repo, writes bench-marker.txt with bench-ok.",
+        "expected_tools": ["workspace.create", "write_file", "edit", "apply_patch"],
+        "rubric": "clone + git change + bench-ok reply",
     },
     "C2_small_edit": {
         "title": "README small edit",
@@ -117,64 +117,38 @@ _SCENARIO_META: dict[str, dict[str, Any]] = {
     },
     "SEC1_scan_agentlayer": {
         "title": "SSC scan AgentLayer",
-        "summary": "Chat: security_scan_resolve on cloned AgentLayer repo; reply scan_id + status.",
-        "expected_tools": ["security_scan_resolve", "security_scan_start"],
-        "rubric": "security_scan tool + scan_id/status in reply",
+        "summary": "Agent clones AgentLayer repo, security_scan_resolve; reply scan_id + status.",
+        "expected_tools": ["workspace.create", "security_scan_resolve", "security_scan_start"],
+        "rubric": "clone + security_scan tool + scan_id/status in reply",
     },
     "SEC2_remediate_agentlayer": {
         "title": "SSC remediate AgentLayer",
-        "summary": "project_run: branch, scan, SECURITY_REPORT.md, fix one LOW finding (hours OK).",
-        "expected_tools": ["security_scan_resolve", "write_file", "edit", "coding_git_sync"],
-        "rubric": "security tools + git changes or SECURITY_REPORT; project_run succeeded",
+        "summary": "Agent clones repo, branch, scan, SECURITY_REPORT.md, fix one LOW finding.",
+        "expected_tools": ["workspace.create", "security_scan_resolve", "write_file", "edit"],
+        "rubric": "clone + security tools + git changes or SECURITY_REPORT",
     },
 }
 
 _FIXTURE_META: dict[str, dict[str, Any]] = {
     "agentlayer_self": {
         "title": "AgentLayer self workspace",
-        "summary": "Bind repo root as workspace for S3 read_file.",
+        "summary": "Platform self-workspace bind for S3 (not agent-created).",
         "optional": False,
-    },
-    "workspace_git": {
-        "title": "Git workspace",
-        "summary": "Clone AgentLayer git repo under bench prefix.",
-        "optional": False,
-    },
-    "workspace_indexed": {
-        "title": "Workspace index",
-        "summary": "Index the benchmark git workspace before scenarios run.",
-        "optional": True,
     },
     "friend_pair": {
         "title": "Friend pair",
-        "summary": "Ensure bench admin + user B are friends.",
-        "optional": False,
-    },
-    "dashboard_block_share": {
-        "title": "Dashboard block share",
-        "summary": "Dashboard with shared markdown block for user B.",
-        "optional": False,
-    },
-    "dashboard_empty": {
-        "title": "Empty dashboard",
-        "summary": "Minimal custom dashboard ({prefix}layout) for D2 layout patch.",
+        "summary": "Infra: ensure bench admin + user B are friends (share target email).",
         "optional": False,
     },
     "gmail_secret": {
         "title": "Gmail secret",
-        "summary": "Store Gmail app password via user secrets API.",
+        "summary": "Infra: store Gmail app password via user secrets API.",
         "optional": True,
         "env_hint": "AGENT_BENCH_GMAIL_SECRET",
     },
-    "workspace_agentlayer_git": {
-        "title": "AgentLayer git workspace",
-        "summary": "Clone github.com/fr4iser90/AgentLayer under bench prefix.",
-        "optional": False,
-        "env_hint": "AGENT_BENCH_AGENTLAYER_GIT_URL",
-    },
     "ssc_secret": {
         "title": "SimpleSecCheck API key",
-        "summary": "Store ssc_api_key via user secrets (scan.fr4iser.com).",
+        "summary": "Infra: store ssc_api_key via user secrets (scan.fr4iser.com).",
         "optional": True,
         "env_hint": "AGENT_BENCH_SSC_SECRET",
     },

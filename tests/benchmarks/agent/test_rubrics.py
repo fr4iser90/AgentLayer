@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from tests.benchmarks.agent.rubrics import evaluate_rubric
 
+_WS = {"id": "ws-1", "name": "bench-git"}
+
 
 def test_s1_passes_with_catalog_tool() -> None:
     out = evaluate_rubric(
@@ -47,15 +49,22 @@ def test_w2_finds_octocat() -> None:
     out = evaluate_rubric(
         "w2_find_octocat",
         content="README mentions Octocat",
-        tool_names=["read_file"],
+        tool_names=["workspace.create", "read_file"],
         tool_invocations=[],
         error=None,
+        workspace_row=_WS,
     )
     assert out.passed is True
 
 
 def test_soc1_share_data() -> None:
-    out = evaluate_rubric("soc1_share_data", content="bench-visible", error=None)
+    out = evaluate_rubric(
+        "soc1_share_data",
+        content="bench-visible",
+        tool_names=["create_dashboard", "block_share_grant"],
+        error=None,
+        dashboard_state={"id": "dash-1", "title": "bench-share"},
+    )
     assert out.passed is True
 
 
@@ -63,14 +72,15 @@ def test_c1_bench_marker_passes_with_git_file() -> None:
     out = evaluate_rubric(
         "c1_bench_marker",
         content="bench-ok",
-        tool_names=["write_file"],
+        tool_names=["workspace.create", "write_file"],
         tool_invocations=[],
         error=None,
-        project_status="succeeded",
-        project_summary={
-            "files_changed": [{"path": "bench-marker.txt"}],
-            "git": {"has_changes": True},
+        git_changes={
+            "has_changes": True,
+            "stat": " bench-marker.txt | 1 +\n",
+            "file_diff": {"diff": "+bench-ok\n", "has_changes": True},
         },
+        workspace_row=_WS,
     )
     assert out.passed is True
 
@@ -79,9 +89,10 @@ def test_sec1_passes_with_scan_tool_and_id() -> None:
     out = evaluate_rubric(
         "sec1_scan_agentlayer",
         content="scan_id: scan-abc123\nstatus: started",
-        tool_names=["security_scan_resolve"],
+        tool_names=["workspace.create", "security_scan_resolve"],
         tool_invocations=[],
         error=None,
+        workspace_row=_WS,
     )
     assert out.passed is True
     assert out.score == 1.0
@@ -91,17 +102,13 @@ def test_sec2_passes_with_report_and_git() -> None:
     out = evaluate_rubric(
         "sec2_remediate_agentlayer",
         content="scan_id: scan-x branch: agent/sec-bench-20260608",
-        tool_names=["security_scan_resolve"],
+        tool_names=["workspace.create", "security_scan_resolve", "write_file"],
         error=None,
-        project_status="succeeded",
-        project_summary={
-            "tools": [
-                {"name": "security_scan_resolve", "ok": True},
-                {"name": "write_file", "ok": True},
-            ],
-            "files_changed": [{"path": "docs/SECURITY_REPORT.md"}],
-            "git": {"has_changes": True},
+        git_changes={
+            "has_changes": True,
+            "file_diff": {"diff": "+# SECURITY_REPORT\n", "has_changes": True},
         },
+        workspace_row=_WS,
     )
     assert out.passed is True
 

@@ -1,10 +1,9 @@
-# Tier 4 security — AgentLayer repo + SimpleSecCheck (scan.fr4iser.com)
+# Tier 4 security — agent clones AgentLayer + SSC secret (infra)
 version: 1
 tier_max: 4
 profiles_from: _profiles.yaml
 
 fixtures:
-  - workspace_agentlayer_git
   - ssc_secret
 
 scenarios:

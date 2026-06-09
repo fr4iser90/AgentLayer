@@ -1,19 +1,15 @@
-# Full regression — all domains in one run (hours). Optional fixtures skip when secrets/index missing.
+# Full regression — agent-driven product actions; fixtures = secrets/friends/self-workspace only
 version: 1
 tier_max: 4
 profiles_from: _profiles.yaml
 
 fixtures:
-  - workspace_git
   - friend_pair
-  - dashboard_empty
 
 scenarios:
-  # Tier 1 — smoke
   - S1_tool_catalog
   - S2_simple_chat
   - S3_read_file
-  # Tier 2 — workspace, dashboards, social, integrations
   - W1_git_readme_no_index
   - W2_find_octocat_no_index
   - W2_find_octocat_indexed
@@ -21,10 +17,8 @@ scenarios:
   - D2_layout_patch
   - SOC1_block_share_visible
   - INT1_gmail_connected
-  # Tier 3 — coding
   - C1_bench_marker_file
   - C2_small_edit
-  # Tier 4 — security
   - SEC1_scan_agentlayer
   - SEC2_remediate_agentlayer
 

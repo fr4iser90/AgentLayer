@@ -86,7 +86,7 @@ def run_project_run_scenario(
             agent_id=scenario.agent_id,
             passed=False,
             score=0.0,
-            failure_reason="project_run requires workspace_git fixture (workspace_id)",
+            failure_reason="project_run requires a pre-bound workspace_id (use chat scenarios — agent clones via workspace.create)",
             latency_ms=0.0,
             prompt_tokens=None,
             completion_tokens=None,

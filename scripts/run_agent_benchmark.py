@@ -8,7 +8,7 @@ Examples:
   python scripts/run_agent_benchmark.py --manifest benchmarks/manifests/social.yaml --profile ollama-small
   python scripts/run_agent_benchmark.py --manifest benchmarks/manifests/full.yaml
   python scripts/run_agent_benchmark.py --only W1_git_readme_no_index
-  python scripts/run_agent_benchmark.py --manifest benchmarks/manifests/workspace.yaml --fixtures workspace_indexed
+  python scripts/run_agent_benchmark.py --manifest benchmarks/manifests/full.yaml
 """
 
 from __future__ import annotations

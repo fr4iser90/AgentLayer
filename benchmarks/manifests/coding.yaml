@@ -1,10 +1,7 @@
-# Tier 3 coding — long-running project_runs (poll until done; timeout up to hours)
+# Tier 3 coding — agent clones workspace then edits (chat, long timeout)
 version: 1
 tier_max: 3
 profiles_from: _profiles.yaml
-
-fixtures:
-  - workspace_git
 
 scenarios:
   - C1_bench_marker_file

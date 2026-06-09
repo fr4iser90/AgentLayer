@@ -1,4 +1,4 @@
-"""Benchmark fixture setup (composable test data / sandbox resources)."""
+"""Benchmark fixture setup — infra only (secrets, friends, platform gates). Agent does product work via tools."""
 
 from __future__ import annotations
 
@@ -12,12 +12,9 @@ import httpx
 from tests.e2e.support.helpers import (
     AGENTLAYER_SELF_NAME,
     E2EClient,
-    ensure_git_workspace,
     ensure_user_b,
     find_workspace_by_name,
-    git_clone_url,
     operator_self_editing_enabled,
-    wait_index_idle,
 )
 
 FixtureFn = Callable[[E2EClient, "FixtureContext"], None]
@@ -29,13 +26,9 @@ class FixtureContext:
     prefix: str
     workspace_id: str | None = None
     workspace_name: str | None = None
-    workspace_by_fixture: dict[str, str] = field(default_factory=dict)
-    dashboard_by_fixture: dict[str, str] = field(default_factory=dict)
     indexed: bool = False
     user_b_id: str | None = None
-    dashboard_id: str | None = None
-    gmail_service_key: str | None = None
-    git_remote_url: str | None = None
+    user_b_email: str | None = None
     applied: set[str] = field(default_factory=set)
     skipped: dict[str, str] = field(default_factory=dict)
 
@@ -52,60 +45,22 @@ def workspace_id_for_scenario(
     ctx: FixtureContext,
     requires: tuple[str, ...],
 ) -> str | None:
-    """Pick workspace UUID when multiple fixture types ran in one benchmark."""
-    if "workspace_agentlayer_git" in requires:
-        wid = ctx.workspace_by_fixture.get("workspace_agentlayer_git")
-        if wid:
-            return wid
-    if "workspace_git" in requires or "workspace_indexed" in requires:
-        wid = ctx.workspace_by_fixture.get("workspace_git")
-        if wid:
-            return wid
+    """Only agentlayer-self is pre-bound; other workspaces are created by the agent."""
     if "agentlayer_self" in requires:
-        wid = ctx.workspace_by_fixture.get("agentlayer_self")
-        if wid:
-            return wid
-    if requires and ctx.workspace_id:
         return ctx.workspace_id
-    return None
-
-
-def dashboard_id_for_scenario(
-    ctx: FixtureContext,
-    requires: tuple[str, ...],
-    *,
-    agent_id: str = "",
-) -> str | None:
-    if "dashboard_empty" in requires:
-        did = ctx.dashboard_by_fixture.get("dashboard_empty")
-        if did:
-            return did
-    if "dashboard_block_share" in requires:
-        did = ctx.dashboard_by_fixture.get("dashboard_block_share")
-        if did:
-            return did
-    if agent_id == "dashboard" and ctx.dashboard_id:
-        return ctx.dashboard_id
     return None
 
 
 # fixture_id -> depends on other fixture ids
 FIXTURE_REQUIRES: dict[str, tuple[str, ...]] = {
     "agentlayer_self": (),
-    "workspace_git": (),
-    "workspace_agentlayer_git": (),
-    "workspace_indexed": ("workspace_git",),
     "friend_pair": (),
-    "dashboard_block_share": ("friend_pair",),
-    "dashboard_empty": (),
     "gmail_secret": (),
     "ssc_secret": (),
 }
 
 # optional fixtures: skip scenario instead of failing the whole run
-OPTIONAL_FIXTURES: frozenset[str] = frozenset(
-    {"workspace_indexed", "gmail_secret", "ssc_secret"}
-)
+OPTIONAL_FIXTURES: frozenset[str] = frozenset({"gmail_secret", "ssc_secret"})
 
 
 def agentlayer_bench_git_url() -> str:
@@ -219,11 +174,8 @@ def _setup_agentlayer_self(client: E2EClient, ctx: FixtureContext) -> None:
             raise RuntimeError(
                 f"workspace {ws_name!r} not found — enable self-editing or set AGENT_BENCH_WORKSPACE_NAME"
             )
-        ws_id = str(ws.get("id") or "") or None
-        ctx.workspace_id = ws_id
+        ctx.workspace_id = str(ws.get("id") or "") or None
         ctx.workspace_name = ws_name
-        if ws_id:
-            ctx.workspace_by_fixture["agentlayer_self"] = ws_id
 
     if client.role == "admin" and not operator_self_editing_enabled(client):
         raise RuntimeError(
@@ -231,57 +183,6 @@ def _setup_agentlayer_self(client: E2EClient, ctx: FixtureContext) -> None:
             "(harness enables it when this fixture is requested)"
         )
     _resolve()
-
-
-def _setup_workspace_git(client: E2EClient, ctx: FixtureContext) -> None:
-    ws_name = f"{ctx.prefix}git"
-    git_url = (os.environ.get("AGENT_BENCH_GIT_URL") or git_clone_url()).strip()
-    ws = ensure_git_workspace(client, name=ws_name, git_url=git_url)
-    ws_id = str(ws.get("id") or "") or None
-    ctx.workspace_id = ws_id
-    ctx.workspace_name = ws_name
-    ctx.git_remote_url = git_url
-    ctx.indexed = False
-    if ws_id:
-        ctx.workspace_by_fixture["workspace_git"] = ws_id
-
-
-def _setup_workspace_agentlayer_git(client: E2EClient, ctx: FixtureContext) -> None:
-    ws_name = f"{ctx.prefix}agentlayer"
-    git_url = agentlayer_bench_git_url()
-    ws = ensure_git_workspace(client, name=ws_name, git_url=git_url)
-    ws_id = str(ws.get("id") or "") or None
-    ctx.workspace_id = ws_id
-    ctx.workspace_name = ws_name
-    ctx.git_remote_url = git_url
-    ctx.indexed = False
-    if ws_id:
-        ctx.workspace_by_fixture["workspace_agentlayer_git"] = ws_id
-
-
-def _setup_workspace_indexed(client: E2EClient, ctx: FixtureContext) -> None:
-    """Run code index when ``workspace_indexed`` is in the benchmark fixture set (UI or CLI)."""
-    if not ctx.workspace_id:
-        ctx.skipped["workspace_indexed"] = "workspace_git not applied"
-        return
-    ws_id = ctx.workspace_id
-    try:
-        client.patch_json(
-            f"/v1/workspaces/{ws_id}",
-            {"semantic_index_enabled": True},
-        )
-    except httpx.HTTPError:
-        pass
-    kick = client.post_json(
-        f"/v1/workspaces/{ws_id}/index",
-        {"mode": "code", "max_files": 200},
-    )
-    if not kick.get("ok"):
-        ctx.skipped["workspace_indexed"] = f"index kick failed: {kick}"
-        return
-    timeout_s = float(os.environ.get("AGENT_BENCH_INDEX_TIMEOUT_S") or "180")
-    wait_index_idle(client, ws_id, timeout_s=timeout_s)
-    ctx.indexed = True
 
 
 def _setup_friend_pair(client: E2EClient, ctx: FixtureContext) -> None:
@@ -293,59 +194,14 @@ def _setup_friend_pair(client: E2EClient, ctx: FixtureContext) -> None:
         user_b = ensure_user_b(admin)
     _ensure_friends(admin, user_b)
     ctx.user_b_id = user_b.user_id
+    ctx.user_b_email = user_b.email
     if user_b.http is not client.http:
         user_b.close()
-
-
-def _setup_dashboard_block_share(client: E2EClient, ctx: FixtureContext) -> None:
-    if not ctx.user_b_id:
-        raise RuntimeError("dashboard_block_share requires friend_pair")
-    title = f"{ctx.prefix}share"
-    created = client.post_json(
-        "/v1/dashboards",
-        {
-            "kind": "custom",
-            "title": title,
-            "data": {"shared_notes": "bench-visible", "private_notes": "bench-hidden"},
-            "ui_layout": {
-                "version": 2,
-                "blocks": [
-                    {
-                        "id": "bench-md-shared",
-                        "type": "markdown",
-                        "grid": {"x": 0, "y": 0, "w": 12, "h": 4},
-                        "props": {"dataPath": "shared_notes"},
-                    },
-                    {
-                        "id": "bench-md-private",
-                        "type": "markdown",
-                        "grid": {"x": 0, "y": 4, "w": 12, "h": 4},
-                        "props": {"dataPath": "private_notes"},
-                    },
-                ],
-            },
-        },
-    )
-    dash = created.get("dashboard") or created
-    dash_id = str(dash.get("id") or "")
-    if not dash_id:
-        raise RuntimeError(f"dashboard create failed: {created}")
-    ctx.dashboard_id = dash_id
-    ctx.dashboard_by_fixture["dashboard_block_share"] = dash_id
-    client.post_json(
-        f"/v1/dashboards/{dash_id}/block-shares",
-        {
-            "block_id": "bench-md-shared",
-            "grantee_user_id": ctx.user_b_id,
-            "permission": "view",
-        },
-    )
 
 
 def _setup_gmail_secret(client: E2EClient, ctx: FixtureContext) -> None:
     service_key = (os.environ.get("AGENT_BENCH_GMAIL_SERVICE_KEY") or "gmail").strip().lower()
     if service_key in _list_user_secret_keys(client):
-        ctx.gmail_service_key = service_key
         return
     raw = (os.environ.get("AGENT_BENCH_GMAIL_SECRET") or "").strip()
     if not raw:
@@ -363,26 +219,6 @@ def _setup_gmail_secret(client: E2EClient, ctx: FixtureContext) -> None:
             ctx.skipped["gmail_secret"] = "SECRETS_MASTER_KEY not configured on server"
             return
         raise
-    ctx.gmail_service_key = service_key
-
-
-def _setup_dashboard_empty(client: E2EClient, ctx: FixtureContext) -> None:
-    title = f"{ctx.prefix}layout"
-    created = client.post_json(
-        "/v1/dashboards",
-        {
-            "kind": "custom",
-            "title": title,
-            "data": {},
-            "ui_layout": {"version": 2, "blocks": []},
-        },
-    )
-    dash = created.get("dashboard") or created
-    dash_id = str(dash.get("id") or "")
-    if not dash_id:
-        raise RuntimeError(f"dashboard create failed: {created}")
-    ctx.dashboard_id = dash_id
-    ctx.dashboard_by_fixture["dashboard_empty"] = dash_id
 
 
 def _setup_ssc_secret(client: E2EClient, ctx: FixtureContext) -> None:
@@ -409,12 +245,7 @@ def _setup_ssc_secret(client: E2EClient, ctx: FixtureContext) -> None:
 
 FIXTURE_SETUP: dict[str, FixtureFn] = {
     "agentlayer_self": _setup_agentlayer_self,
-    "workspace_git": _setup_workspace_git,
-    "workspace_agentlayer_git": _setup_workspace_agentlayer_git,
-    "workspace_indexed": _setup_workspace_indexed,
     "friend_pair": _setup_friend_pair,
-    "dashboard_block_share": _setup_dashboard_block_share,
-    "dashboard_empty": _setup_dashboard_empty,
     "gmail_secret": _setup_gmail_secret,
     "ssc_secret": _setup_ssc_secret,
 }

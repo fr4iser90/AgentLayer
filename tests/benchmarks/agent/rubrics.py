@@ -12,6 +12,9 @@ _CATALOG_TOOL_NAMES = frozenset(
 _READ_FILE_TOOL_NAMES = frozenset(
     {"read_file", "repository.read_file", "workspace.read_file"}
 )
+_WORKSPACE_CREATE_TOOL_NAMES = frozenset(
+    {"create", "workspace.create", "workspaces.create", "workspace.create"}
+)
 _SEARCH_TOOL_NAMES = frozenset(
     {
         "retrieve_context",
@@ -138,25 +141,46 @@ def rubric_s3_read_file(
     return RubricOutcome(False, 0.25 if used_read else 0.0, "; ".join(parts))
 
 
+def _used_workspace_create(tool_names: list[str]) -> bool:
+    names = _tool_names_lower(tool_names)
+    return bool(names & _WORKSPACE_CREATE_TOOL_NAMES) or any(
+        "workspace" in n and "create" in n for n in names
+    )
+
+
 def rubric_w1_git_readme(
     *,
     content: str,
     tool_names: list[str],
     tool_invocations: list[dict[str, Any]] | None,
     error: str | None,
+    workspace_row: dict[str, Any] | None = None,
     **_: Any,
 ) -> RubricOutcome:
     if error:
         return RubricOutcome(False, 0.0, error)
     names = _tool_names_lower(tool_names)
     used_read = bool(names & _READ_FILE_TOOL_NAMES)
+    used_create = _used_workspace_create(tool_names)
+    ws_ok = bool(workspace_row and str(workspace_row.get("id") or "").strip())
     non_empty = len((content or "").strip()) >= 3
-    if used_read and non_empty:
+    if used_create and used_read and non_empty and ws_ok:
         return RubricOutcome(True, 1.0, None)
+    if used_create and used_read and non_empty:
+        return RubricOutcome(True, 0.85, None)
+    parts: list[str] = []
+    if not used_create:
+        parts.append("workspace.create not invoked")
+    if not used_read:
+        parts.append("read_file not used")
+    if not ws_ok:
+        parts.append("expected bench workspace not found via API")
+    if not non_empty:
+        parts.append("reply empty")
     return RubricOutcome(
         False,
-        0.5 if used_read or non_empty else 0.0,
-        "read_file not used or reply empty",
+        0.5 if (used_create or used_read) else 0.0,
+        "; ".join(parts) or "w1 rubric failed",
     )
 
 
@@ -177,12 +201,17 @@ def rubric_w2_find_octocat(
     tool_names: list[str],
     tool_invocations: list[dict[str, Any]] | None,
     error: str | None,
+    workspace_row: dict[str, Any] | None = None,
     **_: Any,
 ) -> RubricOutcome:
     if error:
         return RubricOutcome(False, 0.0, error)
+    if not _used_workspace_create(tool_names):
+        return RubricOutcome(False, 0.0, "workspace.create not invoked")
+    if workspace_row is None or not str(workspace_row.get("id") or "").strip():
+        return RubricOutcome(False, 0.0, "expected bench workspace not found via API")
     if not tool_names:
-        return RubricOutcome(False, 0.0, "no tool calls")
+        return RubricOutcome(False, 0.0, "no tool calls after workspace create")
     if not _octocat_found(content, tool_invocations):
         return RubricOutcome(False, 0.25, "Octocat / Hello World not found in reply or tool results")
     return RubricOutcome(True, 1.0, None)
@@ -215,14 +244,29 @@ def rubric_w2_find_octocat_indexed(
 def rubric_soc1_share_data(
     *,
     content: str,
+    tool_names: list[str] | None = None,
     error: str | None,
+    dashboard_state: dict[str, Any] | None = None,
     **_: Any,
 ) -> RubricOutcome:
     if error:
         return RubricOutcome(False, 0.0, error)
+    tools = tool_names or []
+    has_create = _has_dashboard_tool(tools, "create_dashboard", "dashboard.create")
+    has_share = _has_dashboard_tool(tools, "block_share", "share")
+    dash = dashboard_state if isinstance(dashboard_state, dict) else {}
+    has_dash = bool(str(dash.get("id") or "").strip())
     if "bench-visible" in (content or ""):
-        return RubricOutcome(True, 1.0, None)
-    return RubricOutcome(False, 0.0, f"expected bench-visible in reply, got: {(content or '')[:120]!r}")
+        score = 1.0 if has_create and has_dash else 0.9
+        return RubricOutcome(True, score, None)
+    parts: list[str] = [f"expected bench-visible in reply, got: {(content or '')[:120]!r}"]
+    if not has_create:
+        parts.append("dashboard create tool not detected")
+    if not has_share:
+        parts.append("block share tool not detected")
+    if not has_dash:
+        parts.append("share dashboard not found via API")
+    return RubricOutcome(False, 0.0, "; ".join(parts))
 
 
 def _has_dashboard_tool(tool_names: list[str], *needles: str) -> bool:
@@ -317,10 +361,15 @@ def rubric_sec1_scan_agentlayer(
     tool_names: list[str],
     tool_invocations: list[dict[str, Any]],
     error: str | None,
+    workspace_row: dict[str, Any] | None = None,
     **_: Any,
 ) -> RubricOutcome:
     if error:
         return RubricOutcome(False, 0.0, error)
+    if not _used_workspace_create(tool_names):
+        return RubricOutcome(False, 0.0, "workspace.create not invoked")
+    if workspace_row is None or not str(workspace_row.get("id") or "").strip():
+        return RubricOutcome(False, 0.0, "expected agentlayer workspace not found via API")
     has_tool = _has_security_tool(tool_names)
     low = (content or "").lower()
     has_scan_ref = "scan_id" in low or "scan id" in low or "scan-" in low
@@ -343,40 +392,35 @@ def rubric_sec2_remediate_agentlayer(
     error: str | None,
     project_summary: dict[str, Any] | None = None,
     project_status: str | None = None,
+    git_changes: dict[str, Any] | None = None,
+    workspace_row: dict[str, Any] | None = None,
     **_: Any,
 ) -> RubricOutcome:
     if error:
         return RubricOutcome(False, 0.0, error)
-    if project_status and project_status not in ("succeeded", "partial"):
-        return RubricOutcome(False, 0.0, f"project_run status={project_status}")
-    summary = project_summary if isinstance(project_summary, dict) else {}
-    tools = summary.get("tools") if isinstance(summary.get("tools"), list) else []
-    tool_names_from_summary = [
-        str(t.get("name") or "") for t in tools if isinstance(t, dict)
-    ]
-    all_names = list(tool_names) + tool_names_from_summary
-    has_sec = _has_security_tool(all_names)
-    files = summary.get("files_changed") if isinstance(summary.get("files_changed"), list) else []
-    file_paths = {str(f.get("path") or "") for f in files if isinstance(f, dict)}
-    has_report = any("SECURITY_REPORT" in p for p in file_paths)
-    git = summary.get("git") if isinstance(summary.get("git"), dict) else {}
-    git_changed = bool(git.get("has_changes"))
+    if not _used_workspace_create(tool_names):
+        return RubricOutcome(False, 0.0, "workspace.create not invoked")
+    if workspace_row is None or not str(workspace_row.get("id") or "").strip():
+        return RubricOutcome(False, 0.0, "expected agentlayer workspace not found via API")
+    summary = git_changes if isinstance(git_changes, dict) else {}
+    git_changed = bool(summary.get("has_changes"))
+    file_diff = summary.get("file_diff") if isinstance(summary.get("file_diff"), dict) else {}
+    diff_text = str(file_diff.get("diff") or summary.get("diff") or "")
+    has_report_diff = "SECURITY_REPORT" in diff_text
+    has_sec = _has_security_tool(tool_names)
     write_ok = any(
-        str(t.get("name") or "") in ("write_file", "edit", "apply_patch", "replace")
-        and t.get("ok")
-        for t in tools
-        if isinstance(t, dict)
+        _norm_tool_name(n) in ("write_file", "edit", "apply_patch", "replace") for n in tool_names
     )
-    if has_sec and (git_changed or has_report) and write_ok:
+    if has_sec and (git_changed or has_report_diff) and write_ok:
         return RubricOutcome(True, 1.0, None)
-    if has_sec and (git_changed or has_report):
+    if has_sec and (git_changed or has_report_diff):
         return RubricOutcome(True, 0.85, None)
     if has_sec:
         return RubricOutcome(True, 0.6, None)
     parts: list[str] = []
     if not has_sec:
         parts.append("no security_scan tools")
-    if not git_changed and not has_report:
+    if not git_changed and not has_report_diff:
         parts.append("no SECURITY_REPORT or git changes")
     return RubricOutcome(False, 0.0, "; ".join(parts) or "sec2 rubric failed")
 
@@ -409,34 +453,43 @@ def rubric_c1_bench_marker(
     error: str | None,
     project_summary: dict[str, Any] | None = None,
     project_status: str | None = None,
+    git_changes: dict[str, Any] | None = None,
+    workspace_row: dict[str, Any] | None = None,
     **_: Any,
 ) -> RubricOutcome:
     if error:
         return RubricOutcome(False, 0.0, error)
-    if project_status and project_status != "succeeded":
-        return RubricOutcome(False, 0.0, f"project_run status={project_status}")
-    summary = project_summary if isinstance(project_summary, dict) else {}
-    files = summary.get("files_changed") if isinstance(summary.get("files_changed"), list) else []
-    file_paths = {str(f.get("path") or f.get("file") or "") for f in files if isinstance(f, dict)}
-    has_marker_file = any(p.endswith("bench-marker.txt") for p in file_paths if p)
+    if not _used_workspace_create(tool_names):
+        return RubricOutcome(False, 0.0, "workspace.create not invoked")
+    summary = git_changes if isinstance(git_changes, dict) else {}
+    has_changes = bool(summary.get("has_changes"))
+    file_diff = summary.get("file_diff") if isinstance(summary.get("file_diff"), dict) else {}
+    diff_text = str(file_diff.get("diff") or summary.get("diff") or "")
+    stat_text = str(summary.get("stat") or "")
+    marker_present = (
+        "bench-marker.txt" in diff_text
+        or "bench-marker.txt" in stat_text
+        or "bench-ok" in diff_text
+    )
     names = _tool_names_lower(tool_names)
     write_tools = names & frozenset(
         {"write_file", "edit", "apply_patch", "replace", "repository.write_file"}
     )
     reply_ok = "bench-ok" in (content or "")
-    git = summary.get("git") if isinstance(summary.get("git"), dict) else {}
-    git_changed = bool(git.get("has_changes"))
-    if has_marker_file or (write_tools and reply_ok and git_changed):
+    ws_ok = bool(workspace_row and str(workspace_row.get("id") or "").strip())
+    if write_tools and reply_ok and (has_changes or marker_present) and ws_ok:
         return RubricOutcome(True, 1.0, None)
-    if write_tools and reply_ok:
+    if write_tools and reply_ok and ws_ok:
         return RubricOutcome(True, 0.85, None)
     parts: list[str] = []
     if not write_tools:
         parts.append("no write tool detected")
     if not reply_ok:
         parts.append("reply missing bench-ok")
-    if not has_marker_file and not git_changed:
+    if not has_changes and not marker_present:
         parts.append("no git change for bench-marker.txt")
+    if not ws_ok:
+        parts.append("expected coding workspace not found via API")
     return RubricOutcome(False, 0.0, "; ".join(parts) or "c1 rubric failed")
 
 

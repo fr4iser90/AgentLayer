@@ -103,11 +103,6 @@ export function AdminBenchmarks() {
     return autoFixtureIds(suiteDetail, selectedScenarioIds);
   }, [suiteDetail, selectedScenarioIds]);
 
-  const workspaceIndexFixture = useMemo(
-    () => catalogFixtures.find((f) => f.id === "workspace_indexed") ?? null,
-    [catalogFixtures]
-  );
-
   const benchProviders = useMemo(() => llmProviders.filter((p) => Boolean(p.base_url?.trim())), [llmProviders]);
 
   const showFriendPicker = autoFixtures.has("friend_pair");
@@ -538,20 +533,6 @@ export function AdminBenchmarks() {
                   {t("admin:benchSecretsSettingsLink")}
                 </Link>
               </p>
-              {workspaceIndexFixture && !autoFixtures.has("workspace_indexed") ? (
-                <label className="mt-4 flex cursor-pointer items-start gap-2 text-xs">
-                  <input
-                    type="checkbox"
-                    checked={extraFixtureIds.has("workspace_indexed")}
-                    onChange={() => toggleExtraFixture("workspace_indexed")}
-                    className="mt-0.5"
-                  />
-                  <span>
-                    <span className="font-medium text-white">{t("admin:benchWorkspaceIndex")}</span>
-                    <span className="ml-1 text-surface-muted">{t("admin:benchWorkspaceIndexHint")}</span>
-                  </span>
-                </label>
-              ) : null}
             </div>
           </section>
 

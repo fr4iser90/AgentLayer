@@ -1,10 +1,7 @@
-# Workspace git + optional index (--fixtures workspace_indexed or Admin UI checkbox)
+# Workspace — agent clones repo via workspace.create, then reads/searches
 version: 1
 tier_max: 2
 profiles_from: _profiles.yaml
-
-fixtures:
-  - workspace_git
 
 scenarios:
   - W1_git_readme_no_index
@@ -12,4 +9,4 @@ scenarios:
   - W2_find_octocat_indexed
 
 defaults:
-  timeout_s: 180
+  timeout_s: 420
