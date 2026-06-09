@@ -9,7 +9,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 
-from tests.e2e.helpers import E2EClient, admin_credentials, ensure_user_b, load_e2e_env, require_server
+from tests.e2e.support.helpers import E2EClient, admin_credentials, ensure_user_b, load_e2e_env, require_server
 
 
 def main() -> int:

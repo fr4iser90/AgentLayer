@@ -74,7 +74,7 @@ def fetch_queued_runs_coding(*, limit: int = 10) -> list[dict[str, Any]]:
                 SELECT id, tenant_id, created_by_user_id, execution_user_id, scheduler_job_id,
                        dashboard_id, project_row_id, project_title,
                        execution_target, instructions, coding_workflow, status, error,
-                       started_at, finished_at, created_at, updated_at
+                       result_json, started_at, finished_at, created_at, updated_at
                 FROM project_runs
                 WHERE status = 'queued'
                   AND execution_target = 'coding'
@@ -86,6 +86,25 @@ def fetch_queued_runs_coding(*, limit: int = 10) -> list[dict[str, Any]]:
             rows = cur.fetchall()
         conn.commit()
     return [dict(r) for r in rows]
+
+
+def get_run(*, run_id: uuid.UUID, tenant_id: int) -> dict[str, Any] | None:
+    with db.pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                """
+                SELECT id, tenant_id, created_by_user_id, execution_user_id, scheduler_job_id,
+                       dashboard_id, project_row_id, project_title,
+                       execution_target, instructions, coding_workflow, status, error,
+                       result_json, started_at, finished_at, created_at, updated_at
+                FROM project_runs
+                WHERE id = %s AND tenant_id = %s
+                """,
+                (run_id, tenant_id),
+            )
+            row = cur.fetchone()
+        conn.commit()
+    return dict(row) if row else None
 
 
 def list_runs(
@@ -112,7 +131,7 @@ def list_runs(
                 SELECT id, tenant_id, created_by_user_id, execution_user_id, scheduler_job_id,
                        dashboard_id, project_row_id, project_title,
                        execution_target, instructions, coding_workflow, status, error,
-                       started_at, finished_at, created_at, updated_at
+                       result_json, started_at, finished_at, created_at, updated_at
                 FROM project_runs
                 {}
                 ORDER BY created_at DESC
@@ -148,6 +167,7 @@ def mark_done(
     tenant_id: int,
     status: RunStatus,
     error: str | None = None,
+    result_json: dict[str, Any] | None = None,
 ) -> bool:
     if status not in ("succeeded", "failed", "cancelled"):
         raise ValueError("invalid final status")
@@ -157,10 +177,18 @@ def mark_done(
             cur.execute(
                 """
                 UPDATE project_runs
-                SET status = %s, error = %s, finished_at = %s, updated_at = %s
+                SET status = %s, error = %s, result_json = %s, finished_at = %s, updated_at = %s
                 WHERE id = %s AND tenant_id = %s
                 """,
-                (status, error, now, now, run_id, tenant_id),
+                (
+                    status,
+                    error,
+                    Json(dict(result_json)) if result_json is not None else None,
+                    now,
+                    now,
+                    run_id,
+                    tenant_id,
+                ),
             )
             n = cur.rowcount
         conn.commit()

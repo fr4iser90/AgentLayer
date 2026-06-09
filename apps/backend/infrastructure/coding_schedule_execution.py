@@ -316,6 +316,7 @@ def _build_summary(
     outcome: str,
     agent_run_id: str | None,
     duration_ms: int,
+    context_snapshot: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     files_changed: list[dict[str, str]] = []
     git_block: dict[str, Any] | None = None
@@ -335,6 +336,7 @@ def _build_summary(
         "final_reply_excerpt": (final_reply or "")[:2000],
         "agent_run_id": agent_run_id,
         "duration_ms": duration_ms,
+        "context_snapshot": dict(context_snapshot or {}),
     }
 
 
@@ -342,11 +344,11 @@ async def run_coding_schedule_row(
     row: dict[str, Any],
     *,
     row_kind: str = "scheduler_job",
-) -> tuple[bool, str | None]:
+) -> tuple[bool, str | None, dict[str, Any] | None]:
     """
     Execute instructions with agent_id + workspace_id from ``coding_workflow`` / legacy column.
 
-    Returns (success, error_message). ``success`` is True for succeeded and partial runs
+    Returns (success, error_message, summary_json). ``success`` is True for succeeded and partial runs
     (agent finished without exception); partial means no detectable doc/workspace edits.
     """
     from apps.backend.infrastructure import scheduler_job_runs_store
@@ -354,13 +356,13 @@ async def run_coding_schedule_row(
     tenant_id = int(row.get("tenant_id") or 0)
     user_id = _parse_uuid(row.get("execution_user_id"))
     if user_id is None:
-        return False, "missing execution_user_id"
+        return False, "missing execution_user_id", None
 
     job_id = _parse_uuid(row.get("id"))
     wf = workflow_from_row(row)
     ws_id = _parse_uuid(wf.get("workspace_id"))
     if ws_id is None:
-        return False, "coding_workflow.workspace_id is required"
+        return False, "coding_workflow.workspace_id is required", None
 
     from apps.backend.domain.scheduler_targets import is_agent_schedulable, normalize_execution_target
 
@@ -374,12 +376,12 @@ async def run_coding_schedule_row(
             wf_agent,
         )
     if not is_agent_schedulable(agent_id):
-        return False, f"non-schedulable agent_id: {agent_id}"
+        return False, f"non-schedulable agent_id: {agent_id}", None
 
     title = (str(row.get("title") or "").strip()) or None
     stored_instr = str(row.get("instructions") or "").strip()
     if not stored_instr:
-        return False, "empty instructions"
+        return False, "empty instructions", None
 
     instr, doc_mode = _resolve_doc_maintenance_instructions(
         workflow=wf,
@@ -398,6 +400,8 @@ async def run_coding_schedule_row(
             agent_id=agent_id,
         )
         run_id = _parse_uuid(run_row.get("id") if run_row else None)
+    elif job_id is not None and row_kind == "project_run":
+        run_id = job_id
 
     preamble = str(wf.get("prompt_preamble") or "").strip()
     dash = row.get("dashboard_id")
@@ -480,6 +484,36 @@ async def run_coding_schedule_row(
             logger.warning("schedule run: git summary failed", exc_info=True)
 
     final_reply = _extract_assistant_text(data if isinstance(data, dict) else {})
+    context_snapshot = (
+        dict(data.get("agentlayer_context"))
+        if isinstance(data, dict) and isinstance(data.get("agentlayer_context"), dict)
+        else {}
+    )
+
+    def _summary(**kwargs: Any) -> dict[str, Any]:
+        return _build_summary(
+            tools=tools,
+            git_summary=git_summary,
+            final_reply=final_reply,
+            context_snapshot=context_snapshot,
+            **kwargs,
+        )
+
+    if run_id is not None and job_id is not None and row_kind == "project_run":
+        if err_msg:
+            summary = _summary(outcome="error", agent_run_id=agent_run_id, duration_ms=duration_ms)
+            return False, err_msg, summary
+        status, outcome = _evaluate_run_status(
+            tools=tools,
+            git_summary=git_summary,
+            is_doc_job=is_doc_job,
+            abort_reason=abort_reason,
+        )
+        summary = _summary(outcome=outcome, agent_run_id=agent_run_id, duration_ms=duration_ms)
+        summary["run_status"] = status
+        if status == "failed":
+            return False, err_msg or outcome or "project run failed", summary
+        return True, None, summary
 
     if run_id is not None and job_id is not None:
         if err_msg:
@@ -492,6 +526,7 @@ async def run_coding_schedule_row(
                 outcome=outcome,
                 agent_run_id=agent_run_id,
                 duration_ms=duration_ms,
+                context_snapshot=context_snapshot,
             )
             scheduler_job_runs_store.finish_run(
                 run_id=run_id,
@@ -510,7 +545,7 @@ async def run_coding_schedule_row(
                 error=err_msg,
                 run_id=str(run_id),
             )
-            return False, err_msg
+            return False, err_msg, None
 
         status, outcome = _evaluate_run_status(
             tools=tools,
@@ -525,6 +560,7 @@ async def run_coding_schedule_row(
             outcome=outcome,
             agent_run_id=agent_run_id,
             duration_ms=duration_ms,
+            context_snapshot=context_snapshot,
         )
         scheduler_job_runs_store.finish_run(
             run_id=run_id,
@@ -544,9 +580,9 @@ async def run_coding_schedule_row(
             run_id=str(run_id),
         )
         if status == "failed":
-            return False, err_msg or outcome or "schedule run failed"
-        return True, None
+            return False, err_msg or outcome or "schedule run failed", None
+        return True, None, None
 
     if err_msg:
-        return False, err_msg
-    return True, None
+        return False, err_msg, None
+    return True, None, None

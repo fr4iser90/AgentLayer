@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Run HTTP E2E journeys against a running Agent Layer (default http://127.0.0.1:8088).
+# Requires a live LLM in GET /v1/models (LLM_PROVIDER_* or Admin LLM endpoints). No mock mode.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
@@ -21,10 +22,12 @@ if [[ "${AGENT_E2E_SEED_USERS:-1}" != "0" ]]; then
   PYTHONPATH="$ROOT" python3 scripts/e2e/seed_users.py || true
 fi
 
-MARK_EXPR="${AGENT_E2E_MARKERS:-e2e and not nightly}"
-if [[ "${AGENT_E2E_INCLUDE_NIGHTLY:-0}" == "1" ]]; then
-  MARK_EXPR="e2e"
+if [[ "${AGENT_E2E_CLEANUP_IDOR:-1}" != "0" ]]; then
+  echo "[e2e] remove stale IDOR/E2E sandboxes (conversations, dashboards, workspaces)"
+  PYTHONPATH="$ROOT" python3 scripts/e2e_cleanup.py || true
 fi
+
+MARK_EXPR="${AGENT_E2E_MARKERS:-e2e}"
 
 echo "[e2e] pytest tests/e2e -m \"$MARK_EXPR\""
 exec python3 -m pytest tests/e2e -m "$MARK_EXPR" -v --tb=short

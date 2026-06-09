@@ -171,6 +171,17 @@ export function modelOptionLabel(row: ModelRow, agentlayer?: ModelCatalogAgentla
   return `${row.id} (${label})`;
 }
 
+/** Chat model ids for one catalog provider (``owned_by`` / ``catalog_owned_by``). */
+export function catalogModelIdsForProvider(rows: ModelRow[], catalogOwnedBy: string): string[] {
+  const key = normalizeCatalogRoutingToken(catalogOwnedBy);
+  if (!key) return [];
+  const ids = rows
+    .filter((r) => normalizeCatalogRoutingToken(r.owned_by ?? "") === key)
+    .map((r) => r.id.trim())
+    .filter(Boolean);
+  return [...new Set(ids)].sort((a, b) => a.localeCompare(b));
+}
+
 /** Short id for compact UI (sidebar, session bar) — no provider suffix. */
 export function compactModelDisplayName(modelId: string, maxLen = 26): string {
   const raw = (modelId || "").trim();

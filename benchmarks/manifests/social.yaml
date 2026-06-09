@@ -1,0 +1,14 @@
+# Social: friend pair + dashboard block share (API setup, LLM confirms data)
+version: 1
+tier_max: 2
+profiles_from: _profiles.yaml
+
+fixtures:
+  - friend_pair
+  - dashboard_block_share
+
+scenarios:
+  - SOC1_block_share_visible
+
+defaults:
+  timeout_s: 120

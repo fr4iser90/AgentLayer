@@ -1,0 +1,14 @@
+# Dashboard agent: create board + patch layout
+version: 1
+tier_max: 2
+profiles_from: _profiles.yaml
+
+fixtures:
+  - dashboard_empty
+
+scenarios:
+  - D1_dashboard_create
+  - D2_layout_patch
+
+defaults:
+  timeout_s: 300

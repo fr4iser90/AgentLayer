@@ -1,0 +1,505 @@
+"""Automated pass/fail rubrics for agent benchmark scenarios."""
+
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+from typing import Any, Callable
+
+_CATALOG_TOOL_NAMES = frozenset(
+    {"catalog", "platform.catalog", "tools.catalog", "agent.catalog"}
+)
+_READ_FILE_TOOL_NAMES = frozenset(
+    {"read_file", "repository.read_file", "workspace.read_file"}
+)
+_SEARCH_TOOL_NAMES = frozenset(
+    {
+        "retrieve_context",
+        "grep",
+        "search",
+        "code_grep",
+        "workspace.search",
+        "repository.search",
+    }
+)
+_SECURITY_TOOL_HINTS = (
+    "security_scan",
+    "ssc_",
+    "resolve",
+    "finding_policy",
+    "simplesec",
+)
+_GMAIL_TOOL_HINTS = ("gmail", "mail", "inbox", "email")
+_DASHBOARD_TOOL_HINTS = (
+    "dashboard",
+    "create_dashboard",
+    "patch_layout",
+    "patch_data",
+)
+
+
+@dataclass
+class RubricOutcome:
+    passed: bool
+    score: float
+    failure_reason: str | None = None
+
+
+def _norm_tool_name(name: str) -> str:
+    return (name or "").strip().lower()
+
+
+def _tool_names_lower(tool_names: list[str]) -> set[str]:
+    return {_norm_tool_name(n) for n in tool_names if n}
+
+
+def _content_mentions_any(content: str, needles: tuple[str, ...]) -> bool:
+    low = (content or "").lower()
+    return any(n in low for n in needles)
+
+
+def rubric_s1_tool_catalog(
+    *,
+    content: str,
+    tool_names: list[str],
+    error: str | None,
+    **_: Any,
+) -> RubricOutcome:
+    if error:
+        return RubricOutcome(False, 0.0, error)
+    names = _tool_names_lower(tool_names)
+    has_catalog = bool(names & _CATALOG_TOOL_NAMES) or _content_mentions_any(
+        content, ("catalog", "platform.catalog")
+    )
+    non_empty = len((content or "").strip()) >= 8
+    if has_catalog and non_empty:
+        return RubricOutcome(True, 1.0, None)
+    parts: list[str] = []
+    if not has_catalog:
+        parts.append("no catalog tool invocation detected")
+    if not non_empty:
+        parts.append("assistant reply too short")
+    score = 0.5 if has_catalog or non_empty else 0.0
+    return RubricOutcome(False, score, "; ".join(parts) or "rubric failed")
+
+
+def rubric_s2_simple_chat(
+    *,
+    content: str,
+    error: str | None,
+    latency_ms: float,
+    **_: Any,
+) -> RubricOutcome:
+    if error:
+        return RubricOutcome(False, 0.0, error)
+    if latency_ms > 30_000:
+        return RubricOutcome(False, 0.0, f"latency {latency_ms:.0f}ms exceeds 30s")
+    text = (content or "").strip()
+    if re.search(r"\b42\b", text):
+        return RubricOutcome(True, 1.0, None)
+    return RubricOutcome(False, 0.0, f"expected '42' in reply, got: {text[:120]!r}")
+
+
+def rubric_s3_read_file(
+    *,
+    content: str,
+    tool_names: list[str],
+    tool_invocations: list[dict[str, Any]] | None,
+    error: str | None,
+    **_: Any,
+) -> RubricOutcome:
+    if error:
+        return RubricOutcome(False, 0.0, error)
+    names = _tool_names_lower(tool_names)
+    used_read = bool(names & _READ_FILE_TOOL_NAMES)
+    path_ok = False
+    for inv in tool_invocations or []:
+        tname = _norm_tool_name(str(inv.get("tool_name") or ""))
+        if tname not in _READ_FILE_TOOL_NAMES:
+            continue
+        args = inv.get("args_json") or inv.get("arguments") or {}
+        if isinstance(args, str):
+            blob = args.lower()
+        else:
+            blob = str(args).lower()
+        excerpt = str(inv.get("result_excerpt") or "").lower()
+        if "readme" in blob or "readme" in excerpt:
+            path_ok = True
+            break
+    non_empty = len((content or "").strip()) >= 3
+    if used_read and (path_ok or non_empty):
+        score = 1.0 if path_ok and non_empty else 0.75
+        return RubricOutcome(True, score, None)
+    parts: list[str] = []
+    if not used_read:
+        parts.append("read_file tool not invoked")
+    if not path_ok and not non_empty:
+        parts.append("no README content in tool result or reply")
+    return RubricOutcome(False, 0.25 if used_read else 0.0, "; ".join(parts))
+
+
+def rubric_w1_git_readme(
+    *,
+    content: str,
+    tool_names: list[str],
+    tool_invocations: list[dict[str, Any]] | None,
+    error: str | None,
+    **_: Any,
+) -> RubricOutcome:
+    if error:
+        return RubricOutcome(False, 0.0, error)
+    names = _tool_names_lower(tool_names)
+    used_read = bool(names & _READ_FILE_TOOL_NAMES)
+    non_empty = len((content or "").strip()) >= 3
+    if used_read and non_empty:
+        return RubricOutcome(True, 1.0, None)
+    return RubricOutcome(
+        False,
+        0.5 if used_read or non_empty else 0.0,
+        "read_file not used or reply empty",
+    )
+
+
+def _octocat_found(content: str, tool_invocations: list[dict[str, Any]] | None) -> bool:
+    blob = (content or "").lower()
+    if "octocat" in blob or "hello world" in blob or "hello-world" in blob:
+        return True
+    for inv in tool_invocations or []:
+        excerpt = str(inv.get("result_excerpt") or "").lower()
+        if "octocat" in excerpt or "hello world" in excerpt:
+            return True
+    return False
+
+
+def rubric_w2_find_octocat(
+    *,
+    content: str,
+    tool_names: list[str],
+    tool_invocations: list[dict[str, Any]] | None,
+    error: str | None,
+    **_: Any,
+) -> RubricOutcome:
+    if error:
+        return RubricOutcome(False, 0.0, error)
+    if not tool_names:
+        return RubricOutcome(False, 0.0, "no tool calls")
+    if not _octocat_found(content, tool_invocations):
+        return RubricOutcome(False, 0.25, "Octocat / Hello World not found in reply or tool results")
+    return RubricOutcome(True, 1.0, None)
+
+
+def rubric_w2_find_octocat_indexed(
+    *,
+    content: str,
+    tool_names: list[str],
+    tool_invocations: list[dict[str, Any]] | None,
+    error: str | None,
+    **_: Any,
+) -> RubricOutcome:
+    base = rubric_w2_find_octocat(
+        content=content,
+        tool_names=tool_names,
+        tool_invocations=tool_invocations,
+        error=error,
+    )
+    if not base.passed:
+        return base
+    names = _tool_names_lower(tool_names)
+    used_search = bool(names & _SEARCH_TOOL_NAMES) or any(
+        "retrieve" in n or "semantic" in n or "grep" in n for n in names
+    )
+    score = 1.0 if used_search else 0.85
+    return RubricOutcome(True, score, None if used_search else "found via tools but no search/retrieval tool")
+
+
+def rubric_soc1_share_data(
+    *,
+    content: str,
+    error: str | None,
+    **_: Any,
+) -> RubricOutcome:
+    if error:
+        return RubricOutcome(False, 0.0, error)
+    if "bench-visible" in (content or ""):
+        return RubricOutcome(True, 1.0, None)
+    return RubricOutcome(False, 0.0, f"expected bench-visible in reply, got: {(content or '')[:120]!r}")
+
+
+def _has_dashboard_tool(tool_names: list[str], *needles: str) -> bool:
+    names = _tool_names_lower(tool_names)
+    hints = needles or _DASHBOARD_TOOL_HINTS
+    return any(any(h in n for h in hints) for n in names)
+
+
+def _markdown_notes_block(ui_layout: dict[str, Any]) -> bool:
+    blocks = ui_layout.get("blocks") if isinstance(ui_layout.get("blocks"), list) else []
+    for block in blocks:
+        if not isinstance(block, dict):
+            continue
+        if str(block.get("type") or "").strip().lower() != "markdown":
+            continue
+        props = block.get("props") if isinstance(block.get("props"), dict) else {}
+        if str(props.get("dataPath") or "").strip() == "notes":
+            return True
+    return False
+
+
+def rubric_d1_dashboard_create(
+    *,
+    content: str,
+    tool_names: list[str],
+    error: str | None,
+    dashboard_state: dict[str, Any] | None = None,
+    expected_title: str | None = None,
+    **_: Any,
+) -> RubricOutcome:
+    if error:
+        return RubricOutcome(False, 0.0, error)
+    dash = dashboard_state if isinstance(dashboard_state, dict) else {}
+    title = str(dash.get("title") or "").strip()
+    dash_id = str(dash.get("id") or "").strip()
+    has_create = _has_dashboard_tool(tool_names, "create_dashboard", "dashboard.create")
+    if dash_id and expected_title and title == expected_title:
+        return RubricOutcome(True, 1.0, None)
+    if dash_id and title:
+        return RubricOutcome(True, 0.9, None)
+    if has_create and dash_id:
+        return RubricOutcome(True, 0.85, None)
+    if has_create:
+        return RubricOutcome(True, 0.7, None)
+    return RubricOutcome(
+        False,
+        0.0,
+        f"expected dashboard titled {expected_title!r} or create_dashboard tool; got title={title!r}",
+    )
+
+
+def rubric_d2_layout_patch(
+    *,
+    content: str,
+    tool_names: list[str],
+    error: str | None,
+    dashboard_state: dict[str, Any] | None = None,
+    **_: Any,
+) -> RubricOutcome:
+    if error:
+        return RubricOutcome(False, 0.0, error)
+    dash = dashboard_state if isinstance(dashboard_state, dict) else {}
+    ui_layout = dash.get("ui_layout") if isinstance(dash.get("ui_layout"), dict) else {}
+    data = dash.get("data") if isinstance(dash.get("data"), dict) else {}
+    notes = str(data.get("notes") or "").strip()
+    has_notes_block = _markdown_notes_block(ui_layout)
+    has_layout_tool = _has_dashboard_tool(tool_names, "patch_layout", "patch_data")
+    if has_notes_block and notes == "bench-notes-ok":
+        return RubricOutcome(True, 1.0, None)
+    if has_notes_block and notes:
+        return RubricOutcome(True, 0.85, None)
+    if has_layout_tool and "block_added" in (content or "").lower():
+        return RubricOutcome(True, 0.75, None)
+    parts: list[str] = []
+    if not has_notes_block:
+        parts.append("no markdown block with dataPath notes")
+    if notes != "bench-notes-ok":
+        parts.append(f"notes={notes!r}")
+    return RubricOutcome(False, 0.0, "; ".join(parts) or "d2 rubric failed")
+
+
+def _has_security_tool(tool_names: list[str]) -> bool:
+    names = _tool_names_lower(tool_names)
+    return any(
+        any(h in n for h in _SECURITY_TOOL_HINTS) for n in names
+    ) or any(n.startswith("security_scan") for n in names)
+
+
+def rubric_sec1_scan_agentlayer(
+    *,
+    content: str,
+    tool_names: list[str],
+    tool_invocations: list[dict[str, Any]],
+    error: str | None,
+    **_: Any,
+) -> RubricOutcome:
+    if error:
+        return RubricOutcome(False, 0.0, error)
+    has_tool = _has_security_tool(tool_names)
+    low = (content or "").lower()
+    has_scan_ref = "scan_id" in low or "scan id" in low or "scan-" in low
+    has_status = "status" in low or "queued" in low or "completed" in low or "started" in low
+    if has_tool and (has_scan_ref or has_status):
+        return RubricOutcome(True, 1.0, None)
+    if has_tool:
+        return RubricOutcome(True, 0.75, None)
+    return RubricOutcome(
+        False,
+        0.0,
+        "expected security_scan tool call and scan_id/status in reply",
+    )
+
+
+def rubric_sec2_remediate_agentlayer(
+    *,
+    content: str,
+    tool_names: list[str],
+    error: str | None,
+    project_summary: dict[str, Any] | None = None,
+    project_status: str | None = None,
+    **_: Any,
+) -> RubricOutcome:
+    if error:
+        return RubricOutcome(False, 0.0, error)
+    if project_status and project_status not in ("succeeded", "partial"):
+        return RubricOutcome(False, 0.0, f"project_run status={project_status}")
+    summary = project_summary if isinstance(project_summary, dict) else {}
+    tools = summary.get("tools") if isinstance(summary.get("tools"), list) else []
+    tool_names_from_summary = [
+        str(t.get("name") or "") for t in tools if isinstance(t, dict)
+    ]
+    all_names = list(tool_names) + tool_names_from_summary
+    has_sec = _has_security_tool(all_names)
+    files = summary.get("files_changed") if isinstance(summary.get("files_changed"), list) else []
+    file_paths = {str(f.get("path") or "") for f in files if isinstance(f, dict)}
+    has_report = any("SECURITY_REPORT" in p for p in file_paths)
+    git = summary.get("git") if isinstance(summary.get("git"), dict) else {}
+    git_changed = bool(git.get("has_changes"))
+    write_ok = any(
+        str(t.get("name") or "") in ("write_file", "edit", "apply_patch", "replace")
+        and t.get("ok")
+        for t in tools
+        if isinstance(t, dict)
+    )
+    if has_sec and (git_changed or has_report) and write_ok:
+        return RubricOutcome(True, 1.0, None)
+    if has_sec and (git_changed or has_report):
+        return RubricOutcome(True, 0.85, None)
+    if has_sec:
+        return RubricOutcome(True, 0.6, None)
+    parts: list[str] = []
+    if not has_sec:
+        parts.append("no security_scan tools")
+    if not git_changed and not has_report:
+        parts.append("no SECURITY_REPORT or git changes")
+    return RubricOutcome(False, 0.0, "; ".join(parts) or "sec2 rubric failed")
+
+
+def rubric_int1_gmail_connected(
+    *,
+    content: str,
+    tool_names: list[str],
+    error: str | None,
+    **_: Any,
+) -> RubricOutcome:
+    if error:
+        return RubricOutcome(False, 0.0, error)
+    low = (content or "").lower()
+    if "gmail-ready" in low:
+        return RubricOutcome(True, 1.0, None)
+    names = _tool_names_lower(tool_names)
+    if any(any(h in n for h in _GMAIL_TOOL_HINTS) for n in names):
+        return RubricOutcome(True, 0.9, None)
+    if any(h in low for h in _GMAIL_TOOL_HINTS) and "missing" not in low and "not configured" not in low:
+        return RubricOutcome(True, 0.75, None)
+    return RubricOutcome(False, 0.0, "gmail not confirmed in reply or tools")
+
+
+def rubric_c1_bench_marker(
+    *,
+    content: str,
+    tool_names: list[str],
+    tool_invocations: list[dict[str, Any]],
+    error: str | None,
+    project_summary: dict[str, Any] | None = None,
+    project_status: str | None = None,
+    **_: Any,
+) -> RubricOutcome:
+    if error:
+        return RubricOutcome(False, 0.0, error)
+    if project_status and project_status != "succeeded":
+        return RubricOutcome(False, 0.0, f"project_run status={project_status}")
+    summary = project_summary if isinstance(project_summary, dict) else {}
+    files = summary.get("files_changed") if isinstance(summary.get("files_changed"), list) else []
+    file_paths = {str(f.get("path") or f.get("file") or "") for f in files if isinstance(f, dict)}
+    has_marker_file = any(p.endswith("bench-marker.txt") for p in file_paths if p)
+    names = _tool_names_lower(tool_names)
+    write_tools = names & frozenset(
+        {"write_file", "edit", "apply_patch", "replace", "repository.write_file"}
+    )
+    reply_ok = "bench-ok" in (content or "")
+    git = summary.get("git") if isinstance(summary.get("git"), dict) else {}
+    git_changed = bool(git.get("has_changes"))
+    if has_marker_file or (write_tools and reply_ok and git_changed):
+        return RubricOutcome(True, 1.0, None)
+    if write_tools and reply_ok:
+        return RubricOutcome(True, 0.85, None)
+    parts: list[str] = []
+    if not write_tools:
+        parts.append("no write tool detected")
+    if not reply_ok:
+        parts.append("reply missing bench-ok")
+    if not has_marker_file and not git_changed:
+        parts.append("no git change for bench-marker.txt")
+    return RubricOutcome(False, 0.0, "; ".join(parts) or "c1 rubric failed")
+
+
+def rubric_c2_small_edit(
+    *,
+    content: str,
+    tool_names: list[str],
+    tool_invocations: list[dict[str, Any]],
+    error: str | None,
+    git_changes: dict[str, Any] | None = None,
+    **_: Any,
+) -> RubricOutcome:
+    if error:
+        return RubricOutcome(False, 0.0, error)
+    summary = git_changes if isinstance(git_changes, dict) else {}
+    has_changes = bool(summary.get("has_changes"))
+    file_diff = summary.get("file_diff") if isinstance(summary.get("file_diff"), dict) else {}
+    diff_text = str(file_diff.get("diff") or summary.get("diff") or "")
+    stat_text = str(summary.get("stat") or "")
+    marker_present = "bench-c2-ok" in diff_text or "bench-c2-ok" in stat_text
+    names = _tool_names_lower(tool_names)
+    write_tools = names & frozenset(
+        {"write_file", "edit", "apply_patch", "replace", "repository.write_file"}
+    )
+    reply_ok = "bench-c2-ok" in (content or "")
+    if has_changes and marker_present and write_tools and reply_ok:
+        return RubricOutcome(True, 1.0, None)
+    if has_changes and write_tools and reply_ok:
+        return RubricOutcome(True, 0.9, None)
+    if has_changes and write_tools:
+        return RubricOutcome(True, 0.75, None)
+    parts: list[str] = []
+    if not has_changes:
+        parts.append("no git changes")
+    if not write_tools:
+        parts.append("no write tool detected")
+    if not reply_ok:
+        parts.append("reply missing bench-c2-ok")
+    if has_changes and not marker_present:
+        parts.append("diff missing bench-c2-ok marker")
+    return RubricOutcome(False, 0.0, "; ".join(parts) or "c2 rubric failed")
+
+
+RUBRICS: dict[str, Callable[..., RubricOutcome]] = {
+    "s1_tool_catalog": rubric_s1_tool_catalog,
+    "s2_simple_chat": rubric_s2_simple_chat,
+    "s3_read_file": rubric_s3_read_file,
+    "w1_git_readme": rubric_w1_git_readme,
+    "w2_find_octocat": rubric_w2_find_octocat,
+    "w2_find_octocat_indexed": rubric_w2_find_octocat_indexed,
+    "soc1_share_data": rubric_soc1_share_data,
+    "d1_dashboard_create": rubric_d1_dashboard_create,
+    "d2_layout_patch": rubric_d2_layout_patch,
+    "int1_gmail_connected": rubric_int1_gmail_connected,
+    "c1_bench_marker": rubric_c1_bench_marker,
+    "c2_small_edit": rubric_c2_small_edit,
+    "sec1_scan_agentlayer": rubric_sec1_scan_agentlayer,
+    "sec2_remediate_agentlayer": rubric_sec2_remediate_agentlayer,
+}
+
+
+def evaluate_rubric(rubric_key: str, **kwargs: Any) -> RubricOutcome:
+    fn = RUBRICS.get(rubric_key)
+    if fn is None:
+        return RubricOutcome(False, 0.0, f"unknown rubric: {rubric_key}")
+    return fn(**kwargs)

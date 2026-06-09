@@ -53,8 +53,8 @@ _run_frontend_with_nix_fallback() {
   return 1
 }
 
-echo "[pre-commit] backend unit tests (unittest discover)…"
-if ! PYTHONPATH="$ROOT" python3 -m unittest discover -s tests -p 'test_*.py' -q; then
+echo "[pre-commit] backend tests (pytest unit + benchmarks, no e2e/live bench)…"
+if ! PYTHONPATH="$ROOT" python3 -m pytest tests/unit tests/benchmarks -m "not e2e and not benchmark" -q --tb=short; then
   echo "[pre-commit] FAILED — backend tests (see output above)" >&2
   exit 1
 fi

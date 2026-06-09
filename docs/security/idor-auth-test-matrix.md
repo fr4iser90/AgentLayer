@@ -19,6 +19,32 @@ cp .env.e2e.example .env.e2e
 PYTHONPATH=. python3 -m pytest tests/e2e/test_auth_idor_matrix.py -m e2e -v
 ```
 
+### What these tests do (and what they do **not** do)
+
+**Purpose:** prove User B **cannot** read User A's private resources (conversations,
+dashboards, tasks, workspaces, secret keys). Each test **deliberately** has User B
+call `GET` on User A's resource ID — that is the security probe (simulated attacker),
+not a chat prompt and not LLM usage.
+
+**Pass criteria:** User A GET → **200**; User B GET → **401 / 403 / 404**.  
+**Fail (IDOR bug):** User B GET → **200** with User A's data.
+
+**Not tested here:** LLM replies, model quality, agent tool rounds.  
+**Live LLM agent tests:** `tests/e2e/test_secrets_cross_user_isolation.py`, `tests/e2e/test_journey_agent_smoke.py` (require configured provider on server).
+
+Conversation probes use **`messages: []`** — empty DB row, no fake chat text.
+
+Stale sandboxes: `python3 scripts/e2e_cleanup.py`.
+
+### User secrets (cross-user + live LLM)
+
+| Test file | What it checks |
+|-----------|----------------|
+| `test_user_b_cannot_list_admin_secret_keys` | User B `GET /v1/user/secrets` — no admin keys |
+| `test_secrets_cross_user_isolation.py` | API + `user_secrets_status` tool + **live LLM** prompt-injection (User B) |
+
+E2E requires a **live LLM** in `GET /v1/models` (`LLM_PROVIDER_*` or Admin LLM endpoints). No mock/stub mode.
+
 Policy reference: `GET /auth/policy` and `apps/backend/api/optional_http_access.py`.
 
 ## Actors
@@ -120,9 +146,9 @@ These are **not** IDOR bugs when documented:
 |------|----------|
 | `tests/e2e/test_auth_idor_matrix.py` | This matrix (automated) |
 | `tests/e2e/test_dashboard_nested_ref.py` | Dashboard block ACL |
-| `tests/test_agent_access.py` | Agent allowlist unit tests |
-| `tests/test_auth_setup.py` | First-admin bootstrap |
-| `tests/test_media_stream_route_auth.py` | Stream route middleware bypass shape |
+| `tests/unit/test_agent_access.py` | Agent allowlist unit tests |
+| `tests/unit/test_auth_setup.py` | First-admin bootstrap |
+| `tests/unit/test_media_stream_route_auth.py` | Stream route middleware bypass shape |
 | SimpleSecCheck (`security_scan_*` tools) | SAST only |
 
 ## External DAST (optional)

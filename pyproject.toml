@@ -3,7 +3,8 @@
 exclude_dirs = ["tests"]
 
 [tool.pytest.ini_options]
+testpaths = ["tests/unit", "tests/e2e", "tests/benchmarks"]
 markers = [
     "e2e: HTTP/Playwright end-to-end tests against a running Agent Layer instance",
-    "nightly: slower or infra-heavy E2E (index, live LLM/WebSocket smoke)",
+    "benchmark: live LLM provider/model benchmarks (requires running server, real models)",
 ]

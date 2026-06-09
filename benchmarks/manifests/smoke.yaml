@@ -1,0 +1,12 @@
+# Tier 1 smoke — no fixtures beyond optional agentlayer_self for S3
+version: 1
+tier_max: 1
+profiles_from: _profiles.yaml
+
+scenarios:
+  - S1_tool_catalog
+  - S2_simple_chat
+  - S3_read_file
+
+defaults:
+  timeout_s: 120

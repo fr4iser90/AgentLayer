@@ -1,0 +1,11 @@
+# Shared provider profiles for agent benchmarks (referenced by manifests/*.yaml)
+profiles:
+  - label: qwen
+    catalog_owned_by: provider_1
+    model: ""
+    agent_id: general
+
+  - label: nemotron
+    catalog_owned_by: provider_2
+    model: qwen2.5:3b
+    agent_id: general

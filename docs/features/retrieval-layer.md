@@ -169,7 +169,7 @@ See also `TODO.md` (RAG/workspace section) and [coding-workflow.md](./coding-wor
 Measure Hit@k, tool-call count, and latency when changing retrieval:
 
 ```bash
-python -m unittest tests.test_retrieval_benchmark -v
+python -m pytest tests/benchmarks/retrieval/test_suite.py -v
 python scripts/run_retrieval_benchmark.py
 RETRIEVAL_BENCH_LIVE=1 python scripts/run_retrieval_benchmark.py --live --json-out /tmp/bench.json
 ```

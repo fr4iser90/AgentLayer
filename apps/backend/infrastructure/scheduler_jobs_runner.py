@@ -158,7 +158,7 @@ async def _run_chat_agent_job(row: dict[str, Any], *, agent_id: str) -> None:
 async def _run_workspace_agent_job(row: dict[str, Any]) -> None:
     job_id = _uid(row, "id")
     tenant_id = _tenant_id(row)
-    ok, err = await run_coding_schedule_row(row, row_kind="scheduler_job")
+    ok, err, _summary = await run_coding_schedule_row(row, row_kind="scheduler_job")
     if ok:
         scheduler_jobs_store.mark_job_last_run(job_id=job_id, tenant_id=tenant_id)
         logger.info("scheduler_jobs: finished workspace job job_id=%s", job_id)

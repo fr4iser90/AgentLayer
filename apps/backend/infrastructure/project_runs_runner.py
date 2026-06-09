@@ -9,6 +9,7 @@ import uuid
 from typing import Any
 
 from apps.backend.infrastructure import operator_settings, project_runs_store
+from apps.backend.infrastructure.project_runs_store import RunStatus
 from apps.backend.infrastructure.coding_schedule_execution import run_coding_schedule_row
 
 logger = logging.getLogger(__name__)
@@ -49,6 +50,10 @@ def _uid(row: dict[str, Any], key: str) -> uuid.UUID:
     return uuid.UUID(str(v))
 
 
+async def _run_project_run(row: dict[str, Any]) -> tuple[bool, str | None, dict[str, Any] | None]:
+    return await run_coding_schedule_row(row, row_kind="project_run")
+
+
 def _worker_loop() -> None:
     logger.info("project_runs worker thread started")
     while not _stop.is_set():
@@ -67,14 +72,25 @@ def _worker_loop() -> None:
                 run_id = _uid(row, "id")
                 if not project_runs_store.mark_running(run_id=run_id, tenant_id=tenant_id):
                     continue
-                ok, err = asyncio.run(
-                    run_coding_schedule_row(row, row_kind="project_run")
-                )
+                try:
+                    ok, err, summary = asyncio.run(_run_project_run(row))
+                except Exception:
+                    logger.exception("project_runs: run failed run_id=%s", run_id)
+                    project_runs_store.mark_done(
+                        run_id=run_id,
+                        tenant_id=tenant_id,
+                        status="failed",
+                        error="project run execution failed",
+                        result_json=None,
+                    )
+                    continue
+                final_status: RunStatus = "succeeded" if ok else "failed"
                 project_runs_store.mark_done(
                     run_id=run_id,
                     tenant_id=tenant_id,
-                    status="succeeded" if ok else "failed",
+                    status=final_status,
                     error=err,
+                    result_json=summary,
                 )
         except Exception:
             logger.exception("project_runs worker iteration failed")

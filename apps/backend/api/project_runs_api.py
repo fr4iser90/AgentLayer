@@ -91,3 +91,17 @@ async def project_run_list(
         limit=limit,
     )
     return {"ok": True, "runs": [project_runs_store.row_to_public(r) for r in rows]}
+
+
+@router.get("/{run_id}")
+async def project_run_get(request: Request, run_id: str) -> dict:
+    user = await require_admin(request)
+    tenant_id = db.user_tenant_id(user.id)
+    try:
+        rid = uuid.UUID(run_id.strip())
+    except (ValueError, TypeError) as e:
+        raise HTTPException(status_code=400, detail="invalid run_id") from e
+    row = project_runs_store.get_run(run_id=rid, tenant_id=tenant_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="project run not found")
+    return {"ok": True, "run": project_runs_store.row_to_public(row)}

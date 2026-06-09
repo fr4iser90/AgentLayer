@@ -1,0 +1,13 @@
+# Integrations — optional; skips when AGENT_BENCH_GMAIL_SECRET unset
+version: 1
+tier_max: 2
+profiles_from: _profiles.yaml
+
+fixtures:
+  - gmail_secret
+
+scenarios:
+  - INT1_gmail_connected
+
+defaults:
+  timeout_s: 180

@@ -2442,6 +2442,7 @@ def external_llm_endpoints_list_all() -> list[dict[str, Any]]:
             cur.execute(
                 """
                 SELECT id, sort_order, enabled, label, base_url, api_key,
+                       api_header_name,
                        model_default, model_vlm, model_agent, model_coding,
                        created_at, updated_at
                 FROM operator_external_llm_endpoints
@@ -2475,6 +2476,7 @@ def external_llm_endpoint_by_id(endpoint_id: int) -> dict[str, Any] | None:
             cur.execute(
                 """
                 SELECT id, sort_order, enabled, label, base_url, api_key,
+                       api_header_name,
                        model_default, model_vlm, model_agent, model_coding,
                        created_at, updated_at
                 FROM operator_external_llm_endpoints
@@ -2491,6 +2493,12 @@ def external_llm_endpoint_by_id(endpoint_id: int) -> dict[str, Any] | None:
     d["sort_order"] = int(d["sort_order"])
     d["enabled"] = bool(d["enabled"])
     return d
+
+
+def _external_llm_key_stored(raw: str | None) -> str:
+    """Persist placeholder for keyless OpenAI-compatible stacks (e.g. Ollama on LAN)."""
+    k = str(raw or "").strip()
+    return k if k else "-"
 
 
 def external_llm_endpoints_sync(rows: list[dict[str, Any]]) -> None:
@@ -2521,6 +2529,7 @@ def external_llm_endpoints_sync(rows: list[dict[str, Any]]) -> None:
                 label = str(raw.get("label") or "")[:512]
                 base_url = str(raw.get("base_url") or "").strip()
                 key_in = raw.get("api_key")
+                header_in = raw.get("api_header_name")
                 md = raw.get("model_default")
                 mv = raw.get("model_vlm")
                 ma = raw.get("model_agent")
@@ -2534,13 +2543,18 @@ def external_llm_endpoints_sync(rows: list[dict[str, Any]]) -> None:
                 if rid is None:
                     if not base_url:
                         raise ValueError("external_llm: base_url required for new endpoint")
-                    nk = (str(key_in).strip() if key_in is not None else "")
+                    nk = _external_llm_key_stored(str(key_in) if key_in is not None else "")
+                    hn = (
+                        str(header_in).strip()[:128]
+                        if header_in is not None and str(header_in).strip()
+                        else "Authorization"
+                    )
                     cur.execute(
                         """
                         INSERT INTO operator_external_llm_endpoints (
-                          sort_order, enabled, label, base_url, api_key,
+                          sort_order, enabled, label, base_url, api_key, api_header_name,
                           model_default, model_vlm, model_agent, model_coding, updated_at
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, now())
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now())
                         """,
                         (
                             sort_order,
@@ -2548,6 +2562,7 @@ def external_llm_endpoints_sync(rows: list[dict[str, Any]]) -> None:
                             label,
                             base_url,
                             nk,
+                            hn,
                             md_v,
                             mv_v,
                             ma_v,
@@ -2557,19 +2572,25 @@ def external_llm_endpoints_sync(rows: list[dict[str, Any]]) -> None:
                 else:
                     eid = int(rid)
                     cur.execute(
-                        "SELECT api_key FROM operator_external_llm_endpoints WHERE id = %s",
+                        "SELECT api_key, api_header_name FROM operator_external_llm_endpoints WHERE id = %s",
                         (eid,),
                     )
                     prev = cur.fetchone()
                     if not prev:
                         raise ValueError(f"external_llm: unknown id {eid}")
                     prev_key = str(prev[0] or "")
+                    prev_header = str(prev[1] or "").strip() or "Authorization"
                     if key_in is None or (isinstance(key_in, str) and not key_in.strip()):
                         key_use = prev_key
                     else:
                         key_use = str(key_in).strip()
-                    if not base_url or not key_use:
-                        raise ValueError("external_llm: base_url and api_key required")
+                    if header_in is None or (isinstance(header_in, str) and not str(header_in).strip()):
+                        header_use = prev_header
+                    else:
+                        header_use = str(header_in).strip()[:128]
+                    if not base_url:
+                        raise ValueError("external_llm: base_url required")
+                    key_use = _external_llm_key_stored(key_use)
                     cur.execute(
                         """
                         UPDATE operator_external_llm_endpoints SET
@@ -2578,6 +2599,7 @@ def external_llm_endpoints_sync(rows: list[dict[str, Any]]) -> None:
                           label = %s,
                           base_url = %s,
                           api_key = %s,
+                          api_header_name = %s,
                           model_default = %s,
                           model_vlm = %s,
                           model_agent = %s,
@@ -2591,6 +2613,7 @@ def external_llm_endpoints_sync(rows: list[dict[str, Any]]) -> None:
                             label,
                             base_url,
                             key_use,
+                            header_use,
                             md_v,
                             mv_v,
                             ma_v,

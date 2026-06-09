@@ -83,6 +83,12 @@ export function AdminLayout() {
 
           <NavGroup label={t("admin:navObservability")}>
             <NavLink
+              to="/admin/benchmarks"
+              className={({ isActive }) => `${item} ${isActive ? itemActive : itemIdle}`}
+            >
+              {t("admin:benchNav")}
+            </NavLink>
+            <NavLink
               to="/admin/run-traces"
               className={({ isActive }) => `${item} ${isActive ? itemActive : itemIdle}`}
             >

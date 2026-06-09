@@ -818,13 +818,6 @@ function useOperatorSettingsState() {
           });
           return;
         }
-        if (r.id == null && !r.apiKey.trim()) {
-          setSaveMsg({
-            ok: false,
-            text: t("admin:operatorSaveLlmMissingKey", { n: i + 1 }),
-          });
-          return;
-        }
       }
       const epPayload = {
         endpoints: extLlmEndpoints.map((r, idx) => {

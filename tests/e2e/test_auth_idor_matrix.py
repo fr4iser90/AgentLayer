@@ -1,13 +1,18 @@
 """
-E2E IDOR / auth isolation tests (User A vs User B vs anonymous).
+E2E IDOR / auth isolation — **security tests only** (not LLM / not chat quality).
 
-See docs/security/idor-auth-test-matrix.md for the full endpoint matrix.
+Each test creates a resource as **User A (admin)** then verifies **User B cannot
+access it** (HTTP 401/403/404). That deliberate cross-user GET is the security
+check — it simulates an attacker, not a chat prompt.
 
-Requires:
-  - Running Agent Layer (``AGENT_E2E_BASE_URL`` or port 8088)
-  - ``.env.e2e`` (copy from ``.env.e2e.example``) with ``AGENT_E2E_EMAIL_B`` / ``AGENT_E2E_PASSWORD_B``
-  - Admin login: ``AGENT_E2E_EMAIL`` in ``.env.e2e`` or ``AGENT_INITIAL_ADMIN_*`` in ``.env``
-  - User B is created via admin API on first run (``scripts/e2e/seed_users.py``)
+**No LLM is called.** Conversations are empty shells (``messages: []``) for API
+isolation only. For model/agent tests see ``tests/benchmarks/agent/`` and
+``tests/e2e/test_journey_agent_smoke.py``.
+
+Resources use ``[E2E IDOR]`` prefix; deleted after each test. Stale cleanup:
+``python3 scripts/e2e_cleanup.py``.
+
+See docs/security/idor-auth-test-matrix.md.
 """
 
 from __future__ import annotations
@@ -18,9 +23,23 @@ import uuid
 import httpx
 import pytest
 
-from tests.e2e.helpers import E2EClient, base_url
+from tests.e2e.support.helpers import E2EClient, base_url
+from tests.e2e.support.idor import assert_cross_user_get_blocked, assert_cross_user_mutate_blocked
+from tests.e2e.support.cleanup import E2E_IDOR_PREFIX, E2EResourceTracker, cleanup_idor_orphans
 
 pytestmark = pytest.mark.e2e
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _purge_stale_idor_sandbox(admin_client: E2EClient) -> None:
+    """Remove legacy ``IDOR conv …`` threads left from older test runs."""
+    cleanup_idor_orphans(admin_client)
+    yield
+    cleanup_idor_orphans(admin_client)
+
+
+def _e2e_title(kind: str) -> str:
+    return f"{E2E_IDOR_PREFIX} {kind} {uuid.uuid4().hex[:8]}"
 
 _DENY = frozenset({401, 403, 404})
 
@@ -129,36 +148,44 @@ def test_user_b_cannot_read_admin_private_dashboard(
     e2e_server: None,
     admin_client: E2EClient,
     user_b_client: E2EClient,
+    e2e_resources: E2EResourceTracker,
 ) -> None:
     created = admin_client.post_json(
         "/v1/dashboards",
-        {"kind": "custom", "title": f"IDOR probe {uuid.uuid4().hex[:8]}"},
+        {"kind": "custom", "title": _e2e_title("dashboard read probe")},
     )
-    dash = created.get("dashboard") or {}
-    dash_id = str(dash.get("id") or "")
+    dash_id = e2e_resources.track_dashboard(str((created.get("dashboard") or {}).get("id") or ""))
     assert dash_id
 
-    resp = user_b_client.http.get(f"/v1/dashboards/{dash_id}")
-    _expect_denied(resp, label="GET private dashboard")
+    assert_cross_user_get_blocked(
+        owner=admin_client,
+        other=user_b_client,
+        path=f"/v1/dashboards/{dash_id}",
+        resource_label="private dashboard",
+    )
 
 
 def test_user_b_cannot_patch_admin_private_dashboard(
     e2e_server: None,
     admin_client: E2EClient,
     user_b_client: E2EClient,
+    e2e_resources: E2EResourceTracker,
 ) -> None:
     created = admin_client.post_json(
         "/v1/dashboards",
-        {"kind": "custom", "title": f"IDOR patch probe {uuid.uuid4().hex[:8]}"},
+        {"kind": "custom", "title": _e2e_title("dashboard patch probe")},
     )
-    dash_id = str((created.get("dashboard") or {}).get("id") or "")
+    dash_id = e2e_resources.track_dashboard(str((created.get("dashboard") or {}).get("id") or ""))
     assert dash_id
 
-    resp = user_b_client.http.patch(
-        f"/v1/dashboards/{dash_id}",
-        json={"title": "owned by B"},
+    assert_cross_user_mutate_blocked(
+        other=user_b_client,
+        method="PATCH",
+        path=f"/v1/dashboards/{dash_id}",
+        json_body={"title": "owned by B"},
+        resource_label="private dashboard",
+        action="PATCH",
     )
-    _expect_denied(resp, label="PATCH private dashboard")
 
 
 # --- Cross-user IDOR: tasks -------------------------------------------------
@@ -171,13 +198,17 @@ def test_user_b_cannot_read_admin_task(
 ) -> None:
     created = admin_client.post_json(
         "/v1/tasks",
-        {"scope": "global", "goal": f"IDOR task {uuid.uuid4().hex[:8]}"},
+        {"scope": "global", "goal": _e2e_title("task read probe")},
     )
     task_id = str((created.get("task") or {}).get("id") or "")
     assert task_id
 
-    resp = user_b_client.http.get(f"/v1/tasks/{task_id}")
-    _expect_denied(resp, label="GET admin task")
+    assert_cross_user_get_blocked(
+        owner=admin_client,
+        other=user_b_client,
+        path=f"/v1/tasks/{task_id}",
+        resource_label="task",
+    )
 
 
 def test_user_b_task_list_excludes_admin_task(
@@ -188,7 +219,7 @@ def test_user_b_task_list_excludes_admin_task(
     marker = uuid.uuid4().hex[:12]
     created = admin_client.post_json(
         "/v1/tasks",
-        {"scope": "global", "goal": f"IDOR list marker {marker}"},
+        {"scope": "global", "goal": f"{E2E_IDOR_PREFIX} task list marker {marker}"},
     )
     task_id = str((created.get("task") or {}).get("id") or "")
     assert task_id
@@ -205,19 +236,31 @@ def test_user_b_cannot_read_admin_conversation(
     e2e_server: None,
     admin_client: E2EClient,
     user_b_client: E2EClient,
+    e2e_resources: E2EResourceTracker,
 ) -> None:
+    """
+    Security: User B must not read User A's conversation (HTTP 401/403/404).
+
+    Creates an **empty** conversation record — no messages, no LLM, no agent.
+    """
     created = admin_client.post_json(
         "/v1/user/conversations",
         {
-            "title": f"IDOR conv {uuid.uuid4().hex[:8]}",
-            "messages": [{"role": "user", "content": "secret thread"}],
+            "title": _e2e_title("conversation isolation"),
+            "messages": [],
         },
     )
-    conv_id = str((created.get("conversation") or {}).get("id") or "")
+    conv_id = e2e_resources.track_conversation(
+        str((created.get("conversation") or {}).get("id") or "")
+    )
     assert conv_id
 
-    resp = user_b_client.http.get(f"/v1/user/conversations/{conv_id}")
-    _expect_denied(resp, label="GET admin conversation")
+    assert_cross_user_get_blocked(
+        owner=admin_client,
+        other=user_b_client,
+        path=f"/v1/user/conversations/{conv_id}",
+        resource_label="conversation",
+    )
 
 
 # --- Cross-user isolation: persona / memory ---------------------------------
@@ -276,7 +319,9 @@ def test_user_b_cannot_list_admin_secret_keys(
     e2e_server: None,
     admin_client: E2EClient,
     user_b_client: E2EClient,
+    e2e_resources: E2EResourceTracker,
 ) -> None:
+    """User B must not see User A's secret service keys in GET /v1/user/secrets."""
     sk = f"e2e.idor.{uuid.uuid4().hex[:12]}"
     upsert = admin_client.http.post(
         "/v1/user/secrets",
@@ -285,28 +330,43 @@ def test_user_b_cannot_list_admin_secret_keys(
     if upsert.status_code == 503:
         pytest.skip("user secrets disabled (AGENT_SECRETS_MASTER_KEY not set on server)")
     upsert.raise_for_status()
+    e2e_resources.track_secret(sk)
+
+    owner_list = admin_client.get_json("/v1/user/secrets")
+    owner_keys = {str(s).strip().lower() for s in (owner_list.get("services") or [])}
+    assert sk.lower() in owner_keys, "owner must see own secret key"
 
     listing = user_b_client.get_json("/v1/user/secrets")
     services = listing.get("services") or []
     assert isinstance(services, list)
-    assert sk not in {str(s).strip().lower() for s in services}
+    b_keys = {str(s).strip().lower() for s in services}
+    if sk.lower() in b_keys:
+        pytest.fail(
+            f"SECURITY FAIL (IDOR): {user_b_client.email} must not see "
+            f"{admin_client.email}'s secret key {sk!r} in GET /v1/user/secrets"
+        )
 
 
 def test_user_b_cannot_read_admin_workspace(
     e2e_server: None,
     admin_client: E2EClient,
     user_b_client: E2EClient,
+    e2e_resources: E2EResourceTracker,
 ) -> None:
     name = f"e2e-idor-ws-{uuid.uuid4().hex[:10]}"
     created = admin_client.post_json(
         "/v1/workspaces",
         {"name": name, "source": "manual"},
     )
-    ws_id = str((created.get("workspace") or {}).get("id") or "")
+    ws_id = e2e_resources.track_workspace(str((created.get("workspace") or {}).get("id") or ""))
     assert ws_id
 
-    resp = user_b_client.http.get(f"/v1/workspaces/{ws_id}")
-    _expect_denied(resp, label="GET admin workspace")
+    assert_cross_user_get_blocked(
+        owner=admin_client,
+        other=user_b_client,
+        path=f"/v1/workspaces/{ws_id}",
+        resource_label="workspace",
+    )
 
     ids_b = {
         str(w.get("id"))
@@ -323,14 +383,15 @@ def test_user_b_can_read_dashboard_when_member_viewer(
     e2e_server: None,
     admin_client: E2EClient,
     user_b_client: E2EClient,
+    e2e_resources: E2EResourceTracker,
 ) -> None:
     _ensure_dashboard_schema(admin_client)
-    title = f"IDOR member share {uuid.uuid4().hex[:8]}"
+    title = _e2e_title("dashboard member viewer")
     created = admin_client.post_json(
         "/v1/dashboards",
         {"kind": "custom", "title": title, "data": {"shared_marker": "member-ok"}},
     )
-    dash_id = str((created.get("dashboard") or {}).get("id") or "")
+    dash_id = e2e_resources.track_dashboard(str((created.get("dashboard") or {}).get("id") or ""))
     assert dash_id
 
     admin_client.post_json(
@@ -349,13 +410,14 @@ def test_viewer_member_cannot_patch_dashboard(
     e2e_server: None,
     admin_client: E2EClient,
     user_b_client: E2EClient,
+    e2e_resources: E2EResourceTracker,
 ) -> None:
     _ensure_dashboard_schema(admin_client)
     created = admin_client.post_json(
         "/v1/dashboards",
-        {"kind": "custom", "title": f"IDOR viewer no patch {uuid.uuid4().hex[:8]}"},
+        {"kind": "custom", "title": _e2e_title("dashboard viewer no patch")},
     )
-    dash_id = str((created.get("dashboard") or {}).get("id") or "")
+    dash_id = e2e_resources.track_dashboard(str((created.get("dashboard") or {}).get("id") or ""))
     assert dash_id
 
     admin_client.post_json(
@@ -374,14 +436,15 @@ def test_editor_member_can_patch_dashboard_title(
     e2e_server: None,
     admin_client: E2EClient,
     user_b_client: E2EClient,
+    e2e_resources: E2EResourceTracker,
 ) -> None:
     _ensure_dashboard_schema(admin_client)
-    original = f"IDOR editor patch {uuid.uuid4().hex[:8]}"
+    original = _e2e_title("dashboard editor patch")
     created = admin_client.post_json(
         "/v1/dashboards",
         {"kind": "custom", "title": original},
     )
-    dash_id = str((created.get("dashboard") or {}).get("id") or "")
+    dash_id = e2e_resources.track_dashboard(str((created.get("dashboard") or {}).get("id") or ""))
     assert dash_id
 
     admin_client.post_json(
@@ -403,13 +466,14 @@ def test_editor_member_cannot_delete_dashboard(
     e2e_server: None,
     admin_client: E2EClient,
     user_b_client: E2EClient,
+    e2e_resources: E2EResourceTracker,
 ) -> None:
     _ensure_dashboard_schema(admin_client)
     created = admin_client.post_json(
         "/v1/dashboards",
-        {"kind": "custom", "title": f"IDOR editor no delete {uuid.uuid4().hex[:8]}"},
+        {"kind": "custom", "title": _e2e_title("dashboard editor no delete")},
     )
-    dash_id = str((created.get("dashboard") or {}).get("id") or "")
+    dash_id = e2e_resources.track_dashboard(str((created.get("dashboard") or {}).get("id") or ""))
     assert dash_id
 
     admin_client.post_json(
@@ -450,17 +514,18 @@ def test_block_share_view_cannot_patch_layout(
     e2e_server: None,
     admin_client: E2EClient,
     user_b_client: E2EClient,
+    e2e_resources: E2EResourceTracker,
 ) -> None:
     _ensure_dashboard_schema(admin_client)
     created = admin_client.post_json(
         "/v1/dashboards",
         {
             "kind": "custom",
-            "title": f"IDOR block view {uuid.uuid4().hex[:8]}",
+            "title": _e2e_title("dashboard block view"),
             "ui_layout": _BLOCK_SHARE_LAYOUT,
         },
     )
-    dash_id = str((created.get("dashboard") or {}).get("id") or "")
+    dash_id = e2e_resources.track_dashboard(str((created.get("dashboard") or {}).get("id") or ""))
     assert dash_id
 
     admin_client.post_json(
@@ -483,17 +548,18 @@ def test_block_share_edit_can_patch_allowed_block(
     e2e_server: None,
     admin_client: E2EClient,
     user_b_client: E2EClient,
+    e2e_resources: E2EResourceTracker,
 ) -> None:
     _ensure_dashboard_schema(admin_client)
     created = admin_client.post_json(
         "/v1/dashboards",
         {
             "kind": "custom",
-            "title": f"IDOR block edit {uuid.uuid4().hex[:8]}",
+            "title": _e2e_title("dashboard block edit"),
             "ui_layout": _BLOCK_SHARE_LAYOUT,
         },
     )
-    dash_id = str((created.get("dashboard") or {}).get("id") or "")
+    dash_id = e2e_resources.track_dashboard(str((created.get("dashboard") or {}).get("id") or ""))
     assert dash_id
 
     admin_client.post_json(
@@ -525,10 +591,11 @@ def test_block_share_edit_can_patch_allowed_block(
 def test_anon_public_dashboard_share_without_password(
     e2e_server: None,
     admin_client: E2EClient,
+    e2e_resources: E2EResourceTracker,
 ) -> None:
     _ensure_dashboard_schema(admin_client)
-    marker = f"public-{uuid.uuid4().hex[:8]}"
-    title = f"IDOR public {marker}"
+    marker = uuid.uuid4().hex[:8]
+    title = _e2e_title(f"dashboard public {marker}")
     created = admin_client.post_json(
         "/v1/dashboards",
         {
@@ -537,7 +604,7 @@ def test_anon_public_dashboard_share_without_password(
             "data": {"public_marker": marker},
         },
     )
-    dash_id = str((created.get("dashboard") or {}).get("id") or "")
+    dash_id = e2e_resources.track_dashboard(str((created.get("dashboard") or {}).get("id") or ""))
     assert dash_id
 
     share = admin_client.post_json(

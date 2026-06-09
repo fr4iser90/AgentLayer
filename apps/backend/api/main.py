@@ -123,6 +123,7 @@ from apps.backend.api.project_runs_api import router as project_runs_router
 from apps.backend.api.task_artifacts_api import router as task_artifacts_router
 from apps.backend.api.tasks_api import router as tasks_router
 from apps.backend.api.run_traces_admin_api import router as run_traces_admin_router
+from apps.backend.api.benchmarks_admin_api import router as benchmarks_admin_router
 from apps.backend.api.friends_api import router as friends_router
 from apps.backend.api.shares_api import router as shares_router
 from apps.backend.api.workspaces_api import router as workspaces_router
@@ -212,14 +213,6 @@ async def lifespan(_app: FastAPI):
             "In production, set AGENT_CORS_ORIGINS to specific origins "
             "(e.g. https://openwebui.example) to prevent wildcard CORS. "
             "Without it, browsers will block credentials."
-        )
-    from apps.backend.infrastructure.e2e_mock_llm import e2e_mock_llm_enabled
-
-    if e2e_mock_llm_enabled():
-        logger.warning(
-            "AGENT_E2E_MOCK_LLM is enabled: all chat/completions are stubbed "
-            "(list_dir then 'E2E mock LLM complete.'). Agents will NOT call git_push or other real tools. "
-            "Disable for normal use; enable only for E2E tests."
         )
     get_registry()
 
@@ -349,6 +342,7 @@ app.include_router(project_runs_router)
 app.include_router(tasks_router)
 app.include_router(task_artifacts_router)
 app.include_router(run_traces_admin_router)
+app.include_router(benchmarks_admin_router)
 app.include_router(agents_router)
 app.include_router(agents_admin_router)
 app.include_router(tools_admin_router)
@@ -614,6 +608,10 @@ class ExternalLlmEndpointItem(BaseModel):
     label: str = ""
     base_url: str = ""
     api_key: str | None = None
+    api_header_name: str | None = Field(
+        default=None,
+        description="HTTP header for api_key (Authorization, X-API-KEY, …). Default Authorization.",
+    )
     model_default: str | None = None
     model_vlm: str | None = None
     model_agent: str | None = None
@@ -642,6 +640,7 @@ async def admin_get_external_llm_endpoints(request: Request):
                 "base_url": r.get("base_url") or "",
                 "api_key_configured": bool(k.strip()),
                 "api_key_last4": (k[-4:] if len(k) >= 4 else None),
+                "api_header_name": (str(r.get("api_header_name") or "").strip() or "Authorization"),
                 "model_default": r.get("model_default"),
                 "model_vlm": r.get("model_vlm"),
                 "model_agent": r.get("model_agent"),
@@ -886,6 +885,7 @@ if _agent_index.is_file():
     @app.get("/app/chat")
     @app.get("/app/coding-agent")
     @app.get("/app/dashboard")
+    @app.get("/app/dashboard/shared")
     @app.get("/app/docs")
     @app.get("/app/login")
     @app.get("/app/setup")
@@ -893,9 +893,12 @@ if _agent_index.is_file():
     @app.get("/app/tasks")
     @app.get("/app/settings")
     @app.get("/app/settings/profile")
+    @app.get("/app/settings/voice")
     @app.get("/app/settings/connections")
+    @app.get("/app/settings/notifications")
     @app.get("/app/settings/tools")
     @app.get("/app/settings/agent")
+    @app.get("/app/settings/delegate")
     @app.get("/app/settings/friends")
     @app.get("/app/settings/shares")
     @app.get("/app/studio")
@@ -907,6 +910,8 @@ if _agent_index.is_file():
     @app.get("/app/admin/interfaces/automation")
     @app.get("/app/admin/interfaces/platform")
     @app.get("/app/admin/tools")
+    @app.get("/app/admin/agents")
+    @app.get("/app/admin/benchmarks")
     @app.get("/app/admin/run-traces")
     @app.get("/app/admin/users")
     @app.get("/app/admin/scheduled-jobs")

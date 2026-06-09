@@ -1,0 +1,14 @@
+# Tier 3 coding — long-running project_runs (poll until done; timeout up to hours)
+version: 1
+tier_max: 3
+profiles_from: _profiles.yaml
+
+fixtures:
+  - workspace_git
+
+scenarios:
+  - C1_bench_marker_file
+  - C2_small_edit
+
+defaults:
+  timeout_s: 7200

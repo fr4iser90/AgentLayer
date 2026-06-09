@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from tests.e2e.auth_refresh_scaling_lib import (
+from tests.e2e.support.auth_refresh_scaling import (
     format_failure,
     is_bug_confirmed,
     run_scaling_report,

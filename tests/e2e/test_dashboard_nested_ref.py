@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from tests.e2e.helpers import E2EClient
+from tests.e2e.support.helpers import E2EClient
 
 pytestmark = pytest.mark.e2e
 

@@ -22,6 +22,10 @@ RUN pip install --no-cache-dir --upgrade pip \
 COPY apps ./apps
 COPY plugins ./plugins
 COPY docs ./docs
+COPY benchmarks ./benchmarks
+COPY tests/benchmarks ./tests/benchmarks
+COPY tests/e2e ./tests/e2e
+COPY tests/__init__.py ./tests/__init__.py
 COPY --from=agent_ui_builder /build/apps/frontend/dist ./apps/frontend/dist
 
 # copy entrypoint script for alembic stamp/upgrade

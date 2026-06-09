@@ -22,12 +22,12 @@ REPO = Path(__file__).resolve().parents[2]
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
-from tests.e2e.auth_refresh_scaling_lib import (  # noqa: E402
+from tests.e2e.support.auth_refresh_scaling import (  # noqa: E402
     format_failure,
     is_bug_confirmed,
     run_scaling_report,
 )
-from tests.e2e.helpers import load_e2e_env, require_server  # noqa: E402
+from tests.e2e.support.helpers import load_e2e_env, require_server  # noqa: E402
 
 
 def print_human(report) -> None:

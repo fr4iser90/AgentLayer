@@ -1,0 +1,331 @@
+import type { AuthContextValue } from "../../../auth/AuthContext";
+import { apiFetch } from "../../../lib/api";
+
+function apiErrorDetail(data: unknown, fallback: string): string {
+  if (!data || typeof data !== "object") return fallback;
+  const detail = (data as { detail?: unknown }).detail;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object" && "msg" in item) {
+          return String((item as { msg: unknown }).msg);
+        }
+        return "";
+      })
+      .filter(Boolean)
+      .join("; ");
+  }
+  return fallback;
+}
+
+async function readJsonResponse<T>(res: Response, fallback: string): Promise<T> {
+  const text = await res.text();
+  if (!text.trim()) {
+    if (!res.ok) throw new Error(fallback);
+    return {} as T;
+  }
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error(!res.ok ? fallback : "Invalid JSON response from server");
+  }
+}
+
+export type BenchmarkScenario = {
+  id: string;
+  tier: number;
+  title: string;
+  summary: string;
+  prompt: string;
+  rubric: string;
+  agent_id: string;
+  execution?: string;
+  requires: string[];
+  expected_tools: string[];
+  max_tool_rounds: number;
+  timeout_s: number;
+  skip_without_env?: string | null;
+};
+
+export type BenchmarkFixture = {
+  id: string;
+  title: string;
+  summary: string;
+  optional: boolean;
+  requires: string[];
+  env_hint?: string | null;
+};
+
+export type BenchmarkSuite = {
+  id: string;
+  label: string;
+  description?: string;
+  manifest: string;
+  tier_max?: number;
+  defaults?: Record<string, unknown>;
+  scenarios?: BenchmarkScenario[];
+  fixtures?: BenchmarkFixture[];
+  manifest_fixtures?: string[];
+};
+
+export type BenchmarkProfileInput = {
+  label?: string;
+  model?: string;
+  agent_id?: string;
+  endpoint_id?: number;
+  base_url?: string;
+  api_key?: string;
+  api_header_name?: string;
+  catalog_owned_by?: string;
+};
+
+export type BenchmarkRunConfig = {
+  profiles?: BenchmarkProfileInput[];
+  scenarios?: string[] | null;
+  fixtures?: string[] | null;
+  tier_max?: number | null;
+  run_as_user_id?: string | null;
+  friend_user_id?: string | null;
+  admin_user_id?: string | null;
+};
+
+export type AdminUserRow = {
+  id: string;
+  email?: string | null;
+  role: string;
+  display_name?: string | null;
+  tenant_id?: number;
+  tenant_name?: string | null;
+};
+
+export type BenchmarkRunReadiness = {
+  user_id: string;
+  email: string;
+  role: string;
+  secrets_enabled: boolean;
+  secrets: {
+    gmail?: boolean;
+    ssc_api_key?: boolean;
+  };
+};
+
+export type BenchmarkRunSummary = {
+  passed?: number;
+  executed?: number;
+  total?: number;
+  skipped?: number;
+};
+
+export type BenchmarkRun = {
+  id: string;
+  status: string;
+  suite: string;
+  user_id?: string | null;
+  manifest_path?: string;
+  profiles_json?: BenchmarkProfileInput[] | BenchmarkRunConfig;
+  summary_json?: BenchmarkRunSummary | null;
+  error_text?: string | null;
+  resource_prefix?: string | null;
+  started_at?: string | null;
+  finished_at?: string | null;
+  created_at?: string;
+  report_json?: {
+    results?: Array<{
+      scenario_id: string;
+      profile_label: string;
+      passed: boolean;
+      skipped?: boolean;
+      score: number;
+      latency_ms: number;
+      tool_call_count: number;
+      failure_reason?: string | null;
+      run_metrics?: {
+        compaction_count?: number;
+        compaction_events?: Array<{ phase?: string; round?: number; reason?: string }>;
+        llm_round_count?: number;
+        context_utilization_pct?: number | null;
+        total_tokens?: number | null;
+        context_snapshot?: Record<string, unknown>;
+        timeline_summary?: Array<Record<string, unknown>>;
+        capture_mode?: string;
+      } | null;
+    }>;
+  } | null;
+};
+
+export type BenchmarkLlmProvider = {
+  catalog_owned_by: string;
+  label: string;
+  base_url: string;
+  source: "env" | "db" | string;
+  endpoint_id?: number | null;
+  model_default?: string | null;
+  model_agent?: string | null;
+  model_coding?: string | null;
+};
+
+export type ExternalLlmEndpoint = {
+  id: number;
+  label: string;
+  base_url: string;
+  enabled?: boolean;
+  api_key_configured: boolean;
+  model_default?: string | null;
+  model_agent?: string | null;
+};
+
+export function autoFixtureIds(
+  suite: BenchmarkSuite,
+  scenarioIds: ReadonlySet<string>
+): Set<string> {
+  const ids = new Set(suite.manifest_fixtures ?? []);
+  for (const sc of suite.scenarios ?? []) {
+    if (scenarioIds.has(sc.id)) {
+      sc.requires.forEach((r) => ids.add(r));
+    }
+  }
+  return ids;
+}
+
+export function resolveRunProfiles(
+  profilesJson: BenchmarkRun["profiles_json"]
+): BenchmarkProfileInput[] {
+  if (!profilesJson) return [];
+  if (Array.isArray(profilesJson)) return profilesJson;
+  return profilesJson.profiles ?? [];
+}
+
+export async function fetchBenchmarkSuites(
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">
+): Promise<BenchmarkSuite[]> {
+  const res = await apiFetch("/v1/admin/benchmarks/suites", auth);
+  const data = await readJsonResponse<{ suites?: BenchmarkSuite[]; detail?: unknown }>(
+    res,
+    `Failed to load suites (HTTP ${res.status})`
+  );
+  if (!res.ok) throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
+  return data.suites ?? [];
+}
+
+export async function fetchBenchmarkCatalog(
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">
+): Promise<{ scenarios: BenchmarkScenario[]; fixtures: BenchmarkFixture[] }> {
+  const res = await apiFetch("/v1/admin/benchmarks/catalog", auth);
+  const data = await readJsonResponse<{
+    scenarios?: BenchmarkScenario[];
+    fixtures?: BenchmarkFixture[];
+    detail?: unknown;
+  }>(res, `Failed to load catalog (HTTP ${res.status})`);
+  if (!res.ok) throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
+  return { scenarios: data.scenarios ?? [], fixtures: data.fixtures ?? [] };
+}
+
+export async function fetchBenchmarkRuns(
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">,
+  limit = 40
+): Promise<BenchmarkRun[]> {
+  const res = await apiFetch(`/v1/admin/benchmarks/runs?limit=${limit}`, auth);
+  const data = await readJsonResponse<{ runs?: BenchmarkRun[]; detail?: unknown }>(
+    res,
+    `Failed to load runs (HTTP ${res.status})`
+  );
+  if (!res.ok) throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
+  return data.runs ?? [];
+}
+
+export async function fetchBenchmarkRun(
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">,
+  runId: string
+): Promise<BenchmarkRun> {
+  const res = await apiFetch(`/v1/admin/benchmarks/runs/${encodeURIComponent(runId)}`, auth);
+  const data = await readJsonResponse<{ run?: BenchmarkRun; detail?: unknown }>(
+    res,
+    `Failed to load run (HTTP ${res.status})`
+  );
+  if (!res.ok) throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
+  return data.run as BenchmarkRun;
+}
+
+export type StartBenchmarkBody = {
+  suite: string;
+  profiles: BenchmarkProfileInput[];
+  scenarios?: string[];
+  fixtures?: string[];
+  tier_max?: number;
+  run_as_user_id?: string;
+  friend_user_id?: string;
+};
+
+export function userOptionLabel(u: AdminUserRow): string {
+  const name = (u.email || u.display_name || u.id).trim();
+  const tenant = u.tenant_name?.trim();
+  return tenant ? `${name} · ${u.role} · ${tenant}` : `${name} · ${u.role}`;
+}
+
+export async function fetchAdminUsers(
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">
+): Promise<AdminUserRow[]> {
+  const res = await apiFetch("/v1/admin/users", auth);
+  const data = await readJsonResponse<{ users?: AdminUserRow[]; detail?: unknown }>(
+    res,
+    `Failed to load users (HTTP ${res.status})`
+  );
+  if (!res.ok) throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
+  return data.users ?? [];
+}
+
+export async function fetchBenchmarkRunReadiness(
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">,
+  userId: string
+): Promise<BenchmarkRunReadiness> {
+  const res = await apiFetch(
+    `/v1/admin/benchmarks/run-readiness?user_id=${encodeURIComponent(userId)}`,
+    auth
+  );
+  const data = await readJsonResponse<BenchmarkRunReadiness & { detail?: unknown }>(
+    res,
+    `Failed to load readiness (HTTP ${res.status})`
+  );
+  if (!res.ok) throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
+  return data;
+}
+
+export async function startBenchmarkRun(
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">,
+  body: StartBenchmarkBody
+): Promise<BenchmarkRun> {
+  const res = await apiFetch("/v1/admin/benchmarks/runs", auth, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  const data = await readJsonResponse<{ run?: BenchmarkRun; detail?: unknown }>(
+    res,
+    `Failed to start benchmark (HTTP ${res.status})`
+  );
+  if (!res.ok) {
+    throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
+  }
+  return data.run as BenchmarkRun;
+}
+
+export async function fetchBenchmarkLlmProviders(
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">
+): Promise<BenchmarkLlmProvider[]> {
+  const res = await apiFetch("/v1/admin/benchmarks/llm-providers", auth);
+  const data = await readJsonResponse<{ providers?: BenchmarkLlmProvider[]; detail?: unknown }>(
+    res,
+    `Failed to load LLM providers (HTTP ${res.status})`
+  );
+  if (!res.ok) throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
+  return data.providers ?? [];
+}
+
+export async function fetchExternalLlmEndpoints(
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">
+): Promise<ExternalLlmEndpoint[]> {
+  const res = await apiFetch("/v1/admin/external-llm/endpoints", auth);
+  const data = (await res.json()) as { endpoints?: ExternalLlmEndpoint[] };
+  return data.endpoints ?? [];
+}

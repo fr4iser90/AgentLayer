@@ -20,6 +20,7 @@ import { AdminUsers } from "./pages/admin/AdminUsers";
 import { AdminScheduledJobs } from "./pages/admin/AdminScheduledJobs";
 import { AdminSchedules } from "./pages/admin/AdminSchedules";
 import { AdminAgentTraces } from "./pages/admin/AdminAgentTraces";
+import { AdminBenchmarks } from "./pages/admin/AdminBenchmarks";
 import { ChatPage } from "./pages/ChatPage";
 import { DocsPage } from "./pages/DocsPage";
 import { HomePage } from "./pages/HomePage";
@@ -94,6 +95,7 @@ export function App() {
                   <Route path="scheduled-jobs" element={<AdminScheduledJobs />} />
                   <Route path="schedules" element={<AdminSchedules />} />
                   <Route path="run-traces" element={<AdminAgentTraces />} />
+                  <Route path="benchmarks" element={<AdminBenchmarks />} />
                   <Route path="workflows" element={<Navigate to="../scheduled-jobs" replace />} />
                 </Route>
               </Route>
