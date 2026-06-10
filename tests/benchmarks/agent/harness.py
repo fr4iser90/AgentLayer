@@ -761,11 +761,15 @@ def run_scenario(
         "messages": [{"role": "user", "content": scenario_prompt}],
         "agent_unattended": True,
         "agent_max_tool_rounds": scenario.max_tool_rounds,
+        "agent_stream_llm": True,
         "stream": False,
     }
     ws_id = workspace_id_for_scenario(fixture_ctx, scenario.requires)
     if ws_id and scenario.requires:
         body["workspace_id"] = ws_id
+    from tests.benchmarks.agent.provider_cache import apply_bench_provider_cache_policy
+
+    apply_bench_provider_cache_policy(body)
     effective_agent = str(body["agent_id"] or "")
 
     t0 = time.perf_counter()
@@ -831,18 +835,28 @@ def run_scenario(
     agent_run_id = str(data.get("agent_run_id") or "") or None
     tool_names, invocations, agent_run = _fetch_run_trace(client, agent_run_id)
 
+    cache_disabled = body.get("cache_prompt") is False if "cache_prompt" in body else None
     run_metrics_obj: RunMetrics = build_run_metrics(
         completion=data,
         ws_events=ws_events or None,
         tool_invocations=invocations,
         agent_run=agent_run,
         capture_mode=capture_mode,
+        provider_cache_prompt_disabled=cache_disabled,
     )
     run_metrics_dict = run_metrics_obj.to_dict()
     if ws_events or error:
         diag = bench_ws_diagnostics(ws_events)
         if diag:
             run_metrics_dict["bench_diagnostics"] = diag
+    if cache_disabled is not None or run_metrics_obj.provider_cached_prompt_tokens is not None:
+        run_metrics_dict.setdefault("provider_cache", {})
+        if cache_disabled is not None:
+            run_metrics_dict["provider_cache"]["cache_prompt_disabled"] = cache_disabled
+        if run_metrics_obj.provider_cached_prompt_tokens is not None:
+            run_metrics_dict["provider_cache"]["cached_prompt_tokens"] = (
+                run_metrics_obj.provider_cached_prompt_tokens
+            )
     if error and http_status is not None:
         run_metrics_dict["http_status"] = http_status
     usage = data.get("usage") if isinstance(data.get("usage"), dict) else {}

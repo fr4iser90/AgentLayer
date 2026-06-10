@@ -222,7 +222,7 @@ AGENT_TOOL_DOMAIN_ORDER = tuple(
 # If true: no router match (and no header/body categories) → only minimal introspection tools in tools[].
 # Unknown category ids from header/body → same minimal set instead of the full merged list.
 # Set false for legacy behavior (no match / unknown → all merged tools). Recommended true for small local models.
-AGENT_ROUTER_STRICT_DEFAULT = _env_bool("AGENT_ROUTER_STRICT_DEFAULT", False)
+AGENT_ROUTER_STRICT_DEFAULT = _env_bool("AGENT_ROUTER_STRICT_DEFAULT", True)
 # Remove these registered tool function names from tools[] after routing (comma-separated). Introspection tools are not exempt.
 AGENT_TOOLS_DENYLIST = frozenset(
     x.strip()
@@ -274,11 +274,6 @@ CHAT_CONTEXT_TOOL_RESULT_MAX_RATIO = max(
 CHAT_CONTEXT_KEEP_RECENT_TOOL_ROUNDS = max(2, _env_int("CHAT_CONTEXT_KEEP_RECENT_TOOL_ROUNDS", 6))
 
 AGENT_TOOLS_RANKING_ENABLED = _env_bool("AGENT_TOOLS_RANKING_ENABLED", True)
-AGENT_TOOLS_SEMANTIC_WEIGHT = max(0.0, float(os.environ.get("AGENT_TOOLS_SEMANTIC_WEIGHT", "1.0")))
-AGENT_TOOLS_TRIGGER_BOOST = max(0.0, min(1.0, float(os.environ.get("AGENT_TOOLS_TRIGGER_BOOST", "0.1"))))
-AGENT_TOOLS_CONTEXT_BOOST = max(0.0, min(1.0, float(os.environ.get("AGENT_TOOLS_CONTEXT_BOOST", "0.05"))))
-AGENT_TOOLS_MIN_SCORE_THRESHOLD = max(0.0, min(1.0, float(os.environ.get("AGENT_TOOLS_MIN_SCORE_THRESHOLD", "0.1"))))
-AGENT_TOOLS_RANKING_FALLBACK_ALL = _env_bool("AGENT_TOOLS_RANKING_FALLBACK_ALL", True)
 # Dynamic tool forward budget — ratios of provider context window only (context_budget.py).
 AGENT_TOOLS_BUDGET_RATIO = max(0.01, min(0.25, float(os.environ.get("AGENT_TOOLS_BUDGET_RATIO", "0.06"))))
 # Max tools[] count ≈ ratio × context_window (safety ceiling; fit enforced by tools_budget_tokens).

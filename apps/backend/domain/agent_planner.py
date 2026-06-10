@@ -726,9 +726,6 @@ async def chat_completion(
         else:
             merged_tools = _merge_tools(body.get("tools"))
         routed_category: str | None = None
-        cats = classify_user_tool_categories(last_user_text(messages))
-        cats = cats | extra_cats_body | extra_cats_hdr
-        merged_tools = filter_merged_tools_by_categories(merged_tools, cats)
         logger.debug("tool_domain before check: %r, agent_id=%r", tool_domain, agent_id)
         if agent_id:
             agent = get_agent_registry().get_agent(agent_id)
@@ -738,16 +735,14 @@ async def chat_completion(
                 if tool_domain_agent:
                     merged_tools = filter_merged_tools_by_domain(merged_tools, tool_domain_agent)
                 if tool_names_agent:
-                    reg = get_registry()
                     allowed_tool_names = frozenset(tool_names_agent)
-                    filtered = []
-                    for spec in reg.chat_tool_specs:
-                        n = spec.get("function", {}).get("name", "")
-                        if n in allowed_tool_names:
-                            filtered.append(spec)
-                    merged_tools = filtered
+                    merged_tools = [
+                        t
+                        for t in merged_tools
+                        if (n := _tool_spec_name(t)) is None or n in allowed_tool_names
+                    ]
                 logger.debug(
-                    "agent %s: %d tools (domain=%s, explicit_names=%s)",
+                    "agent %s: %d tools after allowlist (domain=%s, explicit_names=%s)",
                     agent_id,
                     len(merged_tools),
                     tool_domain_agent,
@@ -757,6 +752,9 @@ async def chat_completion(
                 logger.warning("agent_id %r not found in registry, falling back to tool_domain", agent_id)
         elif tool_domain:
             merged_tools = filter_merged_tools_by_domain(merged_tools, tool_domain)
+        cats = classify_user_tool_categories(last_user_text(messages))
+        cats = cats | extra_cats_body | extra_cats_hdr
+        merged_tools = filter_merged_tools_by_categories(merged_tools, cats)
         if cap_hints:
             merged_tools = filter_merged_tools_by_capabilities(
                 merged_tools,
@@ -855,8 +853,6 @@ async def chat_completion(
             except Exception:
                 logger.warning("MCP tool discovery failed", exc_info=True)
 
-        if not tools_full_schema and agent_unattended and _raw_tool_allow:
-            tools_full_schema = True
         if config.AGENT_TOOLS_DENYLIST:
             deny = config.AGENT_TOOLS_DENYLIST
             merged_tools = [
@@ -901,6 +897,7 @@ async def chat_completion(
                 tool_specs=merged_tools,
                 ranking_enabled=tools_ranking_enabled,
                 full_schema_preference=tools_full_schema,
+                category_routed=bool(cats),
             )
         )
         tools_for_request = apply_schema_modes_to_specs(

@@ -172,122 +172,156 @@ def _pinned_tools_for_agent(agent_id: str | None) -> frozenset[str]:
     return frozenset()
 
 
-def _rank_tools_by_user_input(
-    tools: list[dict[str, Any]], 
+_RELEVANCE_MIN_SCORE = 0.10
+_TRIGGER_BOOST = 0.12
+_NAME_IN_TEXT_BOOST = 0.18
+
+
+def _tool_name_in_user_text(tool_id: str, user_text: str) -> bool:
+    tid = (tool_id or "").strip().lower()
+    if not tid:
+        return False
+    tl = user_text.lower()
+    if tid in tl:
+        return True
+    spaced = tid.replace("_", " ")
+    return spaced in tl and spaced != tid
+
+
+def _introspection_specs(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        t
+        for t in tools
+        if (n := _tool_spec_name(t)) is not None and n in TOOL_INTROSPECTION
+    ]
+
+
+def rank_tools_for_forward(
+    tools: list[dict[str, Any]],
     user_input: str,
     tool_triggers: dict[str, tuple[str, ...]],
-) -> list[dict[str, Any]]:
+    *,
+    category_routed: bool = False,
+) -> tuple[list[dict[str, Any]], bool]:
     """
-    Rank tools by semantic similarity to user input + trigger boost + context boost.
-    Returns sorted tools (highest score first).
+    Rank tools by user intent and return only forward candidates.
+
+    Always keeps introspection tools (discovery). Action tools need semantic relevance,
+    a domain trigger match, or an explicit name mention in the user message — never the
+    full allowlist when nothing matches.
     """
     from apps.backend.api.rag import embed_one
-    
-    if not config.AGENT_TOOLS_RANKING_ENABLED:
-        return tools
-    
-    if not user_input or not tools:
-        return tools
-    
-    min_threshold = config.AGENT_TOOLS_MIN_SCORE_THRESHOLD
-    fallback_all = config.AGENT_TOOLS_RANKING_FALLBACK_ALL
-    
+
+    if not config.AGENT_TOOLS_RANKING_ENABLED or not user_input or not tools:
+        return list(tools), False
+
+    intro = _introspection_specs(tools)
+
     try:
-        # 1. Get user input embedding
         user_emb = embed_one(user_input)
     except Exception as e:
-        logger.warning(f"Tool ranking: failed to get user embedding: {e}")
-        return tools
-    
-    # 2. Ensure tool embeddings are cached (lazy load)
+        logger.warning("Tool ranking: failed to get user embedding: %s", e)
+        return intro or list(tools), False
+
     global _tool_embedding_loaded
-    tools_to_embed = []
-    
+    tools_to_embed: list[tuple[str, str]] = []
     for tool in tools:
         tool_id = tool.get("function", {}).get("name", "")
         if tool_id and tool_id not in _tool_embedding_cache:
             desc = _get_tool_description(tool)
             if desc:
                 tools_to_embed.append((tool_id, desc))
-    
-    # Lazy load missing embeddings
+
     user_emb_dim = len(user_emb) if user_emb else 768
     if tools_to_embed:
         for tool_id, desc in tools_to_embed:
             try:
-                emb = embed_one(desc[:2000])  # Truncate long descriptions
+                emb = embed_one(desc[:2000])
                 _tool_embedding_cache[tool_id] = emb
             except Exception as e:
-                logger.debug(f"Tool ranking: failed to embed tool {tool_id}: {e}")
-                _tool_embedding_cache[tool_id] = [0.0] * user_emb_dim  # Fallback
-    
-    _tool_embedding_loaded = True
-    
-    # 3. Calculate scores for ALL tools
-    all_scores: list[tuple[int, float]] = []
-    
-    for idx, tool in enumerate(tools):
-        tool_id = tool.get("function", {}).get("name", "")
-        
-        # Semantic similarity score
-        tool_emb = _tool_embedding_cache.get(tool_id)
-        semantic_score = 0.0
-        if tool_emb is not None:
-            semantic_score = _cosine_similarity(user_emb, tool_emb)
-        
-        # Normalize by semantic weight
-        semantic_score = semantic_score * config.AGENT_TOOLS_SEMANTIC_WEIGHT
-        
-        # Trigger boost
-        trigger_score = 0.0
-        triggers = tool_triggers.get(tool_id, ())
-        if triggers:
-            user_input_lower = user_input.lower()
-            for trigger in triggers:
-                if trigger.lower() in user_input_lower:
-                    trigger_score = config.AGENT_TOOLS_TRIGGER_BOOST
-                    break
-        
-        # Context boost (workspace check - optional, vorerst deaktiviert)
-        context_score = 0.0
-        
-        # Final score
-        final_score = semantic_score + trigger_score + context_score
-        all_scores.append((idx, final_score))
-        
-        # Debug logging (top 5)
-        if idx < 5:
-            logger.debug(
-                f"Tool ranking: {tool_id}: semantic={semantic_score:.3f}, "
-                f"trigger={trigger_score:.3f}, context={context_score:.3f}, final={final_score:.3f}"
-            )
-    
-    # 4. Sort by score (highest first)
-    all_scores.sort(key=lambda x: x[1], reverse=True)
-    
-    # 5. Check if scores are too low (fallback to unsorted pool)
-    if all_scores:
-        max_score = all_scores[0][1]
-        if max_score < min_threshold and fallback_all:
-            logfn = logger.debug if config.AGENT_LOG_TOOL_PIPELINE else logger.info
-            logfn(
-                "Tool ranking: max score %.3f below threshold %s, falling back to all tools",
-                max_score,
-                min_threshold,
-            )
-            return tools
+                logger.debug("Tool ranking: failed to embed tool %s: %s", tool_id, e)
+                _tool_embedding_cache[tool_id] = [0.0] * user_emb_dim
 
-    # 6. Return full allowlist sorted by relevance (forward count = context token budget)
-    ranked_tools = [tools[i] for i, _ in all_scores]
-    
+    _tool_embedding_loaded = True
+
+    scored: list[tuple[int, float, bool]] = []
+    user_input_lower = user_input.lower()
+    for idx, tool in enumerate(tools):
+        tool_id = tool.get("function", {}).get("name", "") or ""
+        tool_emb = _tool_embedding_cache.get(tool_id)
+        semantic_score = (
+            _cosine_similarity(user_emb, tool_emb) if tool_emb is not None else 0.0
+        )
+        trigger_score = 0.0
+        for trigger in tool_triggers.get(tool_id, ()):
+            if trigger.lower() in user_input_lower:
+                trigger_score = _TRIGGER_BOOST
+                break
+        name_score = _NAME_IN_TEXT_BOOST if _tool_name_in_user_text(tool_id, user_input) else 0.0
+        final_score = semantic_score + trigger_score + name_score
+        is_relevant = (
+            final_score >= _RELEVANCE_MIN_SCORE
+            or trigger_score > 0.0
+            or name_score > 0.0
+        )
+        scored.append((idx, final_score, is_relevant))
+
+    scored.sort(key=lambda x: x[1], reverse=True)
+
+    if category_routed:
+        ranked = [tools[i] for i, _, _ in scored]
+        max_score = scored[0][1] if scored else 0.0
+        logfn = logger.debug if config.AGENT_LOG_TOOL_PIPELINE else logger.info
+        logfn(
+            "Tool forward rank (category routed): %d tools (max_score=%.3f)",
+            len(ranked),
+            max_score,
+        )
+        return ranked, True
+
+    seen: set[str] = set()
+    out: list[dict[str, Any]] = []
+
+    def _append(spec: dict[str, Any]) -> None:
+        n = _tool_spec_name(spec)
+        if n and n not in seen:
+            out.append(spec)
+            seen.add(n)
+
+    for idx, _, _ in scored:
+        n = _tool_spec_name(tools[idx])
+        if n and n in TOOL_INTROSPECTION:
+            _append(tools[idx])
+    for idx, _, is_relevant in scored:
+        n = _tool_spec_name(tools[idx])
+        if not n or n in TOOL_INTROSPECTION:
+            continue
+        if is_relevant:
+            _append(tools[idx])
+
+    if not out:
+        out = intro
+
+    max_score = scored[0][1] if scored else 0.0
     logfn = logger.debug if config.AGENT_LOG_TOOL_PIPELINE else logger.info
     logfn(
-        "Tool ranking: sorted %d tools by relevance (max_score=%.3f)",
-        len(ranked_tools),
-        all_scores[0][1] if all_scores else 0.0,
+        "Tool forward gate: %d/%d tools (max_score=%.3f, introspection=%d)",
+        len(out),
+        len(tools),
+        max_score,
+        sum(1 for t in out if (_tool_spec_name(t) or "") in TOOL_INTROSPECTION),
     )
-    
-    return ranked_tools
+    return out, True
+
+
+def _rank_tools_by_user_input(
+    tools: list[dict[str, Any]],
+    user_input: str,
+    tool_triggers: dict[str, tuple[str, ...]],
+) -> list[dict[str, Any]]:
+    """Deprecated alias — use ``rank_tools_for_forward``."""
+    ranked, _ = rank_tools_for_forward(tools, user_input, tool_triggers)
+    return ranked
 
 
 # =============================================================================

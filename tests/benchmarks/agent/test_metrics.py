@@ -81,3 +81,54 @@ def test_build_run_metrics_merges_context_and_trace() -> None:
     assert metrics.context_snapshot.get("messages_compacted_this_run") == 8
     assert metrics.context_utilization_pct == 90.0
     assert metrics.total_tokens == 150
+
+
+def test_build_run_metrics_cached_prompt_tokens() -> None:
+    metrics = build_run_metrics(
+        completion={
+            "usage": {
+                "prompt_tokens": 5000,
+                "completion_tokens": 10,
+                "prompt_tokens_details": {"cached_tokens": 4800},
+            }
+        },
+        ws_events=None,
+        tool_invocations=[],
+        agent_run=None,
+        capture_mode="websocket",
+        provider_cache_prompt_disabled=True,
+    )
+    assert metrics.provider_cached_prompt_tokens == 4800
+    assert metrics.provider_cache_prompt_disabled is True
+
+def test_live_snapshot_shows_llm_generating_on_round_start() -> None:
+    events = [{"type": "agent.llm_round_start", "round": 1}]
+    snap = live_snapshot_from_ws_events(events, elapsed_ms=500.0)
+    assert snap["phase"] == "llm_generating"
+    assert snap["detail"] == "round 1"
+    assert snap["current_llm_round"] == 1
+    assert snap["llm_round_count"] == 0
+
+
+def test_live_snapshot_session_tools_and_reasoning_preview() -> None:
+    events = [
+        {
+            "type": "agent.session",
+            "forwarded_tools": ["catalog", "read_file"],
+            "routed_category": "minimal",
+        },
+        {"type": "agent.llm_round_start", "round": 1},
+        {
+            "type": "agent.llm_delta",
+            "round": 1,
+            "channel": "reasoning",
+            "reasoning_delta": "Let me compute 17+25 step by step",
+        },
+    ]
+    snap = live_snapshot_from_ws_events(events, elapsed_ms=1200.0)
+    assert snap["forwarded_tool_count"] == 2
+    assert snap["routed_category"] == "minimal"
+    assert snap["phase"] == "llm_generating"
+    assert snap["llm_reasoning_chars"] == 33
+    assert "17+25" in snap.get("generation_preview", "")
+

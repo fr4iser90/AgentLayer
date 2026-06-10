@@ -127,9 +127,17 @@ export type BenchmarkInFlight = {
   phase?: string;
   detail?: string;
   llm_round_count?: number;
+  current_llm_round?: number;
   tool_call_count?: number;
   tool_names?: string[];
   elapsed_ms?: number;
+  provider_prompt_tokens?: number;
+  context_window_tokens?: number;
+  forwarded_tool_count?: number;
+  routed_category?: string;
+  llm_text_chars?: number;
+  llm_reasoning_chars?: number;
+  generation_preview?: string;
 };
 
 export type BenchmarkScenarioResult = {
@@ -170,6 +178,12 @@ export type BenchmarkScenarioResult = {
       event_counts?: Record<string, number>;
       compaction_count_live?: number;
     };
+    provider_cache?: {
+      cache_prompt_disabled?: boolean;
+      cached_prompt_tokens?: number;
+    };
+    provider_cached_prompt_tokens?: number | null;
+    provider_cache_prompt_disabled?: boolean | null;
   } | null;
 };
 

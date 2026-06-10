@@ -28,7 +28,9 @@ class RunMetrics:
     prompt_tokens: int | None = None
     completion_tokens: int | None = None
     total_tokens: int | None = None
+    provider_cached_prompt_tokens: int | None = None
     context_utilization_pct: float | None = None
+    provider_cache_prompt_disabled: bool | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -53,6 +55,32 @@ def context_from_completion(data: dict[str, Any]) -> dict[str, Any]:
 def usage_from_completion(data: dict[str, Any]) -> dict[str, Any]:
     usage = data.get("usage")
     return dict(usage) if isinstance(usage, dict) else {}
+
+
+def usage_cached_prompt_tokens(usage: dict[str, Any] | None) -> int | None:
+    """OpenAI-style ``usage.prompt_tokens_details.cached_tokens`` (provider KV/prompt cache)."""
+    if not isinstance(usage, dict):
+        return None
+    details = usage.get("prompt_tokens_details")
+    if isinstance(details, dict):
+        n = _int_or_none(details.get("cached_tokens"))
+        if n is not None:
+            return n
+    for key in ("cached_tokens", "cache_read_input_tokens"):
+        n = _int_or_none(usage.get(key))
+        if n is not None:
+            return n
+    return None
+
+
+def latest_context_from_ws_events(events: list[dict[str, Any]]) -> dict[str, Any]:
+    for ev in reversed(events):
+        if not isinstance(ev, dict) or str(ev.get("type") or "") != "agent.context_update":
+            continue
+        ctx = ev.get("context")
+        if isinstance(ctx, dict):
+            return dict(ctx)
+    return {}
 
 
 def utilization_pct(context: dict[str, Any]) -> float | None:
@@ -104,11 +132,56 @@ def live_snapshot_from_ws_events(
             name = str(row.get("tool") or "").strip()
             if name:
                 tool_names.append(name)
+
+    forwarded_tool_count: int | None = None
+    routed_category: str | None = None
+    llm_text_chars = 0
+    llm_reasoning_chars = 0
+    generation_preview = ""
+    for ev in events:
+        if not isinstance(ev, dict):
+            continue
+        typ = str(ev.get("type") or "")
+        if typ == "agent.session":
+            fwd = ev.get("forwarded_tools")
+            if isinstance(fwd, list):
+                forwarded_tool_count = len(fwd)
+            rc = ev.get("routed_category")
+            if isinstance(rc, str) and rc.strip():
+                routed_category = rc.strip()
+        elif typ == "agent.llm_delta":
+            channel = str(ev.get("channel") or "").strip().lower()
+            if channel == "reasoning":
+                chunk = str(ev.get("reasoning_delta") or "")
+                llm_reasoning_chars += len(chunk)
+                if chunk:
+                    generation_preview = (generation_preview + chunk)[-160:]
+            else:
+                chunk = str(ev.get("delta") or "")
+                llm_text_chars += len(chunk)
+                if chunk:
+                    generation_preview = (generation_preview + chunk)[-160:]
+
+    ctx_snap = latest_context_from_ws_events(events)
     last = timeline[-1] if timeline else {}
     last_type = str(last.get("type") or "")
+
+    open_llm_round: int | None = None
+    for ev in events:
+        if not isinstance(ev, dict):
+            continue
+        typ = str(ev.get("type") or "")
+        if typ == "agent.llm_round_start":
+            open_llm_round = _int_or_none(ev.get("round"))
+        elif typ == "agent.llm_round":
+            open_llm_round = None
+
     phase = "running"
     detail = ""
-    if last_type == "agent.tool_start":
+    if open_llm_round is not None:
+        phase = "llm_generating"
+        detail = f"round {open_llm_round}"
+    elif last_type == "agent.tool_start":
         phase = "tool"
         detail = str(last.get("tool") or "")
     elif last_type == "agent.tool_done":
@@ -117,10 +190,26 @@ def live_snapshot_from_ws_events(
     elif last_type == "agent.llm_round":
         phase = "llm"
         detail = f"round {last.get('round')}" if last.get("round") is not None else ""
+    elif last_type == "agent.session":
+        phase = "session"
+        if forwarded_tool_count is not None:
+            detail = f"{forwarded_tool_count} tools"
+        elif routed_category:
+            detail = routed_category
     elif last_type == "agent.context_compacted":
         phase = "compact"
         detail = str(last.get("phase") or "")
-    return {
+
+    current_llm_round: int | None = open_llm_round
+    if current_llm_round is None:
+        for ev in reversed(events):
+            if not isinstance(ev, dict):
+                continue
+            if str(ev.get("type") or "") == "agent.llm_round_start":
+                current_llm_round = _int_or_none(ev.get("round"))
+                break
+
+    out: dict[str, Any] = {
         "phase": phase,
         "detail": detail,
         "llm_round_count": counts["llm_round_count"],
@@ -128,6 +217,25 @@ def live_snapshot_from_ws_events(
         "tool_names": tool_names,
         "elapsed_ms": round(elapsed_ms, 1),
     }
+    if current_llm_round is not None:
+        out["current_llm_round"] = current_llm_round
+    if forwarded_tool_count is not None:
+        out["forwarded_tool_count"] = forwarded_tool_count
+    if routed_category:
+        out["routed_category"] = routed_category
+    if llm_text_chars > 0:
+        out["llm_text_chars"] = llm_text_chars
+    if llm_reasoning_chars > 0:
+        out["llm_reasoning_chars"] = llm_reasoning_chars
+    if generation_preview.strip():
+        out["generation_preview"] = generation_preview.strip()
+    ppt = _int_or_none(ctx_snap.get("provider_prompt_tokens"))
+    if ppt is not None:
+        out["provider_prompt_tokens"] = ppt
+    cwin = _int_or_none(ctx_snap.get("context_window_tokens"))
+    if cwin is not None:
+        out["context_window_tokens"] = cwin
+    return out
 
 
 def summarize_ws_events(events: list[dict[str, Any]]) -> tuple[list[dict], list[dict], dict[str, int]]:
@@ -166,6 +274,28 @@ def summarize_ws_events(events: list[dict[str, Any]]) -> tuple[list[dict], list[
             )
             timeline.append({"type": typ, "phase": ev.get("phase"), "round": ev.get("round")})
             continue
+        if typ == "agent.llm_round_start":
+            timeline.append({"type": typ, "round": ev.get("round")})
+            continue
+        if typ == "agent.llm_delta":
+            timeline.append(
+                {
+                    "type": typ,
+                    "round": ev.get("round"),
+                    "channel": ev.get("channel"),
+                }
+            )
+            continue
+        if typ == "agent.session":
+            fwd = ev.get("forwarded_tools")
+            timeline.append(
+                {
+                    "type": typ,
+                    "forward_count": len(fwd) if isinstance(fwd, list) else None,
+                    "routed_category": ev.get("routed_category"),
+                }
+            )
+            continue
         if typ == "agent.llm_round":
             counts["llm_round_count"] += 1
             timeline.append({"type": typ, "round": ev.get("round")})
@@ -201,12 +331,14 @@ def build_run_metrics(
     tool_invocations: list[dict[str, Any]],
     agent_run: dict[str, Any] | None,
     capture_mode: str,
+    provider_cache_prompt_disabled: bool | None = None,
 ) -> RunMetrics:
     ctx = context_from_completion(completion)
     usage = usage_from_completion(completion)
     prompt_t = _int_or_none(usage.get("prompt_tokens"))
     completion_t = _int_or_none(usage.get("completion_tokens"))
     total_t = _int_or_none(usage.get("total_tokens"))
+    cached_prompt_t = usage_cached_prompt_tokens(usage)
     if total_t is None and prompt_t is not None and completion_t is not None:
         total_t = prompt_t + completion_t
 
@@ -297,5 +429,7 @@ def build_run_metrics(
         prompt_tokens=prompt_t,
         completion_tokens=completion_t,
         total_tokens=total_t,
+        provider_cached_prompt_tokens=cached_prompt_t,
         context_utilization_pct=utilization_pct(ctx),
+        provider_cache_prompt_disabled=provider_cache_prompt_disabled,
     )

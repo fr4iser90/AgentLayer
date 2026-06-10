@@ -59,8 +59,8 @@ def test_build_tool_forward_plan_uses_ranking_not_pins(monkeypatch):
         lambda: FakeReg(),
     )
     monkeypatch.setattr(
-        "apps.backend.domain.tool_forward_policy._rank_tools_by_user_input",
-        lambda tools, text, triggers: list(reversed(tools)),
+        "apps.backend.domain.tool_forward_policy.rank_tools_for_forward",
+        lambda tools, text, triggers, **kw: (list(reversed(tools)), True),
     )
 
     plan = build_tool_forward_plan(

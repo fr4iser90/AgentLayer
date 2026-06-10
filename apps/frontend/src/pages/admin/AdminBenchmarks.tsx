@@ -90,7 +90,7 @@ function scenarioHasDiagnostics(res: BenchmarkScenarioResult): boolean {
 }
 
 function formatInFlightElapsed(inFlight: BenchmarkInFlight): number | null {
-  if (typeof inFlight.elapsed_ms === "number" && inFlight.elapsed_ms > 0) {
+  if (typeof inFlight.elapsed_ms === "number" && inFlight.elapsed_ms >= 0) {
     return Math.round(inFlight.elapsed_ms);
   }
   if (!inFlight.started_at) return null;
@@ -106,6 +106,33 @@ function formatInFlightProviderModel(inFlight: BenchmarkInFlight): string {
   return provider || model || "—";
 }
 
+function formatInFlightPromptTokens(inFlight: BenchmarkInFlight): string | null {
+  const ppt = inFlight.provider_prompt_tokens;
+  if (typeof ppt !== "number" || ppt <= 0) return null;
+  const win = inFlight.context_window_tokens;
+  if (typeof win === "number" && win > 0) {
+    return `${ppt}/${win}`;
+  }
+  return String(ppt);
+}
+
+function formatInFlightToolsColumn(
+  inFlight: BenchmarkInFlight,
+  t: (key: string) => string
+): string {
+  const done = inFlight.tool_call_count ?? 0;
+  const completedRounds = inFlight.llm_round_count ?? 0;
+  const phase = (inFlight.phase || "").trim();
+  const currentRound = inFlight.current_llm_round;
+  const parts: string[] = [`${done}`];
+  if (phase === "llm_generating" && typeof currentRound === "number") {
+    parts.push(t("admin:benchInFlightGenRound").replace("{{round}}", String(currentRound)));
+  } else {
+    parts.push(`${completedRounds} llm`);
+  }
+  return parts.join(" · ");
+}
+
 function formatInFlightActivity(
   inFlight: BenchmarkInFlight,
   t: (key: string) => string
@@ -115,10 +142,45 @@ function formatInFlightActivity(
   if (phase === "tool" && detail) {
     return t("admin:benchInFlightTool").replace("{{tool}}", detail);
   }
+  if (phase === "llm_generating") {
+    const base = detail
+      ? t("admin:benchInFlightLlmGeneratingDetail").replace("{{detail}}", detail)
+      : t("admin:benchInFlightLlmGenerating");
+    const reasoning =
+      typeof inFlight.llm_reasoning_chars === "number" && inFlight.llm_reasoning_chars > 0
+        ? t("admin:benchInFlightReasoningChars").replace(
+            "{{count}}",
+            String(inFlight.llm_reasoning_chars)
+          )
+        : "";
+    const text =
+      typeof inFlight.llm_text_chars === "number" && inFlight.llm_text_chars > 0
+        ? t("admin:benchInFlightTextChars").replace("{{count}}", String(inFlight.llm_text_chars))
+        : "";
+    const streamHint = reasoning || text ? [reasoning, text].filter(Boolean).join(" · ") : "";
+    if (streamHint) return `${base} · ${streamHint}`;
+    return base;
+  }
   if (phase === "llm") {
     return detail
       ? t("admin:benchInFlightLlmDetail").replace("{{detail}}", detail)
       : t("admin:benchInFlightLlm");
+  }
+  if (phase === "session") {
+    const cat = (inFlight.routed_category || detail || "").trim();
+    const n =
+      typeof inFlight.forwarded_tool_count === "number"
+        ? inFlight.forwarded_tool_count
+        : null;
+    if (n != null && cat) {
+      return t("admin:benchInFlightSessionRoute")
+        .replace("{{count}}", String(n))
+        .replace("{{category}}", cat);
+    }
+    if (n != null) {
+      return t("admin:benchInFlightSessionTools").replace("{{count}}", String(n));
+    }
+    return t("admin:benchInFlightSessionGeneric");
   }
   if (phase === "compact") {
     return detail
@@ -132,6 +194,12 @@ function formatInFlightActivity(
   }
   if (phase === "starting") return t("admin:benchInFlightStarting");
   return phase;
+}
+
+function formatInFlightPreview(inFlight: BenchmarkInFlight): string | null {
+  const preview = (inFlight.generation_preview || "").trim();
+  if (!preview) return null;
+  return preview.length > 140 ? `${preview.slice(0, 140)}…` : preview;
 }
 
 function BenchmarkScenarioDetail({
@@ -204,6 +272,17 @@ function BenchmarkScenarioDetail({
           <span>
             {t("admin:benchDetailContextWindow")}:{" "}
             <span className="font-mono text-white/80">{contextWindow}</span>
+          </span>
+        ) : null}
+        {res.run_metrics?.provider_cache?.cache_prompt_disabled === true ? (
+          <span>{t("admin:benchDetailProviderCacheOff")}</span>
+        ) : null}
+        {typeof res.run_metrics?.provider_cached_prompt_tokens === "number" ? (
+          <span>
+            {t("admin:benchDetailProviderCacheHit")}:{" "}
+            <span className="font-mono text-white/80">
+              {res.run_metrics.provider_cached_prompt_tokens}
+            </span>
           </span>
         ) : null}
       </div>
@@ -1175,9 +1254,23 @@ export function AdminBenchmarks() {
                         · {formatInFlightProviderModel(detail.report_json.in_flight)} ·{" "}
                         {formatInFlightActivity(detail.report_json.in_flight, t)}
                         {(() => {
+                          const tok = formatInFlightPromptTokens(detail.report_json!.in_flight!);
+                          return tok ? ` · ${t("admin:benchInFlightPromptTokens")} ${tok}` : "";
+                        })()}
+                        {(() => {
                           const ms = formatInFlightElapsed(detail.report_json!.in_flight!);
                           return ms != null ? ` · ${ms} ms` : "";
                         })()}
+                      </p>
+                    ) : null}
+                    {detail.report_json?.in_flight &&
+                    formatInFlightPreview(detail.report_json.in_flight) ? (
+                      <p
+                        className="font-mono text-[10px] leading-snug text-sky-200/70 truncate max-w-full"
+                        title={detail.report_json.in_flight.generation_preview}
+                      >
+                        {t("admin:benchInFlightPreview")}:{" "}
+                        {formatInFlightPreview(detail.report_json.in_flight)}
                       </p>
                     ) : null}
                   </div>
@@ -1221,18 +1314,28 @@ export function AdminBenchmarks() {
                           {formatInFlightActivity(detail.report_json.in_flight, t)}
                         </td>
                         <td className="py-1.5 pr-2 text-sky-300/90">
-                          {detail.report_json.in_flight.tool_call_count ?? 0}
-                          {detail.report_json.in_flight.llm_round_count != null
-                            ? ` · ${detail.report_json.in_flight.llm_round_count} llm`
-                            : ""}
+                          {formatInFlightToolsColumn(detail.report_json.in_flight, t)}
                           {(detail.report_json.in_flight.tool_names?.length ?? 0) > 0 ? (
                             <span className="ml-1 text-surface-muted">
                               ({detail.report_json.in_flight.tool_names!.slice(-3).join(", ")})
                             </span>
                           ) : null}
+                          {typeof detail.report_json.in_flight.forwarded_tool_count ===
+                            "number" &&
+                          detail.report_json.in_flight.forwarded_tool_count > 0 ? (
+                            <span className="ml-1 block text-[10px] text-surface-muted">
+                              → {detail.report_json.in_flight.forwarded_tool_count}{" "}
+                              {t("admin:benchInFlightForwardedTools")}
+                              {detail.report_json.in_flight.routed_category
+                                ? ` (${detail.report_json.in_flight.routed_category})`
+                                : ""}
+                            </span>
+                          ) : null}
                         </td>
                         <td className="py-1.5 pr-2 text-surface-muted">—</td>
-                        <td className="py-1.5 pr-2 text-surface-muted">—</td>
+                        <td className="py-1.5 pr-2 font-mono text-[11px] text-sky-300/90">
+                          {formatInFlightPromptTokens(detail.report_json.in_flight) ?? "—"}
+                        </td>
                         <td className="py-1.5 pr-2 text-sky-300/90">
                           {formatInFlightElapsed(detail.report_json.in_flight) ?? "…"}
                         </td>

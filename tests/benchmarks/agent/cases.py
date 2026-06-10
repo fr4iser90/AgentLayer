@@ -60,7 +60,6 @@ TIER1_SCENARIOS: list[AgentScenario] = [
         tier=1,
         prompt="What is 17 + 25? Reply with the numeric result only.",
         rubric="s2_simple_chat",
-        max_tool_rounds=0,
     ),
     AgentScenario(
         id="S3_read_file",

@@ -10,8 +10,8 @@ from typing import Any, Literal
 from apps.backend.core.config import config
 from apps.backend.domain.agent_registry import get_agent_registry
 from apps.backend.domain.agent_tools import (
-    _rank_tools_by_user_input,
     _tool_spec_name,
+    rank_tools_for_forward,
 )
 from apps.backend.domain.plugin_system.registry import get_registry
 
@@ -30,6 +30,7 @@ class ToolForwardContext:
     tool_specs: list[Any]
     ranking_enabled: bool
     full_schema_preference: bool
+    category_routed: bool = False
     round_index: int = 0
     prompt_tokens_so_far: int | None = None
 
@@ -166,8 +167,12 @@ def build_tool_forward_plan(ctx: ToolForwardContext) -> ToolForwardPlan:
         names = [_tool_spec_name(s) for s in specs if _tool_spec_name(s)]
         triggers = build_tool_triggers_map([n for n in names if n])
         try:
-            ranked_pool = _rank_tools_by_user_input(specs, ctx.user_text, triggers)
-            ranking_applied = True
+            ranked_pool, ranking_applied = rank_tools_for_forward(
+                specs,
+                ctx.user_text,
+                triggers,
+                category_routed=ctx.category_routed,
+            )
         except Exception:
             logger.warning("tool forward: ranking failed", exc_info=True)
             ranked_pool = specs

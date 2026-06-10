@@ -51,7 +51,7 @@ _SCENARIO_META: dict[str, dict[str, Any]] = {
     },
     "S2_simple_chat": {
         "title": "Simple chat",
-        "summary": "Answer 17+25 with no tools.",
+        "summary": "Answer 17+25 directly; tools stay available via router but should not be required.",
         "expected_tools": [],
         "rubric": "numeric answer 42, latency < 30s",
     },
