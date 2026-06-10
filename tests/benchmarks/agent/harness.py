@@ -32,9 +32,13 @@ from tests.benchmarks.agent.fixtures import (
 )
 from tests.benchmarks.agent.metrics import (
     RunMetrics,
+    agent_run_id_from_ws_events,
     bench_ws_diagnostics,
     build_run_metrics,
+    extract_llm_stream_from_ws,
     live_snapshot_from_ws_events,
+    tool_invocations_from_ws_events,
+    tool_names_from_ws_events,
 )
 from tests.benchmarks.agent.rubrics import RubricOutcome, evaluate_rubric
 from tests.benchmarks.agent.ws_runner import run_chat_via_websocket, timeline_capture_enabled
@@ -904,8 +908,29 @@ def run_scenario(
     latency_ms = (time.perf_counter() - t0) * 1000.0
 
     content = _extract_assistant_content(data)
+    if not content.strip() and ws_events:
+        stream = extract_llm_stream_from_ws(ws_events)
+        stream_parts: list[str] = []
+        if stream.get("reasoning"):
+            stream_parts.append(str(stream["reasoning"]))
+        if stream.get("text"):
+            stream_parts.append(str(stream["text"]))
+        if stream_parts:
+            content = "\n\n".join(stream_parts)
     agent_run_id = str(data.get("agent_run_id") or "") or None
+    if not agent_run_id and ws_events:
+        agent_run_id = agent_run_id_from_ws_events(ws_events)
+
     tool_names, invocations, agent_run = _fetch_run_trace(client, agent_run_id)
+    if ws_events:
+        ws_tool_names = tool_names_from_ws_events(ws_events)
+        ws_invocations = tool_invocations_from_ws_events(ws_events)
+        if len(ws_tool_names) > len(tool_names):
+            tool_names = ws_tool_names
+        if len(ws_invocations) > len(invocations):
+            invocations = ws_invocations
+        elif not invocations and ws_invocations:
+            invocations = ws_invocations
 
     cache_disabled = body.get("cache_prompt") is False if "cache_prompt" in body else None
     run_metrics_obj: RunMetrics = build_run_metrics(
@@ -918,9 +943,11 @@ def run_scenario(
     )
     run_metrics_dict = run_metrics_obj.to_dict()
     if ws_events or error:
-        diag = bench_ws_diagnostics(ws_events)
+        diag = bench_ws_diagnostics(ws_events, error=error)
         if diag:
             run_metrics_dict["bench_diagnostics"] = diag
+            if not agent_run_id and diag.get("agent_run_id_ws"):
+                agent_run_id = str(diag["agent_run_id_ws"])
     if cache_disabled is not None or run_metrics_obj.provider_cached_prompt_tokens is not None:
         run_metrics_dict.setdefault("provider_cache", {})
         if cache_disabled is not None:

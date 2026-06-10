@@ -5,9 +5,28 @@ from __future__ import annotations
 from tests.benchmarks.agent.metrics import (
     bench_ws_diagnostics,
     build_run_metrics,
+    extract_llm_stream_from_ws,
+    extract_tool_rounds_from_ws,
     live_snapshot_from_ws_events,
     summarize_ws_events,
 )
+
+
+def test_extract_llm_stream_from_ws_reconstructs_channels() -> None:
+    events = [
+        {"type": "agent.llm_delta", "round": 1, "channel": "reasoning", "reasoning_delta": "think "},
+        {"type": "agent.llm_delta", "round": 1, "channel": "reasoning", "reasoning_delta": "hard"},
+        {"type": "agent.llm_delta", "round": 1, "delta": "Hello"},
+        {"type": "agent.llm_delta", "round": 1, "delta": " world"},
+    ]
+    stream = extract_llm_stream_from_ws(events)
+    assert stream["reasoning"] == "think hard"
+    assert stream["text"] == "Hello world"
+    assert stream["reasoning_chars"] == 10
+    assert stream["text_chars"] == 11
+    assert stream["last_round"] == 1
+    diag = bench_ws_diagnostics(events)
+    assert diag["llm_stream"]["text"] == "Hello world"
 
 
 def test_bench_ws_diagnostics_collects_errors_and_timeline() -> None:
@@ -19,6 +38,30 @@ def test_bench_ws_diagnostics_collects_errors_and_timeline() -> None:
     assert diag["ws_event_count"] == 2
     assert diag["ws_errors"][-1]["detail"] == "upstream failed"
     assert diag["event_counts"]["llm_round_count"] == 1
+
+
+def test_extract_tool_rounds_pairs_start_done_and_insights() -> None:
+    events = [
+        {"type": "agent.tool_start", "round": 1, "name": "create_dashboard", "summary": "(empty)"},
+        {"type": "agent.tool_done", "round": 1, "name": "create_dashboard", "result_ok": True},
+        {"type": "agent.tool_start", "round": 2, "name": "create_dashboard", "summary": "(empty)"},
+        {"type": "agent.tool_done", "round": 2, "name": "create_dashboard", "result_ok": True},
+        {
+            "type": "agent.tool_start",
+            "round": 3,
+            "name": "bash",
+            "summary": "rejected: empty or invalid arguments",
+        },
+        {"type": "agent.tool_done", "round": 3, "name": "bash", "result_ok": False, "result_error": "missing command"},
+    ]
+    rounds = extract_tool_rounds_from_ws(events)
+    assert len(rounds) == 3
+    assert rounds[0]["summary"] == "(empty)"
+    assert rounds[2]["rejected"] is True
+    diag = bench_ws_diagnostics(events, error="scenario timeout after 180s")
+    assert diag["tool_rounds"][0]["name"] == "create_dashboard"
+    assert any("create_dashboard" in line for line in diag["insights"])
+    assert any("timeout" in line.lower() for line in diag["insights"])
 
 
 def test_live_snapshot_from_ws_events() -> None:
@@ -46,8 +89,8 @@ def test_summarize_compaction_events() -> None:
             "round": 3,
             "provider_prompt_tokens": 12000,
         },
-        {"type": "agent.tool_done", "name": "read_file", "ok": True},
-        {"type": "agent.tool_done", "name": "bash", "ok": False},
+        {"type": "agent.tool_done", "name": "read_file", "result_ok": True},
+        {"type": "agent.tool_done", "name": "bash", "result_ok": False},
         {"type": "agent.llm_round", "round": 4},
     ]
     compactions, timeline, counts = summarize_ws_events(events)

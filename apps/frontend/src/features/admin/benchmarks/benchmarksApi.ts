@@ -178,6 +178,33 @@ export type BenchmarkScenarioResult = {
       timeline_tail?: Array<Record<string, unknown>>;
       event_counts?: Record<string, number>;
       compaction_count_live?: number;
+      tool_rounds?: Array<{
+        round?: number;
+        name?: string;
+        summary?: string | null;
+        rejected?: boolean;
+        ok?: boolean | null;
+        error?: string;
+        result_chars?: number;
+      }>;
+      agent_run_id_ws?: string;
+      insights?: string[];
+      llm_stream?: {
+        text?: string;
+        reasoning?: string;
+        text_chars?: number;
+        reasoning_chars?: number;
+        text_truncated?: boolean;
+        reasoning_truncated?: boolean;
+        last_round?: number;
+      };
+      session?: {
+        forwarded_tool_count?: number | null;
+        forwarded_tools?: string[] | null;
+        routed_category?: string;
+        effective_agent_id?: string;
+        effective_model?: string;
+      };
     };
     provider_cache?: {
       cache_prompt_disabled?: boolean;

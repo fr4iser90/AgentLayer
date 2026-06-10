@@ -93,16 +93,219 @@ def utilization_pct(context: dict[str, Any]) -> float | None:
     return round(min(100.0, (prompt / budget) * 100.0), 2)
 
 
-def bench_ws_diagnostics(events: list[dict[str, Any]] | None) -> dict[str, Any]:
+def _tool_done_ok(ev: dict[str, Any]) -> bool | None:
+    if ev.get("ok") is False or ev.get("result_ok") is False:
+        return False
+    if ev.get("ok") is True or ev.get("result_ok") is True:
+        return True
+    return None
+
+
+def extract_tool_rounds_from_ws(events: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    """Pair tool_start/tool_done websocket events into per-round diagnostics."""
+    rounds: list[dict[str, Any]] = []
+    pending: dict[str, Any] | None = None
+    for ev in events or []:
+        if not isinstance(ev, dict):
+            continue
+        typ = str(ev.get("type") or "")
+        name = str(ev.get("name") or ev.get("tool_name") or "").strip()
+        if typ == "agent.tool_start":
+            pending = {
+                "round": ev.get("round"),
+                "name": name,
+                "summary": str(ev.get("summary") or "").strip() or None,
+                "rejected": "rejected" in str(ev.get("summary") or "").lower(),
+            }
+            continue
+        if typ != "agent.tool_done" or not pending:
+            continue
+        row = dict(pending)
+        if name:
+            row["name"] = name
+        ok = _tool_done_ok(ev)
+        row["ok"] = ok
+        err = ev.get("result_error") or ev.get("error")
+        if err:
+            row["error"] = str(err)[:500]
+        chars = ev.get("result_chars")
+        if isinstance(chars, int):
+            row["result_chars"] = chars
+        rounds.append(row)
+        pending = None
+    if pending:
+        rounds.append(dict(pending))
+    return rounds
+
+
+def _bench_insights(
+    tool_rounds: list[dict[str, Any]],
+    *,
+    error: str | None = None,
+) -> list[str]:
+    insights: list[str] = []
+    if error:
+        low = error.lower()
+        if "timeout" in low or "cancelled" in low or "canceled" in low:
+            insights.append(
+                "Run ended before chat.completion (timeout or cancel). "
+                "Tool rounds below come from the websocket timeline; DB trace may be incomplete."
+            )
+    if not tool_rounds:
+        return insights
+
+    by_tool: dict[str, list[dict[str, Any]]] = {}
+    for row in tool_rounds:
+        tool = str(row.get("name") or "").strip()
+        if not tool:
+            continue
+        by_tool.setdefault(tool, []).append(row)
+
+    for tool, rows in by_tool.items():
+        if len(rows) < 2:
+            continue
+        emptyish = [
+            r
+            for r in rows
+            if r.get("rejected")
+            or str(r.get("summary") or "").strip() in ("", "(empty)")
+        ]
+        if len(emptyish) >= 2:
+            insights.append(
+                f"{tool} was called {len(rows)}×; {len(emptyish)}× with empty or rejected arguments. "
+                "If the tool schema allows `{}`, the server executes it instead of rejecting — "
+                "the model must send required JSON fields in tool_calls."
+            )
+        elif len(rows) >= 3:
+            summaries = {str(r.get("summary") or "") for r in rows}
+            if len(summaries) == 1:
+                insights.append(
+                    f"{tool} repeated {len(rows)}× with the same arguments ({summaries.pop() or '(empty)'})."
+                )
+
+    rejected = [r for r in tool_rounds if r.get("rejected")]
+    if rejected:
+        insights.append(
+            f"{len(rejected)} tool call(s) rejected by schema validation (empty or incomplete arguments)."
+        )
+    return insights[:6]
+
+
+_LLM_STREAM_STORE_MAX = 48_000
+
+
+def extract_llm_stream_from_ws(events: list[dict[str, Any]] | None) -> dict[str, Any]:
+    """Reconstruct streamed LLM output from ``agent.llm_delta`` websocket events."""
+    text_parts: list[str] = []
+    reasoning_parts: list[str] = []
+    last_round: int | None = None
+    for ev in events or []:
+        if not isinstance(ev, dict) or str(ev.get("type") or "") != "agent.llm_delta":
+            continue
+        rnd = ev.get("round")
+        if isinstance(rnd, int):
+            last_round = rnd
+        channel = str(ev.get("channel") or "").strip().lower()
+        if channel == "reasoning":
+            chunk = str(ev.get("reasoning_delta") or "")
+            if chunk:
+                reasoning_parts.append(chunk)
+        else:
+            chunk = str(ev.get("delta") or "")
+            if chunk:
+                text_parts.append(chunk)
+    text = "".join(text_parts)
+    reasoning = "".join(reasoning_parts)
+    if not text and not reasoning:
+        return {}
+
+    def _clip(raw: str) -> tuple[str, bool]:
+        if len(raw) <= _LLM_STREAM_STORE_MAX:
+            return raw, False
+        return raw[:_LLM_STREAM_STORE_MAX], True
+
+    text_stored, text_trunc = _clip(text)
+    reasoning_stored, reasoning_trunc = _clip(reasoning)
+    out: dict[str, Any] = {
+        "text_chars": len(text),
+        "reasoning_chars": len(reasoning),
+        "last_round": last_round,
+    }
+    if text_stored:
+        out["text"] = text_stored
+        out["text_truncated"] = text_trunc
+    if reasoning_stored:
+        out["reasoning"] = reasoning_stored
+        out["reasoning_truncated"] = reasoning_trunc
+    return out
+
+
+def session_from_ws_events(events: list[dict[str, Any]] | None) -> dict[str, Any]:
+    for ev in events or []:
+        if not isinstance(ev, dict) or str(ev.get("type") or "") != "agent.session":
+            continue
+        fwd = ev.get("forwarded_tools")
+        return {
+            "forwarded_tool_count": len(fwd) if isinstance(fwd, list) else None,
+            "forwarded_tools": [str(x) for x in fwd][:40] if isinstance(fwd, list) else None,
+            "routed_category": ev.get("routed_category"),
+            "effective_agent_id": ev.get("effective_agent_id"),
+            "effective_model": ev.get("effective_model"),
+        }
+    return {}
+
+
+def agent_run_id_from_ws_events(events: list[dict[str, Any]] | None) -> str | None:
+    for ev in reversed(events or []):
+        if not isinstance(ev, dict):
+            continue
+        rid = ev.get("agent_run_id")
+        if rid:
+            return str(rid).strip() or None
+    return None
+
+
+def tool_names_from_ws_events(events: list[dict[str, Any]] | None) -> list[str]:
+    return [str(r.get("name") or "") for r in extract_tool_rounds_from_ws(events) if r.get("name")]
+
+
+def tool_invocations_from_ws_events(events: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for row in extract_tool_rounds_from_ws(events):
+        name = str(row.get("name") or "").strip()
+        if not name:
+            continue
+        out.append(
+            {
+                "tool_name": name,
+                "ok": row.get("ok"),
+                "args_preview": row.get("summary"),
+                "result_error": row.get("error"),
+                "rejected": row.get("rejected"),
+                "round": row.get("round"),
+                "source": "websocket",
+            }
+        )
+    return out
+
+
+def bench_ws_diagnostics(
+    events: list[dict[str, Any]] | None,
+    *,
+    error: str | None = None,
+) -> dict[str, Any]:
     """Actionable failure context for benchmark UI (websocket timeline)."""
     rows = [e for e in (events or []) if isinstance(e, dict)]
     if not rows:
         return {}
     compaction_events, timeline, counts = summarize_ws_events(rows)
+    tool_rounds = extract_tool_rounds_from_ws(rows)
+    llm_stream = extract_llm_stream_from_ws(rows)
+    session = session_from_ws_events(rows)
     ws_errors: list[dict[str, Any]] = []
     for ev in rows:
         typ = str(ev.get("type") or "")
-        if typ in ("error", "agent.aborted") or ev.get("error"):
+        if typ in ("error", "agent.aborted", "agent.cancelled") or ev.get("error"):
             ws_errors.append(
                 {
                     "type": typ,
@@ -113,9 +316,14 @@ def bench_ws_diagnostics(events: list[dict[str, Any]] | None) -> dict[str, Any]:
     return {
         "ws_event_count": len(rows),
         "ws_errors": ws_errors[-5:],
-        "timeline_tail": timeline[-16:],
+        "timeline_tail": timeline[-24:],
         "event_counts": counts,
         "compaction_count_live": len(compaction_events),
+        "tool_rounds": tool_rounds[-40:],
+        "agent_run_id_ws": agent_run_id_from_ws_events(rows),
+        "insights": _bench_insights(tool_rounds, error=error),
+        "llm_stream": llm_stream or None,
+        "session": session or None,
     }
 
 
@@ -302,18 +510,27 @@ def summarize_ws_events(events: list[dict[str, Any]]) -> tuple[list[dict], list[
             continue
         if typ == "agent.tool_start":
             counts["tool_start_count"] += 1
-            timeline.append({"type": typ, "tool": ev.get("name") or ev.get("tool_name")})
+            timeline.append(
+                {
+                    "type": typ,
+                    "tool": ev.get("name") or ev.get("tool_name"),
+                    "round": ev.get("round"),
+                    "summary": ev.get("summary"),
+                }
+            )
             continue
         if typ == "agent.tool_done":
             counts["tool_done_count"] += 1
-            ok = ev.get("ok")
+            ok = _tool_done_ok(ev)
             if ok is False:
                 counts["tool_fail_count"] += 1
             timeline.append(
                 {
                     "type": typ,
                     "tool": ev.get("name") or ev.get("tool_name"),
+                    "round": ev.get("round"),
                     "ok": ok,
+                    "error": ev.get("result_error") or ev.get("error"),
                 }
             )
             continue
@@ -382,12 +599,25 @@ def build_run_metrics(
     for inv in tool_invocations:
         if not isinstance(inv, dict):
             continue
+        args_preview: str | None = None
+        args_json = inv.get("args_json")
+        if isinstance(args_json, dict) and args_json:
+            import json as _json
+
+            args_preview = _json.dumps(args_json, ensure_ascii=False)[:160]
+        elif inv.get("args_preview"):
+            args_preview = str(inv.get("args_preview"))[:160]
         inv_public.append(
             {
                 "tool_name": inv.get("tool_name"),
                 "ok": inv.get("ok"),
                 "created_at": inv.get("created_at"),
-                "result_excerpt": (str(inv.get("result_excerpt") or "")[:200] or None),
+                "args_preview": args_preview,
+                "result_excerpt": (str(inv.get("result_excerpt") or "")[:400] or None),
+                "result_error": (str(inv.get("result_error") or "")[:200] or None),
+                "rejected": inv.get("rejected"),
+                "round": inv.get("round"),
+                "source": inv.get("source"),
             }
         )
 

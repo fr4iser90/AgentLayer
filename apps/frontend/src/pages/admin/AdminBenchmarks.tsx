@@ -77,7 +77,61 @@ function formatBenchmarkProviderModel(res: BenchmarkScenarioResult): string {
 }
 
 function resolveScenarioResponse(res: BenchmarkScenarioResult): string {
-  return (res.assistant_content || res.assistant_excerpt || "").trim();
+  const direct = (res.assistant_content || res.assistant_excerpt || "").trim();
+  if (direct) return direct;
+  const stream = res.run_metrics?.bench_diagnostics?.llm_stream;
+  if (!stream) return "";
+  const parts: string[] = [];
+  if (stream.reasoning?.trim()) parts.push(stream.reasoning.trim());
+  if (stream.text?.trim()) parts.push(stream.text.trim());
+  return parts.join("\n\n");
+}
+
+function responseFromStreamOnly(res: BenchmarkScenarioResult): boolean {
+  const direct = (res.assistant_content || res.assistant_excerpt || "").trim();
+  if (direct) return false;
+  const stream = res.run_metrics?.bench_diagnostics?.llm_stream;
+  return Boolean(stream?.text?.trim() || stream?.reasoning?.trim());
+}
+
+function CollapsibleMono({
+  text,
+  collapsedClass = "max-h-48",
+  t,
+}: {
+  text: string;
+  collapsedClass?: string;
+  t: (key: string) => string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const long = text.length > 900 || text.split("\n").length > 14;
+  if (!text.trim()) {
+    return (
+      <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 font-mono text-[11px] text-white/90">
+        {t("admin:benchDetailNone")}
+      </pre>
+    );
+  }
+  return (
+    <div>
+      <pre
+        className={`overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 font-mono text-[11px] text-white/90 ${
+          expanded || !long ? "max-h-[32rem]" : collapsedClass
+        }`}
+      >
+        {text}
+      </pre>
+      {long ? (
+        <button
+          type="button"
+          className="mt-1 text-sky-400 hover:underline"
+          onClick={() => setExpanded((v) => !v)}
+        >
+          {expanded ? t("admin:benchDetailShowLess") : t("admin:benchDetailShowFull")}
+        </button>
+      ) : null}
+    </div>
+  );
 }
 
 function scenarioHasDiagnostics(res: BenchmarkScenarioResult): boolean {
@@ -203,6 +257,18 @@ function formatInFlightPreview(inFlight: BenchmarkInFlight): string | null {
   return preview.length > 140 ? `${preview.slice(0, 140)}…` : preview;
 }
 
+function summarizeToolRounds(
+  rounds: Array<{ name?: string; summary?: string | null; rejected?: boolean }>,
+): string {
+  const counts = new Map<string, number>();
+  for (const row of rounds) {
+    const name = String(row.name || "").trim();
+    if (!name) continue;
+    counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  return [...counts.entries()].map(([name, n]) => (n > 1 ? `${name} ×${n}` : name)).join(", ");
+}
+
 function BenchmarkScenarioDetail({
   res,
   t,
@@ -221,6 +287,18 @@ function BenchmarkScenarioDetail({
   const legacy = !res.scenario_prompt?.trim() && !res.assistant_content?.trim();
   const noToolsForwarded =
     contextWindow === 0 && (res.tool_call_count ?? 0) === 0 && !res.skipped;
+  const benchDiag = res.run_metrics?.bench_diagnostics;
+  const toolRounds = benchDiag?.tool_rounds ?? [];
+  const wsToolSummary = toolRounds.length > 0 ? summarizeToolRounds(toolRounds) : "";
+  const toolsDisplay =
+    (res.tool_names?.length ?? 0) > 0
+      ? res.tool_names!.join(", ")
+      : wsToolSummary || t("admin:benchDetailNoTools");
+  const traceInvocations = res.run_metrics?.tool_invocations ?? [];
+  const runTraceId = res.agent_run_id || benchDiag?.agent_run_id_ws || null;
+  const llmStream = benchDiag?.llm_stream;
+  const sessionInfo = benchDiag?.session;
+  const streamOnly = responseFromStreamOnly(res);
 
   return (
     <div className="space-y-3 rounded-lg border border-white/10 bg-black/20 p-3 text-xs">
@@ -248,20 +326,22 @@ function BenchmarkScenarioDetail({
                 ({t("admin:benchDetailTruncated")})
               </span>
             ) : null}
+            {streamOnly ? (
+              <span className="ml-2 font-normal text-amber-400/80">
+                ({t("admin:benchDetailResponseFromStream")})
+              </span>
+            ) : null}
           </div>
-          <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 font-mono text-[11px] text-white/90">
-            {response || t("admin:benchDetailNone")}
-          </pre>
+          <CollapsibleMono text={response || ""} t={t} />
         </div>
       </div>
       <div className="flex flex-wrap gap-x-6 gap-y-1 text-surface-muted">
         <span>
           {t("admin:benchDetailTools")}:{" "}
-          <span className="font-mono text-white/80">
-            {(res.tool_names?.length ?? 0) > 0
-              ? res.tool_names!.join(", ")
-              : t("admin:benchDetailNoTools")}
-          </span>
+          <span className="font-mono text-white/80">{toolsDisplay}</span>
+          {(res.tool_names?.length ?? 0) === 0 && toolRounds.length > 0 ? (
+            <span className="ml-1 text-amber-400/80">({t("admin:benchDetailToolsFromWs")})</span>
+          ) : null}
         </span>
         {res.run_metrics?.capture_mode ? (
           <span>
@@ -286,7 +366,51 @@ function BenchmarkScenarioDetail({
             </span>
           </span>
         ) : null}
+        {sessionInfo?.forwarded_tool_count != null ? (
+          <span>
+            {t("admin:benchDetailForwardedTools")}:{" "}
+            <span className="font-mono text-white/80">
+              {sessionInfo.forwarded_tool_count}
+              {sessionInfo.routed_category ? ` (${sessionInfo.routed_category})` : ""}
+            </span>
+          </span>
+        ) : null}
       </div>
+      {sessionInfo?.forwarded_tools?.length ? (
+        <div>
+          <div className="mb-1 font-medium text-surface-muted">{t("admin:benchDetailToolCatalog")}</div>
+          <pre className="max-h-24 overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 font-mono text-[10px] text-white/80">
+            {sessionInfo.forwarded_tools.join(", ")}
+          </pre>
+        </div>
+      ) : null}
+      {llmStream?.reasoning || llmStream?.text ? (
+        <div className="space-y-2">
+          <div className="font-medium text-surface-muted">{t("admin:benchDetailLlmStream")}</div>
+          {llmStream.reasoning ? (
+            <div>
+              <div className="mb-1 text-[10px] text-surface-muted">
+                {t("admin:benchDetailLlmReasoning")}
+                {typeof llmStream.reasoning_chars === "number"
+                  ? ` · ${llmStream.reasoning_chars} chars`
+                  : ""}
+                {llmStream.reasoning_truncated ? ` · ${t("admin:benchDetailTruncated")}` : ""}
+              </div>
+              <CollapsibleMono text={llmStream.reasoning} collapsedClass="max-h-36" t={t} />
+            </div>
+          ) : null}
+          {llmStream.text ? (
+            <div>
+              <div className="mb-1 text-[10px] text-surface-muted">
+                {t("admin:benchDetailLlmText")}
+                {typeof llmStream.text_chars === "number" ? ` · ${llmStream.text_chars} chars` : ""}
+                {llmStream.text_truncated ? ` · ${t("admin:benchDetailTruncated")}` : ""}
+              </div>
+              <CollapsibleMono text={llmStream.text} collapsedClass="max-h-36" t={t} />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       {res.failure_reason ? (
         <div className="rounded border border-red-500/30 bg-red-950/30 p-2">
           <div className="font-medium text-red-300">{t("admin:benchDetailFailure")}</div>
@@ -306,6 +430,72 @@ function BenchmarkScenarioDetail({
               HTTP {res.run_metrics.http_status}
             </p>
           ) : null}
+        </div>
+      ) : null}
+      {(benchDiag?.insights?.length ?? 0) > 0 ? (
+        <div className="rounded border border-sky-500/25 bg-sky-950/25 p-2">
+          <div className="font-medium text-sky-300">{t("admin:benchDetailInsights")}</div>
+          <ul className="mt-1 list-inside list-disc text-[11px] text-sky-100/90">
+            {benchDiag!.insights!.map((line, i) => (
+              <li key={i}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {toolRounds.length > 0 ? (
+        <div>
+          <div className="mb-1 font-medium text-surface-muted">{t("admin:benchDetailToolRounds")}</div>
+          <div className="max-h-48 overflow-auto rounded bg-black/30">
+            <table className="w-full font-mono text-[10px] text-white/85">
+              <thead className="sticky top-0 bg-black/60 text-surface-muted">
+                <tr>
+                  <th className="px-2 py-1 text-left">{t("admin:benchDetailToolRoundCol")}</th>
+                  <th className="px-2 py-1 text-left">{t("admin:benchDetailToolNameCol")}</th>
+                  <th className="px-2 py-1 text-left">{t("admin:benchDetailToolArgsCol")}</th>
+                  <th className="px-2 py-1 text-left">{t("admin:benchDetailToolResultCol")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {toolRounds.map((row, i) => {
+                  const args = String(row.summary || "").trim() || t("admin:benchDetailNone");
+                  const rejected = row.rejected === true;
+                  let result = t("admin:benchDetailNone");
+                  if (rejected) result = t("admin:benchDetailToolRejected");
+                  else if (row.ok === false) result = String(row.error || t("admin:benchDetailToolFailed"));
+                  else if (row.ok === true) result = t("admin:benchDetailToolOk");
+                  return (
+                    <tr key={i} className="border-t border-white/5">
+                      <td className="px-2 py-1">{row.round ?? "—"}</td>
+                      <td className="px-2 py-1">{row.name || "—"}</td>
+                      <td className="max-w-[12rem] truncate px-2 py-1" title={args}>
+                        {args}
+                      </td>
+                      <td className="max-w-[14rem] truncate px-2 py-1 text-amber-200/90" title={result}>
+                        {result}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
+      {traceInvocations.length > 0 ? (
+        <div>
+          <div className="mb-1 font-medium text-surface-muted">{t("admin:benchDetailToolTrace")}</div>
+          <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 font-mono text-[10px] text-white/80">
+            {traceInvocations
+              .map((inv) => {
+                const name = String(inv.tool_name || "?");
+                const args = inv.args_preview ? ` args=${inv.args_preview}` : "";
+                const ok =
+                  inv.ok === true ? " ok" : inv.ok === false ? " FAIL" : "";
+                const err = inv.result_error ? ` err=${inv.result_error}` : "";
+                return `${name}${args}${ok}${err}`;
+              })
+              .join("\n")}
+          </pre>
         </div>
       ) : null}
       {res.run_metrics?.bench_diagnostics?.ws_errors?.length ? (
@@ -332,7 +522,15 @@ function BenchmarkScenarioDetail({
                 const tool = ev.tool ? ` tool=${ev.tool}` : "";
                 const round = ev.round != null ? ` round=${ev.round}` : "";
                 const phase = ev.phase ? ` phase=${ev.phase}` : "";
-                return `${typ}${tool}${round}${phase}`;
+                const summary = ev.summary ? ` args=${String(ev.summary)}` : "";
+                const ok =
+                  ev.ok === false
+                    ? " FAIL"
+                    : ev.ok === true
+                      ? " ok"
+                      : "";
+                const err = ev.error ? ` err=${String(ev.error)}` : "";
+                return `${typ}${tool}${round}${phase}${summary}${ok}${err}`;
               })
               .join("\n")}
           </pre>
@@ -348,12 +546,12 @@ function BenchmarkScenarioDetail({
           </span>
         </p>
       ) : null}
-      {res.agent_run_id ? (
+      {runTraceId ? (
         <Link
-          to={`/app/admin/run-traces?run=${encodeURIComponent(res.agent_run_id)}`}
+          to={`/app/admin/run-traces?run=${encodeURIComponent(runTraceId)}`}
           className="inline-block text-sky-400 hover:underline"
         >
-          {t("admin:benchDetailRunTrace")} · {res.agent_run_id.slice(0, 8)}…
+          {t("admin:benchDetailRunTrace")} · {runTraceId.slice(0, 8)}…
         </Link>
       ) : null}
     </div>
