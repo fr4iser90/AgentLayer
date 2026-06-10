@@ -1,0 +1,61 @@
+# Co-located router phrases for ics.router.py — locale keys are authoring-only.
+domain: calendar
+phrases:
+  en:
+    - calendar
+    - kalender
+    - ical
+    - ics
+    - schedule
+    - appointment
+    - termine
+    - schicht
+    - arbeitszeit
+    - dienstplan
+    - schichtplan
+    - feiertag
+    - urlaub
+    - shift
+    - work schedule
+    - next shift
+    - time off
+    - days off
+    - when do i work
+    - when am i working
+    - wann muss ich
+    - wann arbeite
+    - wieder arbeiten
+    - nächste schicht
+  de:
+    - kalender
+    - calendar
+    - ical
+    - kalenderdatei
+    - ics
+    - kalender import
+    - planen
+    - schedule
+    - zeitplan
+    - termin
+    - appointment
+    - termine
+    - schicht
+    - arbeitszeit
+    - dienstplan
+    - schichtplan
+    - feiertag
+    - urlaub
+    - shift
+    - arbeitsplan
+    - nächste schicht
+    - next shift
+    - freizeit
+    - time off
+    - freie tage
+    - urlaubstage
+    - wann arbeite ich
+    - when do i work
+    - when am i working
+    - wann muss ich
+    - wann arbeite
+    - wieder arbeiten

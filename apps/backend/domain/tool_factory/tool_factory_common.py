@@ -427,7 +427,7 @@ def catalog_generate_module(
         "4. TOOL_DOMAIN = \"...\"  (router category, used for domain-based tool routing)\n"
         "5. TOOL_LABEL = \"...\"  (human-readable label for UI)\n"
         "6. TOOL_DESCRIPTION = \"...\"  (what the tool does for the router, NOT the OpenAI function description)\n"
-        "7. TOOL_TRIGGERS = (\"trigger1\", \"trigger2\", ...)  (words that activate this tool in the router - lowercase, tuple of strings)\n"
+        "7. TOOL_TRIGGERS: tuple[str, ...] = ()  (router phrases go in co-located ``{name}.router.yaml`` next to the module)\n"
         "8. TOOL_CAPABILITIES = (\"meta.author\",)  (optional - for permission system)\n\n"
         "Example complete module structure:\n"
         "```python\n"
@@ -440,7 +440,7 @@ def catalog_generate_module(
         'TOOL_DOMAIN = \"my_domain\"\n'
         'TOOL_LABEL = \"My Tool Name\"\n'
         'TOOL_DESCRIPTION = \"What this tool does for the LLM router\"\n'
-        'TOOL_TRIGGERS = (\"do thing\", \"thing do\", \"action name\")\n'
+        'TOOL_TRIGGERS: tuple[str, ...] = ()\n'
         'TOOL_CAPABILITIES = ()\n\n'
         "def my_tool(arguments: dict[str, Any]) -> str:\n"
         "    # your code here\n"
@@ -462,10 +462,10 @@ def catalog_generate_module(
         "]\n"
         "```\n\n"
         "IMPORTANT:\n"
-        "- TOOL_TRIGGERS MUST be a tuple of lowercase trigger phrases (e.g., \"run test\", \"execute test\")\n"
+        "- Add co-located ``{registered_tool_function_name}.router.yaml`` with ``domain`` and ``phrases.en`` (and optional ``phrases.de``, etc.)\n"
         "- TOOL_DESCRIPTION is for the LLM router, NOT for OpenAI - include what situations should use this tool\n"
         "- TOOL_BUCKET must be one of: files, network, knowledge, secrets, comms, verticals, meta, media, productivity, unsorted\n"
-        "- Include at least 3-5 relevant triggers in TOOL_TRIGGERS for good router activation\n"
+        "- Include at least 3-5 relevant phrases under ``phrases.en`` in the router YAML\n"
         "- All module variables are required except TOOL_CAPABILITIES\n\n"
         "Rules:\n"
         f"- Exactly one TOOLS entry; HANDLERS has exactly one key \"{registered_tool_function_name}\".\n"

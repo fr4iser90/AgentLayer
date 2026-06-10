@@ -23,9 +23,8 @@ TOOL_DESCRIPTION = (
     "Open a pull request (POST /pulls). Push the head branch with git_push first; "
     "do not use bash or gh."
 )
-TOOL_TRIGGERS = ("create pr", "open pull request", "github pr create")
-
-
+# Router phrases: co-located create_pull_request.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 def create_pull_request(arguments: dict[str, Any]) -> str:
     owner = (arguments.get("owner") or "").strip()
     repo = (arguments.get("repo") or "").strip()

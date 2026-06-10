@@ -1,0 +1,16 @@
+# Co-located router phrases for risk_assessment.router.py — locale keys are authoring-only.
+domain: survival
+phrases:
+  en:
+    - risk
+    - risiko
+    - survival
+    - notfall
+    - exposure
+  de:
+    - risk
+    - risiko
+    - survival
+    - notfall
+    - exposition
+    - belichtung

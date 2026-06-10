@@ -1,0 +1,44 @@
+# Co-located router phrases for graph.router.py — locale keys are authoring-only.
+domain: repository
+phrases:
+  en:
+    - call graph
+    - who calls
+    - callers
+    - callees
+    - dependencies
+    - dependents
+    - imports
+    - type hierarchy
+    - inheritance
+    - subclass
+    - superclass
+    - impact analysis
+    - what breaks
+  de:
+    - aufrufgraph
+    - call graph
+    - wer ruft auf
+    - who calls
+    - aufrufer
+    - callers
+    - aufgerufene
+    - callees
+    - abhängigkeiten
+    - dependencies
+    - abhängige
+    - dependents
+    - importe
+    - imports
+    - typ hierarchie
+    - type hierarchy
+    - vererbung
+    - inheritance
+    - unterklasse
+    - subclass
+    - oberklasse
+    - superclass
+    - impact analyse
+    - auswirkungsanalyse
+    - was bricht
+    - what breaks

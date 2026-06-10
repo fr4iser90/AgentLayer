@@ -23,15 +23,8 @@ TOOL_DESCRIPTION = (
     "Publish a GitHub release (POST /releases). Use get_latest_release and git_read log "
     "with since_ref to draft changelog first; do not use bash or gh."
 )
-TOOL_TRIGGERS = (
-    "create release",
-    "publish release",
-    "github release",
-    "new version",
-    "veröffentliche release",
-)
-
-
+# Router phrases: co-located create_release.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 def create_release(arguments: dict[str, Any]) -> str:
     owner = (arguments.get("owner") or "").strip()
     repo = (arguments.get("repo") or "").strip()

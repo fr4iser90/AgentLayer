@@ -20,9 +20,8 @@ TOOL_CAPABILITIES = ("code.repository",)
 TOOL_SECRETS_REQUIRED = (USER_SECRET_KEY,)
 TOOL_LABEL = "GitHub: Get issue"
 TOOL_DESCRIPTION = "Get one issue or PR by number (issues endpoint)."
-TOOL_TRIGGERS = ("github issue", "get issue")
-
-
+# Router phrases: co-located get_issue.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 def get_issue(arguments: dict[str, Any]) -> str:
     owner = (arguments.get("owner") or "").strip()
     repo = (arguments.get("repo") or "").strip()

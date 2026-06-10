@@ -20,9 +20,8 @@ TOOL_DESCRIPTION = (
     "List GitHub repositories (github_pat). Read-only connector — "
     "map rows and call dashboard.list_append; clone with workspaces.create."
 )
-TOOL_TRIGGERS = ("list repos", "github repos", "repositories", "repos importieren")
-
-
+# Router phrases: co-located list_repos.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 def _err(msg: str) -> str:
     return json.dumps({"ok": False, "error": msg}, ensure_ascii=False)
 

@@ -18,16 +18,8 @@ TOOL_DESCRIPTION = (
     "Call any HTTPS/HTTP JSON API. Auth via user secrets (bearer, api_key, basic). "
     "SSRF-protected. Store reusable API definitions with connector.save_profile."
 )
-TOOL_TRIGGERS = (
-    "http",
-    "api",
-    "rest",
-    "fetch",
-    "call api",
-    "webhook",
-    "request",
-    "connector",
-)
+# Router phrases: co-located http.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("web.http",)
 TOOL_MIN_ROLE = "user"
 

@@ -33,14 +33,8 @@ TOOL_LABEL = "Fishing"
 TOOL_DESCRIPTION = (
     "Angeln: Biss-Heuristik, Spot-Muster, Köder — keine Karten/GPS oder Rechtsberatung."
 )
-TOOL_TRIGGERS = (
-    "fishing",
-    "angeln",
-    "bite",
-    "beiß",
-    "fisch",
-    "köderzeit",
-)
+# Router phrases: co-located bite_index.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_TAGS = ("fishing", "outdoor", "heuristic")
 TOOL_DOMAIN = "fishing"
 TOOL_REQUIRES = ["time", "weather"]

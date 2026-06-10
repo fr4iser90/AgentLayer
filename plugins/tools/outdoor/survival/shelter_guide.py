@@ -12,13 +12,8 @@ TOOL_LABEL = "Survival"
 TOOL_DESCRIPTION = (
     "Survival: Wasserbedarf, Unterstand, Risiko-Score — keine medizinische Beratung."
 )
-TOOL_TRIGGERS = (
-    "shelter",
-    "unterstand",
-    "bivouac",
-    "notlager",
-    "übernachtung",
-)
+# Router phrases: co-located shelter_guide.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_TAGS = ("survival", "outdoor", "guide")
 TOOL_DOMAIN = "survival"
 TOOL_REQUIRES = ["weather", "gear"]

@@ -1,0 +1,18 @@
+# Co-located router phrases for read.router.py — locale keys are authoring-only.
+domain: conversation
+phrases:
+  en:
+    - conversation history
+    - chat history
+    - earlier messages
+    - read chat
+    - verlauf
+  de:
+    - gesprächsverlauf
+    - chatverlauf
+    - chat historie
+    - frühere nachrichten
+    - ältere nachrichten
+    - chat lesen
+    - verlauf lesen
+    - verlauf

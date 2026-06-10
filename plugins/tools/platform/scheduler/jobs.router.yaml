@@ -1,0 +1,25 @@
+# Co-located router phrases for jobs.router.py — locale keys are authoring-only.
+domain: scheduler
+phrases:
+  en:
+    - schedule
+    - scheduler
+    - cron
+    - job
+    - ide agent
+    - recurring
+    - scheduler_jobs
+  de:
+    - planen
+    - schedule
+    - zeitplan
+    - scheduler
+    - zeitplaner
+    - cron
+    - job
+    - auftrag
+    - ide agent
+    - ide-agent
+    - wiederkehrend
+    - recurring
+    - scheduler_jobs

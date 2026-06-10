@@ -1,0 +1,19 @@
+# Co-located router phrases for search.router.py — locale keys are authoring-only.
+domain: web_search
+phrases:
+  en:
+    - web search
+    - search the web
+    - tavily
+    - brave search
+    - duckduckgo
+    - ddgs
+  de:
+    - websuche
+    - web search
+    - im web suchen
+    - tavily
+    - brave suche
+    - websuche brave
+    - duckduckgo
+    - ddgs

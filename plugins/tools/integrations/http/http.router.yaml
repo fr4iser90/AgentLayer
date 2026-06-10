@@ -1,0 +1,28 @@
+# Co-located router phrases for http.router.py — locale keys are authoring-only.
+domain: http
+phrases:
+  en:
+    - http
+    - api
+    - rest
+    - fetch
+    - call api
+    - webhook
+    - request
+    - connector
+  de:
+    - http
+    - api
+    - pause
+    - rest
+    - ruhe
+    - holen
+    - fetch
+    - abrufen
+    - api aufrufen
+    - api call
+    - webhook
+    - anfrage
+    - request
+    - connector
+    - verbindung

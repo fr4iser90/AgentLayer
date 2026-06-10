@@ -1,0 +1,7 @@
+# Co-located router phrases for help.router.py — locale keys are authoring-only.
+domain: tool_help
+phrases:
+  en:
+    - tool_help
+  de:
+    - tool_help

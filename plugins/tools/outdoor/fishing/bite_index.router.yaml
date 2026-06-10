@@ -1,0 +1,17 @@
+# Co-located router phrases for bite_index.router.py — locale keys are authoring-only.
+domain: fishing
+phrases:
+  en:
+    - fishing
+    - angeln
+    - bite
+    - beiß
+    - fisch
+    - köderzeit
+  de:
+    - fishing
+    - angeln
+    - bite
+    - beiß
+    - fisch
+    - köderzeit

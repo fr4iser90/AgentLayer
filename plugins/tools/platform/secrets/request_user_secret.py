@@ -21,12 +21,8 @@ TOOL_DESCRIPTION = (
     "Show an in-chat form so the signed-in user can save a credential (Web UI). "
     "Use when a secret is missing or invalid — not for OTP/curl (use register_secrets for headless)."
 )
-TOOL_TRIGGERS = (
-    "request secret",
-    "ask for api key",
-    "secret form",
-    "request_user_secret",
-)
+# Router phrases: co-located request_user_secret.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("secrets.user",)
 
 

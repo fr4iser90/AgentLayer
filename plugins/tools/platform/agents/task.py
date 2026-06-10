@@ -13,7 +13,8 @@ __version__ = "1.0.0"
 TOOL_ID = "task"
 TOOL_BUCKET = "meta"
 TOOL_DOMAIN = "delegate"
-TOOL_TRIGGERS = ("coding task", "subagent", "run_plan_subagent")
+# Router phrases: co-located task.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("coding.task",)
 TOOL_LABEL = "Subagent task"
 TOOL_DESCRIPTION = (

@@ -1129,6 +1129,7 @@ async def chat_completion(
         doom_count = 0
         force_no_tools_round = False
         force_no_tools_reason: str | None = None  # "thrash" | "doom"
+        tools_need_full_schema: set[str] = set()
 
         async def _emit_context_ws(
             *,
@@ -1266,19 +1267,27 @@ async def chat_completion(
                 force_no_tools_reason = None
             else:
                 tools_for_round = list(tools_for_request)
-                if round_i > 0 and config.AGENT_TOOLS_CATALOG_AFTER_FIRST_ROUND and tools_for_round:
-                    catalog_modes = {
-                        n: "catalog"
-                        for spec in _tf_plan.forward_specs
-                        if isinstance(spec, dict)
-                        and isinstance(spec.get("function"), dict)
-                        and (n := str(spec["function"].get("name") or "").strip())
-                    }
-                    if catalog_modes:
+                use_catalog = round_i > 0 and config.AGENT_TOOLS_CATALOG_AFTER_FIRST_ROUND
+                if use_catalog or tools_need_full_schema:
+                    schema_modes: dict[str, str] = (
+                        {
+                            n: "catalog"
+                            for spec in _tf_plan.forward_specs
+                            if isinstance(spec, dict)
+                            and isinstance(spec.get("function"), dict)
+                            and (n := str(spec["function"].get("name") or "").strip())
+                        }
+                        if use_catalog
+                        else dict(_tf_plan.schema_mode_per_tool)
+                    )
+                    for promoted in tools_need_full_schema:
+                        if promoted:
+                            schema_modes[promoted] = "full"
+                    if schema_modes:
                         tools_for_round = apply_schema_modes_to_specs(
                             _tf_plan.forward_specs,
-                            catalog_modes,
-                            default_full_schema=False,
+                            schema_modes,
+                            default_full_schema=False if use_catalog else tools_full_schema,
                         )
                 if max_tool_rounds_eff >= 3 and round_i == max_tool_rounds_eff - 2:
                     messages.append(
@@ -1913,6 +1922,22 @@ async def chat_completion(
                     finally:
                         reset_tool_invocation_messages(tctx)
                     ok_sum, err_sum = _tool_result_summary(result)
+                if (
+                    str(name).strip()
+                    and tool_call_warrants_full_schema_promotion(
+                        rejected=rejected,
+                        wire_args=_prev_args,
+                        normalized_args=args,
+                        result_ok=ok_sum,
+                    )
+                ):
+                    tools_need_full_schema.add(str(name).strip())
+                    logger.info(
+                        "tool full schema promoted for next round run_id=%s tool=%s rejected=%s",
+                        _short_run_id(agent_run_id),
+                        name,
+                        rejected,
+                    )
                 if (
                     name == "git_read"
                     and ok_sum

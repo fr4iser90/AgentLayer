@@ -1,0 +1,19 @@
+# Co-located router phrases for rag.router.py — locale keys are authoring-only.
+domain: rag
+phrases:
+  en:
+    - rag
+    - vector search
+    - semantic search
+    - embeddings
+    - knowledge base documents
+  de:
+    - rag
+    - vektorsuche
+    - vector search
+    - semantische suche
+    - semantic search
+    - embeddings
+    - einbettungen
+    - wissensbasis dokumente
+    - kb dokumente

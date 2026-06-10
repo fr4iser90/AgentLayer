@@ -1,0 +1,26 @@
+# Co-located router phrases for admin.router.py — locale keys are authoring-only.
+domain: operator
+phrases:
+  en:
+    - operator
+    - admin
+    - settings
+    - tenant
+    - rag ingest
+    - scheduler job
+    - tool policy
+  de:
+    - operator
+    - betreiber
+    - admin
+    - administrator
+    - verwaltung
+    - einstellungen
+    - settings
+    - mandant
+    - tenant
+    - rag ingest
+    - scheduler job
+    - geplanter job
+    - tool richtlinie
+    - tool policy

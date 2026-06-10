@@ -1,0 +1,37 @@
+# Co-located router phrases for create.router.py — locale keys are authoring-only.
+domain: tool_factory
+phrases:
+  en:
+    - create
+    - create tool
+    - new tool
+    - codegen
+    - generate tool
+    - dynamic tool
+    - plugin
+    - extra tool
+    - tools
+    - update
+    - read
+    - replace
+    - rename
+  de:
+    - create
+    - tool erstellen
+    - werkzeug erstellen
+    - neues tool
+    - code generieren
+    - codegen
+    - tool generieren
+    - werkzeug generieren
+    - dynamisches tool
+    - tool dynamisch
+    - plugin
+    - extra tool
+    - zusätzliches tool
+    - tools
+    - werkzeuge
+    - update
+    - read
+    - replace
+    - rename

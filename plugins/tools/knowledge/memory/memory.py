@@ -23,19 +23,8 @@ TOOL_DESCRIPTION = (
     "Use when the user asks to save/remember something (name, preferences, facts) or to recall stored memory."
 )
 # Router: substring match on lowercased user text → ``memory`` category → memory_* tools (not in ``tool_routing.py``).
-TOOL_TRIGGERS = (
-    "remember",
-    "merke",
-    "merken",
-    "memory",
-    "profil",
-    "preferences",
-    "speichern",
-    "abspeichern",
-    "einprägen",
-    "notiere",
-    "gedächtnis",
-)
+# Router phrases: co-located memory.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("knowledge.memory",)
 
 

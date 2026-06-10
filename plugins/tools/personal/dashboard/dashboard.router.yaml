@@ -1,0 +1,43 @@
+# Co-located router phrases for dashboard.router.py — locale keys are authoring-only.
+domain: dashboard
+phrases:
+  en:
+    - dashboard
+    - dashboards
+    - board
+    - ui layout
+    - layout
+    - variant
+    - vorschlag
+    - proposal
+    - redesign
+    - kanban
+    - chart block
+    - widget
+    - card grid
+  de:
+    - dashboard
+    - übersicht
+    - dashboards
+    - übersichten
+    - board
+    - pinnwand
+    - tafel
+    - ui layout
+    - oberflächen layout
+    - layout
+    - anordnung
+    - variante
+    - variant
+    - vorschlag
+    - proposal
+    - neu gestalten
+    - redesign
+    - kanban
+    - kanban board
+    - diagramm block
+    - chart block
+    - widget
+    - baustein
+    - kartenraster
+    - card grid

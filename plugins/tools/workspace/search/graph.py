@@ -20,12 +20,8 @@ __version__ = "1.0.0"
 TOOL_ID = "graph"
 TOOL_BUCKET = "meta"
 TOOL_DOMAIN = "repository"
-TOOL_TRIGGERS = (
-    "call graph", "who calls", "callers", "callees",
-    "dependencies", "dependents", "imports",
-    "type hierarchy", "inheritance", "subclass", "superclass",
-    "impact analysis", "what breaks",
-)
+# Router phrases: co-located graph.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("coding.read",)
 TOOL_LABEL = "Coding: Graph"
 TOOL_DESCRIPTION = (

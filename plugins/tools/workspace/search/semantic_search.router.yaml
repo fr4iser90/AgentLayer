@@ -1,0 +1,16 @@
+# Co-located router phrases for semantic_search.router.py — locale keys are authoring-only.
+domain: repository
+phrases:
+  en:
+    - semantic search
+    - find code
+    - search symbols
+    - semantic lookup
+  de:
+    - semantische suche
+    - semantic search
+    - code finden
+    - code suchen
+    - symbole suchen
+    - search symbols
+    - semantic lookup

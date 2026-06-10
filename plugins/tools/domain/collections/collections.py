@@ -19,13 +19,8 @@ TOOL_DESCRIPTION = (
     "Domain source of truth for user data (pets, tasks, lists, metadata). "
     "Dashboards are views — write here; boards project this data for display."
 )
-TOOL_TRIGGERS = (
-    "collection",
-    "pets",
-    "items",
-    "domain data",
-    "remember list",
-)
+# Router phrases: co-located collections.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("domain.collection.read", "domain.collection.write")
 TOOL_MIN_ROLE = "user"
 

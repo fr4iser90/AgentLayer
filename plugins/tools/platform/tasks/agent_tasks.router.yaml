@@ -1,0 +1,17 @@
+# Co-located router phrases for agent_tasks.router.py — locale keys are authoring-only.
+domain: agent_tasks
+phrases:
+  en:
+    - task
+    - backlog
+    - artifact
+    - subtask
+  de:
+    - aufgabe
+    - task
+    - backlog
+    - aufgabenstau
+    - artefakt
+    - anhang
+    - unteraufgabe
+    - subtask

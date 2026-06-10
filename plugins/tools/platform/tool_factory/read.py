@@ -16,7 +16,8 @@ __version__ = "1.3.0"
 TOOL_ID = "read"
 TOOL_BUCKET = "meta"
 TOOL_DOMAIN = "tool_factory"
-TOOL_TRIGGERS = ()
+# Router phrases: co-located read.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("meta.inspect",)
 
 

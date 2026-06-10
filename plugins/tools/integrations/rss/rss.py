@@ -27,7 +27,8 @@ TOOL_DESCRIPTION = (
     "Feed URLs from dashboard.data.feeds (dashboard.read) or feed_urls argument. "
     "Persist with persist_dashboard=true (default) or return markdown for dashboard.patch_data."
 )
-TOOL_TRIGGERS = ("rss", "feed", "feeds", "news", "summary", "summarize feeds", "rss summary")
+# Router phrases: co-located rss.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("rss.summarize",)
 TOOL_MIN_ROLE = "user"
 

@@ -23,14 +23,8 @@ TOOL_LABEL = "Web search"
 TOOL_DESCRIPTION = (
     "Search the web via Tavily, Brave, or DuckDuckGo (ddgs); optional page fetch where allowed."
 )
-TOOL_TRIGGERS = (
-    "web search",
-    "search the web",
-    "tavily",
-    "brave search",
-    "duckduckgo",
-    "ddgs",
-)
+# Router phrases: co-located search.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("web.search",)
 
 _TAVILY_URL = "https://api.tavily.com/search"

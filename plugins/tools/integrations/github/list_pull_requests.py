@@ -20,9 +20,8 @@ TOOL_CAPABILITIES = ("code.repository",)
 TOOL_SECRETS_REQUIRED = (USER_SECRET_KEY,)
 TOOL_LABEL = "GitHub: List pull requests"
 TOOL_DESCRIPTION = "List pull requests (open, closed, or all)."
-TOOL_TRIGGERS = ("list prs", "list pull requests", "github prs")
-
-
+# Router phrases: co-located list_pull_requests.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 def list_pull_requests(arguments: dict[str, Any]) -> str:
     owner = (arguments.get("owner") or "").strip()
     repo = (arguments.get("repo") or "").strip()

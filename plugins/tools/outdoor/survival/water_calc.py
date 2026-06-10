@@ -12,14 +12,8 @@ TOOL_LABEL = "Survival"
 TOOL_DESCRIPTION = (
     "Survival: Wasserbedarf, Unterstand, Risiko-Score — keine medizinische Beratung."
 )
-TOOL_TRIGGERS = (
-    "survival",
-    "wasser",
-    "water",
-    "dehydration",
-    "outdoor",
-    "notfall",
-)
+# Router phrases: co-located water_calc.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_TAGS = ("survival", "outdoor", "calculator")
 TOOL_DOMAIN = "survival"
 TOOL_REQUIRES = ["temperature", "activity"]

@@ -1,0 +1,10 @@
+# Co-located router phrases for local_playwright_bundle.router.py — locale keys are authoring-only.
+domain: browser
+phrases:
+  en:
+    - playwright, playwright bundle, local browser, browser automation, export zip, download automation, client-side browser, validate automation plan
+  de:
+    - playwright
+    - browser automatisierung
+    - lokaler browser
+    - automatisierung export

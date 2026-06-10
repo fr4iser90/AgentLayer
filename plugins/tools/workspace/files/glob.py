@@ -18,7 +18,8 @@ __version__ = "1.0.0"
 TOOL_ID = "glob"
 TOOL_BUCKET = "files"
 TOOL_DOMAIN = "repository"
-TOOL_TRIGGERS = ("coding glob", "find files", "glob pattern", "file pattern")
+# Router phrases: co-located glob.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("coding.read",)
 TOOL_LABEL = "Coding: Glob"
 TOOL_DESCRIPTION = (

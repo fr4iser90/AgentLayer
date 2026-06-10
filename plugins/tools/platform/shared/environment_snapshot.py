@@ -18,18 +18,8 @@ TOOL_LABEL = "Outdoor context"
 TOOL_DESCRIPTION = (
     "Normalized snapshot: clock + optional weather + daylight hint for planning domain tools."
 )
-TOOL_TRIGGERS = (
-    "outdoor",
-    "context",
-    "snapshot",
-    "umgebung",
-    "environment",
-    "wetter",
-    "zeit",
-    "angeln",
-    "jagd",
-    "survival",
-)
+# Router phrases: co-located environment_snapshot.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_DOMAIN = "shared"
 TOOL_TAGS = ("context", "weather", "time", "shared")
 TOOL_REQUIRES: list[str] = []

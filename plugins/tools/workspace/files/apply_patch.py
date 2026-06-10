@@ -25,7 +25,8 @@ __version__ = "1.0.0"
 TOOL_ID = "apply_patch"
 TOOL_BUCKET = "files"
 TOOL_DOMAIN = "repository"
-TOOL_TRIGGERS = ("coding patch", "apply patch", "unified diff")
+# Router phrases: co-located apply_patch.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("coding.write",)
 TOOL_LABEL = "Coding: Apply patch"
 TOOL_DESCRIPTION = (

@@ -275,6 +275,8 @@ class ScenarioResult:
     error: str | None = None
     http_status: int | None = None
     run_metrics: dict[str, Any] | None = None
+    rubric_failure_reason: str | None = None
+    transport_error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -982,20 +984,32 @@ def run_scenario(
         fixture_ctx=fixture_ctx,
     )
 
-    rubric: RubricOutcome = evaluate_rubric(
+    rubric_kwargs: dict[str, Any] = {
+        "content": content,
+        "tool_names": tool_names,
+        "tool_invocations": invocations,
+        "latency_ms": latency_ms,
+        "http_status": http_status,
+        "indexed": fixture_ctx.indexed,
+        "dashboard_state": dashboard_state,
+        "expected_title": expected_title,
+        "git_changes": git_changes,
+        "workspace_row": workspace_row,
+    }
+    rubric_substantive: RubricOutcome = evaluate_rubric(
         scenario.rubric,
-        content=content,
-        tool_names=tool_names,
-        tool_invocations=invocations,
-        error=error,
-        latency_ms=latency_ms,
-        http_status=http_status,
-        indexed=fixture_ctx.indexed,
-        dashboard_state=dashboard_state,
-        expected_title=expected_title,
-        git_changes=git_changes,
-        workspace_row=workspace_row,
+        error=None,
+        **rubric_kwargs,
     )
+    transport_error = (error or "").strip() or None
+    rubric_failure = (
+        None
+        if rubric_substantive.passed
+        else (rubric_substantive.failure_reason or "rubric failed")
+    )
+    passed = rubric_substantive.passed and transport_error is None
+    score = 0.0 if not passed else rubric_substantive.score
+    failure_reason = transport_error or rubric_failure
 
     excerpt, stored_content, content_truncated = _store_assistant_content(content)
     return ScenarioResult(
@@ -1005,9 +1019,11 @@ def run_scenario(
         model=profile.model,
         catalog_owned_by=profile.catalog_owned_by,
         agent_id=body["agent_id"],
-        passed=rubric.passed,
-        score=rubric.score,
-        failure_reason=rubric.failure_reason,
+        passed=passed,
+        score=score,
+        failure_reason=failure_reason,
+        rubric_failure_reason=rubric_failure,
+        transport_error=transport_error,
         latency_ms=latency_ms,
         prompt_tokens=prompt_tokens,
         completion_tokens=completion_tokens,
@@ -1323,6 +1339,50 @@ def run_benchmark(
     return report
 
 
+def _scenario_insights_summary(run_metrics: dict[str, Any] | None) -> str:
+    if not isinstance(run_metrics, dict):
+        return ""
+    diag = run_metrics.get("bench_diagnostics")
+    if not isinstance(diag, dict):
+        return ""
+    insights = diag.get("insights")
+    if not isinstance(insights, list):
+        return ""
+    return " | ".join(str(line).strip() for line in insights[:4] if str(line).strip())
+
+
+def scenario_export_row(result: ScenarioResult) -> dict[str, Any]:
+    """Flat row for CSV / failures export."""
+    rm = result.run_metrics if isinstance(result.run_metrics, dict) else {}
+    tools = ", ".join(result.tool_names[:12])
+    if len(result.tool_names) > 12:
+        tools += f" (+{len(result.tool_names) - 12})"
+    return {
+        "scenario_id": result.scenario_id,
+        "profile_label": result.profile_label,
+        "model": result.model,
+        "skipped": result.skipped,
+        "passed": result.passed,
+        "transport_error": result.transport_error or result.error or "",
+        "rubric_failure": result.rubric_failure_reason or "",
+        "failure_reason": result.failure_reason or "",
+        "insights": _scenario_insights_summary(rm),
+        "tool_call_count": result.tool_call_count,
+        "tools": tools,
+        "llm_round_count": rm.get("llm_round_count", ""),
+        "latency_ms": round(result.latency_ms, 1),
+        "agent_run_id": result.agent_run_id or "",
+    }
+
+
+def failures_from_report(report: BenchRunReport) -> list[dict[str, Any]]:
+    return [
+        scenario_export_row(r)
+        for r in report.results
+        if not r.skipped and not r.passed
+    ]
+
+
 def write_report(report: BenchRunReport, out_dir: Path) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     run_dir = out_dir / report.run_id
@@ -1357,12 +1417,17 @@ def write_report(report: BenchRunReport, out_dir: Path) -> Path:
                 "llm_round_count",
                 "context_utilization_pct",
                 "total_tokens",
+                "transport_error",
+                "rubric_failure",
                 "failure_reason",
+                "insights",
+                "tools",
             ],
         )
         writer.writeheader()
         for r in report.results:
             rm = r.run_metrics if isinstance(r.run_metrics, dict) else {}
+            row = scenario_export_row(r)
             writer.writerow(
                 {
                     "scenario_id": r.scenario_id,
@@ -1377,9 +1442,27 @@ def write_report(report: BenchRunReport, out_dir: Path) -> Path:
                     "llm_round_count": rm.get("llm_round_count", 0),
                     "context_utilization_pct": rm.get("context_utilization_pct", ""),
                     "total_tokens": rm.get("total_tokens", ""),
-                    "failure_reason": r.failure_reason or "",
+                    "transport_error": row["transport_error"],
+                    "rubric_failure": row["rubric_failure"],
+                    "failure_reason": row["failure_reason"],
+                    "insights": row["insights"],
+                    "tools": row["tools"],
                 }
             )
+
+    failures = failures_from_report(report)
+    (run_dir / "failures.json").write_text(
+        json.dumps(
+            {
+                "run_id": report.run_id,
+                "resource_prefix": report.resource_prefix,
+                "failure_count": len(failures),
+                "failures": failures,
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
 
     return run_dir
 

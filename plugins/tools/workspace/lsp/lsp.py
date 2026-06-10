@@ -28,7 +28,8 @@ __version__ = "2.0.0"
 TOOL_ID = "lsp"
 TOOL_BUCKET = "meta"
 TOOL_DOMAIN = "repository"
-TOOL_TRIGGERS = ("coding lsp", "go to definition", "find references", "hover")
+# Router phrases: co-located lsp.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("coding.lsp",)
 TOOL_LABEL = "Coding: LSP"
 TOOL_DESCRIPTION = (

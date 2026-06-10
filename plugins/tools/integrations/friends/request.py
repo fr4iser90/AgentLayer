@@ -18,14 +18,8 @@ __version__ = "1.0.0"
 TOOL_ID = "request"
 TOOL_BUCKET = "comms"
 TOOL_DOMAIN = "friends"
-TOOL_TRIGGERS = (
-    "freundschaft",
-    "freund hinzufügen",
-    "friend request",
-    "add friend",
-    "freundesanfrage",
-    "kontaktanfrage",
-)
+# Router phrases: co-located request.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("friends.request", "default")
 
 

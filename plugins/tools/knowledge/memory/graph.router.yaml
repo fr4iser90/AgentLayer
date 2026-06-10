@@ -1,0 +1,23 @@
+# Co-located router phrases for graph.router.py — locale keys are authoring-only.
+domain: memory
+phrases:
+  en:
+    - graph memory
+    - memory graph
+    - knoten
+    - relation
+    - verknüpf
+    - entity
+    - kontext graph
+  de:
+    - graph speicher
+    - wissensgraph
+    - speicher graph
+    - memory graph
+    - knoten
+    - beziehung
+    - relation
+    - verknüpf
+    - entität
+    - entity
+    - kontext graph

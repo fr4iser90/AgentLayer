@@ -23,22 +23,8 @@ __version__ = "1.3.2"
 TOOL_ID = "create"
 TOOL_BUCKET = "meta"
 TOOL_DOMAIN = "tool_factory"
-TOOL_TRIGGERS = (
-    "create",
-    "create tool",
-    "new tool",
-    "codegen",
-    "generate tool",
-    "dynamic tool",
-    "plugin",
-    "extra tool",
-    "tools",
-    # Exact tool ids only — avoid vague words (otherwise the whole category matches too often).
-    "update",
-    "read",
-    "replace",
-    "rename",
-)
+# Router phrases: co-located create.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("meta.author",)
 TOOL_LABEL = "Tool factory"
 TOOL_DESCRIPTION = (

@@ -15,7 +15,8 @@ __version__ = "1.0.0"
 TOOL_ID = "project_explain"
 TOOL_BUCKET = "productivity"
 TOOL_DOMAIN = "project"
-TOOL_TRIGGERS = ("explain the project", "explain project", "what is this project", "project overview", "project structure", "what does this project do", "describe the project", "explain this codebase", "what is this codebase", "tell me about this project")
+# Router phrases: co-located explain.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("project.explain",)
 TOOL_LABEL = "Project Explainer"
 TOOL_DESCRIPTION = (

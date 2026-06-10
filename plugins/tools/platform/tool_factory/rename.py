@@ -16,7 +16,8 @@ __version__ = "1.0.0"
 TOOL_ID = "rename"
 TOOL_BUCKET = "meta"
 TOOL_DOMAIN = "tool_factory"
-TOOL_TRIGGERS = ()
+# Router phrases: co-located rename.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("meta.author",)
 
 

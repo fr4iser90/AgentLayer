@@ -21,9 +21,8 @@ TOOL_CAPABILITIES = ("code.repository",)
 TOOL_SECRETS_REQUIRED = (USER_SECRET_KEY,)
 TOOL_LABEL = "GitHub: Get pull request"
 TOOL_DESCRIPTION = "Get one pull request (title, branches, body, URL)."
-TOOL_TRIGGERS = ("get pr", "pull request details")
-
-
+# Router phrases: co-located get_pull_request.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 def get_pull_request(arguments: dict[str, Any]) -> str:
     owner = (arguments.get("owner") or "").strip()
     repo = (arguments.get("repo") or "").strip()

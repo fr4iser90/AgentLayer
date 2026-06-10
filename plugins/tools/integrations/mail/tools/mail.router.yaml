@@ -1,0 +1,24 @@
+# Co-located router phrases for mail.router.py — locale keys are authoring-only.
+domain: mail
+phrases:
+  en:
+    - mail
+    - email
+    - imap
+    - inbox
+    - gmail
+    - outlook
+    - gmx
+    - yahoo
+    - proton
+  de:
+    - mail
+    - email
+    - imap
+    - posteingang
+    - inbox
+    - gmail
+    - outlook
+    - gmx
+    - yahoo
+    - proton

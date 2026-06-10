@@ -23,9 +23,8 @@ TOOL_SECRETS_REQUIRED = _attrs["TOOL_SECRETS_REQUIRED"]
 TOOL_USER_SECRET_FORMS = _attrs["TOOL_USER_SECRET_FORMS"]
 TOOL_LABEL = "SimpleSecCheck: rescan"
 TOOL_DESCRIPTION = "Notify SimpleSecCheck to rescan a fix branch."
-TOOL_TRIGGERS = ("rescan", "agent callback", "ssc callback")
-
-
+# Router phrases: co-located agent_callback.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 def agent_callback(arguments: dict[str, Any], context: dict | None = None) -> str:
     _ = context
     target_id = str(arguments.get("target_id") or arguments.get("id") or "").strip()

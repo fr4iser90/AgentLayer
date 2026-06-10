@@ -1,0 +1,20 @@
+# Co-located router phrases for catalog.router.py — locale keys are authoring-only.
+domain: platform
+phrases:
+  en:
+    - agents
+    - agent catalog
+    - list agents
+    - which agent
+    - specialists
+  de:
+    - agenten
+    - agents
+    - agent katalog
+    - agenten katalog
+    - agenten auflisten
+    - agents listen
+    - welcher agent
+    - which agent
+    - spezialisten
+    - specialists

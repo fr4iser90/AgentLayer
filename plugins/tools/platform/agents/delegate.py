@@ -20,7 +20,8 @@ __version__ = "1.0.0"
 TOOL_ID = "delegate"
 TOOL_BUCKET = "meta"
 TOOL_DOMAIN = "delegate"
-TOOL_TRIGGERS = ("delegate", "subagent", "specialist", "security auditor", "coding agent")
+# Router phrases: co-located delegate.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("meta.delegate",)
 TOOL_LABEL = "Delegate to specialist agent"
 TOOL_DESCRIPTION = (

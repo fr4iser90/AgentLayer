@@ -30,7 +30,8 @@ __version__ = "1.0.0"
 TOOL_ID = "coding_write"
 TOOL_BUCKET = "files"
 TOOL_DOMAIN = "repository"
-TOOL_TRIGGERS = ("coding write", "write code", "create file")
+# Router phrases: co-located write_file.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("coding.write",)
 TOOL_LABEL = "Coding: Write file"
 TOOL_DESCRIPTION = (

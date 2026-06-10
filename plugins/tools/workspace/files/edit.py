@@ -26,7 +26,8 @@ __version__ = "1.0.0"
 TOOL_ID = "edit"
 TOOL_BUCKET = "files"
 TOOL_DOMAIN = "repository"
-TOOL_TRIGGERS = ("coding edit", "smart edit", "edit file")
+# Router phrases: co-located edit.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("coding.write",)
 TOOL_LABEL = "Coding: Smart edit"
 TOOL_DESCRIPTION = (

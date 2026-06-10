@@ -29,8 +29,8 @@ TOOL_SECRETS_REQUIRED = _attrs["TOOL_SECRETS_REQUIRED"]
 TOOL_USER_SECRET_FORMS = _attrs["TOOL_USER_SECRET_FORMS"]
 TOOL_LABEL = "SimpleSecCheck: findings"
 TOOL_DESCRIPTION = "Paginated security findings for a completed scan."
-TOOL_TRIGGERS = ("scan findings", "vulnerabilities", "semgrep findings")
-
+# Router phrases: co-located findings.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 _FINDINGS_PARAMS = {
     "scan_id": {
         "type": "string",

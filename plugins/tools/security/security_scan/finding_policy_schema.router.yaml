@@ -1,0 +1,14 @@
+# Co-located router phrases for finding_policy_schema.router.py — locale keys are authoring-only.
+domain: security_scan
+phrases:
+  en:
+    - finding-policy
+    - policy schema
+    - ssc schema
+  de:
+    - finding policy
+    - befund richtlinie
+    - policy schema
+    - richtlinien schema
+    - ssc schema
+    - scan schema

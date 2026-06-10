@@ -23,7 +23,8 @@ __version__ = "1.0.0"
 TOOL_ID = "semantic_search"
 TOOL_BUCKET = "files"
 TOOL_DOMAIN = "repository"
-TOOL_TRIGGERS = ("semantic search", "find code", "search symbols", "semantic lookup")
+# Router phrases: co-located semantic_search.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("coding.read",)
 TOOL_LABEL = "Coding: Semantic Search"
 TOOL_DESCRIPTION = (

@@ -1,0 +1,15 @@
+# Co-located router phrases for resolve.router.py — locale keys are authoring-only.
+domain: security_scan
+phrases:
+  en:
+    - security scan
+    - resolve-scan
+    - simplesec
+    - ssc
+  de:
+    - sicherheitsscan
+    - security scan
+    - scan auflösen
+    - resolve scan
+    - simplesec
+    - ssc

@@ -1,0 +1,31 @@
+# Co-located router phrases for info.py — locale keys are authoring-only.
+domain: friends
+phrases:
+  en:
+    - wer ist
+    - wer ist das
+    - information über
+    - kontakt von
+    - email von
+    - telefonnummer von
+    - bekannte person
+    - "@"
+    - .com
+    - .de
+    - "@gmail.com"
+    - "@outlook.com"
+    - "@hotmail.com"
+  de:
+    - wer ist
+    - wer ist das
+    - information über
+    - kontakt von
+    - email von
+    - telefonnummer von
+    - bekannte person
+    - "@"
+    - .com
+    - .de
+    - "@gmail.com"
+    - "@outlook.com"
+    - "@hotmail.com"

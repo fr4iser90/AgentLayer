@@ -14,7 +14,8 @@ __version__ = "1.0.0"
 TOOL_ID = "secrets_help"
 TOOL_BUCKET = "secrets"
 TOOL_DOMAIN = "secrets"
-TOOL_TRIGGERS = ()
+# Router phrases: co-located secrets_help.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("secrets.user",)
 
 

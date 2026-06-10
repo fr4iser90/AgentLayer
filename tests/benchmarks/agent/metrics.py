@@ -173,8 +173,8 @@ def _bench_insights(
         if len(emptyish) >= 2:
             insights.append(
                 f"{tool} was called {len(rows)}×; {len(emptyish)}× with empty or rejected arguments. "
-                "If the tool schema allows `{}`, the server executes it instead of rejecting — "
-                "the model must send required JSON fields in tool_calls."
+                "Rejected calls return full `parameters` schema in the tool result; that tool is promoted "
+                "to full schema in tools[] on the next LLM round only."
             )
         elif len(rows) >= 3:
             summaries = {str(r.get("summary") or "") for r in rows}

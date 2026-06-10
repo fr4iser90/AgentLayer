@@ -16,18 +16,8 @@ __version__ = "1.0.0"
 TOOL_ID = "message"
 TOOL_BUCKET = "comms"
 TOOL_DOMAIN = "messaging"
-TOOL_TRIGGERS = (
-    "schreib",
-    "anschreiben",
-    "nachricht",
-    "message",
-    "telegram",
-    "discord",
-    "dm",
-    "benachrichtige",
-    "notify",
-    "kontaktiere",
-)
+# Router phrases: co-located message.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_LABEL = "Messaging"
 TOOL_DESCRIPTION = (
     "Send a message to a friend or contact via Telegram, Discord, or email. "

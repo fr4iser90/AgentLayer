@@ -1,0 +1,17 @@
+# Co-located router phrases for water_calc.router.py — locale keys are authoring-only.
+domain: survival
+phrases:
+  en:
+    - survival
+    - wasser
+    - water
+    - dehydration
+    - outdoor
+    - notfall
+  de:
+    - survival
+    - wasser
+    - water
+    - dehydration
+    - outdoor
+    - notfall

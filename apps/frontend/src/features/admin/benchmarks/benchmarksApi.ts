@@ -154,6 +154,8 @@ export type BenchmarkScenarioResult = {
   tool_call_count: number;
   tool_names?: string[];
   failure_reason?: string | null;
+  rubric_failure_reason?: string | null;
+  transport_error?: string | null;
   error?: string | null;
   agent_run_id?: string | null;
   assistant_excerpt?: string;

@@ -17,7 +17,8 @@ TOOL_DESCRIPTION = (
     "Read verbatim messages from the current or a specified chat conversation. "
     "Use when older turns were compacted from the LLM context but you need exact wording, paths, or details."
 )
-TOOL_TRIGGERS = ("conversation history", "chat history", "earlier messages", "read chat", "verlauf")
+# Router phrases: co-located read.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("meta.conversation.read",)
 TOOL_MIN_ROLE = "user"
 

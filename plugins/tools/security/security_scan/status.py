@@ -23,9 +23,8 @@ TOOL_SECRETS_REQUIRED = _attrs["TOOL_SECRETS_REQUIRED"]
 TOOL_USER_SECRET_FORMS = _attrs["TOOL_USER_SECRET_FORMS"]
 TOOL_LABEL = "SimpleSecCheck: status"
 TOOL_DESCRIPTION = "One-shot SimpleSecCheck scan status (no waiting)."
-TOOL_TRIGGERS = ("scan status", "simplesec status", "ssc status")
-
-
+# Router phrases: co-located status.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 def status(arguments: dict[str, Any], context: dict | None = None) -> str:
     _ = context
     scan_id = str(arguments.get("scan_id") or arguments.get("id") or "").strip()

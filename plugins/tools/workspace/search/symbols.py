@@ -17,7 +17,8 @@ __version__ = "1.0.0"
 TOOL_ID = "symbols"
 TOOL_BUCKET = "meta"
 TOOL_DOMAIN = "repository"
-TOOL_TRIGGERS = ("coding symbols", "find symbol", "symbol lookup", "code index")
+# Router phrases: co-located symbols.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("coding.index",)
 TOOL_LABEL = "Coding: Symbols"
 TOOL_DESCRIPTION = (

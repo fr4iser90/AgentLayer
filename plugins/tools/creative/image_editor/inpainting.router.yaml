@@ -1,0 +1,7 @@
+# Co-located router phrases for inpainting.router.py — locale keys are authoring-only.
+domain: image_editor
+phrases:
+  en:
+    - inpainting_realvision
+  de:
+    - inpainting_realvision

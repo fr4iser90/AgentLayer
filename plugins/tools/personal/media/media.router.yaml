@@ -1,0 +1,56 @@
+# Co-located router phrases for media.router.py — locale keys are authoring-only.
+domain: media
+phrases:
+  en:
+    - media
+    - music
+    - musik
+    - audio
+    - playlist
+    - queue
+    - track
+    - song
+    - lied
+    - lieder
+    - stream
+    - radio
+    - webradio
+    - internetradio
+    - mdr
+    - jump
+    - spotify
+    - youtube
+    - vimeo
+    - mediathek
+    - now playing
+    - warteschlange
+    - mp3
+  de:
+    - medien
+    - media
+    - music
+    - musik
+    - audio
+    - ton
+    - playlist
+    - warteschlange
+    - queue
+    - track
+    - song
+    - lied
+    - lieder
+    - stream
+    - radio
+    - webradio
+    - internetradio
+    - mdr
+    - springen
+    - jump
+    - spotify
+    - youtube
+    - vimeo
+    - mediathek
+    - läuft gerade
+    - now playing
+    - mp3
+    - audio datei

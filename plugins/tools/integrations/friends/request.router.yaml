@@ -1,0 +1,17 @@
+# Co-located router phrases for request.router.py — locale keys are authoring-only.
+domain: friends
+phrases:
+  en:
+    - freundschaft
+    - freund hinzufügen
+    - friend request
+    - add friend
+    - freundesanfrage
+    - kontaktanfrage
+  de:
+    - freundschaft
+    - freund hinzufügen
+    - freundschaftsanfrage
+    - freundesanfrage
+    - freund adden
+    - kontaktanfrage

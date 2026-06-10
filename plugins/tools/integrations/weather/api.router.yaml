@@ -1,0 +1,18 @@
+# Co-located router phrases for api.router.py — locale keys are authoring-only.
+domain: weather
+phrases:
+  en:
+    - openweather
+    - weather
+    - forecast
+    - temperature
+    - openweathermap
+    - wetter
+  de:
+    - openweather
+    - wetter
+    - weather
+    - forecast
+    - temperatur
+    - temperature
+    - openweathermap

@@ -1,0 +1,29 @@
+# Co-located router phrases for memory.router.py — locale keys are authoring-only.
+domain: memory
+phrases:
+  en:
+    - remember
+    - merke
+    - merken
+    - memory
+    - profil
+    - preferences
+    - speichern
+    - abspeichern
+    - einprägen
+    - notiere
+    - gedächtnis
+  de:
+    - merken
+    - remember
+    - merke
+    - speicher
+    - memory
+    - gedächtnis
+    - profil
+    - einstellungen
+    - preferences
+    - speichern
+    - abspeichern
+    - einprägen
+    - notiere

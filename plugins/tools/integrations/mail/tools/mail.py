@@ -24,17 +24,8 @@ __version__ = "2.0.0"
 TOOL_ID = "mail"
 TOOL_BUCKET = "comms"
 TOOL_DOMAIN = "mail"
-TOOL_TRIGGERS = (
-    "mail",
-    "email",
-    "imap",
-    "inbox",
-    "gmail",
-    "outlook",
-    "gmx",
-    "yahoo",
-    "proton",
-)
+# Router phrases: co-located mail.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_LABEL = "Mail"
 TOOL_DESCRIPTION = (
     "Search, read, and send email (IMAP + SMTP). Works with Gmail, Outlook, GMX, Yahoo, Proton (Bridge). "

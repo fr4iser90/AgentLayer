@@ -23,9 +23,8 @@ TOOL_SECRETS_REQUIRED = _attrs["TOOL_SECRETS_REQUIRED"]
 TOOL_USER_SECRET_FORMS = _attrs["TOOL_USER_SECRET_FORMS"]
 TOOL_LABEL = "SimpleSecCheck: start scan"
 TOOL_DESCRIPTION = "Low-level scan enqueue (prefer security_scan_resolve)."
-TOOL_TRIGGERS = ("start scan", "enqueue scan")
-
-
+# Router phrases: co-located start.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 def start(arguments: dict[str, Any], context: dict | None = None) -> str:
     repo_url = resolve_repo_url(arguments, context)
     if not repo_url:

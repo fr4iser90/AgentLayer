@@ -22,9 +22,8 @@ TOOL_SECRETS_REQUIRED = (USER_SECRET_KEY,)
 TOOL_USER_SECRET_FORMS = TOOL_USER_SECRET_FORMS
 TOOL_LABEL = "GitHub: Search code"
 TOOL_DESCRIPTION = "Search code on GitHub (github.com query syntax)."
-TOOL_TRIGGERS = ("github code search", "search repository code")
-
-
+# Router phrases: co-located search_code.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 def search_code(arguments: dict[str, Any]) -> str:
     q = (arguments.get("query") or "").strip()
     if not q:

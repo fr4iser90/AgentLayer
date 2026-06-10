@@ -17,7 +17,8 @@ TOOL_BUCKET = "meta"
 TOOL_DOMAIN = "project"
 TOOL_LABEL = "Project runs"
 TOOL_DESCRIPTION = "Create and inspect one-shot coding-agent project runs (decoupled execution queue)."
-TOOL_TRIGGERS = ("run", "project run", "execute project", "run now", "one-shot")
+# Router phrases: co-located runs.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("project.run.read", "project.run.write")
 TOOL_MIN_ROLE = "user"
 

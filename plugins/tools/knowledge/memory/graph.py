@@ -17,15 +17,8 @@ TOOL_DESCRIPTION = (
     "Structured graph memory: compact nodes (events, entities, tasks) and edges between them. "
     "Use only when the user explicitly asks to remember/link structured state for long-horizon context."
 )
-TOOL_TRIGGERS = (
-    "graph memory",
-    "memory graph",
-    "knoten",
-    "relation",
-    "verknüpf",
-    "entity",
-    "kontext graph",
-)
+# Router phrases: co-located graph.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("knowledge.memory_graph",)
 
 

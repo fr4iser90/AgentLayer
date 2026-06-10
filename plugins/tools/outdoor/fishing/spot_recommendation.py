@@ -12,13 +12,8 @@ TOOL_LABEL = "Fishing"
 TOOL_DESCRIPTION = (
     "Angeln: Biss-Heuristik, Spot-Muster, Köder — keine Karten/GPS oder Rechtsberatung."
 )
-TOOL_TRIGGERS = (
-    "spot",
-    "stelle",
-    "gewässer",
-    "where to fish",
-    "angelplatz",
-)
+# Router phrases: co-located spot_recommendation.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_TAGS = ("fishing", "outdoor", "planner")
 TOOL_DOMAIN = "fishing"
 TOOL_REQUIRES = ["location_context"]

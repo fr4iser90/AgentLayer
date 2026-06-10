@@ -1,0 +1,27 @@
+# Co-located router phrases for environment_snapshot.router.py — locale keys are authoring-only.
+domain: shared
+phrases:
+  en:
+    - outdoor
+    - context
+    - snapshot
+    - umgebung
+    - environment
+    - wetter
+    - zeit
+    - angeln
+    - jagd
+    - survival
+  de:
+    - outdoor
+    - kontext
+    - context
+    - snapshot
+    - momentaufnahme
+    - umgebung
+    - environment
+    - wetter
+    - zeit
+    - angeln
+    - jagd
+    - survival

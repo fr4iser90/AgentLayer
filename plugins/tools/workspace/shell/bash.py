@@ -33,20 +33,8 @@ __version__ = "1.0.0"
 TOOL_ID = "bash"
 TOOL_BUCKET = "files"
 TOOL_DOMAIN = "repository"
-TOOL_TRIGGERS = (
-    "coding bash",
-    "run command",
-    "shell",
-    "execute",
-    "git clone",
-    "git pull",
-    "git checkout",
-    "repository",
-    "repo",
-    "github.com",
-    "gitlab",
-    "clone",
-)
+# Router phrases: co-located bash.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("coding.execute",)
 TOOL_LABEL = "Coding: Bash"
 TOOL_DESCRIPTION = (

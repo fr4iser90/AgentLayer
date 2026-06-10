@@ -22,9 +22,8 @@ TOOL_CAPABILITIES = ("code.repository",)
 TOOL_SECRETS_REQUIRED = (USER_SECRET_KEY,)
 TOOL_LABEL = "GitHub: Get file"
 TOOL_DESCRIPTION = "Fetch one UTF-8 text file from a repository via the contents API."
-TOOL_TRIGGERS = ("github file", "read github file", "repository file")
-
-
+# Router phrases: co-located get_file.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 def get_file(arguments: dict[str, Any]) -> str:
     owner = (arguments.get("owner") or "").strip()
     repo = (arguments.get("repo") or "").strip()

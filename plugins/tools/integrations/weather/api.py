@@ -23,14 +23,8 @@ TOOL_LABEL = "OpenWeather"
 TOOL_DESCRIPTION = (
     "Current weather and 5-day / 3-hour forecast using OpenWeather 2.5 APIs (OPENWEATHER_API_KEY)."
 )
-TOOL_TRIGGERS = (
-    "openweather",
-    "weather",
-    "forecast",
-    "temperature",
-    "openweathermap",
-    "wetter",
-)
+# Router phrases: co-located api.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("weather.observe",)
 
 _OPENWEATHER_URL = "https://api.openweathermap.org/data/2.5/weather"

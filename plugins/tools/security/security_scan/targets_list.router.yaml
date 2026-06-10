@@ -1,0 +1,11 @@
+# Co-located router phrases for targets_list.router.py — locale keys are authoring-only.
+domain: security_scan
+phrases:
+  en:
+    - my targets
+    - ssc targets
+  de:
+    - meine ziele
+    - meine targets
+    - ssc targets
+    - scan ziele

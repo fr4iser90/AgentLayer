@@ -9,7 +9,8 @@ __version__ = "1.0.0"
 TOOL_ID = "todo"
 TOOL_BUCKET = "meta"
 TOOL_DOMAIN = "repository"
-TOOL_TRIGGERS = ("session todo", "coding todo", "todo", "task list")
+# Router phrases: co-located todo.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("coding.meta",)
 TOOL_LABEL = "Session todo"
 TOOL_DESCRIPTION = (

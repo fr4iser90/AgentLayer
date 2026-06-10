@@ -508,39 +508,22 @@ def _http_error_recovery_hint(tool_name: str, result: str) -> str | None:
 
 def _tool_parameter_recovery_hint(tool_name: str, result: str) -> str | None:
     """Short system nudge when models emit tool_calls without required JSON fields (common on some GGUF builds)."""
-    if not result or len(result) > 800:
+    if not result or len(result) > 4000:
         return None
     try:
         obj = json.loads(result)
         if isinstance(obj, dict) and obj.get("error") == "tool_call_arguments_invalid":
             hint = str(obj.get("hint") or "").strip()
+            if obj.get("parameters"):
+                schema_note = (
+                    f"Full schema for `{tool_name}` is in the last tool result JSON under `parameters`. "
+                    "Use those property names in the next tool_calls[].function.arguments object."
+                )
+                return f"{hint}\n\n{schema_note}"[:2500] if hint else schema_note[:2500]
             if hint:
                 return hint[:2500]
     except json.JSONDecodeError:
         pass
-    rl = result.lower()
-    if tool_name == "bash" and "command" in rl:
-        return (
-            "The last `bash` call was missing or empty **command**. "
-            "You must pass a JSON object with a non-empty string **command** (one shell line). "
-            'Example: {"command": "git status"} or {"command": "ls -la", "workdir": ""}.'
-        )
-    if tool_name in (
-        "read_file",
-        "write_file",
-        "replace",
-        "edit",
-        "apply_patch",
-    ) and "path" in rl:
-        return (
-            f"The last `{tool_name}` call was missing or empty **path**. "
-            'Pass {"path": "relative/path/from/workspace/root"} plus other required fields per the schema.'
-        )
-    if tool_name == "task" and "description" in rl and "required" in rl:
-        return (
-            "The last `task` call was missing **description** and/or **prompt**. "
-            r'Example: {"description": "Review README", "prompt": "Summarize README.md and propose edits."}'
-        )
     return None
 
 
@@ -685,7 +668,8 @@ def _tool_args_validation_hint(
         )
     return (
         f"Tool `{tool_name}` was called with empty or incomplete arguments. "
-        "Provide non-empty JSON per the tool schema."
+        "Provide non-empty JSON per the tool schema. "
+        "The tool result includes `parameters` with the full JSON Schema for the next call."
     )
 
 
@@ -735,7 +719,7 @@ def validate_tool_call_arguments(tool_name: str, args: dict[str, Any]) -> dict[s
                 missing = ["(at least one property required)"]
 
     if missing:
-        return {
+        payload: dict[str, Any] = {
             "ok": False,
             "error": "tool_call_arguments_invalid",
             "tool": n,
@@ -748,11 +732,31 @@ def validate_tool_call_arguments(tool_name: str, args: dict[str, Any]) -> dict[s
                 n, schema, missing=missing, any_of_fields=any_of_fields or None
             ),
         }
+        if schema:
+            payload["parameters"] = copy.deepcopy(schema)
+        return payload
     return None
 
 
 def format_tool_call_validation_error(payload: dict[str, Any]) -> str:
     return json.dumps(payload, ensure_ascii=False)
+
+
+def tool_call_warrants_full_schema_promotion(
+    *,
+    rejected: bool,
+    wire_args: dict[str, Any],
+    normalized_args: dict[str, Any],
+    result_ok: bool | None,
+) -> bool:
+    """Promote a tool to full schema on the next LLM round after empty/failed wire calls only."""
+    if rejected:
+        return True
+    if not _args_effectively_empty(wire_args):
+        return False
+    if result_ok is True:
+        return False
+    return True
 
 
 def _normalize_tool_call_arguments(
@@ -1536,6 +1540,7 @@ __all__ = [
     '_normalize_tool_call_arguments',
     'validate_tool_call_arguments',
     'format_tool_call_validation_error',
+    'tool_call_warrants_full_schema_promotion',
     '_partition_tool_specs_by_name',
     '_pinned_tools_for_agent',
     '_rank_tools_by_user_input',

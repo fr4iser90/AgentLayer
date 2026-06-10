@@ -13,21 +13,8 @@ __version__ = "1.0.0"
 TOOL_ID = "info"
 TOOL_BUCKET = "comms"
 TOOL_DOMAIN = "friends"
-TOOL_TRIGGERS = (
-    "wer ist",
-    "wer ist das",
-    "information über",
-    "kontakt von",
-    "email von",
-    "telefonnummer von",
-    "bekannte person",
-    "@",
-    ".com",
-    ".de",
-    "@gmail.com",
-    "@outlook.com",
-    "@hotmail.com",
-)
+# Router phrases: co-located info.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("friends.user", "default")
 
 

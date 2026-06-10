@@ -22,9 +22,8 @@ TOOL_SECRETS_REQUIRED = _attrs["TOOL_SECRETS_REQUIRED"]
 TOOL_USER_SECRET_FORMS = _attrs["TOOL_USER_SECRET_FORMS"]
 TOOL_LABEL = "SimpleSecCheck: policy schema"
 TOOL_DESCRIPTION = "Fetch finding-policy JSON schema from SimpleSecCheck (per-tool field rules)."
-TOOL_TRIGGERS = ("finding-policy", "policy schema", "ssc schema")
-
-
+# Router phrases: co-located finding_policy_schema.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 def _guidance_from_api(data: dict[str, Any]) -> list[str]:
     raw = data.get("agent_guidance")
     if isinstance(raw, list):

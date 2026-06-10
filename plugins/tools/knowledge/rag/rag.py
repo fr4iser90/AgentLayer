@@ -26,13 +26,8 @@ TOOL_LABEL = "RAG"
 TOOL_DESCRIPTION = (
     "Semantic search over ingested documents (pgvector + configurable embeddings)."
 )
-TOOL_TRIGGERS = (
-    "rag",
-    "vector search",
-    "semantic search",
-    "embeddings",
-    "knowledge base documents",
-)
+# Router phrases: co-located rag.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("knowledge.retrieve",)
 
 

@@ -18,14 +18,8 @@ TOOL_DESCRIPTION = (
     "If the user pasted a secret in chat, prefer **save_user_secret** instead. "
     "In the Agent web UI, prefer **request_user_secret** (in-chat card) or **Settings → Connections** when signed in."
 )
-TOOL_TRIGGERS = (
-    "secret",
-    "credential",
-    "api key",
-    "app password",
-    "otp",
-    "register_secret",
-)
+# Router phrases: co-located register_secrets.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("secrets.user",)
 
 

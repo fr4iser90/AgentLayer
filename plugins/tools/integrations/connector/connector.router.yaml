@@ -1,0 +1,20 @@
+# Co-located router phrases for connector.router.py — locale keys are authoring-only.
+domain: connector
+phrases:
+  en:
+    - connector
+    - api profile
+    - save profile
+    - api connector
+    - integration profile
+  de:
+    - connector
+    - verbindung
+    - api profil
+    - api profile
+    - profil speichern
+    - save profile
+    - api connector
+    - api verbindung
+    - integrationsprofil
+    - integration profile

@@ -17,13 +17,8 @@ TOOL_LABEL = "Survival"
 TOOL_DESCRIPTION = (
     "Survival: Wasserbedarf, Unterstand, Risiko-Score — keine medizinische Beratung."
 )
-TOOL_TRIGGERS = (
-    "risk",
-    "risiko",
-    "survival",
-    "notfall",
-    "exposure",
-)
+# Router phrases: co-located risk_assessment.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_TAGS = ("survival", "outdoor", "calculator")
 TOOL_DOMAIN = "survival"
 TOOL_REQUIRES = ["situation_factors"]

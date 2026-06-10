@@ -1,0 +1,19 @@
+# Co-located router phrases for clock.router.py — locale keys are authoring-only.
+domain: clocks
+phrases:
+  en:
+    - timezone
+    - utc
+    - what time
+    - clock
+    - zoneinfo
+  de:
+    - zeitzone
+    - timezone
+    - utc
+    - wie spät
+    - what time
+    - uhrzeit
+    - uhr
+    - clock
+    - zoneinfo

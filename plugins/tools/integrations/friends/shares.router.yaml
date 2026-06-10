@@ -1,0 +1,44 @@
+# Co-located router phrases for shares.router.py — locale keys are authoring-only.
+domain: friends
+phrases:
+  en:
+    - was teilt
+    - was share
+    - was hat
+    - geteilt
+    - sharing
+    - shares
+    - freigabe
+    - freigaben
+    - zugriff auf
+    - wer darf
+    - wer hat zugriff
+    - teile meinen
+    - teile mein
+    - kalender teilen
+    - share my calendar
+    - grant access
+    - revoke access
+    - entziehe zugriff
+  de:
+    - was teilt
+    - was share
+    - was hat
+    - geteilt
+    - teilen
+    - sharing
+    - freigaben
+    - shares
+    - freigabe
+    - zugriff auf
+    - wer darf
+    - wer hat zugriff
+    - teile meinen
+    - teile mein
+    - kalender teilen
+    - meinen kalender teilen
+    - zugriff gewähren
+    - zugriff erteilen
+    - zugriff entziehen
+    - zugriff widerrufen
+    - entziehe zugriff

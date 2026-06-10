@@ -17,7 +17,8 @@ TOOL_DESCRIPTION = (
     "Current time and IANA timezone names (no database). "
     "Read-only — use dashboard.patch_data if the user wants time saved on a board."
 )
-TOOL_TRIGGERS = ("timezone", "utc", "what time", "clock", "zoneinfo")
+# Router phrases: co-located clock.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("time.query",)
 
 

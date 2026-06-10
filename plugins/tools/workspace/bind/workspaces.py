@@ -25,14 +25,8 @@ TOOL_DESCRIPTION = (
     "List, create, and bind coding workspaces (project_workspaces). "
     "Use workspace_bind before coding_* tools when the user asked to work in another repo."
 )
-TOOL_TRIGGERS = (
-    "workspace",
-    "project workspace",
-    "clone repo",
-    "switch workspace",
-    "bind workspace",
-    "create workspace",
-)
+# Router phrases: co-located workspaces.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("workspace.read", "workspace.write")
 TOOL_MIN_ROLE = "user"
 

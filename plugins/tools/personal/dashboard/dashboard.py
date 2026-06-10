@@ -56,21 +56,8 @@ TOOL_DESCRIPTION = (
     "read-only share links. Works for any board — no kind gate. Integration tools enrich lists; "
     "KPI stat blocks use props.compute. Use dashboard_id from [Dashboard context] when open."
 )
-TOOL_TRIGGERS = (
-    "dashboard",
-    "dashboards",
-    "board",
-    "ui layout",
-    "layout",
-    "variant",
-    "vorschlag",
-    "proposal",
-    "redesign",
-    "kanban",
-    "chart block",
-    "widget",
-    "card grid",
-)
+# Router phrases: co-located dashboard.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("dashboard.read", "dashboard.write")
 
 _MAX_PATCHES = 40

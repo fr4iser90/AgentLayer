@@ -17,7 +17,8 @@ __version__ = "1.0.0"
 TOOL_ID = "git_read"
 TOOL_BUCKET = "files"
 TOOL_DOMAIN = "github"
-TOOL_TRIGGERS = ("git status", "git log", "git diff", "current branch", "repository")
+# Router phrases: co-located git_read.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("coding.read",)
 TOOL_LABEL = "Coding: Git (read-only)"
 TOOL_DESCRIPTION = (

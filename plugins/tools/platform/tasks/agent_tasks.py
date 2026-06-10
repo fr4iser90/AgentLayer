@@ -23,7 +23,8 @@ TOOL_LABEL = "Tasks"
 TOOL_DESCRIPTION = (
     "Manage hierarchical tasks (global or per-workspace backlog) and fetch task artifacts by id."
 )
-TOOL_TRIGGERS = ("task", "backlog", "artifact", "subtask")
+# Router phrases: co-located agent_tasks.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("task.read", "task.write", "artifact.read")
 TOOL_MIN_ROLE = "user"
 

@@ -15,14 +15,8 @@ TOOL_DESCRIPTION = (
     "Angeln: Biss-Heuristik, Spot-Muster, Köder — keine Karten/GPS oder Rechtsberatung."
 )
 
-TOOL_TRIGGERS = (
-    "köder",
-    "bait",
-    "lure",
-    "montage",
-    "wobbler",
-    "gummifisch",
-)
+# Router phrases: co-located bait_selector.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_TAGS = ("fishing", "outdoor", "action")
 TOOL_DOMAIN = "fishing"
 TOOL_REQUIRES = ["species", "conditions"]

@@ -15,7 +15,8 @@ TOOL_LABEL = "Knowledge base"
 TOOL_DESCRIPTION = (
     "Per-user notes in PostgreSQL: append, full-text search, and read (same scope as todos)."
 )
-TOOL_TRIGGERS = ("knowledge base", "second brain", "my notes", "notebook")
+# Router phrases: co-located kb.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("knowledge.note",)
 
 

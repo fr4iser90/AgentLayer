@@ -1,0 +1,20 @@
+# Co-located router phrases for runs.router.py — locale keys are authoring-only.
+domain: project
+phrases:
+  en:
+    - run
+    - project run
+    - execute project
+    - run now
+    - one-shot
+  de:
+    - ausführen
+    - run
+    - starten
+    - projekt ausführen
+    - project run
+    - projekt starten
+    - jetzt ausführen
+    - run now
+    - einmalig
+    - one-shot

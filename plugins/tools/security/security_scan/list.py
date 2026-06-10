@@ -24,9 +24,8 @@ TOOL_SECRETS_REQUIRED = _attrs["TOOL_SECRETS_REQUIRED"]
 TOOL_USER_SECRET_FORMS = _attrs["TOOL_USER_SECRET_FORMS"]
 TOOL_LABEL = "SimpleSecCheck: list scans"
 TOOL_DESCRIPTION = "List recent SimpleSecCheck scans."
-TOOL_TRIGGERS = ("list scans", "scan history")
-
-
+# Router phrases: co-located list.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 def list(arguments: dict[str, Any], context: dict | None = None) -> str:
     _ = context
     limit = min(max(int(arguments.get("limit") or 10), 1), 50)

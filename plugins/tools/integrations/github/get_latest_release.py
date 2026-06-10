@@ -24,9 +24,8 @@ TOOL_DESCRIPTION = (
     "Fetch the latest GitHub release (tag, title, body, URL). "
     "Use before create_release to compare changes since the last tag."
 )
-TOOL_TRIGGERS = ("latest release", "last release", "current version", "github release")
-
-
+# Router phrases: co-located get_latest_release.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 def get_latest_release(arguments: dict[str, Any]) -> str:
     owner = (arguments.get("owner") or "").strip()
     repo = (arguments.get("repo") or "").strip()

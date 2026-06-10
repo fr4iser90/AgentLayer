@@ -34,7 +34,8 @@ __version__ = "1.0.0"
 TOOL_ID = "index"
 TOOL_BUCKET = "meta"
 TOOL_DOMAIN = "repository"
-TOOL_TRIGGERS = ("coding index", "index code", "build index", "scan project")
+# Router phrases: co-located index.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("coding.index",)
 TOOL_LABEL = "Coding: Index"
 TOOL_DESCRIPTION = (

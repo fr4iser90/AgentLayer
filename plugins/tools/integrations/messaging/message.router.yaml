@@ -1,0 +1,26 @@
+# Co-located router phrases for message.router.py — locale keys are authoring-only.
+domain: messaging
+phrases:
+  en:
+    - schreib
+    - anschreiben
+    - nachricht
+    - message
+    - telegram
+    - discord
+    - dm
+    - benachrichtige
+    - notify
+    - kontaktiere
+  de:
+    - schreib
+    - anschreiben
+    - nachricht
+    - message
+    - telegram
+    - discord
+    - dm
+    - benachrichtige
+    - benachrichtigen
+    - notify
+    - kontaktiere

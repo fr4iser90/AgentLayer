@@ -1,0 +1,17 @@
+# Co-located router phrases for wind_analysis.router.py — locale keys are authoring-only.
+domain: hunting
+phrases:
+  en:
+    - hunting
+    - jagd
+    - wind
+    - drift
+    - crosswind
+    - ansitz
+  de:
+    - hunting
+    - jagd
+    - wind
+    - drift
+    - crosswind
+    - ansitz

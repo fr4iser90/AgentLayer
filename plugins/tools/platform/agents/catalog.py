@@ -13,7 +13,8 @@ __version__ = "1.0.0"
 TOOL_ID = "agents_catalog"
 TOOL_BUCKET = "meta"
 TOOL_DOMAIN = "platform"
-TOOL_TRIGGERS = ("agents", "agent catalog", "list agents", "which agent", "specialists")
+# Router phrases: co-located catalog.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("meta.agents.read",)
 TOOL_LABEL = "Agent catalog"
 TOOL_DESCRIPTION = (

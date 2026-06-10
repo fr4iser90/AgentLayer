@@ -36,11 +36,8 @@ TOOL_DESCRIPTION = (
 )
 # Per-function capabilities are set in AGENT_TOOL_META_BY_NAME (validate vs package).
 TOOL_CAPABILITIES: tuple[str, ...] = ()
-TOOL_TRIGGERS = (
-    "playwright, playwright bundle, local browser, browser automation, export zip, "
-    "download automation, client-side browser, validate automation plan"
-)
-
+# Router phrases: co-located local_playwright_bundle.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 _PLAN_VERSION = 1
 _MAX_STEPS = 120
 _MAX_SELECTOR_LEN = 800

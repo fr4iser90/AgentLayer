@@ -28,6 +28,7 @@ from apps.backend.domain.plugin_system.tool_manifest_dimensions import (
     parse_allowed_tenant_ids,
     parse_os_support,
 )
+from apps.backend.domain.plugin_system.router_phrases import load_co_located_router_phrases
 from apps.backend.domain.plugin_system.tool_ui_catalog import apply_tool_ui_metadata
 
 logger = logging.getLogger(__name__)
@@ -518,9 +519,10 @@ class ToolRegistry:
                     cdesc = getattr(mod, "TOOL_DESCRIPTION", None)
                     if isinstance(cdesc, str) and cdesc.strip():
                         router.cat_TOOL_DESCRIPTION[key] = cdesc.strip()
-                if "TOOL_TRIGGERS" in mod.__dict__:
+                parts: list[str] = []
+                has_module_triggers = "TOOL_TRIGGERS" in mod.__dict__
+                if has_module_triggers:
                     tr = mod.TOOL_TRIGGERS
-                    parts: list[str] = []
                     if isinstance(tr, str):
                         parts = [
                             x.strip().lower()
@@ -531,7 +533,15 @@ class ToolRegistry:
                         parts = [str(x).strip().lower() for x in tr if str(x).strip()]
                     if parts:
                         router.TOOL_TRIGGERS.setdefault(key, set()).update(parts)
-                else:
+                yaml_domain, yaml_phrases = load_co_located_router_phrases(source)
+                if yaml_phrases:
+                    yaml_key = (yaml_domain or key).strip().lower()
+                    if yaml_key and yaml_key != key:
+                        if yaml_key not in router.order:
+                            router.order.append(yaml_key)
+                        router.tools.setdefault(yaml_key, set()).update(tool_names)
+                    router.TOOL_TRIGGERS.setdefault(yaml_key or key, set()).update(yaml_phrases)
+                elif not has_module_triggers:
                     tid = str(pid).strip().lower()
                     if tid:
                         router.TOOL_TRIGGERS.setdefault(key, set()).add(tid)

@@ -33,26 +33,8 @@ __version__ = "2.0.0"
 TOOL_ID = "shares"
 TOOL_BUCKET = "comms"
 TOOL_DOMAIN = "friends"
-TOOL_TRIGGERS = (
-    "was teilt",
-    "was share",
-    "was hat",
-    "geteilt",
-    "sharing",
-    "shares",
-    "freigabe",
-    "freigaben",
-    "zugriff auf",
-    "wer darf",
-    "wer hat zugriff",
-    "teile meinen",
-    "teile mein",
-    "kalender teilen",
-    "share my calendar",
-    "grant access",
-    "revoke access",
-    "entziehe zugriff",
-)
+# Router phrases: co-located shares.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("friends.shares", "default")
 
 

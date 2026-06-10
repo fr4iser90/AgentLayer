@@ -1,0 +1,19 @@
+# Co-located router phrases for delegate.router.py — locale keys are authoring-only.
+domain: delegate
+phrases:
+  en:
+    - delegate
+    - subagent
+    - specialist
+    - security auditor
+    - coding agent
+  de:
+    - delegate
+    - subagent
+    - unter-agent
+    - spezialist
+    - specialist
+    - security auditor
+    - sicherheits auditor
+    - coding agent
+    - coding-agent

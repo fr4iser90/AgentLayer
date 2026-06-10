@@ -1,0 +1,11 @@
+# Co-located router phrases for list.router.py — locale keys are authoring-only.
+domain: security_scan
+phrases:
+  en:
+    - list scans
+    - scan history
+  de:
+    - scans listen
+    - scans auflisten
+    - scan historie
+    - scan verlauf

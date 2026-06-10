@@ -1,0 +1,15 @@
+# Co-located router phrases for tracking.router.py — locale keys are authoring-only.
+domain: hunting
+phrases:
+  en:
+    - track
+    - spur
+    - tracking
+    - trittsiegel
+    - wild
+  de:
+    - track
+    - spur
+    - tracking
+    - trittsiegel
+    - wild

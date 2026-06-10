@@ -1,0 +1,14 @@
+# Co-located router phrases for search_issues.router.py — locale keys are authoring-only.
+domain: github
+phrases:
+  en:
+    - github issues
+    - search issues
+    - search pull requests
+  de:
+    - github issues
+    - github tickets
+    - issues suchen
+    - tickets suchen
+    - pull requests suchen
+    - prs suchen

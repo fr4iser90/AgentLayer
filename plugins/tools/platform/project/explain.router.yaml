@@ -1,0 +1,29 @@
+# Co-located router phrases for explain.router.py — locale keys are authoring-only.
+domain: project
+phrases:
+  en:
+    - explain the project
+    - explain project
+    - what is this project
+    - project overview
+    - project structure
+    - what does this project do
+    - describe the project
+    - explain this codebase
+    - what is this codebase
+    - tell me about this project
+  de:
+    - das projekt erklären
+    - projekt erklären
+    - projekt beschreiben
+    - was ist dieses projekt
+    - projektüberblick
+    - project overview
+    - projektstruktur
+    - project structure
+    - was macht das projekt
+    - projektzweck
+    - codebase erklären
+    - codebasis erklären
+    - was ist diese codebase
+    - erzähl mir über das projekt

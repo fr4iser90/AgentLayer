@@ -1,0 +1,15 @@
+# Co-located router phrases for search.router.py — locale keys are authoring-only.
+domain: repository
+phrases:
+  en:
+    - coding search
+    - search code
+    - grep
+    - find in files
+  de:
+    - code suchen
+    - im code suchen
+    - code durchsuchen
+    - grep
+    - in dateien suchen
+    - dateien durchsuchen

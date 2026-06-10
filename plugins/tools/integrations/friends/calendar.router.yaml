@@ -1,0 +1,39 @@
+# Co-located router phrases for calendar.router.py — locale keys are authoring-only.
+domain: friends
+phrases:
+  en:
+    - wann muss
+    - wann wieder
+    - wann muss name wieder auf arbeit
+    - arbeit
+    - schicht
+    - dienst
+    - arbeitszeit
+    - schichtplan
+    - nächste schicht
+    - wann bin ich
+    - wann ist er
+    - wann ist sie
+    - frei am
+    - zeit am
+    - termine
+    - termin
+    - kalender
+  de:
+    - wann muss
+    - wann wieder
+    - wann muss name wieder auf arbeit
+    - arbeit
+    - schicht
+    - dienst
+    - arbeitszeit
+    - schichtplan
+    - nächste schicht
+    - wann bin ich
+    - wann ist er
+    - wann ist sie
+    - frei am
+    - zeit am
+    - termine
+    - termin
+    - kalender

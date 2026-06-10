@@ -32,9 +32,8 @@ TOOL_LABEL = "SimpleSecCheck"
 TOOL_DESCRIPTION = (
     "Resolve or enqueue security scans on SimpleSecCheck (https://scan.fr4iser.com)."
 )
-TOOL_TRIGGERS = ("security scan", "resolve-scan", "simplesec", "ssc")
-
-
+# Router phrases: co-located resolve.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 def resolve(arguments: dict[str, Any], context: dict | None = None) -> str:
     repo_url = resolve_repo_url(arguments, context)
     if not repo_url:

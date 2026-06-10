@@ -1,0 +1,12 @@
+# Co-located router phrases for list_dir.router.py — locale keys are authoring-only.
+domain: repository
+phrases:
+  en:
+    - coding list
+    - list files
+    - list directory
+  de:
+    - dateien auflisten
+    - verzeichnis listen
+    - dateien listen
+    - ordner auflisten

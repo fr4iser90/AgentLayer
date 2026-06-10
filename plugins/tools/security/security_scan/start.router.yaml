@@ -1,0 +1,10 @@
+# Co-located router phrases for start.router.py — locale keys are authoring-only.
+domain: security_scan
+phrases:
+  en:
+    - start scan
+    - enqueue scan
+  de:
+    - scan starten
+    - start scan
+    - scan einreihen

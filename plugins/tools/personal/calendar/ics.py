@@ -33,32 +33,8 @@ TOOL_DESCRIPTION = (
 )
 # Router: registry matches user text (lowercased) by **substring** against each entry; union of categories → tools[].
 # Keep triggers in this module only — not in ``tool_routing.py``.
-TOOL_TRIGGERS = (
-    "calendar",
-    "kalender",
-    "ical",
-    "ics",
-    "schedule",
-    "appointment",
-    "termine",
-    "schicht",
-    "arbeitszeit",
-    "dienstplan",
-    "schichtplan",
-    "feiertag",
-    "urlaub",
-    "shift",
-    "work schedule",
-    "next shift",
-    "time off",
-    "days off",
-    "when do i work",
-    "when am i working",
-    "wann muss ich",
-    "wann arbeite",
-    "wieder arbeiten",
-    "nächste schicht",
-)
+# Router phrases: co-located ics.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("calendar.read",)
 
 # Try Google-specific key first (same JSON shape), then generic ICS.

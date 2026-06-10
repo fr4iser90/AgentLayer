@@ -31,15 +31,8 @@ TOOL_DESCRIPTION = (
     "execution_target is a registry agent_id (see schedule_job_list / execution-targets catalog); "
     "workspace agents need workspace_id; admin-only agents need admin role."
 )
-TOOL_TRIGGERS = (
-    "schedule",
-    "scheduler",
-    "cron",
-    "job",
-    "ide agent",
-    "recurring",
-    "scheduler_jobs",
-)
+# Router phrases: co-located jobs.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("scheduler.job.read", "scheduler.job.write")
 TOOL_MIN_ROLE = "user"
 AGENT_TOOL_META_BY_NAME = {

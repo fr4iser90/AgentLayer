@@ -18,12 +18,8 @@ TOOL_DESCRIPTION = (
     "List which per-user secret service_key slots are already stored (no secret values). "
     "Use before asking the user to paste API keys."
 )
-TOOL_TRIGGERS = (
-    "secrets status",
-    "configured secrets",
-    "which api keys",
-    "user_secrets_status",
-)
+# Router phrases: co-located user_secrets_status.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("secrets.user",)
 
 

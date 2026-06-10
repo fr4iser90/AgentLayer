@@ -1,0 +1,12 @@
+# Co-located router phrases for status.router.py — locale keys are authoring-only.
+domain: security_scan
+phrases:
+  en:
+    - scan status
+    - simplesec status
+    - ssc status
+  de:
+    - scan status
+    - scan-status
+    - simplesec status
+    - ssc status

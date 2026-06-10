@@ -63,7 +63,8 @@ TOOL_DESCRIPTION = (
     "Admin-only: read/patch operator_settings, interfaces, external LLM endpoints, tenants/users, "
     "tool catalog/policies, reload registry, RAG ingest, persisted scheduler_jobs, presets, project_runs."
 )
-TOOL_TRIGGERS = ("operator", "admin", "settings", "tenant", "rag ingest", "scheduler job", "tool policy")
+# Router phrases: co-located admin.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_MIN_ROLE = "admin"
 TOOL_CAPABILITIES = ("operator.console",)
 

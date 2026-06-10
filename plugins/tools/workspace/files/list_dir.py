@@ -18,7 +18,8 @@ __version__ = "1.0.0"
 TOOL_ID = "coding_list"
 TOOL_BUCKET = "files"
 TOOL_DOMAIN = "repository"
-TOOL_TRIGGERS = ("coding list", "list files", "list directory")
+# Router phrases: co-located list_dir.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("coding.read",)
 TOOL_LABEL = "Coding: List directory"
 TOOL_DESCRIPTION = (

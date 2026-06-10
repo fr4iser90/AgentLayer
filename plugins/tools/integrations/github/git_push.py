@@ -23,13 +23,8 @@ __version__ = "1.0.0"
 TOOL_ID = "git_push"
 TOOL_BUCKET = "files"
 TOOL_DOMAIN = "github"
-TOOL_TRIGGERS = (
-    "git push",
-    "push branch",
-    "publish branch",
-    "push to github",
-    "upload branch",
-)
+# Router phrases: co-located git_push.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("coding.execute",)
 TOOL_SECRETS_REQUIRED = (USER_SECRET_KEY,)
 TOOL_LABEL = "Coding: Git push"

@@ -1,0 +1,10 @@
+# Co-located router phrases for get.router.py — locale keys are authoring-only.
+domain: security_scan
+phrases:
+  en:
+    - scan get
+    - simplesec get
+  de:
+    - scan abrufen
+    - scan get
+    - simplesec abrufen

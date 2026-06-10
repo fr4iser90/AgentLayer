@@ -44,9 +44,31 @@ def test_infer_args_from_assistant_prose():
     assert validate_tool_call_arguments("bind", out) is None
 
 
-def test_validation_error_json_has_hint():
+def test_validation_error_json_has_hint_and_parameters():
     err = validate_tool_call_arguments("bash", {})
     assert err is not None
     payload = json.loads(format_tool_call_validation_error(err))
     assert payload.get("hint")
     assert "command" in payload["hint"].lower()
+    assert isinstance(payload.get("parameters"), dict)
+    assert "properties" in payload["parameters"]
+
+
+def test_tool_call_warrants_full_schema_promotion():
+    from apps.backend.domain.agent_tools import tool_call_warrants_full_schema_promotion
+
+    assert tool_call_warrants_full_schema_promotion(
+        rejected=True, wire_args={}, normalized_args={}, result_ok=False
+    )
+    assert not tool_call_warrants_full_schema_promotion(
+        rejected=False, wire_args={}, normalized_args={"command": "ls"}, result_ok=True
+    )
+    assert tool_call_warrants_full_schema_promotion(
+        rejected=False, wire_args={}, normalized_args={}, result_ok=False
+    )
+    assert not tool_call_warrants_full_schema_promotion(
+        rejected=False,
+        wire_args={},
+        normalized_args={"name": "bench"},
+        result_ok=True,
+    )

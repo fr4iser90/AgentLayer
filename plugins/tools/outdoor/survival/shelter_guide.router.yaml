@@ -1,0 +1,15 @@
+# Co-located router phrases for shelter_guide.router.py — locale keys are authoring-only.
+domain: survival
+phrases:
+  en:
+    - shelter
+    - unterstand
+    - bivouac
+    - notlager
+    - übernachtung
+  de:
+    - shelter
+    - unterstand
+    - bivouac
+    - notlager
+    - übernachtung

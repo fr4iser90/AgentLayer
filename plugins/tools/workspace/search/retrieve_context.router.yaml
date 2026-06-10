@@ -1,0 +1,23 @@
+# Co-located router phrases for retrieve_context.router.py — locale keys are authoring-only.
+domain: repository
+phrases:
+  en:
+    - retrieve
+    - context
+    - semantic search
+    - find in codebase
+    - search docs and code
+    - rag
+  de:
+    - abrufen
+    - retrieve
+    - kontext holen
+    - kontext
+    - context
+    - semantische suche
+    - semantic search
+    - in codebase suchen
+    - in codebasis suchen
+    - doku und code suchen
+    - docs und code suchen
+    - rag

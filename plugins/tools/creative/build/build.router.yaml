@@ -1,0 +1,9 @@
+# Co-located router phrases for build.router.py — locale keys are authoring-only.
+domain: creative
+phrases:
+  en:
+    - build
+  de:
+    - bauen
+    - build
+    - erstellen

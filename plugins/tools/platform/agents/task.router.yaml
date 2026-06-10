@@ -1,0 +1,14 @@
+# Co-located router phrases for task.router.py — locale keys are authoring-only.
+domain: delegate
+phrases:
+  en:
+    - coding task
+    - subagent
+    - run_plan_subagent
+  de:
+    - coding aufgabe
+    - coding task
+    - subagent
+    - unter-agent
+    - plan subagent
+    - run plan subagent

@@ -1,0 +1,20 @@
+# Co-located router phrases for collections.router.py — locale keys are authoring-only.
+domain: collection
+phrases:
+  en:
+    - collection
+    - pets
+    - items
+    - domain data
+    - remember list
+  de:
+    - sammlung
+    - collection
+    - haustiere
+    - pets
+    - einträge
+    - items
+    - domänendaten
+    - domain daten
+    - merkliste
+    - remember list

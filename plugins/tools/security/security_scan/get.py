@@ -17,9 +17,8 @@ TOOL_SECRETS_REQUIRED = _attrs["TOOL_SECRETS_REQUIRED"]
 TOOL_USER_SECRET_FORMS = _attrs["TOOL_USER_SECRET_FORMS"]
 TOOL_LABEL = "SimpleSecCheck: get"
 TOOL_DESCRIPTION = "Alias for security_scan_status."
-TOOL_TRIGGERS = ("scan get", "simplesec get")
-
-
+# Router phrases: co-located get.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 def get(arguments: dict[str, Any], context: dict | None = None) -> str:
     return status(arguments, context)
 

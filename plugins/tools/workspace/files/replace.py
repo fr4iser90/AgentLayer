@@ -28,7 +28,8 @@ __version__ = "1.0.0"
 TOOL_ID = "replace"
 TOOL_BUCKET = "files"
 TOOL_DOMAIN = "repository"
-TOOL_TRIGGERS = ("coding replace", "edit file", "patch code", "surgical edit")
+# Router phrases: co-located replace.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("coding.write",)
 TOOL_LABEL = "Coding: Replace text"
 TOOL_DESCRIPTION = (

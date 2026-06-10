@@ -1,0 +1,20 @@
+# Co-located router phrases for host.router.py — locale keys are authoring-only.
+domain: files
+phrases:
+  en:
+    - local file
+    - read file
+    - write file
+    - list directory
+    - filesystem
+  de:
+    - lokale datei
+    - local file
+    - datei lesen
+    - file lesen
+    - datei schreiben
+    - write file
+    - verzeichnis listen
+    - ordner auflisten
+    - dateisystem
+    - filesystem

@@ -14,14 +14,8 @@ __version__ = "1.0.0"
 TOOL_ID = "git_sync"
 TOOL_BUCKET = "files"
 TOOL_DOMAIN = "github"
-TOOL_TRIGGERS = (
-    "git pull",
-    "git fetch",
-    "pull latest",
-    "update repo",
-    "repository aktualisieren",
-    "workspace updaten",
-)
+# Router phrases: co-located git_sync.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("coding.execute",)
 TOOL_LABEL = "Coding: Git sync"
 TOOL_DESCRIPTION = (

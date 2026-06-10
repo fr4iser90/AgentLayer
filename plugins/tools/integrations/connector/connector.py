@@ -26,13 +26,8 @@ TOOL_DESCRIPTION = (
     "Save reusable HTTP API profiles (base_url, auth, endpoints) and run named endpoints. "
     "Pair with save_user_secret for tokens. Results can be written to dashboards via dashboard.patch_data."
 )
-TOOL_TRIGGERS = (
-    "connector",
-    "api profile",
-    "save profile",
-    "api connector",
-    "integration profile",
-)
+# Router phrases: co-located connector.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("connector.read", "connector.write")
 TOOL_MIN_ROLE = "user"
 

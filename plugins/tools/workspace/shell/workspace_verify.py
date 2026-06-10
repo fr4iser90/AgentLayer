@@ -23,7 +23,8 @@ __version__ = "1.1.0"
 TOOL_ID = "workspace_verify"
 TOOL_BUCKET = "files"
 TOOL_DOMAIN = "repository"
-TOOL_TRIGGERS = ("verify workspace", "run verify", "lint test workspace", "agentlayer verify")
+# Router phrases: co-located workspace_verify.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("coding.execute",)
 TOOL_LABEL = "Coding: Workspace verify"
 TOOL_DESCRIPTION = (

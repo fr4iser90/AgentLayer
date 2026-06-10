@@ -20,9 +20,8 @@ TOOL_CAPABILITIES = ("code.repository",)
 TOOL_SECRETS_REQUIRED = (USER_SECRET_KEY,)
 TOOL_LABEL = "GitHub: Search issues"
 TOOL_DESCRIPTION = "Search issues and pull requests across GitHub."
-TOOL_TRIGGERS = ("github issues", "search issues", "search pull requests")
-
-
+# Router phrases: co-located search_issues.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 def search_issues(arguments: dict[str, Any]) -> str:
     q = (arguments.get("query") or "").strip()
     if not q:

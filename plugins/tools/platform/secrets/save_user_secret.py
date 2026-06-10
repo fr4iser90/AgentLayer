@@ -20,13 +20,8 @@ TOOL_DESCRIPTION = (
     "Use when the user pasted a credential in chat and asked to save it. "
     "service_key must match the integration tool's TOOL_SECRETS_REQUIRED / Connections catalog entry."
 )
-TOOL_TRIGGERS = (
-    "save secret",
-    "store secret",
-    "add secret",
-    "api key",
-    "save_user_secret",
-)
+# Router phrases: co-located save_user_secret.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("secrets.user",)
 
 

@@ -28,7 +28,8 @@ __version__ = "1.0.0"
 TOOL_ID = "search"
 TOOL_BUCKET = "files"
 TOOL_DOMAIN = "repository"
-TOOL_TRIGGERS = ("coding search", "search code", "grep", "find in files")
+# Router phrases: co-located search.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("coding.read",)
 TOOL_LABEL = "Coding: Search files"
 TOOL_DESCRIPTION = (

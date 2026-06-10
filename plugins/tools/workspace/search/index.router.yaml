@@ -1,0 +1,15 @@
+# Co-located router phrases for index.router.py — locale keys are authoring-only.
+domain: repository
+phrases:
+  en:
+    - coding index
+    - index code
+    - build index
+    - scan project
+  de:
+    - code indexieren
+    - projekt indexieren
+    - index aufbauen
+    - index erstellen
+    - projekt scannen
+    - scan project

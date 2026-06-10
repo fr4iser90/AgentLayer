@@ -23,25 +23,8 @@ __version__ = "1.0.0"
 TOOL_ID = "calendar"
 TOOL_BUCKET = "comms"
 TOOL_DOMAIN = "friends"
-TOOL_TRIGGERS = (
-    "wann muss",
-    "wann wieder",
-    "wann muss NAME wieder auf arbeit",
-    "arbeit",
-    "schicht",
-    "dienst",
-    "arbeitszeit",
-    "schichtplan",
-    "nächste schicht",
-    "wann bin ich",
-    "wann ist er",
-    "wann ist sie",
-    "frei am",
-    "zeit am",
-    "termine",
-    "termin",
-    "kalender",
-)
+# Router phrases: co-located calendar.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("friends.calendar", "default")
 
 

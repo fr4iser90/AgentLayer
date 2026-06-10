@@ -24,14 +24,8 @@ __version__ = "1.0.0"
 TOOL_ID = "retrieve_context"
 TOOL_BUCKET = "files"
 TOOL_DOMAIN = "repository"
-TOOL_TRIGGERS = (
-    "retrieve",
-    "context",
-    "semantic search",
-    "find in codebase",
-    "search docs and code",
-    "rag",
-)
+# Router phrases: co-located retrieve_context.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("coding.read", "knowledge.retrieve")
 TOOL_LABEL = "Retrieve context"
 TOOL_DESCRIPTION = (

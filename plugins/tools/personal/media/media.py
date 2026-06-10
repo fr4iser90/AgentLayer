@@ -25,31 +25,8 @@ TOOL_DESCRIPTION = (
     "Chat audio attachments are auto-ingested. No YouTube download — embed links, streams, and user uploads only. "
     "Requires operator media library enabled."
 )
-TOOL_TRIGGERS = (
-    "media",
-    "music",
-    "musik",
-    "audio",
-    "playlist",
-    "queue",
-    "track",
-    "song",
-    "lied",
-    "lieder",
-    "stream",
-    "radio",
-    "webradio",
-    "internetradio",
-    "mdr",
-    "jump",
-    "spotify",
-    "youtube",
-    "vimeo",
-    "mediathek",
-    "now playing",
-    "warteschlange",
-    "mp3",
-)
+# Router phrases: co-located media.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("media.read", "media.write")
 TOOL_MIN_ROLE = "user"
 

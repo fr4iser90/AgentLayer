@@ -27,6 +27,13 @@ import {
   type BenchmarkSuite,
 } from "../../features/admin/benchmarks/benchmarksApi";
 import {
+  downloadFailuresCsv,
+  downloadFailuresJson,
+  downloadFullReportJson,
+  failuresFromResults,
+  type BenchExportRow,
+} from "../../features/admin/benchmarks/benchExport";
+import {
   catalogModelIdsForProvider,
   fetchModelCatalog,
   isProviderCatalogUnreachable,
@@ -257,6 +264,65 @@ function formatInFlightPreview(inFlight: BenchmarkInFlight): string | null {
   return preview.length > 140 ? `${preview.slice(0, 140)}…` : preview;
 }
 
+function formatResultFailureLine(res: BenchmarkScenarioResult, t: (key: string) => string): string {
+  const transport = (res.transport_error || res.error || "").trim();
+  const rubric = (res.rubric_failure_reason || "").trim();
+  if (transport && rubric) {
+    return `${transport} · ${t("admin:benchResultAlsoRubric").replace("{{reason}}", rubric)}`;
+  }
+  return (res.failure_reason || transport || rubric).trim();
+}
+
+function BenchmarkFailuresSummary({
+  rows,
+  t,
+}: {
+  rows: BenchExportRow[];
+  t: (key: string) => string;
+}) {
+  if (rows.length === 0) return null;
+  return (
+    <div className="mt-4 rounded-lg border border-rose-500/25 bg-rose-950/15 p-3">
+      <div className="mb-2 text-sm font-medium text-rose-200">
+        {t("admin:benchFailuresSummary")} ({rows.length})
+      </div>
+      <div className="max-h-64 overflow-auto">
+        <table className="w-full text-left text-[11px]">
+          <thead className="sticky top-0 bg-rose-950/80 text-surface-muted">
+            <tr>
+              <th className="py-1 pr-2">{t("admin:benchFailuresSummaryColScenario")}</th>
+              <th className="py-1 pr-2">{t("admin:benchFailuresSummaryColProfile")}</th>
+              <th className="py-1 pr-2">{t("admin:benchFailuresSummaryColTransport")}</th>
+              <th className="py-1 pr-2">{t("admin:benchFailuresSummaryColRubric")}</th>
+              <th className="py-1 pr-2">{t("admin:benchFailuresSummaryColInsights")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr key={`${row.scenario_id}-${row.profile_label}-${i}`} className="border-t border-white/5">
+                <td className="py-1 pr-2 font-mono align-top">{row.scenario_id}</td>
+                <td className="py-1 pr-2 font-mono align-top text-[10px]">
+                  {row.profile_label}
+                  {row.model ? ` / ${row.model}` : ""}
+                </td>
+                <td className="py-1 pr-2 align-top text-amber-200/90 max-w-[10rem]">
+                  {row.transport_error || "—"}
+                </td>
+                <td className="py-1 pr-2 align-top text-rose-200/90 max-w-[12rem]">
+                  {row.rubric_failure || "—"}
+                </td>
+                <td className="py-1 pr-2 align-top text-sky-200/80 max-w-[16rem]">
+                  {row.insights || "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function summarizeToolRounds(
   rounds: Array<{ name?: string; summary?: string | null; rejected?: boolean }>,
 ): string {
@@ -411,25 +477,33 @@ function BenchmarkScenarioDetail({
           ) : null}
         </div>
       ) : null}
-      {res.failure_reason ? (
-        <div className="rounded border border-red-500/30 bg-red-950/30 p-2">
-          <div className="font-medium text-red-300">{t("admin:benchDetailFailure")}</div>
-          <pre className="mt-1 whitespace-pre-wrap font-mono text-[11px] text-red-200/90">
-            {res.failure_reason}
-          </pre>
-        </div>
-      ) : null}
-      {res.error ? (
-        <div className="rounded border border-red-500/20 bg-red-950/20 p-2">
-          <div className="font-medium text-red-300">{t("admin:benchDetailError")}</div>
-          <pre className="mt-1 whitespace-pre-wrap font-mono text-[11px] text-red-200/80">
-            {res.error}
+      {(res.transport_error || res.error) ? (
+        <div className="rounded border border-amber-500/25 bg-amber-950/20 p-2">
+          <div className="font-medium text-amber-300">{t("admin:benchDetailTransportError")}</div>
+          <pre className="mt-1 whitespace-pre-wrap font-mono text-[11px] text-amber-100/90">
+            {res.transport_error || res.error}
           </pre>
           {res.run_metrics?.http_status != null ? (
             <p className="mt-1 text-surface-muted">
               HTTP {res.run_metrics.http_status}
             </p>
           ) : null}
+        </div>
+      ) : null}
+      {res.rubric_failure_reason ? (
+        <div className="rounded border border-red-500/30 bg-red-950/30 p-2">
+          <div className="font-medium text-red-300">{t("admin:benchDetailRubricFailure")}</div>
+          <pre className="mt-1 whitespace-pre-wrap font-mono text-[11px] text-red-200/90">
+            {res.rubric_failure_reason}
+          </pre>
+        </div>
+      ) : null}
+      {!res.rubric_failure_reason && res.failure_reason && !(res.transport_error || res.error) ? (
+        <div className="rounded border border-red-500/30 bg-red-950/30 p-2">
+          <div className="font-medium text-red-300">{t("admin:benchDetailFailure")}</div>
+          <pre className="mt-1 whitespace-pre-wrap font-mono text-[11px] text-red-200/90">
+            {res.failure_reason}
+          </pre>
         </div>
       ) : null}
       {(benchDiag?.insights?.length ?? 0) > 0 ? (
@@ -1573,6 +1647,35 @@ export function AdminBenchmarks() {
                     ) : null}
                   </div>
                 ) : null}
+                {(detail.report_json?.results?.length ?? 0) > 0 ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="rounded border border-white/15 bg-black/30 px-2.5 py-1 text-[11px] text-white/90 hover:bg-white/10"
+                      onClick={() => downloadFailuresCsv(detail)}
+                    >
+                      {t("admin:benchExportFailuresCsv")}
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded border border-white/15 bg-black/30 px-2.5 py-1 text-[11px] text-white/90 hover:bg-white/10"
+                      onClick={() => downloadFailuresJson(detail)}
+                    >
+                      {t("admin:benchExportFailuresJson")}
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded border border-white/15 bg-black/30 px-2.5 py-1 text-[11px] text-white/90 hover:bg-white/10"
+                      onClick={() => downloadFullReportJson(detail)}
+                    >
+                      {t("admin:benchExportFullJson")}
+                    </button>
+                  </div>
+                ) : null}
+                <BenchmarkFailuresSummary
+                  rows={failuresFromResults(detail.report_json?.results ?? [])}
+                  t={t}
+                />
                 <table className="mt-4 w-full text-left text-xs">
                   <thead>
                     <tr className="text-surface-muted">
@@ -1674,7 +1777,11 @@ export function AdminBenchmarks() {
                                 ? `${res.run_metrics.project_run_status} · `
                                 : ""}
                               {res.skipped ? "SKIP" : res.passed ? "PASS" : "FAIL"}
-                              {res.failure_reason ? (
+                              {!res.skipped && !res.passed ? (
+                                <span className="ml-1 text-surface-muted">
+                                  — {formatResultFailureLine(res, t)}
+                                </span>
+                              ) : res.failure_reason ? (
                                 <span className="ml-1 text-surface-muted">
                                   — {res.failure_reason}
                                 </span>

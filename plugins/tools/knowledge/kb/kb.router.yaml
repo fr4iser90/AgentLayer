@@ -1,0 +1,17 @@
+# Co-located router phrases for kb.router.py — locale keys are authoring-only.
+domain: kb
+phrases:
+  en:
+    - knowledge base
+    - second brain
+    - my notes
+    - notebook
+  de:
+    - wissensbasis
+    - knowledge base
+    - zweites gehirn
+    - second brain
+    - meine notizen
+    - my notes
+    - notizbuch
+    - notebook

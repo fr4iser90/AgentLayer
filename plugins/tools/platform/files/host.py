@@ -25,13 +25,8 @@ TOOL_LABEL = "Local files"
 TOOL_DESCRIPTION = (
     "List, read, search, and edit local text files; absolute paths or paths relative to the agent process cwd."
 )
-TOOL_TRIGGERS = (
-    "local file",
-    "read file",
-    "write file",
-    "list directory",
-    "filesystem",
-)
+# Router phrases: co-located host.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("dashboard.files",)
 
 MAX_FILE_BYTES = config.WORKSPACE_MAX_FILE_BYTES

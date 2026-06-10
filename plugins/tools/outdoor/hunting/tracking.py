@@ -12,13 +12,8 @@ TOOL_LABEL = "Hunting"
 TOOL_DESCRIPTION = (
     "Jagd: Windkomponenten und Spuren-Checklisten — keine Ballistik, keine Live-Daten."
 )
-TOOL_TRIGGERS = (
-    "track",
-    "spur",
-    "tracking",
-    "trittsiegel",
-    "wild",
-)
+# Router phrases: co-located tracking.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_TAGS = ("hunting", "outdoor", "guide")
 TOOL_DOMAIN = "hunting"
 TOOL_REQUIRES = ["field_context"]

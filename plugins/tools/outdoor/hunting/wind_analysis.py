@@ -13,14 +13,8 @@ TOOL_LABEL = "Hunting"
 TOOL_DESCRIPTION = (
     "Jagd: Windkomponenten und Spuren-Checklisten — keine Ballistik, keine Live-Daten."
 )
-TOOL_TRIGGERS = (
-    "hunting",
-    "jagd",
-    "wind",
-    "drift",
-    "crosswind",
-    "ansitz",
-)
+# Router phrases: co-located wind_analysis.router.yaml (all locales unioned at load).
+TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_TAGS = ("hunting", "outdoor", "calculator")
 TOOL_DOMAIN = "hunting"
 TOOL_REQUIRES = ["wind", "bearing"]
