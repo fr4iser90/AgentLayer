@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any, Callable
 
 import httpx
 
@@ -13,13 +13,13 @@ from tests.benchmarks.agent.harness import (
     ScenarioResult,
     _fetch_run_trace,
 )
+
+if TYPE_CHECKING:
+    from tests.benchmarks.agent.harness import BenchSession
 from tests.benchmarks.agent.metrics import RunMetrics, build_run_metrics
 from tests.benchmarks.agent.cases import AgentScenario
 from tests.benchmarks.agent.fixtures import FixtureContext, workspace_id_for_scenario
 from tests.benchmarks.agent.rubrics import RubricOutcome, evaluate_rubric
-from tests.e2e.support.helpers import E2EClient
-
-
 def _poll_interval_s() -> float:
     return max(5.0, float(os.environ.get("AGENT_BENCH_PROJECT_POLL_S") or "15"))
 
@@ -29,18 +29,32 @@ def _terminal_status(status: str) -> bool:
 
 
 def poll_project_run(
-    client: E2EClient,
+    session: BenchSession,
     run_id: str,
+    *,
+    on_live: Callable[[dict[str, Any]], None] | None = None,
+    t0: float | None = None,
 ) -> dict[str, Any]:
     poll_s = _poll_interval_s()
     last: dict[str, Any] = {}
     while True:
-        payload = client.get_json(f"/v1/project-runs/{run_id}")
+        session.refresh_if_due()
+        payload = session.client.get_json(f"/v1/project-runs/{run_id}")
         row = payload.get("run") if isinstance(payload, dict) else None
         if not isinstance(row, dict):
             raise RuntimeError(f"project run poll invalid response: {payload!r}")
         last = row
-        if _terminal_status(str(row.get("status") or "")):
+        status = str(row.get("status") or "")
+        if on_live is not None:
+            elapsed_ms = (time.perf_counter() - t0) * 1000.0 if t0 is not None else 0.0
+            on_live(
+                {
+                    "phase": "project_run",
+                    "detail": status or "polling",
+                    "elapsed_ms": round(elapsed_ms, 1),
+                }
+            )
+        if _terminal_status(status):
             return row
         time.sleep(poll_s)
 
@@ -62,13 +76,14 @@ def _tools_to_invocations(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def run_project_run_scenario(
-    client: E2EClient,
+    session: BenchSession,
     *,
     profile: ModelProfile,
     scenario: AgentScenario,
     run_id: str,
     fixture_ctx: FixtureContext,
     defaults: dict[str, Any],
+    on_live: Callable[[dict[str, Any]], None] | None = None,
 ) -> ScenarioResult:
     fixture_list = list(scenario.requires)
     ws_id = workspace_id_for_scenario(fixture_ctx, scenario.requires)
@@ -134,12 +149,13 @@ def run_project_run_scenario(
     error: str | None = None
     project_row: dict[str, Any] = {}
     try:
-        created = client.post_json("/v1/project-runs", body)
+        session.refresh_if_due()
+        created = session.client.post_json("/v1/project-runs", body)
         project_row = created.get("run") if isinstance(created, dict) else {}
         pr_id = str(project_row.get("id") or "")
         if not pr_id:
             raise RuntimeError(f"project run create failed: {created!r}")
-        project_row = poll_project_run(client, pr_id)
+        project_row = poll_project_run(session, pr_id, on_live=on_live, t0=t0)
     except httpx.HTTPStatusError as exc:
         error = f"HTTP {exc.response.status_code}: {exc.response.text[:500]}"
     except httpx.HTTPError as exc:
@@ -160,7 +176,7 @@ def run_project_run_scenario(
     invocations = _tools_to_invocations(schedule_tools)
     tool_names = [str(i.get("tool_name") or "") for i in invocations if i.get("tool_name")]
 
-    _, trace_invocations, agent_run = _fetch_run_trace(client, agent_run_id)
+    _, trace_invocations, agent_run = _fetch_run_trace(session.client, agent_run_id)
     if trace_invocations:
         invocations = trace_invocations
         tool_names = [str(i.get("tool_name") or "") for i in invocations if i.get("tool_name")]

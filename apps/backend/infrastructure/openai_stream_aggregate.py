@@ -219,7 +219,7 @@ async def stream_chat_completions_aggregate(
     on_text_delta: Callable[[str], Awaitable[None]] | None,
     on_reasoning_delta: Callable[[str], Awaitable[None]] | None = None,
     cancel_event: Any | None = None,
-    timeout: float = 600.0,
+    timeout: float | None = None,
 ) -> tuple[dict[str, Any], bool, tuple[str, dict[str, str], str, str]]:
     """
     POST ``stream: true``, parse SSE/NDJSON, merge to a completion dict.
@@ -232,7 +232,9 @@ async def stream_chat_completions_aggregate(
     attempts_local = list(attempts_seq)
     lb = llm_backend
     outer_profile = profile_key
-    timeout_cfg = httpx.Timeout(timeout, connect=120.0)
+    timeout_cfg = (
+        None if timeout is None else httpx.Timeout(timeout, connect=120.0)
+    )
 
     def _cancelled() -> bool:
         if cancel_event is None:

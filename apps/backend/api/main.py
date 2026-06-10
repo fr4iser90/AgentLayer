@@ -195,6 +195,16 @@ async def lifespan(_app: FastAPI):
     apply_http_client_log_levels()
     db.init_pool()
     try:
+        from apps.backend.infrastructure.benchmark_runs_store import (
+            reconcile_orphaned_runs_on_startup,
+        )
+
+        n = reconcile_orphaned_runs_on_startup()
+        if n:
+            logger.warning("Marked %s orphaned benchmark run(s) as failed after startup", n)
+    except Exception:
+        logger.exception("Benchmark orphan reconciliation failed")
+    try:
         setup_admin_claim_if_needed()
     except Exception:
         logger.exception(

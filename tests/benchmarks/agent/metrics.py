@@ -65,6 +65,71 @@ def utilization_pct(context: dict[str, Any]) -> float | None:
     return round(min(100.0, (prompt / budget) * 100.0), 2)
 
 
+def bench_ws_diagnostics(events: list[dict[str, Any]] | None) -> dict[str, Any]:
+    """Actionable failure context for benchmark UI (websocket timeline)."""
+    rows = [e for e in (events or []) if isinstance(e, dict)]
+    if not rows:
+        return {}
+    compaction_events, timeline, counts = summarize_ws_events(rows)
+    ws_errors: list[dict[str, Any]] = []
+    for ev in rows:
+        typ = str(ev.get("type") or "")
+        if typ in ("error", "agent.aborted") or ev.get("error"):
+            ws_errors.append(
+                {
+                    "type": typ,
+                    "detail": ev.get("detail") or ev.get("message"),
+                    "http_status": ev.get("http_status"),
+                }
+            )
+    return {
+        "ws_event_count": len(rows),
+        "ws_errors": ws_errors[-5:],
+        "timeline_tail": timeline[-16:],
+        "event_counts": counts,
+        "compaction_count_live": len(compaction_events),
+    }
+
+
+def live_snapshot_from_ws_events(
+    events: list[dict[str, Any]],
+    *,
+    elapsed_ms: float,
+) -> dict[str, Any]:
+    """Partial bench UI state from websocket timeline (in-flight scenario)."""
+    _, timeline, counts = summarize_ws_events(events)
+    tool_names: list[str] = []
+    for row in timeline:
+        if row.get("type") == "agent.tool_start":
+            name = str(row.get("tool") or "").strip()
+            if name:
+                tool_names.append(name)
+    last = timeline[-1] if timeline else {}
+    last_type = str(last.get("type") or "")
+    phase = "running"
+    detail = ""
+    if last_type == "agent.tool_start":
+        phase = "tool"
+        detail = str(last.get("tool") or "")
+    elif last_type == "agent.tool_done":
+        phase = "tool"
+        detail = str(last.get("tool") or "")
+    elif last_type == "agent.llm_round":
+        phase = "llm"
+        detail = f"round {last.get('round')}" if last.get("round") is not None else ""
+    elif last_type == "agent.context_compacted":
+        phase = "compact"
+        detail = str(last.get("phase") or "")
+    return {
+        "phase": phase,
+        "detail": detail,
+        "llm_round_count": counts["llm_round_count"],
+        "tool_call_count": counts["tool_done_count"],
+        "tool_names": tool_names,
+        "elapsed_ms": round(elapsed_ms, 1),
+    }
+
+
 def summarize_ws_events(events: list[dict[str, Any]]) -> tuple[list[dict], list[dict], dict[str, int]]:
     """Return compaction_events, timeline_summary, counters."""
     compaction_events: list[dict[str, Any]] = []

@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
@@ -23,6 +23,7 @@ async def _run_chat_ws_async(
     base_url: str,
     token: str,
     body: dict[str, Any],
+    on_event: Callable[[dict[str, Any]], None] | None = None,
 ) -> tuple[dict[str, Any], list[dict[str, Any]], str | None]:
     try:
         import websockets
@@ -46,16 +47,26 @@ async def _run_chat_ws_async(
             if not isinstance(msg, dict):
                 continue
             events.append(msg)
+            if on_event is not None:
+                on_event(msg)
             typ = msg.get("type")
             if typ == "chat.completion":
+                if msg.get("error"):
+                    error = str(msg.get("detail") or msg.get("message") or "chat.completion error")
+                    break
                 data = msg.get("data")
                 if isinstance(data, dict):
                     completion = data
-                elif msg.get("error"):
-                    error = str(msg.get("detail") or "chat.completion error")
+                else:
+                    error = str(msg.get("detail") or "chat.completion missing data")
                 break
             if typ == "error":
-                error = str(msg.get("detail") or "websocket error")
+                detail = msg.get("detail") or msg.get("message") or "websocket error"
+                status = msg.get("http_status")
+                error = f"{detail}" + (f" (HTTP {status})" if status else "")
+                break
+            if typ == "agent.aborted":
+                error = str(msg.get("detail") or "agent aborted")
                 break
 
     return completion, events, error
@@ -66,12 +77,14 @@ def run_chat_via_websocket(
     base_url: str,
     token: str,
     body: dict[str, Any],
+    on_event: Callable[[dict[str, Any]], None] | None = None,
 ) -> tuple[dict[str, Any], list[dict[str, Any]], str | None]:
     return asyncio.run(
         _run_chat_ws_async(
             base_url=base_url,
             token=token,
             body=body,
+            on_event=on_event,
         )
     )
 

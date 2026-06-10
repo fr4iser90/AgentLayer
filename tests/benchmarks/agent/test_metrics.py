@@ -2,7 +2,38 @@
 
 from __future__ import annotations
 
-from tests.benchmarks.agent.metrics import build_run_metrics, summarize_ws_events
+from tests.benchmarks.agent.metrics import (
+    bench_ws_diagnostics,
+    build_run_metrics,
+    live_snapshot_from_ws_events,
+    summarize_ws_events,
+)
+
+
+def test_bench_ws_diagnostics_collects_errors_and_timeline() -> None:
+    events = [
+        {"type": "agent.llm_round", "round": 1},
+        {"type": "error", "detail": "upstream failed", "http_status": 502},
+    ]
+    diag = bench_ws_diagnostics(events)
+    assert diag["ws_event_count"] == 2
+    assert diag["ws_errors"][-1]["detail"] == "upstream failed"
+    assert diag["event_counts"]["llm_round_count"] == 1
+
+
+def test_live_snapshot_from_ws_events() -> None:
+    events = [
+        {"type": "agent.llm_round", "round": 1},
+        {"type": "agent.tool_start", "name": "catalog"},
+        {"type": "agent.tool_done", "name": "catalog", "ok": True},
+    ]
+    snap = live_snapshot_from_ws_events(events, elapsed_ms=1234.5)
+    assert snap["phase"] == "tool"
+    assert snap["detail"] == "catalog"
+    assert snap["llm_round_count"] == 1
+    assert snap["tool_call_count"] == 1
+    assert snap["tool_names"] == ["catalog"]
+    assert snap["elapsed_ms"] == 1234.5
 
 
 def test_summarize_compaction_events() -> None:

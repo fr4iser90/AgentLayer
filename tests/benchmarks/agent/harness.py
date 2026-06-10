@@ -30,7 +30,12 @@ from tests.benchmarks.agent.fixtures import (
     scenario_fixture_blocked,
     workspace_id_for_scenario,
 )
-from tests.benchmarks.agent.metrics import RunMetrics, build_run_metrics
+from tests.benchmarks.agent.metrics import (
+    RunMetrics,
+    bench_ws_diagnostics,
+    build_run_metrics,
+    live_snapshot_from_ws_events,
+)
 from tests.benchmarks.agent.rubrics import RubricOutcome, evaluate_rubric
 from tests.benchmarks.agent.ws_runner import run_chat_via_websocket, timeline_capture_enabled
 from tests.e2e.support.helpers import E2EClient, find_workspace_by_name, load_dotenv, operator_self_editing_enabled, require_server
@@ -128,6 +133,92 @@ def resolve_bench_clients(
     return run_client, admin_client
 
 
+def _bench_token_refresh_interval_s() -> float:
+    """Re-mint bench JWTs before ``ACCESS_TOKEN_EXPIRE_MINUTES`` (default 15)."""
+    raw = (os.environ.get("AGENT_BENCH_TOKEN_REFRESH_MINUTES") or "10").strip()
+    try:
+        minutes = float(raw)
+    except ValueError:
+        minutes = 10.0
+    return max(60.0, minutes * 60.0)
+
+
+@dataclass
+class BenchSession:
+    """Mutable HTTP session for long benchmark runs (JWT refresh across profiles/scenarios)."""
+
+    run_as_user_id: uuid.UUID | str | None
+    friend_user_id: uuid.UUID | str | None
+    admin_user_id: uuid.UUID | str | None
+    client: E2EClient
+    admin_client: E2EClient | None
+    _last_refresh_monotonic: float = field(default_factory=time.monotonic)
+
+    @classmethod
+    def open(
+        cls,
+        *,
+        run_as_user_id: uuid.UUID | str | None = None,
+        friend_user_id: uuid.UUID | str | None = None,
+        admin_user_id: uuid.UUID | str | None = None,
+    ) -> BenchSession:
+        client, admin_client = resolve_bench_clients(
+            run_as_user_id=run_as_user_id,
+            friend_user_id=friend_user_id,
+            admin_user_id=admin_user_id,
+        )
+        return cls(
+            run_as_user_id=run_as_user_id,
+            friend_user_id=friend_user_id,
+            admin_user_id=admin_user_id,
+            client=client,
+            admin_client=admin_client,
+        )
+
+    def _close_client(self, row: E2EClient | None) -> None:
+        if row is None:
+            return
+        try:
+            row.close()
+        except Exception:
+            pass
+
+    def refresh(self, *, force: bool = False) -> None:
+        if not force and (time.monotonic() - self._last_refresh_monotonic) < _bench_token_refresh_interval_s():
+            return
+        old_client = self.client
+        old_admin = self.admin_client
+        client, admin_client = resolve_bench_clients(
+            run_as_user_id=self.run_as_user_id,
+            friend_user_id=self.friend_user_id,
+            admin_user_id=self.admin_user_id,
+        )
+        self.client = client
+        self.admin_client = admin_client
+        self._last_refresh_monotonic = time.monotonic()
+        if old_client.http is not self.client.http:
+            self._close_client(old_client)
+        if (
+            old_admin is not None
+            and old_admin is not old_client
+            and old_admin.http is not self.client.http
+            and (self.admin_client is None or old_admin.http is not self.admin_client.http)
+        ):
+            self._close_client(old_admin)
+
+    def refresh_if_due(self) -> None:
+        self.refresh(force=False)
+
+    def admin_for_ops(self) -> E2EClient:
+        return self.admin_client if self.admin_client is not None else self.client
+
+    def close(self) -> None:
+        if self.admin_client is not None and self.admin_client.http is not self.client.http:
+            self._close_client(self.admin_client)
+        self._close_client(self.client)
+        self.admin_client = None
+
+
 @dataclass
 class ModelProfile:
     label: str
@@ -137,6 +228,7 @@ class ModelProfile:
 
 
 _ASSISTANT_CONTENT_MAX = 12_000
+_LIVE_PERSIST_MIN_S = 2.0
 
 
 def _store_assistant_content(content: str | None) -> tuple[str, str, bool]:
@@ -193,6 +285,7 @@ class BenchRunReport:
     fixtures_applied: list[str] = field(default_factory=list)
     fixtures_skipped: dict[str, str] = field(default_factory=dict)
     results: list[ScenarioResult] = field(default_factory=list)
+    in_flight: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -208,6 +301,7 @@ class BenchRunReport:
             "fixtures_applied": self.fixtures_applied,
             "fixtures_skipped": self.fixtures_skipped,
             "results": [r.to_dict() for r in self.results],
+            "in_flight": self.in_flight,
         }
 
 
@@ -466,6 +560,13 @@ def _dashboard_state_for_rubric(
     return None, None
 
 
+def _find_workspace_for_rubric(client: E2EClient, ws_name: str) -> dict[str, Any] | None:
+    try:
+        return find_workspace_by_name(client, ws_name)
+    except httpx.HTTPError:
+        return None
+
+
 def _workspace_row_for_rubric(
     client: E2EClient,
     *,
@@ -475,7 +576,7 @@ def _workspace_row_for_rubric(
     ws_name = bench_workspace_name(scenario, fixture_ctx.prefix)
     if not ws_name:
         return None
-    return find_workspace_by_name(client, ws_name)
+    return _find_workspace_for_rubric(client, ws_name)
 
 
 def _git_state_for_rubric(
@@ -487,7 +588,7 @@ def _git_state_for_rubric(
     ws_name = bench_workspace_name(scenario, fixture_ctx.prefix)
     if not ws_name:
         return None
-    ws = find_workspace_by_name(client, ws_name)
+    ws = _find_workspace_for_rubric(client, ws_name)
     if not ws:
         return None
     ws_id = str(ws.get("id") or "").strip()
@@ -547,6 +648,42 @@ def _fetch_run_trace(
     return [n for n in names if n], invocations, run
 
 
+def _scenario_crash_result(
+    *,
+    run_id: str,
+    scenario: AgentScenario,
+    profile: ModelProfile,
+    exc: BaseException,
+    fixtures: list[str],
+    fixture_ctx: FixtureContext | None = None,
+) -> ScenarioResult:
+    msg = str(exc).strip() or exc.__class__.__name__
+    scenario_prompt = (
+        _render_scenario_prompt(scenario, fixture_ctx) if fixture_ctx is not None else ""
+    )
+    return ScenarioResult(
+        run_id=run_id,
+        scenario_id=scenario.id,
+        profile_label=profile.label,
+        model=profile.model,
+        catalog_owned_by=profile.catalog_owned_by,
+        agent_id=_effective_agent_id(profile, scenario),
+        passed=False,
+        score=0.0,
+        failure_reason=msg,
+        latency_ms=0.0,
+        prompt_tokens=None,
+        completion_tokens=None,
+        tool_call_count=0,
+        tool_names=[],
+        agent_run_id=None,
+        assistant_excerpt="",
+        scenario_prompt=scenario_prompt,
+        fixtures=fixtures,
+        error=msg,
+    )
+
+
 def _skipped_result(
     *,
     run_id: str,
@@ -591,6 +728,7 @@ def run_scenario(
     run_id: str,
     fixture_ctx: FixtureContext,
     defaults: dict[str, Any],
+    on_live: Callable[[dict[str, Any]], None] | None = None,
 ) -> ScenarioResult:
     fixture_list = list(scenario.requires)
     if not profile.model:
@@ -641,10 +779,23 @@ def run_scenario(
     if use_ws:
         try:
             capture_mode = "websocket"
+            ws_buf: list[dict[str, Any]] = []
+
+            def _on_ws_event(msg: dict[str, Any]) -> None:
+                ws_buf.append(msg)
+                if on_live is not None:
+                    on_live(
+                        live_snapshot_from_ws_events(
+                            ws_buf,
+                            elapsed_ms=(time.perf_counter() - t0) * 1000.0,
+                        )
+                    )
+
             data, ws_events, ws_err = run_chat_via_websocket(
                 base_url=bench_base_url(),
                 token=client.token,
                 body=body,
+                on_event=_on_ws_event,
             )
             if ws_err and not data:
                 error = ws_err
@@ -687,6 +838,13 @@ def run_scenario(
         agent_run=agent_run,
         capture_mode=capture_mode,
     )
+    run_metrics_dict = run_metrics_obj.to_dict()
+    if ws_events or error:
+        diag = bench_ws_diagnostics(ws_events)
+        if diag:
+            run_metrics_dict["bench_diagnostics"] = diag
+    if error and http_status is not None:
+        run_metrics_dict["http_status"] = http_status
     usage = data.get("usage") if isinstance(data.get("usage"), dict) else {}
     prompt_tokens = run_metrics_obj.prompt_tokens
     if prompt_tokens is None and usage.get("prompt_tokens") is not None:
@@ -750,7 +908,7 @@ def run_scenario(
         fixtures=fixture_list,
         error=error,
         http_status=http_status,
-        run_metrics=run_metrics_obj.to_dict(),
+        run_metrics=run_metrics_dict,
     )
 
 
@@ -772,6 +930,50 @@ def _notify_progress(
 ) -> None:
     if on_progress is not None:
         on_progress(report)
+
+
+def _bench_in_flight_row(
+    *,
+    scenario: AgentScenario,
+    profile: ModelProfile,
+    fixture_ctx: FixtureContext,
+    phase: str = "starting",
+    detail: str = "",
+) -> dict[str, Any]:
+    return {
+        "scenario_id": scenario.id,
+        "profile_label": profile.label,
+        "model": profile.model,
+        "catalog_owned_by": profile.catalog_owned_by,
+        "agent_id": _effective_agent_id(profile, scenario),
+        "started_at": datetime.now(timezone.utc).isoformat(),
+        "phase": phase,
+        "detail": detail,
+        "llm_round_count": 0,
+        "tool_call_count": 0,
+        "tool_names": [],
+        "elapsed_ms": 0.0,
+    }
+
+
+def _make_live_pusher(
+    report: BenchRunReport,
+    on_progress: Callable[[BenchRunReport], None] | None,
+) -> Callable[[dict[str, Any]], None]:
+    last_persist = time.monotonic()
+
+    def push(patch: dict[str, Any], *, force: bool = False) -> None:
+        nonlocal last_persist
+        if report.in_flight is None:
+            return
+        report.in_flight.update(patch)
+        now = time.monotonic()
+        if not force and (now - last_persist) < _LIVE_PERSIST_MIN_S:
+            return
+        last_persist = now
+        _notify_progress(report, on_progress)
+
+    return push
 
 
 def run_benchmark(
@@ -799,7 +1001,7 @@ def run_benchmark(
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     prefix = f"{resource_prefix.rstrip('-')}-{run_id}-"
 
-    client, admin_client = resolve_bench_clients(
+    session = BenchSession.open(
         run_as_user_id=run_as_user_id,
         friend_user_id=friend_user_id,
         admin_user_id=admin_user_id,
@@ -812,7 +1014,7 @@ def run_benchmark(
     else:
         profiles, profiles_source, provider_registry = resolve_benchmark_profiles(
             manifest_profiles,
-            client=client,
+            client=session.client,
             run_id=run_id,
         )
     tier_max = tier if tier is not None else tier_max_manifest
@@ -845,20 +1047,19 @@ def run_benchmark(
         profiles_source=profiles_source,
     )
 
-    self_editing_restore_client: E2EClient | None = None
     self_editing_prev: bool | None = None
     if "agentlayer_self" in fixture_ids:
-        self_editing_restore_client = admin_client if admin_client is not None else client
-        if self_editing_restore_client.role == "admin":
-            self_editing_prev = operator_self_editing_enabled(self_editing_restore_client)
+        admin_ops = session.admin_for_ops()
+        if admin_ops.role == "admin":
+            self_editing_prev = operator_self_editing_enabled(admin_ops)
             if not self_editing_prev:
-                self_editing_restore_client.patch_json(
+                admin_ops.patch_json(
                     "/v1/admin/operator-settings",
                     {"workspace_allow_self_editing": True},
                 )
 
     try:
-        apply_fixtures(client, fixture_ctx, fixture_ids)
+        apply_fixtures(session.client, fixture_ctx, fixture_ids)
         report.fixtures_applied = sorted(fixture_ctx.applied)
         report.fixtures_skipped = dict(fixture_ctx.skipped)
         _notify_progress(report, on_progress)
@@ -870,7 +1071,9 @@ def run_benchmark(
             _notify_progress(report, on_progress)
 
         for profile in profiles:
+            session.refresh(force=True)
             for scenario in scenarios:
+                session.refresh_if_due()
                 block = scenario_fixture_blocked(fixture_ctx, scenario.requires)
                 if block and any(
                     fid in fixture_ctx.skipped for fid in scenario.requires
@@ -923,46 +1126,74 @@ def run_benchmark(
                     )
                     continue
 
-                _record(
-                    run_project_run_scenario(
-                        client,
-                        profile=profile,
-                        scenario=scenario,
-                        run_id=run_id,
-                        fixture_ctx=fixture_ctx,
-                        defaults=defaults,
-                    )
-                    if scenario.execution == "project_run"
-                    else run_scenario(
-                        client,
-                        profile=profile,
-                        scenario=scenario,
-                        run_id=run_id,
-                        fixture_ctx=fixture_ctx,
-                        defaults=defaults,
-                    )
+                live_push = _make_live_pusher(report, on_progress)
+                report.in_flight = _bench_in_flight_row(
+                    scenario=scenario,
+                    profile=profile,
+                    fixture_ctx=fixture_ctx,
+                    phase="starting",
                 )
+                live_push({}, force=True)
+
+                def _on_live(patch: dict[str, Any]) -> None:
+                    live_push(patch)
+
+                try:
+                    result = (
+                        run_project_run_scenario(
+                            session,
+                            profile=profile,
+                            scenario=scenario,
+                            run_id=run_id,
+                            fixture_ctx=fixture_ctx,
+                            defaults=defaults,
+                            on_live=_on_live,
+                        )
+                        if scenario.execution == "project_run"
+                        else run_scenario(
+                            session.client,
+                            profile=profile,
+                            scenario=scenario,
+                            run_id=run_id,
+                            fixture_ctx=fixture_ctx,
+                            defaults=defaults,
+                            on_live=_on_live,
+                        )
+                    )
+                except Exception as exc:
+                    logger.exception(
+                        "benchmark scenario %s profile %s crashed",
+                        scenario.id,
+                        profile.label,
+                    )
+                    result = _scenario_crash_result(
+                        run_id=run_id,
+                        scenario=scenario,
+                        profile=profile,
+                        exc=exc,
+                        fixtures=list(scenario.requires),
+                        fixture_ctx=fixture_ctx,
+                    )
+                finally:
+                    report.in_flight = None
+                    _notify_progress(report, on_progress)
+                _record(result)
     finally:
-        if (
-            self_editing_restore_client is not None
-            and self_editing_prev is False
-        ):
+        session.refresh(force=True)
+        if self_editing_prev is False:
             try:
-                self_editing_restore_client.patch_json(
+                session.admin_for_ops().patch_json(
                     "/v1/admin/operator-settings",
                     {"workspace_allow_self_editing": False},
                 )
             except httpx.HTTPError:
                 pass
         if provider_registry is not None:
-            restore_client = admin_client if admin_client is not None else client
             try:
-                provider_registry.restore(restore_client)
+                provider_registry.restore(session.admin_for_ops())
             except httpx.HTTPError:
                 pass
-        if admin_client is not None and admin_client.http is not client.http:
-            admin_client.close()
-        client.close()
+        session.close()
 
     return report
 

@@ -16,6 +16,7 @@ import {
   userOptionLabel,
   type AdminUserRow,
   type BenchmarkFixture,
+  type BenchmarkInFlight,
   type BenchmarkLlmProvider,
   type BenchmarkProfileInput,
   type BenchmarkRun,
@@ -31,6 +32,7 @@ import {
   type ModelCatalogAgentlayer,
   type ModelRow,
 } from "../../lib/modelCatalog";
+import { ConfirmModal } from "../../components/ConfirmModal";
 
 function defaultProviderModel(p: BenchmarkLlmProvider): string {
   return (p.model_agent || p.model_default || p.model_coding || "").trim();
@@ -85,6 +87,51 @@ function scenarioHasDiagnostics(res: BenchmarkScenarioResult): boolean {
       res.error ||
       (res.tool_names?.length ?? 0) > 0
   );
+}
+
+function formatInFlightElapsed(inFlight: BenchmarkInFlight): number | null {
+  if (typeof inFlight.elapsed_ms === "number" && inFlight.elapsed_ms > 0) {
+    return Math.round(inFlight.elapsed_ms);
+  }
+  if (!inFlight.started_at) return null;
+  const started = Date.parse(inFlight.started_at);
+  if (Number.isNaN(started)) return null;
+  return Math.max(0, Date.now() - started);
+}
+
+function formatInFlightProviderModel(inFlight: BenchmarkInFlight): string {
+  const provider = (inFlight.profile_label || inFlight.catalog_owned_by || "").trim();
+  const model = (inFlight.model || "").trim();
+  if (provider && model) return `${provider} / ${model}`;
+  return provider || model || "—";
+}
+
+function formatInFlightActivity(
+  inFlight: BenchmarkInFlight,
+  t: (key: string) => string
+): string {
+  const phase = (inFlight.phase || "running").trim();
+  const detail = (inFlight.detail || "").trim();
+  if (phase === "tool" && detail) {
+    return t("admin:benchInFlightTool").replace("{{tool}}", detail);
+  }
+  if (phase === "llm") {
+    return detail
+      ? t("admin:benchInFlightLlmDetail").replace("{{detail}}", detail)
+      : t("admin:benchInFlightLlm");
+  }
+  if (phase === "compact") {
+    return detail
+      ? t("admin:benchInFlightCompact").replace("{{detail}}", detail)
+      : t("admin:benchInFlightCompactGeneric");
+  }
+  if (phase === "project_run") {
+    return detail
+      ? t("admin:benchInFlightProjectRun").replace("{{status}}", detail)
+      : t("admin:benchInFlightProjectRunGeneric");
+  }
+  if (phase === "starting") return t("admin:benchInFlightStarting");
+  return phase;
 }
 
 function BenchmarkScenarioDetail({
@@ -160,9 +207,65 @@ function BenchmarkScenarioDetail({
           </span>
         ) : null}
       </div>
+      {res.failure_reason ? (
+        <div className="rounded border border-red-500/30 bg-red-950/30 p-2">
+          <div className="font-medium text-red-300">{t("admin:benchDetailFailure")}</div>
+          <pre className="mt-1 whitespace-pre-wrap font-mono text-[11px] text-red-200/90">
+            {res.failure_reason}
+          </pre>
+        </div>
+      ) : null}
       {res.error ? (
-        <p className="text-red-400">
-          {t("admin:benchDetailError")}: {res.error}
+        <div className="rounded border border-red-500/20 bg-red-950/20 p-2">
+          <div className="font-medium text-red-300">{t("admin:benchDetailError")}</div>
+          <pre className="mt-1 whitespace-pre-wrap font-mono text-[11px] text-red-200/80">
+            {res.error}
+          </pre>
+          {res.run_metrics?.http_status != null ? (
+            <p className="mt-1 text-surface-muted">
+              HTTP {res.run_metrics.http_status}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+      {res.run_metrics?.bench_diagnostics?.ws_errors?.length ? (
+        <div className="rounded border border-amber-500/20 bg-amber-950/20 p-2">
+          <div className="font-medium text-amber-300">{t("admin:benchDetailWsErrors")}</div>
+          <ul className="mt-1 list-inside list-disc font-mono text-[11px] text-amber-100/90">
+            {res.run_metrics.bench_diagnostics.ws_errors.map((row, i) => (
+              <li key={i}>
+                {row.type || "error"}
+                {row.http_status != null ? ` · HTTP ${row.http_status}` : ""}
+                {row.detail ? `: ${String(row.detail)}` : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {(res.run_metrics?.bench_diagnostics?.timeline_tail?.length ?? 0) > 0 ? (
+        <div>
+          <div className="mb-1 font-medium text-surface-muted">{t("admin:benchDetailTimeline")}</div>
+          <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 font-mono text-[10px] text-white/80">
+            {res.run_metrics!.bench_diagnostics!.timeline_tail!
+              .map((ev) => {
+                const typ = String(ev.type || "?");
+                const tool = ev.tool ? ` tool=${ev.tool}` : "";
+                const round = ev.round != null ? ` round=${ev.round}` : "";
+                const phase = ev.phase ? ` phase=${ev.phase}` : "";
+                return `${typ}${tool}${round}${phase}`;
+              })
+              .join("\n")}
+          </pre>
+        </div>
+      ) : null}
+      {res.run_metrics?.bench_diagnostics?.event_counts ? (
+        <p className="text-surface-muted">
+          {t("admin:benchDetailEventCounts")}:{" "}
+          <span className="font-mono text-white/75">
+            llm={res.run_metrics.bench_diagnostics.event_counts.llm_round_count ?? 0},{" "}
+            tool_start={res.run_metrics.bench_diagnostics.event_counts.tool_start_count ?? 0},{" "}
+            tool_done={res.run_metrics.bench_diagnostics.event_counts.tool_done_count ?? 0}
+          </span>
         </p>
       ) : null}
       {res.agent_run_id ? (
@@ -206,6 +309,7 @@ export function AdminBenchmarks() {
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [deletingRunId, setDeletingRunId] = useState<string | null>(null);
+  const [deleteRunTarget, setDeleteRunTarget] = useState<BenchmarkRun | null>(null);
   const scenariosInitialized = useRef(false);
 
   const suiteDetail = useMemo(
@@ -548,17 +652,23 @@ export function AdminBenchmarks() {
     }
   };
 
-  const onDeleteRun = async (run: BenchmarkRun) => {
+  const requestDeleteRun = (run: BenchmarkRun) => {
     if (run.status === "queued" || run.status === "running") {
       setError(t("admin:benchDeleteRunActive"));
       return;
     }
-    const label = run.suite || run.id.slice(0, 8);
-    if (!window.confirm(t("admin:benchDeleteRunConfirm", { suite: label }))) return;
+    setError(null);
+    setDeleteRunTarget(run);
+  };
+
+  const confirmDeleteRun = async () => {
+    if (!deleteRunTarget) return;
+    const run = deleteRunTarget;
     setDeletingRunId(run.id);
     setError(null);
     try {
       await deleteBenchmarkRun(auth, run.id);
+      setDeleteRunTarget(null);
       if (selectedId === run.id) {
         setSelectedId(null);
         setDetail(null);
@@ -1009,7 +1119,7 @@ export function AdminBenchmarks() {
                           : t("admin:benchDeleteRun")
                       }
                       aria-label={t("admin:benchDeleteRun")}
-                      onClick={() => void onDeleteRun(r)}
+                      onClick={() => requestDeleteRun(r)}
                       className="shrink-0 px-2 text-surface-muted hover:bg-rose-950/40 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-30"
                     >
                       {deletingRunId === r.id ? (
@@ -1052,12 +1162,25 @@ export function AdminBenchmarks() {
                   </p>
                 ) : null}
                 {detail.status === "running" || detail.status === "queued" ? (
-                  <p className="mt-2 text-xs text-sky-400/90">
-                    {t("admin:benchRunLive")}
-                    {(detail.summary_json?.executed ?? 0) > 0
-                      ? ` · ${detail.summary_json?.passed ?? 0}/${detail.summary_json?.executed ?? 0} ${t("admin:benchRunLiveProgress")}`
-                      : ""}
-                  </p>
+                  <div className="mt-2 space-y-1 text-xs text-sky-400/90">
+                    <p>
+                      {t("admin:benchRunLive")}
+                      {(detail.summary_json?.executed ?? 0) > 0
+                        ? ` · ${detail.summary_json?.passed ?? 0}/${detail.summary_json?.executed ?? 0} ${t("admin:benchRunLiveProgress")}`
+                        : ""}
+                    </p>
+                    {detail.report_json?.in_flight ? (
+                      <p className="font-mono text-[11px] text-sky-300/95">
+                        {t("admin:benchInFlightNow")}: {detail.report_json.in_flight.scenario_id}{" "}
+                        · {formatInFlightProviderModel(detail.report_json.in_flight)} ·{" "}
+                        {formatInFlightActivity(detail.report_json.in_flight, t)}
+                        {(() => {
+                          const ms = formatInFlightElapsed(detail.report_json!.in_flight!);
+                          return ms != null ? ` · ${ms} ms` : "";
+                        })()}
+                      </p>
+                    ) : null}
+                  </div>
                 ) : null}
                 <table className="mt-4 w-full text-left text-xs">
                   <thead>
@@ -1074,10 +1197,44 @@ export function AdminBenchmarks() {
                   </thead>
                   <tbody>
                     {(detail.report_json?.results ?? []).length === 0 &&
+                    !detail.report_json?.in_flight &&
                     (detail.status === "running" || detail.status === "queued") ? (
                       <tr>
                         <td colSpan={8} className="py-3 text-surface-muted">
                           {t("admin:benchRunWaitingResults")}
+                        </td>
+                      </tr>
+                    ) : null}
+                    {detail.report_json?.in_flight ? (
+                      <tr className="border-t border-sky-500/20 bg-sky-500/5">
+                        <td className="py-1.5 pr-1 align-top text-sky-400" aria-hidden>
+                          ◉
+                        </td>
+                        <td className="py-1.5 pr-2 font-mono text-sky-300">
+                          {detail.report_json.in_flight.scenario_id}
+                        </td>
+                        <td className="py-1.5 pr-2 font-mono text-[11px] text-sky-300/90">
+                          {formatInFlightProviderModel(detail.report_json.in_flight)}
+                        </td>
+                        <td className="py-1.5 pr-2 text-sky-300">
+                          {t("admin:benchInFlightRunning")} —{" "}
+                          {formatInFlightActivity(detail.report_json.in_flight, t)}
+                        </td>
+                        <td className="py-1.5 pr-2 text-sky-300/90">
+                          {detail.report_json.in_flight.tool_call_count ?? 0}
+                          {detail.report_json.in_flight.llm_round_count != null
+                            ? ` · ${detail.report_json.in_flight.llm_round_count} llm`
+                            : ""}
+                          {(detail.report_json.in_flight.tool_names?.length ?? 0) > 0 ? (
+                            <span className="ml-1 text-surface-muted">
+                              ({detail.report_json.in_flight.tool_names!.slice(-3).join(", ")})
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className="py-1.5 pr-2 text-surface-muted">—</td>
+                        <td className="py-1.5 pr-2 text-surface-muted">—</td>
+                        <td className="py-1.5 pr-2 text-sky-300/90">
+                          {formatInFlightElapsed(detail.report_json.in_flight) ?? "…"}
                         </td>
                       </tr>
                     ) : null}
@@ -1165,6 +1322,26 @@ export function AdminBenchmarks() {
           </div>
         </div>
       ) : null}
+
+      <ConfirmModal
+        open={deleteRunTarget != null}
+        title={t("admin:benchDeleteRunTitle")}
+        description={
+          deleteRunTarget
+            ? t("admin:benchDeleteRunDescription", {
+                suite: deleteRunTarget.suite || deleteRunTarget.id.slice(0, 8),
+              })
+            : ""
+        }
+        confirmLabel={t("admin:benchDeleteRunConfirmAction")}
+        cancelLabel={t("admin:cancel")}
+        variant="danger"
+        busy={deletingRunId != null}
+        onConfirm={() => void confirmDeleteRun()}
+        onCancel={() => {
+          if (!deletingRunId) setDeleteRunTarget(null);
+        }}
+      />
     </div>
   );
 }

@@ -120,6 +120,30 @@ def list_runs(*, tenant_id: int, limit: int = 50) -> list[dict[str, Any]]:
     return [_serialize(r) for r in rows]
 
 
+_INTERRUPTED_ERROR = (
+    "Benchmark interrupted: server restarted while this run was queued or in progress."
+)
+
+
+def reconcile_orphaned_runs_on_startup() -> int:
+    """Mark queued/running rows failed after process restart (in-memory worker is gone)."""
+    with db.pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE benchmark_runs
+                SET status = 'failed',
+                    finished_at = COALESCE(finished_at, now()),
+                    error_text = COALESCE(NULLIF(TRIM(error_text), ''), %s)
+                WHERE status IN ('queued', 'running')
+                """,
+                (_INTERRUPTED_ERROR,),
+            )
+            count = int(cur.rowcount or 0)
+        conn.commit()
+    return count
+
+
 def any_running(*, tenant_id: int) -> bool:
     with db.pool().connection() as conn:
         with conn.cursor() as cur:

@@ -45,7 +45,7 @@ def http_post_json(
     json_body: dict[str, Any],
     *,
     headers: dict[str, str] | None = None,
-    timeout: float = 600.0,
+    timeout: float | None = None,
     concurrency_provider_id: str | None = None,
 ) -> dict[str, Any]:
     h = headers or {"Content-Type": "application/json"}
@@ -61,7 +61,7 @@ def http_post_chat_completions(
     json_body: dict[str, Any],
     *,
     headers: dict[str, str] | None = None,
-    timeout: float = 600.0,
+    timeout: float | None = None,
     concurrency_provider_id: str | None = None,
 ) -> tuple[dict[str, Any], bool]:
     """

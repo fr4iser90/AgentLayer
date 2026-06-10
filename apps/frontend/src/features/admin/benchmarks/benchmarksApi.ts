@@ -117,6 +117,21 @@ export type BenchmarkRunSummary = {
   skipped?: number;
 };
 
+export type BenchmarkInFlight = {
+  scenario_id: string;
+  profile_label: string;
+  model?: string;
+  catalog_owned_by?: string;
+  agent_id?: string;
+  started_at?: string;
+  phase?: string;
+  detail?: string;
+  llm_round_count?: number;
+  tool_call_count?: number;
+  tool_names?: string[];
+  elapsed_ms?: number;
+};
+
 export type BenchmarkScenarioResult = {
   scenario_id: string;
   profile_label: string;
@@ -147,6 +162,14 @@ export type BenchmarkScenarioResult = {
     tool_invocations?: Array<Record<string, unknown>>;
     capture_mode?: string;
     project_run_status?: string;
+    http_status?: number;
+    bench_diagnostics?: {
+      ws_event_count?: number;
+      ws_errors?: Array<{ type?: string; detail?: string; http_status?: number }>;
+      timeline_tail?: Array<Record<string, unknown>>;
+      event_counts?: Record<string, number>;
+      compaction_count_live?: number;
+    };
   } | null;
 };
 
@@ -165,6 +188,7 @@ export type BenchmarkRun = {
   created_at?: string;
   report_json?: {
     results?: BenchmarkScenarioResult[];
+    in_flight?: BenchmarkInFlight | null;
   } | null;
 };
 

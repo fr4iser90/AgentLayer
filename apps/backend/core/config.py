@@ -140,6 +140,24 @@ def _resolve_subagent_timeout_sec() -> float | None:
 
 
 SUBAGENT_TIMEOUT_SEC = _resolve_subagent_timeout_sec()
+
+
+def _resolve_llm_chat_timeout_sec() -> float | None:
+    """``AGENT_LLM_CHAT_TIMEOUT_SEC``: unset or <=0 = no HTTP read timeout; positive = seconds."""
+    raw = (os.environ.get("AGENT_LLM_CHAT_TIMEOUT_SEC") or "").strip()
+    if not raw:
+        return None
+    try:
+        v = float(raw)
+    except ValueError:
+        logger.warning("invalid AGENT_LLM_CHAT_TIMEOUT_SEC %r — no LLM HTTP timeout", raw)
+        return None
+    if v <= 0:
+        return None
+    return v
+
+
+LLM_CHAT_TIMEOUT_SEC: float | None = _resolve_llm_chat_timeout_sec()
 # Phase 1 (coding-agent-roadmap): break identical tool failure loops (e.g. empty JSON / same parameter error).
 # Off by default — forcing text-only rounds breaks some GGUF models (fake <tool_call> markup → empty chat).
 AGENT_TOOL_THRASH_ENABLED = _env_bool("AGENT_TOOL_THRASH_ENABLED", False)

@@ -976,6 +976,7 @@ async def chat_completion(
                     payload_stream_base,
                     llm_backend=llm_backend,
                     profile_key=profile_key,
+                    timeout=config.LLM_CHAT_TIMEOUT_SEC,
                 ):
                     yield chunk
 
@@ -1411,6 +1412,7 @@ async def chat_completion(
                             on_text_delta=_emit_llm_token_delta,
                             on_reasoning_delta=_emit_llm_reasoning_delta,
                             cancel_event=cancel_event,
+                            timeout=config.LLM_CHAT_TIMEOUT_SEC,
                         )
                     except AgentChatCancelled:
                         raise
@@ -1434,7 +1436,7 @@ async def chat_completion(
                             b_url,
                             pl,
                             headers=b_headers,
-                            timeout=600.0,
+                            timeout=config.LLM_CHAT_TIMEOUT_SEC,
                             concurrency_provider_id=b_provider or None,
                         )
                         chosen = attempt
@@ -1579,6 +1581,7 @@ async def chat_completion(
                             profile_key=profile_key,
                             on_text_delta=_emit_llm_token_delta,
                             cancel_event=cancel_event,
+                            timeout=config.LLM_CHAT_TIMEOUT_SEC,
                         )
                         chosen = chosen_r
                         model = chosen[2]
@@ -1589,7 +1592,7 @@ async def chat_completion(
                             chosen[0],
                             payload_retry,
                             headers=chosen[1],
-                            timeout=600.0,
+                            timeout=config.LLM_CHAT_TIMEOUT_SEC,
                         )
                 except httpx.HTTPStatusError as e:
                     if e.response.status_code in (400, 422):

@@ -31,13 +31,19 @@ def user_visible_llm_transport_error(exc: BaseException) -> tuple[str, bool]:
     for known transport classes; unexpected errors use ``logger.exception``.
     """
     if isinstance(exc, httpx.TimeoutException):
-        return (
+        url = _request_url_from_exc(exc)
+        raw = (str(exc) or "").strip()
+        parts = [
             "Language model server timeout: the endpoint did not send a response in time. "
             "Common causes: a large or busy model, server overload, or a reverse proxy in front of "
             "the LLM (for example nginx `proxy_read_timeout`) that is shorter than generation time. "
-            "Try a shorter prompt, fewer tools, or a faster endpoint.",
-            False,
-        )
+            "Unset AGENT_LLM_CHAT_TIMEOUT_SEC (or set 0) for no AgentLayer HTTP timeout.",
+        ]
+        if url:
+            parts.append(f"POST {url}")
+        if raw and raw not in url:
+            parts.append(f"({exc.__class__.__name__}: {raw})")
+        return (" ".join(parts), False)
     if isinstance(exc, httpx.ConnectError):
         url = _request_url_from_exc(exc)
         raw = (str(exc) or "").strip()

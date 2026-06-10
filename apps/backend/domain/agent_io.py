@@ -978,7 +978,7 @@ async def _async_iter_chat_completion_sse(
     *,
     llm_backend: str,
     profile_key: str,
-    timeout: float = 600.0,
+    timeout: float | None = None,
 ) -> AsyncIterator[bytes]:
     """
     OpenAI-compatible POST with ``stream: true``; yield raw response bytes (typically SSE) from the first
@@ -990,7 +990,9 @@ async def _async_iter_chat_completion_sse(
     attempts_local = list(attempts_seq)
     lb = llm_backend
     outer_profile = profile_key
-    timeout_cfg = httpx.Timeout(timeout, connect=120.0)
+    timeout_cfg = (
+        None if timeout is None else httpx.Timeout(timeout, connect=120.0)
+    )
     while True:
         last_http: tuple[int, str, str] | None = None  # status, body, url
         last_trans: httpx.RequestError | None = None
