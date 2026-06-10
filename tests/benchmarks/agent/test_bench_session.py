@@ -147,6 +147,7 @@ def test_run_benchmark_runs_all_profiles_with_forced_refresh(
         fixture_ctx: Any,
         defaults: dict[str, Any],
         on_live: Any = None,
+        **_kwargs: Any,
     ) -> ScenarioResult:
         profiles_seen.append((profile.label, client.token))
         return _ok_result(run_id=run_id, profile=profile, scenario=scenario)
@@ -195,6 +196,7 @@ def test_run_benchmark_continues_after_scenario_crash(
         fixture_ctx: Any,
         defaults: dict[str, Any],
         on_live: Any = None,
+        **_kwargs: Any,
     ) -> ScenarioResult:
         calls.append(profile.label)
         if profile.label == "p1":

@@ -1,14 +1,14 @@
-/** Per-browser: stream LLM tokens over WebSocket agent rounds (``agent_stream_llm``). Default off. */
+/** Per-browser: stream LLM tokens over WebSocket agent rounds (``agent_stream_llm``). Default on. */
 
 const STORAGE_KEY = "agentlayer.agent.stream_llm";
 
 export function getAgentStreamLlm(): boolean {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw === null) return false;
+    if (raw === null) return true;
     return raw === "1" || raw.toLowerCase() === "true";
   } catch {
-    return false;
+    return true;
   }
 }
 

@@ -135,6 +135,34 @@ def _strip_model_output_markers(text: str) -> str:
     return "\n".join(lines_out).strip()
 
 
+def _parse_named_parenthesized_tool_call(text: str, tool_name: str) -> dict[str, Any] | None:
+    """Parse ``tool_name({...})`` from assistant prose (common when wire args are ``{}``)."""
+    name = (tool_name or "").strip()
+    if not name:
+        return None
+    key = name + "("
+    pos = 0
+    while True:
+        idx = text.find(key, pos)
+        if idx < 0:
+            break
+        j = idx + len(key)
+        while j < len(text) and text[j] in " \t\r\n":
+            j += 1
+        if j >= len(text) or text[j] != "{":
+            pos = idx + 1
+            continue
+        try:
+            obj, _end = JSONDecoder().raw_decode(text[j:])
+        except json.JSONDecodeError:
+            pos = idx + 1
+            continue
+        if isinstance(obj, dict):
+            return obj
+        pos = idx + 1
+    return None
+
+
 def _parse_parenthesized_tool_call(text: str) -> tuple[str, dict[str, Any]] | None:
     """
     Parse ``read_tool({...})`` / ``replace_tool({...})`` style text when the model
@@ -1134,6 +1162,7 @@ __all__ = [
     '_merge_meta_tool_obj_args',
     '_names_from_tool_list',
     '_normalize_workspace_id_for_gate',
+    '_parse_named_parenthesized_tool_call',
     '_parse_parenthesized_tool_call',
     '_parse_tool_arguments',
     '_parse_tool_intent_from_content',

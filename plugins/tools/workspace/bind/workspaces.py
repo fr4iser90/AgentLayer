@@ -269,6 +269,7 @@ TOOLS: list[dict[str, Any]] = [
             ),
             "parameters": {
                 "type": "object",
+                "required": ["name"],
                 "properties": {
                     "name": {
                         "type": "string",
@@ -292,7 +293,6 @@ TOOLS: list[dict[str, Any]] = [
                         "TOOL_DESCRIPTION": "Bind this workspace for the rest of the agent run (default true)",
                     },
                 },
-                "required": ["name"],
             },
         },
     },
@@ -306,6 +306,7 @@ TOOLS: list[dict[str, Any]] = [
             ),
             "parameters": {
                 "type": "object",
+                "minProperties": 1,
                 "properties": {
                     "workspace_id": {
                         "type": "string",

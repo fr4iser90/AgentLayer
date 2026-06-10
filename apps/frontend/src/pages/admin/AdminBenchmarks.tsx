@@ -12,6 +12,7 @@ import {
   fetchBenchmarkRuns,
   fetchBenchmarkSuites,
   deleteBenchmarkRun,
+  cancelBenchmarkRun,
   startBenchmarkRun,
   userOptionLabel,
   type AdminUserRow,
@@ -387,6 +388,9 @@ export function AdminBenchmarks() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
+  const [cancellingRunId, setCancellingRunId] = useState<string | null>(null);
+  const [scenarioTimeoutSec, setScenarioTimeoutSec] = useState("");
+  const [maxToolRoundsOverride, setMaxToolRoundsOverride] = useState("");
   const [deletingRunId, setDeletingRunId] = useState<string | null>(null);
   const [deleteRunTarget, setDeleteRunTarget] = useState<BenchmarkRun | null>(null);
   const scenariosInitialized = useRef(false);
@@ -707,6 +711,20 @@ export function AdminBenchmarks() {
     const scenarios =
       selectedScenarioIds.size === allIds.length ? undefined : [...selectedScenarioIds];
     const extras = [...extraFixtureIds].filter((id) => !autoFixtures.has(id));
+    const timeoutRaw = scenarioTimeoutSec.trim();
+    const maxRoundsRaw = maxToolRoundsOverride.trim();
+    const parsedTimeout = timeoutRaw ? Number(timeoutRaw) : NaN;
+    const parsedMaxRounds = maxRoundsRaw ? Number(maxRoundsRaw) : NaN;
+    if (timeoutRaw && (!Number.isFinite(parsedTimeout) || parsedTimeout < 30)) {
+      setError(t("admin:benchTimeoutInvalid"));
+      setStarting(false);
+      return;
+    }
+    if (maxRoundsRaw && (!Number.isFinite(parsedMaxRounds) || parsedMaxRounds < 1)) {
+      setError(t("admin:benchMaxRoundsInvalid"));
+      setStarting(false);
+      return;
+    }
     try {
       const run = await startBenchmarkRun(auth, {
         suite,
@@ -715,6 +733,8 @@ export function AdminBenchmarks() {
         fixtures: extras.length ? extras : undefined,
         run_as_user_id: runAsUserId || undefined,
         friend_user_id: showFriendPicker && friendUserId ? friendUserId : undefined,
+        scenario_timeout_sec: timeoutRaw ? parsedTimeout : undefined,
+        max_tool_rounds_override: maxRoundsRaw ? Math.floor(parsedMaxRounds) : undefined,
       });
       setTab("history");
       setSelectedId(run.id);
@@ -738,6 +758,27 @@ export function AdminBenchmarks() {
     }
     setError(null);
     setDeleteRunTarget(run);
+  };
+
+  const onCancelRun = async (run: BenchmarkRun) => {
+    if (run.status !== "queued" && run.status !== "running") return;
+    setCancellingRunId(run.id);
+    setError(null);
+    try {
+      await cancelBenchmarkRun(auth, run.id);
+      await loadRuns();
+      if (selectedId === run.id) {
+        try {
+          setDetail(await fetchBenchmarkRun(auth, run.id));
+        } catch {
+          /* poll will retry */
+        }
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("admin:benchCancelFailed"));
+    } finally {
+      setCancellingRunId(null);
+    }
   };
 
   const confirmDeleteRun = async () => {
@@ -1125,7 +1166,42 @@ export function AdminBenchmarks() {
             </div>
           </section>
 
-          <section className="rounded-xl border border-surface-border bg-surface-raised/40 p-4">
+          <section className="rounded-xl border border-surface-border bg-surface-raised/40 p-4 space-y-3">
+            <h3 className="text-xs font-medium uppercase text-surface-muted">
+              {t("admin:benchAdvancedOptions")}
+            </h3>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block text-sm">
+                <span className="text-surface-muted">{t("admin:benchScenarioTimeout")}</span>
+                <input
+                  type="number"
+                  min={30}
+                  step={30}
+                  value={scenarioTimeoutSec}
+                  onChange={(e) => setScenarioTimeoutSec(e.target.value)}
+                  placeholder={t("admin:benchScenarioTimeoutPlaceholder")}
+                  className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                />
+                <span className="mt-1 block text-[11px] text-surface-muted">
+                  {t("admin:benchScenarioTimeoutHint")}
+                </span>
+              </label>
+              <label className="block text-sm">
+                <span className="text-surface-muted">{t("admin:benchMaxToolRounds")}</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={512}
+                  value={maxToolRoundsOverride}
+                  onChange={(e) => setMaxToolRoundsOverride(e.target.value)}
+                  placeholder={t("admin:benchMaxToolRoundsPlaceholder")}
+                  className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                />
+                <span className="mt-1 block text-[11px] text-surface-muted">
+                  {t("admin:benchMaxToolRoundsHint")}
+                </span>
+              </label>
+            </div>
             <button
               type="button"
               disabled={starting || !runAsUserId}
@@ -1134,7 +1210,7 @@ export function AdminBenchmarks() {
             >
               {starting ? t("admin:benchStarting") : t("admin:benchStart")}
             </button>
-            <p className="mt-2 text-xs text-surface-muted">
+            <p className="text-xs text-surface-muted">
               {t("admin:benchRunNote", {
                 user: runAsUser ? userOptionLabel(runAsUser) : runAsUserId || "—",
               })}
@@ -1185,6 +1261,18 @@ export function AdminBenchmarks() {
                           : ""}
                       </div>
                     </button>
+                    {r.status === "queued" || r.status === "running" ? (
+                      <button
+                        type="button"
+                        disabled={cancellingRunId === r.id}
+                        title={t("admin:benchCancelRun")}
+                        aria-label={t("admin:benchCancelRun")}
+                        onClick={() => void onCancelRun(r)}
+                        className="shrink-0 px-2 text-rose-400/90 hover:bg-rose-950/40 hover:text-rose-300 disabled:opacity-50"
+                      >
+                        {cancellingRunId === r.id ? "…" : "■"}
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       disabled={
@@ -1232,6 +1320,18 @@ export function AdminBenchmarks() {
                 <h2 className="text-sm font-medium text-white">
                   {detail.suite} · {detail.status}
                 </h2>
+                {detail.status === "queued" || detail.status === "running" ? (
+                  <button
+                    type="button"
+                    disabled={cancellingRunId === detail.id}
+                    onClick={() => void onCancelRun(detail)}
+                    className="mt-2 rounded-lg border border-rose-500/40 bg-rose-950/30 px-3 py-1.5 text-xs font-medium text-rose-300 hover:bg-rose-950/50 disabled:opacity-50"
+                  >
+                    {cancellingRunId === detail.id
+                      ? t("admin:benchCancelling")
+                      : t("admin:benchCancelRun")}
+                  </button>
+                ) : null}
                 {detail.error_text ? (
                   <p className="mt-2 text-sm text-red-400">{detail.error_text}</p>
                 ) : null}

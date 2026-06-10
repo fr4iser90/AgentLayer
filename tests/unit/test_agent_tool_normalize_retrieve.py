@@ -1,21 +1,24 @@
-"""Tool argument normalization for retrieval / search tools."""
+"""Generic tool-arg normalization (no per-tool user-text guessing)."""
 
 from apps.backend.domain.agent import _normalize_tool_call_arguments
 
 
-def test_retrieve_context_fills_query_from_last_user_message():
+def test_retrieve_context_empty_without_assistant_prose():
     msgs = [{"role": "user", "content": "How does the retrieval layer work?"}]
     out = _normalize_tool_call_arguments("retrieve_context", {}, {}, msgs, None)
+    assert out == {}
+
+
+def test_retrieve_context_recovered_from_assistant_prose():
+    msgs = [{"role": "user", "content": "How does the retrieval layer work?"}]
+    assistant = {
+        "content": 'retrieve_context({"query": "How does the retrieval layer work?"})',
+    }
+    out = _normalize_tool_call_arguments("retrieve_context", {}, assistant, msgs, None)
     assert out.get("query") == "How does the retrieval layer work?"
 
 
-def test_coding_glob_fills_pattern_when_empty():
+def test_glob_empty_without_assistant_prose():
     msgs = [{"role": "user", "content": "find python files"}]
     out = _normalize_tool_call_arguments("glob", {}, {}, msgs, None)
-    assert out.get("pattern") == "**/*.py"
-
-
-def test_coding_search_fills_query_from_user():
-    msgs = [{"role": "user", "content": "authentication middleware"}]
-    out = _normalize_tool_call_arguments("search", {}, {}, msgs, None)
-    assert "authentication" in (out.get("query") or "")
+    assert out == {}

@@ -5,10 +5,11 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from apps.backend.infrastructure import benchmark_runs_store
 from apps.backend.infrastructure.model_catalog_providers import db_catalog_provider_id
@@ -18,6 +19,27 @@ logger = logging.getLogger(__name__)
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 
 _run_lock = asyncio.Lock()
+_cancel_flags: dict[uuid.UUID, threading.Event] = {}
+
+
+def request_benchmark_cancel(run_id: uuid.UUID) -> bool:
+    """Signal cancellation for a queued/running run. Returns False if not active."""
+    row = benchmark_runs_store.get_run(run_id)
+    if not row:
+        return False
+    status = str(row.get("status") or "")
+    if status not in ("queued", "running"):
+        return False
+    _cancel_flags.setdefault(run_id, threading.Event()).set()
+    return True
+
+
+def _cancel_check_for(run_id: uuid.UUID) -> Callable[[], bool]:
+    return _cancel_flags.setdefault(run_id, threading.Event()).is_set
+
+
+def _clear_cancel_flag(run_id: uuid.UUID) -> None:
+    _cancel_flags.pop(run_id, None)
 
 
 def list_suites() -> list[dict[str, Any]]:
@@ -189,8 +211,16 @@ def _run_sync(
     run_as_user_id: uuid.UUID | None = None,
     friend_user_id: uuid.UUID | None = None,
     admin_user_id: uuid.UUID | None = None,
+    scenario_timeout_sec: float | None = None,
+    max_tool_rounds_override: int | None = None,
 ) -> None:
-    from tests.benchmarks.agent.harness import load_bench_env, resolve_bench_clients, run_benchmark, write_report
+    from tests.benchmarks.agent.harness import (
+        BenchmarkRunCancelled,
+        load_bench_env,
+        resolve_bench_clients,
+        run_benchmark,
+        write_report,
+    )
 
     benchmark_runs_store.update_run(
         run_id,
@@ -209,6 +239,9 @@ def _run_sync(
     run_client = None
 
     try:
+        if _cancel_check_for(run_id)():
+            raise BenchmarkRunCancelled("Benchmark cancelled before start")
+
         run_client, admin_client = resolve_bench_clients(
             run_as_user_id=run_as_user_id,
             friend_user_id=friend_user_id,
@@ -251,6 +284,9 @@ def _run_sync(
             friend_user_id=friend_user_id,
             admin_user_id=admin_user_id,
             on_progress=_persist_progress,
+            cancel_check=_cancel_check_for(run_id),
+            scenario_timeout_sec=scenario_timeout_sec,
+            max_tool_rounds_override=max_tool_rounds_override,
         )
 
         results_dir = _REPO_ROOT / "benchmarks" / "results"
@@ -272,6 +308,39 @@ def _run_sync(
             summary_json=summary,
             report_json=report.to_dict(),
         )
+    except BenchmarkRunCancelled:
+        logger.info("benchmark run %s cancelled", run_id)
+        summary = {
+            "passed": 0,
+            "executed": 0,
+            "total": 0,
+            "skipped": 0,
+            "profiles_source": "admin-ui",
+        }
+        report_json: dict[str, Any] | None = None
+        try:
+            row = benchmark_runs_store.get_run(run_id)
+            if row and isinstance(row.get("report_json"), dict):
+                report_json = row["report_json"]
+                results = report_json.get("results") or []
+                summary = {
+                    "passed": sum(1 for r in results if r.get("passed") and not r.get("skipped")),
+                    "executed": sum(1 for r in results if not r.get("skipped")),
+                    "total": len(results),
+                    "skipped": sum(1 for r in results if r.get("skipped")),
+                    "profiles_source": report_json.get("profiles_source") or "admin-ui",
+                }
+                report_json = {**report_json, "in_flight": None}
+        except Exception:
+            logger.warning("benchmark cancel summary failed", exc_info=True)
+        benchmark_runs_store.update_run(
+            run_id,
+            status="cancelled",
+            finished_at=datetime.now(timezone.utc),
+            error_text="Benchmark cancelled by admin.",
+            summary_json=summary,
+            report_json=report_json,
+        )
     except Exception as exc:
         logger.exception("benchmark run %s failed", run_id)
         benchmark_runs_store.update_run(
@@ -281,6 +350,7 @@ def _run_sync(
             error_text=str(exc)[:4000],
         )
     finally:
+        _clear_cancel_flag(run_id)
         if admin_client is not None and run_client is not None and admin_client.http is not run_client.http:
             admin_client.close()
         if run_client is not None:
@@ -314,6 +384,8 @@ async def schedule_benchmark_run(
     run_as_user_id: uuid.UUID | None = None,
     friend_user_id: uuid.UUID | None = None,
     admin_user_id: uuid.UUID | None = None,
+    scenario_timeout_sec: float | None = None,
+    max_tool_rounds_override: int | None = None,
 ) -> None:
     async with _run_lock:
         await asyncio.to_thread(
@@ -327,6 +399,8 @@ async def schedule_benchmark_run(
             run_as_user_id=run_as_user_id,
             friend_user_id=friend_user_id,
             admin_user_id=admin_user_id,
+            scenario_timeout_sec=scenario_timeout_sec,
+            max_tool_rounds_override=max_tool_rounds_override,
         )
 
 
@@ -342,6 +416,8 @@ async def start_benchmark_run(
     run_as_user_id: uuid.UUID | None = None,
     friend_user_id: uuid.UUID | None = None,
     admin_user_id: uuid.UUID | None = None,
+    scenario_timeout_sec: float | None = None,
+    max_tool_rounds_override: int | None = None,
 ) -> dict[str, Any]:
     from tests.benchmarks.agent.catalog import _SUITE_MANIFESTS
 
@@ -362,6 +438,8 @@ async def start_benchmark_run(
         "run_as_user_id": str(effective_run_as) if effective_run_as else None,
         "friend_user_id": str(friend_user_id) if friend_user_id else None,
         "admin_user_id": str(admin_user_id) if admin_user_id else None,
+        "scenario_timeout_sec": scenario_timeout_sec,
+        "max_tool_rounds_override": max_tool_rounds_override,
     }
     row = benchmark_runs_store.create_run(
         tenant_id=tenant_id,
@@ -382,6 +460,8 @@ async def start_benchmark_run(
             run_as_user_id=effective_run_as,
             friend_user_id=friend_user_id,
             admin_user_id=admin_user_id,
+            scenario_timeout_sec=scenario_timeout_sec,
+            max_tool_rounds_override=max_tool_rounds_override,
         )
     )
     return row

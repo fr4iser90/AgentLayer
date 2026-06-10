@@ -15,6 +15,7 @@ from apps.backend.infrastructure.benchmark_runner import (
     benchmark_catalog,
     list_benchmark_llm_providers,
     list_suites,
+    request_benchmark_cancel,
     start_benchmark_run,
 )
 from apps.backend.infrastructure.db import db
@@ -47,6 +48,8 @@ class StartBenchmarkBody(BaseModel):
     tier_max: int | None = Field(default=None, ge=1, le=4)
     run_as_user_id: uuid.UUID | None = None
     friend_user_id: uuid.UUID | None = None
+    scenario_timeout_sec: float | None = Field(default=None, ge=30, le=86400)
+    max_tool_rounds_override: int | None = Field(default=None, ge=1, le=512)
 
 
 def _assert_tenant_user(user_id: uuid.UUID, tenant_id: int) -> dict[str, Any]:
@@ -149,6 +152,21 @@ async def delete_benchmark_run(request: Request, run_id: uuid.UUID) -> dict:
     return {"ok": True, "deleted": str(run_id)}
 
 
+@router.post("/runs/{run_id}/cancel")
+async def cancel_benchmark_run(request: Request, run_id: uuid.UUID) -> dict:
+    admin = await require_admin(request)
+    tid = db.user_tenant_id(admin.id)
+    row = benchmark_runs_store.get_run(run_id)
+    if not row or int(row.get("tenant_id") or 0) != tid:
+        raise HTTPException(status_code=404, detail="benchmark run not found")
+    if not request_benchmark_cancel(run_id):
+        status = str(row.get("status") or "")
+        if status in ("cancelled", "completed", "failed"):
+            return {"ok": True, "run": _public_run(row), "already_finished": True}
+        raise HTTPException(status_code=409, detail=f"benchmark run is not active (status={status})")
+    return {"ok": True, "run_id": str(run_id), "cancelling": True}
+
+
 @router.post("/runs")
 async def post_start_benchmark(request: Request, body: StartBenchmarkBody) -> dict:
     admin = await require_admin(request)
@@ -172,6 +190,8 @@ async def post_start_benchmark(request: Request, body: StartBenchmarkBody) -> di
             run_as_user_id=run_as_id,
             friend_user_id=body.friend_user_id,
             admin_user_id=admin.id,
+            scenario_timeout_sec=body.scenario_timeout_sec,
+            max_tool_rounds_override=body.max_tool_rounds_override,
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

@@ -44,7 +44,6 @@ export type BenchmarkScenario = {
   execution?: string;
   requires: string[];
   expected_tools: string[];
-  max_tool_rounds: number;
   skip_without_env?: string | null;
 };
 
@@ -88,6 +87,8 @@ export type BenchmarkRunConfig = {
   run_as_user_id?: string | null;
   friend_user_id?: string | null;
   admin_user_id?: string | null;
+  scenario_timeout_sec?: number | null;
+  max_tool_rounds_override?: number | null;
 };
 
 export type AdminUserRow = {
@@ -321,6 +322,8 @@ export type StartBenchmarkBody = {
   tier_max?: number;
   run_as_user_id?: string;
   friend_user_id?: string;
+  scenario_timeout_sec?: number;
+  max_tool_rounds_override?: number;
 };
 
 export function userOptionLabel(u: AdminUserRow): string {
@@ -373,6 +376,22 @@ export async function startBenchmarkRun(
     throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
   }
   return data.run as BenchmarkRun;
+}
+
+export async function cancelBenchmarkRun(
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">,
+  runId: string
+): Promise<void> {
+  const res = await apiFetch(
+    `/v1/admin/benchmarks/runs/${encodeURIComponent(runId)}/cancel`,
+    auth,
+    { method: "POST" }
+  );
+  const data = await readJsonResponse<{ detail?: unknown }>(
+    res,
+    `Failed to cancel benchmark (HTTP ${res.status})`
+  );
+  if (!res.ok) throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
 }
 
 export async function fetchBenchmarkLlmProviders(

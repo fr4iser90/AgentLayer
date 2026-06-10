@@ -497,18 +497,18 @@ async def chat_completion(
             if embedded_subagent
             else config.MAX_TOOL_ROUNDS
         )
-        # AGENT_MAX_TOOL_ROUNDS=0 → MAX_TOOL_ROUNDS == MAX_TOOL_ROUNDS_CAP; ignore lower body caps.
-        if (
-            not embedded_subagent
-            and _raw_max_rounds is not None
-            and config.MAX_TOOL_ROUNDS < config.MAX_TOOL_ROUNDS_CAP
-        ):
+        if not embedded_subagent and _raw_max_rounds is not None:
             try:
                 client_v = int(_raw_max_rounds)
                 if client_v <= 0:
                     max_tool_rounds_eff = config.MAX_TOOL_ROUNDS
                 else:
-                    max_tool_rounds_eff = max(1, min(client_v, config.MAX_TOOL_ROUNDS))
+                    upper = (
+                        config.MAX_TOOL_ROUNDS
+                        if config.MAX_TOOL_ROUNDS < config.MAX_TOOL_ROUNDS_CAP
+                        else config.MAX_TOOL_ROUNDS_CAP
+                    )
+                    max_tool_rounds_eff = max(1, min(client_v, upper))
             except (TypeError, ValueError):
                 pass
 
@@ -1794,26 +1794,39 @@ async def chat_completion(
                     )
                 tool_call_id = tc.get("id") or ""
                 args_line = _format_normalized_tool_args_for_recap(name, args, max_len=200)
-                logger.info(
-                    "tool_exec run_id=%s agent=%s round=%d tool=%s %s",
-                    _short_run_id(agent_run_id),
-                    agent_id if isinstance(agent_id, str) else "-",
-                    round_i + 1,
-                    name,
-                    args_line,
-                )
-                if cancel_event is not None and cancel_event.is_set():
-                    if event_emit:
-                        await event_emit(
-                            {
-                                "type": "agent.cancelled",
-                                "agent_run_id": agent_run_id,
-                                "phase": "before_tool",
-                                "round": round_i + 1,
-                                "name": name,
-                            }
-                        )
-                    raise AgentChatCancelled()
+                validation_err = validate_tool_call_arguments(name, args)
+                rejected = validation_err is not None
+                if rejected:
+                    result = format_tool_call_validation_error(validation_err)
+                    ok_sum, err_sum = False, str(validation_err.get("message") or "invalid tool arguments")
+                    logger.info(
+                        "tool_exec rejected run_id=%s agent=%s round=%d tool=%s empty_or_invalid args",
+                        _short_run_id(agent_run_id),
+                        agent_id if isinstance(agent_id, str) else "-",
+                        round_i + 1,
+                        name,
+                    )
+                else:
+                    logger.info(
+                        "tool_exec run_id=%s agent=%s round=%d tool=%s %s",
+                        _short_run_id(agent_run_id),
+                        agent_id if isinstance(agent_id, str) else "-",
+                        round_i + 1,
+                        name,
+                        args_line,
+                    )
+                    if cancel_event is not None and cancel_event.is_set():
+                        if event_emit:
+                            await event_emit(
+                                {
+                                    "type": "agent.cancelled",
+                                    "agent_run_id": agent_run_id,
+                                    "phase": "before_tool",
+                                    "round": round_i + 1,
+                                    "name": name,
+                                }
+                            )
+                        raise AgentChatCancelled()
                 if event_emit:
                     from apps.backend.domain.tool_step_label import format_tool_step_label_from_args
 
@@ -1832,55 +1845,64 @@ async def chat_completion(
                         "agent_run_id": agent_run_id,
                         "round": round_i + 1,
                         "name": name,
-                        "summary": args_line,
+                        "summary": args_line if not rejected else "rejected: empty or invalid arguments",
                         "step_label": _step_label,
                     }
                     if _tool_label:
                         _tool_start_ev["label"] = _tool_label
                     await event_emit(_tool_start_ev)
-                tctx = set_tool_invocation_messages(list(messages))
-                try:
-                    perm_always = tool_context.get("permission_always_allow_tools")
-                    if not isinstance(perm_always, set):
-                        perm_always = set()
-                        tool_context["permission_always_allow_tools"] = perm_always
-                    need_gate = (
-                        permission_ask
-                        and not bool(tool_context.get("agent_unattended"))
-                        and bool(tool_context.get("agent_coding_tools_permission_ask"))
-                        and name in _CODING_TOOLS_PERMISSION_ASK
-                        and name not in perm_always
-                    )
-                    if need_gate and control_queue is None:
-                        logger.warning(
-                            "agent_permission_ask set but no control_queue; executing %s without approval",
-                            name,
+                if not rejected:
+                    tctx = set_tool_invocation_messages(list(messages))
+                    try:
+                        perm_always = tool_context.get("permission_always_allow_tools")
+                        if not isinstance(perm_always, set):
+                            perm_always = set()
+                            tool_context["permission_always_allow_tools"] = perm_always
+                        need_gate = (
+                            permission_ask
+                            and not bool(tool_context.get("agent_unattended"))
+                            and bool(tool_context.get("agent_coding_tools_permission_ask"))
+                            and name in _CODING_TOOLS_PERMISSION_ASK
+                            and name not in perm_always
                         )
-                    if need_gate and control_queue is not None:
-                        preview = json.dumps(args, ensure_ascii=False, default=str)[:2000]
-                        rid = str(uuid.uuid4())
-                        rep, fb_msg = await _wait_for_tool_permission_reply(
-                            control_queue=control_queue,
-                            cancel_event=cancel_event,
-                            event_emit=event_emit,
-                            agent_run_id=agent_run_id,
-                            request_id=rid,
-                            tool_name=name,
-                            args_preview=preview,
-                            round_i=round_i,
-                            handle_control=handle_control_dict,
-                        )
-                        if rep == "reject":
-                            rej: dict[str, Any] = {
-                                "ok": False,
-                                "error": "User rejected permission for this tool call.",
-                            }
-                            if fb_msg:
-                                rej["user_message"] = fb_msg
-                            result = json.dumps(rej, ensure_ascii=False)
+                        if need_gate and control_queue is None:
+                            logger.warning(
+                                "agent_permission_ask set but no control_queue; executing %s without approval",
+                                name,
+                            )
+                        if need_gate and control_queue is not None:
+                            preview = json.dumps(args, ensure_ascii=False, default=str)[:2000]
+                            rid = str(uuid.uuid4())
+                            rep, fb_msg = await _wait_for_tool_permission_reply(
+                                control_queue=control_queue,
+                                cancel_event=cancel_event,
+                                event_emit=event_emit,
+                                agent_run_id=agent_run_id,
+                                request_id=rid,
+                                tool_name=name,
+                                args_preview=preview,
+                                round_i=round_i,
+                                handle_control=handle_control_dict,
+                            )
+                            if rep == "reject":
+                                rej: dict[str, Any] = {
+                                    "ok": False,
+                                    "error": "User rejected permission for this tool call.",
+                                }
+                                if fb_msg:
+                                    rej["user_message"] = fb_msg
+                                result = json.dumps(rej, ensure_ascii=False)
+                            else:
+                                if rep == "always":
+                                    perm_always.add(name)
+                                result = await _thread_with_cancel(
+                                    cancel_event,
+                                    execute_tool,
+                                    name,
+                                    args,
+                                    context=tool_context,
+                                )
                         else:
-                            if rep == "always":
-                                perm_always.add(name)
                             result = await _thread_with_cancel(
                                 cancel_event,
                                 execute_tool,
@@ -1888,17 +1910,9 @@ async def chat_completion(
                                 args,
                                 context=tool_context,
                             )
-                    else:
-                        result = await _thread_with_cancel(
-                            cancel_event,
-                            execute_tool,
-                            name,
-                            args,
-                            context=tool_context,
-                        )
-                finally:
-                    reset_tool_invocation_messages(tctx)
-                ok_sum, err_sum = _tool_result_summary(result)
+                    finally:
+                        reset_tool_invocation_messages(tctx)
+                    ok_sum, err_sum = _tool_result_summary(result)
                 if (
                     name == "git_read"
                     and ok_sum

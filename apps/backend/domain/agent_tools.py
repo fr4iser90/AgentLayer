@@ -53,7 +53,9 @@ from apps.backend.infrastructure.operator_settings import (
 logger = logging.getLogger(__name__)
 
 from apps.backend.domain.agent_io import (  # noqa: E402
+    _extract_first_json_object,
     _format_normalized_tool_args_for_recap,
+    _parse_named_parenthesized_tool_call,
     _parse_tool_arguments,
     _text_blobs_from_message,
 )
@@ -508,6 +510,14 @@ def _tool_parameter_recovery_hint(tool_name: str, result: str) -> str | None:
     """Short system nudge when models emit tool_calls without required JSON fields (common on some GGUF builds)."""
     if not result or len(result) > 800:
         return None
+    try:
+        obj = json.loads(result)
+        if isinstance(obj, dict) and obj.get("error") == "tool_call_arguments_invalid":
+            hint = str(obj.get("hint") or "").strip()
+            if hint:
+                return hint[:2500]
+    except json.JSONDecodeError:
+        pass
     rl = result.lower()
     if tool_name == "bash" and "command" in rl:
         return (
@@ -534,182 +544,215 @@ def _tool_parameter_recovery_hint(tool_name: str, result: str) -> str | None:
     return None
 
 
-def _infer_read_file_path_from_context(
-    assistant_msg: dict[str, Any],
-    messages: list[dict[str, Any]],
-    workspace_root: Path | None,
-) -> str | None:
-    """When models call coding_read_file with {{}}, map README / backtick paths to a real relative path."""
-    combined = last_user_text(messages) + "\n" + "\n".join(_text_blobs_from_message(assistant_msg))
-    cl = combined.lower()
-    if workspace_root and workspace_root.is_dir():
-        for m in re.finditer(r"`([^`\n]{1,240}?\.(?:md|rst|txt|yaml|yml|toml|json))`", combined, re.I):
-            cand = m.group(1).strip().lstrip("./")
-            if not cand or ".." in cand or cand.startswith("/"):
-                continue
-            try:
-                if (workspace_root / cand).is_file():
-                    return cand
-            except OSError:
-                continue
-        if "readme" in cl or "read me" in cl:
-            for candidate in (
-                "README.md",
-                "readme.md",
-                "Readme.md",
-                "README.rst",
-                "README.txt",
-                "readme.txt",
-                "docs/README.md",
-                "doc/README.md",
-            ):
-                try:
-                    if (workspace_root / candidate).is_file():
-                        return candidate
-                except OSError:
-                    continue
-            return "README.md"
-    return None
+def _arg_value_present(value: Any) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return bool(value.strip())
+    if isinstance(value, (list, dict, tuple, set)):
+        return len(value) > 0
+    return True
 
 
-def _infer_shell_command_from_assistant_message(assistant_msg: dict[str, Any]) -> str | None:
-    """When wire-format tool_calls have `{}` arguments, some GGUF models still describe the shell line in prose."""
-    blobs = _text_blobs_from_message(assistant_msg)
-    text = "\n".join(blobs)
-    if not text.strip():
-        return None
-    fence = re.search(r"```(?:bash|sh|shell|zsh)?\s*\n([\s\S]*?)```", text, re.IGNORECASE)
-    if fence:
-        for line in fence.group(1).splitlines():
-            s = line.strip()
-            if s and not s.startswith("#"):
-                return s
-    shell_prefixes = (
-        "git ",
-        "gh ",
-        "npm ",
-        "pnpm ",
-        "yarn ",
-        "bun ",
-        "npx ",
-        "cd ",
-        "ls ",
-        "pwd",
-        "cat ",
-        "head ",
-        "tail ",
-        "python ",
-        "python3 ",
-        "uv ",
-        "ruff ",
-        "pytest",
-        "mypy ",
-        "echo ",
-        "mkdir ",
-        "touch ",
-        "cp ",
-        "mv ",
-        "rm ",
-        "find ",
-        "grep ",
-        "sed ",
-        "awk ",
-        "curl ",
-        "wget ",
-        "docker ",
-        "kubectl ",
-        "make ",
-        "cargo ",
-        "go ",
-    )
-    for raw in text.splitlines():
-        s = raw.strip()
-        if not s or s.startswith("```"):
+def _args_effectively_empty(args: dict[str, Any]) -> bool:
+    if not args:
+        return True
+    return not any(_arg_value_present(v) for v in args.values())
+
+
+def _unwrap_tool_args_aliases(args: dict[str, Any]) -> dict[str, Any]:
+    """Unwrap ``{"arguments": {...}}`` / ``{"params": {...}}`` nesting from sloppy tool JSON."""
+    if not isinstance(args, dict) or not args:
+        return {}
+    out = dict(args)
+    if len(out) == 1:
+        for alt in ("arguments", "args", "params", "parameters", "input", "payload", "body"):
+            nested = out.get(alt)
+            if isinstance(nested, dict) and nested:
+                return dict(nested)
+    return out
+
+
+def _tool_schema_names_match(requested: str, registered: str) -> bool:
+    if requested == registered:
+        return True
+    if requested.endswith(f".{registered}"):
+        return True
+    if registered.endswith(f".{requested}"):
+        return True
+    return False
+
+
+def _infer_tool_args_from_message(tool_name: str, assistant_msg: dict[str, Any]) -> dict[str, Any]:
+    """Recover JSON args from assistant prose when wire ``tool_calls[].arguments`` is ``{}``."""
+    name = (tool_name or "").strip()
+    if not name:
+        return {}
+    name_candidates = [name]
+    if "." in name:
+        short = name.rsplit(".", 1)[-1]
+        if short and short not in name_candidates:
+            name_candidates.append(short)
+    for blob in _text_blobs_from_message(assistant_msg):
+        text = (blob or "").strip()
+        if not text:
             continue
-        if s.startswith(("- ", "* ", "• ")):
-            s = s[2:].strip()
-        sl = s.lower()
-        if sl in ("ls", "pwd"):
-            return s
-        if any(sl.startswith(p) for p in shell_prefixes):
-            return s
-    for m in re.finditer(r"`([^`]{3,500})`", text):
-        inner = m.group(1).strip()
-        sl = inner.lower()
-        if sl.startswith("git ") or sl.startswith(("npm ", "pnpm ", "yarn ", "python ", "docker ")):
-            return inner
-    m = re.search(r"\b(git\s+clone\b[^\n`'\"]{0,500})", text, re.IGNORECASE)
-    if m:
-        s = m.group(1).strip().rstrip(",.;:\"'")
-        if len(s) > 8:
-            return s
-    return None
+        for candidate in name_candidates:
+            parsed = _parse_named_parenthesized_tool_call(text, candidate)
+            if isinstance(parsed, dict) and parsed:
+                return dict(parsed)
+        obj = _extract_first_json_object(text)
+        if not isinstance(obj, dict):
+            continue
+        declared = (
+            obj.get("name")
+            or obj.get("tool")
+            or obj.get("tool_name")
+            or obj.get("function")
+        )
+        declared_s = str(declared or "").strip()
+        if declared_s in name_candidates or any(
+            _tool_schema_names_match(name, declared_s) for name in name_candidates
+        ):
+            for alt in ("arguments", "args", "parameters", "params", "input"):
+                nested = obj.get(alt)
+                if isinstance(nested, dict) and nested:
+                    return dict(nested)
+    return {}
 
 
-def _infer_shell_command_from_user_text(user_text: str) -> str | None:
-    """Infer a shell one-liner from the latest user message when models emit empty ``bash`` JSON (GGUF)."""
-    if not (user_text or "").strip():
+def _lookup_tool_parameter_schema(tool_name: str) -> dict[str, Any] | None:
+    n = (tool_name or "").strip()
+    if not n:
         return None
-    ut = user_text.strip()
-    ul = ut.lower()
-    fence = re.search(r"```(?:bash|sh|shell|zsh)?\s*\n([\s\S]*?)```", ut, re.IGNORECASE)
-    if fence:
-        for line in fence.group(1).splitlines():
-            s = line.strip()
-            if not s or s.startswith("#"):
+    try:
+        for spec in get_registry().chat_tool_specs:
+            fn = spec.get("function") if isinstance(spec, dict) else None
+            if not isinstance(fn, dict):
                 continue
-            sl = s.lower()
-            if sl.startswith(("git ", "gh ", "npm ", "pnpm ", "yarn ", "docker ", "curl ", "wget ")):
-                return s
-    if re.search(r"\bgit\s+pull\b", ul):
-        if "ff-only" in ul or "ff only" in ul:
-            return "git pull --ff-only"
-        m2 = re.search(r"(git\s+pull[^\n`,;]{0,80})", ut, re.IGNORECASE)
-        return (m2.group(1).strip().rstrip(",.;") if m2 else "git pull")
-    if re.search(r"\bgit\s+fetch\b", ul):
-        m2 = re.search(r"(git\s+fetch[^\n`]{0,200})", ut, re.IGNORECASE)
-        return (m2.group(1).strip().rstrip(",.;") if m2 else "git fetch")
-    if re.search(r"\bgit\s+status\b", ul):
-        return "git status"
-    if re.search(r"\bgit\s+log\b", ul):
-        m2 = re.search(r"(git\s+log[^\n`]{0,160})", ut, re.IGNORECASE)
-        return m2.group(1).strip() if m2 else "git log -n 10 --oneline"
-    update_cues = (
-        "git pull",
-        "up to date",
-        "up-to-date",
-        "nicht up to date",
-        "geupdatet",
-        "updaten",
-        " aktualisi",
-        "pullen",
-        "pull machen",
-        "remote holen",
-        "neueste version",
-        "auf den stand",
-        "ein pull",
-        "was pull",
-    )
-    ctx_cues = (
-        "git",
-        "repo",
-        "repository",
-        "workspace",
-        "projekt",
-        "project",
-        "branch",
-        "remote",
-        "klonen",
-        "clone",
-    )
-    if any(c in ul for c in update_cues) and any(c in ul for c in ctx_cues):
-        return "git pull"
-    if re.search(r"\bpull\b", ul) and "git" in ul:
-        if "ff-only" in ul or "ff only" in ul:
-            return "git pull --ff-only"
-        m2 = re.search(r"(git\s+pull[^\n`,;]{0,80})", ut, re.IGNORECASE)
-        return (m2.group(1).strip().rstrip(",.;") if m2 else "git pull")
+            reg_name = str(fn.get("name") or "").strip()
+            if _tool_schema_names_match(n, reg_name):
+                params = fn.get("parameters")
+                return dict(params) if isinstance(params, dict) else {}
+    except Exception:
+        logger.debug("tool schema lookup failed for %r", n, exc_info=True)
     return None
+
+
+def _present_schema_properties(args: dict[str, Any], schema: dict[str, Any]) -> int:
+    props = schema.get("properties")
+    if isinstance(props, dict) and props:
+        return sum(1 for key in props if _arg_value_present(args.get(key)))
+    return sum(1 for value in args.values() if _arg_value_present(value))
+
+
+def _schema_branch_satisfied(branch: dict[str, Any], args: dict[str, Any]) -> bool:
+    required = branch.get("required")
+    if isinstance(required, list) and required:
+        return all(_arg_value_present(args.get(str(key))) for key in required)
+    min_props = branch.get("minProperties")
+    if isinstance(min_props, int) and min_props > 0:
+        return _present_schema_properties(args, branch) >= min_props
+    return False
+
+
+def _tool_args_validation_hint(
+    tool_name: str,
+    schema: dict[str, Any] | None,
+    *,
+    missing: list[str],
+    any_of_fields: list[str] | None,
+) -> str:
+    props = (schema or {}).get("properties") if isinstance(schema, dict) else None
+    if any_of_fields:
+        fields = " or ".join(f"**{k}**" for k in any_of_fields)
+        return (
+            f"Tool `{tool_name}` requires a non-empty JSON argument object with at least one of: {fields}. "
+            "Do not emit wire-format `tool_calls` with `{}` — pass the schema fields in `arguments`."
+        )
+    if missing and isinstance(props, dict):
+        parts = []
+        for key in missing[:6]:
+            desc = props.get(key, {})
+            hint = ""
+            if isinstance(desc, dict):
+                hint = str(desc.get("TOOL_DESCRIPTION") or desc.get("description") or "").strip()
+            parts.append(f"**{key}**" + (f" ({hint})" if hint else ""))
+        return (
+            f"Tool `{tool_name}` was called with empty or incomplete arguments. "
+            f"Required: {', '.join(parts)}. "
+            "Fix the next `tool_calls[].function.arguments` JSON — do not call the tool with `{}`."
+        )
+    return (
+        f"Tool `{tool_name}` was called with empty or incomplete arguments. "
+        "Provide non-empty JSON per the tool schema."
+    )
+
+
+def validate_tool_call_arguments(tool_name: str, args: dict[str, Any]) -> dict[str, Any] | None:
+    """
+    Return an error payload when args are too empty to execute; ``None`` when OK.
+
+    Uses each tool's registered JSON Schema only (``required``, ``minProperties``, ``anyOf``).
+    """
+    n = (tool_name or "").strip()
+    if not n:
+        return {
+            "ok": False,
+            "error": "tool_call_arguments_invalid",
+            "tool": n,
+            "message": "missing tool name on tool_call",
+        }
+
+    schema = _lookup_tool_parameter_schema(n) or {}
+    missing: list[str] = []
+    for req in schema.get("required") or []:
+        key = str(req)
+        if not _arg_value_present(args.get(key)):
+            missing.append(key)
+
+    any_of_fields: list[str] = []
+    any_of = schema.get("anyOf")
+    if isinstance(any_of, list) and any_of:
+        if not any(isinstance(branch, dict) and _schema_branch_satisfied(branch, args) for branch in any_of):
+            for branch in any_of:
+                if not isinstance(branch, dict):
+                    continue
+                for req in branch.get("required") or []:
+                    field = str(req)
+                    if field not in any_of_fields:
+                        any_of_fields.append(field)
+            if not missing:
+                missing = any_of_fields
+
+    min_props = schema.get("minProperties")
+    if isinstance(min_props, int) and min_props > 0:
+        if _present_schema_properties(args, schema) < min_props and not missing:
+            props = schema.get("properties")
+            if isinstance(props, dict):
+                missing = list(props.keys())[:6]
+            else:
+                missing = ["(at least one property required)"]
+
+    if missing:
+        return {
+            "ok": False,
+            "error": "tool_call_arguments_invalid",
+            "tool": n,
+            "message": f"Tool {n!r} rejected: empty or incomplete arguments.",
+            "missing_or_empty": missing,
+            "schema_required": list(schema.get("required") or []),
+            "any_of_required": any_of_fields,
+            "received_arguments": dict(args),
+            "hint": _tool_args_validation_hint(
+                n, schema, missing=missing, any_of_fields=any_of_fields or None
+            ),
+        }
+    return None
+
+
+def format_tool_call_validation_error(payload: dict[str, Any]) -> str:
+    return json.dumps(payload, ensure_ascii=False)
 
 
 def _normalize_tool_call_arguments(
@@ -719,116 +762,13 @@ def _normalize_tool_call_arguments(
     messages: list[dict[str, Any]],
     tool_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Repair empty / aliased tool JSON from sloppy OpenAI-compatible tool_calls (common with Qwen GGUF)."""
-    out = dict(args)
+    """Repair aliased / empty tool JSON: unwrap nesting and recover JSON from assistant prose."""
+    out = _unwrap_tool_args_aliases(dict(args))
     n = (name or "").strip()
-    ws = (tool_context or {}).get("workspace") if tool_context else None
-    root_p: Path | None = None
-    if isinstance(ws, dict):
-        rp = ws.get("path")
-        if isinstance(rp, str) and rp.strip():
-            root_p = Path(rp)
-    if n == "bash":
-        if not str(out.get("command") or "").strip():
-            for alt in ("shell", "cmd", "bash", "bash_command", "script", "line", "input"):
-                v = out.get(alt)
-                if isinstance(v, str) and v.strip():
-                    out["command"] = v.strip()
-                    break
-        unattended = bool(tool_context and tool_context.get("agent_unattended"))
-        if not unattended:
-            if not str(out.get("command") or "").strip():
-                inferred = _infer_shell_command_from_assistant_message(assistant_msg)
-                if inferred:
-                    out["command"] = inferred
-            if not str(out.get("command") or "").strip():
-                inferred_u = _infer_shell_command_from_user_text(last_user_text(messages))
-                if inferred_u:
-                    out["command"] = inferred_u
-    elif n == "task":
-        if not str(out.get("description") or "").strip():
-            for alt in ("title", "name", "task", "summary", "label"):
-                v = out.get(alt)
-                if isinstance(v, str) and v.strip():
-                    out["description"] = v.strip()[:200]
-                    break
-        if not str(out.get("prompt") or "").strip():
-            for alt in ("instructions", "instruction", "body", "content", "task_prompt", "query"):
-                v = out.get(alt)
-                if isinstance(v, str) and v.strip():
-                    out["prompt"] = v.strip()
-                    break
-        if not str(out.get("description") or "").strip() or not str(out.get("prompt") or "").strip():
-            ut = last_user_text(messages)
-            if ut.strip():
-                if not str(out.get("description") or "").strip():
-                    u = ut.strip()
-                    out["description"] = u if len(u) <= 120 else u[:117] + "..."
-                if not str(out.get("prompt") or "").strip():
-                    out["prompt"] = ut.strip()
-    elif n in ("retrieve_context", "search", "semantic_search"):
-        if not str(out.get("query") or "").strip():
-            for alt in ("q", "search", "text", "prompt", "question", "keywords"):
-                v = out.get(alt)
-                if isinstance(v, str) and v.strip():
-                    out["query"] = v.strip()
-                    break
-        if not str(out.get("query") or "").strip():
-            ut = (last_user_text(messages) or "").strip()
-            if ut:
-                out["query"] = ut[:4000]
-    elif n == "glob":
-        if not str(out.get("pattern") or "").strip():
-            for alt in ("glob", "file_pattern", "glob_pattern", "match"):
-                v = out.get(alt)
-                if isinstance(v, str) and v.strip():
-                    out["pattern"] = v.strip()
-                    break
-        if not str(out.get("pattern") or "").strip():
-            path_given = out.get("path")
-            if isinstance(path_given, str) and path_given.strip() and "*" in path_given:
-                out["pattern"] = path_given.strip()
-        if not str(out.get("pattern") or "").strip():
-            ut = (last_user_text(messages) or "").lower()
-            if ".py" in ut or "python" in ut:
-                out["pattern"] = "**/*.py"
-            elif ".ts" in ut or "typescript" in ut:
-                out["pattern"] = "**/*.{ts,tsx}"
-            elif ".md" in ut or "markdown" in ut:
-                out["pattern"] = "**/*.md"
-            else:
-                out["pattern"] = "**/*"
-        if not str(out.get("path") or "").strip():
-            out["path"] = "."
-    elif n == "list_dir":
-        if not str(out.get("path") or "").strip():
-            out["path"] = "."
-    elif n == "read_file":
-        if not str(out.get("path") or "").strip():
-            for alt in ("file", "filepath", "filename", "target", "rel_path", "relative_path"):
-                v = out.get(alt)
-                if isinstance(v, str) and v.strip():
-                    out["path"] = v.strip()
-                    break
-        if not str(out.get("path") or "").strip():
-            inferred = _infer_read_file_path_from_context(assistant_msg, messages, root_p)
-            if inferred:
-                out["path"] = inferred
-    elif n in ("write_file", "replace", "edit"):
-        if not str(out.get("path") or "").strip():
-            for alt in ("file", "filepath", "filename", "target", "rel_path", "relative_path"):
-                v = out.get(alt)
-                if isinstance(v, str) and v.strip():
-                    out["path"] = v.strip()
-                    break
-    elif n == "settings_patch":
-        # Alias unwrap only (malformed nesting) — no semantic inference; see settings_patch error payload.
-        if not out:
-            for alt in ("settings", "patch", "body", "changes", "values"):
-                nested = args.get(alt)
-                if isinstance(nested, dict) and nested:
-                    out = dict(nested)
-                    break
+    if _args_effectively_empty(out):
+        inferred_msg = _infer_tool_args_from_message(n, assistant_msg)
+        if inferred_msg:
+            out = {**out, **inferred_msg}
     return out
 
 
@@ -1592,11 +1532,10 @@ __all__ = [
     '_get_tool_description',
     '_git_network_tools_for_agent',
     '_http_error_recovery_hint',
-    '_infer_read_file_path_from_context',
-    '_infer_shell_command_from_assistant_message',
-    '_infer_shell_command_from_user_text',
     '_merge_deterministic_tool_recap_into_final_completion',
     '_normalize_tool_call_arguments',
+    'validate_tool_call_arguments',
+    'format_tool_call_validation_error',
     '_partition_tool_specs_by_name',
     '_pinned_tools_for_agent',
     '_rank_tools_by_user_input',

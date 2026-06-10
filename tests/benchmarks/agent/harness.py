@@ -42,6 +42,11 @@ from tests.e2e.support.helpers import E2EClient, find_workspace_by_name, load_do
 
 logger = logging.getLogger(__name__)
 
+
+class BenchmarkRunCancelled(Exception):
+    """Admin cancelled a benchmark run (queued, between scenarios, or in-flight chat)."""
+
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
@@ -720,6 +725,68 @@ def _skipped_result(
     )
 
 
+def _create_chat_conversation(
+    client: E2EClient,
+    *,
+    profile: ModelProfile,
+    scenario: AgentScenario,
+    workspace_id: str | None,
+) -> str | None:
+    """Create a server conversation the same way ChatPage.startNewChat does."""
+    payload: dict[str, Any] = {
+        "title": f"bench {scenario.id}",
+        "mode": "agent",
+        "model": profile.model,
+        "messages": [],
+        "agent_log": {"v": 2, "current": [], "turns": []},
+        "agent_id": _effective_agent_id(profile, scenario),
+        "model_catalog_owned_by": profile.catalog_owned_by,
+    }
+    if workspace_id:
+        payload["workspace_id"] = workspace_id
+    try:
+        data = client.post_json("/v1/user/conversations", payload)
+        conv = data.get("conversation") or {}
+        cid = conv.get("id")
+        return str(cid) if cid else None
+    except httpx.HTTPError as exc:
+        logger.warning("benchmark conversation create failed for %s: %s", scenario.id, exc)
+        return None
+
+
+def _build_chat_body(
+    *,
+    profile: ModelProfile,
+    scenario: AgentScenario,
+    scenario_prompt: str,
+    workspace_id: str | None,
+    conversation_id: str | None,
+) -> dict[str, Any]:
+    """Chat-parity body; benchmarks always enable LLM stream for admin WS live preview."""
+    body: dict[str, Any] = {
+        "model": profile.model,
+        "messages": [{"role": "user", "content": scenario_prompt}],
+        "agent_id": _effective_agent_id(profile, scenario),
+        "agent_model_catalog_owned_by": profile.catalog_owned_by,
+        "agent_stream_llm": True,
+    }
+    if workspace_id:
+        body["workspace_id"] = workspace_id
+    if conversation_id:
+        body["conversation_id"] = conversation_id
+    return body
+
+
+def _apply_bench_run_limits(
+    body: dict[str, Any],
+    *,
+    max_tool_rounds_override: int | None,
+) -> None:
+    """Optional admin run cap — only when explicitly set (chat uses server default otherwise)."""
+    if max_tool_rounds_override is not None:
+        body["agent_max_tool_rounds"] = max_tool_rounds_override
+
+
 def run_scenario(
     client: E2EClient,
     *,
@@ -729,6 +796,9 @@ def run_scenario(
     fixture_ctx: FixtureContext,
     defaults: dict[str, Any],
     on_live: Callable[[dict[str, Any]], None] | None = None,
+    cancel_check: Callable[[], bool] | None = None,
+    scenario_timeout_sec: float | None = None,
+    max_tool_rounds_override: int | None = None,
 ) -> ScenarioResult:
     fixture_list = list(scenario.requires)
     if not profile.model:
@@ -754,22 +824,21 @@ def run_scenario(
         )
 
     scenario_prompt = _render_scenario_prompt(scenario, fixture_ctx)
-    body: dict[str, Any] = {
-        "model": profile.model,
-        "agent_model_catalog_owned_by": profile.catalog_owned_by,
-        "agent_id": _effective_agent_id(profile, scenario),
-        "messages": [{"role": "user", "content": scenario_prompt}],
-        "agent_unattended": True,
-        "agent_max_tool_rounds": scenario.max_tool_rounds,
-        "agent_stream_llm": True,
-        "stream": False,
-    }
     ws_id = workspace_id_for_scenario(fixture_ctx, scenario.requires)
-    if ws_id and scenario.requires:
-        body["workspace_id"] = ws_id
-    from tests.benchmarks.agent.provider_cache import apply_bench_provider_cache_policy
-
-    apply_bench_provider_cache_policy(body)
+    conversation_id = _create_chat_conversation(
+        client,
+        profile=profile,
+        scenario=scenario,
+        workspace_id=ws_id,
+    )
+    body = _build_chat_body(
+        profile=profile,
+        scenario=scenario,
+        scenario_prompt=scenario_prompt,
+        workspace_id=ws_id,
+        conversation_id=conversation_id,
+    )
+    _apply_bench_run_limits(body, max_tool_rounds_override=max_tool_rounds_override)
     effective_agent = str(body["agent_id"] or "")
 
     t0 = time.perf_counter()
@@ -800,6 +869,8 @@ def run_scenario(
                 token=client.token,
                 body=body,
                 on_event=_on_ws_event,
+                cancel_check=cancel_check,
+                timeout_sec=scenario_timeout_sec,
             )
             if ws_err and not data:
                 error = ws_err
@@ -815,10 +886,11 @@ def run_scenario(
         if not use_ws:
             capture_mode = "http"
         try:
+            http_timeout = scenario_timeout_sec if scenario_timeout_sec and scenario_timeout_sec > 0 else None
             resp = client.http.post(
                 "/v1/chat/completions",
                 json=body,
-                timeout=None,
+                timeout=http_timeout,
             )
             http_status = resp.status_code
             if resp.status_code >= 400:
@@ -1003,6 +1075,9 @@ def run_benchmark(
     friend_user_id: uuid.UUID | str | None = None,
     admin_user_id: uuid.UUID | str | None = None,
     on_progress: Callable[[BenchRunReport], None] | None = None,
+    cancel_check: Callable[[], bool] | None = None,
+    scenario_timeout_sec: float | None = None,
+    max_tool_rounds_override: int | None = None,
 ) -> BenchRunReport:
     load_bench_env()
     os.environ.setdefault("AGENT_E2E_BASE_URL", bench_base_url())
@@ -1087,6 +1162,8 @@ def run_benchmark(
         for profile in profiles:
             session.refresh(force=True)
             for scenario in scenarios:
+                if cancel_check and cancel_check():
+                    raise BenchmarkRunCancelled("Benchmark cancelled by admin")
                 session.refresh_if_due()
                 block = scenario_fixture_blocked(fixture_ctx, scenario.requires)
                 if block and any(
@@ -1172,8 +1249,13 @@ def run_benchmark(
                             fixture_ctx=fixture_ctx,
                             defaults=defaults,
                             on_live=_on_live,
+                            cancel_check=cancel_check,
+                            scenario_timeout_sec=scenario_timeout_sec,
+                            max_tool_rounds_override=max_tool_rounds_override,
                         )
                     )
+                except BenchmarkRunCancelled:
+                    raise
                 except Exception as exc:
                     logger.exception(
                         "benchmark scenario %s profile %s crashed",
@@ -1192,6 +1274,8 @@ def run_benchmark(
                     report.in_flight = None
                     _notify_progress(report, on_progress)
                 _record(result)
+                if cancel_check and cancel_check():
+                    raise BenchmarkRunCancelled("Benchmark cancelled by admin")
     finally:
         session.refresh(force=True)
         if self_editing_prev is False:
