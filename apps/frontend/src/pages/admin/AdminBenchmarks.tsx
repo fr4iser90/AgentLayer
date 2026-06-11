@@ -34,6 +34,10 @@ import {
   type BenchExportRow,
 } from "../../features/admin/benchmarks/benchExport";
 import {
+  loadBenchRunPrefs,
+  saveBenchRunPrefs,
+} from "../../features/admin/benchmarks/benchRunPrefs";
+import {
   catalogModelIdsForProvider,
   fetchModelCatalog,
   isProviderCatalogUnreachable,
@@ -596,6 +600,13 @@ function BenchmarkScenarioDetail({
                 const tool = ev.tool ? ` tool=${ev.tool}` : "";
                 const round = ev.round != null ? ` round=${ev.round}` : "";
                 const phase = ev.phase ? ` phase=${ev.phase}` : "";
+                const channel = ev.channel ? ` channel=${String(ev.channel)}` : "";
+                const deltaChars =
+                  ev.delta_chars != null ? ` +${String(ev.delta_chars)} chars` : "";
+                const deltaEvents =
+                  ev.delta_events != null && Number(ev.delta_events) > 1
+                    ? ` (${String(ev.delta_events)} chunks)`
+                    : "";
                 const summary = ev.summary ? ` args=${String(ev.summary)}` : "";
                 const ok =
                   ev.ok === false
@@ -604,7 +615,7 @@ function BenchmarkScenarioDetail({
                       ? " ok"
                       : "";
                 const err = ev.error ? ` err=${String(ev.error)}` : "";
-                return `${typ}${tool}${round}${phase}${summary}${ok}${err}`;
+                return `${typ}${tool}${round}${phase}${channel}${deltaChars}${deltaEvents}${summary}${ok}${err}`;
               })
               .join("\n")}
           </pre>
@@ -632,6 +643,9 @@ function BenchmarkScenarioDetail({
   );
 }
 
+const _savedBenchPrefs = loadBenchRunPrefs();
+const _initialBenchSuite = _savedBenchPrefs?.suite?.trim() || "smoke";
+
 export function AdminBenchmarks() {
   const { t } = useTranslation(["admin"]);
   const auth = useAuth();
@@ -640,17 +654,27 @@ export function AdminBenchmarks() {
   const [suites, setSuites] = useState<BenchmarkSuite[]>([]);
   const [catalogFixtures, setCatalogFixtures] = useState<BenchmarkFixture[]>([]);
   const [tenantUsers, setTenantUsers] = useState<AdminUserRow[]>([]);
-  const [runAsUserId, setRunAsUserId] = useState("");
-  const [friendUserId, setFriendUserId] = useState("");
+  const [runAsUserId, setRunAsUserId] = useState(_savedBenchPrefs?.runAsUserId ?? "");
+  const [friendUserId, setFriendUserId] = useState(_savedBenchPrefs?.friendUserId ?? "");
   const [readiness, setReadiness] = useState<BenchmarkRunReadiness | null>(null);
   const [readinessLoading, setReadinessLoading] = useState(false);
-  const [suite, setSuite] = useState("smoke");
-  const [selectedScenarioIds, setSelectedScenarioIds] = useState<Set<string>>(new Set());
-  const [extraFixtureIds, setExtraFixtureIds] = useState<Set<string>>(new Set());
+  const [suite, setSuite] = useState(_initialBenchSuite);
+  const [selectedScenarioIds, setSelectedScenarioIds] = useState<Set<string>>(() => {
+    const ids = _savedBenchPrefs?.scenariosBySuite?.[_initialBenchSuite];
+    return ids?.length ? new Set(ids) : new Set();
+  });
+  const [extraFixtureIds, setExtraFixtureIds] = useState<Set<string>>(() => {
+    const ids = _savedBenchPrefs?.extraFixturesBySuite?.[_initialBenchSuite];
+    return ids?.length ? new Set(ids) : new Set();
+  });
   const [expandedScenarioId, setExpandedScenarioId] = useState<string | null>(null);
   const [llmProviders, setLlmProviders] = useState<BenchmarkLlmProvider[]>([]);
-  const [selectedProviderIds, setSelectedProviderIds] = useState<Set<string>>(new Set());
-  const [modelByProviderId, setModelByProviderId] = useState<Map<string, string>>(new Map());
+  const [selectedProviderIds, setSelectedProviderIds] = useState<Set<string>>(
+    () => new Set(_savedBenchPrefs?.selectedProviderIds ?? [])
+  );
+  const [modelByProviderId, setModelByProviderId] = useState<Map<string, string>>(
+    () => new Map(Object.entries(_savedBenchPrefs?.modelByProviderId ?? {}))
+  );
   const [catalogRows, setCatalogRows] = useState<ModelRow[]>([]);
   const [catalogAgentlayer, setCatalogAgentlayer] = useState<ModelCatalogAgentlayer | null>(null);
   const [runs, setRuns] = useState<BenchmarkRun[]>([]);
@@ -661,11 +685,23 @@ export function AdminBenchmarks() {
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [cancellingRunId, setCancellingRunId] = useState<string | null>(null);
-  const [scenarioTimeoutSec, setScenarioTimeoutSec] = useState("");
-  const [maxToolRoundsOverride, setMaxToolRoundsOverride] = useState("");
+  const [scenarioTimeoutSec, setScenarioTimeoutSec] = useState(
+    _savedBenchPrefs?.scenarioTimeoutSec ?? ""
+  );
+  const [maxToolRoundsOverride, setMaxToolRoundsOverride] = useState(
+    _savedBenchPrefs?.maxToolRoundsOverride ?? ""
+  );
   const [deletingRunId, setDeletingRunId] = useState<string | null>(null);
   const [deleteRunTarget, setDeleteRunTarget] = useState<BenchmarkRun | null>(null);
-  const scenariosInitialized = useRef(false);
+  const scenariosBySuiteRef = useRef<Record<string, string[]>>(
+    _savedBenchPrefs?.scenariosBySuite ?? {}
+  );
+  const extraFixturesBySuiteRef = useRef<Record<string, string[]>>(
+    _savedBenchPrefs?.extraFixturesBySuite ?? {}
+  );
+  const scenariosRestorePending = useRef(
+    !(_savedBenchPrefs?.scenariosBySuite?.[_initialBenchSuite]?.length ?? 0)
+  );
 
   const suiteDetail = useMemo(
     () => suites.find((s) => s.id === suite) ?? null,
@@ -722,6 +758,61 @@ export function AdminBenchmarks() {
     setExpandedScenarioId(null);
   }, []);
 
+  const restoreScenariosForSuite = useCallback(
+    (nextSuite: BenchmarkSuite | null) => {
+      if (!nextSuite?.scenarios?.length) {
+        setSelectedScenarioIds(new Set());
+        setExtraFixtureIds(new Set());
+        setExpandedScenarioId(null);
+        return;
+      }
+      const saved = scenariosBySuiteRef.current[nextSuite.id];
+      if (saved?.length) {
+        const valid = saved.filter((id) => nextSuite.scenarios!.some((sc) => sc.id === id));
+        if (valid.length) {
+          setSelectedScenarioIds(new Set(valid));
+          setExtraFixtureIds(new Set(extraFixturesBySuiteRef.current[nextSuite.id] ?? []));
+          setExpandedScenarioId(null);
+          return;
+        }
+      }
+      syncScenariosForSuite(nextSuite);
+    },
+    [syncScenariosForSuite]
+  );
+
+  const persistBenchRunPrefs = useCallback(() => {
+    scenariosBySuiteRef.current = {
+      ...scenariosBySuiteRef.current,
+      [suite]: [...selectedScenarioIds],
+    };
+    extraFixturesBySuiteRef.current = {
+      ...extraFixturesBySuiteRef.current,
+      [suite]: [...extraFixtureIds],
+    };
+    saveBenchRunPrefs({
+      suite,
+      runAsUserId,
+      friendUserId,
+      scenarioTimeoutSec,
+      maxToolRoundsOverride,
+      selectedProviderIds: [...selectedProviderIds],
+      modelByProviderId: Object.fromEntries(modelByProviderId.entries()),
+      scenariosBySuite: scenariosBySuiteRef.current,
+      extraFixturesBySuite: extraFixturesBySuiteRef.current,
+    });
+  }, [
+    suite,
+    runAsUserId,
+    friendUserId,
+    scenarioTimeoutSec,
+    maxToolRoundsOverride,
+    selectedProviderIds,
+    modelByProviderId,
+    selectedScenarioIds,
+    extraFixtureIds,
+  ]);
+
   const loadMeta = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -763,19 +854,19 @@ export function AdminBenchmarks() {
         return next;
       });
       if (s.length && !s.some((x) => x.id === suite)) {
-        setSuite(s[0].id);
-      }
-      if (!scenariosInitialized.current && s.length) {
-        scenariosInitialized.current = true;
-        const detail = s.find((x) => x.id === suite) ?? s[0];
-        syncScenariosForSuite(detail ?? null);
+        const nextSuite = s[0].id;
+        setSuite(nextSuite);
+        restoreScenariosForSuite(s[0]);
+      } else if (scenariosRestorePending.current && s.length) {
+        scenariosRestorePending.current = false;
+        restoreScenariosForSuite(s.find((x) => x.id === suite) ?? s[0] ?? null);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : t("admin:benchLoadFailed"));
     } finally {
       setLoading(false);
     }
-  }, [auth, authUser?.id, suite, syncScenariosForSuite, t]);
+  }, [auth, authUser?.id, suite, restoreScenariosForSuite, t]);
 
   useEffect(() => {
     if (!runAsUserId || tab !== "run") {
@@ -809,8 +900,16 @@ export function AdminBenchmarks() {
   }, [showFriendPicker, friendCandidates, friendUserId]);
 
   const onSuiteChange = (nextId: string) => {
+    scenariosBySuiteRef.current = {
+      ...scenariosBySuiteRef.current,
+      [suite]: [...selectedScenarioIds],
+    };
+    extraFixturesBySuiteRef.current = {
+      ...extraFixturesBySuiteRef.current,
+      [suite]: [...extraFixtureIds],
+    };
     setSuite(nextId);
-    syncScenariosForSuite(suites.find((s) => s.id === nextId) ?? null);
+    restoreScenariosForSuite(suites.find((s) => s.id === nextId) ?? null);
   };
 
   const toggleScenario = (id: string) => {
@@ -848,6 +947,10 @@ export function AdminBenchmarks() {
   useEffect(() => {
     void loadMeta();
   }, [loadMeta]);
+
+  useEffect(() => {
+    persistBenchRunPrefs();
+  }, [persistBenchRunPrefs]);
 
   useEffect(() => {
     if (tab === "history") void loadRuns();
@@ -1008,6 +1111,7 @@ export function AdminBenchmarks() {
         scenario_timeout_sec: timeoutRaw ? parsedTimeout : undefined,
         max_tool_rounds_override: maxRoundsRaw ? Math.floor(parsedMaxRounds) : undefined,
       });
+      persistBenchRunPrefs();
       setTab("history");
       setSelectedId(run.id);
       await loadRuns();
@@ -1487,6 +1591,7 @@ export function AdminBenchmarks() {
                 user: runAsUser ? userOptionLabel(runAsUser) : runAsUserId || "—",
               })}
             </p>
+            <p className="text-[11px] text-surface-muted">{t("admin:benchPrefsPersistHint")}</p>
           </section>
         </div>
       ) : null}

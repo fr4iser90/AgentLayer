@@ -6,9 +6,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Callable
 
-_CATALOG_TOOL_NAMES = frozenset(
-    {"catalog", "platform.catalog", "tools.catalog", "agent.catalog"}
-)
+from apps.backend.domain.plugin_system.tool_routing import TOOL_INTROSPECTION
 _READ_FILE_TOOL_NAMES = frozenset(
     {"read_file", "repository.read_file", "workspace.read_file"}
 )
@@ -61,6 +59,12 @@ def _content_mentions_any(content: str, needles: tuple[str, ...]) -> bool:
     return any(n in low for n in needles)
 
 
+def _used_introspection_tool(tool_names: list[str]) -> bool:
+    """True when an agent invoked a registry introspection/discovery tool."""
+    names = _tool_names_lower(tool_names)
+    return bool(names & {n.lower() for n in TOOL_INTROSPECTION})
+
+
 def rubric_s1_tool_catalog(
     *,
     content: str,
@@ -70,16 +74,13 @@ def rubric_s1_tool_catalog(
 ) -> RubricOutcome:
     if error:
         return RubricOutcome(False, 0.0, error)
-    names = _tool_names_lower(tool_names)
-    has_catalog = bool(names & _CATALOG_TOOL_NAMES) or _content_mentions_any(
-        content, ("catalog", "platform.catalog")
-    )
+    has_catalog = _used_introspection_tool(tool_names)
     non_empty = len((content or "").strip()) >= 8
     if has_catalog and non_empty:
         return RubricOutcome(True, 1.0, None)
     parts: list[str] = []
     if not has_catalog:
-        parts.append("no catalog tool invocation detected")
+        parts.append("no tool catalog introspection call detected")
     if not non_empty:
         parts.append("assistant reply too short")
     score = 0.5 if has_catalog or non_empty else 0.0

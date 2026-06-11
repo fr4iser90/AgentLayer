@@ -431,7 +431,7 @@ async def run_coding_schedule_row(
         # Background schedules have no WebSocket control_queue — never gate on permission UI.
         "agent_permission_ask": False,
         "agent_unattended": True,
-        "agent_tools_full_schema": True,
+        "agent_tools_full_schema": False,
         "agent_tool_name_allowlist": _schedule_tool_allowlist(wf, title, instr),
         "agent_tools_ranking_enabled": False,
         **llm_fields,

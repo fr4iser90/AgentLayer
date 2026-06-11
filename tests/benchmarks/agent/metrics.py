@@ -167,8 +167,7 @@ def _bench_insights(
         emptyish = [
             r
             for r in rows
-            if r.get("rejected")
-            or str(r.get("summary") or "").strip() in ("", "(empty)")
+            if r.get("rejected") or r.get("ok") is False
         ]
         if len(emptyish) >= 2:
             insights.append(
@@ -446,10 +445,25 @@ def live_snapshot_from_ws_events(
     return out
 
 
+def _llm_delta_chunk_len(ev: dict[str, Any]) -> int:
+    channel = str(ev.get("channel") or "").strip().lower()
+    if channel == "reasoning":
+        return len(str(ev.get("reasoning_delta") or ""))
+    return len(str(ev.get("delta") or ""))
+
+
+def _flush_pending_llm_delta(
+    timeline: list[dict[str, Any]], pending: dict[str, Any] | None
+) -> None:
+    if pending:
+        timeline.append(pending)
+
+
 def summarize_ws_events(events: list[dict[str, Any]]) -> tuple[list[dict], list[dict], dict[str, int]]:
     """Return compaction_events, timeline_summary, counters."""
     compaction_events: list[dict[str, Any]] = []
     timeline: list[dict[str, Any]] = []
+    pending_llm_delta: dict[str, Any] | None = None
     counts = {
         "context_update_count": 0,
         "llm_round_count": 0,
@@ -458,6 +472,12 @@ def summarize_ws_events(events: list[dict[str, Any]]) -> tuple[list[dict], list[
         "tool_fail_count": 0,
         "subagent_start_count": 0,
     }
+
+    def _append_timeline(entry: dict[str, Any]) -> None:
+        nonlocal pending_llm_delta
+        _flush_pending_llm_delta(timeline, pending_llm_delta)
+        pending_llm_delta = None
+        timeline.append(entry)
 
     for ev in events:
         if not isinstance(ev, dict):
@@ -480,23 +500,35 @@ def summarize_ws_events(events: list[dict[str, Any]]) -> tuple[list[dict], list[
                     "context": ev.get("context") if isinstance(ev.get("context"), dict) else {},
                 }
             )
-            timeline.append({"type": typ, "phase": ev.get("phase"), "round": ev.get("round")})
+            _append_timeline({"type": typ, "phase": ev.get("phase"), "round": ev.get("round")})
             continue
         if typ == "agent.llm_round_start":
-            timeline.append({"type": typ, "round": ev.get("round")})
+            _append_timeline({"type": typ, "round": ev.get("round")})
             continue
         if typ == "agent.llm_delta":
-            timeline.append(
-                {
+            channel = str(ev.get("channel") or "text").strip().lower() or "text"
+            round_no = ev.get("round")
+            chunk_len = _llm_delta_chunk_len(ev)
+            if (
+                pending_llm_delta is not None
+                and pending_llm_delta.get("round") == round_no
+                and pending_llm_delta.get("channel") == channel
+            ):
+                pending_llm_delta["delta_chars"] = int(pending_llm_delta.get("delta_chars") or 0) + chunk_len
+                pending_llm_delta["delta_events"] = int(pending_llm_delta.get("delta_events") or 0) + 1
+            else:
+                _flush_pending_llm_delta(timeline, pending_llm_delta)
+                pending_llm_delta = {
                     "type": typ,
-                    "round": ev.get("round"),
-                    "channel": ev.get("channel"),
+                    "round": round_no,
+                    "channel": channel,
+                    "delta_chars": chunk_len,
+                    "delta_events": 1,
                 }
-            )
             continue
         if typ == "agent.session":
             fwd = ev.get("forwarded_tools")
-            timeline.append(
+            _append_timeline(
                 {
                     "type": typ,
                     "forward_count": len(fwd) if isinstance(fwd, list) else None,
@@ -506,11 +538,11 @@ def summarize_ws_events(events: list[dict[str, Any]]) -> tuple[list[dict], list[
             continue
         if typ == "agent.llm_round":
             counts["llm_round_count"] += 1
-            timeline.append({"type": typ, "round": ev.get("round")})
+            _append_timeline({"type": typ, "round": ev.get("round")})
             continue
         if typ == "agent.tool_start":
             counts["tool_start_count"] += 1
-            timeline.append(
+            _append_timeline(
                 {
                     "type": typ,
                     "tool": ev.get("name") or ev.get("tool_name"),
@@ -524,7 +556,7 @@ def summarize_ws_events(events: list[dict[str, Any]]) -> tuple[list[dict], list[
             ok = _tool_done_ok(ev)
             if ok is False:
                 counts["tool_fail_count"] += 1
-            timeline.append(
+            _append_timeline(
                 {
                     "type": typ,
                     "tool": ev.get("name") or ev.get("tool_name"),
@@ -536,7 +568,9 @@ def summarize_ws_events(events: list[dict[str, Any]]) -> tuple[list[dict], list[
             continue
         if typ == "agent.subagent_start":
             counts["subagent_start_count"] += 1
-            timeline.append({"type": typ, "agent_id": ev.get("agent_id")})
+            _append_timeline({"type": typ, "agent_id": ev.get("agent_id")})
+
+    _flush_pending_llm_delta(timeline, pending_llm_delta)
 
     return compaction_events, timeline, counts
 

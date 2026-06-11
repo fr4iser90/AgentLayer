@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from apps.backend.domain.plugin_system.tool_routing import TOOL_INTROSPECTION
 from tests.benchmarks.agent.cases import SCENARIO_BY_ID, AgentScenario
 from tests.benchmarks.agent.fixtures import FIXTURE_REQUIRES, OPTIONAL_FIXTURES, collect_fixture_ids
 from tests.benchmarks.agent.harness import load_manifest, repo_root
@@ -45,9 +46,9 @@ _SUITE_DESCRIPTIONS: dict[str, str] = {
 _SCENARIO_META: dict[str, dict[str, Any]] = {
     "S1_tool_catalog": {
         "title": "Tool catalog",
-        "summary": "Call catalog tool and list at least three tool names.",
-        "expected_tools": ["catalog", "platform.catalog"],
-        "rubric": "catalog invocation + non-empty reply",
+        "summary": "Call a tool-catalog introspection tool and list at least three tool names.",
+        "expected_tools": sorted(TOOL_INTROSPECTION),
+        "rubric": "introspection tool call + non-empty reply",
     },
     "S2_simple_chat": {
         "title": "Simple chat",

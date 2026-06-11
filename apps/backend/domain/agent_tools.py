@@ -766,14 +766,9 @@ def _normalize_tool_call_arguments(
     messages: list[dict[str, Any]],
     tool_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Repair aliased / empty tool JSON: unwrap nesting and recover JSON from assistant prose."""
-    out = _unwrap_tool_args_aliases(dict(args))
-    n = (name or "").strip()
-    if _args_effectively_empty(out):
-        inferred_msg = _infer_tool_args_from_message(n, assistant_msg)
-        if inferred_msg:
-            out = {**out, **inferred_msg}
-    return out
+    """Unwrap aliased tool JSON nesting only — wire arguments are never inferred from prose."""
+    _ = (name, assistant_msg, messages, tool_context)
+    return _unwrap_tool_args_aliases(dict(args))
 
 
 def _agent_tool_budget_system_message(max_rounds: int) -> str:

@@ -71,6 +71,7 @@
   "benchStart": "Benchmark starten",
   "benchStarting": "Startet…",
   "benchRunNote": "Ein Lauf gleichzeitig pro Tenant. Läuft als {{user}}.",
+  "benchPrefsPersistHint": "Auswahl wird in diesem Browser gespeichert (Suite, Provider, Modelle, Szenarien, Limits).",
   "benchAdvancedOptions": "Lauf-Limits (optional)",
   "benchScenarioTimeout": "Szenario-Timeout (Sekunden)",
   "benchScenarioTimeoutPlaceholder": "leer = kein Limit",

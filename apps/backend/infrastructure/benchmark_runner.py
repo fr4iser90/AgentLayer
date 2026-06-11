@@ -34,6 +34,25 @@ def request_benchmark_cancel(run_id: uuid.UUID) -> bool:
     return True
 
 
+def cancel_all_active_benchmark_runs() -> int:
+    """Signal cancel for every queued/running run (process shutdown)."""
+    count = 0
+    try:
+        for run_id in benchmark_runs_store.list_active_run_ids():
+            _cancel_flags.setdefault(run_id, threading.Event()).set()
+            count += 1
+    except Exception:
+        logger.warning("benchmark cancel-all: db lookup failed", exc_info=True)
+    for run_id in list(_cancel_flags):
+        if _cancel_flags[run_id].is_set():
+            continue
+        row = benchmark_runs_store.get_run(run_id)
+        if row and str(row.get("status") or "") in ("queued", "running"):
+            _cancel_flags[run_id].set()
+            count += 1
+    return count
+
+
 def _cancel_check_for(run_id: uuid.UUID) -> Callable[[], bool]:
     return _cancel_flags.setdefault(run_id, threading.Event()).is_set
 

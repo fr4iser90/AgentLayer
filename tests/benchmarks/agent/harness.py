@@ -51,6 +51,54 @@ class BenchmarkRunCancelled(Exception):
     """Admin cancelled a benchmark run (queued, between scenarios, or in-flight chat)."""
 
 
+def _is_benchmark_server_unavailable(exc: BaseException) -> bool:
+    """True when the local API is gone (docker stop, crash, connection refused)."""
+    if isinstance(exc, (ConnectionRefusedError, ConnectionResetError, BrokenPipeError)):
+        return True
+    if isinstance(exc, OSError) and getattr(exc, "errno", None) in (111, 104, 103):
+        return True
+    msg = str(exc).lower()
+    if any(
+        needle in msg
+        for needle in (
+            "connection refused",
+            "connect call failed",
+            "service restart",
+            "connection reset",
+            "broken pipe",
+        )
+    ):
+        return True
+    if "1012" in msg and "restart" in msg:
+        return True
+    origin = getattr(exc, "__cause__", None) or getattr(exc, "__context__", None)
+    if origin is not None and origin is not exc and _is_benchmark_server_unavailable(origin):
+        return True
+    return False
+
+
+def _raise_if_benchmark_server_unavailable(exc: BaseException) -> None:
+    if _is_benchmark_server_unavailable(exc):
+        raise BenchmarkRunCancelled("Benchmark stopped: server unavailable") from exc
+
+
+def _is_shutdown_transport_error(message: str | None) -> bool:
+    if not (message or "").strip():
+        return False
+    low = message.lower()
+    return any(
+        needle in low
+        for needle in (
+            "service restart",
+            "connection refused",
+            "connect call failed",
+            "connection reset",
+            "server unavailable",
+            "1012",
+        )
+    )
+
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
@@ -563,18 +611,22 @@ def _dashboard_state_for_rubric(
     fixture_ctx: FixtureContext,
 ) -> tuple[dict[str, Any] | None, str | None]:
     expected_title = bench_dashboard_title(scenario, fixture_ctx.prefix)
-    if scenario.rubric == "d1_dashboard_create":
-        title = expected_title or f"{fixture_ctx.prefix}create"
-        return find_dashboard_by_title(client, title), title
-    if expected_title:
-        return find_dashboard_by_title(client, expected_title), expected_title
+    try:
+        if scenario.rubric == "d1_dashboard_create":
+            title = expected_title or f"{fixture_ctx.prefix}create"
+            return find_dashboard_by_title(client, title), title
+        if expected_title:
+            return find_dashboard_by_title(client, expected_title), expected_title
+    except httpx.HTTPError as exc:
+        _raise_if_benchmark_server_unavailable(exc)
     return None, None
 
 
 def _find_workspace_for_rubric(client: E2EClient, ws_name: str) -> dict[str, Any] | None:
     try:
         return find_workspace_by_name(client, ws_name)
-    except httpx.HTTPError:
+    except httpx.HTTPError as exc:
+        _raise_if_benchmark_server_unavailable(exc)
         return None
 
 
@@ -756,6 +808,7 @@ def _create_chat_conversation(
         cid = conv.get("id")
         return str(cid) if cid else None
     except httpx.HTTPError as exc:
+        _raise_if_benchmark_server_unavailable(exc)
         logger.warning("benchmark conversation create failed for %s: %s", scenario.id, exc)
         return None
 
@@ -879,10 +932,15 @@ def run_scenario(
                 timeout_sec=scenario_timeout_sec,
             )
             if ws_err and not data:
+                if _is_shutdown_transport_error(ws_err):
+                    raise BenchmarkRunCancelled("Benchmark stopped: server unavailable")
                 error = ws_err
             elif ws_err:
                 error = ws_err
+        except BenchmarkRunCancelled:
+            raise
         except Exception as exc:
+            _raise_if_benchmark_server_unavailable(exc)
             logger.warning("benchmark ws capture failed, falling back to HTTP: %s", exc)
             use_ws = False
             ws_events = []
@@ -905,6 +963,7 @@ def run_scenario(
                 payload = resp.json()
                 data = payload if isinstance(payload, dict) else {}
         except httpx.HTTPError as exc:
+            _raise_if_benchmark_server_unavailable(exc)
             error = str(exc)
 
     latency_ms = (time.perf_counter() - t0) * 1000.0

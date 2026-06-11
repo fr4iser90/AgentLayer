@@ -61,7 +61,7 @@ Each scenario = fixed **prompt** + **rubric** (automated) + **timeout**.
 
 | ID | Task | Rubric |
 |----|------|--------|
-| `S1_tool_catalog` | List tools for general agent | ≥1 `catalog` tool call, non-empty reply |
+| `S1_tool_catalog` | List tools for general agent | ≥1 introspection tool call (`TOOL_INTROSPECTION`), non-empty reply |
 | `S2_simple_chat` | Fixed question, no tools | Reply &lt; 30s, no 5xx |
 | `S3_read_file` | Read `README.md` in workspace | `read_file` call, path in result |
 

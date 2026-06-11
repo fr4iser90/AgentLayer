@@ -7,15 +7,26 @@ from tests.benchmarks.agent.rubrics import evaluate_rubric
 _WS = {"id": "ws-1", "name": "bench-git"}
 
 
-def test_s1_passes_with_catalog_tool() -> None:
+def test_s1_passes_with_introspection_tool() -> None:
     out = evaluate_rubric(
         "s1_tool_catalog",
-        content="Tools: read_file, catalog, task",
-        tool_names=["catalog"],
+        content="Tools: echo_text, build, validate_browser_automation_plan",
+        tool_names=["list_available_tools"],
         error=None,
     )
     assert out.passed is True
     assert out.score == 1.0
+
+
+def test_s1_fails_without_introspection_tool() -> None:
+    out = evaluate_rubric(
+        "s1_tool_catalog",
+        content="Tools: echo_text, build, validate_browser_automation_plan",
+        tool_names=["read_file"],
+        error=None,
+    )
+    assert out.passed is False
+    assert "introspection" in (out.failure_reason or "").lower()
 
 
 def test_s2_passes_with_42() -> None:

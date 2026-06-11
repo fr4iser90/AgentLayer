@@ -874,7 +874,6 @@ async def chat_completion(
             ToolForwardContext,
             apply_schema_modes_to_specs,
             build_tool_forward_plan,
-            infer_model_tier,
         )
 
         turn_hooks = turn_hooks_for_agent(agent_id if isinstance(agent_id, str) else None)
@@ -883,16 +882,11 @@ async def chat_completion(
         _ctx_win = 0
         if _context_budget is not None:
             _ctx_win = int(_context_budget.context_window_tokens or 0)
-        _model_tier = infer_model_tier(
-            model_id=str(model or ""),
-            catalog_owned_by=catalog_owned_by if isinstance(catalog_owned_by, str) else None,
-        )
         _tf_plan = build_tool_forward_plan(
             ToolForwardContext(
                 agent_id=agent_id if isinstance(agent_id, str) else None,
                 model_id=str(model or ""),
                 context_window_tokens=_ctx_win,
-                model_tier=_model_tier,
                 user_text=ranking_user_text or "",
                 tool_specs=merged_tools,
                 ranking_enabled=tools_ranking_enabled,
@@ -903,7 +897,7 @@ async def chat_completion(
         tools_for_request = apply_schema_modes_to_specs(
             _tf_plan.forward_specs,
             _tf_plan.schema_mode_per_tool,
-            default_full_schema=tools_full_schema,
+            default_full_schema=False,
         )
         tools_pre_rank_count = tools_allowlist_count
         tools_rank_pool_count = int(_tf_plan.meta.get("rank_pool_count") or 0)
@@ -913,8 +907,8 @@ async def chat_completion(
         forward_names = list(_tf_plan.forward_names)
         if not config.AGENT_LOG_TOOL_PIPELINE and tools_for_request:
             logger.info(
-                "tool forward: tier=%s window=%d allowlist=%d forward=%d pins=%s",
-                _model_tier,
+                "tool forward: model=%s window=%d allowlist=%d forward=%d pins=%s",
+                model,
                 _ctx_win,
                 tools_allowlist_count,
                 len(forward_names),
@@ -1287,7 +1281,7 @@ async def chat_completion(
                         tools_for_round = apply_schema_modes_to_specs(
                             _tf_plan.forward_specs,
                             schema_modes,
-                            default_full_schema=False if use_catalog else tools_full_schema,
+                            default_full_schema=False,
                         )
                 if max_tool_rounds_eff >= 3 and round_i == max_tool_rounds_eff - 2:
                     messages.append(

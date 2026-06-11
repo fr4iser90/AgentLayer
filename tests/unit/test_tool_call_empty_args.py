@@ -29,7 +29,7 @@ def test_read_file_empty_rejected_by_schema_required():
     assert "path" in err["missing_or_empty"]
 
 
-def test_infer_args_from_assistant_prose():
+def test_infer_args_from_assistant_prose_not_applied():
     assistant = {
         "content": 'I will call bind({"workspace_id": "abc-123"}) now.',
     }
@@ -40,8 +40,9 @@ def test_infer_args_from_assistant_prose():
         [],
         None,
     )
-    assert out.get("workspace_id") == "abc-123"
-    assert validate_tool_call_arguments("bind", out) is None
+    assert out == {}
+    err = validate_tool_call_arguments("bind", out)
+    assert err is not None
 
 
 def test_validation_error_json_has_hint_and_parameters():

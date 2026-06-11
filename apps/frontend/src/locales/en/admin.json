@@ -71,6 +71,7 @@
   "benchStart": "Start benchmark",
   "benchStarting": "Starting…",
   "benchRunNote": "One run at a time per tenant. Runs as {{user}}.",
+  "benchPrefsPersistHint": "Selections are saved in this browser (suite, providers, models, scenarios, limits).",
   "benchAdvancedOptions": "Run limits (optional)",
   "benchScenarioTimeout": "Scenario timeout (seconds)",
   "benchScenarioTimeoutPlaceholder": "empty = no limit",

@@ -640,9 +640,68 @@ def _merge_tools(body_tools: list[Any] | None) -> list[Any]:
 
 
 _CATALOG_PARAM_HINT = (
-    "Parameters may be abbreviated in this catalog. If you already know the arguments, call the tool "
-    "directly. Only use get_tool_help(tool_name) once when you need the full JSON Schema for that tool."
+    "Catalog lists required parameter names and types only (not full schemas). "
+    "When `required` is non-empty, never call the tool with `{}` — populate those fields. "
+    "Use get_tool_help(tool_name) only when you need the complete JSON Schema."
 )
+
+
+def _minimal_property_stub(prop_schema: dict[str, Any]) -> dict[str, Any]:
+    """Type-only property entry for catalog mode (no TOOL_DESCRIPTION / long hints)."""
+    if not isinstance(prop_schema, dict):
+        return {"type": "string"}
+    stub: dict[str, Any] = {}
+    typ = prop_schema.get("type")
+    if isinstance(typ, str) and typ.strip():
+        stub["type"] = typ.strip()
+    elif isinstance(prop_schema.get("enum"), list):
+        stub["type"] = "string"
+    else:
+        stub["type"] = "string"
+    enum = prop_schema.get("enum")
+    if isinstance(enum, list) and enum:
+        stub["enum"] = enum
+    return stub
+
+
+def _minimal_catalog_parameters(fn: dict[str, Any]) -> dict[str, Any]:
+    """Required keys + type stubs — compact, but enough for models to avoid empty ``{}`` wire calls."""
+    cand = fn.get("parameters")
+    if not isinstance(cand, dict):
+        return {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": True,
+        }
+    props_src = cand.get("properties") if isinstance(cand.get("properties"), dict) else {}
+    required = [str(x).strip() for x in (cand.get("required") or []) if str(x).strip()]
+    keys: set[str] = set(required)
+    min_props = cand.get("minProperties")
+    if isinstance(min_props, int) and min_props > 0 and not keys:
+        keys = {str(k) for k in props_src.keys()}
+    any_of = cand.get("anyOf")
+    if isinstance(any_of, list):
+        for branch in any_of:
+            if not isinstance(branch, dict):
+                continue
+            for req in branch.get("required") or []:
+                key = str(req).strip()
+                if key:
+                    keys.add(key)
+    properties: dict[str, Any] = {}
+    for key in sorted(keys):
+        raw = props_src.get(key)
+        properties[key] = _minimal_property_stub(raw) if isinstance(raw, dict) else {"type": "string"}
+    out: dict[str, Any] = {
+        "type": "object",
+        "properties": properties,
+        "additionalProperties": True,
+    }
+    if required:
+        out["required"] = required
+    if isinstance(min_props, int) and min_props > 0:
+        out["minProperties"] = min_props
+    return out
 
 
 def _full_schema_tool_function(name: str, fn: dict[str, Any]) -> dict[str, Any]:
@@ -706,25 +765,8 @@ def _catalog_tool_function(name: str, fn: dict[str, Any]) -> dict[str, Any]:
                 "properties": {},
                 "additionalProperties": True,
             }
-    elif fn.get("chat_full_parameters"):
-        desc = (fn.get("TOOL_DESCRIPTION") or fn.get("description") or "").strip()
-        cand = fn.get("parameters")
-        if isinstance(cand, dict) and cand.get("properties"):
-            params = copy.deepcopy(cand)
-            if "type" not in params:
-                params["type"] = "object"
-        else:
-            params = {
-                "type": "object",
-                "properties": {},
-                "additionalProperties": True,
-            }
     else:
-        params = {
-            "type": "object",
-            "properties": {},
-            "additionalProperties": True,
-        }
+        params = _minimal_catalog_parameters(fn)
     return {
         "type": "function",
         "function": {
@@ -743,8 +785,7 @@ def _tools_for_chat_request(
     """
     Build tools[] for the LLM request.
 
-    Default (**full_schema** from ``AGENT_TOOLS_FULL_SCHEMA``, usually **true**): registry JSON Schema per tool.
-    **full_schema=False**: compact catalog (name + hint; empty ``parameters``) — legacy/token-saving mode.
+    Default: **catalog** (required field stubs). **full_schema=True** only for reactive promotion paths.
     """
     builder = _full_schema_tool_function if full_schema else _catalog_tool_function
     out: list[Any] = []

@@ -230,6 +230,62 @@ def test_run_benchmark_continues_after_scenario_crash(
     assert "401" in (report.results[0].error or "")
 
 
+def test_run_benchmark_stops_on_server_unavailable(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    manifest = tmp_path / "mini.yaml"
+    manifest.write_text(
+        "version: 1\ntier_max: 1\n"
+        "profiles:\n  - label: dummy\n    catalog_owned_by: provider_0\n    model: x\n"
+        "scenarios:\n  - S2_simple_chat\n  - S1_tool_catalog\n",
+        encoding="utf-8",
+    )
+    profiles = [ModelProfile(label="p1", catalog_owned_by="provider_1", model="m1")]
+    calls: list[str] = []
+
+    def fake_run_scenario(
+        _client: _FakeE2EClient,
+        *,
+        profile: ModelProfile,
+        scenario: AgentScenario,
+        run_id: str,
+        fixture_ctx: Any,
+        defaults: dict[str, Any],
+        on_live: Any = None,
+        **_kwargs: Any,
+    ) -> ScenarioResult:
+        calls.append(scenario.id)
+        raise harness.BenchmarkRunCancelled("Benchmark stopped: server unavailable")
+
+    def fake_resolve(**_kwargs: Any) -> tuple[_FakeE2EClient, _FakeE2EClient]:
+        client = _FakeE2EClient(token="tok")
+        return client, client
+
+    monkeypatch.setattr(harness, "resolve_bench_clients", fake_resolve)
+    monkeypatch.setattr(harness, "require_server", lambda: None)
+    monkeypatch.setattr(harness, "apply_fixtures", lambda *a, **k: None)
+    monkeypatch.setattr(harness, "run_scenario", fake_run_scenario)
+    monkeypatch.setattr(harness, "_git_sha", lambda: None)
+
+    with pytest.raises(harness.BenchmarkRunCancelled):
+        run_benchmark(
+            manifest_path=manifest,
+            profiles_override=profiles,
+            profiles_source_override="test",
+        )
+
+    assert calls == ["S2_simple_chat"]
+
+
+def test_is_benchmark_server_unavailable() -> None:
+    err = httpx.ConnectError(
+        "[Errno 111] Connection refused",
+        request=httpx.Request("GET", "http://127.0.0.1:8080/"),
+    )
+    assert harness._is_benchmark_server_unavailable(err) is True
+    assert harness._is_shutdown_transport_error("received 1012 (service restart)") is True
+
+
 def test_scenario_crash_result_shape() -> None:
     profile = ModelProfile(label="x", catalog_owned_by="provider_1", model="m")
     scenario = harness.SCENARIO_BY_ID["S2_simple_chat"]

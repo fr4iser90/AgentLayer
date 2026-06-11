@@ -288,6 +288,18 @@ async def lifespan(_app: FastAPI):
     emit_initial_setup_notice_at_end()
     yield
     try:
+        from apps.backend.infrastructure.benchmark_runner import cancel_all_active_benchmark_runs
+
+        n_cancelled = cancel_all_active_benchmark_runs()
+        if n_cancelled:
+            logger.info(
+                "Signalled cancel for %s active benchmark run(s) before shutdown",
+                n_cancelled,
+            )
+            await asyncio.sleep(0.5)
+    except Exception:
+        logger.debug("benchmark shutdown cancel skipped", exc_info=True)
+    try:
         discord_bridge.stop_background()
     except Exception:
         pass

@@ -144,6 +144,27 @@ def reconcile_orphaned_runs_on_startup() -> int:
     return count
 
 
+def list_active_run_ids() -> list[uuid.UUID]:
+    """Queued or running benchmark runs (any tenant)."""
+    with db.pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                """
+                SELECT id FROM benchmark_runs
+                WHERE status IN ('queued', 'running')
+                ORDER BY created_at ASC
+                """
+            )
+            rows = cur.fetchall()
+        conn.commit()
+    out: list[uuid.UUID] = []
+    for row in rows:
+        rid = row.get("id") if isinstance(row, dict) else row[0]
+        if rid is not None:
+            out.append(rid if isinstance(rid, uuid.UUID) else uuid.UUID(str(rid)))
+    return out
+
+
 def any_running(*, tenant_id: int) -> bool:
     with db.pool().connection() as conn:
         with conn.cursor() as cur:

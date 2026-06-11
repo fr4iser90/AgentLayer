@@ -60,8 +60,11 @@ def test_extract_tool_rounds_pairs_start_done_and_insights() -> None:
     assert rounds[2]["rejected"] is True
     diag = bench_ws_diagnostics(events, error="scenario timeout after 180s")
     assert diag["tool_rounds"][0]["name"] == "create_dashboard"
-    assert any("create_dashboard" in line for line in diag["insights"])
+    assert any("rejected" in line for line in diag["insights"])
     assert any("timeout" in line.lower() for line in diag["insights"])
+    assert not any(
+        "create_dashboard" in line and "empty or rejected" in line for line in diag["insights"]
+    )
 
 
 def test_live_snapshot_from_ws_events() -> None:
@@ -98,6 +101,32 @@ def test_summarize_compaction_events() -> None:
     assert compactions[0]["phase"] == "loop"
     assert counts["tool_fail_count"] == 1
     assert counts["llm_round_count"] == 1
+
+
+def test_summarize_collapses_llm_delta_chunks() -> None:
+    events = [
+        {"type": "agent.llm_round_start", "round": 1},
+        {"type": "agent.llm_delta", "round": 1, "channel": "reasoning", "reasoning_delta": "a"},
+        {"type": "agent.llm_delta", "round": 1, "channel": "reasoning", "reasoning_delta": "bc"},
+        {"type": "agent.llm_delta", "round": 1, "delta": "Hi"},
+        {"type": "agent.llm_delta", "round": 1, "delta": " there"},
+        {"type": "agent.llm_round", "round": 1},
+    ]
+    _, timeline, _ = summarize_ws_events(events)
+    delta_rows = [row for row in timeline if row.get("type") == "agent.llm_delta"]
+    assert len(delta_rows) == 2
+    reasoning = next(row for row in delta_rows if row.get("channel") == "reasoning")
+    text = next(row for row in delta_rows if row.get("channel") == "text")
+    assert reasoning["delta_chars"] == 3
+    assert reasoning["delta_events"] == 2
+    assert text["delta_chars"] == 8
+    assert text["delta_events"] == 2
+    assert [row.get("type") for row in timeline] == [
+        "agent.llm_round_start",
+        "agent.llm_delta",
+        "agent.llm_delta",
+        "agent.llm_round",
+    ]
 
 
 def test_build_run_metrics_merges_context_and_trace() -> None:

@@ -11,13 +11,14 @@ def test_catalog_after_first_round_config_default_true():
     assert config.AGENT_TOOLS_CATALOG_AFTER_FIRST_ROUND is True
 
 
-def test_apply_schema_modes_all_catalog_uses_empty_properties():
+def test_apply_schema_modes_catalog_uses_required_stubs_not_full_schema():
     spec = _registry_tool_spec_by_registered_name("write_file")
     assert spec is not None
     fn = spec["function"]
     full = _full_schema_tool_function("write_file", fn)
     full_props = full["function"]["parameters"].get("properties") or {}
     assert "path" in full_props
+    assert "TOOL_DESCRIPTION" in full_props["path"] or "description" in full_props["path"]
 
     catalog_modes = {"write_file": "catalog"}
     rebuilt = apply_schema_modes_to_specs(
@@ -25,9 +26,11 @@ def test_apply_schema_modes_all_catalog_uses_empty_properties():
         catalog_modes,
         default_full_schema=False,
     )
-    cat_props = rebuilt[0]["function"]["parameters"].get("properties") or {}
-    assert cat_props == {}
-    assert "path" not in cat_props
+    cat_params = rebuilt[0]["function"]["parameters"]
+    cat_props = cat_params.get("properties") or {}
+    assert set(cat_props.keys()) == {"path", "content"}
+    assert cat_props["path"] == {"type": "string"}
+    assert "path" in cat_params.get("required", [])
 
 
 def test_catalog_rebuild_preserves_forward_specs_reference_names():

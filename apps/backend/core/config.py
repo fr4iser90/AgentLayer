@@ -230,8 +230,8 @@ AGENT_TOOLS_DENYLIST = frozenset(
     if x.strip()
 )
 # Tool Ranking (Semantic Search based)
-# Chat tools[]: send full JSON Schema per tool (default on). Set false for compact catalog (empty parameters).
-AGENT_TOOLS_FULL_SCHEMA = _env_bool("AGENT_TOOLS_FULL_SCHEMA", True)
+# Chat tools[]: catalog mode (required field stubs). Full JSON Schema only after reactive promotion.
+AGENT_TOOLS_FULL_SCHEMA = _env_bool("AGENT_TOOLS_FULL_SCHEMA", False)
 # Tool loop round 2+: re-send tool names in catalog mode (no full JSON Schema) to save prompt tokens.
 AGENT_TOOLS_CATALOG_AFTER_FIRST_ROUND = _env_bool("AGENT_TOOLS_CATALOG_AFTER_FIRST_ROUND", True)
 
