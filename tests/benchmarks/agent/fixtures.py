@@ -94,14 +94,16 @@ def fetch_git_changes(
     client: E2EClient,
     workspace_id: str,
     *,
-    path: str | None = None,
+    file_path: str | None = None,
 ) -> dict[str, Any]:
-    if path:
-        return client.get_json(
-            f"/v1/workspaces/{workspace_id}/git/changes",
-            path=path,
-        )
-    return client.get_json(f"/v1/workspaces/{workspace_id}/git/changes")
+    url = f"/v1/workspaces/{workspace_id}/git/changes"
+    if file_path:
+        resp = client.http.get(url, params={"path": file_path})
+        resp.raise_for_status()
+        data = resp.json()
+        assert isinstance(data, dict)
+        return data
+    return client.get_json(url)
 
 
 def _env_truthy(name: str) -> bool:

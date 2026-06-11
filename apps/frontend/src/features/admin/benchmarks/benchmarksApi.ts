@@ -109,6 +109,12 @@ export type BenchmarkRunReadiness = {
     gmail?: boolean;
     ssc_api_key?: boolean;
   };
+  workspace_quota?: number;
+  workspace_count?: number;
+  bench_workspace_count?: number;
+  non_bench_workspace_count?: number;
+  workspace_headroom?: number;
+  has_workspace_headroom?: boolean;
 };
 
 export type BenchmarkRunSummary = {
@@ -188,6 +194,19 @@ export type BenchmarkScenarioResult = {
         ok?: boolean | null;
         error?: string;
         result_chars?: number;
+        wire_arguments?: string;
+        normalized_arguments?: Record<string, unknown>;
+        validation?: {
+          missing_or_empty?: string[];
+          schema_required?: string[];
+          any_of_required?: string[];
+          received_arguments?: Record<string, unknown>;
+        };
+        promoted_full_schema?: boolean;
+      }>;
+      schema_rounds?: Array<{
+        round?: number;
+        full_schema_tools?: string[];
       }>;
       agent_run_id_ws?: string;
       insights?: string[];

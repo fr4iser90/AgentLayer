@@ -506,13 +506,34 @@ def _http_error_recovery_hint(tool_name: str, result: str) -> str | None:
     )
 
 
+def _tool_error_suggests_incomplete_arguments(error: str | None) -> bool:
+    """Generic: tool runtime/validation message implies more JSON fields were expected."""
+    err = (error or "").strip().lower()
+    if not err:
+        return False
+    markers = (
+        " is required",
+        "required for",
+        "pass ",
+        "missing ",
+        "must be ",
+        "provide ",
+        "omit if unambiguous",
+    )
+    return any(m in err for m in markers)
+
+
 def _tool_parameter_recovery_hint(tool_name: str, result: str) -> str | None:
     """Short system nudge when models emit tool_calls without required JSON fields (common on some GGUF builds)."""
+    if tool_name in PLANNER_NO_EXTRA_HINTS_AFTER_TOOL:
+        return None
     if not result or len(result) > 4000:
         return None
     try:
         obj = json.loads(result)
-        if isinstance(obj, dict) and obj.get("error") == "tool_call_arguments_invalid":
+        if not isinstance(obj, dict):
+            return None
+        if obj.get("error") == "tool_call_arguments_invalid":
             hint = str(obj.get("hint") or "").strip()
             if obj.get("parameters"):
                 schema_note = (
@@ -522,6 +543,14 @@ def _tool_parameter_recovery_hint(tool_name: str, result: str) -> str | None:
                 return f"{hint}\n\n{schema_note}"[:2500] if hint else schema_note[:2500]
             if hint:
                 return hint[:2500]
+        if obj.get("ok") is False:
+            err = str(obj.get("error") or "").strip()
+            if _tool_error_suggests_incomplete_arguments(err):
+                return (
+                    f"Tool `{tool_name}` failed: {err}\n\n"
+                    "Put **all** fields the error implies into the next native `tool_calls[].function.arguments` "
+                    f"JSON object (not prose). Full schema for `{tool_name}` may appear in tools[] next round."
+                )[:2500]
     except json.JSONDecodeError:
         pass
     return None
@@ -605,18 +634,19 @@ def _infer_tool_args_from_message(tool_name: str, assistant_msg: dict[str, Any])
 
 
 def _lookup_tool_parameter_schema(tool_name: str) -> dict[str, Any] | None:
+    """Exact registered tool name only — no fuzzy suffix match (``create`` ≠ ``workspace.create``)."""
     n = (tool_name or "").strip()
     if not n:
         return None
     try:
-        for spec in get_registry().chat_tool_specs:
-            fn = spec.get("function") if isinstance(spec, dict) else None
-            if not isinstance(fn, dict):
-                continue
-            reg_name = str(fn.get("name") or "").strip()
-            if _tool_schema_names_match(n, reg_name):
-                params = fn.get("parameters")
-                return dict(params) if isinstance(params, dict) else {}
+        spec = _registry_tool_spec_by_registered_name(n)
+        if not spec:
+            return None
+        fn = spec.get("function")
+        if not isinstance(fn, dict):
+            return {}
+        params = fn.get("parameters")
+        return dict(params) if isinstance(params, dict) else {}
     except Exception:
         logger.debug("tool schema lookup failed for %r", n, exc_info=True)
     return None
@@ -748,15 +778,19 @@ def tool_call_warrants_full_schema_promotion(
     wire_args: dict[str, Any],
     normalized_args: dict[str, Any],
     result_ok: bool | None,
+    result_error: str | None = None,
 ) -> bool:
-    """Promote a tool to full schema on the next LLM round after empty/failed wire calls only."""
+    """Promote a tool to full schema on the next LLM round (reject, empty wire, or incomplete-args failure)."""
+    _ = normalized_args
     if rejected:
         return True
-    if not _args_effectively_empty(wire_args):
-        return False
     if result_ok is True:
         return False
-    return True
+    if result_ok is False and _tool_error_suggests_incomplete_arguments(result_error):
+        return True
+    if _args_effectively_empty(wire_args):
+        return True
+    return False
 
 
 def _normalize_tool_call_arguments(

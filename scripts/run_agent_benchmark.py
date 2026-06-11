@@ -84,7 +84,14 @@ def main() -> int:
     out_root = Path(args.json_out) if args.json_out else repo_root() / "benchmarks" / "results"
     run_dir = write_report(report, out_root)
     print(f"\nWrote results to {run_dir}")
-    print(f"Cleanup: python scripts/bench_cleanup.py --prefix {report.resource_prefix}")
+    if report.bench_cleanup_finish and not report.bench_cleanup_finish.get("error"):
+        fc = report.bench_cleanup_finish
+        print(
+            f"Post-run cleanup ({report.resource_prefix}): "
+            f"workspaces={fc.get('workspaces', 0)} dashboards={fc.get('dashboards', 0)}"
+        )
+    else:
+        print(f"Cleanup: python scripts/bench_cleanup.py --prefix {report.resource_prefix}")
 
     failures = [r for r in report.results if not r.skipped and not r.passed]
     if failures:

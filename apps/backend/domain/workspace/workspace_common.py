@@ -62,6 +62,41 @@ def normalize_git_url(raw: str) -> str | None:
     return None
 
 
+def git_url_equivalence_key(url: str) -> str:
+    """Canonical key for matching git remotes (https/http, with or without ``.git``)."""
+    s = (url or "").strip().rstrip("/").lower()
+    if s.endswith(".git"):
+        s = s[:-4]
+    return s
+
+
+def find_owned_git_workspace(user, *, git_url: str) -> dict[str, Any] | None:
+    """
+    Existing git workspace for this owner and remote URL, or None.
+
+    Never matches another user's row — query is scoped to ``owner_user_id``.
+    """
+    target = git_url_equivalence_key(git_url)
+    if not target or user is None or getattr(user, "id", None) is None:
+        return None
+    with db.pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT " + WORKSPACE_SELECT_SQL + """
+                FROM project_workspaces
+                WHERE owner_user_id = %s AND source = 'git' AND git_url IS NOT NULL
+                ORDER BY updated_at DESC
+                """,
+                (user.id,),
+            )
+            rows = cur.fetchall()
+    for row in rows:
+        ws = workspace_row_to_api(row)
+        if git_url_equivalence_key(str(ws.get("git_url") or "")) == target:
+            return ws
+    return None
+
+
 def list_workspaces_for_user(user) -> list[dict[str, Any]]:
     from apps.backend.infrastructure.workspace_service import ensure_workspace
 

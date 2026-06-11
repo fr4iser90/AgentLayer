@@ -26,6 +26,7 @@ import {
   type BenchmarkScenarioResult,
   type BenchmarkSuite,
 } from "../../features/admin/benchmarks/benchmarksApi";
+import { CopyScenarioDetailsButton } from "../../features/admin/benchmarks/CopyScenarioDetailsButton";
 import {
   downloadFailuresCsv,
   downloadFailuresJson,
@@ -359,6 +360,7 @@ function BenchmarkScenarioDetail({
     contextWindow === 0 && (res.tool_call_count ?? 0) === 0 && !res.skipped;
   const benchDiag = res.run_metrics?.bench_diagnostics;
   const toolRounds = benchDiag?.tool_rounds ?? [];
+  const schemaRounds = benchDiag?.schema_rounds ?? [];
   const wsToolSummary = toolRounds.length > 0 ? summarizeToolRounds(toolRounds) : "";
   const toolsDisplay =
     (res.tool_names?.length ?? 0) > 0
@@ -372,6 +374,10 @@ function BenchmarkScenarioDetail({
 
   return (
     <div className="space-y-3 rounded-lg border border-white/10 bg-black/20 p-3 text-xs">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="font-mono text-[11px] text-white/70">{res.scenario_id}</span>
+        <CopyScenarioDetailsButton res={res} />
+      </div>
       {noToolsForwarded ? (
         <p className="text-amber-400/90">{t("admin:benchDetailNoToolsForwarded")}</p>
       ) : null}
@@ -523,13 +529,16 @@ function BenchmarkScenarioDetail({
       {toolRounds.length > 0 ? (
         <div>
           <div className="mb-1 font-medium text-surface-muted">{t("admin:benchDetailToolRounds")}</div>
-          <div className="max-h-48 overflow-auto rounded bg-black/30">
+          <div className="max-h-56 overflow-auto rounded bg-black/30">
             <table className="w-full font-mono text-[10px] text-white/85">
               <thead className="sticky top-0 bg-black/60 text-surface-muted">
                 <tr>
                   <th className="px-2 py-1 text-left">{t("admin:benchDetailToolRoundCol")}</th>
                   <th className="px-2 py-1 text-left">{t("admin:benchDetailToolNameCol")}</th>
                   <th className="px-2 py-1 text-left">{t("admin:benchDetailToolArgsCol")}</th>
+                  <th className="px-2 py-1 text-left">{t("admin:benchDetailToolWireCol")}</th>
+                  <th className="px-2 py-1 text-left">{t("admin:benchDetailToolMissingCol")}</th>
+                  <th className="px-2 py-1 text-left">{t("admin:benchDetailToolPromotedCol")}</th>
                   <th className="px-2 py-1 text-left">{t("admin:benchDetailToolResultCol")}</th>
                 </tr>
               </thead>
@@ -537,6 +546,18 @@ function BenchmarkScenarioDetail({
                 {toolRounds.map((row, i) => {
                   const args = String(row.summary || "").trim() || t("admin:benchDetailNone");
                   const rejected = row.rejected === true;
+                  const wire =
+                    row.wire_arguments != null && String(row.wire_arguments).trim()
+                      ? String(row.wire_arguments).trim()
+                      : t("admin:benchDetailNone");
+                  const missing =
+                    row.validation?.missing_or_empty?.length
+                      ? row.validation.missing_or_empty.join(", ")
+                      : row.validation?.schema_required?.length
+                        ? `req: ${row.validation.schema_required.join(", ")}`
+                        : t("admin:benchDetailNone");
+                  const promoted =
+                    row.promoted_full_schema === true ? "yes" : "—";
                   let result = t("admin:benchDetailNone");
                   if (rejected) result = t("admin:benchDetailToolRejected");
                   else if (row.ok === false) result = String(row.error || t("admin:benchDetailToolFailed"));
@@ -545,10 +566,17 @@ function BenchmarkScenarioDetail({
                     <tr key={i} className="border-t border-white/5">
                       <td className="px-2 py-1">{row.round ?? "—"}</td>
                       <td className="px-2 py-1">{row.name || "—"}</td>
-                      <td className="max-w-[12rem] truncate px-2 py-1" title={args}>
+                      <td className="max-w-[10rem] truncate px-2 py-1" title={args}>
                         {args}
                       </td>
-                      <td className="max-w-[14rem] truncate px-2 py-1 text-amber-200/90" title={result}>
+                      <td className="max-w-[10rem] truncate px-2 py-1 text-amber-100/80" title={wire}>
+                        {wire}
+                      </td>
+                      <td className="max-w-[10rem] truncate px-2 py-1 text-red-200/90" title={missing}>
+                        {missing}
+                      </td>
+                      <td className="px-2 py-1">{promoted}</td>
+                      <td className="max-w-[10rem] truncate px-2 py-1 text-amber-200/90" title={result}>
                         {result}
                       </td>
                     </tr>
@@ -557,6 +585,19 @@ function BenchmarkScenarioDetail({
               </tbody>
             </table>
           </div>
+        </div>
+      ) : null}
+      {schemaRounds.length > 0 ? (
+        <div>
+          <div className="mb-1 font-medium text-surface-muted">{t("admin:benchDetailSchemaRounds")}</div>
+          <pre className="max-h-24 overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 font-mono text-[10px] text-white/80">
+            {schemaRounds
+              .map((sr) => {
+                const tools = (sr.full_schema_tools ?? []).join(", ");
+                return `round ${sr.round ?? "?"}: ${tools || "—"}`;
+              })
+              .join("\n")}
+          </pre>
         </div>
       ) : null}
       {traceInvocations.length > 0 ? (
@@ -1288,6 +1329,26 @@ export function AdminBenchmarks() {
                   {!readiness.secrets_enabled ? (
                     <li className="text-amber-400/90">{t("admin:benchSecretsDisabled")}</li>
                   ) : null}
+                  {typeof readiness.workspace_count === "number" &&
+                  typeof readiness.workspace_quota === "number" ? (
+                    <li
+                      className={
+                        readiness.has_workspace_headroom
+                          ? "text-emerald-300/90"
+                          : "text-amber-400/90"
+                      }
+                    >
+                      {t("admin:benchWorkspaceQuota", {
+                        count: readiness.workspace_count,
+                        quota: readiness.workspace_quota,
+                        bench: readiness.bench_workspace_count ?? 0,
+                        headroom: readiness.workspace_headroom ?? 0,
+                      })}
+                    </li>
+                  ) : null}
+                  {readiness.has_workspace_headroom === false ? (
+                    <li className="text-amber-400/90">{t("admin:benchWorkspaceQuotaFull")}</li>
+                  ) : null}
                 </ul>
               ) : (
                 <p className="mt-2 text-xs text-surface-muted">{t("admin:benchReadinessUnavailable")}</p>
@@ -1855,23 +1916,26 @@ export function AdminBenchmarks() {
                         <Fragment key={rowKey}>
                           <tr className="border-t border-white/5">
                             <td className="py-1.5 pr-1 align-top">
-                              {canExpand ? (
-                                <button
-                                  type="button"
-                                  className="rounded px-1 text-surface-muted hover:bg-white/5 hover:text-white"
-                                  aria-expanded={expanded}
-                                  title={
-                                    expanded
-                                      ? t("admin:benchDetailCollapse")
-                                      : t("admin:benchDetailExpand")
-                                  }
-                                  onClick={() =>
-                                    setExpandedResultKey(expanded ? null : rowKey)
-                                  }
-                                >
-                                  {expanded ? "▾" : "▸"}
-                                </button>
-                              ) : null}
+                              <div className="flex flex-col items-start gap-0.5">
+                                {canExpand ? (
+                                  <button
+                                    type="button"
+                                    className="rounded px-1 text-surface-muted hover:bg-white/5 hover:text-white"
+                                    aria-expanded={expanded}
+                                    title={
+                                      expanded
+                                        ? t("admin:benchDetailCollapse")
+                                        : t("admin:benchDetailExpand")
+                                    }
+                                    onClick={() =>
+                                      setExpandedResultKey(expanded ? null : rowKey)
+                                    }
+                                  >
+                                    {expanded ? "▾" : "▸"}
+                                  </button>
+                                ) : null}
+                                <CopyScenarioDetailsButton res={res} compact />
+                              </div>
                             </td>
                             <td className="py-1.5 pr-2 font-mono">{res.scenario_id}</td>
                             <td className="py-1.5 pr-2 font-mono text-[11px]">

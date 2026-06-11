@@ -77,7 +77,7 @@ def create(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> 
     if not name:
         return dump({"ok": False, "error": "name is required"})
 
-    source = str(arguments.get("source") or "git").strip().lower()
+    source = str(arguments.get("source") or "manual").strip().lower()
     if source not in ("manual", "git"):
         return dump({"ok": False, "error": "source must be manual or git"})
 
@@ -110,6 +110,42 @@ def create(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> 
         create_project_workspace_for_user,
         ensure_workspace,
     )
+
+    existing = find_workspace_by_name(list_workspaces_for_user(user), name)
+    if existing and str(existing.get("id") or "").strip():
+        wid = str(existing["id"])
+        materialized = ensure_workspace(wid, user)
+        if not materialized:
+            return dump(
+                {
+                    "ok": False,
+                    "error": "workspace exists but could not be loaded",
+                    "workspace": existing,
+                }
+            )
+        bound = False
+        conversation_updated = False
+        if bind_after:
+            bind_workspace_in_context(context, materialized)
+            bound = True
+            if user.id:
+                conversation_updated = persist_conversation_workspace(context, wid, user.id)
+        return dump(
+            {
+                "ok": True,
+                "reused": True,
+                "workspace": {
+                    "id": materialized.get("id"),
+                    "name": materialized.get("name"),
+                    "source": materialized.get("source"),
+                    "git_url": materialized.get("git_url"),
+                    "git_branch": materialized.get("git_branch"),
+                    "path": materialized.get("path"),
+                },
+                "bound": bound,
+                "conversation_workspace_updated": conversation_updated,
+            }
+        )
 
     try:
         created = create_project_workspace_for_user(

@@ -73,3 +73,33 @@ def test_tool_call_warrants_full_schema_promotion():
         normalized_args={"name": "bench"},
         result_ok=True,
     )
+    assert tool_call_warrants_full_schema_promotion(
+        rejected=False,
+        wire_args={"name": "bench-git"},
+        normalized_args={"name": "bench-git"},
+        result_ok=False,
+        result_error="git_url is required for source=git",
+    )
+    assert not tool_call_warrants_full_schema_promotion(
+        rejected=False,
+        wire_args={"kind": "custom", "title": "x"},
+        normalized_args={"kind": "custom", "title": "x"},
+        result_ok=False,
+        result_error="Multiple custom dashboards exist",
+    )
+
+
+def test_lookup_schema_exact_name_not_fuzzy_suffix():
+    from apps.backend.domain.agent_tools import _lookup_tool_parameter_schema
+
+    ws = _lookup_tool_parameter_schema("workspace.create")
+    bare = _lookup_tool_parameter_schema("create")
+    assert ws is not None and bare is not None
+    assert set(ws.get("required") or []) == {"name"}
+    assert "instructions" in set((bare.get("properties") or {}).keys())
+    err_ws = validate_tool_call_arguments("workspace.create", {})
+    err_bare = validate_tool_call_arguments("create", {})
+    assert err_ws is not None and "name" in err_ws["missing_or_empty"]
+    assert err_bare is not None
+    assert "instructions" in err_bare["missing_or_empty"] or "execution_target" in err_bare["missing_or_empty"]
+    assert err_ws["parameters"] != err_bare["parameters"]

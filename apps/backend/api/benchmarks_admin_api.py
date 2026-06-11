@@ -65,6 +65,36 @@ def _assert_tenant_user(user_id: uuid.UUID, tenant_id: int) -> dict[str, Any]:
     }
 
 
+def _workspace_stats_for_user(user_id: uuid.UUID) -> dict[str, int | bool]:
+    with db.pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT COALESCE(u.workspace_quota, 10),
+                       COUNT(pw.id),
+                       COUNT(pw.id) FILTER (WHERE pw.name LIKE 'bench-%%')
+                FROM users u
+                LEFT JOIN project_workspaces pw ON pw.owner_user_id = u.id
+                WHERE u.id = %s
+                GROUP BY u.workspace_quota
+                """,
+                (user_id,),
+            )
+            row = cur.fetchone()
+    quota = int(row[0]) if row else 10
+    total = int(row[1] or 0) if row else 0
+    bench = int(row[2] or 0) if row else 0
+    headroom = max(0, quota - total)
+    return {
+        "workspace_quota": quota,
+        "workspace_count": total,
+        "bench_workspace_count": bench,
+        "non_bench_workspace_count": max(0, total - bench),
+        "workspace_headroom": headroom,
+        "has_workspace_headroom": headroom > 0,
+    }
+
+
 def _readiness_for_user(user_id: uuid.UUID) -> dict[str, Any]:
     user = get_user_by_id(user_id)
     if not user:
@@ -79,6 +109,7 @@ def _readiness_for_user(user_id: uuid.UUID) -> dict[str, Any]:
         "role": user.role,
         "secrets_enabled": secrets_enabled,
         "secrets": {key: key in configured for key in _BENCH_READINESS_SECRETS},
+        **_workspace_stats_for_user(user_id),
     }
 
 

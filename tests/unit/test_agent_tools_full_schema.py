@@ -49,7 +49,7 @@ def test_full_schema_tool_includes_write_file_path_and_content():
     assert "content" in params.get("required", [])
 
 
-def test_tools_for_chat_request_full_schema_larger_than_catalog():
+def test_tools_for_chat_request_full_schema_richer_property_docs_than_catalog():
     spec = _registry_tool_spec_by_registered_name("bash")
     assert spec is not None
     catalog = _tools_for_chat_request([spec], full_schema=False)
@@ -59,7 +59,10 @@ def test_tools_for_chat_request_full_schema_larger_than_catalog():
     assert "command" in cat_params.get("properties", {})
     assert "command" in cat_params.get("required", [])
     assert "command" in full_props
-    assert len(json.dumps(full[0])) > len(json.dumps(catalog[0]))
+    cat_cmd = cat_params["properties"]["command"]
+    full_cmd = full_props["command"]
+    assert cat_cmd == {"type": "string"}
+    assert len(json.dumps(full_cmd)) > len(json.dumps(cat_cmd))
 
 
 def test_schedule_allowlist_includes_get_tool_help():
@@ -82,7 +85,7 @@ def test_catalog_save_user_secret_includes_required_parameters():
     assert "secret" in params.get("required", [])
 
 
-def test_catalog_workspace_create_lists_required_name_only():
+def test_catalog_workspace_create_lists_all_property_stubs_name_required():
     spec = _registry_tool_spec_by_registered_name("workspace.create")
     assert spec is not None
     fn = spec["function"]
@@ -90,7 +93,9 @@ def test_catalog_workspace_create_lists_required_name_only():
     params = out["function"]["parameters"]
     assert params.get("required") == ["name"]
     props = params.get("properties") or {}
-    assert set(props.keys()) == {"name"}
-    assert "git_url" not in props
+    assert set(props.keys()) == {"name", "source", "git_url", "git_branch", "bind"}
+    assert props["name"] == {"type": "string"}
+    assert props["source"] == {"type": "string", "enum": ["manual", "git"]}
     full = _full_schema_tool_function("workspace.create", fn)
-    assert "git_url" in full["function"]["parameters"].get("properties", {})
+    full_git = full["function"]["parameters"].get("properties", {}).get("git_url") or {}
+    assert "TOOL_DESCRIPTION" in full_git or "description" in full_git

@@ -17,6 +17,7 @@ from typing import Any, Callable
 import httpx
 import yaml
 
+from tests.benchmarks.agent.bench_cleanup import cleanup_prefix, prepare_bench_workspace_quota
 from tests.benchmarks.agent.bench_profiles import BenchModelProfile, parse_profiles_from_env, profile_labels_filter
 from tests.benchmarks.agent.bench_provider_registry import register_bench_llm_providers
 from tests.benchmarks.agent.cases import AgentScenario, SCENARIO_BY_ID, bench_dashboard_title, bench_workspace_name, scenarios_for_tier
@@ -343,6 +344,8 @@ class BenchRunReport:
     profiles_source: str = ""
     fixtures_applied: list[str] = field(default_factory=list)
     fixtures_skipped: dict[str, str] = field(default_factory=dict)
+    bench_cleanup: dict[str, Any] | None = None
+    bench_cleanup_finish: dict[str, int] | None = None
     results: list[ScenarioResult] = field(default_factory=list)
     in_flight: dict[str, Any] | None = None
 
@@ -359,6 +362,8 @@ class BenchRunReport:
             "profiles_source": self.profiles_source,
             "fixtures_applied": self.fixtures_applied,
             "fixtures_skipped": self.fixtures_skipped,
+            "bench_cleanup": self.bench_cleanup,
+            "bench_cleanup_finish": self.bench_cleanup_finish,
             "results": [r.to_dict() for r in self.results],
             "in_flight": self.in_flight,
         }
@@ -665,7 +670,7 @@ def _git_state_for_rubric(
         return None
     for path in ("README.md", "README", "readme.md"):
         try:
-            detail = fetch_git_changes(client, ws_id, path=path)
+            detail = fetch_git_changes(client, ws_id, file_path=path)
         except httpx.HTTPError:
             continue
         if isinstance(detail, dict) and (
@@ -677,7 +682,7 @@ def _git_state_for_rubric(
         first_path = str(files[0].get("path") or files[0].get("file") or "").strip()
         if first_path:
             try:
-                detail = fetch_git_changes(client, ws_id, path=first_path)
+                detail = fetch_git_changes(client, ws_id, file_path=first_path)
                 if isinstance(detail, dict):
                     return {**summary, "file_diff": detail}
             except httpx.HTTPError:
@@ -1198,6 +1203,23 @@ def run_benchmark(
         admin_user_id=admin_user_id,
     )
 
+    if _env_truthy(os.environ.get("AGENT_BENCH_CLEANUP_ON_START", "1")):
+        try:
+            cleanup = prepare_bench_workspace_quota(session.client)
+            logger.info("benchmark pre-run bench cleanup: %s", cleanup)
+            if not cleanup.get("has_workspace_headroom"):
+                logger.warning(
+                    "workspace quota full after bench-* cleanup "
+                    "(count=%s headroom=%s); W*/C* scenarios may fail on workspace.create",
+                    cleanup.get("after", {}).get("workspace_count"),
+                    cleanup.get("workspace_headroom"),
+                )
+        except httpx.HTTPError as exc:
+            cleanup = {"error": str(exc)}
+            logger.warning("benchmark pre-run bench cleanup failed: %s", exc)
+    else:
+        cleanup = None
+
     provider_registry = None
     if profiles_override is not None:
         profiles = list(profiles_override)
@@ -1236,6 +1258,7 @@ def run_benchmark(
         resource_prefix=prefix,
         profiles=list(profiles),
         profiles_source=profiles_source,
+        bench_cleanup=cleanup,
     )
 
     self_editing_prev: bool | None = None
@@ -1393,6 +1416,18 @@ def run_benchmark(
                 provider_registry.restore(session.admin_for_ops())
             except httpx.HTTPError:
                 pass
+        if _env_truthy(os.environ.get("AGENT_BENCH_CLEANUP_ON_FINISH", "1")):
+            try:
+                finish_stats = cleanup_prefix(session.client, prefix=prefix)
+                report.bench_cleanup_finish = finish_stats
+                logger.info(
+                    "benchmark post-run cleanup prefix=%s: %s",
+                    prefix,
+                    finish_stats,
+                )
+            except httpx.HTTPError as exc:
+                report.bench_cleanup_finish = {"error": str(exc)}
+                logger.warning("benchmark post-run cleanup failed: %s", exc)
         session.close()
 
     return report

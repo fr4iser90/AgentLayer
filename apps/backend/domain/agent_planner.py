@@ -1244,6 +1244,7 @@ async def chat_completion(
                     )
                 raise AgentChatCancelled()
 
+            round_full_schema_tools: list[str] = []
             if force_no_tools_round:
                 _guard_reason = force_no_tools_reason or "thrash"
                 logger.info(
@@ -1277,6 +1278,9 @@ async def chat_completion(
                     for promoted in tools_need_full_schema:
                         if promoted:
                             schema_modes[promoted] = "full"
+                    round_full_schema_tools = sorted(
+                        n for n, mode in schema_modes.items() if mode == "full"
+                    )
                     if schema_modes:
                         tools_for_round = apply_schema_modes_to_specs(
                             _tf_plan.forward_specs,
@@ -1333,17 +1337,18 @@ async def chat_completion(
             )
 
             if event_emit:
-                await event_emit(
-                    {
-                        "type": "agent.llm_round_start",
-                        "agent_run_id": agent_run_id,
-                        "round": round_i + 1,
-                        "max_rounds": max_tool_rounds_eff,
-                        "forwarded_tool_names": [
-                            n for t in tools_for_round if (n := _tool_spec_name(t)) is not None
-                        ],
-                    }
-                )
+                _llm_start: dict[str, Any] = {
+                    "type": "agent.llm_round_start",
+                    "agent_run_id": agent_run_id,
+                    "round": round_i + 1,
+                    "max_rounds": max_tool_rounds_eff,
+                    "forwarded_tool_names": [
+                        n for t in tools_for_round if (n := _tool_spec_name(t)) is not None
+                    ],
+                }
+                if round_full_schema_tools:
+                    _llm_start["full_schema_tools"] = list(round_full_schema_tools)
+                await event_emit(_llm_start)
 
             use_llm_stream = bool(stream_llm_ws and event_emit is not None)
             round_no = round_i + 1
@@ -1799,6 +1804,20 @@ async def chat_completion(
                 args_line = _format_normalized_tool_args_for_recap(name, args, max_len=200)
                 validation_err = validate_tool_call_arguments(name, args)
                 rejected = validation_err is not None
+                wire_args_preview: str | None = None
+                if raw_args is not None:
+                    if isinstance(raw_args, str):
+                        wire_args_preview = raw_args.strip()[:500] or None
+                    elif isinstance(raw_args, dict):
+                        try:
+                            wire_args_preview = json.dumps(
+                                raw_args, ensure_ascii=False, sort_keys=True, default=str
+                            )[:500]
+                        except TypeError:
+                            wire_args_preview = str(raw_args)[:500]
+                    else:
+                        wire_args_preview = str(raw_args)[:500]
+                promoted_full_schema = False
                 if rejected:
                     result = format_tool_call_validation_error(validation_err)
                     ok_sum, err_sum = False, str(validation_err.get("message") or "invalid tool arguments")
@@ -1850,7 +1869,23 @@ async def chat_completion(
                         "name": name,
                         "summary": args_line if not rejected else "rejected: empty or invalid arguments",
                         "step_label": _step_label,
+                        "rejected": rejected,
                     }
+                    if wire_args_preview is not None:
+                        _tool_start_ev["wire_arguments"] = wire_args_preview
+                    if args:
+                        _tool_start_ev["normalized_arguments"] = dict(args)
+                    if rejected and isinstance(validation_err, dict):
+                        _tool_start_ev["validation"] = {
+                            k: validation_err.get(k)
+                            for k in (
+                                "missing_or_empty",
+                                "schema_required",
+                                "any_of_required",
+                                "received_arguments",
+                            )
+                            if validation_err.get(k) is not None
+                        }
                     if _tool_label:
                         _tool_start_ev["label"] = _tool_label
                     await event_emit(_tool_start_ev)
@@ -1923,9 +1958,11 @@ async def chat_completion(
                         wire_args=_prev_args,
                         normalized_args=args,
                         result_ok=ok_sum,
+                        result_error=err_sum if not ok_sum else None,
                     )
                 ):
                     tools_need_full_schema.add(str(name).strip())
+                    promoted_full_schema = True
                     logger.info(
                         "tool full schema promoted for next round run_id=%s tool=%s rejected=%s",
                         _short_run_id(agent_run_id),
@@ -2065,6 +2102,8 @@ async def chat_completion(
                         ev_done["result_ok"] = ok_sum
                     if err_sum:
                         ev_done["result_error"] = err_sum[:500]
+                    if promoted_full_schema:
+                        ev_done["promoted_full_schema"] = True
                     hook_extras = turn_hooks.on_tool_done(
                         tool_context,
                         name=name,

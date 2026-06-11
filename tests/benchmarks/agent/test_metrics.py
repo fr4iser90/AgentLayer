@@ -6,6 +6,7 @@ from tests.benchmarks.agent.metrics import (
     bench_ws_diagnostics,
     build_run_metrics,
     extract_llm_stream_from_ws,
+    extract_schema_rounds_from_ws,
     extract_tool_rounds_from_ws,
     live_snapshot_from_ws_events,
     summarize_ws_events,
@@ -51,19 +52,45 @@ def test_extract_tool_rounds_pairs_start_done_and_insights() -> None:
             "round": 3,
             "name": "bash",
             "summary": "rejected: empty or invalid arguments",
+            "rejected": True,
+            "wire_arguments": "{}",
+            "validation": {
+                "missing_or_empty": ["command"],
+                "schema_required": ["command"],
+                "received_arguments": {},
+            },
         },
-        {"type": "agent.tool_done", "round": 3, "name": "bash", "result_ok": False, "result_error": "missing command"},
+        {
+            "type": "agent.tool_done",
+            "round": 3,
+            "name": "bash",
+            "result_ok": False,
+            "result_error": "missing command",
+            "promoted_full_schema": True,
+        },
+        {
+            "type": "agent.llm_round_start",
+            "round": 4,
+            "full_schema_tools": ["bash"],
+        },
     ]
     rounds = extract_tool_rounds_from_ws(events)
     assert len(rounds) == 3
     assert rounds[0]["summary"] == "(empty)"
     assert rounds[2]["rejected"] is True
+    assert rounds[2]["wire_arguments"] == "{}"
+    assert rounds[2]["validation"]["missing_or_empty"] == ["command"]
+    assert rounds[2]["promoted_full_schema"] is True
+    schema_rounds = extract_schema_rounds_from_ws(events)
+    assert schema_rounds == [{"round": 4, "full_schema_tools": ["bash"]}]
     diag = bench_ws_diagnostics(events, error="scenario timeout after 180s")
     assert diag["tool_rounds"][0]["name"] == "create_dashboard"
-    assert any("rejected" in line for line in diag["insights"])
+    assert any("wire=" in line for line in diag["insights"])
+    assert any("missing=command" in line for line in diag["insights"])
+    assert any("full schema forwarded" in line for line in diag["insights"])
     assert any("timeout" in line.lower() for line in diag["insights"])
     assert not any(
-        "create_dashboard" in line and "empty or rejected" in line for line in diag["insights"]
+        "create_dashboard" in line and "rejected or failed" in line for line in diag["insights"]
     )
 
 

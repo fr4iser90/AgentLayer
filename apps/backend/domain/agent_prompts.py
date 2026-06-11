@@ -640,9 +640,10 @@ def _merge_tools(body_tools: list[Any] | None) -> list[Any]:
 
 
 _CATALOG_PARAM_HINT = (
-    "Catalog lists required parameter names and types only (not full schemas). "
+    "Catalog lists every parameter name with type/enum stubs (not full schemas or TOOL_DESCRIPTION). "
     "When `required` is non-empty, never call the tool with `{}` — populate those fields. "
-    "Use get_tool_help(tool_name) only when you need the complete JSON Schema."
+    "Include optional fields when the task or a tool error requires them (e.g. git_url, dashboard_id). "
+    "After a failed call, that tool may appear with full schema in tools[] on the next LLM round only."
 )
 
 
@@ -665,7 +666,7 @@ def _minimal_property_stub(prop_schema: dict[str, Any]) -> dict[str, Any]:
 
 
 def _minimal_catalog_parameters(fn: dict[str, Any]) -> dict[str, Any]:
-    """Required keys + type stubs — compact, but enough for models to avoid empty ``{}`` wire calls."""
+    """All property names + type stubs; ``required`` unchanged — compact but exposes optional fields too."""
     cand = fn.get("parameters")
     if not isinstance(cand, dict):
         return {
@@ -675,7 +676,8 @@ def _minimal_catalog_parameters(fn: dict[str, Any]) -> dict[str, Any]:
         }
     props_src = cand.get("properties") if isinstance(cand.get("properties"), dict) else {}
     required = [str(x).strip() for x in (cand.get("required") or []) if str(x).strip()]
-    keys: set[str] = set(required)
+    keys: set[str] = {str(k).strip() for k in props_src.keys() if str(k).strip()}
+    keys.update(required)
     min_props = cand.get("minProperties")
     if isinstance(min_props, int) and min_props > 0 and not keys:
         keys = {str(k) for k in props_src.keys()}
@@ -684,6 +686,9 @@ def _minimal_catalog_parameters(fn: dict[str, Any]) -> dict[str, Any]:
         for branch in any_of:
             if not isinstance(branch, dict):
                 continue
+            branch_props = branch.get("properties")
+            if isinstance(branch_props, dict):
+                keys.update(str(k).strip() for k in branch_props.keys() if str(k).strip())
             for req in branch.get("required") or []:
                 key = str(req).strip()
                 if key:

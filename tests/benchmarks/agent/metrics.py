@@ -101,6 +101,28 @@ def _tool_done_ok(ev: dict[str, Any]) -> bool | None:
     return None
 
 
+def _tool_start_rejected(ev: dict[str, Any]) -> bool:
+    if ev.get("rejected") is True:
+        return True
+    return "rejected" in str(ev.get("summary") or "").lower()
+
+
+def extract_schema_rounds_from_ws(events: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    """LLM rounds where specific tools received full JSON Schema in tools[]."""
+    out: list[dict[str, Any]] = []
+    for ev in events or []:
+        if not isinstance(ev, dict) or str(ev.get("type") or "") != "agent.llm_round_start":
+            continue
+        full = ev.get("full_schema_tools")
+        if not isinstance(full, list) or not full:
+            continue
+        names = [str(n).strip() for n in full if str(n).strip()]
+        if not names:
+            continue
+        out.append({"round": ev.get("round"), "full_schema_tools": names})
+    return out
+
+
 def extract_tool_rounds_from_ws(events: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
     """Pair tool_start/tool_done websocket events into per-round diagnostics."""
     rounds: list[dict[str, Any]] = []
@@ -115,7 +137,10 @@ def extract_tool_rounds_from_ws(events: list[dict[str, Any]] | None) -> list[dic
                 "round": ev.get("round"),
                 "name": name,
                 "summary": str(ev.get("summary") or "").strip() or None,
-                "rejected": "rejected" in str(ev.get("summary") or "").lower(),
+                "rejected": _tool_start_rejected(ev),
+                "wire_arguments": ev.get("wire_arguments"),
+                "normalized_arguments": ev.get("normalized_arguments"),
+                "validation": ev.get("validation"),
             }
             continue
         if typ != "agent.tool_done" or not pending:
@@ -131,6 +156,8 @@ def extract_tool_rounds_from_ws(events: list[dict[str, Any]] | None) -> list[dic
         chars = ev.get("result_chars")
         if isinstance(chars, int):
             row["result_chars"] = chars
+        if ev.get("promoted_full_schema") is True:
+            row["promoted_full_schema"] = True
         rounds.append(row)
         pending = None
     if pending:
@@ -141,6 +168,7 @@ def extract_tool_rounds_from_ws(events: list[dict[str, Any]] | None) -> list[dic
 def _bench_insights(
     tool_rounds: list[dict[str, Any]],
     *,
+    schema_rounds: list[dict[str, Any]] | None = None,
     error: str | None = None,
 ) -> list[str]:
     insights: list[str] = []
@@ -151,7 +179,7 @@ def _bench_insights(
                 "Run ended before chat.completion (timeout or cancel). "
                 "Tool rounds below come from the websocket timeline; DB trace may be incomplete."
             )
-    if not tool_rounds:
+    if not tool_rounds and not schema_rounds:
         return insights
 
     by_tool: dict[str, list[dict[str, Any]]] = {}
@@ -170,10 +198,18 @@ def _bench_insights(
             if r.get("rejected") or r.get("ok") is False
         ]
         if len(emptyish) >= 2:
+            missing_fields: set[str] = set()
+            for r in emptyish:
+                val = r.get("validation")
+                if isinstance(val, dict):
+                    for field in val.get("missing_or_empty") or []:
+                        missing_fields.add(str(field))
+            miss_hint = ""
+            if missing_fields:
+                miss_hint = f" Missing: {', '.join(sorted(missing_fields)[:8])}."
             insights.append(
-                f"{tool} was called {len(rows)}×; {len(emptyish)}× with empty or rejected arguments. "
-                "Rejected calls return full `parameters` schema in the tool result; that tool is promoted "
-                "to full schema in tools[] on the next LLM round only."
+                f"{tool} was called {len(rows)}×; {len(emptyish)}× rejected or failed."
+                f"{miss_hint} After reject, that tool gets full schema in tools[] on the next LLM round only."
             )
         elif len(rows) >= 3:
             summaries = {str(r.get("summary") or "") for r in rows}
@@ -184,10 +220,46 @@ def _bench_insights(
 
     rejected = [r for r in tool_rounds if r.get("rejected")]
     if rejected:
-        insights.append(
-            f"{len(rejected)} tool call(s) rejected by schema validation (empty or incomplete arguments)."
-        )
-    return insights[:6]
+        for row in rejected[:3]:
+            tool = str(row.get("name") or "?")
+            wire = row.get("wire_arguments")
+            val = row.get("validation") if isinstance(row.get("validation"), dict) else {}
+            missing = val.get("missing_or_empty") or []
+            required = val.get("schema_required") or []
+            parts = [f"{tool} rejected"]
+            if wire is not None:
+                wire_s = str(wire).strip()
+                parts.append(f"wire={wire_s[:120]}{'…' if len(wire_s) > 120 else ''}")
+            if missing:
+                parts.append(f"missing={', '.join(str(m) for m in missing[:6])}")
+            elif required:
+                parts.append(f"required={', '.join(str(r) for r in required[:6])}")
+            if row.get("promoted_full_schema"):
+                parts.append("→ full schema next round")
+            insights.append(" · ".join(parts))
+        if len(rejected) > 3:
+            insights.append(f"+ {len(rejected) - 3} more rejected tool call(s).")
+
+    promoted = [r for r in tool_rounds if r.get("promoted_full_schema")]
+    if promoted and schema_rounds:
+        for sr in schema_rounds:
+            full = sr.get("full_schema_tools") or []
+            if full:
+                insights.append(
+                    f"LLM round {sr.get('round', '?')}: full schema forwarded for "
+                    f"{', '.join(str(n) for n in full[:6])}"
+                    f"{f' (+{len(full) - 6})' if len(full) > 6 else ''}."
+                )
+                break
+    elif promoted:
+        tools = sorted({str(r.get("name") or "") for r in promoted if r.get("name")})
+        if tools:
+            insights.append(
+                f"Promoted to full schema (next LLM round): {', '.join(tools[:6])}"
+                f"{f' (+{len(tools) - 6})' if len(tools) > 6 else ''}."
+            )
+
+    return insights[:8]
 
 
 _LLM_STREAM_STORE_MAX = 48_000
@@ -279,6 +351,9 @@ def tool_invocations_from_ws_events(events: list[dict[str, Any]] | None) -> list
                 "tool_name": name,
                 "ok": row.get("ok"),
                 "args_preview": row.get("summary"),
+                "wire_arguments": row.get("wire_arguments"),
+                "validation": row.get("validation"),
+                "promoted_full_schema": row.get("promoted_full_schema"),
                 "result_error": row.get("error"),
                 "rejected": row.get("rejected"),
                 "round": row.get("round"),
@@ -299,6 +374,7 @@ def bench_ws_diagnostics(
         return {}
     compaction_events, timeline, counts = summarize_ws_events(rows)
     tool_rounds = extract_tool_rounds_from_ws(rows)
+    schema_rounds = extract_schema_rounds_from_ws(rows)
     llm_stream = extract_llm_stream_from_ws(rows)
     session = session_from_ws_events(rows)
     ws_errors: list[dict[str, Any]] = []
@@ -319,8 +395,9 @@ def bench_ws_diagnostics(
         "event_counts": counts,
         "compaction_count_live": len(compaction_events),
         "tool_rounds": tool_rounds[-40:],
+        "schema_rounds": schema_rounds[-20:],
         "agent_run_id_ws": agent_run_id_from_ws_events(rows),
-        "insights": _bench_insights(tool_rounds, error=error),
+        "insights": _bench_insights(tool_rounds, schema_rounds=schema_rounds, error=error),
         "llm_stream": llm_stream or None,
         "session": session or None,
     }

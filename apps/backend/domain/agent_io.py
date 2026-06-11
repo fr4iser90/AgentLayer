@@ -698,6 +698,12 @@ _REPO_GIT_INTENT_RE = re.compile(
 )
 
 
+def _user_defers_git_workspace_to_tool(text: str) -> bool:
+    """Prompt assigns clone/create to workspace.create — skip chat auto-clone/reuse."""
+    low = (text or "").lower()
+    return "workspace.create" in low and ("git_url" in low or "source=git" in low)
+
+
 def _try_auto_create_workspace_from_git_url(
     *,
     agent_id: str | None,
@@ -718,6 +724,8 @@ def _try_auto_create_workspace_from_git_url(
     gu = _extract_https_git_url(last_user_text)
     if not gu:
         return None
+    if _user_defers_git_workspace_to_tool(last_user_text):
+        return None
     u = user_obj
     if u is None:
 
@@ -736,12 +744,26 @@ def _try_auto_create_workspace_from_git_url(
     if u is None or not _is_elevated_admin(u, None, user_id):
         return None
     try:
+        from apps.backend.domain.workspace.workspace_common import find_owned_git_workspace
         from apps.backend.infrastructure.workspace_service import (
             WorkspaceCreateError,
             create_project_workspace_for_user,
             ensure_workspace as _ensure_ws,
             slug_from_git_url,
         )
+
+        existing = find_owned_git_workspace(u, git_url=gu)
+        if existing:
+            wid = str(existing.get("id") or "").strip()
+            if wid:
+                workspace = _ensure_ws(wid, u)
+                if workspace:
+                    logger.info(
+                        "chat_completion: reusing owned workspace %s for Git URL (agent=%s)",
+                        wid,
+                        aid,
+                    )
+                    return workspace
 
         nm = f"{slug_from_git_url(gu)}-{uuid.uuid4().hex[:8]}"
         created = create_project_workspace_for_user(

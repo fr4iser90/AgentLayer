@@ -30,7 +30,23 @@ def test_apply_schema_modes_catalog_uses_required_stubs_not_full_schema():
     cat_props = cat_params.get("properties") or {}
     assert set(cat_props.keys()) == {"path", "content"}
     assert cat_props["path"] == {"type": "string"}
+    assert "TOOL_DESCRIPTION" not in cat_props["path"]
     assert "path" in cat_params.get("required", [])
+
+
+def test_catalog_includes_optional_property_stubs_for_workspace_create():
+    spec = _registry_tool_spec_by_registered_name("workspace.create")
+    assert spec is not None
+    rebuilt = apply_schema_modes_to_specs(
+        [spec],
+        {"workspace.create": "catalog"},
+        default_full_schema=False,
+    )
+    props = rebuilt[0]["function"]["parameters"].get("properties") or {}
+    assert "name" in props
+    assert "git_url" in props
+    assert "source" in props
+    assert props["source"].get("enum") == ["manual", "git"]
 
 
 def test_catalog_rebuild_preserves_forward_specs_reference_names():
