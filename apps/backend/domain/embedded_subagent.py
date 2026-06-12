@@ -365,10 +365,15 @@ def run_embedded_subagent_sync(
                 task_uuid = None
 
     body["agent_run_id"] = sub_run_id
-    # Parent cancel_event is bound to the main asyncio loop; never pass it into
-    # asyncio.run() in this worker thread (causes "bound to a different event loop").
-    ce = None
+    bench_run_raw = ctx.get("benchmark_run_id")
+    if bench_run_raw:
+        body["benchmark_run_id"] = str(bench_run_raw).strip()
     prid = ctx.get("agent_run_id")
+    parent_cancel_thread = None
+    if isinstance(prid, str) and prid.strip():
+        from apps.backend.domain.agent_run_cancel import parent_cancel_event
+
+        parent_cancel_thread = parent_cancel_event(prid.strip())
     if isinstance(prid, str) and prid.strip():
         body["agent_parent_run_id"] = prid.strip()
     notify = ctx.get("agent_subagent_notify")
@@ -393,21 +398,52 @@ def run_embedded_subagent_sync(
         _subagent_event_bridge(ev)
 
     async def _runner() -> dict[str, Any]:
-        return await chat_completion(
-            body,
-            event_emit=_subagent_event_emit if callable(notify) else None,
-            control_queue=None,
-            cancel_event=ce,
-            embedded_subagent=True,
-        )
+        sub_cancel = asyncio.Event()
+        bridge_task: asyncio.Task[None] | None = None
+        if parent_cancel_thread is not None:
+            if parent_cancel_thread.is_set():
+                sub_cancel.set()
+            else:
+
+                async def _bridge_parent_cancel() -> None:
+                    while not parent_cancel_thread.is_set():
+                        await asyncio.sleep(0.2)
+                    sub_cancel.set()
+
+                bridge_task = asyncio.create_task(_bridge_parent_cancel())
+        try:
+            return await chat_completion(
+                body,
+                event_emit=_subagent_event_emit if callable(notify) else None,
+                control_queue=None,
+                cancel_event=sub_cancel,
+                embedded_subagent=True,
+            )
+        finally:
+            if bridge_task is not None:
+                bridge_task.cancel()
+                try:
+                    await bridge_task
+                except asyncio.CancelledError:
+                    pass
 
     def _thread_entry() -> dict[str, Any]:
+        from apps.backend.domain.identity import reset_benchmark_run_id, set_benchmark_run_id
+
         id_tok = None
+        bench_tok = None
         if parent_uid is not None:
             id_tok = set_identity(parent_tid, parent_uid)
+        if bench_run_raw:
+            try:
+                bench_tok = set_benchmark_run_id(uuid.UUID(str(bench_run_raw).strip()))
+            except (ValueError, TypeError):
+                bench_tok = None
         try:
             return asyncio.run(_runner())
         finally:
+            if bench_tok is not None:
+                reset_benchmark_run_id(bench_tok)
             if id_tok is not None:
                 reset_identity(id_tok)
 

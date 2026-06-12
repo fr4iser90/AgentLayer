@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from typing import Any
 
@@ -50,6 +51,7 @@ class StartBenchmarkBody(BaseModel):
     friend_user_id: uuid.UUID | None = None
     scenario_timeout_sec: float | None = Field(default=None, ge=30, le=86400)
     max_tool_rounds_override: int | None = Field(default=None, ge=1, le=512)
+    retain_workspaces: bool = False
 
 
 def _assert_tenant_user(user_id: uuid.UUID, tenant_id: int) -> dict[str, Any]:
@@ -65,34 +67,10 @@ def _assert_tenant_user(user_id: uuid.UUID, tenant_id: int) -> dict[str, Any]:
     }
 
 
-def _workspace_stats_for_user(user_id: uuid.UUID) -> dict[str, int | bool]:
-    with db.pool().connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT COALESCE(u.workspace_quota, 10),
-                       COUNT(pw.id),
-                       COUNT(pw.id) FILTER (WHERE pw.name LIKE 'bench-%%')
-                FROM users u
-                LEFT JOIN project_workspaces pw ON pw.owner_user_id = u.id
-                WHERE u.id = %s
-                GROUP BY u.workspace_quota
-                """,
-                (user_id,),
-            )
-            row = cur.fetchone()
-    quota = int(row[0]) if row else 10
-    total = int(row[1] or 0) if row else 0
-    bench = int(row[2] or 0) if row else 0
-    headroom = max(0, quota - total)
-    return {
-        "workspace_quota": quota,
-        "workspace_count": total,
-        "bench_workspace_count": bench,
-        "non_bench_workspace_count": max(0, total - bench),
-        "workspace_headroom": headroom,
-        "has_workspace_headroom": headroom > 0,
-    }
+def _sandbox_stats_for_user(user_id: uuid.UUID) -> dict[str, int | bool]:
+    from apps.backend.infrastructure.benchmark_resource_service import benchmark_sandbox_snapshot
+
+    return benchmark_sandbox_snapshot(user_id, include_legacy_prefix=True)
 
 
 def _readiness_for_user(user_id: uuid.UUID) -> dict[str, Any]:
@@ -109,7 +87,7 @@ def _readiness_for_user(user_id: uuid.UUID) -> dict[str, Any]:
         "role": user.role,
         "secrets_enabled": secrets_enabled,
         "secrets": {key: key in configured for key in _BENCH_READINESS_SECRETS},
-        **_workspace_stats_for_user(user_id),
+        **_sandbox_stats_for_user(user_id),
     }
 
 
@@ -148,6 +126,37 @@ async def get_benchmark_run_readiness(request: Request, user_id: uuid.UUID) -> d
     tid = db.user_tenant_id(admin.id)
     _assert_tenant_user(user_id, tid)
     return {"ok": True, **_readiness_for_user(user_id)}
+
+
+def _cleanup_benchmark_sandboxes_sync(user_id: uuid.UUID) -> dict[str, Any]:
+    import os
+
+    from apps.backend.infrastructure.benchmark_resource_service import (
+        prepare_benchmark_sandbox_cleanup,
+    )
+    from tests.benchmarks.agent.harness import bench_base_url, load_bench_env, require_server
+    from tests.e2e.support.helpers import resolve_local_agent_base_url
+
+    load_bench_env()
+    os.environ.setdefault("AGENT_E2E_BASE_URL", resolve_local_agent_base_url())
+    require_server()
+    return prepare_benchmark_sandbox_cleanup(user_id, include_legacy_prefix=True)
+
+
+@router.post("/cleanup-resources")
+@router.post("/cleanup-workspaces")
+async def post_cleanup_benchmark_resources(request: Request, user_id: uuid.UUID) -> dict:
+    """Delete all benchmark sandboxes (workspaces, dashboards, conversations) for the run-as user."""
+    admin = await require_admin(request)
+    tid = db.user_tenant_id(admin.id)
+    _assert_tenant_user(user_id, tid)
+    try:
+        cleanup = await asyncio.to_thread(_cleanup_benchmark_sandboxes_sync, user_id)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)[:2000]) from exc
+    return {"ok": True, "cleanup": cleanup, **_readiness_for_user(user_id)}
 
 
 @router.get("/runs")
@@ -223,6 +232,7 @@ async def post_start_benchmark(request: Request, body: StartBenchmarkBody) -> di
             admin_user_id=admin.id,
             scenario_timeout_sec=body.scenario_timeout_sec,
             max_tool_rounds_override=body.max_tool_rounds_override,
+            retain_workspaces=body.retain_workspaces,
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

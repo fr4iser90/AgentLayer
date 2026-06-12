@@ -12,6 +12,10 @@ _identity: contextvars.ContextVar[tuple[int, uuid.UUID | None] | None] = (
 _workspace: contextvars.ContextVar[dict[str, Any] | None] = (
     contextvars.ContextVar("agent_workspace", default=None)
 )
+_benchmark_run_id: contextvars.ContextVar[uuid.UUID | None] = contextvars.ContextVar(
+    "benchmark_run_id",
+    default=None,
+)
 
 
 def set_identity(tenant_id: int, user_id: uuid.UUID) -> contextvars.Token:
@@ -44,3 +48,15 @@ def reset_workspace(token: contextvars.Token) -> None:
 
 def reset_identity(token: contextvars.Token) -> None:
     _identity.reset(token)
+
+
+def set_benchmark_run_id(run_id: uuid.UUID | None) -> contextvars.Token:
+    return _benchmark_run_id.set(run_id)
+
+
+def get_benchmark_run_id() -> uuid.UUID | None:
+    return _benchmark_run_id.get()
+
+
+def reset_benchmark_run_id(token: contextvars.Token) -> None:
+    _benchmark_run_id.reset(token)

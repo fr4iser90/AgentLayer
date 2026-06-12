@@ -298,6 +298,7 @@ def dashboard_create(
     template_id: str | None = None,
     ui_layout: dict[str, Any] | None = None,
     data: dict[str, Any] | None = None,
+    benchmark_run_id: uuid.UUID | None = None,
 ) -> dict[str, Any]:
     tpl = (template_id or "").strip().lower() or None
     du, dd = defaults_for_kind(kind, template_id=tpl)
@@ -305,15 +306,18 @@ def dashboard_create(
         du = ui_layout
     if data is not None:
         dd = data
+    from apps.backend.domain.identity import get_benchmark_run_id
+
     label = (title or "").strip() or "Dashboard"
+    bench_run_id = benchmark_run_id or get_benchmark_run_id()
     with db.pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
                 """
                 INSERT INTO user_dashboards (
-                  tenant_id, owner_user_id, kind, template_id, title, ui_layout, data
+                  tenant_id, owner_user_id, kind, template_id, title, ui_layout, data, benchmark_run_id
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id, kind, template_id, title, ui_layout, data, created_at, updated_at
                 """,
                 (
@@ -324,6 +328,7 @@ def dashboard_create(
                     label,
                     Json(du),
                     Json(dd),
+                    bench_run_id,
                 ),
             )
             row = cur.fetchone()

@@ -10,6 +10,7 @@ export type BenchRunPrefs = {
   friendUserId: string;
   scenarioTimeoutSec: string;
   maxToolRoundsOverride: string;
+  retainWorkspaces: boolean;
   selectedProviderIds: string[];
   modelByProviderId: Record<string, string>;
   scenariosBySuite: Record<string, string[]>;
@@ -25,6 +26,7 @@ function emptyPrefs(): BenchRunPrefsInput {
     friendUserId: "",
     scenarioTimeoutSec: "",
     maxToolRoundsOverride: "",
+    retainWorkspaces: false,
     selectedProviderIds: [],
     modelByProviderId: {},
     scenariosBySuite: {},
@@ -60,6 +62,7 @@ export function loadBenchRunPrefs(): BenchRunPrefsInput | null {
         typeof parsed.scenarioTimeoutSec === "string" ? parsed.scenarioTimeoutSec : "",
       maxToolRoundsOverride:
         typeof parsed.maxToolRoundsOverride === "string" ? parsed.maxToolRoundsOverride : "",
+      retainWorkspaces: parsed.retainWorkspaces === true,
       selectedProviderIds: Array.isArray(parsed.selectedProviderIds)
         ? parsed.selectedProviderIds.map((x) => String(x).trim()).filter(Boolean)
         : [],

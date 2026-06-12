@@ -195,10 +195,11 @@ Chat request must include:
 
 ## 10. Open decisions
 
-1. **Bench tenant** vs prefix in same tenant → prefix is enough initially.
+1. **Bench tenant** vs prefix in same tenant → DB marker `benchmark_run_id` + separate benchmark workspace quota (see `schema_093`).
 2. **Coding agent** for all tier 3 or only large models → separate manifest profiles.
 3. **Cloud cost tracking** → tokens × price list in manifest.
 4. **Parallel runs** → sequential first (GPU/VRAM).
+5. **Weak-model pattern analysis & compat shims** → [`pattern-analysis-roadmap.md`](./pattern-analysis-roadmap.md) (doc only for now).
 
 ---
 

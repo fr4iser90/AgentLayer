@@ -111,9 +111,34 @@ def create(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> 
         ensure_workspace,
     )
 
+    benchmark_run_id = None
+    if context and context.get("benchmark_run_id"):
+        try:
+            import uuid as _uuid
+
+            benchmark_run_id = _uuid.UUID(str(context["benchmark_run_id"]).strip())
+        except (ValueError, TypeError):
+            benchmark_run_id = None
+    if benchmark_run_id is None:
+        try:
+            from apps.backend.domain.identity import get_benchmark_run_id
+
+            benchmark_run_id = get_benchmark_run_id()
+        except Exception:
+            benchmark_run_id = None
+
     existing = find_workspace_by_name(list_workspaces_for_user(user), name)
     if existing and str(existing.get("id") or "").strip():
         wid = str(existing["id"])
+        if benchmark_run_id is not None and user.id:
+            try:
+                from apps.backend.infrastructure.benchmark_resource_service import (
+                    tag_workspace_benchmark_run,
+                )
+
+                tag_workspace_benchmark_run(wid, user.id, benchmark_run_id)
+            except Exception:
+                pass
         materialized = ensure_workspace(wid, user)
         if not materialized:
             return dump(
@@ -154,6 +179,7 @@ def create(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> 
             source=source,
             git_url=git_url,
             git_branch=git_branch,
+            benchmark_run_id=benchmark_run_id,
         )
     except WorkspaceCreateError as e:
         return dump({"ok": False, "error": e.message})

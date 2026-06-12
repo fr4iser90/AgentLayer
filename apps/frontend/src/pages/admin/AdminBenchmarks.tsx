@@ -13,6 +13,7 @@ import {
   fetchBenchmarkSuites,
   deleteBenchmarkRun,
   cancelBenchmarkRun,
+  cleanupBenchmarkResources,
   startBenchmarkRun,
   userOptionLabel,
   type AdminUserRow,
@@ -267,6 +268,46 @@ function formatInFlightPreview(inFlight: BenchmarkInFlight): string | null {
   const preview = (inFlight.generation_preview || "").trim();
   if (!preview) return null;
   return preview.length > 140 ? `${preview.slice(0, 140)}…` : preview;
+}
+
+function formatBenchCleanupSummary(
+  cleanup: Record<string, unknown>,
+  t: (key: string, opts?: Record<string, unknown>) => string
+): string {
+  if (typeof cleanup.error === "string" && cleanup.error.trim()) {
+    return cleanup.error.trim();
+  }
+  const deleted = cleanup.deleted;
+  const delWs =
+    deleted && typeof deleted === "object" && !Array.isArray(deleted)
+      ? Number((deleted as Record<string, unknown>).workspaces ?? 0)
+      : 0;
+  const delDash =
+    deleted && typeof deleted === "object" && !Array.isArray(deleted)
+      ? Number((deleted as Record<string, unknown>).dashboards ?? 0)
+      : 0;
+  const delConv =
+    deleted && typeof deleted === "object" && !Array.isArray(deleted)
+      ? Number((deleted as Record<string, unknown>).conversations ?? 0)
+      : 0;
+  const after =
+    cleanup.after && typeof cleanup.after === "object" && !Array.isArray(cleanup.after)
+      ? (cleanup.after as Record<string, unknown>)
+      : null;
+  const benchWsAfter = after ? Number(after.bench_workspace_count ?? 0) : null;
+  const benchDashAfter = after ? Number(after.bench_dashboard_count ?? 0) : null;
+  const benchConvAfter = after ? Number(after.bench_conversation_count ?? 0) : null;
+  const headroom =
+    typeof cleanup.workspace_headroom === "number" ? cleanup.workspace_headroom : null;
+  return t("admin:benchCleanupSummary", {
+    workspaces: delWs,
+    dashboards: delDash,
+    conversations: delConv,
+    benchWsRemaining: benchWsAfter ?? "—",
+    benchDashRemaining: benchDashAfter ?? "—",
+    benchConvRemaining: benchConvAfter ?? "—",
+    headroom: headroom ?? "—",
+  });
 }
 
 function formatResultFailureLine(res: BenchmarkScenarioResult, t: (key: string) => string): string {
@@ -699,6 +740,7 @@ export function AdminBenchmarks() {
   const [friendUserId, setFriendUserId] = useState(_savedBenchPrefs?.friendUserId ?? "");
   const [readiness, setReadiness] = useState<BenchmarkRunReadiness | null>(null);
   const [readinessLoading, setReadinessLoading] = useState(false);
+  const [cleaningWorkspaces, setCleaningWorkspaces] = useState(false);
   const [suite, setSuite] = useState(_initialBenchSuite);
   const [selectedScenarioIds, setSelectedScenarioIds] = useState<Set<string>>(() => {
     const ids = _savedBenchPrefs?.scenariosBySuite?.[_initialBenchSuite];
@@ -731,6 +773,9 @@ export function AdminBenchmarks() {
   );
   const [maxToolRoundsOverride, setMaxToolRoundsOverride] = useState(
     _savedBenchPrefs?.maxToolRoundsOverride ?? ""
+  );
+  const [retainWorkspaces, setRetainWorkspaces] = useState(
+    _savedBenchPrefs?.retainWorkspaces ?? false
   );
   const [deletingRunId, setDeletingRunId] = useState<string | null>(null);
   const [deleteRunTarget, setDeleteRunTarget] = useState<BenchmarkRun | null>(null);
@@ -837,6 +882,7 @@ export function AdminBenchmarks() {
       friendUserId,
       scenarioTimeoutSec,
       maxToolRoundsOverride,
+      retainWorkspaces,
       selectedProviderIds: [...selectedProviderIds],
       modelByProviderId: Object.fromEntries(modelByProviderId.entries()),
       scenariosBySuite: scenariosBySuiteRef.current,
@@ -848,6 +894,7 @@ export function AdminBenchmarks() {
     friendUserId,
     scenarioTimeoutSec,
     maxToolRoundsOverride,
+    retainWorkspaces,
     selectedProviderIds,
     modelByProviderId,
     selectedScenarioIds,
@@ -930,6 +977,20 @@ export function AdminBenchmarks() {
       cancelled = true;
     };
   }, [auth, runAsUserId, tab]);
+
+  const onCleanupBenchWorkspaces = useCallback(async () => {
+    if (!runAsUserId || cleaningWorkspaces) return;
+    setCleaningWorkspaces(true);
+    setError(null);
+    try {
+      const row = await cleanupBenchmarkResources(auth, runAsUserId);
+      setReadiness(row);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("admin:benchCleanupFailed"));
+    } finally {
+      setCleaningWorkspaces(false);
+    }
+  }, [auth, runAsUserId, cleaningWorkspaces, t]);
 
   useEffect(() => {
     if (!showFriendPicker) {
@@ -1151,6 +1212,7 @@ export function AdminBenchmarks() {
         friend_user_id: showFriendPicker && friendUserId ? friendUserId : undefined,
         scenario_timeout_sec: timeoutRaw ? parsedTimeout : undefined,
         max_tool_rounds_override: maxRoundsRaw ? Math.floor(parsedMaxRounds) : undefined,
+        retain_workspaces: retainWorkspaces || undefined,
       });
       persistBenchRunPrefs();
       setTab("history");
@@ -1346,6 +1408,15 @@ export function AdminBenchmarks() {
                       })}
                     </li>
                   ) : null}
+                  {readiness.has_bench_sandbox_resources ? (
+                    <li className="text-amber-400/90">
+                      {t("admin:benchSandboxResources", {
+                        workspaces: readiness.bench_workspace_count ?? 0,
+                        dashboards: readiness.bench_dashboard_count ?? 0,
+                        conversations: readiness.bench_conversation_count ?? 0,
+                      })}
+                    </li>
+                  ) : null}
                   {readiness.has_workspace_headroom === false ? (
                     <li className="text-amber-400/90">{t("admin:benchWorkspaceQuotaFull")}</li>
                   ) : null}
@@ -1353,6 +1424,33 @@ export function AdminBenchmarks() {
               ) : (
                 <p className="mt-2 text-xs text-surface-muted">{t("admin:benchReadinessUnavailable")}</p>
               )}
+              {runAsUserId ? (
+                <button
+                  type="button"
+                  disabled={cleaningWorkspaces || readinessLoading}
+                  onClick={() => void onCleanupBenchWorkspaces()}
+                  className="mt-3 rounded-lg border border-white/15 bg-black/30 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/10 disabled:opacity-50"
+                >
+                  {cleaningWorkspaces
+                    ? t("admin:benchCleanupRunning")
+                    : t("admin:benchCleanupResources")}
+                </button>
+              ) : null}
+              <p className="mt-2 text-[11px] text-surface-muted">
+                {t("admin:benchCleanupWorkspacesHint")}
+              </p>
+              <label className="mt-3 flex cursor-pointer items-start gap-2 text-xs text-surface-muted">
+                <input
+                  type="checkbox"
+                  checked={retainWorkspaces}
+                  onChange={(e) => setRetainWorkspaces(e.target.checked)}
+                  className="mt-0.5 rounded border-white/20 bg-black/30"
+                />
+                <span>
+                  <span className="font-medium text-white/90">{t("admin:benchRetainWorkspaces")}</span>
+                  <span className="mt-0.5 block text-[11px]">{t("admin:benchRetainWorkspacesHint")}</span>
+                </span>
+              </label>
               <p className="mt-2 text-[11px] text-surface-muted">
                 {t("admin:benchSecretsAutoHint")}
               </p>
@@ -1778,6 +1876,29 @@ export function AdminBenchmarks() {
                     prefix: {detail.resource_prefix}
                   </p>
                 ) : null}
+                {detail.report_json?.bench_cleanup ||
+                detail.report_json?.bench_cleanup_finish ? (
+                  <div className="mt-2 space-y-1 text-[11px] text-surface-muted">
+                    {detail.report_json.bench_cleanup ? (
+                      <p>
+                        {t("admin:benchCleanupStart")}:{" "}
+                        {formatBenchCleanupSummary(
+                          detail.report_json.bench_cleanup as Record<string, unknown>,
+                          t as (key: string, opts?: Record<string, unknown>) => string
+                        )}
+                      </p>
+                    ) : null}
+                    {detail.report_json.bench_cleanup_finish ? (
+                      <p>
+                        {t("admin:benchCleanupFinish")}:{" "}
+                        {formatBenchCleanupSummary(
+                          detail.report_json.bench_cleanup_finish as Record<string, unknown>,
+                          t as (key: string, opts?: Record<string, unknown>) => string
+                        )}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
                 {detail.status === "running" || detail.status === "queued" ? (
                   <div className="mt-2 space-y-1 text-xs text-sky-400/90">
                     <p>
@@ -1839,7 +1960,10 @@ export function AdminBenchmarks() {
                   </div>
                 ) : null}
                 <BenchmarkFailuresSummary
-                  rows={failuresFromResults(detail.report_json?.results ?? [])}
+                  rows={failuresFromResults(
+                    detail.report_json?.results ?? [],
+                    detail.resource_prefix,
+                  )}
                   t={t}
                 />
                 <table className="mt-4 w-full text-left text-xs">

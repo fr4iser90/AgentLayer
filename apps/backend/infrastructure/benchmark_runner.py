@@ -232,6 +232,7 @@ def _run_sync(
     admin_user_id: uuid.UUID | None = None,
     scenario_timeout_sec: float | None = None,
     max_tool_rounds_override: int | None = None,
+    retain_workspaces: bool = False,
 ) -> None:
     from tests.benchmarks.agent.harness import (
         BenchmarkRunCancelled,
@@ -306,6 +307,9 @@ def _run_sync(
             cancel_check=_cancel_check_for(run_id),
             scenario_timeout_sec=scenario_timeout_sec,
             max_tool_rounds_override=max_tool_rounds_override,
+            benchmark_run_id=run_id,
+            cleanup_on_start=True,
+            cleanup_on_finish=not retain_workspaces,
         )
 
         results_dir = _REPO_ROOT / "benchmarks" / "results"
@@ -405,6 +409,7 @@ async def schedule_benchmark_run(
     admin_user_id: uuid.UUID | None = None,
     scenario_timeout_sec: float | None = None,
     max_tool_rounds_override: int | None = None,
+    retain_workspaces: bool = False,
 ) -> None:
     async with _run_lock:
         await asyncio.to_thread(
@@ -420,6 +425,7 @@ async def schedule_benchmark_run(
             admin_user_id=admin_user_id,
             scenario_timeout_sec=scenario_timeout_sec,
             max_tool_rounds_override=max_tool_rounds_override,
+            retain_workspaces=retain_workspaces,
         )
 
 
@@ -437,6 +443,7 @@ async def start_benchmark_run(
     admin_user_id: uuid.UUID | None = None,
     scenario_timeout_sec: float | None = None,
     max_tool_rounds_override: int | None = None,
+    retain_workspaces: bool = False,
 ) -> dict[str, Any]:
     from tests.benchmarks.agent.catalog import _SUITE_MANIFESTS
 
@@ -459,6 +466,7 @@ async def start_benchmark_run(
         "admin_user_id": str(admin_user_id) if admin_user_id else None,
         "scenario_timeout_sec": scenario_timeout_sec,
         "max_tool_rounds_override": max_tool_rounds_override,
+        "retain_workspaces": retain_workspaces,
     }
     row = benchmark_runs_store.create_run(
         tenant_id=tenant_id,
@@ -481,6 +489,7 @@ async def start_benchmark_run(
             admin_user_id=admin_user_id,
             scenario_timeout_sec=scenario_timeout_sec,
             max_tool_rounds_override=max_tool_rounds_override,
+            retain_workspaces=retain_workspaces,
         )
     )
     return row

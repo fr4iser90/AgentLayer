@@ -110,11 +110,19 @@ export type BenchmarkRunReadiness = {
     ssc_api_key?: boolean;
   };
   workspace_quota?: number;
+  benchmark_workspace_quota?: number;
   workspace_count?: number;
   bench_workspace_count?: number;
   non_bench_workspace_count?: number;
   workspace_headroom?: number;
+  benchmark_workspace_headroom?: number;
   has_workspace_headroom?: boolean;
+  has_benchmark_workspace_headroom?: boolean;
+  dashboard_count?: number;
+  bench_dashboard_count?: number;
+  conversation_count?: number;
+  bench_conversation_count?: number;
+  has_bench_sandbox_resources?: boolean;
 };
 
 export type BenchmarkRunSummary = {
@@ -236,6 +244,29 @@ export type BenchmarkScenarioResult = {
   } | null;
 };
 
+export type BenchmarkSandboxCleanup = {
+  before?: {
+    workspace_count?: number;
+    bench_workspace_count?: number;
+    bench_dashboard_count?: number;
+    bench_conversation_count?: number;
+  };
+  after?: {
+    workspace_count?: number;
+    bench_workspace_count?: number;
+    bench_dashboard_count?: number;
+    bench_conversation_count?: number;
+  };
+  deleted?: { workspaces?: number; dashboards?: number; conversations?: number };
+  run_prefix_deleted?: { workspaces?: number; dashboards?: number; conversations?: number };
+  workspace_headroom?: number;
+  has_workspace_headroom?: boolean;
+  error?: string;
+};
+
+/** @deprecated use BenchmarkSandboxCleanup */
+export type BenchmarkWorkspaceCleanup = BenchmarkSandboxCleanup;
+
 export type BenchmarkRun = {
   id: string;
   status: string;
@@ -252,6 +283,8 @@ export type BenchmarkRun = {
   report_json?: {
     results?: BenchmarkScenarioResult[];
     in_flight?: BenchmarkInFlight | null;
+    bench_cleanup?: BenchmarkWorkspaceCleanup | null;
+    bench_cleanup_finish?: BenchmarkWorkspaceCleanup | null;
   } | null;
 };
 
@@ -372,6 +405,8 @@ export type StartBenchmarkBody = {
   friend_user_id?: string;
   scenario_timeout_sec?: number;
   max_tool_rounds_override?: number;
+  /** When true, skip automatic post-run bench workspace cleanup (start cleanup still runs). */
+  retain_workspaces?: boolean;
 };
 
 export function userOptionLabel(u: AdminUserRow): string {
@@ -391,6 +426,25 @@ export async function fetchAdminUsers(
   if (!res.ok) throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
   return data.users ?? [];
 }
+
+export async function cleanupBenchmarkResources(
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">,
+  userId: string
+): Promise<BenchmarkRunReadiness & { cleanup?: BenchmarkSandboxCleanup }> {
+  const res = await apiFetch(
+    `/v1/admin/benchmarks/cleanup-resources?user_id=${encodeURIComponent(userId)}`,
+    auth,
+    { method: "POST" }
+  );
+  const data = await readJsonResponse<
+    BenchmarkRunReadiness & { cleanup?: BenchmarkSandboxCleanup; detail?: unknown }
+  >(res, `Failed to clean benchmark sandboxes (HTTP ${res.status})`);
+  if (!res.ok) throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
+  return data;
+}
+
+/** @deprecated use cleanupBenchmarkResources */
+export const cleanupBenchmarkWorkspaces = cleanupBenchmarkResources;
 
 export async function fetchBenchmarkRunReadiness(
   auth: Pick<AuthContextValue, "accessToken" | "refresh">,

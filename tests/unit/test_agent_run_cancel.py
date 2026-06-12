@@ -1,4 +1,4 @@
-"""Sub-agent uses a thread-safe cancel bridge (not the parent's asyncio.Event)."""
+"""Parent run cancel propagates to embedded sub-agents via thread-safe registry."""
 
 from __future__ import annotations
 
@@ -10,8 +10,10 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from apps.backend.domain.agent_run_cancel import (
+    parent_cancel_event,
     register_parent_cancel,
     reset_parent_cancel_registry_for_tests,
+    signal_parent_cancel,
     unregister_parent_cancel,
 )
 
@@ -23,13 +25,23 @@ def _clear_registry() -> None:
     reset_parent_cancel_registry_for_tests()
 
 
-def test_delegate_uses_subagent_cancel_event_not_parent_asyncio_event() -> None:
+def test_signal_parent_cancel_sets_thread_event() -> None:
+    register_parent_cancel("parent-1")
+    ev = parent_cancel_event("parent-1")
+    assert ev is not None
+    assert not ev.is_set()
+    signal_parent_cancel("parent-1")
+    assert ev.is_set()
+    unregister_parent_cancel("parent-1")
+    assert parent_cancel_event("parent-1") is None
+
+
+def test_delegate_subagent_receives_linked_cancel_event() -> None:
     from plugins.tools.platform.agents.delegate import delegate
 
     uid = uuid.uuid4()
     ws_id = uuid.uuid4()
-    parent_cancel = asyncio.Event()
-    parent_id = "parent-run"
+    parent_id = "parent-run-abc"
     register_parent_cancel(parent_id)
     ctx = {
         "workspace": {"id": str(ws_id), "path": "/tmp/ws", "name": "w"},
@@ -37,13 +49,18 @@ def test_delegate_uses_subagent_cancel_event_not_parent_asyncio_event() -> None:
         "agent_run_id": parent_id,
         "parent_effective_model": "__mock_ui_model__",
         "parent_model_catalog_owned_by": "__mock_ui_provider__",
-        "cancel_event": parent_cancel,
+        "cancel_event": asyncio.Event(),
     }
+    seen_cancel: list[asyncio.Event | None] = []
 
     async def fake_cc(body: dict, **kwargs: object) -> dict:
         ce = kwargs.get("cancel_event")
-        assert ce is not None
-        assert ce is not parent_cancel
+        seen_cancel.append(ce if isinstance(ce, asyncio.Event) else None)
+        if isinstance(ce, asyncio.Event):
+            for _ in range(50):
+                if ce.is_set():
+                    return {"error": "cancelled", "choices": []}
+                await asyncio.sleep(0.05)
         return {
             "choices": [{"message": {"content": "ok"}, "finish_reason": "stop"}],
         }
@@ -54,6 +71,7 @@ def test_delegate_uses_subagent_cancel_event_not_parent_asyncio_event() -> None:
                 "apps.backend.infrastructure.agent_artifacts_store.create_artifact",
                 return_value={"id": uuid.uuid4()},
             ):
+                signal_parent_cancel(parent_id)
                 out = delegate(
                     {
                         "run_subagent": True,
@@ -63,6 +81,7 @@ def test_delegate_uses_subagent_cancel_event_not_parent_asyncio_event() -> None:
                     },
                     context=ctx,
                 )
-    unregister_parent_cancel(parent_id)
+
     data = json.loads(out)
-    assert data.get("ok") is True, data
+    assert seen_cancel and isinstance(seen_cancel[0], asyncio.Event)
+    assert data.get("ok") is False or data.get("error")

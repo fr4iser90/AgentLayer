@@ -5,6 +5,7 @@ from __future__ import annotations
 from tests.benchmarks.agent.harness import (
     BenchRunReport,
     ScenarioResult,
+    failure_export_row,
     failures_from_report,
     scenario_export_row,
 )
@@ -63,6 +64,61 @@ def test_scenario_export_row_splits_transport_and_rubric() -> None:
     assert row["transport_error"] == "scenario timeout after 360s"
     assert row["rubric_failure"] == "no markdown block with dataPath notes"
     assert "create_dashboard" in row["insights"]
+
+
+def test_failure_export_row_includes_debug_fields() -> None:
+    row = failure_export_row(
+        ScenarioResult(
+            run_id="r1",
+            scenario_id="W1_git_readme_no_index",
+            profile_label="LLAMA.CPP",
+            model="qwen",
+            catalog_owned_by="env",
+            agent_id="general",
+            passed=False,
+            score=0.0,
+            failure_reason="read_file not used",
+            rubric_failure_reason="read_file not used",
+            latency_ms=1000.0,
+            prompt_tokens=None,
+            completion_tokens=None,
+            tool_call_count=2,
+            tool_names=["workspace.create"],
+            agent_run_id="run-abc",
+            assistant_excerpt="Hello README line",
+            run_metrics={
+                "llm_round_count": 3,
+                "bench_diagnostics": {
+                    "session": {
+                        "effective_agent_id": "general",
+                        "forwarded_tool_count": 18,
+                        "forwarded_tools": ["delegate", "workspace.create", "read_file"],
+                    },
+                    "tool_rounds": [
+                        {
+                            "name": "workspace.create",
+                            "normalized_arguments": {"name": "bench-prefix-git"},
+                        },
+                        {"name": "delegate"},
+                    ],
+                    "event_counts": {"subagent_start_count": 1},
+                    "ws_errors": [{"type": "agent.cancelled", "detail": "cancelled"}],
+                    "insights": ["delegate repeated 2×"],
+                },
+            },
+        ),
+        resource_prefix="bench-prefix-",
+    )
+    assert row["agent_id"] == "general"
+    assert row["effective_agent_id"] == "general"
+    assert row["forwarded_tool_count"] == 18
+    assert "delegate" in row["forwarded_tools"]
+    assert row["assistant_excerpt"] == "Hello README line"
+    assert row["expected_workspace_name"] == "bench-prefix-git"
+    assert row["workspace_create_name"] == "bench-prefix-git"
+    assert row["delegate_call_count"] == 1
+    assert row["subagent_start_count"] == 1
+    assert "cancelled" in row["ws_errors"]
 
 
 def test_failures_from_report_excludes_passed_and_skipped() -> None:

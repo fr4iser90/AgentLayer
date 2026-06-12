@@ -24,6 +24,19 @@ def emit_notification(
     source_ref: dict[str, Any] | None = None,
 ) -> None:
     """Insert in-app notification and deliver to opted-in external channels."""
+    try:
+        from apps.backend.domain.identity import get_benchmark_run_id
+
+        bench_run_id = get_benchmark_run_id()
+        if bench_run_id is not None:
+            logger.debug(
+                "skip notification during benchmark run=%s kind=%s",
+                bench_run_id,
+                kind,
+            )
+            return
+    except Exception:
+        pass
 
     def _run() -> None:
         row = notifications_store.insert_notification(

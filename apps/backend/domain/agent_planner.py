@@ -162,6 +162,15 @@ async def chat_completion(
     if isinstance(_raw_delegate_branch, str):
         delegate_required_branch = _raw_delegate_branch.strip() or None
     _handoff_collector = body.pop("agent_handoff_artifact_collector", None)
+    _raw_benchmark_run_id = body.pop("benchmark_run_id", None)
+    _parsed_benchmark_run_id: uuid.UUID | None = None
+    _bench_run_ctx_tok = None
+    _parent_cancel_bridge_task: asyncio.Task[None] | None = None
+    if _raw_benchmark_run_id is not None:
+        try:
+            _parsed_benchmark_run_id = uuid.UUID(str(_raw_benchmark_run_id).strip())
+        except (ValueError, TypeError):
+            _parsed_benchmark_run_id = None
 
     from apps.backend.domain.identity import set_workspace, get_identity
     workspace_id = body.pop("workspace_id", None)
@@ -314,6 +323,24 @@ async def chat_completion(
     else:
         agent_run_id = str(uuid.uuid4())
     tool_context["agent_run_id"] = agent_run_id
+    if _parsed_benchmark_run_id is not None:
+        tool_context["benchmark_run_id"] = str(_parsed_benchmark_run_id)
+        from apps.backend.domain.identity import set_benchmark_run_id
+
+        _bench_run_ctx_tok = set_benchmark_run_id(_parsed_benchmark_run_id)
+    if not embedded_subagent:
+        from apps.backend.domain.agent_run_cancel import register_parent_cancel
+
+        register_parent_cancel(agent_run_id)
+        if cancel_event is not None:
+
+            async def _propagate_cancel_to_subagents() -> None:
+                await cancel_event.wait()
+                from apps.backend.domain.agent_run_cancel import signal_parent_cancel
+
+                signal_parent_cancel(agent_run_id)
+
+            _parent_cancel_bridge_task = asyncio.create_task(_propagate_cancel_to_subagents())
     _llm_wait_token = None
     if event_emit is not None:
         try:
@@ -996,6 +1023,9 @@ async def chat_completion(
             t = m.get("type")
             if t == "cancel" and cancel_event is not None:
                 cancel_event.set()
+                from apps.backend.domain.agent_run_cancel import signal_parent_cancel
+
+                signal_parent_cancel(agent_run_id)
                 return True
             if t == "add_tools":
                 raw_names = m.get("names")
@@ -2186,6 +2216,16 @@ async def chat_completion(
             run_persist_warnings=_run_persist_warnings or None,
         )
     finally:
+        if _parent_cancel_bridge_task is not None:
+            _parent_cancel_bridge_task.cancel()
+            try:
+                await _parent_cancel_bridge_task
+            except asyncio.CancelledError:
+                pass
+        if not embedded_subagent:
+            from apps.backend.domain.agent_run_cancel import unregister_parent_cancel
+
+            unregister_parent_cancel(agent_run_id)
         if _llm_wait_token is not None:
             from apps.backend.infrastructure.llm_concurrency import reset_llm_wait_notifier
 
@@ -2204,6 +2244,9 @@ async def chat_completion(
             except Exception:
                 logger.warning("agent_runs finish failed run_id=%s", agent_run_id, exc_info=True)
         reset_capability_confirmed(_cap_cf_tok)
-        from apps.backend.domain.identity import reset_workspace
+        from apps.backend.domain.identity import reset_benchmark_run_id, reset_workspace
+
+        if _bench_run_ctx_tok is not None:
+            reset_benchmark_run_id(_bench_run_ctx_tok)
         if workspace_token:
             reset_workspace(workspace_token)

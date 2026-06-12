@@ -48,6 +48,7 @@ class ConversationCreateBody(BaseModel):
     workspace_id: uuid.UUID | None = None
     model_catalog_owned_by: str | None = Field(default=None, max_length=64)
     active_task_id: uuid.UUID | None = None
+    benchmark_run_id: uuid.UUID | None = None
 
 
 class ConversationActiveTaskBody(BaseModel):
@@ -102,6 +103,7 @@ async def create_conversation(request: Request, body: ConversationCreateBody):
             agent_id=body.agent_id,
             workspace_id=body.workspace_id,
             model_catalog_owned_by=body.model_catalog_owned_by,
+            benchmark_run_id=body.benchmark_run_id,
         )
     except PermissionError:
         raise HTTPException(status_code=403, detail="not allowed to create this conversation") from None

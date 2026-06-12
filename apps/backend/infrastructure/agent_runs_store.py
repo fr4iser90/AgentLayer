@@ -146,6 +146,58 @@ def insert_run_start_resilient(
     return {}, warnings
 
 
+def count_running_for_user(user_id: uuid.UUID) -> int:
+    with db.pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT COUNT(*)::int FROM agent_runs
+                WHERE user_id = %s AND status = 'running' AND finished_at IS NULL
+                """,
+                (user_id,),
+            )
+            row = cur.fetchone()
+    return int(row[0] or 0) if row else 0
+
+
+def running_workspace_ids_for_user(user_id: uuid.UUID) -> set[uuid.UUID]:
+    with db.pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT workspace_id FROM agent_runs
+                WHERE user_id = %s AND status = 'running' AND finished_at IS NULL
+                  AND workspace_id IS NOT NULL
+                """,
+                (user_id,),
+            )
+            rows = cur.fetchall()
+    out: set[uuid.UUID] = set()
+    for row in rows:
+        try:
+            out.add(uuid.UUID(str(row[0])))
+        except (ValueError, TypeError):
+            continue
+    return out
+
+
+def wait_for_user_runs_idle(
+    user_id: uuid.UUID,
+    *,
+    timeout_sec: float = 180.0,
+    poll_sec: float = 2.0,
+) -> bool:
+    """Block until no running agent_runs for user, or timeout. Returns True if idle."""
+    import time
+
+    deadline = time.monotonic() + max(0.0, float(timeout_sec))
+    while time.monotonic() < deadline:
+        if count_running_for_user(user_id) <= 0:
+            return True
+        time.sleep(max(0.25, float(poll_sec)))
+    return count_running_for_user(user_id) <= 0
+
+
 def finish_run(
     *,
     run_id: uuid.UUID,

@@ -17,7 +17,7 @@ from typing import Any, Callable
 import httpx
 import yaml
 
-from tests.benchmarks.agent.bench_cleanup import cleanup_prefix, prepare_bench_workspace_quota
+from tests.benchmarks.agent.bench_cleanup import cleanup_prefix, prepare_bench_sandbox_cleanup
 from tests.benchmarks.agent.bench_profiles import BenchModelProfile, parse_profiles_from_env, profile_labels_filter
 from tests.benchmarks.agent.bench_provider_registry import register_bench_llm_providers
 from tests.benchmarks.agent.cases import AgentScenario, SCENARIO_BY_ID, bench_dashboard_title, bench_workspace_name, scenarios_for_tier
@@ -345,7 +345,7 @@ class BenchRunReport:
     fixtures_applied: list[str] = field(default_factory=list)
     fixtures_skipped: dict[str, str] = field(default_factory=dict)
     bench_cleanup: dict[str, Any] | None = None
-    bench_cleanup_finish: dict[str, int] | None = None
+    bench_cleanup_finish: dict[str, Any] | None = None
     results: list[ScenarioResult] = field(default_factory=list)
     in_flight: dict[str, Any] | None = None
 
@@ -586,8 +586,8 @@ def _resolve_scenarios(
     return scenarios_for_tier(tier_max)
 
 
-def _env_truthy(name: str) -> bool:
-    return (os.environ.get(name) or "").strip().lower() in ("1", "true", "yes", "on")
+def _env_truthy(name: str, *, default: str = "") -> bool:
+    return (os.environ.get(name, default) or "").strip().lower() in ("1", "true", "yes", "on")
 
 
 def _render_scenario_prompt(scenario: AgentScenario, fixture_ctx: FixtureContext) -> str:
@@ -794,6 +794,7 @@ def _create_chat_conversation(
     profile: ModelProfile,
     scenario: AgentScenario,
     workspace_id: str | None,
+    benchmark_run_id: uuid.UUID | None = None,
 ) -> str | None:
     """Create a server conversation the same way ChatPage.startNewChat does."""
     payload: dict[str, Any] = {
@@ -807,6 +808,8 @@ def _create_chat_conversation(
     }
     if workspace_id:
         payload["workspace_id"] = workspace_id
+    if benchmark_run_id is not None:
+        payload["benchmark_run_id"] = str(benchmark_run_id)
     try:
         data = client.post_json("/v1/user/conversations", payload)
         conv = data.get("conversation") or {}
@@ -825,6 +828,7 @@ def _build_chat_body(
     scenario_prompt: str,
     workspace_id: str | None,
     conversation_id: str | None,
+    benchmark_run_id: uuid.UUID | None = None,
 ) -> dict[str, Any]:
     """Chat-parity body; benchmarks always enable LLM stream for admin WS live preview."""
     body: dict[str, Any] = {
@@ -838,6 +842,8 @@ def _build_chat_body(
         body["workspace_id"] = workspace_id
     if conversation_id:
         body["conversation_id"] = conversation_id
+    if benchmark_run_id is not None:
+        body["benchmark_run_id"] = str(benchmark_run_id)
     return body
 
 
@@ -863,6 +869,7 @@ def run_scenario(
     cancel_check: Callable[[], bool] | None = None,
     scenario_timeout_sec: float | None = None,
     max_tool_rounds_override: int | None = None,
+    benchmark_run_id: uuid.UUID | None = None,
 ) -> ScenarioResult:
     fixture_list = list(scenario.requires)
     if not profile.model:
@@ -894,6 +901,7 @@ def run_scenario(
         profile=profile,
         scenario=scenario,
         workspace_id=ws_id,
+        benchmark_run_id=benchmark_run_id,
     )
     body = _build_chat_body(
         profile=profile,
@@ -901,6 +909,7 @@ def run_scenario(
         scenario_prompt=scenario_prompt,
         workspace_id=ws_id,
         conversation_id=conversation_id,
+        benchmark_run_id=benchmark_run_id,
     )
     _apply_bench_run_limits(body, max_tool_rounds_override=max_tool_rounds_override)
     effective_agent = str(body["agent_id"] or "")
@@ -1185,6 +1194,9 @@ def run_benchmark(
     cancel_check: Callable[[], bool] | None = None,
     scenario_timeout_sec: float | None = None,
     max_tool_rounds_override: int | None = None,
+    benchmark_run_id: uuid.UUID | str | None = None,
+    cleanup_on_start: bool = True,
+    cleanup_on_finish: bool = True,
 ) -> BenchRunReport:
     load_bench_env()
     os.environ.setdefault("AGENT_E2E_BASE_URL", bench_base_url())
@@ -1196,6 +1208,12 @@ def run_benchmark(
     )
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     prefix = f"{resource_prefix.rstrip('-')}-{run_id}-"
+    bench_run_uuid: uuid.UUID | None = None
+    if benchmark_run_id is not None:
+        try:
+            bench_run_uuid = uuid.UUID(str(benchmark_run_id))
+        except (ValueError, TypeError):
+            bench_run_uuid = None
 
     session = BenchSession.open(
         run_as_user_id=run_as_user_id,
@@ -1203,9 +1221,10 @@ def run_benchmark(
         admin_user_id=admin_user_id,
     )
 
-    if _env_truthy(os.environ.get("AGENT_BENCH_CLEANUP_ON_START", "1")):
+    cleanup: dict[str, Any] | None = None
+    if cleanup_on_start:
         try:
-            cleanup = prepare_bench_workspace_quota(session.client)
+            cleanup = prepare_bench_sandbox_cleanup(session.client)
             logger.info("benchmark pre-run bench cleanup: %s", cleanup)
             if not cleanup.get("has_workspace_headroom"):
                 logger.warning(
@@ -1214,11 +1233,9 @@ def run_benchmark(
                     cleanup.get("after", {}).get("workspace_count"),
                     cleanup.get("workspace_headroom"),
                 )
-        except httpx.HTTPError as exc:
+        except Exception as exc:
             cleanup = {"error": str(exc)}
             logger.warning("benchmark pre-run bench cleanup failed: %s", exc)
-    else:
-        cleanup = None
 
     provider_registry = None
     if profiles_override is not None:
@@ -1317,6 +1334,28 @@ def run_benchmark(
                         )
                     )
                     continue
+                if (
+                    scenario.bench_workspace_suffix
+                    and isinstance(cleanup, dict)
+                    and cleanup.get("has_benchmark_workspace_headroom") is False
+                ):
+                    bench_headroom = cleanup.get("benchmark_workspace_headroom")
+                    bench_left = (cleanup.get("after") or {}).get("bench_workspace_count")
+                    _record(
+                        _skipped_result(
+                            run_id=run_id,
+                            scenario=scenario,
+                            profile=profile,
+                            reason=(
+                                "benchmark workspace quota full after cleanup "
+                                f"(bench_headroom={bench_headroom}, bench_remaining={bench_left}); "
+                                "use Admin → Benchmarks → Clean bench workspaces"
+                            ),
+                            fixtures=list(scenario.requires),
+                            fixture_ctx=fixture_ctx,
+                        )
+                    )
+                    continue
                 if block:
                     _record(
                         ScenarioResult(
@@ -1377,6 +1416,7 @@ def run_benchmark(
                             cancel_check=cancel_check,
                             scenario_timeout_sec=scenario_timeout_sec,
                             max_tool_rounds_override=max_tool_rounds_override,
+                            benchmark_run_id=bench_run_uuid,
                         )
                     )
                 except BenchmarkRunCancelled:
@@ -1416,16 +1456,26 @@ def run_benchmark(
                 provider_registry.restore(session.admin_for_ops())
             except httpx.HTTPError:
                 pass
-        if _env_truthy(os.environ.get("AGENT_BENCH_CLEANUP_ON_FINISH", "1")):
+        if cleanup_on_finish:
             try:
-                finish_stats = cleanup_prefix(session.client, prefix=prefix)
+                run_stats = cleanup_prefix(
+                    session.client,
+                    prefix=prefix,
+                    benchmark_run_id=bench_run_uuid,
+                )
+                finish_stats = prepare_bench_sandbox_cleanup(
+                    session.client,
+                    extra_deleted=run_stats,
+                )
+                finish_stats["run_prefix"] = prefix
+                finish_stats["run_prefix_deleted"] = run_stats
                 report.bench_cleanup_finish = finish_stats
                 logger.info(
-                    "benchmark post-run cleanup prefix=%s: %s",
+                    "benchmark post-run cleanup run_prefix=%s bench-*: %s",
                     prefix,
                     finish_stats,
                 )
-            except httpx.HTTPError as exc:
+            except Exception as exc:
                 report.bench_cleanup_finish = {"error": str(exc)}
                 logger.warning("benchmark post-run cleanup failed: %s", exc)
         session.close()
@@ -1445,8 +1495,95 @@ def _scenario_insights_summary(run_metrics: dict[str, Any] | None) -> str:
     return " | ".join(str(line).strip() for line in insights[:4] if str(line).strip())
 
 
+def _bench_diagnostics(result: ScenarioResult) -> dict[str, Any]:
+    rm = result.run_metrics if isinstance(result.run_metrics, dict) else {}
+    diag = rm.get("bench_diagnostics")
+    return diag if isinstance(diag, dict) else {}
+
+
+def _workspace_create_name_from_tool_rounds(tool_rounds: list[dict[str, Any]]) -> str:
+    for row in tool_rounds:
+        name = str(row.get("name") or "").strip().lower()
+        if name not in ("workspace.create", "workspaces.create", "create"):
+            continue
+        args = row.get("normalized_arguments")
+        if isinstance(args, dict):
+            nm = str(args.get("name") or "").strip()
+            if nm:
+                return nm
+        wire = row.get("wire_arguments")
+        if isinstance(wire, dict):
+            nm = str(wire.get("name") or "").strip()
+            if nm:
+                return nm
+        if isinstance(wire, str) and wire.strip():
+            try:
+                parsed = json.loads(wire)
+            except json.JSONDecodeError:
+                parsed = None
+            if isinstance(parsed, dict):
+                nm = str(parsed.get("name") or "").strip()
+                if nm:
+                    return nm
+            return wire.strip()[:200]
+    return ""
+
+
+def _failure_export_debug_fields(
+    result: ScenarioResult,
+    *,
+    resource_prefix: str | None = None,
+) -> dict[str, Any]:
+    """Extra columns for failures.json / failures CSV (debugging only)."""
+    diag = _bench_diagnostics(result)
+    session = diag.get("session") if isinstance(diag.get("session"), dict) else {}
+    tool_rounds = diag.get("tool_rounds") if isinstance(diag.get("tool_rounds"), list) else []
+    event_counts = diag.get("event_counts") if isinstance(diag.get("event_counts"), dict) else {}
+    ws_errors = diag.get("ws_errors") if isinstance(diag.get("ws_errors"), list) else []
+
+    forwarded = session.get("forwarded_tools")
+    forwarded_names: list[str] = []
+    if isinstance(forwarded, list):
+        forwarded_names = [str(x).strip() for x in forwarded if str(x).strip()]
+
+    expected_ws = ""
+    if resource_prefix:
+        scenario = SCENARIO_BY_ID.get(result.scenario_id)
+        if scenario is not None:
+            ws_name = bench_workspace_name(scenario, resource_prefix)
+            if ws_name:
+                expected_ws = ws_name
+
+    delegate_calls = sum(
+        1 for row in tool_rounds if str(row.get("name") or "").strip().lower() == "delegate"
+    )
+
+    err_parts: list[str] = []
+    for row in ws_errors[-3:]:
+        if not isinstance(row, dict):
+            continue
+        typ = str(row.get("type") or "").strip()
+        detail = str(row.get("detail") or row.get("message") or "").strip()
+        if typ or detail:
+            err_parts.append(f"{typ}: {detail}"[:180] if detail else typ)
+
+    return {
+        "agent_id": str(result.agent_id or ""),
+        "effective_agent_id": str(session.get("effective_agent_id") or ""),
+        "forwarded_tool_count": session.get("forwarded_tool_count"),
+        "forwarded_tools": ", ".join(forwarded_names[:24])
+        + (f" (+{len(forwarded_names) - 24})" if len(forwarded_names) > 24 else ""),
+        "assistant_excerpt": (result.assistant_excerpt or "").strip()[:500],
+        "expected_workspace_name": expected_ws,
+        "workspace_create_name": _workspace_create_name_from_tool_rounds(tool_rounds),
+        "delegate_call_count": delegate_calls,
+        "subagent_start_count": int(event_counts.get("subagent_start_count") or 0),
+        "ws_errors": " | ".join(err_parts),
+    }
+
+
 def scenario_export_row(result: ScenarioResult) -> dict[str, Any]:
-    """Flat row for CSV / failures export."""
+    """Flat row for summary CSV (base columns)."""
     rm = result.run_metrics if isinstance(result.run_metrics, dict) else {}
     tools = ", ".join(result.tool_names[:12])
     if len(result.tool_names) > 12:
@@ -1469,9 +1606,20 @@ def scenario_export_row(result: ScenarioResult) -> dict[str, Any]:
     }
 
 
+def failure_export_row(
+    result: ScenarioResult,
+    *,
+    resource_prefix: str | None = None,
+) -> dict[str, Any]:
+    """Failures export: base row plus debug fields."""
+    row = scenario_export_row(result)
+    row.update(_failure_export_debug_fields(result, resource_prefix=resource_prefix))
+    return row
+
+
 def failures_from_report(report: BenchRunReport) -> list[dict[str, Any]]:
     return [
-        scenario_export_row(r)
+        failure_export_row(r, resource_prefix=report.resource_prefix)
         for r in report.results
         if not r.skipped and not r.passed
     ]

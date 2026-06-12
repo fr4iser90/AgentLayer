@@ -190,6 +190,55 @@ def mark_all_read(*, user_id: uuid.UUID) -> int:
     return int(n)
 
 
+def delete_benchmark_notifications(
+    user_id: uuid.UUID,
+    *,
+    dashboard_ids: list[uuid.UUID] | None = None,
+    benchmark_run_id: uuid.UUID | None = None,
+    include_legacy_prefix: bool = True,
+) -> int:
+    """Remove in-app notifications created by benchmark dashboard/sandbox activity."""
+    total = 0
+    with db.pool().connection() as conn:
+        with conn.cursor() as cur:
+            if benchmark_run_id is not None:
+                cur.execute(
+                    """
+                    DELETE FROM user_notifications
+                    WHERE user_id = %s AND source_ref->>'benchmark_run_id' = %s
+                    """,
+                    (user_id, str(benchmark_run_id)),
+                )
+                total += int(cur.rowcount)
+            if dashboard_ids:
+                ids = [str(d) for d in dashboard_ids]
+                cur.execute(
+                    """
+                    DELETE FROM user_notifications
+                    WHERE user_id = %s AND source_ref->>'dashboard_id' = ANY(%s)
+                    """,
+                    (user_id, ids),
+                )
+                total += int(cur.rowcount)
+            if include_legacy_prefix:
+                cur.execute(
+                    """
+                    DELETE FROM user_notifications
+                    WHERE user_id = %s AND (
+                      title LIKE %s OR title LIKE %s
+                    )
+                    """,
+                    (
+                        user_id,
+                        "Dashboard updated: bench-%",
+                        "Layout options: bench-%",
+                    ),
+                )
+                total += int(cur.rowcount)
+        conn.commit()
+    return total
+
+
 def mark_dashboard_seen(
     *,
     user_id: uuid.UUID,

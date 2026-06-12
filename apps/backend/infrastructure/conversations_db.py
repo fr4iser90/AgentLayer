@@ -486,6 +486,7 @@ def conversation_create(
     agent_id: str | None = None,
     workspace_id: uuid.UUID | None = None,
     model_catalog_owned_by: str | None = None,
+    benchmark_run_id: uuid.UUID | None = None,
 ) -> dict[str, Any]:
     tenant_id = _user_tenant_id(user_id)
     messages = _ingress_conversation_messages_if_enabled(messages, user_id=user_id, tenant_id=tenant_id)
@@ -496,6 +497,9 @@ def conversation_create(
     if workspace_id is not None:
         pref_ws = workspace_id if isinstance(workspace_id, uuid.UUID) else uuid.UUID(str(workspace_id))
     pref_owned = _normalize_model_catalog_owned_by(model_catalog_owned_by)
+    from apps.backend.domain.identity import get_benchmark_run_id
+
+    bench_run_id = benchmark_run_id or get_benchmark_run_id()
     if shared:
         pref_agent = None
         pref_ws = None
@@ -558,9 +562,9 @@ def conversation_create(
                 """
                 INSERT INTO chat_conversations (
                   id, user_id, tenant_id, dashboard_id, title, mode, model, agent_log, shared,
-                  pref_agent_id, pref_workspace_id, pref_model_catalog_owned_by
+                  pref_agent_id, pref_workspace_id, pref_model_catalog_owned_by, benchmark_run_id
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb, false, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb, false, %s, %s, %s, %s)
                 """,
                 (
                     conv_id,
@@ -574,6 +578,7 @@ def conversation_create(
                     pref_agent,
                     ws_bind,
                     pref_owned,
+                    bench_run_id,
                 ),
             )
             for i, m in enumerate(messages):

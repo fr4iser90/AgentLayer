@@ -132,6 +132,18 @@ def create_dashboard_payload(
 
     if only_if_none and len(existing) == 1:
         r = existing[0]
+        try:
+            from apps.backend.domain.identity import get_benchmark_run_id
+            from apps.backend.infrastructure.benchmark_resource_service import (
+                tag_dashboard_benchmark_run,
+            )
+
+            bench_run_id = get_benchmark_run_id()
+            dash_id = r.get("id")
+            if bench_run_id is not None and dash_id:
+                tag_dashboard_benchmark_run(dash_id, uid, tid, bench_run_id)
+        except Exception:
+            pass
         payload: dict[str, Any] = {
             "ok": True,
             "created": False,

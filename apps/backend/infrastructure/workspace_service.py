@@ -572,6 +572,7 @@ def create_project_workspace_for_user(
     source: str,
     git_url: str | None = None,
     git_branch: str = "main",
+    benchmark_run_id: uuid.UUID | None = None,
 ) -> dict[str, Any]:
     """
     Create a row in ``project_workspaces`` and materialize on disk (same rules as ``POST /v1/workspaces``).
@@ -579,7 +580,11 @@ def create_project_workspace_for_user(
     Returns API-shaped workspace dict (``id``, ``name``, ``path``, …).
     Raises :class:`WorkspaceCreateError` on failure.
     """
+    from apps.backend.domain.identity import get_benchmark_run_id
+    from apps.backend.infrastructure.benchmark_resource_service import user_benchmark_workspace_quota
     from apps.backend.infrastructure.db import db
+
+    bench_run_id = benchmark_run_id or get_benchmark_run_id()
 
     nm = validate_workspace_name(name)
     if nm == AGENTLAYER_SELF_NAME:
@@ -595,24 +600,40 @@ def create_project_workspace_for_user(
 
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(
-                "SELECT COALESCE(workspace_quota, 10) FROM users WHERE id = %s",
-                (user.id,),
-            )
-            row = cur.fetchone()
-            quota = row[0] if row else 10
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT COUNT(*) FROM project_workspaces WHERE owner_user_id = %s",
-                (user.id,),
-            )
-            row = cur.fetchone()
-            existing_count = row[0] if row else 0
-
-    if existing_count >= quota:
-        raise WorkspaceCreateError(
-            f"Workspace quota exceeded ({quota} max). Delete some workspaces first."
-        )
+            if bench_run_id is not None:
+                bench_quota = user_benchmark_workspace_quota(user.id)
+                cur.execute(
+                    """
+                    SELECT COUNT(*) FROM project_workspaces
+                    WHERE owner_user_id = %s AND benchmark_run_id IS NOT NULL
+                    """,
+                    (user.id,),
+                )
+                bench_count = int((cur.fetchone() or [0])[0] or 0)
+                if bench_count >= bench_quota:
+                    raise WorkspaceCreateError(
+                        f"Benchmark workspace quota exceeded ({bench_quota} max). "
+                        "Clean benchmark sandboxes in Admin → Benchmarks."
+                    )
+            else:
+                cur.execute(
+                    "SELECT COALESCE(workspace_quota, 10) FROM users WHERE id = %s",
+                    (user.id,),
+                )
+                row = cur.fetchone()
+                quota = int(row[0] if row else 10)
+                cur.execute(
+                    """
+                    SELECT COUNT(*) FROM project_workspaces
+                    WHERE owner_user_id = %s AND benchmark_run_id IS NULL
+                    """,
+                    (user.id,),
+                )
+                existing_count = int((cur.fetchone() or [0])[0] or 0)
+                if existing_count >= quota:
+                    raise WorkspaceCreateError(
+                        f"Workspace quota exceeded ({quota} max). Delete some workspaces first."
+                    )
 
     base = _workspace_base_path()
     user_workspace_dir = resolve_user_workspace_dir(base, user.id, nm)
@@ -653,12 +674,14 @@ def create_project_workspace_for_user(
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    INSERT INTO project_workspaces (owner_user_id, name, path, source, git_url, git_branch, access_role)
-                    VALUES (%s, %s, %s, %s, %s, %s, 'owner')
+                    INSERT INTO project_workspaces (
+                      owner_user_id, name, path, source, git_url, git_branch, access_role, benchmark_run_id
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, 'owner', %s)
                     RETURNING id, owner_user_id, name, path, source, git_url, git_branch, access_role, created_at, updated_at,
                               verify_command, verify_required
                     """,
-                    (user.id, nm, str(user_workspace_dir), src, gu_ins, br_ins),
+                    (user.id, nm, str(user_workspace_dir), src, gu_ins, br_ins, bench_run_id),
                 )
                 row = cur.fetchone()
             conn.commit()
