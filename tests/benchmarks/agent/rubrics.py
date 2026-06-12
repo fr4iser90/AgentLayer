@@ -224,13 +224,14 @@ def rubric_w2_find_octocat_indexed(
     tool_names: list[str],
     tool_invocations: list[dict[str, Any]] | None,
     error: str | None,
-    **_: Any,
+    **kwargs: Any,
 ) -> RubricOutcome:
     base = rubric_w2_find_octocat(
         content=content,
         tool_names=tool_names,
         tool_invocations=tool_invocations,
         error=error,
+        **kwargs,
     )
     if not base.passed:
         return base

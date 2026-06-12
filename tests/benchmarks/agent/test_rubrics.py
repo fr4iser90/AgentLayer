@@ -68,6 +68,18 @@ def test_w2_finds_octocat() -> None:
     assert out.passed is True
 
 
+def test_w2_indexed_forwards_workspace_row() -> None:
+    out = evaluate_rubric(
+        "w2_find_octocat_indexed",
+        content="Octocat in .git/config",
+        tool_names=["workspace.create", "index", "repository.search"],
+        tool_invocations=[],
+        error=None,
+        workspace_row=_WS,
+    )
+    assert out.passed is True
+
+
 def test_soc1_share_data() -> None:
     out = evaluate_rubric(
         "soc1_share_data",
