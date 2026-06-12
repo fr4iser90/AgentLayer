@@ -781,6 +781,7 @@ class AdminPatchUserBody(BaseModel):
     media_enabled: bool | None = None
     media_upload_enabled: bool | None = None
     media_sharing_enabled: bool | None = None
+    llm_queue_priority: int | None = Field(default=None, ge=0, le=1000)
 
 
 @app.get("/v1/admin/tenants")
@@ -809,7 +810,7 @@ async def admin_list_users(request: Request):
 async def admin_patch_user(request: Request, user_id: uuid.UUID, body: AdminPatchUserBody):
     """Update ``tenant_id``, ``workspace_quota``, ``workspace_self_allowed``. Admin only."""
     await require_admin(request)
-    if body.tenant_id is None and body.workspace_quota is None and body.workspace_self_allowed is None and body.media_storage_quota_mb is None and body.media_enabled is None and body.media_upload_enabled is None and body.media_sharing_enabled is None:
+    if body.tenant_id is None and body.workspace_quota is None and body.workspace_self_allowed is None and body.media_storage_quota_mb is None and body.media_enabled is None and body.media_upload_enabled is None and body.media_sharing_enabled is None and body.llm_queue_priority is None:
         raise HTTPException(status_code=400, detail="no fields to patch")
     u = get_user_by_id(user_id)
     if not u:
@@ -856,6 +857,18 @@ async def admin_patch_user(request: Request, user_id: uuid.UUID, body: AdminPatc
             "UPDATE users SET media_sharing_enabled = %s WHERE id = %s",
             (body.media_sharing_enabled, user_id),
         )
+
+    if "llm_queue_priority" in body.model_fields_set:
+        db.query(
+            "UPDATE users SET llm_queue_priority = %s WHERE id = %s",
+            (body.llm_queue_priority, user_id),
+        )
+        try:
+            from apps.backend.infrastructure.llm_queue_policy import invalidate_user_priority_cache
+
+            invalidate_user_priority_cache(user_id)
+        except Exception:
+            pass
 
     return {
         "ok": True,

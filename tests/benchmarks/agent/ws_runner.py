@@ -80,6 +80,25 @@ async def _run_chat_ws_async(
     error: str | None = None
     started = time.monotonic()
     cancel_sent = False
+    paused_total = 0.0
+    pause_started: float | None = None
+
+    def _effective_elapsed() -> float:
+        extra = 0.0
+        if pause_started is not None:
+            extra = time.monotonic() - pause_started
+        return time.monotonic() - started - paused_total - extra
+
+    def _track_pause_event(msg: dict[str, Any]) -> None:
+        nonlocal pause_started, paused_total
+        typ = msg.get("type")
+        if typ == "agent.scan_wait":
+            phase = str(msg.get("phase") or "").strip().lower()
+            if phase == "started" and pause_started is None:
+                pause_started = time.monotonic()
+            elif phase == "ended" and pause_started is not None:
+                paused_total += time.monotonic() - pause_started
+                pause_started = None
 
     async with websockets.connect(ws_url, open_timeout=30, close_timeout=10) as ws:
         await ws.send(json.dumps({"type": "chat", "body": body}))
@@ -90,7 +109,7 @@ async def _run_chat_ws_async(
                 completion, error = await _drain_after_cancel(ws, events, on_event)
                 break
             if timeout_sec is not None and timeout_sec > 0:
-                elapsed = time.monotonic() - started
+                elapsed = _effective_elapsed()
                 if elapsed >= timeout_sec:
                     if not cancel_sent:
                         cancel_sent = True
@@ -110,6 +129,7 @@ async def _run_chat_ws_async(
             if not isinstance(msg, dict):
                 continue
             events.append(msg)
+            _track_pause_event(msg)
             if on_event is not None:
                 on_event(msg)
             typ = msg.get("type")

@@ -252,8 +252,8 @@ TIER4_SCENARIOS: list[AgentScenario] = [
             + _delegate_security_auditor_step(
                 sub_prompt=(
                     "Run a SimpleSecCheck security scan on the repository using security_scan_resolve "
-                    "(or security_scan_start if resolve unavailable). Use the workspace git URL. "
-                    "Do not poll status repeatedly — report scan_id and status from the first response."
+                    "with wait_for_completion=true when the API returns estimated_time_seconds. "
+                    "Use the workspace git URL. Report scan_id and final status when the scan completes."
                 )
             )
             + "Reply with lines: scan_id: … and status: …"
@@ -280,7 +280,8 @@ TIER4_SCENARIOS: list[AgentScenario] = [
                 sub_prompt=(
                     "Security remediation on this workspace: (1) git_read status; git_sync pull ff-only; "
                     "(2) create branch agent/sec-bench-{today's YYYYMMDD}; "
-                    "(3) security_scan finding_policy_schema once, then resolve/start on the repo; "
+                    "(3) security_scan finding_policy_schema once, then resolve/start on the repo "
+                    "with wait_for_completion=true when estimated_time_seconds is returned; "
                     "(4) write findings summary to docs/SECURITY_REPORT.md; "
                     "(5) fix at most ONE finding (prefer LOW) with a minimal patch; (6) no git push."
                 )

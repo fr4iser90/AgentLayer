@@ -22,6 +22,7 @@ type UserRow = {
   media_storage_quota_mb?: number | null;
   media_enabled?: boolean | null;
   media_upload_enabled?: boolean | null;
+  llm_queue_priority?: number | null;
 };
 
 function rowLabel(r: UserRow): string {
@@ -134,6 +135,27 @@ export function AdminUsers() {
       await loadUsers();
     } catch (e) {
       setListErr(e instanceof Error ? e.message : t("admin:workspaceQuotaUpdateFailed"));
+    } finally {
+      setSavingUserId(null);
+    }
+  }
+
+  async function patchLlmQueuePriority(userId: string, priority: number | null) {
+    setSavingUserId(userId);
+    setListErr(null);
+    try {
+      const res = await apiFetch(`/v1/admin/users/${userId}`, auth, {
+        method: "PATCH",
+        body: JSON.stringify({ llm_queue_priority: priority }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { detail?: unknown };
+      if (!res.ok) {
+        setListErr(typeof data.detail === "string" ? data.detail : t("admin:llmQueuePriorityUpdateFailed"));
+        return;
+      }
+      await loadUsers();
+    } catch (e) {
+      setListErr(e instanceof Error ? e.message : t("admin:llmQueuePriorityUpdateFailed"));
     } finally {
       setSavingUserId(null);
     }
@@ -321,6 +343,7 @@ export function AdminUsers() {
                 <th className="px-4 py-3 font-medium">{t("admin:usersColRole")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColQuota")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColMediaQuota")}</th>
+                <th className="px-4 py-3 font-medium">{t("admin:usersColLlmPrio")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColMedia")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColSelfEdit")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColDiscord")}</th>
@@ -331,19 +354,19 @@ export function AdminUsers() {
             <tbody>
               {listLoading ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-6 text-center text-surface-muted">
+                  <td colSpan={11} className="px-4 py-6 text-center text-surface-muted">
                     {t("admin:loading")}
                   </td>
                 </tr>
               ) : listErr ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-6 text-center text-red-400">
+                  <td colSpan={11} className="px-4 py-6 text-center text-red-400">
                     {listErr}
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-6 text-center text-surface-muted">
+                  <td colSpan={11} className="px-4 py-6 text-center text-surface-muted">
                     {t("admin:usersNoUsers")}
                   </td>
                 </tr>
@@ -422,6 +445,28 @@ export function AdminUsers() {
                             const next = parseInt(e.target.value, 10);
                             if (!Number.isFinite(next) || next < 1 || next > 50000) return;
                             void patchMediaStorageQuota(r.id, next);
+                          }}
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <input
+                          type="number"
+                          min={0}
+                          max={1000}
+                          className="w-16 rounded-md border border-surface-border bg-black/20 px-2 py-1 text-xs text-white"
+                          value={r.llm_queue_priority ?? ""}
+                          placeholder={t("admin:usersLlmPrioDefault")}
+                          disabled={saving}
+                          title={t("admin:usersLlmPrioHint")}
+                          onChange={(e) => {
+                            const raw = e.target.value.trim();
+                            if (!raw) {
+                              void patchLlmQueuePriority(r.id, null);
+                              return;
+                            }
+                            const next = parseInt(raw, 10);
+                            if (!Number.isFinite(next) || next < 0 || next > 1000) return;
+                            void patchLlmQueuePriority(r.id, next);
                           }}
                         />
                       </td>

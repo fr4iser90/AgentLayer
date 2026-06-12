@@ -131,14 +131,17 @@ async def _run_task_row(row: dict[str, Any]) -> None:
         )
         return
 
+    from apps.backend.domain.identity import llm_queue_source_scope, reset_identity, set_identity
+
     role = db.user_role(user_id)
     id_tok = set_identity(tenant_id, user_id)
     failed = False
     try:
-        await chat_completion(
-            body,
-            bearer_user_role=role if role in ("user", "admin") else None,
-        )
+        with llm_queue_source_scope("scheduler"):
+            await chat_completion(
+                body,
+                bearer_user_role=role if role in ("user", "admin") else None,
+            )
     except Exception:
         failed = True
         logger.exception("agent_tasks: run failed task_id=%s", task_id)

@@ -6,11 +6,18 @@ from typing import Any, Callable
 
 from apps.backend.domain.security_scan.common import (
     END_RUN_GUIDANCE,
-    NO_WAIT_SUFFIX,
+    agent_guidance_for_status,
     dump_ok,
     request,
     resolve_repo_url,
     ssc_domain_attrs,
+    ssc_status,
+)
+from apps.backend.domain.security_scan.wait import (
+    merge_wait_into_payload,
+    parse_estimated_time_seconds,
+    should_wait_for_scan,
+    wait_for_scan_completion,
 )
 
 __version__ = "1.1.0"
@@ -48,20 +55,44 @@ def start(arguments: dict[str, Any], context: dict | None = None) -> str:
     status_code, data = request("POST", "/api/v1/scans/", json_body=body, timeout=60.0)
     if isinstance(data, dict) and data.get("ok") is False:
         return dump_ok(data)
-    scan_id = data.get("id") or data.get("scan_id") if isinstance(data, dict) else None
-    return dump_ok(
-        {
-            "ok": True,
-            "http_status": status_code,
-            "scan_id": scan_id,
-            "repo_url": repo_url,
-            "branch": branch or None,
-            "scan": data,
-            "defer": True,
-            "end_run_recommended": True,
-            "agent_guidance": [END_RUN_GUIDANCE],
-        }
-    )
+    api_data = data if isinstance(data, dict) else None
+    scan_id = api_data.get("id") or api_data.get("scan_id") if api_data else None
+    st = ssc_status(api_data)
+    estimated_sec = parse_estimated_time_seconds(api_data)
+    defer = st in ("started", "scanning", "queued", "running", "pending") or st is None
+    payload: dict[str, Any] = {
+        "ok": True,
+        "http_status": status_code,
+        "scan_id": scan_id,
+        "status": st,
+        "estimated_time_seconds": estimated_sec,
+        "repo_url": repo_url,
+        "branch": branch or None,
+        "scan": data,
+        "defer": defer,
+        "end_run_recommended": defer,
+        "agent_guidance": agent_guidance_for_status(st, data=api_data)
+        if st
+        else [END_RUN_GUIDANCE],
+    }
+    if (
+        scan_id
+        and should_wait_for_scan(
+            arguments,
+            context,
+            st=st,
+            estimated_sec=estimated_sec,
+            scan_id=str(scan_id),
+        )
+    ):
+        wait_result = wait_for_scan_completion(
+            str(scan_id),
+            estimated_sec=estimated_sec,
+            context=context,
+            initial_status=st,
+        )
+        merge_wait_into_payload(payload, wait_result=wait_result, api_data=api_data)
+    return dump_ok(payload)
 
 
 HANDLERS: dict[str, Callable[..., str]] = {
@@ -74,8 +105,8 @@ TOOLS: list[dict[str, Any]] = [
         "function": {
             "name": "start",
             "TOOL_DESCRIPTION": (
-                "Low-level scan enqueue (POST /api/v1/scans/). Prefer security_scan_resolve."
-                + NO_WAIT_SUFFIX
+                "Low-level scan enqueue (POST /api/v1/scans/). Prefer security_scan_resolve. "
+                "Returns estimated_time_seconds when available; wait_for_completion polls until done."
             ),
             "parameters": {
                 "type": "object",
@@ -83,6 +114,14 @@ TOOLS: list[dict[str, Any]] = [
                     "repo_url": {"type": "string", "TOOL_DESCRIPTION": "HTTPS Git clone URL"},
                     "branch": {"type": "string", "TOOL_DESCRIPTION": "Branch name"},
                     "scan_type": {"type": "string", "TOOL_DESCRIPTION": "Optional scan profile"},
+                    "wait_for_completion": {
+                        "type": "boolean",
+                        "TOOL_DESCRIPTION": "Poll until scan completes when estimate is available",
+                    },
+                    "skip_scan_wait": {
+                        "type": "boolean",
+                        "TOOL_DESCRIPTION": "Benchmark only: skip auto-wait even when estimate exists",
+                    },
                 },
             },
         },

@@ -7,7 +7,6 @@ from typing import Any, Callable
 from apps.backend.domain.security_scan.common import (
     DEFAULT_FINDINGS_LIMIT,
     MAX_FINDINGS_LIMIT,
-    NO_WAIT_SUFFIX,
     agent_guidance_for_status,
     base_url,
     bool_arg,
@@ -18,6 +17,12 @@ from apps.backend.domain.security_scan.common import (
     resolve_repo_url,
     ssc_domain_attrs,
     ssc_status,
+)
+from apps.backend.domain.security_scan.wait import (
+    merge_wait_into_payload,
+    parse_estimated_time_seconds,
+    should_wait_for_scan,
+    wait_for_scan_completion,
 )
 
 __version__ = "1.1.0"
@@ -79,6 +84,7 @@ def resolve(arguments: dict[str, Any], context: dict | None = None) -> str:
     scan_id = api_data.get("scan_id") or api_data.get("id") if api_data else None
     defer = st in ("started", "scanning", "queued", "running", "pending")
     findings = normalize_findings(api_data) if st == "ready" else []
+    estimated_sec = parse_estimated_time_seconds(api_data)
     payload: dict[str, Any] = {
         "ok": True,
         "http_status": status_code,
@@ -87,6 +93,7 @@ def resolve(arguments: dict[str, Any], context: dict | None = None) -> str:
         "branch": branch or None,
         "status": st,
         "scan_id": scan_id,
+        "estimated_time_seconds": estimated_sec,
         "defer": defer,
         "end_run_recommended": defer,
         "target_id": api_data.get("target_id") if api_data else None,
@@ -102,6 +109,23 @@ def resolve(arguments: dict[str, Any], context: dict | None = None) -> str:
             st, data=api_data, findings=findings
         ),
     }
+    if (
+        scan_id
+        and should_wait_for_scan(
+            arguments,
+            context,
+            st=st,
+            estimated_sec=estimated_sec,
+            scan_id=str(scan_id),
+        )
+    ):
+        wait_result = wait_for_scan_completion(
+            str(scan_id),
+            estimated_sec=estimated_sec,
+            context=context,
+            initial_status=st,
+        )
+        merge_wait_into_payload(payload, wait_result=wait_result, api_data=api_data)
     if st == "ready" and scan_id:
         from apps.backend.domain.ssc_scan_artifact import maybe_persist_ssc_scan_artifact
 
@@ -138,8 +162,8 @@ TOOLS: list[dict[str, Any]] = [
             "name": "resolve",
             "TOOL_DESCRIPTION": (
                 "Primary SimpleSecCheck entry: resolve or enqueue scan for a Git repo. "
-                "Returns status ready|scanning|started and scan_id. If started/scanning, end the run."
-                + NO_WAIT_SUFFIX
+                "Returns status ready|scanning|started, scan_id, and estimated_time_seconds when available. "
+                "Set wait_for_completion=true to poll until done (benchmark runs auto-wait when estimate exists)."
             ),
             "parameters": {
                 "type": "object",
@@ -165,6 +189,17 @@ TOOLS: list[dict[str, Any]] = [
                     "findings_severity": {
                         "type": "string",
                         "TOOL_DESCRIPTION": "e.g. CRITICAL,HIGH when status=ready",
+                    },
+                    "wait_for_completion": {
+                        "type": "boolean",
+                        "TOOL_DESCRIPTION": (
+                            "When true and scan is pending/running with estimated_time_seconds, "
+                            "wait (poll) until terminal status before returning"
+                        ),
+                    },
+                    "skip_scan_wait": {
+                        "type": "boolean",
+                        "TOOL_DESCRIPTION": "Benchmark only: skip auto-wait even when estimate exists",
                     },
                 },
             },

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import contextvars
 import uuid
 from typing import Any
@@ -14,6 +15,10 @@ _workspace: contextvars.ContextVar[dict[str, Any] | None] = (
 )
 _benchmark_run_id: contextvars.ContextVar[uuid.UUID | None] = contextvars.ContextVar(
     "benchmark_run_id",
+    default=None,
+)
+_llm_queue_source: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "llm_queue_source",
     default=None,
 )
 
@@ -60,3 +65,25 @@ def get_benchmark_run_id() -> uuid.UUID | None:
 
 def reset_benchmark_run_id(token: contextvars.Token) -> None:
     _benchmark_run_id.reset(token)
+
+
+def set_llm_queue_source(source: str | None) -> contextvars.Token:
+    s = (source or "").strip().lower() or None
+    return _llm_queue_source.set(s)
+
+
+def get_llm_queue_source() -> str | None:
+    return _llm_queue_source.get()
+
+
+def reset_llm_queue_source(token: contextvars.Token) -> None:
+    _llm_queue_source.reset(token)
+
+
+@contextlib.contextmanager
+def llm_queue_source_scope(source: str | None):
+    tok = set_llm_queue_source(source)
+    try:
+        yield
+    finally:
+        reset_llm_queue_source(tok)

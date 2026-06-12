@@ -198,9 +198,12 @@ async def _run_one_tick() -> None:
             body["agent_plain_completion"] = True
     # full: default tools path
 
+    from apps.backend.domain.identity import llm_queue_source_scope, reset_identity, set_identity
+
     id_tok = set_identity(tenant_id, user_id)
     try:
-        data = await chat_completion(body, bearer_user_role=role if role in ("user", "admin") else None)
+        with llm_queue_source_scope("scheduler"):
+            data = await chat_completion(body, bearer_user_role=role if role in ("user", "admin") else None)
     finally:
         reset_identity(id_tok)
 

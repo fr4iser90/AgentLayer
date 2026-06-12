@@ -218,6 +218,10 @@ def _fetch_row() -> dict[str, Any]:
         "workspace_reindex_after_git_pull": False,
         "workspace_nightly_reindex_enabled": False,
         "workspace_index_on_attach_enabled": False,
+        "llm_queue_policy": "priority",
+        "llm_queue_user_priority": 100,
+        "llm_queue_benchmark_priority": 10,
+        "llm_queue_scheduler_priority": 50,
     }
     try:
         with db.pool().connection() as conn:
@@ -260,7 +264,11 @@ def _fetch_row() -> dict[str, Any]:
                            workspace_index_on_write_default,
                            workspace_reindex_after_git_pull,
                            workspace_nightly_reindex_enabled,
-                           workspace_index_on_attach_enabled
+                           workspace_index_on_attach_enabled,
+                           llm_queue_policy,
+                           llm_queue_user_priority,
+                           llm_queue_benchmark_priority,
+                           llm_queue_scheduler_priority
                     FROM operator_settings WHERE id = 1
                     """
                 )
@@ -365,6 +373,14 @@ def _fetch_row() -> dict[str, Any]:
         "workspace_reindex_after_git_pull": bool(row[70]) if len(row) > 70 and row[70] is not None else False,
         "workspace_nightly_reindex_enabled": bool(row[71]) if len(row) > 71 and row[71] is not None else False,
         "workspace_index_on_attach_enabled": bool(row[72]) if len(row) > 72 and row[72] is not None else False,
+        "llm_queue_policy": (
+            str(row[73]).strip().lower()
+            if len(row) > 73 and row[73] is not None and str(row[73]).strip()
+            else "priority"
+        ),
+        "llm_queue_user_priority": int(row[74]) if len(row) > 74 and row[74] is not None else 100,
+        "llm_queue_benchmark_priority": int(row[75]) if len(row) > 75 and row[75] is not None else 10,
+        "llm_queue_scheduler_priority": int(row[76]) if len(row) > 76 and row[76] is not None else 50,
     }
 
 
@@ -986,6 +1002,15 @@ def public_dict() -> dict[str, Any]:
         "llm_route_short_local_max_chars": _bound_int(r.get("llm_route_short_local_max_chars"), 220, 1, 50_000),
         "llm_route_many_code_fences": _bound_int(r.get("llm_route_many_code_fences"), 3, 1, 100),
         "llm_route_many_messages": _bound_int(r.get("llm_route_many_messages"), 14, 1, 500),
+        "llm_queue_policy": (
+            str(r.get("llm_queue_policy") or "priority").strip().lower()
+            if str(r.get("llm_queue_policy") or "priority").strip().lower()
+            in ("fifo", "priority", "round_robin")
+            else "priority"
+        ),
+        "llm_queue_user_priority": _bound_int(r.get("llm_queue_user_priority"), 100, 0, 1000),
+        "llm_queue_benchmark_priority": _bound_int(r.get("llm_queue_benchmark_priority"), 10, 0, 1000),
+        "llm_queue_scheduler_priority": _bound_int(r.get("llm_queue_scheduler_priority"), 50, 0, 1000),
         "memory_graph_enabled": bool(r.get("memory_graph_enabled", True)),
         "memory_graph_max_hops": _bound_int(r.get("memory_graph_max_hops"), 2, 0, 4),
         "memory_graph_min_score": _bound_float(r.get("memory_graph_min_score"), 0.03, 0.0, 1.0),
@@ -1072,6 +1097,10 @@ class OperatorSettingsPatch(BaseModel):
     llm_route_short_local_max_chars: int | None = Field(default=None, ge=1, le=50000)
     llm_route_many_code_fences: int | None = Field(default=None, ge=1, le=100)
     llm_route_many_messages: int | None = Field(default=None, ge=1, le=500)
+    llm_queue_policy: str | None = Field(default=None, max_length=32)
+    llm_queue_user_priority: int | None = Field(default=None, ge=0, le=1000)
+    llm_queue_benchmark_priority: int | None = Field(default=None, ge=0, le=1000)
+    llm_queue_scheduler_priority: int | None = Field(default=None, ge=0, le=1000)
     memory_graph_enabled: bool | None = None
     memory_graph_max_hops: int | None = Field(default=None, ge=0, le=4)
     memory_graph_min_score: float | None = Field(default=None, ge=0.0, le=1.0)
@@ -1341,6 +1370,18 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
     if "llm_route_many_messages" in patch:
         v = patch["llm_route_many_messages"]
         r["llm_route_many_messages"] = _bound_int(v, 14, 1, 500) if v is not None else 14
+    if "llm_queue_policy" in patch:
+        v = str(patch["llm_queue_policy"] or "priority").strip().lower()
+        r["llm_queue_policy"] = v if v in ("fifo", "priority", "round_robin") else "priority"
+    if "llm_queue_user_priority" in patch:
+        v = patch["llm_queue_user_priority"]
+        r["llm_queue_user_priority"] = _bound_int(v, 100, 0, 1000) if v is not None else 100
+    if "llm_queue_benchmark_priority" in patch:
+        v = patch["llm_queue_benchmark_priority"]
+        r["llm_queue_benchmark_priority"] = _bound_int(v, 10, 0, 1000) if v is not None else 10
+    if "llm_queue_scheduler_priority" in patch:
+        v = patch["llm_queue_scheduler_priority"]
+        r["llm_queue_scheduler_priority"] = _bound_int(v, 50, 0, 1000) if v is not None else 50
     if "memory_graph_enabled" in patch:
         r["memory_graph_enabled"] = bool(patch["memory_graph_enabled"])
     if "memory_graph_max_hops" in patch:
@@ -1702,6 +1743,18 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
             if "workspace_index_on_attach_enabled" in patch:
                 extra_sets.append("workspace_index_on_attach_enabled = %s")
                 extra_params.append(bool(r.get("workspace_index_on_attach_enabled", False)))
+            if "llm_queue_policy" in patch:
+                extra_sets.append("llm_queue_policy = %s")
+                extra_params.append(str(r.get("llm_queue_policy") or "priority"))
+            if "llm_queue_user_priority" in patch:
+                extra_sets.append("llm_queue_user_priority = %s")
+                extra_params.append(int(r.get("llm_queue_user_priority") or 100))
+            if "llm_queue_benchmark_priority" in patch:
+                extra_sets.append("llm_queue_benchmark_priority = %s")
+                extra_params.append(int(r.get("llm_queue_benchmark_priority") or 10))
+            if "llm_queue_scheduler_priority" in patch:
+                extra_sets.append("llm_queue_scheduler_priority = %s")
+                extra_params.append(int(r.get("llm_queue_scheduler_priority") or 50))
             if extra_sets:
                 # SECURITY: Column names in `extra_sets` come from the known
                 # _SETTING_KEYS mapping (see _OPERATOR_SETTINGS_KEYS).
@@ -1741,6 +1794,13 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
 
         apply_voice_operator_patch(voice_patch)
     _invalidate()
+    if any(k in patch for k in ("llm_queue_policy", "llm_queue_user_priority", "llm_queue_benchmark_priority", "llm_queue_scheduler_priority")):
+        try:
+            from apps.backend.infrastructure.llm_concurrency import invalidate_llm_concurrency_cache
+
+            invalidate_llm_concurrency_cache()
+        except Exception:
+            pass
     try:
         from apps.backend.infrastructure.embedding_client import invalidate_embedding_catalog_cache
 

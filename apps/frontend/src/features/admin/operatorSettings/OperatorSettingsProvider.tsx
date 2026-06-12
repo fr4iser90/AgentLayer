@@ -85,6 +85,10 @@ function useOperatorSettingsState() {
   const [llmRouteShortChars, setLlmRouteShortChars] = useState("220");
   const [llmRouteManyFences, setLlmRouteManyFences] = useState("3");
   const [llmRouteManyMsgs, setLlmRouteManyMsgs] = useState("14");
+  const [llmQueuePolicy, setLlmQueuePolicy] = useState<"fifo" | "priority" | "round_robin">("priority");
+  const [llmQueueUserPriority, setLlmQueueUserPriority] = useState("100");
+  const [llmQueueBenchmarkPriority, setLlmQueueBenchmarkPriority] = useState("10");
+  const [llmQueueSchedulerPriority, setLlmQueueSchedulerPriority] = useState("50");
   const [memGraphEnabled, setMemGraphEnabled] = useState(true);
   const [memGraphMaxHops, setMemGraphMaxHops] = useState("2");
   const [memGraphMinScore, setMemGraphMinScore] = useState("0.03");
@@ -312,6 +316,25 @@ function useOperatorSettingsState() {
         op.llm_route_many_messages != null && Number.isFinite(op.llm_route_many_messages)
           ? String(op.llm_route_many_messages)
           : "14"
+      );
+      const pol = String(op.llm_queue_policy ?? "priority").trim().toLowerCase();
+      setLlmQueuePolicy(
+        pol === "fifo" || pol === "round_robin" || pol === "priority" ? pol : "priority"
+      );
+      setLlmQueueUserPriority(
+        op.llm_queue_user_priority != null && Number.isFinite(op.llm_queue_user_priority)
+          ? String(op.llm_queue_user_priority)
+          : "100"
+      );
+      setLlmQueueBenchmarkPriority(
+        op.llm_queue_benchmark_priority != null && Number.isFinite(op.llm_queue_benchmark_priority)
+          ? String(op.llm_queue_benchmark_priority)
+          : "10"
+      );
+      setLlmQueueSchedulerPriority(
+        op.llm_queue_scheduler_priority != null && Number.isFinite(op.llm_queue_scheduler_priority)
+          ? String(op.llm_queue_scheduler_priority)
+          : "50"
       );
       setMemoryEnabled(op.memory_enabled !== false);
       setRagEnabled(op.rag_enabled !== false);
@@ -650,6 +673,27 @@ function useOperatorSettingsState() {
       patch.llm_route_short_local_max_chars = Math.floor(shortC);
       patch.llm_route_many_code_fences = Math.floor(manyF);
       patch.llm_route_many_messages = Math.floor(manyM);
+      const uPrio = Number(llmQueueUserPriority.trim());
+      const bPrio = Number(llmQueueBenchmarkPriority.trim());
+      const sPrio = Number(llmQueueSchedulerPriority.trim());
+      if (
+        !Number.isFinite(uPrio) ||
+        uPrio < 0 ||
+        uPrio > 1000 ||
+        !Number.isFinite(bPrio) ||
+        bPrio < 0 ||
+        bPrio > 1000 ||
+        !Number.isFinite(sPrio) ||
+        sPrio < 0 ||
+        sPrio > 1000
+      ) {
+        setSaveMsg({ ok: false, text: t("admin:operatorSaveLlmQueueInvalid") });
+        return;
+      }
+      patch.llm_queue_policy = llmQueuePolicy;
+      patch.llm_queue_user_priority = Math.floor(uPrio);
+      patch.llm_queue_benchmark_priority = Math.floor(bPrio);
+      patch.llm_queue_scheduler_priority = Math.floor(sPrio);
       const red = Number(ragEmbeddingDim.trim());
       const rcs = Number(ragChunkSize.trim());
       const rco = Number(ragChunkOverlap.trim());
@@ -1028,6 +1072,14 @@ function useOperatorSettingsState() {
     setLlmRouteManyFences,
     llmRouteManyMsgs,
     setLlmRouteManyMsgs,
+    llmQueuePolicy,
+    setLlmQueuePolicy,
+    llmQueueUserPriority,
+    setLlmQueueUserPriority,
+    llmQueueBenchmarkPriority,
+    setLlmQueueBenchmarkPriority,
+    llmQueueSchedulerPriority,
+    setLlmQueueSchedulerPriority,
     memGraphEnabled,
     setMemGraphEnabled,
     memGraphMaxHops,

@@ -358,10 +358,18 @@ async def chat_completion(
                 ev.setdefault("agent_run_id", agent_run_id)
                 asyncio.run_coroutine_threadsafe(event_emit(ev), _loop)
 
+            def _scan_wait_notify(payload: dict[str, Any]) -> None:
+                ev = dict(payload)
+                ev.setdefault("type", "agent.scan_wait")
+                ev.setdefault("parent_agent_run_id", agent_run_id)
+                ev.setdefault("agent_run_id", agent_run_id)
+                asyncio.run_coroutine_threadsafe(event_emit(ev), _loop)
+
             from apps.backend.infrastructure.llm_concurrency import bind_llm_wait_notifier
 
             _llm_wait_token = bind_llm_wait_notifier(_notify_llm_slot_wait)
             tool_context["agent_subagent_notify"] = _agent_subagent_notify
+            tool_context["scan_wait_notify"] = _scan_wait_notify
         except RuntimeError:
             pass
     tool_context["workspace_verify_succeeded"] = False

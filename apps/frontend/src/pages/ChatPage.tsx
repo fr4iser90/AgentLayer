@@ -49,7 +49,7 @@ import { AssistantTurnBlock } from "../features/chat/AssistantTurnBlock";
 import { ChatInFlightAssistantTurn } from "../features/chat/ChatInFlightAssistantTurn";
 import { ChatLiveActivityPanel } from "../features/chat/ChatLiveActivityPanel";
 import { getAgentChatSession } from "../features/chat/agentChatSession";
-import { llmSlotWaitMessage } from "../features/chat/agentChatWsCore";
+import { llmSlotWaitMessage, scanWaitMessage } from "../features/chat/agentChatWsCore";
 import {
   persistDetachedAgentCompletion,
   persistDetachedAgentLog,
@@ -1983,7 +1983,27 @@ export function ChatPage() {
           live.setWaitHint(text);
           const waited = msg.waited_sec != null ? Number(msg.waited_sec) : 0;
           if (waited < 0.5) {
-            appendAgentLine("llm_queue", text);
+            appendAgentLine("llm_queue", text, {
+              queueAhead: msg.queue_ahead != null ? Number(msg.queue_ahead) : undefined,
+              queueSize: msg.queue_size != null ? Number(msg.queue_size) : undefined,
+            });
+          }
+          return;
+        }
+        if (typ === "agent.scan_wait") {
+          const live = agentLiveTurnRef.current;
+          const text = scanWaitMessage(msg);
+          const phase = msg.phase != null ? String(msg.phase) : "";
+          if (phase === "started" || phase === "waiting") {
+            live.setWaitHint(text);
+            appendAgentLine("scan_queue", text, {
+              estimatedTimeSeconds:
+                msg.estimated_time_seconds != null
+                  ? Number(msg.estimated_time_seconds)
+                  : undefined,
+            });
+          } else if (phase === "ended") {
+            live.setWaitHint(null);
           }
           return;
         }

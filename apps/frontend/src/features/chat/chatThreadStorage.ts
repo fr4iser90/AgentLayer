@@ -76,6 +76,12 @@ export type AgentTimelineEntry = {
   messagesCompacted?: number;
   /** Assistant message char index when this event started (for inline stream interleaving). */
   streamOffset?: number;
+  /** LLM slot queue: requests ahead of this turn. */
+  queueAhead?: number;
+  /** LLM slot queue: total waiters. */
+  queueSize?: number;
+  /** SimpleSecCheck scan wait estimate (seconds). */
+  estimatedTimeSeconds?: number;
 };
 
 export type AgentTurnLog = {

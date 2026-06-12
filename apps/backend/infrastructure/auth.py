@@ -190,7 +190,8 @@ def list_all_users() -> list[dict[str, Any]]:
                        COALESCE(u.workspace_self_allowed, false) AS workspace_self_allowed,
                        u.media_storage_quota_mb,
                        u.media_enabled,
-                       u.media_upload_enabled
+                       u.media_upload_enabled,
+                       u.llm_queue_priority
                 FROM users u
                 LEFT JOIN tenants t ON t.id = u.tenant_id
                 ORDER BY u.created_at ASC NULLS LAST, u.email ASC NULLS LAST, u.external_sub ASC
@@ -215,6 +216,7 @@ def list_all_users() -> list[dict[str, Any]]:
             media_storage_quota_mb,
             media_enabled,
             media_upload_enabled,
+            llm_queue_priority,
         ) = row
         tid = int(tenant_id) if tenant_id is not None else 1
         du = str(discord_uid).strip() if discord_uid is not None else ""
@@ -238,6 +240,9 @@ def list_all_users() -> list[dict[str, Any]]:
                 else None,
                 "media_enabled": media_enabled if media_enabled is not None else None,
                 "media_upload_enabled": media_upload_enabled if media_upload_enabled is not None else None,
+                "llm_queue_priority": int(llm_queue_priority)
+                if llm_queue_priority is not None
+                else None,
             }
         )
     return out

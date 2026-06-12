@@ -104,14 +104,17 @@ async def _run_chat_agent_job(row: dict[str, Any], *, agent_id: str) -> None:
         logger.warning("scheduler_jobs: no catalog LLM — skip job: %s", exc)
         return
 
+    from apps.backend.domain.identity import llm_queue_source_scope, reset_identity, set_identity
+
     id_tok = set_identity(tenant_id, user_id)
     failed = False
     err_text: str | None = None
     try:
-        await chat_completion(
-            body,
-            bearer_user_role=role if role in ("user", "admin") else None,
-        )
+        with llm_queue_source_scope("scheduler"):
+            await chat_completion(
+                body,
+                bearer_user_role=role if role in ("user", "admin") else None,
+            )
     except Exception as e:
         failed = True
         err_text = str(e)[:500] if str(e) else "chat job failed"

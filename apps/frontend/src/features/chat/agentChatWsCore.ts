@@ -75,8 +75,45 @@ function assistantStreamOffset(liveTurn: LiveTurnStore): number {
 export function llmSlotWaitMessage(msg: Record<string, unknown>): string {
   const waited = msg.waited_sec != null ? Number(msg.waited_sec) : 0;
   const max = msg.max_parallel != null ? Number(msg.max_parallel) : 1;
+  const ahead = msg.queue_ahead != null ? Number(msg.queue_ahead) : 0;
+  const size = msg.queue_size != null ? Number(msg.queue_size) : 0;
   const w = waited >= 10 ? Math.round(waited) : Math.round(waited * 10) / 10;
+  if (ahead > 0 || size > 1) {
+    const qClass = msg.queue_class != null ? String(msg.queue_class) : "";
+    if (qClass === "benchmark") {
+      return i18n.t("chat:llmSlotWaitBenchmarkQueued", {
+        waited: w,
+        max: Math.max(1, max),
+        ahead: Math.max(0, ahead),
+        size: Math.max(size, ahead + 1),
+      });
+    }
+    return i18n.t("chat:llmSlotWaitQueued", {
+      waited: w,
+      max: Math.max(1, max),
+      ahead: Math.max(0, ahead),
+      size: Math.max(size, ahead + 1),
+    });
+  }
   return i18n.t("chat:llmSlotWait", { waited: w, max: Math.max(1, max) });
+}
+
+export function scanWaitMessage(msg: Record<string, unknown>): string {
+  const waited = msg.waited_sec != null ? Number(msg.waited_sec) : 0;
+  const est = msg.estimated_time_seconds != null ? Number(msg.estimated_time_seconds) : null;
+  const remaining =
+    msg.estimated_remaining_sec != null ? Number(msg.estimated_remaining_sec) : null;
+  const phase = msg.phase != null ? String(msg.phase) : "";
+  const w = waited >= 10 ? Math.round(waited) : Math.round(waited * 10) / 10;
+  if (phase === "started") {
+    return est != null && est > 0
+      ? i18n.t("chat:scanWaitStarted", { est: Math.round(est) })
+      : i18n.t("chat:scanWaitStartedUnknown");
+  }
+  if (remaining != null && remaining >= 0) {
+    return i18n.t("chat:scanWaitProgress", { waited: w, remaining: Math.round(remaining) });
+  }
+  return i18n.t("chat:scanWaitProgressUnknown", { waited: w });
 }
 
 function handleLlmSlotWait(msg: Record<string, unknown>, liveTurn: LiveTurnStore): void {
@@ -84,8 +121,30 @@ function handleLlmSlotWait(msg: Record<string, unknown>, liveTurn: LiveTurnStore
   const text = llmSlotWaitMessage(msg);
   liveTurn.setWaitHint(text);
   const waited = msg.waited_sec != null ? Number(msg.waited_sec) : 0;
+  const ahead = msg.queue_ahead != null ? Number(msg.queue_ahead) : undefined;
+  const size = msg.queue_size != null ? Number(msg.queue_size) : undefined;
   if (waited < 0.5) {
-    liveTurn.appendLogLine("llm_queue", text);
+    liveTurn.appendLogLine("llm_queue", text, {
+      queueAhead: ahead,
+      queueSize: size,
+    });
+  }
+}
+
+function handleScanWait(msg: Record<string, unknown>, liveTurn: LiveTurnStore): void {
+  if (!liveTurn.isActive()) return;
+  const text = scanWaitMessage(msg);
+  liveTurn.setWaitHint(text);
+  const phase = msg.phase != null ? String(msg.phase) : "";
+  const est =
+    msg.estimated_time_seconds != null ? Number(msg.estimated_time_seconds) : undefined;
+  if (phase === "started" || phase === "waiting") {
+    liveTurn.appendLogLine("scan_queue", text, {
+      estimatedTimeSeconds: est,
+    });
+  }
+  if (phase === "ended") {
+    liveTurn.setWaitHint(null);
   }
 }
 
@@ -303,6 +362,11 @@ export function handleAgentWsMessage(msg: Record<string, unknown>, ctx: HandlerC
 
   if (typ === "agent.llm_slot_wait") {
     handleLlmSlotWait(msg, liveTurn);
+    return;
+  }
+
+  if (typ === "agent.scan_wait") {
+    handleScanWait(msg, liveTurn);
     return;
   }
 

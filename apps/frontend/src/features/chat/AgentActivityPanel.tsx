@@ -23,6 +23,7 @@ function borderForKind(kind: string): string {
   if (kind === "tool_done") return "border-emerald-500/50";
   if (kind === "llm") return "border-violet-500/45";
   if (kind === "llm_queue") return "border-amber-500/45";
+  if (kind === "scan_queue") return "border-orange-500/45";
   if (kind === "permission") return "border-amber-500/50";
   if (kind === "session") return "border-neutral-600";
   if (kind === "agent.done") return "border-emerald-600/40";
@@ -36,6 +37,7 @@ function labelForKind(kind: string, tr: TFunction<"chat">): string {
   if (kind === "tool_done") return tr("chat:activityKindDone");
   if (kind === "llm") return tr("chat:activityKindLlm");
   if (kind === "llm_queue") return tr("chat:activityKindLlmQueue");
+  if (kind === "scan_queue") return tr("chat:activityKindScanQueue");
   if (kind === "permission") return tr("chat:activityKindPerm");
   if (kind === "session") return tr("chat:activityKindSession");
   if (kind.startsWith("agent.")) return kind.replace("agent.", "");

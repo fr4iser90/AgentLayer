@@ -36,6 +36,11 @@ def status(arguments: dict[str, Any], context: dict | None = None) -> str:
     st = ssc_status(data if isinstance(data, dict) else None)
     if st is None and isinstance(data, dict):
         st = str(data.get("scan_status") or "").strip().lower() or None
+    estimated_sec = None
+    if isinstance(data, dict):
+        from apps.backend.domain.security_scan.wait import parse_estimated_time_seconds
+
+        estimated_sec = parse_estimated_time_seconds(data)
     terminal = st in ("completed", "failed", "cancelled", "error")
     still_running = st in ("started", "scanning", "queued", "running", "pending")
     return dump_ok(
@@ -44,6 +49,7 @@ def status(arguments: dict[str, Any], context: dict | None = None) -> str:
             "http_status": status_code,
             "scan_id": scan_id,
             "status": st,
+            "estimated_time_seconds": estimated_sec,
             "terminal": terminal,
             "still_running": still_running,
             "end_run_recommended": still_running,

@@ -413,6 +413,76 @@ export function AdminInterfacesLlmSection() {
               </div>
             </div>
           </section>
+
+          <section className="rounded-xl border border-surface-border bg-surface-raised p-5">
+            <h2 className="text-sm font-medium text-white">{t("admin:ifLlmQueueTitle")}</h2>
+            <p className="mt-2 text-xs text-surface-muted">{t("admin:ifLlmQueueIntro")}</p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="block text-xs text-surface-muted" htmlFor="llm-queue-policy">
+                  {t("admin:ifLlmQueuePolicyLabel")}
+                </label>
+                <select
+                  id="llm-queue-policy"
+                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+                  value={s.llmQueuePolicy}
+                  onChange={(e) =>
+                    s.setLlmQueuePolicy(
+                      e.target.value as "fifo" | "priority" | "round_robin"
+                    )
+                  }
+                >
+                  <option value="priority">{t("admin:ifLlmQueuePolicyPriority")}</option>
+                  <option value="fifo">{t("admin:ifLlmQueuePolicyFifo")}</option>
+                  <option value="round_robin">{t("admin:ifLlmQueuePolicyRoundRobin")}</option>
+                </select>
+                <p className="mt-1 text-xs text-surface-muted">{t("admin:ifLlmQueuePolicyHint")}</p>
+              </div>
+              <div>
+                <label className="block text-xs text-surface-muted" htmlFor="llm-queue-user-prio">
+                  {t("admin:ifLlmQueueUserPriority")}
+                </label>
+                <input
+                  id="llm-queue-user-prio"
+                  type="number"
+                  min={0}
+                  max={1000}
+                  className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  value={s.llmQueueUserPriority}
+                  onChange={(e) => s.setLlmQueueUserPriority(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-surface-muted" htmlFor="llm-queue-bench-prio">
+                  {t("admin:ifLlmQueueBenchmarkPriority")}
+                </label>
+                <input
+                  id="llm-queue-bench-prio"
+                  type="number"
+                  min={0}
+                  max={1000}
+                  className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  value={s.llmQueueBenchmarkPriority}
+                  onChange={(e) => s.setLlmQueueBenchmarkPriority(e.target.value)}
+                />
+                <p className="mt-1 text-xs text-surface-muted">{t("admin:ifLlmQueueBenchmarkHint")}</p>
+              </div>
+              <div>
+                <label className="block text-xs text-surface-muted" htmlFor="llm-queue-sched-prio">
+                  {t("admin:ifLlmQueueSchedulerPriority")}
+                </label>
+                <input
+                  id="llm-queue-sched-prio"
+                  type="number"
+                  min={0}
+                  max={1000}
+                  className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  value={s.llmQueueSchedulerPriority}
+                  onChange={(e) => s.setLlmQueueSchedulerPriority(e.target.value)}
+                />
+              </div>
+            </div>
+          </section>
     </>
   );
 }

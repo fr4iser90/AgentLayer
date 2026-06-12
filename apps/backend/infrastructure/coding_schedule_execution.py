@@ -437,6 +437,8 @@ async def run_coding_schedule_row(
         **llm_fields,
     }
 
+    from apps.backend.domain.identity import llm_queue_source_scope, reset_identity, set_identity
+
     role = db.user_role(user_id)
     id_tok = set_identity(tenant_id, user_id)
     collect_tokens: tuple | None = None
@@ -451,11 +453,12 @@ async def run_coding_schedule_row(
         collect_tokens = begin_schedule_run_collection(run_id)
 
     try:
-        data = await chat_completion(
-            body,
-            bearer_user_role=role if role in ("user", "admin") else None,
-            model_profile_header=model_profile,
-        )
+        with llm_queue_source_scope("scheduler"):
+            data = await chat_completion(
+                body,
+                bearer_user_role=role if role in ("user", "admin") else None,
+                model_profile_header=model_profile,
+            )
         if isinstance(data, dict):
             agent_run_id = str(data.get("agent_run_id") or "") or None
     except WorkspaceAccessDenied as e:
