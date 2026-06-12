@@ -1,0 +1,7 @@
+id: SOC1_block_share_visible
+tier: 2
+rubric: soc1_share_data
+agent_id: dashboard
+requires:
+- friend_pair
+bench_dashboard_title_suffix: share

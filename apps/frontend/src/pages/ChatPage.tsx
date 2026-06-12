@@ -49,7 +49,7 @@ import { AssistantTurnBlock } from "../features/chat/AssistantTurnBlock";
 import { ChatInFlightAssistantTurn } from "../features/chat/ChatInFlightAssistantTurn";
 import { ChatLiveActivityPanel } from "../features/chat/ChatLiveActivityPanel";
 import { getAgentChatSession } from "../features/chat/agentChatSession";
-import { llmSlotWaitMessage, scanWaitMessage } from "../features/chat/agentChatWsCore";
+import { deferredWaitMessage, llmSlotWaitMessage } from "../features/chat/agentChatWsCore";
 import {
   persistDetachedAgentCompletion,
   persistDetachedAgentLog,
@@ -1990,13 +1990,13 @@ export function ChatPage() {
           }
           return;
         }
-        if (typ === "agent.scan_wait") {
+        if (typ === "agent.deferred_wait") {
           const live = agentLiveTurnRef.current;
-          const text = scanWaitMessage(msg);
+          const text = deferredWaitMessage(msg);
           const phase = msg.phase != null ? String(msg.phase) : "";
           if (phase === "started" || phase === "waiting") {
             live.setWaitHint(text);
-            appendAgentLine("scan_queue", text, {
+            appendAgentLine("deferred_wait", text, {
               estimatedTimeSeconds:
                 msg.estimated_time_seconds != null
                   ? Number(msg.estimated_time_seconds)

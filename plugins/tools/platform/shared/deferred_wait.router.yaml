@@ -1,0 +1,13 @@
+# Co-located router phrases for deferred_wait — locale keys are authoring-only.
+domain: shared
+phrases:
+  en:
+    - deferred wait
+    - async wait
+    - poll until done
+    - estimated time
+  de:
+    - warten
+    - deferred wait
+    - async wait
+    - geschätzte zeit

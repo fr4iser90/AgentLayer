@@ -1,0 +1,5 @@
+id: INT1_gmail_connected
+tier: 2
+rubric: int1_gmail_connected
+requires:
+- gmail_secret

@@ -1,0 +1,6 @@
+id: SEC1_scan_agentlayer
+tier: 4
+rubric: sec1_scan_agentlayer
+requires:
+- ssc_secret
+bench_workspace_suffix: agentlayer

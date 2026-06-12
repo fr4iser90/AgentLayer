@@ -1,0 +1,5 @@
+id: D2_layout_patch
+tier: 2
+rubric: d2_layout_patch
+agent_id: dashboard
+bench_dashboard_title_suffix: layout

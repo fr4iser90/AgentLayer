@@ -18,11 +18,11 @@ from apps.backend.domain.security_scan.common import (
     ssc_domain_attrs,
     ssc_status,
 )
-from apps.backend.domain.security_scan.wait import (
+from apps.backend.domain.async_wait import parse_estimated_time_seconds
+from apps.backend.domain.security_scan.deferred import (
+    invoke_scan_deferred_wait,
     merge_wait_into_payload,
-    parse_estimated_time_seconds,
     should_wait_for_scan,
-    wait_for_scan_completion,
 )
 
 __version__ = "1.1.0"
@@ -119,11 +119,12 @@ def resolve(arguments: dict[str, Any], context: dict | None = None) -> str:
             scan_id=str(scan_id),
         )
     ):
-        wait_result = wait_for_scan_completion(
+        wait_result = invoke_scan_deferred_wait(
             str(scan_id),
             estimated_sec=estimated_sec,
             context=context,
             initial_status=st,
+            arguments=arguments,
         )
         merge_wait_into_payload(payload, wait_result=wait_result, api_data=api_data)
     if st == "ready" and scan_id:
@@ -163,7 +164,7 @@ TOOLS: list[dict[str, Any]] = [
             "TOOL_DESCRIPTION": (
                 "Primary SimpleSecCheck entry: resolve or enqueue scan for a Git repo. "
                 "Returns status ready|scanning|started, scan_id, and estimated_time_seconds when available. "
-                "Set wait_for_completion=true to poll until done (benchmark runs auto-wait when estimate exists)."
+                "Auto-waits via deferred_wait when estimated_time_seconds is present or wait_for_completion=true."
             ),
             "parameters": {
                 "type": "object",

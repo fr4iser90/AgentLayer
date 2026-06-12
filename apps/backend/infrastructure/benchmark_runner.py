@@ -233,6 +233,7 @@ def _run_sync(
     scenario_timeout_sec: float | None = None,
     max_tool_rounds_override: int | None = None,
     retain_workspaces: bool = False,
+    prompt_locale: str | None = None,
 ) -> None:
     from tests.benchmarks.agent.harness import (
         BenchmarkRunCancelled,
@@ -310,6 +311,7 @@ def _run_sync(
             benchmark_run_id=run_id,
             cleanup_on_start=True,
             cleanup_on_finish=not retain_workspaces,
+            prompt_locale=prompt_locale,
         )
 
         results_dir = _REPO_ROOT / "benchmarks" / "results"
@@ -410,6 +412,7 @@ async def schedule_benchmark_run(
     scenario_timeout_sec: float | None = None,
     max_tool_rounds_override: int | None = None,
     retain_workspaces: bool = False,
+    prompt_locale: str | None = None,
 ) -> None:
     async with _run_lock:
         await asyncio.to_thread(
@@ -426,6 +429,7 @@ async def schedule_benchmark_run(
             scenario_timeout_sec=scenario_timeout_sec,
             max_tool_rounds_override=max_tool_rounds_override,
             retain_workspaces=retain_workspaces,
+            prompt_locale=prompt_locale,
         )
 
 
@@ -444,8 +448,10 @@ async def start_benchmark_run(
     scenario_timeout_sec: float | None = None,
     max_tool_rounds_override: int | None = None,
     retain_workspaces: bool = False,
+    prompt_locale: str | None = None,
 ) -> dict[str, Any]:
     from tests.benchmarks.agent.catalog import _SUITE_MANIFESTS
+    from tests.benchmarks.agent.cases import available_prompt_locales, resolve_prompt_locale
 
     if benchmark_runs_store.any_running(tenant_id=tenant_id):
         raise RuntimeError("a benchmark is already running for this tenant")
@@ -454,6 +460,11 @@ async def start_benchmark_run(
     _validate_profiles(profiles)
     if scenarios is not None and not scenarios:
         raise ValueError("at least one scenario required")
+    effective_locale = resolve_prompt_locale(prompt_locale)
+    valid_locales = set(available_prompt_locales())
+    if effective_locale not in valid_locales:
+        opts = ", ".join(sorted(valid_locales))
+        raise ValueError(f"unsupported prompt_locale {effective_locale!r} (available: {opts})")
     manifest = str(manifest_path_for_suite(suite))
     effective_run_as = run_as_user_id or user_id
     run_config = {
@@ -467,6 +478,7 @@ async def start_benchmark_run(
         "scenario_timeout_sec": scenario_timeout_sec,
         "max_tool_rounds_override": max_tool_rounds_override,
         "retain_workspaces": retain_workspaces,
+        "prompt_locale": effective_locale,
     }
     row = benchmark_runs_store.create_run(
         tenant_id=tenant_id,
@@ -490,6 +502,7 @@ async def start_benchmark_run(
             scenario_timeout_sec=scenario_timeout_sec,
             max_tool_rounds_override=max_tool_rounds_override,
             retain_workspaces=retain_workspaces,
+            prompt_locale=effective_locale,
         )
     )
     return row

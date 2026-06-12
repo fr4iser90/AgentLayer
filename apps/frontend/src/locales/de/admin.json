@@ -79,6 +79,8 @@
   "benchMaxToolRounds": "Max. Tool-Runden",
   "benchMaxToolRoundsPlaceholder": "leer = Szenario-Default",
   "benchMaxToolRoundsHint": "Überschreibt agent_max_tool_rounds aller Szenarien nur für diesen Lauf.",
+  "benchPromptLocale": "Prompt-Sprache",
+  "benchPromptLocaleHint": "Sprache der User-Nachricht, die der Agent in jedem Szenario erhält.",
   "benchTimeoutInvalid": "Szenario-Timeout mindestens 30 Sekunden.",
   "benchMaxRoundsInvalid": "Max. Tool-Runden muss eine positive Zahl sein.",
   "benchCancelRun": "Benchmark stoppen",

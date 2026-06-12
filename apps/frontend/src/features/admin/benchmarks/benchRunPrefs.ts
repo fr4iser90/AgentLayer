@@ -1,13 +1,14 @@
 /** Persist admin benchmark run form (localStorage, per browser). */
 
 const STORAGE_KEY = "agentlayer.admin.benchRunPrefs";
-const PREFS_VERSION = 1;
+const PREFS_VERSION = 2;
 
 export type BenchRunPrefs = {
   v: typeof PREFS_VERSION;
   suite: string;
   runAsUserId: string;
   friendUserId: string;
+  promptLocale: string;
   scenarioTimeoutSec: string;
   maxToolRoundsOverride: string;
   retainWorkspaces: boolean;
@@ -24,6 +25,7 @@ function emptyPrefs(): BenchRunPrefsInput {
     suite: "smoke",
     runAsUserId: "",
     friendUserId: "",
+    promptLocale: "en",
     scenarioTimeoutSec: "",
     maxToolRoundsOverride: "",
     retainWorkspaces: false,
@@ -58,6 +60,10 @@ export function loadBenchRunPrefs(): BenchRunPrefsInput | null {
       suite: typeof parsed.suite === "string" && parsed.suite.trim() ? parsed.suite.trim() : base.suite,
       runAsUserId: typeof parsed.runAsUserId === "string" ? parsed.runAsUserId : "",
       friendUserId: typeof parsed.friendUserId === "string" ? parsed.friendUserId : "",
+      promptLocale:
+        typeof parsed.promptLocale === "string" && parsed.promptLocale.trim()
+          ? parsed.promptLocale.trim().toLowerCase()
+          : base.promptLocale,
       scenarioTimeoutSec:
         typeof parsed.scenarioTimeoutSec === "string" ? parsed.scenarioTimeoutSec : "",
       maxToolRoundsOverride:

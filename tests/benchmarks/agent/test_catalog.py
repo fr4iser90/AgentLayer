@@ -14,6 +14,7 @@ def test_catalog_lists_all_scenarios_and_fixtures():
     payload = catalog_payload()
     assert len(payload["scenarios"]) >= 10
     assert len(payload["fixtures"]) == 4
+    assert payload.get("available_locales") == ["de", "en"]
     ids = {s["id"] for s in payload["scenarios"]}
     assert "S1_tool_catalog" in ids
     assert "W2_find_octocat_indexed" in ids

@@ -52,6 +52,7 @@ class StartBenchmarkBody(BaseModel):
     scenario_timeout_sec: float | None = Field(default=None, ge=30, le=86400)
     max_tool_rounds_override: int | None = Field(default=None, ge=1, le=512)
     retain_workspaces: bool = False
+    prompt_locale: str = Field(default="en", min_length=2, max_length=16)
 
 
 def _assert_tenant_user(user_id: uuid.UUID, tenant_id: int) -> dict[str, Any]:
@@ -233,6 +234,7 @@ async def post_start_benchmark(request: Request, body: StartBenchmarkBody) -> di
             scenario_timeout_sec=body.scenario_timeout_sec,
             max_tool_rounds_override=body.max_tool_rounds_override,
             retain_workspaces=body.retain_workspaces,
+            prompt_locale=body.prompt_locale.strip().lower(),
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

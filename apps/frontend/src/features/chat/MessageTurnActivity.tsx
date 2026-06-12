@@ -20,6 +20,7 @@ function isStepKind(kind: string): boolean {
     kind === "subagent_done" ||
     kind === "wait" ||
     kind === "llm_queue" ||
+    kind === "deferred_wait" ||
     kind === "scan_queue"
   );
 }
@@ -56,8 +57,8 @@ export function MessageTurnActivity({ entries, running = false, waitHint = null 
                   ? t("chat:activityKindLlm")
                   : e.kind === "llm_queue"
                     ? t("chat:activityKindLlmQueue")
-                    : e.kind === "scan_queue"
-                      ? t("chat:activityKindScanQueue")
+                    : e.kind === "deferred_wait" || e.kind === "scan_queue"
+                      ? t("chat:activityKindDeferredWait")
                     : e.kind === "session"
                     ? t("chat:activityKindSession")
                     : e.kind.startsWith("subagent")

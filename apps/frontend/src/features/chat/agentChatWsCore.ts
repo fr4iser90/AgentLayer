@@ -98,7 +98,7 @@ export function llmSlotWaitMessage(msg: Record<string, unknown>): string {
   return i18n.t("chat:llmSlotWait", { waited: w, max: Math.max(1, max) });
 }
 
-export function scanWaitMessage(msg: Record<string, unknown>): string {
+export function deferredWaitMessage(msg: Record<string, unknown>): string {
   const waited = msg.waited_sec != null ? Number(msg.waited_sec) : 0;
   const est = msg.estimated_time_seconds != null ? Number(msg.estimated_time_seconds) : null;
   const remaining =
@@ -107,14 +107,17 @@ export function scanWaitMessage(msg: Record<string, unknown>): string {
   const w = waited >= 10 ? Math.round(waited) : Math.round(waited * 10) / 10;
   if (phase === "started") {
     return est != null && est > 0
-      ? i18n.t("chat:scanWaitStarted", { est: Math.round(est) })
-      : i18n.t("chat:scanWaitStartedUnknown");
+      ? i18n.t("chat:deferredWaitStarted", { est: Math.round(est) })
+      : i18n.t("chat:deferredWaitStartedUnknown");
   }
   if (remaining != null && remaining >= 0) {
-    return i18n.t("chat:scanWaitProgress", { waited: w, remaining: Math.round(remaining) });
+    return i18n.t("chat:deferredWaitProgress", { waited: w, remaining: Math.round(remaining) });
   }
-  return i18n.t("chat:scanWaitProgressUnknown", { waited: w });
+  return i18n.t("chat:deferredWaitProgressUnknown", { waited: w });
 }
+
+/** @deprecated use deferredWaitMessage */
+export const scanWaitMessage = deferredWaitMessage;
 
 function handleLlmSlotWait(msg: Record<string, unknown>, liveTurn: LiveTurnStore): void {
   if (!liveTurn.isActive()) return;
@@ -131,15 +134,15 @@ function handleLlmSlotWait(msg: Record<string, unknown>, liveTurn: LiveTurnStore
   }
 }
 
-function handleScanWait(msg: Record<string, unknown>, liveTurn: LiveTurnStore): void {
+function handleDeferredWait(msg: Record<string, unknown>, liveTurn: LiveTurnStore): void {
   if (!liveTurn.isActive()) return;
-  const text = scanWaitMessage(msg);
+  const text = deferredWaitMessage(msg);
   liveTurn.setWaitHint(text);
   const phase = msg.phase != null ? String(msg.phase) : "";
   const est =
     msg.estimated_time_seconds != null ? Number(msg.estimated_time_seconds) : undefined;
   if (phase === "started" || phase === "waiting") {
-    liveTurn.appendLogLine("scan_queue", text, {
+    liveTurn.appendLogLine("deferred_wait", text, {
       estimatedTimeSeconds: est,
     });
   }
@@ -365,8 +368,8 @@ export function handleAgentWsMessage(msg: Record<string, unknown>, ctx: HandlerC
     return;
   }
 
-  if (typ === "agent.scan_wait") {
-    handleScanWait(msg, liveTurn);
+  if (typ === "agent.deferred_wait") {
+    handleDeferredWait(msg, liveTurn);
     return;
   }
 

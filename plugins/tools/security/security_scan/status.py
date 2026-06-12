@@ -38,7 +38,7 @@ def status(arguments: dict[str, Any], context: dict | None = None) -> str:
         st = str(data.get("scan_status") or "").strip().lower() or None
     estimated_sec = None
     if isinstance(data, dict):
-        from apps.backend.domain.security_scan.wait import parse_estimated_time_seconds
+        from apps.backend.domain.async_wait import parse_estimated_time_seconds
 
         estimated_sec = parse_estimated_time_seconds(data)
     terminal = st in ("completed", "failed", "cancelled", "error")

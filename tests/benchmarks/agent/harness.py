@@ -20,7 +20,17 @@ import yaml
 from tests.benchmarks.agent.bench_cleanup import cleanup_prefix, prepare_bench_sandbox_cleanup
 from tests.benchmarks.agent.bench_profiles import BenchModelProfile, parse_profiles_from_env, profile_labels_filter
 from tests.benchmarks.agent.bench_provider_registry import register_bench_llm_providers
-from tests.benchmarks.agent.cases import AgentScenario, SCENARIO_BY_ID, bench_dashboard_title, bench_workspace_name, scenarios_for_tier
+from tests.benchmarks.agent.cases import (
+    AgentScenario,
+    SCENARIO_BY_ID,
+    bench_dashboard_title,
+    bench_workspace_name,
+    bind_bench_run_prompt_locale,
+    render_scenario_prompt,
+    reset_bench_run_prompt_locale,
+    resolve_prompt_locale,
+    scenarios_for_tier,
+)
 from tests.benchmarks.agent.fixtures import (
     FixtureContext,
     apply_fixtures,
@@ -317,6 +327,7 @@ class ScenarioResult:
     agent_run_id: str | None
     assistant_excerpt: str
     scenario_prompt: str = ""
+    prompt_locale: str = "en"
     assistant_content: str = ""
     assistant_content_truncated: bool = False
     skipped: bool = False
@@ -346,6 +357,7 @@ class BenchRunReport:
     fixtures_skipped: dict[str, str] = field(default_factory=dict)
     bench_cleanup: dict[str, Any] | None = None
     bench_cleanup_finish: dict[str, Any] | None = None
+    prompt_locale: str = "en"
     results: list[ScenarioResult] = field(default_factory=list)
     in_flight: dict[str, Any] | None = None
 
@@ -364,6 +376,7 @@ class BenchRunReport:
             "fixtures_skipped": self.fixtures_skipped,
             "bench_cleanup": self.bench_cleanup,
             "bench_cleanup_finish": self.bench_cleanup_finish,
+            "prompt_locale": self.prompt_locale,
             "results": [r.to_dict() for r in self.results],
             "in_flight": self.in_flight,
         }
@@ -591,16 +604,7 @@ def _env_truthy(name: str, *, default: str = "") -> bool:
 
 
 def _render_scenario_prompt(scenario: AgentScenario, fixture_ctx: FixtureContext) -> str:
-    prompt = scenario.prompt
-    if "{" not in prompt:
-        return prompt
-    try:
-        return prompt.format(
-            prefix=fixture_ctx.prefix,
-            friend_email=fixture_ctx.user_b_email or "",
-        )
-    except KeyError:
-        return prompt
+    return render_scenario_prompt(scenario, fixture_ctx)
 
 
 def _effective_agent_id(profile: ModelProfile, scenario: AgentScenario) -> str:
@@ -747,6 +751,7 @@ def _scenario_crash_result(
         agent_run_id=None,
         assistant_excerpt="",
         scenario_prompt=scenario_prompt,
+        prompt_locale=resolve_prompt_locale(),
         fixtures=fixtures,
         error=msg,
     )
@@ -782,6 +787,7 @@ def _skipped_result(
         agent_run_id=None,
         assistant_excerpt="",
         scenario_prompt=scenario_prompt,
+        prompt_locale=resolve_prompt_locale(),
         skipped=True,
         fixtures=fixtures,
         error="skipped",
@@ -870,6 +876,7 @@ def run_scenario(
     scenario_timeout_sec: float | None = None,
     max_tool_rounds_override: int | None = None,
     benchmark_run_id: uuid.UUID | None = None,
+    prompt_locale: str | None = None,
 ) -> ScenarioResult:
     fixture_list = list(scenario.requires)
     if not profile.model:
@@ -1105,6 +1112,7 @@ def run_scenario(
         agent_run_id=agent_run_id,
         assistant_excerpt=excerpt,
         scenario_prompt=scenario_prompt,
+        prompt_locale=resolve_prompt_locale(),
         assistant_content=stored_content,
         assistant_content_truncated=content_truncated,
         fixtures=fixture_list,
@@ -1197,8 +1205,18 @@ def run_benchmark(
     benchmark_run_id: uuid.UUID | str | None = None,
     cleanup_on_start: bool = True,
     cleanup_on_finish: bool = True,
+    prompt_locale: str | None = None,
 ) -> BenchRunReport:
+    from tests.benchmarks.agent.cases import available_prompt_locales, resolve_prompt_locale
+
     load_bench_env()
+    locale = resolve_prompt_locale(prompt_locale)
+    valid_locales = set(available_prompt_locales())
+    if locale not in valid_locales:
+        opts = ", ".join(sorted(valid_locales))
+        raise ValueError(f"unsupported prompt_locale {locale!r} (available: {opts})")
+
+    locale_token = bind_bench_run_prompt_locale(locale)
     os.environ.setdefault("AGENT_E2E_BASE_URL", bench_base_url())
     require_server()
 
@@ -1276,6 +1294,7 @@ def run_benchmark(
         profiles=list(profiles),
         profiles_source=profiles_source,
         bench_cleanup=cleanup,
+        prompt_locale=locale,
     )
 
     self_editing_prev: bool | None = None
@@ -1479,6 +1498,7 @@ def run_benchmark(
                 report.bench_cleanup_finish = {"error": str(exc)}
                 logger.warning("benchmark post-run cleanup failed: %s", exc)
         session.close()
+        reset_bench_run_prompt_locale(locale_token)
 
     return report
 

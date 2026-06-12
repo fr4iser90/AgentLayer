@@ -17,7 +17,7 @@ from tests.benchmarks.agent.harness import (
 if TYPE_CHECKING:
     from tests.benchmarks.agent.harness import BenchSession
 from tests.benchmarks.agent.metrics import RunMetrics, build_run_metrics
-from tests.benchmarks.agent.cases import AgentScenario
+from tests.benchmarks.agent.cases import AgentScenario, render_scenario_prompt
 from tests.benchmarks.agent.fixtures import FixtureContext, workspace_id_for_scenario
 from tests.benchmarks.agent.rubrics import RubricOutcome, evaluate_rubric
 def _poll_interval_s() -> float:
@@ -139,8 +139,9 @@ def run_project_run_scenario(
     }
     if scenario.security_scan:
         coding_workflow["security_scan"] = True
+    scenario_prompt = render_scenario_prompt(scenario, fixture_ctx)
     body = {
-        "instructions": scenario.prompt,
+        "instructions": scenario_prompt,
         "coding_workflow": coding_workflow,
         "project_title": f"bench-{run_id}-{scenario.id}",
     }

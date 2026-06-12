@@ -39,6 +39,10 @@ export type BenchmarkScenario = {
   title: string;
   summary: string;
   prompt: string;
+  prompt_template?: string;
+  prompts?: Record<string, string>;
+  prompt_locale?: string;
+  available_locales?: string[];
   rubric: string;
   agent_id: string;
   execution?: string;
@@ -89,6 +93,7 @@ export type BenchmarkRunConfig = {
   admin_user_id?: string | null;
   scenario_timeout_sec?: number | null;
   max_tool_rounds_override?: number | null;
+  prompt_locale?: string | null;
 };
 
 export type AdminUserRow = {
@@ -344,15 +349,25 @@ export async function fetchBenchmarkSuites(
 
 export async function fetchBenchmarkCatalog(
   auth: Pick<AuthContextValue, "accessToken" | "refresh">
-): Promise<{ scenarios: BenchmarkScenario[]; fixtures: BenchmarkFixture[] }> {
+): Promise<{ scenarios: BenchmarkScenario[]; fixtures: BenchmarkFixture[]; available_locales: string[] }> {
   const res = await apiFetch("/v1/admin/benchmarks/catalog", auth);
   const data = await readJsonResponse<{
     scenarios?: BenchmarkScenario[];
     fixtures?: BenchmarkFixture[];
+    available_locales?: string[];
     detail?: unknown;
   }>(res, `Failed to load catalog (HTTP ${res.status})`);
   if (!res.ok) throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
-  return { scenarios: data.scenarios ?? [], fixtures: data.fixtures ?? [] };
+  return {
+    scenarios: data.scenarios ?? [],
+    fixtures: data.fixtures ?? [],
+    available_locales: data.available_locales ?? ["en"],
+  };
+}
+
+export function benchmarkScenarioPrompt(sc: BenchmarkScenario, locale: string): string {
+  const loc = locale.trim().toLowerCase() || "en";
+  return sc.prompts?.[loc] ?? sc.prompt ?? sc.prompt_template ?? "";
 }
 
 export async function fetchBenchmarkRuns(
@@ -405,8 +420,8 @@ export type StartBenchmarkBody = {
   friend_user_id?: string;
   scenario_timeout_sec?: number;
   max_tool_rounds_override?: number;
-  /** When true, skip automatic post-run bench workspace cleanup (start cleanup still runs). */
   retain_workspaces?: boolean;
+  prompt_locale?: string;
 };
 
 export function userOptionLabel(u: AdminUserRow): string {

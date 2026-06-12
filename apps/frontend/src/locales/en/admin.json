@@ -79,6 +79,8 @@
   "benchMaxToolRounds": "Max tool rounds",
   "benchMaxToolRoundsPlaceholder": "empty = scenario default",
   "benchMaxToolRoundsHint": "Overrides each scenario's agent_max_tool_rounds for this run only.",
+  "benchPromptLocale": "Prompt language",
+  "benchPromptLocaleHint": "User message language sent to the agent for every scenario in this run.",
   "benchTimeoutInvalid": "Scenario timeout must be at least 30 seconds.",
   "benchMaxRoundsInvalid": "Max tool rounds must be a positive number.",
   "benchCancelRun": "Stop benchmark",

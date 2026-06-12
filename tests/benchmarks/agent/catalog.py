@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from apps.backend.domain.plugin_system.tool_routing import TOOL_INTROSPECTION
-from tests.benchmarks.agent.cases import SCENARIO_BY_ID, AgentScenario
+from tests.benchmarks.agent.cases import SCENARIO_BY_ID, AgentScenario, available_prompt_locales
 from tests.benchmarks.agent.fixtures import FIXTURE_REQUIRES, OPTIONAL_FIXTURES, collect_fixture_ids
 from tests.benchmarks.agent.harness import load_manifest, repo_root
 
@@ -156,14 +156,19 @@ _FIXTURE_META: dict[str, dict[str, Any]] = {
 }
 
 
-def serialize_scenario(sc: AgentScenario) -> dict[str, Any]:
+def serialize_scenario(sc: AgentScenario, *, preview_locale: str = "en") -> dict[str, Any]:
     meta = _SCENARIO_META.get(sc.id, {})
+    locale = (preview_locale or "en").strip().lower()
     return {
         "id": sc.id,
         "tier": sc.tier,
         "title": meta.get("title") or sc.id,
         "summary": meta.get("summary") or "",
-        "prompt": sc.prompt,
+        "prompt": render_scenario_prompt_for_catalog(sc, locale),
+        "prompt_template": sc.prompt_for_locale(locale),
+        "prompts": {loc: sc.prompts[loc] for loc in sc.locales},
+        "prompt_locale": locale,
+        "available_locales": list(sc.locales),
         "rubric": meta.get("rubric") or sc.rubric,
         "agent_id": sc.agent_id,
         "execution": sc.execution,
@@ -171,7 +176,21 @@ def serialize_scenario(sc: AgentScenario) -> dict[str, Any]:
         "requires": list(sc.requires),
         "expected_tools": meta.get("expected_tools") or [],
         "skip_without_env": sc.skip_without_env,
+        "source_dir": str(sc.source_dir) if sc.source_dir else None,
     }
+
+
+def render_scenario_prompt_for_catalog(sc: AgentScenario, locale: str) -> str:
+    """Catalog preview with example prefix (not a live run)."""
+    from tests.benchmarks.agent.scenarios._env import resolve_env_placeholders
+    from tests.benchmarks.agent.scenarios.types import bench_prompt_locale
+
+    loc = locale or bench_prompt_locale()
+    template = resolve_env_placeholders(sc.prompt_for_locale(loc))
+    try:
+        return template.format(prefix="bench-<run>-", friend_email="friend@example.com")
+    except KeyError:
+        return template
 
 
 def serialize_fixture(fid: str) -> dict[str, Any]:
@@ -243,4 +262,6 @@ def catalog_payload() -> dict[str, Any]:
         "scenarios": list_all_scenarios(),
         "fixtures": list_all_fixtures(),
         "suites": list_suites_detailed(),
+        "available_locales": list(available_prompt_locales()),
+        "default_locale": "en",
     }

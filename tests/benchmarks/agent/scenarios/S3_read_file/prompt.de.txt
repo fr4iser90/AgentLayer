@@ -1,0 +1,1 @@
+Lies README.md im gebundenen Workspace-Root mit read_file. Antworte mit der ersten Zeile der Datei.

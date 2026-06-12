@@ -1,0 +1,5 @@
+id: S3_read_file
+tier: 1
+rubric: s3_read_file
+requires:
+- agentlayer_self

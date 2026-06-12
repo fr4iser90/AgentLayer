@@ -1,0 +1,4 @@
+id: W2_find_octocat_no_index
+tier: 2
+rubric: w2_find_octocat
+bench_workspace_suffix: git

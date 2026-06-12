@@ -57,6 +57,12 @@ def main() -> int:
         default="",
         help="Output directory (default: benchmarks/results/)",
     )
+    parser.add_argument(
+        "--prompt-locale",
+        type=str,
+        default="en",
+        help="Scenario user-message locale (prompt.en.txt, prompt.de.txt, …)",
+    )
     args = parser.parse_args()
 
     manifest_path = Path(args.manifest) if args.manifest else repo_root() / "benchmarks" / "manifest.yaml"
@@ -74,6 +80,7 @@ def main() -> int:
             profile_filter=args.profile.strip() or None,
             scenario_filter=scenario_filter,
             extra_fixtures=extra_fixtures,
+            prompt_locale=args.prompt_locale.strip() or "en",
         )
     except RuntimeError as exc:
         print(str(exc), file=sys.stderr)

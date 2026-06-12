@@ -26,6 +26,7 @@ import {
   type BenchmarkScenario,
   type BenchmarkScenarioResult,
   type BenchmarkSuite,
+  benchmarkScenarioPrompt,
 } from "../../features/admin/benchmarks/benchmarksApi";
 import { CopyScenarioDetailsButton } from "../../features/admin/benchmarks/CopyScenarioDetailsButton";
 import {
@@ -771,6 +772,8 @@ export function AdminBenchmarks() {
   const [scenarioTimeoutSec, setScenarioTimeoutSec] = useState(
     _savedBenchPrefs?.scenarioTimeoutSec ?? ""
   );
+  const [promptLocale, setPromptLocale] = useState(_savedBenchPrefs?.promptLocale ?? "en");
+  const [availablePromptLocales, setAvailablePromptLocales] = useState<string[]>(["en", "de"]);
   const [maxToolRoundsOverride, setMaxToolRoundsOverride] = useState(
     _savedBenchPrefs?.maxToolRoundsOverride ?? ""
   );
@@ -880,6 +883,7 @@ export function AdminBenchmarks() {
       suite,
       runAsUserId,
       friendUserId,
+      promptLocale,
       scenarioTimeoutSec,
       maxToolRoundsOverride,
       retainWorkspaces,
@@ -892,6 +896,7 @@ export function AdminBenchmarks() {
     suite,
     runAsUserId,
     friendUserId,
+    promptLocale,
     scenarioTimeoutSec,
     maxToolRoundsOverride,
     retainWorkspaces,
@@ -916,6 +921,12 @@ export function AdminBenchmarks() {
       setCatalogAgentlayer(modelCatalog.agentlayer);
       setSuites(s);
       setCatalogFixtures(catalog.fixtures);
+      if (catalog.available_locales?.length) {
+        setAvailablePromptLocales(catalog.available_locales);
+        setPromptLocale((prev) =>
+          catalog.available_locales.includes(prev) ? prev : catalog.available_locales[0] ?? "en"
+        );
+      }
       setLlmProviders(providers);
       setTenantUsers(users);
       setRunAsUserId((prev) => {
@@ -1213,6 +1224,7 @@ export function AdminBenchmarks() {
         scenario_timeout_sec: timeoutRaw ? parsedTimeout : undefined,
         max_tool_rounds_override: maxRoundsRaw ? Math.floor(parsedMaxRounds) : undefined,
         retain_workspaces: retainWorkspaces || undefined,
+        prompt_locale: promptLocale,
       });
       persistBenchRunPrefs();
       setTab("history");
@@ -1689,7 +1701,9 @@ export function AdminBenchmarks() {
                         {expanded ? (
                           <div className="mt-2 space-y-1 rounded border border-white/5 bg-black/30 p-2 text-[11px]">
                             <p className="text-surface-muted">{t("admin:benchPrompt")}</p>
-                            <p className="whitespace-pre-wrap text-white/90">{sc.prompt}</p>
+                            <p className="whitespace-pre-wrap text-white/90">
+                              {benchmarkScenarioPrompt(sc, promptLocale)}
+                            </p>
                             <p className="text-surface-muted">{t("admin:benchRubric")}: {sc.rubric}</p>
                           </div>
                         ) : null}
@@ -1705,7 +1719,24 @@ export function AdminBenchmarks() {
             <h3 className="text-xs font-medium uppercase text-surface-muted">
               {t("admin:benchAdvancedOptions")}
             </h3>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <label className="block text-sm">
+                <span className="text-surface-muted">{t("admin:benchPromptLocale")}</span>
+                <select
+                  value={promptLocale}
+                  onChange={(e) => setPromptLocale(e.target.value)}
+                  className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                >
+                  {availablePromptLocales.map((loc) => (
+                    <option key={loc} value={loc}>
+                      {loc.toUpperCase()}
+                    </option>
+                  ))}
+                </select>
+                <span className="mt-1 block text-[11px] text-surface-muted">
+                  {t("admin:benchPromptLocaleHint")}
+                </span>
+              </label>
               <label className="block text-sm">
                 <span className="text-surface-muted">{t("admin:benchScenarioTimeout")}</span>
                 <input
@@ -1855,6 +1886,11 @@ export function AdminBenchmarks() {
               <>
                 <h2 className="text-sm font-medium text-white">
                   {detail.suite} · {detail.status}
+                  {detail.profiles?.prompt_locale ? (
+                    <span className="ml-2 text-xs font-normal text-surface-muted">
+                      · {String(detail.profiles.prompt_locale).toUpperCase()}
+                    </span>
+                  ) : null}
                 </h2>
                 {detail.status === "queued" || detail.status === "running" ? (
                   <button

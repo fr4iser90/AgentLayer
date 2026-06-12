@@ -92,7 +92,7 @@ async def _run_chat_ws_async(
     def _track_pause_event(msg: dict[str, Any]) -> None:
         nonlocal pause_started, paused_total
         typ = msg.get("type")
-        if typ == "agent.scan_wait":
+        if typ == "agent.deferred_wait":
             phase = str(msg.get("phase") or "").strip().lower()
             if phase == "started" and pause_started is None:
                 pause_started = time.monotonic()

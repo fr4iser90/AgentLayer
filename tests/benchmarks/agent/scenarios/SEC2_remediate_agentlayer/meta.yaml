@@ -1,0 +1,7 @@
+id: SEC2_remediate_agentlayer
+tier: 4
+rubric: sec2_remediate_agentlayer
+security_scan: true
+requires:
+- ssc_secret
+bench_workspace_suffix: agentlayer
