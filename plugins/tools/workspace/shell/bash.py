@@ -15,6 +15,7 @@ from apps.backend.domain.coding.bash_policy import (
     strict_mode_reject_reason,
     subprocess_env_for_coding,
 )
+from apps.backend.domain.coding.package_admission import package_admission_gate
 from apps.backend.domain.coding.common import (
     json_workspace_missing_error,
     workspace_binding_from_context,
@@ -100,6 +101,14 @@ def bash(arguments: dict[str, Any], context: dict | None = None) -> str:
         strict_err = strict_mode_reject_reason(command)
         if strict_err:
             return json.dumps({"ok": False, "error": strict_err}, ensure_ascii=False)
+
+    admission_err, command = package_admission_gate(
+        command,
+        context=context,
+        workspace_root=str(root.resolve()),
+    )
+    if admission_err:
+        return admission_err
 
     workdir_rel = (arguments.get("workdir") or "").strip()
     try:

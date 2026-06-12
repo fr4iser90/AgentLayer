@@ -37,6 +37,16 @@ _DASHBOARD_TOOL_HINTS = (
     "patch_layout",
     "patch_data",
 )
+_WRITE_TOOL_NAMES = frozenset(
+    {
+        "write_file",
+        "edit",
+        "apply_patch",
+        "replace",
+        "repository.write_file",
+    }
+)
+_DELEGATE_TOOL_NAMES = frozenset({"delegate"})
 
 
 @dataclass
@@ -52,6 +62,16 @@ def _norm_tool_name(name: str) -> str:
 
 def _tool_names_lower(tool_names: list[str]) -> set[str]:
     return {_norm_tool_name(n) for n in tool_names if n}
+
+
+def _used_delegate(tool_names: list[str]) -> bool:
+    return bool(_tool_names_lower(tool_names) & _DELEGATE_TOOL_NAMES)
+
+
+def _coding_edit_action(tool_names: list[str]) -> bool:
+    """Direct write tools on the run, or General → coding via delegate."""
+    names = _tool_names_lower(tool_names)
+    return bool(names & _WRITE_TOOL_NAMES) or bool(names & _DELEGATE_TOOL_NAMES)
 
 
 def _content_mentions_any(content: str, needles: tuple[str, ...]) -> bool:
@@ -357,6 +377,11 @@ def _has_security_tool(tool_names: list[str]) -> bool:
     ) or any(n.startswith("security_scan") for n in names)
 
 
+def _security_scan_action(tool_names: list[str]) -> bool:
+    """SSC tools on the run, or General → security_auditor via delegate."""
+    return _has_security_tool(tool_names) or _used_delegate(tool_names)
+
+
 def rubric_sec1_scan_agentlayer(
     *,
     content: str,
@@ -372,7 +397,7 @@ def rubric_sec1_scan_agentlayer(
         return RubricOutcome(False, 0.0, "workspace.create not invoked")
     if workspace_row is None or not str(workspace_row.get("id") or "").strip():
         return RubricOutcome(False, 0.0, "expected agentlayer workspace not found via API")
-    has_tool = _has_security_tool(tool_names)
+    has_tool = _security_scan_action(tool_names)
     low = (content or "").lower()
     has_scan_ref = "scan_id" in low or "scan id" in low or "scan-" in low
     has_status = "status" in low or "queued" in low or "completed" in low or "started" in low
@@ -383,7 +408,7 @@ def rubric_sec1_scan_agentlayer(
     return RubricOutcome(
         False,
         0.0,
-        "expected security_scan tool call and scan_id/status in reply",
+        "expected delegate or security_scan tool call and scan_id/status in reply",
     )
 
 
@@ -409,11 +434,9 @@ def rubric_sec2_remediate_agentlayer(
     file_diff = summary.get("file_diff") if isinstance(summary.get("file_diff"), dict) else {}
     diff_text = str(file_diff.get("diff") or summary.get("diff") or "")
     has_report_diff = "SECURITY_REPORT" in diff_text
-    has_sec = _has_security_tool(tool_names)
-    write_ok = any(
-        _norm_tool_name(n) in ("write_file", "edit", "apply_patch", "replace") for n in tool_names
-    )
-    if has_sec and (git_changed or has_report_diff) and write_ok:
+    has_sec = _security_scan_action(tool_names)
+    edit_action = _coding_edit_action(tool_names)
+    if has_sec and (git_changed or has_report_diff) and edit_action:
         return RubricOutcome(True, 1.0, None)
     if has_sec and (git_changed or has_report_diff):
         return RubricOutcome(True, 0.85, None)
@@ -421,7 +444,7 @@ def rubric_sec2_remediate_agentlayer(
         return RubricOutcome(True, 0.6, None)
     parts: list[str] = []
     if not has_sec:
-        parts.append("no security_scan tools")
+        parts.append("no delegate or security_scan tools")
     if not git_changed and not has_report_diff:
         parts.append("no SECURITY_REPORT or git changes")
     return RubricOutcome(False, 0.0, "; ".join(parts) or "sec2 rubric failed")
@@ -473,19 +496,16 @@ def rubric_c1_bench_marker(
         or "bench-marker.txt" in stat_text
         or "bench-ok" in diff_text
     )
-    names = _tool_names_lower(tool_names)
-    write_tools = names & frozenset(
-        {"write_file", "edit", "apply_patch", "replace", "repository.write_file"}
-    )
+    edit_action = _coding_edit_action(tool_names)
     reply_ok = "bench-ok" in (content or "")
     ws_ok = bool(workspace_row and str(workspace_row.get("id") or "").strip())
-    if write_tools and reply_ok and (has_changes or marker_present) and ws_ok:
+    if edit_action and reply_ok and (has_changes or marker_present) and ws_ok:
         return RubricOutcome(True, 1.0, None)
-    if write_tools and reply_ok and ws_ok:
+    if edit_action and reply_ok and ws_ok:
         return RubricOutcome(True, 0.85, None)
     parts: list[str] = []
-    if not write_tools:
-        parts.append("no write tool detected")
+    if not edit_action:
+        parts.append("no delegate or write tool detected")
     if not reply_ok:
         parts.append("reply missing bench-ok")
     if not has_changes and not marker_present:
@@ -512,22 +532,19 @@ def rubric_c2_small_edit(
     diff_text = str(file_diff.get("diff") or summary.get("diff") or "")
     stat_text = str(summary.get("stat") or "")
     marker_present = "bench-c2-ok" in diff_text or "bench-c2-ok" in stat_text
-    names = _tool_names_lower(tool_names)
-    write_tools = names & frozenset(
-        {"write_file", "edit", "apply_patch", "replace", "repository.write_file"}
-    )
+    edit_action = _coding_edit_action(tool_names)
     reply_ok = "bench-c2-ok" in (content or "")
-    if has_changes and marker_present and write_tools and reply_ok:
+    if has_changes and marker_present and edit_action and reply_ok:
         return RubricOutcome(True, 1.0, None)
-    if has_changes and write_tools and reply_ok:
+    if has_changes and edit_action and reply_ok:
         return RubricOutcome(True, 0.9, None)
-    if has_changes and write_tools:
+    if has_changes and edit_action:
         return RubricOutcome(True, 0.75, None)
     parts: list[str] = []
     if not has_changes:
         parts.append("no git changes")
-    if not write_tools:
-        parts.append("no write tool detected")
+    if not edit_action:
+        parts.append("no delegate or write tool detected")
     if not reply_ok:
         parts.append("reply missing bench-c2-ok")
     if has_changes and not marker_present:

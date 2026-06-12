@@ -108,6 +108,23 @@ def test_c1_bench_marker_passes_with_git_file() -> None:
     assert out.passed is True
 
 
+def test_c1_bench_marker_passes_with_delegate_and_git_file() -> None:
+    out = evaluate_rubric(
+        "c1_bench_marker",
+        content="bench-ok",
+        tool_names=["workspace.create", "delegate"],
+        tool_invocations=[],
+        error=None,
+        git_changes={
+            "has_changes": True,
+            "stat": " bench-marker.txt | 1 +\n",
+            "file_diff": {"diff": "+bench-ok\n", "has_changes": True},
+        },
+        workspace_row=_WS,
+    )
+    assert out.passed is True
+
+
 def test_sec1_passes_with_scan_tool_and_id() -> None:
     out = evaluate_rubric(
         "sec1_scan_agentlayer",
@@ -119,6 +136,18 @@ def test_sec1_passes_with_scan_tool_and_id() -> None:
     )
     assert out.passed is True
     assert out.score == 1.0
+
+
+def test_sec1_passes_with_delegate_and_scan_reply() -> None:
+    out = evaluate_rubric(
+        "sec1_scan_agentlayer",
+        content="scan_id: scan-abc123\nstatus: started",
+        tool_names=["workspace.create", "delegate"],
+        tool_invocations=[],
+        error=None,
+        workspace_row=_WS,
+    )
+    assert out.passed is True
 
 
 def test_sec2_passes_with_report_and_git() -> None:
@@ -141,6 +170,23 @@ def test_c2_passes_with_git_diff() -> None:
         "c2_small_edit",
         content="bench-c2-ok",
         tool_names=["edit"],
+        tool_invocations=[],
+        error=None,
+        git_changes={
+            "has_changes": True,
+            "stat": " README.md | 1 +\n",
+            "file_diff": {"diff": "+<!-- bench-c2-ok -->\n", "has_changes": True},
+        },
+    )
+    assert out.passed is True
+    assert out.score == 1.0
+
+
+def test_c2_passes_with_delegate_and_git_diff() -> None:
+    out = evaluate_rubric(
+        "c2_small_edit",
+        content="bench-c2-ok",
+        tool_names=["workspace.create", "delegate"],
         tool_invocations=[],
         error=None,
         git_changes={

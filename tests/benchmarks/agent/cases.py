@@ -39,7 +39,24 @@ def _agentlayer_git_branch() -> str:
 def _clone_workspace_step(*, prefix: str, suffix: str, git_url: str, git_branch: str) -> str:
     return (
         f'Use workspace.create with source=git, git_url="{git_url}", git_branch="{git_branch}", '
-        f'name exactly "{prefix}{suffix}", and bind=true. Do this before any file tools.\n\n'
+        f'name exactly "{prefix}{suffix}", and bind=true. Do this before delegate or read tools.\n\n'
+    )
+
+
+def _delegate_coding_step(*, sub_prompt: str) -> str:
+    """General chat surface: repo edits run via delegate → coding sub-agent."""
+    return (
+        "Use delegate with run_subagent=true and agent_id=coding. "
+        f"In the delegate prompt, instruct the coding sub-agent to: {sub_prompt} "
+        "Do not call write_file, edit, or apply_patch on this surface.\n\n"
+    )
+
+
+def _delegate_security_auditor_step(*, sub_prompt: str) -> str:
+    return (
+        "Use delegate with run_subagent=true and agent_id=security_auditor. "
+        f"In the delegate prompt: {sub_prompt} "
+        "Do not call security_scan_* tools directly on this surface.\n\n"
     )
 
 
@@ -176,7 +193,7 @@ TIER3_SCENARIOS: list[AgentScenario] = [
         id="C1_bench_marker_file",
         tier=3,
         execution="chat",
-        agent_id="coding",
+        agent_id="general",
         prompt=(
             _clone_workspace_step(
                 prefix="{prefix}",
@@ -184,9 +201,13 @@ TIER3_SCENARIOS: list[AgentScenario] = [
                 git_url=_hello_git_url(),
                 git_branch=_hello_git_branch(),
             )
-            + "Create a new file bench-marker.txt at the repository root containing exactly one line: "
-            "bench-ok. Use write_file, edit, or apply_patch. "
-            "When the file exists with that content, reply with exactly: bench-ok"
+            + _delegate_coding_step(
+                sub_prompt=(
+                    "Create a new file bench-marker.txt at the repository root containing exactly "
+                    "one line: bench-ok (use write_file, edit, or apply_patch in the workspace)."
+                )
+            )
+            + "When the file exists with that content, reply with exactly: bench-ok"
         ),
         rubric="c1_bench_marker",
         bench_workspace_suffix="coding",
@@ -194,7 +215,7 @@ TIER3_SCENARIOS: list[AgentScenario] = [
     AgentScenario(
         id="C2_small_edit",
         tier=3,
-        agent_id="coding",
+        agent_id="general",
         prompt=(
             _clone_workspace_step(
                 prefix="{prefix}",
@@ -202,13 +223,15 @@ TIER3_SCENARIOS: list[AgentScenario] = [
                 git_url=_hello_git_url(),
                 git_branch=_hello_git_branch(),
             )
-            + "In that workspace:\n"
-            "1. Create and checkout local branch bench-c2-edit (do not git push).\n"
-            "2. Open the README at the repository root (README.md or README).\n"
-            "3. Add one line containing exactly: bench-c2-ok "
-            "(plain line or markdown comment <!-- bench-c2-ok --> is fine).\n"
-            "4. Use edit, write_file, or apply_patch.\n"
-            "When the line is saved, reply with exactly: bench-c2-ok"
+            + _delegate_coding_step(
+                sub_prompt=(
+                    "In the bound workspace: (1) create and checkout local branch bench-c2-edit "
+                    "(do not git push); (2) open README at repo root (README.md or README); "
+                    "(3) add one line containing exactly bench-c2-ok (plain line or "
+                    "<!-- bench-c2-ok --> is fine) via edit, write_file, or apply_patch."
+                )
+            )
+            + "When the line is saved, reply with exactly: bench-c2-ok"
         ),
         rubric="c2_small_edit",
         bench_workspace_suffix="c2",
@@ -226,13 +249,17 @@ TIER4_SCENARIOS: list[AgentScenario] = [
                 git_url=agentlayer_bench_git_url(),
                 git_branch=_agentlayer_git_branch(),
             )
-            + "Run a SimpleSecCheck security scan on the repository using security_scan_resolve "
-            "(or security_scan_start if resolve unavailable). Use the workspace git URL. "
-            "Do not poll status repeatedly in one turn — report scan_id and status from the first "
-            "response. Reply with lines: scan_id: … and status: …"
+            + _delegate_security_auditor_step(
+                sub_prompt=(
+                    "Run a SimpleSecCheck security scan on the repository using security_scan_resolve "
+                    "(or security_scan_start if resolve unavailable). Use the workspace git URL. "
+                    "Do not poll status repeatedly — report scan_id and status from the first response."
+                )
+            )
+            + "Reply with lines: scan_id: … and status: …"
         ),
         rubric="sec1_scan_agentlayer",
-        agent_id="coding",
+        agent_id="general",
         requires=("ssc_secret",),
         bench_workspace_suffix="agentlayer",
     ),
@@ -241,7 +268,7 @@ TIER4_SCENARIOS: list[AgentScenario] = [
         tier=4,
         execution="chat",
         security_scan=True,
-        agent_id="coding",
+        agent_id="general",
         prompt=(
             _clone_workspace_step(
                 prefix="{prefix}",
@@ -249,13 +276,16 @@ TIER4_SCENARIOS: list[AgentScenario] = [
                 git_url=agentlayer_bench_git_url(),
                 git_branch=_agentlayer_git_branch(),
             )
-            + "Security remediation on this AgentLayer workspace.\n\n"
-            "1. coding_git_read; coding_git_sync pull (ff-only).\n"
-            "2. Create branch agent/sec-bench-{today's YYYYMMDD}.\n"
-            "3. security_scan_finding_policy_schema once; then security_scan_resolve/start on the repo.\n"
-            "4. Write findings summary to docs/SECURITY_REPORT.md.\n"
-            "5. Fix at most ONE finding (prefer LOW severity) with a minimal patch.\n"
-            "6. No git push. Reply with scan_id, branch, and files changed."
+            + _delegate_coding_step(
+                sub_prompt=(
+                    "Security remediation on this workspace: (1) git_read status; git_sync pull ff-only; "
+                    "(2) create branch agent/sec-bench-{today's YYYYMMDD}; "
+                    "(3) security_scan finding_policy_schema once, then resolve/start on the repo; "
+                    "(4) write findings summary to docs/SECURITY_REPORT.md; "
+                    "(5) fix at most ONE finding (prefer LOW) with a minimal patch; (6) no git push."
+                )
+            )
+            + "Reply with scan_id, branch, and files changed."
         ),
         rubric="sec2_remediate_agentlayer",
         requires=("ssc_secret",),

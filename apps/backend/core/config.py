@@ -478,6 +478,25 @@ CODING_BASH_ENV_SCRUB = _env_bool("AGENT_CODING_BASH_ENV_SCRUB", True)
 # Opt-in strict prefix allowlist for coding_bash (default off — normal agent keeps broad shell).
 CODING_BASH_STRICT = _env_bool("AGENT_CODING_BASH_STRICT", False)
 
+# Package admission for coding_bash pip/npm installs (off | monitor | enforce).
+PACKAGE_ADMISSION_MODE = (os.environ.get("AGENT_PACKAGE_ADMISSION") or "monitor").strip().lower()
+if PACKAGE_ADMISSION_MODE not in ("off", "monitor", "enforce"):
+    logger.warning("unknown AGENT_PACKAGE_ADMISSION %r — using monitor", PACKAGE_ADMISSION_MODE)
+    PACKAGE_ADMISSION_MODE = "monitor"
+PACKAGE_MIN_VERSION_AGE_DAYS = max(0, _env_int("AGENT_PACKAGE_MIN_AGE_DAYS", 0))
+PACKAGE_UNATTENDED_MIN_AGE_DAYS = max(0, _env_int("AGENT_PACKAGE_UNATTENDED_MIN_AGE_DAYS", 7))
+PACKAGE_BLOCK_SEVERITY_RAW = (os.environ.get("AGENT_PACKAGE_BLOCK_SEVERITY") or "CRITICAL,HIGH").strip()
+PACKAGE_ASK_SEVERITY_RAW = (os.environ.get("AGENT_PACKAGE_ASK_SEVERITY") or "MEDIUM").strip()
+PACKAGE_NPM_IGNORE_SCRIPTS = _env_bool("AGENT_PACKAGE_NPM_IGNORE_SCRIPTS", True)
+PACKAGE_BLOCK_GLOBAL_INSTALL = _env_bool("AGENT_PACKAGE_BLOCK_GLOBAL_INSTALL", True)
+PACKAGE_BLOCK_CUSTOM_INDEX = _env_bool("AGENT_PACKAGE_BLOCK_CUSTOM_INDEX", True)
+PACKAGE_BLOCK_BULK_REQUIREMENTS = _env_bool("AGENT_PACKAGE_BLOCK_BULK_REQUIREMENTS", True)
+PACKAGE_UNATTENDED_STRICT = _env_bool("AGENT_PACKAGE_UNATTENDED_STRICT", True)
+PACKAGE_OSV_TIMEOUT_SEC = max(1, min(_env_int("AGENT_PACKAGE_OSV_TIMEOUT_SEC", 8), 60))
+PACKAGE_LOOKUP_FAILURE_ACTION_RAW = (os.environ.get("AGENT_PACKAGE_LOOKUP_FAILURE") or "").strip()
+PACKAGE_BLOCKLIST_RAW = (os.environ.get("AGENT_PACKAGE_BLOCKLIST") or "").strip()
+PACKAGE_ALLOWLIST_RAW = (os.environ.get("AGENT_PACKAGE_ALLOWLIST") or "").strip()
+
 
 def WORKSPACE_upload_dir() -> Path:
     raw = (os.environ.get("AGENT_WORKSPACE_UPLOAD_DIR") or "").strip()

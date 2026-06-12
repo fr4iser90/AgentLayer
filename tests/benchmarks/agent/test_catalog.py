@@ -87,5 +87,5 @@ def test_coding_suite_has_c1_c2():
     ids = {s["id"] for s in suite["scenarios"]}
     assert ids == {"C1_bench_marker_file", "C2_small_edit"}
     c2 = next(s for s in suite["scenarios"] if s["id"] == "C2_small_edit")
-    assert c2["agent_id"] == "coding"
+    assert c2["agent_id"] == "general"
     assert c2["execution"] == "chat"
