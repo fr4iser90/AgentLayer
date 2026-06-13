@@ -1246,10 +1246,17 @@ def run_benchmark(
         try:
             cleanup = prepare_bench_sandbox_cleanup(session.client)
             logger.info("benchmark pre-run bench cleanup: %s", cleanup)
-            if not cleanup.get("has_workspace_headroom"):
+            if cleanup.get("has_benchmark_workspace_headroom") is False:
                 logger.warning(
-                    "workspace quota full after bench-* cleanup "
-                    "(count=%s headroom=%s); W*/C* scenarios may fail on workspace.create",
+                    "benchmark workspace quota full after bench cleanup "
+                    "(bench_count=%s bench_headroom=%s); W*/C* scenarios will be skipped",
+                    (cleanup.get("after") or {}).get("bench_workspace_count"),
+                    cleanup.get("benchmark_workspace_headroom"),
+                )
+            elif cleanup.get("has_workspace_headroom") is False:
+                logger.warning(
+                    "user workspace quota full after bench cleanup "
+                    "(count=%s headroom=%s); non-bench scenarios may fail on workspace.create",
                     cleanup.get("after", {}).get("workspace_count"),
                     cleanup.get("workspace_headroom"),
                 )

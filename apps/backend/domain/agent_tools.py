@@ -1224,6 +1224,26 @@ def _agent_final_text_looks_like_placeholder_tool_markup(text: str) -> bool:
         return True
     if "<function=" in tl or "</function>" in tl:
         return True
+    if "<invoke" in tl or "</invoke>" in tl:
+        return True
+    if "<tool_code" in tl or "</tool_code>" in tl:
+        return True
+    if "<thinking" in tl or "</thinking>" in tl:
+        return True
+    if re.search(r"</?(?:read_file|bash|glob|list_dir|search)\b", tl):
+        return True
+    if re.search(r"<parameters?\b", tl):
+        return True
+    if re.search(r"call:default_api:", tl):
+        return True
+    stripped = text.strip()
+    if stripped.startswith("{") and stripped.endswith("}"):
+        try:
+            obj = json.loads(stripped)
+        except json.JSONDecodeError:
+            obj = None
+        if isinstance(obj, dict) and "command" in obj and len(obj) <= 3:
+            return True
     return False
 
 
@@ -1232,11 +1252,31 @@ def _strip_prose_fake_tool_markup(text: str) -> str:
     if not text:
         return text
     out = text
+    for tag in (
+        r"tool_call",
+        r"invoke",
+        r"tool_code",
+        r"thinking",
+        r"read_file",
+        r"bash",
+        r"glob",
+        r"list_dir",
+        r"search",
+        r"parameters?",
+    ):
+        out = re.sub(
+            rf"<{tag}\b[^>]*>[\s\S]*?</{tag}>",
+            "",
+            out,
+            flags=re.IGNORECASE,
+        )
+        out = re.sub(rf"</?{tag}\b[^>]*>", "", out, flags=re.IGNORECASE)
     out = re.sub(r"<tool_call\b[^>]*>[\s\S]*?</tool_call>", "", out, flags=re.IGNORECASE)
     out = re.sub(r"</?tool_call\b[^>]*>", "", out, flags=re.IGNORECASE)
     out = re.sub(r"<function\s*=[^>]*>\s*</function>", "", out, flags=re.IGNORECASE)
     out = re.sub(r"<function[^>]*>", "", out, flags=re.IGNORECASE)
     out = re.sub(r"</function>", "", out, flags=re.IGNORECASE)
+    out = re.sub(r"```(?:json)?\s*\{[\s\S]*?\}\s*```", "", out, flags=re.IGNORECASE)
     out = re.sub(r"\n{3,}", "\n\n", out).strip()
     return out
 
@@ -1416,11 +1456,20 @@ def _tool_result_followup_hint(tool_name: str, result: str | None) -> str | None
     if tool_name == "delegate" and o.get("ok") is True:
         excerpt = o.get("assistant_excerpt")
         if isinstance(excerpt, str) and excerpt.strip():
+            from apps.backend.domain.delegate_enforcement import delegate_excerpt_is_actionable
+
             body = excerpt.strip()[:2000]
+            if delegate_excerpt_is_actionable(excerpt):
+                return (
+                    "delegate succeeded. Reply to the user using the specialist result below "
+                    "(summarize assistant_excerpt in natural language). "
+                    "Do not call delegate again for the same task.\n\n"
+                    f"assistant_excerpt:\n{body}"
+                )
             return (
-                "delegate succeeded. Reply to the user using the specialist result below "
-                "(summarize assistant_excerpt in natural language). "
-                "Do not call delegate again for the same task.\n\n"
+                "delegate returned ok but assistant_excerpt is not a usable answer "
+                "(tool markup or instructions only). Retry delegate with a clearer prompt, "
+                "or answer from tool results already in the sub-agent trace.\n\n"
                 f"assistant_excerpt:\n{body}"
             )
     return None

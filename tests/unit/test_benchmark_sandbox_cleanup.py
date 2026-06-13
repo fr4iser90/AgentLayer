@@ -29,8 +29,9 @@ def test_prepare_benchmark_sandbox_cleanup_merges_extra_deleted(monkeypatch) -> 
         "bench_dashboard_count": 0,
         "bench_conversation_count": 0,
         "benchmark_workspace_headroom": 10,
-        "has_benchmark_workspace_headroom": True,
         "workspace_headroom": 9,
+        "has_benchmark_workspace_headroom": True,
+        "has_workspace_headroom": True,
     }
     monkeypatch.setattr(svc, "benchmark_sandbox_snapshot", lambda *a, **k: dict(snap))
     monkeypatch.setattr(
@@ -42,6 +43,8 @@ def test_prepare_benchmark_sandbox_cleanup_merges_extra_deleted(monkeypatch) -> 
         uid,
         extra_deleted={"workspaces": 5, "dashboards": 5, "conversations": 13},
     )
+    assert out["has_workspace_headroom"] is True
+    assert out["has_benchmark_workspace_headroom"] is True
     assert out["deleted"] == {
         "workspaces": 5,
         "dashboards": 5,

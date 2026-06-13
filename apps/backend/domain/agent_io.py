@@ -324,56 +324,6 @@ def _parse_tool_intent_from_content(content: str) -> tuple[str, dict[str, Any]] 
     return name, params
 
 
-def _content_fallback_args_acceptable(name: str, params: dict[str, Any]) -> bool:
-    """Reject synthetic tool_calls that would no-op or loop (e.g. read_tool({}))."""
-    if name == "read":
-        return any(
-            str(params.get(k) or "").strip()
-            for k in ("filename", "registered_tool_name", "tool_name", "name")
-        )
-    if name == "replace":
-        if not str(params.get("source") or "").strip():
-            return False
-        return any(
-            str(params.get(k) or "").strip()
-            for k in ("filename", "registered_tool_name", "tool_name", "name")
-        )
-    if name == "update":
-        if not str(params.get("old_string") or "").strip():
-            return False
-        return any(
-            str(params.get(k) or "").strip()
-            for k in ("filename", "registered_tool_name", "tool_name", "name")
-        )
-    if name == "create":
-        if str(params.get("source") or "").strip():
-            return True
-        return bool(str(params.get("tool_name") or "").strip() or str(params.get("name") or "").strip())
-    if name == "rename":
-        return bool(str(params.get("old_filename") or "").strip()) and bool(
-            str(params.get("new_filename") or "").strip()
-        )
-    if name == "get_tool_help":
-        return bool(str(params.get("tool_name") or "").strip())
-    if name == "bash":
-        return bool(str(params.get("command") or "").strip())
-    if name == "task":
-        rps = params.get("run_plan_subagent")
-        if (isinstance(rps, bool) and rps) or (
-            isinstance(rps, str) and rps.strip().lower() in ("1", "true", "yes", "on")
-        ):
-            return bool(str(params.get("prompt") or "").strip())
-        return bool(str(params.get("description") or "").strip()) and bool(
-            str(params.get("prompt") or "").strip()
-        )
-    if name == "read_file":
-        return bool(str(params.get("path") or "").strip())
-    if name == "git_sync":
-        op = str(params.get("operation") or "pull").strip().lower()
-        return op in ("pull", "fetch")
-    return True
-
-
 def _text_blobs_from_message(msg: dict[str, Any]) -> list[str]:
     """Collect strings where models may hide JSON tool intent (reasoning models, multimodal content)."""
     blobs: list[str] = []
@@ -403,58 +353,6 @@ def _text_blobs_from_message(msg: dict[str, Any]) -> list[str]:
         if isinstance(v, str) and v.strip():
             blobs.append(v)
     return blobs
-
-
-def _synthetic_tool_calls_from_message(
-    msg: dict[str, Any],
-    choice: dict[str, Any] | None = None,
-    *,
-    allowed_tool_names: set[str] | None = None,
-) -> list[dict[str, Any]] | None:
-    """When ``AGENT_CONTENT_TOOL_FALLBACK`` is true: build wire-format ``tool_calls`` from message body (JSON / ``name({...})`` prose)."""
-    if not config.CONTENT_TOOL_FALLBACK:
-        return None
-    if msg.get("tool_calls"):
-        return None
-    known = allowed_tool_names if allowed_tool_names is not None else _known_tool_names()
-    blobs = _text_blobs_from_message(msg)
-    if choice:
-        for key in ("thought", "reasoning", "thinking"):
-            v = choice.get(key)
-            if isinstance(v, str) and v.strip():
-                blobs.append(v)
-    for blob in blobs:
-        parsed = _parse_tool_intent_from_content(blob)
-        if not parsed:
-            continue
-        name, params = parsed
-        if name not in known:
-            logger.debug("content tool JSON names unknown tool %r, ignoring", name)
-            continue
-        if not _content_fallback_args_acceptable(name, params):
-            logger.info(
-                "AGENT_CONTENT_TOOL_FALLBACK: reject %s with insufficient args %r",
-                name,
-                params,
-            )
-            continue
-        tc = {
-            "id": f"content-{uuid.uuid4().hex[:16]}",
-            "type": "function",
-            "function": {"name": name, "arguments": json.dumps(params)},
-        }
-        logger.info(
-            "AGENT_CONTENT_TOOL_FALLBACK: synthetic tool_calls for %s(%s) from message content",
-            name,
-            params,
-        )
-        return [tc]
-    logger.debug(
-        "AGENT_CONTENT_TOOL_FALLBACK: no tool intent in message content (keys=%s, blobs=%d)",
-        list(msg.keys()),
-        len(blobs),
-    )
-    return None
 
 
 def _apply_tool_prefetch(messages: list[dict[str, Any]], prefetch: dict[str, Any]) -> None:
@@ -504,8 +402,7 @@ def _extract_tool_calls_from_completion_response(
     allowed_tool_names: set[str],
 ) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]] | None, bool]:
     """
-    Parse choices[0].message and optional synthetic tool calls from content.
-    Mutates ``data`` in place when synthetic tool_calls are applied (same as inline logic).
+    Parse choices[0].message for wire-format ``tool_calls`` only (no prose fallback).
     """
     choice0 = (data.get("choices") or [{}])[0]
     if not isinstance(choice0, dict):
@@ -517,13 +414,6 @@ def _extract_tool_calls_from_completion_response(
     raw_tc = msg.get("tool_calls")
     had_native_tool_calls = isinstance(raw_tc, list) and len(raw_tc) > 0
     tool_calls = raw_tc if had_native_tool_calls else None
-    if not tool_calls:
-        tool_calls = _synthetic_tool_calls_from_message(
-            msg, choice0, allowed_tool_names=allowed_tool_names
-        )
-        if tool_calls:
-            msg["tool_calls"] = tool_calls
-            choice0["message"] = msg
     return choice0, msg, tool_calls, had_native_tool_calls
 
 
@@ -1170,7 +1060,6 @@ __all__ = [
     '_coding_repo_intent',
     '_coerce_params_dict',
     '_completion_attach_agent_run_id',
-    '_content_fallback_args_acceptable',
     '_extract_first_json_object',
     '_extract_https_git_url',
     '_extract_tool_calls_from_completion_response',
@@ -1195,7 +1084,6 @@ __all__ = [
     '_resolve_tool_factory_name',
     '_short_run_id',
     '_strip_model_output_markers',
-    '_synthetic_tool_calls_from_message',
     '_text_blobs_from_message',
     '_try_auto_create_workspace_from_git_url',
     '_unwrap_fenced_json',

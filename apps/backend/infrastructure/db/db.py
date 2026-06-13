@@ -551,6 +551,29 @@ def recent_tool_invocations(limit: int = 50) -> list[dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
+def list_tool_invocations_for_agent_run(
+    agent_run_id: uuid.UUID,
+    *,
+    limit: int = 100,
+) -> list[dict[str, Any]]:
+    lim = max(1, min(500, int(limit)))
+    with pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                """
+                SELECT id, tool_name, args_json, result_excerpt, ok, created_at, agent_run_id
+                FROM tool_invocations
+                WHERE agent_run_id = %s
+                ORDER BY id ASC
+                LIMIT %s
+                """,
+                (agent_run_id, lim),
+            )
+            rows = cur.fetchall()
+        conn.commit()
+    return [dict(r) for r in rows]
+
+
 def user_secret_upsert(user_id: uuid.UUID, service_key: str, plaintext: str) -> None:
     from apps.backend.infrastructure.crypto_secrets import encrypt_secret
 

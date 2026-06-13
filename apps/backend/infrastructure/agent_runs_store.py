@@ -160,7 +160,15 @@ def count_running_for_user(user_id: uuid.UUID) -> int:
     return int(row[0] or 0) if row else 0
 
 
+def _parse_run_uuid(raw: object) -> uuid.UUID | None:
+    try:
+        return uuid.UUID(str(raw))
+    except (ValueError, TypeError):
+        return None
+
+
 def running_workspace_ids_for_user(user_id: uuid.UUID) -> set[uuid.UUID]:
+    """Workspaces tied to DB rows still marked running (includes stale zombies)."""
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -174,11 +182,81 @@ def running_workspace_ids_for_user(user_id: uuid.UUID) -> set[uuid.UUID]:
             rows = cur.fetchall()
     out: set[uuid.UUID] = set()
     for row in rows:
-        try:
-            out.add(uuid.UUID(str(row[0])))
-        except (ValueError, TypeError):
-            continue
+        wid = _parse_run_uuid(row[0])
+        if wid is not None:
+            out.add(wid)
     return out
+
+
+def actively_running_workspace_ids_for_user(user_id: uuid.UUID) -> set[uuid.UUID]:
+    """Workspaces with a live in-process agent worker (excludes Ctrl+C DB zombies)."""
+    from apps.backend.domain.agent_run_cancel import registered_parent_run_ids
+
+    live_ids = registered_parent_run_ids()
+    if not live_ids:
+        return set()
+    live_uuids = {_parse_run_uuid(rid) for rid in live_ids}
+    live_uuids.discard(None)
+    if not live_uuids:
+        return set()
+    with db.pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT workspace_id FROM agent_runs
+                WHERE user_id = %s AND status = 'running' AND finished_at IS NULL
+                  AND workspace_id IS NOT NULL
+                  AND id = ANY(%s)
+                """,
+                (user_id, list(live_uuids)),
+            )
+            rows = cur.fetchall()
+    out: set[uuid.UUID] = set()
+    for row in rows:
+        wid = _parse_run_uuid(row[0])
+        if wid is not None:
+            out.add(wid)
+    return out
+
+
+_INTERRUPTED_AGENT_RUN_ERROR = (
+    "Agent run interrupted: no live worker (server restart, Ctrl+C, or crash)."
+)
+
+
+def reconcile_orphaned_agent_runs(
+    *,
+    user_id: uuid.UUID | None = None,
+    exclude_run_ids: set[uuid.UUID] | None = None,
+) -> int:
+    """Mark stale ``running`` agent_runs failed when no live worker holds them."""
+    exclude = list(exclude_run_ids or ())
+    where = ["status = 'running'", "finished_at IS NULL"]
+    params: list[Any] = [_INTERRUPTED_AGENT_RUN_ERROR]
+    if user_id is not None:
+        where.append("user_id = %s")
+        params.append(user_id)
+    if exclude:
+        where.append("NOT (id = ANY(%s::uuid[]))")
+        params.append(exclude)
+    sql = f"""
+        UPDATE agent_runs
+        SET status = 'failed',
+            finished_at = COALESCE(finished_at, now()),
+            error = COALESCE(NULLIF(TRIM(error), ''), %s)
+        WHERE {' AND '.join(where)}
+    """
+    with db.pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, tuple(params))
+            count = int(cur.rowcount or 0)
+        conn.commit()
+    return count
+
+
+def reconcile_orphaned_agent_runs_on_startup() -> int:
+    """After process start, no in-memory workers exist — clear all running rows."""
+    return reconcile_orphaned_agent_runs()
 
 
 def wait_for_user_runs_idle(

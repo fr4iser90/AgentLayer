@@ -64,25 +64,6 @@ def __getattr__(name: str):
         return admin_only_delegatable_agent_ids()
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
-_PLAN_READONLY_TOOLS = [
-    "list_dir",
-    "read_file",
-    "glob",
-    "retrieve_context",
-    "search",
-    "git_read",
-    "semantic_search",
-    "symbols",
-    "lsp",
-    "project_explain",
-]
-
-_PLAN_GIT_FORENSICS_TOOLS = [
-    "git_read",
-    "read_file",
-    "search",
-]
-
 
 def build_delegate_agents_catalog_snippet(*, caller_is_admin: bool = False) -> str:
     """System-prompt block: which specialists exist and how to invoke them (no keyword routing)."""
@@ -304,12 +285,7 @@ def run_embedded_subagent_sync(
     }
     handoff_collector: list[str] = []
     body["agent_handoff_artifact_collector"] = handoff_collector
-    if aid == "coding_plan" and tool_allowlist is None:
-        if delegate_mode == "git_forensics":
-            body["agent_tool_name_allowlist"] = list(_PLAN_GIT_FORENSICS_TOOLS)
-        else:
-            body["agent_tool_name_allowlist"] = list(_PLAN_READONLY_TOOLS)
-    elif tool_allowlist:
+    if tool_allowlist:
         body["agent_tool_name_allowlist"] = list(tool_allowlist)
     if delegate_mode:
         body["agent_delegate_mode"] = delegate_mode
@@ -569,63 +545,91 @@ def run_embedded_subagent_sync(
                     ensure_ascii=False,
                 )
             else:
-                ok = True
-                excerpt = content[:12000]
-                artifact_id: str | None = None
-                if parent_uid is not None and parent_tid is not None and excerpt:
-                    from apps.backend.infrastructure import (
-                        agent_artifacts_store,
-                        agent_tasks_store,
-                    )
+                from apps.backend.domain.agent_tools import _strip_prose_fake_tool_markup
+                from apps.backend.domain.delegate_enforcement import delegate_excerpt_is_actionable
 
-                    try:
-                        art = agent_artifacts_store.create_artifact(
-                            tenant_id=int(parent_tid),
-                            created_by_user_id=parent_uid,
-                            kind="subagent_report",
-                            summary=(description or aid)[:500],
-                            content={
-                                "text": excerpt,
-                                "assistant_excerpt": excerpt,
-                                "agent_id": aid,
-                            },
-                            workspace_id=ws_uuid,
-                            created_by_task_id=task_uuid,
-                            created_by_run_id=uuid.UUID(sub_run_id),
+                excerpt = _strip_prose_fake_tool_markup(content)[:12000].strip()
+                if not excerpt or not delegate_excerpt_is_actionable(excerpt):
+                    err_msg = (
+                        "sub-agent did not return a usable plain-text answer "
+                        "(tool-call markup, instructions only, or empty after cleanup)"
+                    )
+                    if finish_reason:
+                        err_msg += f" (finish_reason={finish_reason})"
+                    problems.append(err_msg)
+                    result = json.dumps(
+                        {
+                            "ok": False,
+                            "error": err_msg,
+                            "problems": problems,
+                            "assistant_excerpt": content[:2000],
+                            "subagent_run_id": sub_run_id,
+                            "agent_id": aid,
+                            "finish_reason": finish_reason,
+                            "hint": (
+                                "The specialist did not finish with a clear answer for the user. "
+                                "Retry delegate with a simpler prompt (repo-relative paths like README.md)."
+                            ),
+                        },
+                        ensure_ascii=False,
+                    )
+                else:
+                    ok = True
+                    artifact_id: str | None = None
+                    if parent_uid is not None and parent_tid is not None and excerpt:
+                        from apps.backend.infrastructure import (
+                            agent_artifacts_store,
+                            agent_tasks_store,
                         )
-                        artifact_id = str(art.get("id") or "")
-                        if task_uuid and artifact_id:
-                            agent_tasks_store.update_task(
-                                task_id=task_uuid,
+
+                        try:
+                            art = agent_artifacts_store.create_artifact(
                                 tenant_id=int(parent_tid),
-                                append_artifact_ref=artifact_id,
-                                status="in_progress",
+                                created_by_user_id=parent_uid,
+                                kind="subagent_report",
+                                summary=(description or aid)[:500],
+                                content={
+                                    "text": excerpt,
+                                    "assistant_excerpt": excerpt,
+                                    "agent_id": aid,
+                                },
+                                workspace_id=ws_uuid,
+                                created_by_task_id=task_uuid,
+                                created_by_run_id=uuid.UUID(sub_run_id),
                             )
-                    except Exception as art_exc:
-                        problems.append(f"artifact persist failed: {art_exc}"[:400])
-                detail = (
-                    "Sub-agent finished. Prefer artifact_id summary for the user; "
-                    "do not paste raw assistant_excerpt verbatim."
-                )
-                if problems:
-                    detail += " Problems: " + "; ".join(problems)
-                payload: dict[str, Any] = {
-                    "ok": True,
-                    "mode": "embedded_subagent",
-                    "agent_id": aid,
-                    "assistant_excerpt": excerpt,
-                    "finish_reason": finish_reason,
-                    "subagent_run_id": sub_run_id,
-                    "detail": detail,
-                }
-                if problems:
-                    payload["problems"] = problems
-                if handoff_collector:
-                    payload["handoff_artifact_ids"] = list(handoff_collector)
-                if artifact_id:
-                    payload["artifact_id"] = artifact_id
-                    payload["artifact_summary"] = (description or aid)[:500]
-                result = json.dumps(payload, ensure_ascii=False)
+                            artifact_id = str(art.get("id") or "")
+                            if task_uuid and artifact_id:
+                                agent_tasks_store.update_task(
+                                    task_id=task_uuid,
+                                    tenant_id=int(parent_tid),
+                                    append_artifact_ref=artifact_id,
+                                    status="in_progress",
+                                )
+                        except Exception as art_exc:
+                            problems.append(f"artifact persist failed: {art_exc}"[:400])
+                    detail = (
+                        "Sub-agent finished with a usable answer in assistant_excerpt. "
+                        "Summarize it for the user."
+                    )
+                    if problems:
+                        detail += " Problems: " + "; ".join(problems)
+                    payload: dict[str, Any] = {
+                        "ok": True,
+                        "mode": "embedded_subagent",
+                        "agent_id": aid,
+                        "assistant_excerpt": excerpt,
+                        "finish_reason": finish_reason,
+                        "subagent_run_id": sub_run_id,
+                        "detail": detail,
+                    }
+                    if problems:
+                        payload["problems"] = problems
+                    if handoff_collector:
+                        payload["handoff_artifact_ids"] = list(handoff_collector)
+                    if artifact_id:
+                        payload["artifact_id"] = artifact_id
+                        payload["artifact_summary"] = (description or aid)[:500]
+                    result = json.dumps(payload, ensure_ascii=False)
     except FuturesTimeout:
         _t = _subagent_timeout if _subagent_timeout is not None else 0
         err_msg = f"sub-agent timed out after {_t:g}s"

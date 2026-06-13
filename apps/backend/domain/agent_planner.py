@@ -647,10 +647,12 @@ async def chat_completion(
             )
             if _media_snip:
                 messages = _append_system_block(messages, _media_snip)
-        if agent_id and agent_id in config.AGENT_SKILLS_PROMPT_AGENT_IDS:
+        if agent_id and not plain_completion:
             from apps.backend.infrastructure.skills_prompt import load_combined_skills_prompt
 
-            skills_snip = load_combined_skills_prompt(agent_id)
+            skills_snip = load_combined_skills_prompt(
+                agent_id, delegate_mode=agent_delegate_mode
+            )
             if skills_snip:
                 messages = _append_system_block(messages, skills_snip)
         pf = body.get("tool_prefetch")
@@ -770,7 +772,7 @@ async def chat_completion(
                 agent_has_explicit_allowlist = bool(agent.get("tool_allowlist"))
                 tool_domain_agent = agent.get("tool_domain")
                 tool_names_agent = agent.get("tool_names", [])
-                if tool_domain_agent:
+                if tool_domain_agent and not agent_has_explicit_allowlist:
                     merged_tools = filter_merged_tools_by_domain(merged_tools, tool_domain_agent)
                 if tool_names_agent:
                     allowed_tool_names = frozenset(tool_names_agent)
@@ -978,12 +980,6 @@ async def chat_completion(
                 model,
                 routed_category or "full",
                 forward_names,
-            )
-        if not plain_completion and tools_for_request:
-            messages = _append_tool_usage_discipline(
-                messages,
-                agent_id=agent_id,
-                delegate_mode=agent_delegate_mode,
             )
         pause_between_rounds = _coerce_body_bool(body.get("agent_pause_between_rounds"), False)
         if pause_between_rounds and control_queue is None:
@@ -2164,6 +2160,11 @@ async def chat_completion(
                         ev_done["result_ok"] = ok_sum
                     if err_sum:
                         ev_done["result_error"] = err_sum[:500]
+                    from apps.backend.domain.delegate_enforcement import tool_result_display_line
+
+                    display = tool_result_display_line(name, result or "")
+                    if display:
+                        ev_done["result_display"] = display
                     if promoted_full_schema:
                         ev_done["promoted_full_schema"] = True
                     hook_extras = turn_hooks.on_tool_done(
@@ -2247,6 +2248,10 @@ async def chat_completion(
             run_persisted=_run_persisted,
             run_persist_warnings=_run_persist_warnings or None,
         )
+    except AgentChatCancelled:
+        _run_finish_status = "cancelled"
+        _run_finish_error = "cancelled"
+        raise
     finally:
         if _parent_cancel_bridge_task is not None:
             _parent_cancel_bridge_task.cancel()

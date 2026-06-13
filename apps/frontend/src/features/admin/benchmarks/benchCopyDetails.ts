@@ -23,8 +23,13 @@ function formatToolRoundResult(row: {
   rejected?: boolean;
   ok?: boolean | null;
   error?: string;
+  result_display?: string;
 }): string {
   if (row.rejected === true) return "rejected (schema)";
+  if (row.result_display?.trim()) {
+    const d = row.result_display.trim();
+    return d.length > 200 ? `${d.slice(0, 200)}…` : d;
+  }
   if (row.ok === false) return String(row.error || "failed").trim() || "failed";
   if (row.ok === true) return "ok";
   return "—";

@@ -153,6 +153,9 @@ def extract_tool_rounds_from_ws(events: list[dict[str, Any]] | None) -> list[dic
         err = ev.get("result_error") or ev.get("error")
         if err:
             row["error"] = str(err)[:500]
+        display = ev.get("result_display")
+        if isinstance(display, str) and display.strip():
+            row["result_display"] = display.strip()[:500]
         chars = ev.get("result_chars")
         if isinstance(chars, int):
             row["result_chars"] = chars

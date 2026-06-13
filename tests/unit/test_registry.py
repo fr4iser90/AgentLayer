@@ -316,6 +316,62 @@ class TestRegistryTempScans(unittest.TestCase):
                 return
             self.fail("manifest_tool spec not found")
 
+    def test_domain_qualified_handler_does_not_warn(self) -> None:
+        first = '''
+        import json
+        from typing import Any, Callable
+
+        def read_file(arguments: dict[str, Any]) -> str:
+            return json.dumps({"which": "first"})
+
+        HANDLERS = {"read_file": read_file}
+        TOOLS = [{
+            "type": "function",
+            "function": {
+                "name": "read_file",
+                "TOOL_DESCRIPTION": "first",
+                "parameters": {"type": "object", "properties": {}},
+            },
+        }]
+        TOOL_ID = "first_read"
+        '''
+        second = '''
+        import json
+        from typing import Any, Callable
+
+        def read_file(arguments: dict[str, Any]) -> str:
+            return json.dumps({"which": "repository"})
+
+        HANDLERS = {"read_file": read_file}
+        TOOLS = [{
+            "type": "function",
+            "function": {
+                "name": "read_file",
+                "TOOL_DESCRIPTION": "repo read",
+                "parameters": {"type": "object", "properties": {}},
+            },
+        }]
+        TOOL_ID = "repo_read"
+        TOOL_DOMAIN = "repository"
+        '''
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write(root, "aaa_first.py", first)
+            _write(root, "zzz_repo.py", second)
+            with patch.dict(os.environ, {"AGENT_TOOL_DIRS": tmp}):
+                log = logging.getLogger("apps.backend.domain.plugin_system.registry")
+                with patch.object(log, "warning", wraps=log.warning) as mock_warn:
+                    reg = reload_registry("all")
+            names = _tool_function_names(reg)
+            self.assertIn("read_file", names)
+            self.assertIn("repository.read_file", names)
+            stray = [
+                c
+                for c in mock_warn.call_args_list
+                if c.args and "without matching TOOLS entry" in str(c.args[0])
+            ]
+            self.assertEqual(stray, [])
+
 
 @unittest.skipUnless(
     _project_venv_ready(),

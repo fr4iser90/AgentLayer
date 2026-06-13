@@ -602,7 +602,10 @@ function BenchmarkScenarioDetail({
                     row.promoted_full_schema === true ? "yes" : "—";
                   let result = t("admin:benchDetailNone");
                   if (rejected) result = t("admin:benchDetailToolRejected");
-                  else if (row.ok === false) result = String(row.error || t("admin:benchDetailToolFailed"));
+                  else if (row.result_display?.trim()) {
+                    const d = row.result_display.trim();
+                    result = d.length > 200 ? `${d.slice(0, 200)}…` : d;
+                  } else if (row.ok === false) result = String(row.error || t("admin:benchDetailToolFailed"));
                   else if (row.ok === true) result = t("admin:benchDetailToolOk");
                   return (
                     <tr key={i} className="border-t border-white/5">
@@ -716,7 +719,7 @@ function BenchmarkScenarioDetail({
       ) : null}
       {runTraceId ? (
         <Link
-          to={`/app/admin/run-traces?run=${encodeURIComponent(runTraceId)}`}
+          to={`/admin/run-traces?run=${encodeURIComponent(runTraceId)}`}
           className="inline-block text-sky-400 hover:underline"
         >
           {t("admin:benchDetailRunTrace")} · {runTraceId.slice(0, 8)}…

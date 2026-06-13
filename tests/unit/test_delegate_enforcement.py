@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from apps.backend.domain.delegate_enforcement import (
     coding_delegate_tool_blocked,
+    delegate_excerpt_is_actionable,
     delegate_fingerprint,
     extract_handoff_artifact_ids,
     general_orchestrator_tool_blocked,
@@ -139,6 +140,7 @@ def test_orchestrator_blocks_duplicate_delegate_fingerprint() -> None:
     ctx: dict = {
         "agent_id": "general",
         "orchestrator_last_delegate_excerpt": "line one",
+        "orchestrator_last_delegate_excerpt_actionable": True,
         "orchestrator_delegate_success_fps": {
             delegate_fingerprint("coding_plan", "read README first line"),
         },
@@ -156,34 +158,72 @@ def test_orchestrator_blocks_duplicate_delegate_fingerprint() -> None:
     assert "already delegated" in msg
 
 
-def test_orchestrator_blocks_repeat_delegate_same_agent_id() -> None:
+def test_orchestrator_allows_retry_same_agent_when_excerpt_not_actionable() -> None:
     ctx: dict = {
         "agent_id": "general",
-        "orchestrator_last_delegate_excerpt": "# Hello-World",
-        "orchestrator_last_delegate_agent_id": "coding_plan",
-        "orchestrator_delegate_success_fps": set(),
+        "orchestrator_last_delegate_excerpt": "<tool_call>read_file</tool_call>",
+        "orchestrator_last_delegate_excerpt_actionable": False,
+        "orchestrator_last_delegate_agent_id": "coding",
     }
     msg = orchestrator_pre_tool_blocked(
         "delegate",
         {
-            "agent_id": "coding_plan",
-            "prompt": "different wording same task",
+            "agent_id": "coding",
+            "prompt": "Read README.md first line only",
             "run_subagent": True,
         },
         ctx,
     )
-    assert msg is not None
-    assert "same agent_id" in msg
+    assert msg is None
+
+
+def test_record_orchestrator_skips_fingerprint_for_markup_excerpt() -> None:
+    ctx: dict = {"agent_id": "general"}
+    raw = json.dumps({"ok": True, "assistant_excerpt": "<tool_call>read_file</tool_call>"})
+    record_orchestrator_delegate_success(
+        ctx,
+        {"agent_id": "coding", "prompt": "read readme"},
+        raw,
+    )
+    assert ctx.get("orchestrator_last_delegate_excerpt_actionable") is False
+    assert "orchestrator_delegate_success_fps" not in ctx or not ctx.get(
+        "orchestrator_delegate_success_fps"
+    )
 
 
 def test_record_orchestrator_delegate_success_tracks_fingerprint() -> None:
     ctx: dict = {"agent_id": "general"}
-    raw = json.dumps({"ok": True, "assistant_excerpt": "done"})
+    raw = json.dumps({"ok": True, "assistant_excerpt": "The sum is 42."})
     record_orchestrator_delegate_success(
         ctx,
         {"agent_id": "math", "prompt": "17+25"},
         raw,
     )
-    assert ctx["orchestrator_last_delegate_excerpt"] == "done"
+    assert ctx["orchestrator_last_delegate_excerpt"] == "The sum is 42."
+    assert ctx["orchestrator_last_delegate_excerpt_actionable"] is True
     assert ctx["orchestrator_last_delegate_agent_id"] == "math"
     assert delegate_fingerprint("math", "17+25") in ctx["orchestrator_delegate_success_fps"]
+
+
+def test_delegate_excerpt_is_actionable_rejects_tool_markup() -> None:
+    assert not delegate_excerpt_is_actionable("<tool_call>read_file</tool_call>")
+    assert not delegate_excerpt_is_actionable('<invoke name="read_file">\n<parameter name="path">README.md</parameter>\n</invoke>')
+    assert not delegate_excerpt_is_actionable('{"command": "head -n 1 README.md"}')
+    assert not delegate_excerpt_is_actionable("The command `awk 'NF{print;exit}' README.md` will:\n- Open README.md")
+    assert delegate_excerpt_is_actionable("# Hello-World")
+    assert delegate_excerpt_is_actionable("README.md: Hello World!")
+    assert not delegate_excerpt_is_actionable("Read README.md in Hello-World repo")
+    assert not delegate_excerpt_is_actionable("[read_file]")
+    assert not delegate_excerpt_is_actionable("I read the file successfully")
+
+
+def test_tool_result_display_line_delegate() -> None:
+    from apps.backend.domain.delegate_enforcement import tool_result_display_line
+
+    ok_json = json.dumps(
+        {"ok": True, "assistant_excerpt": "README.md: Hello World!"}
+    )
+    assert tool_result_display_line("delegate", ok_json) == "README.md: Hello World!"
+    fail_json = json.dumps({"ok": False, "error": "sub-agent timed out"})
+    assert "timed out" in (tool_result_display_line("delegate", fail_json) or "")
+    assert tool_result_display_line("workspace.create", ok_json) is None

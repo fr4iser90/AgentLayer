@@ -27,9 +27,19 @@ class FinalRoundRecoveryHeuristicTests(unittest.TestCase):
             )
         )
 
-    def test_empty_true(self) -> None:
-        self.assertTrue(_agent_final_text_looks_like_placeholder_tool_markup(""))
-        self.assertTrue(_agent_final_text_looks_like_placeholder_tool_markup("   "))
+    def test_detects_invoke_tag(self) -> None:
+        self.assertTrue(
+            _agent_final_text_looks_like_placeholder_tool_markup(
+                '<invoke name="read_file"><parameter name="path">README.md</parameter></invoke>'
+            )
+        )
+
+    def test_detects_command_json(self) -> None:
+        self.assertTrue(
+            _agent_final_text_looks_like_placeholder_tool_markup(
+                '{"command": "head -n 1 README.md"}'
+            )
+        )
 
     def test_assistant_plain_text(self) -> None:
         msg = {"role": "assistant", "content": "  hi  \n"}

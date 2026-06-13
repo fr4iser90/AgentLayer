@@ -244,7 +244,7 @@ export function RunCardBlock({
           {card.kind === "subagent" && card.subagentRunId ? (
             <p className="mt-1 text-[10px]">
               <Link
-                to={`/app/admin/run-traces?run=${encodeURIComponent(card.subagentRunId)}`}
+                to={`/admin/run-traces?run=${encodeURIComponent(card.subagentRunId)}`}
                 className="font-mono text-sky-400/90 hover:text-sky-300 hover:underline"
                 title={t("chat:runCardOpenTrace")}
               >

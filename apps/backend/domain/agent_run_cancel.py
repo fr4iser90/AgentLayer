@@ -48,6 +48,12 @@ def parent_cancel_event(parent_run_id: str) -> threading.Event | None:
         return _parent_cancel.get(rid)
 
 
+def registered_parent_run_ids() -> frozenset[str]:
+    """Parent agent_run_ids with a live worker (in-memory cancel registry)."""
+    with _lock:
+        return frozenset(_parent_cancel)
+
+
 def reset_parent_cancel_registry_for_tests() -> None:
     with _lock:
         _parent_cancel.clear()

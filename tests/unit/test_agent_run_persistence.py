@@ -177,6 +177,76 @@ def test_embedded_subagent_surfaces_api_error() -> None:
     assert data.get("problems")
 
 
+def test_embedded_subagent_rejects_tool_markup_as_ok() -> None:
+    from apps.backend.domain.embedded_subagent import run_embedded_subagent_sync
+
+    uid = uuid.uuid4()
+    ctx = {
+        "parent_effective_model": "m1",
+        "parent_model_catalog_owned_by": "provider_1",
+        "user": type("U", (), {"id": uid})(),
+    }
+    with patch("apps.backend.domain.identity.get_identity", return_value=(1, uid)):
+        with patch("apps.backend.domain.embedded_subagent.ThreadPoolExecutor") as tpe:
+            pool = MagicMock()
+            tpe.return_value.__enter__.return_value = pool
+            pool.submit.return_value.result.return_value = {
+                "choices": [
+                    {
+                        "message": {"content": "<tool_call>read_file</tool_call>"},
+                        "finish_reason": "stop",
+                    }
+                ]
+            }
+            out = run_embedded_subagent_sync(
+                subagent_agent_id="coding_plan",
+                prompt="Read README.md first line",
+                context=ctx,
+                tool_name="delegate",
+                description="test",
+            )
+    data = json.loads(out)
+    assert data.get("ok") is False
+    assert "usable plain-text answer" in (data.get("error") or "")
+
+
+def test_embedded_subagent_ok_when_clear_answer() -> None:
+    from apps.backend.domain.embedded_subagent import run_embedded_subagent_sync
+
+    uid = uuid.uuid4()
+    ctx = {
+        "parent_effective_model": "m1",
+        "parent_model_catalog_owned_by": "provider_1",
+        "user": type("U", (), {"id": uid})(),
+    }
+    with patch("apps.backend.domain.identity.get_identity", return_value=(1, uid)):
+        with patch("apps.backend.domain.embedded_subagent.ThreadPoolExecutor") as tpe:
+            pool = MagicMock()
+            tpe.return_value.__enter__.return_value = pool
+            pool.submit.return_value.result.return_value = {
+                "choices": [
+                    {
+                        "message": {"content": "# Hello-World"},
+                        "finish_reason": "stop",
+                    }
+                ]
+            }
+            with patch(
+                "apps.backend.infrastructure.agent_artifacts_store.create_artifact",
+                return_value={"id": uuid.uuid4()},
+            ):
+                out = run_embedded_subagent_sync(
+                    subagent_agent_id="coding_plan",
+                    prompt="Read README.md first line",
+                    context=ctx,
+                    tool_name="delegate",
+                    description="test",
+                )
+    data = json.loads(out)
+    assert data.get("ok") is True
+    assert data.get("assistant_excerpt") == "# Hello-World"
+
+
 def test_coding_task_register_only_marks_not_executed() -> None:
     from plugins.tools.platform.agents.task import task
 

@@ -110,6 +110,35 @@ def test_general_allowlist_survives_repository_category_mismatch() -> None:
     assert len(names) == 6
 
 
+def test_explicit_allowlist_agent_keeps_repository_tools_despite_coding_domain() -> None:
+    """coding_plan/coding YAML allowlists repository.* tools; domain=coding must not strip them first."""
+    reload_registry()
+    from apps.backend.domain.agent_registry import get_agent_registry
+    from apps.backend.domain.agent_prompts import _tool_spec_name
+    from apps.backend.domain.plugin_system.registry import get_registry
+    from apps.backend.domain.plugin_system.tool_routing import filter_merged_tools_by_domain
+
+    reg = get_registry()
+    agent = get_agent_registry().get_agent("coding_plan")
+    assert agent is not None
+    merged = list(reg.chat_tool_specs)
+    agent_has_explicit_allowlist = bool(agent.get("tool_allowlist"))
+    tool_domain_agent = agent.get("tool_domain")
+    tool_names_agent = agent.get("tool_names", [])
+    if tool_domain_agent and not agent_has_explicit_allowlist:
+        merged = filter_merged_tools_by_domain(merged, tool_domain_agent)
+    if tool_names_agent:
+        allowed_tool_names = frozenset(tool_names_agent)
+        merged = [
+            t
+            for t in merged
+            if (n := _tool_spec_name(t)) is None or n in allowed_tool_names
+        ]
+    names = {_tool_spec_name(t) for t in merged if _tool_spec_name(t)}
+    assert "repository.read_file" in names
+    assert len(names) >= 10
+
+
 def test_general_allowlist_survives_partial_category_match() -> None:
     """W1-style prompt: router matches workspace tools only; general keeps delegate too."""
     reload_registry()

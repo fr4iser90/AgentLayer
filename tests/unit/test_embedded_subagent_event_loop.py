@@ -45,7 +45,7 @@ def test_delegate_uses_subagent_cancel_event_not_parent_asyncio_event() -> None:
         assert ce is not None
         assert ce is not parent_cancel
         return {
-            "choices": [{"message": {"content": "ok"}, "finish_reason": "stop"}],
+            "choices": [{"message": {"content": "Plan summary from mock sub-agent."}, "finish_reason": "stop"}],
         }
 
     with patch("apps.backend.domain.agent.chat_completion", new=AsyncMock(side_effect=fake_cc)):

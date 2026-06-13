@@ -205,6 +205,16 @@ async def lifespan(_app: FastAPI):
     except Exception:
         logger.exception("Benchmark orphan reconciliation failed")
     try:
+        from apps.backend.infrastructure.agent_runs_store import (
+            reconcile_orphaned_agent_runs_on_startup,
+        )
+
+        n_agent = reconcile_orphaned_agent_runs_on_startup()
+        if n_agent:
+            logger.warning("Marked %s orphaned agent run(s) as failed after startup", n_agent)
+    except Exception:
+        logger.exception("Agent run orphan reconciliation failed")
+    try:
         setup_admin_claim_if_needed()
     except Exception:
         logger.exception(

@@ -109,6 +109,26 @@ def test_live_snapshot_from_ws_events() -> None:
     assert snap["elapsed_ms"] == 1234.5
 
 
+def test_extract_tool_rounds_includes_result_display() -> None:
+    events = [
+        {
+            "type": "agent.tool_start",
+            "round": 2,
+            "name": "delegate",
+            "summary": "Read README",
+        },
+        {
+            "type": "agent.tool_done",
+            "name": "delegate",
+            "ok": True,
+            "result_display": "README.md: Hello World!",
+        },
+    ]
+    rounds = extract_tool_rounds_from_ws(events)
+    assert len(rounds) == 1
+    assert rounds[0]["result_display"] == "README.md: Hello World!"
+
+
 def test_summarize_compaction_events() -> None:
     events = [
         {"type": "agent.context_update"},

@@ -191,8 +191,6 @@ SYSTEM_PROMPT_EXTRA = os.environ.get("AGENT_SYSTEM_PROMPT", "").strip()
 # If the local catalog provider returns no tool_calls but JSON tool intent in message content, parse and run.
 # Optional legacy: infer tool calls from assistant message text when the backend sends no wire-format
 # ``tool_calls``. Off by default — prefer models that emit native tool_calls.
-CONTENT_TOOL_FALLBACK = _env_bool("AGENT_CONTENT_TOOL_FALLBACK", False)
-
 # If the first completion (planner round 0 only) returns text but no tool_calls while tools[] was
 # sent, retry once with tool_choice=required (OpenAI-compatible). Later rounds are not retried.
 AGENT_TOOL_CHOICE_REQUIRED_RETRY = _env_bool("AGENT_TOOL_CHOICE_REQUIRED_RETRY", True)
@@ -381,7 +379,7 @@ def tool_scan_directories() -> list[Path]:
 
 def skill_scan_directories() -> list[Path]:
     """
-    Skill plugin **roots** to scan **recursively** for ``*.py`` (same layout idea as ``plugins/tools``).
+    Skill plugin **roots** to scan **recursively** for ``*.md`` and ``*.py`` (same layout idea as ``plugins/tools``).
 
     If ``AGENT_SKILL_DIRS`` is set (comma-separated), only those paths are used (must exist).
     Otherwise: ``plugins/skills`` under :data:`PLUGINS_DIR`.
@@ -618,16 +616,6 @@ AGENT_MCP_AGENT_IDS = _parse_mcp_agent_ids()
 
 # Optional: append one markdown/text file to the system message (plain-text operator “skills” snippet).
 AGENT_SKILLS_PROMPT_FILE = (os.environ.get("AGENT_SKILLS_PROMPT_FILE") or "").strip()
-
-
-def _parse_skills_prompt_agent_ids() -> frozenset[str]:
-    raw = (os.environ.get("AGENT_SKILLS_PROMPT_AGENT_IDS") or "coding,coding_plan").strip()
-    if not raw:
-        return frozenset()
-    return frozenset(x.strip() for x in raw.split(",") if x.strip())
-
-
-AGENT_SKILLS_PROMPT_AGENT_IDS = _parse_skills_prompt_agent_ids()
 
 # Max combined characters for plugin skills + optional operator file snippet (per chat request).
 AGENT_SKILLS_MAX_TOTAL_CHARS = max(512, min(_env_int("AGENT_SKILLS_MAX_TOTAL_CHARS", 48_000), 200_000))

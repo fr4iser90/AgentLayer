@@ -333,6 +333,7 @@ class ToolRegistry:
         tool_names: list[str] = []
         pending_handlers: dict[str, Handler] = {}
         pending_specs: list[dict[str, Any]] = []
+        bound_handler_keys: set[str] = set()
 
         dom_raw = getattr(mod, "TOOL_DOMAIN", None)
         dom = dom_raw.strip().lower() if isinstance(dom_raw, str) and dom_raw.strip() else ""
@@ -383,6 +384,7 @@ class ToolRegistry:
             pending_handlers[registered] = handler  # type: ignore[assignment]
             pending_specs.append(spec_out)
             tool_names.append(registered)
+            bound_handler_keys.add(str(name))
 
         handlers.update(pending_handlers)
         tools.extend(pending_specs)
@@ -414,7 +416,7 @@ class ToolRegistry:
             return
 
         for declared in mod_handlers:
-            if declared not in tool_names:
+            if declared not in bound_handler_keys:
                 logger.warning(
                     "tool %s declares handler %r without matching TOOLS entry",
                     source,

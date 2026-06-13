@@ -92,21 +92,7 @@ class TestCodingTaskPlanSubagent(unittest.TestCase):
 
         self.assertEqual(b0.get("agent_max_tool_rounds"), config.SUBAGENT_MAX_TOOL_ROUNDS)
         self.assertEqual(b0.get("agent_parent_run_id"), "parent-run-abc")
-        self.assertEqual(
-            b0.get("agent_tool_name_allowlist"),
-            [
-                "list_dir",
-                "read_file",
-                "glob",
-                "retrieve_context",
-                "search",
-                "git_read",
-                "semantic_search",
-                "symbols",
-                "lsp",
-                "project_explain",
-            ],
-        )
+        self.assertNotIn("agent_tool_name_allowlist", b0)
         msgs = b0.get("messages") or []
         self.assertTrue(msgs)
         self.assertEqual(msgs[0].get("role"), "user")
@@ -127,7 +113,7 @@ class TestCodingTaskPlanSubagent(unittest.TestCase):
 
         async def fake_cc(body: dict, **kwargs: object) -> dict:
             return {
-                "choices": [{"message": {"content": "ok"}, "finish_reason": "stop"}]
+                "choices": [{"message": {"content": "Plan summary from mock."}, "finish_reason": "stop"}]
             }
 
         with patch("apps.backend.domain.agent.chat_completion", new=AsyncMock(side_effect=fake_cc)):

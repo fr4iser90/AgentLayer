@@ -275,6 +275,101 @@ def _truthy_flag(v: Any) -> bool:
     return str(v).strip().lower() in ("1", "true", "yes", "on")
 
 
+def delegate_excerpt_is_actionable(excerpt: str) -> bool:
+    """True when a delegate assistant_excerpt is usable for the orchestrator reply (not markup/meta)."""
+    from apps.backend.domain.agent_tools import _agent_final_text_looks_like_placeholder_tool_markup
+
+    t = (excerpt or "").strip()
+    if len(t) < 2:
+        return False
+    if _agent_final_text_looks_like_placeholder_tool_markup(t):
+        return False
+    low = t.lower()
+    if "tool-call markup instead of plain text" in low:
+        return False
+    if _delegate_excerpt_is_meta_only(t):
+        return False
+    return True
+
+
+_TOOL_NAME_ONLY_RE = re.compile(
+    r"^\s*(?:\[)?(?:read_file|search|glob|list_dir|git_read|repository\.read_file)(?:\])?\s*$",
+    re.IGNORECASE,
+)
+
+
+def _delegate_excerpt_is_meta_only(text: str) -> bool:
+    """Prose that describes tool use without an actual answer (path + excerpt, header, quote, etc.)."""
+    t = (text or "").strip()
+    if not t:
+        return True
+    if _TOOL_NAME_ONLY_RE.match(t):
+        return True
+    low = t.lower()
+    if low in ("done", "ok", "success", "completed"):
+        return True
+    # Bracketed tool name with nothing else substantive
+    if re.fullmatch(r"\[?(?:read_file|search|glob|list_dir)\]?", low):
+        return True
+    # Path mentioned but no delivered content (no colon/em-dash content, no markdown header, no quotes)
+    has_path = bool(re.search(r"\.[a-z0-9]{1,8}\b", t, re.IGNORECASE))
+    has_delivery = bool(
+        re.search(r"\.[a-z0-9]{1,8}\b\s*[:—\-]\s*\S", t, re.IGNORECASE)
+        or re.search(r"^#\s+\S", t, re.MULTILINE)
+        or re.search(r'["\'].{2,}["\']', t)
+        or re.search(r"\n\s*\S", t)
+    )
+    if has_path and not has_delivery and len(t) < 120:
+        if re.search(r"\b(read|called|used|searched|grep|opened)\b", low):
+            return True
+    # Short status without file signal
+    if len(t) < 35 and re.search(r"\b(read|called|used|tool|successfully)\b", low):
+        if not has_path and not re.search(r"^#\s", t, re.MULTILINE):
+            return True
+    if re.search(r"\bthe command\b", low) and re.search(r"\bwill:\b", low):
+        return True
+    if re.search(r"\bwill:\s*$", low, re.MULTILINE):
+        return True
+    stripped = t.strip()
+    if stripped.startswith("{") and stripped.endswith("}"):
+        try:
+            obj = json.loads(stripped)
+        except json.JSONDecodeError:
+            obj = None
+        if isinstance(obj, dict) and "command" in obj:
+            return True
+    if re.search(r'^[\s`]*\{[\s\n]*"command"\s*:', t, re.MULTILINE):
+        return True
+    return False
+
+
+def tool_result_display_line(tool_name: str, result: str) -> str | None:
+    """
+    Human-readable one-line summary for benchmark UI / WS ``result_display``.
+
+    For ``delegate``: ``assistant_excerpt`` on success, ``error`` on failure.
+    """
+    name = (tool_name or "").strip()
+    raw = (result or "").strip()
+    if not raw:
+        return None
+    if name != "delegate" and not name.endswith(".delegate"):
+        return None
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(data, dict):
+        return None
+    if data.get("ok") is False:
+        err = data.get("error")
+        return str(err).strip()[:500] if isinstance(err, str) and err.strip() else "failed"
+    ex = data.get("assistant_excerpt")
+    if isinstance(ex, str) and ex.strip():
+        return ex.strip()[:500]
+    return None
+
+
 def record_orchestrator_delegate_success(
     tool_context: dict[str, Any],
     args: dict[str, Any],
@@ -293,6 +388,10 @@ def record_orchestrator_delegate_success(
     if not isinstance(excerpt, str) or not excerpt.strip():
         return
     tool_context["orchestrator_last_delegate_excerpt"] = excerpt.strip()
+    if not delegate_excerpt_is_actionable(excerpt):
+        tool_context["orchestrator_last_delegate_excerpt_actionable"] = False
+        return
+    tool_context["orchestrator_last_delegate_excerpt_actionable"] = True
     sub_agent = str(args.get("agent_id") or "").strip()
     if sub_agent:
         tool_context["orchestrator_last_delegate_agent_id"] = sub_agent
@@ -307,6 +406,15 @@ def record_orchestrator_delegate_success(
         seen = set()
         tool_context["orchestrator_delegate_success_fps"] = seen
     seen.add(fp)
+
+
+def _last_actionable_delegate_excerpt(ctx: dict[str, Any]) -> str | None:
+    if ctx.get("orchestrator_last_delegate_excerpt_actionable") is not True:
+        return None
+    last = ctx.get("orchestrator_last_delegate_excerpt")
+    if isinstance(last, str) and last.strip():
+        return last.strip()
+    return None
 
 
 def orchestrator_pre_tool_blocked(
@@ -327,43 +435,25 @@ def orchestrator_pre_tool_blocked(
         return None
 
     if _truthy_flag(args.get("list_agents")):
-        last_excerpt = ctx.get("orchestrator_last_delegate_excerpt")
-        if isinstance(last_excerpt, str) and last_excerpt.strip():
+        if _last_actionable_delegate_excerpt(ctx):
             return (
-                "A delegate already returned assistant_excerpt. "
+                "A delegate already returned a usable assistant_excerpt. "
                 "Answer the user from that result — do not list agents again."
             )
         return None
-
-    sub_aid = str(args.get("agent_id") or "").strip()
-    last_excerpt = ctx.get("orchestrator_last_delegate_excerpt")
-    last_agent = str(ctx.get("orchestrator_last_delegate_agent_id") or "").strip()
-    if (
-        sub_aid
-        and last_agent
-        and sub_aid == last_agent
-        and isinstance(last_excerpt, str)
-        and last_excerpt.strip()
-    ):
-        return (
-            "You already delegated to this specialist successfully. "
-            "Use the prior delegate tool result (assistant_excerpt) in your reply — "
-            "do not delegate to the same agent_id again."
-        )
 
     fp = delegate_fingerprint(
         str(args.get("agent_id") or ""),
         str(args.get("prompt") or ""),
     )
-    if not fp:
-        return None
-    seen = ctx.get("orchestrator_delegate_success_fps")
-    if isinstance(seen, set) and fp in seen:
-        return (
-            "You already delegated this task successfully. "
-            "Use the prior delegate tool result (assistant_excerpt) in your reply — "
-            "do not call delegate again with the same agent_id and prompt."
-        )
+    if fp:
+        seen = ctx.get("orchestrator_delegate_success_fps")
+        if isinstance(seen, set) and fp in seen:
+            return (
+                "You already delegated this task successfully. "
+                "Use the prior delegate tool result (assistant_excerpt) in your reply — "
+                "do not call delegate again with the same agent_id and prompt."
+            )
 
     return None
 

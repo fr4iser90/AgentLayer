@@ -231,9 +231,23 @@ def cleanup_benchmark_sandboxes(
         "dashboards": 0,
         "conversations": 0,
         "notifications": 0,
+        "reconciled_agent_runs": 0,
         "errors": [],
     }
-    busy_workspace_ids = agent_runs_store.running_workspace_ids_for_user(user_id)
+    from apps.backend.domain.agent_run_cancel import registered_parent_run_ids
+
+    live_run_ids: set[uuid.UUID] = set()
+    for rid in registered_parent_run_ids():
+        try:
+            live_run_ids.add(uuid.UUID(str(rid)))
+        except (ValueError, TypeError):
+            continue
+    if not dry_run:
+        stats["reconciled_agent_runs"] = agent_runs_store.reconcile_orphaned_agent_runs(
+            user_id=user_id,
+            exclude_run_ids=live_run_ids or None,
+        )
+    busy_workspace_ids = agent_runs_store.actively_running_workspace_ids_for_user(user_id)
     errors: list[str] = stats["errors"]
     tenant_id = db.user_tenant_id(user_id)
     legacy = include_legacy_prefix and benchmark_run_id is None
@@ -407,8 +421,12 @@ def prepare_benchmark_sandbox_cleanup(
     )
     after = benchmark_sandbox_snapshot(user_id, include_legacy_prefix=include_legacy_prefix)
     bench_headroom = int(after.get("benchmark_workspace_headroom") or 0)
-    has_headroom = after.get("has_benchmark_workspace_headroom", False) and bench_headroom >= min_free
+    user_headroom = int(after.get("workspace_headroom") or 0)
+    has_bench_headroom = bench_headroom >= min_free
+    has_user_headroom = user_headroom >= min_free
     merged_deleted = _merge_deleted_stats(deleted, extra_deleted)
+    if int(deleted.get("reconciled_agent_runs") or 0) > 0:
+        merged_deleted["reconciled_agent_runs"] = int(deleted.get("reconciled_agent_runs") or 0)
     err_list = deleted.get("errors") if isinstance(deleted.get("errors"), list) else []
     out: dict[str, Any] = {
         "before": before,
@@ -418,7 +436,8 @@ def prepare_benchmark_sandbox_cleanup(
         "benchmark_workspace_quota": after.get("benchmark_workspace_quota"),
         "workspace_headroom": after.get("workspace_headroom"),
         "benchmark_workspace_headroom": after.get("benchmark_workspace_headroom"),
-        "has_workspace_headroom": has_headroom,
+        "has_workspace_headroom": has_user_headroom,
+        "has_benchmark_workspace_headroom": has_bench_headroom,
         "dry_run": dry_run,
     }
     if err_list:

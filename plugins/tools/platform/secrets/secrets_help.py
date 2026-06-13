@@ -74,8 +74,7 @@ def secrets_help(arguments: dict[str, Any]) -> str:
             ),
             "when_backend_emits_otp_de": (
                 "Wenn dein Modell keine nativen ``tool_calls`` sendet, wird ``register_secrets`` nicht ausgeführt → **kein** OTP. "
-                "Ein Modell/Build mit zuverlässigem Tool-Calling wählen. Nur in Ausnahmefällen ``AGENT_CONTENT_TOOL_FALLBACK=true`` "
-                "(liest Tool-Intent aus dem Assistant-Text; Standard ist **false**)."
+                "Ein Modell/Build mit zuverlässigem Tool-Calling wählen (llama.cpp/Ollama mit Tool-Template, oder Cloud-Provider)."
             ),
             "gmail_save_use_this_tool": "register_secrets",
             "gmail_save_example_args": {"service_key_example": "gmail"},

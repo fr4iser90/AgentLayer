@@ -25,13 +25,15 @@ def load_skills_prompt_suffix_from_file(*, max_chars: int) -> str:
     return raw
 
 
-def load_combined_skills_prompt(agent_id: str) -> str:
+def load_combined_skills_prompt(agent_id: str, *, delegate_mode: str | None = None) -> str:
     """Build the full ``## Skills`` block: plugin tree first, then optional ``AGENT_SKILLS_PROMPT_FILE``."""
     max_c = max(512, int(_cfg.AGENT_SKILLS_MAX_TOTAL_CHARS))
     budget = max_c
     sections: list[str] = []
 
-    plugin_md = collect_plugin_skills_markdown(agent_id, max_chars=budget)
+    plugin_md = collect_plugin_skills_markdown(
+        agent_id, max_chars=budget, delegate_mode=delegate_mode
+    )
     if plugin_md:
         block = "### From repo plugins (`plugins/skills`)\n\n" + plugin_md
         sections.append(block)

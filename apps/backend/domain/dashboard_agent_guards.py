@@ -6,7 +6,7 @@ import json
 import logging
 from typing import Any
 
-from apps.backend.domain.agent_prompts import _DASHBOARD_LAYOUT_PROPOSAL_NUDGE
+from apps.backend.infrastructure.skill_plugins import load_skill_text_by_id
 from apps.backend.domain.tool_forward_policy import build_tool_triggers_map
 
 logger = logging.getLogger(__name__)
@@ -124,7 +124,7 @@ class DashboardTurnHooks:
             round_i + 1,
             nudges + 1,
         )
-        return _DASHBOARD_LAYOUT_PROPOSAL_NUDGE
+        return load_skill_text_by_id("dashboard_layout_proposal_nudge") or ""
 
     def on_tool_done(
         self,

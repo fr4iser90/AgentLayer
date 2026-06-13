@@ -149,7 +149,7 @@ def synthetic_dashboard_tool_calls_from_message(
 ) -> list[dict[str, Any]] | None:
     """
     When Qwen pastes ``propose_layouts`` JSON in assistant text, recover one wire-format tool_call.
-    Dashboard agent only — not a global CONTENT_TOOL_FALLBACK.
+    Dashboard agent only — display sanitization for tool intent in prose (does not execute tools).
     """
     if "propose_layouts" not in allowed_tool_names:
         return None

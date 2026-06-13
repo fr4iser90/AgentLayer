@@ -245,6 +245,7 @@ export type BenchmarkScenarioResult = {
         ok?: boolean | null;
         error?: string;
         result_chars?: number;
+        result_display?: string;
         wire_arguments?: string;
         normalized_arguments?: Record<string, unknown>;
         validation?: {
