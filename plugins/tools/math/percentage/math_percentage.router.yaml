@@ -1,0 +1,17 @@
+# Co-located router phrases for math_percentage — locale keys are authoring-only.
+domain: math
+phrases:
+  en:
+    - percent
+    - percentage
+    - prozent
+    - discount
+    - tax
+    - markup
+  de:
+    - prozent
+    - prozentsatz
+    - prozentual
+    - rabatt
+    - mwst
+    - steuer

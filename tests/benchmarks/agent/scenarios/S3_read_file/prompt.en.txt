@@ -1,1 +1,0 @@
-Use read_file to read README.md in the bound workspace root. Reply with the first line of the file.

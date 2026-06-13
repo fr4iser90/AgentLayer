@@ -169,9 +169,12 @@ def _git_network_tools_for_agent(agent_id: str | None) -> frozenset[str]:
 
 
 def _pinned_tools_for_agent(agent_id: str | None) -> frozenset[str]:
-    """Deprecated — tool forward uses ranking only (no pins)."""
-    _ = agent_id
-    return frozenset()
+    if not agent_id or not str(agent_id).strip():
+        return frozenset()
+    ag = get_agent_registry().get_agent(str(agent_id).strip())
+    if not ag:
+        return frozenset()
+    return frozenset(str(x).strip() for x in (ag.get("pinned_tools") or []) if str(x).strip())
 
 
 _RELEVANCE_MIN_SCORE = 0.10
@@ -1410,6 +1413,16 @@ def _tool_result_followup_hint(tool_name: str, result: str | None) -> str | None
             return f"{who} failed: " + " | ".join(prob_lines[:5])
     if prob_lines and tool_name in ("delegate", "task"):
         return f"{tool_name} completed with warnings: " + " | ".join(prob_lines[:5])
+    if tool_name == "delegate" and o.get("ok") is True:
+        excerpt = o.get("assistant_excerpt")
+        if isinstance(excerpt, str) and excerpt.strip():
+            body = excerpt.strip()[:2000]
+            return (
+                "delegate succeeded. Reply to the user using the specialist result below "
+                "(summarize assistant_excerpt in natural language). "
+                "Do not call delegate again for the same task.\n\n"
+                f"assistant_excerpt:\n{body}"
+            )
     return None
 
 

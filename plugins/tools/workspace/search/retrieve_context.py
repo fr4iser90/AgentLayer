@@ -9,7 +9,7 @@ from typing import Any, Callable
 
 from apps.backend.infrastructure import operator_settings
 
-from apps.backend.domain.coding.common import (
+from plugins.tools.workspace.lib.common import (
     json_workspace_missing_error,
     workspace_binding_from_context,
     workspace_docs_rag_enabled,
@@ -18,7 +18,7 @@ from apps.backend.domain.coding.common import (
 )
 from plugins.tools.workspace.search.search import search as coding_search
 from plugins.tools.workspace.search.semantic_search import semantic_search as coding_semantic_search
-from apps.backend.domain.coding.retrieval_fusion import build_fused_ranking
+from plugins.tools.workspace.lib.retrieval_fusion import build_fused_ranking
 
 __version__ = "1.0.0"
 TOOL_ID = "retrieve_context"

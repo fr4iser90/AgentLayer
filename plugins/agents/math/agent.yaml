@@ -1,0 +1,18 @@
+id: math
+name: Math
+icon: 🔢
+description: Numeric calculation — expressions, percentages, unit conversion, and statistics
+requires_workspace: false
+execution_context: auto
+min_role: user
+delegatable: true
+pinned_tools:
+  - math_eval
+  - math_percentage
+  - math_convert_units
+  - math_statistics
+tool_allowlist:
+  - math_eval
+  - math_percentage
+  - math_convert_units
+  - math_statistics

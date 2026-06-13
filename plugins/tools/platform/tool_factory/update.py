@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any, Callable
 
-from apps.backend.domain.tool_factory.tool_factory_common import (
+from plugins.tools.platform.tool_factory.common import (
     backup_extra_tool_before_write,
     coalesce_tool_file_target,
     digest_reload_response,

@@ -1,0 +1,15 @@
+id: integrations
+name: Integrations
+icon: 🔌
+description: HTTP, RSS, and connector profiles
+min_role: user
+delegatable: true
+requires_workspace: false
+execution_context: auto
+tool_allowlist:
+  - call
+  - delete_profile
+  - list_profiles
+  - run
+  - save_profile
+  - summarize

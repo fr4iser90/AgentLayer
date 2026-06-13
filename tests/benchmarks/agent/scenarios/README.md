@@ -6,17 +6,17 @@ Each scenario lives in **its own directory** — never mix scenarios in one file
 scenarios/
   C1_bench_marker_file/
     meta.yaml           # tier, rubric, agent_id, fixtures, …
-    prompt.en.txt       # English user prompt (edit freely)
-    prompt.de.txt       # German user prompt
+    prompt.en.md        # English user prompt (edit freely)
+    prompt.de.md        # German user prompt
   S2_simple_chat/
     meta.yaml
-    prompt.en.txt
-    prompt.de.txt
+    prompt.en.md
+    prompt.de.md
 ```
 
 ## Edit prompts
 
-Open `prompt.<locale>.txt` in any scenario folder. Placeholders:
+Open `prompt.<locale>.md` in any scenario folder. Markdown is supported (headings, lists, code fences); the rendered text is sent to the model as the user message. Placeholders:
 
 | Placeholder | Replaced at run time |
 |-------------|----------------------|
@@ -27,7 +27,7 @@ Open `prompt.<locale>.txt` in any scenario folder. Placeholders:
 | `{agentlayer_git_url}` | AgentLayer repo URL for security scenarios |
 | `{agentlayer_git_branch}` | `AGENT_BENCH_AGENTLAYER_GIT_BRANCH` (default `main`) |
 
-Add a new locale by creating `prompt.fr.txt` (any `prompt.<locale>.txt` is auto-discovered).
+Add a new locale by creating `prompt.fr.md` (any `prompt.<locale>.md` is auto-discovered).
 
 ## Run locale
 
@@ -44,6 +44,6 @@ Optional env fallback for scripts only: `AGENT_BENCH_PROMPT_LOCALE=de`
 ## Add a scenario
 
 1. Create `scenarios/MY_scenario_id/meta.yaml` (id must match folder name).
-2. Add at least `prompt.en.txt`.
+2. Add at least `prompt.en.md`.
 3. Register the id in `benchmarks/manifests/*.yaml`.
 4. Add rubric in `tests/benchmarks/agent/rubrics.py` and catalog meta in `catalog.py`.

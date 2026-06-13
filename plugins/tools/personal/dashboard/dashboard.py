@@ -40,7 +40,7 @@ from apps.backend.dashboard.list_ops import (
 )
 from apps.backend.dashboard.layout_proposals import store_proposal_set
 from apps.backend.dashboard.template_ops import export_template_payload, validate_template_import
-from apps.backend.domain.friends.common import resolve_contact_email
+from plugins.tools.integrations.friends.lib.common import resolve_contact_email
 from apps.backend.domain.identity import get_identity
 from apps.backend.infrastructure.auth import get_user_by_email
 from apps.backend.infrastructure.db import db

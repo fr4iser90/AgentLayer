@@ -27,7 +27,7 @@ from apps.backend.infrastructure.db.share_permissions_db import (
     share_permission_set,
 )
 
-from apps.backend.domain.friends.common import resolve_friend_by_name
+from plugins.tools.integrations.friends.lib.common import resolve_friend_by_name
 
 __version__ = "2.0.0"
 TOOL_ID = "shares"

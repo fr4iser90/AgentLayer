@@ -218,7 +218,7 @@ class CodeGraphNeo4j:
         if not self.available():
             return 0, "Neo4j unavailable"
         try:
-            from apps.backend.domain.coding.graph_extract import resolve_import_relationships
+            from plugins.tools.workspace.lib.graph_extract import resolve_import_relationships
         except ImportError:
             return 0, "coding_graph_extract not available"
 

@@ -83,7 +83,7 @@ def should_deliver_external(
     return True
 
 
-from apps.backend.domain.comms.outbound import (
+from plugins.tools.integrations.messaging.lib.outbound import (
     discord_send_dm,
     operator_discord_token,
     operator_telegram_token,

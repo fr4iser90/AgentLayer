@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from apps.backend.domain.plugin_system.tool_routing import TOOL_INTROSPECTION
 from tests.benchmarks.agent.cases import SCENARIO_BY_ID, AgentScenario, available_prompt_locales
 from tests.benchmarks.agent.fixtures import FIXTURE_REQUIRES, OPTIONAL_FIXTURES, collect_fixture_ids
 from tests.benchmarks.agent.harness import load_manifest, repo_root
@@ -33,7 +32,7 @@ _SUITE_LABELS: dict[str, str] = {
 }
 
 _SUITE_DESCRIPTIONS: dict[str, str] = {
-    "smoke": "Fast sanity checks: tool catalog, simple chat, read_file in self workspace.",
+    "smoke": "Fast sanity checks: catalog (tools), direct chat (no tools), read file (delegate).",
     "workspace": "Agent clones git workspace, reads README, searches Octocat.",
     "social": "Agent creates dashboard, block-shares to friend, confirms data.",
     "integrations": "Gmail secret fixture; skips when AGENT_BENCH_GMAIL_SECRET unset.",
@@ -45,28 +44,34 @@ _SUITE_DESCRIPTIONS: dict[str, str] = {
 
 _SCENARIO_META: dict[str, dict[str, Any]] = {
     "S1_tool_catalog": {
-        "title": "Tool catalog",
-        "summary": "Call a tool-catalog introspection tool and list at least three tool names.",
-        "expected_tools": sorted(TOOL_INTROSPECTION),
-        "rubric": "introspection tool call + non-empty reply",
+        "title": "Agent catalog",
+        "summary": "General orchestrator calls catalog, then names ≥3 specialist agent_id values.",
+        "expected_tools": ["catalog"],
+        "rubric": "catalog tool call + ≥3 agent ids in reply",
     },
     "S2_simple_chat": {
         "title": "Simple chat",
-        "summary": "Answer 17+25 directly; tools stay available via router but should not be required.",
+        "summary": "Smoke tier 1: plain completion — capital of France, no tools.",
         "expected_tools": [],
-        "rubric": "numeric answer 42, latency < 30s",
+        "rubric": "exactly 'Paris', no tool calls, latency < 30s",
+    },
+    "S4_delegate_math": {
+        "title": "Delegate math",
+        "summary": "Tier 2: general → delegate math for 17+25; native delegate + 42 in reply.",
+        "expected_tools": ["delegate"],
+        "rubric": "delegate call + numeric answer 42, latency < 420s",
     },
     "S3_read_file": {
         "title": "Read README",
-        "summary": "read_file on README.md in AgentLayer self workspace.",
-        "expected_tools": ["read_file", "repository.read_file"],
-        "rubric": "read_file call + path in trace",
+        "summary": "general routes read README to coding_plan via delegate; bound AgentLayer workspace.",
+        "expected_tools": ["delegate"],
+        "rubric": "delegate call + README first line in reply",
     },
     "W1_git_readme_no_index": {
         "title": "Git README",
-        "summary": "workspace.create clone Hello-World, read_file README.md.",
-        "expected_tools": ["workspace.create", "read_file"],
-        "rubric": "workspace.create + read_file + workspace exists",
+        "summary": "workspace.create clone Hello-World; general delegates read to coding_plan.",
+        "expected_tools": ["workspace.create", "delegate"],
+        "rubric": "workspace.create + delegate or read_file + workspace exists",
     },
     "W2_find_octocat_no_index": {
         "title": "Find Octocat (no index)",

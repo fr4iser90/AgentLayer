@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from unittest.mock import patch
 
-from apps.backend.domain.coding_plan_search_policy import coding_plan_coding_search_blocked
+from plugins.tools.workspace.lib.plan_search_policy import coding_plan_coding_search_blocked
 
 
 def test_blocks_unscoped_search() -> None:
@@ -38,7 +38,7 @@ def test_allows_scoped_search() -> None:
 
 
 def test_git_forensics_blocks_search_before_diff() -> None:
-    from apps.backend.domain.coding_plan_search_policy import coding_plan_tool_blocked
+    from plugins.tools.workspace.lib.plan_search_policy import coding_plan_tool_blocked
 
     ctx = {"agent_plan_delegate_mode": "git_forensics"}
     msg = coding_plan_tool_blocked(
@@ -60,7 +60,7 @@ def test_git_forensics_blocks_search_before_diff() -> None:
 
 
 def test_git_forensics_blocks_retrieve_context() -> None:
-    from apps.backend.domain.coding_plan_search_policy import coding_plan_tool_blocked
+    from plugins.tools.workspace.lib.plan_search_policy import coding_plan_tool_blocked
 
     msg = coding_plan_tool_blocked(
         "retrieve_context",
@@ -72,7 +72,7 @@ def test_git_forensics_blocks_retrieve_context() -> None:
 
 
 def test_plan_denies_bash_and_edit_tools() -> None:
-    from apps.backend.domain.coding_plan_search_policy import coding_plan_tool_blocked
+    from plugins.tools.workspace.lib.plan_search_policy import coding_plan_tool_blocked
 
     for tool in (
         "bash",
@@ -95,7 +95,7 @@ def test_infer_git_forensics_from_prompt() -> None:
 
 
 def test_semantic_search_same_rule() -> None:
-    from apps.backend.domain.coding_plan_search_policy import coding_plan_search_blocked
+    from plugins.tools.workspace.lib.plan_search_policy import coding_plan_search_blocked
 
     assert coding_plan_search_blocked("semantic_search", {"query": "auth flow"}) is not None
     assert (
@@ -108,7 +108,7 @@ def test_semantic_search_same_rule() -> None:
 
 
 def test_ssc_artifact_dedupes_per_scan_id() -> None:
-    from apps.backend.domain.ssc_scan_artifact import maybe_persist_ssc_scan_artifact
+    from plugins.tools.security.security_scan.artifact import maybe_persist_ssc_scan_artifact
 
     uid = uuid.uuid4()
     ctx: dict = {"user": type("U", (), {"id": uid})()}

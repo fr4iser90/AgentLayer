@@ -1,0 +1,19 @@
+id: communications
+name: Communications
+icon: ✉️
+description: Mail, messaging, friends, and shared calendars
+min_role: user
+delegatable: true
+requires_workspace: false
+execution_context: auto
+tool_allowlist:
+  - collect_for_summary
+  - compose
+  - read
+  - search
+  - send
+  - messaging.send
+  - calendar
+  - info
+  - send_request
+  - shares

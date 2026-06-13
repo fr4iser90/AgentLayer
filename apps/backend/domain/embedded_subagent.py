@@ -12,11 +12,31 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-DELEGATABLE_AGENT_IDS = frozenset(
-    {"coding", "coding_plan", "security_auditor", "creative", "dashboard"}
-)
+def _delegatable_sets_from_registry() -> tuple[frozenset[str], frozenset[str]]:
+    from apps.backend.domain.agent_registry import get_agent_registry
 
-ADMIN_ONLY_DELEGATABLE_AGENT_IDS = frozenset({"operator"})
+    reg = get_agent_registry()
+    reg.ensure_loaded()
+    standard: set[str] = set()
+    admin_only: set[str] = set()
+    for aid in reg.agent_ids():
+        ag = reg.get_agent(aid) or {}
+        if aid == "general":
+            continue
+        if ag.get("admin_only_delegatable"):
+            admin_only.add(aid)
+            continue
+        if ag.get("delegatable"):
+            standard.add(aid)
+    return frozenset(standard), frozenset(admin_only)
+
+
+def standard_delegatable_agent_ids() -> frozenset[str]:
+    return _delegatable_sets_from_registry()[0]
+
+
+def admin_only_delegatable_agent_ids() -> frozenset[str]:
+    return _delegatable_sets_from_registry()[1]
 
 
 def caller_is_admin(user_id: uuid.UUID | None) -> bool:
@@ -31,9 +51,18 @@ def caller_is_admin(user_id: uuid.UUID | None) -> bool:
 
 
 def effective_delegatable_agent_ids(*, caller_is_admin: bool = False) -> frozenset[str]:
+    standard, admin_only = _delegatable_sets_from_registry()
     if caller_is_admin:
-        return DELEGATABLE_AGENT_IDS | ADMIN_ONLY_DELEGATABLE_AGENT_IDS
-    return DELEGATABLE_AGENT_IDS
+        return standard | admin_only
+    return standard
+
+
+def __getattr__(name: str):
+    if name == "DELEGATABLE_AGENT_IDS":
+        return standard_delegatable_agent_ids()
+    if name == "ADMIN_ONLY_DELEGATABLE_AGENT_IDS":
+        return admin_only_delegatable_agent_ids()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 _PLAN_READONLY_TOOLS = [
     "list_dir",

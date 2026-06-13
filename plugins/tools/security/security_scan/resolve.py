@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from apps.backend.domain.security_scan.common import (
+from plugins.tools.security.security_scan.common import (
     DEFAULT_FINDINGS_LIMIT,
     MAX_FINDINGS_LIMIT,
     agent_guidance_for_status,
@@ -19,11 +19,6 @@ from apps.backend.domain.security_scan.common import (
     ssc_status,
 )
 from apps.backend.domain.async_wait import parse_estimated_time_seconds
-from apps.backend.domain.security_scan.deferred import (
-    invoke_scan_deferred_wait,
-    merge_wait_into_payload,
-    should_wait_for_scan,
-)
 
 __version__ = "1.1.0"
 _attrs = ssc_domain_attrs()
@@ -39,6 +34,8 @@ TOOL_DESCRIPTION = (
 )
 # Router phrases: co-located resolve.router.yaml (all locales unioned at load).
 TOOL_TRIGGERS: tuple[str, ...] = ()
+
+
 def resolve(arguments: dict[str, Any], context: dict | None = None) -> str:
     repo_url = resolve_repo_url(arguments, context)
     if not repo_url:
@@ -82,7 +79,7 @@ def resolve(arguments: dict[str, Any], context: dict | None = None) -> str:
     api_data = data if isinstance(data, dict) else None
     st = ssc_status(api_data)
     scan_id = api_data.get("scan_id") or api_data.get("id") if api_data else None
-    defer = st in ("started", "scanning", "queued", "running", "pending")
+    in_progress = st in ("started", "scanning", "queued", "running", "pending")
     findings = normalize_findings(api_data) if st == "ready" else []
     estimated_sec = parse_estimated_time_seconds(api_data)
     payload: dict[str, Any] = {
@@ -94,8 +91,8 @@ def resolve(arguments: dict[str, Any], context: dict | None = None) -> str:
         "status": st,
         "scan_id": scan_id,
         "estimated_time_seconds": estimated_sec,
-        "defer": defer,
-        "end_run_recommended": defer,
+        "defer": in_progress,
+        "end_run_recommended": False,
         "target_id": api_data.get("target_id") if api_data else None,
         "commit_sha": api_data.get("commit_sha") if api_data else None,
         "status_poll_path": api_data.get("status_poll_path") if api_data else None,
@@ -109,26 +106,8 @@ def resolve(arguments: dict[str, Any], context: dict | None = None) -> str:
             st, data=api_data, findings=findings
         ),
     }
-    if (
-        scan_id
-        and should_wait_for_scan(
-            arguments,
-            context,
-            st=st,
-            estimated_sec=estimated_sec,
-            scan_id=str(scan_id),
-        )
-    ):
-        wait_result = invoke_scan_deferred_wait(
-            str(scan_id),
-            estimated_sec=estimated_sec,
-            context=context,
-            initial_status=st,
-            arguments=arguments,
-        )
-        merge_wait_into_payload(payload, wait_result=wait_result, api_data=api_data)
     if st == "ready" and scan_id:
-        from apps.backend.domain.ssc_scan_artifact import maybe_persist_ssc_scan_artifact
+        from plugins.tools.security.security_scan.artifact import maybe_persist_ssc_scan_artifact
 
         sev = str(arguments.get("findings_severity") or arguments.get("severity") or "").strip()
         artifact_id = maybe_persist_ssc_scan_artifact(
@@ -163,8 +142,8 @@ TOOLS: list[dict[str, Any]] = [
             "name": "resolve",
             "TOOL_DESCRIPTION": (
                 "Primary SimpleSecCheck entry: resolve or enqueue scan for a Git repo. "
-                "Returns status ready|scanning|started, scan_id, and estimated_time_seconds when available. "
-                "Auto-waits via deferred_wait when estimated_time_seconds is present or wait_for_completion=true."
+                "Returns status ready|scanning|started, scan_id, and estimated_time_seconds from the scanner. "
+                "Does not wait — call deferred_wait when the scan is still running."
             ),
             "parameters": {
                 "type": "object",
@@ -190,17 +169,6 @@ TOOLS: list[dict[str, Any]] = [
                     "findings_severity": {
                         "type": "string",
                         "TOOL_DESCRIPTION": "e.g. CRITICAL,HIGH when status=ready",
-                    },
-                    "wait_for_completion": {
-                        "type": "boolean",
-                        "TOOL_DESCRIPTION": (
-                            "When true and scan is pending/running with estimated_time_seconds, "
-                            "wait (poll) until terminal status before returning"
-                        ),
-                    },
-                    "skip_scan_wait": {
-                        "type": "boolean",
-                        "TOOL_DESCRIPTION": "Benchmark only: skip auto-wait even when estimate exists",
                     },
                 },
             },

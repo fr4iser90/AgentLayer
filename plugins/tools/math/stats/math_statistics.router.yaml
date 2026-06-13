@@ -1,0 +1,14 @@
+# Co-located router phrases for math_statistics — locale keys are authoring-only.
+domain: math
+phrases:
+  en:
+    - statistics
+    - average
+    - mean median
+    - standard deviation
+    - std dev
+  de:
+    - statistik
+    - durchschnitt
+    - mittelwert median
+    - standardabweichung

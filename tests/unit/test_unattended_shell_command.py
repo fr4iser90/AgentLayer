@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from apps.backend.domain.coding.bash_policy import (
+from plugins.tools.workspace.lib.bash_policy import (
     unattended_coding_bash_reject_reason,
 )
 

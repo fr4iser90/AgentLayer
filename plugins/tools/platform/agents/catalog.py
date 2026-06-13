@@ -18,8 +18,9 @@ TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("meta.agents.read",)
 TOOL_LABEL = "Agent catalog"
 TOOL_DESCRIPTION = (
-    "List agents with tool_domains and tool_capability_any for routing and delegate decisions. "
-    "Does not run sub-agents. Admins may set include_tool_names=true for resolved tool name lists."
+    "List specialist agents for delegate routing. Delegatable agents include tool_names "
+    "(their allowlist). Use delegatable_only=true before delegate. Admins may set "
+    "include_tool_names=true for effective_tool_names per caller."
 )
 
 

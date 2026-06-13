@@ -22,9 +22,12 @@ def _tools_for_domains(
     all_tool_names: list[str],
     *,
     include_introspection: bool,
+    include_shared: bool = False,
 ) -> list[str]:
-    """Tool names whose package ``domain`` is listed or ``shared``."""
-    allow = {d.strip().lower() for d in domains if str(d).strip()} | {"shared"}
+    """Tool names whose package ``domain`` is listed; ``shared`` only when requested."""
+    allow = {d.strip().lower() for d in domains if str(d).strip()}
+    if include_shared:
+        allow.add("shared")
     if not allow:
         return []
     from apps.backend.domain.plugin_system.registry import get_registry
@@ -66,16 +69,27 @@ def _tools_for_capabilities_any(capabilities: list[str], all_tool_names: list[st
 
 
 def resolve_agent_tool_names(definition: dict[str, Any], all_tool_names: list[str] | None = None) -> list[str]:
-    """Resolve ``tool_names`` for an agent definition dict (domains + capabilities)."""
+    """Resolve ``tool_names`` for an agent definition dict (allowlist, domains + capabilities)."""
     if all_tool_names is None:
         all_tool_names = _get_all_tool_names_static()
     all_tools = frozenset(all_tool_names)
+    allowlist = definition.get("tool_allowlist") or []
+    if allowlist:
+        return sorted(n for n in allowlist if n in all_tools)
     domains = definition.get("tool_domains") or []
     caps = definition.get("tool_capability_any") or []
     include_intro = bool(definition.get("tool_include_introspection", False))
     merged: set[str] = set()
+    include_shared = bool(definition.get("tool_include_shared", False))
     if domains:
-        merged.update(_tools_for_domains(domains, sorted(all_tools), include_introspection=include_intro))
+        merged.update(
+            _tools_for_domains(
+                domains,
+                sorted(all_tools),
+                include_introspection=include_intro,
+                include_shared=include_shared,
+            )
+        )
     if caps:
         merged.update(_tools_for_capabilities_any(caps, sorted(all_tools)))
     return sorted(n for n in merged if n in all_tools)
@@ -189,9 +203,10 @@ class AgentRegistry:
 
         tool_domains = definition.get("tool_domains") or []
         tool_capability_any = definition.get("tool_capability_any") or []
-        if not tool_domains and not tool_capability_any:
+        tool_allowlist = definition.get("tool_allowlist") or []
+        if not tool_domains and not tool_capability_any and not tool_allowlist:
             logger.warning(
-                "agent %s (%s): set tool_domains and/or tool_capability_any — no tools until configured",
+                "agent %s (%s): set tool_allowlist and/or tool_domains and/or tool_capability_any — no tools until configured",
                 agent_id,
                 label,
             )

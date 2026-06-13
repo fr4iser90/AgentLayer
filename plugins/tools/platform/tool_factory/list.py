@@ -6,7 +6,7 @@ import builtins
 import json
 from typing import Any, Callable
 
-from apps.backend.domain.tool_factory.tool_factory_common import extra_root_or_error
+from plugins.tools.platform.tool_factory.common import extra_root_or_error
 
 __version__ = "1.1.0"
 TOOL_ID = "list"

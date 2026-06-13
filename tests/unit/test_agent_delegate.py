@@ -7,22 +7,26 @@ import uuid
 from unittest.mock import AsyncMock, patch
 
 from apps.backend.domain.embedded_subagent import (
-    ADMIN_ONLY_DELEGATABLE_AGENT_IDS,
-    DELEGATABLE_AGENT_IDS,
+    admin_only_delegatable_agent_ids,
     build_delegate_agents_catalog_snippet,
     effective_delegatable_agent_ids,
+    standard_delegatable_agent_ids,
 )
 from plugins.tools.platform.agents.delegate import delegate
 
 
 def test_delegatable_agent_ids() -> None:
-    assert "security_auditor" in DELEGATABLE_AGENT_IDS
-    assert "coding" in DELEGATABLE_AGENT_IDS
-    assert "creative" in DELEGATABLE_AGENT_IDS
-    assert "dashboard" in DELEGATABLE_AGENT_IDS
-    assert "operator" in ADMIN_ONLY_DELEGATABLE_AGENT_IDS
-    assert "operator" not in DELEGATABLE_AGENT_IDS
-    assert "general" not in DELEGATABLE_AGENT_IDS
+    assert "security_auditor" in standard_delegatable_agent_ids()
+    assert "coding" in standard_delegatable_agent_ids()
+    assert "creative" in standard_delegatable_agent_ids()
+    assert "dashboard" in standard_delegatable_agent_ids()
+    assert "math" in standard_delegatable_agent_ids()
+    assert "research" in standard_delegatable_agent_ids()
+    assert "communications" in standard_delegatable_agent_ids()
+    assert "media" in standard_delegatable_agent_ids()
+    assert "operator" in admin_only_delegatable_agent_ids()
+    assert "operator" not in standard_delegatable_agent_ids()
+    assert "general" not in standard_delegatable_agent_ids()
 
 
 def test_effective_delegatable_includes_operator_for_admin() -> None:

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from plugins.tools.security.security_scan.status import status
-from apps.backend.domain.security_scan.common import NO_WAIT_SUFFIX, ssc_domain_attrs
+from plugins.tools.security.security_scan.common import NO_WAIT_SUFFIX, ssc_domain_attrs
 
 __version__ = "1.1.0"
 _attrs = ssc_domain_attrs()

@@ -14,8 +14,18 @@ def test_build_agents_catalog_includes_general() -> None:
     assert "general" in ids
     general = next(a for a in out["agents"] if a["id"] == "general")
     assert general["invokable_by_caller"] is True
+    assert general["delegatable"] is False
     assert "tool_names" not in general
-    assert "mail" in general["tool_domains"] or "workspace" in general["tool_domains"]
+    assert general["tool_domains"] == []
+    assert general["tool_capability_any"] == []
+    assert general["tool_names_count"] == 6
+
+
+def test_delegatable_agents_include_tool_names_for_user() -> None:
+    out = build_agents_catalog(user_role="user", tenant_id=1, delegatable_only=True)
+    coding = next(a for a in out["agents"] if a["id"] == "coding")
+    assert "tool_names" in coding
+    assert "bash" in coding["tool_names"]
 
 
 def test_delegatable_only_filters() -> None:

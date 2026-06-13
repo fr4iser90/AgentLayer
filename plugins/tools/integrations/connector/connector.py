@@ -5,15 +5,15 @@ from __future__ import annotations
 import json
 from typing import Any, Callable
 
-from apps.backend.domain.http_connector.extract import apply_template
-from apps.backend.domain.http_connector.profiles_db import (
+from plugins.tools.integrations.http.lib.extract import apply_template
+from plugins.tools.integrations.http.lib.profiles_db import (
     connector_profile_delete,
     connector_profile_get,
     connector_profile_list,
     connector_profile_upsert,
     normalize_profile_id,
 )
-from apps.backend.domain.http_connector.request import execute_http
+from plugins.tools.integrations.http.lib.request import execute_http
 from apps.backend.domain.identity import get_identity
 
 __version__ = "1.0.0"

@@ -1,0 +1,13 @@
+id: lifestyle
+name: Lifestyle
+icon: 🌤️
+description: Weather, clocks, and calendar events
+min_role: user
+delegatable: true
+requires_workspace: false
+execution_context: auto
+tool_allowlist:
+  - current
+  - forecast
+  - current_time
+  - list_events

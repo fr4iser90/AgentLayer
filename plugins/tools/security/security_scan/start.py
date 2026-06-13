@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from apps.backend.domain.security_scan.common import (
-    END_RUN_GUIDANCE,
+from plugins.tools.security.security_scan.common import (
+    SCAN_IN_PROGRESS_GUIDANCE,
     agent_guidance_for_status,
     dump_ok,
     request,
@@ -14,11 +14,6 @@ from apps.backend.domain.security_scan.common import (
     ssc_status,
 )
 from apps.backend.domain.async_wait import parse_estimated_time_seconds
-from apps.backend.domain.security_scan.deferred import (
-    invoke_scan_deferred_wait,
-    merge_wait_into_payload,
-    should_wait_for_scan,
-)
 
 __version__ = "1.1.0"
 _attrs = ssc_domain_attrs()
@@ -32,6 +27,8 @@ TOOL_LABEL = "SimpleSecCheck: start scan"
 TOOL_DESCRIPTION = "Low-level scan enqueue (prefer security_scan_resolve)."
 # Router phrases: co-located start.router.yaml (all locales unioned at load).
 TOOL_TRIGGERS: tuple[str, ...] = ()
+
+
 def start(arguments: dict[str, Any], context: dict | None = None) -> str:
     repo_url = resolve_repo_url(arguments, context)
     if not repo_url:
@@ -59,7 +56,7 @@ def start(arguments: dict[str, Any], context: dict | None = None) -> str:
     scan_id = api_data.get("id") or api_data.get("scan_id") if api_data else None
     st = ssc_status(api_data)
     estimated_sec = parse_estimated_time_seconds(api_data)
-    defer = st in ("started", "scanning", "queued", "running", "pending") or st is None
+    in_progress = st in ("started", "scanning", "queued", "running", "pending") or st is None
     payload: dict[str, Any] = {
         "ok": True,
         "http_status": status_code,
@@ -69,30 +66,12 @@ def start(arguments: dict[str, Any], context: dict | None = None) -> str:
         "repo_url": repo_url,
         "branch": branch or None,
         "scan": data,
-        "defer": defer,
-        "end_run_recommended": defer,
+        "defer": in_progress,
+        "end_run_recommended": False,
         "agent_guidance": agent_guidance_for_status(st, data=api_data)
         if st
-        else [END_RUN_GUIDANCE],
+        else [SCAN_IN_PROGRESS_GUIDANCE],
     }
-    if (
-        scan_id
-        and should_wait_for_scan(
-            arguments,
-            context,
-            st=st,
-            estimated_sec=estimated_sec,
-            scan_id=str(scan_id),
-        )
-    ):
-        wait_result = invoke_scan_deferred_wait(
-            str(scan_id),
-            estimated_sec=estimated_sec,
-            context=context,
-            initial_status=st,
-            arguments=arguments,
-        )
-        merge_wait_into_payload(payload, wait_result=wait_result, api_data=api_data)
     return dump_ok(payload)
 
 
@@ -107,7 +86,8 @@ TOOLS: list[dict[str, Any]] = [
             "name": "start",
             "TOOL_DESCRIPTION": (
                 "Low-level scan enqueue (POST /api/v1/scans/). Prefer security_scan_resolve. "
-                "Returns estimated_time_seconds when available; wait_for_completion polls until done."
+                "Returns estimated_time_seconds from the scanner when available; "
+                "call deferred_wait to poll until complete."
             ),
             "parameters": {
                 "type": "object",
@@ -115,14 +95,6 @@ TOOLS: list[dict[str, Any]] = [
                     "repo_url": {"type": "string", "TOOL_DESCRIPTION": "HTTPS Git clone URL"},
                     "branch": {"type": "string", "TOOL_DESCRIPTION": "Branch name"},
                     "scan_type": {"type": "string", "TOOL_DESCRIPTION": "Optional scan profile"},
-                    "wait_for_completion": {
-                        "type": "boolean",
-                        "TOOL_DESCRIPTION": "Poll until scan completes when estimate is available",
-                    },
-                    "skip_scan_wait": {
-                        "type": "boolean",
-                        "TOOL_DESCRIPTION": "Benchmark only: skip auto-wait even when estimate exists",
-                    },
                 },
             },
         },

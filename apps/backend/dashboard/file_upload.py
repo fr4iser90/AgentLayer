@@ -17,7 +17,7 @@ from apps.backend.dashboard.list_ops import append_list_rows
 from apps.backend.dashboard.upload_bytes import sniff_image_mime
 from apps.backend.domain.collections import db as col_db
 from apps.backend.domain.collections import service as domain_svc
-from apps.backend.domain.http_connector.ssrf import validate_outbound_url
+from plugins.tools.integrations.http.lib.ssrf import validate_outbound_url
 from apps.backend.infrastructure.operator_settings import effective_dashboard_upload_max_bytes
 
 _DATA_URL_RE = re.compile(r"^data:image/[\w+.-]+;base64,", re.I)

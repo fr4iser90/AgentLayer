@@ -19,7 +19,8 @@ def test_definition_from_yaml_coding_plan() -> None:
     assert d is not None
     assert d["id"] == "coding_plan"
     assert d["source_kind"] == "yaml"
-    assert "workspace" in d["tool_domains"]
-    assert "coding.read" in d["tool_capability_any"]
+    assert d.get("tool_allowlist")
+    assert "repository.read_file" in d["tool_allowlist"]
+    assert "bash" not in d["tool_allowlist"]
     assert "Plan" in d["system_prompt"]
     assert "bash" in d["system_prompt"]

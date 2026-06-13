@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
-from apps.backend.domain.github.repos import list_user_repos
+from plugins.tools.integrations.github.lib.repos import list_user_repos
 from apps.backend.infrastructure.auth import get_current_user
 
 router = APIRouter(prefix="/v1/integrations/github", tags=["integrations", "github"])

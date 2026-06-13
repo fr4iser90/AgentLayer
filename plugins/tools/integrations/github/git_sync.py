@@ -89,7 +89,7 @@ def _run_git(
 
 
 def git_sync(arguments: dict[str, Any], context: dict | None = None) -> str:
-    from apps.backend.domain.coding.common import (
+    from plugins.tools.workspace.lib.common import (
         json_workspace_missing_error,
         workspace_binding_from_context,
     )

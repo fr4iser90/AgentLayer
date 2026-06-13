@@ -130,6 +130,44 @@ export type BenchmarkRunReadiness = {
   has_bench_sandbox_resources?: boolean;
 };
 
+const _READINESS_SNAPSHOT_KEYS = [
+  "workspace_count",
+  "bench_workspace_count",
+  "non_bench_workspace_count",
+  "workspace_quota",
+  "benchmark_workspace_quota",
+  "workspace_headroom",
+  "benchmark_workspace_headroom",
+  "has_workspace_headroom",
+  "has_benchmark_workspace_headroom",
+  "dashboard_count",
+  "bench_dashboard_count",
+  "non_bench_dashboard_count",
+  "conversation_count",
+  "bench_conversation_count",
+  "non_bench_conversation_count",
+  "has_bench_sandbox_resources",
+] as const;
+
+/** Strip API envelope and prefer post-cleanup snapshot counts when present. */
+export function normalizeBenchmarkReadiness(
+  raw: BenchmarkRunReadiness & { ok?: boolean; cleanup?: BenchmarkSandboxCleanup; detail?: unknown }
+): BenchmarkRunReadiness {
+  const { ok: _ok, cleanup, detail: _detail, ...rest } = raw;
+  const out: BenchmarkRunReadiness = { ...rest };
+  const after = cleanup?.after;
+  if (after && typeof after === "object") {
+    const snap = after as Record<string, unknown>;
+    for (const key of _READINESS_SNAPSHOT_KEYS) {
+      const val = snap[key];
+      if (typeof val === "number" || typeof val === "boolean") {
+        (out as Record<string, unknown>)[key] = val;
+      }
+    }
+  }
+  return out;
+}
+
 export type BenchmarkRunSummary = {
   passed?: number;
   executed?: number;
@@ -261,11 +299,16 @@ export type BenchmarkSandboxCleanup = {
     bench_workspace_count?: number;
     bench_dashboard_count?: number;
     bench_conversation_count?: number;
+    has_bench_sandbox_resources?: boolean;
+    workspace_quota?: number;
+    workspace_headroom?: number;
+    has_workspace_headroom?: boolean;
   };
   deleted?: { workspaces?: number; dashboards?: number; conversations?: number };
   run_prefix_deleted?: { workspaces?: number; dashboards?: number; conversations?: number };
   workspace_headroom?: number;
   has_workspace_headroom?: boolean;
+  errors?: string[];
   error?: string;
 };
 
@@ -455,7 +498,8 @@ export async function cleanupBenchmarkResources(
     BenchmarkRunReadiness & { cleanup?: BenchmarkSandboxCleanup; detail?: unknown }
   >(res, `Failed to clean benchmark sandboxes (HTTP ${res.status})`);
   if (!res.ok) throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
-  return data;
+  const cleanup = data.cleanup;
+  return { ...normalizeBenchmarkReadiness(data), cleanup };
 }
 
 /** @deprecated use cleanupBenchmarkResources */
@@ -469,12 +513,12 @@ export async function fetchBenchmarkRunReadiness(
     `/v1/admin/benchmarks/run-readiness?user_id=${encodeURIComponent(userId)}`,
     auth
   );
-  const data = await readJsonResponse<BenchmarkRunReadiness & { detail?: unknown }>(
+  const data = await readJsonResponse<BenchmarkRunReadiness & { detail?: unknown; ok?: boolean }>(
     res,
     `Failed to load readiness (HTTP ${res.status})`
   );
   if (!res.ok) throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
-  return data;
+  return normalizeBenchmarkReadiness(data);
 }
 
 export async function startBenchmarkRun(

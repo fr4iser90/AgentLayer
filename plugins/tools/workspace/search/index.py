@@ -7,12 +7,12 @@ import time
 from pathlib import Path
 from typing import Any, Callable
 
-from apps.backend.domain.coding.index_lib import (
+from plugins.tools.workspace.lib.index_lib import (
     _HAS_TS,
     _SUPPORTED_LANGUAGES,
     get_index,
 )
-from apps.backend.domain.coding.common import (
+from plugins.tools.workspace.lib.common import (
     json_workspace_missing_error,
     workspace_binding_from_context,
     workspace_retrieval_flags,
@@ -103,7 +103,7 @@ def index(arguments: dict[str, Any], context: dict | None = None) -> str:
     neo4j_error = None
     if _HAS_NEO4J:
         try:
-            from apps.backend.domain.coding.graph_extract import resolve_import_relationships
+            from plugins.tools.workspace.lib.graph_extract import resolve_import_relationships
 
             graph = get_code_graph()
             if graph.available():

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from apps.backend.domain.security_scan.common import (
+from plugins.tools.security.security_scan.common import (
     END_RUN_GUIDANCE,
     NO_WAIT_SUFFIX,
     bool_arg,
@@ -71,10 +71,10 @@ def agent_callback(arguments: dict[str, Any], context: dict | None = None) -> st
             "scan_id": new_scan_id,
             "response": data,
             "defer": True,
-            "end_run_recommended": True,
+            "end_run_recommended": False,
             "agent_guidance": [
                 "Rescan queued. " + END_RUN_GUIDANCE,
-                "Later: security_scan_status(scan_id) once in a new session, then security_scan_findings.",
+                "Later: security_scan_status(scan_id) or deferred_wait until ready, then security_scan_findings.",
             ],
         }
     )

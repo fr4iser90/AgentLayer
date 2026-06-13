@@ -9,14 +9,14 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from apps.backend.domain.coding.package_admission import (
+from plugins.tools.workspace.lib.package_admission import (
     evaluate_install,
     mutate_install_command,
     package_admission_gate,
     parse_package_install,
 )
-from apps.backend.domain.coding.package_admission_osv import OsvFinding, clear_osv_cache
-from apps.backend.domain.coding.package_admission_policy import PackageAdmissionPolicy
+from plugins.tools.workspace.lib.package_admission_osv import OsvFinding, clear_osv_cache
+from plugins.tools.workspace.lib.package_admission_policy import PackageAdmissionPolicy
 from plugins.tools.workspace.shell.bash import bash
 
 
@@ -95,10 +95,10 @@ class TestEvaluateInstall(unittest.TestCase):
             package_blocklist=frozenset({"evil-pkg"}),
         )
         with patch(
-            "apps.backend.domain.coding.package_admission.query_vulnerabilities",
+            "plugins.tools.workspace.lib.package_admission.query_vulnerabilities",
             return_value=([], None),
         ), patch(
-            "apps.backend.domain.coding.package_admission._resolve_version",
+            "plugins.tools.workspace.lib.package_admission._resolve_version",
             return_value=("1.0.0", None),
         ):
             verdict = evaluate_install(intent, policy=policy, context={})
@@ -110,13 +110,13 @@ class TestEvaluateInstall(unittest.TestCase):
         assert intent is not None
         policy = PackageAdmissionPolicy(mode="enforce")
         with patch(
-            "apps.backend.domain.coding.package_admission.query_vulnerabilities",
+            "plugins.tools.workspace.lib.package_admission.query_vulnerabilities",
             return_value=(
                 [OsvFinding(id="GHSA-abc", severity="CRITICAL", summary="bad")],
                 None,
             ),
         ), patch(
-            "apps.backend.domain.coding.package_admission._resolve_version",
+            "plugins.tools.workspace.lib.package_admission._resolve_version",
             return_value=("1.0.0", None),
         ):
             verdict = evaluate_install(intent, policy=policy, context={})
@@ -127,13 +127,13 @@ class TestEvaluateInstall(unittest.TestCase):
         assert intent is not None
         policy = PackageAdmissionPolicy(mode="monitor")
         with patch(
-            "apps.backend.domain.coding.package_admission.query_vulnerabilities",
+            "plugins.tools.workspace.lib.package_admission.query_vulnerabilities",
             return_value=(
                 [OsvFinding(id="GHSA-abc", severity="CRITICAL", summary="bad")],
                 None,
             ),
         ), patch(
-            "apps.backend.domain.coding.package_admission._resolve_version",
+            "plugins.tools.workspace.lib.package_admission._resolve_version",
             return_value=("1.0.0", None),
         ):
             verdict = evaluate_install(intent, policy=policy, context={})
@@ -151,7 +151,7 @@ class TestEvaluateInstall(unittest.TestCase):
 class TestPackageAdmissionGate(unittest.TestCase):
     def test_off_mode_passthrough(self) -> None:
         with patch(
-            "apps.backend.domain.coding.package_admission.resolve_policy",
+            "plugins.tools.workspace.lib.package_admission.resolve_policy",
             return_value=PackageAdmissionPolicy(enabled=False, mode="off"),
         ):
             err, cmd = package_admission_gate("pip install requests", context={})
@@ -164,12 +164,12 @@ class TestPackageAdmissionGate(unittest.TestCase):
             package_blocklist=frozenset({"evil-pkg"}),
         )
         with patch(
-            "apps.backend.domain.coding.package_admission.resolve_policy",
+            "plugins.tools.workspace.lib.package_admission.resolve_policy",
             return_value=policy,
         ), patch(
-            "apps.backend.domain.coding.package_admission.evaluate_install",
+            "plugins.tools.workspace.lib.package_admission.evaluate_install",
         ) as mock_eval:
-            from apps.backend.domain.coding.package_admission import AdmissionVerdict
+            from plugins.tools.workspace.lib.package_admission import AdmissionVerdict
 
             mock_eval.return_value = AdmissionVerdict(
                 decision="block",
@@ -193,12 +193,12 @@ class TestBashIntegration(unittest.TestCase):
                 package_blocklist=frozenset({"blocked-pkg"}),
             )
             with patch(
-                "apps.backend.domain.coding.package_admission.resolve_policy",
+                "plugins.tools.workspace.lib.package_admission.resolve_policy",
                 return_value=policy,
             ), patch(
-                "apps.backend.domain.coding.package_admission.evaluate_install",
+                "plugins.tools.workspace.lib.package_admission.evaluate_install",
             ) as mock_eval:
-                from apps.backend.domain.coding.package_admission import AdmissionVerdict
+                from plugins.tools.workspace.lib.package_admission import AdmissionVerdict
 
                 mock_eval.return_value = AdmissionVerdict(
                     decision="block",
@@ -221,12 +221,12 @@ class TestBashIntegration(unittest.TestCase):
                 return subprocess.CompletedProcess(cmd, 0, stdout="ok\n", stderr="")
 
             with patch(
-                "apps.backend.domain.coding.package_admission.resolve_policy",
+                "plugins.tools.workspace.lib.package_admission.resolve_policy",
                 return_value=policy,
             ), patch(
-                "apps.backend.domain.coding.package_admission.evaluate_install",
+                "plugins.tools.workspace.lib.package_admission.evaluate_install",
             ) as mock_eval:
-                from apps.backend.domain.coding.package_admission import AdmissionVerdict
+                from plugins.tools.workspace.lib.package_admission import AdmissionVerdict
 
                 mock_eval.return_value = AdmissionVerdict(
                     decision="allow",

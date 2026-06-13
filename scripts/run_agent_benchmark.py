@@ -61,7 +61,7 @@ def main() -> int:
         "--prompt-locale",
         type=str,
         default="en",
-        help="Scenario user-message locale (prompt.en.txt, prompt.de.txt, …)",
+        help="Scenario user-message locale (prompt.en.md, prompt.de.md, …)",
     )
     args = parser.parse_args()
 

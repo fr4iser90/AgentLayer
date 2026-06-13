@@ -388,7 +388,7 @@ def search_text(arguments: dict[str, Any]) -> str:
 
 
 def replace_text(arguments: dict[str, Any]) -> str:
-    from apps.backend.domain.coding.common import (
+    from plugins.tools.workspace.lib.common import (
         is_blocked_credential_path,
         json_blocked_credential_path_error,
     )
@@ -466,7 +466,7 @@ def replace_text(arguments: dict[str, Any]) -> str:
 
 
 def write_file(arguments: dict[str, Any]) -> str:
-    from apps.backend.domain.coding.common import (
+    from plugins.tools.workspace.lib.common import (
         is_blocked_credential_path,
         json_blocked_credential_path_error,
     )

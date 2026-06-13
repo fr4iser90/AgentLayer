@@ -9,7 +9,7 @@ from typing import Any, Callable
 
 from apps.backend.core.config import config
 
-from apps.backend.domain.coding.common import (
+from plugins.tools.workspace.lib.common import (
     is_blocked_credential_path,
     json_blocked_credential_path_error,
     json_workspace_missing_error,

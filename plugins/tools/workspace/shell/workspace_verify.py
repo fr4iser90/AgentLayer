@@ -13,8 +13,8 @@ from typing import Any, Callable, cast
 from apps.backend.core.config import config
 
 from plugins.tools.workspace.shell.bash import _tail
-from apps.backend.domain.coding.bash_policy import is_blocked as _is_blocked
-from apps.backend.domain.coding.common import (
+from plugins.tools.workspace.lib.bash_policy import is_blocked as _is_blocked
+from plugins.tools.workspace.lib.common import (
     json_workspace_missing_error,
     workspace_binding_from_context,
 )

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from apps.backend.domain.security_scan.common import (
+from plugins.tools.security.security_scan.common import (
     NO_WAIT_SUFFIX,
     agent_guidance_for_status,
     dump_ok,
@@ -52,7 +52,7 @@ def status(arguments: dict[str, Any], context: dict | None = None) -> str:
             "estimated_time_seconds": estimated_sec,
             "terminal": terminal,
             "still_running": still_running,
-            "end_run_recommended": still_running,
+            "end_run_recommended": False,
             "progress": data.get("progress") if isinstance(data, dict) else None,
             "vulnerabilities_found": (
                 data.get("vulnerabilities_found") if isinstance(data, dict) else None
@@ -76,7 +76,7 @@ TOOLS: list[dict[str, Any]] = [
             "name": "status",
             "TOOL_DESCRIPTION": (
                 "One-shot scan status check (progress, completed, failed). "
-                "If still running, end the run and check again in a later session."
+                "If still running, call deferred_wait to poll until complete."
                 + NO_WAIT_SUFFIX
             ),
             "parameters": {

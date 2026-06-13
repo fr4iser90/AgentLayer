@@ -409,7 +409,8 @@ def prepare_benchmark_sandbox_cleanup(
     bench_headroom = int(after.get("benchmark_workspace_headroom") or 0)
     has_headroom = after.get("has_benchmark_workspace_headroom", False) and bench_headroom >= min_free
     merged_deleted = _merge_deleted_stats(deleted, extra_deleted)
-    return {
+    err_list = deleted.get("errors") if isinstance(deleted.get("errors"), list) else []
+    out: dict[str, Any] = {
         "before": before,
         "after": after,
         "deleted": merged_deleted,
@@ -420,6 +421,9 @@ def prepare_benchmark_sandbox_cleanup(
         "has_workspace_headroom": has_headroom,
         "dry_run": dry_run,
     }
+    if err_list:
+        out["errors"] = [str(e) for e in err_list[:32]]
+    return out
 
 
 def prepare_benchmark_workspace_quota(

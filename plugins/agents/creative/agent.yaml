@@ -1,10 +1,11 @@
 id: creative
 name: Creative
 icon: 🎨
-description: HTML page builder and image editing (ComfyUI inpainting) — not for repo coding or dashboards
+description: HTML pages and ComfyUI inpainting
+min_role: user
+delegatable: true
 requires_workspace: false
 execution_context: auto
-min_role: user
-tool_domains:
-  - creative
-  - image_editor
+tool_allowlist:
+  - build
+  - inpainting_realvision

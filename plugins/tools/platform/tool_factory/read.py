@@ -7,7 +7,7 @@ from typing import Any, Callable
 
 from apps.backend.core.config import config
 
-from apps.backend.domain.tool_factory.tool_factory_common import (
+from plugins.tools.platform.tool_factory.common import (
     coalesce_tool_file_target,
     extra_root_or_error,
 )

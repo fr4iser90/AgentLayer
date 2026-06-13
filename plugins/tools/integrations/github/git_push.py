@@ -8,7 +8,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Callable
 
-from apps.backend.domain.github.auth import (
+from plugins.tools.integrations.github.lib.auth import (
     USER_SECRET_KEY,
     askpass_extra_env,
     cleanup_askpass_paths,
@@ -81,7 +81,7 @@ def _run_git_push(
 
 
 def git_push(arguments: dict[str, Any], context: dict | None = None) -> str:
-    from apps.backend.domain.coding.common import (
+    from plugins.tools.workspace.lib.common import (
         json_workspace_missing_error,
         workspace_binding_from_context,
     )

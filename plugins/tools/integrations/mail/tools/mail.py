@@ -6,7 +6,7 @@ import json
 import imaplib
 from typing import Any, Callable
 
-from apps.backend.domain.mail.imap_common import (
+from plugins.tools.integrations.mail.lib.imap_common import (
     body_text_plain,
     connect_imap,
     decode_header_value,
@@ -14,11 +14,11 @@ from apps.backend.domain.mail.imap_common import (
     fetch_headers,
     select_mailbox,
 )
-from apps.backend.domain.mail.providers import MAIL_PROVIDERS
-from apps.backend.domain.friends.common import resolve_contact_email
-from apps.backend.domain.mail.resolve import resolve_mail_session, sanitize_query
-from apps.backend.domain.mail.smtp_send import send_mail_message
-from apps.backend.domain.mail.search import search_uids
+from plugins.tools.integrations.mail.lib.providers import MAIL_PROVIDERS
+from plugins.tools.integrations.friends.lib.common import resolve_contact_email
+from plugins.tools.integrations.mail.lib.resolve import resolve_mail_session, sanitize_query
+from plugins.tools.integrations.mail.lib.smtp_send import send_mail_message
+from plugins.tools.integrations.mail.lib.search import search_uids
 
 __version__ = "2.0.0"
 TOOL_ID = "mail"

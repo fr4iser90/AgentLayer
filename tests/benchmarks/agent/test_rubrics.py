@@ -7,34 +7,56 @@ from tests.benchmarks.agent.rubrics import evaluate_rubric
 _WS = {"id": "ws-1", "name": "bench-git"}
 
 
-def test_s1_passes_with_introspection_tool() -> None:
+def test_s1_passes_with_catalog_tool() -> None:
     out = evaluate_rubric(
         "s1_tool_catalog",
-        content="Tools: echo_text, build, validate_browser_automation_plan",
-        tool_names=["list_available_tools"],
+        content="Agents: coding, math, security_auditor, dashboard",
+        tool_names=["catalog"],
         error=None,
     )
     assert out.passed is True
     assert out.score == 1.0
 
 
-def test_s1_fails_without_introspection_tool() -> None:
+def test_s1_fails_without_catalog_tool() -> None:
     out = evaluate_rubric(
         "s1_tool_catalog",
-        content="Tools: echo_text, build, validate_browser_automation_plan",
+        content="Agents: coding, math, security_auditor",
         tool_names=["read_file"],
         error=None,
     )
     assert out.passed is False
-    assert "introspection" in (out.failure_reason or "").lower()
+    assert "catalog" in (out.failure_reason or "").lower()
 
 
-def test_s2_passes_with_42() -> None:
+def test_s2_passes_with_paris() -> None:
     out = evaluate_rubric(
         "s2_simple_chat",
-        content="42",
+        content="Paris",
         error=None,
         latency_ms=500.0,
+    )
+    assert out.passed is True
+
+
+def test_s2_rejects_tool_calls() -> None:
+    out = evaluate_rubric(
+        "s2_simple_chat",
+        content="Paris",
+        error=None,
+        latency_ms=500.0,
+        tool_names=["delegate"],
+    )
+    assert out.passed is False
+
+
+def test_s4_passes_with_delegate_and_42() -> None:
+    out = evaluate_rubric(
+        "s4_delegate_math",
+        content="42",
+        tool_names=["delegate"],
+        error=None,
+        latency_ms=5000.0,
     )
     assert out.passed is True
 
@@ -42,16 +64,45 @@ def test_s2_passes_with_42() -> None:
 def test_s3_passes_with_read_file() -> None:
     out = evaluate_rubric(
         "s3_read_file",
-        content="# AgentLayer",
+        content="# Agent Layer",
         tool_names=["read_file"],
         tool_invocations=[
             {
                 "tool_name": "read_file",
                 "args_json": {"path": "README.md"},
-                "result_excerpt": "# AgentLayer",
+                "result_excerpt": "# Agent Layer",
             }
         ],
         error=None,
+    )
+    assert out.passed is True
+
+
+def test_s3_delegates_coding_plan() -> None:
+    out = evaluate_rubric(
+        "s3_read_file",
+        content="# Agent Layer",
+        tool_names=["delegate"],
+        tool_invocations=[
+            {
+                "tool_name": "delegate",
+                "args_json": {"agent_id": "coding_plan", "prompt": "Read README.md"},
+                "result_excerpt": "# Agent Layer",
+            }
+        ],
+        error=None,
+    )
+    assert out.passed is True
+
+
+def test_w1_passes_with_delegate() -> None:
+    out = evaluate_rubric(
+        "w1_git_readme",
+        content="# Hello-World",
+        tool_names=["workspace.create", "delegate"],
+        tool_invocations=[],
+        error=None,
+        workspace_row=_WS,
     )
     assert out.passed is True
 

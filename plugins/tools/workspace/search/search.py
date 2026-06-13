@@ -12,7 +12,7 @@ from typing import Any, Callable
 
 from apps.backend.core.config import config as _global_config
 
-from apps.backend.domain.coding.common import (
+from plugins.tools.workspace.lib.common import (
     json_workspace_missing_error,
     workspace_binding_from_context,
 )

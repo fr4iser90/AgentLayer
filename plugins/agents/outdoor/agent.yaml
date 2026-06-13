@@ -1,0 +1,17 @@
+id: outdoor
+name: Outdoor
+icon: 🏕️
+description: Fishing, hunting, and survival planning
+min_role: user
+delegatable: true
+requires_workspace: false
+execution_context: auto
+tool_allowlist:
+  - bait_suggest
+  - bite_index
+  - spot_recommend
+  - tracking_guide
+  - wind_analysis
+  - risk_score
+  - shelter_plan
+  - water_daily_liters

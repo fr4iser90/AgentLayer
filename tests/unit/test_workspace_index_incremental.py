@@ -8,7 +8,7 @@ from unittest import mock
 
 class TestScanPaths(unittest.TestCase):
     def test_scan_paths_indexes_single_file(self) -> None:
-        from apps.backend.domain.coding.index_lib import _HAS_TS, get_index
+        from plugins.tools.workspace.lib.index_lib import _HAS_TS, get_index
 
         if not _HAS_TS:
             self.skipTest("tree-sitter not installed")

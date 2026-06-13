@@ -1,0 +1,15 @@
+# Co-located router phrases for math_convert_units — locale keys are authoring-only.
+domain: math
+phrases:
+  en:
+    - convert units
+    - unit conversion
+    - kilometers miles
+    - celsius fahrenheit
+    - pounds kg
+  de:
+    - einheiten umrechnen
+    - umrechnung
+    - kilometer meilen
+    - celsius fahrenheit
+    - pfund kilogramm

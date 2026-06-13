@@ -1,1 +1,0 @@
-Use the catalog tool to list tools available to the general agent. Call the tool, then reply with at least three tool names you found.

@@ -7,7 +7,7 @@ from typing import Any, Callable
 
 from apps.backend.domain.plugin_system.tool_authoring import tool_authoring
 
-from apps.backend.domain.tool_factory.tool_factory_common import (
+from plugins.tools.platform.tool_factory.common import (
     digest_reload_response,
     extra_root_or_error,
 )

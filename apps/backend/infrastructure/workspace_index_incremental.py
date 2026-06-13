@@ -113,7 +113,7 @@ def enqueue_incremental_index_from_context(
     """Enqueue paths using workspace binding from tool context."""
     if not context:
         return
-    from apps.backend.domain.coding.common import (
+    from plugins.tools.workspace.lib.common import (
         workspace_binding_from_context,
         workspace_retrieval_flags,
     )

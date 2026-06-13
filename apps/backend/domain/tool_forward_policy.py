@@ -1,4 +1,4 @@
-"""Dynamic tool forward plan: ranking cap, context budget, catalog-first schemas (no pins)."""
+"""Dynamic tool forward plan: agent pins, ranking cap, context budget, catalog-first schemas."""
 
 from __future__ import annotations
 
@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from apps.backend.domain.agent_tools import (
+    _partition_tool_specs_by_name,
+    _pinned_tools_for_agent,
     _tool_spec_name,
     rank_tools_for_forward,
 )
@@ -116,6 +118,12 @@ def _cap_ranked_pool(
     return out
 
 
+def _ordered_pinned_specs(specs: list[Any], pin_names: list[str]) -> list[Any]:
+    pin_set = frozenset(pin_names)
+    pinned_by_name = {_tool_spec_name(s): s for s in specs if _tool_spec_name(s) in pin_set}
+    return [pinned_by_name[n] for n in pin_names if n in pinned_by_name]
+
+
 def build_tool_forward_plan(ctx: ToolForwardContext) -> ToolForwardPlan:
     specs = list(ctx.tool_specs or [])
 
@@ -123,27 +131,48 @@ def build_tool_forward_plan(ctx: ToolForwardContext) -> ToolForwardPlan:
         context_window_tokens=ctx.context_window_tokens,
     )
 
+    spec_name_set = {_tool_spec_name(s) for s in specs if _tool_spec_name(s)}
+    if ctx.agent_id:
+        from apps.backend.domain.agent_registry import get_agent_registry
+
+        ag = get_agent_registry().get_agent(ctx.agent_id) or {}
+        yaml_pins = [str(x).strip() for x in (ag.get("pinned_tools") or []) if str(x).strip()]
+        pin_names = [n for n in yaml_pins if n in spec_name_set]
+    else:
+        pin_names = [
+            n for n in (_pinned_tools_for_agent(ctx.agent_id) or frozenset()) if n in spec_name_set
+        ]
+
+    pin_set = frozenset(pin_names)
+    pinned_specs = _ordered_pinned_specs(specs, pin_names)
+    _, rest_specs = _partition_tool_specs_by_name(specs, pin_set)
+
+    pin_tokens = sum(_estimate_tool_spec_tokens(s) for s in pinned_specs)
+    remaining_slots = max(0, max_count - len(pinned_specs))
+    remaining_budget = max(0, token_budget - pin_tokens)
+
     ranking_applied = False
-    ranked_pool = specs
-    if ctx.ranking_enabled and specs and (ctx.user_text or "").strip():
-        names = [_tool_spec_name(s) for s in specs if _tool_spec_name(s)]
+    ranked_rest = rest_specs
+    if ctx.ranking_enabled and rest_specs and (ctx.user_text or "").strip():
+        names = [_tool_spec_name(s) for s in rest_specs if _tool_spec_name(s)]
         triggers = build_tool_triggers_map([n for n in names if n])
         try:
-            ranked_pool, ranking_applied = rank_tools_for_forward(
-                specs,
+            ranked_rest, ranking_applied = rank_tools_for_forward(
+                rest_specs,
                 ctx.user_text,
                 triggers,
                 category_routed=ctx.category_routed,
             )
         except Exception:
             logger.warning("tool forward: ranking failed", exc_info=True)
-            ranked_pool = specs
+            ranked_rest = rest_specs
 
-    forward_specs = _cap_ranked_pool(
-        ranked_pool,
-        max_slots=max_count,
-        token_budget=token_budget,
+    capped_rest = _cap_ranked_pool(
+        ranked_rest,
+        max_slots=remaining_slots,
+        token_budget=remaining_budget,
     )
+    forward_specs = pinned_specs + capped_rest
     forward_names = [n for s in forward_specs if (n := _tool_spec_name(s))]
 
     schema_modes: dict[str, SchemaMode] = {}
@@ -163,12 +192,12 @@ def build_tool_forward_plan(ctx: ToolForwardContext) -> ToolForwardPlan:
         budget_tokens_used_estimate=used_est,
         max_tool_count=max_count,
         ranking_applied=ranking_applied,
-        pins_included=[],
+        pins_included=list(pin_names),
         meta={
             "context_window_tokens": ctx.context_window_tokens,
             "allowlist_count": len(specs),
-            "rank_pool_count": len(specs),
-            "pinned_count": 0,
+            "rank_pool_count": len(rest_specs),
+            "pinned_count": len(pin_names),
         },
     )
 

@@ -1,0 +1,17 @@
+# Co-located router phrases for math_eval — locale keys are authoring-only.
+domain: math
+phrases:
+  en:
+    - math
+    - calculate
+    - compute
+    - expression
+    - arithmetic
+    - percentage
+  de:
+    - mathe
+    - rechnen
+    - berechnen
+    - ausrechnen
+    - formel
+    - prozent

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from apps.backend.domain.security_scan.common import (
+from plugins.tools.security.security_scan.common import (
     NO_WAIT_SUFFIX,
     base_url,
     dump_ok,

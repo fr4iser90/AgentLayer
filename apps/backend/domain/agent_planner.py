@@ -27,7 +27,7 @@ from apps.backend.domain.plugin_system.capability_index import filter_merged_too
 from apps.backend.domain.plugin_system.tool_routing import (
     TOOL_INTROSPECTION,
     classify_user_tool_categories,
-    filter_merged_tools_by_categories,
+    filter_merged_tools_by_categories_for_agent,
     filter_merged_tools_by_domain,
     last_user_text,
 )
@@ -762,9 +762,12 @@ async def chat_completion(
             merged_tools = _merge_tools(body.get("tools"))
         routed_category: str | None = None
         logger.debug("tool_domain before check: %r, agent_id=%r", tool_domain, agent_id)
+        agent: dict[str, Any] | None = None
+        agent_has_explicit_allowlist = False
         if agent_id:
             agent = get_agent_registry().get_agent(agent_id)
             if agent:
+                agent_has_explicit_allowlist = bool(agent.get("tool_allowlist"))
                 tool_domain_agent = agent.get("tool_domain")
                 tool_names_agent = agent.get("tool_names", [])
                 if tool_domain_agent:
@@ -789,7 +792,11 @@ async def chat_completion(
             merged_tools = filter_merged_tools_by_domain(merged_tools, tool_domain)
         cats = classify_user_tool_categories(last_user_text(messages))
         cats = cats | extra_cats_body | extra_cats_hdr
-        merged_tools = filter_merged_tools_by_categories(merged_tools, cats)
+        merged_tools = filter_merged_tools_by_categories_for_agent(
+            merged_tools,
+            cats,
+            agent_has_explicit_allowlist=agent_has_explicit_allowlist,
+        )
         if cap_hints:
             merged_tools = filter_merged_tools_by_capabilities(
                 merged_tools,
@@ -1928,49 +1935,73 @@ async def chat_completion(
                         _tool_start_ev["label"] = _tool_label
                     await event_emit(_tool_start_ev)
                 if not rejected:
-                    tctx = set_tool_invocation_messages(list(messages))
-                    try:
-                        perm_always = tool_context.get("permission_always_allow_tools")
-                        if not isinstance(perm_always, set):
-                            perm_always = set()
-                            tool_context["permission_always_allow_tools"] = perm_always
-                        need_gate = (
-                            permission_ask
-                            and not bool(tool_context.get("agent_unattended"))
-                            and bool(tool_context.get("agent_coding_tools_permission_ask"))
-                            and name in _CODING_TOOLS_PERMISSION_ASK
-                            and name not in perm_always
+                    from apps.backend.domain.delegate_enforcement import (
+                        coding_delegate_tool_blocked,
+                        orchestrator_pre_tool_blocked,
+                        record_orchestrator_delegate_success,
+                    )
+
+                    policy_block = orchestrator_pre_tool_blocked(name, args, tool_context)
+                    if policy_block is None:
+                        policy_block = coding_delegate_tool_blocked(name, args, tool_context)
+                    if policy_block:
+                        result = json.dumps(
+                            {"ok": False, "error": policy_block},
+                            ensure_ascii=False,
                         )
-                        if need_gate and control_queue is None:
-                            logger.warning(
-                                "agent_permission_ask set but no control_queue; executing %s without approval",
-                                name,
+                        ok_sum, err_sum = False, policy_block
+                    else:
+                        tctx = set_tool_invocation_messages(list(messages))
+                        try:
+                            perm_always = tool_context.get("permission_always_allow_tools")
+                            if not isinstance(perm_always, set):
+                                perm_always = set()
+                                tool_context["permission_always_allow_tools"] = perm_always
+                            need_gate = (
+                                permission_ask
+                                and not bool(tool_context.get("agent_unattended"))
+                                and bool(tool_context.get("agent_coding_tools_permission_ask"))
+                                and name in _CODING_TOOLS_PERMISSION_ASK
+                                and name not in perm_always
                             )
-                        if need_gate and control_queue is not None:
-                            preview = json.dumps(args, ensure_ascii=False, default=str)[:2000]
-                            rid = str(uuid.uuid4())
-                            rep, fb_msg = await _wait_for_tool_permission_reply(
-                                control_queue=control_queue,
-                                cancel_event=cancel_event,
-                                event_emit=event_emit,
-                                agent_run_id=agent_run_id,
-                                request_id=rid,
-                                tool_name=name,
-                                args_preview=preview,
-                                round_i=round_i,
-                                handle_control=handle_control_dict,
-                            )
-                            if rep == "reject":
-                                rej: dict[str, Any] = {
-                                    "ok": False,
-                                    "error": "User rejected permission for this tool call.",
-                                }
-                                if fb_msg:
-                                    rej["user_message"] = fb_msg
-                                result = json.dumps(rej, ensure_ascii=False)
+                            if need_gate and control_queue is None:
+                                logger.warning(
+                                    "agent_permission_ask set but no control_queue; executing %s without approval",
+                                    name,
+                                )
+                            if need_gate and control_queue is not None:
+                                preview = json.dumps(args, ensure_ascii=False, default=str)[:2000]
+                                rid = str(uuid.uuid4())
+                                rep, fb_msg = await _wait_for_tool_permission_reply(
+                                    control_queue=control_queue,
+                                    cancel_event=cancel_event,
+                                    event_emit=event_emit,
+                                    agent_run_id=agent_run_id,
+                                    request_id=rid,
+                                    tool_name=name,
+                                    args_preview=preview,
+                                    round_i=round_i,
+                                    handle_control=handle_control_dict,
+                                )
+                                if rep == "reject":
+                                    rej: dict[str, Any] = {
+                                        "ok": False,
+                                        "error": "User rejected permission for this tool call.",
+                                    }
+                                    if fb_msg:
+                                        rej["user_message"] = fb_msg
+                                    result = json.dumps(rej, ensure_ascii=False)
+                                else:
+                                    if rep == "always":
+                                        perm_always.add(name)
+                                    result = await _thread_with_cancel(
+                                        cancel_event,
+                                        execute_tool,
+                                        name,
+                                        args,
+                                        context=tool_context,
+                                    )
                             else:
-                                if rep == "always":
-                                    perm_always.add(name)
                                 result = await _thread_with_cancel(
                                     cancel_event,
                                     execute_tool,
@@ -1978,17 +2009,9 @@ async def chat_completion(
                                     args,
                                     context=tool_context,
                                 )
-                        else:
-                            result = await _thread_with_cancel(
-                                cancel_event,
-                                execute_tool,
-                                name,
-                                args,
-                                context=tool_context,
-                            )
-                    finally:
-                        reset_tool_invocation_messages(tctx)
-                    ok_sum, err_sum = _tool_result_summary(result)
+                        finally:
+                            reset_tool_invocation_messages(tctx)
+                        ok_sum, err_sum = _tool_result_summary(result)
                 if (
                     str(name).strip()
                     and tool_call_warrants_full_schema_promotion(
@@ -2040,6 +2063,7 @@ async def chat_completion(
                                 coll.append(aid)
                     if str(tool_context.get("agent_id") or "") == "general":
                         if name == "delegate" and ok_sum:
+                            record_orchestrator_delegate_success(tool_context, args, result or "")
                             sub_aid = str(args.get("agent_id") or "").strip()
                             refs = args.get("artifact_refs")
                             if sub_aid == "coding" and isinstance(refs, list) and refs:

@@ -67,7 +67,7 @@ def test_list_suites_detailed_matches_manifests():
 def test_full_suite_has_all_scenarios():
     suite = describe_suite("full")
     ids = [s["id"] for s in suite["scenarios"]]
-    assert len(ids) == 14
+    assert len(ids) == 15
     assert ids[0] == "S1_tool_catalog"
     assert ids[-2:] == ["SEC1_scan_agentlayer", "SEC2_remediate_agentlayer"]
     fixture_ids = {f["id"] for f in suite["fixtures"]}

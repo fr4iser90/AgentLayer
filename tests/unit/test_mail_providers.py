@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from apps.backend.domain.mail.providers import MAIL_PROVIDERS, provider_ids
-from apps.backend.domain.mail.resolve import resolve_mail_session
+from plugins.tools.integrations.mail.lib.providers import MAIL_PROVIDERS, provider_ids
+from plugins.tools.integrations.mail.lib.resolve import resolve_mail_session
 
 
 def test_mail_provider_ids() -> None:
@@ -21,9 +21,9 @@ def test_resolve_mail_session_no_user() -> None:
 
 
 def test_resolve_mail_session_gmail_secret() -> None:
-    with patch("apps.backend.domain.mail.resolve.get_identity", return_value=(1, 42)):
+    with patch("plugins.tools.integrations.mail.lib.resolve.get_identity", return_value=(1, 42)):
         with patch(
-            "apps.backend.domain.mail.resolve.db.user_secret_get_plaintext",
+            "plugins.tools.integrations.mail.lib.resolve.db.user_secret_get_plaintext",
             return_value='{"email":"u@gmail.com","app_password":"abcd efgh ijkl mnop"}',
         ):
             session = resolve_mail_session({"provider": "gmail"})
@@ -34,9 +34,9 @@ def test_resolve_mail_session_gmail_secret() -> None:
 
 
 def test_resolve_mail_session_unified_mail_json() -> None:
-    with patch("apps.backend.domain.mail.resolve.get_identity", return_value=(1, 42)):
+    with patch("plugins.tools.integrations.mail.lib.resolve.get_identity", return_value=(1, 42)):
         with patch(
-            "apps.backend.domain.mail.resolve.db.user_secret_get_plaintext",
+            "plugins.tools.integrations.mail.lib.resolve.db.user_secret_get_plaintext",
             side_effect=lambda _uid, key: (
                 '{"provider":"outlook","email":"u@outlook.com","password":"secret"}'
                 if key == "mail"

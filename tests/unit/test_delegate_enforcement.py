@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
+import json
 import uuid
 from unittest.mock import patch
 
 from apps.backend.domain.delegate_enforcement import (
     coding_delegate_tool_blocked,
+    delegate_fingerprint,
     extract_handoff_artifact_ids,
     general_orchestrator_tool_blocked,
     load_delegate_allowed_paths,
+    orchestrator_pre_tool_blocked,
     paths_from_artifact_content,
+    record_orchestrator_delegate_success,
     subagent_reject_reason,
 )
 
@@ -123,3 +127,63 @@ def test_load_delegate_allowed_paths() -> None:
     ):
         paths = load_delegate_allowed_paths(tenant_id=1, artifact_refs=[str(aid)])
     assert paths == ["plugins/tools/x.py"]
+
+
+def test_delegate_fingerprint_normalizes_whitespace() -> None:
+    assert delegate_fingerprint("coding_plan", "  Read   file  ") == delegate_fingerprint(
+        "coding_plan", "read file"
+    )
+
+
+def test_orchestrator_blocks_duplicate_delegate_fingerprint() -> None:
+    ctx: dict = {
+        "agent_id": "general",
+        "orchestrator_last_delegate_excerpt": "line one",
+        "orchestrator_delegate_success_fps": {
+            delegate_fingerprint("coding_plan", "read README first line"),
+        },
+    }
+    msg = orchestrator_pre_tool_blocked(
+        "delegate",
+        {
+            "agent_id": "coding_plan",
+            "prompt": "read README first line",
+            "run_subagent": True,
+        },
+        ctx,
+    )
+    assert msg is not None
+    assert "already delegated" in msg
+
+
+def test_orchestrator_blocks_repeat_delegate_same_agent_id() -> None:
+    ctx: dict = {
+        "agent_id": "general",
+        "orchestrator_last_delegate_excerpt": "# Hello-World",
+        "orchestrator_last_delegate_agent_id": "coding_plan",
+        "orchestrator_delegate_success_fps": set(),
+    }
+    msg = orchestrator_pre_tool_blocked(
+        "delegate",
+        {
+            "agent_id": "coding_plan",
+            "prompt": "different wording same task",
+            "run_subagent": True,
+        },
+        ctx,
+    )
+    assert msg is not None
+    assert "same agent_id" in msg
+
+
+def test_record_orchestrator_delegate_success_tracks_fingerprint() -> None:
+    ctx: dict = {"agent_id": "general"}
+    raw = json.dumps({"ok": True, "assistant_excerpt": "done"})
+    record_orchestrator_delegate_success(
+        ctx,
+        {"agent_id": "math", "prompt": "17+25"},
+        raw,
+    )
+    assert ctx["orchestrator_last_delegate_excerpt"] == "done"
+    assert ctx["orchestrator_last_delegate_agent_id"] == "math"
+    assert delegate_fingerprint("math", "17+25") in ctx["orchestrator_delegate_success_fps"]

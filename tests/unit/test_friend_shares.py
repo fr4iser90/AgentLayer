@@ -161,11 +161,11 @@ class TestFriendSharesTool(unittest.TestCase):
 
 class TestFriendCalendarSecretLookup(unittest.TestCase):
     def test_friend_calendar_ics_url_prefers_google_calendar(self) -> None:
-        from apps.backend.domain.friends.common import friend_calendar_ics_url
+        from plugins.tools.integrations.friends.lib.common import friend_calendar_ics_url
 
         uid = uuid.uuid4()
         with mock.patch(
-            "apps.backend.domain.friends.common.db.user_secret_get_plaintext",
+            "plugins.tools.integrations.friends.lib.common.db.user_secret_get_plaintext",
             side_effect=[
                 '{"ics_url":"https://calendar.google.com/calendar/ical/a/basic.ics"}',
                 None,

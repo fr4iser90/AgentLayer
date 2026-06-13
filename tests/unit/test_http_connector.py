@@ -7,8 +7,8 @@ import unittest
 import uuid
 from unittest import mock
 
-from apps.backend.domain.http_connector.extract import apply_template, extract_path
-from apps.backend.domain.http_connector.ssrf import validate_outbound_url
+from plugins.tools.integrations.http.lib.extract import apply_template, extract_path
+from plugins.tools.integrations.http.lib.ssrf import validate_outbound_url
 
 
 class TestSsrfGuards(unittest.TestCase):

@@ -1,0 +1,26 @@
+id: research
+name: Research
+icon: 🔍
+description: Web search, RAG, personal notes (kb), and memory
+min_role: user
+delegatable: true
+requires_workspace: false
+execution_context: auto
+tool_allowlist:
+  - deep_search
+  - web_search.search
+  - rag_search
+  - append_note
+  - read_note
+  - search_notes
+  - fact_delete
+  - fact_list
+  - fact_upsert
+  - graph_edge_add
+  - graph_node_add
+  - graph_node_delete
+  - graph_nodes_list
+  - graph_propose
+  - note_add
+  - note_delete
+  - note_search

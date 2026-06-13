@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from apps.backend.domain.github.auth import (
+from plugins.tools.integrations.github.lib.auth import (
     git_auth_failure_reason,
     git_command_needs_github_pat,
     no_github_pat_payload,

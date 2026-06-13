@@ -324,7 +324,7 @@ def run_incremental_index(
     if not config.CODING_ENABLED:
         return {"ok": False, "error": "coding tools disabled"}
 
-    from apps.backend.domain.coding.index_lib import _HAS_TS, get_index
+    from plugins.tools.workspace.lib.index_lib import _HAS_TS, get_index
 
     if not _HAS_TS:
         return {"ok": False, "error": "tree-sitter not installed"}
@@ -394,7 +394,7 @@ def run_incremental_index(
 
     try:
         from apps.backend.infrastructure.code_graph_neo4j import get_code_graph
-        from apps.backend.domain.coding.graph_extract import resolve_import_relationships
+        from plugins.tools.workspace.lib.graph_extract import resolve_import_relationships
 
         graph = get_code_graph()
         if graph.available() and graph_on:
@@ -515,7 +515,7 @@ def run_semantic_index(
                 error=docs_error,
             )
         return {"ok": ok, "stats": stats, "docs_rag": docs_stats}
-    from apps.backend.domain.coding.index_lib import (
+    from plugins.tools.workspace.lib.index_lib import (
         _HAS_TS,
         get_index,
     )

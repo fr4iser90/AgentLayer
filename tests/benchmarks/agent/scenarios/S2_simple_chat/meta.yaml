@@ -1,3 +1,4 @@
 id: S2_simple_chat
 tier: 1
 rubric: s2_simple_chat
+plain_completion: true

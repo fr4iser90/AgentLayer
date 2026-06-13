@@ -21,6 +21,7 @@ class AgentScenario:
     prompts: dict[str, str]
     agent_id: str = "general"
     execution: str = "chat"
+    plain_completion: bool = False
     security_scan: bool = False
     requires: tuple[str, ...] = ()
     skip_without_env: str | None = None

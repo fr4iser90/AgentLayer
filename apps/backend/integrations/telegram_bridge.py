@@ -370,7 +370,7 @@ async def _run_polling_session(cfg: _BridgeCfg) -> None:
         if getattr(msg, "message_thread_id", None) is not None:
             thread_kw["message_thread_id"] = msg.message_thread_id
 
-        from apps.backend.domain.comms.telegram_dashboard_upload import (
+        from plugins.tools.integrations.messaging.lib.telegram_dashboard_upload import (
             list_telegram_upload_targets,
             upload_image_bytes,
         )

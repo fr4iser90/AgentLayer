@@ -57,6 +57,28 @@ The Agent Layer loads Python tools from disk, exposes them to chat (Ollama-compa
 
 New connectors follow the same manifest fields; prefer **one generic IMAP** (presets) over N copy-paste modules when the protocol is identical.
 
+**Layer boundary (enforced in CI):**
+
+| Location | Allowed contents |
+|----------|------------------|
+| `plugins/tools/<domain>/` | Tool handlers (`HANDLERS`, `TOOLS`) **and** colocated libs (`lib/`, `common.py`, …) |
+| `apps/backend/domain/` | Platform only: `plugin_system/`, agent runtime, `async_wait.py`, `identity.py`, … |
+| `apps/backend/infrastructure/` | DB, HTTP APIs, workspace services — may **import** plugin libs, must not define tool domains |
+
+Tool integration packages (`mail`, `github`, `security_scan`, `tool_factory`, `coding`/workspace) must **not** live under `apps/backend/domain/`. See `tests/unit/test_layer_boundaries.py`.
+
+Colocated lib examples:
+
+- `plugins/tools/integrations/mail/lib/`
+- `plugins/tools/integrations/github/lib/`
+- `plugins/tools/workspace/lib/` — bash policy, index, retrieval, LSP helpers
+- `plugins/tools/security/security_scan/common.py`
+- `plugins/tools/platform/tool_factory/common.py`
+- `plugins/tools/integrations/http/lib/` — SSRF, HTTP profiles, connector execution
+- `plugins/tools/integrations/friends/lib/` — friend lookup, calendar secrets
+- `plugins/tools/integrations/messaging/lib/` — Telegram/Discord outbound
+- `plugins/tools/workspace/lib/plan_search_policy.py` — Plan-agent tool guards
+
 ### 6. Migration
 
 - **No DB migration** for ADR 0001.

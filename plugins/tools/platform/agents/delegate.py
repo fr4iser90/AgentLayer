@@ -7,8 +7,6 @@ import uuid
 from typing import Any, Callable, cast
 
 from apps.backend.domain.embedded_subagent import (
-    DELEGATABLE_AGENT_IDS,
-    ADMIN_ONLY_DELEGATABLE_AGENT_IDS,
     build_delegate_agents_catalog_snippet,
     caller_is_admin,
     effective_delegatable_agent_ids,
@@ -26,9 +24,7 @@ TOOL_CAPABILITIES = ("meta.delegate",)
 TOOL_LABEL = "Delegate to specialist agent"
 TOOL_DESCRIPTION = (
     "Run a specialist sub-agent in the background and return its report. "
-    "Use when the user needs security scans (security_auditor), repo edits/shell/git (coding), "
-    "read-only codebase exploration (coding_plan), HTML/image creative work (creative), "
-    "dashboard boards (dashboard), or operator/platform settings (operator, admin callers only). "
+    "Use list_agents=true to see available agent_id values. "
     "Requires run_subagent=true, agent_id, prompt."
 )
 
@@ -84,22 +80,26 @@ def delegate(arguments: dict[str, Any], context: dict[str, Any] | None = None) -
             ensure_ascii=False,
         )
 
-    if not _truthy(arguments.get("run_subagent")):
-        return json.dumps(
-            {
-                "ok": False,
-                "error": (
-                    "Set run_subagent=true to execute. Required: agent_id "
-                    f"({', '.join(sorted(allowed))}), description, prompt. "
-                    "Or list_agents=true to see specialists."
-                ),
-            },
-            ensure_ascii=False,
-        )
-
     prompt = (arguments.get("prompt") or "").strip()
     description = (arguments.get("description") or "").strip() or "Specialist sub-agent"
     agent_id = (arguments.get("agent_id") or "").strip()
+
+    if not _truthy(arguments.get("run_subagent")):
+        if agent_id and prompt:
+            arguments = dict(arguments)
+            arguments["run_subagent"] = True
+        else:
+            return json.dumps(
+                {
+                    "ok": False,
+                    "error": (
+                        "Set run_subagent=true to execute. Required: agent_id "
+                        f"({', '.join(sorted(allowed))}), description, prompt. "
+                        "Or list_agents=true to see specialists."
+                    ),
+                },
+                ensure_ascii=False,
+            )
 
     artifact_refs = arguments.get("artifact_refs")
     if not isinstance(artifact_refs, list):
@@ -150,10 +150,9 @@ TOOLS: list[dict[str, Any]] = [
                     },
                     "agent_id": {
                         "type": "string",
-                        "enum": sorted(DELEGATABLE_AGENT_IDS | ADMIN_ONLY_DELEGATABLE_AGENT_IDS),
                         "description": (
-                            "Specialist to run: security_auditor, coding, coding_plan, creative, dashboard; "
-                            "operator (admin only — platform settings via settings_get / settings_patch)."
+                            "Specialist agent_id (coding, coding_plan, security_auditor, creative, "
+                            "dashboard, math, operator for admins). Use list_agents=true for the full list."
                         ),
                     },
                     "description": {

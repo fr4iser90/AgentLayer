@@ -1,23 +1,31 @@
 id: coding_plan
 name: Coding (plan)
 icon: 📋
-description: '**Plan** mode: read-only codebase exploration — search, read, git state,
-  LSP. No shell (``bash``) and no file edits; switch to **Build** (``coding``) to
-  implement.'
+description: "Plan mode: read-only codebase exploration — no bash or file edits"
+min_role: user
+delegatable: true
 tool_domain: coding
 requires_workspace: true
 execution_context: container
-min_role: user
 model_profile: coding
 strict_workspace: true
 coding_tools_permission_ask: false
 tool_discipline_preset: coding_plan
-tool_domains:
-  - workspace
-tool_capability_any:
-  - coding.read
-  - coding.lsp
-  - coding.index
-  - coding.task
-  - coding.meta
-  - project.explain
+tool_allowlist:
+  - bind
+  - workspace.create
+  - workspace.list
+  - git_read
+  - graph
+  - index
+  - lsp
+  - project_explain
+  - task
+  - todo
+  - repository.glob
+  - repository.list_dir
+  - repository.read_file
+  - repository.search
+  - retrieve_context
+  - semantic_search
+  - symbols

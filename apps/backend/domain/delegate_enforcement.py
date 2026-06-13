@@ -9,25 +9,8 @@ from typing import Any
 
 from apps.backend.domain.agent_task_prompt import parse_delegate_mode
 
-_EDIT_TOOLS = frozenset(
-    {
-        "write_file",
-        "edit",
-        "replace",
-        "apply_patch",
-    }
-)
-
-_GENERAL_HANDOFF_BLOCK_TOOLS = frozenset(
-    {
-        "search",
-        "semantic_search",
-        "list_dir",
-        "glob",
-        "retrieve_context",
-        "symbols",
-    }
-)
+_CAP_REPO_WRITE = frozenset({"coding.write"})
+_CAP_REPO_EXECUTE = frozenset({"coding.execute"})
 
 _PATCH_PATH_RE = re.compile(r"^[+-]{3}\s+(?:a/|b/)?(.+)$")
 
@@ -130,19 +113,39 @@ def _path_allowed(path: str, allowed: list[str]) -> bool:
     return norm in {normalize_repo_path(ap) for ap in allowed}
 
 
-def _edit_target_path(tool_name: str, args: dict[str, Any]) -> str | None:
-    if tool_name == "apply_patch":
-        patch = str(args.get("patch_text") or args.get("patch") or "")
-        for line in patch.splitlines():
-            m = _PATCH_PATH_RE.match(line.strip())
-            if m:
-                return normalize_repo_path(m.group(1))
-        return None
+def _tool_capability_set(tool_name: str) -> frozenset[str]:
+    from apps.backend.domain.plugin_system.capability_index import effective_capabilities_for_tool
+    from apps.backend.domain.plugin_system.registry import get_registry
+
+    meta = get_registry().meta_entry_for_tool_name((tool_name or "").strip())
+    if not meta:
+        return frozenset()
+    return frozenset(c.lower() for c in effective_capabilities_for_tool(meta, tool_name) if c)
+
+
+def _path_from_args(args: dict[str, Any]) -> str | None:
     for key in ("path", "file", "file_path"):
         raw = args.get(key)
         if raw:
             return normalize_repo_path(str(raw))
     return None
+
+
+def _repo_paths_from_args(args: dict[str, Any]) -> list[str]:
+    patch_paths = _paths_in_patch_args(args)
+    if patch_paths:
+        return patch_paths
+    single = _path_from_args(args)
+    return [single] if single else []
+
+
+def _looks_like_git_publish_args(args: dict[str, Any]) -> bool:
+    if str(args.get("branch") or "").strip():
+        return True
+    if str(args.get("remote") or "").strip():
+        return True
+    cmd = str(args.get("command") or "").strip()
+    return bool(re.search(r"\bgit\s+push", cmd))
 
 
 def _paths_in_patch_args(args: dict[str, Any]) -> list[str]:
@@ -168,20 +171,19 @@ def _required_branch(tool_context: dict[str, Any] | None) -> str | None:
     return None
 
 
-def _git_branch_from_args(tool_name: str, args: dict[str, Any]) -> str | None:
-    if tool_name == "git_push":
-        b = str(args.get("branch") or "").strip()
-        return b or None
-    if tool_name == "bash":
-        cmd = str(args.get("command") or "").strip()
-        for pat in (
-            r"\bgit\s+push(?:\s+-u)?(?:\s+\S+)?\s+(\S+)\s*$",
-            r"\bgit\s+push(?:\s+-u)?\s+(?:origin|upstream)\s+(\S+)",
-            r"\bgit\s+checkout\s+(?:-b\s+)?(\S+)",
-        ):
-            m = re.search(pat, cmd)
-            if m:
-                return m.group(1).strip()
+def _git_branch_from_args(args: dict[str, Any]) -> str | None:
+    b = str(args.get("branch") or "").strip()
+    if b:
+        return b
+    cmd = str(args.get("command") or "").strip()
+    for pat in (
+        r"\bgit\s+push(?:\s+-u)?(?:\s+\S+)?\s+(\S+)\s*$",
+        r"\bgit\s+push(?:\s+-u)?\s+(?:origin|upstream)\s+(\S+)",
+        r"\bgit\s+checkout\s+(?:-b\s+)?(\S+)",
+    ):
+        m = re.search(pat, cmd)
+        if m:
+            return m.group(1).strip()
     return None
 
 
@@ -190,45 +192,42 @@ def coding_delegate_tool_blocked(
     args: dict[str, Any],
     tool_context: dict[str, Any] | None = None,
 ) -> str | None:
-    """Enforce fix_from_artifact scope on the coding sub-agent."""
+    """Enforce fix_from_artifact scope on the coding sub-agent (capabilities + args, no tool lists)."""
     if _delegate_mode(tool_context) != "fix_from_artifact":
         return None
-    name = (tool_name or "").strip()
     ctx = tool_context or {}
     allowed = ctx.get("agent_delegate_allowed_paths")
     if not isinstance(allowed, list):
         allowed = []
     allowed_norm = [normalize_repo_path(str(p)) for p in allowed if str(p).strip()]
+    caps = _tool_capability_set(tool_name)
 
     if not allowed_norm:
-        if name in _EDIT_TOOLS or name in ("git_push",):
+        if caps & _CAP_REPO_WRITE:
+            return (
+                "fix_from_artifact: no paths in referenced artifacts. "
+                "Pass artifact_refs from the prior specialist run, or list paths in the artifact content."
+            )
+        if caps & _CAP_REPO_EXECUTE and _looks_like_git_publish_args(args):
             return (
                 "fix_from_artifact: no paths in referenced artifacts. "
                 "Pass artifact_refs from the prior specialist run, or list paths in the artifact content."
             )
         return None
 
-    if name in _EDIT_TOOLS:
-        if name == "apply_patch":
-            patch_paths = _paths_in_patch_args(args)
-            if not patch_paths:
-                return "fix_from_artifact: patch must touch paths listed in referenced artifacts only."
-            bad = [p for p in patch_paths if not _path_allowed(p, allowed_norm)]
-            if bad:
-                return (
-                    f"fix_from_artifact: patch touches {bad!r} which is not in artifact scope {allowed_norm!r}."
-                )
-        else:
-            target = _edit_target_path(name, args)
-            if target and not _path_allowed(target, allowed_norm):
-                return (
-                    f"fix_from_artifact: edit path {target!r} is not in artifact scope {allowed_norm!r}. "
-                    "Fix only paths from [Referenced artifacts]."
-                )
+    if caps & _CAP_REPO_WRITE:
+        paths = _repo_paths_from_args(args)
+        if not paths:
+            return "fix_from_artifact: write must touch paths listed in referenced artifacts only."
+        bad = [p for p in paths if not _path_allowed(p, allowed_norm)]
+        if bad:
+            return (
+                f"fix_from_artifact: write touches {bad!r} which is not in artifact scope {allowed_norm!r}."
+            )
 
     req_branch = _required_branch(tool_context)
-    if req_branch and name in ("git_push", "bash"):
-        used = _git_branch_from_args(name, args)
+    if req_branch and caps & _CAP_REPO_EXECUTE:
+        used = _git_branch_from_args(args)
         if used and used != req_branch:
             return (
                 f"fix_from_artifact: required branch is {req_branch!r} but tool targets {used!r}. "
@@ -243,20 +242,130 @@ def general_orchestrator_tool_blocked(
     args: dict[str, Any],
     tool_context: dict[str, Any] | None = None,
 ) -> str | None:
-    """When a prior step left artifact handoff pending, block General read exploration."""
+    """When artifact handoff is pending, only allow the next delegate step."""
+    del args
     ctx = tool_context or {}
     pending = ctx.get("orchestrator_pending_artifact_refs")
     if not isinstance(pending, list) or not pending:
         return None
-    name = (tool_name or "").strip()
-    if name not in _GENERAL_HANDOFF_BLOCK_TOOLS:
+    if (tool_name or "").strip() == "delegate":
         return None
     ids = ", ".join(str(x) for x in pending[:5])
     return (
         f"A prior specialist step produced artifact_id(s) for implementation ({ids}). "
-        "Call agent_delegate with agent_id=coding, artifact_refs, and requirements "
-        "(mode: fix_from_artifact, branch: <name>) — do not explore the repo with read/search tools."
+        "Call delegate with agent_id=coding, artifact_refs, and requirements "
+        "(mode: fix_from_artifact, branch: <name>)."
     )
+
+
+def delegate_fingerprint(agent_id: str, prompt: str) -> str:
+    """Stable key for duplicate-delegate detection (no domain or tool-name lists)."""
+    aid = (agent_id or "").strip().lower()
+    p = " ".join((prompt or "").split()).strip().lower()
+    if not aid or not p:
+        return ""
+    return f"{aid}:{p}"
+
+
+def _truthy_flag(v: Any) -> bool:
+    if isinstance(v, bool):
+        return v
+    if v is None:
+        return False
+    return str(v).strip().lower() in ("1", "true", "yes", "on")
+
+
+def record_orchestrator_delegate_success(
+    tool_context: dict[str, Any],
+    args: dict[str, Any],
+    result: str,
+) -> None:
+    """Track successful delegate handoffs for loop prevention (general agent only)."""
+    if str(tool_context.get("agent_id") or "") != "general":
+        return
+    try:
+        data = json.loads(result)
+    except json.JSONDecodeError:
+        return
+    if not isinstance(data, dict) or data.get("ok") is not True:
+        return
+    excerpt = data.get("assistant_excerpt")
+    if not isinstance(excerpt, str) or not excerpt.strip():
+        return
+    tool_context["orchestrator_last_delegate_excerpt"] = excerpt.strip()
+    sub_agent = str(args.get("agent_id") or "").strip()
+    if sub_agent:
+        tool_context["orchestrator_last_delegate_agent_id"] = sub_agent
+    fp = delegate_fingerprint(
+        str(args.get("agent_id") or ""),
+        str(args.get("prompt") or ""),
+    )
+    if not fp:
+        return
+    seen = tool_context.get("orchestrator_delegate_success_fps")
+    if not isinstance(seen, set):
+        seen = set()
+        tool_context["orchestrator_delegate_success_fps"] = seen
+    seen.add(fp)
+
+
+def orchestrator_pre_tool_blocked(
+    tool_name: str,
+    args: dict[str, Any],
+    tool_context: dict[str, Any] | None = None,
+) -> str | None:
+    """State-based pre-flight checks for general orchestrator — no tool-name blocklists."""
+    ctx = tool_context or {}
+    if str(ctx.get("agent_id") or "") != "general":
+        return None
+
+    msg = general_orchestrator_tool_blocked(tool_name, args, ctx)
+    if msg:
+        return msg
+
+    if (tool_name or "").strip() != "delegate":
+        return None
+
+    if _truthy_flag(args.get("list_agents")):
+        last_excerpt = ctx.get("orchestrator_last_delegate_excerpt")
+        if isinstance(last_excerpt, str) and last_excerpt.strip():
+            return (
+                "A delegate already returned assistant_excerpt. "
+                "Answer the user from that result — do not list agents again."
+            )
+        return None
+
+    sub_aid = str(args.get("agent_id") or "").strip()
+    last_excerpt = ctx.get("orchestrator_last_delegate_excerpt")
+    last_agent = str(ctx.get("orchestrator_last_delegate_agent_id") or "").strip()
+    if (
+        sub_aid
+        and last_agent
+        and sub_aid == last_agent
+        and isinstance(last_excerpt, str)
+        and last_excerpt.strip()
+    ):
+        return (
+            "You already delegated to this specialist successfully. "
+            "Use the prior delegate tool result (assistant_excerpt) in your reply — "
+            "do not delegate to the same agent_id again."
+        )
+
+    fp = delegate_fingerprint(
+        str(args.get("agent_id") or ""),
+        str(args.get("prompt") or ""),
+    )
+    if not fp:
+        return None
+    seen = ctx.get("orchestrator_delegate_success_fps")
+    if isinstance(seen, set) and fp in seen:
+        return (
+            "You already delegated this task successfully. "
+            "Use the prior delegate tool result (assistant_excerpt) in your reply — "
+            "do not call delegate again with the same agent_id and prompt."
+        )
+
+    return None
 
 
 def extract_handoff_artifact_ids(result: str) -> list[str]:

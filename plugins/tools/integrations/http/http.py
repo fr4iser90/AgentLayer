@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any, Callable
 
-from apps.backend.domain.http_connector.request import execute_http
+from plugins.tools.integrations.http.lib.request import execute_http
 from apps.backend.domain.identity import get_identity
 
 __version__ = "1.0.0"

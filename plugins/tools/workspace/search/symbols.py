@@ -7,7 +7,7 @@ from typing import Any, Callable
 
 from apps.backend.core.config import config
 
-from apps.backend.domain.coding.index_lib import (
+from plugins.tools.workspace.lib.index_lib import (
     _HAS_TS,
     _SUPPORTED_LANGUAGES,
     get_index,

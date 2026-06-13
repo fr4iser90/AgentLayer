@@ -8,19 +8,19 @@ import subprocess
 from pathlib import Path
 from typing import Any, Callable
 
-from apps.backend.domain.coding.bash_policy import (
+from plugins.tools.workspace.lib.bash_policy import (
     coding_bash_strict_enabled,
     is_blocked,
     resolve_path_under_workspace,
     strict_mode_reject_reason,
     subprocess_env_for_coding,
 )
-from apps.backend.domain.coding.package_admission import package_admission_gate
-from apps.backend.domain.coding.common import (
+from plugins.tools.workspace.lib.package_admission import package_admission_gate
+from plugins.tools.workspace.lib.common import (
     json_workspace_missing_error,
     workspace_binding_from_context,
 )
-from apps.backend.domain.github.auth import (
+from plugins.tools.integrations.github.lib.auth import (
     askpass_extra_env,
     cleanup_askpass_paths,
     git_auth_failure_reason,

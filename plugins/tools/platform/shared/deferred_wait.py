@@ -125,8 +125,8 @@ TOOLS: list[dict[str, Any]] = [
             "name": "deferred_wait",
             "TOOL_DESCRIPTION": (
                 "Wait for async/deferred work when estimated_time_seconds is known. "
-                "Polls poll_tool until status is terminal. Used internally by domain tools; "
-                "agents normally get completion via those tools automatically."
+                "Polls poll_tool until status is terminal. Call after resolve/start when "
+                "a scan is still running; repeat as needed."
             ),
             "parameters": {
                 "type": "object",

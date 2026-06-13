@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from plugins.tools.workspace.shell.bash import bash
-from apps.backend.domain.github.auth import parse_github_pat, redact_secrets
+from plugins.tools.integrations.github.lib.auth import parse_github_pat, redact_secrets
 from plugins.tools.integrations.github.git_push import git_push
 
 

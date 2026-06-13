@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import unittest
 
-from apps.backend.domain.coding.common import workspace_retrieval_flags
+from plugins.tools.workspace.lib.common import workspace_retrieval_flags
 from plugins.tools.workspace.search.retrieve_context import retrieve_context
 
 

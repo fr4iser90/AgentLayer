@@ -1,31 +1,22 @@
 id: general
 name: General
 icon: 🧠
-description: General orchestrator — everyday chat, knowledge, mail, and read-only repo peek; delegates build, boards, and creative work
+description: Orchestrator — routes work to specialist agents via delegate; binds workspaces when a repo is needed
 requires_workspace: false
 execution_context: auto
 min_role: user
-tool_domains:
-  - workspace
-  - kb
-  - memory
-  - rag
-  - web_search
-  - weather
-  - mail
-  - friends
-  - clocks
-  - secrets
-  - agent_tasks
-  - collection
-  - dashboard
-  - media
-  - tool_help
-  - shared
-tool_capability_any:
-  - coding.read
-  - coding.lsp
-  - coding.index
-  - project.explain
-  - meta.delegate
-  - meta.agents.read
+delegatable: false
+tool_allowlist:
+  - delegate
+  - catalog
+  - workspace.create
+  - workspace.list
+  - bind
+  - user_secrets_status
+pinned_tools:
+  - delegate
+  - catalog
+  - workspace.create
+  - workspace.list
+  - bind
+  - user_secrets_status

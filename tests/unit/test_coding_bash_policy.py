@@ -10,7 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from plugins.tools.workspace.shell.bash import bash
-from apps.backend.domain.coding.bash_policy import (
+from plugins.tools.workspace.lib.bash_policy import (
     is_blocked,
     resolve_path_under_workspace,
     strict_mode_reject_reason,

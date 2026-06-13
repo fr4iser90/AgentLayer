@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any, Callable
 
-from apps.backend.domain.github.repos import list_user_repos
+from plugins.tools.integrations.github.lib.repos import list_user_repos
 from apps.backend.domain.identity import get_identity
 from plugins.tools.integrations.github._client import USER_SECRET_KEY
 

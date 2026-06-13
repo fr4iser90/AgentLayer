@@ -5,9 +5,12 @@ from __future__ import annotations
 from typing import Any
 
 from apps.backend.core import config as cfg
+from apps.backend.domain.plugin_system.registry import reload_registry
 from apps.backend.domain.plugin_system.tool_routing import (
     TOOL_INTROSPECTION,
+    classify_user_tool_categories,
     filter_merged_tools_by_categories,
+    filter_merged_tools_by_categories_for_agent,
 )
 
 
@@ -77,3 +80,62 @@ def test_replacing_with_full_allowlist_would_break_router_minimal():
     assert len(rebuilt) == 6
     assert len(pool) == 4
     assert len(rebuilt) > len(pool)
+
+
+def test_general_allowlist_survives_repository_category_mismatch() -> None:
+    """S3-style prompt: router picks repository tools; general orchestrator keeps delegate."""
+    reload_registry()
+    general_tools = [
+        _spec(n)
+        for n in (
+            "delegate",
+            "catalog",
+            "workspace.create",
+            "workspace.list",
+            "bind",
+            "user_secrets_status",
+        )
+    ]
+    text = "Read README.md at the repository root and reply with the first line."
+    cats = classify_user_tool_categories(text)
+    assert "repository" in cats
+    after_router = filter_merged_tools_by_categories_for_agent(
+        general_tools,
+        cats,
+        agent_has_explicit_allowlist=True,
+    )
+    names = {t["function"]["name"] for t in after_router}
+    assert "delegate" in names
+    assert "catalog" in names
+    assert len(names) == 6
+
+
+def test_general_allowlist_survives_partial_category_match() -> None:
+    """W1-style prompt: router matches workspace tools only; general keeps delegate too."""
+    reload_registry()
+    general_tools = [
+        _spec(n)
+        for n in (
+            "delegate",
+            "catalog",
+            "workspace.create",
+            "workspace.list",
+            "bind",
+            "user_secrets_status",
+        )
+    ]
+    text = (
+        'Clone the Git repository https://github.com/octocat/Hello-World.git (branch master) '
+        'into a new workspace named exactly "bench-git" and bind it. '
+        "Read README.md at the repository root and reply with the first non-empty line."
+    )
+    cats = classify_user_tool_categories(text)
+    after_router = filter_merged_tools_by_categories_for_agent(
+        general_tools,
+        cats,
+        agent_has_explicit_allowlist=True,
+    )
+    names = {t["function"]["name"] for t in after_router}
+    assert "delegate" in names
+    assert "workspace.create" in names
+    assert len(names) == 6

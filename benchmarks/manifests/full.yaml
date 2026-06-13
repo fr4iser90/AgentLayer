@@ -10,6 +10,7 @@ scenarios:
   - S1_tool_catalog
   - S2_simple_chat
   - S3_read_file
+  - S4_delegate_math
   - W1_git_readme_no_index
   - W2_find_octocat_no_index
   - W2_find_octocat_indexed

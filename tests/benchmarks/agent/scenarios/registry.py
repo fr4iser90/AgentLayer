@@ -20,7 +20,7 @@ def _load_meta(meta_path: Path) -> dict:
 
 def _load_prompts(scenario_dir: Path) -> dict[str, str]:
     prompts: dict[str, str] = {}
-    for path in sorted(scenario_dir.glob("prompt.*.txt")):
+    for path in sorted(scenario_dir.glob("prompt.*.md")):
         parts = path.stem.split(".", 1)
         if len(parts) != 2 or parts[0] != "prompt" or not parts[1].strip():
             continue
@@ -29,7 +29,7 @@ def _load_prompts(scenario_dir: Path) -> dict[str, str]:
         if text:
             prompts[locale] = text
     if not prompts:
-        raise ValueError(f"{scenario_dir}: at least one prompt.<locale>.txt is required")
+        raise ValueError(f"{scenario_dir}: at least one prompt.<locale>.md is required")
     return prompts
 
 
@@ -60,6 +60,7 @@ def load_scenario_dir(scenario_dir: Path) -> AgentScenario:
         prompts=_load_prompts(scenario_dir),
         agent_id=str(meta.get("agent_id") or "general").strip() or "general",
         execution=str(meta.get("execution") or "chat").strip() or "chat",
+        plain_completion=bool(meta.get("plain_completion", False)),
         security_scan=bool(meta.get("security_scan", False)),
         requires=requires,
         skip_without_env=(

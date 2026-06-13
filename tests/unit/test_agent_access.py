@@ -38,10 +38,14 @@ def test_general_agent_has_no_bash_or_push_tools() -> None:
     ag = get_agent_registry().get_agent("general")
     assert ag is not None
     names = ag.get("tool_names") or []
+    assert names == sorted(
+        ["bind", "catalog", "delegate", "user_secrets_status", "workspace.create", "workspace.list"]
+    )
     assert "delegate" in names
-    assert "catalog" in names or "platform.catalog" in names
+    assert "catalog" in names
     assert "task" not in names
-    assert "repository.read_file" in names or "read_file" in names
+    assert "read_file" not in names
+    assert "repository.read_file" not in names
     assert "bash" not in names
     assert "edit" not in names
     assert "git_push" not in names

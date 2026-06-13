@@ -176,7 +176,7 @@ async def preview_friend_calendar(
         resource_type=SHARE_RESOURCE_GOOGLE_CALENDAR,
     )
     from apps.backend.domain.shares.policy import effective_days_ahead
-    from apps.backend.domain.friends.common import friend_calendar_ics_url
+    from plugins.tools.integrations.friends.lib.common import friend_calendar_ics_url
 
     effective = effective_days_ahead(
         grant.get("policy") if grant else None,

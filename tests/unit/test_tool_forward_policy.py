@@ -1,4 +1,4 @@
-"""Tests for dynamic tool forward policy (ranking cap, context budget — no pins)."""
+"""Tests for dynamic tool forward policy (pins, ranking cap, context budget)."""
 
 from __future__ import annotations
 
@@ -43,6 +43,19 @@ def test_build_tool_forward_plan_uses_ranking_not_pins(monkeypatch):
     monkeypatch.setattr(
         "apps.backend.domain.tool_forward_policy.rank_tools_for_forward",
         lambda tools, text, triggers, **kw: (list(reversed(tools)), True),
+    )
+    monkeypatch.setattr(
+        "apps.backend.domain.tool_forward_policy._pinned_tools_for_agent",
+        lambda agent_id: frozenset(),
+    )
+
+    class _NoPinsReg:
+        def get_agent(self, agent_id):
+            return {"pinned_tools": []}
+
+    monkeypatch.setattr(
+        "apps.backend.domain.agent_registry.get_agent_registry",
+        lambda: _NoPinsReg(),
     )
 
     plan = build_tool_forward_plan(
@@ -113,3 +126,40 @@ def test_build_tool_forward_plan_always_catalog(monkeypatch):
         )
     )
     assert plan.schema_mode_per_tool["workspace.create"] == "catalog"
+
+
+def test_build_tool_forward_plan_pins_first(monkeypatch):
+    specs = [_spec(n) for n in ("delegate", "catalog", "workspace.create", "grep", "read_file")]
+
+    monkeypatch.setattr(
+        "apps.backend.domain.tool_forward_policy.rank_tools_for_forward",
+        lambda tools, text, triggers, **kw: (list(reversed(tools)), True),
+    )
+    monkeypatch.setattr(
+        "apps.backend.domain.tool_forward_policy._pinned_tools_for_agent",
+        lambda agent_id: frozenset({"delegate", "catalog", "workspace.create"}),
+    )
+
+    class _FakeReg:
+        def get_agent(self, agent_id):
+            return {"pinned_tools": ["delegate", "catalog", "workspace.create"]}
+
+    monkeypatch.setattr(
+        "apps.backend.domain.agent_registry.get_agent_registry",
+        lambda: _FakeReg(),
+    )
+
+    plan = build_tool_forward_plan(
+        ToolForwardContext(
+            agent_id="general",
+            model_id="qwen2.5:7b",
+            context_window_tokens=262_144,
+            user_text="clone repo and delegate scan",
+            tool_specs=specs,
+            ranking_enabled=True,
+            full_schema_preference=False,
+        )
+    )
+    assert plan.forward_names[:3] == ["delegate", "catalog", "workspace.create"]
+    assert plan.pins_included == ["delegate", "catalog", "workspace.create"]
+    assert plan.meta["pinned_count"] == 3

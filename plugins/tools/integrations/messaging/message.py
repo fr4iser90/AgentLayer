@@ -7,8 +7,8 @@ import uuid
 from typing import Any, Callable
 
 from apps.backend.core.config import PUBLIC_BASE_URL
-from apps.backend.domain.comms.outbound import OutboundDeliveryError, send_discord_to_user, send_telegram_to_user
-from apps.backend.domain.friends.common import resolve_contact_email, resolve_message_recipient
+from plugins.tools.integrations.messaging.lib.outbound import OutboundDeliveryError, send_discord_to_user, send_telegram_to_user
+from plugins.tools.integrations.friends.lib.common import resolve_contact_email, resolve_message_recipient
 from apps.backend.domain.identity import get_identity
 from apps.backend.infrastructure.auth import get_user_by_email
 
@@ -79,7 +79,7 @@ def send(arguments: dict[str, Any]) -> str:
     if recipient is None and "@" in to_raw:
         target = get_user_by_email(to_raw.lower())
         if target:
-            from apps.backend.domain.friends.common import _recipient_from_user_uuid
+            from plugins.tools.integrations.friends.lib.common import _recipient_from_user_uuid
 
             recipient = _recipient_from_user_uuid(
                 target.id,

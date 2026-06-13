@@ -1,4 +1,4 @@
-"""Tests for agent tool allowlists (``AGENT_TOOL_DOMAINS`` + ``AGENT_TOOL_CAPABILITY_ANY``)."""
+"""Tests for agent tool allowlists (``tool_allowlist`` in agent.yaml)."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ def test_tools_for_capabilities_resolves_coding_read() -> None:
     assert "write_file" not in out
 
 
-def test_coding_agent_uses_domains_only() -> None:
+def test_coding_agent_uses_explicit_allowlist() -> None:
     from apps.backend.domain.agent_registry import get_agent_registry
 
     a = get_agent_registry().get_agent("coding")
@@ -38,7 +38,8 @@ def test_coding_agent_uses_domains_only() -> None:
     assert "git_read" in names
     assert "git_push" in names
     assert "list_available_tools" not in names
-    assert "github" in (a.get("tool_domains") or [])
+    assert "delegate" not in names
+    assert (a.get("tool_domains") or []) == []
 
 
 def test_creative_and_dashboard_agents() -> None:
@@ -56,39 +57,38 @@ def test_creative_and_dashboard_agents() -> None:
     assert "bash" not in d["tool_names"]
 
 
-def test_general_agent_slimmer_no_github_domain() -> None:
+def test_general_agent_orchestrator_only() -> None:
     from apps.backend.domain.agent_registry import get_agent_registry
 
     a = get_agent_registry().get_agent("general")
     assert a is not None
-    assert "github" not in (a.get("tool_domains") or [])
-    assert "shopping" not in (a.get("tool_domains") or [])
-    assert "creative" not in (a.get("tool_domains") or [])
-    assert "calendar" not in (a.get("tool_domains") or [])
-    assert "rss" not in (a.get("tool_domains") or [])
-    assert "tasks" not in (a.get("tool_domains") or [])
-    assert _repo(a["tool_names"], "read_file")
-    assert "git_read" in a["tool_names"]  # via coding.read capability
-    assert "bash" not in a["tool_names"]
-    assert "git_push" not in a["tool_names"]  # github domain only on coding
-    assert "task" not in a["tool_names"]
-    assert "todo" not in a["tool_names"]
-    assert "rss.boards" not in a["tool_names"]
-    assert "tasks.boards" not in a["tool_names"]
+    names = a["tool_names"]
+    assert names == sorted(
+        ["bind", "catalog", "delegate", "user_secrets_status", "workspace.create", "workspace.list"]
+    )
+    assert (a.get("tool_domains") or []) == []
+    assert (a.get("tool_capability_any") or []) == []
+    assert "github" not in names
+    assert "bash" not in names
+    assert "git_push" not in names
+    assert "read_file" not in names
+    assert "git_read" not in names
+    assert "task" not in names
+    assert "todo" not in names
 
 
-def test_coding_agent_has_workspace_repository_and_delegate_domains() -> None:
+def test_coding_agent_has_workspace_repository_tools() -> None:
     from apps.backend.domain.agent_registry import get_agent_registry
 
     a = get_agent_registry().get_agent("coding")
     assert a is not None
-    domains = a.get("tool_domains") or []
-    assert "workspace" in domains
-    assert "repository" in domains
-    assert "delegate" in domains
-    assert "coding" not in domains
-    assert "task" in a["tool_names"]
-    assert "todo" in a["tool_names"]
+    names = a["tool_names"]
+    assert "workspace.list" in names
+    assert _repo(names, "read_file")
+    assert "bash" in names
+    assert "delegate" not in names
+    assert "task" in names
+    assert "todo" in names
 
 
 def test_operator_agent_matches_capabilities() -> None:
@@ -116,7 +116,7 @@ def test_security_auditor_agent_resolves_domains_and_rag_capability() -> None:
         assert denied not in names
 
 
-def test_coding_plan_agent_read_only_via_capabilities() -> None:
+def test_coding_plan_agent_read_only_via_allowlist() -> None:
     from apps.backend.domain.agent_registry import get_agent_registry
 
     a = get_agent_registry().get_agent("coding_plan")
@@ -138,24 +138,24 @@ def test_coding_plan_agent_read_only_via_capabilities() -> None:
         assert denied not in names
 
 
-def test_general_agent_no_bash_uses_capabilities_for_coding_read() -> None:
+def test_general_agent_yaml_uses_tool_allowlist() -> None:
     from apps.backend.core.config import PLUGINS_DIR
 
     general_yaml = PLUGINS_DIR / "agents" / "general" / "agent.yaml"
     assert general_yaml.is_file()
     text = general_yaml.read_text(encoding="utf-8")
-    assert "tool_domains:" in text
-    assert "tool_capability_any:" in text
+    assert "tool_allowlist:" in text
+    assert "tool_domains:" not in text
+    assert "tool_capability_any:" not in text
 
     from apps.backend.domain.agent_registry import get_agent_registry
 
     a = get_agent_registry().get_agent("general")
     assert a is not None
     assert a.get("source_kind") == "yaml"
-    assert a.get("tool_domains")
-    assert a.get("tool_capability_any")
-    assert _repo(a["tool_names"], "read_file")
+    assert a.get("tool_allowlist")
     assert "bash" not in a["tool_names"]
+    assert "delegate" in a["tool_names"]
 
 
 def test_agents_loaded_from_yaml_directories() -> None:

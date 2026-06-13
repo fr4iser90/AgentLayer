@@ -1,27 +1,42 @@
 id: dashboard
 name: Dashboard
 icon: 📊
-description: Dashboard boards — layout, generic list_* data, integration tools, compute KPIs
+description: Board layouts, list data, collections, task artifacts
+min_role: user
+delegatable: true
 requires_workspace: false
 execution_context: auto
-min_role: user
 tool_discipline_preset: dashboard
-tool_domains:
-  - collection
-  - dashboard
-  - media
-  - github
-  - rss
-  - http
-  - connector
-  - mail
-  - messaging
-  - calendar
-  - clocks
-  - security_scan
-  - workspace
-  - agent_tasks
-tool_forward_prefer_full_schema:
+pinned_tools:
   - dashboard.read
   - propose_layouts
   - patch_layout
+  - list_update
+tool_allowlist:
+  - block_share_grant
+  - create_dashboard
+  - create_public_share
+  - dashboard.read
+  - export_template
+  - import_layout
+  - invite_member
+  - list
+  - list_append
+  - list_delete
+  - list_update
+  - patch_data
+  - patch_layout
+  - pin_block
+  - propose_layouts
+  - upload_file
+  - ensure
+  - item_append
+  - item_delete
+  - item_update
+  - items_list
+  - list_collections
+  - metadata_patch
+  - artifact_get
+  - task_create
+  - task_list
+  - task_update

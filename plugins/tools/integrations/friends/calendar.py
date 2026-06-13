@@ -14,7 +14,7 @@ from apps.backend.infrastructure.db.share_permissions_db import (
     share_permission_get,
 )
 
-from apps.backend.domain.friends.common import (
+from plugins.tools.integrations.friends.lib.common import (
     friend_calendar_ics_url,
     resolve_friend_by_name,
 )

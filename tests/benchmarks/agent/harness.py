@@ -850,6 +850,8 @@ def _build_chat_body(
         body["conversation_id"] = conversation_id
     if benchmark_run_id is not None:
         body["benchmark_run_id"] = str(benchmark_run_id)
+    if scenario.plain_completion:
+        body["agent_plain_completion"] = True
     return body
 
 

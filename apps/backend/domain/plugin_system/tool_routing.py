@@ -149,3 +149,22 @@ def filter_merged_tools_by_categories(
         if n in allow:
             out.append(spec)
     return out
+
+
+def filter_merged_tools_by_categories_for_agent(
+    tools: list[Any],
+    categories: frozenset[str],
+    *,
+    agent_has_explicit_allowlist: bool = False,
+) -> list[Any]:
+    """
+    Category filter for the planner tool pipeline.
+
+    Agents with an explicit ``tool_allowlist`` in plugin YAML already define the
+    authoritative tool set — router categories must not subset it. Final ``tools[]``
+    size is capped later by ``tool_forward_policy`` from provider context window
+    (``completion_quotas_from_window`` / ``max_tool_count``), not here.
+    """
+    if agent_has_explicit_allowlist:
+        return list(tools)
+    return filter_merged_tools_by_categories(tools, categories)

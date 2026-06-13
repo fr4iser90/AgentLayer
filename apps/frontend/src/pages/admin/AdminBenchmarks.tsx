@@ -742,6 +742,7 @@ export function AdminBenchmarks() {
   const [readiness, setReadiness] = useState<BenchmarkRunReadiness | null>(null);
   const [readinessLoading, setReadinessLoading] = useState(false);
   const [cleaningWorkspaces, setCleaningWorkspaces] = useState(false);
+  const [cleanupFeedback, setCleanupFeedback] = useState<string | null>(null);
   const [suite, setSuite] = useState(_initialBenchSuite);
   const [selectedScenarioIds, setSelectedScenarioIds] = useState<Set<string>>(() => {
     const ids = _savedBenchPrefs?.scenariosBySuite?.[_initialBenchSuite];
@@ -970,6 +971,7 @@ export function AdminBenchmarks() {
   useEffect(() => {
     if (!runAsUserId || tab !== "run") {
       setReadiness(null);
+      setCleanupFeedback(null);
       return;
     }
     let cancelled = false;
@@ -993,9 +995,19 @@ export function AdminBenchmarks() {
     if (!runAsUserId || cleaningWorkspaces) return;
     setCleaningWorkspaces(true);
     setError(null);
+    setCleanupFeedback(null);
     try {
-      const row = await cleanupBenchmarkResources(auth, runAsUserId);
+      const raw = await cleanupBenchmarkResources(auth, runAsUserId);
+      const row = await fetchBenchmarkRunReadiness(auth, runAsUserId);
       setReadiness(row);
+      if (raw.cleanup && typeof raw.cleanup === "object") {
+        let summary = formatBenchCleanupSummary(raw.cleanup as Record<string, unknown>, t);
+        const errs = raw.cleanup.errors;
+        if (Array.isArray(errs) && errs.length) {
+          summary = `${summary} · ${errs.slice(0, 3).join("; ")}`;
+        }
+        setCleanupFeedback(summary);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : t("admin:benchCleanupFailed"));
     } finally {
@@ -1451,6 +1463,9 @@ export function AdminBenchmarks() {
               <p className="mt-2 text-[11px] text-surface-muted">
                 {t("admin:benchCleanupWorkspacesHint")}
               </p>
+              {cleanupFeedback ? (
+                <p className="mt-2 text-xs text-emerald-300/90">{cleanupFeedback}</p>
+              ) : null}
               <label className="mt-3 flex cursor-pointer items-start gap-2 text-xs text-surface-muted">
                 <input
                   type="checkbox"

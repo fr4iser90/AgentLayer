@@ -6,7 +6,7 @@ from typing import Any
 
 from apps.backend.domain.agent_access import is_elevated_role, user_may_invoke_agent
 from apps.backend.domain.agent_registry import effective_tool_names_for_caller, get_agent_registry
-from apps.backend.domain.embedded_subagent import DELEGATABLE_AGENT_IDS
+from apps.backend.domain.embedded_subagent import effective_delegatable_agent_ids
 
 
 def build_agents_catalog(
@@ -21,10 +21,11 @@ def build_agents_catalog(
     role = (user_role or "user").strip().lower()
     admin = is_elevated_role(role)
     show_tools = bool(include_tool_names and admin)
+    delegatable_ids = effective_delegatable_agent_ids(caller_is_admin=admin)
 
     agents_out: list[dict[str, Any]] = []
     for aid in reg.agent_ids():
-        if delegatable_only and aid not in DELEGATABLE_AGENT_IDS:
+        if delegatable_only and aid not in delegatable_ids:
             continue
         ag = reg.get_agent(aid)
         if not ag:
@@ -40,11 +41,14 @@ def build_agents_catalog(
             "tool_domains": list(ag.get("tool_domains") or []),
             "tool_capability_any": list(ag.get("tool_capability_any") or []),
             "tool_names_count": len(ag.get("tool_names") or []),
-            "delegatable": aid in DELEGATABLE_AGENT_IDS,
+            "delegatable": aid in delegatable_ids,
             "invokable_by_caller": allowed,
         }
-        if show_tools:
+        # Orchestrator routing: specialists expose resolved tool names (allowlist-based agents
+        # often have empty tool_domains). Full effective lists remain admin-only.
+        if aid in delegatable_ids or show_tools:
             row["tool_names"] = list(ag.get("tool_names") or [])
+        if show_tools:
             row["effective_tool_names"] = effective_tool_names_for_caller(
                 aid, user_role=role, tenant_id=tenant_id
             )
@@ -53,10 +57,14 @@ def build_agents_catalog(
     return {
         "ok": True,
         "agent_count": len(agents_out),
-        "delegatable_agent_ids": sorted(DELEGATABLE_AGENT_IDS),
+        "delegatable_agent_ids": sorted(delegatable_ids),
         "agents": agents_out,
         "note": (
-            "Summary only (domains + capabilities). "
-            + ("Full tool name lists included (admin)." if show_tools else "Call with include_tool_names=true as admin for tool lists.")
+            "Specialists (delegatable) include tool_names for routing. "
+            + (
+                "Admin: effective_tool_names per agent when include_tool_names=true."
+                if show_tools
+                else "Call include_tool_names=true as admin for effective_tool_names."
+            )
         ),
     }

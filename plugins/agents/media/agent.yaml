@@ -1,0 +1,22 @@
+id: media
+name: Media
+icon: 🎵
+description: Media library, queues, streams, and playback
+min_role: user
+delegatable: true
+requires_workspace: false
+execution_context: auto
+tool_allowlist:
+  - media_add_embed
+  - media_add_stream
+  - media_delete_item
+  - media_dequeue
+  - media_enqueue
+  - media_list
+  - media_list_shares
+  - media_quota
+  - media_revoke_share
+  - media_set_license
+  - media_set_now_playing
+  - media_share_grant
+  - media_update_metadata

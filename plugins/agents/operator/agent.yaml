@@ -7,6 +7,8 @@ requires_workspace: false
 schedulable: false
 execution_context: auto
 min_role: admin
+admin_only_delegatable: true
+delegatable: false
 tool_capability_any:
   - operator.console
   - knowledge.retrieve

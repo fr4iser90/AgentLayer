@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from apps.backend.domain.security_scan.common import (
+from plugins.tools.security.security_scan.common import (
     DEFAULT_FINDINGS_LIMIT,
     END_RUN_GUIDANCE,
     MAX_FINDINGS_LIMIT,
@@ -142,7 +142,7 @@ def _findings_artifact_fields(
 ) -> dict[str, Any]:
     if not scan_id or not findings:
         return {}
-    from apps.backend.domain.ssc_scan_artifact import maybe_persist_ssc_scan_artifact
+    from plugins.tools.security.security_scan.artifact import maybe_persist_ssc_scan_artifact
 
     sev = str(arguments.get("severity") or arguments.get("findings_severity") or "").strip()
     artifact_id = maybe_persist_ssc_scan_artifact(

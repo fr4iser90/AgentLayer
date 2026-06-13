@@ -6,7 +6,6 @@ import re
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from apps.backend.domain.plugin_system.tool_routing import TOOL_INTROSPECTION
 _READ_FILE_TOOL_NAMES = frozenset(
     {"read_file", "repository.read_file", "workspace.read_file"}
 )
@@ -79,10 +78,33 @@ def _content_mentions_any(content: str, needles: tuple[str, ...]) -> bool:
     return any(n in low for n in needles)
 
 
-def _used_introspection_tool(tool_names: list[str]) -> bool:
-    """True when an agent invoked a registry introspection/discovery tool."""
+_S1_DISCOVERY_TOOLS = frozenset({"catalog"})
+
+
+def _used_s1_discovery_tool(tool_names: list[str]) -> bool:
     names = _tool_names_lower(tool_names)
-    return bool(names & {n.lower() for n in TOOL_INTROSPECTION})
+    return bool(names & _S1_DISCOVERY_TOOLS)
+
+
+def _mentions_agent_ids(content: str, *, minimum: int = 3) -> bool:
+    """True when the reply names at least ``minimum`` specialist agent_id values."""
+    low = (content or "").lower()
+    known = (
+        "coding",
+        "coding_plan",
+        "security_auditor",
+        "dashboard",
+        "creative",
+        "math",
+        "research",
+        "communications",
+        "media",
+        "integrations",
+        "outdoor",
+        "lifestyle",
+        "operator",
+    )
+    return sum(1 for aid in known if aid in low) >= minimum
 
 
 def rubric_s1_tool_catalog(
@@ -94,16 +116,16 @@ def rubric_s1_tool_catalog(
 ) -> RubricOutcome:
     if error:
         return RubricOutcome(False, 0.0, error)
-    has_catalog = _used_introspection_tool(tool_names)
-    non_empty = len((content or "").strip()) >= 8
-    if has_catalog and non_empty:
+    called_catalog = _used_s1_discovery_tool(tool_names)
+    named_agents = _mentions_agent_ids(content)
+    if called_catalog and named_agents:
         return RubricOutcome(True, 1.0, None)
     parts: list[str] = []
-    if not has_catalog:
-        parts.append("no tool catalog introspection call detected")
-    if not non_empty:
-        parts.append("assistant reply too short")
-    score = 0.5 if has_catalog or non_empty else 0.0
+    if not called_catalog:
+        parts.append("no catalog tool call detected (invoke catalog via native tool calling)")
+    if not named_agents:
+        parts.append("reply must name at least three specialist agent_id values from catalog")
+    score = 0.5 if called_catalog or named_agents else 0.0
     return RubricOutcome(False, score, "; ".join(parts) or "rubric failed")
 
 
@@ -112,16 +134,70 @@ def rubric_s2_simple_chat(
     content: str,
     error: str | None,
     latency_ms: float,
+    tool_names: list[str] | None = None,
     **_: Any,
 ) -> RubricOutcome:
+    """Smoke: general answers directly — no tools, no delegate (plain_completion)."""
     if error:
         return RubricOutcome(False, 0.0, error)
     if latency_ms > 30_000:
         return RubricOutcome(False, 0.0, f"latency {latency_ms:.0f}ms exceeds 30s")
+    if tool_names:
+        return RubricOutcome(
+            False,
+            0.0,
+            f"simple chat must not invoke tools (got: {', '.join(tool_names)})",
+        )
     text = (content or "").strip()
-    if re.search(r"\b42\b", text):
+    first_line = text.splitlines()[0].strip().lower() if text else ""
+    if first_line.rstrip(".") == "paris":
         return RubricOutcome(True, 1.0, None)
-    return RubricOutcome(False, 0.0, f"expected '42' in reply, got: {text[:120]!r}")
+    if len(text) > 12:
+        return RubricOutcome(
+            False,
+            0.0,
+            f"expected one word 'Paris', got long reply: {text[:80]!r}",
+        )
+    return RubricOutcome(False, 0.0, f"expected 'Paris', got: {text[:120]!r}")
+
+
+def rubric_s4_delegate_math(
+    *,
+    content: str,
+    tool_names: list[str],
+    error: str | None,
+    latency_ms: float,
+    **_: Any,
+) -> RubricOutcome:
+    """Tier 2: general delegates arithmetic to math; reply contains 42."""
+    if error:
+        return RubricOutcome(False, 0.0, error)
+    if latency_ms > 420_000:
+        return RubricOutcome(False, 0.0, f"latency {latency_ms:.0f}ms exceeds 420s")
+    if not _used_delegate(tool_names):
+        return RubricOutcome(False, 0.0, "expected delegate to math agent")
+    text = (content or "").strip()
+    first_line = text.splitlines()[0].strip() if text else ""
+    if first_line == "42" or re.fullmatch(r"42\.?", first_line):
+        return RubricOutcome(True, 1.0, None)
+    if re.search(r"\b42\b", text) and len(text) <= 12:
+        return RubricOutcome(True, 0.85, None)
+    return RubricOutcome(
+        False,
+        0.25 if _used_delegate(tool_names) else 0.0,
+        f"delegate ok but expected '42' in reply, got: {text[:120]!r}",
+    )
+
+
+def _s3_readme_first_line_in_reply(content: str) -> bool:
+    text = (content or "").strip()
+    if len(text) < 3:
+        return False
+    low = text.lower()
+    if "# agent layer" in low:
+        return True
+    first = text.splitlines()[0].strip().lower()
+    return first == "# agent layer" or "agent layer" in first
 
 
 def rubric_s3_read_file(
@@ -136,6 +212,7 @@ def rubric_s3_read_file(
         return RubricOutcome(False, 0.0, error)
     names = _tool_names_lower(tool_names)
     used_read = bool(names & _READ_FILE_TOOL_NAMES)
+    delegated = _used_delegate(tool_names)
     path_ok = False
     for inv in tool_invocations or []:
         tname = _norm_tool_name(str(inv.get("tool_name") or ""))
@@ -150,16 +227,21 @@ def rubric_s3_read_file(
         if "readme" in blob or "readme" in excerpt:
             path_ok = True
             break
+    readme_line = _s3_readme_first_line_in_reply(content)
     non_empty = len((content or "").strip()) >= 3
-    if used_read and (path_ok or non_empty):
-        score = 1.0 if path_ok and non_empty else 0.75
+    if used_read and (path_ok or readme_line or non_empty):
+        score = 1.0 if path_ok and readme_line else 0.75
         return RubricOutcome(True, score, None)
+    if delegated and readme_line:
+        return RubricOutcome(True, 1.0, None)
+    if delegated and non_empty:
+        return RubricOutcome(True, 0.75, None)
     parts: list[str] = []
-    if not used_read:
-        parts.append("read_file tool not invoked")
-    if not path_ok and not non_empty:
-        parts.append("no README content in tool result or reply")
-    return RubricOutcome(False, 0.25 if used_read else 0.0, "; ".join(parts))
+    if not used_read and not delegated:
+        parts.append("expected delegate to coding_plan or read_file on trace")
+    if not path_ok and not readme_line and not non_empty:
+        parts.append("no README first line in reply")
+    return RubricOutcome(False, 0.25 if (used_read or delegated) else 0.0, "; ".join(parts))
 
 
 def _used_workspace_create(tool_names: list[str]) -> bool:
@@ -182,25 +264,28 @@ def rubric_w1_git_readme(
         return RubricOutcome(False, 0.0, error)
     names = _tool_names_lower(tool_names)
     used_read = bool(names & _READ_FILE_TOOL_NAMES)
+    delegated = _used_delegate(tool_names)
     used_create = _used_workspace_create(tool_names)
     ws_ok = bool(workspace_row and str(workspace_row.get("id") or "").strip())
     non_empty = len((content or "").strip()) >= 3
-    if used_create and used_read and non_empty and ws_ok:
-        return RubricOutcome(True, 1.0, None)
-    if used_create and used_read and non_empty:
+    readme_line = _content_mentions_any(content, ("# hello-world", "hello-world", "hello world"))
+    if used_create and (used_read or delegated) and non_empty and ws_ok:
+        score = 1.0 if (used_read or readme_line) else 0.85
+        return RubricOutcome(True, score, None)
+    if used_create and (used_read or delegated) and non_empty:
         return RubricOutcome(True, 0.85, None)
     parts: list[str] = []
     if not used_create:
         parts.append("workspace.create not invoked")
-    if not used_read:
-        parts.append("read_file not used")
+    if not used_read and not delegated:
+        parts.append("read_file or delegate not used")
     if not ws_ok:
         parts.append("expected bench workspace not found via API")
     if not non_empty:
         parts.append("reply empty")
     return RubricOutcome(
         False,
-        0.5 if (used_create or used_read) else 0.0,
+        0.5 if (used_create or used_read or delegated) else 0.0,
         "; ".join(parts) or "w1 rubric failed",
     )
 
@@ -555,6 +640,7 @@ def rubric_c2_small_edit(
 RUBRICS: dict[str, Callable[..., RubricOutcome]] = {
     "s1_tool_catalog": rubric_s1_tool_catalog,
     "s2_simple_chat": rubric_s2_simple_chat,
+    "s4_delegate_math": rubric_s4_delegate_math,
     "s3_read_file": rubric_s3_read_file,
     "w1_git_readme": rubric_w1_git_readme,
     "w2_find_octocat": rubric_w2_find_octocat,
