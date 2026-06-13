@@ -78,7 +78,16 @@ class _NoopTurnHooks:
         allowed_tool_names: set[str] | frozenset[str],
         tools_for_round: list[Any],
     ) -> list[dict[str, Any]] | None:
-        return None
+        if not tools_for_round:
+            return None
+        from apps.backend.domain.tool_call_content_recovery import (
+            recover_tool_calls_from_assistant_content,
+        )
+
+        return recover_tool_calls_from_assistant_content(
+            msg,
+            allowed_tool_names=allowed_tool_names,
+        )
 
     def sanitize_completion(self, data: dict[str, Any]) -> bool:
         return False

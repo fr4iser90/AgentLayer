@@ -194,6 +194,55 @@ def test_security_scan_status_uses_status_endpoint():
 
 
 @patch.dict("os.environ", {"SSC_API_KEY": "ssc_test"}, clear=False)
+def test_security_scan_status_auto_waits_when_still_running_in_agent_context():
+    running_body = {
+        "scan_id": "x",
+        "status": "running",
+        "progress": 10.0,
+        "estimated_time_seconds": 30,
+    }
+    ready_body = {"scan_id": "x", "status": "ready", "progress": 100.0}
+
+    def _resp(body: dict) -> MagicMock:
+        r = MagicMock()
+        r.status_code = 200
+        r.json.return_value = body
+        r.content = json.dumps(body).encode()
+        return r
+
+    seen: list[dict] = []
+    ctx = {"deferred_wait_notify": seen.append}
+
+    with patch("plugins.tools.security.security_scan.common.httpx.Client") as client_cls:
+        client = client_cls.return_value.__enter__.return_value
+        client.request.side_effect = [_resp(running_body), _resp(ready_body), _resp(ready_body)]
+        with patch("apps.backend.domain.async_wait.time.sleep"):
+            out = json.loads(status({"scan_id": "x"}, ctx))
+    assert out["status"] == "ready"
+    assert out["still_running"] is False
+    assert out["deferred_wait"]["auto"] is True
+    assert any(e.get("phase") == "started" for e in seen)
+    assert any(e.get("phase") == "ended" for e in seen)
+
+
+@patch.dict("os.environ", {"SSC_API_KEY": "ssc_test"}, clear=False)
+def test_security_scan_status_skip_wait_one_shot_in_agent_context():
+    running_body = {"scan_id": "x", "status": "running", "progress": 42.5}
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = running_body
+    mock_resp.content = json.dumps(running_body).encode()
+    ctx = {"deferred_wait_notify": []}
+    with patch("plugins.tools.security.security_scan.common.httpx.Client") as client_cls:
+        client = client_cls.return_value.__enter__.return_value
+        client.request.return_value = mock_resp
+        out = json.loads(status({"scan_id": "x", "skip_wait": True}, ctx))
+    assert out["still_running"] is True
+    assert "deferred_wait" not in out
+    assert client.request.call_count == 1
+
+
+@patch.dict("os.environ", {"SSC_API_KEY": "ssc_test"}, clear=False)
 def test_security_scan_findings_pagination_params():
     mock_resp = MagicMock()
     mock_resp.status_code = 200

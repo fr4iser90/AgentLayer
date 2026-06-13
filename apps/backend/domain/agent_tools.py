@@ -820,10 +820,7 @@ def _agent_tool_budget_system_message(max_rounds: int) -> str:
     return (
         "## Tool-loop budget (server)\n\n"
         f"- The server allows **at most {n}** tool-loop LLM rounds for this assistant reply (counting this completion).\n"
-        f"- **Round {n}** is **text-only**: the API omits `tools[]` — respond with **natural language only** "
-        "(no `tool_calls`). Either **summarize** prior tool outputs from the transcript **or** say clearly that "
-        "more exploration is needed and ask the user to send a **follow-up message** (new tool budget).\n"
-        f"- **Round {n - 1}** is the last round that receives tool definitions; plan tool use before then.\n"
+        "- **This is round 1** — `tools[]` is available; use `tool_calls` when needed to answer the **user message above**.\n"
         "- Avoid empty `{}` tool JSON (often normalizes to identical calls and can trigger loop guards).\n\n"
         "If work is unfinished, say so explicitly — the user may send a follow-up message."
     )
