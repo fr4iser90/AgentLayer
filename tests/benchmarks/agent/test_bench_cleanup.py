@@ -36,6 +36,27 @@ def test_cleanup_prefix_delegates_to_service(monkeypatch) -> None:
     assert seen["include_legacy_prefix"] is True
 
 
+def test_cleanup_bench_dashboards_delegates_to_service(monkeypatch) -> None:
+    client = MagicMock()
+    client.user_id = str(uuid.uuid4())
+    seen: dict[str, object] = {}
+
+    def _fake_dash(user_id, **kwargs):
+        seen["user_id"] = user_id
+        seen.update(kwargs)
+        return {"dashboards": 3, "notifications": 1}
+
+    monkeypatch.setattr(
+        "apps.backend.infrastructure.benchmark_resource_service.cleanup_benchmark_dashboards",
+        _fake_dash,
+    )
+    from tests.benchmarks.agent.bench_cleanup import cleanup_bench_dashboards
+
+    stats = cleanup_bench_dashboards(client)
+    assert stats["dashboards"] == 3
+    assert seen["include_legacy_prefix"] is True
+
+
 def test_prepare_bench_workspace_quota_delegates(monkeypatch) -> None:
     client = MagicMock()
     client.user_id = str(uuid.uuid4())

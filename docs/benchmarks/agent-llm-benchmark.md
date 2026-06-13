@@ -40,6 +40,40 @@ Goal: run **the same tasks** on **llama.cpp**, **Ollama (small)**, and optional 
 
 Optional later: dedicated **`tenant_id=bench`** (admin creates “benchmark” tenant).
 
+### Scenario isolation (not cumulative)
+
+Benchmark scenarios are **independent tests**, not a multi-day story. Each scenario must pass **alone** (e.g. `benchmarks/manifests/social.yaml` with only `SOC1_block_share_visible`).
+
+| Rule | Meaning |
+|------|---------|
+| No shared sandbox state between scenarios | `D1` / `D2` must not leave dashboards that break `SOC1` in the same run |
+| Exception | `execution: project_run` — intentional multi-step chain only |
+| Fresh chat per scenario | No conversation history leak between cases |
+
+Dashboard tools (`create_dashboard` with default `only_if_none=true`) count **all** custom boards for the user. Running `D1` → `D2` → `SOC1` in `full.yaml` without cleanup in between causes `Multiple custom dashboards exist` on SOC1.
+
+### What gets cleaned when
+
+| When | What is deleted | What is kept |
+|------|-----------------|--------------|
+| **Run start** | All bench workspaces, dashboards, conversations for the bench user | `benchmark_runs` row, prior run `report_json` on disk |
+| **Before each dashboard scenario** (`bench_dashboard_title_suffix` in meta: D1, D2, SOC1) | Bench dashboards only (`bench-*` title or `benchmark_run_id` tag) | Workspaces, conversations, run traces |
+| **Run end** (default) | Full sandbox cleanup for this run + legacy bench artifacts | Results in DB + `benchmarks/results/{run_id}/` |
+| **Run end** with `retain_workspaces=true` | Dashboards/conversations still cleaned on finish; workspaces **kept** for manual git inspection | Same reports; live git tree on disk until next pre-run cleanup |
+
+Manual: `python scripts/bench_cleanup.py --prefix bench-`
+
+Implementation: `tests/benchmarks/agent/bench_cleanup.py`, `apps/backend/infrastructure/benchmark_resource_service.py`.
+
+### What to keep for pass/fail review (never deleted by sandbox cleanup)
+
+- **`benchmark_runs.report_json`** — per-scenario results, metrics, `bench_diagnostics`, failure export
+- **`benchmarks/results/{run_id}/`** — `manifest.json`, `summary.csv`, `failures.json`, per-scenario JSON
+- **`agent_runs` / admin run traces** — keyed by `agent_run_id` on each result (optional deep dive)
+- **Not required:** live dashboard rows or workspace git trees after the run (state is captured in WS timeline + rubric checks during the run)
+
+Screenshots are **not** part of the agent benchmark; UI verification belongs in E2E if needed later.
+
 ---
 
 ## 3. Two layers (do not mix)
@@ -150,7 +184,11 @@ sequenceDiagram
 
   Script->>API: login bench user
   Script->>API: apply fixtures (git ws, index, friends, secrets)
+  Script->>API: bench_cleanup (pre-run — all bench sandboxes)
   loop each scenario × model
+    alt dashboard scenario (D1, D2, SOC1)
+      Script->>API: bench dashboard cleanup (pre-scenario)
+    end
     Script->>API: POST /v1/chat/completions
     API->>LLM: completion + tools
     LLM-->>API: tool calls / text
@@ -159,7 +197,7 @@ sequenceDiagram
     Script->>Script: rubric + write JSON
   end
   Script->>Script: summary.csv
-  Script->>API: bench_cleanup (optional)
+  Script->>API: bench_cleanup (post-run, unless retain_workspaces)
 ```
 
 Chat request must include:

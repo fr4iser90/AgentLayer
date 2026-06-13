@@ -17,7 +17,11 @@ from typing import Any, Callable
 import httpx
 import yaml
 
-from tests.benchmarks.agent.bench_cleanup import cleanup_prefix, prepare_bench_sandbox_cleanup
+from tests.benchmarks.agent.bench_cleanup import (
+    cleanup_bench_dashboards,
+    cleanup_prefix,
+    prepare_bench_sandbox_cleanup,
+)
 from tests.benchmarks.agent.bench_profiles import BenchModelProfile, parse_profiles_from_env, profile_labels_filter
 from tests.benchmarks.agent.bench_provider_registry import register_bench_llm_providers
 from tests.benchmarks.agent.cases import (
@@ -1409,6 +1413,21 @@ def run_benchmark(
                         )
                     )
                     continue
+
+                if scenario.bench_dashboard_title_suffix:
+                    try:
+                        dash_cleanup = cleanup_bench_dashboards(session.client)
+                        logger.info(
+                            "benchmark pre-scenario dashboard cleanup %s: %s",
+                            scenario.id,
+                            dash_cleanup,
+                        )
+                    except Exception as exc:
+                        logger.warning(
+                            "benchmark pre-scenario dashboard cleanup failed for %s: %s",
+                            scenario.id,
+                            exc,
+                        )
 
                 live_push = _make_live_pusher(report, on_progress)
                 report.in_flight = _bench_in_flight_row(

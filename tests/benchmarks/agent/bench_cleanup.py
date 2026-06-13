@@ -31,6 +31,25 @@ def workspace_quota_snapshot(client: E2EClient, *, bench_prefix: str = BENCH_RES
     }
 
 
+def cleanup_bench_dashboards(
+    client: E2EClient,
+    *,
+    dry_run: bool = False,
+    benchmark_run_id: uuid.UUID | None = None,
+) -> dict[str, Any]:
+    """Delete bench sandboxes dashboards for the client user (workspaces untouched)."""
+    from apps.backend.infrastructure.benchmark_resource_service import (
+        cleanup_benchmark_dashboards,
+    )
+
+    return cleanup_benchmark_dashboards(
+        uuid.UUID(client.user_id),
+        benchmark_run_id=benchmark_run_id,
+        include_legacy_prefix=benchmark_run_id is None,
+        dry_run=dry_run,
+    )
+
+
 def cleanup_prefix(
     client: E2EClient,
     *,

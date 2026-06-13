@@ -193,6 +193,93 @@ def tag_dashboard_benchmark_run(
         conn.commit()
 
 
+def _fetch_bench_dashboard_rows(
+    user_id: uuid.UUID,
+    tenant_id: int,
+    *,
+    benchmark_run_id: uuid.UUID | None = None,
+    include_legacy_prefix: bool = True,
+) -> list[tuple[Any, ...]]:
+    legacy = include_legacy_prefix and benchmark_run_id is None
+    with db.pool().connection() as conn:
+        with conn.cursor() as cur:
+            if benchmark_run_id is not None:
+                cur.execute(
+                    """
+                    SELECT id, title FROM user_dashboards
+                    WHERE owner_user_id = %s AND tenant_id = %s AND benchmark_run_id = %s
+                    """,
+                    (user_id, tenant_id, benchmark_run_id),
+                )
+            else:
+                bench_sql, bench_params = _bench_match_sql(
+                    "title",
+                    legacy=legacy,
+                    legacy_pattern=f"{BENCH_LEGACY_NAME_PREFIX}%",
+                )
+                cur.execute(
+                    f"""
+                    SELECT id, title FROM user_dashboards
+                    WHERE owner_user_id = %s AND tenant_id = %s AND {bench_sql}
+                    """,
+                    tuple([user_id, tenant_id] + bench_params),
+                )
+            return list(cur.fetchall())
+
+
+def cleanup_benchmark_dashboards(
+    user_id: uuid.UUID,
+    *,
+    benchmark_run_id: uuid.UUID | None = None,
+    include_legacy_prefix: bool = True,
+    dry_run: bool = False,
+) -> dict[str, Any]:
+    """Delete bench-tagged or legacy ``bench-*`` titled dashboards only (workspaces untouched)."""
+    from apps.backend.dashboard import db as dashboard_db
+    from apps.backend.infrastructure import notifications_store
+
+    stats: dict[str, Any] = {"dashboards": 0, "notifications": 0, "errors": []}
+    tenant_id = db.user_tenant_id(user_id)
+    dashboard_rows = _fetch_bench_dashboard_rows(
+        user_id,
+        tenant_id,
+        benchmark_run_id=benchmark_run_id,
+        include_legacy_prefix=include_legacy_prefix,
+    )
+    errors: list[str] = stats["errors"]
+    dash_ids: list[uuid.UUID] = []
+
+    for row in dashboard_rows:
+        did = uuid.UUID(str(row[0]))
+        title = str(row[1] or "")
+        dash_ids.append(did)
+        if dry_run:
+            stats["dashboards"] += 1
+            continue
+        try:
+            if dashboard_db.dashboard_delete(user_id, tenant_id, did):
+                stats["dashboards"] += 1
+            else:
+                errors.append(f"dashboard {title!r}: not deleted")
+        except Exception as exc:
+            errors.append(f"dashboard {title!r}: {exc}")
+
+    if not dry_run and dash_ids:
+        try:
+            stats["notifications"] = notifications_store.delete_benchmark_notifications(
+                user_id,
+                dashboard_ids=dash_ids,
+                benchmark_run_id=benchmark_run_id,
+                include_legacy_prefix=include_legacy_prefix,
+            )
+        except Exception as exc:
+            errors.append(f"notifications: {exc}")
+
+    if not errors:
+        del stats["errors"]
+    return stats
+
+
 def tag_workspace_benchmark_run(
     workspace_id: uuid.UUID | str,
     owner_user_id: uuid.UUID,
@@ -277,28 +364,12 @@ def cleanup_benchmark_sandboxes(
                 )
             workspace_rows = cur.fetchall()
 
-            if benchmark_run_id is not None:
-                cur.execute(
-                    """
-                    SELECT id, title FROM user_dashboards
-                    WHERE owner_user_id = %s AND tenant_id = %s AND benchmark_run_id = %s
-                    """,
-                    (user_id, tenant_id, benchmark_run_id),
-                )
-            else:
-                bench_sql, bench_params = _bench_match_sql(
-                    "title",
-                    legacy=legacy,
-                    legacy_pattern=f"{BENCH_LEGACY_NAME_PREFIX}%",
-                )
-                cur.execute(
-                    f"""
-                    SELECT id, title FROM user_dashboards
-                    WHERE owner_user_id = %s AND tenant_id = %s AND {bench_sql}
-                    """,
-                    tuple([user_id, tenant_id] + bench_params),
-                )
-            dashboard_rows = cur.fetchall()
+            dashboard_rows = _fetch_bench_dashboard_rows(
+                user_id,
+                tenant_id,
+                benchmark_run_id=benchmark_run_id,
+                include_legacy_prefix=include_legacy_prefix,
+            )
 
             if benchmark_run_id is not None:
                 cur.execute(

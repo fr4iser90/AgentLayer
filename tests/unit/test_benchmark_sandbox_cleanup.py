@@ -85,3 +85,36 @@ def test_benchmark_sandbox_snapshot_includes_dashboards_and_conversations(monkey
     assert snap["bench_dashboard_count"] == 3
     assert snap["bench_conversation_count"] == 6
     assert snap["has_bench_sandbox_resources"] is True
+
+
+def test_cleanup_benchmark_dashboards_only(monkeypatch) -> None:
+    uid = uuid.uuid4()
+    tid = 1
+    dash_id = uuid.uuid4()
+    monkeypatch.setattr(
+        "apps.backend.infrastructure.db.db.user_tenant_id",
+        lambda _uid: tid,
+    )
+    monkeypatch.setattr(
+        svc,
+        "_fetch_bench_dashboard_rows",
+        lambda *a, **k: [(dash_id, "bench-test-share")],
+    )
+    deleted: list[uuid.UUID] = []
+
+    def _fake_delete(user_id, tenant_id, did):
+        deleted.append(did)
+        return True
+
+    monkeypatch.setattr(
+        "apps.backend.dashboard.db.dashboard_delete",
+        _fake_delete,
+    )
+    monkeypatch.setattr(
+        "apps.backend.infrastructure.notifications_store.delete_benchmark_notifications",
+        lambda *a, **k: 2,
+    )
+    stats = svc.cleanup_benchmark_dashboards(uid)
+    assert stats["dashboards"] == 1
+    assert deleted == [dash_id]
+    assert stats["notifications"] == 2
