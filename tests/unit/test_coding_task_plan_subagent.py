@@ -17,6 +17,21 @@ class TestCodingTaskPlanSubagent(unittest.TestCase):
         self.assertFalse(data.get("ok"))
         self.assertIn("prompt", (data.get("error") or "").lower())
 
+    def test_plan_subagent_blocked_inside_embedded_subagent(self) -> None:
+        from plugins.tools.platform.agents.task import task
+
+        out = task(
+            {
+                "run_plan_subagent": True,
+                "prompt": "nested plan",
+                "description": "plan",
+            },
+            context={"embedded_subagent": True},
+        )
+        data = json.loads(out)
+        self.assertFalse(data.get("ok"))
+        self.assertIn("embedded sub-agent", (data.get("error") or "").lower())
+
     def test_default_mode_registers_task(self) -> None:
         from plugins.tools.platform.agents.task import task
 

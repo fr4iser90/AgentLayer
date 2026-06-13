@@ -37,9 +37,9 @@ def _cancel_checker(context: dict[str, Any] | None) -> Callable[[], bool]:
         run_id = context.get("agent_run_id")
         if isinstance(run_id, str) and run_id.strip():
             try:
-                from apps.backend.domain.agent_run_cancel import parent_cancel_event
+                from apps.backend.domain.agent_run_cancel import root_cancel_event
 
-                evt = parent_cancel_event(run_id.strip())
+                evt = root_cancel_event(run_id.strip())
                 if evt is not None and evt.is_set():
                     return True
             except Exception:

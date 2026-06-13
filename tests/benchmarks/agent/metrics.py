@@ -366,6 +366,273 @@ def tool_invocations_from_ws_events(events: list[dict[str, Any]] | None) -> list
     return out
 
 
+def extract_subagent_activity_from_ws(events: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    """Sub-agent runs and tool steps from parent websocket (``agent.subagent_*``)."""
+    by_run: dict[str, dict[str, Any]] = {}
+    order: list[str] = []
+    for ev in events or []:
+        if not isinstance(ev, dict):
+            continue
+        typ = str(ev.get("type") or "")
+        if typ == "agent.subagent_start":
+            rid = str(ev.get("subagent_run_id") or "").strip()
+            if not rid:
+                continue
+            if rid not in by_run:
+                order.append(rid)
+                by_run[rid] = {
+                    "agent_id": str(ev.get("agent_id") or "").strip() or None,
+                    "subagent_run_id": rid,
+                    "detail": str(ev.get("detail") or "").strip()[:200] or None,
+                    "steps": [],
+                }
+            continue
+        if typ != "agent.subagent_step":
+            continue
+        rid = str(ev.get("subagent_run_id") or "").strip()
+        if not rid:
+            continue
+        if rid not in by_run:
+            order.append(rid)
+            by_run[rid] = {
+                "agent_id": str(ev.get("agent_id") or "").strip() or None,
+                "subagent_run_id": rid,
+                "detail": None,
+                "steps": [],
+            }
+        step: dict[str, Any] = {
+            "phase": str(ev.get("phase") or "").strip() or None,
+            "tool": str(ev.get("tool") or "").strip() or None,
+            "round": ev.get("round"),
+        }
+        if ev.get("ok") is True:
+            step["ok"] = True
+        elif ev.get("ok") is False:
+            step["ok"] = False
+        err = ev.get("error")
+        if isinstance(err, str) and err.strip():
+            step["error"] = err.strip()[:300]
+        summary = ev.get("summary")
+        if isinstance(summary, str) and summary.strip():
+            step["summary"] = summary.strip()[:200]
+        by_run[rid]["steps"].append(step)
+    return [by_run[rid] for rid in order if rid in by_run]
+
+
+def _compact_tool_round_row(row: dict[str, Any]) -> dict[str, Any]:
+    out: dict[str, Any] = {
+        "round": row.get("round"),
+        "name": row.get("name"),
+    }
+    if row.get("ok") is True:
+        out["ok"] = True
+    elif row.get("ok") is False:
+        out["ok"] = False
+    elif row.get("rejected"):
+        out["rejected"] = True
+    if row.get("summary"):
+        out["summary"] = str(row["summary"])[:160]
+    if row.get("error"):
+        out["error"] = str(row["error"])[:300]
+    if row.get("result_display"):
+        out["result_display"] = str(row["result_display"])[:300]
+    norm = row.get("normalized_arguments")
+    if isinstance(norm, dict) and norm:
+        out["normalized_arguments"] = norm
+    val = row.get("validation")
+    if isinstance(val, dict) and val.get("missing_or_empty"):
+        out["missing"] = list(val.get("missing_or_empty") or [])[:8]
+    return out
+
+
+def _infer_blocked_phase(
+    *,
+    timeline: list[dict[str, Any]],
+    subagents: list[dict[str, Any]],
+    tool_rounds: list[dict[str, Any]],
+    transport_error: str | None,
+) -> dict[str, Any]:
+    phase = "unknown"
+    detail = ""
+    if timeline:
+        last = timeline[-1]
+        lt = str(last.get("type") or "")
+        if lt == "agent.subagent_step":
+            phase = "subagent_tool"
+            tool = str(last.get("tool") or "").strip()
+            sub_phase = str(last.get("phase") or "").strip()
+            detail = f"{tool or 'tool'} ({sub_phase or 'step'})"
+        elif lt == "agent.llm_delta":
+            phase = "llm_stream"
+            detail = f"round {last.get('round')}"
+        elif lt == "agent.llm_round_start":
+            phase = "llm_generating"
+            detail = f"round {last.get('round')}"
+        elif lt in ("agent.tool_start", "agent.tool_done"):
+            phase = "parent_tool"
+            detail = str(last.get("tool") or lt)
+        elif lt == "agent.subagent_start":
+            phase = "subagent_starting"
+            detail = str(last.get("agent_id") or "")
+    if subagents and not detail:
+        sa = subagents[-1]
+        aid = sa.get("agent_id") or "subagent"
+        steps = sa.get("steps") if isinstance(sa.get("steps"), list) else []
+        if steps:
+            ls = steps[-1]
+            phase = "subagent_tool"
+            detail = f"{aid}: {ls.get('tool') or '?'} ({ls.get('phase') or 'step'})"
+        else:
+            phase = "subagent_blocked"
+            detail = str(aid)
+    elif tool_rounds:
+        last_tr = tool_rounds[-1]
+        if str(last_tr.get("name") or "").lower() == "delegate" and last_tr.get("ok") is None:
+            phase = "delegate_in_flight"
+            detail = "delegate not returned"
+    err = (transport_error or "").lower()
+    if "timeout" in err and phase == "unknown":
+        phase = "timeout"
+        detail = transport_error or ""
+    return {"phase": phase, "detail": detail}
+
+
+def _build_failure_report_summary(
+    *,
+    transport_error: str | None,
+    rubric_failure: str | None,
+    blocked: dict[str, Any],
+    parent_tools: list[dict[str, Any]],
+    subagents: list[dict[str, Any]],
+    insights: list[str],
+) -> str:
+    parts: list[str] = []
+    if transport_error:
+        parts.append(transport_error.strip())
+    if rubric_failure and rubric_failure.strip() not in (transport_error or ""):
+        parts.append(f"Rubric: {rubric_failure.strip()}")
+    bp = str(blocked.get("phase") or "").strip()
+    bd = str(blocked.get("detail") or "").strip()
+    if bp and bp != "unknown":
+        parts.append(f"Blocked in {bp}" + (f" ({bd})" if bd else ""))
+    if parent_tools:
+        names = [str(r.get("name") or "?") for r in parent_tools]
+        parts.append(f"Parent tools: {', '.join(names)}")
+    if subagents:
+        for sa in subagents:
+            aid = sa.get("agent_id") or "subagent"
+            steps = sa.get("steps") if isinstance(sa.get("steps"), list) else []
+            done = [s for s in steps if s.get("phase") == "done"]
+            fails = [s for s in done if s.get("ok") is False]
+            parts.append(
+                f"Subagent {aid}: {len(steps)} step(s)"
+                + (f", {len(fails)} failed" if fails else "")
+            )
+    elif any("delegate" in str(r.get("name") or "").lower() for r in parent_tools):
+        parts.append("Delegate started; no subagent steps recorded on websocket")
+    if insights:
+        parts.append(insights[0][:240])
+    return " · ".join(p for p in parts if p)[:1200]
+
+
+def build_failure_export_report(
+    diag: dict[str, Any] | None,
+    *,
+    transport_error: str | None = None,
+    rubric_failure: str | None = None,
+    assistant_excerpt: str | None = None,
+    ws_events: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """
+    Self-contained failure diagnosis for failures.json / CSV export (no trace UI required).
+    Uses ``bench_diagnostics`` already stored on the scenario result.
+    """
+    d = diag if isinstance(diag, dict) else {}
+    tool_rounds = d.get("tool_rounds") if isinstance(d.get("tool_rounds"), list) else []
+    timeline = d.get("timeline_tail") if isinstance(d.get("timeline_tail"), list) else []
+    insights = d.get("insights") if isinstance(d.get("insights"), list) else []
+    event_counts = d.get("event_counts") if isinstance(d.get("event_counts"), dict) else {}
+    llm_stream = d.get("llm_stream") if isinstance(d.get("llm_stream"), dict) else {}
+    ws_errors = d.get("ws_errors") if isinstance(d.get("ws_errors"), list) else []
+
+    subagents = d.get("subagents") if isinstance(d.get("subagents"), list) else []
+    if not subagents:
+        subagents = extract_subagent_activity_from_ws(ws_events)
+    if not subagents:
+        subagents = extract_subagent_activity_from_ws(_reconstruct_ws_from_diag(d))
+
+    parent_tools = [_compact_tool_round_row(r) for r in tool_rounds if isinstance(r, dict)]
+    blocked = _infer_blocked_phase(
+        timeline=[x for x in timeline if isinstance(x, dict)],
+        subagents=subagents,
+        tool_rounds=[x for x in tool_rounds if isinstance(x, dict)],
+        transport_error=transport_error,
+    )
+    if d.get("blocked_phase"):
+        blocked["phase"] = d.get("blocked_phase")
+    if d.get("blocked_detail"):
+        blocked["detail"] = d.get("blocked_detail")
+    summary = _build_failure_report_summary(
+        transport_error=transport_error,
+        rubric_failure=rubric_failure,
+        blocked=blocked,
+        parent_tools=parent_tools,
+        subagents=subagents,
+        insights=[str(x) for x in insights if str(x).strip()],
+    )
+
+    stream_tail = ""
+    for key in ("reasoning", "text"):
+        chunk = llm_stream.get(key) if isinstance(llm_stream, dict) else None
+        if isinstance(chunk, str) and chunk.strip():
+            stream_tail = chunk.strip()[-400:]
+
+    return {
+        "summary": summary,
+        "blocked_phase": blocked.get("phase"),
+        "blocked_detail": blocked.get("detail"),
+        "parent_tool_rounds": parent_tools,
+        "subagents": subagents,
+        "timeline_tail": [x for x in timeline if isinstance(x, dict)][-16:],
+        "event_counts": event_counts,
+        "insights": [str(x) for x in insights if str(x).strip()][:8],
+        "ws_errors": ws_errors[-5:],
+        "llm_stream_tail": stream_tail or None,
+        "assistant_excerpt": (assistant_excerpt or "").strip()[:500] or None,
+    }
+
+
+def _reconstruct_ws_from_diag(diag: dict[str, Any]) -> list[dict[str, Any]]:
+    """Best-effort WS event list when raw events were not persisted (timeline + subagent only)."""
+    out: list[dict[str, Any]] = []
+    for row in diag.get("timeline_tail") or []:
+        if not isinstance(row, dict):
+            continue
+        typ = str(row.get("type") or "")
+        if typ == "agent.subagent_start":
+            out.append(
+                {
+                    "type": typ,
+                    "agent_id": row.get("agent_id"),
+                    "subagent_run_id": row.get("subagent_run_id"),
+                }
+            )
+        elif typ == "agent.subagent_step":
+            out.append(
+                {
+                    "type": typ,
+                    "agent_id": row.get("agent_id"),
+                    "subagent_run_id": row.get("subagent_run_id"),
+                    "tool": row.get("tool"),
+                    "phase": row.get("phase"),
+                    "ok": row.get("ok"),
+                    "error": row.get("error"),
+                    "round": row.get("round"),
+                }
+            )
+    return out
+
+
 def bench_ws_diagnostics(
     events: list[dict[str, Any]] | None,
     *,
@@ -391,6 +658,13 @@ def bench_ws_diagnostics(
                     "http_status": ev.get("http_status"),
                 }
             )
+    subagents = extract_subagent_activity_from_ws(rows)
+    blocked = _infer_blocked_phase(
+        timeline=timeline,
+        subagents=subagents,
+        tool_rounds=tool_rounds,
+        transport_error=error,
+    )
     return {
         "ws_event_count": len(rows),
         "ws_errors": ws_errors[-5:],
@@ -403,6 +677,9 @@ def bench_ws_diagnostics(
         "insights": _bench_insights(tool_rounds, schema_rounds=schema_rounds, error=error),
         "llm_stream": llm_stream or None,
         "session": session or None,
+        "subagents": subagents,
+        "blocked_phase": blocked.get("phase"),
+        "blocked_detail": blocked.get("detail"),
     }
 
 
@@ -648,7 +925,28 @@ def summarize_ws_events(events: list[dict[str, Any]]) -> tuple[list[dict], list[
             continue
         if typ == "agent.subagent_start":
             counts["subagent_start_count"] += 1
-            _append_timeline({"type": typ, "agent_id": ev.get("agent_id")})
+            _append_timeline(
+                {
+                    "type": typ,
+                    "agent_id": ev.get("agent_id"),
+                    "subagent_run_id": ev.get("subagent_run_id"),
+                }
+            )
+            continue
+        if typ == "agent.subagent_step":
+            _append_timeline(
+                {
+                    "type": typ,
+                    "agent_id": ev.get("agent_id"),
+                    "subagent_run_id": ev.get("subagent_run_id"),
+                    "tool": ev.get("tool"),
+                    "phase": ev.get("phase"),
+                    "ok": ev.get("ok"),
+                    "error": ev.get("error"),
+                    "round": ev.get("round"),
+                }
+            )
+            continue
 
     _flush_pending_llm_delta(timeline, pending_llm_delta)
 

@@ -15,3 +15,4 @@ agents: general
 - For **read file** tasks: **one** delegate to **`coding_plan`**; do not switch to **`coding`** unless edits or bash are required.
 - When **`delegate`** returns **`ok: true`**, reply using **`assistant_excerpt`** only — never invent file contents from general knowledge.
 - When **`delegate`** returns **`ok: false`**, retry once with a simpler prompt or tell the user the specialist could not read the repo — **do not guess**.
+- For **security scans and remediation**: **`delegate`** to **`security_auditor`** (start → status / deferred_wait → findings) — never route through **`coding_plan`** or **`task`**.

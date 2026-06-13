@@ -125,10 +125,17 @@ def _forward_subagent_tool_event(
     agent_id: str,
     ev: dict[str, Any],
 ) -> None:
-    """Map embedded ``agent.tool_*`` events to ``agent.subagent_step`` for the parent WS."""
+    """Map embedded sub-agent events to the parent WS (tool steps, deferred waits)."""
     if not callable(notify):
         return
     typ = ev.get("type")
+    if typ in ("agent.deferred_wait", "agent.llm_slot_wait"):
+        payload = dict(ev)
+        payload.setdefault("type", typ)
+        payload["subagent_run_id"] = sub_run_id
+        payload["agent_id"] = agent_id
+        notify(payload)
+        return
     if typ not in ("agent.tool_start", "agent.tool_done"):
         return
     payload: dict[str, Any] = {
@@ -376,9 +383,13 @@ def run_embedded_subagent_sync(
     prid = ctx.get("agent_run_id")
     parent_cancel_thread = None
     if isinstance(prid, str) and prid.strip():
-        from apps.backend.domain.agent_run_cancel import parent_cancel_event
+        from apps.backend.domain.agent_run_cancel import (
+            link_run_to_cancel_root,
+            root_cancel_event,
+        )
 
-        parent_cancel_thread = parent_cancel_event(prid.strip())
+        link_run_to_cancel_root(sub_run_id, prid.strip())
+        parent_cancel_thread = root_cancel_event(sub_run_id)
     if isinstance(prid, str) and prid.strip():
         body["agent_parent_run_id"] = prid.strip()
     notify = ctx.get("agent_subagent_notify")

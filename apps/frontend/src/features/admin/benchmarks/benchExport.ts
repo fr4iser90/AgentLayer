@@ -107,9 +107,97 @@ export type BenchFailureDebugFields = {
   delegate_call_count: number;
   subagent_start_count: number;
   ws_errors: string;
+  report_summary: string;
+  blocked_phase: string;
+  blocked_detail: string;
+  subagent_agents: string;
+  subagent_steps: string;
+  parent_tool_rounds_json: string;
+  report: Record<string, unknown>;
 };
 
 export type BenchFailureExportRow = BenchExportRow & BenchFailureDebugFields;
+
+function buildFailureExportReport(
+  res: BenchmarkScenarioResult,
+): Record<string, unknown> {
+  const diag = res.run_metrics?.bench_diagnostics;
+  const toolRounds = diag?.tool_rounds ?? [];
+  const timeline = diag?.timeline_tail ?? [];
+  const subagents = (diag?.subagents as Array<Record<string, unknown>> | undefined) ?? [];
+  const insights = diag?.insights ?? [];
+  const transport = (res.transport_error || res.error || "").trim();
+  const rubric = (res.rubric_failure_reason || "").trim();
+
+  const parentTools = toolRounds.map((row) => {
+    const out: Record<string, unknown> = {
+      round: row.round,
+      name: row.name,
+    };
+    if (row.ok === true) out.ok = true;
+    else if (row.ok === false) out.ok = false;
+    else if (row.rejected) out.rejected = true;
+    if (row.summary) out.summary = String(row.summary).slice(0, 160);
+    if (row.error) out.error = String(row.error).slice(0, 300);
+    if (row.result_display) out.result_display = String(row.result_display).slice(0, 300);
+    if (row.normalized_arguments && Object.keys(row.normalized_arguments).length > 0) {
+      out.normalized_arguments = row.normalized_arguments;
+    }
+    return out;
+  });
+
+  const lastTimeline = timeline.length ? timeline[timeline.length - 1] : null;
+  let blockedPhase = String(diag?.blocked_phase || "");
+  let blockedDetail = String(diag?.blocked_detail || "");
+  if (!blockedPhase && lastTimeline && typeof lastTimeline === "object") {
+    const lt = String(lastTimeline.type || "");
+    if (lt === "agent.subagent_step") {
+      blockedPhase = "subagent_tool";
+      blockedDetail = `${String(lastTimeline.tool || "tool")} (${String(lastTimeline.phase || "step")})`;
+    } else if (lt === "agent.subagent_start") {
+      blockedPhase = "subagent_starting";
+      blockedDetail = String(lastTimeline.agent_id || "");
+    } else if (lt === "agent.tool_start" || lt === "agent.tool_done") {
+      blockedPhase = "parent_tool";
+      blockedDetail = String(lastTimeline.tool || lt);
+    }
+  }
+
+  const summaryParts: string[] = [];
+  if (transport) summaryParts.push(transport);
+  if (rubric && rubric !== transport) summaryParts.push(`Rubric: ${rubric}`);
+  if (blockedPhase) {
+    summaryParts.push(`Blocked in ${blockedPhase}${blockedDetail ? ` (${blockedDetail})` : ""}`);
+  }
+  if (parentTools.length) {
+    summaryParts.push(`Parent tools: ${parentTools.map((r) => String(r.name || "?")).join(", ")}`);
+  }
+  for (const sa of subagents) {
+    const aid = String(sa.agent_id || "subagent");
+    const steps = Array.isArray(sa.steps) ? sa.steps : [];
+    summaryParts.push(`Subagent ${aid}: ${steps.length} step(s)`);
+  }
+  if (insights.length) summaryParts.push(String(insights[0]).slice(0, 240));
+
+  const stream = diag?.llm_stream;
+  let streamTail: string | null = null;
+  if (stream?.reasoning) streamTail = String(stream.reasoning).trim().slice(-400);
+  else if (stream?.text) streamTail = String(stream.text).trim().slice(-400);
+
+  return {
+    summary: summaryParts.join(" · ").slice(0, 1200),
+    blocked_phase: blockedPhase || null,
+    blocked_detail: blockedDetail || null,
+    parent_tool_rounds: parentTools,
+    subagents,
+    timeline_tail: timeline.slice(-16),
+    event_counts: diag?.event_counts ?? {},
+    insights: insights.slice(0, 8),
+    ws_errors: diag?.ws_errors?.slice(-5) ?? [],
+    llm_stream_tail: streamTail,
+    assistant_excerpt: String(res.assistant_excerpt || "").trim().slice(0, 500) || null,
+  };
+}
 
 function failureDebugFields(
   res: BenchmarkScenarioResult,
@@ -131,6 +219,28 @@ function failureDebugFields(
     .filter(Boolean)
     .join(" | ");
 
+  const report = buildFailureExportReport(res);
+  const subagents = (report.subagents as Array<Record<string, unknown>> | undefined) ?? [];
+  const subagentIds = subagents
+    .map((sa) => String(sa.agent_id || "").trim())
+    .filter(Boolean);
+  const subagentStepsLines: string[] = [];
+  for (const sa of subagents) {
+    const aid = String(sa.agent_id || "subagent");
+    for (const step of Array.isArray(sa.steps) ? sa.steps : []) {
+      if (!step || typeof step !== "object") continue;
+      const s = step as Record<string, unknown>;
+      const tool = String(s.tool || "?");
+      const phase = String(s.phase || "?");
+      const ok = s.ok;
+      const okS = ok === undefined ? "" : ok ? " ok" : " FAIL";
+      const err = String(s.error || "").trim();
+      let line = `${aid}/${tool} ${phase}${okS}`;
+      if (err) line += `: ${err.slice(0, 80)}`;
+      subagentStepsLines.push(line);
+    }
+  }
+
   return {
     agent_id: String(res.agent_id || ""),
     effective_agent_id: String(session?.effective_agent_id || ""),
@@ -145,6 +255,13 @@ function failureDebugFields(
     ).length,
     subagent_start_count: Number(diag?.event_counts?.subagent_start_count ?? 0),
     ws_errors: wsErrors,
+    report_summary: String(report.summary || ""),
+    blocked_phase: String(report.blocked_phase || ""),
+    blocked_detail: String(report.blocked_detail || ""),
+    subagent_agents: subagentIds.join(", "),
+    subagent_steps: subagentStepsLines.slice(0, 12).join(" | "),
+    parent_tool_rounds_json: JSON.stringify(report.parent_tool_rounds ?? []).slice(0, 4000),
+    report,
   };
 }
 
@@ -219,6 +336,12 @@ const FAILURE_DEBUG_COLUMNS: (keyof BenchFailureDebugFields)[] = [
   "workspace_create_name",
   "delegate_call_count",
   "subagent_start_count",
+  "report_summary",
+  "blocked_phase",
+  "blocked_detail",
+  "subagent_agents",
+  "subagent_steps",
+  "parent_tool_rounds_json",
   "ws_errors",
 ];
 

@@ -119,6 +119,9 @@ def test_failure_export_row_includes_debug_fields() -> None:
     assert row["delegate_call_count"] == 1
     assert row["subagent_start_count"] == 1
     assert "cancelled" in row["ws_errors"]
+    assert "report_summary" in row
+    assert "report" in row
+    assert isinstance(row["report"], dict)
 
 
 def test_failures_from_report_excludes_passed_and_skipped() -> None:

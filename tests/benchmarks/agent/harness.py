@@ -45,6 +45,7 @@ from tests.benchmarks.agent.metrics import (
     RunMetrics,
     agent_run_id_from_ws_events,
     bench_ws_diagnostics,
+    build_failure_export_report,
     build_run_metrics,
     extract_llm_stream_from_ws,
     live_snapshot_from_ws_events,
@@ -1596,6 +1597,35 @@ def _failure_export_debug_fields(
         if typ or detail:
             err_parts.append(f"{typ}: {detail}"[:180] if detail else typ)
 
+    report = build_failure_export_report(
+        diag,
+        transport_error=result.transport_error or result.error,
+        rubric_failure=result.rubric_failure_reason,
+        assistant_excerpt=result.assistant_excerpt,
+    )
+    subagent_ids = [
+        str(sa.get("agent_id") or "").strip()
+        for sa in (report.get("subagents") or [])
+        if isinstance(sa, dict) and str(sa.get("agent_id") or "").strip()
+    ]
+    subagent_steps_lines: list[str] = []
+    for sa in report.get("subagents") or []:
+        if not isinstance(sa, dict):
+            continue
+        aid = str(sa.get("agent_id") or "subagent")
+        for step in sa.get("steps") or []:
+            if not isinstance(step, dict):
+                continue
+            tool = str(step.get("tool") or "?")
+            phase = str(step.get("phase") or "?")
+            ok = step.get("ok")
+            ok_s = "" if ok is None else (" ok" if ok else " FAIL")
+            err = str(step.get("error") or "").strip()
+            line = f"{aid}/{tool} {phase}{ok_s}"
+            if err:
+                line += f": {err[:80]}"
+            subagent_steps_lines.append(line)
+
     return {
         "agent_id": str(result.agent_id or ""),
         "effective_agent_id": str(session.get("effective_agent_id") or ""),
@@ -1608,6 +1638,15 @@ def _failure_export_debug_fields(
         "delegate_call_count": delegate_calls,
         "subagent_start_count": int(event_counts.get("subagent_start_count") or 0),
         "ws_errors": " | ".join(err_parts),
+        "report_summary": str(report.get("summary") or ""),
+        "blocked_phase": str(report.get("blocked_phase") or ""),
+        "blocked_detail": str(report.get("blocked_detail") or ""),
+        "subagent_agents": ", ".join(subagent_ids),
+        "subagent_steps": " | ".join(subagent_steps_lines[:12]),
+        "parent_tool_rounds_json": json.dumps(
+            report.get("parent_tool_rounds") or [], ensure_ascii=False
+        )[:4000],
+        "report": report,
     }
 
 

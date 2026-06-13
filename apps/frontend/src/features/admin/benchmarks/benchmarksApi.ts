@@ -278,6 +278,21 @@ export type BenchmarkScenarioResult = {
         effective_agent_id?: string;
         effective_model?: string;
       };
+      subagents?: Array<{
+        agent_id?: string;
+        subagent_run_id?: string;
+        detail?: string;
+        steps?: Array<{
+          phase?: string;
+          tool?: string;
+          round?: number;
+          ok?: boolean;
+          error?: string;
+          summary?: string;
+        }>;
+      }>;
+      blocked_phase?: string;
+      blocked_detail?: string;
     };
     provider_cache?: {
       cache_prompt_disabled?: boolean;

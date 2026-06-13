@@ -36,6 +36,29 @@ def test_signal_parent_cancel_sets_thread_event() -> None:
     assert parent_cancel_event("parent-1") is None
 
 
+def test_root_cancel_propagates_to_nested_runs() -> None:
+    from apps.backend.domain.agent_run_cancel import (
+        link_run_to_cancel_root,
+        root_cancel_event,
+    )
+
+    register_parent_cancel("root-run")
+    link_run_to_cancel_root("child-run", "root-run")
+    link_run_to_cancel_root("grandchild-run", "child-run")
+
+    root_ev = root_cancel_event("root-run")
+    child_ev = root_cancel_event("child-run")
+    grand_ev = root_cancel_event("grandchild-run")
+    assert root_ev is not None
+    assert child_ev is root_ev
+    assert grand_ev is root_ev
+    assert not root_ev.is_set()
+
+    signal_parent_cancel("root-run")
+    assert root_ev.is_set()
+    unregister_parent_cancel("root-run")
+
+
 def test_delegate_subagent_receives_linked_cancel_event() -> None:
     from plugins.tools.platform.agents.delegate import delegate
 

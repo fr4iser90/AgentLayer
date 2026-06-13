@@ -83,3 +83,27 @@ def test_forward_ignores_other_events() -> None:
         ev={"type": "agent.llm_round", "round": 1},
     )
     assert out == []
+
+
+def test_forward_deferred_wait_to_parent() -> None:
+    out: list[dict] = []
+
+    def notify(payload: dict) -> None:
+        out.append(payload)
+
+    _forward_subagent_tool_event(
+        notify,
+        sub_run_id="sub-1",
+        agent_id="security_auditor",
+        ev={
+            "type": "agent.deferred_wait",
+            "phase": "started",
+            "wait_id": "scan-abc",
+            "wait_label": "security_scan",
+        },
+    )
+    assert len(out) == 1
+    assert out[0]["type"] == "agent.deferred_wait"
+    assert out[0]["phase"] == "started"
+    assert out[0]["subagent_run_id"] == "sub-1"
+    assert out[0]["agent_id"] == "security_auditor"

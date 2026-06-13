@@ -37,6 +37,17 @@ def _truthy(v: Any) -> bool:
 
 def task(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> str:
     if _truthy(arguments.get("run_plan_subagent")):
+        if _truthy((context or {}).get("embedded_subagent")):
+            return json.dumps(
+                {
+                    "ok": False,
+                    "error": (
+                        "run_plan_subagent is not available inside an embedded sub-agent. "
+                        "Use **delegate** with run_subagent=true for nested specialists."
+                    ),
+                },
+                ensure_ascii=False,
+            )
         prompt = (arguments.get("prompt") or "").strip()
         if not prompt:
             return json.dumps(

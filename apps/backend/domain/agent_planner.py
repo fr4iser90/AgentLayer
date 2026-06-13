@@ -323,6 +323,7 @@ async def chat_completion(
     else:
         agent_run_id = str(uuid.uuid4())
     tool_context["agent_run_id"] = agent_run_id
+    tool_context["embedded_subagent"] = embedded_subagent
     if _parsed_benchmark_run_id is not None:
         tool_context["benchmark_run_id"] = str(_parsed_benchmark_run_id)
         from apps.backend.domain.identity import set_benchmark_run_id
@@ -341,6 +342,10 @@ async def chat_completion(
                 signal_parent_cancel(agent_run_id)
 
             _parent_cancel_bridge_task = asyncio.create_task(_propagate_cancel_to_subagents())
+    elif parent_agent_run_id:
+        from apps.backend.domain.agent_run_cancel import link_run_to_cancel_root
+
+        link_run_to_cancel_root(agent_run_id, parent_agent_run_id)
     _llm_wait_token = None
     if event_emit is not None:
         try:
