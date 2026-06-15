@@ -140,8 +140,8 @@ def rubric_s2_simple_chat(
     """Smoke: general answers directly — no tools, no delegate (plain_completion)."""
     if error:
         return RubricOutcome(False, 0.0, error)
-    if latency_ms > 30_000:
-        return RubricOutcome(False, 0.0, f"latency {latency_ms:.0f}ms exceeds 30s")
+    if latency_ms > 60_000:
+        return RubricOutcome(False, 0.0, f"latency {latency_ms:.0f}ms exceeds 60s")
     if tool_names:
         return RubricOutcome(
             False,

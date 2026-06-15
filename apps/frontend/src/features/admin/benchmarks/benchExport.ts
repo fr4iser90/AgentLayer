@@ -1,4 +1,11 @@
 import type { BenchmarkRun, BenchmarkScenarioResult } from "./benchmarksApi";
+import {
+  attemptHistoryFromResult,
+  passAt1FromResult,
+  attemptNumberFromResult,
+  attemptsMaxFromResult,
+  scenarioResultForAttempt,
+} from "./benchAttemptUtils";
 
 /** Mirrors ``bench_workspace_suffix`` on benchmark scenarios (failures export only). */
 const WORKSPACE_SUFFIX_BY_SCENARIO: Record<string, string> = {
@@ -85,6 +92,11 @@ export type BenchExportRow = {
   model: string;
   skipped: boolean;
   passed: boolean;
+  attempt: number;
+  attempts_max: number;
+  pass_at_1: boolean | "" | null;
+  prior_failure_reasons: string;
+  attempt_is_final?: boolean;
   transport_error: string;
   rubric_failure: string;
   failure_reason: string;
@@ -269,12 +281,20 @@ export function scenarioExportRow(res: BenchmarkScenarioResult): BenchExportRow 
   const transport =
     (res.transport_error || res.error || "").trim();
   const rubric = (res.rubric_failure_reason || "").trim();
+  const prior = res.run_metrics?.prior_failure_reasons;
+  const priorStr = Array.isArray(prior) ? prior.join(" | ") : "";
+  const p1 = passAt1FromResult(res);
   return {
     scenario_id: res.scenario_id,
     profile_label: res.profile_label,
     model: res.model || "",
     skipped: Boolean(res.skipped),
     passed: res.passed,
+    attempt: attemptNumberFromResult(res),
+    attempts_max: attemptsMaxFromResult(res),
+    pass_at_1: p1 === null ? "" : p1,
+    prior_failure_reasons: priorStr,
+    attempt_is_final: true,
     transport_error: transport,
     rubric_failure: rubric,
     failure_reason: (res.failure_reason || transport || rubric).trim(),
@@ -287,20 +307,88 @@ export function scenarioExportRow(res: BenchmarkScenarioResult): BenchExportRow 
   };
 }
 
+function scenarioExportRowFromAttempt(
+  base: BenchmarkScenarioResult,
+  attemptRes: BenchmarkScenarioResult,
+  options: { attemptIsFinal: boolean },
+): BenchExportRow {
+  const row = scenarioExportRow(attemptRes);
+  row.scenario_id = base.scenario_id;
+  row.profile_label = base.profile_label;
+  row.model = base.model || row.model;
+  row.attempts_max = attemptsMaxFromResult(base);
+  row.pass_at_1 = passAt1FromResult(base) === null ? "" : passAt1FromResult(base);
+  row.prior_failure_reasons = "";
+  row.attempt_is_final = options.attemptIsFinal;
+  return row;
+}
+
+export function scenarioAttemptExportRows(res: BenchmarkScenarioResult): BenchExportRow[] {
+  const hist = attemptHistoryFromResult(res);
+  if (hist.length <= 1) {
+    return [scenarioExportRow(res)];
+  }
+  const finalAttempt = attemptNumberFromResult(res);
+  return hist.map((snap) =>
+    scenarioExportRowFromAttempt(
+      res,
+      scenarioResultForAttempt(res, snap),
+      { attemptIsFinal: snap.attempt === finalAttempt },
+    ),
+  );
+}
+
 export function failureExportRow(
   res: BenchmarkScenarioResult,
   resourcePrefix?: string,
 ): BenchFailureExportRow {
-  return { ...scenarioExportRow(res), ...failureDebugFields(res, resourcePrefix) };
+  const row = { ...scenarioExportRow(res), ...failureDebugFields(res, resourcePrefix) };
+  return row;
+}
+
+function failureExportRowFromAttempt(
+  base: BenchmarkScenarioResult,
+  attemptRes: BenchmarkScenarioResult,
+  resourcePrefix: string | undefined,
+  options: { attemptIsFinal: boolean },
+): BenchFailureExportRow {
+  const row = {
+    ...scenarioExportRowFromAttempt(base, attemptRes, options),
+    ...failureDebugFields(attemptRes, resourcePrefix),
+  };
+  return row;
 }
 
 export function failuresFromResults(
   results: BenchmarkScenarioResult[],
   resourcePrefix?: string,
 ): BenchFailureExportRow[] {
-  return results
-    .filter((r) => !r.skipped && !r.passed)
-    .map((r) => failureExportRow(r, resourcePrefix));
+  const rows: BenchFailureExportRow[] = [];
+  for (const r of results) {
+    if (r.skipped) {
+      continue;
+    }
+    const hist = attemptHistoryFromResult(r);
+    if (hist.length > 1) {
+      const finalAttempt = attemptNumberFromResult(r);
+      for (const snap of hist) {
+        if (snap.passed) {
+          continue;
+        }
+        const attemptRes = scenarioResultForAttempt(r, snap);
+        rows.push(
+          failureExportRowFromAttempt(r, attemptRes, resourcePrefix, {
+            attemptIsFinal: snap.attempt === finalAttempt,
+          }),
+        );
+      }
+      continue;
+    }
+    if (!r.passed) {
+      rows.push(failureExportRow(r, resourcePrefix));
+    }
+  }
+  return rows;
 }
 
 function csvEscape(val: string | number | boolean): string {
@@ -315,6 +403,11 @@ const EXPORT_COLUMNS: (keyof BenchExportRow)[] = [
   "model",
   "passed",
   "skipped",
+  "attempt",
+  "attempts_max",
+  "pass_at_1",
+  "prior_failure_reasons",
+  "attempt_is_final",
   "transport_error",
   "rubric_failure",
   "failure_reason",
@@ -361,7 +454,16 @@ export function resultsToCsv(rows: BenchExportRow[]): string {
 export function failuresToCsv(rows: BenchFailureExportRow[]): string {
   const header = FAILURE_EXPORT_COLUMNS.join(",");
   const body = rows
-    .map((row) => FAILURE_EXPORT_COLUMNS.map((col) => csvEscape(row[col] ?? "")).join(","))
+    .map((row) =>
+      FAILURE_EXPORT_COLUMNS.map((col) => {
+        const raw = row[col] ?? "";
+        const val =
+          col === "report" && raw && typeof raw === "object"
+            ? JSON.stringify(raw)
+            : raw;
+        return csvEscape(val as string | number | boolean);
+      }).join(","),
+    )
     .join("\n");
   return `${header}\n${body}\n`;
 }
@@ -376,6 +478,17 @@ function downloadBlob(filename: string, content: string, mime: string) {
   URL.revokeObjectURL(url);
 }
 
+export function attemptsToCsv(rows: BenchExportRow[]): string {
+  return resultsToCsv(rows);
+}
+
+export function downloadAttemptsCsv(run: BenchmarkRun) {
+  const results = run.report_json?.results ?? [];
+  const rows = results.flatMap((r) => scenarioAttemptExportRows(r));
+  const prefix = (run.resource_prefix || run.id).replace(/[^\w.-]+/g, "_");
+  downloadBlob(`${prefix}-attempts.csv`, attemptsToCsv(rows), "text/csv;charset=utf-8");
+}
+
 export function downloadFailuresCsv(run: BenchmarkRun, failuresOnly = true) {
   const results = run.report_json?.results ?? [];
   const resourcePrefix = run.resource_prefix || undefined;
@@ -385,7 +498,8 @@ export function downloadFailuresCsv(run: BenchmarkRun, failuresOnly = true) {
     downloadBlob(`${prefix}-failures.csv`, failuresToCsv(rows), "text/csv;charset=utf-8");
     return;
   }
-  downloadBlob(`${prefix}-all.csv`, resultsToCsv(results.map(scenarioExportRow)), "text/csv;charset=utf-8");
+  const allRows = results.flatMap((r) => scenarioAttemptExportRows(r));
+  downloadBlob(`${prefix}-all.csv`, resultsToCsv(allRows), "text/csv;charset=utf-8");
 }
 
 export function downloadFailuresJson(run: BenchmarkRun) {

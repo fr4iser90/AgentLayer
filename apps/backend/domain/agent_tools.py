@@ -820,7 +820,7 @@ def _agent_tool_budget_system_message(max_rounds: int) -> str:
     return (
         "## Tool-loop budget (server)\n\n"
         f"- The server allows **at most {n}** tool-loop LLM rounds for this assistant reply (counting this completion).\n"
-        "- **This is round 1** — `tools[]` is available; use `tool_calls` when needed to answer the **user message above**.\n"
+        "- **This is round 1** — `tools[]` is available; use `tool_calls` when needed to answer the **latest user message**.\n"
         "- Avoid empty `{}` tool JSON (often normalizes to identical calls and can trigger loop guards).\n\n"
         "If work is unfinished, say so explicitly — the user may send a follow-up message."
     )
@@ -848,6 +848,68 @@ def _agent_final_round_text_only_hint(current_round: int, max_rounds: int) -> st
         "(B) If the transcript is **not** enough to answer, say that plainly and tell the user to send **one new "
         "message** to continue (a new request gets a fresh tool budget — you cannot call more tools in this reply).\n\n"
         "Do not stall with vague intent to explore — either recap what you already have, or ask for a follow-up."
+    )
+
+
+def _rewrite_delegatable_agent_tool_alias(
+    name: str,
+    args: dict[str, Any],
+    *,
+    allowed_names: set[str] | frozenset[str],
+    messages: list[dict[str, Any]],
+    caller_is_admin: bool = False,
+) -> tuple[str, dict[str, Any]] | None:
+    """Map ``agent_id`` used as tool name (e.g. ``math``) to ``delegate`` when allowed."""
+    n = (name or "").strip()
+    if not n or n in allowed_names or "delegate" not in allowed_names:
+        return None
+    from apps.backend.domain.embedded_subagent import effective_delegatable_agent_ids
+
+    if n not in effective_delegatable_agent_ids(caller_is_admin=caller_is_admin):
+        return None
+    prompt = ""
+    for key in ("prompt", "expression", "query", "task", "message"):
+        val = args.get(key)
+        if isinstance(val, str) and val.strip():
+            prompt = val.strip()
+            break
+    if not prompt:
+        prompt = (last_user_text(messages) or "").strip()
+    if not prompt:
+        return None
+    return (
+        "delegate",
+        {
+            "agent_id": n,
+            "prompt": prompt,
+            "run_subagent": True,
+        },
+    )
+
+
+def _agent_session_tool_recap_system_message(
+    batch_parts: list[str],
+    *,
+    overflow_tail: str = "",
+    user_task: str = "",
+) -> str:
+    """Post-tool status plus explicit user task so small models do not lose the request."""
+    status = ", ".join(batch_parts) + overflow_tail
+    ut = (user_task or "").strip()
+    task_section = ""
+    if ut:
+        if len(ut) > 6000:
+            ut = ut[:6000] + "\n…[truncated]"
+        task_section = (
+            "## User request (complete this now)\n\n"
+            f"{ut}\n\n"
+        )
+    return (
+        task_section
+        + "## Server tool batch status (internal — not a user message)\n\n"
+        f"Tools just executed in this reply: **{status}**.\n\n"
+        "Answer the **user request** section above using the **`tool` role payloads** in the transcript. "
+        "Call more tools if the task is incomplete; otherwise reply with the facts the user asked for."
     )
 
 
@@ -1601,12 +1663,14 @@ __all__ = [
     'PLANNER_NO_EXTRA_HINTS_AFTER_TOOL',
     '_MAX_DASHBOARD_AGENT_INSTRUCTIONS_CHARS',
     '_MAX_DASHBOARD_TOOL_ALLOWLIST_LEN',
+    '_rewrite_delegatable_agent_tool_alias',
     '_ROUNDS_DIGEST_HEADER',
     '_SECURITY_AUDITOR_READ_PINS',
     '_TOOL_RECAP_HEADER',
     '_agent_final_round_text_only_hint',
     '_agent_final_text_looks_like_placeholder_tool_markup',
     '_agent_near_max_tool_rounds_reminder',
+    '_agent_session_tool_recap_system_message',
     '_agent_tool_budget_system_message',
     '_agent_tool_doom_loop_tick',
     '_agent_tool_thrash_tick',

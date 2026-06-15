@@ -232,6 +232,7 @@ def _run_sync(
     admin_user_id: uuid.UUID | None = None,
     scenario_timeout_sec: float | None = None,
     max_tool_rounds_override: int | None = None,
+    scenario_failure_retries: int = 0,
     retain_workspaces: bool = False,
     prompt_locale: str | None = None,
 ) -> None:
@@ -308,6 +309,7 @@ def _run_sync(
             cancel_check=_cancel_check_for(run_id),
             scenario_timeout_sec=scenario_timeout_sec,
             max_tool_rounds_override=max_tool_rounds_override,
+            scenario_failure_retries=scenario_failure_retries,
             benchmark_run_id=run_id,
             cleanup_on_start=True,
             cleanup_on_finish=not retain_workspaces,
@@ -411,6 +413,7 @@ async def schedule_benchmark_run(
     admin_user_id: uuid.UUID | None = None,
     scenario_timeout_sec: float | None = None,
     max_tool_rounds_override: int | None = None,
+    scenario_failure_retries: int = 0,
     retain_workspaces: bool = False,
     prompt_locale: str | None = None,
 ) -> None:
@@ -430,6 +433,7 @@ async def schedule_benchmark_run(
             max_tool_rounds_override=max_tool_rounds_override,
             retain_workspaces=retain_workspaces,
             prompt_locale=prompt_locale,
+            scenario_failure_retries=scenario_failure_retries,
         )
 
 
@@ -447,6 +451,7 @@ async def start_benchmark_run(
     admin_user_id: uuid.UUID | None = None,
     scenario_timeout_sec: float | None = None,
     max_tool_rounds_override: int | None = None,
+    scenario_failure_retries: int = 0,
     retain_workspaces: bool = False,
     prompt_locale: str | None = None,
 ) -> dict[str, Any]:
@@ -477,6 +482,7 @@ async def start_benchmark_run(
         "admin_user_id": str(admin_user_id) if admin_user_id else None,
         "scenario_timeout_sec": scenario_timeout_sec,
         "max_tool_rounds_override": max_tool_rounds_override,
+        "scenario_failure_retries": scenario_failure_retries,
         "retain_workspaces": retain_workspaces,
         "prompt_locale": effective_locale,
     }
@@ -501,6 +507,7 @@ async def start_benchmark_run(
             admin_user_id=admin_user_id,
             scenario_timeout_sec=scenario_timeout_sec,
             max_tool_rounds_override=max_tool_rounds_override,
+            scenario_failure_retries=scenario_failure_retries,
             retain_workspaces=retain_workspaces,
             prompt_locale=effective_locale,
         )

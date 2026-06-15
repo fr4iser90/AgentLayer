@@ -64,6 +64,8 @@ def test_scenario_export_row_splits_transport_and_rubric() -> None:
     assert row["transport_error"] == "scenario timeout after 360s"
     assert row["rubric_failure"] == "no markdown block with dataPath notes"
     assert "create_dashboard" in row["insights"]
+    assert row["attempt"] == 1
+    assert row["attempts_max"] == 1
 
 
 def test_failure_export_row_includes_debug_fields() -> None:

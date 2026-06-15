@@ -109,6 +109,7 @@ def resolve_effective_model(
     profile_header: str | None,
     override_header: str | None,
     bearer_user_role: str | None,
+    embedded_subagent: bool = False,
 ) -> tuple[str, str, str, bool]:
     """
     Pick the logical model id for this chat completion (catalog provider when primary is local;
@@ -118,6 +119,15 @@ def resolve_effective_model(
     ``default`` / ``vlm`` / ``agent`` / ``coding``, and ``is_override`` is True when a
     per-request model override won (header/body).
     """
+    if embedded_subagent and not messages_contain_image_parts(messages):
+        bm = _strip_model(body_model)
+        if bm and bm.lower() not in _PROFILE_KEYS:
+            logger.info(
+                "model routing: embedded_subagent inherit parent model %r (skip anonymous override gate)",
+                bm,
+            )
+            return bm, "embedded_subagent:inherit_parent", "default", True
+
     auto_vlm = messages_contain_image_parts(messages)
     if auto_vlm:
         profile = "vlm"

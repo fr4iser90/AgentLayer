@@ -870,6 +870,177 @@ def _apply_bench_run_limits(
         body["agent_max_tool_rounds"] = max_tool_rounds_override
 
 
+def _attach_scenario_retry_metrics(
+    result: ScenarioResult,
+    *,
+    attempt: int,
+    attempts_max: int,
+    prior_failure_reasons: list[str],
+    attempt_history: list[dict[str, Any]],
+) -> ScenarioResult:
+    """Annotate a scenario result with retry attempt metadata (admin run limits)."""
+    if attempts_max <= 1:
+        return result
+    rm = dict(result.run_metrics or {})
+    rm["attempt"] = int(attempt)
+    rm["attempts_max"] = int(attempts_max)
+    if prior_failure_reasons:
+        rm["prior_failure_reasons"] = list(prior_failure_reasons)
+    if attempt_history:
+        rm["attempt_history"] = list(attempt_history)
+        rm["pass_at_1"] = bool(attempt_history[0].get("passed"))
+    result.run_metrics = rm
+    return result
+
+
+def _scenario_attempt_snapshot(result: ScenarioResult, *, attempt: int) -> dict[str, Any]:
+    """Compact per-attempt record for UI tabs and export (stored on final result)."""
+    rm = dict(result.run_metrics or {}) if isinstance(result.run_metrics, dict) else {}
+    return {
+        "attempt": int(attempt),
+        "passed": bool(result.passed),
+        "skipped": bool(result.skipped),
+        "failure_reason": result.failure_reason,
+        "rubric_failure_reason": result.rubric_failure_reason,
+        "transport_error": result.transport_error,
+        "latency_ms": float(result.latency_ms),
+        "tool_call_count": int(result.tool_call_count),
+        "tool_names": list(result.tool_names),
+        "agent_run_id": result.agent_run_id,
+        "assistant_excerpt": result.assistant_excerpt,
+        "assistant_content": result.assistant_content,
+        "assistant_content_truncated": bool(result.assistant_content_truncated),
+        "scenario_prompt": result.scenario_prompt,
+        "run_metrics": rm,
+    }
+
+
+def pass_at_1_from_result(result: ScenarioResult) -> bool | None:
+    """True when the first attempt passed (None when single attempt / skipped)."""
+    if result.skipped:
+        return None
+    rm = result.run_metrics if isinstance(result.run_metrics, dict) else {}
+    hist = rm.get("attempt_history")
+    if isinstance(hist, list) and hist:
+        return bool(hist[0].get("passed"))
+    attempts_max = int(rm.get("attempts_max") or 1)
+    if attempts_max <= 1:
+        return None
+    if "pass_at_1" in rm:
+        return bool(rm["pass_at_1"])
+    attempt = int(rm.get("attempt") or 1)
+    if attempt > 1:
+        return False
+    return bool(result.passed)
+
+
+def _execute_scenario_with_retries(
+    session: Any,
+    *,
+    profile: ModelProfile,
+    scenario: AgentScenario,
+    run_id: str,
+    fixture_ctx: FixtureContext,
+    defaults: dict[str, Any],
+    on_live: Callable[[dict[str, Any]], None] | None,
+    cancel_check: Callable[[], bool] | None,
+    scenario_timeout_sec: float | None,
+    max_tool_rounds_override: int | None,
+    benchmark_run_id: uuid.UUID | None,
+    scenario_failure_retries: int = 0,
+) -> ScenarioResult:
+    """Run a scenario up to ``1 + scenario_failure_retries`` times when rubric/transport fails."""
+    max_attempts = 1 + max(0, int(scenario_failure_retries or 0))
+    prior_failures: list[str] = []
+    attempt_history: list[dict[str, Any]] = []
+    last: ScenarioResult | None = None
+
+    for attempt in range(1, max_attempts + 1):
+        if cancel_check and cancel_check():
+            raise BenchmarkRunCancelled("Benchmark cancelled by admin")
+        try:
+            last = (
+                run_project_run_scenario(
+                    session,
+                    profile=profile,
+                    scenario=scenario,
+                    run_id=run_id,
+                    fixture_ctx=fixture_ctx,
+                    defaults=defaults,
+                    on_live=on_live,
+                )
+                if scenario.execution == "project_run"
+                else run_scenario(
+                    session.client,
+                    profile=profile,
+                    scenario=scenario,
+                    run_id=run_id,
+                    fixture_ctx=fixture_ctx,
+                    defaults=defaults,
+                    on_live=on_live,
+                    cancel_check=cancel_check,
+                    scenario_timeout_sec=scenario_timeout_sec,
+                    max_tool_rounds_override=max_tool_rounds_override,
+                    benchmark_run_id=benchmark_run_id,
+                )
+            )
+        except BenchmarkRunCancelled:
+            raise
+        except Exception as exc:
+            logger.exception(
+                "benchmark scenario %s profile %s crashed (attempt %d/%d)",
+                scenario.id,
+                profile.label,
+                attempt,
+                max_attempts,
+            )
+            last = _scenario_crash_result(
+                run_id=run_id,
+                scenario=scenario,
+                profile=profile,
+                exc=exc,
+                fixtures=list(scenario.requires),
+                fixture_ctx=fixture_ctx,
+            )
+
+        attempt_history.append(_scenario_attempt_snapshot(last, attempt=attempt))
+
+        if last.passed or last.skipped:
+            return _attach_scenario_retry_metrics(
+                last,
+                attempt=attempt,
+                attempts_max=max_attempts,
+                prior_failure_reasons=prior_failures,
+                attempt_history=attempt_history,
+            )
+
+        reason = (
+            last.rubric_failure_reason
+            or last.failure_reason
+            or last.transport_error
+            or "failed"
+        )
+        prior_failures.append(str(reason))
+        if attempt < max_attempts:
+            logger.info(
+                "benchmark scenario %s profile %s failed attempt %d/%d: %s — retrying",
+                scenario.id,
+                profile.label,
+                attempt,
+                max_attempts,
+                str(reason)[:240],
+            )
+
+    assert last is not None
+    return _attach_scenario_retry_metrics(
+        last,
+        attempt=max_attempts,
+        attempts_max=max_attempts,
+        prior_failure_reasons=prior_failures[:-1] if len(prior_failures) > 1 else [],
+        attempt_history=attempt_history,
+    )
+
+
 def run_scenario(
     client: E2EClient,
     *,
@@ -1132,12 +1303,24 @@ def run_scenario(
 def _bench_summary_from_report(report: BenchRunReport) -> dict[str, Any]:
     passed = sum(1 for r in report.results if r.passed and not r.skipped)
     executed = sum(1 for r in report.results if not r.skipped)
+    pass_at_1 = sum(
+        1 for r in report.results if not r.skipped and pass_at_1_from_result(r) is True
+    )
+    with_retries = sum(
+        1
+        for r in report.results
+        if not r.skipped
+        and isinstance(r.run_metrics, dict)
+        and int(r.run_metrics.get("attempts_max") or 1) > 1
+    )
     return {
         "passed": passed,
+        "pass_at_1": pass_at_1,
         "executed": executed,
         "total": len(report.results),
         "skipped": sum(1 for r in report.results if r.skipped),
         "profiles_source": report.profiles_source,
+        "scenarios_with_retries": with_retries,
     }
 
 
@@ -1209,6 +1392,7 @@ def run_benchmark(
     cancel_check: Callable[[], bool] | None = None,
     scenario_timeout_sec: float | None = None,
     max_tool_rounds_override: int | None = None,
+    scenario_failure_retries: int = 0,
     benchmark_run_id: uuid.UUID | str | None = None,
     cleanup_on_start: bool = True,
     cleanup_on_finish: bool = True,
@@ -1442,47 +1626,22 @@ def run_benchmark(
                     live_push(patch)
 
                 try:
-                    result = (
-                        run_project_run_scenario(
-                            session,
-                            profile=profile,
-                            scenario=scenario,
-                            run_id=run_id,
-                            fixture_ctx=fixture_ctx,
-                            defaults=defaults,
-                            on_live=_on_live,
-                        )
-                        if scenario.execution == "project_run"
-                        else run_scenario(
-                            session.client,
-                            profile=profile,
-                            scenario=scenario,
-                            run_id=run_id,
-                            fixture_ctx=fixture_ctx,
-                            defaults=defaults,
-                            on_live=_on_live,
-                            cancel_check=cancel_check,
-                            scenario_timeout_sec=scenario_timeout_sec,
-                            max_tool_rounds_override=max_tool_rounds_override,
-                            benchmark_run_id=bench_run_uuid,
-                        )
+                    result = _execute_scenario_with_retries(
+                        session,
+                        profile=profile,
+                        scenario=scenario,
+                        run_id=run_id,
+                        fixture_ctx=fixture_ctx,
+                        defaults=defaults,
+                        on_live=_on_live,
+                        cancel_check=cancel_check,
+                        scenario_timeout_sec=scenario_timeout_sec,
+                        max_tool_rounds_override=max_tool_rounds_override,
+                        benchmark_run_id=bench_run_uuid,
+                        scenario_failure_retries=scenario_failure_retries,
                     )
                 except BenchmarkRunCancelled:
                     raise
-                except Exception as exc:
-                    logger.exception(
-                        "benchmark scenario %s profile %s crashed",
-                        scenario.id,
-                        profile.label,
-                    )
-                    result = _scenario_crash_result(
-                        run_id=run_id,
-                        scenario=scenario,
-                        profile=profile,
-                        exc=exc,
-                        fixtures=list(scenario.requires),
-                        fixture_ctx=fixture_ctx,
-                    )
                 finally:
                     report.in_flight = None
                     _notify_progress(report, on_progress)
@@ -1675,12 +1834,22 @@ def scenario_export_row(result: ScenarioResult) -> dict[str, Any]:
     tools = ", ".join(result.tool_names[:12])
     if len(result.tool_names) > 12:
         tools += f" (+{len(result.tool_names) - 12})"
+    attempts_max = int(rm.get("attempts_max") or 1)
+    attempt = int(rm.get("attempt") or 1)
+    prior = rm.get("prior_failure_reasons")
+    prior_str = ""
+    if isinstance(prior, list) and prior:
+        prior_str = " | ".join(str(x) for x in prior[:8])
     return {
         "scenario_id": result.scenario_id,
         "profile_label": result.profile_label,
         "model": result.model,
         "skipped": result.skipped,
         "passed": result.passed,
+        "attempt": attempt,
+        "attempts_max": attempts_max,
+        "pass_at_1": pass_at_1_from_result(result),
+        "prior_failure_reasons": prior_str,
         "transport_error": result.transport_error or result.error or "",
         "rubric_failure": result.rubric_failure_reason or "",
         "failure_reason": result.failure_reason or "",
@@ -1691,6 +1860,92 @@ def scenario_export_row(result: ScenarioResult) -> dict[str, Any]:
         "latency_ms": round(result.latency_ms, 1),
         "agent_run_id": result.agent_run_id or "",
     }
+
+
+def scenario_attempt_export_rows(result: ScenarioResult) -> list[dict[str, Any]]:
+    """One export row per attempt when ``attempt_history`` is present."""
+    rm = result.run_metrics if isinstance(result.run_metrics, dict) else {}
+    hist = rm.get("attempt_history")
+    attempts_max = int(rm.get("attempts_max") or 1)
+    if not isinstance(hist, list) or len(hist) <= 1:
+        row = scenario_export_row(result)
+        row["attempt_is_final"] = True
+        return [row]
+    rows: list[dict[str, Any]] = []
+    final_attempt = int(rm.get("attempt") or len(hist))
+    for snap in hist:
+        if not isinstance(snap, dict):
+            continue
+        snap_rm = snap.get("run_metrics") if isinstance(snap.get("run_metrics"), dict) else {}
+        snap_tools = snap.get("tool_names")
+        if isinstance(snap_tools, list):
+            tools = ", ".join(str(x) for x in snap_tools[:12])
+        else:
+            tools = ""
+        att = int(snap.get("attempt") or 0)
+        rows.append(
+            {
+                "scenario_id": result.scenario_id,
+                "profile_label": result.profile_label,
+                "model": result.model,
+                "skipped": bool(snap.get("skipped")),
+                "passed": bool(snap.get("passed")),
+                "attempt": att,
+                "attempts_max": attempts_max,
+                "attempt_is_final": att == final_attempt,
+                "pass_at_1": bool(hist[0].get("passed")) if hist else "",
+                "prior_failure_reasons": "",
+                "transport_error": snap.get("transport_error") or "",
+                "rubric_failure": snap.get("rubric_failure_reason") or "",
+                "failure_reason": snap.get("failure_reason") or "",
+                "insights": _scenario_insights_summary(snap_rm),
+                "tool_call_count": snap.get("tool_call_count", 0),
+                "tools": tools,
+                "llm_round_count": snap_rm.get("llm_round_count", ""),
+                "latency_ms": round(float(snap.get("latency_ms") or 0), 1),
+                "agent_run_id": snap.get("agent_run_id") or "",
+            }
+        )
+    return rows or [scenario_export_row(result)]
+
+
+def _failure_row_from_snapshot(
+    result: ScenarioResult,
+    snap: dict[str, Any],
+    *,
+    resource_prefix: str | None = None,
+) -> dict[str, Any]:
+    """Failure export row for one attempt snapshot."""
+    snap_rm = snap.get("run_metrics") if isinstance(snap.get("run_metrics"), dict) else {}
+    pseudo = ScenarioResult(
+        run_id=result.run_id,
+        scenario_id=result.scenario_id,
+        profile_label=result.profile_label,
+        model=result.model,
+        catalog_owned_by=result.catalog_owned_by,
+        agent_id=result.agent_id,
+        passed=bool(snap.get("passed")),
+        score=result.score,
+        failure_reason=str(snap.get("failure_reason") or ""),
+        rubric_failure_reason=snap.get("rubric_failure_reason"),
+        transport_error=snap.get("transport_error"),
+        latency_ms=float(snap.get("latency_ms") or 0),
+        prompt_tokens=result.prompt_tokens,
+        completion_tokens=result.completion_tokens,
+        tool_call_count=int(snap.get("tool_call_count") or 0),
+        tool_names=list(snap.get("tool_names") or []),
+        agent_run_id=snap.get("agent_run_id"),
+        assistant_excerpt=str(snap.get("assistant_excerpt") or ""),
+        scenario_prompt=str(snap.get("scenario_prompt") or result.scenario_prompt),
+        assistant_content=str(snap.get("assistant_content") or ""),
+        run_metrics=snap_rm,
+    )
+    row = failure_export_row(pseudo, resource_prefix=resource_prefix)
+    row["attempt"] = int(snap.get("attempt") or 0)
+    rm = result.run_metrics if isinstance(result.run_metrics, dict) else {}
+    row["attempts_max"] = int(rm.get("attempts_max") or 1)
+    row["attempt_is_final"] = int(snap.get("attempt") or 0) == int(rm.get("attempt") or 0)
+    return row
 
 
 def failure_export_row(
@@ -1705,11 +1960,26 @@ def failure_export_row(
 
 
 def failures_from_report(report: BenchRunReport) -> list[dict[str, Any]]:
-    return [
-        failure_export_row(r, resource_prefix=report.resource_prefix)
-        for r in report.results
-        if not r.skipped and not r.passed
-    ]
+    rows: list[dict[str, Any]] = []
+    prefix = report.resource_prefix
+    for r in report.results:
+        if r.skipped:
+            continue
+        rm = r.run_metrics if isinstance(r.run_metrics, dict) else {}
+        hist = rm.get("attempt_history")
+        if isinstance(hist, list) and len(hist) > 1:
+            for snap in hist:
+                if not isinstance(snap, dict) or snap.get("passed"):
+                    continue
+                rows.append(_failure_row_from_snapshot(r, snap, resource_prefix=prefix))
+            continue
+        if not r.passed:
+            row = failure_export_row(r, resource_prefix=prefix)
+            row.setdefault("attempt", int(rm.get("attempt") or 1))
+            row.setdefault("attempts_max", int(rm.get("attempts_max") or 1))
+            row["attempt_is_final"] = True
+            rows.append(row)
+    return rows
 
 
 def write_report(report: BenchRunReport, out_dir: Path) -> Path:
@@ -1730,54 +2000,59 @@ def write_report(report: BenchRunReport, out_dir: Path) -> Path:
         )
 
     csv_path = run_dir / "summary.csv"
+    attempt_fieldnames = [
+        "scenario_id",
+        "profile_label",
+        "model",
+        "skipped",
+        "passed",
+        "attempt",
+        "attempts_max",
+        "pass_at_1",
+        "prior_failure_reasons",
+        "latency_ms",
+        "tool_call_count",
+        "compaction_count",
+        "llm_round_count",
+        "context_utilization_pct",
+        "total_tokens",
+        "transport_error",
+        "rubric_failure",
+        "failure_reason",
+        "insights",
+        "tools",
+        "agent_run_id",
+    ]
     with csv_path.open("w", encoding="utf-8", newline="") as fh:
-        writer = csv.DictWriter(
-            fh,
-            fieldnames=[
-                "scenario_id",
-                "profile_label",
-                "model",
-                "skipped",
-                "passed",
-                "score",
-                "latency_ms",
-                "tool_call_count",
-                "compaction_count",
-                "llm_round_count",
-                "context_utilization_pct",
-                "total_tokens",
-                "transport_error",
-                "rubric_failure",
-                "failure_reason",
-                "insights",
-                "tools",
-            ],
-        )
+        writer = csv.DictWriter(fh, fieldnames=attempt_fieldnames, extrasaction="ignore")
         writer.writeheader()
         for r in report.results:
             rm = r.run_metrics if isinstance(r.run_metrics, dict) else {}
             row = scenario_export_row(r)
             writer.writerow(
                 {
-                    "scenario_id": r.scenario_id,
-                    "profile_label": r.profile_label,
-                    "model": r.model,
-                    "skipped": r.skipped,
-                    "passed": r.passed,
+                    **row,
                     "score": r.score,
-                    "latency_ms": f"{r.latency_ms:.1f}",
-                    "tool_call_count": r.tool_call_count,
                     "compaction_count": rm.get("compaction_count", 0),
-                    "llm_round_count": rm.get("llm_round_count", 0),
                     "context_utilization_pct": rm.get("context_utilization_pct", ""),
                     "total_tokens": rm.get("total_tokens", ""),
-                    "transport_error": row["transport_error"],
-                    "rubric_failure": row["rubric_failure"],
-                    "failure_reason": row["failure_reason"],
-                    "insights": row["insights"],
-                    "tools": row["tools"],
                 }
             )
+
+    attempts_csv = run_dir / "attempts.csv"
+    with attempts_csv.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.DictWriter(
+            fh,
+            fieldnames=[
+                *attempt_fieldnames,
+                "attempt_is_final",
+            ],
+            extrasaction="ignore",
+        )
+        writer.writeheader()
+        for r in report.results:
+            for row in scenario_attempt_export_rows(r):
+                writer.writerow(row)
 
     failures = failures_from_report(report)
     (run_dir / "failures.json").write_text(

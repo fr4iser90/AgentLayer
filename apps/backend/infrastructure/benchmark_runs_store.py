@@ -99,6 +99,46 @@ def get_run(run_id: uuid.UUID) -> dict[str, Any] | None:
     return _serialize(dict(row)) if row else None
 
 
+def list_runs_for_stats(
+    *,
+    tenant_id: int,
+    limit: int = 200,
+    suite: str | None = None,
+    since_days: int | None = None,
+) -> list[dict[str, Any]]:
+    """Completed/failed/cancelled runs with ``report_json`` for stats aggregation."""
+    lim = max(1, min(500, int(limit)))
+    suite_norm = (suite or "").strip() or None
+    since = max(1, min(3650, int(since_days))) if since_days is not None else None
+    where = [
+        "tenant_id = %s",
+        "status IN ('completed', 'failed', 'cancelled')",
+        "report_json IS NOT NULL",
+        "jsonb_array_length(COALESCE(report_json->'results', '[]'::jsonb)) > 0",
+    ]
+    params: list[Any] = [tenant_id]
+    if suite_norm:
+        where.append("suite = %s")
+        params.append(suite_norm)
+    if since is not None:
+        where.append("created_at >= now() - (%s * interval '1 day')")
+        params.append(since)
+    params.append(lim)
+    sql = f"""
+        SELECT id, suite, status, finished_at, created_at, summary_json, report_json
+        FROM benchmark_runs
+        WHERE {' AND '.join(where)}
+        ORDER BY created_at DESC
+        LIMIT %s
+    """
+    with db.pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(sql, params)
+            rows = [dict(r) for r in cur.fetchall()]
+        conn.commit()
+    return [_serialize(r) for r in rows]
+
+
 def list_runs(*, tenant_id: int, limit: int = 50) -> list[dict[str, Any]]:
     lim = max(1, min(100, int(limit)))
     with db.pool().connection() as conn:
@@ -197,3 +237,32 @@ def delete_run(*, run_id: uuid.UUID, tenant_id: int) -> str:
             deleted = cur.rowcount > 0
         conn.commit()
     return "deleted" if deleted else "not_found"
+
+
+def delete_finished_runs(
+    *,
+    tenant_id: int,
+    suite: str | None = None,
+    older_than_days: int | None = None,
+) -> int:
+    """Delete finished benchmark runs (not queued/running). Returns rows deleted."""
+    suite_norm = (suite or "").strip() or None
+    older = max(1, min(3650, int(older_than_days))) if older_than_days is not None else None
+    where = [
+        "tenant_id = %s",
+        "status IN ('completed', 'failed', 'cancelled')",
+    ]
+    params: list[Any] = [tenant_id]
+    if suite_norm:
+        where.append("suite = %s")
+        params.append(suite_norm)
+    if older is not None:
+        where.append("created_at < now() - (%s * interval '1 day')")
+        params.append(older)
+    sql = f"DELETE FROM benchmark_runs WHERE {' AND '.join(where)}"
+    with db.pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, params)
+            deleted = int(cur.rowcount or 0)
+        conn.commit()
+    return deleted

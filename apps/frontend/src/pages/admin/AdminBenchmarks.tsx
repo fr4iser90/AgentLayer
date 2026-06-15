@@ -13,6 +13,7 @@ import {
   fetchBenchmarkSuites,
   deleteBenchmarkRun,
   cancelBenchmarkRun,
+  bulkDeleteBenchmarkRuns,
   cleanupBenchmarkResources,
   startBenchmarkRun,
   userOptionLabel,
@@ -30,12 +31,19 @@ import {
 } from "../../features/admin/benchmarks/benchmarksApi";
 import { CopyScenarioDetailsButton } from "../../features/admin/benchmarks/CopyScenarioDetailsButton";
 import {
+  downloadAttemptsCsv,
   downloadFailuresCsv,
   downloadFailuresJson,
   downloadFullReportJson,
   failuresFromResults,
   type BenchExportRow,
 } from "../../features/admin/benchmarks/benchExport";
+import {
+  attemptHistoryFromResult,
+  effectiveScenarioForDetail,
+  formatBenchmarkResultStatus,
+  hasMultipleAttempts,
+} from "../../features/admin/benchmarks/benchAttemptUtils";
 import {
   loadBenchRunPrefs,
   saveBenchRunPrefs,
@@ -47,27 +55,16 @@ import {
   type ModelCatalogAgentlayer,
   type ModelRow,
 } from "../../lib/modelCatalog";
+import { BenchmarkStatsPanel } from "../../features/admin/benchmarks/BenchmarkStatsPanel";
 import { ConfirmModal } from "../../components/ConfirmModal";
 
-function defaultProviderModel(p: BenchmarkLlmProvider): string {
-  return (p.model_agent || p.model_default || p.model_coding || "").trim();
-}
-
-function buildProfilesFromSelection(
-  providers: BenchmarkLlmProvider[],
-  selectedIds: ReadonlySet<string>,
-  modelById: ReadonlyMap<string, string>
-): BenchmarkProfileInput[] {
-  return providers
-    .filter((p) => selectedIds.has(p.catalog_owned_by))
-    .map((p) => ({
-      catalog_owned_by: p.catalog_owned_by,
-      endpoint_id: p.endpoint_id ?? undefined,
-      label: p.label || p.catalog_owned_by,
-      model: (modelById.get(p.catalog_owned_by) || defaultProviderModel(p)).trim(),
-    }))
-    .filter((p) => p.model.length > 0);
-}
+import {
+  buildProfilesFromSelection,
+  countProfilesFromSelection,
+  defaultProviderModel,
+  modelsByProviderFromRecord,
+} from "../../features/admin/benchmarks/benchProfileSelection";
+import { formatBenchmarkProviderModel } from "../../features/admin/benchmarks/benchDisplayUtils";
 
 function resolveInitialProviderModel(
   p: BenchmarkLlmProvider,
@@ -83,11 +80,27 @@ function resolveInitialProviderModel(
   return current || envDefault;
 }
 
-function formatBenchmarkProviderModel(res: BenchmarkScenarioResult): string {
-  const provider = (res.profile_label || res.catalog_owned_by || "").trim();
-  const model = (res.model || "").trim();
-  if (provider && model) return `${provider} / ${model}`;
-  return provider || model || "—";
+function isFinishedBenchmarkRun(run: BenchmarkRun): boolean {
+  return run.status !== "queued" && run.status !== "running";
+}
+
+function runMatchesBulkDeleteFilters(
+  run: BenchmarkRun,
+  suite: string,
+  olderThanDays: string
+): boolean {
+  if (!isFinishedBenchmarkRun(run)) return false;
+  if (suite.trim() && run.suite !== suite.trim()) return false;
+  const daysRaw = olderThanDays.trim();
+  if (daysRaw) {
+    const days = Number(daysRaw);
+    if (!Number.isFinite(days) || days < 1) return false;
+    const created = Date.parse(run.created_at || "");
+    if (Number.isNaN(created)) return false;
+    const cutoff = Date.now() - days * 86_400_000;
+    if (created >= cutoff) return false;
+  }
+  return true;
 }
 
 function resolveScenarioResponse(res: BenchmarkScenarioResult): string {
@@ -169,10 +182,7 @@ function formatInFlightElapsed(inFlight: BenchmarkInFlight): number | null {
 }
 
 function formatInFlightProviderModel(inFlight: BenchmarkInFlight): string {
-  const provider = (inFlight.profile_label || inFlight.catalog_owned_by || "").trim();
-  const model = (inFlight.model || "").trim();
-  if (provider && model) return `${provider} / ${model}`;
-  return provider || model || "—";
+  return formatBenchmarkProviderModel(inFlight);
 }
 
 function formatInFlightPromptTokens(inFlight: BenchmarkInFlight): string | null {
@@ -338,7 +348,7 @@ function BenchmarkFailuresSummary({
           <thead className="sticky top-0 bg-rose-950/80 text-surface-muted">
             <tr>
               <th className="py-1 pr-2">{t("admin:benchFailuresSummaryColScenario")}</th>
-              <th className="py-1 pr-2">{t("admin:benchFailuresSummaryColProfile")}</th>
+              <th className="py-1 pr-2">{t("admin:benchColProviderModel")}</th>
               <th className="py-1 pr-2">{t("admin:benchFailuresSummaryColTransport")}</th>
               <th className="py-1 pr-2">{t("admin:benchFailuresSummaryColRubric")}</th>
               <th className="py-1 pr-2">{t("admin:benchFailuresSummaryColInsights")}</th>
@@ -349,8 +359,7 @@ function BenchmarkFailuresSummary({
               <tr key={`${row.scenario_id}-${row.profile_label}-${i}`} className="border-t border-white/5">
                 <td className="py-1 pr-2 font-mono align-top">{row.scenario_id}</td>
                 <td className="py-1 pr-2 font-mono align-top text-[10px]">
-                  {row.profile_label}
-                  {row.model ? ` / ${row.model}` : ""}
+                  {formatBenchmarkProviderModel(row)}
                 </td>
                 <td className="py-1 pr-2 align-top text-amber-200/90 max-w-[10rem]">
                   {row.transport_error || "—"}
@@ -380,6 +389,68 @@ function summarizeToolRounds(
     counts.set(name, (counts.get(name) ?? 0) + 1);
   }
   return [...counts.entries()].map(([name, n]) => (n > 1 ? `${name} ×${n}` : name)).join(", ");
+}
+
+function BenchmarkScenarioDetailWithAttempts({
+  res,
+  t,
+  selectedAttemptIndex,
+  onSelectAttempt,
+}: {
+  res: BenchmarkScenarioResult;
+  t: (key: string, options?: Record<string, unknown>) => string;
+  selectedAttemptIndex: number;
+  onSelectAttempt: (index: number) => void;
+}) {
+  const hist = attemptHistoryFromResult(res);
+  const displayRes = effectiveScenarioForDetail(res, selectedAttemptIndex);
+  const prior = res.run_metrics?.prior_failure_reasons;
+
+  return (
+    <div className="space-y-2">
+      {hist.length > 1 ? (
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="mr-1 text-[11px] text-surface-muted">{t("admin:benchAttemptTabs")}:</span>
+          {hist.map((snap, idx) => {
+            const active = idx === selectedAttemptIndex;
+            const label = `${snap.attempt}/${res.run_metrics?.attempts_max ?? hist.length}`;
+            return (
+              <button
+                key={`${snap.attempt}-${idx}`}
+                type="button"
+                onClick={() => onSelectAttempt(idx)}
+                className={`rounded px-2 py-0.5 font-mono text-[11px] ${
+                  active
+                    ? "bg-sky-600 text-white"
+                    : "border border-white/15 bg-black/30 text-white/80 hover:bg-white/10"
+                }`}
+                title={
+                  snap.passed
+                    ? t("admin:benchAttemptPass")
+                    : String(snap.failure_reason || snap.rubric_failure_reason || "FAIL")
+                }
+              >
+                {label} {snap.passed ? "✓" : "✗"}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+      {Array.isArray(prior) && prior.length > 0 ? (
+        <div className="rounded border border-white/10 bg-black/25 p-2 text-[11px]">
+          <div className="mb-1 font-medium text-surface-muted">{t("admin:benchPriorAttempts")}</div>
+          <ul className="list-inside list-disc space-y-0.5 text-white/75">
+            {prior.map((reason, i) => (
+              <li key={`prior-${i}`}>
+                #{i + 1} — {reason}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      <BenchmarkScenarioDetail res={displayRes} t={t} />
+    </div>
+  );
 }
 
 function BenchmarkScenarioDetail({
@@ -736,7 +807,7 @@ export function AdminBenchmarks() {
   const { t } = useTranslation(["admin"]);
   const auth = useAuth();
   const { user: authUser } = auth;
-  const [tab, setTab] = useState<"run" | "history">("run");
+  const [tab, setTab] = useState<"run" | "history" | "stats">("run");
   const [suites, setSuites] = useState<BenchmarkSuite[]>([]);
   const [catalogFixtures, setCatalogFixtures] = useState<BenchmarkFixture[]>([]);
   const [tenantUsers, setTenantUsers] = useState<AdminUserRow[]>([]);
@@ -760,8 +831,8 @@ export function AdminBenchmarks() {
   const [selectedProviderIds, setSelectedProviderIds] = useState<Set<string>>(
     () => new Set(_savedBenchPrefs?.selectedProviderIds ?? [])
   );
-  const [modelByProviderId, setModelByProviderId] = useState<Map<string, string>>(
-    () => new Map(Object.entries(_savedBenchPrefs?.modelByProviderId ?? {}))
+  const [modelsByProviderId, setModelsByProviderId] = useState<Map<string, string[]>>(
+    () => modelsByProviderFromRecord(_savedBenchPrefs?.modelsByProviderId)
   );
   const [catalogRows, setCatalogRows] = useState<ModelRow[]>([]);
   const [catalogAgentlayer, setCatalogAgentlayer] = useState<ModelCatalogAgentlayer | null>(null);
@@ -769,6 +840,7 @@ export function AdminBenchmarks() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<BenchmarkRun | null>(null);
   const [expandedResultKey, setExpandedResultKey] = useState<string | null>(null);
+  const [attemptTabByRow, setAttemptTabByRow] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
@@ -781,11 +853,20 @@ export function AdminBenchmarks() {
   const [maxToolRoundsOverride, setMaxToolRoundsOverride] = useState(
     _savedBenchPrefs?.maxToolRoundsOverride ?? ""
   );
+  const [scenarioFailureRetries, setScenarioFailureRetries] = useState(
+    _savedBenchPrefs?.scenarioFailureRetries ?? "0"
+  );
   const [retainWorkspaces, setRetainWorkspaces] = useState(
     _savedBenchPrefs?.retainWorkspaces ?? false
   );
   const [deletingRunId, setDeletingRunId] = useState<string | null>(null);
   const [deleteRunTarget, setDeleteRunTarget] = useState<BenchmarkRun | null>(null);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleteSuite, setBulkDeleteSuite] = useState("");
+  const [bulkDeleteOlderThanDays, setBulkDeleteOlderThanDays] = useState("");
+  const [bulkDeletePreviewLoading, setBulkDeletePreviewLoading] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [statsRefreshToken, setStatsRefreshToken] = useState(0);
   const scenariosBySuiteRef = useRef<Record<string, string[]>>(
     _savedBenchPrefs?.scenariosBySuite ?? {}
   );
@@ -807,6 +888,16 @@ export function AdminBenchmarks() {
   }, [suiteDetail, selectedScenarioIds]);
 
   const benchProviders = useMemo(() => llmProviders.filter((p) => Boolean(p.base_url?.trim())), [llmProviders]);
+
+  const selectedProfileCount = useMemo(
+    () => countProfilesFromSelection(benchProviders, selectedProviderIds, modelsByProviderId),
+    [benchProviders, selectedProviderIds, modelsByProviderId]
+  );
+
+  const estimatedRunCount = useMemo(() => {
+    if (!selectedProfileCount || !selectedScenarioIds.size) return 0;
+    return selectedProfileCount * selectedScenarioIds.size;
+  }, [selectedProfileCount, selectedScenarioIds.size]);
 
   const showFriendPicker = autoFixtures.has("friend_pair");
 
@@ -890,9 +981,10 @@ export function AdminBenchmarks() {
       promptLocale,
       scenarioTimeoutSec,
       maxToolRoundsOverride,
+      scenarioFailureRetries,
       retainWorkspaces,
       selectedProviderIds: [...selectedProviderIds],
-      modelByProviderId: Object.fromEntries(modelByProviderId.entries()),
+      modelsByProviderId: Object.fromEntries(modelsByProviderId.entries()),
       scenariosBySuite: scenariosBySuiteRef.current,
       extraFixturesBySuite: extraFixturesBySuiteRef.current,
     });
@@ -903,9 +995,10 @@ export function AdminBenchmarks() {
     promptLocale,
     scenarioTimeoutSec,
     maxToolRoundsOverride,
+    scenarioFailureRetries,
     retainWorkspaces,
     selectedProviderIds,
-    modelByProviderId,
+    modelsByProviderId,
     selectedScenarioIds,
     extraFixtureIds,
   ]);
@@ -946,13 +1039,20 @@ export function AdminBenchmarks() {
         }
         return new Set(usable.map((p) => p.catalog_owned_by));
       });
-      setModelByProviderId((prev) => {
+      setModelsByProviderId((prev) => {
         const next = new Map(prev);
         usable.forEach((p) => {
-          next.set(
-            p.catalog_owned_by,
-            resolveInitialProviderModel(p, modelCatalog.rows, prev.get(p.catalog_owned_by))
-          );
+          const existing = next.get(p.catalog_owned_by) ?? [];
+          if (existing.length) {
+            const defaultModel = resolveInitialProviderModel(p, modelCatalog.rows, existing[0]);
+            next.set(
+              p.catalog_owned_by,
+              existing.map((m, i) => (i === 0 ? defaultModel : m)).filter(Boolean)
+            );
+          } else {
+            const resolved = resolveInitialProviderModel(p, modelCatalog.rows, undefined);
+            if (resolved) next.set(p.catalog_owned_by, [resolved]);
+          }
         });
         return next;
       });
@@ -1063,14 +1163,25 @@ export function AdminBenchmarks() {
     });
   };
 
-  const loadRuns = useCallback(async () => {
+  const loadRuns = useCallback(async (opts?: { silent?: boolean }) => {
     try {
-      const list = await fetchBenchmarkRuns(auth);
+      const list = await fetchBenchmarkRuns(auth, 100);
       setRuns(list);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("admin:benchLoadFailed"));
+      if (!opts?.silent) {
+        setError(e instanceof Error ? e.message : t("admin:benchLoadFailed"));
+      }
     }
   }, [auth, t]);
+
+  const refreshBulkDeletePreview = useCallback(async () => {
+    setBulkDeletePreviewLoading(true);
+    try {
+      await loadRuns({ silent: true });
+    } finally {
+      setBulkDeletePreviewLoading(false);
+    }
+  }, [loadRuns]);
 
   useEffect(() => {
     void loadMeta();
@@ -1081,7 +1192,7 @@ export function AdminBenchmarks() {
   }, [persistBenchRunPrefs]);
 
   useEffect(() => {
-    if (tab === "history") void loadRuns();
+    if (tab === "history" || tab === "stats") void loadRuns();
   }, [tab, loadRuns]);
 
   useEffect(() => {
@@ -1113,6 +1224,19 @@ export function AdminBenchmarks() {
   const selectedRun = useMemo(
     () => runs.find((r) => r.id === selectedId) ?? null,
     [runs, selectedId]
+  );
+
+  const historySuiteOptions = useMemo(
+    () => [...new Set(runs.map((r) => r.suite).filter(Boolean))].sort(),
+    [runs]
+  );
+
+  const bulkDeletePreviewCount = useMemo(
+    () =>
+      runs.filter((r) =>
+        runMatchesBulkDeleteFilters(r, bulkDeleteSuite, bulkDeleteOlderThanDays)
+      ).length,
+    [runs, bulkDeleteSuite, bulkDeleteOlderThanDays]
   );
 
   const pollRunning = useMemo(
@@ -1161,13 +1285,13 @@ export function AdminBenchmarks() {
         next.add(id);
         const p = benchProviders.find((row) => row.catalog_owned_by === id);
         if (p) {
-          setModelByProviderId((models) => {
-            const current = (models.get(id) ?? defaultProviderModel(p)).trim();
-            if (current) return models;
+          setModelsByProviderId((models) => {
+            const current = models.get(id) ?? [];
+            if (current.length) return models;
             const resolved = resolveInitialProviderModel(p, catalogRows, undefined);
             if (!resolved) return models;
             const nextModels = new Map(models);
-            nextModels.set(id, resolved);
+            nextModels.set(id, [resolved]);
             return nextModels;
           });
         }
@@ -1178,12 +1302,70 @@ export function AdminBenchmarks() {
 
   const selectAllProviders = () => {
     setSelectedProviderIds(new Set(benchProviders.map((p) => p.catalog_owned_by)));
+    setModelsByProviderId((prev) => {
+      const next = new Map(prev);
+      benchProviders.forEach((p) => {
+        if ((next.get(p.catalog_owned_by) ?? []).length) return;
+        const resolved = resolveInitialProviderModel(p, catalogRows, undefined);
+        if (resolved) next.set(p.catalog_owned_by, [resolved]);
+      });
+      return next;
+    });
   };
 
-  const setProviderModel = (id: string, model: string) => {
-    setModelByProviderId((prev) => {
+  const toggleProviderModel = (providerId: string, model: string) => {
+    const trimmed = model.trim();
+    if (!trimmed) return;
+    setModelsByProviderId((prev) => {
       const next = new Map(prev);
-      next.set(id, model);
+      const current = [...(next.get(providerId) ?? [])];
+      const idx = current.indexOf(trimmed);
+      if (idx >= 0) current.splice(idx, 1);
+      else current.push(trimmed);
+      if (current.length) next.set(providerId, current);
+      else next.delete(providerId);
+      return next;
+    });
+  };
+
+  const setProviderCustomModel = (providerId: string, index: number, model: string) => {
+    setModelsByProviderId((prev) => {
+      const next = new Map(prev);
+      const current = [...(next.get(providerId) ?? [])];
+      while (current.length <= index) current.push("");
+      current[index] = model;
+      const cleaned = current.map((m) => m.trim()).filter(Boolean);
+      if (cleaned.length) next.set(providerId, cleaned);
+      else next.delete(providerId);
+      return next;
+    });
+  };
+
+  const addProviderCustomModel = (providerId: string) => {
+    setModelsByProviderId((prev) => {
+      const next = new Map(prev);
+      const current = [...(next.get(providerId) ?? [])];
+      current.push("");
+      next.set(providerId, current);
+      return next;
+    });
+  };
+
+  const removeProviderCustomModel = (providerId: string, index: number) => {
+    setModelsByProviderId((prev) => {
+      const next = new Map(prev);
+      const current = [...(next.get(providerId) ?? [])];
+      current.splice(index, 1);
+      if (current.length) next.set(providerId, current);
+      else next.delete(providerId);
+      return next;
+    });
+  };
+
+  const selectAllProviderModels = (providerId: string, catalogModels: string[]) => {
+    setModelsByProviderId((prev) => {
+      const next = new Map(prev);
+      next.set(providerId, [...catalogModels]);
       return next;
     });
   };
@@ -1194,7 +1376,7 @@ export function AdminBenchmarks() {
     const profiles = buildProfilesFromSelection(
       benchProviders,
       selectedProviderIds,
-      modelByProviderId
+      modelsByProviderId
     );
     if (!profiles.length) {
       setError(
@@ -1216,8 +1398,10 @@ export function AdminBenchmarks() {
     const extras = [...extraFixtureIds].filter((id) => !autoFixtures.has(id));
     const timeoutRaw = scenarioTimeoutSec.trim();
     const maxRoundsRaw = maxToolRoundsOverride.trim();
+    const retriesRaw = scenarioFailureRetries.trim();
     const parsedTimeout = timeoutRaw ? Number(timeoutRaw) : NaN;
     const parsedMaxRounds = maxRoundsRaw ? Number(maxRoundsRaw) : NaN;
+    const parsedRetries = retriesRaw === "" ? 0 : Number(retriesRaw);
     if (timeoutRaw && (!Number.isFinite(parsedTimeout) || parsedTimeout < 30)) {
       setError(t("admin:benchTimeoutInvalid"));
       setStarting(false);
@@ -1225,6 +1409,16 @@ export function AdminBenchmarks() {
     }
     if (maxRoundsRaw && (!Number.isFinite(parsedMaxRounds) || parsedMaxRounds < 1)) {
       setError(t("admin:benchMaxRoundsInvalid"));
+      setStarting(false);
+      return;
+    }
+    if (
+      !Number.isFinite(parsedRetries) ||
+      parsedRetries < 0 ||
+      parsedRetries > 20 ||
+      !Number.isInteger(parsedRetries)
+    ) {
+      setError(t("admin:benchScenarioFailureRetriesInvalid"));
       setStarting(false);
       return;
     }
@@ -1238,6 +1432,7 @@ export function AdminBenchmarks() {
         friend_user_id: showFriendPicker && friendUserId ? friendUserId : undefined,
         scenario_timeout_sec: timeoutRaw ? parsedTimeout : undefined,
         max_tool_rounds_override: maxRoundsRaw ? Math.floor(parsedMaxRounds) : undefined,
+        scenario_failure_retries: parsedRetries,
         retain_workspaces: retainWorkspaces || undefined,
         prompt_locale: promptLocale,
       });
@@ -1307,6 +1502,47 @@ export function AdminBenchmarks() {
     }
   };
 
+  const openBulkDeleteDialog = useCallback(
+    (prefill?: { suite?: string }) => {
+      setBulkDeleteSuite(prefill?.suite?.trim() ?? "");
+      setBulkDeleteOlderThanDays("");
+      setBulkDeleteOpen(true);
+      void refreshBulkDeletePreview();
+    },
+    [refreshBulkDeletePreview]
+  );
+
+  const confirmBulkDeleteRuns = async () => {
+    setBulkDeleting(true);
+    setError(null);
+    try {
+      const deleted = await bulkDeleteBenchmarkRuns(auth, {
+        suite: bulkDeleteSuite.trim() || null,
+        older_than_days: bulkDeleteOlderThanDays.trim()
+          ? Number(bulkDeleteOlderThanDays)
+          : null,
+      });
+      setBulkDeleteOpen(false);
+      const prevSelected = selectedId;
+      await loadRuns();
+      setStatsRefreshToken((n) => n + 1);
+      if (prevSelected) {
+        const list = await fetchBenchmarkRuns(auth, 100);
+        if (!list.some((r) => r.id === prevSelected)) {
+          setSelectedId(null);
+          setDetail(null);
+        }
+      }
+      if (deleted === 0) {
+        setError(t("admin:benchBulkDeleteNone"));
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("admin:benchBulkDeleteFailed"));
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden p-4">
       <div className="shrink-0">
@@ -1339,6 +1575,15 @@ export function AdminBenchmarks() {
           }`}
         >
           {t("admin:benchTabHistory")}
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("stats")}
+          className={`rounded-lg px-3 py-1.5 text-sm ${
+            tab === "stats" ? "bg-white/15 text-white" : "text-surface-muted hover:bg-white/5"
+          }`}
+        >
+          {t("admin:benchTabStats")}
         </button>
       </div>
 
@@ -1498,6 +1743,16 @@ export function AdminBenchmarks() {
               <div>
                 <h2 className="text-sm font-medium text-white">{t("admin:benchProfiles")}</h2>
                 <p className="text-xs text-surface-muted">{t("admin:benchDbProfilesSelectHint")}</p>
+                {benchProviders.length ? (
+                  <p className="mt-1 text-[11px] text-surface-muted">
+                    {t("admin:benchProfileCount", {
+                      count: selectedProfileCount,
+                    })}
+                    {estimatedRunCount > 0
+                      ? ` · ${t("admin:benchEstimatedRuns", { count: estimatedRunCount })}`
+                      : ""}
+                  </p>
+                ) : null}
               </div>
               {benchProviders.length ? (
                 <button
@@ -1514,7 +1769,7 @@ export function AdminBenchmarks() {
               <div className="mt-3 space-y-2">
                 {benchProviders.map((p) => {
                   const checked = selectedProviderIds.has(p.catalog_owned_by);
-                  const model = modelByProviderId.get(p.catalog_owned_by) ?? defaultProviderModel(p);
+                  const selectedModels = modelsByProviderId.get(p.catalog_owned_by) ?? [];
                   const catalogModels = catalogModelIdsForProvider(catalogRows, p.catalog_owned_by);
                   const providerUnreachable = isProviderCatalogUnreachable(
                     p.catalog_owned_by,
@@ -1550,46 +1805,101 @@ export function AdminBenchmarks() {
                             {p.endpoint_id != null ? (
                               <span className="font-mono text-surface-muted">db id={p.endpoint_id}</span>
                             ) : null}
+                            {checked && selectedModels.length ? (
+                              <span className="rounded bg-sky-950/50 px-1.5 py-0.5 text-[10px] text-sky-200">
+                                {t("admin:benchModelsSelected", { count: selectedModels.length })}
+                              </span>
+                            ) : null}
                           </div>
                           <p className="mt-1 text-surface-muted">{p.base_url}</p>
                         </div>
                       </label>
                       {checked ? (
-                        <label className="mt-3 block text-xs">
-                          <span className="text-surface-muted">{t("admin:benchModel")}</span>
+                        <div className="mt-3 text-xs">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="text-surface-muted">{t("admin:benchModels")}</span>
+                            {catalogModels.length > 1 ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  selectAllProviderModels(p.catalog_owned_by, catalogModels)
+                                }
+                                className="text-sky-400 hover:underline"
+                              >
+                                {t("admin:benchSelectAllModels")}
+                              </button>
+                            ) : null}
+                          </div>
                           {catalogModels.length > 0 ? (
-                            <select
-                              value={model}
-                              onChange={(e) => setProviderModel(p.catalog_owned_by, e.target.value)}
-                              className="mt-1 w-full rounded border border-white/10 bg-black/40 px-2 py-1.5 text-sm font-mono text-white"
-                            >
-                              {!catalogModels.includes(model) && model ? (
-                                <option value={model}>{model}</option>
-                              ) : null}
-                              {catalogModels.map((id) => (
-                                <option key={id} value={id}>
-                                  {id}
-                                </option>
-                              ))}
-                            </select>
+                            <div className="mt-2 max-h-52 space-y-1 overflow-y-auto rounded border border-white/5 bg-black/20 p-2">
+                              {catalogModels.map((id) => {
+                                const isOn = selectedModels.includes(id);
+                                return (
+                                  <label
+                                    key={id}
+                                    className={`flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 ${
+                                      isOn ? "bg-sky-950/40" : "hover:bg-white/5"
+                                    }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isOn}
+                                      onChange={() => toggleProviderModel(p.catalog_owned_by, id)}
+                                    />
+                                    <span className="font-mono text-[11px] text-white">{id}</span>
+                                  </label>
+                                );
+                              })}
+                            </div>
                           ) : (
-                            <>
-                              <input
-                                value={model}
-                                onChange={(e) => setProviderModel(p.catalog_owned_by, e.target.value)}
-                                className="mt-1 w-full rounded border border-white/10 bg-black/40 px-2 py-1.5 text-sm font-mono"
-                                placeholder={defaultProviderModel(p) || t("admin:benchModelMissing")}
-                              />
-                              <p className="mt-1 text-surface-muted">
+                            <div className="mt-2 space-y-2">
+                              {(selectedModels.length ? selectedModels : [""]).map((model, idx) => (
+                                <div key={`${p.catalog_owned_by}-${idx}`} className="flex gap-2">
+                                  <input
+                                    value={model}
+                                    onChange={(e) =>
+                                      setProviderCustomModel(
+                                        p.catalog_owned_by,
+                                        idx,
+                                        e.target.value
+                                      )
+                                    }
+                                    className="min-w-0 flex-1 rounded border border-white/10 bg-black/40 px-2 py-1.5 text-sm font-mono"
+                                    placeholder={
+                                      defaultProviderModel(p) || t("admin:benchModelMissing")
+                                    }
+                                  />
+                                  {selectedModels.length > 1 ? (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        removeProviderCustomModel(p.catalog_owned_by, idx)
+                                      }
+                                      className="shrink-0 rounded border border-white/10 px-2 text-surface-muted hover:text-rose-300"
+                                      aria-label={t("admin:benchRemoveModel")}
+                                    >
+                                      ×
+                                    </button>
+                                  ) : null}
+                                </div>
+                              ))}
+                              <button
+                                type="button"
+                                onClick={() => addProviderCustomModel(p.catalog_owned_by)}
+                                className="text-sky-400 hover:underline"
+                              >
+                                {t("admin:benchAddModel")}
+                              </button>
+                              <p className="text-surface-muted">
                                 {providerUnreachable
                                   ? t("admin:benchModelCatalogUnreachable", {
                                       detail: providerDetail || p.base_url,
                                     })
                                   : t("admin:benchModelCatalogEmpty")}
                               </p>
-                            </>
+                            </div>
                           )}
-                        </label>
+                        </div>
                       ) : null}
                     </div>
                   );
@@ -1785,6 +2095,21 @@ export function AdminBenchmarks() {
                   {t("admin:benchMaxToolRoundsHint")}
                 </span>
               </label>
+              <label className="block text-sm">
+                <span className="text-surface-muted">{t("admin:benchScenarioFailureRetries")}</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={20}
+                  value={scenarioFailureRetries}
+                  onChange={(e) => setScenarioFailureRetries(e.target.value)}
+                  placeholder={t("admin:benchScenarioFailureRetriesPlaceholder")}
+                  className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                />
+                <span className="mt-1 block text-[11px] text-surface-muted">
+                  {t("admin:benchScenarioFailureRetriesHint")}
+                </span>
+              </label>
             </div>
             <button
               type="button"
@@ -1807,17 +2132,27 @@ export function AdminBenchmarks() {
       {tab === "history" ? (
         <div className="flex min-h-0 flex-1 gap-4 overflow-hidden">
           <div className="flex w-80 shrink-0 flex-col overflow-hidden rounded-xl border border-surface-border bg-surface-raised/40">
-            <div className="flex items-center justify-between border-b border-white/5 px-3 py-2">
+            <div className="flex items-center justify-between gap-2 border-b border-white/5 px-3 py-2">
               <span className="text-xs font-medium uppercase text-surface-muted">
                 {t("admin:benchHistory")}
               </span>
-              <button
-                type="button"
-                onClick={() => void loadRuns()}
-                className="text-xs text-sky-400"
-              >
-                {t("admin:agentTracesRefresh")}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => openBulkDeleteDialog()}
+                  disabled={pollRunning || bulkDeleting}
+                  className="text-xs text-rose-300/90 hover:underline disabled:opacity-40"
+                >
+                  {t("admin:benchBulkDeleteHistory")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void loadRuns()}
+                  className="text-xs text-sky-400"
+                >
+                  {t("admin:agentTracesRefresh")}
+                </button>
+              </div>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto">
               {runs.length === 0 ? (
@@ -1958,7 +2293,12 @@ export function AdminBenchmarks() {
                     <p>
                       {t("admin:benchRunLive")}
                       {(detail.summary_json?.executed ?? 0) > 0
-                        ? ` · ${detail.summary_json?.passed ?? 0}/${detail.summary_json?.executed ?? 0} ${t("admin:benchRunLiveProgress")}`
+                        ? ` · ${detail.summary_json?.passed ?? 0}/${detail.summary_json?.executed ?? 0} ${t("admin:benchRunLiveProgress")}${
+                            detail.summary_json?.pass_at_1 != null &&
+                            (detail.summary_json.executed ?? 0) > 0
+                              ? ` · pass@1 ${detail.summary_json.pass_at_1}/${detail.summary_json.executed}`
+                              : ""
+                          }`
                         : ""}
                     </p>
                     {detail.report_json?.in_flight ? (
@@ -1990,6 +2330,13 @@ export function AdminBenchmarks() {
                 ) : null}
                 {(detail.report_json?.results?.length ?? 0) > 0 ? (
                   <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="rounded border border-white/15 bg-black/30 px-2.5 py-1 text-[11px] text-white/90 hover:bg-white/10"
+                      onClick={() => downloadAttemptsCsv(detail)}
+                    >
+                      {t("admin:benchExportAttemptsCsv")}
+                    </button>
                     <button
                       type="button"
                       className="rounded border border-white/15 bg-black/30 px-2.5 py-1 text-[11px] text-white/90 hover:bg-white/10"
@@ -2089,6 +2436,9 @@ export function AdminBenchmarks() {
                     {(detail.report_json?.results ?? []).map((res, i) => {
                       const rowKey = `${res.scenario_id}-${i}`;
                       const expanded = expandedResultKey === rowKey;
+                      const hist = attemptHistoryFromResult(res);
+                      const attemptIdx =
+                        attemptTabByRow[rowKey] ?? (hist.length > 0 ? hist.length - 1 : 0);
                       const canExpand = scenarioHasDiagnostics(res) || Boolean(res.failure_reason);
                       return (
                         <Fragment key={rowKey}>
@@ -2123,14 +2473,19 @@ export function AdminBenchmarks() {
                               {res.run_metrics?.project_run_status
                                 ? `${res.run_metrics.project_run_status} · `
                                 : ""}
-                              {res.skipped ? "SKIP" : res.passed ? "PASS" : "FAIL"}
+                              {formatBenchmarkResultStatus(res)}
                               {!res.skipped && !res.passed ? (
                                 <span className="ml-1 text-surface-muted">
                                   — {formatResultFailureLine(res, t)}
                                 </span>
-                              ) : res.failure_reason ? (
+                              ) : res.failure_reason && res.skipped ? (
                                 <span className="ml-1 text-surface-muted">
                                   — {res.failure_reason}
+                                </span>
+                              ) : null}
+                              {hasMultipleAttempts(res) && res.passed && res.run_metrics?.pass_at_1 === false ? (
+                                <span className="ml-1 text-amber-400/90">
+                                  ({t("admin:benchPassAt1Miss")})
                                 </span>
                               ) : null}
                             </td>
@@ -2163,7 +2518,14 @@ export function AdminBenchmarks() {
                           {expanded ? (
                             <tr className="border-t border-white/5">
                               <td colSpan={8} className="py-2 pr-2">
-                                <BenchmarkScenarioDetail res={res} t={t} />
+                                <BenchmarkScenarioDetailWithAttempts
+                                  res={res}
+                                  t={t}
+                                  selectedAttemptIndex={attemptIdx}
+                                  onSelectAttempt={(idx) =>
+                                    setAttemptTabByRow((prev) => ({ ...prev, [rowKey]: idx }))
+                                  }
+                                />
                               </td>
                             </tr>
                           ) : null}
@@ -2176,6 +2538,15 @@ export function AdminBenchmarks() {
             )}
           </div>
         </div>
+      ) : null}
+
+      {tab === "stats" ? (
+        <BenchmarkStatsPanel
+          auth={auth}
+          refreshToken={statsRefreshToken}
+          clearHistoryDisabled={pollRunning || bulkDeleting}
+          onClearHistory={openBulkDeleteDialog}
+        />
       ) : null}
 
       <ConfirmModal
@@ -2197,6 +2568,80 @@ export function AdminBenchmarks() {
           if (!deletingRunId) setDeleteRunTarget(null);
         }}
       />
+
+      {bulkDeleteOpen ? (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4"
+          role="presentation"
+          onClick={() => {
+            if (!bulkDeleting) setBulkDeleteOpen(false);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full max-w-md rounded-xl border border-surface-border bg-[#1a1a1a] p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-base font-semibold text-white">{t("admin:benchBulkDeleteTitle")}</h2>
+            <p className="mt-2 text-sm text-neutral-300">{t("admin:benchBulkDeleteHint")}</p>
+            <label className="mt-4 block text-xs text-surface-muted">
+              {t("admin:benchSuite")}
+              <select
+                value={bulkDeleteSuite}
+                onChange={(e) => setBulkDeleteSuite(e.target.value)}
+                className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+              >
+                <option value="">{t("admin:benchStatsAllSuites")}</option>
+                {historySuiteOptions.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="mt-3 block text-xs text-surface-muted">
+              {t("admin:benchBulkDeleteOlderThan")}
+              <select
+                value={bulkDeleteOlderThanDays}
+                onChange={(e) => setBulkDeleteOlderThanDays(e.target.value)}
+                className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+              >
+                <option value="">{t("admin:benchBulkDeleteAnyAge")}</option>
+                <option value="30">{t("admin:benchBulkDeleteOlder30d")}</option>
+                <option value="90">{t("admin:benchBulkDeleteOlder90d")}</option>
+                <option value="180">{t("admin:benchBulkDeleteOlder180d")}</option>
+              </select>
+            </label>
+            <p className="mt-3 text-sm text-amber-200/90">
+              {bulkDeletePreviewLoading
+                ? t("admin:benchBulkDeletePreviewLoading")
+                : t("admin:benchBulkDeletePreview", { count: bulkDeletePreviewCount })}
+            </p>
+            <p className="mt-1 text-[11px] text-surface-muted">{t("admin:benchBulkDeleteActiveSkipped")}</p>
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                className="rounded-lg border border-surface-border px-4 py-2 text-sm text-neutral-200 hover:bg-white/5 disabled:opacity-50"
+                disabled={bulkDeleting}
+                onClick={() => setBulkDeleteOpen(false)}
+              >
+                {t("admin:cancel")}
+              </button>
+              <button
+                type="button"
+                className="rounded-lg border border-red-600/50 bg-red-950/60 px-4 py-2 text-sm font-medium text-red-100 hover:bg-red-900/50 disabled:opacity-50"
+                disabled={
+                  bulkDeleting || bulkDeletePreviewLoading || bulkDeletePreviewCount === 0
+                }
+                onClick={() => void confirmBulkDeleteRuns()}
+              >
+                {bulkDeleting ? "…" : t("admin:benchBulkDeleteConfirm")}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

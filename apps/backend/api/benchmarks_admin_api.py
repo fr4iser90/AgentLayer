@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from apps.backend.core.config import config
 from apps.backend.infrastructure import benchmark_runs_store
+from apps.backend.infrastructure.benchmark_stats import aggregate_benchmark_stats
 from apps.backend.infrastructure.auth import get_user_by_id, require_admin
 from apps.backend.infrastructure.benchmark_runner import (
     benchmark_catalog,
@@ -43,7 +44,7 @@ class StartBenchmarkBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     suite: str = Field(..., min_length=1, max_length=64)
-    profiles: list[BenchmarkProfileInput] = Field(..., min_length=1, max_length=8)
+    profiles: list[BenchmarkProfileInput] = Field(..., min_length=1)
     scenarios: list[str] | None = Field(default=None, max_length=32)
     fixtures: list[str] | None = Field(default=None, max_length=16)
     tier_max: int | None = Field(default=None, ge=1, le=4)
@@ -51,8 +52,16 @@ class StartBenchmarkBody(BaseModel):
     friend_user_id: uuid.UUID | None = None
     scenario_timeout_sec: float | None = Field(default=None, ge=30, le=86400)
     max_tool_rounds_override: int | None = Field(default=None, ge=1, le=512)
+    scenario_failure_retries: int = Field(default=0, ge=0, le=20)
     retain_workspaces: bool = False
     prompt_locale: str = Field(default="en", min_length=2, max_length=16)
+
+
+class BulkDeleteRunsBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    suite: str | None = Field(default=None, max_length=64)
+    older_than_days: int | None = Field(default=None, ge=1, le=3650)
 
 
 def _assert_tenant_user(user_id: uuid.UUID, tenant_id: int) -> dict[str, Any]:
@@ -160,6 +169,54 @@ async def post_cleanup_benchmark_resources(request: Request, user_id: uuid.UUID)
     return {"ok": True, "cleanup": cleanup, **_readiness_for_user(user_id)}
 
 
+@router.get("/stats")
+async def get_benchmark_stats(
+    request: Request,
+    limit: int = 200,
+    suite: str | None = None,
+    since_days: int | None = None,
+    badge_min_samples: int = 2,
+    fastest_min_pass_rate: float = 0.0,
+) -> dict:
+    """Cross-run leaderboard: pass rate and latency by provider + model."""
+    admin = await require_admin(request)
+    tid = db.user_tenant_id(admin.id)
+    since = since_days if since_days is not None and since_days >= 1 else None
+    if since is not None:
+        since = min(3650, since)
+    badge_min = max(1, min(100, int(badge_min_samples)))
+    fastest_threshold = max(0.0, min(1.0, float(fastest_min_pass_rate)))
+    rows = benchmark_runs_store.list_runs_for_stats(
+        tenant_id=tid,
+        limit=limit,
+        suite=suite,
+        since_days=since,
+    )
+    return {
+        "ok": True,
+        "stats": aggregate_benchmark_stats(
+            rows,
+            suite_filter=suite,
+            since_days=since,
+            badge_min_samples=badge_min,
+            fastest_min_pass_rate=fastest_threshold,
+        ),
+    }
+
+
+@router.post("/runs/bulk-delete")
+async def bulk_delete_benchmark_runs(request: Request, body: BulkDeleteRunsBody) -> dict:
+    """Delete finished benchmark runs (history + stats source). Skips queued/running."""
+    admin = await require_admin(request)
+    tid = db.user_tenant_id(admin.id)
+    deleted = benchmark_runs_store.delete_finished_runs(
+        tenant_id=tid,
+        suite=body.suite.strip() if body.suite else None,
+        older_than_days=body.older_than_days,
+    )
+    return {"ok": True, "deleted": deleted}
+
+
 @router.get("/runs")
 async def list_benchmark_runs(request: Request, limit: int = 50) -> dict:
     admin = await require_admin(request)
@@ -233,6 +290,7 @@ async def post_start_benchmark(request: Request, body: StartBenchmarkBody) -> di
             admin_user_id=admin.id,
             scenario_timeout_sec=body.scenario_timeout_sec,
             max_tool_rounds_override=body.max_tool_rounds_override,
+            scenario_failure_retries=body.scenario_failure_retries,
             retain_workspaces=body.retain_workspaces,
             prompt_locale=body.prompt_locale.strip().lower(),
         )

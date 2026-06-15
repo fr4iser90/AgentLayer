@@ -93,6 +93,7 @@ export type BenchmarkRunConfig = {
   admin_user_id?: string | null;
   scenario_timeout_sec?: number | null;
   max_tool_rounds_override?: number | null;
+  scenario_failure_retries?: number | null;
   prompt_locale?: string | null;
 };
 
@@ -170,9 +171,30 @@ export function normalizeBenchmarkReadiness(
 
 export type BenchmarkRunSummary = {
   passed?: number;
+  pass_at_1?: number;
   executed?: number;
   total?: number;
   skipped?: number;
+  scenarios_with_retries?: number;
+  profiles_source?: string;
+};
+
+export type BenchmarkAttemptSnapshot = {
+  attempt: number;
+  passed: boolean;
+  skipped?: boolean;
+  failure_reason?: string | null;
+  rubric_failure_reason?: string | null;
+  transport_error?: string | null;
+  latency_ms?: number;
+  tool_call_count?: number;
+  tool_names?: string[];
+  agent_run_id?: string | null;
+  assistant_excerpt?: string;
+  assistant_content?: string;
+  assistant_content_truncated?: boolean;
+  scenario_prompt?: string;
+  run_metrics?: BenchmarkScenarioResult["run_metrics"];
 };
 
 export type BenchmarkInFlight = {
@@ -220,6 +242,11 @@ export type BenchmarkScenarioResult = {
   assistant_content?: string;
   assistant_content_truncated?: boolean;
   run_metrics?: {
+    attempt?: number;
+    attempts_max?: number;
+    pass_at_1?: boolean;
+    prior_failure_reasons?: string[];
+    attempt_history?: BenchmarkAttemptSnapshot[];
     compaction_count?: number;
     compaction_events?: Array<{ phase?: string; round?: number; reason?: string }>;
     llm_round_count?: number;
@@ -352,6 +379,59 @@ export type BenchmarkRun = {
   } | null;
 };
 
+export type BenchmarkStatsModelRow = {
+  catalog_owned_by: string;
+  model: string;
+  profile_label: string;
+  runs: number;
+  samples: number;
+  skipped: number;
+  passed: number;
+  pass_rate: number | null;
+  avg_latency_ms: number | null;
+  median_latency_ms: number | null;
+  min_latency_ms: number | null;
+  max_latency_ms: number | null;
+  avg_score: number | null;
+};
+
+export type BenchmarkStatsScenarioGroup = {
+  suite: string;
+  scenario_id: string;
+  models: BenchmarkStatsModelRow[];
+  fastest?: {
+    catalog_owned_by: string;
+    model: string;
+    profile_label: string;
+    avg_latency_ms: number;
+  } | null;
+  best_pass?: {
+    catalog_owned_by: string;
+    model: string;
+    profile_label: string;
+  } | null;
+};
+
+export type BenchmarkStatsPayload = {
+  meta: {
+    run_count: number;
+    result_count: number;
+    suite_filter: string | null;
+    since_days: number | null;
+    badge_min_samples: number;
+    fastest_min_pass_rate: number;
+    suites: string[];
+    generated_at: string;
+  };
+  models: BenchmarkStatsModelRow[];
+  by_scenario: BenchmarkStatsScenarioGroup[];
+};
+
+export type BulkDeleteBenchmarkRunsBody = {
+  suite?: string | null;
+  older_than_days?: number | null;
+};
+
 export type BenchmarkLlmProvider = {
   catalog_owned_by: string;
   label: string;
@@ -442,6 +522,38 @@ export async function fetchBenchmarkRuns(
   return data.runs ?? [];
 }
 
+export async function fetchBenchmarkStats(
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">,
+  opts?: {
+    limit?: number;
+    suite?: string;
+    sinceDays?: number;
+    badgeMinSamples?: number;
+    fastestMinPassRate?: number;
+  }
+): Promise<BenchmarkStatsPayload> {
+  const params = new URLSearchParams();
+  if (opts?.limit != null) params.set("limit", String(opts.limit));
+  if (opts?.suite?.trim()) params.set("suite", opts.suite.trim());
+  if (opts?.sinceDays != null && opts.sinceDays >= 1) {
+    params.set("since_days", String(opts.sinceDays));
+  }
+  if (opts?.badgeMinSamples != null && opts.badgeMinSamples >= 1) {
+    params.set("badge_min_samples", String(opts.badgeMinSamples));
+  }
+  if (opts?.fastestMinPassRate != null && opts.fastestMinPassRate >= 0) {
+    params.set("fastest_min_pass_rate", String(opts.fastestMinPassRate));
+  }
+  const qs = params.toString();
+  const res = await apiFetch(`/v1/admin/benchmarks/stats${qs ? `?${qs}` : ""}`, auth);
+  const data = await readJsonResponse<{ stats?: BenchmarkStatsPayload; detail?: unknown }>(
+    res,
+    `Failed to load benchmark stats (HTTP ${res.status})`
+  );
+  if (!res.ok) throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
+  return data.stats as BenchmarkStatsPayload;
+}
+
 export async function fetchBenchmarkRun(
   auth: Pick<AuthContextValue, "accessToken" | "refresh">,
   runId: string
@@ -469,6 +581,25 @@ export async function deleteBenchmarkRun(
   if (!res.ok) throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
 }
 
+export async function bulkDeleteBenchmarkRuns(
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">,
+  body: BulkDeleteBenchmarkRunsBody
+): Promise<number> {
+  const res = await apiFetch("/v1/admin/benchmarks/runs/bulk-delete", auth, {
+    method: "POST",
+    body: JSON.stringify({
+      suite: body.suite?.trim() || null,
+      older_than_days: body.older_than_days ?? null,
+    }),
+  });
+  const data = await readJsonResponse<{ deleted?: number; detail?: unknown }>(
+    res,
+    `Failed to bulk delete runs (HTTP ${res.status})`
+  );
+  if (!res.ok) throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
+  return typeof data.deleted === "number" ? data.deleted : 0;
+}
+
 export type StartBenchmarkBody = {
   suite: string;
   profiles: BenchmarkProfileInput[];
@@ -479,6 +610,7 @@ export type StartBenchmarkBody = {
   friend_user_id?: string;
   scenario_timeout_sec?: number;
   max_tool_rounds_override?: number;
+  scenario_failure_retries?: number;
   retain_workspaces?: boolean;
   prompt_locale?: string;
 };

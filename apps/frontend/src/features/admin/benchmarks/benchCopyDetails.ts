@@ -1,4 +1,10 @@
+import { formatBenchmarkProviderModel } from "./benchDisplayUtils";
 import type { BenchmarkScenarioResult } from "./benchmarksApi";
+import {
+  attemptHistoryFromResult,
+  formatBenchmarkResultStatus,
+  passAt1FromResult,
+} from "./benchAttemptUtils";
 import { scenarioExportRow } from "./benchExport";
 
 function resolveScenarioResponse(res: BenchmarkScenarioResult): string {
@@ -10,13 +16,6 @@ function resolveScenarioResponse(res: BenchmarkScenarioResult): string {
   if (stream.reasoning?.trim()) parts.push(stream.reasoning.trim());
   if (stream.text?.trim()) parts.push(stream.text.trim());
   return parts.join("\n\n");
-}
-
-function formatProviderModel(res: BenchmarkScenarioResult): string {
-  const provider = (res.profile_label || res.catalog_owned_by || "").trim();
-  const model = (res.model || "").trim();
-  if (provider && model) return `${provider} / ${model}`;
-  return provider || model || "—";
 }
 
 function formatToolRoundResult(row: {
@@ -70,16 +69,17 @@ export function formatScenarioDetailsForCopy(res: BenchmarkScenarioResult): stri
         ? ctx.budget_tokens
         : null;
 
-  const status = res.skipped ? "SKIP" : res.passed ? "PASS" : "FAIL";
+  const status = formatBenchmarkResultStatus(res);
   const header = [
     exportRow.scenario_id,
-    formatProviderModel(res),
+    formatBenchmarkProviderModel(res),
     status,
     exportRow.failure_reason || "",
   ]
     .filter(Boolean)
     .join("\t");
 
+  const p1 = passAt1FromResult(res);
   const summary = [
     `${res.tool_call_count ?? 0} tools · ${res.run_metrics?.llm_round_count ?? 0} llm`,
     `${res.run_metrics?.compaction_count ?? 0} compaction`,
@@ -87,11 +87,37 @@ export function formatScenarioDetailsForCopy(res: BenchmarkScenarioResult): stri
       ? `${res.run_metrics.context_utilization_pct}% ctx`
       : "",
     `${Math.round(res.latency_ms ?? 0)} ms`,
+    exportRow.attempts_max > 1 ? `attempt ${exportRow.attempt}/${exportRow.attempts_max}` : "",
+    p1 === null ? "" : `pass@1=${p1 ? "yes" : "no"}`,
   ]
     .filter(Boolean)
     .join("\t");
 
   const lines: string[] = [header, summary, ""];
+
+  const prior = res.run_metrics?.prior_failure_reasons;
+  if (Array.isArray(prior) && prior.length > 0) {
+    lines.push(
+      section(
+        "Prior failed attempts",
+        prior.map((reason, i) => `#${i + 1} ${reason}`).join("\n"),
+      ),
+    );
+  }
+  const hist = attemptHistoryFromResult(res);
+  if (hist.length > 1) {
+    lines.push(
+      section(
+        "Attempt history",
+        hist
+          .map(
+            (a) =>
+              `#${a.attempt} ${a.passed ? "PASS" : "FAIL"} — ${(a.failure_reason || a.rubric_failure_reason || "ok").slice(0, 120)}`,
+          )
+          .join("\n"),
+      ),
+    );
+  }
 
   lines.push(section("Prompt", res.scenario_prompt?.trim() || "—"));
   lines.push(section("Assistant response", resolveScenarioResponse(res) || "—"));

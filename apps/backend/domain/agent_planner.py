@@ -567,6 +567,7 @@ async def chat_completion(
                 profile_header=model_profile_header,
                 override_header=model_override_header,
                 bearer_user_role=bearer_user_role,
+                embedded_subagent=embedded_subagent,
             )
             _prep_catalog = catalog_owned_by
             if not plain_completion:
@@ -688,6 +689,7 @@ async def chat_completion(
             profile_header=model_profile_header,
             override_header=model_override_header,
             bearer_user_role=bearer_user_role,
+            embedded_subagent=embedded_subagent,
         )
         if not plain_completion:
             from apps.backend.domain.catalog_chat_llm import finalize_catalog_chat_llm
@@ -1266,11 +1268,9 @@ async def chat_completion(
                 )
 
         if not plain_completion and tools_for_request:
-            messages.append(
-                {
-                    "role": "system",
-                    "content": _agent_tool_budget_system_message(max_tool_rounds_eff),
-                }
+            messages = _append_system_block(
+                messages,
+                _agent_tool_budget_system_message(max_tool_rounds_eff),
             )
             await _enforce_agent_context_budget(
                 "before_tool_loop",
@@ -1836,6 +1836,22 @@ async def chat_completion(
                 ) and tc.get("arguments") not in (None, ""):
                     raw_args = tc.get("arguments")
                 args = _parse_tool_arguments(raw_args)
+                alias = _rewrite_delegatable_agent_tool_alias(
+                    name,
+                    args,
+                    allowed_names=allowed_names,
+                    messages=messages,
+                    caller_is_admin=_is_admin,
+                )
+                if alias:
+                    _alias_name, args = alias
+                    logger.info(
+                        "tool alias rewritten round=%s %s -> delegate agent_id=%s",
+                        round_i + 1,
+                        name,
+                        args.get("agent_id"),
+                    )
+                    name = _alias_name
                 _prev_args = dict(args)
                 args = _normalize_tool_call_arguments(name, args, msg, messages, tool_context)
                 if args != _prev_args:
@@ -2212,7 +2228,11 @@ async def chat_completion(
                 cap = config.AGENT_SESSION_TOOL_RECAP_MAX
                 parts = batch_recap[:cap]
                 tail = f" (+{len(batch_recap) - cap} more)" if len(batch_recap) > cap else ""
-                recap_line = "[Session tool recap] " + ", ".join(parts) + tail
+                recap_line = _agent_session_tool_recap_system_message(
+                    parts,
+                    overflow_tail=tail,
+                    user_task=last_user_text(messages),
+                )
                 messages.append({"role": "system", "content": recap_line[:900]})
 
             if verify_recap_line:

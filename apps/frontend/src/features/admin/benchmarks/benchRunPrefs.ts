@@ -1,7 +1,9 @@
 /** Persist admin benchmark run form (localStorage, per browser). */
 
+import { normalizeProviderModels } from "./benchProfileSelection";
+
 const STORAGE_KEY = "agentlayer.admin.benchRunPrefs";
-const PREFS_VERSION = 2;
+const PREFS_VERSION = 4;
 
 export type BenchRunPrefs = {
   v: typeof PREFS_VERSION;
@@ -11,9 +13,10 @@ export type BenchRunPrefs = {
   promptLocale: string;
   scenarioTimeoutSec: string;
   maxToolRoundsOverride: string;
+  scenarioFailureRetries: string;
   retainWorkspaces: boolean;
   selectedProviderIds: string[];
-  modelByProviderId: Record<string, string>;
+  modelsByProviderId: Record<string, string[]>;
   scenariosBySuite: Record<string, string[]>;
   extraFixturesBySuite: Record<string, string[]>;
 };
@@ -28,9 +31,10 @@ function emptyPrefs(): BenchRunPrefsInput {
     promptLocale: "en",
     scenarioTimeoutSec: "",
     maxToolRoundsOverride: "",
+    scenarioFailureRetries: "0",
     retainWorkspaces: false,
     selectedProviderIds: [],
-    modelByProviderId: {},
+    modelsByProviderId: {},
     scenariosBySuite: {},
     extraFixturesBySuite: {},
   };
@@ -48,13 +52,31 @@ function normalizeRecord(raw: unknown): Record<string, string[]> {
   return out;
 }
 
+function migrateModelsByProvider(parsed: Record<string, unknown>): Record<string, string[]> {
+  if (parsed.modelsByProviderId && typeof parsed.modelsByProviderId === "object") {
+    return normalizeRecord(parsed.modelsByProviderId);
+  }
+  if (parsed.modelByProviderId && typeof parsed.modelByProviderId === "object") {
+    const out: Record<string, string[]> = {};
+    for (const [key, val] of Object.entries(parsed.modelByProviderId as Record<string, unknown>)) {
+      const id = key.trim();
+      const model = String(val ?? "").trim();
+      if (id && model) out[id] = [model];
+    }
+    return out;
+  }
+  return {};
+}
+
 export function loadBenchRunPrefs(): BenchRunPrefsInput | null {
   if (typeof localStorage === "undefined") return null;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<BenchRunPrefs>;
-    if (parsed.v !== PREFS_VERSION) return null;
+    const parsed = JSON.parse(raw) as Partial<BenchRunPrefs> & {
+      modelByProviderId?: Record<string, string>;
+    };
+    if (parsed.v !== PREFS_VERSION && parsed.v !== 3) return null;
     const base = emptyPrefs();
     return {
       suite: typeof parsed.suite === "string" && parsed.suite.trim() ? parsed.suite.trim() : base.suite,
@@ -68,18 +90,13 @@ export function loadBenchRunPrefs(): BenchRunPrefsInput | null {
         typeof parsed.scenarioTimeoutSec === "string" ? parsed.scenarioTimeoutSec : "",
       maxToolRoundsOverride:
         typeof parsed.maxToolRoundsOverride === "string" ? parsed.maxToolRoundsOverride : "",
+      scenarioFailureRetries:
+        typeof parsed.scenarioFailureRetries === "string" ? parsed.scenarioFailureRetries : "0",
       retainWorkspaces: parsed.retainWorkspaces === true,
       selectedProviderIds: Array.isArray(parsed.selectedProviderIds)
         ? parsed.selectedProviderIds.map((x) => String(x).trim()).filter(Boolean)
         : [],
-      modelByProviderId:
-        parsed.modelByProviderId && typeof parsed.modelByProviderId === "object"
-          ? Object.fromEntries(
-              Object.entries(parsed.modelByProviderId as Record<string, unknown>)
-                .map(([k, v]) => [k, String(v ?? "").trim()] as const)
-                .filter(([k, v]) => k && v)
-            )
-          : {},
+      modelsByProviderId: migrateModelsByProvider(parsed as Record<string, unknown>),
       scenariosBySuite: normalizeRecord(parsed.scenariosBySuite),
       extraFixturesBySuite: normalizeRecord(parsed.extraFixturesBySuite),
     };
@@ -91,7 +108,16 @@ export function loadBenchRunPrefs(): BenchRunPrefsInput | null {
 export function saveBenchRunPrefs(input: BenchRunPrefsInput): void {
   if (typeof localStorage === "undefined") return;
   try {
-    const payload: BenchRunPrefs = { v: PREFS_VERSION, ...input };
+    const modelsByProviderId: Record<string, string[]> = {};
+    for (const [key, models] of Object.entries(input.modelsByProviderId)) {
+      const normalized = normalizeProviderModels(models);
+      if (normalized.length) modelsByProviderId[key] = normalized;
+    }
+    const payload: BenchRunPrefs = {
+      v: PREFS_VERSION,
+      ...input,
+      modelsByProviderId,
+    };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   } catch {
     /* ignore quota / private mode */

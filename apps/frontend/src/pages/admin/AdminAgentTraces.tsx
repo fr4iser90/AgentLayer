@@ -132,17 +132,17 @@ export function AdminAgentTraces() {
                   {t("admin:agentTracesToolInvocations", { count: detail.tool_invocations.length })}
                 </h2>
                 <ul className="space-y-2">
-                  {detail.tool_invocations.map((t) => (
+                  {detail.tool_invocations.map((inv) => (
                     <li
-                      key={String(t.id)}
+                      key={String(inv.id)}
                       className="rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2"
                     >
-                      <span className="font-medium text-sky-300">{String(t.tool_name)}</span>
-                      <span className={t.ok ? " text-emerald-400" : " text-red-400"}>
-                        {t.ok ? ` ${t("admin:agentTracesOk")}` : ` ${t("admin:agentTracesErr")}`}
+                      <span className="font-medium text-sky-300">{String(inv.tool_name)}</span>
+                      <span className={inv.ok ? " text-emerald-400" : " text-red-400"}>
+                        {inv.ok ? ` ${t("admin:agentTracesOk")}` : ` ${t("admin:agentTracesErr")}`}
                       </span>
                       <pre className="mt-1 max-h-24 overflow-auto text-[10px] text-neutral-500">
-                        {JSON.stringify(t.args_json, null, 2)}
+                        {JSON.stringify(inv.args_json, null, 2)}
                       </pre>
                     </li>
                   ))}
