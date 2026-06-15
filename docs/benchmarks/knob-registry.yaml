@@ -1,0 +1,277 @@
+# Agent tuning knob registry (v1)
+# Source of truth for knob metadata. Expand toward ~60 entries in Phase 3.
+# See docs/benchmarks/agent-tuning-platform.md
+
+version: 1
+
+ui_groups:
+  - id: agent_limits
+    label: Agent loop limits
+  - id: tool_routing
+    label: Tool routing and filtering
+  - id: tool_forward
+    label: Tool forward, ranking, schema
+  - id: model_routing
+    label: Model profiles and overrides
+  - id: smart_route
+    label: LLM smart routing (chat)
+  - id: agents
+    label: Agent registry and prompts
+  - id: routers
+    label: Delegate / task / catalog routers
+  - id: rubrics
+    label: Benchmark rubrics and scenarios
+  - id: bench_harness
+    label: Benchmark harness options
+  - id: observability
+    label: Logging and diagnostics
+
+knobs:
+  - id: agent.max_tool_rounds
+    layer: env
+    key: AGENT_MAX_TOOL_ROUNDS
+    default: "8"
+    ui_group: agent_limits
+    affects_agents: [general, coding, math, dashboard, security_auditor]
+    affects_clusters: [S, C, W, D, SEC, SOC]
+    benchmark_sensitive: true
+    doc: Max LLM-tool rounds per chat turn. Default 8 when env unset.
+
+  - id: agent.subagent_max_tool_rounds
+    layer: env
+    key: SUBAGENT_MAX_TOOL_ROUNDS
+    ui_group: agent_limits
+    affects_agents: [general]
+    affects_clusters: [S, C, W, D, SEC]
+    benchmark_sensitive: true
+    doc: Max tool rounds for delegate sub-agents.
+
+  - id: tool_routing.domain_order
+    layer: env
+    key: AGENT_TOOL_DOMAIN_ORDER
+    ui_group: tool_routing
+    affects_agents: [general, coding]
+    affects_clusters: [S, C, W, D, SEC]
+    benchmark_sensitive: true
+    doc: TOOL_DOMAIN priority order when classifying user text.
+
+  - id: tool_forward.ranking_enabled
+    layer: env
+    key: AGENT_TOOLS_RANKING_ENABLED
+    default: "true"
+    ui_group: tool_forward
+    affects_agents: [general]
+    affects_clusters: [S, S4, C, W, D, SEC]
+    benchmark_sensitive: true
+    doc: Rank and prune forwarded tools per LLM round.
+
+  - id: agent.general.pinned_tools
+    layer: agent_yaml
+    path: plugins/agents/general/agent.yaml
+    field: pinned_tools
+    ui_group: agents
+    affects_agents: [general]
+    affects_clusters: [S, S4, C, W, D, SEC, SOC]
+    benchmark_sensitive: true
+    doc: Tools pinned for General (delegate, catalog, workspace.*).
+
+  - id: router.delegate
+    layer: router_yaml
+    path: plugins/tools/platform/agents/delegate.router.yaml
+    ui_group: routers
+    affects_agents: [general]
+    affects_clusters: [S4, C, W, SEC]
+    benchmark_sensitive: true
+    doc: delegate() target agent routing.
+
+  - id: planner.tool_merge
+    layer: code
+    path: apps/backend/domain/agent_planner.py
+    ui_group: tool_routing
+    affects_agents: [general, coding]
+    affects_clusters: [S, C, W, D, SEC]
+    benchmark_sensitive: true
+    doc: Tool merge, routing, forward policy in planner.
+
+  - id: rubric.s1_tool_catalog
+    layer: rubric
+    path: tests/benchmarks/agent/rubrics.py
+    ui_group: rubrics
+    affects_agents: [general]
+    affects_clusters: [S]
+    benchmark_sensitive: true
+    doc: catalog call + three agent_id names in reply.
+
+  - id: bench.capture_timeline
+    layer: bench
+    key: AGENT_BENCH_CAPTURE_TIMELINE
+    default: "1"
+    ui_group: bench_harness
+    affects_clusters: [S, C, W, D, SEC, SOC, INT]
+    benchmark_sensitive: true
+    doc: WebSocket timeline capture vs HTTP-only.
+
+  - id: operator.llm_smart_routing_enabled
+    layer: operator
+    key: llm_smart_routing_enabled
+    ui_group: smart_route
+    benchmark_sensitive: false
+    doc: Chat smart routing; benchmarks use explicit model.
+
+  - id: agent.subagent_timeout_sec
+    layer: env
+    key: SUBAGENT_TIMEOUT_SEC
+    ui_group: agent_limits
+    affects_agents: [general]
+    affects_clusters: [S4, C, W, SEC]
+    benchmark_sensitive: true
+    doc: Sub-agent execution timeout.
+
+  - id: agent.tool_choice_required_retry
+    layer: env
+    key: AGENT_TOOL_CHOICE_REQUIRED_RETRY
+    default: "true"
+    ui_group: tool_forward
+    affects_agents: [general]
+    affects_clusters: [S, S4, C, W, D, SEC]
+    benchmark_sensitive: true
+    doc: Retry when tool call was required but missing.
+
+  - id: tool_routing.router_strict_default
+    layer: env
+    key: AGENT_ROUTER_STRICT_DEFAULT
+    ui_group: tool_routing
+    affects_agents: [general]
+    affects_clusters: [S, C, W, D, SEC]
+    benchmark_sensitive: true
+    doc: Strict category filter default.
+
+  - id: tool_forward.full_schema
+    layer: env
+    key: AGENT_TOOLS_FULL_SCHEMA
+    ui_group: tool_forward
+    affects_agents: [general, coding]
+    affects_clusters: [S, C, W, D, SEC]
+    benchmark_sensitive: true
+    doc: Full JSON schema for forwarded tools.
+
+  - id: tool_forward.catalog_after_first_round
+    layer: env
+    key: AGENT_TOOLS_CATALOG_AFTER_FIRST_ROUND
+    default: "true"
+    ui_group: tool_forward
+    affects_agents: [general]
+    affects_clusters: [S]
+    benchmark_sensitive: true
+    doc: Promote catalog tools after first round.
+
+  - id: tool_forward.policy
+    layer: code
+    path: apps/backend/domain/tool_forward_policy.py
+    ui_group: tool_forward
+    affects_agents: [general]
+    affects_clusters: [S, S4, C, W, D, SEC]
+    benchmark_sensitive: true
+    doc: Pinning, ranking, delegate preservation.
+
+  - id: tool_routing.classify_categories
+    layer: code
+    path: apps/backend/domain/plugin_system/tool_routing.py
+    ui_group: tool_routing
+    affects_agents: [general]
+    affects_clusters: [S, C, W, D, SEC]
+    benchmark_sensitive: true
+    doc: classify_user_tool_categories from TOOL_TRIGGERS.
+
+  - id: model.resolve_effective
+    layer: code
+    path: apps/backend/domain/model_routing.py
+    ui_group: model_routing
+    affects_agents: [general, coding, math]
+    affects_clusters: [S4, C, W, SEC]
+    benchmark_sensitive: true
+    doc: Subagent model inheritance.
+
+  - id: agent.general.system_prompt
+    layer: agent_yaml
+    path: plugins/agents/general/system_prompt.md
+    ui_group: agents
+    affects_agents: [general]
+    affects_clusters: [S, S4, C, W, D, SEC, SOC]
+    benchmark_sensitive: true
+    doc: General orchestrator system prompt.
+
+  - id: router.catalog
+    layer: router_yaml
+    path: plugins/tools/platform/agents/catalog.router.yaml
+    ui_group: routers
+    affects_agents: [general]
+    affects_clusters: [S]
+    benchmark_sensitive: true
+    doc: Catalog tool routing.
+
+  - id: router.task
+    layer: router_yaml
+    path: plugins/tools/platform/agents/task.router.yaml
+    ui_group: routers
+    affects_agents: [general]
+    affects_clusters: [S, C]
+    benchmark_sensitive: true
+    doc: Task delegation router.
+
+  - id: rubric.s4_delegate_math
+    layer: rubric
+    path: tests/benchmarks/agent/rubrics.py
+    ui_group: rubrics
+    affects_agents: [general, math]
+    affects_clusters: [S4]
+    benchmark_sensitive: true
+    doc: delegate + answer contains 42.
+
+  - id: bench.scenario_timeout_sec
+    layer: bench
+    key: scenario_timeout_sec
+    ui_group: bench_harness
+    affects_clusters: [S, C, W, D, SEC, SOC, INT]
+    benchmark_sensitive: true
+    doc: Per-scenario timeout (StartBenchmarkBody).
+
+  - id: bench.max_tool_rounds_override
+    layer: bench
+    key: max_tool_rounds_override
+    ui_group: bench_harness
+    affects_agents: [general]
+    affects_clusters: [S, C, W, D, SEC]
+    benchmark_sensitive: true
+    doc: Benchmark-only max_tool_rounds override.
+
+  - id: bench.harness_preset
+    layer: bench
+    key: harness_preset
+    ui_group: bench_harness
+    affects_clusters: [S, C, W, D, SEC, SOC, INT]
+    benchmark_sensitive: true
+    doc: Planned observability | chat_parity.
+
+  - id: operator.delegate_enabled
+    layer: operator
+    key: delegate_enabled
+    ui_group: agents
+    affects_agents: [general]
+    affects_clusters: [S4, C, W, SEC]
+    benchmark_sensitive: true
+    doc: Planned kill-switch (ADR 0007); not in DB yet.
+
+suite_presets:
+  routing-core:
+    scenarios: [S1_tool_catalog, S3_read_file, S4_delegate_math, C1_bench_marker_file]
+  full:
+    manifest: benchmarks/manifests/full.yaml
+
+harness_presets:
+  observability:
+    capture_timeline: true
+    agent_stream_llm: true
+  chat_parity:
+    capture_timeline: false
+    agent_stream_llm: false

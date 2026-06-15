@@ -2,6 +2,8 @@
 
 **Status:** design / documentation only — no implementation yet.
 
+**See also:** [`agent-tuning-platform.md`](./agent-tuning-platform.md) — full experiment workflow, knob registry, API inventory, and LLM reviewer gate.
+
 This document captures how we want to **analyse recurring failure patterns** across LLM providers (especially local models with poor tool-calling training), and what **backend or harness layers** could do later so those models remain usable without polluting production behaviour.
 
 Related: [`agent-llm-benchmark.md`](./agent-llm-benchmark.md), failure export fields in `tests/benchmarks/agent/harness.py`, Admin run detail `bench_diagnostics`.

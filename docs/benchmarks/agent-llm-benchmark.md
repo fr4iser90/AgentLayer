@@ -2,6 +2,8 @@
 
 Goal: run **the same tasks** on **llama.cpp**, **Ollama (small)**, and optional cloud providers; store **comparable results**; **do not truncate** the production DB — isolate benchmark artifacts and clean up selectively later.
 
+**See also:** [`agent-tuning-platform.md`](./agent-tuning-platform.md) — config fingerprints, experiments, pattern analysis, and LLM reviewer workflow.
+
 ---
 
 ## 1. Reuse existing building blocks

@@ -43,6 +43,14 @@ This folder is written for **humans** and for **RAG ingestion**.
 - **Workspace persistence (Docker)**: [`docs/runbooks/workspace-persistence.md`](./runbooks/workspace-persistence.md)
 - **Glossary**: [`docs/glossary.md`](./glossary.md)
 
+### Benchmarks & agent tuning
+
+- **LLM agent benchmark (harness, isolation)**: [`docs/benchmarks/agent-llm-benchmark.md`](./benchmarks/agent-llm-benchmark.md)
+- **Agent tuning platform (master plan)**: [`docs/benchmarks/agent-tuning-platform.md`](./benchmarks/agent-tuning-platform.md)
+- **Failure pattern taxonomy**: [`docs/benchmarks/pattern-analysis-roadmap.md`](./benchmarks/pattern-analysis-roadmap.md)
+- **Knob registry (v1)**: [`docs/benchmarks/knob-registry.yaml`](./benchmarks/knob-registry.yaml)
+- **Implementation checklist**: [`docs/benchmarks/todo.md`](./benchmarks/todo.md)
+
 ### ADRs (decisions)
 
 You already have ADRs under [`docs/adr/`](./adr/):
