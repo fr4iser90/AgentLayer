@@ -56,11 +56,11 @@ import {
   type ModelRow,
 } from "../../lib/modelCatalog";
 import { BenchmarkStatsPanel } from "../../features/admin/benchmarks/BenchmarkStatsPanel";
-import { BenchmarkConfigPreflightPanel } from "../../features/admin/benchmarks/BenchmarkConfigPreflightPanel";
+import { HarnessRunContextBar } from "../../features/admin/benchmarks/HarnessRunContextBar";
 import {
-  fetchAgentConfigSessions,
-  type AgentConfigSessionRow,
-} from "../../features/admin/agentConfig/agentConfigApi";
+  BenchmarkRunOverridePanel,
+  type RunOverridePatch,
+} from "../../features/admin/benchmarks/BenchmarkRunOverridePanel";
 import { ConfirmModal } from "../../components/ConfirmModal";
 
 import {
@@ -859,8 +859,7 @@ export function AdminBenchmarks() {
   );
   const [promptLocale, setPromptLocale] = useState(_savedBenchPrefs?.promptLocale ?? "en");
   const [cohortLabel, setCohortLabel] = useState(_savedBenchPrefs?.cohortLabel ?? "");
-  const [sessionId, setSessionId] = useState(_savedBenchPrefs?.sessionId ?? "");
-  const [tuningSessions, setTuningSessions] = useState<AgentConfigSessionRow[]>([]);
+  const [runOverrides, setRunOverrides] = useState<RunOverridePatch[]>([]);
   const [availablePromptLocales, setAvailablePromptLocales] = useState<string[]>(["en", "de"]);
   const [maxToolRoundsOverride, setMaxToolRoundsOverride] = useState(
     _savedBenchPrefs?.maxToolRoundsOverride ?? ""
@@ -992,7 +991,6 @@ export function AdminBenchmarks() {
       friendUserId,
       promptLocale,
       cohortLabel,
-      sessionId,
       scenarioTimeoutSec,
       maxToolRoundsOverride,
       scenarioFailureRetries,
@@ -1008,7 +1006,6 @@ export function AdminBenchmarks() {
     friendUserId,
     promptLocale,
     cohortLabel,
-    sessionId,
     scenarioTimeoutSec,
     maxToolRoundsOverride,
     scenarioFailureRetries,
@@ -1042,16 +1039,6 @@ export function AdminBenchmarks() {
       }
       setLlmProviders(providers);
       setTenantUsers(users);
-      try {
-        const sess = await fetchAgentConfigSessions(auth);
-        setTuningSessions(
-          (sess.sessions ?? []).filter((row) => String(row.status || "open").toLowerCase() !== "closed"),
-        );
-      } catch (e) {
-        // Don't hide session loading failures: they look like "No session" and confuse tuning workflow.
-        setTuningSessions([]);
-        setError(e instanceof Error ? e.message : String(e));
-      }
       setRunAsUserId((prev) => {
         if (prev && users.some((u) => u.id === prev)) return prev;
         if (authUser?.id && users.some((u) => u.id === authUser.id)) return authUser.id;
@@ -1468,7 +1455,7 @@ export function AdminBenchmarks() {
         retain_workspaces: retainWorkspaces || undefined,
         prompt_locale: promptLocale,
         cohort_label: cohortLabel.trim() || undefined,
-        session_id: sessionId.trim() || undefined,
+        harness_overrides: runOverrides.length ? runOverrides : undefined,
       });
       persistBenchRunPrefs();
       setTab("history");
@@ -2077,7 +2064,13 @@ export function AdminBenchmarks() {
             </div>
           </section>
 
-          <BenchmarkConfigPreflightPanel auth={auth} />
+          <HarnessRunContextBar auth={auth} />
+
+          <BenchmarkRunOverridePanel
+            auth={auth}
+            overrides={runOverrides}
+            onChange={setRunOverrides}
+          />
 
           <section className="rounded-xl border border-surface-border bg-surface-raised/40 p-4 space-y-3">
             <div>
@@ -2099,37 +2092,6 @@ export function AdminBenchmarks() {
                 />
                 <span className="mt-1 block text-[11px] text-surface-muted">
                   {t("admin:benchCohortLabelHint")}
-                </span>
-              </label>
-              <label className="block text-sm sm:col-span-2 lg:col-span-3">
-                <span className="text-surface-muted">{t("admin:benchTuningSession")}</span>
-                <select
-                  value={sessionId}
-                  onChange={(e) => {
-                    const next = e.target.value;
-                    setSessionId(next);
-                    if (next) {
-                      const sess = tuningSessions.find((s) => s.id === next);
-                      if (sess?.cohort_label && !cohortLabel.trim()) {
-                        setCohortLabel(sess.cohort_label);
-                      }
-                    }
-                  }}
-                  className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
-                >
-                  <option value="">{t("admin:benchTuningSessionNone")}</option>
-                  {tuningSessions.map((sess) => (
-                    <option key={sess.id} value={sess.id}>
-                      {sess.label || sess.id}
-                      {sess.cohort_label ? ` · ${sess.cohort_label}` : ""}
-                    </option>
-                  ))}
-                </select>
-                <span className="mt-1 block text-[11px] text-surface-muted">
-                  {t("admin:benchTuningSessionHint")}{" "}
-                  <Link to="/admin/agent-config" className="text-sky-400 hover:underline">
-                    {t("admin:agentConfigNav")}
-                  </Link>
                 </span>
               </label>
               <label className="block text-sm">

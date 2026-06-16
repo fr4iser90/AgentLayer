@@ -3,7 +3,7 @@
 import { normalizeProviderModels } from "./benchProfileSelection";
 
 const STORAGE_KEY = "agentlayer.admin.benchRunPrefs";
-const PREFS_VERSION = 8;
+const PREFS_VERSION = 9;
 
 export type BenchRunPrefs = {
   v: typeof PREFS_VERSION;
@@ -12,7 +12,6 @@ export type BenchRunPrefs = {
   friendUserId: string;
   promptLocale: string;
   cohortLabel: string;
-  sessionId: string;
   scenarioTimeoutSec: string;
   maxToolRoundsOverride: string;
   scenarioFailureRetries: string;
@@ -32,7 +31,6 @@ function emptyPrefs(): BenchRunPrefsInput {
     friendUserId: "",
     promptLocale: "en",
     cohortLabel: "",
-    sessionId: "",
     scenarioTimeoutSec: "",
     maxToolRoundsOverride: "",
     scenarioFailureRetries: "0",
@@ -79,11 +77,11 @@ export function loadBenchRunPrefs(): BenchRunPrefsInput | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<BenchRunPrefs> & {
       modelByProviderId?: Record<string, string>;
-      harnessPreset?: string;
-      useHarnessMatrix?: boolean;
+      sessionId?: string;
     };
     if (
       parsed.v !== PREFS_VERSION &&
+      parsed.v !== 8 &&
       parsed.v !== 7 &&
       parsed.v !== 6 &&
       parsed.v !== 5 &&
@@ -102,7 +100,6 @@ export function loadBenchRunPrefs(): BenchRunPrefsInput | null {
           ? parsed.promptLocale.trim().toLowerCase()
           : base.promptLocale,
       cohortLabel: typeof parsed.cohortLabel === "string" ? parsed.cohortLabel : "",
-      sessionId: typeof parsed.sessionId === "string" ? parsed.sessionId : "",
       scenarioTimeoutSec:
         typeof parsed.scenarioTimeoutSec === "string" ? parsed.scenarioTimeoutSec : "",
       maxToolRoundsOverride:

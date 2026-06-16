@@ -24,14 +24,17 @@ logger = logging.getLogger(__name__)
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 
 _CACHE: dict[int, tuple[float, dict[str, Any]]] = {}
+_MODEL_CACHE: dict[int, tuple[float, list[dict[str, Any]]]] = {}
 _CACHE_TTL_SEC = 5.0
 
 
 def invalidate_agent_config_cache(tenant_id: int | None = None) -> None:
     if tenant_id is None:
         _CACHE.clear()
+        _MODEL_CACHE.clear()
     else:
         _CACHE.pop(int(tenant_id), None)
+        _MODEL_CACHE.pop(int(tenant_id), None)
 
 
 def _resolve_tenant_id(tenant_id: int | None) -> int | None:
@@ -52,6 +55,59 @@ def _cached_overrides(tenant_id: int) -> dict[str, Any]:
     overrides = agent_config_store.list_overrides(tenant_id)
     _CACHE[tenant_id] = (now, overrides)
     return overrides
+
+
+def _cached_model_override_rows(tenant_id: int) -> list[dict[str, Any]]:
+    now = time.monotonic()
+    hit = _MODEL_CACHE.get(tenant_id)
+    if hit is not None and now - hit[0] <= _CACHE_TTL_SEC:
+        return hit[1]
+    rows = agent_config_store.list_model_overrides(tenant_id)
+    _MODEL_CACHE[tenant_id] = (now, rows)
+    return rows
+
+
+def _resolve_harness_scope(
+    *,
+    catalog_owned_by: str | None = None,
+    model: str | None = None,
+) -> tuple[str, str] | None:
+    if catalog_owned_by is not None or model is not None:
+        catalog = str(catalog_owned_by or "").strip()
+        mid = str(model or "").strip()
+        return (catalog, mid) if catalog else None
+    try:
+        from apps.backend.domain.identity import get_harness_profile
+
+        return get_harness_profile()
+    except Exception:
+        return None
+
+
+def _model_override_value(
+    tenant_id: int,
+    knob_id: str,
+    *,
+    catalog_owned_by: str | None = None,
+    model: str | None = None,
+) -> tuple[Any, str] | None:
+    scope = _resolve_harness_scope(catalog_owned_by=catalog_owned_by, model=model)
+    if scope is None:
+        return None
+    catalog, mid = scope
+    from apps.backend.infrastructure.agent_config_model_resolve import match_model_override
+
+    matched, source = match_model_override(
+        _cached_model_override_rows(tenant_id),
+        catalog_owned_by=catalog,
+        model=mid,
+    )
+    if matched is None:
+        return None
+    knobs = matched.get("knobs_json") or {}
+    if not isinstance(knobs, dict) or knob_id not in knobs:
+        return None
+    return knobs[knob_id], source
 
 
 def _file_default_value(knob: dict[str, Any]) -> Any:
@@ -122,10 +178,36 @@ def default_value(knob_id: str) -> tuple[Any, str]:
     return reg, "registry_default"
 
 
-def effective_value(knob_id: str, *, tenant_id: int | None = None) -> tuple[Any, str]:
+def effective_value(
+    knob_id: str,
+    *,
+    tenant_id: int | None = None,
+    catalog_owned_by: str | None = None,
+    model: str | None = None,
+) -> tuple[Any, str]:
     """Return ``(value, source)`` — never labels env bootstrap for runtime knobs."""
+    try:
+        from apps.backend.domain.identity import get_benchmark_run_id
+        from apps.backend.infrastructure.benchmark_run_overrides import get_run_override
+
+        rid = get_benchmark_run_id()
+        if rid is not None:
+            ov = get_run_override(rid, knob_id)
+            if ov is not None:
+                return ov, "bench_run_override"
+    except Exception:
+        pass
+
     tid = _resolve_tenant_id(tenant_id)
     if tid is not None and db.pool_ready():
+        model_hit = _model_override_value(
+            tid,
+            knob_id,
+            catalog_owned_by=catalog_owned_by,
+            model=model,
+        )
+        if model_hit is not None:
+            return model_hit
         ov = _cached_overrides(tid).get(knob_id)
         if ov is not None:
             return ov, "db_override"
@@ -212,9 +294,20 @@ def merge_agent_definition(agent: dict[str, Any], *, tenant_id: int | None = Non
     return merged
 
 
-def display_value(knob_id: str, *, tenant_id: int | None = None) -> tuple[Any, str]:
+def display_value(
+    knob_id: str,
+    *,
+    tenant_id: int | None = None,
+    catalog_owned_by: str | None = None,
+    model: str | None = None,
+) -> tuple[Any, str]:
     """Resolved value for admin UI, including implicit runtime defaults when unset in DB."""
-    val, src = effective_value(knob_id, tenant_id=tenant_id)
+    val, src = effective_value(
+        knob_id,
+        tenant_id=tenant_id,
+        catalog_owned_by=catalog_owned_by,
+        model=model,
+    )
     if val is not None:
         return val, src
 

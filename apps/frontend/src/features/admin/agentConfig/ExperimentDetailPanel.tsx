@@ -8,8 +8,7 @@ import {
   type BenchmarkExperiment,
   type BenchmarkExperimentReport,
   type BenchmarkReview,
-} from "./agentConfigApi";
-import { BenchmarkAnalysisPanel } from "./BenchmarkAnalysisPanel";
+} from "../benchmarks/benchmarksApi";
 
 function verdictTone(verdict: string | undefined): string {
   const v = (verdict || "").toLowerCase();
@@ -221,12 +220,9 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
                   <h3 className="mb-3 text-xs font-medium uppercase text-surface-muted">
                     {t("admin:agentConfigTab_analysis")}
                   </h3>
-                  <BenchmarkAnalysisPanel
-                    auth={auth}
-                    experimentId={selected.id}
-                    initialAnalysis={report.analysis}
-                    compact
-                  />
+                  <p className="text-xs text-surface-muted">
+                    {t("admin:agentConfigAnalysisRuns")}: {report.analysis.run_count}
+                  </p>
                 </section>
 
                 <section>

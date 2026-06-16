@@ -92,6 +92,127 @@ def delete_override(tenant_id: int, knob_id: str) -> None:
         conn.commit()
 
 
+def list_model_overrides(tenant_id: int) -> list[dict[str, Any]]:
+    with db.pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                """
+                SELECT id, tenant_id, catalog_owned_by, model, label, knobs_json, updated_at, updated_by
+                FROM agent_config_model_overrides
+                WHERE tenant_id = %s
+                ORDER BY catalog_owned_by, model NULLS FIRST, updated_at DESC
+                """,
+                (tenant_id,),
+            )
+            rows = [dict(r) for r in cur.fetchall()]
+    return [_ser(r) for r in rows]
+
+
+def get_model_override(override_id: uuid.UUID, *, tenant_id: int) -> dict[str, Any] | None:
+    with db.pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                """
+                SELECT id, tenant_id, catalog_owned_by, model, label, knobs_json, updated_at, updated_by
+                FROM agent_config_model_overrides
+                WHERE id = %s AND tenant_id = %s
+                """,
+                (override_id, tenant_id),
+            )
+            row = cur.fetchone()
+    return _ser(dict(row)) if row else None
+
+
+def find_model_override_row(
+    tenant_id: int,
+    *,
+    catalog_owned_by: str,
+    model: str | None,
+) -> dict[str, Any] | None:
+    catalog = str(catalog_owned_by or "").strip()
+    if not catalog:
+        return None
+    model_key = str(model or "").strip()
+    with db.pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                """
+                SELECT id, tenant_id, catalog_owned_by, model, label, knobs_json, updated_at, updated_by
+                FROM agent_config_model_overrides
+                WHERE tenant_id = %s AND catalog_owned_by = %s AND model = %s
+                """,
+                (tenant_id, catalog, model_key),
+            )
+            row = cur.fetchone()
+    return _ser(dict(row)) if row else None
+
+
+def upsert_model_override(
+    tenant_id: int,
+    *,
+    catalog_owned_by: str,
+    model: str | None,
+    label: str | None,
+    knobs: dict[str, Any],
+    user_id: uuid.UUID | None,
+    override_id: uuid.UUID | None = None,
+) -> dict[str, Any]:
+    catalog = str(catalog_owned_by or "").strip()
+    if not catalog:
+        raise ValueError("catalog_owned_by required")
+    model_key = str(model or "").strip()
+    knobs_json = json.dumps(knobs if isinstance(knobs, dict) else {})
+    with db.pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            if override_id is not None:
+                cur.execute(
+                    """
+                    UPDATE agent_config_model_overrides
+                    SET catalog_owned_by = %s,
+                        model = %s,
+                        label = %s,
+                        knobs_json = %s::jsonb,
+                        updated_at = now(),
+                        updated_by = %s
+                    WHERE id = %s AND tenant_id = %s
+                    RETURNING id, tenant_id, catalog_owned_by, model, label, knobs_json, updated_at, updated_by
+                    """,
+                    (catalog, model_key, label, knobs_json, user_id, override_id, tenant_id),
+                )
+            else:
+                cur.execute(
+                    """
+                    INSERT INTO agent_config_model_overrides (
+                      tenant_id, catalog_owned_by, model, label, knobs_json, updated_by
+                    ) VALUES (%s, %s, %s, %s, %s::jsonb, %s)
+                    ON CONFLICT (tenant_id, catalog_owned_by, model) DO UPDATE SET
+                      label = COALESCE(EXCLUDED.label, agent_config_model_overrides.label),
+                      knobs_json = EXCLUDED.knobs_json,
+                      updated_at = now(),
+                      updated_by = EXCLUDED.updated_by
+                    RETURNING id, tenant_id, catalog_owned_by, model, label, knobs_json, updated_at, updated_by
+                    """,
+                    (tenant_id, catalog, model_key, label, knobs_json, user_id),
+                )
+            row = cur.fetchone()
+        conn.commit()
+    if not row:
+        raise ValueError("model override upsert failed")
+    return _ser(dict(row))
+
+
+def delete_model_override(override_id: uuid.UUID, *, tenant_id: int) -> bool:
+    with db.pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM agent_config_model_overrides WHERE id = %s AND tenant_id = %s",
+                (override_id, tenant_id),
+            )
+            deleted = cur.rowcount > 0
+        conn.commit()
+    return deleted
+
+
 def append_changelog(
     *,
     tenant_id: int,

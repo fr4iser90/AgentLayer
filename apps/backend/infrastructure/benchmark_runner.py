@@ -298,29 +298,50 @@ def _run_sync(
             except Exception:
                 logger.warning("benchmark progress persist failed", exc_info=True)
 
-        report = run_benchmark(
-            manifest_path=manifest,
-            profiles_override=model_profiles,
-            profiles_source_override="admin-ui",
-            scenario_filter=scenario_filter,
-            extra_fixtures=extra_fixtures,
-            tier=tier_max,
-            run_as_user_id=run_as_user_id,
-            friend_user_id=friend_user_id,
-            admin_user_id=admin_user_id,
-            on_progress=_persist_progress,
-            cancel_check=_cancel_check_for(run_id),
-            scenario_timeout_sec=scenario_timeout_sec,
-            max_tool_rounds_override=max_tool_rounds_override,
-            scenario_failure_retries=scenario_failure_retries,
-            benchmark_run_id=run_id,
-            cleanup_on_start=True,
-            cleanup_on_finish=not retain_workspaces,
-            prompt_locale=prompt_locale,
-            harness_preset=harness_preset,
-            tenant_id=tenant_id,
-            use_harness_matrix=use_harness_matrix,
-        )
+        run_overrides: dict[str, Any] = {}
+        try:
+            _rrow = benchmark_runs_store.get_run(run_id)
+            _cohort = _rrow.get("cohort_json") if isinstance(_rrow, dict) else None
+            if isinstance(_cohort, dict) and isinstance(_cohort.get("harness_overrides"), list):
+                for p in _cohort.get("harness_overrides") or []:
+                    if isinstance(p, dict):
+                        kid = str(p.get("knob_id") or "").strip()
+                        if kid:
+                            run_overrides[kid] = p.get("value")
+        except Exception:
+            run_overrides = {}
+
+        from apps.backend.infrastructure.benchmark_run_overrides import clear_run_overrides, set_run_overrides
+
+        if run_overrides:
+            set_run_overrides(run_id, run_overrides)
+        try:
+            report = run_benchmark(
+                manifest_path=manifest,
+                profiles_override=model_profiles,
+                profiles_source_override="admin-ui",
+                scenario_filter=scenario_filter,
+                extra_fixtures=extra_fixtures,
+                tier=tier_max,
+                run_as_user_id=run_as_user_id,
+                friend_user_id=friend_user_id,
+                admin_user_id=admin_user_id,
+                on_progress=_persist_progress,
+                cancel_check=_cancel_check_for(run_id),
+                scenario_timeout_sec=scenario_timeout_sec,
+                max_tool_rounds_override=max_tool_rounds_override,
+                scenario_failure_retries=scenario_failure_retries,
+                benchmark_run_id=run_id,
+                cleanup_on_start=True,
+                cleanup_on_finish=not retain_workspaces,
+                prompt_locale=prompt_locale,
+                harness_preset=harness_preset,
+                tenant_id=tenant_id,
+                use_harness_matrix=use_harness_matrix,
+            )
+        finally:
+            if run_overrides:
+                clear_run_overrides(run_id)
 
         results_dir = _REPO_ROOT / "benchmarks" / "results"
         write_report(report, results_dir)

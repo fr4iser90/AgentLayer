@@ -60,11 +60,8 @@ class StartBenchmarkBody(BaseModel):
     scenario_failure_retries: int = Field(default=0, ge=0, le=20)
     retain_workspaces: bool = False
     prompt_locale: str = Field(default="en", min_length=2, max_length=16)
-    session_id: uuid.UUID | None = None
-    experiment_id: uuid.UUID | None = None
     cohort_label: str | None = Field(default=None, max_length=128)
-    harness_preset: str | None = Field(default="observability", max_length=64)
-    use_harness_matrix: bool = False
+    harness_overrides: list[dict[str, Any]] | None = None
 
 
 class ExperimentCreateBody(BaseModel):
@@ -334,20 +331,14 @@ async def post_start_benchmark(request: Request, body: StartBenchmarkBody) -> di
             raise HTTPException(status_code=400, detail="friend user must differ from run-as user")
     profiles = [p.model_dump(exclude_none=True) for p in body.profiles]
     cohort: dict[str, Any] = {"fingerprint": compute_fingerprint(tenant_id=tid)}
-    harness = (body.harness_preset or "observability").strip().lower()
-    if harness not in ("observability", "chat_parity"):
-        raise HTTPException(status_code=400, detail="harness_preset must be observability or chat_parity")
-    cohort["harness_preset"] = harness
-    cohort["use_harness_matrix"] = bool(body.use_harness_matrix)
     if body.cohort_label:
         cohort["cohort_label"] = body.cohort_label.strip()
-    if body.session_id:
-        cohort["session_id"] = str(body.session_id)
-        sess = agent_config_store.get_session(body.session_id, tenant_id=tid)
-        if sess and not body.cohort_label:
-            cohort["cohort_label"] = sess.get("cohort_label")
-    if body.experiment_id:
-        cohort["experiment_id"] = str(body.experiment_id)
+    overrides = body.harness_overrides or []
+    if overrides:
+        validation = agent_config_service.validate_patches(overrides)
+        if not validation.get("valid"):
+            raise HTTPException(status_code=400, detail=validation.get("errors") or "invalid harness_overrides")
+        cohort["harness_overrides"] = overrides
     try:
         row = await start_benchmark_run(
             tenant_id=tid,
@@ -366,15 +357,9 @@ async def post_start_benchmark(request: Request, body: StartBenchmarkBody) -> di
             retain_workspaces=body.retain_workspaces,
             prompt_locale=body.prompt_locale.strip().lower(),
             cohort_json=cohort,
-            harness_preset=harness,
-            use_harness_matrix=body.use_harness_matrix,
+            harness_preset=None,
+            use_harness_matrix=False,
         )
-        if body.session_id:
-            agent_config_store.append_session_run(body.session_id, tenant_id=tid, run_id=uuid.UUID(str(row["id"])))
-        if body.experiment_id:
-            agent_config_store.append_experiment_run(
-                body.experiment_id, tenant_id=tid, run_id=uuid.UUID(str(row["id"]))
-            )
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ValueError as exc:

@@ -8,6 +8,7 @@ import {
   type BenchmarkStatsPayload,
   type BenchmarkStatsScenarioGroup,
 } from "./benchmarksApi";
+import { BenchmarkInsightsPanel } from "./BenchmarkInsightsPanel";
 
 const SINCE_DAY_OPTIONS = [
   { value: "", labelKey: "admin:benchStatsSinceAll" },
@@ -375,6 +376,18 @@ export function BenchmarkStatsPanel({
           </p>
         ) : null}
         {error ? <p className="mt-2 text-sm text-red-400">{error}</p> : null}
+      </section>
+
+      <section className="rounded-xl border border-surface-border bg-surface-raised/40 p-4">
+        <h2 className="text-sm font-medium text-white">{t("admin:benchStatsInsightsTitle")}</h2>
+        <p className="mt-1 text-xs text-surface-muted">{t("admin:benchStatsInsightsHint")}</p>
+        <div className="mt-4">
+          <BenchmarkInsightsPanel
+            auth={auth}
+            suiteFilter={suiteFilter}
+            refreshToken={refreshToken}
+          />
+        </div>
       </section>
 
       <section className="rounded-xl border border-surface-border bg-surface-raised/40 p-4">

@@ -166,6 +166,7 @@ async def chat_completion(
     _raw_benchmark_run_id = body.pop("benchmark_run_id", None)
     _parsed_benchmark_run_id: uuid.UUID | None = None
     _bench_run_ctx_tok = None
+    _harness_prof_tok = None
     _parent_cancel_bridge_task: asyncio.Task[None] | None = None
     if _raw_benchmark_run_id is not None:
         try:
@@ -186,39 +187,10 @@ async def chat_completion(
     # Get user from identity context (tenant_id, user_id)
     tenant_id, user_id = get_identity()
 
-    if _raw_tools_ranking is None and tenant_id is not None:
-        from apps.backend.infrastructure import agent_config_effective as _ace
-
-        tools_ranking_enabled = _ace.effective_bool(
-            "tool_forward.ranking_enabled",
-            tenant_id=int(tenant_id),
-            default=tools_ranking_enabled,
-        )
-
-    from apps.backend.infrastructure import agent_config_effective as _ace
-
     _cfg_tid = int(tenant_id) if tenant_id is not None else None
-    if _raw_tools_full_schema is None and _cfg_tid is not None:
-        tools_full_schema = _ace.effective_bool(
-            "tool_forward.full_schema",
-            tenant_id=_cfg_tid,
-            default=tools_full_schema,
-        )
-    _router_strict_default = _ace.effective_bool(
-        "tool_routing.router_strict_default",
-        tenant_id=_cfg_tid,
-        default=config.AGENT_ROUTER_STRICT_DEFAULT,
-    )
-    _catalog_after_first_round = _ace.effective_bool(
-        "tool_forward.catalog_after_first_round",
-        tenant_id=_cfg_tid,
-        default=config.AGENT_TOOLS_CATALOG_AFTER_FIRST_ROUND,
-    )
-    _tool_choice_required_retry = _ace.effective_bool(
-        "agent.tool_choice_required_retry",
-        tenant_id=_cfg_tid,
-        default=config.AGENT_TOOL_CHOICE_REQUIRED_RETRY,
-    )
+    _router_strict_default = bool(config.AGENT_ROUTER_STRICT_DEFAULT)
+    _catalog_after_first_round = bool(config.AGENT_TOOLS_CATALOG_AFTER_FIRST_ROUND)
+    _tool_choice_required_retry = bool(config.AGENT_TOOL_CHOICE_REQUIRED_RETRY)
 
     if not workspace_id and user_id:
         _raw_cid_pref = body.get("conversation_id")
@@ -569,28 +541,6 @@ async def chat_completion(
 
         from apps.backend.infrastructure import agent_config_effective as _ace
 
-        _cfg_tid = int(tenant_id) if tenant_id is not None else None
-        max_tool_rounds_eff = (
-            _ace.subagent_max_tool_rounds(tenant_id=_cfg_tid)
-            if embedded_subagent
-            else _ace.max_tool_rounds(tenant_id=_cfg_tid)
-        )
-        if not embedded_subagent and _raw_max_rounds is not None:
-            try:
-                client_v = int(_raw_max_rounds)
-                if client_v <= 0:
-                    max_tool_rounds_eff = _ace.max_tool_rounds(tenant_id=_cfg_tid)
-                else:
-                    base_max = _ace.max_tool_rounds(tenant_id=_cfg_tid)
-                    upper = (
-                        base_max
-                        if base_max < config.MAX_TOOL_ROUNDS_CAP
-                        else config.MAX_TOOL_ROUNDS_CAP
-                    )
-                    max_tool_rounds_eff = max(1, min(client_v, upper))
-            except (TypeError, ValueError):
-                pass
-
         _chat_history_raw = list(body.get("messages") or [])
         _context_prep_meta: dict[str, Any] = {}
         _compaction_attempt: tuple[str, dict[str, str], str, str] | None = None
@@ -739,6 +689,59 @@ async def chat_completion(
                 is_override=model_is_override,
                 catalog_owned_by=catalog_owned_by,
             )
+        from apps.backend.domain.identity import set_harness_profile
+
+        _harness_prof_tok = set_harness_profile(
+            str(catalog_owned_by or "").strip() or None,
+            str(model or "").strip() or None,
+        )
+        if _raw_tools_ranking is None and _cfg_tid is not None:
+            tools_ranking_enabled = _ace.effective_bool(
+                "tool_forward.ranking_enabled",
+                tenant_id=_cfg_tid,
+                default=tools_ranking_enabled,
+            )
+        if _raw_tools_full_schema is None and _cfg_tid is not None:
+            tools_full_schema = _ace.effective_bool(
+                "tool_forward.full_schema",
+                tenant_id=_cfg_tid,
+                default=tools_full_schema,
+            )
+        _router_strict_default = _ace.effective_bool(
+            "tool_routing.router_strict_default",
+            tenant_id=_cfg_tid,
+            default=config.AGENT_ROUTER_STRICT_DEFAULT,
+        )
+        _catalog_after_first_round = _ace.effective_bool(
+            "tool_forward.catalog_after_first_round",
+            tenant_id=_cfg_tid,
+            default=config.AGENT_TOOLS_CATALOG_AFTER_FIRST_ROUND,
+        )
+        _tool_choice_required_retry = _ace.effective_bool(
+            "agent.tool_choice_required_retry",
+            tenant_id=_cfg_tid,
+            default=config.AGENT_TOOL_CHOICE_REQUIRED_RETRY,
+        )
+        max_tool_rounds_eff = (
+            _ace.subagent_max_tool_rounds(tenant_id=_cfg_tid)
+            if embedded_subagent
+            else _ace.max_tool_rounds(tenant_id=_cfg_tid)
+        )
+        if not embedded_subagent and _raw_max_rounds is not None:
+            try:
+                client_v = int(_raw_max_rounds)
+                if client_v <= 0:
+                    max_tool_rounds_eff = _ace.max_tool_rounds(tenant_id=_cfg_tid)
+                else:
+                    base_max = _ace.max_tool_rounds(tenant_id=_cfg_tid)
+                    upper = (
+                        base_max
+                        if base_max < config.MAX_TOOL_ROUNDS_CAP
+                        else config.MAX_TOOL_ROUNDS_CAP
+                    )
+                    max_tool_rounds_eff = max(1, min(client_v, upper))
+            except (TypeError, ValueError):
+                pass
         tool_context["parent_effective_model"] = model
         if catalog_owned_by:
             tool_context["parent_model_catalog_owned_by"] = catalog_owned_by
@@ -2345,9 +2348,11 @@ async def chat_completion(
             except Exception:
                 logger.warning("agent_runs finish failed run_id=%s", agent_run_id, exc_info=True)
         reset_capability_confirmed(_cap_cf_tok)
-        from apps.backend.domain.identity import reset_benchmark_run_id, reset_workspace
+        from apps.backend.domain.identity import reset_benchmark_run_id, reset_harness_profile, reset_workspace
 
         if _bench_run_ctx_tok is not None:
             reset_benchmark_run_id(_bench_run_ctx_tok)
+        if _harness_prof_tok is not None:
+            reset_harness_profile(_harness_prof_tok)
         if workspace_token:
             reset_workspace(workspace_token)

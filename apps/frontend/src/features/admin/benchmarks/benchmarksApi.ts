@@ -561,6 +561,168 @@ export async function fetchBenchmarkStats(
   return data.stats as BenchmarkStatsPayload;
 }
 
+export type BenchmarkAnalysisScenario = {
+  scenario_id: string;
+  pass_rate: number;
+  patterns: string[];
+};
+
+export type BenchmarkAnalysisPayload = {
+  ok?: boolean;
+  run_count: number;
+  cohort?: string | null;
+  fingerprint?: string | null;
+  suite?: string | null;
+  top_patterns?: Record<string, number>;
+  by_scenario?: BenchmarkAnalysisScenario[];
+  stats?: BenchmarkStatsPayload;
+};
+
+export type BenchmarkCohortRow = {
+  cohort_label: string;
+  run_count: number;
+};
+
+export async function fetchBenchmarkAnalysis(
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">,
+  opts?: {
+    cohort?: string;
+    fingerprint?: string;
+    suite?: string;
+    since_days?: number;
+    experiment_id?: string;
+  },
+): Promise<BenchmarkAnalysisPayload> {
+  const qs = new URLSearchParams();
+  if (opts?.cohort) qs.set("cohort", opts.cohort);
+  if (opts?.fingerprint) qs.set("fingerprint", opts.fingerprint);
+  if (opts?.suite) qs.set("suite", opts.suite);
+  if (opts?.since_days != null) qs.set("since_days", String(opts.since_days));
+  if (opts?.experiment_id) qs.set("experiment_id", opts.experiment_id);
+  const q = qs.toString();
+  const res = await apiFetch(`/v1/admin/benchmarks/analysis${q ? `?${q}` : ""}`, auth);
+  const data = await readJsonResponse<BenchmarkAnalysisPayload & { detail?: unknown }>(
+    res,
+    `Failed to load benchmark analysis (HTTP ${res.status})`,
+  );
+  if (!res.ok) throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
+  return data;
+}
+
+export async function fetchBenchmarkCohorts(
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">,
+  limit = 200,
+) {
+  const res = await apiFetch(`/v1/admin/benchmarks/cohorts?limit=${limit}`, auth);
+  const data = await readJsonResponse<{ cohorts?: BenchmarkCohortRow[]; detail?: unknown }>(
+    res,
+    `Failed to load cohorts (HTTP ${res.status})`,
+  );
+  if (!res.ok) throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
+  return data;
+}
+
+export async function fetchBenchmarkCohortCompare(
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">,
+  cohortA: string,
+  cohortB: string,
+  suite?: string,
+) {
+  const qs = new URLSearchParams({ cohort_a: cohortA, cohort_b: cohortB });
+  if (suite) qs.set("suite", suite);
+  const res = await apiFetch(`/v1/admin/benchmarks/cohorts/compare?${qs}`, auth);
+  const data = await readJsonResponse<{
+    cohort_a: string;
+    cohort_b: string;
+    a: BenchmarkAnalysisPayload;
+    b: BenchmarkAnalysisPayload;
+    detail?: unknown;
+  }>(res, `Failed to compare cohorts (HTTP ${res.status})`);
+  if (!res.ok) throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
+  return data;
+}
+
+export type BenchmarkExperiment = {
+  id: string;
+  label: string;
+  status?: string;
+  hypothesis?: string | null;
+  session_id?: string | null;
+  fingerprint_at_start?: string | null;
+  suite_preset?: string | null;
+  harness_preset?: string | null;
+  pending_patches_json?: unknown[];
+  run_ids_json?: string[];
+  created_at?: string;
+};
+
+export type BenchmarkReview = {
+  id: string;
+  verdict?: string;
+  summary?: string | null;
+  mode?: string;
+  reviewer_model?: string | null;
+  created_at?: string;
+  patterns_json?: Record<string, number>;
+};
+
+export type BenchmarkExperimentReport = {
+  experiment: BenchmarkExperiment;
+  analysis: BenchmarkAnalysisPayload;
+  reviews: BenchmarkReview[];
+};
+
+export async function fetchBenchmarkExperiments(
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">,
+  limit = 50,
+) {
+  const res = await apiFetch(`/v1/admin/benchmarks/experiments?limit=${limit}`, auth);
+  const data = await readJsonResponse<{ experiments?: BenchmarkExperiment[]; detail?: unknown }>(
+    res,
+    `Failed to load experiments (HTTP ${res.status})`,
+  );
+  if (!res.ok) throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
+  return data;
+}
+
+export async function fetchBenchmarkExperimentReport(
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">,
+  experimentId: string,
+) {
+  const res = await apiFetch(
+    `/v1/admin/benchmarks/experiments/${encodeURIComponent(experimentId)}/report`,
+    auth,
+  );
+  const data = await readJsonResponse<{ ok?: boolean } & BenchmarkExperimentReport & { detail?: unknown }>(
+    res,
+    `Failed to load experiment report (HTTP ${res.status})`,
+  );
+  if (!res.ok) throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
+  return data;
+}
+
+export async function submitBenchmarkReview(
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">,
+  body: {
+    experiment_id?: string;
+    session_id?: string;
+    run_ids?: string[];
+    mode?: string;
+    summary_hint?: string;
+  },
+) {
+  const res = await apiFetch("/v1/admin/benchmarks/review", auth, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  const data = await readJsonResponse<{ review?: BenchmarkReview; detail?: unknown }>(
+    res,
+    `Failed to submit review (HTTP ${res.status})`,
+  );
+  if (!res.ok) throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
+  return data;
+}
+
 export async function fetchBenchmarkRun(
   auth: Pick<AuthContextValue, "accessToken" | "refresh">,
   runId: string
@@ -620,10 +782,8 @@ export type StartBenchmarkBody = {
   scenario_failure_retries?: number;
   retain_workspaces?: boolean;
   prompt_locale?: string;
-  harness_preset?: "observability" | "chat_parity";
-  use_harness_matrix?: boolean;
   cohort_label?: string;
-  session_id?: string;
+  harness_overrides?: { knob_id: string; value: unknown }[];
 };
 
 export function userOptionLabel(u: AdminUserRow): string {

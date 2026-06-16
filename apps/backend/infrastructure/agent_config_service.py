@@ -200,3 +200,109 @@ def initialize_defaults_to_db(
         actor_user_id=actor_user_id,
         hypothesis="initialize defaults to DB (WebUI-owned config)",
     )
+
+
+def apply_model_patches(
+    *,
+    tenant_id: int,
+    catalog_owned_by: str,
+    model: str | None,
+    patches: list[dict[str, Any]],
+    actor_type: ActorType,
+    actor_user_id: uuid.UUID | None,
+    label: str | None = None,
+    hypothesis: str | None = None,
+    override_id: uuid.UUID | None = None,
+) -> dict[str, Any]:
+    validation = validate_patches(patches)
+    if not validation["valid"]:
+        return {"ok": False, "validation": validation}
+
+    catalog = str(catalog_owned_by or "").strip()
+    if not catalog:
+        return {"ok": False, "validation": {"valid": False, "errors": [{"knob_id": "", "error": "catalog_owned_by required"}]}}
+
+    model_key = str(model or "").strip()
+    existing = agent_config_store.find_model_override_row(
+        tenant_id,
+        catalog_owned_by=catalog,
+        model=model_key or None,
+    )
+    if override_id is None and existing is not None:
+        override_id = uuid.UUID(str(existing.get("id")))
+    knobs: dict[str, Any] = {}
+    if existing and isinstance(existing.get("knobs_json"), dict):
+        knobs = dict(existing.get("knobs_json") or {})
+
+    applied: list[dict[str, Any]] = []
+    for p in patches:
+        kid = str(p.get("knob_id") or "").strip()
+        knob = knob_by_id(kid) or {}
+        layer = str(knob.get("layer") or "")
+        if layer == "operator":
+            return {
+                "ok": False,
+                "validation": {
+                    "valid": False,
+                    "errors": [{"knob_id": kid, "error": "operator knobs not supported for model overrides"}],
+                },
+            }
+        new_val = p.get("value")
+        old_val, _src = agent_config_effective.effective_value(
+            kid,
+            tenant_id=tenant_id,
+            catalog_owned_by=catalog,
+            model=model_key or None,
+        )
+        knobs[kid] = new_val
+        applied.append(
+            {
+                "knob_id": kid,
+                "old": old_val,
+                "new": new_val,
+                "catalog_owned_by": catalog,
+                "model": model_key or None,
+            }
+        )
+
+    row = agent_config_store.upsert_model_override(
+        tenant_id,
+        catalog_owned_by=catalog,
+        model=model_key or None,
+        label=label,
+        knobs=knobs,
+        user_id=actor_user_id,
+        override_id=override_id,
+    )
+    agent_config_effective.invalidate_agent_config_cache(tenant_id)
+
+    from apps.backend.infrastructure.agent_config_router_overlay import (
+        apply_router_overlay_to_registry,
+        invalidate_router_overlay_cache,
+    )
+
+    invalidate_router_overlay_cache(tenant_id)
+    if any(str((knob_by_id(str(p.get("knob_id") or "")) or {}).get("layer") or "") == "router_yaml" for p in patches):
+        apply_router_overlay_to_registry(tenant_id=tenant_id)
+
+    fp_after = agent_config_fingerprint.compute_fingerprint(tenant_id=tenant_id)
+    event_id = agent_config_store.append_changelog(
+        tenant_id=tenant_id,
+        actor_type=actor_type,
+        actor_user_id=actor_user_id,
+        actor_agent_id=None,
+        session_id=None,
+        experiment_id=None,
+        hypothesis=hypothesis,
+        patches=applied,
+        fingerprint_before=None,
+        fingerprint_after=fp_after,
+    )
+
+    return {
+        "ok": True,
+        "applied": applied,
+        "override": row,
+        "fingerprint": fp_after,
+        "changelog_event_id": str(event_id),
+    }

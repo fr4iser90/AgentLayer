@@ -17,6 +17,10 @@ _benchmark_run_id: contextvars.ContextVar[uuid.UUID | None] = contextvars.Contex
     "benchmark_run_id",
     default=None,
 )
+_harness_profile: contextvars.ContextVar[tuple[str, str] | None] = contextvars.ContextVar(
+    "harness_profile",
+    default=None,
+)
 _llm_queue_source: contextvars.ContextVar[str | None] = contextvars.ContextVar(
     "llm_queue_source",
     default=None,
@@ -65,6 +69,25 @@ def get_benchmark_run_id() -> uuid.UUID | None:
 
 def reset_benchmark_run_id(token: contextvars.Token) -> None:
     _benchmark_run_id.reset(token)
+
+
+def set_harness_profile(
+    catalog_owned_by: str | None,
+    model: str | None,
+) -> contextvars.Token:
+    catalog = str(catalog_owned_by or "").strip()
+    mid = str(model or "").strip()
+    if catalog:
+        return _harness_profile.set((catalog, mid))
+    return _harness_profile.set(None)
+
+
+def get_harness_profile() -> tuple[str, str] | None:
+    return _harness_profile.get()
+
+
+def reset_harness_profile(token: contextvars.Token) -> None:
+    _harness_profile.reset(token)
 
 
 def set_llm_queue_source(source: str | None) -> contextvars.Token:

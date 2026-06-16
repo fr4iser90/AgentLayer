@@ -57,7 +57,13 @@ class PatchSessionBody(BaseModel):
     hypothesis: str | None = Field(default=None, max_length=4000)
 
 
-def _knob_public(knob: dict[str, Any], *, tenant_id: int) -> dict[str, Any]:
+def _knob_public(
+    knob: dict[str, Any],
+    *,
+    tenant_id: int,
+    catalog_owned_by: str | None = None,
+    model: str | None = None,
+) -> dict[str, Any]:
     kid = str(knob.get("id") or "")
     layer = str(knob.get("layer") or "")
     out = dict(knob)
@@ -65,7 +71,12 @@ def _knob_public(knob: dict[str, Any], *, tenant_id: int) -> dict[str, Any]:
         out["effective"] = None
         out["source"] = "git" if layer in ("code", "rubric", "bench") else "file_default"
         return out
-    val, src = agent_config_effective.display_value(kid, tenant_id=tenant_id)
+    val, src = agent_config_effective.display_value(
+        kid,
+        tenant_id=tenant_id,
+        catalog_owned_by=catalog_owned_by,
+        model=model,
+    )
     out["effective"] = val
     out["source"] = src
     if val is None and kid == "tool_routing.domain_order":
@@ -91,6 +102,17 @@ def _changelog_event(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+class ApplyModelConfigBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    catalog_owned_by: str = Field(..., min_length=1, max_length=128)
+    model: str | None = Field(default=None, max_length=512)
+    label: str | None = Field(default=None, max_length=128)
+    patches: list[ConfigPatchItem] = Field(..., min_length=1, max_length=64)
+    hypothesis: str | None = Field(default=None, max_length=4000)
+    override_id: uuid.UUID | None = None
+
+
 @router.get("/knobs")
 async def get_agent_config_knobs(
     request: Request,
@@ -100,6 +122,8 @@ async def get_agent_config_knobs(
     agent_id: str | None = None,
     writable_only: bool = False,
     harness_only: bool = False,
+    catalog_owned_by: str | None = None,
+    model: str | None = None,
 ) -> dict:
     admin = await require_admin(request)
     tid = db.user_tenant_id(admin.id)
@@ -122,7 +146,14 @@ async def get_agent_config_knobs(
                 continue
         if writable_only and not raw.get("writable"):
             continue
-        knobs.append(_knob_public(dict(raw), tenant_id=tid))
+        knobs.append(
+            _knob_public(
+                dict(raw),
+                tenant_id=tid,
+                catalog_owned_by=catalog_owned_by,
+                model=model,
+            )
+        )
     return {
         "ok": True,
         "registry_version": reg.get("version"),
@@ -258,6 +289,46 @@ async def post_agent_config_apply(request: Request, body: ApplyConfigBody) -> di
         "changelog_event_id": result.get("changelog_event_id"),
         "benchmark_run_id": benchmark_run_id,
     }
+
+
+@router.get("/model-overrides")
+async def list_agent_config_model_overrides(request: Request) -> dict:
+    admin = await require_admin(request)
+    tid = db.user_tenant_id(admin.id)
+    rows = agent_config_store.list_model_overrides(tid)
+    return {"ok": True, "overrides": rows}
+
+
+@router.post("/model-overrides/apply")
+async def post_agent_config_model_apply(request: Request, body: ApplyModelConfigBody) -> dict:
+    admin = await require_admin(request)
+    tid = db.user_tenant_id(admin.id)
+    patches = [p.model_dump() for p in body.patches]
+    result = agent_config_service.apply_model_patches(
+        tenant_id=tid,
+        catalog_owned_by=body.catalog_owned_by.strip(),
+        model=(body.model or "").strip() or None,
+        label=body.label.strip() if body.label else None,
+        patches=patches,
+        actor_type="user",
+        actor_user_id=admin.id,
+        hypothesis=body.hypothesis,
+        override_id=body.override_id,
+    )
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail=result.get("validation"))
+    return {"ok": True, **result}
+
+
+@router.delete("/model-overrides/{override_id}")
+async def delete_agent_config_model_override(request: Request, override_id: uuid.UUID) -> dict:
+    admin = await require_admin(request)
+    tid = db.user_tenant_id(admin.id)
+    deleted = agent_config_store.delete_model_override(override_id, tenant_id=tid)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="model override not found")
+    agent_config_effective.invalidate_agent_config_cache(tid)
+    return {"ok": True, "deleted": str(override_id)}
 
 
 @router.post("/sessions")
