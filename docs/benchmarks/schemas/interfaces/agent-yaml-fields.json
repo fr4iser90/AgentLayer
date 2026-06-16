@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentlayer.local/schemas/interfaces/agent-yaml-fields.json",
+  "title": "Agent YAML overlay fields",
+  "description": "DB overlay values for agent registry fields (apply via agent-config/apply).",
+  "$defs": {
+    "toolName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z][a-z0-9_.]*$",
+      "description": "Registered tool name (validate against GET /v1/admin/tools at apply time)."
+    },
+    "pinnedTools": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/toolName" },
+      "uniqueItems": true,
+      "minItems": 0,
+      "maxItems": 64,
+      "description": "agent.yaml pinned_tools — always forwarded to LLM."
+    },
+    "generalPinnedToolsDefault": {
+      "allOf": [{ "$ref": "#/$defs/pinnedTools" }],
+      "default": [
+        "delegate",
+        "catalog",
+        "workspace.create",
+        "workspace.list",
+        "bind",
+        "user_secrets_status"
+      ]
+    },
+    "systemPromptMarkdown": {
+      "type": "string",
+      "minLength": 0,
+      "maxLength": 64000,
+      "description": "system_prompt.md body or inline system_prompt field."
+    },
+    "agentId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "description": "Target agent for overlay (e.g. general)."
+    },
+    "agentFieldOverlay": {
+      "type": "object",
+      "required": ["agent_id", "field", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "agent_id": { "$ref": "#/$defs/agentId" },
+        "field": {
+          "type": "string",
+          "enum": [
+            "pinned_tools",
+            "tool_allowlist",
+            "system_prompt",
+            "tool_domains",
+            "model_profile",
+            "tool_discipline_preset"
+          ]
+        },
+        "value": {}
+      }
+    }
+  }
+}

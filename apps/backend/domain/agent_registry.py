@@ -326,6 +326,9 @@ class AgentRegistry:
         if not agent:
             return None
         agent = dict(agent)
+        from apps.backend.infrastructure.agent_config_effective import merge_agent_definition
+
+        agent = merge_agent_definition(agent)
         agent["tool_names"] = resolve_agent_tool_names(agent)
         return agent
 

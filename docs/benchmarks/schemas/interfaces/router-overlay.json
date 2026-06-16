@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentlayer.local/schemas/interfaces/router-overlay.json",
+  "title": "Router YAML overlay",
+  "description": "Locale phrase maps for tool routing routers (delegate, catalog, task).",
+  "type": "object",
+  "required": ["domain", "phrases"],
+  "additionalProperties": false,
+  "properties": {
+    "domain": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Router domain id (e.g. delegate, platform)."
+    },
+    "phrases": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "minItems": 1,
+        "maxItems": 128,
+        "uniqueItems": true
+      },
+      "propertyNames": {
+        "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+        "description": "BCP-47 locale key (en, de, …)."
+      }
+    }
+  },
+  "examples": [
+    {
+      "domain": "delegate",
+      "phrases": {
+        "en": ["delegate", "subagent", "specialist"],
+        "de": ["delegate", "unter-agent", "spezialist"]
+      }
+    }
+  ]
+}

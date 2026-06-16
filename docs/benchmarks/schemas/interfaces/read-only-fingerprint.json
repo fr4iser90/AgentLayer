@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentlayer.local/schemas/interfaces/read-only-fingerprint.json",
+  "title": "Read-only code/rubric fingerprint",
+  "description": "Not apply-able. Fingerprint stores content hash only.",
+  "type": "object",
+  "required": ["content_hash", "source_path"],
+  "additionalProperties": false,
+  "properties": {
+    "content_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "source_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "git_sha": {
+      "type": "string",
+      "minLength": 7,
+      "maxLength": 40
+    }
+  }
+}

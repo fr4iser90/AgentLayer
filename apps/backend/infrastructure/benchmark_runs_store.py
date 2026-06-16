@@ -30,6 +30,7 @@ def create_run(
     suite: str,
     manifest_path: str,
     profiles: list[dict[str, Any]],
+    cohort_json: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     run_id = uuid.uuid4()
     with db.pool().connection() as conn:
@@ -37,8 +38,8 @@ def create_run(
             cur.execute(
                 """
                 INSERT INTO benchmark_runs (
-                  id, tenant_id, user_id, status, suite, manifest_path, profiles_json
-                ) VALUES (%s, %s, %s, 'queued', %s, %s, %s::jsonb)
+                  id, tenant_id, user_id, status, suite, manifest_path, profiles_json, cohort_json
+                ) VALUES (%s, %s, %s, 'queued', %s, %s, %s::jsonb, %s::jsonb)
                 RETURNING *
                 """,
                 (
@@ -48,6 +49,7 @@ def create_run(
                     suite,
                     manifest_path,
                     json.dumps(profiles),
+                    json.dumps(cohort_json) if cohort_json is not None else None,
                 ),
             )
             row = dict(cur.fetchone())

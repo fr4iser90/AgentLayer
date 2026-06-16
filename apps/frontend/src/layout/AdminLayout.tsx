@@ -89,6 +89,12 @@ export function AdminLayout() {
               {t("admin:benchNav")}
             </NavLink>
             <NavLink
+              to="/admin/agent-config"
+              className={({ isActive }) => `${item} ${isActive ? itemActive : itemIdle}`}
+            >
+              {t("admin:agentConfigNav")}
+            </NavLink>
+            <NavLink
               to="/admin/run-traces"
               className={({ isActive }) => `${item} ${isActive ? itemActive : itemIdle}`}
             >

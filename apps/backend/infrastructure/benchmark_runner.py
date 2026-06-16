@@ -235,6 +235,9 @@ def _run_sync(
     scenario_failure_retries: int = 0,
     retain_workspaces: bool = False,
     prompt_locale: str | None = None,
+    harness_preset: str | None = None,
+    tenant_id: int | None = None,
+    use_harness_matrix: bool = False,
 ) -> None:
     from tests.benchmarks.agent.harness import (
         BenchmarkRunCancelled,
@@ -314,6 +317,9 @@ def _run_sync(
             cleanup_on_start=True,
             cleanup_on_finish=not retain_workspaces,
             prompt_locale=prompt_locale,
+            harness_preset=harness_preset,
+            tenant_id=tenant_id,
+            use_harness_matrix=use_harness_matrix,
         )
 
         results_dir = _REPO_ROOT / "benchmarks" / "results"
@@ -416,6 +422,9 @@ async def schedule_benchmark_run(
     scenario_failure_retries: int = 0,
     retain_workspaces: bool = False,
     prompt_locale: str | None = None,
+    harness_preset: str | None = None,
+    tenant_id: int | None = None,
+    use_harness_matrix: bool = False,
 ) -> None:
     async with _run_lock:
         await asyncio.to_thread(
@@ -434,6 +443,9 @@ async def schedule_benchmark_run(
             retain_workspaces=retain_workspaces,
             prompt_locale=prompt_locale,
             scenario_failure_retries=scenario_failure_retries,
+            harness_preset=harness_preset,
+            tenant_id=tenant_id,
+            use_harness_matrix=use_harness_matrix,
         )
 
 
@@ -454,6 +466,9 @@ async def start_benchmark_run(
     scenario_failure_retries: int = 0,
     retain_workspaces: bool = False,
     prompt_locale: str | None = None,
+    cohort_json: dict[str, Any] | None = None,
+    harness_preset: str | None = None,
+    use_harness_matrix: bool = False,
 ) -> dict[str, Any]:
     from tests.benchmarks.agent.catalog import _SUITE_MANIFESTS
     from tests.benchmarks.agent.cases import available_prompt_locales, resolve_prompt_locale
@@ -472,6 +487,15 @@ async def start_benchmark_run(
         raise ValueError(f"unsupported prompt_locale {effective_locale!r} (available: {opts})")
     manifest = str(manifest_path_for_suite(suite))
     effective_run_as = run_as_user_id or user_id
+    effective_cohort = dict(cohort_json) if cohort_json else {}
+    if "fingerprint" not in effective_cohort:
+        from apps.backend.infrastructure.agent_config_fingerprint import compute_fingerprint
+
+        effective_cohort["fingerprint"] = compute_fingerprint(tenant_id=tenant_id)
+    effective_cohort["use_harness_matrix"] = bool(use_harness_matrix)
+    effective_harness = str(
+        harness_preset or effective_cohort.get("harness_preset") or "observability"
+    ).strip().lower()
     run_config = {
         "profiles": profiles,
         "scenarios": scenarios,
@@ -485,6 +509,8 @@ async def start_benchmark_run(
         "scenario_failure_retries": scenario_failure_retries,
         "retain_workspaces": retain_workspaces,
         "prompt_locale": effective_locale,
+        "harness_preset": effective_harness,
+        "use_harness_matrix": bool(use_harness_matrix),
     }
     row = benchmark_runs_store.create_run(
         tenant_id=tenant_id,
@@ -492,6 +518,7 @@ async def start_benchmark_run(
         suite=suite,
         manifest_path=manifest,
         profiles=run_config,
+        cohort_json=effective_cohort or None,
     )
     rid = uuid.UUID(str(row["id"]))
     asyncio.create_task(
@@ -510,6 +537,9 @@ async def start_benchmark_run(
             scenario_failure_retries=scenario_failure_retries,
             retain_workspaces=retain_workspaces,
             prompt_locale=effective_locale,
+            harness_preset=effective_harness,
+            tenant_id=tenant_id,
+            use_harness_matrix=use_harness_matrix,
         )
     )
     return row

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentlayer.local/schemas/interfaces/operator-tuning-fields.json",
+  "title": "Operator settings — tuning-relevant fields",
+  "description": "Subset of OperatorSettingsPatch referenced from knob-registry. Full schema lives in operator_settings.py.",
+  "$defs": {
+    "llmSmartRoutingEnabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "llm_smart_routing_enabled — chat only; benchmarks use explicit model profiles."
+    },
+    "delegateEnabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "delegate_enabled — planned kill-switch (ADR 0007); general delegate tool gate."
+    },
+    "llmRouterModel": {
+      "type": "string",
+      "maxLength": 128
+    },
+    "llmRouterLocalConfidenceMin": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "llmRouterTimeoutSec": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 120
+    }
+  }
+}

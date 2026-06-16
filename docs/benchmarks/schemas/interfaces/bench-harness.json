@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentlayer.local/schemas/interfaces/bench-harness.json",
+  "title": "Benchmark harness knob values",
+  "$defs": {
+    "scenarioTimeoutSec": {
+      "type": "number",
+      "minimum": 30,
+      "maximum": 86400,
+      "description": "StartBenchmarkBody.scenario_timeout_sec"
+    },
+    "maxToolRoundsOverride": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 512,
+      "description": "Benchmark-only override; does not change global AGENT_MAX_TOOL_ROUNDS."
+    },
+    "harnessPreset": {
+      "type": "string",
+      "enum": ["observability", "chat_parity"],
+      "default": "observability",
+      "description": "observability = WS timeline + agent_stream_llm; chat_parity = HTTP parity with prod chat."
+    },
+    "suitePreset": {
+      "type": "string",
+      "enum": ["routing-core", "smoke", "full", "custom"],
+      "description": "Scenario set preset; custom requires explicit scenarios list on run body."
+    },
+    "benchCaptureTimeline": {
+      "type": "boolean",
+      "default": true,
+      "description": "bench.capture_timeline — per-run harness option (benchmarks/runs), not global .env."
+    }
+  }
+}

@@ -377,6 +377,13 @@ export type BenchmarkRun = {
     bench_cleanup?: BenchmarkWorkspaceCleanup | null;
     bench_cleanup_finish?: BenchmarkWorkspaceCleanup | null;
   } | null;
+  cohort_json?: {
+    fingerprint?: string;
+    cohort_label?: string;
+    harness_preset?: string;
+    session_id?: string;
+    experiment_id?: string;
+  } | null;
 };
 
 export type BenchmarkStatsModelRow = {
@@ -613,6 +620,10 @@ export type StartBenchmarkBody = {
   scenario_failure_retries?: number;
   retain_workspaces?: boolean;
   prompt_locale?: string;
+  harness_preset?: "observability" | "chat_parity";
+  use_harness_matrix?: boolean;
+  cohort_label?: string;
+  session_id?: string;
 };
 
 export function userOptionLabel(u: AdminUserRow): string {

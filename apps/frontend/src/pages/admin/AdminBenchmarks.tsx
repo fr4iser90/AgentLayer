@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import {
@@ -56,6 +56,11 @@ import {
   type ModelRow,
 } from "../../lib/modelCatalog";
 import { BenchmarkStatsPanel } from "../../features/admin/benchmarks/BenchmarkStatsPanel";
+import { BenchmarkConfigPreflightPanel } from "../../features/admin/benchmarks/BenchmarkConfigPreflightPanel";
+import {
+  fetchAgentConfigSessions,
+  type AgentConfigSessionRow,
+} from "../../features/admin/agentConfig/agentConfigApi";
 import { ConfirmModal } from "../../components/ConfirmModal";
 
 import {
@@ -807,7 +812,11 @@ export function AdminBenchmarks() {
   const { t } = useTranslation(["admin"]);
   const auth = useAuth();
   const { user: authUser } = auth;
-  const [tab, setTab] = useState<"run" | "history" | "stats">("run");
+  const [searchParams] = useSearchParams();
+  const runFromUrl = searchParams.get("run");
+  const [tab, setTab] = useState<"run" | "history" | "stats">(
+    runFromUrl ? "history" : "run"
+  );
   const [suites, setSuites] = useState<BenchmarkSuite[]>([]);
   const [catalogFixtures, setCatalogFixtures] = useState<BenchmarkFixture[]>([]);
   const [tenantUsers, setTenantUsers] = useState<AdminUserRow[]>([]);
@@ -837,7 +846,7 @@ export function AdminBenchmarks() {
   const [catalogRows, setCatalogRows] = useState<ModelRow[]>([]);
   const [catalogAgentlayer, setCatalogAgentlayer] = useState<ModelCatalogAgentlayer | null>(null);
   const [runs, setRuns] = useState<BenchmarkRun[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(runFromUrl);
   const [detail, setDetail] = useState<BenchmarkRun | null>(null);
   const [expandedResultKey, setExpandedResultKey] = useState<string | null>(null);
   const [attemptTabByRow, setAttemptTabByRow] = useState<Record<string, number>>({});
@@ -849,6 +858,9 @@ export function AdminBenchmarks() {
     _savedBenchPrefs?.scenarioTimeoutSec ?? ""
   );
   const [promptLocale, setPromptLocale] = useState(_savedBenchPrefs?.promptLocale ?? "en");
+  const [cohortLabel, setCohortLabel] = useState(_savedBenchPrefs?.cohortLabel ?? "");
+  const [sessionId, setSessionId] = useState(_savedBenchPrefs?.sessionId ?? "");
+  const [tuningSessions, setTuningSessions] = useState<AgentConfigSessionRow[]>([]);
   const [availablePromptLocales, setAvailablePromptLocales] = useState<string[]>(["en", "de"]);
   const [maxToolRoundsOverride, setMaxToolRoundsOverride] = useState(
     _savedBenchPrefs?.maxToolRoundsOverride ?? ""
@@ -979,6 +991,8 @@ export function AdminBenchmarks() {
       runAsUserId,
       friendUserId,
       promptLocale,
+      cohortLabel,
+      sessionId,
       scenarioTimeoutSec,
       maxToolRoundsOverride,
       scenarioFailureRetries,
@@ -993,6 +1007,8 @@ export function AdminBenchmarks() {
     runAsUserId,
     friendUserId,
     promptLocale,
+    cohortLabel,
+    sessionId,
     scenarioTimeoutSec,
     maxToolRoundsOverride,
     scenarioFailureRetries,
@@ -1026,6 +1042,16 @@ export function AdminBenchmarks() {
       }
       setLlmProviders(providers);
       setTenantUsers(users);
+      try {
+        const sess = await fetchAgentConfigSessions(auth);
+        setTuningSessions(
+          (sess.sessions ?? []).filter((row) => String(row.status || "open").toLowerCase() !== "closed"),
+        );
+      } catch (e) {
+        // Don't hide session loading failures: they look like "No session" and confuse tuning workflow.
+        setTuningSessions([]);
+        setError(e instanceof Error ? e.message : String(e));
+      }
       setRunAsUserId((prev) => {
         if (prev && users.some((u) => u.id === prev)) return prev;
         if (authUser?.id && users.some((u) => u.id === authUser.id)) return authUser.id;
@@ -1194,6 +1220,12 @@ export function AdminBenchmarks() {
   useEffect(() => {
     if (tab === "history" || tab === "stats") void loadRuns();
   }, [tab, loadRuns]);
+
+  useEffect(() => {
+    if (!runFromUrl) return;
+    setTab("history");
+    setSelectedId(runFromUrl);
+  }, [runFromUrl]);
 
   useEffect(() => {
     setExpandedResultKey(null);
@@ -1435,6 +1467,8 @@ export function AdminBenchmarks() {
         scenario_failure_retries: parsedRetries,
         retain_workspaces: retainWorkspaces || undefined,
         prompt_locale: promptLocale,
+        cohort_label: cohortLabel.trim() || undefined,
+        session_id: sessionId.trim() || undefined,
       });
       persistBenchRunPrefs();
       setTab("history");
@@ -2043,11 +2077,61 @@ export function AdminBenchmarks() {
             </div>
           </section>
 
+          <BenchmarkConfigPreflightPanel auth={auth} />
+
           <section className="rounded-xl border border-surface-border bg-surface-raised/40 p-4 space-y-3">
-            <h3 className="text-xs font-medium uppercase text-surface-muted">
-              {t("admin:benchAdvancedOptions")}
-            </h3>
+            <div>
+              <h3 className="text-xs font-medium uppercase text-surface-muted">
+                {t("admin:benchRunOptionsTitle")}
+              </h3>
+              <p className="mt-1 text-[11px] text-surface-muted">{t("admin:benchRunOptionsHint")}</p>
+            </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <label className="block text-sm sm:col-span-2 lg:col-span-3">
+                <span className="text-surface-muted">{t("admin:benchCohortLabel")}</span>
+                <input
+                  type="text"
+                  maxLength={128}
+                  value={cohortLabel}
+                  onChange={(e) => setCohortLabel(e.target.value)}
+                  placeholder={t("admin:benchCohortLabelPlaceholder")}
+                  className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                />
+                <span className="mt-1 block text-[11px] text-surface-muted">
+                  {t("admin:benchCohortLabelHint")}
+                </span>
+              </label>
+              <label className="block text-sm sm:col-span-2 lg:col-span-3">
+                <span className="text-surface-muted">{t("admin:benchTuningSession")}</span>
+                <select
+                  value={sessionId}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setSessionId(next);
+                    if (next) {
+                      const sess = tuningSessions.find((s) => s.id === next);
+                      if (sess?.cohort_label && !cohortLabel.trim()) {
+                        setCohortLabel(sess.cohort_label);
+                      }
+                    }
+                  }}
+                  className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                >
+                  <option value="">{t("admin:benchTuningSessionNone")}</option>
+                  {tuningSessions.map((sess) => (
+                    <option key={sess.id} value={sess.id}>
+                      {sess.label || sess.id}
+                      {sess.cohort_label ? ` · ${sess.cohort_label}` : ""}
+                    </option>
+                  ))}
+                </select>
+                <span className="mt-1 block text-[11px] text-surface-muted">
+                  {t("admin:benchTuningSessionHint")}{" "}
+                  <Link to="/admin/agent-config" className="text-sky-400 hover:underline">
+                    {t("admin:agentConfigNav")}
+                  </Link>
+                </span>
+              </label>
               <label className="block text-sm">
                 <span className="text-surface-muted">{t("admin:benchPromptLocale")}</span>
                 <select
@@ -2244,7 +2328,22 @@ export function AdminBenchmarks() {
                       · {String(detail.profiles.prompt_locale).toUpperCase()}
                     </span>
                   ) : null}
+                  {detail.cohort_json?.harness_preset ? (
+                    <span className="ml-2 text-xs font-normal text-surface-muted">
+                      · {String(detail.cohort_json.harness_preset)}
+                    </span>
+                  ) : null}
                 </h2>
+                {detail.cohort_json?.fingerprint || detail.cohort_json?.cohort_label ? (
+                  <p className="mt-1 font-mono text-[11px] text-surface-muted break-all">
+                    {detail.cohort_json?.cohort_label ? (
+                      <span>{String(detail.cohort_json.cohort_label)} · </span>
+                    ) : null}
+                    {detail.cohort_json?.fingerprint
+                      ? String(detail.cohort_json.fingerprint).slice(0, 24)
+                      : null}
+                  </p>
+                ) : null}
                 {detail.status === "queued" || detail.status === "running" ? (
                   <button
                     type="button"

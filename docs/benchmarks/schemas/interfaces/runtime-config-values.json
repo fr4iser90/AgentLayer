@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentlayer.local/schemas/interfaces/runtime-config-values.json",
+  "title": "Runtime config knob values (DB-backed)",
+  "description": "Planning schema for routing/limits parameters stored in agent_config_overrides (apply via POST /v1/admin/agent-config/apply). NOT edited via .env — bootstrap_env_key in registry is install default only.",
+  "$defs": {
+    "maxToolRounds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 16384,
+      "default": 8,
+      "description": "agent.max_tool_rounds — legacy bootstrap name AGENT_MAX_TOOL_ROUNDS (read-only at install)."
+    },
+    "subagentMaxToolRounds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 16384,
+      "description": "agent.subagent_max_tool_rounds — legacy bootstrap SUBAGENT_MAX_TOOL_ROUNDS."
+    },
+    "subagentTimeoutSec": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "maximum": 86400,
+      "description": "agent.subagent_timeout_sec — null = no wall-clock limit."
+    },
+    "toolDomainOrder": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "tool_routing.domain_order — ordered TOOL_DOMAIN ids (persisted in DB)."
+    },
+    "booleanConfig": {
+      "type": "boolean"
+    },
+    "toolChoiceRequiredRetry": {
+      "allOf": [{ "$ref": "#/$defs/booleanConfig" }],
+      "default": true
+    },
+    "routerStrictDefault": {
+      "allOf": [{ "$ref": "#/$defs/booleanConfig" }],
+      "default": true
+    },
+    "toolsRankingEnabled": {
+      "allOf": [{ "$ref": "#/$defs/booleanConfig" }],
+      "default": true
+    },
+    "toolsFullSchema": {
+      "allOf": [{ "$ref": "#/$defs/booleanConfig" }],
+      "default": false
+    },
+    "catalogAfterFirstRound": {
+      "allOf": [{ "$ref": "#/$defs/booleanConfig" }],
+      "default": true
+    }
+  }
+}

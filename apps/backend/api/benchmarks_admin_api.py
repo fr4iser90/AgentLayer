@@ -12,6 +12,11 @@ from pydantic import BaseModel, ConfigDict, Field
 from apps.backend.core.config import config
 from apps.backend.infrastructure import benchmark_runs_store
 from apps.backend.infrastructure.benchmark_stats import aggregate_benchmark_stats
+from apps.backend.infrastructure.benchmark_analysis import analyze_runs, compare_cohorts, list_cohorts, _cohort_label_from_run, _fingerprint_from_run
+from apps.backend.infrastructure.benchmark_review_service import run_review
+from apps.backend.infrastructure import agent_config_service
+from apps.backend.infrastructure import agent_config_store
+from apps.backend.infrastructure.agent_config_fingerprint import compute_fingerprint
 from apps.backend.infrastructure.auth import get_user_by_id, require_admin
 from apps.backend.infrastructure.benchmark_runner import (
     benchmark_catalog,
@@ -54,6 +59,52 @@ class StartBenchmarkBody(BaseModel):
     max_tool_rounds_override: int | None = Field(default=None, ge=1, le=512)
     scenario_failure_retries: int = Field(default=0, ge=0, le=20)
     retain_workspaces: bool = False
+    prompt_locale: str = Field(default="en", min_length=2, max_length=16)
+    session_id: uuid.UUID | None = None
+    experiment_id: uuid.UUID | None = None
+    cohort_label: str | None = Field(default=None, max_length=128)
+    harness_preset: str | None = Field(default="observability", max_length=64)
+    use_harness_matrix: bool = False
+
+
+class ExperimentCreateBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    label: str = Field(..., min_length=1, max_length=128)
+    hypothesis: str | None = Field(default=None, max_length=4000)
+    session_id: uuid.UUID | None = None
+    suite_preset: str | None = Field(default=None, max_length=64)
+    harness_preset: str | None = Field(default=None, max_length=64)
+    pending_patches: list[dict[str, Any]] | None = None
+
+
+class ExperimentPatchBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    label: str | None = Field(default=None, max_length=128)
+    hypothesis: str | None = Field(default=None, max_length=4000)
+    status: str | None = Field(default=None, max_length=32)
+    pending_patches: list[dict[str, Any]] | None = None
+
+
+class BenchmarkReviewBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    experiment_id: uuid.UUID | None = None
+    session_id: uuid.UUID | None = None
+    run_ids: list[uuid.UUID] | None = None
+    mode: str = Field(default="deterministic", max_length=32)
+    reviewer_model: str | None = Field(default=None, max_length=256)
+    summary_hint: str | None = Field(default=None, max_length=4000)
+
+
+class ExperimentRunBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    suite: str | None = Field(default=None, max_length=64)
+    profiles: list[dict[str, Any]] | None = None
+    scenarios: list[str] | None = None
+    apply_pending_patches: bool = True
     prompt_locale: str = Field(default="en", min_length=2, max_length=16)
 
 
@@ -175,6 +226,8 @@ async def get_benchmark_stats(
     limit: int = 200,
     suite: str | None = None,
     since_days: int | None = None,
+    cohort: str | None = None,
+    fingerprint: str | None = None,
     badge_min_samples: int = 2,
     fastest_min_pass_rate: float = 0.0,
 ) -> dict:
@@ -192,6 +245,10 @@ async def get_benchmark_stats(
         suite=suite,
         since_days=since,
     )
+    if cohort:
+        rows = [r for r in rows if _cohort_label_from_run(r) == cohort]
+    if fingerprint:
+        rows = [r for r in rows if _fingerprint_from_run(r) == fingerprint]
     return {
         "ok": True,
         "stats": aggregate_benchmark_stats(
@@ -276,6 +333,21 @@ async def post_start_benchmark(request: Request, body: StartBenchmarkBody) -> di
         if friend["id"] == str(run_as_id):
             raise HTTPException(status_code=400, detail="friend user must differ from run-as user")
     profiles = [p.model_dump(exclude_none=True) for p in body.profiles]
+    cohort: dict[str, Any] = {"fingerprint": compute_fingerprint(tenant_id=tid)}
+    harness = (body.harness_preset or "observability").strip().lower()
+    if harness not in ("observability", "chat_parity"):
+        raise HTTPException(status_code=400, detail="harness_preset must be observability or chat_parity")
+    cohort["harness_preset"] = harness
+    cohort["use_harness_matrix"] = bool(body.use_harness_matrix)
+    if body.cohort_label:
+        cohort["cohort_label"] = body.cohort_label.strip()
+    if body.session_id:
+        cohort["session_id"] = str(body.session_id)
+        sess = agent_config_store.get_session(body.session_id, tenant_id=tid)
+        if sess and not body.cohort_label:
+            cohort["cohort_label"] = sess.get("cohort_label")
+    if body.experiment_id:
+        cohort["experiment_id"] = str(body.experiment_id)
     try:
         row = await start_benchmark_run(
             tenant_id=tid,
@@ -293,9 +365,259 @@ async def post_start_benchmark(request: Request, body: StartBenchmarkBody) -> di
             scenario_failure_retries=body.scenario_failure_retries,
             retain_workspaces=body.retain_workspaces,
             prompt_locale=body.prompt_locale.strip().lower(),
+            cohort_json=cohort,
+            harness_preset=harness,
+            use_harness_matrix=body.use_harness_matrix,
         )
+        if body.session_id:
+            agent_config_store.append_session_run(body.session_id, tenant_id=tid, run_id=uuid.UUID(str(row["id"])))
+        if body.experiment_id:
+            agent_config_store.append_experiment_run(
+                body.experiment_id, tenant_id=tid, run_id=uuid.UUID(str(row["id"]))
+            )
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"ok": True, "run": _public_run(row)}
+
+
+@router.get("/analysis")
+async def get_benchmark_analysis(
+    request: Request,
+    cohort: str | None = None,
+    fingerprint: str | None = None,
+    git_sha: str | None = None,
+    suite: str | None = None,
+    since_days: int | None = None,
+    experiment_id: uuid.UUID | None = None,
+    limit: int = 200,
+) -> dict:
+    admin = await require_admin(request)
+    tid = db.user_tenant_id(admin.id)
+    rows = benchmark_runs_store.list_runs_for_stats(
+        tenant_id=tid,
+        limit=limit,
+        suite=suite,
+        since_days=since_days if since_days and since_days >= 1 else None,
+    )
+    analysis = analyze_runs(
+        rows,
+        cohort=cohort,
+        fingerprint=fingerprint,
+        suite=suite,
+        since_days=since_days,
+        experiment_id=str(experiment_id) if experiment_id else None,
+    )
+    if git_sha:
+        analysis["git_sha_filter"] = git_sha
+    return {"ok": True, **analysis}
+
+
+@router.get("/cohorts")
+async def get_benchmark_cohorts(request: Request, limit: int = 200) -> dict:
+    admin = await require_admin(request)
+    tid = db.user_tenant_id(admin.id)
+    rows = benchmark_runs_store.list_runs_for_stats(tenant_id=tid, limit=limit)
+    return {"ok": True, "cohorts": list_cohorts(rows)}
+
+
+@router.get("/cohorts/compare")
+async def get_benchmark_cohort_compare(
+    request: Request,
+    cohort_a: str,
+    cohort_b: str,
+    suite: str | None = None,
+    limit: int = 200,
+) -> dict:
+    admin = await require_admin(request)
+    tid = db.user_tenant_id(admin.id)
+    rows = benchmark_runs_store.list_runs_for_stats(tenant_id=tid, limit=limit, suite=suite)
+    return {"ok": True, **compare_cohorts(rows, cohort_a=cohort_a, cohort_b=cohort_b, suite=suite)}
+
+
+@router.get("/experiments")
+async def list_benchmark_experiments(
+    request: Request,
+    limit: int = 50,
+    session_id: uuid.UUID | None = None,
+) -> dict:
+    admin = await require_admin(request)
+    tid = db.user_tenant_id(admin.id)
+    return {"ok": True, "experiments": agent_config_store.list_experiments(tid, limit=limit, session_id=session_id)}
+
+
+@router.post("/experiments")
+async def create_benchmark_experiment(request: Request, body: ExperimentCreateBody) -> dict:
+    admin = await require_admin(request)
+    tid = db.user_tenant_id(admin.id)
+    fp = compute_fingerprint(tenant_id=tid)
+    exp = agent_config_store.create_experiment(
+        tenant_id=tid,
+        label=body.label.strip(),
+        hypothesis=body.hypothesis,
+        session_id=body.session_id,
+        fingerprint_at_start=fp,
+        suite_preset=body.suite_preset,
+        harness_preset=body.harness_preset,
+        pending_patches=body.pending_patches,
+    )
+    return {"ok": True, "experiment": exp}
+
+
+@router.get("/experiments/{experiment_id}")
+async def get_benchmark_experiment(request: Request, experiment_id: uuid.UUID) -> dict:
+    admin = await require_admin(request)
+    tid = db.user_tenant_id(admin.id)
+    exp = agent_config_store.get_experiment(experiment_id, tenant_id=tid)
+    if not exp:
+        raise HTTPException(status_code=404, detail="experiment not found")
+    return {"ok": True, "experiment": exp}
+
+
+@router.patch("/experiments/{experiment_id}")
+async def patch_benchmark_experiment(
+    request: Request,
+    experiment_id: uuid.UUID,
+    body: ExperimentPatchBody,
+) -> dict:
+    admin = await require_admin(request)
+    tid = db.user_tenant_id(admin.id)
+    exp = agent_config_store.patch_experiment(
+        experiment_id,
+        tenant_id=tid,
+        label=body.label,
+        hypothesis=body.hypothesis,
+        status=body.status,
+        pending_patches=body.pending_patches,
+    )
+    if not exp:
+        raise HTTPException(status_code=404, detail="experiment not found")
+    return {"ok": True, "experiment": exp}
+
+
+@router.post("/review")
+async def post_benchmark_review(request: Request, body: BenchmarkReviewBody) -> dict:
+    admin = await require_admin(request)
+    tid = db.user_tenant_id(admin.id)
+    review = run_review(
+        tenant_id=tid,
+        experiment_id=body.experiment_id,
+        session_id=body.session_id,
+        run_ids=body.run_ids,
+        mode=body.mode,
+        reviewer_model=body.reviewer_model,
+        actor_type="user",
+        summary_hint=body.summary_hint,
+    )
+    return {"ok": True, "review": review}
+
+
+@router.get("/reviews/{review_id}")
+async def get_benchmark_review(request: Request, review_id: uuid.UUID) -> dict:
+    admin = await require_admin(request)
+    tid = db.user_tenant_id(admin.id)
+    review = agent_config_store.get_review(review_id, tenant_id=tid)
+    if not review:
+        raise HTTPException(status_code=404, detail="review not found")
+    return {"ok": True, "review": review}
+
+
+@router.get("/runs/{run_id}/analysis")
+async def get_benchmark_run_analysis(request: Request, run_id: uuid.UUID) -> dict:
+    admin = await require_admin(request)
+    tid = db.user_tenant_id(admin.id)
+    row = benchmark_runs_store.get_run(run_id)
+    if not row or int(row.get("tenant_id") or 0) != tid:
+        raise HTTPException(status_code=404, detail="benchmark run not found")
+    analysis = analyze_runs([row])
+    cohort = row.get("cohort_json") if isinstance(row.get("cohort_json"), dict) else {}
+    return {
+        "ok": True,
+        "run_id": str(run_id),
+        "suite": row.get("suite"),
+        "status": row.get("status"),
+        "cohort": cohort,
+        "fingerprint": _fingerprint_from_run(row),
+        "harness_preset": cohort.get("harness_preset") if isinstance(cohort, dict) else None,
+        **analysis,
+    }
+
+
+@router.get("/runs/{run_id}/export")
+async def export_benchmark_run(request: Request, run_id: uuid.UUID, format: str = "json") -> dict:
+    admin = await require_admin(request)
+    tid = db.user_tenant_id(admin.id)
+    row = benchmark_runs_store.get_run(run_id)
+    if not row or int(row.get("tenant_id") or 0) != tid:
+        raise HTTPException(status_code=404, detail="benchmark run not found")
+    fmt = (format or "json").strip().lower()
+    if fmt not in ("json", "jsonl"):
+        raise HTTPException(status_code=400, detail="format must be json or jsonl")
+    return {"ok": True, "format": fmt, "run": row}
+
+
+@router.post("/experiments/{experiment_id}/run")
+async def run_benchmark_experiment(
+    request: Request,
+    experiment_id: uuid.UUID,
+    body: ExperimentRunBody,
+) -> dict:
+    admin = await require_admin(request)
+    tid = db.user_tenant_id(admin.id)
+    exp = agent_config_store.get_experiment(experiment_id, tenant_id=tid)
+    if not exp:
+        raise HTTPException(status_code=404, detail="experiment not found")
+    if body.apply_pending_patches and exp.get("pending_patches_json"):
+        patches = exp.get("pending_patches_json") or []
+        if isinstance(patches, list) and patches:
+            agent_config_service.apply_patches(
+                tenant_id=tid,
+                patches=[dict(p) for p in patches if isinstance(p, dict)],
+                actor_type="user",
+                actor_user_id=admin.id,
+                experiment_id=experiment_id,
+                hypothesis=str(exp.get("hypothesis") or "") or None,
+            )
+    suite = (body.suite or exp.get("suite_preset") or "routing-core").strip()
+    profiles = body.profiles
+    if not profiles:
+        raise HTTPException(status_code=400, detail="profiles required to run experiment")
+    cohort = {
+        "fingerprint": compute_fingerprint(tenant_id=tid),
+        "experiment_id": str(experiment_id),
+        "cohort_label": str(exp.get("label") or experiment_id),
+    }
+    session_raw = exp.get("session_id")
+    if session_raw:
+        cohort["session_id"] = str(session_raw)
+    harness = str(exp.get("harness_preset") or "observability").strip().lower()
+    if harness not in ("observability", "chat_parity"):
+        harness = "observability"
+    cohort["harness_preset"] = harness
+    try:
+        row = await start_benchmark_run(
+            tenant_id=tid,
+            user_id=admin.id,
+            suite=suite,
+            profiles=profiles,
+            scenarios=body.scenarios,
+            admin_user_id=admin.id,
+            prompt_locale=body.prompt_locale.strip().lower(),
+            cohort_json=cohort,
+            harness_preset=harness,
+        )
+    except (RuntimeError, ValueError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    agent_config_store.append_experiment_run(experiment_id, tenant_id=tid, run_id=uuid.UUID(str(row["id"])))
+    return {"ok": True, "run": _public_run(row), "experiment_id": str(experiment_id)}
+
+
+@router.get("/experiments/{experiment_id}/report")
+async def get_benchmark_experiment_report(request: Request, experiment_id: uuid.UUID) -> dict:
+    admin = await require_admin(request)
+    tid = db.user_tenant_id(admin.id)
+    report = agent_config_store.experiment_report(experiment_id, tenant_id=tid)
+    if not report:
+        raise HTTPException(status_code=404, detail="experiment not found")
+    return {"ok": True, **report}

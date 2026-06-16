@@ -17,11 +17,11 @@ Find and **lock in the best agent-layer configuration** (prompts, tool routing, 
 
 Goals:
 
-- Change a knob → automatic changelog + config fingerprint
-- See impact in Admin Web UI
-- Trigger benchmark runs (manual or automatic)
+- Change a knob → changelog + fingerprint (on apply)
+- See impact in Admin Web UI or Operator chat
+- **Start benchmark when you ask** (Operator tools / WebUI Run button) — **not** automatic on every patch
 - Classify failures by mechanism (patterns), per scenario, across all models
-- Optional **reviewer LLM** compares cohorts before accepting a config change
+- **Reviewer LLM when you ask** — compares cohorts before you accept a config change
 
 **Non-goal:** Optimizing one provider/model in isolation. The platform layer should lift **as many models as possible** on orchestration-heavy scenarios (S1, S3, S4, C*, D*, SEC*).
 
@@ -66,6 +66,237 @@ Verified against the repo as of this document.
 | RAG fingerprint precedent | `apps/backend/domain/rag_ingest_common.py` | Reuse pattern for agent config fingerprint |
 | Model matrix benchmarks | Admin → Benchmarks | No experiment workflow |
 | On-disk exports | `benchmarks/results/{run_id}/` | Not exposed via HTTP API |
+| **Runtime tuning mode** | — | **Not built** — no unified API-first tuning loop |
+
+---
+
+## 2.0 API-first config (design principle — not env UI)
+
+**Your intent (correct):** All tunable knobs → **one generic HTTP API** → runtime effect without `.env` edits or redeploy. The Admin UI and any LLM are **clients of that API**, not separate config paths.
+
+**Repo policy already states this** for product toggles ([`docs/api/http.md`](../api/http.md)): new runtime flags belong in **`operator_settings` / admin PATCH**, not new `AGENT_*` env vars.
+
+### What exists today (the pattern to extend)
+
+| Surface | Generic API? | LLM via Operator? |
+|---------|--------------|-------------------|
+| Bridges, RAG, memory, smart route, LLM queue | `PATCH /v1/admin/operator-settings` | **Yes** — Operator tools `settings_get`, `settings_patch` (`plugins/tools/platform/operator/admin.py`) |
+| External LLM endpoints | `PUT /v1/admin/external-llm/endpoints` | **Yes** — `external_llm_endpoints_get/put` |
+| Tool operator policies | `PUT /v1/admin/tool-policies` | **Yes** — operator admin tools |
+| Agent list (read-only) | `GET /v1/admin/agents` | Could expose as operator tool |
+| **Agent routing knobs** (`max_tool_rounds`, ranking, pins, delegate policy) | **No** — still `AGENT_*` env + code + YAML files | **No** |
+| **Agent YAML** (pinned_tools, prompts) | **No** — files on disk | **No** |
+| Benchmark experiments | Partial — `POST /v1/admin/benchmarks/runs` only | **No** |
+
+So: **Operator agent is already the LLM↔API bridge** for operator_settings. The gap is that **routing/tuning knobs are not on that API yet**.
+
+### Target architecture
+
+```text
+┌──────────────────────────────────────────────────────────────┐
+│  /v1/admin/agent-config   (planned — generic, registry-driven) │
+│  GET knobs · GET snapshot · PATCH apply · changelog · fingerprint │
+└────────────────────────────┬─────────────────────────────────┘
+                             │ single write path
+         ┌───────────────────┼───────────────────┐
+         │                   │                   │
+   Admin Web UI        Operator agent         Automated reviewer
+   (Tuning tab)        (admin chat tools)      (backend job: LLM → PATCH)
+         │                   │                   │
+         └───────────────────┴───────────────────┘
+                             │
+              DB: operator_settings + agent_config_overrides (planned)
+                             │
+              Runtime: planner / tool_routing read EFFECTIVE values
+                             │ (env = bootstrap defaults only, not tuning path)
+                             ▼
+              Optional: POST …/benchmarks/…/validate after PATCH
+```
+
+**Env (`.env`) is not part of the tuning workflow.** It may remain as **install/bootstrap defaults** only. Tuning sessions, UI, and LLM never tell you to edit `.env`.
+
+### Operator agent vs reviewer LLM — two clients, one API
+
+| Mode | Who acts | How |
+|------|----------|-----|
+| **Interactive tuning** | You (admin) chat with **`agent_id: operator`** | Model calls `agent_config_patch`, `settings_patch`, `benchmark_experiment_run`, … |
+| **Automated review** | Backend **reviewer job** after benchmark | LLM returns structured `{ knob_patches: [...] }`; server applies **same PATCH** (no separate code path) |
+| **Manual UI** | Admin → Agent tuning tab | Form → **same PATCH** |
+
+The reviewer LLM does **not** need to be “the operator agent” in chat — but it **must** use the **same generic API** the operator tools wrap. Operator agent = human-facing LLM client; reviewer = batch LLM client.
+
+### Planned Operator tools (wrap agent-config API)
+
+Extend `plugins/tools/platform/operator/admin.py` (or sibling module):
+
+| Tool | Maps to |
+|------|---------|
+| `agent_config_get` | `GET /v1/admin/agent-config/knobs` + snapshot |
+| `agent_config_patch` | `PATCH /v1/admin/agent-config/apply` |
+| `benchmark_experiment_create` | `POST /v1/admin/benchmarks/experiments` |
+| `benchmark_experiment_validate` | `POST …/experiments/{id}/run` + poll |
+| `benchmark_analysis_get` | `GET /v1/admin/benchmarks/analysis` |
+
+Existing `settings_patch` stays for bridge/RAG/smart-route fields already in `OperatorSettingsPatch`.
+
+### Migrating routing knobs off env
+
+Phase order:
+
+1. Add DB columns or JSONB on `operator_settings` (or `agent_config` table) for `benchmark_sensitive` knobs from [`knob-registry.yaml`](./knob-registry.yaml).
+2. Change `apps/backend/core/config.py` readers to **effective** = DB override ?? env default (same pattern as embedding base URL).
+3. Expose via `agent-config` API + operator tools.
+4. **Deprecate** tuning via `.env` in docs/UI (env remains for first boot only).
+
+Agent YAML overrides (pinned_tools, prompts): **DB overlay** keyed by `agent_id` + field, merged at registry load (or hot-reload on patch). File YAML = factory default; API = runtime tuning.
+
+---
+
+## 2.1 Runtime Tuning Mode (missing — core product gap)
+
+Observability + fingerprints alone are not enough. You need a **tuning loop** where every change goes through the **agent-config API**:
+
+| Capability | Today | Tuning mode (planned) |
+|------------|-------|------------------------|
+| Change routing knobs | **Env/code/YAML** (wrong path for tuning) | **`PATCH /v1/admin/agent-config/apply`** only |
+| Human UI | Admin → Interfaces (subset) | Agent tuning tab → **same API** |
+| LLM changes config | Operator `settings_patch` (subset) | Operator **`agent_config_apply`** when you ask |
+| Run benchmark | Manual Run tab | Operator **`benchmark_run_start`** when **you ask** in chat |
+| Changelog / fingerprint | None | Written on every PATCH |
+
+### Tuning session workflow (on-demand — you drive each step)
+
+```text
+POST /v1/admin/agent-config/sessions  { hypothesis, cohort_label }   # optional
+  → POST …/apply  { patches }           # when you ask to change config
+  → POST …/sessions/{id}/validate       # ONLY when you ask to run benchmark
+  → GET  …/benchmarks/analysis          # when you ask for results
+  → POST …/benchmarks/review            # when you ask Reviewer
+  → POST …/sessions/{id}/close          # when you accept/revert
+```
+
+Operator runs the same steps **via tools when your chat message requests them** — see [`PLANNING.md`](./PLANNING.md) §2–3.
+
+### What works at runtime today (legacy vs target)
+
+| Layer | Tuning via API today? | Target |
+|-------|----------------------|--------|
+| Operator settings (RAG, smart route, queue) | **Yes** — PATCH + Operator `settings_patch` | Keep |
+| Agent routing (`AGENT_MAX_TOOL_ROUNDS`, ranking, …) | **No** — env | **agent-config API** |
+| Agent YAML (pins, prompts) | **No** — files | **DB overlay + API** |
+| Tool / routing **code** | No — deploy | Git + CI; optional reload-tools for plugins |
+| Benchmark matrix | **Yes** — POST runs | Keep + link to session |
+
+---
+
+## 2.2 Current agent architecture (as-built)
+
+**Important correction:** `delegate` is **not** on every agent and **not** required for every benchmark scenario. Only **General** invokes the `delegate` tool. Specialists are **targets** of delegate (or run **directly** when the scenario sets `agent_id`).
+
+### Two roles
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│  general  — orchestrator                                     │
+│  Tools: delegate, catalog, workspace.create/list, bind, …   │
+│  delegatable: false  (never a delegate target)               │
+└───────────────────────────┬─────────────────────────────────┘
+                            │ delegate(run_subagent, agent_id, prompt)
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│  specialists — delegatable: true (each has own tool surface)   │
+│  No delegate tool on specialists                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+Delegate implementation: `plugins/tools/platform/agents/delegate.py`  
+Allowed targets: `effective_delegatable_agent_ids()` in `embedded_subagent.py` (from registry `delegatable` / `admin_only_delegatable` flags).
+
+### All agents today (`plugins/agents/*/agent.yaml`)
+
+| agent_id | Role | delegatable | delegate tool | Notes |
+|----------|------|-------------|---------------|--------|
+| **general** | Orchestrator | **false** | **has `delegate`** | Only entry point for sub-agents |
+| coding | Build / edit / bash / git | true | no | `model_profile: coding`, container |
+| coding_plan | Read-only planning | true | no | strict workspace |
+| math | math_* tools | true | no | |
+| dashboard | create_dashboard, patch_layout, … | true | no | |
+| security_auditor | SSC + read-only coding | true | no | `min_role: admin` |
+| creative | build, inpainting | true | no | |
+| research | search, RAG, memory | true | no | |
+| communications | mail, calendar, shares | true | no | |
+| media | media library / queue | true | no | |
+| integrations | HTTP/RSS connectors | true | no | |
+| outdoor | fishing / survival tools | true | no | |
+| lifestyle | weather, calendar | true | no | |
+| **operator** | Admin platform ops | false | no | **`admin_only_delegatable: true`** — delegate target for admins only |
+
+**Standard delegate targets (any user):** coding, coding_plan, math, dashboard, security_auditor, creative, research, communications, media, integrations, outdoor, lifestyle.
+
+**Admin-only delegate target:** operator.
+
+### General’s tool surface (actual)
+
+From `plugins/agents/general/agent.yaml`:
+
+- `delegate`, `catalog`, `workspace.create`, `workspace.list`, `bind`, `user_secrets_status` (allowlist + pinned)
+
+General **does not** have: `read_file`, `create_dashboard`, `security_scan`, `bash`, etc. Those live on specialists. So for most product work, General must either:
+
+1. Call **`delegate`** → specialist runs with the right tools, or  
+2. Call **`catalog`** / workspace tools to set up context first.
+
+Tool forward policy (`tool_forward_policy.py`) **pins** registry `pinned_tools` so `delegate` and `catalog` survive ranking cuts.
+
+### How routing works (runtime)
+
+1. **Chat/benchmark** sends `agent_id` on `/v1/chat/completions` (harness: `_effective_agent_id()`).
+2. **Planner** merges registry tools for that agent + routing filters (`tool_routing.py` categories from user text).
+3. **Forward policy** applies pins / budget / ranking.
+4. If model calls **`delegate`**, embedded sub-agent runs with target `agent_id` (inherits workspace); child trace under Run traces.
+
+**`delegate.router.yaml`** only supplies **phrase hints** for tool-domain classification — it does not auto-invoke delegate. The model must still call the tool.
+
+---
+
+## 2.3 Benchmark scenarios: entry agent vs delegate
+
+Default scenario `agent_id` is **`general`** (`scenarios/registry.py`). Exceptions run the **specialist directly** (no General, no delegate on that run):
+
+| Scenario | Entry `agent_id` | Delegate expected? | Rubric accepts (summary) |
+|----------|------------------|--------------------|---------------------------|
+| S1_tool_catalog | general | No — use **`catalog`** | catalog call + ≥3 agent_id names in reply |
+| S2_simple_chat | general | No — `plain_completion` | “Paris”, no tools |
+| S3_read_file | general | Often yes | **delegate** and/or read_file + README line |
+| S4_delegate_math | general | **Yes — mandatory** | delegate + “42” in reply |
+| W1_git_readme | general | Optional | workspace.create + delegate or read_file |
+| W2_find_octocat_* | general | No | workspace.create + search/read; Octocat in reply |
+| D1_dashboard_create | general | Often (delegate→dashboard) | **API**: dashboard exists **or** create_dashboard on trace |
+| **D2_layout_patch** | **dashboard** | **No** — direct dashboard tools | patch_layout / patch_data + API state |
+| **SOC1_block_share_visible** | **dashboard** | **No** | dashboard tools + share; reply `bench-visible` |
+| C1_bench_marker | general | Typical | workspace.create + **delegate or write** + git change |
+| C2_small_edit | general | Typical | delegate or write + git diff |
+| SEC1_scan | general | Typical | workspace.create + **delegate or security_scan** |
+| SEC2_remediate | general | Typical | delegate or security tools + git/report |
+| INT1_gmail_connected | general | No | gmail/mail tools or clear skip |
+
+So: **delegate is the default path for coding/security/read scenarios on General**, but **dashboard scenarios D2 and SOC1 bypass General entirely**. That matches “delegate only on some tasks” — not a doc bug in the rubrics, but easy to misread in aggregate stats.
+
+### How it **should** be (design intent)
+
+| Layer | Intent |
+|-------|--------|
+| **Product chat** | User talks to **General**; General delegates to specialists when needed |
+| **Benchmarks** | Mix: most scenarios test General orchestration; D2/SOC1 test **dashboard agent in isolation** |
+| **Tuning** | Optimize General’s delegate + catalog + routing so **more models** pass S3/S4/C*/SEC*; dashboard agent separately for D2/SOC1 |
+| **Future** | Optional suite flag “general-only” vs “per-scenario agent_id as today” for stricter orchestration regression |
+
+### Gaps vs your expectations
+
+1. **No runtime tuning UI** — only manual edits + Run tab (§2.1).  
+2. **Subagent tool calls** may not all appear in parent `tool_names`; rubrics also check **API outcomes** (dashboard exists, git diff). Check **Run traces → child_runs** for delegate depth.  
+3. **`operator.delegate_enabled`** kill-switch is in ADR only — **not in DB yet**.  
+4. Stats do not show “failed because no delegate” vs “delegate ok, subagent failed” — pattern analysis (planned) should split this.
 
 ---
 
@@ -145,9 +376,9 @@ Each knob entry:
 | Rubrics / scenarios | `tests/benchmarks/agent/rubrics.py`, scenario prompts | rubric |
 | Benchmark harness | timeout, retries, `AGENT_BENCH_CAPTURE_TIMELINE`, suite, locale | bench |
 
-Value resolution order (unchanged): **operator_settings > env > code defaults**. Registry holds metadata + read API + changelog — not a duplicate runtime config.
+Value resolution order (target, after migration): **API/DB override → env bootstrap default → code default**. Registry holds metadata; **`/v1/admin/agent-config`** is the only tuning write path (see §2.0).
 
----
+**Not in scope for API tuning:** changing Python routing logic — that stays git + deploy; the API tunes **parameters** the code already reads.
 
 ## 5. Layer 2 — Auto-documentation on change
 
@@ -256,17 +487,19 @@ New area **Admin → Agent tuning** (or extra tabs under Model benchmarks):
 
 ---
 
-## 9. Layer 6 — Automatic runs
+## 9. Layer 6 — Benchmark runs (on user request)
 
-### Triggers (planned)
+### Who starts a run
 
 | Trigger | When |
 |---------|------|
-| `manual` | “Validate config” button |
-| `on_knob_apply` | After apply if any changed knob is `benchmark_sensitive` |
-| `on_git_push` | CI / webhook (optional) |
-| `scheduled` | Nightly full matrix (optional) |
-| `experiment` | Experiment workflow |
+| **`manual` / chat** | **Default.** You ask Operator or click Run in WebUI |
+| `session_validate` | You explicitly validate a session (same as asking for a run) |
+| `experiment` | You start an experiment run |
+| ~~`on_knob_apply`~~ | **Not planned** — patch alone must not start bench |
+| `on_git_push` / `scheduled` | Phase 6 optional only; off by default |
+
+Policy: [`PLANNING.md`](./PLANNING.md) § Core policy.
 
 ### Pipeline
 
@@ -283,6 +516,10 @@ New area **Admin → Agent tuning** (or extra tabs under Model benchmarks):
 ---
 
 ## 10. Layer 7 — LLM reviewer gate
+
+**Agent design:** dedicated **`reviewer`** agent (read + verdict); **Operator** remains actuator only. See [`implementation-plan.md`](./implementation-plan.md) §1.
+
+**Schemas:** [`schemas/openapi.yaml`](./schemas/openapi.yaml) — `ReviewInput`, `ReviewOutput`, `ReviewCreateRequest`, `ReviewRecord`.
 
 The **reviewer model** (configurable — typically your current best profile from the matrix) evaluates **config changes**, not individual model rankings.
 
@@ -350,6 +587,10 @@ Store preset in cohort metadata. Never compare runs across different presets in 
 
 ## 12. API inventory
 
+Full target design (request/response shapes, flows, Operator mirror): **[`api-surface.md`](./api-surface.md)**.  
+OpenAPI contracts: **[`schemas/openapi.yaml`](./schemas/openapi.yaml)**.  
+**Build order, on-demand Operator chat:** **[`PLANNING.md`](./PLANNING.md)** §1–3.
+
 ### 12.1 Existing admin APIs (use as-is)
 
 #### Benchmarks — prefix `/v1/admin/benchmarks`
@@ -414,7 +655,7 @@ Prefix **`/v1/admin/agent-config`** (new router):
 | GET | `/snapshot` | Full config snapshot for export |
 | GET | `/changelog` | Paginated changelog (`limit`, `since`, `experiment_id`) |
 | POST | `/draft` | Optional staged patch set |
-| POST | `/apply` | Apply operator-eligible knobs + changelog + optional `trigger_benchmark` |
+| POST | `/apply` | Apply knobs + changelog. **`trigger_benchmark` default false** — bench only if user/UI explicitly asks (prefer separate `benchmark_run_start` from Operator). |
 
 ### 12.3 Planned APIs — benchmarks extension
 
@@ -506,10 +747,18 @@ apps/frontend/src/features/admin/
 
 ### Phase 0 — Documentation (this PR)
 
-- [x] `agent-tuning-platform.md` (this file)
+- [x] `agent-tuning-platform.md` (this file) — includes runtime tuning mode + agent/delegate truth table
 - [x] `knob-registry.yaml` v1
 - [x] Cross-links in `docs/README.md`, `pattern-analysis-roadmap.md`
 - [ ] ADR `0008-agent-config-experiments.md` when coding starts
+
+### Phase 0.5 — API-first tuning (before full fingerprint stack)
+
+- [ ] **`/v1/admin/agent-config`** router (registry-driven GET/PATCH)
+- [ ] Migrate first routing knobs from env → DB effective config (e.g. max_tool_rounds, ranking)
+- [ ] Operator tools: `agent_config_get`, `agent_config_patch`, `benchmark_experiment_validate`
+- [ ] Admin tuning tab as **API client** (not env forms)
+- [ ] Automated reviewer calls same PATCH (structured output → apply)
 
 ### Phase 1 — Fingerprint + changelog (~1–2 weeks)
 
@@ -546,7 +795,28 @@ apps/frontend/src/features/admin/
 
 - [ ] Git webhook → routing-core run → PR comment
 
-**Recommended MVP:** Phase 0 + 1 + 2 + 4, then Phase 5.
+**Recommended MVP:** Phase 0 + **0.5** + 1 + 2, then Phase 5 (reviewer LLM).
+
+---
+
+## 18. Quick reference — delegate vs direct
+
+```text
+User / benchmark
+    │
+    ├─ agent_id=general (most scenarios)
+    │     tools: delegate | catalog | workspace.*
+    │     ├─ S1: catalog only
+    │     ├─ S4: must delegate → math
+    │     ├─ C1/C2/SEC*: delegate → coding | security_auditor (typical)
+    │     └─ D1: delegate → dashboard OR API proves dashboard created
+    │
+    └─ agent_id=dashboard (D2, SOC1)
+          tools: create_dashboard, patch_layout, … directly
+          no delegate on this run
+```
+
+See §2.2–2.3 for full tables.
 
 ---
 

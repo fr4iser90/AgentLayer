@@ -1,0 +1,1214 @@
+# Agent tuning platform — OpenAPI 3.1 schemas
+#
+# Fragment for planned admin APIs. Merge into main OpenAPI when routers ship.
+# Narrative: ../api-surface.md | Plan: ../implementation-plan.md
+
+openapi: 3.1.0
+info:
+  title: AgentLayer Admin — Agent Config & Benchmark Tuning
+  version: 0.1.0-planned
+  description: |
+    Planned endpoints under `/v1/admin/agent-config` and extensions to `/v1/admin/benchmarks`.
+    Existing operator-settings and benchmark run APIs are referenced but not fully specified here.
+
+tags:
+  - name: agent-config
+    description: Registry-driven runtime agent/routing configuration
+  - name: agent-config-sessions
+    description: Tuning session orchestration
+  - name: benchmarks-experiments
+    description: Experiment lifecycle
+  - name: benchmarks-analysis
+    description: Cohort analysis and comparison
+  - name: benchmarks-review
+    description: LLM and structured review records
+
+paths:
+  /v1/admin/agent-config/knobs:
+    get:
+      tags: [agent-config]
+      operationId: agentConfigListKnobs
+      summary: List knobs from registry with effective values
+      parameters:
+        - $ref: '#/components/parameters/UiGroupQuery'
+        - $ref: '#/components/parameters/LayerQuery'
+        - name: benchmark_sensitive
+          in: query
+          schema: { type: boolean }
+        - name: agent_id
+          in: query
+          schema: { type: string }
+        - name: writable_only
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: Knob list
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/KnobsListResponse' }
+
+  /v1/admin/agent-config/knobs/{knob_id}:
+    get:
+      tags: [agent-config]
+      operationId: agentConfigGetKnob
+      summary: Single knob detail
+      parameters:
+        - $ref: '#/components/parameters/KnobIdPath'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/KnobDetailResponse' }
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/admin/agent-config/fingerprint:
+    get:
+      tags: [agent-config]
+      operationId: agentConfigGetFingerprint
+      summary: Current benchmark-sensitive config fingerprint
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FingerprintResponse' }
+
+  /v1/admin/agent-config/snapshot:
+    get:
+      tags: [agent-config]
+      operationId: agentConfigGetSnapshot
+      summary: Full config snapshot for export / experiments
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SnapshotResponse' }
+
+  /v1/admin/agent-config/changelog:
+    get:
+      tags: [agent-config]
+      operationId: agentConfigGetChangelog
+      summary: Paginated config change audit log
+      parameters:
+        - $ref: '#/components/parameters/LimitQuery'
+        - name: since
+          in: query
+          schema: { type: string, format: date-time }
+        - name: experiment_id
+          in: query
+          schema: { type: string, format: uuid }
+        - name: session_id
+          in: query
+          schema: { type: string, format: uuid }
+        - name: actor_type
+          in: query
+          schema: { $ref: '#/components/schemas/ActorType' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChangelogListResponse' }
+
+  /v1/admin/agent-config/draft:
+    post:
+      tags: [agent-config]
+      operationId: agentConfigCreateDraft
+      summary: Validate patches without applying
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DraftRequest' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DraftResponse' }
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /v1/admin/agent-config/apply:
+    post:
+      tags: [agent-config]
+      operationId: agentConfigApply
+      summary: Apply runtime knob patches (primary tuning write path)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApplyRequest' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApplyResponse' }
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /v1/admin/agent-config/sessions:
+    get:
+      tags: [agent-config-sessions]
+      operationId: agentConfigListSessions
+      parameters:
+        - $ref: '#/components/parameters/LimitQuery'
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/SessionStatus' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionListResponse' }
+    post:
+      tags: [agent-config-sessions]
+      operationId: agentConfigCreateSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SessionCreateRequest' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionResponse' }
+
+  /v1/admin/agent-config/sessions/{session_id}:
+    get:
+      tags: [agent-config-sessions]
+      operationId: agentConfigGetSession
+      parameters:
+        - $ref: '#/components/parameters/SessionIdPath'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionResponse' }
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [agent-config-sessions]
+      operationId: agentConfigPatchSession
+      parameters:
+        - $ref: '#/components/parameters/SessionIdPath'
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SessionPatchRequest' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionResponse' }
+
+  /v1/admin/agent-config/sessions/{session_id}/validate:
+    post:
+      tags: [agent-config-sessions]
+      operationId: agentConfigValidateSession
+      summary: Queue validation benchmark for session
+      parameters:
+        - $ref: '#/components/parameters/SessionIdPath'
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SessionValidateRequest' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionValidateResponse' }
+
+  /v1/admin/agent-config/sessions/{session_id}/close:
+    post:
+      tags: [agent-config-sessions]
+      operationId: agentConfigCloseSession
+      parameters:
+        - $ref: '#/components/parameters/SessionIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SessionCloseRequest' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionResponse' }
+
+  /v1/admin/benchmarks/experiments:
+    get:
+      tags: [benchmarks-experiments]
+      operationId: benchmarkListExperiments
+      parameters:
+        - $ref: '#/components/parameters/LimitQuery'
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/ExperimentStatus' }
+        - name: session_id
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExperimentListResponse' }
+    post:
+      tags: [benchmarks-experiments]
+      operationId: benchmarkCreateExperiment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExperimentCreateRequest' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExperimentResponse' }
+
+  /v1/admin/benchmarks/experiments/{experiment_id}:
+    get:
+      tags: [benchmarks-experiments]
+      operationId: benchmarkGetExperiment
+      parameters:
+        - $ref: '#/components/parameters/ExperimentIdPath'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExperimentResponse' }
+    patch:
+      tags: [benchmarks-experiments]
+      operationId: benchmarkPatchExperiment
+      parameters:
+        - $ref: '#/components/parameters/ExperimentIdPath'
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExperimentPatchRequest' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExperimentResponse' }
+
+  /v1/admin/benchmarks/experiments/{experiment_id}/run:
+    post:
+      tags: [benchmarks-experiments]
+      operationId: benchmarkRunExperiment
+      summary: Apply pending patches if needed, then queue benchmark
+      parameters:
+        - $ref: '#/components/parameters/ExperimentIdPath'
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExperimentRunRequest' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExperimentRunResponse' }
+
+  /v1/admin/benchmarks/experiments/{experiment_id}/report:
+    get:
+      tags: [benchmarks-experiments]
+      operationId: benchmarkGetExperimentReport
+      parameters:
+        - $ref: '#/components/parameters/ExperimentIdPath'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExperimentReportResponse' }
+
+  /v1/admin/benchmarks/analysis:
+    get:
+      tags: [benchmarks-analysis]
+      operationId: benchmarkGetAnalysis
+      parameters:
+        - name: cohort
+          in: query
+          schema: { type: string }
+        - name: fingerprint
+          in: query
+          schema: { type: string }
+        - name: git_sha
+          in: query
+          schema: { type: string }
+        - name: suite
+          in: query
+          schema: { type: string }
+        - name: since_days
+          in: query
+          schema: { type: integer, minimum: 1 }
+        - name: experiment_id
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnalysisResponse' }
+
+  /v1/admin/benchmarks/cohorts:
+    get:
+      tags: [benchmarks-analysis]
+      operationId: benchmarkListCohorts
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CohortListResponse' }
+
+  /v1/admin/benchmarks/cohorts/compare:
+    get:
+      tags: [benchmarks-analysis]
+      operationId: benchmarkCompareCohorts
+      parameters:
+        - name: cohort_a
+          in: query
+          required: true
+          schema: { type: string }
+        - name: cohort_b
+          in: query
+          required: true
+          schema: { type: string }
+        - name: suite
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CohortCompareResponse' }
+
+  /v1/admin/benchmarks/runs/{run_id}/export:
+    get:
+      tags: [benchmarks-analysis]
+      operationId: benchmarkExportRun
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: format
+          in: query
+          schema: { type: string, enum: [json, jsonl], default: json }
+      responses:
+        '200':
+          description: Export bundle
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RunExportResponse' }
+
+  /v1/admin/benchmarks/review:
+    post:
+      tags: [benchmarks-review]
+      operationId: benchmarkCreateReview
+      summary: Run reviewer (LLM or rules) and persist result
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReviewCreateRequest' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReviewResponse' }
+
+  /v1/admin/benchmarks/reviews/{review_id}:
+    get:
+      tags: [benchmarks-review]
+      operationId: benchmarkGetReview
+      parameters:
+        - name: review_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReviewResponse' }
+
+components:
+  parameters:
+    KnobIdPath:
+      name: knob_id
+      in: path
+      required: true
+      schema: { type: string, example: agent.max_tool_rounds }
+    SessionIdPath:
+      name: session_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ExperimentIdPath:
+      name: experiment_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    LimitQuery:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 500, default: 50 }
+    UiGroupQuery:
+      name: ui_group
+      in: query
+      schema: { type: string }
+    LayerQuery:
+      name: layer
+      in: query
+      schema: { $ref: '#/components/schemas/KnobLayer' }
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    ValidationError:
+      description: Invalid request
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  schemas:
+    OkWrapper:
+      type: object
+      required: [ok]
+      properties:
+        ok: { type: boolean, const: true }
+
+    ErrorResponse:
+      type: object
+      required: [detail]
+      properties:
+        detail: { type: string }
+
+    KnobLayer:
+      type: string
+      enum: [operator, runtime_config, agent_yaml, router_yaml, bench, rubric, code]
+
+    KnobSource:
+      type: string
+      enum: [db_override, bootstrap_install_default, file_default, operator_settings, git]
+
+    KnobValueType:
+      type: string
+      enum: [boolean, integer, number, string, string_list, json]
+
+    UiGroup:
+      type: object
+      required: [id, label]
+      properties:
+        id: { type: string }
+        label: { type: string }
+
+    KnobDescriptor:
+      type: object
+      required: [id, layer, ui_group, writable, benchmark_sensitive]
+      properties:
+        id: { type: string, example: agent.max_tool_rounds }
+        layer: { $ref: '#/components/schemas/KnobLayer' }
+        ui_group: { type: string }
+        writable: { type: boolean }
+        type: { $ref: '#/components/schemas/KnobValueType' }
+        default: {}
+        effective: {}
+        source: { $ref: '#/components/schemas/KnobSource' }
+        bootstrap_env_key: { type: string, nullable: true, description: Install default only — never tuned via .env UI }
+        source_path: { type: string, nullable: true }
+        content_hash: { type: string, nullable: true, description: sha256 for non-writable layers }
+        affects_agents:
+          type: array
+          items: { type: string }
+        affects_clusters:
+          type: array
+          items: { type: string }
+        benchmark_sensitive: { type: boolean }
+        doc: { type: string }
+
+    KnobsListResponse:
+      allOf:
+        - $ref: '#/components/schemas/OkWrapper'
+        - type: object
+          required: [registry_version, ui_groups, knobs]
+          properties:
+            registry_version: { type: integer }
+            ui_groups:
+              type: array
+              items: { $ref: '#/components/schemas/UiGroup' }
+            knobs:
+              type: array
+              items: { $ref: '#/components/schemas/KnobDescriptor' }
+
+    KnobDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/OkWrapper'
+        - type: object
+          required: [knob]
+          properties:
+            knob: { $ref: '#/components/schemas/KnobDescriptor' }
+            last_changelog_event: { $ref: '#/components/schemas/ChangelogEvent', nullable: true }
+
+    FingerprintResponse:
+      allOf:
+        - $ref: '#/components/schemas/OkWrapper'
+        - type: object
+          required: [fingerprint, git_sha, computed_at]
+          properties:
+            fingerprint: { type: string, description: 'sha256 hex prefixed or bare' }
+            git_sha: { type: string }
+            benchmark_sensitive_knob_count: { type: integer }
+            computed_at: { type: string, format: date-time }
+
+    SnapshotResponse:
+      allOf:
+        - $ref: '#/components/schemas/OkWrapper'
+        - type: object
+          required: [fingerprint, git_sha, knobs, captured_at]
+          properties:
+            fingerprint: { type: string }
+            git_sha: { type: string }
+            knobs:
+              type: object
+              additionalProperties: true
+              description: knob_id → effective value
+            non_writable_hashes:
+              type: object
+              additionalProperties: { type: string }
+            captured_at: { type: string, format: date-time }
+
+    ActorType:
+      type: string
+      enum: [user, operator_agent, reviewer_agent, reviewer_job, system]
+
+    Actor:
+      type: object
+      required: [type]
+      properties:
+        type: { $ref: '#/components/schemas/ActorType' }
+        user_id: { type: string, format: uuid, nullable: true }
+        agent_id: { type: string, nullable: true }
+        conversation_id: { type: string, format: uuid, nullable: true }
+
+    KnobPatch:
+      type: object
+      required: [knob_id, value]
+      properties:
+        knob_id: { type: string }
+        value: {}
+
+    AppliedPatch:
+      type: object
+      required: [knob_id, old, new]
+      properties:
+        knob_id: { type: string }
+        old: {}
+        new: {}
+
+    SkippedPatch:
+      type: object
+      required: [knob_id, reason]
+      properties:
+        knob_id: { type: string }
+        reason:
+          type: string
+          enum: [not_writable, validation_failed, unchanged, unknown_knob]
+
+    ChangelogEvent:
+      type: object
+      required: [id, at, actor, patches, fingerprint_before, fingerprint_after]
+      properties:
+        id: { type: string, format: uuid }
+        at: { type: string, format: date-time }
+        actor: { $ref: '#/components/schemas/Actor' }
+        session_id: { type: string, format: uuid, nullable: true }
+        experiment_id: { type: string, format: uuid, nullable: true }
+        hypothesis: { type: string, nullable: true }
+        patches:
+          type: array
+          items: { $ref: '#/components/schemas/AppliedPatch' }
+        fingerprint_before: { type: string }
+        fingerprint_after: { type: string }
+
+    ChangelogListResponse:
+      allOf:
+        - $ref: '#/components/schemas/OkWrapper'
+        - type: object
+          required: [events]
+          properties:
+            events:
+              type: array
+              items: { $ref: '#/components/schemas/ChangelogEvent' }
+
+    BenchmarkTrigger:
+      type: object
+      properties:
+        suite_preset:
+          type: string
+          enum: [routing-core, smoke, full, custom]
+        harness_preset:
+          type: string
+          enum: [observability, chat_parity]
+        profiles_from_saved_matrix: { type: boolean, default: true }
+        suite: { type: string, description: Required when suite_preset is custom }
+        scenarios:
+          type: array
+          items: { type: string }
+
+    DraftRequest:
+      type: object
+      required: [patches]
+      properties:
+        patches:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/KnobPatch' }
+        hypothesis: { type: string, maxLength: 4000 }
+
+    DraftValidation:
+      type: object
+      required: [valid]
+      properties:
+        valid: { type: boolean }
+        fingerprint_preview: { type: string, nullable: true }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              knob_id: { type: string }
+              message: { type: string }
+        warnings:
+          type: array
+          items: { type: string }
+
+    DraftResponse:
+      allOf:
+        - $ref: '#/components/schemas/OkWrapper'
+        - type: object
+          required: [draft_id, validation]
+          properties:
+            draft_id: { type: string, format: uuid }
+            validation: { $ref: '#/components/schemas/DraftValidation' }
+
+    ApplyRequest:
+      type: object
+      required: [patches]
+      properties:
+        patches:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/KnobPatch' }
+        session_id: { type: string, format: uuid, nullable: true }
+        experiment_id: { type: string, format: uuid, nullable: true }
+        hypothesis: { type: string, maxLength: 4000, nullable: true }
+        trigger_benchmark: { type: boolean, default: false }
+        benchmark: { $ref: '#/components/schemas/BenchmarkTrigger' }
+        actor:
+          description: Set by server from auth; clients omit
+          readOnly: true
+          $ref: '#/components/schemas/Actor'
+
+    ApplyResponse:
+      allOf:
+        - $ref: '#/components/schemas/OkWrapper'
+        - type: object
+          required: [applied, skipped, fingerprint, changelog_event_id]
+          properties:
+            applied:
+              type: array
+              items: { $ref: '#/components/schemas/AppliedPatch' }
+            skipped:
+              type: array
+              items: { $ref: '#/components/schemas/SkippedPatch' }
+            fingerprint: { type: string }
+            changelog_event_id: { type: string, format: uuid }
+            benchmark_run_id: { type: string, format: uuid, nullable: true }
+
+    SessionStatus:
+      type: string
+      enum: [open, validating, closed_accepted, closed_rejected, closed_reverted]
+
+    TuningSession:
+      type: object
+      required: [id, status, baseline_fingerprint, cohort_label, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        label: { type: string }
+        hypothesis: { type: string, nullable: true }
+        cohort_label: { type: string }
+        status: { $ref: '#/components/schemas/SessionStatus' }
+        baseline_fingerprint: { type: string }
+        current_fingerprint: { type: string, nullable: true }
+        experiment_ids:
+          type: array
+          items: { type: string, format: uuid }
+        run_ids:
+          type: array
+          items: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        closed_at: { type: string, format: date-time, nullable: true }
+
+    SessionCreateRequest:
+      type: object
+      required: [cohort_label]
+      properties:
+        label: { type: string, maxLength: 128 }
+        hypothesis: { type: string, maxLength: 4000 }
+        cohort_label: { type: string, maxLength: 128 }
+
+    SessionPatchRequest:
+      type: object
+      properties:
+        label: { type: string }
+        hypothesis: { type: string }
+
+    SessionValidateRequest:
+      type: object
+      properties:
+        suite_preset: { type: string, default: routing-core }
+        harness_preset: { type: string, default: observability }
+        profiles_from_saved_matrix: { type: boolean, default: true }
+
+    SessionValidateResponse:
+      allOf:
+        - $ref: '#/components/schemas/OkWrapper'
+        - type: object
+          required: [session, benchmark_run_id]
+          properties:
+            session: { $ref: '#/components/schemas/TuningSession' }
+            benchmark_run_id: { type: string, format: uuid }
+
+    SessionCloseRequest:
+      type: object
+      required: [accept]
+      properties:
+        accept: { type: boolean }
+        revert_patches: { type: boolean, default: false, description: If accept=false, apply inverse patches }
+
+    SessionResponse:
+      allOf:
+        - $ref: '#/components/schemas/OkWrapper'
+        - type: object
+          required: [session]
+          properties:
+            session: { $ref: '#/components/schemas/TuningSession' }
+
+    SessionListResponse:
+      allOf:
+        - $ref: '#/components/schemas/OkWrapper'
+        - type: object
+          required: [sessions]
+          properties:
+            sessions:
+              type: array
+              items: { $ref: '#/components/schemas/TuningSession' }
+
+    ExperimentStatus:
+      type: string
+      enum: [draft, running, completed, accepted, rejected]
+
+    Experiment:
+      type: object
+      required: [id, label, status, fingerprint_at_start, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        label: { type: string }
+        hypothesis: { type: string, nullable: true }
+        status: { $ref: '#/components/schemas/ExperimentStatus' }
+        session_id: { type: string, format: uuid, nullable: true }
+        fingerprint_at_start: { type: string }
+        fingerprint_at_end: { type: string, nullable: true }
+        knob_changes:
+          type: array
+          items: { $ref: '#/components/schemas/AppliedPatch' }
+        pending_patches:
+          type: array
+          items: { $ref: '#/components/schemas/KnobPatch' }
+        run_ids:
+          type: array
+          items: { type: string, format: uuid }
+        review_ids:
+          type: array
+          items: { type: string, format: uuid }
+        suite_preset: { type: string, nullable: true }
+        harness_preset: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+        closed_at: { type: string, format: date-time, nullable: true }
+
+    ExperimentCreateRequest:
+      type: object
+      required: [label]
+      properties:
+        label: { type: string, maxLength: 128 }
+        hypothesis: { type: string, maxLength: 4000 }
+        session_id: { type: string, format: uuid, nullable: true }
+        knob_patches:
+          type: array
+          items: { $ref: '#/components/schemas/KnobPatch' }
+        suite_preset: { type: string, default: routing-core }
+        harness_preset: { type: string, default: observability }
+        apply_patches_immediately: { type: boolean, default: false }
+
+    ExperimentPatchRequest:
+      type: object
+      properties:
+        label: { type: string }
+        hypothesis: { type: string }
+        status: { $ref: '#/components/schemas/ExperimentStatus' }
+
+    ExperimentRunRequest:
+      type: object
+      properties:
+        apply_pending_patches: { type: boolean, default: true }
+        trigger_review: { type: boolean, default: false }
+
+    ExperimentRunResponse:
+      allOf:
+        - $ref: '#/components/schemas/OkWrapper'
+        - type: object
+          required: [experiment, benchmark_run_id]
+          properties:
+            experiment: { $ref: '#/components/schemas/Experiment' }
+            benchmark_run_id: { type: string, format: uuid }
+            review_id: { type: string, format: uuid, nullable: true }
+
+    ExperimentResponse:
+      allOf:
+        - $ref: '#/components/schemas/OkWrapper'
+        - type: object
+          required: [experiment]
+          properties:
+            experiment: { $ref: '#/components/schemas/Experiment' }
+
+    ExperimentListResponse:
+      allOf:
+        - $ref: '#/components/schemas/OkWrapper'
+        - type: object
+          required: [experiments]
+          properties:
+            experiments:
+              type: array
+              items: { $ref: '#/components/schemas/Experiment' }
+
+    ExperimentReportResponse:
+      allOf:
+        - $ref: '#/components/schemas/OkWrapper'
+        - type: object
+          required: [experiment, analysis]
+          properties:
+            experiment: { $ref: '#/components/schemas/Experiment' }
+            analysis: { $ref: '#/components/schemas/AnalysisResponse' }
+
+    CohortJson:
+      type: object
+      description: Stored on benchmark run row
+      properties:
+        cohort_label: { type: string }
+        experiment_id: { type: string, format: uuid, nullable: true }
+        session_id: { type: string, format: uuid, nullable: true }
+        fingerprint: { type: string }
+        harness_preset: { type: string }
+        suite_preset: { type: string, nullable: true }
+        git_sha: { type: string, nullable: true }
+
+    StartBenchmarkBodyExtension:
+      type: object
+      description: Fields added to existing StartBenchmarkBody
+      properties:
+        cohort_label: { type: string }
+        experiment_id: { type: string, format: uuid }
+        session_id: { type: string, format: uuid }
+        fingerprint: { type: string }
+        harness_preset:
+          type: string
+          enum: [observability, chat_parity]
+        suite_preset:
+          type: string
+          enum: [routing-core, smoke, full, custom]
+        trigger_review: { type: boolean, default: false }
+
+    ScenarioAnalysisRow:
+      type: object
+      required: [scenario_id, pass_rate]
+      properties:
+        scenario_id: { type: string }
+        pass_rate: { type: number, minimum: 0, maximum: 1 }
+        sample_count: { type: integer }
+        patterns:
+          type: array
+          items: { type: string }
+        median_latency_ms: { type: number, nullable: true }
+
+    ClusterAnalysisRow:
+      type: object
+      required: [cluster, pass_rate]
+      properties:
+        cluster: { type: string }
+        pass_rate: { type: number }
+        sample_count: { type: integer }
+
+    PatternAnalysisRow:
+      type: object
+      required: [pattern_id, count]
+      properties:
+        pattern_id: { type: string }
+        count: { type: integer }
+        scenarios:
+          type: array
+          items: { type: string }
+
+    AnalysisMeta:
+      type: object
+      properties:
+        cohort: { type: string, nullable: true }
+        fingerprint: { type: string, nullable: true }
+        suite: { type: string, nullable: true }
+        run_count: { type: integer }
+        since_days: { type: integer, nullable: true }
+
+    AnalysisResponse:
+      allOf:
+        - $ref: '#/components/schemas/OkWrapper'
+        - type: object
+          required: [meta, by_scenario, by_cluster, by_pattern]
+          properties:
+            meta: { $ref: '#/components/schemas/AnalysisMeta' }
+            by_scenario:
+              type: array
+              items: { $ref: '#/components/schemas/ScenarioAnalysisRow' }
+            by_cluster:
+              type: array
+              items: { $ref: '#/components/schemas/ClusterAnalysisRow' }
+            by_pattern:
+              type: array
+              items: { $ref: '#/components/schemas/PatternAnalysisRow' }
+
+    CohortSummary:
+      type: object
+      required: [cohort_label, run_count]
+      properties:
+        cohort_label: { type: string }
+        fingerprint: { type: string, nullable: true }
+        run_count: { type: integer }
+        last_run_at: { type: string, format: date-time, nullable: true }
+
+    CohortListResponse:
+      allOf:
+        - $ref: '#/components/schemas/OkWrapper'
+        - type: object
+          required: [cohorts]
+          properties:
+            cohorts:
+              type: array
+              items: { $ref: '#/components/schemas/CohortSummary' }
+
+    CohortCompareResponse:
+      allOf:
+        - $ref: '#/components/schemas/OkWrapper'
+        - type: object
+          required: [cohort_a, cohort_b, scenario_deltas]
+          properties:
+            cohort_a: { type: string }
+            cohort_b: { type: string }
+            scenario_deltas:
+              type: array
+              items:
+                type: object
+                required: [scenario_id, pass_rate_a, pass_rate_b, delta]
+                properties:
+                  scenario_id: { type: string }
+                  pass_rate_a: { type: number }
+                  pass_rate_b: { type: number }
+                  delta: { type: number }
+            pattern_deltas:
+              type: object
+              additionalProperties: { type: integer }
+
+    RunExportResponse:
+      type: object
+      description: Shape varies; includes report_json, attempts, optional timeline
+      additionalProperties: true
+
+    ReviewVerdict:
+      type: string
+      enum: [improved, regressed, mixed, inconclusive]
+
+    ReviewKnobRecommendation:
+      type: object
+      required: [knob_id, direction, rationale]
+      properties:
+        knob_id: { type: string }
+        direction:
+          type: string
+          enum: [increase, decrease, enable, disable, set]
+        suggested_value: {}
+        rationale: { type: string }
+
+    ClusterDelta:
+      type: object
+      required: [cluster, assessment]
+      properties:
+        cluster: { type: string }
+        models_gained: { type: integer }
+        models_lost: { type: integer }
+        assessment: { type: string }
+
+    SampleFailure:
+      type: object
+      properties:
+        scenario_id: { type: string }
+        patterns:
+          type: array
+          items: { type: string }
+        failure_reason: { type: string }
+        tool_names:
+          type: array
+          items: { type: string }
+        agent_run_id: { type: string, format: uuid, nullable: true }
+
+    ReviewInput:
+      type: object
+      description: Built by server from experiment/cohort; also LLM context
+      properties:
+        experiment_label: { type: string }
+        experiment_id: { type: string, format: uuid, nullable: true }
+        knob_changes:
+          type: array
+          items: { $ref: '#/components/schemas/AppliedPatch' }
+        cohort_before:
+          type: object
+          properties:
+            fingerprint: { type: string }
+            cohort_label: { type: string }
+            summary_by_cluster: { type: object, additionalProperties: true }
+        cohort_after:
+          type: object
+          properties:
+            fingerprint: { type: string }
+            cohort_label: { type: string }
+            summary_by_cluster: { type: object, additionalProperties: true }
+        pattern_delta:
+          type: object
+          additionalProperties:
+            type: object
+            additionalProperties: { type: integer }
+        sample_failures:
+          type: array
+          items: { $ref: '#/components/schemas/SampleFailure' }
+        rubric_context:
+          type: object
+          additionalProperties: { type: string }
+        operator_audit:
+          type: object
+          description: Optional — when reviewing Operator-driven sessions
+          properties:
+            changelog_event_ids:
+              type: array
+              items: { type: string, format: uuid }
+            operator_conversation_ids:
+              type: array
+              items: { type: string, format: uuid }
+
+    ReviewOutput:
+      type: object
+      required: [verdict, confidence, summary, accept_experiment]
+      properties:
+        verdict: { $ref: '#/components/schemas/ReviewVerdict' }
+        confidence: { type: number, minimum: 0, maximum: 1 }
+        summary: { type: string }
+        cluster_deltas:
+          type: array
+          items: { $ref: '#/components/schemas/ClusterDelta' }
+        regressions_to_investigate:
+          type: array
+          items:
+            type: object
+            required: [scenario_id, reason]
+            properties:
+              scenario_id: { type: string }
+              reason: { type: string }
+        recommended_next_knobs:
+          type: array
+          items: { $ref: '#/components/schemas/ReviewKnobRecommendation' }
+        accept_experiment: { type: boolean }
+        draft_patches:
+          type: array
+          description: Optional structured patches for human confirm
+          items: { $ref: '#/components/schemas/KnobPatch' }
+
+    ReviewCreateRequest:
+      type: object
+      properties:
+        experiment_id: { type: string, format: uuid }
+        cohort_a: { type: string, description: Baseline cohort label }
+        cohort_b: { type: string, description: After cohort label }
+        session_id: { type: string, format: uuid, nullable: true }
+        reviewer_model: { type: string, description: LLM model id for review }
+        reviewer_agent_id:
+          type: string
+          enum: [reviewer]
+          default: reviewer
+          description: For audit when review invoked via agent tool
+        mode:
+          type: string
+          enum: [llm, rules_only, human_template]
+          default: llm
+        auto_apply_recommended_patches: { type: boolean, default: false }
+        include_operator_audit: { type: boolean, default: true }
+
+    ReviewRecord:
+      type: object
+      required: [id, created_at, input, output, mode]
+      properties:
+        id: { type: string, format: uuid }
+        experiment_id: { type: string, format: uuid, nullable: true }
+        session_id: { type: string, format: uuid, nullable: true }
+        created_at: { type: string, format: date-time }
+        mode: { type: string }
+        reviewer_model: { type: string, nullable: true }
+        actor: { $ref: '#/components/schemas/Actor' }
+        input: { $ref: '#/components/schemas/ReviewInput' }
+        output: { $ref: '#/components/schemas/ReviewOutput' }
+        applied_patches:
+          type: array
+          items: { $ref: '#/components/schemas/AppliedPatch' }
+          description: Non-empty only when auto_apply was true and policy allowed
+
+    ReviewResponse:
+      allOf:
+        - $ref: '#/components/schemas/OkWrapper'
+        - type: object
+          required: [review]
+          properties:
+            review: { $ref: '#/components/schemas/ReviewRecord' }
+
+    # --- Reviewer agent tool payloads (mirror HTTP; JSON tool returns) ---
+
+    ReviewerToolReviewSubmitArgs:
+      type: object
+      description: operator tool review_submit parameters
+      properties:
+        experiment_id: { type: string, format: uuid }
+        cohort_a: { type: string }
+        cohort_b: { type: string }
+        reviewer_model: { type: string }
+        include_operator_audit: { type: boolean, default: true }
+
+    OperatorToolAgentConfigApplyArgs:
+      type: object
+      description: operator tool agent_config_apply — same as ApplyRequest without actor
+      required: [patches]
+      properties:
+        patches:
+          type: array
+          items: { $ref: '#/components/schemas/KnobPatch' }
+        session_id: { type: string, format: uuid }
+        hypothesis: { type: string }
+        trigger_benchmark: { type: boolean }
+        benchmark: { $ref: '#/components/schemas/BenchmarkTrigger' }

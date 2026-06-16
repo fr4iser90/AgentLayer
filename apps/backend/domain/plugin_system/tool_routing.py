@@ -123,8 +123,14 @@ def filter_merged_tools_by_categories(
     tools: list[Any], categories: frozenset[str]
 ) -> list[Any]:
     """Keep tools in any of ``categories`` plus introspection (list/get help, category browse)."""
+    from apps.backend.infrastructure import agent_config_effective
+
+    router_strict = agent_config_effective.effective_bool(
+        "tool_routing.router_strict_default",
+        default=config.AGENT_ROUTER_STRICT_DEFAULT,
+    )
     if not categories:
-        if config.AGENT_ROUTER_STRICT_DEFAULT:
+        if router_strict:
             return filter_merged_tools_router_minimal(tools)
         return list(tools)
     reg = get_registry()
@@ -135,9 +141,9 @@ def filter_merged_tools_by_categories(
         logger.warning(
             "unknown or empty router categories %r; %s",
             categories,
-            "using minimal toolset" if config.AGENT_ROUTER_STRICT_DEFAULT else "not filtering (legacy)",
+            "using minimal toolset" if router_strict else "not filtering (legacy)",
         )
-        if config.AGENT_ROUTER_STRICT_DEFAULT:
+        if router_strict:
             return filter_merged_tools_router_minimal(tools)
         return list(tools)
     out: list[Any] = []

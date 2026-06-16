@@ -217,7 +217,9 @@ def rank_tools_for_forward(
     """
     from apps.backend.api.rag import embed_one
 
-    if not config.AGENT_TOOLS_RANKING_ENABLED or not user_input or not tools:
+    from apps.backend.infrastructure import agent_config_effective
+
+    if not agent_config_effective.effective_bool("tool_forward.ranking_enabled", default=config.AGENT_TOOLS_RANKING_ENABLED) or not user_input or not tools:
         return list(tools), False
 
     intro = _introspection_specs(tools)

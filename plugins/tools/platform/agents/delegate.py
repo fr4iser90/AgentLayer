@@ -64,6 +64,13 @@ def _sanitize_task_id(raw: Any) -> str | None:
 
 
 def delegate(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> str:
+    from apps.backend.infrastructure.operator_settings import delegate_enabled as _delegate_enabled
+
+    if not _delegate_enabled():
+        return json.dumps(
+            {"ok": False, "error": "delegate is disabled in operator settings (delegate_enabled=false)"},
+            ensure_ascii=False,
+        )
     allowed = _delegatable_ids_for_context(context)
     if _truthy(arguments.get("list_agents")):
         uid = None

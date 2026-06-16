@@ -21,6 +21,7 @@ import { AdminScheduledJobs } from "./pages/admin/AdminScheduledJobs";
 import { AdminSchedules } from "./pages/admin/AdminSchedules";
 import { AdminAgentTraces } from "./pages/admin/AdminAgentTraces";
 import { AdminBenchmarks } from "./pages/admin/AdminBenchmarks";
+import { AdminAgentConfig } from "./pages/admin/AdminAgentConfig";
 import { ChatPage } from "./pages/ChatPage";
 import { DocsPage } from "./pages/DocsPage";
 import { HomePage } from "./pages/HomePage";
@@ -96,6 +97,8 @@ export function App() {
                   <Route path="schedules" element={<AdminSchedules />} />
                   <Route path="run-traces" element={<AdminAgentTraces />} />
                   <Route path="benchmarks" element={<AdminBenchmarks />} />
+                  <Route path="harness" element={<Navigate to="../agent-config" replace />} />
+                  <Route path="agent-config" element={<AdminAgentConfig />} />
                   <Route path="workflows" element={<Navigate to="../scheduled-jobs" replace />} />
                 </Route>
               </Route>

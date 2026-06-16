@@ -45,11 +45,14 @@ This folder is written for **humans** and for **RAG ingestion**.
 
 ### Benchmarks & agent tuning
 
+- **Agent tuning platform (start here)**: [`docs/benchmarks/PLANNING.md`](./benchmarks/PLANNING.md)
 - **LLM agent benchmark (harness, isolation)**: [`docs/benchmarks/agent-llm-benchmark.md`](./benchmarks/agent-llm-benchmark.md)
-- **Agent tuning platform (master plan)**: [`docs/benchmarks/agent-tuning-platform.md`](./benchmarks/agent-tuning-platform.md)
+- **Agent tuning master plan**: [`docs/benchmarks/agent-tuning-platform.md`](./benchmarks/agent-tuning-platform.md)
+- **Tuning interfaces + value schemas**: [`docs/benchmarks/tuning-interfaces.md`](./benchmarks/tuning-interfaces.md)
+- **Knob registry (v2)**: [`docs/benchmarks/knob-registry.yaml`](./benchmarks/knob-registry.yaml)
+- **OpenAPI (planned admin APIs)**: [`docs/benchmarks/schemas/openapi.yaml`](./benchmarks/schemas/openapi.yaml)
 - **Failure pattern taxonomy**: [`docs/benchmarks/pattern-analysis-roadmap.md`](./benchmarks/pattern-analysis-roadmap.md)
-- **Knob registry (v1)**: [`docs/benchmarks/knob-registry.yaml`](./benchmarks/knob-registry.yaml)
-- **Implementation checklist**: [`docs/benchmarks/todo.md`](./benchmarks/todo.md)
+- **Status / checklist**: [`docs/benchmarks/todo.md`](./benchmarks/todo.md)
 
 ### ADRs (decisions)
 

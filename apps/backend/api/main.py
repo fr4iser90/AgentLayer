@@ -124,6 +124,8 @@ from apps.backend.api.task_artifacts_api import router as task_artifacts_router
 from apps.backend.api.tasks_api import router as tasks_router
 from apps.backend.api.run_traces_admin_api import router as run_traces_admin_router
 from apps.backend.api.benchmarks_admin_api import router as benchmarks_admin_router
+from apps.backend.api.agent_config_admin_api import router as agent_config_admin_router
+from apps.backend.api.benchmark_harness_admin_api import router as benchmark_harness_admin_router
 from apps.backend.api.friends_api import router as friends_router
 from apps.backend.api.shares_api import router as shares_router
 from apps.backend.api.workspaces_api import router as workspaces_router
@@ -375,6 +377,8 @@ app.include_router(tasks_router)
 app.include_router(task_artifacts_router)
 app.include_router(run_traces_admin_router)
 app.include_router(benchmarks_admin_router)
+app.include_router(agent_config_admin_router)
+app.include_router(benchmark_harness_admin_router)
 app.include_router(agents_router)
 app.include_router(agents_admin_router)
 app.include_router(tools_admin_router)
@@ -959,11 +963,13 @@ if _agent_index.is_file():
     @app.get("/app/admin/tools")
     @app.get("/app/admin/agents")
     @app.get("/app/admin/benchmarks")
+    @app.get("/app/admin/agent-config")
     @app.get("/app/admin/run-traces")
     @app.get("/app/admin/users")
     @app.get("/app/admin/scheduled-jobs")
     @app.get("/app/admin/schedules")
     @app.get("/app/admin/workflows")
+    @app.get("/app/admin/agent-config/{rest:path}")
     async def agent_ui_spa_shell():
         """Serve SPA index for client-side routes (must register before mount /app)."""
         return FileResponse(_agent_index)

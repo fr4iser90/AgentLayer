@@ -1,54 +1,52 @@
-# Benchmark tuning — task index
+# Benchmark / agent tuning — status
 
-**Canonical document:** [`agent-tuning-platform.md`](./agent-tuning-platform.md) (English, codebase-verified).
+**Planning: v3.2.** [`PLANNING.md`](./PLANNING.md) — **you start** runs (Benchmarks page or LLM); **platform tracks** everything automatically.
 
-This file is a **checklist index** only. Detailed design, API inventory, and knob catalog live in the linked docs.
+**Implementation:** in progress — Phase 0.5–5 landed in code; run migration `schema_095` before use.
 
-## Related docs
+---
+
+## Goal
+
+Find the best **Agent-Layer configuration** across a model matrix. Patch when **you** want → benchmark when **you** want (page or LLM) → **tracking always automatic**. No system-started runs without you.
+
+---
+
+## Planning complete (see PLANNING.md)
+
+| Topic | Section |
+|-------|---------|
+| Build order (Phases 0.5→6) | PLANNING — Build order |
+| Who starts benchmarks | PLANNING — Workflow A / B |
+| Automatic tracking | PLANNING — Core policy |
+| LLM multi-variant loops | PLANNING — Workflow B |
+| Live vs planned | PLANNING — Live vs planned |
+| runtime_config → WebUI not `.env` | `knob-registry.yaml` header |
+
+Artifacts: `knob-registry.yaml`, `schemas/`, `api-surface.md`, `implementation-plan.md`, …
+
+---
+
+## Implementation
+
+- [x] **0.5** — agent-config API, DB (`schema_095`), Operator tools: apply + **benchmark_run_start/get**
+- [x] **1** — fingerprint, sessions, changelog, cohort on runs
+- [x] **2** — analysis + cohort compare API
+- [x] **3** — Agent tuning WebUI (`/admin/agent-config`)
+- [x] **4** — experiments CRUD API
+- [x] **5** — Reviewer agent + review API stub + reviewer tools
+- [ ] **6** — nightly/CI (optional)
+
+**Live today:** full agent-config stack (API, DB migrations `schema_095`–`schema_096`, effective runtime_config, router overlays, delegate kill-switch), Operator + Reviewer tools, tuning WebUI (knobs/sessions/experiments/analysis), benchmark cohort/fingerprint tracking, experiments + review service, failure patterns.
+
+**Optional / not implemented:** Phase 6 nightly/CI webhook jobs (off by default).
+
+---
+
+## Related
 
 | Doc | Role |
 |-----|------|
-| [`agent-tuning-platform.md`](./agent-tuning-platform.md) | Master plan, APIs, phases |
-| [`knob-registry.yaml`](./knob-registry.yaml) | Knob metadata v1 |
-| [`pattern-analysis-roadmap.md`](./pattern-analysis-roadmap.md) | Failure pattern taxonomy |
-| [`agent-llm-benchmark.md`](./agent-llm-benchmark.md) | Harness, isolation, tiers |
-| [`experiments/README.md`](./experiments/README.md) | Human experiment notes |
-
-## Implementation checklist
-
-### Phase 0 — Documentation
-- [x] `agent-tuning-platform.md`
-- [x] `knob-registry.yaml` v1
-- [x] Cross-links in `docs/README.md`
-- [ ] ADR `0008-agent-config-experiments.md`
-
-### Phase 1 — Fingerprint + changelog
-- [ ] `compute_agent_config_fingerprint()`
-- [ ] DB: `agent_config_changelog`, `benchmark_runs.cohort_json`
-- [ ] `GET /v1/admin/agent-config/fingerprint`, `/changelog`
-- [ ] Fingerprint at benchmark start
-- [ ] Admin changelog tab (minimal)
-
-### Phase 2 — Pattern analysis + cohort stats
-- [ ] `tests/benchmarks/agent/patterns.py`
-- [ ] `GET /v1/admin/benchmarks/analysis`
-- [ ] Cohort filters on `/stats`
-- [ ] UI cluster + pattern views
-
-### Phase 3 — Knob registry Web UI
-- [ ] `GET /v1/admin/agent-config/knobs`
-- [ ] Grouped knob browser + operator apply
-
-### Phase 4 — Experiments + auto-run
-- [ ] Experiment CRUD + `POST .../experiments/{id}/run`
-- [ ] Suite presets (`routing-core`)
-- [ ] Harness preset on start run
-
-### Phase 5 — LLM reviewer
-- [ ] `POST /v1/admin/benchmarks/review`
-- [ ] Admin review tab + human accept
-
-### Phase 6 — CI (optional)
-- [ ] Git webhook → routing-core run
-
-**MVP:** Phase 0 + 1 + 2 + 4, then Phase 5.
+| [`PLANNING.md`](./PLANNING.md) | **Start here** |
+| [`implementation-plan.md`](./implementation-plan.md) | Phase checklist + tool IDs |
+| [`agent-llm-benchmark.md`](./agent-llm-benchmark.md) | Harness |

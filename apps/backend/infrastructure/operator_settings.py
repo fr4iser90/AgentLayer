@@ -222,6 +222,7 @@ def _fetch_row() -> dict[str, Any]:
         "llm_queue_user_priority": 100,
         "llm_queue_benchmark_priority": 10,
         "llm_queue_scheduler_priority": 50,
+        "delegate_enabled": True,
     }
     try:
         with db.pool().connection() as conn:
@@ -268,7 +269,8 @@ def _fetch_row() -> dict[str, Any]:
                            llm_queue_policy,
                            llm_queue_user_priority,
                            llm_queue_benchmark_priority,
-                           llm_queue_scheduler_priority
+                           llm_queue_scheduler_priority,
+                           delegate_enabled
                     FROM operator_settings WHERE id = 1
                     """
                 )
@@ -381,7 +383,13 @@ def _fetch_row() -> dict[str, Any]:
         "llm_queue_user_priority": int(row[74]) if len(row) > 74 and row[74] is not None else 100,
         "llm_queue_benchmark_priority": int(row[75]) if len(row) > 75 and row[75] is not None else 10,
         "llm_queue_scheduler_priority": int(row[76]) if len(row) > 76 and row[76] is not None else 50,
+        "delegate_enabled": bool(row[77]) if len(row) > 77 and row[77] is not None else True,
     }
+
+
+def delegate_enabled() -> bool:
+    """Operator kill-switch for the delegate tool (default true)."""
+    return bool(_cached_row().get("delegate_enabled", True))
 
 
 def rag_docs_ingest_fingerprint() -> str:
@@ -1011,6 +1019,7 @@ def public_dict() -> dict[str, Any]:
         "llm_queue_user_priority": _bound_int(r.get("llm_queue_user_priority"), 100, 0, 1000),
         "llm_queue_benchmark_priority": _bound_int(r.get("llm_queue_benchmark_priority"), 10, 0, 1000),
         "llm_queue_scheduler_priority": _bound_int(r.get("llm_queue_scheduler_priority"), 50, 0, 1000),
+        "delegate_enabled": bool(r.get("delegate_enabled", True)),
         "memory_graph_enabled": bool(r.get("memory_graph_enabled", True)),
         "memory_graph_max_hops": _bound_int(r.get("memory_graph_max_hops"), 2, 0, 4),
         "memory_graph_min_score": _bound_float(r.get("memory_graph_min_score"), 0.03, 0.0, 1.0),
@@ -1101,6 +1110,7 @@ class OperatorSettingsPatch(BaseModel):
     llm_queue_user_priority: int | None = Field(default=None, ge=0, le=1000)
     llm_queue_benchmark_priority: int | None = Field(default=None, ge=0, le=1000)
     llm_queue_scheduler_priority: int | None = Field(default=None, ge=0, le=1000)
+    delegate_enabled: bool | None = None
     memory_graph_enabled: bool | None = None
     memory_graph_max_hops: int | None = Field(default=None, ge=0, le=4)
     memory_graph_min_score: float | None = Field(default=None, ge=0.0, le=1.0)
@@ -1382,6 +1392,8 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
     if "llm_queue_scheduler_priority" in patch:
         v = patch["llm_queue_scheduler_priority"]
         r["llm_queue_scheduler_priority"] = _bound_int(v, 50, 0, 1000) if v is not None else 50
+    if "delegate_enabled" in patch:
+        r["delegate_enabled"] = bool(patch["delegate_enabled"])
     if "memory_graph_enabled" in patch:
         r["memory_graph_enabled"] = bool(patch["memory_graph_enabled"])
     if "memory_graph_max_hops" in patch:
@@ -1755,6 +1767,9 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
             if "llm_queue_scheduler_priority" in patch:
                 extra_sets.append("llm_queue_scheduler_priority = %s")
                 extra_params.append(int(r.get("llm_queue_scheduler_priority") or 50))
+            if "delegate_enabled" in patch:
+                extra_sets.append("delegate_enabled = %s")
+                extra_params.append(bool(r.get("delegate_enabled", True)))
             if extra_sets:
                 # SECURITY: Column names in `extra_sets` come from the known
                 # _SETTING_KEYS mapping (see _OPERATOR_SETTINGS_KEYS).

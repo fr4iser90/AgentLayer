@@ -258,8 +258,24 @@ def run_embedded_subagent_sync(
         )
 
     from apps.backend.core import config
+    from apps.backend.infrastructure import agent_config_effective
 
-    max_r = config.SUBAGENT_MAX_TOOL_ROUNDS
+    tid = None
+    if context and context.get("tenant_id") is not None:
+        try:
+            tid = int(context["tenant_id"])
+        except (TypeError, ValueError):
+            tid = None
+    if tid is None:
+        try:
+            from apps.backend.domain.identity import get_identity
+
+            tid_raw, _uid = get_identity()
+            tid = int(tid_raw) if tid_raw is not None else None
+        except Exception:
+            tid = None
+
+    max_r = agent_config_effective.subagent_max_tool_rounds(tenant_id=tid)
     if max_rounds is not None:
         logger.debug(
             "ignoring agent_delegate max_rounds=%r — server uses SUBAGENT_MAX_TOOL_ROUNDS=%s",
@@ -468,7 +484,7 @@ def run_embedded_subagent_sync(
     excerpt_len = 0
     finish_reason: str | None = None
     problems: list[str] = []
-    _subagent_timeout = config.SUBAGENT_TIMEOUT_SEC
+    _subagent_timeout = agent_config_effective.subagent_timeout_sec(tenant_id=tid)
     try:
         with ThreadPoolExecutor(max_workers=1) as pool:
             _future = pool.submit(_thread_entry)

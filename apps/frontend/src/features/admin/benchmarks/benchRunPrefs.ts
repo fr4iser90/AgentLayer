@@ -3,7 +3,7 @@
 import { normalizeProviderModels } from "./benchProfileSelection";
 
 const STORAGE_KEY = "agentlayer.admin.benchRunPrefs";
-const PREFS_VERSION = 4;
+const PREFS_VERSION = 8;
 
 export type BenchRunPrefs = {
   v: typeof PREFS_VERSION;
@@ -11,6 +11,8 @@ export type BenchRunPrefs = {
   runAsUserId: string;
   friendUserId: string;
   promptLocale: string;
+  cohortLabel: string;
+  sessionId: string;
   scenarioTimeoutSec: string;
   maxToolRoundsOverride: string;
   scenarioFailureRetries: string;
@@ -29,6 +31,8 @@ function emptyPrefs(): BenchRunPrefsInput {
     runAsUserId: "",
     friendUserId: "",
     promptLocale: "en",
+    cohortLabel: "",
+    sessionId: "",
     scenarioTimeoutSec: "",
     maxToolRoundsOverride: "",
     scenarioFailureRetries: "0",
@@ -75,8 +79,19 @@ export function loadBenchRunPrefs(): BenchRunPrefsInput | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<BenchRunPrefs> & {
       modelByProviderId?: Record<string, string>;
+      harnessPreset?: string;
+      useHarnessMatrix?: boolean;
     };
-    if (parsed.v !== PREFS_VERSION && parsed.v !== 3) return null;
+    if (
+      parsed.v !== PREFS_VERSION &&
+      parsed.v !== 7 &&
+      parsed.v !== 6 &&
+      parsed.v !== 5 &&
+      parsed.v !== 4 &&
+      parsed.v !== 3
+    ) {
+      return null;
+    }
     const base = emptyPrefs();
     return {
       suite: typeof parsed.suite === "string" && parsed.suite.trim() ? parsed.suite.trim() : base.suite,
@@ -86,6 +101,8 @@ export function loadBenchRunPrefs(): BenchRunPrefsInput | null {
         typeof parsed.promptLocale === "string" && parsed.promptLocale.trim()
           ? parsed.promptLocale.trim().toLowerCase()
           : base.promptLocale,
+      cohortLabel: typeof parsed.cohortLabel === "string" ? parsed.cohortLabel : "",
+      sessionId: typeof parsed.sessionId === "string" ? parsed.sessionId : "",
       scenarioTimeoutSec:
         typeof parsed.scenarioTimeoutSec === "string" ? parsed.scenarioTimeoutSec : "",
       maxToolRoundsOverride:

@@ -103,9 +103,12 @@ class TestCodingTaskPlanSubagent(unittest.TestCase):
         b0 = bodies[0]
         self.assertEqual(b0.get("agent_id"), "coding_plan")
         self.assertEqual(b0.get("workspace_id"), str(ws_id))
-        from apps.backend.core import config
+        from apps.backend.infrastructure import agent_config_effective
 
-        self.assertEqual(b0.get("agent_max_tool_rounds"), config.SUBAGENT_MAX_TOOL_ROUNDS)
+        self.assertEqual(
+            b0.get("agent_max_tool_rounds"),
+            agent_config_effective.subagent_max_tool_rounds(tenant_id=1),
+        )
         self.assertEqual(b0.get("agent_parent_run_id"), "parent-run-abc")
         self.assertNotIn("agent_tool_name_allowlist", b0)
         msgs = b0.get("messages") or []

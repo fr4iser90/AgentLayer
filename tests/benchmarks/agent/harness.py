@@ -840,14 +840,16 @@ def _build_chat_body(
     workspace_id: str | None,
     conversation_id: str | None,
     benchmark_run_id: uuid.UUID | None = None,
+    prompt_locale: str | None = None,
+    stream_llm: bool = True,
 ) -> dict[str, Any]:
-    """Chat-parity body; benchmarks always enable LLM stream for admin WS live preview."""
+    """Chat-parity body; benchmarks enable LLM stream when ``stream_llm`` (observability preset)."""
     body: dict[str, Any] = {
         "model": profile.model,
         "messages": [{"role": "user", "content": scenario_prompt}],
         "agent_id": _effective_agent_id(profile, scenario),
         "agent_model_catalog_owned_by": profile.catalog_owned_by,
-        "agent_stream_llm": True,
+        "agent_stream_llm": bool(stream_llm),
     }
     if workspace_id:
         body["workspace_id"] = workspace_id
@@ -948,6 +950,9 @@ def _execute_scenario_with_retries(
     max_tool_rounds_override: int | None,
     benchmark_run_id: uuid.UUID | None,
     scenario_failure_retries: int = 0,
+    harness_preset: str | None = None,
+    stream_llm_override: bool | None = None,
+    capture_timeline_override: bool | None = None,
 ) -> ScenarioResult:
     """Run a scenario up to ``1 + scenario_failure_retries`` times when rubric/transport fails."""
     max_attempts = 1 + max(0, int(scenario_failure_retries or 0))
@@ -982,6 +987,9 @@ def _execute_scenario_with_retries(
                     scenario_timeout_sec=scenario_timeout_sec,
                     max_tool_rounds_override=max_tool_rounds_override,
                     benchmark_run_id=benchmark_run_id,
+                    harness_preset=harness_preset,
+                    stream_llm_override=stream_llm_override,
+                    capture_timeline_override=capture_timeline_override,
                 )
             )
         except BenchmarkRunCancelled:
@@ -1055,6 +1063,9 @@ def run_scenario(
     max_tool_rounds_override: int | None = None,
     benchmark_run_id: uuid.UUID | None = None,
     prompt_locale: str | None = None,
+    harness_preset: str | None = None,
+    stream_llm_override: bool | None = None,
+    capture_timeline_override: bool | None = None,
 ) -> ScenarioResult:
     fixture_list = list(scenario.requires)
     if not profile.model:
@@ -1088,6 +1099,10 @@ def run_scenario(
         workspace_id=ws_id,
         benchmark_run_id=benchmark_run_id,
     )
+    if stream_llm_override is not None:
+        stream_llm = bool(stream_llm_override)
+    else:
+        stream_llm = True
     body = _build_chat_body(
         profile=profile,
         scenario=scenario,
@@ -1095,6 +1110,7 @@ def run_scenario(
         workspace_id=ws_id,
         conversation_id=conversation_id,
         benchmark_run_id=benchmark_run_id,
+        stream_llm=stream_llm,
     )
     _apply_bench_run_limits(body, max_tool_rounds_override=max_tool_rounds_override)
     effective_agent = str(body["agent_id"] or "")
@@ -1106,7 +1122,9 @@ def run_scenario(
     ws_events: list[dict[str, Any]] = []
     capture_mode = "http"
 
-    use_ws = timeline_capture_enabled()
+    use_ws = timeline_capture_enabled(
+        capture_timeline_override if capture_timeline_override is not None else True
+    )
     if use_ws:
         try:
             capture_mode = "websocket"
@@ -1218,6 +1236,9 @@ def run_scenario(
             )
     if error and http_status is not None:
         run_metrics_dict["http_status"] = http_status
+    if harness_preset:
+        run_metrics_dict["harness_preset"] = harness_preset
+    run_metrics_dict["capture_mode"] = capture_mode
     usage = data.get("usage") if isinstance(data.get("usage"), dict) else {}
     prompt_tokens = run_metrics_obj.prompt_tokens
     if prompt_tokens is None and usage.get("prompt_tokens") is not None:
@@ -1270,6 +1291,20 @@ def run_scenario(
     failure_reason = transport_error or rubric_failure
 
     excerpt, stored_content, content_truncated = _store_assistant_content(content)
+    try:
+        from tests.benchmarks.agent.patterns import classify_failure
+
+        run_metrics_dict["patterns"] = classify_failure(
+            {
+                "passed": passed,
+                "error": failure_reason,
+                "tools_called": [{"name": n} for n in tool_names],
+                "scenario_id": scenario.id,
+                "assistant_text": content,
+            }
+        )
+    except Exception:
+        pass
     return ScenarioResult(
         run_id=run_id,
         scenario_id=scenario.id,
@@ -1397,6 +1432,9 @@ def run_benchmark(
     cleanup_on_start: bool = True,
     cleanup_on_finish: bool = True,
     prompt_locale: str | None = None,
+    harness_preset: str | None = None,
+    tenant_id: int | None = None,
+    use_harness_matrix: bool = False,
 ) -> BenchRunReport:
     from tests.benchmarks.agent.cases import available_prompt_locales, resolve_prompt_locale
 
@@ -1518,6 +1556,12 @@ def run_benchmark(
             report.results.append(result)
             _notify_progress(report, on_progress)
 
+        harness_matrix = None
+        if tenant_id is not None and use_harness_matrix:
+            from apps.backend.infrastructure.benchmark_harness_resolve import load_matrix
+
+            harness_matrix = load_matrix(tenant_id)
+
         for profile in profiles:
             session.refresh(force=True)
             for scenario in scenarios:
@@ -1625,6 +1669,30 @@ def run_benchmark(
                 def _on_live(patch: dict[str, Any]) -> None:
                     live_push(patch)
 
+                eff_preset = harness_preset
+                eff_timeout = scenario_timeout_sec
+                eff_rounds = max_tool_rounds_override
+                eff_stream: bool | None = None
+                eff_capture: bool | None = None
+                if tenant_id is not None:
+                    from apps.backend.infrastructure.benchmark_harness_resolve import resolve_for_profile
+
+                    eff = resolve_for_profile(
+                        tenant_id=tenant_id,
+                        catalog_owned_by=profile.catalog_owned_by,
+                        model=profile.model,
+                        run_harness_preset=harness_preset,
+                        run_max_tool_rounds_override=max_tool_rounds_override,
+                        run_scenario_timeout_sec=scenario_timeout_sec,
+                        use_matrix=use_harness_matrix,
+                        matrix=harness_matrix,
+                    )
+                    eff_preset = eff.harness_preset
+                    eff_timeout = eff.scenario_timeout_sec
+                    eff_rounds = eff.max_tool_rounds_override
+                    eff_stream = eff.stream_llm
+                    eff_capture = eff.capture_timeline
+
                 try:
                     result = _execute_scenario_with_retries(
                         session,
@@ -1635,10 +1703,13 @@ def run_benchmark(
                         defaults=defaults,
                         on_live=_on_live,
                         cancel_check=cancel_check,
-                        scenario_timeout_sec=scenario_timeout_sec,
-                        max_tool_rounds_override=max_tool_rounds_override,
+                        scenario_timeout_sec=eff_timeout,
+                        max_tool_rounds_override=eff_rounds,
                         benchmark_run_id=bench_run_uuid,
                         scenario_failure_retries=scenario_failure_retries,
+                        harness_preset=eff_preset,
+                        stream_llm_override=eff_stream,
+                        capture_timeline_override=eff_capture,
                     )
                 except BenchmarkRunCancelled:
                     raise

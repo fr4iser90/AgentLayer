@@ -30,6 +30,11 @@ def pool() -> ConnectionPool:
     return _pool
 
 
+def pool_ready() -> bool:
+    """True when PostgreSQL pool is initialized (unit tests often run without DB)."""
+    return _pool is not None
+
+
 def init_pool() -> None:
     global _pool
     if not config.DATABASE_URL:

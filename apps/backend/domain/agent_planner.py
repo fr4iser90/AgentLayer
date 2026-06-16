@@ -137,8 +137,9 @@ async def chat_completion(
     _active_task_body = body.pop("agent_active_task_id", None)
     permission_ask = _coerce_body_bool(body.pop("agent_permission_ask", None), False)
     agent_unattended = _coerce_body_bool(body.pop("agent_unattended", None), False)
+    _raw_tools_full_schema = body.pop("agent_tools_full_schema", None)
     tools_full_schema = _coerce_body_bool(
-        body.pop("agent_tools_full_schema", None),
+        _raw_tools_full_schema,
         config.AGENT_TOOLS_FULL_SCHEMA,
     )
     if agent_unattended:
@@ -184,6 +185,40 @@ async def chat_completion(
 
     # Get user from identity context (tenant_id, user_id)
     tenant_id, user_id = get_identity()
+
+    if _raw_tools_ranking is None and tenant_id is not None:
+        from apps.backend.infrastructure import agent_config_effective as _ace
+
+        tools_ranking_enabled = _ace.effective_bool(
+            "tool_forward.ranking_enabled",
+            tenant_id=int(tenant_id),
+            default=tools_ranking_enabled,
+        )
+
+    from apps.backend.infrastructure import agent_config_effective as _ace
+
+    _cfg_tid = int(tenant_id) if tenant_id is not None else None
+    if _raw_tools_full_schema is None and _cfg_tid is not None:
+        tools_full_schema = _ace.effective_bool(
+            "tool_forward.full_schema",
+            tenant_id=_cfg_tid,
+            default=tools_full_schema,
+        )
+    _router_strict_default = _ace.effective_bool(
+        "tool_routing.router_strict_default",
+        tenant_id=_cfg_tid,
+        default=config.AGENT_ROUTER_STRICT_DEFAULT,
+    )
+    _catalog_after_first_round = _ace.effective_bool(
+        "tool_forward.catalog_after_first_round",
+        tenant_id=_cfg_tid,
+        default=config.AGENT_TOOLS_CATALOG_AFTER_FIRST_ROUND,
+    )
+    _tool_choice_required_retry = _ace.effective_bool(
+        "agent.tool_choice_required_retry",
+        tenant_id=_cfg_tid,
+        default=config.AGENT_TOOL_CHOICE_REQUIRED_RETRY,
+    )
 
     if not workspace_id and user_id:
         _raw_cid_pref = body.get("conversation_id")
@@ -532,20 +567,24 @@ async def chat_completion(
 
     try:
 
+        from apps.backend.infrastructure import agent_config_effective as _ace
+
+        _cfg_tid = int(tenant_id) if tenant_id is not None else None
         max_tool_rounds_eff = (
-            config.SUBAGENT_MAX_TOOL_ROUNDS
+            _ace.subagent_max_tool_rounds(tenant_id=_cfg_tid)
             if embedded_subagent
-            else config.MAX_TOOL_ROUNDS
+            else _ace.max_tool_rounds(tenant_id=_cfg_tid)
         )
         if not embedded_subagent and _raw_max_rounds is not None:
             try:
                 client_v = int(_raw_max_rounds)
                 if client_v <= 0:
-                    max_tool_rounds_eff = config.MAX_TOOL_ROUNDS
+                    max_tool_rounds_eff = _ace.max_tool_rounds(tenant_id=_cfg_tid)
                 else:
+                    base_max = _ace.max_tool_rounds(tenant_id=_cfg_tid)
                     upper = (
-                        config.MAX_TOOL_ROUNDS
-                        if config.MAX_TOOL_ROUNDS < config.MAX_TOOL_ROUNDS_CAP
+                        base_max
+                        if base_max < config.MAX_TOOL_ROUNDS_CAP
                         else config.MAX_TOOL_ROUNDS_CAP
                     )
                     max_tool_rounds_eff = max(1, min(client_v, upper))
@@ -816,7 +855,7 @@ async def chat_completion(
             routed_category = (
                 next(iter(cats)) if len(cats) == 1 else "+".join(sorted(cats))
             )
-        elif config.AGENT_ROUTER_STRICT_DEFAULT:
+        elif _router_strict_default:
             routed_category = "minimal"
         else:
             routed_category = "full"
@@ -1308,7 +1347,7 @@ async def chat_completion(
                 force_no_tools_reason = None
             else:
                 tools_for_round = list(tools_for_request)
-                use_catalog = round_i > 0 and config.AGENT_TOOLS_CATALOG_AFTER_FIRST_ROUND
+                use_catalog = round_i > 0 and _catalog_after_first_round
                 if use_catalog or tools_need_full_schema:
                     schema_modes: dict[str, str] = (
                         {
@@ -1618,7 +1657,7 @@ async def chat_completion(
                 and tools_for_round
                 and not plain_completion
                 and not tools_omitted
-                and config.AGENT_TOOL_CHOICE_REQUIRED_RETRY
+                and _tool_choice_required_retry
             ):
                 payload_retry = dict(payload_base)
                 payload_retry["model"] = chosen[2]

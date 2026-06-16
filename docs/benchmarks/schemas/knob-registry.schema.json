@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentlayer.local/schemas/knob-registry.schema.json",
+  "title": "Agent tuning knob registry (v2)",
+  "type": "object",
+  "required": ["version", "ui_groups", "knobs"],
+  "additionalProperties": true,
+  "properties": {
+    "version": { "type": "integer", "minimum": 2 },
+    "ui_groups": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "label"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+          "label": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "knobs": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/knob" }
+    },
+    "layer_enum": { "type": "array", "items": { "type": "string" } },
+    "tuning_forbidden": { "type": "array", "items": { "type": "string" } }
+  },
+  "$defs": {
+    "knobLayer": {
+      "type": "string",
+      "enum": ["runtime_config", "operator", "agent_yaml", "router_yaml", "bench", "rubric", "code"]
+    },
+    "applyVia": {
+      "type": "string",
+      "enum": ["agent-config/apply", "operator-settings", "benchmarks/runs", "none"]
+    },
+    "knob": {
+      "type": "object",
+      "required": [
+        "id", "layer", "ui_group", "benchmark_sensitive", "doc",
+        "type", "writable", "apply_via", "value_schema"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9_.]*$" },
+        "layer": { "$ref": "#/$defs/knobLayer" },
+        "bootstrap_env_key": {
+          "type": "string",
+          "description": "Install/container default ONLY — never edited for tuning"
+        },
+        "operator_settings_key": { "type": "string" },
+        "bench_field": { "type": "string" },
+        "path": { "type": "string" },
+        "field": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["boolean", "integer", "number", "string", "string_list", "json", "fingerprint"]
+        },
+        "writable": { "type": "boolean" },
+        "apply_via": { "$ref": "#/$defs/applyVia" },
+        "value_schema": { "type": "string", "minLength": 1 },
+        "default": {},
+        "ui_group": { "type": "string" },
+        "benchmark_sensitive": { "type": "boolean" },
+        "doc": { "type": "string", "minLength": 1 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "layer": { "const": "runtime_config" } } },
+          "then": { "required": ["bootstrap_env_key"] }
+        },
+        {
+          "if": { "properties": { "layer": { "const": "operator" } } },
+          "then": { "required": ["operator_settings_key"] }
+        },
+        {
+          "if": { "properties": { "layer": { "const": "bench" } } },
+          "then": { "required": ["bench_field"] }
+        },
+        {
+          "if": { "properties": { "writable": { "const": false } } },
+          "then": {
+            "properties": {
+              "apply_via": { "const": "none" },
+              "type": { "const": "fingerprint" }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

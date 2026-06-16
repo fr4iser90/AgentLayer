@@ -19,6 +19,7 @@ if str(_backend_path) not in sys.path:
     sys.path.insert(0, str(_backend_path))
 
 from apps.backend.core.config import config
+from apps.backend.infrastructure import agent_config_effective
 from apps.backend.infrastructure.db import db
 from apps.backend.domain.plugin_system.capability_index import build_capability_index
 from apps.backend.domain.plugin_system.tool_manifest_dimensions import (
@@ -559,14 +560,21 @@ class ToolRegistry:
             return ()
         with self._lock:
             raw = self._router_cat_TOOL_TRIGGERS.get(key, frozenset())
-        return tuple(sorted(str(x).strip().lower() for x in raw if str(x).strip()))
+        base = {str(x).strip().lower() for x in raw if str(x).strip()}
+        try:
+            from apps.backend.infrastructure.agent_config_router_overlay import overlay_phrases_for_domain
+
+            base.update(overlay_phrases_for_domain(key))
+        except Exception:
+            pass
+        return tuple(sorted(base))
 
     def _router_category_order(self) -> list[str]:
         """Call with ``self._lock`` held."""
         known = frozenset(self._router_cat_tools.keys())
         order: list[str] = []
         seen: set[str] = set()
-        for c in config.AGENT_TOOL_DOMAIN_ORDER:
+        for c in agent_config_effective.effective_domain_order():
             if c in known and c not in seen:
                 order.append(c)
                 seen.add(c)
