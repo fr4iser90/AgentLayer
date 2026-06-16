@@ -13,6 +13,12 @@ version: 2
 ui_groups:
   - id: agent_limits
     label: Agent loop limits
+  - id: context_harness
+    label: Context harness (compaction, budgets)
+  - id: loop_guards
+    label: Tool loop guards (thrash / doom-loop)
+  - id: delegate
+    label: Delegate and sub-agents
   - id: tool_routing
     label: Tool routing and filtering
   - id: tool_forward
@@ -74,6 +80,134 @@ knobs:
     benchmark_sensitive: true
     doc: Sub-agent wall-clock timeout; null = unlimited.
 
+  # --- context_harness ---
+  - id: context.compaction_enabled
+    layer: runtime_config
+    bootstrap_env_key: CHAT_CONTEXT_COMPACTION_ENABLED
+    type: boolean
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: runtime-config-values.json#/$defs/booleanConfig
+    default: true
+    ui_group: context_harness
+    affects_agents: [general, coding]
+    affects_clusters: [S, C, W, D, SEC, SOC]
+    benchmark_sensitive: true
+    doc: LLM summarization of older chat history when approaching context soft limit.
+
+  - id: context.agent_loop_trim_enabled
+    layer: runtime_config
+    bootstrap_env_key: CHAT_CONTEXT_AGENT_LOOP_TRIM_ENABLED
+    type: boolean
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: runtime-config-values.json#/$defs/booleanConfig
+    default: true
+    ui_group: context_harness
+    affects_agents: [general, coding]
+    affects_clusters: [S, C, W, D, SEC, SOC]
+    benchmark_sensitive: true
+    doc: Mid-run compaction of older tool rounds when provider prompt_tokens exceed soft ratio.
+
+  - id: context.keep_recent_tool_rounds
+    layer: runtime_config
+    bootstrap_env_key: CHAT_CONTEXT_KEEP_RECENT_TOOL_ROUNDS
+    type: integer
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: runtime-config-values.json#/$defs/keepRecentToolRounds
+    default: 6
+    ui_group: context_harness
+    affects_agents: [general, coding]
+    affects_clusters: [S, C, W, D, SEC, SOC]
+    benchmark_sensitive: true
+    doc: Tool-round groups kept verbatim during loop compaction; halved at hard limit.
+
+  - id: context.tools_budget_ratio
+    layer: runtime_config
+    bootstrap_env_key: AGENT_TOOLS_BUDGET_RATIO
+    type: number
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: runtime-config-values.json#/$defs/toolsBudgetRatio
+    default: 0.06
+    ui_group: context_harness
+    affects_agents: [general, coding]
+    affects_clusters: [S, C, W, D, SEC, SOC]
+    benchmark_sensitive: true
+    doc: Fraction of model context window reserved for tool schemas per LLM call.
+
+  - id: context.tool_result_max_ratio
+    layer: runtime_config
+    bootstrap_env_key: CHAT_CONTEXT_TOOL_RESULT_MAX_RATIO
+    type: number
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: runtime-config-values.json#/$defs/toolResultMaxRatio
+    default: 0.008
+    ui_group: context_harness
+    affects_agents: [general, coding]
+    affects_clusters: [S, C, W, D, SEC, SOC]
+    benchmark_sensitive: true
+    doc: Max chars per tool result message as fraction of context window.
+
+  # --- loop_guards ---
+  - id: agent.tool_thrash_enabled
+    layer: runtime_config
+    bootstrap_env_key: AGENT_TOOL_THRASH_ENABLED
+    type: boolean
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: runtime-config-values.json#/$defs/booleanConfig
+    default: false
+    ui_group: loop_guards
+    affects_agents: [general, coding]
+    affects_clusters: [S, C, W, D, SEC]
+    benchmark_sensitive: true
+    doc: Detect repeated identical tool calls and inject recovery hint.
+
+  - id: agent.tool_thrash_streak_max
+    layer: runtime_config
+    bootstrap_env_key: AGENT_TOOL_THRASH_STREAK_MAX
+    type: integer
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: runtime-config-values.json#/$defs/loopGuardStreakMax
+    default: 10
+    ui_group: loop_guards
+    affects_agents: [general, coding]
+    affects_clusters: [S, C, W, D, SEC]
+    benchmark_sensitive: true
+    doc: Identical tool-call streak before thrash guard fires.
+
+  - id: agent.doom_loop_enabled
+    layer: runtime_config
+    bootstrap_env_key: AGENT_TOOL_DOOM_LOOP_ENABLED
+    type: boolean
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: runtime-config-values.json#/$defs/booleanConfig
+    default: false
+    ui_group: loop_guards
+    affects_agents: [general, coding]
+    affects_clusters: [S, C, W, D, SEC]
+    benchmark_sensitive: true
+    doc: Detect alternating tool-call patterns (doom loop) and inject recovery hint.
+
+  - id: agent.doom_loop_streak_max
+    layer: runtime_config
+    bootstrap_env_key: AGENT_TOOL_DOOM_LOOP_STREAK_MAX
+    type: integer
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: runtime-config-values.json#/$defs/loopGuardStreakMax
+    default: 10
+    ui_group: loop_guards
+    affects_agents: [general, coding]
+    affects_clusters: [S, C, W, D, SEC]
+    benchmark_sensitive: true
+    doc: Alternating-pattern streak before doom-loop guard fires.
+
   # --- tool_routing ---
   - id: tool_routing.domain_order
     layer: runtime_config
@@ -113,7 +247,19 @@ knobs:
     affects_agents: [general]
     affects_clusters: [S, C, W, D, SEC]
     benchmark_sensitive: true
-    doc: classify_user_tool_categories from TOOL_TRIGGERS — code change + deploy.
+    doc: Built-in TOOL_TRIGGERS fingerprint — use tool_routing.trigger_overlay to tune phrases via Harness.
+
+  - id: tool_routing.trigger_overlay
+    layer: runtime_config
+    type: json
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: trigger-overlay.json
+    ui_group: tool_routing
+    affects_agents: [general, coding]
+    affects_clusters: [S, C, W, D, SEC]
+    benchmark_sensitive: true
+    doc: "Per-category trigger phrase additions merged into router TOOL_TRIGGERS (e.g. {\"github\": [\"open pr\"]})."
 
   - id: planner.tool_merge
     layer: code
@@ -236,11 +382,134 @@ knobs:
     apply_via: operator-settings
     value_schema: operator-tuning-fields.json#/$defs/delegateEnabled
     default: true
-    ui_group: agents
+    ui_group: delegate
     affects_agents: [general]
     affects_clusters: [S4, C, W, SEC]
     benchmark_sensitive: true
-    doc: Planned kill-switch for delegate tool (ADR 0007).
+    doc: Master kill-switch for delegate tool (ADR 0007).
+
+  - id: agent.coding.system_prompt
+    layer: agent_yaml
+    path: plugins/agents/coding/system_prompt.md
+    field: system_prompt
+    type: string
+    format: markdown
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: agent-yaml-fields.json#/$defs/systemPromptMarkdown
+    ui_group: agents
+    affects_agents: [coding]
+    affects_clusters: [C, W]
+    benchmark_sensitive: true
+    doc: Coding specialist system prompt body.
+
+  - id: agent.coding.pinned_tools
+    layer: agent_yaml
+    path: plugins/agents/coding/agent.yaml
+    field: pinned_tools
+    type: string_list
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: agent-yaml-fields.json#/$defs/pinnedTools
+    ui_group: agents
+    affects_agents: [coding]
+    affects_clusters: [C, W]
+    benchmark_sensitive: true
+    doc: Tools always forwarded for Coding agent every round.
+
+  - id: agent.coding.tool_allowlist
+    layer: agent_yaml
+    path: plugins/agents/coding/agent.yaml
+    field: tool_allowlist
+    type: string_list
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: agent-yaml-fields.json#/$defs/pinnedTools
+    ui_group: agents
+    affects_agents: [coding]
+    affects_clusters: [C, W]
+    benchmark_sensitive: true
+    doc: Coding agent tool allowlist preset (full list replaces file default when set in DB).
+
+  - id: agent.coding.tool_discipline_preset
+    layer: agent_yaml
+    path: plugins/agents/coding/agent.yaml
+    field: tool_discipline_preset
+    type: string
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: agent-yaml-fields.json#/$defs/codingToolDisciplinePreset
+    ui_group: agents
+    affects_agents: [coding]
+    affects_clusters: [C, W]
+    benchmark_sensitive: true
+    doc: Turn-hook preset (coding_build vs coding_plan).
+
+  - id: agent.coding.coding_tools_permission_ask
+    layer: agent_yaml
+    path: plugins/agents/coding/agent.yaml
+    field: coding_tools_permission_ask
+    type: boolean
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: runtime-config-values.json#/$defs/booleanConfig
+    default: false
+    ui_group: agents
+    affects_agents: [coding]
+    affects_clusters: [C, W]
+    benchmark_sensitive: true
+    doc: "true = ask user before destructive coding tools; false = unattended benchmark/chat parity."
+
+  # --- delegate ---
+  - id: delegate.allowed_agent_ids
+    layer: runtime_config
+    type: string_list
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: agent-yaml-fields.json#/$defs/delegateAllowedAgentIds
+    ui_group: delegate
+    affects_agents: [general]
+    affects_clusters: [S4, C, W, SEC]
+    benchmark_sensitive: true
+    doc: When set, intersect registry delegatable agents with this allowlist.
+
+  - id: delegate.allowed_modes
+    layer: runtime_config
+    type: string_list
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: agent-yaml-fields.json#/$defs/delegateAllowedModes
+    ui_group: delegate
+    affects_agents: [general, coding]
+    affects_clusters: [S4, C, W, SEC]
+    benchmark_sensitive: true
+    doc: "Allowed delegate modes (git_forensics, fix_from_artifact, security_dashboard_sync). Empty = all."
+
+  - id: delegate.max_artifact_refs
+    layer: runtime_config
+    type: integer
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: runtime-config-values.json#/$defs/delegateMaxArtifactRefs
+    default: 8
+    ui_group: delegate
+    affects_agents: [general, coding]
+    affects_clusters: [S4, C, W, SEC]
+    benchmark_sensitive: true
+    doc: Max artifact refs scanned for fix_from_artifact path allowlist.
+
+  - id: delegate.infer_git_forensics
+    layer: runtime_config
+    type: boolean
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: runtime-config-values.json#/$defs/booleanConfig
+    default: true
+    ui_group: delegate
+    affects_agents: [general]
+    affects_clusters: [S4, C, W, SEC]
+    benchmark_sensitive: true
+    doc: Auto-infer git_forensics delegate mode from prompt signals when mode not explicit.
 
   # --- routers ---
   - id: router.delegate
@@ -281,6 +550,32 @@ knobs:
     affects_clusters: [S, C]
     benchmark_sensitive: true
     doc: Task delegation router phrases.
+
+  - id: router.github
+    layer: router_yaml
+    path: plugins/tools/integrations/github/git_read.router.yaml
+    type: json
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: router-overlay.json
+    ui_group: routers
+    affects_agents: [general, coding]
+    affects_clusters: [C, W]
+    benchmark_sensitive: true
+    doc: GitHub/git router phrase overlay (domain github).
+
+  - id: router.workspace
+    layer: router_yaml
+    path: plugins/tools/workspace/bind/workspaces.router.yaml
+    type: json
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: router-overlay.json
+    ui_group: routers
+    affects_agents: [general, coding]
+    affects_clusters: [C, W]
+    benchmark_sensitive: true
+    doc: Workspace bind/create router phrase overlay.
 
   # --- model_routing ---
   - id: model.resolve_effective
@@ -418,10 +713,13 @@ type_enum:
   - fingerprint
 
 effective_value_order:
+  - bench_run_override
+  - model_db_override
+  - provider_db_override
   - db_override
   - registry_default
-  - bootstrap_env_key
   - file_default
+  - bootstrap_env_key
 
 tuning_forbidden:
   - .env edit for runtime_config knobs

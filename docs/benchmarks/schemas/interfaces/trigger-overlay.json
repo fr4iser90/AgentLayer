@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentlayer.local/schemas/interfaces/trigger-overlay.json",
+  "title": "Tool routing trigger phrase overlay",
+  "description": "Per TOOL_DOMAIN category: extra trigger substrings merged into router TOOL_TRIGGERS.",
+  "type": "object",
+  "additionalProperties": {
+    "type": "array",
+    "items": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "minItems": 1,
+    "maxItems": 128,
+    "uniqueItems": true
+  },
+  "propertyNames": {
+    "type": "string",
+    "minLength": 1,
+    "maxLength": 64,
+    "pattern": "^[a-z][a-z0-9_]*$"
+  },
+  "examples": [
+    {
+      "github": ["open pull request", "merge pr"],
+      "catalog": ["list agents", "show specialists"]
+    }
+  ]
+}

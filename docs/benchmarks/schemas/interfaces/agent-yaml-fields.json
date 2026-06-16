@@ -30,6 +30,30 @@
         "user_secrets_status"
       ]
     },
+    "codingToolDisciplinePreset": {
+      "type": "string",
+      "enum": ["coding_build", "coding_plan", "dashboard", "security_auditor"],
+      "description": "agent.coding.tool_discipline_preset — turn-hook dispatch key."
+    },
+    "delegateAllowedAgentIds": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/agentId" },
+      "uniqueItems": true,
+      "minItems": 1,
+      "maxItems": 32,
+      "description": "delegate.allowed_agent_ids — subset of registry delegatable agents."
+    },
+    "delegateAllowedModes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["git_forensics", "fix_from_artifact", "security_dashboard_sync"]
+      },
+      "uniqueItems": true,
+      "minItems": 1,
+      "maxItems": 8,
+      "description": "delegate.allowed_modes — empty unset = all modes allowed."
+    },
     "systemPromptMarkdown": {
       "type": "string",
       "minLength": 0,

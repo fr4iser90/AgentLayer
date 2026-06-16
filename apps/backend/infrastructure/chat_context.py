@@ -381,8 +381,11 @@ async def prepare_chat_history_for_llm(
 
     recent_n = config.CHAT_CONTEXT_RECENT_VERBATIM_MESSAGES
     at_soft, _at_hard = should_compact_by_usage(context_budget, provider_prompt_tokens)
+
+    from apps.backend.infrastructure import agent_config_effective as ace
+
     need_compaction = (
-        config.CHAT_CONTEXT_COMPACTION_ENABLED
+        ace.context_compaction_enabled()
         and conversation_id is not None
         and (len(hist) > config.CHAT_CONTEXT_MAX_MESSAGES or at_soft)
     )

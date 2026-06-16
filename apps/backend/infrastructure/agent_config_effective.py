@@ -214,7 +214,7 @@ def effective_value(
     return default_value(knob_id)
 
 
-def effective_int(knob_id: str, *, tenant_id: int | None = None, default: int = 0) -> int:
+def effective_int(knob_id: str, *, tenant_id: int | None = None, default: int = 0, minimum: int = 1) -> int:
     val, _src = effective_value(knob_id, tenant_id=tenant_id)
     if val is None:
         reg = knob_by_id(knob_id) or {}
@@ -223,9 +223,42 @@ def effective_int(knob_id: str, *, tenant_id: int | None = None, default: int = 
         except (TypeError, ValueError):
             return int(default)
     try:
-        return int(val)
+        n = int(val)
     except (TypeError, ValueError):
         return int(default)
+    return max(minimum, n)
+
+
+def effective_float(
+    knob_id: str,
+    *,
+    tenant_id: int | None = None,
+    default: float,
+    minimum: float,
+    maximum: float,
+) -> float:
+    val, _src = effective_value(knob_id, tenant_id=tenant_id)
+    if val is None:
+        reg = knob_by_id(knob_id) or {}
+        try:
+            raw = reg.get("default", default)
+            n = float(raw)
+        except (TypeError, ValueError):
+            n = float(default)
+    else:
+        try:
+            n = float(val)
+        except (TypeError, ValueError):
+            n = float(default)
+    return max(minimum, min(maximum, n))
+
+
+def effective_string_list(knob_id: str, *, tenant_id: int | None = None) -> tuple[str, ...] | None:
+    val, _src = effective_value(knob_id, tenant_id=tenant_id)
+    if isinstance(val, list):
+        items = tuple(str(x).strip() for x in val if str(x).strip())
+        return items if items else None
+    return None
 
 
 def effective_bool(knob_id: str, *, tenant_id: int | None = None, default: bool = False) -> bool:
@@ -270,17 +303,133 @@ def subagent_timeout_sec(*, tenant_id: int | None = None) -> float | None:
     return n if n > 0 else None
 
 
+def context_compaction_enabled(*, tenant_id: int | None = None) -> bool:
+    return effective_bool("context.compaction_enabled", tenant_id=tenant_id, default=app_config.CHAT_CONTEXT_COMPACTION_ENABLED)
+
+
+def context_agent_loop_trim_enabled(*, tenant_id: int | None = None) -> bool:
+    return effective_bool(
+        "context.agent_loop_trim_enabled",
+        tenant_id=tenant_id,
+        default=app_config.CHAT_CONTEXT_AGENT_LOOP_TRIM_ENABLED,
+    )
+
+
+def context_keep_recent_tool_rounds(*, tenant_id: int | None = None) -> int:
+    return effective_int(
+        "context.keep_recent_tool_rounds",
+        tenant_id=tenant_id,
+        default=app_config.CHAT_CONTEXT_KEEP_RECENT_TOOL_ROUNDS,
+        minimum=2,
+    )
+
+
+def context_tools_budget_ratio(*, tenant_id: int | None = None) -> float:
+    return effective_float(
+        "context.tools_budget_ratio",
+        tenant_id=tenant_id,
+        default=app_config.AGENT_TOOLS_BUDGET_RATIO,
+        minimum=0.01,
+        maximum=0.25,
+    )
+
+
+def context_tool_result_max_ratio(*, tenant_id: int | None = None) -> float:
+    return effective_float(
+        "context.tool_result_max_ratio",
+        tenant_id=tenant_id,
+        default=app_config.CHAT_CONTEXT_TOOL_RESULT_MAX_RATIO,
+        minimum=0.002,
+        maximum=0.15,
+    )
+
+
+def tool_thrash_enabled(*, tenant_id: int | None = None) -> bool:
+    return effective_bool("agent.tool_thrash_enabled", tenant_id=tenant_id, default=app_config.AGENT_TOOL_THRASH_ENABLED)
+
+
+def tool_thrash_streak_max(*, tenant_id: int | None = None) -> int:
+    return effective_int(
+        "agent.tool_thrash_streak_max",
+        tenant_id=tenant_id,
+        default=app_config.AGENT_TOOL_THRASH_STREAK_MAX,
+        minimum=2,
+    )
+
+
+def doom_loop_enabled(*, tenant_id: int | None = None) -> bool:
+    return effective_bool("agent.doom_loop_enabled", tenant_id=tenant_id, default=app_config.AGENT_TOOL_DOOM_LOOP_ENABLED)
+
+
+def doom_loop_streak_max(*, tenant_id: int | None = None) -> int:
+    return effective_int(
+        "agent.doom_loop_streak_max",
+        tenant_id=tenant_id,
+        default=app_config.AGENT_TOOL_DOOM_LOOP_STREAK_MAX,
+        minimum=2,
+    )
+
+
+def delegate_max_artifact_refs(*, tenant_id: int | None = None) -> int:
+    return effective_int("delegate.max_artifact_refs", tenant_id=tenant_id, default=8, minimum=1)
+
+
+def delegate_infer_git_forensics(*, tenant_id: int | None = None) -> bool:
+    return effective_bool("delegate.infer_git_forensics", tenant_id=tenant_id, default=True)
+
+
+def delegate_allowed_modes(*, tenant_id: int | None = None) -> frozenset[str] | None:
+    modes = effective_string_list("delegate.allowed_modes", tenant_id=tenant_id)
+    return frozenset(modes) if modes else None
+
+
+def delegate_mode_allowed(mode: str | None, *, tenant_id: int | None = None) -> bool:
+    allowed = delegate_allowed_modes(tenant_id=tenant_id)
+    if not allowed:
+        return True
+    norm = str(mode or "").strip().lower()
+    if not norm:
+        return True
+    return norm in allowed
+
+
+_AGENT_YAML_KNOBS: dict[str, dict[str, str]] = {
+    "general": {
+        "agent.general.system_prompt": "system_prompt",
+        "agent.general.pinned_tools": "pinned_tools",
+    },
+    "coding": {
+        "agent.coding.system_prompt": "system_prompt",
+        "agent.coding.pinned_tools": "pinned_tools",
+        "agent.coding.tool_allowlist": "tool_allowlist",
+        "agent.coding.tool_discipline_preset": "tool_discipline_preset",
+        "agent.coding.coding_tools_permission_ask": "coding_tools_permission_ask",
+    },
+}
+
+
 def agent_yaml_overlay(agent_id: str, *, tenant_id: int | None = None) -> dict[str, Any]:
-    """DB overlay fields for a given agent id (general only today)."""
-    if agent_id != "general":
+    """DB overlay fields for agent registry entries (general, coding)."""
+    field_map = _AGENT_YAML_KNOBS.get(agent_id)
+    if not field_map:
         return {}
     out: dict[str, Any] = {}
-    sp, _src = effective_value("agent.general.system_prompt", tenant_id=tenant_id)
-    if isinstance(sp, str) and sp.strip():
-        out["system_prompt"] = sp
-    pins, _src2 = effective_value("agent.general.pinned_tools", tenant_id=tenant_id)
-    if isinstance(pins, list) and pins:
-        out["pinned_tools"] = [str(x).strip() for x in pins if str(x).strip()]
+    for kid, field in field_map.items():
+        val, _src = effective_value(kid, tenant_id=tenant_id)
+        if val is None:
+            continue
+        if field == "system_prompt":
+            if isinstance(val, str) and val.strip():
+                out[field] = val
+        elif field in ("pinned_tools", "tool_allowlist"):
+            if isinstance(val, list) and val:
+                out[field] = [str(x).strip() for x in val if str(x).strip()]
+        elif field == "tool_discipline_preset":
+            if isinstance(val, str) and val.strip():
+                out[field] = val.strip()
+        elif field == "coding_tools_permission_ask":
+            if isinstance(val, bool):
+                out[field] = val
     return out
 
 
@@ -325,6 +474,48 @@ def display_value(
 
     if knob_id == "agent.subagent_timeout_sec":
         return subagent_timeout_sec(tenant_id=tenant_id), "implicit_default"
+
+    if knob_id == "context.compaction_enabled":
+        return context_compaction_enabled(tenant_id=tenant_id), "implicit_default"
+
+    if knob_id == "context.agent_loop_trim_enabled":
+        return context_agent_loop_trim_enabled(tenant_id=tenant_id), "implicit_default"
+
+    if knob_id == "context.keep_recent_tool_rounds":
+        return context_keep_recent_tool_rounds(tenant_id=tenant_id), "implicit_default"
+
+    if knob_id == "context.tools_budget_ratio":
+        return context_tools_budget_ratio(tenant_id=tenant_id), "implicit_default"
+
+    if knob_id == "context.tool_result_max_ratio":
+        return context_tool_result_max_ratio(tenant_id=tenant_id), "implicit_default"
+
+    if knob_id == "agent.tool_thrash_enabled":
+        return tool_thrash_enabled(tenant_id=tenant_id), "implicit_default"
+
+    if knob_id == "agent.tool_thrash_streak_max":
+        return tool_thrash_streak_max(tenant_id=tenant_id), "implicit_default"
+
+    if knob_id == "agent.doom_loop_enabled":
+        return doom_loop_enabled(tenant_id=tenant_id), "implicit_default"
+
+    if knob_id == "agent.doom_loop_streak_max":
+        return doom_loop_streak_max(tenant_id=tenant_id), "implicit_default"
+
+    if knob_id == "delegate.max_artifact_refs":
+        return delegate_max_artifact_refs(tenant_id=tenant_id), "implicit_default"
+
+    if knob_id == "delegate.infer_git_forensics":
+        return delegate_infer_git_forensics(tenant_id=tenant_id), "implicit_default"
+
+    if knob_id == "agent.coding.coding_tools_permission_ask":
+        val, src = effective_value(knob_id, tenant_id=tenant_id, catalog_owned_by=catalog_owned_by, model=model)
+        if val is not None:
+            return val, src
+        file_val = _file_default_value(knob_by_id(knob_id) or {})
+        if isinstance(file_val, bool):
+            return file_val, "file_default"
+        return False, "file_default"
 
     if knob_id == "tool_routing.router_strict_default":
         return effective_bool(knob_id, tenant_id=tenant_id, default=True), "implicit_default"

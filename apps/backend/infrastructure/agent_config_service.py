@@ -12,6 +12,16 @@ from apps.backend.infrastructure.operator_settings import OperatorSettingsPatch,
 ActorType = Literal["user", "operator_agent", "reviewer_job"]
 
 
+def _patches_touch_tool_routing(patches: list[dict[str, Any]]) -> bool:
+    for p in patches:
+        kid = str(p.get("knob_id") or "").strip()
+        if kid == "tool_routing.trigger_overlay":
+            return True
+        if str((knob_by_id(kid) or {}).get("layer") or "") == "router_yaml":
+            return True
+    return False
+
+
 def _validate_value(knob: dict[str, Any], value: Any) -> str | None:
     ktype = str(knob.get("type") or "")
     if ktype == "integer":
@@ -21,6 +31,12 @@ def _validate_value(knob: dict[str, Any], value: Any) -> str | None:
             return "expected integer"
         if n < 1:
             return "integer must be >= 1"
+        return None
+    if ktype == "number":
+        try:
+            float(value)
+        except (TypeError, ValueError):
+            return "expected number"
         return None
     if ktype == "boolean":
         if not isinstance(value, bool):
@@ -127,7 +143,7 @@ def apply_patches(
     )
 
     invalidate_router_overlay_cache(tenant_id)
-    if any(str((knob_by_id(str(p.get("knob_id") or "")) or {}).get("layer") or "") == "router_yaml" for p in patches):
+    if _patches_touch_tool_routing(patches):
         apply_router_overlay_to_registry(tenant_id=tenant_id)
 
     fp_after = agent_config_fingerprint.compute_fingerprint(tenant_id=tenant_id)
@@ -282,7 +298,7 @@ def apply_model_patches(
     )
 
     invalidate_router_overlay_cache(tenant_id)
-    if any(str((knob_by_id(str(p.get("knob_id") or "")) or {}).get("layer") or "") == "router_yaml" for p in patches):
+    if _patches_touch_tool_routing(patches):
         apply_router_overlay_to_registry(tenant_id=tenant_id)
 
     fp_after = agent_config_fingerprint.compute_fingerprint(tenant_id=tenant_id)

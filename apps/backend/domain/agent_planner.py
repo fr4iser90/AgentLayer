@@ -727,6 +727,10 @@ async def chat_completion(
             if embedded_subagent
             else _ace.max_tool_rounds(tenant_id=_cfg_tid)
         )
+        _thrash_enabled = _ace.tool_thrash_enabled(tenant_id=_cfg_tid)
+        _thrash_streak_max = _ace.tool_thrash_streak_max(tenant_id=_cfg_tid)
+        _doom_enabled = _ace.doom_loop_enabled(tenant_id=_cfg_tid)
+        _doom_streak_max = _ace.doom_loop_streak_max(tenant_id=_cfg_tid)
         if not embedded_subagent and _raw_max_rounds is not None:
             try:
                 client_v = int(_raw_max_rounds)
@@ -2157,14 +2161,14 @@ async def chat_completion(
                         event_emit=event_emit,
                         agent_run_id=agent_run_id,
                     )
-                if config.AGENT_TOOL_THRASH_ENABLED:
+                if _thrash_enabled:
                     nk, nc, thr_hint, force_next = _agent_tool_thrash_tick(
                         thrash_key,
                         thrash_count,
                         tool_name=name,
                         ok_r=ok_sum,
                         err_r=err_sum,
-                        max_streak=config.AGENT_TOOL_THRASH_STREAK_MAX,
+                        max_streak=_thrash_streak_max,
                     )
                     thrash_key, thrash_count = nk, nc
                     if thr_hint:
@@ -2176,13 +2180,13 @@ async def chat_completion(
                             "tool loop guard: thrash streak reached for tool=%r — next LLM round will omit tools[]",
                             name,
                         )
-                if config.AGENT_TOOL_DOOM_LOOP_ENABLED:
+                if _doom_enabled:
                     dk, dc, doom_hint = _agent_tool_doom_loop_tick(
                         doom_key,
                         doom_count,
                         tool_name=name,
                         args=args,
-                        max_streak=config.AGENT_TOOL_DOOM_LOOP_STREAK_MAX,
+                        max_streak=_doom_streak_max,
                         exclude_names=config.AGENT_TOOL_DOOM_LOOP_EXCLUDE,
                     )
                     doom_key, doom_count = dk, dc
@@ -2201,7 +2205,7 @@ async def chat_completion(
                             "next LLM round will omit tools[]",
                             name,
                             _args_preview,
-                            config.AGENT_TOOL_DOOM_LOOP_STREAK_MAX,
+                            _doom_streak_max,
                         )
                         if tool_context.get("agent_unattended"):
                             record_schedule_abort("repeated_tool_loop")

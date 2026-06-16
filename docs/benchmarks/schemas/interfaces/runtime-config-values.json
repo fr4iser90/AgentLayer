@@ -52,6 +52,41 @@
     "catalogAfterFirstRound": {
       "allOf": [{ "$ref": "#/$defs/booleanConfig" }],
       "default": true
+    },
+    "keepRecentToolRounds": {
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 64,
+      "default": 6,
+      "description": "context.keep_recent_tool_rounds — tool-round groups kept during loop compaction."
+    },
+    "toolsBudgetRatio": {
+      "type": "number",
+      "minimum": 0.01,
+      "maximum": 0.25,
+      "default": 0.06,
+      "description": "context.tools_budget_ratio — fraction of context window for tool schemas."
+    },
+    "toolResultMaxRatio": {
+      "type": "number",
+      "minimum": 0.002,
+      "maximum": 0.15,
+      "default": 0.008,
+      "description": "context.tool_result_max_ratio — per tool-result message cap."
+    },
+    "loopGuardStreakMax": {
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 64,
+      "default": 10,
+      "description": "Thrashing / doom-loop streak threshold."
+    },
+    "delegateMaxArtifactRefs": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 32,
+      "default": 8,
+      "description": "delegate.max_artifact_refs — artifacts scanned for path allowlist."
     }
   }
 }

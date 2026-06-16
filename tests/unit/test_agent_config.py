@@ -60,6 +60,45 @@ def test_is_harness_knob_excludes_rubrics():
     assert is_harness_knob(knob_by_id("bench.harness_preset") or {}) is False
 
 
+def test_context_tools_budget_ratio_db_override(monkeypatch):
+    monkeypatch.setattr(agent_config_effective, "_cached_overrides", lambda _tid: {"context.tools_budget_ratio": 0.12})
+    monkeypatch.setattr(agent_config_effective.db, "pool_ready", lambda: True)
+    assert agent_config_effective.context_tools_budget_ratio(tenant_id=1) == 0.12
+
+
+def test_coding_agent_yaml_overlay(monkeypatch):
+    monkeypatch.setattr(
+        agent_config_effective,
+        "_cached_overrides",
+        lambda _tid: {
+            "agent.coding.tool_discipline_preset": "coding_plan",
+            "agent.coding.coding_tools_permission_ask": True,
+        },
+    )
+    monkeypatch.setattr(agent_config_effective.db, "pool_ready", lambda: True)
+    overlay = agent_config_effective.agent_yaml_overlay("coding", tenant_id=1)
+    assert overlay["tool_discipline_preset"] == "coding_plan"
+    assert overlay["coding_tools_permission_ask"] is True
+
+
+def test_delegate_allowed_modes_filter(monkeypatch):
+    monkeypatch.setattr(
+        agent_config_effective,
+        "_cached_overrides",
+        lambda _tid: {"delegate.allowed_modes": ["fix_from_artifact"]},
+    )
+    monkeypatch.setattr(agent_config_effective.db, "pool_ready", lambda: True)
+    assert agent_config_effective.delegate_mode_allowed("fix_from_artifact", tenant_id=1) is True
+    assert agent_config_effective.delegate_mode_allowed("git_forensics", tenant_id=1) is False
+
+
+def test_validate_patches_accepts_number_knob():
+    from apps.backend.infrastructure.agent_config_service import validate_patches
+
+    out = validate_patches([{"knob_id": "context.tools_budget_ratio", "value": 0.08}])
+    assert out["valid"] is True
+
+
 def test_merge_agent_definition_without_db_pool():
     from apps.backend.domain.agent_registry import get_agent_registry
     from apps.backend.infrastructure.db import db

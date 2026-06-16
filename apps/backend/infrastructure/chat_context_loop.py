@@ -108,7 +108,12 @@ async def apply_agent_loop_context_budget(
         "messages_capped": 0,
         "loop_compaction_applied": False,
     }
-    if not config.CHAT_CONTEXT_PREP_ENABLED or not config.CHAT_CONTEXT_AGENT_LOOP_TRIM_ENABLED:
+    if not config.CHAT_CONTEXT_PREP_ENABLED:
+        return list(messages), loop_summary, patch
+
+    from apps.backend.infrastructure import agent_config_effective as ace
+
+    if not ace.context_agent_loop_trim_enabled():
         return list(messages), loop_summary, patch
 
     at_soft, at_hard = should_compact_by_usage(context_budget, provider_prompt_tokens)
@@ -149,7 +154,7 @@ async def apply_agent_loop_context_budget(
             return tighter, loop_summary, patch
         return msgs, loop_summary, patch
 
-    keep = config.CHAT_CONTEXT_KEEP_RECENT_TOOL_ROUNDS
+    keep = ace.context_keep_recent_tool_rounds()
     if at_hard:
         keep = max(2, keep // 2)
 
@@ -169,7 +174,7 @@ async def apply_agent_loop_context_budget(
         if compact_cap is None:
             continue
         block = _format_messages_for_compaction(dropped_msgs, max_chars=compact_cap // 2)
-        if config.CHAT_CONTEXT_COMPACTION_ENABLED and compaction_attempt:
+        if ace.context_compaction_enabled() and compaction_attempt:
             summary = await asyncio.to_thread(
                 _run_compaction_llm,
                 existing_summary=summary,

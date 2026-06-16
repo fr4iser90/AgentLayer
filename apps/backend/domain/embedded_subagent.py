@@ -50,11 +50,23 @@ def caller_is_admin(user_id: uuid.UUID | None) -> bool:
         return False
 
 
-def effective_delegatable_agent_ids(*, caller_is_admin: bool = False) -> frozenset[str]:
+def effective_delegatable_agent_ids(
+    *,
+    caller_is_admin: bool = False,
+    tenant_id: int | None = None,
+) -> frozenset[str]:
     standard, admin_only = _delegatable_sets_from_registry()
     if caller_is_admin:
-        return standard | admin_only
-    return standard
+        base = standard | admin_only
+    else:
+        base = standard
+    from apps.backend.infrastructure import agent_config_effective as ace
+
+    allowed = ace.effective_string_list("delegate.allowed_agent_ids", tenant_id=tenant_id)
+    if allowed:
+        filt = frozenset(allowed)
+        return base & filt
+    return base
 
 
 def __getattr__(name: str):
@@ -201,7 +213,22 @@ def run_embedded_subagent_sync(
 
     uid_check = parent_uid if isinstance(parent_uid, uuid.UUID) else None
     is_admin = caller_is_admin(uid_check)
-    allowed_ids = effective_delegatable_agent_ids(caller_is_admin=is_admin)
+
+    from apps.backend.infrastructure import agent_config_effective
+
+    tid: int | None = None
+    if parent_tid is not None:
+        try:
+            tid = int(parent_tid)
+        except (TypeError, ValueError):
+            tid = None
+    if tid is None and context and context.get("tenant_id") is not None:
+        try:
+            tid = int(context["tenant_id"])
+        except (TypeError, ValueError):
+            tid = None
+
+    allowed_ids = effective_delegatable_agent_ids(caller_is_admin=is_admin, tenant_id=tid)
     if aid not in allowed_ids:
         return json.dumps(
             {
@@ -245,8 +272,14 @@ def run_embedded_subagent_sync(
         return json.dumps({"ok": False, "error": reject}, ensure_ascii=False)
 
     delegate_mode = parse_delegate_mode(reqs)
+    if delegate_mode and not agent_config_effective.delegate_mode_allowed(delegate_mode, tenant_id=tid):
+        return json.dumps(
+            {"ok": False, "error": f"delegate mode {delegate_mode!r} is not allowed by harness config"},
+            ensure_ascii=False,
+        )
     if aid == "coding_plan":
-        delegate_mode = delegate_mode or infer_plan_delegate_mode(prompt, reqs)
+        if agent_config_effective.delegate_infer_git_forensics(tenant_id=tid):
+            delegate_mode = delegate_mode or infer_plan_delegate_mode(prompt, reqs)
         if delegate_mode == "git_forensics" and not parse_delegate_mode(reqs):
             reqs = list(reqs or []) + ["mode: git_forensics"]
     if parent_tid is not None:
@@ -258,14 +291,7 @@ def run_embedded_subagent_sync(
         )
 
     from apps.backend.core import config
-    from apps.backend.infrastructure import agent_config_effective
 
-    tid = None
-    if context and context.get("tenant_id") is not None:
-        try:
-            tid = int(context["tenant_id"])
-        except (TypeError, ValueError):
-            tid = None
     if tid is None:
         try:
             from apps.backend.domain.identity import get_identity
@@ -318,6 +344,7 @@ def run_embedded_subagent_sync(
         allowed_paths = load_delegate_allowed_paths(
             tenant_id=int(parent_tid),
             artifact_refs=refs,
+            max_artifacts=agent_config_effective.delegate_max_artifact_refs(tenant_id=tid),
         )
         if not allowed_paths:
             return json.dumps(

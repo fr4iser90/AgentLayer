@@ -168,13 +168,32 @@ class CompletionQuotas:
         }
 
 
-def completion_quotas_from_window(context_window_tokens: int, *, source: str) -> CompletionQuotas:
+def completion_quotas_from_window(
+    context_window_tokens: int,
+    *,
+    source: str,
+    tenant_id: int | None = None,
+) -> CompletionQuotas:
     """Derive all per-completion slices from provider context window × configured ratios."""
+    from apps.backend.infrastructure import agent_config_effective as ace
+
+    tid = tenant_id
+    if tid is None:
+        try:
+            from apps.backend.domain.identity import get_identity
+
+            raw_tid, _uid = get_identity()
+            tid = int(raw_tid) if raw_tid is not None else None
+        except Exception:
+            tid = None
+
     budget = limits_from_context_window(context_window_tokens, source=source)
     window = budget.context_window_tokens
-    tools_tok = _quota_tokens(window, config.AGENT_TOOLS_BUDGET_RATIO)
+    tools_ratio = ace.context_tools_budget_ratio(tenant_id=tid)
+    tool_res_ratio = ace.context_tool_result_max_ratio(tenant_id=tid)
+    tools_tok = _quota_tokens(window, tools_ratio)
     msg_tok = _quota_tokens(window, config.CHAT_CONTEXT_MAX_MESSAGE_RATIO)
-    tool_res_tok = _quota_tokens(window, config.CHAT_CONTEXT_TOOL_RESULT_MAX_RATIO)
+    tool_res_tok = _quota_tokens(window, tool_res_ratio)
     compact_tok = _quota_tokens(window, config.CHAT_CONTEXT_COMPACTION_INPUT_RATIO)
     max_tools = max(1, int(window * config.AGENT_TOOLS_COUNT_CAP_RATIO))
     return CompletionQuotas(
@@ -190,8 +209,16 @@ def completion_quotas_from_window(context_window_tokens: int, *, source: str) ->
     )
 
 
-def completion_quotas_from_budget(budget: ContextBudget) -> CompletionQuotas:
-    return completion_quotas_from_window(budget.context_window_tokens, source=budget.source)
+def completion_quotas_from_budget(
+    budget: ContextBudget,
+    *,
+    tenant_id: int | None = None,
+) -> CompletionQuotas:
+    return completion_quotas_from_window(
+        budget.context_window_tokens,
+        source=budget.source,
+        tenant_id=tenant_id,
+    )
 
 
 def resolve_completion_quotas(
