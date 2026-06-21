@@ -8,6 +8,7 @@ from typing import Any
 
 from apps.backend.infrastructure.model_catalog_routing import infer_catalog_owned_by
 from apps.backend.infrastructure.model_catalog_providers import (
+    fetch_models_for_provider,
     get_provider_spec,
     list_provider_specs,
     resolve_model_for_provider,
@@ -114,6 +115,18 @@ def finalize_catalog_chat_llm(
             "Set model_default / profile models on the LLM endpoint in Admin → Interfaces, "
             "or pick a concrete model in the chat composer."
         )
+    if pk == "vlm":
+        rows, meta = fetch_models_for_provider(spec, timeout=5.0)
+        available = {str(row.get("id") or "").strip() for row in rows}
+        if meta.get("reachable") and available and effective.strip() not in available:
+            sample = ", ".join(sorted(available)[:5])
+            raise ValueError(
+                f"VLM image analysis is not available for provider {catalog!r}: configured "
+                f"VLM model {effective!r} is not exposed by GET /v1/models. "
+                "Set the provider's VLM model to an available vision model in Admin → Interfaces, "
+                "or upload images to a dashboard gallery instead of sending them for analysis. "
+                f"Available models include: {sample}"
+            )
 
     if is_override and mid and mid.lower() not in _PROFILE_KEYS:
         effective = mid

@@ -18,6 +18,8 @@ tool_allowlist:
   - git_read
   - graph
   - index
+  - knowledge_index
+  - knowledge_query
   - lsp
   - project_explain
   - task

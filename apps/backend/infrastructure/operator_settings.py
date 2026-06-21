@@ -103,6 +103,14 @@ def _invalidate() -> None:
         invalidate_embedding_provider_specs_cache()
     except Exception:
         pass
+    try:
+        from apps.backend.infrastructure.extractor_catalog_providers import (
+            invalidate_extractor_provider_specs_cache,
+        )
+
+        invalidate_extractor_provider_specs_cache()
+    except Exception:
+        pass
 
 
 def invalidate_operator_settings_cache() -> None:
@@ -112,20 +120,20 @@ def invalidate_operator_settings_cache() -> None:
 
 def normalize_scheduler_llm_backend(raw: Any) -> str:
     s = (str(raw or "inherit")).strip().lower()
-    return s if s in ("inherit", "provider", "provider_admin") else "inherit"
+    return s if s in ("inherit", "provider", "provider_db") else "inherit"
 
 
 def normalize_llm_primary_backend(raw: Any) -> str:
     s = (str(raw or "provider")).strip().lower()
-    return s if s in ("provider", "provider_admin") else "provider"
+    return s if s in ("provider", "provider_db") else "provider"
 
 
 def scheduler_llm_backend_to_agent_override(backend: str) -> str | None:
     """Map operator scheduler backend to ``chat_completion`` ``agent_llm_backend``."""
     if backend == "inherit":
         return None
-    if backend == "provider_admin":
-        return "provider_admin"
+    if backend == "provider_db":
+        return "provider_db"
     return "provider"
 
 
@@ -223,6 +231,12 @@ def _fetch_row() -> dict[str, Any]:
         "llm_queue_benchmark_priority": 10,
         "llm_queue_scheduler_priority": 50,
         "delegate_enabled": True,
+        "extractor_api_base_url": None,
+        "extractor_api_key": None,
+        "extractor_api_header_name": None,
+        "extractor_provider_id": None,
+        "extractor_model": None,
+        "extractor_timeout_sec": 120.0,
     }
     try:
         with db.pool().connection() as conn:
@@ -270,7 +284,13 @@ def _fetch_row() -> dict[str, Any]:
                            llm_queue_user_priority,
                            llm_queue_benchmark_priority,
                            llm_queue_scheduler_priority,
-                           delegate_enabled
+                           delegate_enabled,
+                           extractor_api_base_url,
+                           extractor_api_key,
+                           extractor_api_header_name,
+                           extractor_provider_id,
+                           extractor_model,
+                           extractor_timeout_sec
                     FROM operator_settings WHERE id = 1
                     """
                 )
@@ -384,6 +404,22 @@ def _fetch_row() -> dict[str, Any]:
         "llm_queue_benchmark_priority": int(row[75]) if len(row) > 75 and row[75] is not None else 10,
         "llm_queue_scheduler_priority": int(row[76]) if len(row) > 76 and row[76] is not None else 50,
         "delegate_enabled": bool(row[77]) if len(row) > 77 and row[77] is not None else True,
+        "extractor_api_base_url": (
+            (str(row[78]).strip() or None) if len(row) > 78 and row[78] is not None else None
+        ),
+        "extractor_api_key": (
+            (str(row[79]).strip() or None) if len(row) > 79 and row[79] is not None else None
+        ),
+        "extractor_api_header_name": (
+            (str(row[80]).strip() or None) if len(row) > 80 and row[80] is not None else None
+        ),
+        "extractor_provider_id": (
+            (str(row[81]).strip() or None) if len(row) > 81 and row[81] is not None else None
+        ),
+        "extractor_model": (
+            (str(row[82]).strip() or None) if len(row) > 82 and row[82] is not None else None
+        ),
+        "extractor_timeout_sec": float(row[83]) if len(row) > 83 and row[83] is not None else 120.0,
     }
 
 
@@ -411,6 +447,37 @@ def set_rag_docs_ingest_fingerprint(value: str) -> None:
             )
         conn.commit()
     _invalidate()
+
+
+def _sync_single_provider_endpoint(
+    kind: str,
+    *,
+    label: str,
+    base_url: Any,
+    api_key: Any,
+    api_header_name: Any,
+    model_default: Any = None,
+    options_json: dict[str, Any] | None = None,
+) -> None:
+    """Keep legacy single-provider forms backed by the LLM-style endpoint table."""
+    base = str(base_url or "").strip().rstrip("/")
+    if not base:
+        db.operator_provider_endpoints_sync(kind, [])
+        return
+    rows = db.operator_provider_endpoints_list_all(kind)
+    row: dict[str, Any] = {
+        "sort_order": 0,
+        "enabled": True,
+        "label": label,
+        "base_url": base,
+        "api_key": str(api_key or "").strip(),
+        "api_header_name": str(api_header_name or "").strip() or "Authorization",
+        "model_default": (str(model_default).strip() if model_default is not None else None) or None,
+        "options_json": options_json or {},
+    }
+    if rows:
+        row["id"] = int(rows[0]["id"])
+    db.operator_provider_endpoints_sync(kind, [row])
 
 
 def resolved_embedding_api_base_url() -> str:
@@ -525,7 +592,7 @@ def effective_dashboard_upload_max_bytes() -> int:
     return app_config.WORKSPACE_UPLOAD_MAX_FILE_MB * 1024 * 1024
 
 
-def resolved_primary_llm_backend() -> Literal["provider", "provider_admin"]:
+def resolved_primary_llm_backend() -> Literal["provider", "provider_db"]:
     r = _cached_row()
     return normalize_llm_primary_backend(r.get("llm_primary_backend"))
 
@@ -862,11 +929,11 @@ def llm_chat_transport(
     profile_key: str,
     is_override: bool,
     *,
-    backend_override: Literal["provider", "provider_admin"] | None = None,
+    backend_override: Literal["provider", "provider_db"] | None = None,
     catalog_owned_by: str | None = None,
 ) -> tuple[
     list[tuple[str, dict[str, str], str, str]],
-    Literal["provider_env", "provider_admin"],
+    Literal["provider_env", "provider_db"],
 ]:
     from apps.backend.infrastructure.model_catalog_providers import (
         first_admin_provider_id,
@@ -879,7 +946,7 @@ def llm_chat_transport(
         bo = backend_override.strip().lower() if isinstance(backend_override, str) else ""
         if bo == "provider":
             owned = first_env_provider_id() or owned
-        elif bo == "provider_admin":
+        elif bo == "provider_db":
             owned = first_admin_provider_id() or owned
 
     if owned is None:
@@ -974,6 +1041,7 @@ def pidea_effective_enabled() -> bool:
 
 def public_dict() -> dict[str, Any]:
     from apps.backend.domain.voice.operator_voice_settings import voice_settings_public_fields
+    from apps.backend.infrastructure.extractor_catalog_providers import extractor_providers_public_fields
     from apps.backend.media.operator_media_settings import media_settings_public_fields
 
     r = _cached_row()
@@ -1029,6 +1097,7 @@ def public_dict() -> dict[str, Any]:
         "memory_enabled": bool(r.get("memory_enabled", True)),
         "rag_enabled": bool(r.get("rag_enabled", True)),
         **embedding_api_public_fields(),
+        **extractor_providers_public_fields(),
         "rag_embedding_model": _rag_embedding_model_from_row(r),
         "rag_embedding_dim": _rag_embedding_dim_from_row(r),
         "rag_chunk_size": _bound_int(r.get("rag_chunk_size"), 1200, 200, 8000),
@@ -1125,6 +1194,12 @@ class OperatorSettingsPatch(BaseModel):
     embedding_api_key: str | None = Field(default=None, max_length=4096)
     embedding_api_header_name: str | None = Field(default=None, max_length=128)
     rag_embedding_provider_id: str | None = Field(default=None, max_length=64)
+    extractor_api_base_url: str | None = Field(default=None, max_length=2048)
+    extractor_api_key: str | None = Field(default=None, max_length=4096)
+    extractor_api_header_name: str | None = Field(default=None, max_length=128)
+    extractor_provider_id: str | None = Field(default=None, max_length=64)
+    extractor_model: str | None = Field(default=None, max_length=256)
+    extractor_timeout_sec: float | None = Field(default=None, ge=1.0, le=1800.0)
     rag_chunk_size: int | None = Field(default=None, ge=200, le=8000)
     rag_chunk_overlap: int | None = Field(default=None, ge=0, le=2000)
     rag_top_k: int | None = Field(default=None, ge=1, le=50)
@@ -1770,6 +1845,24 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
             if "delegate_enabled" in patch:
                 extra_sets.append("delegate_enabled = %s")
                 extra_params.append(bool(r.get("delegate_enabled", True)))
+            if "extractor_api_base_url" in patch:
+                extra_sets.append("extractor_api_base_url = %s")
+                extra_params.append(r.get("extractor_api_base_url"))
+            if "extractor_api_key" in patch:
+                extra_sets.append("extractor_api_key = %s")
+                extra_params.append(r.get("extractor_api_key"))
+            if "extractor_api_header_name" in patch:
+                extra_sets.append("extractor_api_header_name = %s")
+                extra_params.append(r.get("extractor_api_header_name"))
+            if "extractor_provider_id" in patch:
+                extra_sets.append("extractor_provider_id = %s")
+                extra_params.append(r.get("extractor_provider_id"))
+            if "extractor_model" in patch:
+                extra_sets.append("extractor_model = %s")
+                extra_params.append(r.get("extractor_model"))
+            if "extractor_timeout_sec" in patch:
+                extra_sets.append("extractor_timeout_sec = %s")
+                extra_params.append(_bound_float(r.get("extractor_timeout_sec"), 120.0, 1.0, 1800.0))
             if extra_sets:
                 # SECURITY: Column names in `extra_sets` come from the known
                 # _SETTING_KEYS mapping (see _OPERATOR_SETTINGS_KEYS).
@@ -1779,6 +1872,44 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
                     tuple(extra_params),
                 )
             conn.commit()
+    if any(
+        k in patch
+        for k in (
+            "embedding_api_base_url",
+            "embedding_api_key",
+            "embedding_api_header_name",
+            "rag_embedding_model",
+        )
+    ):
+        _sync_single_provider_endpoint(
+            "embedding",
+            label="Embedding provider",
+            base_url=r.get("embedding_api_base_url"),
+            api_key=r.get("embedding_api_key"),
+            api_header_name=r.get("embedding_api_header_name") or "X-API-KEY",
+            model_default=r.get("rag_embedding_model"),
+        )
+    if any(
+        k in patch
+        for k in (
+            "extractor_api_base_url",
+            "extractor_api_key",
+            "extractor_api_header_name",
+            "extractor_model",
+            "extractor_timeout_sec",
+        )
+    ):
+        _sync_single_provider_endpoint(
+            "extractor",
+            label="Extractor provider",
+            base_url=r.get("extractor_api_base_url"),
+            api_key=r.get("extractor_api_key"),
+            api_header_name=r.get("extractor_api_header_name") or "X-API-KEY",
+            model_default=r.get("extractor_model"),
+            options_json={
+                "timeout_sec": _bound_float(r.get("extractor_timeout_sec"), 120.0, 1.0, 1800.0)
+            },
+        )
     if media_patch:
         from apps.backend.media.operator_media_settings import apply_media_operator_patch
 

@@ -18,8 +18,8 @@ EXPECTATIONS: dict[str, tuple[int, frozenset[str], frozenset[str]]] = {
     "outdoor": (8, frozenset({"bite_index"}), frozenset({"bash"})),
     "lifestyle": (4, frozenset({"forecast", "current_time"}), frozenset({"bash"})),
     "dashboard": (27, frozenset({"dashboard.read", "propose_layouts"}), frozenset({"media_list", "git_push"})),
-    "coding": (41, frozenset({"bash", "repository.write_file"}), frozenset({"delegate", "start", "deferred_wait"})),
-    "coding_plan": (17, frozenset({"repository.read_file"}), frozenset({"bash", "deferred_wait"})),
+    "coding": (43, frozenset({"bash", "repository.write_file"}), frozenset({"delegate", "start", "deferred_wait"})),
+    "coding_plan": (19, frozenset({"repository.read_file"}), frozenset({"bash", "deferred_wait"})),
     "security_auditor": (33, frozenset({"start", "deferred_wait"}), frozenset({"bash", "delegate"})),
 }
 

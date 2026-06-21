@@ -1,0 +1,8 @@
+id: D3_pet_photo_album_upload
+tier: 2
+rubric: d3_pet_photo_album_upload
+agent_id: dashboard
+bench_dashboard_title_suffix: pet-photo-album
+attachments:
+  - h2.jpg
+  - h1.jpg

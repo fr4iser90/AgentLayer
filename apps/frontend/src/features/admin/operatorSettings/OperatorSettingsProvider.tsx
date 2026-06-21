@@ -124,6 +124,26 @@ function useOperatorSettingsState() {
   const [embeddingProviders, setEmbeddingProviders] = useState<
     Array<{ provider_id: string; label: string; source: string; base_url: string }>
   >([]);
+  const [extractorProviders, setExtractorProviders] = useState<
+    Array<{
+      provider_id: string;
+      label: string;
+      source: string;
+      base_url: string;
+      model_default?: string | null;
+      timeout_sec?: number;
+    }>
+  >([]);
+  const [extractorApiBaseUrl, setExtractorApiBaseUrl] = useState("");
+  const [extractorApiBaseEffective, setExtractorApiBaseEffective] = useState<string | null>(null);
+  const [extractorApiKey, setExtractorApiKey] = useState("");
+  const [extractorApiKeyConfigured, setExtractorApiKeyConfigured] = useState(false);
+  const [extractorApiHeaderName, setExtractorApiHeaderName] = useState("X-API-KEY");
+  const [extractorApiHeaderNameEffective, setExtractorApiHeaderNameEffective] = useState("X-API-KEY");
+  const [extractorProviderId, setExtractorProviderId] = useState("");
+  const [extractorProviderIdEffective, setExtractorProviderIdEffective] = useState<string | null>(null);
+  const [extractorModel, setExtractorModel] = useState("");
+  const [extractorTimeoutSec, setExtractorTimeoutSec] = useState("120");
   const [ragEmbeddingDim, setRagEmbeddingDim] = useState("768");
   const [ragChunkSize, setRagChunkSize] = useState("1200");
   const [ragChunkOverlap, setRagChunkOverlap] = useState("200");
@@ -357,6 +377,35 @@ function useOperatorSettingsState() {
           : null
       );
       setEmbeddingProviders(Array.isArray(op.embedding_providers) ? op.embedding_providers : []);
+      setExtractorProviders(Array.isArray(op.extractor_providers) ? op.extractor_providers : []);
+      setExtractorApiBaseUrl((op.extractor_api_base_url ?? "").trim());
+      setExtractorApiBaseEffective(
+        typeof op.extractor_api_base_effective === "string" && op.extractor_api_base_effective.trim()
+          ? op.extractor_api_base_effective.trim()
+          : null
+      );
+      setExtractorApiKey("");
+      setExtractorApiKeyConfigured(!!op.extractor_api_key_configured);
+      const extractorHdrEff =
+        typeof op.extractor_api_header_name_effective === "string" &&
+        op.extractor_api_header_name_effective.trim()
+          ? op.extractor_api_header_name_effective.trim()
+          : "X-API-KEY";
+      setExtractorApiHeaderNameEffective(extractorHdrEff);
+      setExtractorApiHeaderName((op.extractor_api_header_name ?? "").trim() || extractorHdrEff);
+      setExtractorProviderId((op.extractor_provider_id ?? "").trim());
+      setExtractorProviderIdEffective(
+        typeof op.extractor_provider_id_effective === "string" &&
+          op.extractor_provider_id_effective.trim()
+          ? op.extractor_provider_id_effective.trim()
+          : null
+      );
+      setExtractorModel((op.extractor_model ?? "").trim());
+      setExtractorTimeoutSec(
+        op.extractor_timeout_sec != null && Number.isFinite(op.extractor_timeout_sec)
+          ? String(op.extractor_timeout_sec)
+          : "120"
+      );
       setRagEmbeddingProviderId((op.rag_embedding_provider_id ?? "").trim());
       setRagEmbeddingProviderIdEffective(
         typeof op.rag_embedding_provider_id_effective === "string" &&
@@ -443,7 +492,7 @@ function useOperatorSettingsState() {
       );
       setSchedulerPackages((op.scheduler_allowed_tool_packages ?? "").trim());
       setSchedulerLlmBackend(
-        op.scheduler_llm_backend === "provider" || op.scheduler_llm_backend === "provider_admin"
+        op.scheduler_llm_backend === "provider" || op.scheduler_llm_backend === "provider_db"
           ? op.scheduler_llm_backend
           : "inherit"
       );
@@ -731,6 +780,26 @@ function useOperatorSettingsState() {
         patch.embedding_api_key = embeddingApiKey.trim();
       }
       patch.rag_embedding_provider_id = ragEmbeddingProviderId.trim() || null;
+      const extractorTimeout = Number(extractorTimeoutSec.trim());
+      if (
+        !Number.isFinite(extractorTimeout) ||
+        extractorTimeout < 1 ||
+        extractorTimeout > 1800
+      ) {
+        setSaveMsg({
+          ok: false,
+          text: t("admin:operatorSaveExtractorInvalid"),
+        });
+        return;
+      }
+      patch.extractor_api_base_url = extractorApiBaseUrl.trim() || null;
+      patch.extractor_api_header_name = extractorApiHeaderName.trim() || null;
+      if (extractorApiKey.trim()) {
+        patch.extractor_api_key = extractorApiKey.trim();
+      }
+      patch.extractor_provider_id = extractorProviderId.trim() || null;
+      patch.extractor_model = extractorModel.trim() || null;
+      patch.extractor_timeout_sec = extractorTimeout;
       patch.rag_embedding_model = ragEmbeddingModel.trim();
       patch.rag_embedding_dim = Math.floor(red);
       patch.rag_chunk_size = Math.floor(rcs);
@@ -1119,6 +1188,23 @@ function useOperatorSettingsState() {
     ragEmbeddingProviderIdEffective,
     ragEmbeddingProviderIdSource,
     embeddingProviders,
+    extractorProviders,
+    extractorApiBaseUrl,
+    setExtractorApiBaseUrl,
+    extractorApiBaseEffective,
+    extractorApiKey,
+    setExtractorApiKey,
+    extractorApiKeyConfigured,
+    extractorApiHeaderName,
+    setExtractorApiHeaderName,
+    extractorApiHeaderNameEffective,
+    extractorProviderId,
+    setExtractorProviderId,
+    extractorProviderIdEffective,
+    extractorModel,
+    setExtractorModel,
+    extractorTimeoutSec,
+    setExtractorTimeoutSec,
     ragEmbeddingDim,
     setRagEmbeddingDim,
     ragChunkSize,

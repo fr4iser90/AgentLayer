@@ -60,6 +60,7 @@ class StartBenchmarkBody(BaseModel):
     scenario_failure_retries: int = Field(default=0, ge=0, le=20)
     retain_workspaces: bool = False
     prompt_locale: str = Field(default="en", min_length=2, max_length=16)
+    prompt_variant: str = Field(default="canonical", min_length=1, max_length=32)
     cohort_label: str | None = Field(default=None, max_length=128)
     harness_overrides: list[dict[str, Any]] | None = None
 
@@ -103,6 +104,7 @@ class ExperimentRunBody(BaseModel):
     scenarios: list[str] | None = None
     apply_pending_patches: bool = True
     prompt_locale: str = Field(default="en", min_length=2, max_length=16)
+    prompt_variant: str = Field(default="canonical", min_length=1, max_length=32)
 
 
 class BulkDeleteRunsBody(BaseModel):
@@ -356,6 +358,7 @@ async def post_start_benchmark(request: Request, body: StartBenchmarkBody) -> di
             scenario_failure_retries=body.scenario_failure_retries,
             retain_workspaces=body.retain_workspaces,
             prompt_locale=body.prompt_locale.strip().lower(),
+            prompt_variant=body.prompt_variant.strip().lower(),
             cohort_json=cohort,
             harness_preset=None,
             use_harness_matrix=False,
@@ -589,6 +592,7 @@ async def run_benchmark_experiment(
             scenarios=body.scenarios,
             admin_user_id=admin.id,
             prompt_locale=body.prompt_locale.strip().lower(),
+            prompt_variant=body.prompt_variant.strip().lower(),
             cohort_json=cohort,
             harness_preset=harness,
         )

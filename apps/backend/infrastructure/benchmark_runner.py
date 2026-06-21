@@ -235,6 +235,7 @@ def _run_sync(
     scenario_failure_retries: int = 0,
     retain_workspaces: bool = False,
     prompt_locale: str | None = None,
+    prompt_variant: str | None = None,
     harness_preset: str | None = None,
     tenant_id: int | None = None,
     use_harness_matrix: bool = False,
@@ -335,6 +336,7 @@ def _run_sync(
                 cleanup_on_start=True,
                 cleanup_on_finish=not retain_workspaces,
                 prompt_locale=prompt_locale,
+                prompt_variant=prompt_variant,
                 harness_preset=harness_preset,
                 tenant_id=tenant_id,
                 use_harness_matrix=use_harness_matrix,
@@ -443,6 +445,7 @@ async def schedule_benchmark_run(
     scenario_failure_retries: int = 0,
     retain_workspaces: bool = False,
     prompt_locale: str | None = None,
+    prompt_variant: str | None = None,
     harness_preset: str | None = None,
     tenant_id: int | None = None,
     use_harness_matrix: bool = False,
@@ -463,6 +466,7 @@ async def schedule_benchmark_run(
             max_tool_rounds_override=max_tool_rounds_override,
             retain_workspaces=retain_workspaces,
             prompt_locale=prompt_locale,
+            prompt_variant=prompt_variant,
             scenario_failure_retries=scenario_failure_retries,
             harness_preset=harness_preset,
             tenant_id=tenant_id,
@@ -487,12 +491,18 @@ async def start_benchmark_run(
     scenario_failure_retries: int = 0,
     retain_workspaces: bool = False,
     prompt_locale: str | None = None,
+    prompt_variant: str | None = None,
     cohort_json: dict[str, Any] | None = None,
     harness_preset: str | None = None,
     use_harness_matrix: bool = False,
 ) -> dict[str, Any]:
     from tests.benchmarks.agent.catalog import _SUITE_MANIFESTS
-    from tests.benchmarks.agent.cases import available_prompt_locales, resolve_prompt_locale
+    from tests.benchmarks.agent.cases import (
+        available_prompt_locales,
+        available_prompt_variants,
+        resolve_prompt_locale,
+        resolve_prompt_variant,
+    )
 
     if benchmark_runs_store.any_running(tenant_id=tenant_id):
         raise RuntimeError("a benchmark is already running for this tenant")
@@ -502,10 +512,15 @@ async def start_benchmark_run(
     if scenarios is not None and not scenarios:
         raise ValueError("at least one scenario required")
     effective_locale = resolve_prompt_locale(prompt_locale)
+    effective_variant = resolve_prompt_variant(prompt_variant)
     valid_locales = set(available_prompt_locales())
     if effective_locale not in valid_locales:
         opts = ", ".join(sorted(valid_locales))
         raise ValueError(f"unsupported prompt_locale {effective_locale!r} (available: {opts})")
+    valid_variants = set(available_prompt_variants())
+    if effective_variant not in valid_variants:
+        opts = ", ".join(sorted(valid_variants))
+        raise ValueError(f"unsupported prompt_variant {effective_variant!r} (available: {opts})")
     manifest = str(manifest_path_for_suite(suite))
     effective_run_as = run_as_user_id or user_id
     effective_cohort = dict(cohort_json) if cohort_json else {}
@@ -530,6 +545,7 @@ async def start_benchmark_run(
         "scenario_failure_retries": scenario_failure_retries,
         "retain_workspaces": retain_workspaces,
         "prompt_locale": effective_locale,
+        "prompt_variant": effective_variant,
         "harness_preset": effective_harness,
         "use_harness_matrix": bool(use_harness_matrix),
     }
@@ -558,6 +574,7 @@ async def start_benchmark_run(
             scenario_failure_retries=scenario_failure_retries,
             retain_workspaces=retain_workspaces,
             prompt_locale=effective_locale,
+            prompt_variant=effective_variant,
             harness_preset=effective_harness,
             tenant_id=tenant_id,
             use_harness_matrix=use_harness_matrix,

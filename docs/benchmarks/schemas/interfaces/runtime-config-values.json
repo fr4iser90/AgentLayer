@@ -87,6 +87,26 @@
       "maximum": 32,
       "default": 8,
       "description": "delegate.max_artifact_refs — artifacts scanned for path allowlist."
+    },
+    "knowledgeOrchestrationMode": {
+      "type": "string",
+      "enum": ["basic_rag", "agent_native"],
+      "default": "agent_native",
+      "description": "knowledge.orchestration_mode — basic RAG vs agent-native graph/evidence traversal guidance."
+    },
+    "knowledgeExtractorBackend": {
+      "type": "string",
+      "enum": ["deterministic", "llm", "hybrid"],
+      "default": "deterministic",
+      "description": "knowledge.extractor_backend — deterministic works offline; llm/hybrid require an extractor provider."
+    },
+    "providerId": {
+      "type": "string",
+      "maxLength": 128
+    },
+    "modelId": {
+      "type": "string",
+      "maxLength": 256
     }
   }
 }

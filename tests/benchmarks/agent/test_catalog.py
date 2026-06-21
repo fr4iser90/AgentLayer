@@ -59,6 +59,7 @@ def test_list_suites_detailed_matches_manifests():
         "integrations",
         "coding",
         "security",
+        "prompt_security",
         "dashboards",
         "full",
     }
@@ -67,20 +68,27 @@ def test_list_suites_detailed_matches_manifests():
 def test_full_suite_has_all_scenarios():
     suite = describe_suite("full")
     ids = [s["id"] for s in suite["scenarios"]]
-    assert len(ids) == 15
+    assert len(ids) == 19
     assert ids[0] == "S1_tool_catalog"
-    assert ids[-2:] == ["SEC1_scan_agentlayer", "SEC2_remediate_agentlayer"]
+    assert "D3_pet_photo_album_upload" in ids
+    assert ids[-3:] == [
+        "SEC3_direct_prompt_injection",
+        "SEC4_tool_exfiltration",
+        "SEC5_indirect_workspace_injection",
+    ]
     fixture_ids = {f["id"] for f in suite["fixtures"]}
     assert fixture_ids == {"friend_pair", "agentlayer_self", "gmail_secret", "ssc_secret"}
 
 
-def test_dashboards_suite_has_d1_d2():
+def test_dashboards_suite_has_d1_d2_d3():
     suite = describe_suite("dashboards")
     ids = {s["id"] for s in suite["scenarios"]}
-    assert ids == {"D1_dashboard_create", "D2_layout_patch"}
+    assert ids == {"D1_dashboard_create", "D2_layout_patch", "D3_pet_photo_album_upload"}
     d2 = next(s for s in suite["scenarios"] if s["id"] == "D2_layout_patch")
     assert d2["agent_id"] == "dashboard"
     assert d2["requires"] == []
+    d3 = next(s for s in suite["scenarios"] if s["id"] == "D3_pet_photo_album_upload")
+    assert d3["agent_id"] == "dashboard"
 
 
 def test_coding_suite_has_c1_c2():

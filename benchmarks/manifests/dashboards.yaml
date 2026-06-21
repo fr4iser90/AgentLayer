@@ -6,4 +6,5 @@ profiles_from: _profiles.yaml
 scenarios:
   - D1_dashboard_create
   - D2_layout_patch
+  - D3_pet_photo_album_upload
 

@@ -18,19 +18,28 @@ def _load_meta(meta_path: Path) -> dict:
     return raw
 
 
-def _load_prompts(scenario_dir: Path) -> dict[str, str]:
+def _load_prompts(scenario_dir: Path) -> tuple[dict[str, str], dict[str, dict[str, str]]]:
     prompts: dict[str, str] = {}
+    variants: dict[str, dict[str, str]] = {}
     for path in sorted(scenario_dir.glob("prompt.*.md")):
-        parts = path.stem.split(".", 1)
-        if len(parts) != 2 or parts[0] != "prompt" or not parts[1].strip():
+        parts = path.stem.split(".")
+        if len(parts) not in (2, 3) or parts[0] != "prompt":
             continue
-        locale = parts[1].strip().lower()
         text = path.read_text(encoding="utf-8").strip()
-        if text:
-            prompts[locale] = text
+        if not text:
+            continue
+        if len(parts) == 2:
+            locale = parts[1].strip().lower()
+            if locale:
+                prompts[locale] = text
+            continue
+        variant = parts[1].strip().lower()
+        locale = parts[2].strip().lower()
+        if variant and locale:
+            variants.setdefault(variant, {})[locale] = text
     if not prompts:
         raise ValueError(f"{scenario_dir}: at least one prompt.<locale>.md is required")
-    return prompts
+    return prompts, variants
 
 
 def load_scenario_dir(scenario_dir: Path) -> AgentScenario:
@@ -52,12 +61,21 @@ def load_scenario_dir(scenario_dir: Path) -> AgentScenario:
         requires = tuple(str(x).strip() for x in requires_raw if str(x).strip())
     else:
         requires = ()
+    prompts, prompt_variants = _load_prompts(scenario_dir)
+    attachments_raw = meta.get("attachments") or []
+    if isinstance(attachments_raw, str):
+        attachments = (attachments_raw.strip(),) if attachments_raw.strip() else ()
+    elif isinstance(attachments_raw, list):
+        attachments = tuple(str(x).strip() for x in attachments_raw if str(x).strip())
+    else:
+        attachments = ()
 
     return AgentScenario(
         id=scenario_id,
         tier=int(meta.get("tier") or 1),
         rubric=str(meta.get("rubric") or "").strip(),
-        prompts=_load_prompts(scenario_dir),
+        prompts=prompts,
+        prompt_variants=prompt_variants,
         agent_id=str(meta.get("agent_id") or "general").strip() or "general",
         execution=str(meta.get("execution") or "chat").strip() or "chat",
         plain_completion=bool(meta.get("plain_completion", False)),
@@ -76,6 +94,7 @@ def load_scenario_dir(scenario_dir: Path) -> AgentScenario:
             if meta.get("bench_dashboard_title_suffix")
             else None
         ),
+        attachments=attachments,
         source_dir=scenario_dir,
     )
 
@@ -106,6 +125,13 @@ def available_prompt_locales() -> tuple[str, ...]:
     for sc in _ALL:
         locales.update(sc.locales)
     return tuple(sorted(locales)) or ("en",)
+
+
+def available_prompt_variants() -> tuple[str, ...]:
+    variants: set[str] = {"canonical", "realistic"}
+    for sc in _ALL:
+        variants.update(sc.variants)
+    return tuple(sorted(variants)) or ("canonical",)
 
 
 def scenarios_for_tier(max_tier: int) -> list[AgentScenario]:

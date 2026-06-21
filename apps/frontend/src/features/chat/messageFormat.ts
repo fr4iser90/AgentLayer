@@ -6,7 +6,7 @@ export type PendingAttachment =
   | { kind: "textfile"; name: string; text: string }
   | { kind: "unsupported"; name: string; hint: string };
 
-const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
 const MAX_AUDIO_BYTES = 52_428_800;
 const MAX_TEXT_BYTES = 256 * 1024;
 
@@ -38,7 +38,7 @@ export async function filesToAttachments(files: FileList | File[]): Promise<Pend
         out.push({
           kind: "unsupported",
           name: f.name,
-          hint: "Image too large (max 4 MB).",
+          hint: "Image too large (max 12 MB).",
         });
         continue;
       }

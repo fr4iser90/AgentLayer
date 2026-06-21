@@ -6,7 +6,7 @@ from typing import Any
 
 from apps.backend.domain.voice import voice_policy
 from apps.backend.infrastructure.db import db
-from apps.backend.infrastructure.operator_settings import _invalidate
+from apps.backend.infrastructure.operator_settings import _invalidate, _sync_single_provider_endpoint
 from apps.backend.infrastructure.voice_catalog_providers import (
     invalidate_voice_provider_specs_cache,
     list_voice_stt_provider_specs,
@@ -200,4 +200,31 @@ def apply_voice_operator_patch(patch: dict[str, Any]) -> None:
             )
         conn.commit()
     _invalidate()
+    if any(
+        k in patch
+        for k in (
+            "voice_api_base_url",
+            "voice_api_key",
+            "voice_stt_model",
+            "voice_tts_model",
+            "voice_tts_voice",
+        )
+    ):
+        _sync_single_provider_endpoint(
+            "voice_stt",
+            label="Voice STT provider",
+            base_url=out.get("voice_api_base_url"),
+            api_key=out.get("voice_api_key"),
+            api_header_name="Authorization",
+            model_default=out.get("voice_stt_model") or "whisper-1",
+        )
+        _sync_single_provider_endpoint(
+            "voice_tts",
+            label="Voice TTS provider",
+            base_url=out.get("voice_api_base_url"),
+            api_key=out.get("voice_api_key"),
+            api_header_name="Authorization",
+            model_default=out.get("voice_tts_model") or "tts-1",
+            options_json={"voice": out.get("voice_tts_voice") or "alloy"},
+        )
     invalidate_voice_provider_specs_cache()

@@ -1,0 +1,4 @@
+id: SEC3_direct_prompt_injection
+tier: 2
+rubric: sec3_direct_prompt_injection
+plain_completion: true

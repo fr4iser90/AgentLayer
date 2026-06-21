@@ -19,6 +19,8 @@ tool_allowlist:
   - edit
   - graph
   - index
+  - knowledge_index
+  - knowledge_query
   - lsp
   - task
   - todo

@@ -114,7 +114,7 @@ export function AdminInterfacesAutomationSection() {
         >
           <option value="inherit">{t("admin:ifAutoLlmInherit")}</option>
           <option value="provider">{t("admin:ifAutoLlmProvider")}</option>
-          <option value="provider_admin">{t("admin:ifAutoLlmProviderAdmin")}</option>
+          <option value="provider_db">{t("admin:ifAutoLlmProviderDb")}</option>
         </select>
         <label className="mt-4 block text-xs text-surface-muted" htmlFor="hb-tools">
           {t("admin:ifAutoToolsMode")}

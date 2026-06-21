@@ -178,7 +178,7 @@ async def _run_one_tick() -> None:
     if max_rounds_i is not None:
         body["agent_max_tool_rounds"] = max_rounds_i
 
-    if llm_be in ("provider", "provider_admin"):
+    if llm_be in ("provider", "provider_db"):
         agent_be = scheduler_llm_backend_to_agent_override(llm_be)
         if agent_be is not None:
             body["agent_llm_backend"] = agent_be

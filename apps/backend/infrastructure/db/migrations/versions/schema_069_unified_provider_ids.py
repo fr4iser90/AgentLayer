@@ -1,4 +1,4 @@
-"""Unify catalog provider ids (provider_33+ for admin) and scheduler backend naming.
+"""Unify catalog provider ids (provider_33+ for DB endpoints) and scheduler backend naming.
 
 Revision ID: schema_069
 Revises: schema_068
@@ -14,7 +14,7 @@ branch_labels = None
 depends_on = None
 
 # Env slots: provider_1 … provider_32 (see llm_env_providers.LLM_ENV_PROVIDER_MAX)
-_ADMIN_PROVIDER_OFFSET = 32
+_DB_PROVIDER_OFFSET = 32
 
 
 def upgrade() -> None:
@@ -25,7 +25,7 @@ def upgrade() -> None:
         WHERE lower(trim(scheduler_llm_backend)) IN ('catalog', 'ollama');
 
         UPDATE operator_settings
-        SET scheduler_llm_backend = 'provider_admin'
+        SET scheduler_llm_backend = 'provider_db'
         WHERE lower(trim(scheduler_llm_backend)) = 'external';
 
         UPDATE operator_settings
@@ -33,14 +33,14 @@ def upgrade() -> None:
         WHERE lower(trim(llm_primary_backend)) IN ('catalog', 'ollama');
 
         UPDATE operator_settings
-        SET llm_primary_backend = 'provider_admin'
+        SET llm_primary_backend = 'provider_db'
         WHERE lower(trim(llm_primary_backend)) = 'external';
 
         ALTER TABLE operator_settings
           ALTER COLUMN llm_primary_backend SET DEFAULT 'provider';
 
         UPDATE chat_conversations
-        SET pref_model_catalog_owned_by = 'provider_' || ({_ADMIN_PROVIDER_OFFSET} + CAST(
+        SET pref_model_catalog_owned_by = 'provider_' || ({_DB_PROVIDER_OFFSET} + CAST(
               substring(pref_model_catalog_owned_by FROM '^external_([0-9]+)$') AS INTEGER
             ))::text
         WHERE pref_model_catalog_owned_by ~ '^external_[0-9]+$';
@@ -61,7 +61,7 @@ def downgrade() -> None:
 
         UPDATE operator_settings
         SET scheduler_llm_backend = 'external'
-        WHERE lower(trim(scheduler_llm_backend)) = 'provider_admin';
+        WHERE lower(trim(scheduler_llm_backend)) = 'provider_db';
 
         UPDATE operator_settings
         SET llm_primary_backend = 'catalog'
@@ -69,7 +69,7 @@ def downgrade() -> None:
 
         UPDATE operator_settings
         SET llm_primary_backend = 'external'
-        WHERE lower(trim(llm_primary_backend)) = 'provider_admin';
+        WHERE lower(trim(llm_primary_backend)) = 'provider_db';
 
         ALTER TABLE operator_settings
           ALTER COLUMN llm_primary_backend SET DEFAULT 'catalog';
@@ -77,11 +77,11 @@ def downgrade() -> None:
         UPDATE chat_conversations
         SET pref_model_catalog_owned_by = 'external_' || (
               CAST(substring(pref_model_catalog_owned_by FROM '^provider_([0-9]+)$') AS INTEGER)
-              - {_ADMIN_PROVIDER_OFFSET}
+              - {_DB_PROVIDER_OFFSET}
             )::text
         WHERE pref_model_catalog_owned_by ~ '^provider_[0-9]+$'
           AND CAST(substring(pref_model_catalog_owned_by FROM '^provider_([0-9]+)$') AS INTEGER)
-              > {_ADMIN_PROVIDER_OFFSET};
+              > {_DB_PROVIDER_OFFSET};
 
         UPDATE chat_conversations
         SET pref_model_catalog_owned_by = 'external'

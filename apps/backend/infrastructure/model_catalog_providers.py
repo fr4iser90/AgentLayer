@@ -31,7 +31,7 @@ from apps.backend.infrastructure.llm_env_providers import (
 
 logger = logging.getLogger(__name__)
 
-LlmStack = Literal["provider_env", "provider_admin"]
+LlmStack = Literal["provider_env", "provider_db"]
 
 PROVIDER_FAILOVER_ID = "provider_failover"
 
@@ -460,7 +460,7 @@ def route_chat_by_catalog_provider(
                 "provider_failover has no admin LLM endpoints — add endpoints under Admin → Interfaces "
                 "or pick a specific provider id (provider_33, …)."
             )
-        return attempts, "provider_admin"
+        return attempts, "provider_db"
 
     spec = get_provider_spec(pid)
     if spec is None:
@@ -485,7 +485,7 @@ def route_chat_by_catalog_provider(
         chat_url,
         model,
     )
-    stack: LlmStack = "provider_admin" if spec.source == "db" else "provider_env"
+    stack: LlmStack = "provider_db" if spec.source == "db" else "provider_env"
     return [make_llm_attempt(chat_url, headers, model, pid)], stack
 
 

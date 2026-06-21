@@ -6,6 +6,7 @@ import os
 from unittest.mock import patch
 
 from apps.backend.infrastructure.voice_catalog_providers import (
+    list_voice_stt_provider_specs,
     invalidate_voice_provider_specs_cache,
     resolve_active_voice_stt_provider_id,
     resolve_active_voice_tts_provider_id,
@@ -45,3 +46,34 @@ def test_legacy_voice_provider_n_ignored() -> None:
     with patch.dict(os.environ, env, clear=True):
         assert resolve_active_voice_stt_provider_id() is None
         assert resolve_active_voice_tts_provider_id() is None
+
+
+def test_voice_db_endpoint_gets_llm_style_provider_id(monkeypatch) -> None:
+    from apps.backend.infrastructure.db import db
+
+    invalidate_voice_provider_specs_cache()
+    monkeypatch.setattr(
+        db,
+        "operator_provider_endpoints_list_all",
+        lambda kind=None: [
+            {
+                "id": 1,
+                "kind": "voice_stt",
+                "sort_order": 0,
+                "enabled": True,
+                "label": "STT",
+                "base_url": "https://stt-db.example/v1",
+                "api_key": "secret",
+                "api_header_name": "Authorization",
+                "model_default": "whisper-large",
+                "options_json": {},
+            }
+        ]
+        if kind == "voice_stt"
+        else [],
+    )
+    with patch.dict(os.environ, {}, clear=True):
+        specs = list_voice_stt_provider_specs(force_refresh=True)
+
+    assert [s.provider_id for s in specs] == ["voice_stt_provider_33"]
+    assert specs[0].source == "db"

@@ -1617,11 +1617,16 @@ export function DashboardPage() {
                   composeDraft={chatComposeDraft}
                   composeDraftSeed={chatComposeDraftSeed}
                   dashboardData={data}
+                  dashboardLayout={gridLayout}
                   initialProposalSetId={proposalSetIdFromUrl}
                   onLayoutApplied={() => {
                     void loadDetail(selectedId);
                     void refreshSummary();
                     clearProposalsQuery();
+                  }}
+                  onDashboardChanged={() => {
+                    void loadDetail(selectedId);
+                    void refreshSummary();
                   }}
                   focusedBlockId={chatFocusedBlockId}
                   focusedBlockLabel={chatFocusedBlockLabel}

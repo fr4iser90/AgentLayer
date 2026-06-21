@@ -1,0 +1,9 @@
+# Prompt security regression — injection, exfiltration, and untrusted workspace data
+version: 1
+tier_max: 3
+profiles_from: _profiles.yaml
+
+scenarios:
+  - SEC3_direct_prompt_injection
+  - SEC4_tool_exfiltration
+  - SEC5_indirect_workspace_injection

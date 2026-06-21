@@ -573,6 +573,12 @@ CREATE TABLE operator_settings (
   rag_embed_timeout_sec DOUBLE PRECISION NOT NULL DEFAULT 120,
   rag_tenant_shared_domains TEXT NOT NULL DEFAULT 'agentlayer_docs',
   docs_root TEXT,
+  extractor_api_base_url TEXT,
+  extractor_api_key TEXT,
+  extractor_api_header_name VARCHAR(128),
+  extractor_provider_id VARCHAR(64),
+  extractor_model TEXT,
+  extractor_timeout_sec DOUBLE PRECISION NOT NULL DEFAULT 120,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -596,6 +602,26 @@ CREATE TABLE operator_external_llm_endpoints (
 
 CREATE INDEX idx_operator_external_llm_endpoints_sort
   ON operator_external_llm_endpoints (sort_order ASC, id ASC);
+
+CREATE TABLE operator_provider_endpoints (
+  id BIGSERIAL PRIMARY KEY,
+  kind VARCHAR(32) NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  enabled BOOLEAN NOT NULL DEFAULT true,
+  label TEXT NOT NULL DEFAULT '',
+  base_url TEXT NOT NULL,
+  api_key TEXT NOT NULL DEFAULT '',
+  api_header_name VARCHAR(128) NOT NULL DEFAULT 'Authorization',
+  model_default TEXT,
+  options_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT operator_provider_endpoints_kind_check
+    CHECK (kind IN ('embedding', 'voice_stt', 'voice_tts', 'extractor'))
+);
+
+CREATE INDEX idx_operator_provider_endpoints_kind_sort
+  ON operator_provider_endpoints (kind, sort_order ASC, id ASC);
 
 CREATE TABLE operator_tool_policies (
   package_id TEXT NOT NULL,

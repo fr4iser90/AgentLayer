@@ -11,16 +11,15 @@ from typing import Any, Literal
 from apps.backend.infrastructure.voice_env_providers import (
     EnvVoiceProviderRow,
     SttApiStyle,
+    VOICE_ENV_PROVIDER_MAX,
     VoiceRole,
     parse_voice_stt_env_providers,
     parse_voice_tts_env_providers,
     strip_env_value,
 )
+from apps.backend.infrastructure.db import db
 
 logger = logging.getLogger(__name__)
-
-_STT_ADMIN_ID = "voice_stt_admin"
-_TTS_ADMIN_ID = "voice_tts_admin"
 
 _STT_CACHE: tuple[float, list[VoiceProviderSpec]] | None = None
 _TTS_CACHE: tuple[float, list[VoiceProviderSpec]] | None = None
@@ -51,6 +50,24 @@ def normalize_voice_provider_id(raw: Any) -> str | None:
     return t or None
 
 
+def db_voice_provider_id(role: VoiceRole, endpoint_id: int) -> str:
+    return f"voice_{role}_provider_{VOICE_ENV_PROVIDER_MAX + int(endpoint_id)}"
+
+
+def parse_db_voice_provider_id(role: VoiceRole, provider_id: str) -> int | None:
+    pid = (provider_id or "").strip().lower()
+    prefix = f"voice_{role}_provider_"
+    if not pid.startswith(prefix):
+        return None
+    suffix = pid[len(prefix) :]
+    if not suffix.isdigit():
+        return None
+    slot = int(suffix)
+    if slot <= VOICE_ENV_PROVIDER_MAX:
+        return None
+    return slot - VOICE_ENV_PROVIDER_MAX
+
+
 def _env_row_spec(row: EnvVoiceProviderRow) -> VoiceProviderSpec:
     if row.role == "stt":
         return VoiceProviderSpec(
@@ -78,30 +95,36 @@ def _env_row_spec(row: EnvVoiceProviderRow) -> VoiceProviderSpec:
     )
 
 
-def _admin_db_spec(role: VoiceRole) -> VoiceProviderSpec | None:
-    try:
-        from apps.backend.domain.voice import voice_policy
-
-        op = voice_policy.operator_voice_row()
-        bu = (str(op.get("voice_api_base_url") or "").strip() or "").rstrip("/")
-        if not bu:
-            return None
-        pid = _STT_ADMIN_ID if role == "stt" else _TTS_ADMIN_ID
-        label = "Admin STT" if role == "stt" else "Admin TTS"
+def _db_endpoint_spec(role: VoiceRole, row: dict[str, Any]) -> VoiceProviderSpec:
+    eid = int(row["id"])
+    options = row.get("options_json") if isinstance(row.get("options_json"), dict) else {}
+    base = str(row.get("base_url") or "").strip().rstrip("/")
+    label = (str(row.get("label") or "").strip() or f"Voice {role.upper()} #{eid}")[:128]
+    model_default = str(row.get("model_default") or "").strip()
+    if role == "stt":
         return VoiceProviderSpec(
-            role=role,
-            provider_id=pid,
+            role="stt",
+            provider_id=db_voice_provider_id("stt", eid),
             label=label,
-            base_url=bu,
-            api_key=(str(op.get("voice_api_key") or "").strip()),
-            api_header_name="Authorization",
-            model_stt=(str(op.get("voice_stt_model") or "").strip() or "whisper-1")[:128],
-            model_tts=(str(op.get("voice_tts_model") or "").strip() or "tts-1")[:128],
-            model_tts_voice=(str(op.get("voice_tts_voice") or "").strip() or "alloy")[:64],
-            source="operator_settings",
+            base_url=base,
+            api_key=str(row.get("api_key") or "").strip(),
+            api_header_name=str(row.get("api_header_name") or "").strip() or "Authorization",
+            model_stt=(model_default or "whisper-1")[:128],
+            stt_api_style=str(options.get("stt_api_style") or "openai")[:32],  # type: ignore[arg-type]
+            stt_transcribe_path=(str(options.get("stt_transcribe_path") or "").strip() or None),
+            source="db",
         )
-    except Exception:
-        return None
+    return VoiceProviderSpec(
+        role="tts",
+        provider_id=db_voice_provider_id("tts", eid),
+        label=label,
+        base_url=base,
+        api_key=str(row.get("api_key") or "").strip(),
+        api_header_name=str(row.get("api_header_name") or "").strip() or "Authorization",
+        model_tts=(model_default or "tts-1")[:128],
+        model_tts_voice=(str(options.get("voice") or "alloy").strip() or "alloy")[:64],
+        source="db",
+    )
 
 
 def _list_role_specs(role: VoiceRole, *, force_refresh: bool = False) -> list[VoiceProviderSpec]:
@@ -121,10 +144,19 @@ def _list_role_specs(role: VoiceRole, *, force_refresh: bool = False) -> list[Vo
             specs.append(sp)
             seen.add(sp.provider_id)
 
-    admin = _admin_db_spec(role)
-    if admin and admin.provider_id not in seen and admin.base_url:
-        specs.append(admin)
-        seen.add(admin.provider_id)
+    kind = "voice_stt" if role == "stt" else "voice_tts"
+    try:
+        db_rows = db.operator_provider_endpoints_list_all(kind)
+    except RuntimeError:
+        logger.debug("voice provider catalog: DB pool not ready — env providers only")
+        db_rows = []
+    for row in db_rows:
+        if not row.get("enabled", True):
+            continue
+        sp = _db_endpoint_spec(role, row)
+        if sp.provider_id not in seen and sp.base_url:
+            specs.append(sp)
+            seen.add(sp.provider_id)
 
     if role == "stt":
         _STT_CACHE = (now, specs)

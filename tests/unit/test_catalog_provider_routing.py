@@ -63,7 +63,7 @@ def test_route_admin_provider_spec() -> None:
             "default",
             is_override=False,
         )
-    assert stack == "provider_admin"
+    assert stack == "provider_db"
     assert attempts[0][2] == "gpt-4o-mini"
 
 

@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import csv
+import base64
 import json
 import logging
+import mimetypes
 import os
 import subprocess
 import time
@@ -30,9 +32,12 @@ from tests.benchmarks.agent.cases import (
     bench_dashboard_title,
     bench_workspace_name,
     bind_bench_run_prompt_locale,
+    bind_bench_run_prompt_variant,
     render_scenario_prompt,
     reset_bench_run_prompt_locale,
+    reset_bench_run_prompt_variant,
     resolve_prompt_locale,
+    resolve_prompt_variant,
     scenarios_for_tier,
 )
 from tests.benchmarks.agent.fixtures import (
@@ -333,6 +338,7 @@ class ScenarioResult:
     assistant_excerpt: str
     scenario_prompt: str = ""
     prompt_locale: str = "en"
+    prompt_variant: str = "canonical"
     assistant_content: str = ""
     assistant_content_truncated: bool = False
     skipped: bool = False
@@ -363,6 +369,7 @@ class BenchRunReport:
     bench_cleanup: dict[str, Any] | None = None
     bench_cleanup_finish: dict[str, Any] | None = None
     prompt_locale: str = "en"
+    prompt_variant: str = "canonical"
     results: list[ScenarioResult] = field(default_factory=list)
     in_flight: dict[str, Any] | None = None
 
@@ -382,6 +389,7 @@ class BenchRunReport:
             "bench_cleanup": self.bench_cleanup,
             "bench_cleanup_finish": self.bench_cleanup_finish,
             "prompt_locale": self.prompt_locale,
+            "prompt_variant": self.prompt_variant,
             "results": [r.to_dict() for r in self.results],
             "in_flight": self.in_flight,
         }
@@ -618,6 +626,28 @@ def _effective_agent_id(profile: ModelProfile, scenario: AgentScenario) -> str:
     return profile.agent_id or scenario.agent_id or "general"
 
 
+def _scenario_user_content(scenario: AgentScenario, scenario_prompt: str) -> str | list[dict[str, Any]]:
+    attachments = tuple(scenario.attachments or ())
+    if not attachments:
+        return scenario_prompt
+    parts: list[dict[str, Any]] = [{"type": "text", "text": scenario_prompt}]
+    base_dir = scenario.source_dir or Path.cwd()
+    for rel in attachments:
+        path = (base_dir / rel).resolve()
+        if not path.is_file():
+            raise FileNotFoundError(f"{scenario.id}: attachment not found: {rel}")
+        mime = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+        data = base64.b64encode(path.read_bytes()).decode("ascii")
+        parts.append(
+            {
+                "type": "image_url",
+                "image_url": {"url": f"data:{mime};base64,{data}"},
+                "agent_filename": path.name,
+            }
+        )
+    return parts
+
+
 def _dashboard_state_for_rubric(
     client: E2EClient,
     *,
@@ -757,6 +787,7 @@ def _scenario_crash_result(
         assistant_excerpt="",
         scenario_prompt=scenario_prompt,
         prompt_locale=resolve_prompt_locale(),
+        prompt_variant=resolve_prompt_variant(),
         fixtures=fixtures,
         error=msg,
     )
@@ -793,6 +824,7 @@ def _skipped_result(
         assistant_excerpt="",
         scenario_prompt=scenario_prompt,
         prompt_locale=resolve_prompt_locale(),
+        prompt_variant=resolve_prompt_variant(),
         skipped=True,
         fixtures=fixtures,
         error="skipped",
@@ -846,7 +878,7 @@ def _build_chat_body(
     """Chat-parity body; benchmarks enable LLM stream when ``stream_llm`` (observability preset)."""
     body: dict[str, Any] = {
         "model": profile.model,
-        "messages": [{"role": "user", "content": scenario_prompt}],
+        "messages": [{"role": "user", "content": _scenario_user_content(scenario, scenario_prompt)}],
         "agent_id": _effective_agent_id(profile, scenario),
         "agent_model_catalog_owned_by": profile.catalog_owned_by,
         "agent_stream_llm": bool(stream_llm),
@@ -1326,6 +1358,7 @@ def run_scenario(
         assistant_excerpt=excerpt,
         scenario_prompt=scenario_prompt,
         prompt_locale=resolve_prompt_locale(),
+        prompt_variant=resolve_prompt_variant(),
         assistant_content=stored_content,
         assistant_content_truncated=content_truncated,
         fixtures=fixture_list,
@@ -1432,20 +1465,32 @@ def run_benchmark(
     cleanup_on_start: bool = True,
     cleanup_on_finish: bool = True,
     prompt_locale: str | None = None,
+    prompt_variant: str | None = None,
     harness_preset: str | None = None,
     tenant_id: int | None = None,
     use_harness_matrix: bool = False,
 ) -> BenchRunReport:
-    from tests.benchmarks.agent.cases import available_prompt_locales, resolve_prompt_locale
+    from tests.benchmarks.agent.cases import (
+        available_prompt_locales,
+        available_prompt_variants,
+        resolve_prompt_locale,
+        resolve_prompt_variant,
+    )
 
     load_bench_env()
     locale = resolve_prompt_locale(prompt_locale)
+    variant = resolve_prompt_variant(prompt_variant)
     valid_locales = set(available_prompt_locales())
     if locale not in valid_locales:
         opts = ", ".join(sorted(valid_locales))
         raise ValueError(f"unsupported prompt_locale {locale!r} (available: {opts})")
+    valid_variants = set(available_prompt_variants())
+    if variant not in valid_variants:
+        opts = ", ".join(sorted(valid_variants))
+        raise ValueError(f"unsupported prompt_variant {variant!r} (available: {opts})")
 
     locale_token = bind_bench_run_prompt_locale(locale)
+    variant_token = bind_bench_run_prompt_variant(variant)
     os.environ.setdefault("AGENT_E2E_BASE_URL", bench_base_url())
     require_server()
 
@@ -1531,6 +1576,7 @@ def run_benchmark(
         profiles_source=profiles_source,
         bench_cleanup=cleanup,
         prompt_locale=locale,
+        prompt_variant=variant,
     )
 
     self_editing_prev: bool | None = None
@@ -1757,6 +1803,7 @@ def run_benchmark(
                 report.bench_cleanup_finish = {"error": str(exc)}
                 logger.warning("benchmark post-run cleanup failed: %s", exc)
         session.close()
+        reset_bench_run_prompt_variant(variant_token)
         reset_bench_run_prompt_locale(locale_token)
 
     return report

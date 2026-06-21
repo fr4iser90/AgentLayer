@@ -21,6 +21,23 @@ function knobHelpKey(id: string) {
   return `harnessKnobHelp_${id.replace(/\./g, "_")}`;
 }
 
+function parseKnobValue(knob: AgentConfigKnob, raw: string): unknown {
+  if (knob.type === "integer") {
+    const n = parseInt(raw, 10);
+    if (!Number.isFinite(n)) throw new Error("expected integer");
+    return n;
+  }
+  if (knob.type === "number") {
+    const n = Number(raw);
+    if (!Number.isFinite(n)) throw new Error("expected number");
+    return n;
+  }
+  if (knob.type === "boolean") return raw === "true";
+  if (knob.type === "string_list") return JSON.parse(raw || "[]");
+  if (knob.type === "json") return JSON.parse(raw || "{}");
+  return raw;
+}
+
 export function AdminAgentConfig() {
   const { t } = useTranslation(["admin"]);
   const auth = useAuth();
@@ -29,12 +46,11 @@ export function AdminAgentConfig() {
     const v = knob.effective;
     if (v === null || v === undefined) {
       if (knob.effective_label) return knob.effective_label;
-      if (knob.id === "tool_routing.domain_order") return t("admin:agentConfigDomainOrderEmpty");
       return "—";
     }
     if (typeof v === "boolean") return v ? "true" : "false";
     if (Array.isArray(v)) {
-      return v.length ? v.join(", ") : t("admin:agentConfigDomainOrderEmpty");
+      return v.length ? v.join(", ") : "[]";
     }
     if (typeof v === "object") return JSON.stringify(v);
     return String(v);
@@ -161,14 +177,11 @@ export function AdminAgentConfig() {
   }
 
   async function onApply() {
-    if (!auth.accessToken || !selectedId || selected?.writable === false) return;
+    if (!auth.accessToken || !selected || selected.writable === false) return;
     setApplyBusy(true);
     setError(null);
     try {
-      let value: unknown = editValue;
-      if (selected?.type === "integer") value = parseInt(editValue, 10);
-      else if (selected?.type === "boolean") value = editValue === "true";
-      else if (selected?.type === "string_list") value = JSON.parse(editValue || "[]");
+      const value = parseKnobValue(selected, editValue);
       if (tab === "models") {
         if (!modelScopeCatalog.trim()) {
           setError(t("admin:agentConfigModelsProviderRequired"));

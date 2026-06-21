@@ -8,13 +8,13 @@ from dataclasses import dataclass
 from typing import Any
 
 from apps.backend.infrastructure.embedding_env_providers import (
+    EMBEDDING_ENV_PROVIDER_MAX,
     EnvEmbeddingProviderRow,
     parse_embedding_env_providers,
 )
+from apps.backend.infrastructure.db import db
 
 logger = logging.getLogger(__name__)
-
-_ADMIN_PROVIDER_ID = "embedding_admin"
 
 _SPECS_CACHE: tuple[float, list[EmbeddingProviderSpec]] | None = None
 _SPECS_CACHE_TTL_SEC = 2.0
@@ -39,6 +39,23 @@ def normalize_embedding_provider_id(raw: Any) -> str | None:
     return t or None
 
 
+def db_embedding_provider_id(endpoint_id: int) -> str:
+    return f"embedding_provider_{EMBEDDING_ENV_PROVIDER_MAX + int(endpoint_id)}"
+
+
+def parse_db_embedding_provider_id(provider_id: str) -> int | None:
+    pid = (provider_id or "").strip().lower()
+    if not pid.startswith("embedding_provider_"):
+        return None
+    suffix = pid[len("embedding_provider_") :]
+    if not suffix.isdigit():
+        return None
+    slot = int(suffix)
+    if slot <= EMBEDDING_ENV_PROVIDER_MAX:
+        return None
+    return slot - EMBEDDING_ENV_PROVIDER_MAX
+
+
 def _env_row_spec(row: EnvEmbeddingProviderRow) -> EmbeddingProviderSpec:
     return EmbeddingProviderSpec(
         provider_id=row.provider_id,
@@ -51,26 +68,17 @@ def _env_row_spec(row: EnvEmbeddingProviderRow) -> EmbeddingProviderSpec:
     )
 
 
-def _admin_db_spec() -> EmbeddingProviderSpec | None:
-    from apps.backend.infrastructure.operator_settings import (
-        _cached_row,
-        normalize_external_llm_base_url,
-    )
-
-    r = _cached_row()
-    bu = (str(r.get("embedding_api_base_url") or "").strip() or "")
-    if not bu:
-        return None
-    bu = (normalize_external_llm_base_url(bu) or bu).rstrip("/")
-    if not bu:
-        return None
+def _db_endpoint_spec(row: dict[str, Any]) -> EmbeddingProviderSpec:
+    eid = int(row["id"])
+    bu = str(row.get("base_url") or "").strip().rstrip("/")
     return EmbeddingProviderSpec(
-        provider_id=_ADMIN_PROVIDER_ID,
-        label="Admin embedding",
+        provider_id=db_embedding_provider_id(eid),
+        label=(str(row.get("label") or "").strip() or f"Embedding #{eid}")[:128],
         base_url=bu,
-        api_key=(str(r.get("embedding_api_key") or "").strip()),
-        api_header_name=(str(r.get("embedding_api_header_name") or "").strip() or "X-API-KEY"),
-        source="operator_settings",
+        api_key=str(row.get("api_key") or "").strip(),
+        api_header_name=str(row.get("api_header_name") or "").strip() or "X-API-KEY",
+        model_default=(str(row.get("model_default") or "").strip() or None),
+        source="db",
     )
 
 
@@ -96,12 +104,19 @@ def list_embedding_provider_specs(*, force_refresh: bool = False) -> list[Embedd
             seen.add(sp.provider_id)
             seen_urls.add(url_key)
 
-    admin = _admin_db_spec()
-    if admin and admin.base_url:
-        url_key = admin.base_url.rstrip("/").lower()
-        if admin.provider_id not in seen and url_key not in seen_urls:
-            specs.append(admin)
-            seen.add(admin.provider_id)
+    try:
+        db_rows = db.operator_provider_endpoints_list_all("embedding")
+    except RuntimeError:
+        logger.debug("list_embedding_provider_specs: DB pool not ready — env providers only")
+        db_rows = []
+    for row in db_rows:
+        if not row.get("enabled", True):
+            continue
+        sp = _db_endpoint_spec(row)
+        url_key = sp.base_url.rstrip("/").lower()
+        if sp.provider_id not in seen and sp.base_url and url_key not in seen_urls:
+            specs.append(sp)
+            seen.add(sp.provider_id)
 
     _SPECS_CACHE = (now, specs)
     return list(specs)

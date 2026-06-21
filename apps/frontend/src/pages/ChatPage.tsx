@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, NavLink, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import { fetchTask, setConversationActiveTask } from "../lib/tasksApi";
@@ -158,7 +158,6 @@ import { shouldIsolateWorkspaceThread } from "../features/workspace/chatWorkspac
 import { confirmNewChatForWorkspace } from "../features/workspace/confirmWorkspaceScope";
 import { streamOpenAiChatChunks } from "../features/chat/openaiSseStream";
 import { formatMessageTime, inferMissingMessageTimestamps } from "../features/chat/messageTimestamps";
-
 /** `?dashboard=<uuid>` — validated; server re-checks access. */
 function parseDashboardQueryParam(raw: string | null): string | null {
   if (!raw || !raw.trim()) return null;
@@ -169,6 +168,98 @@ function parseDashboardQueryParam(raw: string | null): string | null {
     return null;
   }
   return s;
+}
+
+type StorageOnlyImageAttachment = Extract<PendingAttachment, { kind: "image" }>;
+type StorageHintTranslator = {
+  (key: "chat:imageStorageHintLine1", opts: { count: number }): string;
+  (key: "chat:imageStorageHintLine2"): string;
+};
+
+function splitImageAttachments(attachments: PendingAttachment[]): {
+  llmAttachments: PendingAttachment[];
+  storageOnlyImages: StorageOnlyImageAttachment[];
+} {
+  const storageOnlyImages: StorageOnlyImageAttachment[] = [];
+  const llmAttachments: PendingAttachment[] = [];
+  for (const attachment of attachments) {
+    if (attachment.kind === "image") {
+      storageOnlyImages.push(attachment);
+    } else {
+      llmAttachments.push(attachment);
+    }
+  }
+  return { llmAttachments, storageOnlyImages };
+}
+
+function isImageStorageRequest(text: string): boolean {
+  const s = text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  return (
+    /\b(dashboard|album|gallery|galerie|fotoalbum|photo album|photos?|fotos?|bilder?)\b/.test(s) &&
+    /\b(add|adden|hinzufug|upload|hochlad|speicher|erstelle|create|anlegen|attach|anhang)/.test(s)
+  );
+}
+
+function agentIdForRequest(defaultAgentId: string, userText: string): string {
+  return isImageStorageRequest(userText) ? "dashboard" : defaultAgentId;
+}
+
+function storageOnlyImageHint(count: number, t: StorageHintTranslator): string {
+  if (count <= 0) return "";
+  return [
+    t("chat:imageStorageHintLine1", { count }),
+    t("chat:imageStorageHintLine2"),
+  ].join("\n");
+}
+
+function buildAgentRequestUserContent(
+  draftText: string,
+  attachments: PendingAttachment[],
+  t: StorageHintTranslator
+): { content: string; storageOnlyImages: StorageOnlyImageAttachment[] } {
+  if (!isImageStorageRequest(draftText)) {
+    return {
+      content: buildUserMessageContent(draftText, attachments),
+      storageOnlyImages: [],
+    };
+  }
+  const { llmAttachments, storageOnlyImages } = splitImageAttachments(attachments);
+  const hint = storageOnlyImageHint(storageOnlyImages.length, t);
+  const text = [draftText.trim(), hint].filter(Boolean).join("\n\n");
+  return {
+    content: buildUserMessageContent(text, llmAttachments),
+    storageOnlyImages,
+  };
+}
+
+function apiMessagesWithCurrentUserContent(
+  messages: UiMessage[],
+  userMsgId: string,
+  apiUserContent: string,
+  omitImagePartsFromHistory = false
+): Array<{ role: UiMessage["role"]; content: string | unknown[] }> {
+  return messages.map((m) => ({
+    role: m.role,
+    content:
+      m.id === userMsgId
+        ? toApiContent(apiUserContent)
+        : omitImagePartsFromHistory
+          ? contentWithoutImageParts(m.content)
+          : toApiContent(m.content),
+  }));
+}
+
+function contentWithoutImageParts(stored: string): string | unknown[] {
+  const content = toApiContent(stored);
+  if (!Array.isArray(content)) return content;
+  const filtered = content.filter((part) => {
+    if (!part || typeof part !== "object" || Array.isArray(part)) return true;
+    return (part as Record<string, unknown>).type !== "image_url";
+  });
+  return filtered.length > 0 ? filtered : [{ type: "text", text: "image_omitted_for_upload_only" }];
 }
 
 function threadMessageCount(t: ChatThread): number {
@@ -1089,7 +1180,7 @@ export function ChatPage() {
     } catch {
       setError(t("chat:couldNotReadFile"));
     }
-  }, []);
+  }, [t]);
 
   const setMode = useCallback(
     (m: ChatMode) => {
@@ -1359,7 +1450,14 @@ export function ChatPage() {
       }).catch(() => {});
     }
 
-    const userContentForApi = buildUserMessageContent(sendDraft, sendAttachments);
+    const apiPayload = buildAgentRequestUserContent(
+      sendDraft,
+      sendAttachments,
+      t as StorageHintTranslator
+    );
+    const userContentForApi = apiPayload.content;
+    const omitHistoryImagesForApi = isImageStorageRequest(sendDraft);
+    const requestAgentId = agentIdForRequest(composerAgentId, sendDraft);
     if (!userContentForApi) return;
 
     inFlightTurnRef.current = {
@@ -1399,10 +1497,16 @@ export function ChatPage() {
       const disabledTools = getDisabledToolNames();
       const payload = {
         model: routed.model,
-        messages: nextMessages.map((m) => ({ role: m.role, content: toApiContent(m.content) })),
+        messages: apiMessagesWithCurrentUserContent(
+          nextMessages,
+          userMsgId,
+          userContentForApi,
+          omitHistoryImagesForApi
+        ),
         stream: true,
         agent_plain_completion: true,
         stream_options: { include_usage: true },
+        agent_id: requestAgentId,
         ...agentDashboardPayload,
         ...(disabledTools.length ? { agent_disabled_tools: disabledTools } : {}),
         agent_model_catalog_owned_by: routed.provider,
@@ -1568,6 +1672,7 @@ export function ChatPage() {
     let nextMessages: UiMessage[];
     let nextTitle: string;
     let archivePatch: Pick<ChatThread, "turnLogs" | "agentLog"> = {};
+    let storageOnlyImages: StorageOnlyImageAttachment[] = [];
 
     if (isResend && resendUserMsgId) {
       const userIdx = thread.messages.findIndex(
@@ -1613,7 +1718,16 @@ export function ChatPage() {
       }).catch(() => {});
     }
 
-    if (!buildUserMessageContent(sendDraft, sendAttachments)) return;
+    const requestPayload = buildAgentRequestUserContent(
+      sendDraft,
+      sendAttachments,
+      t as StorageHintTranslator
+    );
+    const requestUserContent = requestPayload.content;
+    storageOnlyImages = requestPayload.storageOnlyImages;
+    const omitHistoryImagesForApi = isImageStorageRequest(sendDraft);
+    const requestAgentId = agentIdForRequest(composerAgentId, sendDraft);
+    if (!requestUserContent) return;
 
     inFlightTurnRef.current = {
       threadId: tid,
@@ -2204,12 +2318,25 @@ export function ChatPage() {
           type: "chat",
           body: {
             model: routed.model,
-            messages: nextMessages.map((m) => ({ role: m.role, content: toApiContent(m.content) })),
-            agent_id: composerAgentId,
+            messages: apiMessagesWithCurrentUserContent(
+              nextMessages,
+              userMsgId,
+              requestUserContent,
+              omitHistoryImagesForApi
+            ),
+            agent_id: requestAgentId,
             ...(selectedWorkspaceId ? { workspace_id: selectedWorkspaceId } : {}),
             ...(activeThreadId ? { conversation_id: activeThreadId } : {}),
             ...(activeTaskId ? { agent_active_task_id: activeTaskId } : {}),
             ...agentDashboardPayload,
+            ...(storageOnlyImages.length
+              ? {
+                  agent_storage_images: storageOnlyImages.map((image) => ({
+                    name: image.name,
+                    data_url: image.dataUrl,
+                  })),
+                }
+              : {}),
             ...(disabledTools.length ? { agent_disabled_tools: disabledTools } : {}),
             agent_model_catalog_owned_by: routed.provider,
             ...(getAgentStreamLlm() ? { agent_stream_llm: true } : {}),
@@ -2228,6 +2355,7 @@ export function ChatPage() {
     agentDashboardPayload,
     appendAgentLine,
     auth,
+    dashboardChatId,
     defaultModel,
     draft,
     ensureAgentWs,
@@ -3295,7 +3423,7 @@ export function ChatPage() {
               className="hidden"
               accept="image/*,.txt,.md,.json,.csv,.log,.yaml,.yml,.zip"
               onChange={(e) => {
-                const files = e.target.files;
+                const files = e.target.files ? Array.from(e.target.files) : [];
                 e.target.value = "";
                 void addPickedFiles(files);
               }}

@@ -858,9 +858,11 @@ export function AdminBenchmarks() {
     _savedBenchPrefs?.scenarioTimeoutSec ?? ""
   );
   const [promptLocale, setPromptLocale] = useState(_savedBenchPrefs?.promptLocale ?? "en");
+  const [promptVariant, setPromptVariant] = useState(_savedBenchPrefs?.promptVariant ?? "canonical");
   const [cohortLabel, setCohortLabel] = useState(_savedBenchPrefs?.cohortLabel ?? "");
   const [runOverrides, setRunOverrides] = useState<RunOverridePatch[]>([]);
   const [availablePromptLocales, setAvailablePromptLocales] = useState<string[]>(["en", "de"]);
+  const [availablePromptVariants, setAvailablePromptVariants] = useState<string[]>(["canonical"]);
   const [maxToolRoundsOverride, setMaxToolRoundsOverride] = useState(
     _savedBenchPrefs?.maxToolRoundsOverride ?? ""
   );
@@ -990,6 +992,7 @@ export function AdminBenchmarks() {
       runAsUserId,
       friendUserId,
       promptLocale,
+      promptVariant,
       cohortLabel,
       scenarioTimeoutSec,
       maxToolRoundsOverride,
@@ -1005,6 +1008,7 @@ export function AdminBenchmarks() {
     runAsUserId,
     friendUserId,
     promptLocale,
+    promptVariant,
     cohortLabel,
     scenarioTimeoutSec,
     maxToolRoundsOverride,
@@ -1035,6 +1039,14 @@ export function AdminBenchmarks() {
         setAvailablePromptLocales(catalog.available_locales);
         setPromptLocale((prev) =>
           catalog.available_locales.includes(prev) ? prev : catalog.available_locales[0] ?? "en"
+        );
+      }
+      if (catalog.available_prompt_variants?.length) {
+        setAvailablePromptVariants(catalog.available_prompt_variants);
+        setPromptVariant((prev) =>
+          catalog.available_prompt_variants.includes(prev)
+            ? prev
+            : catalog.available_prompt_variants[0] ?? "canonical"
         );
       }
       setLlmProviders(providers);
@@ -1454,6 +1466,7 @@ export function AdminBenchmarks() {
         scenario_failure_retries: parsedRetries,
         retain_workspaces: retainWorkspaces || undefined,
         prompt_locale: promptLocale,
+        prompt_variant: promptVariant,
         cohort_label: cohortLabel.trim() || undefined,
         harness_overrides: runOverrides.length ? runOverrides : undefined,
       });
@@ -2051,7 +2064,7 @@ export function AdminBenchmarks() {
                           <div className="mt-2 space-y-1 rounded border border-white/5 bg-black/30 p-2 text-[11px]">
                             <p className="text-surface-muted">{t("admin:benchPrompt")}</p>
                             <p className="whitespace-pre-wrap text-white/90">
-                              {benchmarkScenarioPrompt(sc, promptLocale)}
+                              {benchmarkScenarioPrompt(sc, promptLocale, promptVariant)}
                             </p>
                             <p className="text-surface-muted">{t("admin:benchRubric")}: {sc.rubric}</p>
                           </div>
@@ -2092,6 +2105,23 @@ export function AdminBenchmarks() {
                 />
                 <span className="mt-1 block text-[11px] text-surface-muted">
                   {t("admin:benchCohortLabelHint")}
+                </span>
+              </label>
+              <label className="block text-sm">
+                <span className="text-surface-muted">{t("admin:benchPromptVariant")}</span>
+                <select
+                  value={promptVariant}
+                  onChange={(e) => setPromptVariant(e.target.value)}
+                  className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                >
+                  {availablePromptVariants.map((variant) => (
+                    <option key={variant} value={variant}>
+                      {t(`admin:benchPromptVariant_${variant}`, { defaultValue: variant })}
+                    </option>
+                  ))}
+                </select>
+                <span className="mt-1 block text-[11px] text-surface-muted">
+                  {t("admin:benchPromptVariantHint")}
                 </span>
               </label>
               <label className="block text-sm">
@@ -2285,9 +2315,14 @@ export function AdminBenchmarks() {
               <>
                 <h2 className="text-sm font-medium text-white">
                   {detail.suite} · {detail.status}
-                  {detail.profiles?.prompt_locale ? (
+                  {!Array.isArray(detail.profiles_json) && detail.profiles_json?.prompt_locale ? (
                     <span className="ml-2 text-xs font-normal text-surface-muted">
-                      · {String(detail.profiles.prompt_locale).toUpperCase()}
+                      · {String(detail.profiles_json.prompt_locale).toUpperCase()}
+                    </span>
+                  ) : null}
+                  {!Array.isArray(detail.profiles_json) && detail.profiles_json?.prompt_variant ? (
+                    <span className="ml-2 text-xs font-normal text-surface-muted">
+                      · {String(detail.profiles_json.prompt_variant)}
                     </span>
                   ) : null}
                   {detail.cohort_json?.harness_preset ? (

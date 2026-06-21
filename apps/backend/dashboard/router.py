@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
@@ -290,7 +290,11 @@ async def dashboard_file_delete(request: Request, file_id: uuid.UUID):
 
 @router.post("/{dashboard_id}/files")
 async def dashboard_file_upload(
-    request: Request, dashboard_id: uuid.UUID, file: UploadFile = File(...)
+    request: Request,
+    dashboard_id: uuid.UUID,
+    file: UploadFile = File(...),
+    append_list_path: str | None = Form(default=None),
+    caption: str = Form(default=""),
 ):
     _require_schema()
     user = await get_current_user(request)
@@ -370,7 +374,7 @@ async def dashboard_file_upload(
         raise
 
     gallery_ref = str(row.get("gallery_ref") or f"file:{row['id']}")
-    return {
+    out: dict[str, Any] = {
         "ok": True,
         "file": {
             "id": row["id"],
@@ -380,6 +384,23 @@ async def dashboard_file_upload(
             "gallery_ref": gallery_ref,
         },
     }
+    lp = (append_list_path or "").strip()
+    if lp:
+        from apps.backend.dashboard.list_ops import append_list_rows
+
+        append = append_list_rows(
+            user.id,
+            tid,
+            dashboard_id,
+            list_path=lp,
+            rows=[{"url": gallery_ref, "caption": (caption or "")[:500]}],
+        )
+        if not append.get("ok"):
+            out["gallery_append_error"] = str(append.get("error") or "list_append failed")
+        else:
+            out["appended_to"] = lp
+            out["append"] = append
+    return out
 
 
 @router.get("")

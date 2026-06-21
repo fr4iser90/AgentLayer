@@ -6,6 +6,10 @@ import os
 from unittest.mock import patch
 
 from apps.backend.infrastructure.embedding_env_providers import parse_embedding_env_providers
+from apps.backend.infrastructure.embedding_catalog_providers import (
+    invalidate_embedding_provider_specs_cache,
+    list_embedding_provider_specs,
+)
 
 
 def test_numbered_embedding_providers() -> None:
@@ -24,3 +28,34 @@ def test_numbered_embedding_providers() -> None:
 def test_empty_when_no_providers() -> None:
     with patch.dict(os.environ, {}, clear=True):
         assert parse_embedding_env_providers() == []
+
+
+def test_embedding_db_endpoint_gets_llm_style_provider_id(monkeypatch) -> None:
+    from apps.backend.infrastructure.db import db
+
+    invalidate_embedding_provider_specs_cache()
+    monkeypatch.setattr(
+        db,
+        "operator_provider_endpoints_list_all",
+        lambda kind=None: [
+            {
+                "id": 1,
+                "kind": "embedding",
+                "sort_order": 0,
+                "enabled": True,
+                "label": "Embedding",
+                "base_url": "https://embed-db.example/v1",
+                "api_key": "secret",
+                "api_header_name": "X-API-KEY",
+                "model_default": "bge-m3",
+                "options_json": {},
+            }
+        ]
+        if kind == "embedding"
+        else [],
+    )
+    with patch.dict(os.environ, {}, clear=True):
+        specs = list_embedding_provider_specs(force_refresh=True)
+
+    assert [s.provider_id for s in specs] == ["embedding_provider_33"]
+    assert specs[0].source == "db"

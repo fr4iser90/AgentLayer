@@ -21,6 +21,13 @@ from apps.backend.domain.agent_registry import get_agent_registry
 from apps.backend.infrastructure.openai_compat_http import http_post_chat_completions
 from apps.backend.infrastructure.openai_stream_aggregate import stream_chat_completions_aggregate
 from apps.backend.infrastructure.stream_repetition_guard import apply_repetition_guard_to_completion
+from apps.backend.infrastructure.agent_config_task_intent import (
+    categories_for_matches,
+    hints_for_matches,
+    match_task_intents,
+    task_intent_strict_tools,
+    tools_for_matches,
+)
 from apps.backend.domain.plugin_system.registry import get_registry
 from apps.backend.domain.plugin_system.capability_governance import parse_user_capability_confirm
 from apps.backend.domain.plugin_system.capability_index import filter_merged_tools_by_capabilities
@@ -50,6 +57,135 @@ from apps.backend.infrastructure.operator_settings import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _dashboard_id_from_tool_result(result: str | None) -> str | None:
+    try:
+        data = json.loads(result or "")
+    except Exception:
+        return None
+    if not isinstance(data, dict):
+        return None
+    direct = data.get("dashboard_id") or data.get("id")
+    if direct:
+        s = str(direct).strip()
+        if s:
+            return s
+    dash = data.get("dashboard")
+    if isinstance(dash, dict):
+        did = dash.get("id") or dash.get("dashboard_id")
+        if did:
+            s = str(did).strip()
+            if s:
+                return s
+    return None
+
+
+def _agent_storage_images_from_body(raw: Any) -> list[dict[str, str]]:
+    if not isinstance(raw, list):
+        return []
+    out: list[dict[str, str]] = []
+    for idx, item in enumerate(raw[:8]):
+        if not isinstance(item, dict):
+            continue
+        data_url = str(item.get("data_url") or item.get("dataUrl") or "").strip()
+        if not data_url.startswith("data:image/"):
+            continue
+        name = str(item.get("name") or f"image_{idx + 1}.jpg").strip()[:200]
+        out.append({"name": name or f"image_{idx + 1}.jpg", "data_url": data_url})
+    return out
+
+
+def _first_gallery_data_path(ui_layout: Any) -> str | None:
+    if not isinstance(ui_layout, dict):
+        return None
+    try:
+        from apps.backend.dashboard.layout_tree import iter_layout_blocks
+    except Exception:
+        return None
+    for block in iter_layout_blocks(ui_layout):
+        if not isinstance(block, dict):
+            continue
+        btype = str(block.get("type") or "").strip().lower()
+        if btype not in ("gallery", "photo_album", "image_gallery"):
+            continue
+        props = block.get("props") if isinstance(block.get("props"), dict) else {}
+        path = str(props.get("dataPath") or props.get("data_path") or "").strip()
+        if path:
+            return path
+    return None
+
+
+def _storage_upload_prompt(images: list[dict[str, str]]) -> str:
+    names = ", ".join(img["name"] for img in images[:5])
+    more = f" (+{len(images) - 5} more)" if len(images) > 5 else ""
+    return (
+        f"{len(images)} image upload(s) are attached server-side for storage: {names}{more}.\n"
+        "Do not analyze image pixels unless the user explicitly asks for visual analysis and a VLM is available. "
+        "For dashboard/photo-album/gallery requests, create or select the dashboard and a gallery/photo-album block. "
+        "Do not call artifact_get for these images and do not invent artifact ids like photo_1/photo_2; "
+        "the backend will upload the attached image bytes into the gallery after the dashboard/gallery exists."
+    )
+
+
+def _upload_pending_storage_images_sync(
+    *,
+    tool_context: dict[str, Any],
+    user_id: uuid.UUID,
+    tenant_id: int,
+    dashboard_id: str,
+) -> dict[str, Any]:
+    pending = tool_context.get("agent_storage_images_pending")
+    if not isinstance(pending, list) or not pending:
+        return {"ok": True, "uploaded": 0, "pending": 0}
+    try:
+        dash_uuid = uuid.UUID(str(dashboard_id))
+    except (TypeError, ValueError):
+        return {"ok": False, "error": "invalid dashboard_id", "uploaded": 0, "pending": len(pending)}
+
+    from apps.backend.dashboard import db as dashboard_db
+    from apps.backend.dashboard.file_upload import upload_dashboard_image
+
+    dashboard = dashboard_db.dashboard_get(user_id, tenant_id, dash_uuid)
+    if not dashboard:
+        return {"ok": False, "error": "dashboard not found", "uploaded": 0, "pending": len(pending)}
+    list_path = _first_gallery_data_path(dashboard.get("ui_layout"))
+    if not list_path:
+        return {"ok": False, "error": "no gallery block yet", "uploaded": 0, "pending": len(pending)}
+
+    uploaded = 0
+    errors: list[str] = []
+    remaining: list[dict[str, str]] = []
+    for image in pending:
+        if not isinstance(image, dict):
+            continue
+        name = str(image.get("name") or "upload.jpg")
+        data_url = str(image.get("data_url") or "")
+        result = upload_dashboard_image(
+            user_id,
+            tenant_id,
+            dash_uuid,
+            base64_data=data_url,
+            original_name=name,
+            append_list_path=list_path,
+            caption=name,
+        )
+        if result.get("ok") and not result.get("gallery_append_error"):
+            uploaded += 1
+        else:
+            remaining.append(image)
+            errors.append(str(result.get("gallery_append_error") or result.get("error") or "upload failed"))
+    tool_context["agent_storage_images_pending"] = remaining
+    prev = int(tool_context.get("agent_storage_images_uploaded") or 0)
+    tool_context["agent_storage_images_uploaded"] = prev + uploaded
+    return {
+        "ok": not remaining,
+        "uploaded": uploaded,
+        "pending": len(remaining),
+        "dashboard_id": str(dash_uuid),
+        "list_path": list_path,
+        **({"errors": errors[:3]} if errors else {}),
+    }
 
 from apps.backend.domain.agent_io import *  # noqa: F403, E402
 from apps.backend.domain.agent_prompts import *  # noqa: F403, E402
@@ -96,6 +232,7 @@ async def chat_completion(
         parse_user_capability_confirm(body.pop("agent_capability_confirm", None))
     )
     dashboard_ctx = body.pop("agent_dashboard_context", None)
+    _agent_storage_images = _agent_storage_images_from_body(body.pop("agent_storage_images", None))
     _raw_max_rounds = body.pop("agent_max_tool_rounds", None)
     _raw_llm_be = body.pop("agent_llm_backend", None)
     _raw_catalog_owned = body.pop("agent_model_catalog_owned_by", None)
@@ -119,7 +256,7 @@ async def chat_completion(
         elif not agent_id:
             agent_id = "general"
         _chat_surface_agents = frozenset({"general", "dashboard", "creative"})
-        if agent_id == "dashboard" and not dash_id:
+        if agent_id == "dashboard" and not dash_id and not _agent_storage_images:
             logger.info("chat_completion: dashboard agent requires agent_dashboard_context — using general")
             agent_id = "general"
         elif agent_id not in _chat_surface_agents:
@@ -304,6 +441,9 @@ async def chat_completion(
 
     # Prepare context dict for tools (DDD-style, with real objects)
     tool_context: dict[str, Any] = {"user": user_obj}
+    if _agent_storage_images:
+        tool_context["agent_storage_images_pending"] = [dict(x) for x in _agent_storage_images]
+        tool_context["agent_storage_images_uploaded"] = 0
     if workspace and isinstance(workspace, dict):
         if workspace.get("id"):
             tool_context["workspace_id"] = str(workspace["id"])
@@ -618,6 +758,8 @@ async def chat_completion(
         messages = _inject_dashboard_context(messages, dashboard_ctx)
         if agent_id:
             messages = _inject_agent_system_prompt(messages, agent_id)
+        if _agent_storage_images:
+            messages = _append_system_block(messages, _storage_upload_prompt(_agent_storage_images))
         if agent_id == "general":
             from apps.backend.domain.embedded_subagent import (
                 build_delegate_agents_catalog_snippet,
@@ -671,6 +813,17 @@ async def chat_completion(
             messages, workspace, agent_id if isinstance(agent_id, str) else None
         )
         messages = _inject_workspace_verify_hints(messages, workspace)
+        if agent_id in ("coding", "coding_plan"):
+            try:
+                from apps.backend.infrastructure.knowledge_orchestration_prompt import (
+                    build_knowledge_orchestration_snippet,
+                )
+
+                _knowledge_snip = build_knowledge_orchestration_snippet(tenant_id=_cfg_tid)
+                if _knowledge_snip:
+                    messages = _append_system_block(messages, _knowledge_snip)
+            except Exception:
+                logger.debug("knowledge orchestration prompt skipped", exc_info=True)
 
         model, model_reason, profile_key, model_is_override = resolve_effective_model(
             messages=messages,
@@ -712,6 +865,29 @@ async def chat_completion(
             tenant_id=_cfg_tid,
             default=config.AGENT_ROUTER_STRICT_DEFAULT,
         )
+        _task_intent_user_text = last_user_text(messages)
+        _task_intent_matches = (
+            match_task_intents(_task_intent_user_text, tenant_id=_cfg_tid)
+            if not plain_completion
+            else []
+        )
+        _task_intent_tools = tools_for_matches(_task_intent_matches)
+        if _task_intent_matches:
+            _task_intent_ids = [m.intent_id for m in _task_intent_matches]
+            tool_context["task_intent_overlay"] = {
+                "intent_ids": _task_intent_ids,
+                "categories": sorted(categories_for_matches(_task_intent_matches)),
+                "tools": sorted(_task_intent_tools),
+            }
+            _task_intent_hints = hints_for_matches(_task_intent_matches)
+            if _task_intent_hints:
+                messages = _append_system_block(
+                    messages,
+                    "Task intent overlay matched: "
+                    + ", ".join(_task_intent_ids)
+                    + "\n"
+                    + "\n".join(f"- {hint}" for hint in _task_intent_hints),
+                )
         _catalog_after_first_round = _ace.effective_bool(
             "tool_forward.catalog_after_first_round",
             tenant_id=_cfg_tid,
@@ -788,13 +964,13 @@ async def chat_completion(
                 catalog_owned_by,
             )
         smart_route_reason = ""
-        backend_override: Literal["provider", "provider_admin"] | None = None
+        backend_override: Literal["provider", "provider_db"] | None = None
         if isinstance(_raw_llm_be, str):
             lo = _raw_llm_be.strip().lower()
             if lo in ("provider",):
                 backend_override = "provider"
-            elif lo == "provider_admin":
-                backend_override = "provider_admin"
+            elif lo == "provider_db":
+                backend_override = "provider_db"
         if backend_override is None and not plain_completion and smart_llm_routing_enabled():
             # Smart routing: 0–1 extra local router call, then one main completion — never two externals.
             bo, smart_route_reason = await asyncio.to_thread(decide_smart_backend, messages)
@@ -845,7 +1021,8 @@ async def chat_completion(
                 logger.warning("agent_id %r not found in registry, falling back to tool_domain", agent_id)
         elif tool_domain:
             merged_tools = filter_merged_tools_by_domain(merged_tools, tool_domain)
-        cats = classify_user_tool_categories(last_user_text(messages))
+        cats = classify_user_tool_categories(_task_intent_user_text)
+        cats = cats | categories_for_matches(_task_intent_matches)
         cats = cats | extra_cats_body | extra_cats_hdr
         merged_tools = filter_merged_tools_by_categories_for_agent(
             merged_tools,
@@ -866,6 +1043,27 @@ async def chat_completion(
             routed_category = "minimal"
         else:
             routed_category = "full"
+
+        if _task_intent_tools and task_intent_strict_tools(tenant_id=_cfg_tid):
+            pinned_names: set[str] = set()
+            if agent:
+                pinned_names.update(
+                    str(x).strip().lower()
+                    for x in (agent.get("pinned_tools") or [])
+                    if str(x).strip()
+                )
+            strict_names = {str(x).strip().lower() for x in _task_intent_tools if str(x).strip()}
+            strict_names.update(str(x).strip().lower() for x in TOOL_INTROSPECTION)
+            strict_names.update(pinned_names)
+            before_count = len(merged_tools)
+            merged_tools = [
+                t
+                for t in merged_tools
+                if (n := _tool_spec_name(t)) is None or n.strip().lower() in strict_names
+            ]
+            tool_context["task_intent_overlay"]["strict_tools_applied"] = True
+            tool_context["task_intent_overlay"]["tool_count_before_strict"] = before_count
+            tool_context["task_intent_overlay"]["tool_count_after_strict"] = len(merged_tools)
 
         try:
             from apps.backend.domain.identity import get_identity
@@ -1552,7 +1750,7 @@ async def chat_completion(
                     except httpx.HTTPStatusError as e:
                         last_failover = e
                         sc = e.response.status_code
-                        if llm_backend == "provider_admin" and external_llm_should_failover(sc):
+                        if llm_backend == "provider_db" and external_llm_should_failover(sc):
                             logger.warning(
                                 "LLM external attempt failed (status=%s); trying next endpoint",
                                 sc,
@@ -1575,7 +1773,7 @@ async def chat_completion(
                             last_failover.response.text, max_len=600
                         )
                         if (
-                            llm_backend == "provider_admin"
+                            llm_backend == "provider_db"
                             and last_failover.response.status_code == 429
                         ):
                             local_model = profile_default_model_id(profile_key)
@@ -2007,6 +2205,15 @@ async def chat_completion(
                     policy_block = orchestrator_pre_tool_blocked(name, args, tool_context)
                     if policy_block is None:
                         policy_block = coding_delegate_tool_blocked(name, args, tool_context)
+                    if (
+                        policy_block is None
+                        and name == "artifact_get"
+                        and isinstance(tool_context.get("agent_storage_images_pending"), list)
+                    ):
+                        policy_block = (
+                            "This turn has server-side image uploads. Do not call artifact_get for them; "
+                            "create/select a dashboard gallery and the backend will upload the images."
+                        )
                     if policy_block:
                         result = json.dumps(
                             {"ok": False, "error": policy_block},
@@ -2152,6 +2359,41 @@ async def chat_completion(
                     vr = _format_workspace_verify_recap(result)
                     if vr:
                         verify_recap_line = vr
+                dash_id = _dashboard_id_from_tool_result(result)
+                if not dash_id and args.get("dashboard_id"):
+                    dash_id = str(args.get("dashboard_id") or "").strip() or None
+                storage_upload_event: dict[str, Any] | None = None
+                if (
+                    dash_id
+                    and ok_sum is not False
+                    and _agent_storage_images
+                    and isinstance(user_id, uuid.UUID)
+                    and tenant_id is not None
+                ):
+                    storage_upload = await asyncio.to_thread(
+                        _upload_pending_storage_images_sync,
+                        tool_context=tool_context,
+                        user_id=user_id,
+                        tenant_id=int(tenant_id),
+                        dashboard_id=dash_id,
+                    )
+                    if int(storage_upload.get("uploaded") or 0) > 0 or storage_upload.get("errors"):
+                        storage_upload_event = {
+                            "type": "agent.tool_done",
+                            "agent_run_id": agent_run_id,
+                            "round": round_i + 1,
+                            "name": "dashboard.upload_photos",
+                            "result_ok": bool(storage_upload.get("ok")),
+                            "result_chars": int(storage_upload.get("uploaded") or 0),
+                            "dashboard_id": dash_id,
+                            "result_display": (
+                                f"uploaded {int(storage_upload.get('uploaded') or 0)} image(s)"
+                            ),
+                        }
+                        if storage_upload.get("errors"):
+                            storage_upload_event["result_error"] = "; ".join(
+                                str(x) for x in list(storage_upload.get("errors") or [])[:3]
+                            )[:500]
                 if event_emit:
                     await _apply_workspace_tool_bind_side_effects(
                         tool_name=name,
@@ -2232,6 +2474,8 @@ async def chat_completion(
                     display = tool_result_display_line(name, result or "")
                     if display:
                         ev_done["result_display"] = display
+                    if dash_id:
+                        ev_done["dashboard_id"] = dash_id
                     if promoted_full_schema:
                         ev_done["promoted_full_schema"] = True
                     hook_extras = turn_hooks.on_tool_done(
@@ -2248,6 +2492,8 @@ async def chat_completion(
                             k: v for k, v in media_ev.items() if k != "type"
                         }
                     await event_emit(ev_done)
+                    if storage_upload_event:
+                        await event_emit(storage_upload_event)
                     if media_ev:
                         await event_emit(media_ev)
                 messages.append(

@@ -4,6 +4,7 @@ plugins/tools/agent_created/.tool_backups/
 plugins/tools/capabilities/browser/output/
 # Cache
 __pycache__/
+output/
 
 # secrets
 .env

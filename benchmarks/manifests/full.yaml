@@ -16,10 +16,14 @@ scenarios:
   - W2_find_octocat_indexed
   - D1_dashboard_create
   - D2_layout_patch
+  - D3_pet_photo_album_upload
   - SOC1_block_share_visible
   - INT1_gmail_connected
   - C1_bench_marker_file
   - C2_small_edit
   - SEC1_scan_agentlayer
   - SEC2_remediate_agentlayer
+  - SEC3_direct_prompt_injection
+  - SEC4_tool_exfiltration
+  - SEC5_indirect_workspace_injection
 

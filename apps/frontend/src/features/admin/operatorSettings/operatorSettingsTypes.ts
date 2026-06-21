@@ -53,6 +53,24 @@ export type OperatorPublic = {
     source: string;
     base_url: string;
   }>;
+  extractor_provider_configured?: boolean;
+  extractor_api_base_url?: string | null;
+  extractor_api_base_effective?: string | null;
+  extractor_api_key_configured?: boolean;
+  extractor_api_header_name?: string | null;
+  extractor_api_header_name_effective?: string | null;
+  extractor_provider_id?: string | null;
+  extractor_provider_id_effective?: string | null;
+  extractor_model?: string;
+  extractor_timeout_sec?: number;
+  extractor_providers?: Array<{
+    provider_id: string;
+    label: string;
+    source: string;
+    base_url: string;
+    model_default?: string | null;
+    timeout_sec?: number;
+  }>;
   rag_embedding_model?: string;
   rag_embedding_dim?: number;
   rag_chunk_size?: number;

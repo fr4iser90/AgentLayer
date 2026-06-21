@@ -189,6 +189,136 @@ export function AdminInterfacesMemorySection() {
             </div>
             <p className="mt-2 text-xs text-surface-muted">{t("admin:ifMemSaveSyncHint")}</p>
           </div>
+          <div className="rounded-lg border border-white/10 bg-black/15 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs font-medium text-surface-muted">{t("admin:ifMemExtractorTitle")}</span>
+              {s.extractorProviders.length > 0 ? (
+                <span className="font-mono text-xs text-emerald-300/90">{t("admin:ifMemConfigured")}</span>
+              ) : (
+                <span className="text-xs text-amber-300/90">{t("admin:ifMemNotConfigured")}</span>
+              )}
+            </div>
+            <p className="mt-2 text-xs text-surface-muted">{t("admin:ifMemExtractorIntro")}</p>
+            {s.extractorProviders.length > 0 ? (
+              <>
+                <label className="mt-3 block text-xs text-surface-muted" htmlFor="extractor-provider-id">
+                  {t("admin:ifMemExtractorProvider")}
+                </label>
+                <select
+                  id="extractor-provider-id"
+                  className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  value={s.extractorProviderId || s.extractorProviderIdEffective || ""}
+                  onChange={(e) => s.setExtractorProviderId(e.target.value)}
+                >
+                  <option value="">{t("admin:ifMemExtractorProviderAuto")}</option>
+                  {s.extractorProviders.map((p) => (
+                    <option key={p.provider_id} value={p.provider_id}>
+                      {p.label} ({p.provider_id})
+                    </option>
+                  ))}
+                </select>
+                {s.extractorProviderIdEffective ? (
+                  <p className="mt-1 text-xs text-surface-muted">
+                    {t("admin:ifMemExtractorProviderActive")}{" "}
+                    <span className="font-mono text-neutral-300">{s.extractorProviderIdEffective}</span>
+                    {!s.extractorProviderId && s.extractorProviderIdEffective
+                      ? ` (${t("admin:ifMemExtractorProviderAuto")})`
+                      : null}
+                  </p>
+                ) : null}
+              </>
+            ) : null}
+            <h4 className="mt-4 text-xs font-medium uppercase tracking-wide text-surface-muted">
+              {t("admin:ifMemExtractorAdminProvider")}
+            </h4>
+            <label className="mt-2 block text-xs text-surface-muted" htmlFor="extractor-base-url">
+              {t("admin:ifMemBaseUrlLabel")}
+            </label>
+            <input
+              id="extractor-base-url"
+              className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+              value={s.extractorApiBaseUrl}
+              onChange={(e) => s.setExtractorApiBaseUrl(e.target.value)}
+              placeholder={t("admin:ifMemExtractorUrlPlaceholder")}
+              autoComplete="off"
+            />
+            {s.extractorApiBaseEffective ? (
+              <p className="mt-1 text-xs text-surface-muted">
+                {t("admin:ifMemEffectiveAfterSave")}{" "}
+                <span className="font-mono text-neutral-300">{s.extractorApiBaseEffective}</span>
+              </p>
+            ) : (
+              <p className="mt-1 text-xs text-surface-muted">
+                <span className="font-mono">EXTRACTOR_PROVIDER_1_BASE_URL</span> {t("admin:ifMemInDotenv")}{" "}
+                <span className="font-mono">.env</span> {t("admin:ifMemExtractorEnvAlternative")}
+              </p>
+            )}
+            <p className="mt-3 text-xs text-surface-muted">
+              {t("admin:ifMemKeyLabel")}{" "}
+              {s.extractorApiKeyConfigured ? t("admin:ifMemKeyStored") : t("admin:ifMemKeyEmpty")}
+            </p>
+            <label className="mt-2 block text-xs text-surface-muted" htmlFor="extractor-api-key">
+              {t("admin:ifMemApiKeyLabel")}
+            </label>
+            <input
+              id="extractor-api-key"
+              type="password"
+              autoComplete="off"
+              className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+              value={s.extractorApiKey}
+              onChange={(e) => s.setExtractorApiKey(e.target.value)}
+              placeholder={s.extractorApiKeyConfigured ? t("admin:tokenReplacePlaceholder") : t("admin:ifMemPasteKey")}
+            />
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              <div>
+                <label className="block text-xs text-surface-muted" htmlFor="extractor-header-name">
+                  {t("admin:ifMemHeaderForKey")}
+                </label>
+                <input
+                  id="extractor-header-name"
+                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  value={s.extractorApiHeaderName}
+                  onChange={(e) => s.setExtractorApiHeaderName(e.target.value)}
+                  placeholder={t("admin:ifMemoryApiKeyPlaceholder")}
+                  autoComplete="off"
+                />
+                <p className="mt-1 text-xs text-surface-muted">
+                  {t("admin:ifMemEffective")}{" "}
+                  <span className="font-mono text-neutral-300">{s.extractorApiHeaderNameEffective}</span>
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs text-surface-muted" htmlFor="extractor-model">
+                  {t("admin:ifMemExtractorModel")}
+                </label>
+                <input
+                  id="extractor-model"
+                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  value={s.extractorModel}
+                  onChange={(e) => s.setExtractorModel(e.target.value)}
+                  placeholder={t("admin:ifMemExtractorModelPlaceholder")}
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-surface-muted" htmlFor="extractor-timeout">
+                  {t("admin:ifMemExtractorTimeout")}
+                </label>
+                <input
+                  id="extractor-timeout"
+                  type="number"
+                  min={1}
+                  max={1800}
+                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  value={s.extractorTimeoutSec}
+                  onChange={(e) => s.setExtractorTimeoutSec(e.target.value)}
+                />
+              </div>
+            </div>
+            <p className="mt-3 text-xs text-surface-muted">
+              {t("admin:ifMemExtractorHarnessHint")}
+            </p>
+          </div>
         </div>
         {!s.embeddingApiBaseUrl.trim() && s.embeddingApiBaseSource !== "env" ? (
           <p className="mt-4 text-xs text-amber-300/90">{t("admin:ifMemNoBaseUrl")}</p>

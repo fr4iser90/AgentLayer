@@ -661,6 +661,55 @@ class ExternalLlmEndpointsPutBody(BaseModel):
     endpoints: list[ExternalLlmEndpointItem] = Field(default_factory=list)
 
 
+class OperatorProviderEndpointItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: int | None = None
+    sort_order: int = 0
+    enabled: bool = True
+    label: str = ""
+    base_url: str = ""
+    api_key: str | None = None
+    api_header_name: str | None = None
+    model_default: str | None = None
+    options_json: dict[str, Any] = Field(default_factory=dict)
+
+
+class OperatorProviderEndpointsPutBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    endpoints: list[OperatorProviderEndpointItem] = Field(default_factory=list)
+
+
+def _operator_provider_kind_or_404(kind: str) -> str:
+    k = (kind or "").strip().lower()
+    if k not in {"embedding", "voice_stt", "voice_tts", "extractor"}:
+        raise HTTPException(status_code=404, detail="Unknown provider endpoint kind.")
+    return k
+
+
+def _invalidate_non_llm_provider_caches(kind: str) -> None:
+    invalidate_operator_settings_cache()
+    if kind == "embedding":
+        from apps.backend.infrastructure.embedding_catalog_providers import (
+            invalidate_embedding_provider_specs_cache,
+        )
+
+        invalidate_embedding_provider_specs_cache()
+    elif kind in {"voice_stt", "voice_tts"}:
+        from apps.backend.infrastructure.voice_catalog_providers import (
+            invalidate_voice_provider_specs_cache,
+        )
+
+        invalidate_voice_provider_specs_cache()
+    elif kind == "extractor":
+        from apps.backend.infrastructure.extractor_catalog_providers import (
+            invalidate_extractor_provider_specs_cache,
+        )
+
+        invalidate_extractor_provider_specs_cache()
+
+
 @app.get("/v1/admin/external-llm/endpoints")
 async def admin_get_external_llm_endpoints(request: Request):
     """List external OpenAI-compatible endpoints (keys redacted)."""
@@ -704,6 +753,52 @@ async def admin_put_external_llm_endpoints(request: Request, body: ExternalLlmEn
 
     invalidate_model_catalog_cache()
     return await admin_get_external_llm_endpoints(request)
+
+
+@app.get("/v1/admin/provider-endpoints/{kind}")
+async def admin_get_operator_provider_endpoints(request: Request, kind: str):
+    """List non-LLM provider endpoints (keys redacted), using LLM-style endpoint rows."""
+    await require_admin(request)
+    kind_v = _operator_provider_kind_or_404(kind)
+    out: list[dict[str, Any]] = []
+    for r in db.operator_provider_endpoints_list_all(kind_v):
+        k = str(r.get("api_key") or "")
+        out.append(
+            {
+                "id": r["id"],
+                "kind": r["kind"],
+                "sort_order": r["sort_order"],
+                "enabled": r["enabled"],
+                "label": r.get("label") or "",
+                "base_url": r.get("base_url") or "",
+                "api_key_configured": bool(k.strip()),
+                "api_key_last4": (k[-4:] if len(k) >= 4 else None),
+                "api_header_name": (str(r.get("api_header_name") or "").strip() or "Authorization"),
+                "model_default": r.get("model_default"),
+                "options_json": r.get("options_json") if isinstance(r.get("options_json"), dict) else {},
+                "created_at": r.get("created_at"),
+                "updated_at": r.get("updated_at"),
+            }
+        )
+    return {"endpoints": out}
+
+
+@app.put("/v1/admin/provider-endpoints/{kind}")
+async def admin_put_operator_provider_endpoints(
+    request: Request,
+    kind: str,
+    body: OperatorProviderEndpointsPutBody,
+):
+    """Replace/sync non-LLM provider endpoints for one kind."""
+    await require_admin(request)
+    kind_v = _operator_provider_kind_or_404(kind)
+    raw = [e.model_dump() for e in body.endpoints]
+    try:
+        db.operator_provider_endpoints_sync(kind_v, raw)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    _invalidate_non_llm_provider_caches(kind_v)
+    return await admin_get_operator_provider_endpoints(request, kind_v)
 
 
 @app.post("/v1/admin/external-llm/models")

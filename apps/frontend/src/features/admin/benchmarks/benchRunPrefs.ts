@@ -3,7 +3,7 @@
 import { normalizeProviderModels } from "./benchProfileSelection";
 
 const STORAGE_KEY = "agentlayer.admin.benchRunPrefs";
-const PREFS_VERSION = 9;
+const PREFS_VERSION = 10;
 
 export type BenchRunPrefs = {
   v: typeof PREFS_VERSION;
@@ -11,6 +11,7 @@ export type BenchRunPrefs = {
   runAsUserId: string;
   friendUserId: string;
   promptLocale: string;
+  promptVariant: string;
   cohortLabel: string;
   scenarioTimeoutSec: string;
   maxToolRoundsOverride: string;
@@ -30,6 +31,7 @@ function emptyPrefs(): BenchRunPrefsInput {
     runAsUserId: "",
     friendUserId: "",
     promptLocale: "en",
+    promptVariant: "canonical",
     cohortLabel: "",
     scenarioTimeoutSec: "",
     maxToolRoundsOverride: "",
@@ -81,6 +83,7 @@ export function loadBenchRunPrefs(): BenchRunPrefsInput | null {
     };
     if (
       parsed.v !== PREFS_VERSION &&
+      parsed.v !== 9 &&
       parsed.v !== 8 &&
       parsed.v !== 7 &&
       parsed.v !== 6 &&
@@ -99,6 +102,10 @@ export function loadBenchRunPrefs(): BenchRunPrefsInput | null {
         typeof parsed.promptLocale === "string" && parsed.promptLocale.trim()
           ? parsed.promptLocale.trim().toLowerCase()
           : base.promptLocale,
+      promptVariant:
+        typeof parsed.promptVariant === "string" && parsed.promptVariant.trim()
+          ? parsed.promptVariant.trim().toLowerCase()
+          : base.promptVariant,
       cohortLabel: typeof parsed.cohortLabel === "string" ? parsed.cohortLabel : "",
       scenarioTimeoutSec:
         typeof parsed.scenarioTimeoutSec === "string" ? parsed.scenarioTimeoutSec : "",

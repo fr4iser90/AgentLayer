@@ -393,6 +393,38 @@ def delegate_mode_allowed(mode: str | None, *, tenant_id: int | None = None) -> 
     return norm in allowed
 
 
+def knowledge_orchestration_enabled(*, tenant_id: int | None = None) -> bool:
+    return effective_bool("knowledge.orchestration_enabled", tenant_id=tenant_id, default=False)
+
+
+def knowledge_orchestration_mode(*, tenant_id: int | None = None) -> str:
+    val, _src = effective_value("knowledge.orchestration_mode", tenant_id=tenant_id)
+    mode = str(val or "agent_native").strip().lower()
+    if mode in ("basic_rag", "agent_native"):
+        return mode
+    return "agent_native"
+
+
+def knowledge_extractor_backend(*, tenant_id: int | None = None) -> str:
+    val, _src = effective_value("knowledge.extractor_backend", tenant_id=tenant_id)
+    backend = str(val or "deterministic").strip().lower()
+    if backend in ("deterministic", "llm", "hybrid"):
+        return backend
+    return "deterministic"
+
+
+def knowledge_extractor_provider_id(*, tenant_id: int | None = None) -> str | None:
+    val, _src = effective_value("knowledge.extractor_provider_id", tenant_id=tenant_id)
+    s = str(val or "").strip()
+    return s or None
+
+
+def knowledge_extractor_model(*, tenant_id: int | None = None) -> str | None:
+    val, _src = effective_value("knowledge.extractor_model", tenant_id=tenant_id)
+    s = str(val or "").strip()
+    return s or None
+
+
 _AGENT_YAML_KNOBS: dict[str, dict[str, str]] = {
     "general": {
         "agent.general.system_prompt": "system_prompt",
@@ -507,6 +539,21 @@ def display_value(
 
     if knob_id == "delegate.infer_git_forensics":
         return delegate_infer_git_forensics(tenant_id=tenant_id), "implicit_default"
+
+    if knob_id == "knowledge.orchestration_enabled":
+        return knowledge_orchestration_enabled(tenant_id=tenant_id), "implicit_default"
+
+    if knob_id == "knowledge.orchestration_mode":
+        return knowledge_orchestration_mode(tenant_id=tenant_id), "implicit_default"
+
+    if knob_id == "knowledge.extractor_backend":
+        return knowledge_extractor_backend(tenant_id=tenant_id), "implicit_default"
+
+    if knob_id == "knowledge.extractor_provider_id":
+        return knowledge_extractor_provider_id(tenant_id=tenant_id) or "", "implicit_default"
+
+    if knob_id == "knowledge.extractor_model":
+        return knowledge_extractor_model(tenant_id=tenant_id) or "", "implicit_default"
 
     if knob_id == "agent.coding.coding_tools_permission_ask":
         val, src = effective_value(knob_id, tenant_id=tenant_id, catalog_owned_by=catalog_owned_by, model=model)

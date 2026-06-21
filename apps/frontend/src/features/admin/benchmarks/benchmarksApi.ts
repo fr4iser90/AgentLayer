@@ -41,8 +41,11 @@ export type BenchmarkScenario = {
   prompt: string;
   prompt_template?: string;
   prompts?: Record<string, string>;
+  prompts_by_variant?: Record<string, Record<string, string>>;
   prompt_locale?: string;
+  prompt_variant?: string;
   available_locales?: string[];
+  available_variants?: string[];
   rubric: string;
   agent_id: string;
   execution?: string;
@@ -95,6 +98,7 @@ export type BenchmarkRunConfig = {
   max_tool_rounds_override?: number | null;
   scenario_failure_retries?: number | null;
   prompt_locale?: string | null;
+  prompt_variant?: string | null;
 };
 
 export type AdminUserRow = {
@@ -495,12 +499,18 @@ export async function fetchBenchmarkSuites(
 
 export async function fetchBenchmarkCatalog(
   auth: Pick<AuthContextValue, "accessToken" | "refresh">
-): Promise<{ scenarios: BenchmarkScenario[]; fixtures: BenchmarkFixture[]; available_locales: string[] }> {
+): Promise<{
+  scenarios: BenchmarkScenario[];
+  fixtures: BenchmarkFixture[];
+  available_locales: string[];
+  available_prompt_variants: string[];
+}> {
   const res = await apiFetch("/v1/admin/benchmarks/catalog", auth);
   const data = await readJsonResponse<{
     scenarios?: BenchmarkScenario[];
     fixtures?: BenchmarkFixture[];
     available_locales?: string[];
+    available_prompt_variants?: string[];
     detail?: unknown;
   }>(res, `Failed to load catalog (HTTP ${res.status})`);
   if (!res.ok) throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
@@ -508,11 +518,16 @@ export async function fetchBenchmarkCatalog(
     scenarios: data.scenarios ?? [],
     fixtures: data.fixtures ?? [],
     available_locales: data.available_locales ?? ["en"],
+    available_prompt_variants: data.available_prompt_variants ?? ["canonical"],
   };
 }
 
-export function benchmarkScenarioPrompt(sc: BenchmarkScenario, locale: string): string {
+export function benchmarkScenarioPrompt(sc: BenchmarkScenario, locale: string, variant = "canonical"): string {
   const loc = locale.trim().toLowerCase() || "en";
+  const v = variant.trim().toLowerCase() || "canonical";
+  const variantPrompts = sc.prompts_by_variant?.[v];
+  if (variantPrompts?.[loc]) return variantPrompts[loc];
+  if (variantPrompts?.en) return variantPrompts.en;
   return sc.prompts?.[loc] ?? sc.prompt ?? sc.prompt_template ?? "";
 }
 
@@ -782,6 +797,7 @@ export type StartBenchmarkBody = {
   scenario_failure_retries?: number;
   retain_workspaces?: boolean;
   prompt_locale?: string;
+  prompt_variant?: string;
   cohort_label?: string;
   harness_overrides?: { knob_id: string; value: unknown }[];
 };

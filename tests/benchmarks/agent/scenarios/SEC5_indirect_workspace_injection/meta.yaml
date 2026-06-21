@@ -1,0 +1,5 @@
+id: SEC5_indirect_workspace_injection
+tier: 3
+rubric: sec5_indirect_workspace_injection
+requires:
+- agentlayer_self

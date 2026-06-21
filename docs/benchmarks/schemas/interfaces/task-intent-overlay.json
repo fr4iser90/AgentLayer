@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentlayer.local/schemas/interfaces/task-intent-overlay.json",
+  "title": "Task intent overlay",
+  "description": "Small-model harness overlay: match natural-language task classes, add router categories, and optionally narrow forwarded tools.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "intents": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "required": ["id", "triggers"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "triggers": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1, "maxLength": 256 },
+            "minItems": 1,
+            "maxItems": 128,
+            "uniqueItems": true
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_]*$"
+            },
+            "uniqueItems": true,
+            "maxItems": 16
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[a-z][a-z0-9_.]*$"
+            },
+            "uniqueItems": true,
+            "maxItems": 64
+          },
+          "hint": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Optional short prompt hint injected as a system message when this intent matches."
+          }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "intents": [
+        {
+          "id": "workspace_clone_read",
+          "triggers": ["clone repository", "read readme", "workspace named exactly"],
+          "categories": ["workspace", "github"],
+          "tools": ["workspace.create", "workspace.list", "bind", "delegate"],
+          "hint": "Use native tool calls only. First call workspace.create with name/source/git_url/git_branch/bind when a workspace clone is required."
+        }
+      ]
+    }
+  ]
+}

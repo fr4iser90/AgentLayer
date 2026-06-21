@@ -43,6 +43,11 @@ function parseKnobValue(knob: AgentConfigKnob, raw: string): unknown {
     if (!Number.isFinite(n)) throw new Error("expected integer");
     return n;
   }
+  if (knob.type === "number") {
+    const n = Number(raw);
+    if (!Number.isFinite(n)) throw new Error("expected number");
+    return n;
+  }
   if (knob.type === "boolean") {
     if (raw === "true") return true;
     if (raw === "false") return false;
@@ -217,7 +222,7 @@ export function BenchmarkRunOverridePanel({ auth, overrides, onChange }: Props) 
                   <p className="font-medium text-white/90">{t("admin:benchRunOverrideHarnessBaseline")}</p>
                   <p className="mt-1 font-mono">{formatKnobValue(selected, undefined)}</p>
                   <p className="mt-2">
-                    {t("admin:agentConfigEffectiveSource")}: {formatKnobSource(selected.source, t)}
+                    {t("admin:agentConfigEffectiveSource")}: {formatKnobSource(selected.source, t as any)}
                   </p>
                 </div>
 

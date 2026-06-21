@@ -948,7 +948,7 @@ async def _async_iter_chat_completion_sse(
                         async with client.stream("POST", b_url, json=pl, headers=h) as resp:
                             if resp.status_code >= 400:
                                 err_body = (await resp.aread()).decode("utf-8", errors="replace")
-                                if lb == "provider_admin" and external_llm_should_failover(resp.status_code):
+                                if lb == "provider_db" and external_llm_should_failover(resp.status_code):
                                     logger.warning(
                                         "LLM stream: external status=%s; trying next endpoint url=%s",
                                         resp.status_code,
@@ -985,7 +985,7 @@ async def _async_iter_chat_completion_sse(
             raise last_trans
         if last_http is not None:
             st, txt, url = last_http
-            if st == 429 and lb == "provider_admin":
+            if st == 429 and lb == "provider_db":
                 local_model = profile_default_model_id(outer_profile)
                 attempts_local, lb = llm_chat_transport(
                     local_model,

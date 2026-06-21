@@ -157,7 +157,7 @@ def _call_local_router_model(
     )
     sys_prompt = (
         "You are a routing classifier. Reply with ONE JSON object only, no markdown fences:\n"
-        '{"route":"provider"|"provider_admin","confidence":0.0,"reason":"..."}\n'
+        '{"route":"provider"|"provider_db","confidence":0.0,"reason":"..."}\n'
         "- route=local if a small on-device model is enough (short chat, simple Q&A).\n"
         "- route=external if the task needs stronger cloud models (deep reasoning, long code, architecture, risk).\n"
         "- confidence: how sure (0..1) that LOCAL is sufficient; if unsure, prefer low confidence.\n"
@@ -192,12 +192,12 @@ def _call_local_router_model(
 
 def decide_smart_backend(
     messages: list[dict[str, Any]],
-) -> tuple[Literal["provider", "provider_admin"], str]:
+) -> tuple[Literal["provider", "provider_db"], str]:
     """
     Return (backend, reason_tag) for the main LLM request.
 
     - ``provider`` = first env catalog provider (``provider_1`` by default).
-    - ``provider_admin`` = first admin endpoint (``provider_33``, …).
+    - ``provider_db`` = first saved DB endpoint (``provider_33``, …).
 
     Call budget: 0 or 1 extra **local** router request (see module docstring), then
     exactly one main completion — never two admin calls caused by routing alone.
@@ -206,7 +206,7 @@ def decide_smart_backend(
     snap = _heuristic_snapshot(messages, p)
 
     if _force_external(snap):
-        return "provider_admin", "smart_route:heuristic_external"
+        return "provider_db", "smart_route:heuristic_external"
 
     if _force_local(snap):
         return "provider", "smart_route:heuristic_local"
@@ -224,12 +224,12 @@ def decide_smart_backend(
 
     min_conf = float(p.get("local_confidence_min") or 0.7)
 
-    if route in ("provider_admin", "cloud", "api"):
-        return "provider_admin", f"smart_route:router:{reason or 'provider_admin'}"
+    if route in ("provider_db", "cloud", "api"):
+        return "provider_db", f"smart_route:router:{reason or 'provider_db'}"
 
     if route in ("provider", "ondevice", "device"):
         if conf < min_conf:
-            return "provider_admin", f"smart_route:low_confidence_local({conf:.2f}<{min_conf})"
+            return "provider_db", f"smart_route:low_confidence_local({conf:.2f}<{min_conf})"
         return "provider", f"smart_route:router_local({conf:.2f}):{reason or 'ok'}"
 
     return "provider", "smart_route:router_ambiguous_fallback_local"

@@ -20,7 +20,7 @@ def upgrade() -> None:
     op.execute(
         """
         COMMENT ON COLUMN operator_settings.rag_embedding_provider_id IS
-          'Active embedding catalog provider id (embedding_provider_1, embedding_admin, …).';
+          'Active embedding catalog provider id (embedding_provider_1, embedding_provider_33, …).';
         """
     )
 

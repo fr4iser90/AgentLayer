@@ -51,8 +51,11 @@ import {
   getEmbeddedChatSessionOpen,
   setEmbeddedChatSessionOpen,
 } from "./embeddedChatSessionPrefs";
+import type { UiBlock, UiLayout } from "./types";
+import { uploadDashboardGalleryFile } from "./gallery/galleryUpload";
 
 type Msg = { role: "user" | "assistant"; content: string };
+type GalleryTarget = { blockId: string; dataPath: string; title: string };
 
 function dashboardThreadsForPanel(
   list: Record<string, unknown>[],
@@ -100,6 +103,42 @@ function formatUserBubbleForList(raw: string): string {
   return head;
 }
 
+function walkBlocks(blocks: UiBlock[] | undefined, visit: (block: UiBlock) => void) {
+  for (const block of blocks ?? []) {
+    visit(block);
+    const nested = block.props.nested;
+    if (block.type === "section" && nested?.blocks?.length) {
+      walkBlocks(nested.blocks, visit);
+    }
+  }
+}
+
+function galleryTargets(layout: UiLayout | null | undefined): GalleryTarget[] {
+  const out: GalleryTarget[] = [];
+  walkBlocks(layout?.blocks, (block) => {
+    if (block.type !== "gallery") return;
+    const dataPath = block.props.dataPath?.trim();
+    if (!dataPath) return;
+    const title = String(block.props.title || dataPath).trim() || dataPath;
+    out.push({ blockId: block.id, dataPath, title });
+  });
+  return out;
+}
+
+function pickGalleryTarget(
+  layout: UiLayout | null | undefined,
+  focusedBlockId: string | null
+): GalleryTarget | null {
+  const targets = galleryTargets(layout);
+  if (!targets.length) return null;
+  const focused = (focusedBlockId || "").trim();
+  if (focused) {
+    const hit = targets.find((t) => t.blockId === focused);
+    if (hit) return hit;
+  }
+  return targets[0] ?? null;
+}
+
 type Props = {
   dashboardId: string;
   dashboardTitle?: string;
@@ -111,10 +150,14 @@ type Props = {
   composeDraftSeed?: number;
   /** Live dashboard data for layout preview cards. */
   dashboardData?: Record<string, unknown>;
+  /** Live dashboard layout so upload-only images can target gallery blocks without VLM. */
+  dashboardLayout?: UiLayout | null;
   /** From notification / URL ``?proposals=`` — shows inline cards, no auto-modal. */
   initialProposalSetId?: string | null;
   /** After user applies a layout proposal. */
   onLayoutApplied?: () => void;
+  /** After chat-side dashboard writes such as upload-only image append. */
+  onDashboardChanged?: () => void;
   /** Block pinned from grid toolbar — agent gets block_id in context. */
   focusedBlockId?: string | null;
   focusedBlockLabel?: string | null;
@@ -133,8 +176,10 @@ export function DashboardEmbeddedChat({
   composeDraft,
   composeDraftSeed = 0,
   dashboardData = {},
+  dashboardLayout = null,
   initialProposalSetId = null,
   onLayoutApplied,
+  onDashboardChanged,
   focusedBlockId = null,
   focusedBlockLabel = null,
   onClearFocusedBlock,
@@ -343,9 +388,61 @@ export function DashboardEmbeddedChat({
 
   const addPickedFiles = useCallback(async (files: FileList | null) => {
     if (!files?.length || readOnly) return;
-    const next = await filesToAttachments(files);
-    setPendingAttachments((prev) => [...prev, ...next]);
-  }, [readOnly]);
+    const picked = Array.from(files);
+    const imageFiles = picked.filter((f) => f.type.startsWith("image/"));
+    const otherFiles = picked.filter((f) => !f.type.startsWith("image/"));
+
+    if (imageFiles.length > 0) {
+      if (!accessToken) {
+        setSendErr(t("dashboard:uploadAuthRequired"));
+        return;
+      }
+      const target = pickGalleryTarget(dashboardLayout, focusedBlockId);
+      if (!target) {
+        setSendErr(t("dashboard:chatImageUploadNoGallery"));
+        return;
+      }
+      setSendErr(null);
+      setSendSlowHint(t("dashboard:chatImageUploading", { count: imageFiles.length, target: target.title }));
+      let uploaded = 0;
+      for (const file of imageFiles) {
+        const result = await uploadDashboardGalleryFile(dashboardId, file, auth, t, {
+          appendListPath: target.dataPath,
+          caption: file.name,
+        });
+        if (!result.ok) {
+          setSendErr(result.error);
+          break;
+        }
+        uploaded += 1;
+      }
+      setSendSlowHint(null);
+      if (uploaded > 0) {
+        onDashboardChanged?.();
+        setDraft((d) => {
+          const note = t("dashboard:chatImageUploadedNote", {
+            count: uploaded,
+            target: target.title,
+          });
+          return d.trim() ? `${d.trim()}\n\n${note}` : note;
+        });
+      }
+    }
+
+    if (otherFiles.length > 0) {
+      const next = await filesToAttachments(otherFiles);
+      setPendingAttachments((prev) => [...prev, ...next]);
+    }
+  }, [
+    accessToken,
+    auth,
+    dashboardId,
+    dashboardLayout,
+    focusedBlockId,
+    onDashboardChanged,
+    readOnly,
+    t,
+  ]);
 
   useEffect(() => {
     if (open && endRef.current) {
@@ -594,6 +691,7 @@ export function DashboardEmbeddedChat({
       setDraft(draftSnap);
       setPendingAttachments(attachSnap);
     } finally {
+      setSendSlowHint(null);
       setSendLoading(false);
     }
   }, [
@@ -737,7 +835,7 @@ export function DashboardEmbeddedChat({
                   {sendErr}
                 </div>
               ) : null}
-              {sendSlowHint && sendLoading ? (
+              {sendSlowHint ? (
                 <div className="mx-3 mt-2 shrink-0 rounded border border-amber-500/30 bg-amber-950/20 px-2 py-1.5 text-xs text-amber-200">
                   {sendSlowHint}
                 </div>

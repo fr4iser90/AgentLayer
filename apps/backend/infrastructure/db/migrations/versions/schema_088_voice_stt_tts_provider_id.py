@@ -26,13 +26,13 @@ def upgrade() -> None:
     op.execute(
         """
         COMMENT ON COLUMN operator_settings.voice_stt_provider_id IS
-          'Active voice catalog provider for STT (voice_provider_1, voice_admin, …).';
+          'Active voice catalog provider for STT (voice_stt_provider_1, voice_stt_provider_33, …).';
         """
     )
     op.execute(
         """
         COMMENT ON COLUMN operator_settings.voice_tts_provider_id IS
-          'Active voice catalog provider for TTS (voice_provider_2, voice_admin, …).';
+          'Active voice catalog provider for TTS (voice_tts_provider_1, voice_tts_provider_33, …).';
         """
     )
 

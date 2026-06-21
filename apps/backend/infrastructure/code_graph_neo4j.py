@@ -22,8 +22,10 @@ except ImportError:
 _CONSTRAINTS_CYPHER = [
     "CREATE CONSTRAINT file_path_ws IF NOT EXISTS FOR (f:File) REQUIRE (f.path, f.workspace_id) IS UNIQUE",
     "CREATE CONSTRAINT symbol_uid IF NOT EXISTS FOR (s:Symbol) REQUIRE (s.uid) IS UNIQUE",
+    "CREATE CONSTRAINT knowledge_uid IF NOT EXISTS FOR (k:KnowledgeUnit) REQUIRE (k.uid) IS UNIQUE",
     "CREATE INDEX symbol_name_ws IF NOT EXISTS FOR (s:Symbol) ON (s.name, s.workspace_id)",
     "CREATE INDEX file_ws IF NOT EXISTS FOR (f:File) ON (f.workspace_id)",
+    "CREATE INDEX knowledge_text_ws IF NOT EXISTS FOR (k:KnowledgeUnit) ON (k.workspace_id, k.kind)",
 ]
 
 
@@ -461,6 +463,140 @@ class CodeGraphNeo4j:
                 return [dict(r) for r in result]
         except Exception as exc:
             logger.warning("Neo4j query_impact failed: %s", exc)
+            return []
+
+    # ------------------------------------------------------------------
+    # K1-lite project knowledge units
+    # ------------------------------------------------------------------
+
+    def replace_file_knowledge_units(
+        self,
+        workspace_id: str,
+        file_path: str,
+        units: list[dict[str, Any]],
+    ) -> int:
+        """Replace K1-lite extracted knowledge units for one file."""
+        driver = self._get_driver()
+        if driver is None or not self._ensure_schema():
+            return 0
+        fp = (file_path or "").strip().replace("\\", "/")
+        if not fp:
+            return 0
+        rows: list[dict[str, Any]] = []
+        for idx, unit in enumerate(units):
+            text = str(unit.get("text") or "").strip()
+            if not text:
+                continue
+            kind = str(unit.get("kind") or "evidence").strip().lower() or "evidence"
+            line = int(unit.get("line") or 1)
+            uid = f"{workspace_id}:{fp}:k1:{idx}:{line}"
+            rows.append(
+                {
+                    "uid": uid,
+                    "workspace_id": workspace_id,
+                    "file_path": fp,
+                    "kind": kind,
+                    "label": str(unit.get("label") or text[:120]).strip()[:200],
+                    "text": text[:4000],
+                    "line": line,
+                    "section": str(unit.get("section") or "").strip()[:240],
+                    "source": str(unit.get("source") or "k1_lite").strip()[:80],
+                }
+            )
+        try:
+            with driver.session() as session:
+                session.run(
+                    """
+                    MATCH (k:KnowledgeUnit {workspace_id: $ws, file_path: $fp})
+                    DETACH DELETE k
+                    """,
+                    ws=workspace_id,
+                    fp=fp,
+                )
+                if not rows:
+                    return 0
+                session.run(
+                    """
+                    MERGE (f:File {path: $fp, workspace_id: $ws})
+                    WITH f
+                    UNWIND $rows AS r
+                    CREATE (k:KnowledgeUnit {
+                        uid: r.uid,
+                        workspace_id: r.workspace_id,
+                        file_path: r.file_path,
+                        kind: r.kind,
+                        label: r.label,
+                        text: r.text,
+                        line: r.line,
+                        section: r.section,
+                        source: r.source
+                    })
+                    MERGE (k)-[:EVIDENCED_BY]->(f)
+                    """,
+                    ws=workspace_id,
+                    fp=fp,
+                    rows=rows,
+                )
+            return len(rows)
+        except Exception as exc:
+            logger.warning("Neo4j replace_file_knowledge_units failed for %s: %s", fp, exc)
+            return 0
+
+    def query_knowledge_units(
+        self,
+        workspace_id: str,
+        query: str,
+        *,
+        kinds: list[str] | None = None,
+        limit: int = 10,
+    ) -> list[dict[str, Any]]:
+        """Simple lexical K1-lite evidence lookup over KnowledgeUnit nodes."""
+        driver = self._get_driver()
+        if driver is None or not self._ensure_schema():
+            return []
+        terms = [
+            t.lower()
+            for t in str(query or "").replace("_", " ").replace("-", " ").split()
+            if len(t.strip()) >= 2
+        ][:12]
+        kinds_norm = [str(k).strip().lower() for k in (kinds or []) if str(k).strip()]
+        try:
+            with driver.session() as session:
+                result = session.run(
+                    """
+                    MATCH (k:KnowledgeUnit {workspace_id: $ws})
+                    WHERE (size($kinds) = 0 OR k.kind IN $kinds)
+                      AND (
+                        size($terms) = 0
+                        OR any(t IN $terms WHERE toLower(k.text) CONTAINS t OR toLower(k.label) CONTAINS t)
+                      )
+                    WITH k,
+                         reduce(score = 0, t IN $terms |
+                            score + CASE
+                              WHEN toLower(k.label) CONTAINS t THEN 3
+                              WHEN toLower(k.text) CONTAINS t THEN 1
+                              ELSE 0
+                            END
+                         ) AS score
+                    RETURN k.uid AS uid,
+                           k.kind AS kind,
+                           k.label AS label,
+                           k.text AS text,
+                           k.file_path AS file_path,
+                           k.line AS line,
+                           k.section AS section,
+                           score AS score
+                    ORDER BY score DESC, k.file_path ASC, k.line ASC
+                    LIMIT $limit
+                    """,
+                    ws=workspace_id,
+                    terms=terms,
+                    kinds=kinds_norm,
+                    limit=max(1, min(int(limit or 10), 50)),
+                )
+                return [dict(r) for r in result]
+        except Exception as exc:
+            logger.warning("Neo4j query_knowledge_units failed: %s", exc)
             return []
 
     # ------------------------------------------------------------------

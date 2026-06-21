@@ -261,6 +261,81 @@ knobs:
     benchmark_sensitive: true
     doc: "Per-category trigger phrase additions merged into router TOOL_TRIGGERS (e.g. {\"github\": [\"open pr\"]})."
 
+  - id: tool_routing.task_intent_overlay_enabled
+    layer: runtime_config
+    type: boolean
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: runtime-config-values.json#/$defs/booleanConfig
+    default: false
+    ui_group: tool_routing
+    affects_agents: [general]
+    affects_clusters: [S, C, W, D, SEC]
+    benchmark_sensitive: true
+    doc: Enable task-intent overlay matching before tool forwarding. Use model overrides for small models first.
+
+  - id: tool_routing.task_intent_overlay
+    layer: runtime_config
+    type: json
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: task-intent-overlay.json
+    default:
+      intents:
+        - id: catalog_discovery
+          triggers: [catalog, specialist agents, agent_id values, list agents]
+          categories: [delegate]
+          tools: [catalog]
+          hint: "Call the native catalog tool. Reply using real agent_id values from the tool result; do not invent IDs."
+        - id: delegate_math
+          triggers: [delegate to math, math agent, calculate, numeric result]
+          categories: [delegate]
+          tools: [delegate]
+          hint: "Use the native delegate tool with agent_id=math when the task explicitly tests delegation."
+        - id: workspace_clone_read
+          triggers: [clone repository, read readme, first line, workspace named exactly]
+          categories: [workspace, github]
+          tools: [workspace.create, workspace.list, bind, delegate]
+          hint: "Use native workspace.create for repository cloning. Do not write JSON or prose tool calls."
+        - id: workspace_search
+          triggers: [find octocat, search all files, index workspace, hello world]
+          categories: [workspace, github]
+          tools: [workspace.create, workspace.list, bind, delegate]
+          hint: "Create and bind the workspace with workspace.create, then delegate search/read work."
+        - id: coding_small_edit
+          triggers: [bench-marker.txt, bench-c2-ok, create file, small edit]
+          categories: [workspace, github, delegate]
+          tools: [workspace.create, workspace.list, bind, delegate]
+          hint: "Create/bind the workspace first, then delegate edits to agent_id=coding."
+        - id: security_scan
+          triggers: [security scan, simpleseccheck, scan_id, security remediation]
+          categories: [workspace, github, security_scan, delegate]
+          tools: [workspace.create, workspace.list, bind, delegate]
+          hint: "Create/bind the workspace first, then delegate scan or remediation work to security_auditor."
+        - id: dashboard_work
+          triggers: [dashboard, markdown block, dataPath, block_added, shared_notes]
+          categories: [dashboard]
+          tools: []
+          hint: "Use native dashboard tools when available; do not invent dashboard IDs."
+    ui_group: tool_routing
+    affects_agents: [general]
+    affects_clusters: [S, C, W, D, SEC]
+    benchmark_sensitive: true
+    doc: Natural-language task classes that add router categories and optional strict tool subsets for small-model harnessing.
+
+  - id: tool_routing.task_intent_strict_tools
+    layer: runtime_config
+    type: boolean
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: runtime-config-values.json#/$defs/booleanConfig
+    default: true
+    ui_group: tool_routing
+    affects_agents: [general]
+    affects_clusters: [S, C, W, D, SEC]
+    benchmark_sensitive: true
+    doc: When a task intent matches and declares tools, forward only those tools plus introspection/pins.
+
   - id: planner.tool_merge
     layer: code
     path: apps/backend/domain/agent_planner.py
@@ -273,6 +348,72 @@ knobs:
     affects_clusters: [S, C, W, D, SEC]
     benchmark_sensitive: true
     doc: Tool merge, routing, forward policy in planner loop.
+
+  # --- knowledge_orchestration ---
+  - id: knowledge.orchestration_enabled
+    layer: runtime_config
+    type: boolean
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: runtime-config-values.json#/$defs/booleanConfig
+    default: false
+    ui_group: knowledge_orchestration
+    affects_agents: [coding]
+    affects_clusters: [C, W, D, SEC]
+    benchmark_sensitive: true
+    doc: Enable K1-lite agent orchestration over structured project knowledge tools. Does not enable/disable workspace RAG.
+
+  - id: knowledge.orchestration_mode
+    layer: runtime_config
+    type: string
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: runtime-config-values.json#/$defs/knowledgeOrchestrationMode
+    default: agent_native
+    ui_group: knowledge_orchestration
+    affects_agents: [coding]
+    affects_clusters: [C, W, D, SEC]
+    benchmark_sensitive: true
+    doc: "Knowledge strategy: basic_rag = normal retrieve/read flow; agent_native = use K1-lite entities/claims/evidence/graph traversal when available."
+
+  - id: knowledge.extractor_backend
+    layer: runtime_config
+    type: string
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: runtime-config-values.json#/$defs/knowledgeExtractorBackend
+    default: deterministic
+    ui_group: knowledge_orchestration
+    affects_agents: [coding]
+    affects_clusters: [C, W, D, SEC]
+    benchmark_sensitive: true
+    doc: "K1-lite extraction backend: deterministic works without LLM; llm/hybrid require EXTRACTOR_PROVIDER_N_*."
+
+  - id: knowledge.extractor_provider_id
+    layer: runtime_config
+    type: string
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: runtime-config-values.json#/$defs/providerId
+    default: ""
+    ui_group: knowledge_orchestration
+    affects_agents: [coding]
+    affects_clusters: [C, W, D, SEC]
+    benchmark_sensitive: true
+    doc: "Extractor provider id from EXTRACTOR_PROVIDER_N_NAME; empty = first configured provider."
+
+  - id: knowledge.extractor_model
+    layer: runtime_config
+    type: string
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: runtime-config-values.json#/$defs/modelId
+    default: ""
+    ui_group: knowledge_orchestration
+    affects_agents: [coding]
+    affects_clusters: [C, W, D, SEC]
+    benchmark_sensitive: true
+    doc: "Extractor model id; empty = provider default EXTRACTOR_PROVIDER_N_MODEL."
 
   # --- tool_forward ---
   - id: tool_forward.ranking_enabled
