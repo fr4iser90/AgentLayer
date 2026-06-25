@@ -1,7 +1,7 @@
 {
   "profiles": {
     "fast": ["ddd_layers", "frontend_i18n"],
-    "precommit": ["ddd_layers", "backend_unit", "frontend_i18n", "node_cve", "python_cve"],
+    "precommit": ["ddd_layers", "backend_unit", "frontend_i18n", "node_cve_full", "python_cve"],
     "security": ["node_cve_full", "python_cve"],
     "quality": ["backend_unit", "frontend_i18n", "bandit"],
     "ci": ["ddd_layers_all", "backend_unit", "frontend_i18n", "node_cve_full", "python_cve", "bandit"]

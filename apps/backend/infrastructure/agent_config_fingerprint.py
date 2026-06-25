@@ -24,6 +24,7 @@ def deployment_git_sha() -> str:
         out = subprocess.check_output(
             ["git", "rev-parse", "HEAD"],
             cwd=_REPO_ROOT,
+            stderr=subprocess.DEVNULL,
             text=True,
             timeout=2,
         )
