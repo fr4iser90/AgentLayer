@@ -1,3 +1,5 @@
+import type { ModelRow } from "../../../lib/modelCatalog";
+
 export type InterfaceHints = {
   discord_application_id: string;
   telegram_application_id?: string;
@@ -154,6 +156,20 @@ export type ExternalLlmEndpointUI = {
   modelAgent: string;
   modelCoding: string;
   maxParallel: number;
+};
+
+export type ModelCatalogPref = {
+  provider_id: string;
+  model_id: string;
+  visible_in_chat: boolean;
+  profile_tags?: string[];
+  sort_order?: number;
+};
+
+export type AdminModelCatalogPayload = {
+  data?: ModelRow[];
+  prefs?: ModelCatalogPref[];
+  detail?: unknown;
 };
 
 export function detailMessage(data: unknown): string {

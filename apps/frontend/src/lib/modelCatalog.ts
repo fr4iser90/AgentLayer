@@ -36,7 +36,23 @@ export type ModelCatalogAgentlayer = Record<string, ProviderHealth | EmbeddingCa
   embedding?: EmbeddingCatalogHealth;
 };
 
-export type ModelRow = { id: string; owned_by?: string };
+export type ModelCapabilities = {
+  input_modalities?: string[];
+  output_modalities?: string[];
+};
+
+export type ModelCapabilityBadge = {
+  key: string;
+  label: string;
+  tone: "text" | "vision" | "audio" | "context";
+};
+
+export type ModelRow = {
+  id: string;
+  owned_by?: string;
+  context_length?: number;
+  capabilities?: ModelCapabilities;
+};
 
 const ROUTING_TOKEN_MAX = 64;
 
@@ -117,15 +133,36 @@ export async function fetchModelCatalog(): Promise<{
       const id = (x as { id?: unknown }).id;
       if (typeof id !== "string" || !id.trim()) continue;
       const ob = (x as { owned_by?: unknown }).owned_by;
-      rows.push({
+      const ctx = (x as { context_length?: unknown }).context_length;
+      const caps = (x as { capabilities?: unknown }).capabilities;
+      const row: ModelRow = {
         id: id.trim(),
         owned_by: typeof ob === "string" ? ob : undefined,
-      });
+      };
+      if (typeof ctx === "number" && Number.isFinite(ctx) && ctx > 0) {
+        row.context_length = Math.floor(ctx);
+      }
+      if (caps && typeof caps === "object") {
+        const c = caps as { input_modalities?: unknown; output_modalities?: unknown };
+        row.capabilities = {
+          input_modalities: stringArray(c.input_modalities),
+          output_modalities: stringArray(c.output_modalities),
+        };
+      }
+      rows.push(row);
     }
     return { rows, agentlayer: raw.agentlayer ?? null };
   } catch {
     return { rows: [], agentlayer: null };
   }
+}
+
+function stringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const out = value
+    .map((x) => (typeof x === "string" ? x.trim().toLowerCase() : ""))
+    .filter(Boolean);
+  return out.length ? [...new Set(out)] : undefined;
 }
 
 export function formatModelCatalogHint(
@@ -166,9 +203,42 @@ export function formatEmptyChatModelCatalogHint(
 
 export function modelOptionLabel(row: ModelRow, agentlayer?: ModelCatalogAgentlayer | null): string {
   const ob = row.owned_by?.trim();
-  if (!ob) return row.id;
+  const badges = modelCapabilityBadges(row).map((b) => b.label);
+  const badgeSuffix = badges.length ? ` · ${badges.join(" · ")}` : "";
+  if (!ob) return `${row.id}${badgeSuffix}`;
   const label = providerDisplayLabel(ob, agentlayer ?? null);
-  return `${row.id} (${label})`;
+  return `${row.id} (${label})${badgeSuffix}`;
+}
+
+export function formatContextLengthBadge(contextLength: number | undefined): string | null {
+  if (!contextLength || !Number.isFinite(contextLength) || contextLength <= 0) return null;
+  if (contextLength >= 1000) {
+    const k = contextLength / 1000;
+    const rounded = k >= 100 ? Math.round(k) : Math.round(k * 10) / 10;
+    return `${Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1)}k`;
+  }
+  return `${Math.floor(contextLength)}`;
+}
+
+export function modelCapabilityBadges(row: ModelRow): ModelCapabilityBadge[] {
+  const input = new Set(row.capabilities?.input_modalities ?? []);
+  const output = new Set(row.capabilities?.output_modalities ?? []);
+  const hasAnyModalities = input.size > 0 || output.size > 0;
+  const badges: ModelCapabilityBadge[] = [];
+
+  if (!hasAnyModalities || input.has("text") || output.has("text")) {
+    badges.push({ key: "text", label: "Text", tone: "text" });
+  }
+  if (input.has("image") || output.has("image") || input.has("vision") || output.has("vision")) {
+    badges.push({ key: "vision", label: "Vision", tone: "vision" });
+  }
+  if (input.has("audio") || output.has("audio")) {
+    badges.push({ key: "audio", label: "Audio", tone: "audio" });
+  }
+
+  const ctx = formatContextLengthBadge(row.context_length);
+  if (ctx) badges.push({ key: "context", label: ctx, tone: "context" });
+  return badges;
 }
 
 /** Chat model ids for one catalog provider (``owned_by`` / ``catalog_owned_by``). */

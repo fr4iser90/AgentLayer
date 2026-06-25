@@ -6,11 +6,14 @@ import {
   embeddingModelOptions,
   formatEmbeddingStatusHint,
   type EmbeddingCatalogHealth,
+  type ModelRow,
 } from "../../../lib/modelCatalog";
 import {
+  type AdminModelCatalogPayload,
   detailMessage,
   type ExternalLlmEndpointUI,
   type InterfaceHints,
+  type ModelCatalogPref,
   type OperatorPublic,
 } from "./operatorSettingsTypes";
 
@@ -175,9 +178,15 @@ function useOperatorSettingsState() {
   const [extLlmModelIds, setExtLlmModelIds] = useState<string[]>([]);
   const [extLlmModelsLoading, setExtLlmModelsLoading] = useState(false);
   const [extLlmModelsHint, setExtLlmModelsHint] = useState<string | null>(null);
+  const [modelCatalogRows, setModelCatalogRows] = useState<ModelRow[]>([]);
+  const [modelCatalogPrefs, setModelCatalogPrefs] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const baseUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/v1`;
+
+  const modelPrefKey = useCallback((providerId: string, modelId: string) => {
+    return `${providerId.trim().toLowerCase()}:${modelId.trim()}`;
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -188,7 +197,7 @@ function useOperatorSettingsState() {
         apiFetch("/v1/admin/operator-settings", auth),
         apiFetch("/v1/admin/external-llm/endpoints", auth),
         apiFetch("/v1/admin/users", auth),
-        fetch("/v1/models"),
+        apiFetch("/v1/admin/model-catalog", auth),
       ]);
       const iData = (await iRes.json()) as InterfaceHints | { detail?: unknown };
       if (!iRes.ok) {
@@ -437,13 +446,34 @@ function useOperatorSettingsState() {
       );
       setRagEmbeddingModel((op.rag_embedding_model ?? "").trim());
       try {
-        const modelsJson = (await modelsRes.json()) as { agentlayer?: { embedding?: EmbeddingCatalogHealth } };
+        const modelsJson = (await modelsRes.json()) as AdminModelCatalogPayload & {
+          agentlayer?: { embedding?: EmbeddingCatalogHealth };
+        };
         const emb = modelsJson.agentlayer?.embedding;
         setRagEmbeddingModelOptions(embeddingModelOptions(emb));
         setRagEmbeddingStatusHint(formatEmbeddingStatusHint(emb));
+        const rows = Array.isArray(modelsJson.data) ? modelsJson.data : [];
+        setModelCatalogRows(rows);
+        const prefMap: Record<string, boolean> = {};
+        for (const row of rows) {
+          const providerId = (row.owned_by ?? "").trim().toLowerCase();
+          if (providerId && row.id.trim()) {
+            prefMap[modelPrefKey(providerId, row.id)] = true;
+          }
+        }
+        for (const pref of modelsJson.prefs ?? []) {
+          const providerId = (pref.provider_id ?? "").trim().toLowerCase();
+          const modelId = (pref.model_id ?? "").trim();
+          if (providerId && modelId) {
+            prefMap[modelPrefKey(providerId, modelId)] = pref.visible_in_chat !== false;
+          }
+        }
+        setModelCatalogPrefs(prefMap);
       } catch {
         setRagEmbeddingModelOptions([]);
         setRagEmbeddingStatusHint(null);
+        setModelCatalogRows([]);
+        setModelCatalogPrefs({});
       }
       setRagEmbeddingDim(
         op.rag_embedding_dim != null && Number.isFinite(op.rag_embedding_dim) ? String(op.rag_embedding_dim) : ""
@@ -587,7 +617,7 @@ function useOperatorSettingsState() {
     } finally {
       setLoading(false);
     }
-  }, [auth]);
+  }, [auth, modelPrefKey]);
 
   const loadExternalModels = useCallback(async () => {
     setExtLlmModelsHint(null);
@@ -968,6 +998,34 @@ function useOperatorSettingsState() {
         });
         return;
       }
+      const prefPayload: ModelCatalogPref[] = modelCatalogRows
+        .map((row, idx) => {
+          const providerId = (row.owned_by ?? "").trim().toLowerCase();
+          const modelId = row.id.trim();
+          if (!providerId || !modelId) return null;
+          return {
+            provider_id: providerId,
+            model_id: modelId,
+            visible_in_chat: modelCatalogPrefs[modelPrefKey(providerId, modelId)] !== false,
+            profile_tags: [],
+            sort_order: idx,
+          };
+        })
+        .filter((x): x is ModelCatalogPref => x !== null);
+      const prefRes = await apiFetch("/v1/admin/model-catalog/prefs", auth, {
+        method: "PUT",
+        body: JSON.stringify({ prefs: prefPayload }),
+      });
+      const prefData = await prefRes.json();
+      if (!prefRes.ok) {
+        setSaveMsg({
+          ok: false,
+          text: t("admin:operatorSaveModelCatalogPrefsPartial", {
+            detail: detailMessage(prefData),
+          }),
+        });
+        return;
+      }
       setDiscordToken("");
       setTelegramToken("");
       await load();
@@ -1262,6 +1320,10 @@ function useOperatorSettingsState() {
     extLlmModelIds,
     extLlmModelsLoading,
     extLlmModelsHint,
+    modelCatalogRows,
+    modelCatalogPrefs,
+    setModelCatalogPrefs,
+    modelPrefKey,
     load,
     save,
     loadExternalModels,

@@ -2500,6 +2500,86 @@ def external_llm_endpoints_enabled_ordered() -> list[dict[str, Any]]:
     return [r for r in external_llm_endpoints_list_all() if r.get("enabled")]
 
 
+def model_catalog_prefs_list_all() -> list[dict[str, Any]]:
+    """Admin model catalog preferences; missing rows mean visible defaults."""
+    with pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                """
+                SELECT provider_id, model_id, visible_in_chat, profile_tags, sort_order, updated_at
+                FROM operator_model_catalog_prefs
+                ORDER BY provider_id ASC, sort_order ASC, model_id ASC
+                """
+            )
+            rows = cur.fetchall()
+        conn.commit()
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        d = dict(r)
+        d["visible_in_chat"] = bool(d.get("visible_in_chat", True))
+        d["sort_order"] = int(d.get("sort_order") or 0)
+        tags = d.get("profile_tags")
+        d["profile_tags"] = tags if isinstance(tags, list) else []
+        v = d.get("updated_at")
+        if v is not None and hasattr(v, "isoformat"):
+            d["updated_at"] = v.isoformat()
+        out.append(d)
+    return out
+
+
+def model_catalog_visible_index() -> dict[tuple[str, str], bool]:
+    """Rows explicitly hidden from chat are ``False``; absent rows are visible by default."""
+    out: dict[tuple[str, str], bool] = {}
+    for r in model_catalog_prefs_list_all():
+        provider_id = str(r.get("provider_id") or "").strip()
+        model_id = str(r.get("model_id") or "").strip()
+        if provider_id and model_id:
+            out[(provider_id, model_id)] = bool(r.get("visible_in_chat", True))
+    return out
+
+
+def model_catalog_prefs_sync(rows: list[dict[str, Any]]) -> None:
+    """
+    Upsert admin model catalog preferences. Does not delete omitted rows; the UI can send
+    only rows it touched, and stale prefs are harmless until the model id reappears.
+    """
+    with pool().connection() as conn:
+        with conn.cursor() as cur:
+            for raw in rows:
+                provider_id = str(raw.get("provider_id") or "").strip().lower()
+                model_id = str(raw.get("model_id") or "").strip()
+                if not provider_id or not model_id:
+                    continue
+                if not re.match(r"^[a-z0-9_-]{1,64}\Z", provider_id):
+                    raise ValueError(f"Invalid provider_id {provider_id!r}")
+                visible = bool(raw.get("visible_in_chat", True))
+                sort_order_raw = raw.get("sort_order")
+                try:
+                    sort_order = int(sort_order_raw if sort_order_raw is not None else 0)
+                except (TypeError, ValueError):
+                    sort_order = 0
+                tags_raw = raw.get("profile_tags")
+                tags = [
+                    str(x).strip().lower()
+                    for x in (tags_raw if isinstance(tags_raw, list) else [])
+                    if str(x).strip().lower() in {"default", "vlm", "agent", "coding"}
+                ]
+                cur.execute(
+                    """
+                    INSERT INTO operator_model_catalog_prefs (
+                      provider_id, model_id, visible_in_chat, profile_tags, sort_order, updated_at
+                    ) VALUES (%s, %s, %s, %s, %s, now())
+                    ON CONFLICT (provider_id, model_id) DO UPDATE SET
+                      visible_in_chat = EXCLUDED.visible_in_chat,
+                      profile_tags = EXCLUDED.profile_tags,
+                      sort_order = EXCLUDED.sort_order,
+                      updated_at = now()
+                    """,
+                    (provider_id, model_id[:512], visible, Json(tags), sort_order),
+                )
+        conn.commit()
+
+
 def external_llm_endpoint_by_id(endpoint_id: int) -> dict[str, Any] | None:
     with pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:

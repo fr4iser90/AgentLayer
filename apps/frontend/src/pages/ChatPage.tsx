@@ -15,8 +15,6 @@ import {
   fetchModelCatalog,
   formatEmptyChatModelCatalogHint,
   formatModelCatalogHint,
-  catalogModelOptionUnreachableTitle,
-  isCatalogModelOptionDisabled,
   modelCatalogSelectValue,
   modelOptionLabel,
   normalizeCatalogRoutingToken,
@@ -74,6 +72,7 @@ import { useVoicePlayback } from "../features/voice/useVoicePlayback";
 import { useVoiceRealtime } from "../features/voice/useVoiceRealtime";
 import { useVoiceHandsFree } from "../features/voice/useVoiceHandsFree";
 import { VoiceHandsFreeBar } from "../features/voice/VoiceHandsFreeBar";
+import { ModelCatalogSelect } from "../features/chat/ModelCatalogSelect";
 
 /** Dashboard-linked thread: show whether other members see messages (shared) or only you (personal). */
 function DashboardChatVisibilityBadge({ thread }: { thread: Pick<ChatThread, "dashboardId" | "shared"> }) {
@@ -3165,36 +3164,21 @@ export function ChatPage() {
                 <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
                   {t("chat:modelLabel")}
                 </label>
-                <select
-                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100"
+                <ModelCatalogSelect
+                  rows={modelRows}
+                  agentlayer={modelCatalogAgentlayer}
                   value={modelSelectValue || defaultSelectValue}
-                  onChange={(e) => setModel(e.target.value)}
+                  onChange={setModel}
                   disabled={!modelsCatalogReady || modelRows.length === 0}
-                >
-                  {!modelsCatalogReady ? (
-                    <option value="">{t("chat:loadingModels")}</option>
-                  ) : modelRows.length === 0 ? (
-                    <option value="">
-                      {formatEmptyChatModelCatalogHint(modelCatalogAgentlayer) ??
-                        modelsCatalogHint ??
-                            t("setup:noChatModels")}
-                    </option>
-                  ) : (
-                    modelRows.map((row) => {
-                      const catalogDown = isCatalogModelOptionDisabled(row, modelCatalogAgentlayer);
-                      return (
-                        <option
-                          key={modelCatalogSelectValue(row)}
-                          value={modelCatalogSelectValue(row)}
-                          disabled={catalogDown}
-                          title={catalogDown ? catalogModelOptionUnreachableTitle(row, modelCatalogAgentlayer) : undefined}
-                        >
-                          {modelOptionLabel(row, modelCatalogAgentlayer)}
-                        </option>
-                      );
-                    })
-                  )}
-                </select>
+                  loading={!modelsCatalogReady}
+                  loadingLabel={t("chat:loadingModels")}
+                  ariaLabel={t("chat:modelLabel")}
+                  emptyLabel={
+                    formatEmptyChatModelCatalogHint(modelCatalogAgentlayer) ??
+                    modelsCatalogHint ??
+                    t("setup:noChatModels")
+                  }
+                />
                 {modelsCatalogReady && modelsCatalogHint ? (
                   <p className="mt-1 text-xs text-amber-300/90">{modelsCatalogHint}</p>
                 ) : null}

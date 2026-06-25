@@ -603,6 +603,24 @@ CREATE TABLE operator_external_llm_endpoints (
 CREATE INDEX idx_operator_external_llm_endpoints_sort
   ON operator_external_llm_endpoints (sort_order ASC, id ASC);
 
+CREATE TABLE operator_model_catalog_prefs (
+  provider_id VARCHAR(64) NOT NULL,
+  model_id TEXT NOT NULL,
+  visible_in_chat BOOLEAN NOT NULL DEFAULT true,
+  profile_tags JSONB NOT NULL DEFAULT '[]'::jsonb,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (provider_id, model_id),
+  CONSTRAINT operator_model_catalog_prefs_provider_id_check
+    CHECK (provider_id ~ '^[a-z0-9_-]{1,64}$')
+);
+
+CREATE INDEX idx_operator_model_catalog_prefs_visible
+  ON operator_model_catalog_prefs (provider_id, visible_in_chat, sort_order, model_id);
+
+COMMENT ON TABLE operator_model_catalog_prefs IS
+  'Admin preferences for model catalog rows. Missing rows are visible by default.';
+
 CREATE TABLE operator_provider_endpoints (
   id BIGSERIAL PRIMARY KEY,
   kind VARCHAR(32) NOT NULL,

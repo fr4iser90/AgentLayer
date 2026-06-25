@@ -8,6 +8,8 @@ import pytest
 
 from apps.backend.infrastructure.model_catalog_providers import (
     CatalogProviderSpec,
+    _filter_chat_visible_models,
+    _parse_models_payload,
     db_catalog_provider_id,
     merge_model_catalog_rows,
     route_chat_by_catalog_provider,
@@ -81,3 +83,46 @@ def test_merge_same_id_different_providers() -> None:
     b = [{"id": "m", "owned_by": "provider_2"}]
     out = merge_model_catalog_rows(a, b)
     assert len(out) == 2
+
+
+def test_parse_models_payload_keeps_modalities_and_context() -> None:
+    rows = _parse_models_payload(
+        {
+            "data": [
+                {
+                    "id": "llava.gguf",
+                    "architecture": {
+                        "input_modalities": ["text", "image"],
+                        "output_modalities": ["text"],
+                    },
+                    "meta": {"n_ctx": 131072},
+                }
+            ]
+        },
+        "provider_1",
+    )
+
+    assert rows == [
+        {
+            "id": "llava.gguf",
+            "object": "model",
+            "owned_by": "provider_1",
+            "context_length": 131072,
+            "capabilities": {
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+            },
+        }
+    ]
+
+
+def test_filter_chat_visible_models_hides_explicit_prefs() -> None:
+    rows = [
+        {"id": "visible.gguf", "owned_by": "provider_1"},
+        {"id": "hidden.gguf", "owned_by": "provider_1"},
+    ]
+    with patch(
+        "apps.backend.infrastructure.db.db.model_catalog_visible_index",
+        return_value={("provider_1", "hidden.gguf"): False},
+    ):
+        assert _filter_chat_visible_models(rows) == [{"id": "visible.gguf", "owned_by": "provider_1"}]

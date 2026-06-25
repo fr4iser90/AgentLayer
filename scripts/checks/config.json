@@ -1,0 +1,165 @@
+{
+  "profiles": {
+    "fast": ["ddd_layers", "frontend_i18n"],
+    "precommit": ["ddd_layers", "backend_unit", "frontend_i18n", "node_cve", "python_cve"],
+    "security": ["node_cve_full", "python_cve"],
+    "quality": ["backend_unit", "frontend_i18n", "bandit"],
+    "ci": ["ddd_layers_all", "backend_unit", "frontend_i18n", "node_cve_full", "python_cve", "bandit"]
+  },
+  "checks": {
+    "ddd_layers": {
+      "module": "ddd_layers",
+      "scope": "staged",
+      "include": ["apps/backend"],
+      "ignore": [
+        "apps/backend/infrastructure/db/migrations/**"
+      ],
+      "rules": [
+        {
+          "name": "domain",
+          "path": "apps/backend/domain",
+          "forbidden_imports": [
+            "apps.backend.api",
+            "apps.backend.dashboard",
+            "apps.backend.infrastructure",
+            "apps.backend.integrations",
+            "apps.backend.media"
+          ]
+        }
+      ]
+    },
+    "ddd_layers_all": {
+      "module": "ddd_layers",
+      "scope": "all",
+      "include": ["apps/backend"],
+      "ignore": [
+        "apps/backend/infrastructure/db/migrations/**"
+      ],
+      "rules": [
+        {
+          "name": "domain",
+          "path": "apps/backend/domain",
+          "forbidden_imports": [
+            "apps.backend.api",
+            "apps.backend.dashboard",
+            "apps.backend.infrastructure",
+            "apps.backend.integrations",
+            "apps.backend.media"
+          ]
+        }
+      ]
+    },
+    "backend_unit": {
+      "module": "command_check",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "tests/unit",
+        "tests/benchmarks",
+        "-m",
+        "not e2e and not benchmark",
+        "-q",
+        "--tb=short"
+      ],
+      "env": {
+        "PYTHONPATH": "."
+      }
+    },
+    "frontend_i18n": {
+      "module": "command_check",
+      "kind": "frontend_i18n",
+      "cwd": "apps/frontend"
+    },
+    "node_cve": {
+      "module": "command_check",
+      "provider_env": "CVE_PROVIDER",
+      "default_provider": "local",
+      "providers": {
+        "local": {
+          "cwd": "apps/frontend",
+          "required_tool": "npm",
+          "nix_shell_command": "cd apps/frontend && npm audit --omit=dev --audit-level=high",
+          "command": ["npm", "audit", "--omit=dev", "--audit-level=high"]
+        },
+        "osv": {
+          "required_tool": "osv-scanner",
+          "command": ["osv-scanner", "--lockfile=apps/frontend/package-lock.json"]
+        },
+        "snyk": {
+          "required_tool": "snyk",
+          "command": ["snyk", "test", "apps/frontend"]
+        }
+      }
+    },
+    "node_cve_full": {
+      "module": "command_check",
+      "provider_env": "CVE_PROVIDER",
+      "default_provider": "local",
+      "providers": {
+        "local": {
+          "cwd": "apps/frontend",
+          "required_tool": "npm",
+          "nix_shell_command": "cd apps/frontend && npm audit --audit-level=high",
+          "command": ["npm", "audit", "--audit-level=high"]
+        },
+        "osv": {
+          "required_tool": "osv-scanner",
+          "command": ["osv-scanner", "--lockfile=apps/frontend/package-lock.json"]
+        },
+        "snyk": {
+          "required_tool": "snyk",
+          "command": ["snyk", "test", "apps/frontend"]
+        }
+      }
+    },
+    "python_cve": {
+      "module": "command_check",
+      "provider_env": "CVE_PROVIDER",
+      "default_provider": "local",
+      "required": false,
+      "providers": {
+        "local": {
+          "required_python_module": "pip_audit",
+          "command": [
+            "python3",
+            "-m",
+            "pip_audit",
+            "-r",
+            "requirements.txt",
+            "-r",
+            "plugins/interfaces/discord/requirements.txt"
+          ]
+        },
+        "osv": {
+          "required_tool": "osv-scanner",
+          "command": ["osv-scanner", "requirements.txt", "plugins/interfaces/discord/requirements.txt"]
+        },
+        "snyk": {
+          "required_tool": "snyk",
+          "command": ["snyk", "test", "--file=requirements.txt"]
+        }
+      }
+    },
+    "bandit": {
+      "module": "command_check",
+      "provider_env": "QUALITY_PROVIDER",
+      "default_provider": "local",
+      "required": false,
+      "providers": {
+        "local": {
+          "required_python_module": "bandit",
+          "command": ["python3", "-m", "bandit", "-r", "apps/backend", "-c", "pyproject.toml"]
+        },
+        "semgrep": {
+          "required_tool": "semgrep",
+          "command": ["semgrep", "--config", "auto", "apps/backend"]
+        },
+        "sonar": {
+          "required_tool": "sonar-scanner",
+          "command": ["sonar-scanner"]
+        }
+      }
+    }
+  }
+}

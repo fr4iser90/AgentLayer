@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
@@ -11,6 +12,12 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from apps.backend.core.config import config
 from apps.backend.infrastructure import benchmark_runs_store
+from apps.backend.infrastructure import benchmark_tuning_store
+from apps.backend.infrastructure.benchmark_autotuner import (
+    create_tuning_session,
+    run_tuning_session,
+    tuning_presets,
+)
 from apps.backend.infrastructure.benchmark_stats import aggregate_benchmark_stats
 from apps.backend.infrastructure.benchmark_analysis import analyze_runs, compare_cohorts, list_cohorts, _cohort_label_from_run, _fingerprint_from_run
 from apps.backend.infrastructure.benchmark_review_service import run_review
@@ -63,6 +70,19 @@ class StartBenchmarkBody(BaseModel):
     prompt_variant: str = Field(default="canonical", min_length=1, max_length=32)
     cohort_label: str | None = Field(default=None, max_length=128)
     harness_overrides: list[dict[str, Any]] | None = None
+
+
+class StartBenchmarkTuneBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    profile: BenchmarkProfileInput
+    mode: str = Field(default="fast", max_length=32)
+    run_as_user_id: uuid.UUID | None = None
+    friend_user_id: uuid.UUID | None = None
+    reviewer_mode: str = Field(default="off", max_length=32)
+    reviewer_provider_id: str | None = Field(default=None, max_length=128)
+    reviewer_model: str | None = Field(default=None, max_length=256)
+    max_patch_rounds: int = Field(default=0, ge=0, le=10)
 
 
 class ExperimentCreateBody(BaseModel):
@@ -368,6 +388,98 @@ async def post_start_benchmark(request: Request, body: StartBenchmarkBody) -> di
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"ok": True, "run": _public_run(row)}
+
+
+@router.get("/tune/presets")
+async def get_benchmark_tune_presets(request: Request) -> dict:
+    await require_admin(request)
+    return {"ok": True, "presets": tuning_presets()}
+
+
+@router.get("/tune/sessions")
+async def list_benchmark_tune_sessions(request: Request, limit: int = 50) -> dict:
+    admin = await require_admin(request)
+    tid = db.user_tenant_id(admin.id)
+    return {
+        "ok": True,
+        "sessions": benchmark_tuning_store.list_sessions(tenant_id=tid, limit=limit),
+    }
+
+
+@router.post("/tune/sessions")
+async def post_start_benchmark_tune(request: Request, body: StartBenchmarkTuneBody) -> dict:
+    admin = await require_admin(request)
+    tid = db.user_tenant_id(admin.id)
+    run_as_id = body.run_as_user_id or admin.id
+    _assert_tenant_user(run_as_id, tid)
+    if body.friend_user_id is not None:
+        friend = _assert_tenant_user(body.friend_user_id, tid)
+        if friend["id"] == str(run_as_id):
+            raise HTTPException(status_code=400, detail="friend user must differ from run-as user")
+    profile = body.profile.model_dump(exclude_none=True)
+    validation = agent_config_service.validate_patches(
+        [p for preset in tuning_presets() for p in (preset.get("patches") or [])]
+    )
+    if not validation.get("valid"):
+        raise HTTPException(status_code=400, detail=validation.get("errors") or "invalid tuning presets")
+    try:
+        session = create_tuning_session(
+            tenant_id=tid,
+            user_id=admin.id,
+            mode=body.mode,
+            profile=profile,
+            run_as_user_id=run_as_id,
+            friend_user_id=body.friend_user_id,
+            reviewer_mode=body.reviewer_mode,
+            reviewer_provider_id=body.reviewer_provider_id,
+            reviewer_model=body.reviewer_model,
+            max_patch_rounds=body.max_patch_rounds,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    asyncio.create_task(run_tuning_session(uuid.UUID(str(session["id"]))))
+    return {"ok": True, "session": session}
+
+
+@router.get("/tune/sessions/{session_id}")
+async def get_benchmark_tune_session(request: Request, session_id: uuid.UUID) -> dict:
+    admin = await require_admin(request)
+    tid = db.user_tenant_id(admin.id)
+    session = benchmark_tuning_store.get_session(session_id, tenant_id=tid)
+    if not session:
+        raise HTTPException(status_code=404, detail="benchmark tuning session not found")
+    return {"ok": True, "session": session}
+
+
+@router.post("/tune/sessions/{session_id}/promote")
+async def promote_benchmark_tune_session(request: Request, session_id: uuid.UUID) -> dict:
+    admin = await require_admin(request)
+    tid = db.user_tenant_id(admin.id)
+    session = benchmark_tuning_store.get_session(session_id, tenant_id=tid)
+    if not session:
+        raise HTTPException(status_code=404, detail="benchmark tuning session not found")
+    if session.get("status") != "completed":
+        raise HTTPException(status_code=409, detail="tuning session is not completed")
+    patches = session.get("best_patches_json")
+    if not isinstance(patches, list) or not patches:
+        raise HTTPException(status_code=409, detail="tuning session has no promotable patches")
+    result = agent_config_service.apply_model_patches(
+        tenant_id=tid,
+        catalog_owned_by=str(session.get("catalog_owned_by") or ""),
+        model=str(session.get("model") or ""),
+        patches=[dict(p) for p in patches if isinstance(p, dict)],
+        actor_type="user",
+        actor_user_id=admin.id,
+        label=f"autotune:{session.get('mode') or 'benchmark'}",
+        hypothesis=f"Promoted from benchmark tuning session {session_id}",
+    )
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail=result.get("validation") or "promotion failed")
+    benchmark_tuning_store.update_session(
+        session_id,
+        promoted_at=datetime.now(timezone.utc),
+    )
+    return {"ok": True, "result": result}
 
 
 @router.get("/analysis")

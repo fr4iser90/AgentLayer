@@ -90,6 +90,11 @@ def run_review(
     summary_parts = []
     if summary_hint:
         summary_parts.append(summary_hint.strip())
+    if mode == "llm":
+        model_label = reviewer_model or "unspecified reviewer model"
+        summary_parts.append(
+            f"LLM reviewer requested ({model_label}); deterministic benchmark analysis used as fallback."
+        )
     summary_parts.append(f"Reviewed {analysis.get('run_count', 0)} run(s); verdict={verdict}.")
     if patterns:
         top = sorted(patterns.items(), key=lambda kv: -kv[1])[:5]
@@ -103,6 +108,8 @@ def run_review(
         "by_scenario_patterns": by_scenario,
         "fingerprint": fingerprint,
         "mode": mode,
+        "reviewer_model": reviewer_model,
+        "llm_review_status": "fallback_deterministic" if mode == "llm" else None,
     }
     input_payload = {
         "experiment_id": str(experiment_id) if experiment_id else None,

@@ -1,6 +1,10 @@
 import { useOperatorSettings } from "../../../features/admin/operatorSettings/OperatorSettingsProvider";
 import { useTranslation } from "react-i18next";
 import { getLlmPreset, LLM_PRESETS, type LlmPresetId } from "../../../setup/llmPresets";
+import {
+  modelCapabilityBadges,
+  providerDisplayLabel,
+} from "../../../lib/modelCatalog";
 
 export function AdminInterfacesLlmSection() {
   const { t } = useTranslation(["admin", "setup"]);
@@ -299,6 +303,66 @@ export function AdminInterfacesLlmSection() {
             {s.extLlmEndpoints.length === 0 ? (
               <p className="mt-4 text-xs text-amber-300/90">{t("admin:ifLlmNoEndpoints")}</p>
             ) : null}
+          </section>
+
+          <section className="mt-6 rounded-xl border border-surface-border bg-surface-raised p-5">
+            <h2 className="text-sm font-medium text-white">{t("admin:ifLlmChatVisibilityTitle")}</h2>
+            <p className="mt-2 text-xs text-surface-muted">{t("admin:ifLlmChatVisibilityIntro")}</p>
+            {s.modelCatalogRows.length === 0 ? (
+              <p className="mt-4 text-xs text-amber-300/90">{t("admin:ifLlmChatVisibilityEmpty")}</p>
+            ) : (
+              <div className="mt-4 max-h-96 space-y-2 overflow-auto rounded-lg border border-white/10 bg-black/15 p-2">
+                {s.modelCatalogRows.map((row) => {
+                  const providerId = (row.owned_by ?? "").trim().toLowerCase();
+                  const modelId = row.id.trim();
+                  const key = s.modelPrefKey(providerId, modelId);
+                  const visible = s.modelCatalogPrefs[key] !== false;
+                  const provider = providerDisplayLabel(providerId, null);
+                  return (
+                    <label
+                      key={key}
+                      className="flex cursor-pointer items-start gap-3 rounded-lg border border-white/5 bg-black/20 px-3 py-2 hover:bg-white/[0.04]"
+                    >
+                      <input
+                        type="checkbox"
+                        className="mt-1 rounded border-surface-border bg-black/40 text-sky-500"
+                        checked={visible}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          s.setModelCatalogPrefs((prev) => ({ ...prev, [key]: checked }));
+                        }}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-mono text-xs text-neutral-100">{modelId}</span>
+                        <span className="block truncate text-[10px] text-surface-muted">{provider}</span>
+                      </span>
+                      <span className="flex max-w-[42%] shrink-0 flex-wrap justify-end gap-1 pt-0.5">
+                        {modelCapabilityBadges(row).map((badge) => (
+                          <span
+                            key={badge.key}
+                            className="inline-flex rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 text-[9px] font-medium text-neutral-200"
+                          >
+                            {badge.label}
+                          </span>
+                        ))}
+                        <span
+                          className={`inline-flex rounded-full border px-1.5 py-0.5 text-[9px] font-medium ${
+                            visible
+                              ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
+                              : "border-rose-400/30 bg-rose-500/10 text-rose-100"
+                          }`}
+                        >
+                          {visible
+                            ? t("admin:ifLlmChatVisibilityShown")
+                            : t("admin:ifLlmChatVisibilityHidden")}
+                        </span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+            <p className="mt-2 text-xs text-surface-muted">{t("admin:ifLlmChatVisibilitySaveHint")}</p>
           </section>
 
           <section className="mt-6 rounded-xl border border-surface-border bg-surface-raised p-5">

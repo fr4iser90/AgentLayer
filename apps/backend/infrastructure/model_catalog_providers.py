@@ -348,6 +348,43 @@ def fetch_models_for_provider(
     return _parse_models_payload(data, spec.provider_id), meta
 
 
+def _string_list(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    out: list[str] = []
+    seen: set[str] = set()
+    for item in value:
+        if not isinstance(item, str):
+            continue
+        s = item.strip().lower()
+        if not s or s in seen:
+            continue
+        out.append(s[:32])
+        seen.add(s)
+    return out
+
+
+def _model_capabilities_from_item(item: dict[str, Any]) -> dict[str, Any]:
+    arch = item.get("architecture")
+    input_modalities: list[str] = []
+    output_modalities: list[str] = []
+    if isinstance(arch, dict):
+        input_modalities = _string_list(arch.get("input_modalities"))
+        output_modalities = _string_list(arch.get("output_modalities"))
+
+    # OpenAI-compatible chat catalogs rarely expose modality metadata. For chat model
+    # rows, text is the conservative default; richer servers can override via architecture.
+    if not input_modalities:
+        input_modalities = ["text"]
+    if not output_modalities:
+        output_modalities = ["text"]
+
+    return {
+        "input_modalities": input_modalities,
+        "output_modalities": output_modalities,
+    }
+
+
 def _parse_models_payload(data: dict[str, Any], owned_by: str) -> list[dict[str, Any]]:
     from apps.backend.infrastructure.context_budget import extract_context_length_from_model_item
 
@@ -366,11 +403,19 @@ def _parse_models_payload(data: dict[str, Any], owned_by: str) -> list[dict[str,
         ctx = extract_context_length_from_model_item(item)
         if ctx:
             row["context_length"] = ctx
+        row["capabilities"] = _model_capabilities_from_item(item)
         out.append(row)
     return out
 
 
 def fetch_full_model_catalog() -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    return fetch_full_model_catalog_for_scope(include_hidden=False)
+
+
+def fetch_full_model_catalog_for_scope(
+    *,
+    include_hidden: bool = False,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     agentlayer: dict[str, Any] = {}
     lists: list[list[dict[str, Any]]] = []
     for spec in list_provider_specs():
@@ -389,7 +434,25 @@ def fetch_full_model_catalog() -> tuple[list[dict[str, Any]], dict[str, Any]]:
             "reachable": False,
             "detail": "embedding_health_probe_failed",
         }
-    return merged, agentlayer
+    if include_hidden:
+        return merged, agentlayer
+    return _filter_chat_visible_models(merged), agentlayer
+
+
+def _filter_chat_visible_models(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    try:
+        visible = db.model_catalog_visible_index()
+    except RuntimeError:
+        return rows
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        provider_id = normalize_catalog_provider_id(row.get("owned_by"))
+        model_id = str(row.get("id") or "").strip()
+        if not provider_id or not model_id:
+            continue
+        if visible.get((provider_id, model_id), True):
+            out.append(row)
+    return out
 
 
 def build_model_provider_index() -> dict[str, list[str]]:

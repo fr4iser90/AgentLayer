@@ -661,6 +661,22 @@ class ExternalLlmEndpointsPutBody(BaseModel):
     endpoints: list[ExternalLlmEndpointItem] = Field(default_factory=list)
 
 
+class ModelCatalogPrefItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    provider_id: str = Field(min_length=1, max_length=64)
+    model_id: str = Field(min_length=1, max_length=512)
+    visible_in_chat: bool = True
+    profile_tags: list[str] = Field(default_factory=list)
+    sort_order: int = 0
+
+
+class ModelCatalogPrefsPutBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    prefs: list[ModelCatalogPrefItem] = Field(default_factory=list)
+
+
 class OperatorProviderEndpointItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -753,6 +769,35 @@ async def admin_put_external_llm_endpoints(request: Request, body: ExternalLlmEn
 
     invalidate_model_catalog_cache()
     return await admin_get_external_llm_endpoints(request)
+
+
+@app.get("/v1/admin/model-catalog")
+async def admin_get_model_catalog(request: Request):
+    """Full model catalog plus admin visibility preferences."""
+    await require_admin(request)
+    from apps.backend.infrastructure.model_catalog_providers import fetch_full_model_catalog_for_scope
+
+    rows, agentlayer = await asyncio.to_thread(
+        fetch_full_model_catalog_for_scope,
+        include_hidden=True,
+    )
+    prefs = await asyncio.to_thread(db.model_catalog_prefs_list_all)
+    return {"object": "list", "data": rows, "agentlayer": agentlayer, "prefs": prefs}
+
+
+@app.put("/v1/admin/model-catalog/prefs")
+async def admin_put_model_catalog_prefs(request: Request, body: ModelCatalogPrefsPutBody):
+    """Upsert model catalog preferences such as chat visibility."""
+    await require_admin(request)
+    raw = [p.model_dump() for p in body.prefs]
+    try:
+        await asyncio.to_thread(db.model_catalog_prefs_sync, raw)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    from apps.backend.infrastructure.model_catalog_routing import invalidate_model_catalog_cache
+
+    invalidate_model_catalog_cache()
+    return await admin_get_model_catalog(request)
 
 
 @app.get("/v1/admin/provider-endpoints/{kind}")

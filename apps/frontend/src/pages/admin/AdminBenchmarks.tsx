@@ -16,17 +16,21 @@ import {
   bulkDeleteBenchmarkRuns,
   cleanupBenchmarkResources,
   startBenchmarkRun,
+  fetchBenchmarkTuningSessions,
+  promoteBenchmarkTuningSession,
+  submitBenchmarkReview,
+  startBenchmarkTuningSession,
   userOptionLabel,
   type AdminUserRow,
   type BenchmarkFixture,
   type BenchmarkInFlight,
   type BenchmarkLlmProvider,
-  type BenchmarkProfileInput,
   type BenchmarkRun,
   type BenchmarkRunReadiness,
   type BenchmarkScenario,
   type BenchmarkScenarioResult,
   type BenchmarkSuite,
+  type BenchmarkTuningSession,
   benchmarkScenarioPrompt,
 } from "../../features/admin/benchmarks/benchmarksApi";
 import { CopyScenarioDetailsButton } from "../../features/admin/benchmarks/CopyScenarioDetailsButton";
@@ -70,6 +74,13 @@ import {
   modelsByProviderFromRecord,
 } from "../../features/admin/benchmarks/benchProfileSelection";
 import { formatBenchmarkProviderModel } from "../../features/admin/benchmarks/benchDisplayUtils";
+
+const benchCheckboxClass =
+  "h-4 w-4 shrink-0 rounded border-2 border-sky-400/70 bg-black/60 text-sky-500 accent-sky-500 focus:ring-2 focus:ring-sky-400/70 focus:ring-offset-0";
+const benchCheckboxLargeClass =
+  "h-5 w-5 shrink-0 rounded border-2 border-sky-400/80 bg-black/60 text-sky-500 accent-sky-500 focus:ring-2 focus:ring-sky-400/80 focus:ring-offset-0";
+const benchRadioClass =
+  "h-4 w-4 shrink-0 border-2 border-violet-400/80 bg-black/60 text-violet-500 accent-violet-500 focus:ring-2 focus:ring-violet-400/80 focus:ring-offset-0";
 
 function resolveInitialProviderModel(
   p: BenchmarkLlmProvider,
@@ -198,6 +209,19 @@ function formatInFlightPromptTokens(inFlight: BenchmarkInFlight): string | null 
     return `${ppt}/${win}`;
   }
   return String(ppt);
+}
+
+function formatTunePct(value: number | null | undefined): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+  return `${Math.round(value * 100)}%`;
+}
+
+function formatTuneClusters(clusters: Record<string, number> | undefined): string {
+  if (!clusters || Object.keys(clusters).length === 0) return "ok";
+  return Object.entries(clusters)
+    .filter(([, n]) => n > 0)
+    .map(([k, n]) => `${k}:${n}`)
+    .join(", ") || "ok";
 }
 
 function formatInFlightToolsColumn(
@@ -810,6 +834,7 @@ const _initialBenchSuite = _savedBenchPrefs?.suite?.trim() || "smoke";
 
 export function AdminBenchmarks() {
   const { t } = useTranslation(["admin"]);
+  const tLoose = t as (key: string, options?: Record<string, unknown>) => string;
   const auth = useAuth();
   const { user: authUser } = auth;
   const [searchParams] = useSearchParams();
@@ -846,6 +871,7 @@ export function AdminBenchmarks() {
   const [catalogRows, setCatalogRows] = useState<ModelRow[]>([]);
   const [catalogAgentlayer, setCatalogAgentlayer] = useState<ModelCatalogAgentlayer | null>(null);
   const [runs, setRuns] = useState<BenchmarkRun[]>([]);
+  const [tuningSessions, setTuningSessions] = useState<BenchmarkTuningSession[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(runFromUrl);
   const [detail, setDetail] = useState<BenchmarkRun | null>(null);
   const [expandedResultKey, setExpandedResultKey] = useState<string | null>(null);
@@ -853,6 +879,16 @@ export function AdminBenchmarks() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
+  const [runMode, setRunMode] = useState<"manual" | "autotune">("manual");
+  const [tuningMode, setTuningMode] = useState("fast");
+  const [startingTune, setStartingTune] = useState(false);
+  const [promotingTuneId, setPromotingTuneId] = useState<string | null>(null);
+  const [reviewerProviderId, setReviewerProviderId] = useState("");
+  const [reviewerModel, setReviewerModel] = useState("");
+  const [reviewerMode, setReviewerMode] = useState<"off" | "patch_and_test">("off");
+  const [maxPatchRounds, setMaxPatchRounds] = useState("3");
+  const [reviewingTuneId, setReviewingTuneId] = useState<string | null>(null);
+  const [reviewNotice, setReviewNotice] = useState<string | null>(null);
   const [cancellingRunId, setCancellingRunId] = useState<string | null>(null);
   const [scenarioTimeoutSec, setScenarioTimeoutSec] = useState(
     _savedBenchPrefs?.scenarioTimeoutSec ?? ""
@@ -911,6 +947,23 @@ export function AdminBenchmarks() {
     if (!selectedProfileCount || !selectedScenarioIds.size) return 0;
     return selectedProfileCount * selectedScenarioIds.size;
   }, [selectedProfileCount, selectedScenarioIds.size]);
+
+  const tuningEstimatedRunCount = useMemo(() => {
+    const suites = tuningMode === "deep" ? 3 : tuningMode === "standard" ? 2 : 1;
+    const presets = tuningMode === "deep" ? 5 : tuningMode === "standard" ? 4 : 3;
+    return Math.max(1, selectedProfileCount) * suites * presets;
+  }, [selectedProfileCount, tuningMode]);
+
+  const activeEstimatedRunCount = runMode === "autotune" ? tuningEstimatedRunCount : estimatedRunCount;
+  const benchmarkRunActive = useMemo(
+    () => runs.some((r) => r.status === "queued" || r.status === "running"),
+    [runs]
+  );
+  const canStartRun =
+    Boolean(runAsUserId) &&
+    selectedProfileCount > 0 &&
+    (runMode === "autotune" || selectedScenarioIds.size > 0);
+  const actionBusy = (runMode === "autotune" ? startingTune : starting) || benchmarkRunActive;
 
   const showFriendPicker = autoFixtures.has("friend_pair");
 
@@ -1024,15 +1077,17 @@ export function AdminBenchmarks() {
     setLoading(true);
     setError(null);
     try {
-      const [s, providers, catalog, users, modelCatalog] = await Promise.all([
+      const [s, providers, catalog, users, modelCatalog, tuneSessions] = await Promise.all([
         fetchBenchmarkSuites(auth),
         fetchBenchmarkLlmProviders(auth),
         fetchBenchmarkCatalog(auth),
         fetchAdminUsers(auth),
         fetchModelCatalog(),
+        fetchBenchmarkTuningSessions(auth, 20),
       ]);
       setCatalogRows(modelCatalog.rows);
       setCatalogAgentlayer(modelCatalog.agentlayer);
+      setTuningSessions(tuneSessions);
       setSuites(s);
       setCatalogFixtures(catalog.fixtures);
       if (catalog.available_locales?.length) {
@@ -1199,6 +1254,14 @@ export function AdminBenchmarks() {
     }
   }, [auth, t]);
 
+  const loadTuningSessions = useCallback(async () => {
+    try {
+      setTuningSessions(await fetchBenchmarkTuningSessions(auth, 20));
+    } catch {
+      /* non-critical: normal benchmark history remains usable */
+    }
+  }, [auth]);
+
   const refreshBulkDeletePreview = useCallback(async () => {
     setBulkDeletePreviewLoading(true);
     try {
@@ -1270,10 +1333,45 @@ export function AdminBenchmarks() {
     [runs, bulkDeleteSuite, bulkDeleteOlderThanDays]
   );
 
-  const pollRunning = useMemo(
-    () => runs.some((r) => r.status === "queued" || r.status === "running"),
-    [runs]
+  const pollRunning = benchmarkRunActive;
+
+  const pollTuning = useMemo(
+    () => tuningSessions.some((s) => s.status === "queued" || s.status === "running"),
+    [tuningSessions]
   );
+
+  const activeReviewerProviders = useMemo(
+    () => benchProviders.filter((p) => selectedProviderIds.has(p.catalog_owned_by)),
+    [benchProviders, selectedProviderIds]
+  );
+  const reviewerProvider =
+    activeReviewerProviders.find((p) => p.catalog_owned_by === reviewerProviderId) ??
+    activeReviewerProviders[0] ??
+    null;
+  const effectiveReviewerProviderId = reviewerProvider?.catalog_owned_by ?? "";
+  const effectiveReviewerModel =
+    reviewerModel.trim() ||
+    (reviewerProvider ? resolveInitialProviderModel(reviewerProvider, catalogRows, undefined) : "");
+  const reviewerModelLabel =
+    effectiveReviewerProviderId && effectiveReviewerModel
+      ? `${effectiveReviewerProviderId}:${effectiveReviewerModel}`
+      : "";
+
+  useEffect(() => {
+    if (!activeReviewerProviders.length) return;
+    if (
+      !reviewerProviderId ||
+      !activeReviewerProviders.some((p) => p.catalog_owned_by === reviewerProviderId)
+    ) {
+      setReviewerProviderId(activeReviewerProviders[0].catalog_owned_by);
+    }
+  }, [activeReviewerProviders, reviewerProviderId]);
+
+  useEffect(() => {
+    if (!reviewerProvider) return;
+    const resolved = resolveInitialProviderModel(reviewerProvider, catalogRows, reviewerModel || undefined);
+    if (resolved && !reviewerModel.trim()) setReviewerModel(resolved);
+  }, [catalogRows, reviewerModel, reviewerProvider]);
 
   const shouldPollDetail = useMemo(
     () =>
@@ -1299,6 +1397,15 @@ export function AdminBenchmarks() {
     }, 3000);
     return () => window.clearInterval(id);
   }, [shouldPollDetail, loadRuns, loadSelectedDetail]);
+
+  useEffect(() => {
+    if (!pollTuning) return;
+    const id = window.setInterval(() => {
+      void loadTuningSessions();
+      void loadRuns({ silent: true });
+    }, 4000);
+    return () => window.clearInterval(id);
+  }, [pollTuning, loadTuningSessions, loadRuns]);
 
   useEffect(() => {
     if (wasPollingRef.current && !shouldPollDetail && selectedId) {
@@ -1486,6 +1593,84 @@ export function AdminBenchmarks() {
     }
   };
 
+  const onStartAutotune = async () => {
+    setStartingTune(true);
+    setError(null);
+    try {
+      const profiles = buildProfilesFromSelection(
+        benchProviders,
+        selectedProviderIds,
+        modelsByProviderId
+      );
+      if (!profiles.length) {
+        setError(t("admin:benchNeedProfile"));
+        return;
+      }
+      const patchRounds = Math.max(0, Math.min(Number.parseInt(maxPatchRounds, 10) || 0, 10));
+      const guidedReviewerOn = reviewerMode === "patch_and_test";
+      for (const profile of profiles) {
+        await startBenchmarkTuningSession(auth, {
+          profile,
+          mode: tuningMode,
+          run_as_user_id: runAsUserId || undefined,
+          friend_user_id: showFriendPicker && friendUserId ? friendUserId : undefined,
+          reviewer_mode: guidedReviewerOn ? "patch_and_test" : "off",
+          reviewer_provider_id: guidedReviewerOn ? effectiveReviewerProviderId || undefined : undefined,
+          reviewer_model: guidedReviewerOn ? effectiveReviewerModel || undefined : undefined,
+          max_patch_rounds: guidedReviewerOn ? patchRounds : 0,
+        });
+      }
+      await loadTuningSessions();
+      await loadRuns();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("admin:benchTuneStartFailed"));
+    } finally {
+      setStartingTune(false);
+    }
+  };
+
+  const onPromoteTune = async (session: BenchmarkTuningSession) => {
+    setPromotingTuneId(session.id);
+    setError(null);
+    try {
+      await promoteBenchmarkTuningSession(auth, session.id);
+      await loadTuningSessions();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("admin:benchTunePromoteFailed"));
+    } finally {
+      setPromotingTuneId(null);
+    }
+  };
+
+  const onReviewTune = async (session: BenchmarkTuningSession) => {
+    const attempts = Array.isArray(session.attempts_json) ? session.attempts_json : [];
+    const runIds = Array.from(
+      new Set(
+        attempts.flatMap((attempt) =>
+          (attempt.runs ?? []).map((run) => run.run_id).filter((id): id is string => Boolean(id))
+        )
+      )
+    );
+    if (!runIds.length || !reviewerModelLabel) return;
+
+    setReviewingTuneId(session.id);
+    setReviewNotice(null);
+    setError(null);
+    try {
+      await submitBenchmarkReview(auth, {
+        run_ids: runIds,
+        mode: "llm",
+        reviewer_model: reviewerModelLabel,
+        summary_hint: `Auto-tune review for ${session.catalog_owned_by}:${session.model}`,
+      });
+      setReviewNotice(tLoose("admin:benchTuneReviewSubmitted", { reviewer: reviewerModelLabel }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : tLoose("admin:benchTuneReviewFailed"));
+    } finally {
+      setReviewingTuneId(null);
+    }
+  };
+
   const requestDeleteRun = (run: BenchmarkRun) => {
     if (run.status === "queued" || run.status === "running") {
       setError(t("admin:benchDeleteRunActive"));
@@ -1630,6 +1815,39 @@ export function AdminBenchmarks() {
       {tab === "run" && !loading ? (
         <div className="min-h-0 flex-1 overflow-y-auto space-y-4">
           <section className="rounded-xl border border-surface-border bg-surface-raised/40 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-medium text-white">{t("admin:benchRunModeTitle")}</h2>
+                <p className="mt-1 text-xs text-surface-muted">{t("admin:benchRunModeHint")}</p>
+              </div>
+              <div className="inline-flex rounded-lg border border-white/10 bg-black/30 p-1">
+                <button
+                  type="button"
+                  onClick={() => setRunMode("manual")}
+                  className={`rounded-md px-3 py-1.5 text-xs font-medium ${
+                    runMode === "manual"
+                      ? "bg-sky-600 text-white"
+                      : "text-surface-muted hover:bg-white/5 hover:text-white"
+                  }`}
+                >
+                  {t("admin:benchRunModeManual")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRunMode("autotune")}
+                  className={`rounded-md px-3 py-1.5 text-xs font-medium ${
+                    runMode === "autotune"
+                      ? "bg-violet-600 text-white"
+                      : "text-surface-muted hover:bg-white/5 hover:text-white"
+                  }`}
+                >
+                  {t("admin:benchRunModeAutotune")}
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-surface-border bg-surface-raised/40 p-4">
             <h2 className="text-sm font-medium text-white">{t("admin:benchRunIdentity")}</h2>
             <p className="mt-1 text-xs text-surface-muted">{t("admin:benchRunIdentityDesc")}</p>
             <label className="mt-3 block text-xs text-surface-muted">{t("admin:benchRunAs")}</label>
@@ -1748,12 +1966,12 @@ export function AdminBenchmarks() {
               {cleanupFeedback ? (
                 <p className="mt-2 text-xs text-emerald-300/90">{cleanupFeedback}</p>
               ) : null}
-              <label className="mt-3 flex cursor-pointer items-start gap-2 text-xs text-surface-muted">
+              <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-lg border border-white/10 bg-black/20 p-2 text-xs text-surface-muted hover:border-sky-400/40 hover:bg-sky-950/10">
                 <input
                   type="checkbox"
                   checked={retainWorkspaces}
                   onChange={(e) => setRetainWorkspaces(e.target.checked)}
-                  className="mt-0.5 rounded border-white/20 bg-black/30"
+                  className={`${benchCheckboxClass} mt-0.5`}
                 />
                 <span>
                   <span className="font-medium text-white/90">{t("admin:benchRetainWorkspaces")}</span>
@@ -1811,6 +2029,15 @@ export function AdminBenchmarks() {
                   );
                   const providerDetail =
                     catalogAgentlayer?.[p.catalog_owned_by]?.detail?.trim() ?? "";
+                  const reviewerOptions = catalogModels.length
+                    ? catalogModels
+                    : selectedModels.length
+                      ? selectedModels
+                      : [defaultProviderModel(p)].filter(Boolean);
+                  const isReviewerProvider = reviewerProviderId === p.catalog_owned_by;
+                  const reviewerValue = isReviewerProvider
+                    ? effectiveReviewerModel || reviewerOptions[0] || ""
+                    : reviewerOptions[0] || "";
                   return (
                     <div
                       key={p.catalog_owned_by}
@@ -1818,12 +2045,12 @@ export function AdminBenchmarks() {
                         checked ? "border-sky-500/30 bg-sky-950/20" : "border-white/10 bg-black/20"
                       }`}
                     >
-                      <label className="flex items-start gap-3">
+                      <label className="flex cursor-pointer items-start gap-3 rounded-md p-1 hover:bg-white/5">
                         <input
                           type="checkbox"
                           checked={checked}
                           onChange={() => toggleProvider(p.catalog_owned_by)}
-                          className="mt-1"
+                          className={`${benchCheckboxLargeClass} mt-0.5`}
                         />
                         <div className="min-w-0 flex-1 text-xs">
                           <div className="flex flex-wrap items-center gap-2">
@@ -1871,14 +2098,17 @@ export function AdminBenchmarks() {
                                 return (
                                   <label
                                     key={id}
-                                    className={`flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 ${
-                                      isOn ? "bg-sky-950/40" : "hover:bg-white/5"
+                                    className={`flex cursor-pointer items-center gap-3 rounded border px-2 py-1 ${
+                                      isOn
+                                        ? "border-sky-400/40 bg-sky-950/40 text-white"
+                                        : "border-transparent hover:border-white/10 hover:bg-white/5"
                                     }`}
                                   >
                                     <input
                                       type="checkbox"
                                       checked={isOn}
                                       onChange={() => toggleProviderModel(p.catalog_owned_by, id)}
+                                      className={benchCheckboxClass}
                                     />
                                     <span className="font-mono text-[11px] text-white">{id}</span>
                                   </label>
@@ -1933,6 +2163,62 @@ export function AdminBenchmarks() {
                               </p>
                             </div>
                           )}
+                          {runMode === "autotune" && reviewerMode === "patch_and_test" ? (
+                            <div
+                              className={`mt-3 rounded-lg border p-3 ${
+                                isReviewerProvider
+                                  ? "border-violet-500/35 bg-violet-950/20"
+                                  : "border-white/10 bg-black/20"
+                              }`}
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-3">
+                                <label className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-1 text-xs text-violet-100 hover:bg-violet-950/20">
+                                  <input
+                                    type="radio"
+                                    name="bench-tune-reviewer-provider"
+                                    checked={isReviewerProvider}
+                                    disabled={reviewerOptions.length === 0}
+                                    className={benchRadioClass}
+                                    onChange={() => {
+                                      setReviewerProviderId(p.catalog_owned_by);
+                                      setReviewerModel(
+                                        resolveInitialProviderModel(p, catalogRows, undefined) ||
+                                          reviewerOptions[0] ||
+                                          ""
+                                      );
+                                    }}
+                                  />
+                                  <span>{tLoose("admin:benchTuneReviewerUseProvider")}</span>
+                                </label>
+                                <span className="text-[10px] uppercase tracking-wide text-violet-200/70">
+                                  {tLoose("admin:benchTuneReviewerOptional")}
+                                </span>
+                              </div>
+                              <label className="mt-2 block text-[11px] text-surface-muted">
+                                {tLoose("admin:benchTuneReviewerModel")}
+                                <select
+                                  value={reviewerValue}
+                                  disabled={!isReviewerProvider || reviewerOptions.length === 0}
+                                  onChange={(e) => setReviewerModel(e.target.value)}
+                                  className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white disabled:opacity-50"
+                                >
+                                  {reviewerValue && !reviewerOptions.includes(reviewerValue) ? (
+                                    <option value={reviewerValue}>{reviewerValue}</option>
+                                  ) : null}
+                                  {reviewerOptions.map((model) => (
+                                    <option key={model} value={model}>
+                                      {model}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              {reviewerOptions.length === 0 ? (
+                                <p className="mt-2 text-[11px] text-amber-300">
+                                  {tLoose("admin:benchTuneReviewerNoModels")}
+                                </p>
+                              ) : null}
+                            </div>
+                          ) : null}
                         </div>
                       ) : null}
                     </div>
@@ -1949,6 +2235,277 @@ export function AdminBenchmarks() {
             )}
           </section>
 
+          {runMode === "autotune" ? (
+          <section className="rounded-xl border border-violet-500/25 bg-violet-950/10 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-medium text-white">{t("admin:benchTuneTitle")}</h2>
+                <p className="mt-1 text-xs text-surface-muted">{t("admin:benchTuneIntro")}</p>
+                <p className="mt-1 text-[11px] text-surface-muted">
+                  {selectedProfileCount > 1
+                    ? t("admin:benchTuneFirstProfileHint")
+                    : t("admin:benchTuneSingleProfileHint")}
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <label className="block text-xs text-surface-muted">
+                {tLoose("admin:benchTuneDepth")}
+                <select
+                  value={tuningMode}
+                  onChange={(e) => setTuningMode(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white"
+                >
+                  <option value="fast">{t("admin:benchTuneModeFast")}</option>
+                  <option value="standard">{t("admin:benchTuneModeStandard")}</option>
+                  <option value="deep">{t("admin:benchTuneModeDeep")}</option>
+                </select>
+              </label>
+              <label className="block text-xs text-surface-muted">
+                {tLoose("admin:benchTuneReviewerTitle")}
+                <select
+                  value={reviewerMode}
+                  onChange={(e) => setReviewerMode(e.target.value as "off" | "patch_and_test")}
+                  className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white"
+                >
+                  <option value="off">{tLoose("admin:benchTuneReviewerOff")}</option>
+                  <option value="patch_and_test">{tLoose("admin:benchTuneReviewerPatchAndTest")}</option>
+                </select>
+              </label>
+              <label className="block text-xs text-surface-muted">
+                {tLoose("admin:benchTuneMaxPatchRounds")}
+                <input
+                  type="number"
+                  min={1}
+                  max={10}
+                  disabled={reviewerMode !== "patch_and_test"}
+                  value={maxPatchRounds}
+                  onChange={(e) => setMaxPatchRounds(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white disabled:opacity-50"
+                />
+              </label>
+            </div>
+            <p className="mt-2 text-[11px] text-surface-muted">
+              {reviewerMode === "patch_and_test"
+                ? tLoose("admin:benchTuneReviewerSelectProviderHint")
+                : tLoose("admin:benchTuneReviewerPatchHint")}
+            </p>
+            {reviewNotice ? <p className="mt-3 text-[11px] text-emerald-300">{reviewNotice}</p> : null}
+            {tuningSessions.length ? (
+              <div className="mt-4 space-y-2">
+                {tuningSessions.slice(0, 5).map((session) => {
+                  const bestScore =
+                    typeof session.best_score === "number" ? session.best_score.toFixed(1) : "—";
+                  const bestPatches = session.best_patches_json ?? [];
+                  const attempts = Array.isArray(session.attempts_json) ? session.attempts_json : [];
+                  const baseline = attempts.find((a) => a.preset_id === "baseline");
+                  const bestAttempt =
+                    attempts.find((a) => a.best_run_id && a.best_run_id === session.best_run_id) ??
+                    [...attempts].sort((a, b) => (b.score ?? -Infinity) - (a.score ?? -Infinity))[0];
+                  const baselineScore =
+                    typeof baseline?.score === "number" ? baseline.score : null;
+                  const improvement =
+                    typeof session.best_score === "number" && typeof baselineScore === "number"
+                      ? session.best_score - baselineScore
+                      : null;
+                  const autoPromoted = Boolean(session.promoted_at);
+                  const canPromote =
+                    session.status === "completed" &&
+                    bestPatches.length > 0 &&
+                    !session.promoted_at &&
+                    (improvement ?? 0) > 0;
+                  const tuneRunIds = Array.from(
+                    new Set(
+                      attempts.flatMap((attempt) =>
+                        (attempt.runs ?? [])
+                          .map((run) => run.run_id)
+                          .filter((id): id is string => Boolean(id))
+                      )
+                    )
+                  );
+                  const canReview =
+                    session.status === "completed" && tuneRunIds.length > 0 && Boolean(reviewerModelLabel);
+                  return (
+                    <div
+                      key={session.id}
+                      className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded bg-violet-500/15 px-1.5 py-0.5 font-medium text-violet-100">
+                              {session.status}
+                            </span>
+                            <span className="font-mono text-neutral-100">
+                              {session.catalog_owned_by}:{session.model}
+                            </span>
+                            <span className="text-surface-muted">
+                              {t("admin:benchTuneModeLabel", { mode: session.mode })}
+                            </span>
+                            <span className="text-surface-muted">
+                              {t("admin:benchTuneScore", { score: bestScore })}
+                            </span>
+                            <span
+                              className={`rounded px-1.5 py-0.5 ${
+                                autoPromoted
+                                  ? "bg-emerald-500/15 text-emerald-100"
+                                  : "bg-white/10 text-surface-muted"
+                              }`}
+                            >
+                              {autoPromoted
+                                ? t("admin:benchTuneHarnessChanged")
+                                : t("admin:benchTuneHarnessUnchanged")}
+                            </span>
+                          </div>
+                          {bestAttempt ? (
+                            <p className="mt-1 text-[11px] text-surface-muted">
+                              {t("admin:benchTuneBestPreset", {
+                                preset: bestAttempt.label || bestAttempt.preset_id,
+                              })}{" "}
+                              · {t("admin:benchTuneResult", {
+                                passed: bestAttempt.passed ?? 0,
+                                total: bestAttempt.total ?? 0,
+                              })}{" "}
+                              · {t("admin:benchTuneBaseline", {
+                                passed: baseline?.passed ?? 0,
+                                total: baseline?.total ?? 0,
+                              })}{" "}
+                              · {t("admin:benchTuneImprovement", {
+                                delta:
+                                  typeof improvement === "number"
+                                    ? improvement.toFixed(1)
+                                    : "—",
+                              })}
+                            </p>
+                          ) : null}
+                          {bestPatches.length > 0 ? (
+                            <p className="mt-1 text-[11px] text-violet-100/90">
+                              {t("admin:benchTuneBestPatches", { count: bestPatches.length })}:{" "}
+                              {bestPatches.map((p) => p.knob_id).join(", ")}
+                            </p>
+                          ) : (
+                            <p className="mt-1 text-[11px] text-surface-muted">
+                              {t("admin:benchTuneNoPatches")}
+                            </p>
+                          )}
+                          {attempts.length ? (
+                            <div className="mt-2 overflow-x-auto rounded border border-white/5 bg-black/20">
+                              <table className="w-full min-w-[560px] text-left text-[11px]">
+                                <thead className="text-surface-muted">
+                                  <tr>
+                                    <th className="px-2 py-1">{t("admin:benchTunePreset")}</th>
+                                    <th className="px-2 py-1">{t("admin:benchTuneResultCol")}</th>
+                                    <th className="px-2 py-1">{t("admin:benchTunePassRate")}</th>
+                                    <th className="px-2 py-1">{t("admin:benchTuneScoreCol")}</th>
+                                    <th className="px-2 py-1">{t("admin:benchTuneFailures")}</th>
+                                    <th className="px-2 py-1">{t("admin:benchTuneRuns")}</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {attempts.map((a) => (
+                                    <tr
+                                      key={a.preset_id}
+                                      className={`border-t border-white/5 ${
+                                        a.preset_id === bestAttempt?.preset_id
+                                          ? "bg-emerald-500/10"
+                                          : ""
+                                      }`}
+                                    >
+                                      <td className="px-2 py-1 font-medium text-neutral-100">
+                                        {a.label || a.preset_id}
+                                      </td>
+                                      <td className="px-2 py-1">
+                                        {a.passed ?? 0}/{a.total ?? 0}
+                                      </td>
+                                      <td className="px-2 py-1">{formatTunePct(a.pass_rate)}</td>
+                                      <td className="px-2 py-1">
+                                        {typeof a.score === "number" ? a.score.toFixed(1) : "—"}
+                                      </td>
+                                      <td className="px-2 py-1 text-surface-muted">
+                                        {formatTuneClusters(
+                                          (a.runs ?? []).reduce<Record<string, number>>((acc, r) => {
+                                            for (const [k, n] of Object.entries(r.failure_clusters ?? {})) {
+                                              acc[k] = (acc[k] ?? 0) + n;
+                                            }
+                                            return acc;
+                                          }, {})
+                                        )}
+                                      </td>
+                                      <td className="px-2 py-1">
+                                        {(a.runs ?? []).map((r) => (
+                                          <button
+                                            key={r.run_id}
+                                            type="button"
+                                            className="mr-2 text-sky-300 hover:underline"
+                                            onClick={() => {
+                                              setTab("history");
+                                              setSelectedId(r.run_id);
+                                            }}
+                                          >
+                                            {r.suite || r.run_id.slice(0, 8)}
+                                          </button>
+                                        ))}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          ) : null}
+                          {session.error_text ? (
+                            <p className="mt-1 text-[11px] text-rose-300">{session.error_text}</p>
+                          ) : null}
+                        </div>
+                        <div className="flex shrink-0 flex-wrap gap-2">
+                          <button
+                            type="button"
+                            disabled={!canReview || reviewingTuneId === session.id}
+                            className="rounded border border-violet-500/40 px-2 py-1 text-violet-200 hover:bg-violet-500/10 disabled:opacity-40"
+                            onClick={() => void onReviewTune(session)}
+                            title={reviewerModelLabel || tLoose("admin:benchTuneReviewerNeedsModel")}
+                          >
+                            {reviewingTuneId === session.id
+                              ? tLoose("admin:benchTuneReviewing")
+                              : tLoose("admin:benchTuneRunReviewer")}
+                          </button>
+                          {session.best_run_id ? (
+                            <button
+                              type="button"
+                              className="text-sky-300 hover:underline"
+                              onClick={() => {
+                                setTab("history");
+                                setSelectedId(session.best_run_id || null);
+                              }}
+                            >
+                              {t("admin:benchTuneOpenBestRun")}
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            disabled={!canPromote || promotingTuneId === session.id}
+                            className="rounded border border-emerald-500/40 px-2 py-1 text-emerald-200 hover:bg-emerald-500/10 disabled:opacity-40"
+                            onClick={() => void onPromoteTune(session)}
+                          >
+                            {session.promoted_at
+                              ? t("admin:benchTunePromoted")
+                              : promotingTuneId === session.id
+                                ? t("admin:benchTunePromoting")
+                                : t("admin:benchTunePromote")}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="mt-3 text-xs text-surface-muted">{t("admin:benchTuneNoSessions")}</p>
+            )}
+          </section>
+          ) : null}
+
+          {runMode === "manual" ? (
+          <>
           <section className="rounded-xl border border-surface-border bg-surface-raised/40 p-4">
             <label className="block text-xs text-surface-muted">{t("admin:benchSuite")}</label>
             <select
@@ -1998,12 +2555,12 @@ export function AdminBenchmarks() {
                       checked ? "border-sky-500/30 bg-sky-950/20" : "border-white/10 bg-black/20"
                     }`}
                   >
-                    <div className="flex items-start gap-2">
+                    <div className="flex items-start gap-3">
                       <input
                         type="checkbox"
                         checked={checked}
                         onChange={() => toggleScenario(sc.id)}
-                        className="mt-1"
+                        className={`${benchCheckboxLargeClass} mt-0.5`}
                       />
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
@@ -2077,6 +2634,14 @@ export function AdminBenchmarks() {
             </div>
           </section>
 
+          <details className="rounded-xl border border-surface-border bg-surface-raised/40 p-4">
+            <summary className="cursor-pointer text-sm font-medium text-white">
+              {t("admin:benchAdvancedOptions")}
+              <span className="ml-2 text-xs font-normal text-surface-muted">
+                {t("admin:benchRunOptionsHint")}
+              </span>
+            </summary>
+            <div className="mt-4 space-y-4">
           <HarnessRunContextBar auth={auth} />
 
           <BenchmarkRunOverridePanel
@@ -2187,20 +2752,68 @@ export function AdminBenchmarks() {
                 </span>
               </label>
             </div>
-            <button
-              type="button"
-              disabled={starting || !runAsUserId}
-              onClick={() => void onStart()}
-              className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
-            >
-              {starting ? t("admin:benchStarting") : t("admin:benchStart")}
-            </button>
-            <p className="text-xs text-surface-muted">
-              {t("admin:benchRunNote", {
-                user: runAsUser ? userOptionLabel(runAsUser) : runAsUserId || "—",
-              })}
-            </p>
             <p className="text-[11px] text-surface-muted">{t("admin:benchPrefsPersistHint")}</p>
+          </section>
+            </div>
+          </details>
+          </>
+          ) : null}
+
+          <section className="sticky bottom-0 z-10 rounded-xl border border-surface-border bg-[#101010]/95 p-4 shadow-2xl shadow-black/40 backdrop-blur">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className="rounded bg-white/10 px-2 py-1 font-medium text-white">
+                    {runMode === "autotune"
+                      ? t("admin:benchRunModeAutotune")
+                      : t("admin:benchRunModeManual")}
+                  </span>
+                  <span className="text-surface-muted">
+                    {t("admin:benchSummaryProfiles", { count: selectedProfileCount })}
+                  </span>
+                  <span className="text-surface-muted">
+                    {t("admin:benchSummaryEstimatedRuns", { count: activeEstimatedRunCount })}
+                  </span>
+                  {runMode === "manual" ? (
+                    <span className="text-surface-muted">
+                      {t("admin:benchSummaryScenarios", { count: selectedScenarioIds.size })}
+                    </span>
+                  ) : (
+                    <span className="text-surface-muted">
+                      {t("admin:benchTuneModeLabel", { mode: tuningMode })}
+                    </span>
+                  )}
+                  {readiness?.has_workspace_headroom === false ? (
+                    <span className="text-amber-300">{t("admin:benchWorkspaceQuotaFull")}</span>
+                  ) : null}
+                </div>
+                <p className="mt-1 text-[11px] text-surface-muted">
+                  {t("admin:benchRunNote", {
+                    user: runAsUser ? userOptionLabel(runAsUser) : runAsUserId || "—",
+                  })}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={actionBusy || !canStartRun}
+                onClick={() => void (runMode === "autotune" ? onStartAutotune() : onStart())}
+                className={`rounded-lg px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50 ${
+                  runMode === "autotune"
+                    ? "bg-violet-600 hover:bg-violet-500"
+                    : "bg-sky-600 hover:bg-sky-500"
+                }`}
+              >
+                {benchmarkRunActive
+                  ? t("admin:benchRunActive")
+                  : runMode === "autotune"
+                  ? startingTune
+                    ? t("admin:benchTuneStarting")
+                    : t("admin:benchTuneStart")
+                  : starting
+                    ? t("admin:benchStarting")
+                    : t("admin:benchStart")}
+              </button>
+            </div>
           </section>
         </div>
       ) : null}

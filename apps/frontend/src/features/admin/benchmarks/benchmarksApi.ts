@@ -390,6 +390,51 @@ export type BenchmarkRun = {
   } | null;
 };
 
+export type BenchmarkTuningRunSummary = {
+  run_id: string;
+  suite?: string;
+  status?: string;
+  passed?: number;
+  total?: number;
+  skipped?: number;
+  failure_clusters?: Record<string, number>;
+  avg_latency_ms?: number | null;
+  safety_violations?: number;
+};
+
+export type BenchmarkTuningAttempt = {
+  preset_id: string;
+  label: string;
+  patches?: { knob_id: string; value: unknown }[];
+  runs?: BenchmarkTuningRunSummary[];
+  passed?: number;
+  total?: number;
+  pass_rate?: number;
+  avg_latency_ms?: number | null;
+  safety_violations?: number;
+  score?: number;
+  best_run_id?: string | null;
+};
+
+export type BenchmarkTuningSession = {
+  id: string;
+  status: string;
+  mode: string;
+  catalog_owned_by: string;
+  model: string;
+  profiles_json?: BenchmarkProfileInput[];
+  plan_json?: Record<string, unknown>;
+  attempts_json?: BenchmarkTuningAttempt[];
+  best_run_id?: string | null;
+  best_score?: number | null;
+  best_patches_json?: { knob_id: string; value: unknown }[] | null;
+  promoted_at?: string | null;
+  error_text?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  finished_at?: string | null;
+};
+
 export type BenchmarkStatsModelRow = {
   catalog_owned_by: string;
   model: string;
@@ -542,6 +587,60 @@ export async function fetchBenchmarkRuns(
   );
   if (!res.ok) throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
   return data.runs ?? [];
+}
+
+export async function fetchBenchmarkTuningSessions(
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">,
+  limit = 20
+): Promise<BenchmarkTuningSession[]> {
+  const res = await apiFetch(`/v1/admin/benchmarks/tune/sessions?limit=${limit}`, auth);
+  const data = await readJsonResponse<{ sessions?: BenchmarkTuningSession[]; detail?: unknown }>(
+    res,
+    `Failed to load tuning sessions (HTTP ${res.status})`
+  );
+  if (!res.ok) throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
+  return data.sessions ?? [];
+}
+
+export async function startBenchmarkTuningSession(
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">,
+  body: {
+    profile: BenchmarkProfileInput;
+    mode?: string;
+    run_as_user_id?: string;
+    friend_user_id?: string;
+    reviewer_mode?: "off" | "patch_and_test";
+    reviewer_provider_id?: string;
+    reviewer_model?: string;
+    max_patch_rounds?: number;
+  }
+): Promise<BenchmarkTuningSession> {
+  const res = await apiFetch("/v1/admin/benchmarks/tune/sessions", auth, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  const data = await readJsonResponse<{ session?: BenchmarkTuningSession; detail?: unknown }>(
+    res,
+    `Failed to start tuning session (HTTP ${res.status})`
+  );
+  if (!res.ok) throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
+  return data.session as BenchmarkTuningSession;
+}
+
+export async function promoteBenchmarkTuningSession(
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">,
+  sessionId: string
+): Promise<void> {
+  const res = await apiFetch(
+    `/v1/admin/benchmarks/tune/sessions/${encodeURIComponent(sessionId)}/promote`,
+    auth,
+    { method: "POST" }
+  );
+  const data = await readJsonResponse<{ detail?: unknown }>(
+    res,
+    `Failed to promote tuning session (HTTP ${res.status})`
+  );
+  if (!res.ok) throw new Error(apiErrorDetail(data, `HTTP ${res.status}`));
 }
 
 export async function fetchBenchmarkStats(
@@ -723,6 +822,7 @@ export async function submitBenchmarkReview(
     session_id?: string;
     run_ids?: string[];
     mode?: string;
+    reviewer_model?: string;
     summary_hint?: string;
   },
 ) {

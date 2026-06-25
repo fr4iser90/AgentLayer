@@ -9,9 +9,9 @@ import {
   composerSelectValueForThread,
   compactModelDisplayName,
   modelCatalogSelectValue,
-  modelOptionLabel,
   parseModelCatalogSelection,
   resolveSendModelRouting,
+  type ModelCatalogAgentlayer,
   type ModelRow,
 } from "../../lib/modelCatalog";
 import { archiveTurnBeforeNewPrompt } from "../chat/agentLogStorage";
@@ -53,6 +53,7 @@ import {
 } from "./embeddedChatSessionPrefs";
 import type { UiBlock, UiLayout } from "./types";
 import { uploadDashboardGalleryFile } from "./gallery/galleryUpload";
+import { ModelCatalogSelect } from "../chat/ModelCatalogSelect";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type GalleryTarget = { blockId: string; dataPath: string; title: string };
@@ -201,6 +202,8 @@ export function DashboardEmbeddedChat({
   const inFlightWaitHint = useAgentWaitHint(agentLiveTurn);
   const [open, setOpen] = useState(true);
   const [modelRows, setModelRows] = useState<ModelRow[]>([]);
+  const [modelCatalogAgentlayer, setModelCatalogAgentlayer] =
+    useState<ModelCatalogAgentlayer | null>(null);
   const [modelsCatalogReady, setModelsCatalogReady] = useState(false);
   const [modelsCatalogHint, setModelsCatalogHint] = useState<string | null>(null);
   const [thread, setThread] = useState<ChatThread | null>(null);
@@ -275,12 +278,14 @@ export function DashboardEmbeddedChat({
         const { rows, agentlayer } = await fetchModelCatalog();
         if (cancelled) return;
         setModelRows(rows);
+        setModelCatalogAgentlayer(agentlayer);
         setModelsCatalogHint(
           formatModelCatalogHint(agentlayer, { excludeUnreachableProviderHints: true })
         );
       } catch {
         if (!cancelled) {
           setModelRows([]);
+          setModelCatalogAgentlayer(null);
           setModelsCatalogHint(t("errors:loadModelCatalogFailed"));
         }
       } finally {
@@ -905,11 +910,11 @@ export function DashboardEmbeddedChat({
                 <div className="shrink-0 space-y-2 border-t border-white/5 bg-black/20 px-3 py-2">
                   <label className="block">
                     <span className="mb-0.5 block text-[10px] text-surface-muted">{t("dashboard:modelLabel")}</span>
-                    <select
-                      className="w-full rounded-lg border border-surface-border bg-black/40 px-2 py-1.5 text-xs text-white"
+                    <ModelCatalogSelect
+                      rows={modelRows}
+                      agentlayer={modelCatalogAgentlayer}
                       value={modelSelectValue}
-                      onChange={(e) => {
-                        const v = e.target.value;
+                      onChange={(v) => {
                         if (thread) {
                           const { model, modelProvider } = applyModelCatalogSelection(v, modelRows);
                           setModelOnThread(v);
@@ -927,19 +932,12 @@ export function DashboardEmbeddedChat({
                         }
                       }}
                       disabled={readOnly || !modelsCatalogReady || modelRows.length === 0}
-                    >
-                      {!modelsCatalogReady ? (
-                        <option value="">{t("dashboard:loading")}</option>
-                      ) : modelRows.length === 0 ? (
-                        <option value="">{modelsCatalogHint ?? t("dashboard:noModels")}</option>
-                      ) : (
-                        modelRows.map((row) => (
-                          <option key={modelCatalogSelectValue(row)} value={modelCatalogSelectValue(row)}>
-                            {modelOptionLabel(row)}
-                          </option>
-                        ))
-                      )}
-                    </select>
+                      loading={!modelsCatalogReady}
+                      loadingLabel={t("dashboard:loading")}
+                      ariaLabel={t("dashboard:modelLabel")}
+                      emptyLabel={modelsCatalogHint ?? t("dashboard:noModels")}
+                      size="sm"
+                    />
                     {modelsCatalogReady && modelsCatalogHint ? (
                       <p className="mt-1 text-[10px] leading-snug text-amber-300/90">{modelsCatalogHint}</p>
                     ) : null}
