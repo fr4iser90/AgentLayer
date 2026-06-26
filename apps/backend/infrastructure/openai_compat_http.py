@@ -40,6 +40,63 @@ def _openai_strict_tools(obj: Any) -> Any:
     return obj
 
 
+def _normalize_chat_messages_for_templates(messages: Any) -> Any:
+    """
+    Some llama.cpp/Jinja chat templates require ``system`` messages to appear only
+    before the first conversation turn. Keep initial system content as system,
+    but preserve later runtime hints in-place as user-visible server notes.
+    """
+    if not isinstance(messages, list):
+        return messages
+
+    system_parts: list[str] = []
+    out: list[Any] = []
+    saw_non_system = False
+
+    for msg in messages:
+        if not isinstance(msg, dict):
+            out.append(msg)
+            saw_non_system = True
+            continue
+
+        role = msg.get("role")
+        if role != "system":
+            out.append(msg)
+            saw_non_system = True
+            continue
+
+        content = msg.get("content")
+        if not saw_non_system:
+            if isinstance(content, str) and content.strip():
+                system_parts.append(content.strip())
+            elif content:
+                system_parts.append(str(content))
+            continue
+
+        note = content if isinstance(content, str) else str(content or "")
+        out.append(
+            {
+                **msg,
+                "role": "user",
+                "content": f"[Server note]\n{note.strip()}".strip(),
+            }
+        )
+
+    if system_parts:
+        out.insert(0, {"role": "system", "content": "\n\n".join(system_parts)})
+    return out
+
+
+def _normalize_chat_request_body(json_body: dict[str, Any]) -> dict[str, Any]:
+    needs_copy = "tools" in json_body or "messages" in json_body
+    body = copy.deepcopy(json_body) if needs_copy else json_body
+    if "tools" in body:
+        body["tools"] = _openai_strict_tools(body["tools"])
+    if "messages" in body:
+        body["messages"] = _normalize_chat_messages_for_templates(body["messages"])
+    return body
+
+
 def http_post_json(
     url: str,
     json_body: dict[str, Any],
@@ -72,10 +129,7 @@ def http_post_chat_completions(
     Returns ``(response_json, tools_omitted)`` — ``tools_omitted`` is always ``False`` (reserved).
     """
     h = headers or {"Content-Type": "application/json"}
-    body = json_body
-    if "tools" in json_body:
-        body = copy.deepcopy(json_body)
-        body["tools"] = _openai_strict_tools(body["tools"])
+    body = _normalize_chat_request_body(json_body)
     with llm_slot(concurrency_provider_id):
         with httpx.Client(timeout=timeout) as client:
             resp = client.post(url, json=body, headers=h)

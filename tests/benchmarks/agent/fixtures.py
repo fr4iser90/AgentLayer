@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import uuid
 from dataclasses import dataclass, field
+from hashlib import sha256
 from typing import Any, Callable
 
 import httpx
@@ -165,6 +166,39 @@ def _ensure_friends(admin_client: E2EClient, user_b: E2EClient) -> None:
     user_b.post_json(f"/v1/friends/requests/{req_id}/accept", {})
 
 
+def _auto_user_b_credentials(ctx: FixtureContext) -> tuple[str, str]:
+    run_token = "".join(ch.lower() if ch.isalnum() else "-" for ch in ctx.run_id).strip("-")
+    if not run_token:
+        run_token = uuid.uuid4().hex
+    digest = sha256(f"agentlayer-benchmark-user-b:{run_token}".encode("utf-8")).hexdigest()
+    return f"bench-friend-{run_token}@agentlayer.local", f"BenchUserB-{digest[:24]}"
+
+
+def _ensure_benchmark_user_b(admin_client: E2EClient, ctx: FixtureContext) -> E2EClient:
+    email_env = (os.environ.get("AGENT_E2E_EMAIL_B") or "").strip()
+    password_env = os.environ.get("AGENT_E2E_PASSWORD_B") or ""
+    if email_env and password_env:
+        return ensure_user_b(admin_client)
+
+    email_b, password_b = _auto_user_b_credentials(ctx)
+    try:
+        return E2EClient.login(email_b, password_b)
+    except httpx.HTTPStatusError:
+        pass
+
+    if admin_client.role != "admin":
+        raise RuntimeError("User B missing and current user is not admin — cannot create benchmark User B")
+
+    resp = admin_client.post_json_allow(
+        "/v1/admin/users",
+        {"email": email_b, "password": password_b, "role": "user", "tenant_id": 1},
+        ok={200, 201, 409},
+    )
+    if resp.status_code == 409:
+        return E2EClient.login(email_b, password_b)
+    return E2EClient.login(email_b, password_b)
+
+
 def _setup_agentlayer_self(client: E2EClient, ctx: FixtureContext) -> None:
     ws_name = (
         os.environ.get("AGENT_BENCH_WORKSPACE_NAME") or AGENTLAYER_SELF_NAME
@@ -193,7 +227,7 @@ def _setup_friend_pair(client: E2EClient, ctx: FixtureContext) -> None:
     if friend_id:
         user_b = E2EClient.for_user_id(uuid.UUID(friend_id))
     else:
-        user_b = ensure_user_b(admin)
+        user_b = _ensure_benchmark_user_b(admin, ctx)
     _ensure_friends(admin, user_b)
     ctx.user_b_id = user_b.user_id
     ctx.user_b_email = user_b.email
