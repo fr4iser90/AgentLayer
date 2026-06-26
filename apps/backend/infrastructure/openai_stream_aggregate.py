@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 import json
 import logging
 from collections.abc import Awaitable, Callable
@@ -12,7 +11,7 @@ from typing import Any
 import httpx
 
 from apps.backend.domain.model_routing import profile_default_model_id
-from apps.backend.infrastructure.openai_compat_http import _openai_strict_tools
+from apps.backend.infrastructure.openai_compat_http import _normalize_chat_request_body
 from apps.backend.infrastructure.operator_settings import (
     external_llm_should_failover,
     llm_chat_transport,
@@ -23,11 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 def _prepare_json_body(json_body: dict[str, Any]) -> dict[str, Any]:
-    body = json_body
-    if "tools" in json_body:
-        body = copy.deepcopy(json_body)
-        body["tools"] = _openai_strict_tools(body["tools"])
-    return body
+    return _normalize_chat_request_body(json_body)
 
 
 @dataclass(frozen=True)

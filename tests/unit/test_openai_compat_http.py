@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from apps.backend.infrastructure.openai_compat_http import _normalize_chat_request_body
+from apps.backend.infrastructure.openai_stream_aggregate import _prepare_json_body
 
 
 def test_normalize_chat_request_merges_leading_system_messages() -> None:
@@ -74,3 +75,22 @@ def test_normalize_chat_request_preserves_tool_sequence_and_original_body() -> N
     assert normalized["messages"][3] == {"role": "user", "content": "[Server note]\nFollow-up hint"}
     assert "TOOL_DESCRIPTION" not in normalized["tools"][0]["function"]
     assert normalized["tools"][0]["function"]["description"] == "Tool desc"
+
+
+def test_stream_prepare_json_body_normalizes_late_system_messages() -> None:
+    body = {
+        "messages": [
+            {"role": "user", "content": "Hi"},
+            {"role": "assistant", "content": "Hello"},
+            {"role": "system", "content": "Runtime stream hint"},
+        ],
+        "stream": True,
+    }
+
+    prepared = _prepare_json_body(body)
+
+    assert prepared["messages"] == [
+        {"role": "user", "content": "Hi"},
+        {"role": "assistant", "content": "Hello"},
+        {"role": "user", "content": "[Server note]\nRuntime stream hint"},
+    ]
