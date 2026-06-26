@@ -23,9 +23,28 @@ def upgrade() -> None:
             SELECT 1 FROM information_schema.columns
             WHERE table_name = 'operator_settings'
               AND column_name = 'llm_router_ollama_model'
+          ) AND NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'operator_settings'
+              AND column_name = 'llm_router_model'
           ) THEN
             ALTER TABLE operator_settings
               RENAME COLUMN llm_router_ollama_model TO llm_router_model;
+          ELSIF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'operator_settings'
+              AND column_name = 'llm_router_ollama_model'
+          ) AND EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'operator_settings'
+              AND column_name = 'llm_router_model'
+          ) THEN
+            UPDATE operator_settings
+            SET llm_router_model = COALESCE(NULLIF(llm_router_model, ''), llm_router_ollama_model)
+            WHERE llm_router_ollama_model IS NOT NULL;
+
+            ALTER TABLE operator_settings
+              DROP COLUMN llm_router_ollama_model;
           END IF;
         END $$;
         """
@@ -89,9 +108,28 @@ def downgrade() -> None:
             SELECT 1 FROM information_schema.columns
             WHERE table_name = 'operator_settings'
               AND column_name = 'llm_router_model'
+          ) AND NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'operator_settings'
+              AND column_name = 'llm_router_ollama_model'
           ) THEN
             ALTER TABLE operator_settings
               RENAME COLUMN llm_router_model TO llm_router_ollama_model;
+          ELSIF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'operator_settings'
+              AND column_name = 'llm_router_model'
+          ) AND EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'operator_settings'
+              AND column_name = 'llm_router_ollama_model'
+          ) THEN
+            UPDATE operator_settings
+            SET llm_router_ollama_model = COALESCE(NULLIF(llm_router_ollama_model, ''), llm_router_model)
+            WHERE llm_router_model IS NOT NULL;
+
+            ALTER TABLE operator_settings
+              DROP COLUMN llm_router_model;
           END IF;
         END $$;
         """
