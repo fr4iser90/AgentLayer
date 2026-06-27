@@ -163,7 +163,7 @@ async def _run_one_tick() -> None:
         ],
         "stream": False,
     }
-    from apps.backend.domain.catalog_chat_llm import catalog_llm_body_extras
+    from apps.backend.infrastructure.catalog_chat_llm_service import catalog_llm_body_extras
 
     try:
         llm = catalog_llm_body_extras(

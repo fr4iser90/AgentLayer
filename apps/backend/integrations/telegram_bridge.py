@@ -120,7 +120,7 @@ def _load_bridge_cfg_with_reason() -> tuple[_BridgeCfg | None, str]:
         prefix = prefix + " "
     model_raw = (str(cmodel).strip() if cmodel is not None else "") or ""
     try:
-        from apps.backend.domain.catalog_chat_llm import catalog_llm_body_extras
+        from apps.backend.infrastructure.catalog_chat_llm_service import catalog_llm_body_extras
 
         llm = catalog_llm_body_extras(
             model=model_raw or None,

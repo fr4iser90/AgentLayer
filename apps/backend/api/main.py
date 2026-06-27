@@ -69,7 +69,7 @@ from apps.backend.api.optional_http_access import (
     middleware_path_is_public,
     public_http_auth_policy,
 )
-from apps.backend.domain.admin_setup import is_first_start
+from apps.backend.infrastructure.admin_setup import is_first_start
 from apps.backend.infrastructure import smart_route_service as _smart_route_service  # noqa: F401
 from apps.backend.infrastructure.instance_setup_service import (
     apply_setup_llm_endpoint,

@@ -5,8 +5,8 @@ from __future__ import annotations
 from typing import Any
 
 from apps.backend.domain import setup_catalog as domain
-from apps.backend.domain.catalog_chat_llm import pick_reachable_catalog_provider
 from apps.backend.infrastructure import operator_settings
+from apps.backend.infrastructure.catalog_chat_llm_service import pick_reachable_catalog_provider
 from apps.backend.infrastructure.db import db
 from apps.backend.infrastructure.embedding_client import (
     _normalized_embedding_base,

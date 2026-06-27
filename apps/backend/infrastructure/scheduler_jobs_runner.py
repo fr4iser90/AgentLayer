@@ -63,7 +63,7 @@ def _uid(row: dict[str, Any], key: str) -> uuid.UUID:
 
 async def _run_chat_agent_job(row: dict[str, Any], *, agent_id: str) -> None:
     from apps.backend.domain.agent import chat_completion
-    from apps.backend.domain.catalog_chat_llm import catalog_llm_body_extras
+    from apps.backend.infrastructure.catalog_chat_llm_service import catalog_llm_body_extras
 
     tenant_id = _tenant_id(row)
     user_id = _uid(row, "execution_user_id")

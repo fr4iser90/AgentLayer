@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
@@ -147,6 +148,22 @@ def _print_violations(violations: list[Violation]) -> None:
         print(f"  found: {violation.import_name}")
 
 
+def _print_violation_summary(violations: list[Violation], *, limit: int = 20) -> None:
+    print(f"[check:ddd_layers] report: {len(violations)} layer violation(s)")
+    if not violations:
+        return
+
+    print()
+    print("Top files:")
+    for file_path, count in Counter(str(v.file) for v in violations).most_common(limit):
+        print(f"  {count:3} {file_path}")
+
+    print()
+    print("Top imports:")
+    for import_name, count in Counter(v.import_name for v in violations).most_common(limit):
+        print(f"  {count:3} {import_name}")
+
+
 def run(name: str, config: dict[str, Any]) -> CheckResult:
     root = repo_root()
     print_header(name)
@@ -161,6 +178,11 @@ def run(name: str, config: dict[str, Any]) -> CheckResult:
         return CheckResult(name=name, ok=True, skipped=True, message="no matching Python files in scope")
 
     violations = [violation for file_path in files for violation in _violations_for_file(root, file_path, rules)]
+    if violations and config.get("report_only"):
+        _print_violation_summary(violations, limit=int(config.get("summary_limit") or 20))
+        print_pass(name)
+        return CheckResult(name=name, ok=True, message=f"{len(violations)} layer violation(s)")
+
     if violations:
         _print_violations(violations)
         return CheckResult(name=name, ok=False, message=f"{len(violations)} layer violation(s)")

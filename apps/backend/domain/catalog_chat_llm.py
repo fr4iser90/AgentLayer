@@ -4,16 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any
-
-from apps.backend.infrastructure.model_catalog_routing import infer_catalog_owned_by
-from apps.backend.infrastructure.model_catalog_providers import (
-    fetch_models_for_provider,
-    get_provider_spec,
-    list_provider_specs,
-    resolve_model_for_provider,
-)
-from apps.backend.infrastructure.operator_settings import normalize_model_catalog_owned_by
+from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +13,66 @@ _PROFILE_KEYS = frozenset({"default", "vlm", "agent", "coding"})
 # ``/auth/setup-status`` and the SPA boot path call this often; avoid re-probing every provider per request.
 _REACHABLE_CACHE_TTL_SEC = 30.0
 _reachable_cache: dict[tuple[str, ...], tuple[float, str | None]] = {}
+
+
+class CatalogChatLlmDependencies(Protocol):
+    def infer_catalog_owned_by(self, model_id: str) -> str | None: ...
+
+    def fetch_models_for_provider(
+        self, spec: Any, timeout: float = 15.0
+    ) -> tuple[list[dict[str, Any]], dict[str, Any]]: ...
+
+    def get_provider_spec(self, provider_id: str) -> Any | None: ...
+
+    def list_provider_specs(self) -> list[Any]: ...
+
+    def resolve_model_for_provider(
+        self, spec: Any, profile_key: str, is_override: bool, model: str
+    ) -> str | None: ...
+
+    def normalize_model_catalog_owned_by(self, raw: str | None) -> str | None: ...
+
+
+_deps: CatalogChatLlmDependencies | None = None
+
+
+def register_catalog_chat_llm_dependencies(deps: CatalogChatLlmDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+def _require_deps() -> CatalogChatLlmDependencies:
+    if _deps is None:
+        raise RuntimeError("catalog chat LLM dependencies not registered")
+    return _deps
+
+
+def infer_catalog_owned_by(model_id: str) -> str | None:
+    return _require_deps().infer_catalog_owned_by(model_id)
+
+
+def fetch_models_for_provider(
+    spec: Any, timeout: float = 15.0
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    return _require_deps().fetch_models_for_provider(spec, timeout=timeout)
+
+
+def get_provider_spec(provider_id: str) -> Any | None:
+    return _require_deps().get_provider_spec(provider_id)
+
+
+def list_provider_specs() -> list[Any]:
+    return _require_deps().list_provider_specs()
+
+
+def resolve_model_for_provider(
+    spec: Any, profile_key: str, is_override: bool, model: str
+) -> str | None:
+    return _require_deps().resolve_model_for_provider(spec, profile_key, is_override, model)
+
+
+def normalize_model_catalog_owned_by(raw: str | None) -> str | None:
+    return _require_deps().normalize_model_catalog_owned_by(raw)
 
 
 def invalidate_reachable_catalog_cache() -> None:
@@ -45,8 +96,6 @@ def _normalize_profile(profile_key: str) -> str:
 
 def pick_reachable_catalog_provider(*, prefer: tuple[str, ...] = ()) -> str | None:
     """First configured provider that is reachable and exposes at least one model."""
-    from apps.backend.infrastructure.model_catalog_providers import fetch_models_for_provider
-
     pref_key = tuple(prefer)
     now = time.monotonic()
     cached = _reachable_cache.get(pref_key)

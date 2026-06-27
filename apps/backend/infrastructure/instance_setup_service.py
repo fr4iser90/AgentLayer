@@ -6,9 +6,9 @@ from typing import Any
 
 from apps.backend.dashboard.db import ensure_default_dashboard_for_new_user
 from apps.backend.domain import instance_setup as domain
-from apps.backend.domain.admin_setup import is_first_start, try_create_initial_admin_from_env
-from apps.backend.domain.catalog_chat_llm import cached_llm_reachable
+from apps.backend.infrastructure.admin_setup import is_first_start, try_create_initial_admin_from_env
 from apps.backend.infrastructure.auth import insert_user_with_cursor
+from apps.backend.infrastructure.catalog_chat_llm_service import cached_llm_reachable
 from apps.backend.infrastructure.db import db
 from apps.backend.infrastructure.model_catalog_providers import list_provider_specs
 from apps.backend.infrastructure.model_catalog_routing import invalidate_model_catalog_cache

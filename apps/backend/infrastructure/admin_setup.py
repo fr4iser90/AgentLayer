@@ -1,14 +1,15 @@
 """
-First admin: only via AGENT_INITIAL_ADMIN_EMAIL + AGENT_INITIAL_ADMIN_PASSWORD before first start.
+First admin bootstrap: env-seeded admin creation and first-start detection.
 """
+
 from __future__ import annotations
 
 import logging
 
 from apps.backend.core.config import AGENT_INITIAL_ADMIN_EMAIL, AGENT_INITIAL_ADMIN_PASSWORD
-from apps.backend.infrastructure.db import db
-from apps.backend.infrastructure.auth import insert_user_with_cursor
 from apps.backend.dashboard.db import ensure_default_dashboard_for_new_user
+from apps.backend.infrastructure.auth import insert_user_with_cursor
+from apps.backend.infrastructure.db import db
 
 logger = logging.getLogger(__name__)
 
@@ -55,10 +56,3 @@ def try_create_initial_admin_from_env() -> bool:
     # tenant_id=1 matches insert_user_with_cursor default for first admin
     ensure_default_dashboard_for_new_user(new_admin.id, 1)
     return True
-
-
-def setup_admin_claim_if_needed() -> None:
-    """Delegate to instance_setup (env bootstrap or /app/setup)."""
-    from apps.backend.domain.instance_setup import setup_admin_claim_if_needed as _run
-
-    _run()

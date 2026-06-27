@@ -65,7 +65,7 @@ async def _poll_once() -> None:
 async def _run_task_row(row: dict[str, Any]) -> None:
     from apps.backend.domain.agent import chat_completion
     from apps.backend.domain.agent_task_prompt import format_requirements_block
-    from apps.backend.domain.catalog_chat_llm import catalog_llm_body_extras
+    from apps.backend.infrastructure.catalog_chat_llm_service import catalog_llm_body_extras
 
     tenant_id = int(row.get("tenant_id") or 0)
     user_id = row.get("created_by_user_id")

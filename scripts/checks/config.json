@@ -3,6 +3,7 @@
     "fast": ["ddd_layers", "frontend_i18n"],
     "precommit": ["ddd_layers", "backend_unit", "frontend_i18n", "node_cve_full", "python_cve"],
     "security": ["node_cve_full", "python_cve"],
+    "architecture": ["ddd_layers_report"],
     "quality": ["backend_unit", "frontend_i18n", "bandit"],
     "ci": ["ddd_layers_all", "backend_unit", "frontend_i18n", "node_cve_full", "python_cve", "bandit"]
   },
@@ -31,6 +32,29 @@
     "ddd_layers_all": {
       "module": "ddd_layers",
       "scope": "all",
+      "include": ["apps/backend"],
+      "ignore": [
+        "apps/backend/infrastructure/db/migrations/**"
+      ],
+      "rules": [
+        {
+          "name": "domain",
+          "path": "apps/backend/domain",
+          "forbidden_imports": [
+            "apps.backend.api",
+            "apps.backend.dashboard",
+            "apps.backend.infrastructure",
+            "apps.backend.integrations",
+            "apps.backend.media"
+          ]
+        }
+      ]
+    },
+    "ddd_layers_report": {
+      "module": "ddd_layers",
+      "scope": "all",
+      "report_only": true,
+      "summary_limit": 25,
       "include": ["apps/backend"],
       "ignore": [
         "apps/backend/infrastructure/db/migrations/**"
