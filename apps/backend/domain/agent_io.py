@@ -15,14 +15,29 @@ from typing import Any, Awaitable, Callable, Literal
 import httpx
 
 from apps.backend.core.config import config
+from apps.backend.application.agent_runtime.dependencies import (
+    WorkspaceCreateError,
+    apply_repetition_guard_to_completion,
+    build_retrieval_bootstrap_snippet,
+    create_project_workspace_for_user,
+    dashboard_db,
+    db,
+    ensure_workspace,
+    external_llm_should_failover,
+    http_post_chat_completions,
+    llm_slot_async,
+    llm_chat_transport,
+    maybe_schedule_index_on_attach,
+    memory_api,
+    normalize_model_catalog_owned_by,
+    smart_llm_routing_enabled,
+    slug_from_git_url,
+    stream_chat_completions_aggregate,
+    unpack_llm_attempt,
+)
 from apps.backend.domain.identity import get_identity
-from apps.backend.api import memory as memory_api
 from apps.backend.domain.agent_registry import get_agent_registry
-from apps.backend.infrastructure.openai_compat_http import http_post_chat_completions
-from apps.backend.infrastructure.openai_stream_aggregate import stream_chat_completions_aggregate
-from apps.backend.infrastructure.stream_repetition_guard import apply_repetition_guard_to_completion
 from apps.backend.domain.plugin_system.registry import get_registry
-from apps.backend.dashboard import db as dashboard_db
 from apps.backend.domain.plugin_system.capability_governance import parse_user_capability_confirm
 from apps.backend.domain.plugin_system.capability_index import filter_merged_tools_by_capabilities
 from apps.backend.domain.plugin_system.tool_routing import (
@@ -43,12 +58,6 @@ from apps.backend.domain.tool_invocation_context import (
 from apps.backend.domain.llm_smart_route import decide_smart_backend
 from apps.backend.domain.model_routing import profile_default_model_id, resolve_effective_model
 from apps.backend.domain.user_persona import _append_system_block, apply_user_persona_system
-from apps.backend.infrastructure.operator_settings import (
-    external_llm_should_failover,
-    llm_chat_transport,
-    normalize_model_catalog_owned_by,
-    smart_llm_routing_enabled,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -626,27 +635,19 @@ def _try_auto_create_workspace_from_git_url(
 
         u = UserLike(user_id)
         try:
-            from apps.backend.infrastructure.db import db as _role_db2
-
-            u.role = _role_db2.user_role(user_id) or "user"
+            u.role = db.user_role(user_id) or "user"
         except Exception:
             pass
     if u is None or not _is_elevated_admin(u, None, user_id):
         return None
     try:
         from apps.backend.domain.workspace.workspace_common import find_owned_git_workspace
-        from apps.backend.infrastructure.workspace_service import (
-            WorkspaceCreateError,
-            create_project_workspace_for_user,
-            ensure_workspace as _ensure_ws,
-            slug_from_git_url,
-        )
 
         existing = find_owned_git_workspace(u, git_url=gu)
         if existing:
             wid = str(existing.get("id") or "").strip()
             if wid:
-                workspace = _ensure_ws(wid, u)
+                workspace = ensure_workspace(wid, u)
                 if workspace:
                     logger.info(
                         "chat_completion: reusing owned workspace %s for Git URL (agent=%s)",
@@ -664,7 +665,7 @@ def _try_auto_create_workspace_from_git_url(
             git_branch="main",
         )
         wid = str(created["id"])
-        workspace = _ensure_ws(wid, u)
+        workspace = ensure_workspace(wid, u)
         if workspace:
             logger.info(
                 "chat_completion: auto-created workspace %s from Git URL (agent=%s)",
@@ -717,9 +718,7 @@ def _is_elevated_admin(
         return True
     if user_id:
         try:
-            from apps.backend.infrastructure.db import db as _role_db
-
-            if _role_db.user_role(user_id) == "admin":
+            if db.user_role(user_id) == "admin":
                 return True
         except Exception:
             pass
@@ -860,11 +859,6 @@ async def _apply_workspace_tool_bind_side_effects(
     ws = tool_context.get("workspace")
     if isinstance(ws, dict):
         try:
-            from apps.backend.infrastructure.workspace_retrieval_bootstrap import (
-                build_retrieval_bootstrap_snippet,
-                maybe_schedule_index_on_attach,
-            )
-
             snippet = build_retrieval_bootstrap_snippet(ws)
             if snippet:
                 messages.append({"role": "system", "content": snippet})
@@ -924,9 +918,6 @@ async def _async_iter_chat_completion_sse(
     OpenAI-compatible POST with ``stream: true``; yield raw response bytes (typically SSE) from the first
     successful endpoint, with the same external failover / local 429 fallback behaviour as blocking calls.
     """
-    from apps.backend.infrastructure.llm_chat_attempt import unpack_llm_attempt
-    from apps.backend.infrastructure.llm_concurrency import llm_slot_async
-
     attempts_local = list(attempts_seq)
     lb = llm_backend
     outer_profile = profile_key

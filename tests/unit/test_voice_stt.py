@@ -61,9 +61,8 @@ class _FakeClient:
 
 def test_transcribe_openai_style(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = _FakeClient()
-    from apps.backend.infrastructure import voice_catalog_providers
 
-    monkeypatch.setattr(voice_catalog_providers, "resolve_active_voice_stt_spec", lambda: _stt_spec())
+    monkeypatch.setattr(voice_policy, "active_voice_stt_spec", lambda: _stt_spec())
     monkeypatch.setattr(voice_policy, "voice_stt_model", lambda: "whisper-1")
     monkeypatch.setattr(voice_policy, "effective_voice_limits", lambda: (120, 10_485_760))
     monkeypatch.setattr(stt.httpx, "Client", lambda *a, **k: fake)
@@ -77,11 +76,10 @@ def test_transcribe_openai_style(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_transcribe_whisper_cpp_style(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = _FakeClient()
-    from apps.backend.infrastructure import voice_catalog_providers
 
     monkeypatch.setattr(
-        voice_catalog_providers,
-        "resolve_active_voice_stt_spec",
+        voice_policy,
+        "active_voice_stt_spec",
         lambda: _stt_spec(api_style="whisper_cpp", header="X-API-KEY"),
     )
     monkeypatch.setattr(voice_policy, "effective_voice_limits", lambda: (120, 10_485_760))
@@ -102,11 +100,10 @@ def test_transcribe_whisper_cpp_style(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_transcribe_custom_path(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = _FakeClient()
-    from apps.backend.infrastructure import voice_catalog_providers
 
     monkeypatch.setattr(
-        voice_catalog_providers,
-        "resolve_active_voice_stt_spec",
+        voice_policy,
+        "active_voice_stt_spec",
         lambda: _stt_spec(api_style="whisper_cpp", transcribe_path="/v1/transcribe"),
     )
     monkeypatch.setattr(voice_policy, "effective_voice_limits", lambda: (120, 10_485_760))
@@ -127,8 +124,6 @@ def test_transcribe_audio_empty_raises(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_empty_whisper_transcript_message(monkeypatch: pytest.MonkeyPatch) -> None:
-    from apps.backend.infrastructure import voice_catalog_providers
-
     class _EmptyResp:
         status_code = 200
         text = '{"text":""}'
@@ -147,7 +142,7 @@ def test_empty_whisper_transcript_message(monkeypatch: pytest.MonkeyPatch) -> No
         def post(self, *a, **k):
             return _EmptyResp()
 
-    monkeypatch.setattr(voice_catalog_providers, "resolve_active_voice_stt_spec", lambda: _stt_spec(api_style="whisper_cpp"))
+    monkeypatch.setattr(voice_policy, "active_voice_stt_spec", lambda: _stt_spec(api_style="whisper_cpp"))
     monkeypatch.setattr(voice_policy, "effective_voice_limits", lambda: (120, 10_485_760))
     monkeypatch.setattr(stt, "ensure_whisper_wav", lambda audio, mime: (b"x" * 20000, "audio/wav"))
     monkeypatch.setattr(stt.httpx, "Client", lambda *a, **k: _Client())

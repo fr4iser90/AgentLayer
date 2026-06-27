@@ -5,13 +5,11 @@ from __future__ import annotations
 import logging
 import uuid
 from pathlib import Path
+from typing import Any, Protocol
 
 import httpx
 
 from apps.backend.domain.identity import get_identity
-from apps.backend.infrastructure import operator_settings
-from apps.backend.infrastructure.db import db
-import apps.backend.api.rag as rag_service
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +19,40 @@ _MAX_MARKDOWN_FILES = 500
 _SKIP_DIRS = frozenset(
     {".git", "__pycache__", "node_modules", ".venv", "venv", "dist", "build", ".pytest_cache", ".mypy_cache", ".tox"}
 )
+
+
+class WorkspaceRagIngestDependencies(Protocol):
+    def rag_settings(self) -> dict[str, Any]: ...
+
+    def embed_one(self, text: str) -> list[float]: ...
+
+    def ingest_for_user(
+        self,
+        tenant_id: int,
+        user_id: uuid.UUID,
+        domain: str,
+        title: str,
+        text: str,
+        source_uri: str,
+        *,
+        workspace_id: uuid.UUID | None = None,
+    ) -> dict[str, Any]: ...
+
+    def rag_delete_documents_by_workspace(self, tenant_id: int, workspace_id: uuid.UUID) -> int: ...
+
+
+_deps: WorkspaceRagIngestDependencies | None = None
+
+
+def register_workspace_rag_ingest_dependencies(deps: WorkspaceRagIngestDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+def _require_deps() -> WorkspaceRagIngestDependencies:
+    if _deps is None:
+        raise RuntimeError("workspace RAG ingest dependencies not registered")
+    return _deps
 
 
 def ingest_workspace_markdown_tree(
@@ -33,7 +65,7 @@ def ingest_workspace_markdown_tree(
     """
     Walk ``docs_root`` for ``*.md`` and ingest each file scoped to ``workspace_id``.
     """
-    if not operator_settings.rag_settings()["enabled"]:
+    if not _require_deps().rag_settings()["enabled"]:
         return {"ok": False, "error": "rag_disabled", "files_ingested": 0, "chunk_count_total": 0}
 
     root = docs_root.resolve()
@@ -45,7 +77,7 @@ def ingest_workspace_markdown_tree(
         return {"ok": False, "error": "no user identity", "files_ingested": 0, "chunk_count_total": 0}
 
     try:
-        rag_service.embed_one("workspace rag probe")
+        _require_deps().embed_one("workspace rag probe")
     except Exception as e:
         return {
             "ok": False,
@@ -57,7 +89,7 @@ def ingest_workspace_markdown_tree(
 
     deleted_docs = 0
     if purge_first:
-        deleted_docs = db.rag_delete_documents_by_workspace(tenant_id, workspace_id)
+        deleted_docs = _require_deps().rag_delete_documents_by_workspace(tenant_id, workspace_id)
 
     files_ok: list[str] = []
     errors: list[dict[str, str]] = []
@@ -86,7 +118,7 @@ def ingest_workspace_markdown_tree(
                 continue
             title = rel
             source_uri = f"workspace:{workspace_id}:{rel}"
-            out = rag_service.ingest_for_user(
+            out = _require_deps().ingest_for_user(
                 tenant_id,
                 user_id,
                 WORKSPACE_RAG_DOMAIN,

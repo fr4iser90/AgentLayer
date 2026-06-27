@@ -15,14 +15,25 @@ from typing import Any, Awaitable, Callable, Literal
 import httpx
 
 from apps.backend.core.config import config
+from apps.backend.application.agent_runtime.dependencies import (
+    apply_repetition_guard_to_completion,
+    build_retrieval_bootstrap_snippet,
+    build_user_secrets_bootstrap_snippet,
+    build_workspace_bound_snippet,
+    dashboard_db,
+    external_llm_should_failover,
+    find_block_in_layout,
+    http_post_chat_completions,
+    llm_chat_transport,
+    memory_api,
+    normalize_model_catalog_owned_by,
+    onboarding_for_dashboard,
+    smart_llm_routing_enabled,
+    stream_chat_completions_aggregate,
+)
 from apps.backend.domain.identity import get_identity
-from apps.backend.api import memory as memory_api
 from apps.backend.domain.agent_registry import get_agent_registry
-from apps.backend.infrastructure.openai_compat_http import http_post_chat_completions
-from apps.backend.infrastructure.openai_stream_aggregate import stream_chat_completions_aggregate
-from apps.backend.infrastructure.stream_repetition_guard import apply_repetition_guard_to_completion
 from apps.backend.domain.plugin_system.registry import get_registry
-from apps.backend.dashboard import db as dashboard_db
 from apps.backend.domain.plugin_system.capability_governance import parse_user_capability_confirm
 from apps.backend.domain.plugin_system.capability_index import filter_merged_tools_by_capabilities
 from apps.backend.domain.plugin_system.tool_routing import (
@@ -43,12 +54,6 @@ from apps.backend.domain.tool_invocation_context import (
 from apps.backend.domain.llm_smart_route import decide_smart_backend
 from apps.backend.domain.model_routing import profile_default_model_id, resolve_effective_model
 from apps.backend.domain.user_persona import _append_system_block, apply_user_persona_system
-from apps.backend.infrastructure.operator_settings import (
-    external_llm_should_failover,
-    llm_chat_transport,
-    normalize_model_catalog_owned_by,
-    smart_llm_routing_enabled,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -282,8 +287,6 @@ def _inject_dashboard_context(
         if extra:
             note = note + "\n\n[Dashboard-specific agent instructions]\n" + extra
         try:
-            from apps.backend.dashboard.setup import onboarding_for_dashboard
-
             ob = onboarding_for_dashboard(ws, "de")
             if ob is None:
                 ob = onboarding_for_dashboard(ws, "en")
@@ -302,8 +305,6 @@ def _inject_dashboard_context(
         block_raw = raw.get("block_id")
         if isinstance(block_raw, str) and block_raw.strip():
             try:
-                from apps.backend.dashboard.layout_tree import find_block_in_layout
-
                 blk = find_block_in_layout(
                     ws.get("ui_layout") if isinstance(ws.get("ui_layout"), dict) else {},
                     block_raw.strip(),
@@ -384,10 +385,6 @@ def _inject_user_secrets_bootstrap(
     if user_id is None:
         return messages
     try:
-        from apps.backend.infrastructure.user_secrets_bootstrap import (
-            build_user_secrets_bootstrap_snippet,
-        )
-
         snippet = build_user_secrets_bootstrap_snippet(user_id)
     except Exception:
         return messages
@@ -404,10 +401,6 @@ def _inject_workspace_bound_context(
     if agent_id != "general" or not workspace or not isinstance(workspace, dict):
         return messages
     try:
-        from apps.backend.infrastructure.user_secrets_bootstrap import (
-            build_workspace_bound_snippet,
-        )
-
         snippet = build_workspace_bound_snippet(workspace)
     except Exception:
         return messages
@@ -430,10 +423,6 @@ def _inject_workspace_retrieval_bootstrap(
     if user_turns > 1:
         return messages
     try:
-        from apps.backend.infrastructure.workspace_retrieval_bootstrap import (
-            build_retrieval_bootstrap_snippet,
-        )
-
         snippet = build_retrieval_bootstrap_snippet(workspace)
     except Exception:
         return messages

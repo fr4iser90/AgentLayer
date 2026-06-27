@@ -15,19 +15,49 @@ from typing import Any, Awaitable, Callable, Literal
 import httpx
 
 from apps.backend.core.config import config
-from apps.backend.domain.identity import get_identity
-from apps.backend.api import memory as memory_api
-from apps.backend.domain.agent_registry import get_agent_registry
-from apps.backend.infrastructure.openai_compat_http import http_post_chat_completions
-from apps.backend.infrastructure.openai_stream_aggregate import stream_chat_completions_aggregate
-from apps.backend.infrastructure.stream_repetition_guard import apply_repetition_guard_to_completion
-from apps.backend.infrastructure.agent_config_task_intent import (
+from apps.backend.application.agent_runtime.dependencies import (
+    ContextPrepMeta,
+    agent_config_effective,
+    agent_runs_store,
+    apply_agent_loop_context_budget,
+    apply_budget_to_meta,
+    apply_repetition_guard_to_completion,
+    bind_llm_wait_notifier,
+    build_knowledge_orchestration_snippet,
+    completion_quotas_from_budget,
     categories_for_matches,
+    dashboard_db,
+    db,
+    ensure_workspace,
+    external_llm_should_failover,
+    find_block_in_layout,
+    gather_mcp_chat_tool_specs_async,
     hints_for_matches,
+    http_post_chat_completions,
+    ingress_openai_messages_inplace,
+    iter_layout_blocks,
+    llm_chat_transport,
+    load_combined_skills_prompt,
     match_task_intents,
+    maybe_schedule_index_on_attach,
+    memory_api,
+    normalize_model_catalog_owned_by,
+    onboarding_for_dashboard,
+    policies_map,
+    prepare_chat_history_for_llm,
+    reset_llm_wait_notifier,
+    resolve_context_budget,
+    smart_llm_routing_enabled,
+    stream_chat_completions_aggregate,
     task_intent_strict_tools,
     tools_for_matches,
+    unpack_llm_attempt,
+    update_meta_from_provider_usage,
+    upload_dashboard_image,
+    usage_prompt_tokens,
 )
+from apps.backend.domain.identity import get_identity
+from apps.backend.domain.agent_registry import get_agent_registry
 from apps.backend.domain.plugin_system.registry import get_registry
 from apps.backend.domain.plugin_system.capability_governance import parse_user_capability_confirm
 from apps.backend.domain.plugin_system.capability_index import filter_merged_tools_by_capabilities
@@ -49,12 +79,6 @@ from apps.backend.domain.tool_invocation_context import (
 from apps.backend.domain.llm_smart_route import decide_smart_backend
 from apps.backend.domain.model_routing import profile_default_model_id, resolve_effective_model
 from apps.backend.domain.user_persona import _append_system_block, apply_user_persona_system
-from apps.backend.infrastructure.operator_settings import (
-    external_llm_should_failover,
-    llm_chat_transport,
-    normalize_model_catalog_owned_by,
-    smart_llm_routing_enabled,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -99,10 +123,6 @@ def _agent_storage_images_from_body(raw: Any) -> list[dict[str, str]]:
 def _first_gallery_data_path(ui_layout: Any) -> str | None:
     if not isinstance(ui_layout, dict):
         return None
-    try:
-        from apps.backend.dashboard.layout_tree import iter_layout_blocks
-    except Exception:
-        return None
     for block in iter_layout_blocks(ui_layout):
         if not isinstance(block, dict):
             continue
@@ -142,9 +162,6 @@ def _upload_pending_storage_images_sync(
         dash_uuid = uuid.UUID(str(dashboard_id))
     except (TypeError, ValueError):
         return {"ok": False, "error": "invalid dashboard_id", "uploaded": 0, "pending": len(pending)}
-
-    from apps.backend.dashboard import db as dashboard_db
-    from apps.backend.dashboard.file_upload import upload_dashboard_image
 
     dashboard = dashboard_db.dashboard_get(user_id, tenant_id, dash_uuid)
     if not dashboard:
@@ -335,10 +352,8 @@ async def chat_completion(
             _cid_pref_s = str(_raw_cid_pref).strip()
             if _cid_pref_s:
                 try:
-                    from apps.backend.infrastructure.db import db as _db_pref
-
                     _cid_pref = uuid.UUID(_cid_pref_s)
-                    with _db_pref.pool().connection() as conn:
+                    with db.pool().connection() as conn:
                         with conn.cursor() as cur:
                             cur.execute(
                                 """
@@ -361,8 +376,6 @@ async def chat_completion(
     user_obj = None
     if user_id:
         try:
-            from apps.backend.infrastructure.db import db
-
             with db.pool().connection() as conn:
                 with conn.cursor() as cur:
                     cur.execute("SELECT id, role FROM users WHERE id = %s", (user_id,))
@@ -383,9 +396,7 @@ async def chat_completion(
         _role_for_agent = getattr(user_obj, "role", None)
     if _role_for_agent is None and user_id:
         try:
-            from apps.backend.infrastructure.db import db as _role_db
-
-            _role_for_agent = _role_db.user_role(user_id)
+            _role_for_agent = db.user_role(user_id)
         except Exception:
             _role_for_agent = bearer_user_role
     if _role_for_agent is None:
@@ -402,8 +413,6 @@ async def chat_completion(
 
     if workspace_id and user_id:
         try:
-            from apps.backend.infrastructure.workspace_service import ensure_workspace
-
             u = user_obj
             if u is None:
 
@@ -452,10 +461,6 @@ async def chat_completion(
             tool_context["workspace"] = workspace
         if agent_id in ("coding", "coding_plan"):
             try:
-                from apps.backend.infrastructure.workspace_retrieval_bootstrap import (
-                    maybe_schedule_index_on_attach,
-                )
-
                 maybe_schedule_index_on_attach(workspace)
             except Exception as e:
                 logger.debug("index-on-attach skipped: %s", e)
@@ -517,8 +522,6 @@ async def chat_completion(
                 ev.setdefault("agent_run_id", agent_run_id)
                 asyncio.run_coroutine_threadsafe(event_emit(ev), _loop)
 
-            from apps.backend.infrastructure.llm_concurrency import bind_llm_wait_notifier
-
             _llm_wait_token = bind_llm_wait_notifier(_notify_llm_slot_wait)
             tool_context["agent_subagent_notify"] = _agent_subagent_notify
             tool_context["deferred_wait_notify"] = _deferred_wait_notify
@@ -558,8 +561,6 @@ async def chat_completion(
         _active_task_candidate = _active_task_body.strip()
     elif conversation_uuid is not None and user_id is not None:
         try:
-            from apps.backend.infrastructure.db import db
-
             with db.pool().connection() as conn:
                 with conn.cursor() as cur:
                     cur.execute(
@@ -633,8 +634,6 @@ async def chat_completion(
     _run_persisted = False
     _run_persist_warnings: list[str] = []
     if user_id is not None and tenant_id is not None:
-        from apps.backend.infrastructure import agent_runs_store
-
         _run_row, _run_persist_warnings = agent_runs_store.insert_run_start_resilient(
             run_id=uuid.UUID(agent_run_id),
             tenant_id=int(tenant_id),
@@ -679,17 +678,13 @@ async def chat_completion(
 
     try:
 
-        from apps.backend.infrastructure import agent_config_effective as _ace
+        _ace = agent_config_effective
 
         _chat_history_raw = list(body.get("messages") or [])
         _context_prep_meta: dict[str, Any] = {}
         _compaction_attempt: tuple[str, dict[str, str], str, str] | None = None
         _prep_context_budget = None
         if config.CHAT_CONTEXT_PREP_ENABLED and _chat_history_raw:
-            from apps.backend.infrastructure.chat_context import prepare_chat_history_for_llm
-            from apps.backend.infrastructure.context_budget import resolve_context_budget
-            from apps.backend.infrastructure.operator_settings import llm_chat_transport
-
             _prep_model, _, _prep_profile, _prep_override = resolve_effective_model(
                 messages=_chat_history_raw,
                 body_model=body.get("model"),
@@ -739,8 +734,6 @@ async def chat_completion(
         tool_context["chat_context_meta"] = _context_prep_meta
 
         messages = _inject_system_prompt(list(body.get("messages") or []))
-        from apps.backend.infrastructure.chat_secret_ingress import ingress_openai_messages_inplace
-
         ingress_openai_messages_inplace(messages, tenant_id=int(tenant_id), user_id=user_id)
         _ingested_audio: list[dict[str, Any]] = []
         if user_id is not None and tenant_id is not None and isinstance(user_id, uuid.UUID):
@@ -785,8 +778,6 @@ async def chat_completion(
             if _media_snip:
                 messages = _append_system_block(messages, _media_snip)
         if agent_id and not plain_completion:
-            from apps.backend.infrastructure.skills_prompt import load_combined_skills_prompt
-
             skills_snip = load_combined_skills_prompt(
                 agent_id, delegate_mode=agent_delegate_mode
             )
@@ -815,10 +806,6 @@ async def chat_completion(
         messages = _inject_workspace_verify_hints(messages, workspace)
         if agent_id in ("coding", "coding_plan"):
             try:
-                from apps.backend.infrastructure.knowledge_orchestration_prompt import (
-                    build_knowledge_orchestration_snippet,
-                )
-
                 _knowledge_snip = build_knowledge_orchestration_snippet(tenant_id=_cfg_tid)
                 if _knowledge_snip:
                     messages = _append_system_block(messages, _knowledge_snip)
@@ -925,9 +912,6 @@ async def chat_completion(
         tool_context["parent_effective_model"] = model
         if catalog_owned_by:
             tool_context["parent_model_catalog_owned_by"] = catalog_owned_by
-        from apps.backend.infrastructure.context_budget import resolve_context_budget, usage_prompt_tokens
-        from apps.backend.infrastructure.chat_context import apply_budget_to_meta, ContextPrepMeta, update_meta_from_provider_usage
-
         _context_budget = resolve_context_budget(
             str(model or ""),
             catalog_owned_by=catalog_owned_by if isinstance(catalog_owned_by, str) else None,
@@ -943,8 +927,6 @@ async def chat_completion(
                 if val is not None and val != "" and val != 0:
                     _context_prep_meta[key] = val
             tool_context["chat_context_meta"] = _context_prep_meta
-            from apps.backend.infrastructure.context_budget import completion_quotas_from_budget
-
             _quotas = completion_quotas_from_budget(_context_budget)
             logger.info(
                 "chat context budget: model=%r window=%d soft=%d hard=%d tools=%d max_tools=%d source=%s",
@@ -1068,12 +1050,9 @@ async def chat_completion(
         try:
             from apps.backend.domain.identity import get_identity
             from apps.backend.domain.plugin_system.tool_policy import filter_chat_tool_specs
-            from apps.backend.infrastructure.db import db as _identity_db
-            from apps.backend.infrastructure.tool_operator_policy_db import policies_map
-
             _pmap = policies_map()
             _tenant_ctx, _user_ctx = get_identity()
-            _role = _identity_db.user_role(_user_ctx)
+            _role = db.user_role(_user_ctx)
             merged_tools = filter_chat_tool_specs(
                 merged_tools,
                 get_registry(),
@@ -1129,8 +1108,6 @@ async def chat_completion(
             and agent_id in config.AGENT_MCP_AGENT_IDS
         ):
             try:
-                from apps.backend.infrastructure.mcp_runtime import gather_mcp_chat_tool_specs_async
-
                 mcp_extra = await gather_mcp_chat_tool_specs_async()
                 if wl is not None and mcp_extra:
                     mcp_extra = [
@@ -1460,8 +1437,6 @@ async def chat_completion(
             round_num: int | None = None,
         ) -> None:
             nonlocal _context_prep_meta
-            from apps.backend.infrastructure.chat_context_loop import apply_agent_loop_context_budget
-
             budget = tool_context.get("_context_budget")
             new_msgs, loop_sum, patch = await apply_agent_loop_context_budget(
                 messages,
@@ -1719,8 +1694,6 @@ async def chat_completion(
                     model = chosen[2]
                     break
                 for attempt in attempts:
-                    from apps.backend.infrastructure.llm_chat_attempt import unpack_llm_attempt
-
                     b_url, b_headers, b_model, b_provider = unpack_llm_attempt(attempt)
                     pl = dict(payload_base)
                     pl["model"] = b_model
@@ -2581,15 +2554,11 @@ async def chat_completion(
 
             unregister_parent_cancel(agent_run_id)
         if _llm_wait_token is not None:
-            from apps.backend.infrastructure.llm_concurrency import reset_llm_wait_notifier
-
             reset_llm_wait_notifier(_llm_wait_token)
         reset_agent_run_id(_run_ctx_tok)
         reset_agent_task_id(_task_ctx_tok)
         if user_id is not None and tenant_id is not None and _run_persisted:
             try:
-                from apps.backend.infrastructure import agent_runs_store
-
                 agent_runs_store.finish_run(
                     run_id=uuid.UUID(agent_run_id),
                     status=_run_finish_status,

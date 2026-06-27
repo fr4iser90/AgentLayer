@@ -71,6 +71,12 @@ from apps.backend.api.optional_http_access import (
 )
 from apps.backend.infrastructure.admin_setup import is_first_start
 from apps.backend.infrastructure import smart_route_service as _smart_route_service  # noqa: F401
+from apps.backend.infrastructure import current_time_context_service as _current_time_context_service  # noqa: F401
+from apps.backend.infrastructure import assistant_display_sanitize_service as _assistant_display_sanitize_service  # noqa: F401
+from apps.backend.infrastructure import voice_policy_service as _voice_policy_service  # noqa: F401
+from apps.backend.infrastructure import workspace_common_service as _workspace_common_service  # noqa: F401
+from apps.backend.infrastructure import rag_ingest_service as _rag_ingest_service  # noqa: F401
+from apps.backend.infrastructure import workspace_rag_ingest_service as _workspace_rag_ingest_service  # noqa: F401
 from apps.backend.infrastructure.instance_setup_service import (
     apply_setup_llm_endpoint,
     build_setup_status,
@@ -91,14 +97,14 @@ from apps.backend.infrastructure.setup_catalog_service import (
     build_setup_catalog,
     test_embedding_model,
 )
-from apps.backend.domain.rag_docs_file_ingest import run_startup_rag_docs_ingest
+from apps.backend.infrastructure.rag_docs_file_ingest_service import run_startup_rag_docs_ingest
 from apps.backend.domain.agent import WorkspaceAccessDenied, chat_completion
 from apps.backend.infrastructure.llm_user_errors import user_visible_llm_transport_error
 from apps.backend.domain.http_identity import resolve_chat_identity
 from apps.backend.domain.identity import reset_identity, set_identity
 from apps.backend.domain.plugin_system.capability_governance import parse_user_capability_confirm
 from apps.backend.domain.tool_invocation_context import bind_capability_confirmed, reset_capability_confirmed
-from apps.backend.domain.plugin_system.tools_api import router as tools_router
+from apps.backend.api.tools_api import router as tools_router
 from apps.backend.api.chat_websocket import router as chat_ws_router
 from apps.backend.api.studio_api import router as studio_router
 from apps.backend.api.rag_api import router as rag_router

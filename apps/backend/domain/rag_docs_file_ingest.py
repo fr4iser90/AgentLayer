@@ -5,10 +5,9 @@ from __future__ import annotations
 import logging
 import uuid
 from pathlib import Path
+from typing import Protocol
 
 from apps.backend.domain.rag_ingest_common import ingest_markdown_paths
-from apps.backend.infrastructure import operator_settings
-from apps.backend.infrastructure.db import db
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +17,34 @@ _MAX_MARKDOWN_BYTES = 2_000_000
 _DEFAULT_DOCS_DIR = Path(__file__).resolve().parents[3] / "docs"
 
 
+class RagDocsFileIngestDependencies(Protocol):
+    def effective_docs_root_str(self) -> str | None: ...
+
+    def rag_enabled(self) -> bool: ...
+
+    def rag_embedding_ready(self) -> bool: ...
+
+    def user_first_admin_id(self) -> uuid.UUID | None: ...
+
+    def user_tenant_id(self, user_id: uuid.UUID) -> int: ...
+
+
+_deps: RagDocsFileIngestDependencies | None = None
+
+
+def register_rag_docs_file_ingest_dependencies(deps: RagDocsFileIngestDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+def _require_deps() -> RagDocsFileIngestDependencies:
+    if _deps is None:
+        raise RuntimeError("RAG docs file ingest dependencies not registered")
+    return _deps
+
+
 def resolve_docs_root() -> Path:
-    s = operator_settings.effective_docs_root_str()
+    s = _require_deps().effective_docs_root_str()
     if s:
         return Path(s).expanduser().resolve()
     return _DEFAULT_DOCS_DIR.resolve()
@@ -62,15 +87,15 @@ def run_startup_rag_docs_ingest() -> None:
     Uses oldest admin as row owner (``agentlayer_docs`` is tenant-wide for search).
     """
     logger.info("RAG docs startup ingest starting")
-    if not operator_settings.rag_settings()["enabled"]:
+    if not _require_deps().rag_enabled():
         logger.info("RAG docs startup ingest skipped (rag disabled)")
         return
-    if not operator_settings.rag_embedding_ready():
+    if not _require_deps().rag_embedding_ready():
         logger.info(
             "RAG docs startup ingest skipped (embedding API or rag_embedding_model not configured)"
         )
         return
-    admin_id = db.user_first_admin_id()
+    admin_id = _require_deps().user_first_admin_id()
     if admin_id is None:
         logger.warning("RAG docs startup ingest skipped (no admin user yet)")
         return
@@ -78,7 +103,7 @@ def run_startup_rag_docs_ingest() -> None:
     if not root.is_dir():
         logger.warning("RAG docs startup ingest skipped (missing docs dir: %s)", root)
         return
-    tenant_id = db.user_tenant_id(admin_id)
+    tenant_id = _require_deps().user_tenant_id(admin_id)
     try:
         summary = ingest_markdown_tree(
             tenant_id,

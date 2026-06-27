@@ -20,7 +20,7 @@ AgentLayer is an OpenAI-compatible HTTP API + tool runtime around local models (
 - Entry: `src/api/main.py`
 - Chat: `src/domain/agent.py::chat_completion`
 - Dashboard endpoints: `src/dashboard/router.py`
-- Tool execution endpoint: `src/domain/plugin_system/tools_api.py` (router)
+- Tool execution endpoint: `src/api/tools_api.py` (router)
 
 ### Tool runtime
 

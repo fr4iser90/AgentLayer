@@ -10,6 +10,14 @@ from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeout
 from typing import Any
 
+from apps.backend.application.agent_runtime.dependencies import (
+    agent_artifacts_store,
+    agent_config_effective,
+    agent_tasks_store,
+    db,
+    ensure_workspace,
+)
+
 logger = logging.getLogger(__name__)
 
 def _delegatable_sets_from_registry() -> tuple[frozenset[str], frozenset[str]]:
@@ -43,9 +51,7 @@ def caller_is_admin(user_id: uuid.UUID | None) -> bool:
     if user_id is None:
         return False
     try:
-        from apps.backend.infrastructure.db import db as _db
-
-        return (_db.user_role(user_id) or "").strip().lower() == "admin"
+        return (db.user_role(user_id) or "").strip().lower() == "admin"
     except Exception:
         return False
 
@@ -60,9 +66,10 @@ def effective_delegatable_agent_ids(
         base = standard | admin_only
     else:
         base = standard
-    from apps.backend.infrastructure import agent_config_effective as ace
-
-    allowed = ace.effective_string_list("delegate.allowed_agent_ids", tenant_id=tenant_id)
+    allowed = agent_config_effective.effective_string_list(
+        "delegate.allowed_agent_ids",
+        tenant_id=tenant_id,
+    )
     if allowed:
         filt = frozenset(allowed)
         return base & filt
@@ -205,16 +212,12 @@ def run_embedded_subagent_sync(
         if uid is not None:
             parent_uid = uid
             try:
-                from apps.backend.infrastructure.db import db as _db
-
-                parent_tid = _db.user_tenant_id(uid)
+                parent_tid = db.user_tenant_id(uid)
             except Exception:
                 parent_tid = 1
 
     uid_check = parent_uid if isinstance(parent_uid, uuid.UUID) else None
     is_admin = caller_is_admin(uid_check)
-
-    from apps.backend.infrastructure import agent_config_effective
 
     tid: int | None = None
     if parent_tid is not None:
@@ -367,8 +370,6 @@ def run_embedded_subagent_sync(
     ws = ctx.get("workspace")
     if not (isinstance(ws, dict) and ws.get("path")) and ctx.get("workspace_id") and parent_uid is not None:
         try:
-            from apps.backend.infrastructure.workspace_service import ensure_workspace
-
             u = ctx.get("user")
             if u is None:
 
@@ -631,11 +632,6 @@ def run_embedded_subagent_sync(
                     ok = True
                     artifact_id: str | None = None
                     if parent_uid is not None and parent_tid is not None and excerpt:
-                        from apps.backend.infrastructure import (
-                            agent_artifacts_store,
-                            agent_tasks_store,
-                        )
-
                         try:
                             art = agent_artifacts_store.create_artifact(
                                 tenant_id=int(parent_tid),

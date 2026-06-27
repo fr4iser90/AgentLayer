@@ -46,7 +46,7 @@ Implementation:
 ## Tools
 
 - `POST /tools/run` — run one tool call directly (admin/operator flows)
-- Registry & policies: `src/domain/plugin_system/tools_api.py`
+- Registry & policies: `src/api/tools_api.py`
 
 ## User data
 

@@ -5,14 +5,98 @@ from __future__ import annotations
 import json
 import re
 import uuid
-from typing import Any
+from typing import Any, Protocol
 
 from apps.backend.domain.identity import get_identity
-from apps.backend.infrastructure.db import db
-from apps.backend.infrastructure.workspace_columns import WORKSPACE_SELECT_SQL, workspace_row_to_api
-from apps.backend.infrastructure.workspace_service import AGENTLAYER_SELF_NAME, self_editing_allowed
 
 _GITHUB_SLUG_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+AGENTLAYER_SELF_NAME = "agentlayer-self"
+
+
+class WorkspaceCommonDependencies(Protocol):
+    workspace_select_sql: str
+    agentlayer_self_name: str
+
+    def pool(self) -> Any: ...
+
+    def user_role(self, user_id: uuid.UUID) -> str | None: ...
+
+    def workspace_row_to_api(self, row: Any) -> dict[str, Any]: ...
+
+    def self_editing_allowed(self, user: Any) -> bool: ...
+
+    def ensure_workspace(self, workspace_id: str, user: Any) -> dict[str, Any] | None: ...
+
+    def conversation_replace(
+        self,
+        user_id: uuid.UUID,
+        conversation_id: uuid.UUID,
+        *,
+        title: str | None,
+        mode: str | None,
+        model: str | None,
+        messages: list[dict[str, Any]] | None,
+        agent_log: list[dict[str, Any]] | None,
+        composer_prefs: dict[str, Any] | None,
+    ) -> dict[str, Any] | None: ...
+
+
+_deps: WorkspaceCommonDependencies | None = None
+
+
+def register_workspace_common_dependencies(deps: WorkspaceCommonDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+class _DbPort:
+    def pool(self) -> Any:
+        if _deps is None:
+            raise RuntimeError("workspace common dependencies not registered")
+        return _deps.pool()
+
+    def user_role(self, user_id: uuid.UUID) -> str | None:
+        if _deps is None:
+            raise RuntimeError("workspace common dependencies not registered")
+        return _deps.user_role(user_id)
+
+
+db = _DbPort()
+
+
+def _workspace_select_sql() -> str:
+    if _deps is None:
+        return "*"
+    return _deps.workspace_select_sql
+
+
+def _agentlayer_self_name() -> str:
+    return _deps.agentlayer_self_name if _deps is not None else AGENTLAYER_SELF_NAME
+
+
+def _workspace_row_to_api(row: Any) -> dict[str, Any]:
+    if _deps is None:
+        if isinstance(row, tuple):
+            return {
+                "id": row[0] if len(row) > 0 else None,
+                "owner_user_id": row[1] if len(row) > 1 else None,
+                "name": row[2] if len(row) > 2 else None,
+                "path": row[3] if len(row) > 3 else None,
+                "source": row[4] if len(row) > 4 else None,
+                "git_url": row[5] if len(row) > 5 else None,
+                "git_branch": row[6] if len(row) > 6 else None,
+                "access_role": row[7] if len(row) > 7 else None,
+            }
+        return dict(row) if isinstance(row, dict) else {}
+    return _deps.workspace_row_to_api(row)
+
+
+def _self_editing_allowed(user: Any) -> bool:
+    return bool(_deps and _deps.self_editing_allowed(user))
+
+
+def _ensure_workspace(workspace_id: str, user: Any) -> dict[str, Any] | None:
+    return _deps.ensure_workspace(workspace_id, user) if _deps is not None else None
 
 
 def dump(payload: dict[str, Any]) -> str:
@@ -82,7 +166,7 @@ def find_owned_git_workspace(user, *, git_url: str) -> dict[str, Any] | None:
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT " + WORKSPACE_SELECT_SQL + """
+                "SELECT " + _workspace_select_sql() + """
                 FROM project_workspaces
                 WHERE owner_user_id = %s AND source = 'git' AND git_url IS NOT NULL
                 ORDER BY updated_at DESC
@@ -91,19 +175,17 @@ def find_owned_git_workspace(user, *, git_url: str) -> dict[str, Any] | None:
             )
             rows = cur.fetchall()
     for row in rows:
-        ws = workspace_row_to_api(row)
+        ws = _workspace_row_to_api(row)
         if git_url_equivalence_key(str(ws.get("git_url") or "")) == target:
             return ws
     return None
 
 
 def list_workspaces_for_user(user) -> list[dict[str, Any]]:
-    from apps.backend.infrastructure.workspace_service import ensure_workspace
-
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT " + WORKSPACE_SELECT_SQL + """
+                "SELECT " + _workspace_select_sql() + """
                 FROM project_workspaces
                 WHERE owner_user_id = %s
                 ORDER BY name ASC
@@ -112,12 +194,12 @@ def list_workspaces_for_user(user) -> list[dict[str, Any]]:
             )
             rows = cur.fetchall()
 
-    out = [workspace_row_to_api(r) for r in rows]
-    if not self_editing_allowed(user):
-        out = [w for w in out if (w.get("name") or "").strip() != AGENTLAYER_SELF_NAME]
+    out = [_workspace_row_to_api(r) for r in rows]
+    if not _self_editing_allowed(user):
+        out = [w for w in out if (w.get("name") or "").strip() != _agentlayer_self_name()]
 
-    if self_editing_allowed(user):
-        self_ws = ensure_workspace("__agentlayer_self__", user)
+    if _self_editing_allowed(user):
+        self_ws = _ensure_workspace("__agentlayer_self__", user)
         if self_ws and self_ws.get("id"):
             sid = str(self_ws["id"])
             if not any(str(w.get("id")) == sid for w in out):
@@ -125,7 +207,7 @@ def list_workspaces_for_user(user) -> list[dict[str, Any]]:
                     0,
                     {
                         "id": sid,
-                        "name": self_ws.get("name") or AGENTLAYER_SELF_NAME,
+                        "name": self_ws.get("name") or _agentlayer_self_name(),
                         "path": self_ws.get("path"),
                         "source": self_ws.get("source") or "manual",
                         "git_url": self_ws.get("git_url"),
@@ -175,9 +257,9 @@ def persist_conversation_workspace(
         wid = uuid.UUID(str(workspace_id).strip())
     except (ValueError, TypeError):
         return False
-    from apps.backend.infrastructure.conversations_db import conversation_replace
-
-    updated = conversation_replace(
+    if _deps is None:
+        return False
+    updated = _deps.conversation_replace(
         user_id,
         cid,
         title=None,

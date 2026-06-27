@@ -6,11 +6,30 @@ import json
 import re
 import uuid
 from json import JSONDecoder
-from typing import Any
+from typing import Any, Protocol
 
 from apps.backend.domain.agent_io import _parse_tool_intent_from_content, _text_blobs_from_message
 from apps.backend.domain.dashboard_agent_guards import is_propose_layouts_tool
-from apps.backend.infrastructure.stream_repetition_guard import guard_assistant_text
+
+
+class AssistantDisplaySanitizeDependencies(Protocol):
+    def guard_assistant_text(self, text: str) -> tuple[str, bool]: ...
+
+
+_deps: AssistantDisplaySanitizeDependencies | None = None
+
+
+def register_assistant_display_sanitize_dependencies(
+    deps: AssistantDisplaySanitizeDependencies,
+) -> None:
+    global _deps
+    _deps = deps
+
+
+def guard_assistant_text(text: str) -> tuple[str, bool]:
+    if _deps is None:
+        return text, False
+    return _deps.guard_assistant_text(text)
 
 _SIMULATION_CUT_MARKERS: tuple[str, ...] = (
     "**warte auf benutzereingabe",

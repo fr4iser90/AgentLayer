@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from apps.backend.infrastructure.agent_tasks_store import TaskStatus
+from typing import Literal
+
+TaskStatus = Literal["draft", "planning", "queued", "in_progress", "blocked", "done", "cancelled"]
 
 
 def normalize_new_task_status(

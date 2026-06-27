@@ -25,7 +25,7 @@ def test_gate_keeps_only_introspection_when_no_relevance(monkeypatch):
         for n in ("list_available_tools", "get_tool_help", "catalog", "read_file", "bash")
     ]
     monkeypatch.setattr(
-        "apps.backend.api.rag.embed_one",
+        "apps.backend.domain.agent_tools.embed_one",
         lambda text: [1.0, 0.0] if "17" in text else [0.0, 1.0],
     )
     monkeypatch.setattr(
@@ -48,7 +48,7 @@ def test_gate_keeps_only_introspection_when_no_relevance(monkeypatch):
 
 def test_name_mention_forwards_action_tool(monkeypatch):
     tools = [_spec("list_available_tools"), _spec("catalog"), _spec("bash")]
-    monkeypatch.setattr("apps.backend.api.rag.embed_one", lambda text: [0.1, 0.9])
+    monkeypatch.setattr("apps.backend.domain.agent_tools.embed_one", lambda text: [0.1, 0.9])
     monkeypatch.setattr(
         "apps.backend.domain.agent_tools._tool_embedding_cache",
         {n: [0.1, 0.9] for n in ("list_available_tools", "catalog", "bash")},
@@ -60,7 +60,7 @@ def test_name_mention_forwards_action_tool(monkeypatch):
 
 def test_category_routed_keeps_full_pool_sorted(monkeypatch):
     tools = [_spec(n) for n in ("a", "b", "c")]
-    monkeypatch.setattr("apps.backend.api.rag.embed_one", lambda text: [1.0, 0.0])
+    monkeypatch.setattr("apps.backend.domain.agent_tools.embed_one", lambda text: [1.0, 0.0])
     monkeypatch.setattr(
         "apps.backend.domain.agent_tools._tool_embedding_cache",
         {"a": [1.0, 0.0], "b": [0.5, 0.5], "c": [0.0, 1.0]},

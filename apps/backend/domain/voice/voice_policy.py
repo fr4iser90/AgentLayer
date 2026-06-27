@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any
-
-from apps.backend.infrastructure.db import db
+from typing import Any, Protocol
 
 _DEFAULT_OPERATOR: dict[str, Any] = {
     "voice_enabled": False,
@@ -37,107 +35,63 @@ _DEFAULT_USER: dict[str, Any] = {
 }
 
 
+class VoicePolicyDependencies(Protocol):
+    def operator_voice_row(self) -> dict[str, Any] | None: ...
+
+    def user_voice_prefs_get(self, user_id: uuid.UUID) -> dict[str, Any] | None: ...
+
+    def user_voice_prefs_upsert(
+        self, tenant_id: int, user_id: uuid.UUID, values: dict[str, Any]
+    ) -> None: ...
+
+    def active_voice_stt_spec(self) -> Any | None: ...
+
+    def active_voice_tts_spec(self) -> Any | None: ...
+
+    def voice_auth_headers(self, spec: Any) -> dict[str, str]: ...
+
+
+_deps: VoicePolicyDependencies | None = None
+
+
+def register_voice_policy_dependencies(deps: VoicePolicyDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
 def operator_voice_row() -> dict[str, Any]:
     out = dict(_DEFAULT_OPERATOR)
+    if _deps is None:
+        return out
     try:
-        with db.pool().connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    SELECT voice_enabled, voice_provider_id, voice_stt_provider_id, voice_tts_provider_id,
-                           voice_api_base_url, voice_api_key,
-                           voice_stt_model, voice_tts_model, voice_tts_voice,
-                           voice_max_seconds, voice_max_bytes,
-                           voice_bridge_telegram, voice_bridge_discord,
-                           voice_realtime_enabled, voice_discord_vc_enabled
-                    FROM operator_settings WHERE id = 1
-                    """
-                )
-                row = cur.fetchone()
+        row = _deps.operator_voice_row()
     except Exception:
         return out
-    if not row:
+    if not isinstance(row, dict):
         return out
-    keys = tuple(_DEFAULT_OPERATOR.keys())
-    for i, k in enumerate(keys):
-        v = row[i]
-        if v is not None:
-            out[k] = v
+    out.update({k: v for k, v in row.items() if k in _DEFAULT_OPERATOR and v is not None})
     return out
 
 
 def user_voice_prefs_get(user_id: uuid.UUID) -> dict[str, Any]:
     out = dict(_DEFAULT_USER)
+    if _deps is None:
+        return out
     try:
-        with db.pool().connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    SELECT input_enabled, output_enabled, language, voice_id,
-                           mode_web, mode_telegram, mode_discord,
-                           edit_transcript_before_send
-                    FROM user_voice_prefs WHERE user_id = %s
-                    """,
-                    (user_id,),
-                )
-                row = cur.fetchone()
+        row = _deps.user_voice_prefs_get(user_id)
     except Exception:
         return out
-    if not row:
+    if not isinstance(row, dict):
         return out
-    keys = (
-        "input_enabled",
-        "output_enabled",
-        "language",
-        "voice_id",
-        "mode_web",
-        "mode_telegram",
-        "mode_discord",
-        "edit_transcript_before_send",
-    )
-    for i, k in enumerate(keys):
-        if row[i] is not None:
-            out[k] = row[i]
+    out.update({k: v for k, v in row.items() if k in _DEFAULT_USER and v is not None})
     return out
 
 
 def user_voice_prefs_upsert(tenant_id: int, user_id: uuid.UUID, patch: dict[str, Any]) -> None:
     cur = user_voice_prefs_get(user_id)
     cur.update({k: v for k, v in patch.items() if k in _DEFAULT_USER})
-    with db.pool().connection() as conn:
-        with conn.cursor() as cur_db:
-            cur_db.execute(
-                """
-                INSERT INTO user_voice_prefs (
-                  user_id, tenant_id, input_enabled, output_enabled, language, voice_id,
-                  mode_web, mode_telegram, mode_discord, edit_transcript_before_send, updated_at
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now())
-                ON CONFLICT (user_id) DO UPDATE SET
-                  tenant_id = EXCLUDED.tenant_id,
-                  input_enabled = EXCLUDED.input_enabled,
-                  output_enabled = EXCLUDED.output_enabled,
-                  language = EXCLUDED.language,
-                  voice_id = EXCLUDED.voice_id,
-                  mode_web = EXCLUDED.mode_web,
-                  mode_telegram = EXCLUDED.mode_telegram,
-                  mode_discord = EXCLUDED.mode_discord,
-                  edit_transcript_before_send = EXCLUDED.edit_transcript_before_send,
-                  updated_at = now()
-                """,
-                (
-                    user_id,
-                    tenant_id,
-                    bool(cur.get("input_enabled", True)),
-                    bool(cur.get("output_enabled", False)),
-                    str(cur.get("language") or "de")[:16],
-                    (str(cur["voice_id"]).strip()[:64] if cur.get("voice_id") else None),
-                    str(cur.get("mode_web") or "push_to_talk")[:32],
-                    str(cur.get("mode_telegram") or "text_only")[:32],
-                    str(cur.get("mode_discord") or "text_only")[:32],
-                    bool(cur.get("edit_transcript_before_send", True)),
-                ),
-            )
-        conn.commit()
+    if _deps is not None:
+        _deps.user_voice_prefs_upsert(tenant_id, user_id, cur)
 
 
 def effective_voice_enabled(*, user_id: uuid.UUID | None = None) -> bool:
@@ -214,27 +168,41 @@ def effective_voice_limits() -> tuple[int, int]:
 
 
 def voice_api_credentials() -> tuple[str, str]:
-    from apps.backend.infrastructure.voice_catalog_providers import resolve_active_voice_stt_spec
-
-    spec = resolve_active_voice_stt_spec()
+    spec = _deps.active_voice_stt_spec() if _deps is not None else None
     if spec and spec.base_url:
         return spec.base_url.rstrip("/"), (spec.api_key or "").strip()
     return "", ""
 
 
-def voice_stt_model() -> str:
-    from apps.backend.infrastructure.voice_catalog_providers import resolve_active_voice_stt_spec
+def active_voice_stt_spec() -> Any | None:
+    return _deps.active_voice_stt_spec() if _deps is not None else None
 
-    spec = resolve_active_voice_stt_spec()
+
+def active_voice_tts_spec() -> Any | None:
+    return _deps.active_voice_tts_spec() if _deps is not None else None
+
+
+def voice_auth_headers(spec: Any) -> dict[str, str]:
+    if _deps is None:
+        key = (getattr(spec, "api_key", "") or "").strip()
+        if not key:
+            return {}
+        header = (getattr(spec, "api_header_name", "") or "Authorization").strip()
+        if header.lower() == "authorization":
+            return {"Authorization": f"Bearer {key}"}
+        return {header: key}
+    return _deps.voice_auth_headers(spec)
+
+
+def voice_stt_model() -> str:
+    spec = _deps.active_voice_stt_spec() if _deps is not None else None
     if spec and spec.model_stt:
         return spec.model_stt[:128]
     return ""
 
 
 def voice_tts_model() -> str:
-    from apps.backend.infrastructure.voice_catalog_providers import resolve_active_voice_tts_spec
-
-    spec = resolve_active_voice_tts_spec()
+    spec = _deps.active_voice_tts_spec() if _deps is not None else None
     if spec and spec.model_tts:
         return spec.model_tts[:128]
     return ""
@@ -245,9 +213,7 @@ def effective_tts_voice(user_id: uuid.UUID) -> str:
     custom = (str(prefs.get("voice_id") or "").strip())
     if custom:
         return custom[:64]
-    from apps.backend.infrastructure.voice_catalog_providers import resolve_active_voice_tts_spec
-
-    spec = resolve_active_voice_tts_spec()
+    spec = _deps.active_voice_tts_spec() if _deps is not None else None
     if spec and spec.model_tts_voice:
         return spec.model_tts_voice[:64]
     return "alloy"

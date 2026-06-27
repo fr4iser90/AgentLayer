@@ -11,7 +11,6 @@ import httpx
 
 from apps.backend.domain.voice import voice_policy
 from apps.backend.domain.voice.stt_audio_convert import ensure_whisper_wav
-from apps.backend.infrastructure.voice_catalog_providers import VoiceProviderSpec
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +41,7 @@ def _guess_filename(mime: str) -> str:
     return f"audio{ext}"
 
 
-def _stt_url(spec: VoiceProviderSpec) -> str:
+def _stt_url(spec: Any) -> str:
     base = spec.base_url.rstrip("/")
     if spec.stt_transcribe_path:
         path = spec.stt_transcribe_path.strip()
@@ -54,7 +53,7 @@ def _stt_url(spec: VoiceProviderSpec) -> str:
     return f"{base}/audio/transcriptions"
 
 
-def _stt_form_data(spec: VoiceProviderSpec, *, language: str | None) -> dict[str, Any]:
+def _stt_form_data(spec: Any, *, language: str | None) -> dict[str, Any]:
     if spec.stt_api_style == "whisper_cpp":
         data: dict[str, Any] = {"response_format": "json"}
         if language:
@@ -77,7 +76,7 @@ def _normalize_transcript(text: str) -> str:
     return t
 
 
-def _parse_stt_response(spec: VoiceProviderSpec, resp: httpx.Response) -> str:
+def _parse_stt_response(spec: Any, resp: httpx.Response) -> str:
     raw = (resp.text or "").strip()
     if not raw:
         return ""
@@ -123,12 +122,7 @@ def transcribe_audio(
     if len(audio) > max_b:
         raise ValueError(f"audio too large (max {max_b} bytes)")
 
-    from apps.backend.infrastructure.voice_catalog_providers import (
-        resolve_active_voice_stt_spec,
-        voice_auth_headers,
-    )
-
-    spec = resolve_active_voice_stt_spec()
+    spec = voice_policy.active_voice_stt_spec()
     if not spec or not (spec.api_key or "").strip():
         raise ValueError(
             "voice STT not configured (set VOICE_STT_PROVIDER_1_BASE_URL in .env or Admin → Interfaces → Platform → Voice)"
@@ -148,7 +142,7 @@ def transcribe_audio(
     files = {
         "file": (_guess_filename(upload_mime), upload_audio, upload_mime),
     }
-    headers = voice_auth_headers(spec)
+    headers = voice_policy.voice_auth_headers(spec)
 
     with httpx.Client(timeout=timeout_sec) as client:
         resp = client.post(url, headers=headers, data=data, files=files)

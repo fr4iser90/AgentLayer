@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Protocol
 from zoneinfo import ZoneInfo
 
 from apps.backend.domain.user_persona import _append_system_block
@@ -13,6 +13,25 @@ from apps.backend.domain.user_persona import _append_system_block
 logger = logging.getLogger(__name__)
 
 USER_TIMEZONE_HEADER = "X-User-Timezone"
+
+
+class CurrentTimeContextDependencies(Protocol):
+    def user_timezone_persist(
+        self,
+        tenant_id: int,
+        user_id: uuid.UUID,
+        timezone_name: str,
+    ) -> None: ...
+
+    def user_agent_profile_get(self, user_id: uuid.UUID) -> dict[str, Any] | None: ...
+
+
+_deps: CurrentTimeContextDependencies | None = None
+
+
+def register_current_time_context_dependencies(deps: CurrentTimeContextDependencies) -> None:
+    global _deps
+    _deps = deps
 
 
 def normalize_timezone_name(raw: str | None) -> str | None:
@@ -38,10 +57,10 @@ def _persist_request_timezone(
         tid = int(tenant_id)
     except (ValueError, TypeError):
         return
+    if _deps is None:
+        return
     try:
-        from apps.backend.infrastructure.db import db
-
-        db.user_timezone_persist(tid, uid, timezone_name)
+        _deps.user_timezone_persist(tid, uid, timezone_name)
     except Exception:
         logger.debug("user_timezone_persist failed", exc_info=True)
 
@@ -53,10 +72,10 @@ def _profile_timezone(user_id: Any) -> str | None:
         uid = user_id if isinstance(user_id, uuid.UUID) else uuid.UUID(str(user_id))
     except (ValueError, TypeError):
         return None
+    if _deps is None:
+        return None
     try:
-        from apps.backend.infrastructure.db import db
-
-        prof = db.user_agent_profile_get(uid)
+        prof = _deps.user_agent_profile_get(uid)
     except Exception:
         logger.debug("user_agent_profile_get failed for time context", exc_info=True)
         return None

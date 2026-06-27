@@ -6,21 +6,152 @@ import hashlib
 import logging
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 import httpx
 
-from apps.backend.api.rag import embed_one, ingest_for_user
-from apps.backend.infrastructure import operator_settings
-from apps.backend.infrastructure.db import db
-from apps.backend.infrastructure.embedding_chunking import effective_embed_max_input_tokens
-from apps.backend.infrastructure.embedding_client import (
-    format_embedding_http_error,
-    format_embedding_request_error,
-    log_embedding_http_error,
-)
-
 logger = logging.getLogger(__name__)
+
+
+class RagIngestDependencies(Protocol):
+    def rag_settings(self) -> dict[str, Any]: ...
+
+    def rag_docs_ingest_fingerprint(self) -> str | None: ...
+
+    def set_rag_docs_ingest_fingerprint(self, value: str) -> None: ...
+
+    def effective_embed_max_input_tokens(self) -> int: ...
+
+    def embed_one(self, text: str) -> list[float]: ...
+
+    def ingest_for_user(
+        self,
+        tenant_id: int,
+        user_id: uuid.UUID,
+        domain: str,
+        title: str,
+        text: str,
+        source_uri: str,
+        *,
+        workspace_id: uuid.UUID | None = None,
+    ) -> dict[str, Any]: ...
+
+    def format_embedding_http_error(self, exc: httpx.HTTPStatusError) -> str: ...
+
+    def format_embedding_request_error(self, exc: httpx.RequestError) -> str: ...
+
+    def log_embedding_http_error(self, exc: httpx.HTTPStatusError, *, context: str) -> None: ...
+
+    def rag_delete_documents_by_tenant_domain(self, tenant_id: int, domain: str) -> int: ...
+
+    def rag_documents_by_tenant_domain_index(
+        self,
+        tenant_id: int,
+        domain: str,
+        *,
+        workspace_id: uuid.UUID | None = None,
+    ) -> dict[str, dict[str, Any]]: ...
+
+    def rag_delete_document_by_id(self, doc_id: int) -> bool: ...
+
+
+_deps: RagIngestDependencies | None = None
+
+
+def register_rag_ingest_dependencies(deps: RagIngestDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+def _require_deps() -> RagIngestDependencies:
+    if _deps is None:
+        raise RuntimeError("rag ingest dependencies not registered")
+    return _deps
+
+
+class _OperatorSettingsPort:
+    def rag_settings(self) -> dict[str, Any]:
+        if _deps is None:
+            return {
+                "embedding_model": "",
+                "embedding_dim": 0,
+                "chunk_size": 0,
+                "chunk_overlap": 0,
+            }
+        return _deps.rag_settings()
+
+    def rag_docs_ingest_fingerprint(self) -> str | None:
+        return _deps.rag_docs_ingest_fingerprint() if _deps is not None else None
+
+    def set_rag_docs_ingest_fingerprint(self, value: str) -> None:
+        if _deps is not None:
+            _deps.set_rag_docs_ingest_fingerprint(value)
+
+
+class _DbPort:
+    def rag_delete_documents_by_tenant_domain(self, tenant_id: int, domain: str) -> int:
+        return _require_deps().rag_delete_documents_by_tenant_domain(tenant_id, domain)
+
+    def rag_documents_by_tenant_domain_index(
+        self,
+        tenant_id: int,
+        domain: str,
+        *,
+        workspace_id: uuid.UUID | None = None,
+    ) -> dict[str, dict[str, Any]]:
+        return _require_deps().rag_documents_by_tenant_domain_index(
+            tenant_id,
+            domain,
+            workspace_id=workspace_id,
+        )
+
+    def rag_delete_document_by_id(self, doc_id: int) -> bool:
+        return _require_deps().rag_delete_document_by_id(doc_id)
+
+
+operator_settings = _OperatorSettingsPort()
+db = _DbPort()
+
+
+def effective_embed_max_input_tokens() -> int:
+    return _deps.effective_embed_max_input_tokens() if _deps is not None else 0
+
+
+def embed_one(text: str) -> list[float]:
+    return _require_deps().embed_one(text)
+
+
+def ingest_for_user(
+    tenant_id: int,
+    user_id: uuid.UUID,
+    domain: str,
+    title: str,
+    text: str,
+    source_uri: str,
+    *,
+    workspace_id: uuid.UUID | None = None,
+) -> dict[str, Any]:
+    return _require_deps().ingest_for_user(
+        tenant_id,
+        user_id,
+        domain,
+        title,
+        text,
+        source_uri,
+        workspace_id=workspace_id,
+    )
+
+
+def format_embedding_http_error(exc: httpx.HTTPStatusError) -> str:
+    return _require_deps().format_embedding_http_error(exc)
+
+
+def format_embedding_request_error(exc: httpx.RequestError) -> str:
+    return _require_deps().format_embedding_request_error(exc)
+
+
+def log_embedding_http_error(exc: httpx.HTTPStatusError, *, context: str) -> None:
+    _require_deps().log_embedding_http_error(exc, context=context)
 
 
 def compute_rag_ingest_fingerprint() -> str:

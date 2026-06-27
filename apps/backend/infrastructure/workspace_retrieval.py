@@ -279,7 +279,7 @@ def _run_docs_rag_phase(
         _index_job_set(workspace_id, phase="docs_rag", files_done=0, files_total=1)
 
     try:
-        from apps.backend.domain.workspace_rag_ingest import ingest_workspace_markdown_tree
+        from apps.backend.infrastructure.workspace_rag_ingest_service import ingest_workspace_markdown_tree
 
         summary = ingest_workspace_markdown_tree(
             uuid.UUID(workspace_id),

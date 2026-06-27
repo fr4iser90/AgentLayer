@@ -9,7 +9,7 @@ from typing import Any, Literal
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from apps.backend.infrastructure.auth import require_admin, require_permission
+from apps.backend.domain.http_identity import resolve_tools_list_identity
 from apps.backend.domain.plugin_system.capability_index import (
     build_capability_index,
     list_tools_without_capabilities,
@@ -21,7 +21,7 @@ from apps.backend.domain.plugin_system.tool_policy import (
     filter_chat_tool_specs,
     filter_tools_meta,
 )
-from apps.backend.domain.http_identity import resolve_tools_list_identity
+from apps.backend.infrastructure.auth import require_admin, require_permission
 from apps.backend.infrastructure.db import db
 from apps.backend.infrastructure.public_error import http_500_detail
 
@@ -51,7 +51,7 @@ def _registered_function_name(spec: dict) -> str | None:
 @router.get("/v1/capabilities")
 async def list_capabilities(request: Request):
     """
-    Machine-readable capability index (ADR 0001): ``capability`` → tools that declare it.
+    Machine-readable capability index (ADR 0001): ``capability`` -> tools that declare it.
 
     Built from the same policy-filtered ``tools_meta`` as ``GET /v1/tools`` for this caller.
     """

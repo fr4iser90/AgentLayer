@@ -59,7 +59,7 @@ Everything below is implemented for **admin-authenticated** HTTP (`require_admin
 | `POST` | `/v1/admin/users` | Create password user (`email`, `password`, `role`, `tenant_id`). |
 | `PATCH` | `/v1/admin/users/{user_id}` | Patch `tenant_id`, `workspace_quota`, `workspace_self_allowed`. |
 
-### HTTP: tool registry (`apps/backend/domain/plugin_system/tools_api.py`)
+### HTTP: tool registry (`apps/backend/api/tools_api.py`)
 
 | Method | Path | Purpose | Notes |
 |--------|------|---------|--------|

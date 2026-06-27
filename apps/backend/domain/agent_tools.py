@@ -15,14 +15,22 @@ from typing import Any, Awaitable, Callable, Literal
 import httpx
 
 from apps.backend.core.config import config
+from apps.backend.application.agent_runtime.dependencies import (
+    agent_config_effective,
+    apply_repetition_guard_to_completion,
+    dashboard_db,
+    embed_one,
+    external_llm_should_failover,
+    http_post_chat_completions,
+    llm_chat_transport,
+    memory_api,
+    normalize_model_catalog_owned_by,
+    smart_llm_routing_enabled,
+    stream_chat_completions_aggregate,
+)
 from apps.backend.domain.identity import get_identity
-from apps.backend.api import memory as memory_api
 from apps.backend.domain.agent_registry import get_agent_registry
-from apps.backend.infrastructure.openai_compat_http import http_post_chat_completions
-from apps.backend.infrastructure.openai_stream_aggregate import stream_chat_completions_aggregate
-from apps.backend.infrastructure.stream_repetition_guard import apply_repetition_guard_to_completion
 from apps.backend.domain.plugin_system.registry import get_registry
-from apps.backend.dashboard import db as dashboard_db
 from apps.backend.domain.plugin_system.capability_governance import parse_user_capability_confirm
 from apps.backend.domain.plugin_system.capability_index import filter_merged_tools_by_capabilities
 from apps.backend.domain.plugin_system.tool_routing import (
@@ -43,12 +51,6 @@ from apps.backend.domain.tool_invocation_context import (
 from apps.backend.domain.llm_smart_route import decide_smart_backend
 from apps.backend.domain.model_routing import profile_default_model_id, resolve_effective_model
 from apps.backend.domain.user_persona import _append_system_block, apply_user_persona_system
-from apps.backend.infrastructure.operator_settings import (
-    external_llm_should_failover,
-    llm_chat_transport,
-    normalize_model_catalog_owned_by,
-    smart_llm_routing_enabled,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -215,10 +217,6 @@ def rank_tools_for_forward(
     a domain trigger match, or an explicit name mention in the user message — never the
     full allowlist when nothing matches.
     """
-    from apps.backend.api.rag import embed_one
-
-    from apps.backend.infrastructure import agent_config_effective
-
     if not agent_config_effective.effective_bool("tool_forward.ranking_enabled", default=config.AGENT_TOOLS_RANKING_ENABLED) or not user_input or not tools:
         return list(tools), False
 

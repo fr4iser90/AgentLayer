@@ -30,15 +30,15 @@ def test_auto_create_for_general_admin_with_git_url() -> None:
             return_value=None,
         ):
             with patch(
-                "apps.backend.infrastructure.workspace_service.create_project_workspace_for_user",
+                "apps.backend.domain.agent_io.create_project_workspace_for_user",
                 return_value={"id": str(ws_id)},
             ) as create_mock:
                 with patch(
-                    "apps.backend.infrastructure.workspace_service.ensure_workspace",
+                    "apps.backend.domain.agent_io.ensure_workspace",
                     return_value=created_ws,
                 ):
                     with patch(
-                        "apps.backend.infrastructure.workspace_service.slug_from_git_url",
+                        "apps.backend.domain.agent_io.slug_from_git_url",
                         return_value="agentlayer",
                     ):
                         out = _try_auto_create_workspace_from_git_url(
@@ -81,10 +81,10 @@ def test_auto_create_reuses_owned_git_workspace_without_creating() -> None:
             return_value=existing,
         ) as find_mock:
             with patch(
-                "apps.backend.infrastructure.workspace_service.create_project_workspace_for_user",
+                "apps.backend.domain.agent_io.create_project_workspace_for_user",
             ) as create_mock:
                 with patch(
-                    "apps.backend.infrastructure.workspace_service.ensure_workspace",
+                    "apps.backend.domain.agent_io.ensure_workspace",
                     return_value=bound,
                 ) as ensure_mock:
                     out = _try_auto_create_workspace_from_git_url(
@@ -115,7 +115,7 @@ def test_auto_create_skipped_when_prompt_defers_to_workspace_create_tool() -> No
             "apps.backend.domain.workspace.workspace_common.find_owned_git_workspace",
         ) as find_mock:
             with patch(
-                "apps.backend.infrastructure.workspace_service.create_project_workspace_for_user",
+                "apps.backend.domain.agent_io.create_project_workspace_for_user",
             ) as create_mock:
                 out = _try_auto_create_workspace_from_git_url(
                     agent_id="general",

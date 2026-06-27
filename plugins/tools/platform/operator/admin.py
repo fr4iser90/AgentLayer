@@ -16,9 +16,9 @@ import httpx
 from pydantic import BaseModel, ConfigDict, Field
 
 from apps.backend.domain.identity import get_identity
-from apps.backend.domain.rag_docs_file_ingest import ingest_markdown_tree, resolve_docs_root
+from apps.backend.infrastructure.rag_docs_file_ingest_service import ingest_markdown_tree, resolve_docs_root
 from apps.backend.domain.plugin_system.registry import get_registry, reload_registry
-from apps.backend.domain.plugin_system.tools_api import ToolPoliciesPutBody
+from apps.backend.api.tools_api import ToolPoliciesPutBody
 from apps.backend.infrastructure import operator_settings
 from apps.backend.infrastructure.auth import (
     create_user,

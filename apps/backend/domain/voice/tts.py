@@ -24,12 +24,7 @@ def synthesize_speech(
     if len(t) > 4096:
         t = t[:4096]
 
-    from apps.backend.infrastructure.voice_catalog_providers import (
-        resolve_active_voice_tts_spec,
-        voice_auth_headers,
-    )
-
-    spec = resolve_active_voice_tts_spec()
+    spec = voice_policy.active_voice_tts_spec()
     if not spec or not (spec.api_key or "").strip():
         raise ValueError(
             "voice TTS not configured (set VOICE_TTS_PROVIDER_1_BASE_URL in .env or Admin → Interfaces → Platform → Voice)"
@@ -39,7 +34,7 @@ def synthesize_speech(
     model = voice_policy.voice_tts_model()
     voice = voice_policy.effective_tts_voice(user_id)
     url = f"{base}/audio/speech"
-    headers = {**voice_auth_headers(spec), "Content-Type": "application/json"}
+    headers = {**voice_policy.voice_auth_headers(spec), "Content-Type": "application/json"}
     body = {
         "model": model,
         "input": t,

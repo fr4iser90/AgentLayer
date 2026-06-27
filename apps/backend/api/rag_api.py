@@ -9,7 +9,7 @@ import httpx
 from fastapi import APIRouter, Body, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from apps.backend.domain.rag_docs_file_ingest import ingest_markdown_tree, resolve_docs_root
+from apps.backend.infrastructure.rag_docs_file_ingest_service import ingest_markdown_tree, resolve_docs_root
 from apps.backend.infrastructure import operator_settings
 from apps.backend.infrastructure.public_error import http_500_detail
 from apps.backend.infrastructure.auth import require_admin
