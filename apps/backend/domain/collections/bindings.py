@@ -3,11 +3,50 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import Any, Protocol
 
-from apps.backend.dashboard.data_paths import top_level_key
-from apps.backend.dashboard.layout_tree import data_paths_from_blocks, iter_layout_blocks
 from apps.backend.domain.collections import db as col_db
+
+
+class CollectionsViewDependencies(Protocol):
+    def top_level_key(self, data_path: str) -> str: ...
+
+    def iter_layout_blocks(self, ui_layout: dict[str, Any] | None) -> list[dict[str, Any]]: ...
+
+    def data_paths_from_blocks(self, blocks: list[Any]) -> list[str]: ...
+
+
+_view_deps: CollectionsViewDependencies | None = None
+
+
+def register_collections_view_dependencies(deps: CollectionsViewDependencies) -> None:
+    global _view_deps
+    _view_deps = deps
+
+
+def top_level_key(data_path: str) -> str:
+    if _view_deps is None:
+        return (data_path or "").split(".", 1)[0]
+    return _view_deps.top_level_key(data_path)
+
+
+def iter_layout_blocks(ui_layout: dict[str, Any] | None) -> list[dict[str, Any]]:
+    if _view_deps is None:
+        blocks = ui_layout.get("blocks") if isinstance(ui_layout, dict) else []
+        return [b for b in blocks if isinstance(b, dict)] if isinstance(blocks, list) else []
+    return list(_view_deps.iter_layout_blocks(ui_layout))
+
+
+def data_paths_from_blocks(blocks: list[Any]) -> list[str]:
+    if _view_deps is None:
+        out: list[str] = []
+        for block in blocks:
+            props = block.get("props") if isinstance(block, dict) and isinstance(block.get("props"), dict) else {}
+            dp = str(props.get("dataPath") or "").strip()
+            if dp:
+                out.append(dp)
+        return out
+    return list(_view_deps.data_paths_from_blocks(blocks))
 
 
 def default_collection_slug_for_path(data_path: str) -> str:

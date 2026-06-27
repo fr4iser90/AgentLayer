@@ -1060,7 +1060,7 @@ def pidea_effective_enabled() -> bool:
 
 
 def public_dict() -> dict[str, Any]:
-    from apps.backend.domain.voice.operator_voice_settings import voice_settings_public_fields
+    from apps.backend.infrastructure.operator_voice_settings_service import voice_settings_public_fields
     from apps.backend.infrastructure.extractor_catalog_providers import extractor_providers_public_fields
     from apps.backend.media.operator_media_settings import media_settings_public_fields
 
@@ -1987,7 +1987,7 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
         if k in patch
     }
     if voice_patch:
-        from apps.backend.domain.voice.operator_voice_settings import apply_voice_operator_patch
+        from apps.backend.infrastructure.operator_voice_settings_service import apply_voice_operator_patch
 
         apply_voice_operator_patch(voice_patch)
     _invalidate()

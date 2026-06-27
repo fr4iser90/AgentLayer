@@ -4,9 +4,27 @@ from __future__ import annotations
 
 import json
 import uuid
-from typing import Any
+from typing import Any, Protocol
 
-from apps.backend.infrastructure import agent_artifacts_store
+
+class AgentTaskPromptDependencies(Protocol):
+    def get_artifact(self, *, artifact_id: uuid.UUID, tenant_id: int) -> dict[str, Any] | None: ...
+
+
+_deps: AgentTaskPromptDependencies | None = None
+
+
+def register_agent_task_prompt_dependencies(deps: AgentTaskPromptDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+class _AgentArtifactsStorePort:
+    def get_artifact(self, *, artifact_id: uuid.UUID, tenant_id: int) -> dict[str, Any] | None:
+        return _deps.get_artifact(artifact_id=artifact_id, tenant_id=tenant_id) if _deps is not None else None
+
+
+agent_artifacts_store = _AgentArtifactsStorePort()
 
 
 def _parse_uuid_list(raw: Any) -> list[uuid.UUID]:

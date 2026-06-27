@@ -2,21 +2,75 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Protocol
 
 from apps.backend.domain.voice import voice_policy
-from apps.backend.infrastructure.db import db
-from apps.backend.infrastructure.operator_settings import _invalidate, _sync_single_provider_endpoint
-from apps.backend.infrastructure.voice_catalog_providers import (
-    invalidate_voice_provider_specs_cache,
-    list_voice_stt_provider_specs,
-    list_voice_tts_provider_specs,
-    resolve_active_voice_stt_provider_id,
-    resolve_active_voice_stt_spec,
-    resolve_active_voice_tts_provider_id,
-    resolve_active_voice_tts_spec,
-    voice_role_configured,
-)
+
+
+class OperatorVoiceSettingsDependencies(Protocol):
+    def list_voice_stt_provider_specs(self) -> list[Any]: ...
+
+    def list_voice_tts_provider_specs(self) -> list[Any]: ...
+
+    def resolve_active_voice_stt_spec(self) -> Any | None: ...
+
+    def resolve_active_voice_tts_spec(self) -> Any | None: ...
+
+    def resolve_active_voice_stt_provider_id(self) -> str | None: ...
+
+    def resolve_active_voice_tts_provider_id(self) -> str | None: ...
+
+    def voice_role_configured(self, role: str) -> bool: ...
+
+    def apply_voice_operator_row(self, out: dict[str, Any]) -> None: ...
+
+    def invalidate_operator_settings(self) -> None: ...
+
+    def sync_single_provider_endpoint(self, role: str, **kwargs: Any) -> None: ...
+
+    def invalidate_voice_provider_specs_cache(self) -> None: ...
+
+
+_deps: OperatorVoiceSettingsDependencies | None = None
+
+
+def register_operator_voice_settings_dependencies(deps: OperatorVoiceSettingsDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+def _require_deps() -> OperatorVoiceSettingsDependencies:
+    if _deps is None:
+        raise RuntimeError("operator voice settings dependencies not registered")
+    return _deps
+
+
+def list_voice_stt_provider_specs() -> list[Any]:
+    return _deps.list_voice_stt_provider_specs() if _deps is not None else []
+
+
+def list_voice_tts_provider_specs() -> list[Any]:
+    return _deps.list_voice_tts_provider_specs() if _deps is not None else []
+
+
+def resolve_active_voice_stt_spec() -> Any | None:
+    return _deps.resolve_active_voice_stt_spec() if _deps is not None else None
+
+
+def resolve_active_voice_tts_spec() -> Any | None:
+    return _deps.resolve_active_voice_tts_spec() if _deps is not None else None
+
+
+def resolve_active_voice_stt_provider_id() -> str | None:
+    return _deps.resolve_active_voice_stt_provider_id() if _deps is not None else None
+
+
+def resolve_active_voice_tts_provider_id() -> str | None:
+    return _deps.resolve_active_voice_tts_provider_id() if _deps is not None else None
+
+
+def voice_role_configured(role: str) -> bool:
+    return bool(_deps and _deps.voice_role_configured(role))
 
 
 def _provider_public_rows(specs: list) -> list[dict[str, str]]:
@@ -156,50 +210,8 @@ def apply_voice_operator_patch(patch: dict[str, Any]) -> None:
     if "voice_discord_vc_enabled" in patch:
         out["voice_discord_vc_enabled"] = bool(patch["voice_discord_vc_enabled"])
 
-    with db.pool().connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("INSERT INTO operator_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING")
-            cur.execute(
-                """
-                UPDATE operator_settings SET
-                  voice_enabled = %s,
-                  voice_provider_id = %s,
-                  voice_stt_provider_id = %s,
-                  voice_tts_provider_id = %s,
-                  voice_api_base_url = %s,
-                  voice_api_key = %s,
-                  voice_stt_model = %s,
-                  voice_tts_model = %s,
-                  voice_tts_voice = %s,
-                  voice_max_seconds = %s,
-                  voice_max_bytes = %s,
-                  voice_bridge_telegram = %s,
-                  voice_bridge_discord = %s,
-                  voice_realtime_enabled = %s,
-                  voice_discord_vc_enabled = %s,
-                  updated_at = now()
-                WHERE id = 1
-                """,
-                (
-                    bool(out.get("voice_enabled")),
-                    out.get("voice_provider_id"),
-                    out.get("voice_stt_provider_id"),
-                    out.get("voice_tts_provider_id"),
-                    out.get("voice_api_base_url"),
-                    out.get("voice_api_key"),
-                    out.get("voice_stt_model"),
-                    out.get("voice_tts_model"),
-                    out.get("voice_tts_voice"),
-                    out.get("voice_max_seconds"),
-                    out.get("voice_max_bytes"),
-                    bool(out.get("voice_bridge_telegram", True)),
-                    bool(out.get("voice_bridge_discord", True)),
-                    bool(out.get("voice_realtime_enabled")),
-                    bool(out.get("voice_discord_vc_enabled")),
-                ),
-            )
-        conn.commit()
-    _invalidate()
+    _require_deps().apply_voice_operator_row(out)
+    _require_deps().invalidate_operator_settings()
     if any(
         k in patch
         for k in (
@@ -210,7 +222,7 @@ def apply_voice_operator_patch(patch: dict[str, Any]) -> None:
             "voice_tts_voice",
         )
     ):
-        _sync_single_provider_endpoint(
+        _require_deps().sync_single_provider_endpoint(
             "voice_stt",
             label="Voice STT provider",
             base_url=out.get("voice_api_base_url"),
@@ -218,7 +230,7 @@ def apply_voice_operator_patch(patch: dict[str, Any]) -> None:
             api_header_name="Authorization",
             model_default=out.get("voice_stt_model") or "whisper-1",
         )
-        _sync_single_provider_endpoint(
+        _require_deps().sync_single_provider_endpoint(
             "voice_tts",
             label="Voice TTS provider",
             base_url=out.get("voice_api_base_url"),
@@ -227,4 +239,4 @@ def apply_voice_operator_patch(patch: dict[str, Any]) -> None:
             model_default=out.get("voice_tts_model") or "tts-1",
             options_json={"voice": out.get("voice_tts_voice") or "alloy"},
         )
-    invalidate_voice_provider_specs_cache()
+    _require_deps().invalidate_voice_provider_specs_cache()

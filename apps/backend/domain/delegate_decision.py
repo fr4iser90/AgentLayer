@@ -5,12 +5,29 @@ from __future__ import annotations
 import json
 import logging
 import re
-from typing import Any
+from typing import Any, Protocol
 
 from apps.backend.domain.delegate_merge import build_delegate_context_block, merge_delegate_configs
-from apps.backend.infrastructure.catalog_llm_client import post_catalog_chat_completions
 
 logger = logging.getLogger(__name__)
+
+
+class DelegateDecisionDependencies(Protocol):
+    def post_catalog_chat_completions(self, **kwargs: Any) -> tuple[dict[str, Any], Any]: ...
+
+
+_deps: DelegateDecisionDependencies | None = None
+
+
+def register_delegate_decision_dependencies(deps: DelegateDecisionDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+def post_catalog_chat_completions(**kwargs: Any) -> tuple[dict[str, Any], Any]:
+    if _deps is None:
+        raise RuntimeError("delegate decision dependencies not registered")
+    return _deps.post_catalog_chat_completions(**kwargs)
 
 _DECISION_SYSTEM = """You are the user's delegate (Stellvertreter): decide the next concrete step on their behalf.
 Reply with ONE JSON object only (no markdown fences):

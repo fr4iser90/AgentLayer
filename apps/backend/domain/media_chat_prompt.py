@@ -3,10 +3,56 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import Any, Protocol
 
-from apps.backend.dashboard import db as dashboard_db
-from apps.backend.media import media_db, media_policy
+
+class MediaChatPromptDependencies(Protocol):
+    def media_tables_exist(self) -> bool: ...
+
+    def effective_media_library_enabled(self, *, user_id: uuid.UUID) -> bool: ...
+
+    def media_quota_snapshot(self, *, user_id: uuid.UUID, tenant_id: int) -> dict[str, Any]: ...
+
+    def dashboard_list(self, user_id: uuid.UUID, tenant_id: int, *, limit: int = 40) -> list[dict[str, Any]]: ...
+
+
+_deps: MediaChatPromptDependencies | None = None
+
+
+def register_media_chat_prompt_dependencies(deps: MediaChatPromptDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+class _MediaDbPort:
+    def media_tables_exist(self) -> bool:
+        return bool(_deps and _deps.media_tables_exist())
+
+
+class _MediaPolicyPort:
+    def effective_media_library_enabled(self, *, user_id: uuid.UUID) -> bool:
+        return bool(_deps and _deps.effective_media_library_enabled(user_id=user_id))
+
+    def media_quota_snapshot(self, *, user_id: uuid.UUID, tenant_id: int) -> dict[str, Any]:
+        if _deps is None:
+            return {}
+        return _deps.media_quota_snapshot(user_id=user_id, tenant_id=tenant_id)
+
+
+class _DashboardDbPort:
+    def dashboard_list(
+        self,
+        user_id: uuid.UUID,
+        tenant_id: int,
+        *,
+        limit: int = 40,
+    ) -> list[dict[str, Any]]:
+        return _deps.dashboard_list(user_id, tenant_id, limit=limit) if _deps is not None else []
+
+
+media_db = _MediaDbPort()
+media_policy = _MediaPolicyPort()
+dashboard_db = _DashboardDbPort()
 
 
 def build_media_library_context_snippet(

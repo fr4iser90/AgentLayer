@@ -4,12 +4,27 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any
+from typing import Any, Protocol
 
-from apps.backend.infrastructure.skill_plugins import load_skill_text_by_id
 from apps.backend.domain.tool_forward_policy import build_tool_triggers_map
 
 logger = logging.getLogger(__name__)
+
+
+class DashboardAgentGuardDependencies(Protocol):
+    def load_skill_text_by_id(self, skill_id: str) -> str | None: ...
+
+
+_deps: DashboardAgentGuardDependencies | None = None
+
+
+def register_dashboard_agent_guard_dependencies(deps: DashboardAgentGuardDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+def load_skill_text_by_id(skill_id: str) -> str | None:
+    return _deps.load_skill_text_by_id(skill_id) if _deps is not None else None
 
 
 def is_propose_layouts_tool(name: str) -> bool:

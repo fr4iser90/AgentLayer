@@ -5,8 +5,27 @@ from __future__ import annotations
 import logging
 import re
 import unicodedata
+from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
+
+
+class SpeechPrepDependencies(Protocol):
+    def post_catalog_chat_completions(self, **kwargs: Any) -> tuple[dict[str, Any], Any]: ...
+
+
+_deps: SpeechPrepDependencies | None = None
+
+
+def register_speech_prep_dependencies(deps: SpeechPrepDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+def post_catalog_chat_completions(**kwargs: Any) -> tuple[dict[str, Any], Any]:
+    if _deps is None:
+        raise RuntimeError("speech prep dependencies not registered")
+    return _deps.post_catalog_chat_completions(**kwargs)
 
 _SPEECH_MAX_CHARS = 500
 _SUMMARY_TRIGGER_CHARS = 280
@@ -163,8 +182,6 @@ def summarize_for_speech(text: str, *, language: str | None = None) -> str | Non
     if not payload:
         return None
     try:
-        from apps.backend.infrastructure.catalog_llm_client import post_catalog_chat_completions
-
         data, _ = post_catalog_chat_completions(
             messages=[
                 {

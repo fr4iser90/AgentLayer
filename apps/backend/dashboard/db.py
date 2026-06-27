@@ -512,7 +512,7 @@ def dashboard_get(user_id: uuid.UUID, tenant_id: int, dashboard_id: uuid.UUID) -
     vb = raw.get("view_bindings")
     out["view_bindings"] = vb if isinstance(vb, dict) else {}
 
-    from apps.backend.domain.collections.projection import project_dashboard_data
+    from apps.backend.infrastructure.collections_view_service import project_dashboard_data
 
     owner_uid = raw.get("owner_user_id")
     if isinstance(owner_uid, uuid.UUID):

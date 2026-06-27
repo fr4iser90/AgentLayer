@@ -29,6 +29,10 @@ from apps.backend.infrastructure.chat_context import (
 )
 from apps.backend.infrastructure.chat_context_loop import apply_agent_loop_context_budget
 from apps.backend.infrastructure.chat_secret_ingress import ingress_openai_messages_inplace
+from apps.backend.infrastructure.chat_audio_attachment_service import (
+    format_ingested_audio_system_block,
+    ingest_chat_audio_attachments,
+)
 from apps.backend.infrastructure.context_budget import (
     completion_quotas_from_budget,
     resolve_context_budget,
@@ -44,6 +48,7 @@ from apps.backend.infrastructure.llm_concurrency import (
     llm_slot_async,
     reset_llm_wait_notifier,
 )
+from apps.backend.infrastructure.media_chat_prompt_service import build_media_library_context_snippet
 from apps.backend.infrastructure.mcp_runtime import gather_mcp_chat_tool_specs_async
 from apps.backend.infrastructure.openai_compat_http import http_post_chat_completions
 from apps.backend.infrastructure.openai_stream_aggregate import stream_chat_completions_aggregate

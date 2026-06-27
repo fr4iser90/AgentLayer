@@ -8,17 +8,52 @@ import logging
 import os
 import re
 import uuid
-from typing import Any
+from typing import Any, Protocol
 
 from apps.backend.core.config import config
-from apps.backend.dashboard import file_storage
-from apps.backend.media import media_db, media_policy
-from apps.backend.media.upload_bytes import sniff_media_mime
 
 logger = logging.getLogger(__name__)
 
 _MAX_DECODED_BYTES = 52_428_800  # 50 MiB cap for chat ingest
 _DATA_URL_RE = re.compile(r"^data:([^;,]+)?(?:;[^;,=]+=[^;,=]+)*;base64,", re.IGNORECASE)
+
+
+class ChatAudioAttachmentDependencies(Protocol):
+    def media_tables_exist(self) -> bool: ...
+
+    def effective_media_library_enabled(self, *, user_id: uuid.UUID) -> bool: ...
+
+    def effective_media_upload_enabled(self, *, user_id: uuid.UUID) -> bool: ...
+
+    def effective_media_upload_max_bytes(self) -> int: ...
+
+    def effective_media_upload_mime(self) -> set[str]: ...
+
+    def sniff_media_mime(self, prefix: bytes) -> str | None: ...
+
+    def user_upload_bytes_used(self, *, user_id: uuid.UUID, tenant_id: int) -> int: ...
+
+    def effective_media_quota_bytes(self, *, user_id: uuid.UUID) -> int: ...
+
+    def write_bytes(self, root: Any, relpath: str, data: bytes) -> None: ...
+
+    def unlink_if_exists(self, root: Any, relpath: str) -> None: ...
+
+    def item_insert_upload(self, **kwargs: Any) -> dict[str, Any]: ...
+
+
+_deps: ChatAudioAttachmentDependencies | None = None
+
+
+def register_chat_audio_attachment_dependencies(deps: ChatAudioAttachmentDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+def _require_deps() -> ChatAudioAttachmentDependencies:
+    if _deps is None:
+        raise RuntimeError("chat audio attachment dependencies not registered")
+    return _deps
 
 
 def _user_content_parts(user_msg: dict[str, Any]) -> list[dict[str, Any]]:
@@ -77,11 +112,11 @@ def ingest_chat_audio_attachments(
     user_id: uuid.UUID,
 ) -> list[dict[str, Any]]:
     """Upload ``agent_audio`` parts from the latest user message into ``media_items``."""
-    if not media_db.media_tables_exist():
+    if _deps is None or not _deps.media_tables_exist():
         return []
-    if not media_policy.effective_media_library_enabled(user_id=user_id):
+    if not _deps.effective_media_library_enabled(user_id=user_id):
         return []
-    if not media_policy.effective_media_upload_enabled(user_id=user_id):
+    if not _deps.effective_media_upload_enabled(user_id=user_id):
         return []
 
     um = triggering_user_message(messages)
@@ -107,17 +142,17 @@ def ingest_chat_audio_attachments(
         if len(data) > _MAX_DECODED_BYTES:
             logger.warning("chat audio attachment skipped (too large): %d bytes", len(data))
             continue
-        max_b = media_policy.effective_media_upload_max_bytes()
+        max_b = _require_deps().effective_media_upload_max_bytes()
         if len(data) > max_b:
             logger.warning("chat audio exceeds media upload max: %d", len(data))
             continue
-        sniff = sniff_media_mime(data[:64])
-        allowed = media_policy.effective_media_upload_mime()
+        sniff = _require_deps().sniff_media_mime(data[:64])
+        allowed = _require_deps().effective_media_upload_mime()
         if sniff is None or sniff not in allowed:
             logger.warning("chat audio unsupported sniff: %s", sniff)
             continue
-        used = media_db.user_upload_bytes_used(user_id=user_id, tenant_id=tenant_id)
-        quota = media_policy.effective_media_quota_bytes(user_id=user_id)
+        used = _require_deps().user_upload_bytes_used(user_id=user_id, tenant_id=tenant_id)
+        quota = _require_deps().effective_media_quota_bytes(user_id=user_id)
         if used + len(data) > quota:
             logger.warning("chat audio skipped: quota exceeded")
             continue
@@ -138,8 +173,8 @@ def ingest_chat_audio_attachments(
         fid = uuid.uuid4()
         relpath = f"{tenant_id}/{fid}"
         try:
-            file_storage.write_bytes(config.media_upload_dir(), relpath, data)
-            row = media_db.item_insert_upload(
+            _require_deps().write_bytes(config.media_upload_dir(), relpath, data)
+            row = _require_deps().item_insert_upload(
                 tenant_id=tenant_id,
                 owner_user_id=user_id,
                 dashboard_id=None,
@@ -151,7 +186,7 @@ def ingest_chat_audio_attachments(
                 artist="",
             )
         except Exception:
-            file_storage.unlink_if_exists(config.media_upload_dir(), relpath)
+            _require_deps().unlink_if_exists(config.media_upload_dir(), relpath)
             logger.exception("chat audio ingest failed for %s", fname)
             continue
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Any, Literal, Protocol
 
 from apps.backend.domain.agent_tools import (
     _partition_tool_specs_by_name,
@@ -18,6 +18,28 @@ from apps.backend.domain.plugin_system.registry import get_registry
 logger = logging.getLogger(__name__)
 
 SchemaMode = Literal["full", "catalog"]
+
+
+class ToolForwardPolicyDependencies(Protocol):
+    def completion_quotas_from_window(self, window: int, *, source: str) -> Any: ...
+
+
+_deps: ToolForwardPolicyDependencies | None = None
+
+
+def register_tool_forward_policy_dependencies(deps: ToolForwardPolicyDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+def completion_quotas_from_window(window: int, *, source: str) -> Any:
+    if _deps is None:
+        class _Quotas:
+            tools_budget_tokens = 0
+            max_tool_count = 0
+
+        return _Quotas()
+    return _deps.completion_quotas_from_window(window, source=source)
 
 
 @dataclass
@@ -60,8 +82,6 @@ def compute_tool_forward_limits(
     window = max(0, int(context_window_tokens or 0))
     if window <= 0:
         return 0, 0
-
-    from apps.backend.infrastructure.context_budget import completion_quotas_from_window
 
     quotas = completion_quotas_from_window(window, source="tool_forward_inline")
     return quotas.tools_budget_tokens, quotas.max_tool_count

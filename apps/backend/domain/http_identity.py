@@ -3,12 +3,34 @@
 from __future__ import annotations
 
 import uuid
+from typing import Any, Protocol
 
 from fastapi import HTTPException, Request
 from starlette.websockets import WebSocket
 
-from apps.backend.infrastructure.auth import get_user_for_bearer_token
-from apps.backend.infrastructure.db import db
+
+class HttpIdentityDependencies(Protocol):
+    def get_user_for_bearer_token(self, token: str) -> Any | None: ...
+
+    def user_tenant_id(self, user_id: uuid.UUID) -> int: ...
+
+
+_deps: HttpIdentityDependencies | None = None
+
+
+def register_http_identity_dependencies(deps: HttpIdentityDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+def get_user_for_bearer_token(token: str) -> Any | None:
+    return _deps.get_user_for_bearer_token(token) if _deps is not None else None
+
+
+def user_tenant_id(user_id: uuid.UUID) -> int:
+    if _deps is None:
+        raise HTTPException(status_code=401, detail="identity dependencies not registered")
+    return _deps.user_tenant_id(user_id)
 
 
 def _bearer_raw(request: Request) -> str:
@@ -29,7 +51,7 @@ def resolve_chat_identity(request: Request) -> tuple[uuid.UUID, int]:
         )
     user = get_user_for_bearer_token(token)
     if user is not None:
-        return user.id, db.user_tenant_id(user.id)
+        return user.id, user_tenant_id(user.id)
     raise HTTPException(status_code=401, detail="invalid or unknown bearer token")
 
 
@@ -43,7 +65,7 @@ def resolve_tools_list_identity(request: Request) -> tuple[uuid.UUID | None, int
         return None, 1
     user = get_user_for_bearer_token(token)
     if user is not None:
-        return user.id, db.user_tenant_id(user.id)
+        return user.id, user_tenant_id(user.id)
     raise HTTPException(status_code=401, detail="invalid bearer token")
 
 
@@ -62,5 +84,5 @@ def resolve_chat_identity_ws(websocket: WebSocket) -> tuple[uuid.UUID, int]:
         raise HTTPException(status_code=401, detail="missing token (query ?token= or Authorization: Bearer)")
     user = get_user_for_bearer_token(token)
     if user is not None:
-        return user.id, db.user_tenant_id(user.id)
+        return user.id, user_tenant_id(user.id)
     raise HTTPException(status_code=401, detail="invalid or unknown websocket token")

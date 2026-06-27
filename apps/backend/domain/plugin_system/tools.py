@@ -5,12 +5,43 @@ from __future__ import annotations
 import json
 import os
 from contextvars import ContextVar, Token
+from typing import Any, Protocol
 
 from apps.backend.domain.plugin_system.registry import get_registry
 
 __all__ = ["run_tool"]
 
 _chain_depth: ContextVar[int] = ContextVar("agent_tool_chain_depth", default=0)
+
+
+class ToolRuntimeDependencies(Protocol):
+    def mcp_invoke_tool_sync(self, name: str, arguments: dict[str, Any]) -> str: ...
+
+    def policies_map(self) -> dict[tuple[str, str], dict[str, Any]]: ...
+
+    def user_role(self, user_id: Any) -> str: ...
+
+
+_deps: ToolRuntimeDependencies | None = None
+
+
+def register_tool_runtime_dependencies(deps: ToolRuntimeDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+def mcp_invoke_tool_sync(name: str, arguments: dict[str, Any]) -> str:
+    if _deps is None:
+        return json.dumps({"ok": False, "error": "MCP runtime not configured"}, ensure_ascii=False)
+    return _deps.mcp_invoke_tool_sync(name, arguments)
+
+
+def policies_map() -> dict[tuple[str, str], dict[str, Any]]:
+    return _deps.policies_map() if _deps is not None else {}
+
+
+def user_role(user_id: Any) -> str:
+    return _deps.user_role(user_id) if _deps is not None else ""
 
 
 def _max_chain_depth() -> int:
@@ -50,8 +81,6 @@ def run_tool(name: str, arguments: dict, context: dict | None = None) -> str:
         reg = get_registry()
         nm = (name or "").strip()
         if nm.startswith("mcp__"):
-            from apps.backend.infrastructure.mcp_runtime import mcp_invoke_tool_sync
-
             return mcp_invoke_tool_sync(nm, dict(arguments or {}))
         meta = reg.meta_entry_for_tool_name(nm) if nm else None
         if meta:
@@ -61,14 +90,7 @@ def run_tool(name: str, arguments: dict, context: dict | None = None) -> str:
                 effective_flags,
                 manifest_execution_context,
             )
-            from apps.backend.infrastructure.db import db as _db
-
-            try:
-                from apps.backend.infrastructure.tool_operator_policy_db import policies_map
-
-                pmap = policies_map()
-            except Exception:
-                pmap = {}
+            pmap = policies_map()
             eff = effective_flags(meta, nm, pmap)
             if not eff["enabled"]:
                 return json.dumps(
@@ -76,7 +98,7 @@ def run_tool(name: str, arguments: dict, context: dict | None = None) -> str:
                     ensure_ascii=False,
                 )
             tid, uid = get_identity()
-            if not caller_fulfills_effective_policy(_db.user_role(uid), int(tid), eff):
+            if not caller_fulfills_effective_policy(user_role(uid), int(tid), eff):
                 return json.dumps(
                     {
                         "ok": False,

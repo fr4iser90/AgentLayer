@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Protocol
 
 from apps.backend.domain.plugin_system.tool_manifest_dimensions import (
     normalize_execution_context,
@@ -10,6 +10,22 @@ from apps.backend.domain.plugin_system.tool_manifest_dimensions import (
     parse_allowed_tenant_ids,
 )
 from apps.backend.domain.plugin_system.registry import ToolRegistry
+
+
+class ToolPolicyDependencies(Protocol):
+    def resolved_agent_mode(self) -> str: ...
+
+
+_deps: ToolPolicyDependencies | None = None
+
+
+def register_tool_policy_dependencies(deps: ToolPolicyDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+def resolved_agent_mode() -> str:
+    return _deps.resolved_agent_mode() if _deps is not None else ""
 
 
 def manifest_execution_context(meta_entry: dict[str, Any], tool_fn_name: str) -> str:
@@ -76,8 +92,6 @@ def effective_execution_context(
     else:
         ctx = manifest_execution_context(meta_entry, tool_fn_name)
     try:
-        from apps.backend.infrastructure.operator_settings import resolved_agent_mode
-
         if resolved_agent_mode() == "sandbox":
             return "container"
     except Exception:

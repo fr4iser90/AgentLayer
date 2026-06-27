@@ -3,15 +3,34 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import Any, Protocol
 
-from apps.backend.dashboard.data_paths import get_path, set_path, top_level_key
 from apps.backend.domain.collections import db as col_db
 from apps.backend.domain.collections.bindings import (
     bindings_for_dashboard,
     collection_slug_for_path,
     is_list_path,
 )
+
+
+class CollectionsServiceDependencies(Protocol):
+    def top_level_key(self, data_path: str) -> str: ...
+
+    def delete_collection_items_for_list(self, collection_id: uuid.UUID, list_key: str) -> None: ...
+
+
+_deps: CollectionsServiceDependencies | None = None
+
+
+def register_collections_service_dependencies(deps: CollectionsServiceDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+def top_level_key(data_path: str) -> str:
+    if _deps is None:
+        return (data_path or "").split(".", 1)[0]
+    return _deps.top_level_key(data_path)
 
 
 def resolve_bindings_for_dashboard(ws: dict[str, Any]) -> dict[str, str]:
@@ -190,16 +209,9 @@ def patch_fields(
 
 def _replace_list(collection_id: uuid.UUID, list_key: str, rows: list[Any]) -> None:
     """Replace all items in a list_key (import / full patch)."""
-    from apps.backend.infrastructure.db import db
-
     lk = (list_key or "items").strip()
-    with db.pool().connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "DELETE FROM collection_items WHERE collection_id = %s AND list_key = %s",
-                (collection_id, lk),
-            )
-        conn.commit()
+    if _deps is not None:
+        _deps.delete_collection_items_for_list(collection_id, lk)
     dict_rows = [r for r in rows if isinstance(r, dict)]
     if dict_rows:
         col_db.items_append(collection_id, lk, dict_rows)

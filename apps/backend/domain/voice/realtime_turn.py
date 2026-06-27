@@ -6,16 +6,31 @@ import asyncio
 import base64
 import logging
 import uuid
-from typing import Any, Awaitable, Callable
+from typing import Any, Awaitable, Callable, Protocol
 
 from apps.backend.domain.agent import chat_completion
 from apps.backend.domain.identity import reset_identity, set_identity
 from apps.backend.domain.voice import stt, tts, voice_policy
-from apps.backend.infrastructure.db import db
 
 logger = logging.getLogger(__name__)
 
 EmitFn = Callable[[dict[str, Any]], Awaitable[None]]
+
+
+class VoiceRealtimeTurnDependencies(Protocol):
+    def user_role(self, user_id: uuid.UUID) -> str: ...
+
+
+_deps: VoiceRealtimeTurnDependencies | None = None
+
+
+def register_voice_realtime_turn_dependencies(deps: VoiceRealtimeTurnDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+def user_role(user_id: uuid.UUID) -> str:
+    return _deps.user_role(user_id) if _deps is not None else ""
 
 
 def _extract_reply(data: dict[str, Any]) -> str:
@@ -86,7 +101,7 @@ async def run_voice_realtime_turn(
     id_token = set_identity(tenant_id, user_id)
     try:
         if bearer_user_role is None:
-            role = db.user_role(user_id).lower()
+            role = user_role(user_id).lower()
             bearer_user_role = role if role in ("user", "admin") else None
         result = await chat_completion(work, bearer_user_role=bearer_user_role)
         reply = _extract_reply(result if isinstance(result, dict) else {})

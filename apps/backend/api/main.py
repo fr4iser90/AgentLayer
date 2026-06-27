@@ -77,6 +77,30 @@ from apps.backend.infrastructure import voice_policy_service as _voice_policy_se
 from apps.backend.infrastructure import workspace_common_service as _workspace_common_service  # noqa: F401
 from apps.backend.infrastructure import rag_ingest_service as _rag_ingest_service  # noqa: F401
 from apps.backend.infrastructure import workspace_rag_ingest_service as _workspace_rag_ingest_service  # noqa: F401
+from apps.backend.infrastructure import media_chat_prompt_service as _media_chat_prompt_service  # noqa: F401
+from apps.backend.infrastructure import chat_audio_attachment_service as _chat_audio_attachment_service  # noqa: F401
+from apps.backend.infrastructure import collections_view_service as _collections_view_service  # noqa: F401
+from apps.backend.infrastructure import dashboard_grant_service as _dashboard_grant_service  # noqa: F401
+from apps.backend.infrastructure import collection_share_service as _collection_share_service  # noqa: F401
+from apps.backend.infrastructure import http_identity_service as _http_identity_service  # noqa: F401
+from apps.backend.infrastructure import agent_task_access_service as _agent_task_access_service  # noqa: F401
+from apps.backend.infrastructure import agent_run_persistence_service as _agent_run_persistence_service  # noqa: F401
+from apps.backend.infrastructure import agent_task_prompt_service as _agent_task_prompt_service  # noqa: F401
+from apps.backend.infrastructure import dashboard_agent_guard_service as _dashboard_agent_guard_service  # noqa: F401
+from apps.backend.infrastructure import delegate_decision_service as _delegate_decision_service  # noqa: F401
+from apps.backend.infrastructure import tool_forward_policy_service as _tool_forward_policy_service  # noqa: F401
+from apps.backend.infrastructure import workspace_resolver_service as _workspace_resolver_service  # noqa: F401
+from apps.backend.infrastructure import user_persona_service as _user_persona_service  # noqa: F401
+from apps.backend.infrastructure import speech_prep_service as _speech_prep_service  # noqa: F401
+from apps.backend.infrastructure import voice_realtime_turn_service as _voice_realtime_turn_service  # noqa: F401
+from apps.backend.infrastructure import operator_voice_settings_service as _operator_voice_settings_service  # noqa: F401
+from apps.backend.infrastructure import agent_registry_service as _agent_registry_service  # noqa: F401
+from apps.backend.infrastructure import delegate_enforcement_service as _delegate_enforcement_service  # noqa: F401
+from apps.backend.infrastructure import tool_policy_service as _tool_policy_service  # noqa: F401
+from apps.backend.infrastructure import tool_routing_service as _tool_routing_service  # noqa: F401
+from apps.backend.infrastructure import plugin_registry_service as _plugin_registry_service  # noqa: F401
+from apps.backend.infrastructure import tool_runtime_service as _tool_runtime_service  # noqa: F401
+from apps.backend.infrastructure import collections_db_service as _collections_db_service  # noqa: F401
 from apps.backend.infrastructure.instance_setup_service import (
     apply_setup_llm_endpoint,
     build_setup_status,

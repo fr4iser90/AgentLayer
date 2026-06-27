@@ -14,7 +14,7 @@ from functools import wraps
 from typing import Optional, Callable, Any
 
 from fastapi import Request, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from apps.backend.infrastructure.db import db
 from apps.backend.domain.identity import set_identity, reset_identity
@@ -29,14 +29,13 @@ REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 
 class User(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: uuid.UUID
     email: str
     role: str
     created_at: datetime
     password_hash: str | None = Field(default=None, exclude=True)
-
-    class Config:
-        from_attributes = True
 
 
 class LoginRequest(BaseModel):

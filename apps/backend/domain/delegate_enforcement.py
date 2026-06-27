@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import re
 import uuid
-from typing import Any
+from typing import Any, Protocol
 
 from apps.backend.domain.agent_task_prompt import parse_delegate_mode
 
@@ -13,6 +13,26 @@ _CAP_REPO_WRITE = frozenset({"coding.write"})
 _CAP_REPO_EXECUTE = frozenset({"coding.execute"})
 
 _PATCH_PATH_RE = re.compile(r"^[+-]{3}\s+(?:a/|b/)?(.+)$")
+
+
+class DelegateEnforcementDependencies(Protocol):
+    def get_artifact(self, *, artifact_id: uuid.UUID, tenant_id: int) -> dict[str, Any] | None: ...
+
+
+_deps: DelegateEnforcementDependencies | None = None
+
+
+def register_delegate_enforcement_dependencies(deps: DelegateEnforcementDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+class _AgentArtifactsStorePort:
+    def get_artifact(self, *, artifact_id: uuid.UUID, tenant_id: int) -> dict[str, Any] | None:
+        return _deps.get_artifact(artifact_id=artifact_id, tenant_id=tenant_id) if _deps is not None else None
+
+
+agent_artifacts_store = _AgentArtifactsStorePort()
 
 
 def parse_requirement_value(requirements: Any, key: str) -> str | None:
@@ -75,8 +95,6 @@ def load_delegate_allowed_paths(
     artifact_refs: Any,
     max_artifacts: int = 8,
 ) -> list[str]:
-    from apps.backend.infrastructure import agent_artifacts_store
-
     ids: list[uuid.UUID] = []
     if isinstance(artifact_refs, str):
         artifact_refs = [artifact_refs]

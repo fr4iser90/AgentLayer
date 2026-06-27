@@ -19,8 +19,6 @@ if str(_backend_path) not in sys.path:
     sys.path.insert(0, str(_backend_path))
 
 from apps.backend.core.config import config
-from apps.backend.infrastructure import agent_config_effective
-from apps.backend.infrastructure.db import db
 from apps.backend.domain.plugin_system.capability_index import build_capability_index
 from apps.backend.domain.plugin_system.tool_manifest_dimensions import (
     normalize_execution_context,
@@ -33,6 +31,33 @@ from apps.backend.domain.plugin_system.router_phrases import load_co_located_rou
 from apps.backend.domain.plugin_system.tool_ui_catalog import apply_tool_ui_metadata
 
 logger = logging.getLogger(__name__)
+
+
+class PluginRegistryDependencies:
+    def effective_domain_order(self) -> list[str]:
+        return []
+
+    def overlay_phrases_for_domain(self, domain: str) -> list[str]:
+        return []
+
+    def log_tool_invocation(
+        self,
+        name: str,
+        arguments: dict[str, Any],
+        result: str,
+        ok: bool,
+        *,
+        agent_run_id: Any = None,
+    ) -> None:
+        return None
+
+
+_deps: PluginRegistryDependencies = PluginRegistryDependencies()
+
+
+def register_plugin_registry_dependencies(deps: PluginRegistryDependencies) -> None:
+    global _deps
+    _deps = deps
 
 # Admin UI grouping only; each module may set ``TOOL_BUCKET`` / ``TOOL_ADMIN_TAGS`` (plug-and-play).
 _ALLOWED_ADMIN_BUCKETS = frozenset(
@@ -562,9 +587,7 @@ class ToolRegistry:
             raw = self._router_cat_TOOL_TRIGGERS.get(key, frozenset())
         base = {str(x).strip().lower() for x in raw if str(x).strip()}
         try:
-            from apps.backend.infrastructure.agent_config_router_overlay import overlay_phrases_for_domain
-
-            base.update(overlay_phrases_for_domain(key))
+            base.update(_deps.overlay_phrases_for_domain(key))
         except Exception:
             pass
         return tuple(sorted(base))
@@ -574,7 +597,7 @@ class ToolRegistry:
         known = frozenset(self._router_cat_tools.keys())
         order: list[str] = []
         seen: set[str] = set()
-        for c in agent_config_effective.effective_domain_order():
+        for c in _deps.effective_domain_order():
             if c in known and c not in seen:
                 order.append(c)
                 seen.add(c)
@@ -792,7 +815,7 @@ class ToolRegistry:
         from apps.backend.domain.tool_invocation_context import get_agent_run_id
 
         rid = get_agent_run_id()
-        db.log_tool_invocation(
+        _deps.log_tool_invocation(
             name, dict(arguments or {}), out, ok, agent_run_id=rid
         )
         return out

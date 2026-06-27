@@ -23,7 +23,9 @@ from apps.backend.application.agent_runtime.dependencies import (
     apply_budget_to_meta,
     apply_repetition_guard_to_completion,
     bind_llm_wait_notifier,
+    build_media_library_context_snippet,
     build_knowledge_orchestration_snippet,
+    format_ingested_audio_system_block,
     completion_quotas_from_budget,
     categories_for_matches,
     dashboard_db,
@@ -34,6 +36,7 @@ from apps.backend.application.agent_runtime.dependencies import (
     gather_mcp_chat_tool_specs_async,
     hints_for_matches,
     http_post_chat_completions,
+    ingest_chat_audio_attachments,
     ingress_openai_messages_inplace,
     iter_layout_blocks,
     llm_chat_transport,
@@ -737,11 +740,6 @@ async def chat_completion(
         ingress_openai_messages_inplace(messages, tenant_id=int(tenant_id), user_id=user_id)
         _ingested_audio: list[dict[str, Any]] = []
         if user_id is not None and tenant_id is not None and isinstance(user_id, uuid.UUID):
-            from apps.backend.domain.chat_audio_attachments import (
-                format_ingested_audio_system_block,
-                ingest_chat_audio_attachments,
-            )
-
             _ingested_audio = ingest_chat_audio_attachments(
                 messages, tenant_id=int(tenant_id), user_id=user_id
             )
@@ -767,8 +765,6 @@ async def chat_completion(
             if tasks_snip:
                 messages = _append_system_block(messages, tasks_snip)
         if agent_id in ("general", "dashboard") and user_id is not None and tenant_id is not None:
-            from apps.backend.domain.media_chat_prompt import build_media_library_context_snippet
-
             _media_snip = build_media_library_context_snippet(
                 user_id=user_id if isinstance(user_id, uuid.UUID) else None,
                 tenant_id=int(tenant_id),

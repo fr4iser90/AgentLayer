@@ -3,13 +3,71 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import Any, Protocol
 
-from apps.backend.dashboard.data_paths import get_path, set_path
-from apps.backend.dashboard.data_compute import finalize_dashboard_data
-from apps.backend.dashboard.layout_tree import iter_layout_blocks
 from apps.backend.domain.collections import db as col_db
 from apps.backend.domain.collections.bindings import bindings_for_dashboard, is_list_path
+
+
+class CollectionsProjectionDependencies(Protocol):
+    def get_path(self, data: dict[str, Any], data_path: str) -> Any: ...
+
+    def set_path(self, data: dict[str, Any], data_path: str, value: Any) -> dict[str, Any]: ...
+
+    def iter_layout_blocks(self, ui_layout: dict[str, Any] | None) -> list[dict[str, Any]]: ...
+
+    def finalize_dashboard_data(
+        self,
+        data: dict[str, Any],
+        ui_layout: dict[str, Any] | None,
+    ) -> dict[str, Any]: ...
+
+
+_deps: CollectionsProjectionDependencies | None = None
+
+
+def register_collections_projection_dependencies(deps: CollectionsProjectionDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+def get_path(data: dict[str, Any], data_path: str) -> Any:
+    if _deps is None:
+        cur: Any = data
+        for part in (data_path or "").split("."):
+            if not isinstance(cur, dict):
+                return None
+            cur = cur.get(part)
+        return cur
+    return _deps.get_path(data, data_path)
+
+
+def set_path(data: dict[str, Any], data_path: str, value: Any) -> dict[str, Any]:
+    if _deps is None:
+        out = dict(data)
+        cur = out
+        parts = [p for p in (data_path or "").split(".") if p]
+        for part in parts[:-1]:
+            nxt = cur.get(part)
+            if not isinstance(nxt, dict):
+                nxt = {}
+                cur[part] = nxt
+            cur = nxt
+        if parts:
+            cur[parts[-1]] = value
+        return out
+    return _deps.set_path(data, data_path, value)
+
+
+def iter_layout_blocks(ui_layout: dict[str, Any] | None) -> list[dict[str, Any]]:
+    if _deps is None:
+        blocks = ui_layout.get("blocks") if isinstance(ui_layout, dict) else []
+        return [b for b in blocks if isinstance(b, dict)] if isinstance(blocks, list) else []
+    return list(_deps.iter_layout_blocks(ui_layout))
+
+
+def finalize_dashboard_data(data: dict[str, Any], ui_layout: dict[str, Any] | None) -> dict[str, Any]:
+    return _deps.finalize_dashboard_data(data, ui_layout) if _deps is not None else data
 
 
 def _metadata_to_data_paths(metadata: dict[str, Any], ui_layout: dict[str, Any] | None) -> dict[str, Any]:

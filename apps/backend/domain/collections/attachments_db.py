@@ -4,13 +4,33 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Protocol
 
 from psycopg.rows import dict_row
 
-from apps.backend.infrastructure.db import db
-
 FILE_REF_PREFIX = "file:"
+
+
+class CollectionAttachmentsDbDependencies(Protocol):
+    def pool(self) -> Any: ...
+
+
+_deps: CollectionAttachmentsDbDependencies | None = None
+
+
+def register_collection_attachments_db_dependencies(deps: CollectionAttachmentsDbDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+class _DbPort:
+    def pool(self) -> Any:
+        if _deps is None:
+            raise RuntimeError("collection attachments db dependencies not registered")
+        return _deps.pool()
+
+
+db = _DbPort()
 
 
 def parse_file_ref(value: str) -> str | None:

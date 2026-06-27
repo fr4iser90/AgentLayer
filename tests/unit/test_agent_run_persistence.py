@@ -77,7 +77,7 @@ def test_resolve_valid_active_task_id_rejects_missing() -> None:
     uid = uuid.uuid4()
     tid = uuid.uuid4()
     with patch(
-        "apps.backend.infrastructure.agent_tasks_store.get_task",
+        "apps.backend.domain.agent_run_persistence.agent_tasks_store.get_task",
         return_value=None,
     ):
         active, tu = resolve_valid_active_task_id(
@@ -94,7 +94,7 @@ def test_resolve_valid_active_task_id_accepts_accessible() -> None:
     tid = uuid.uuid4()
     row = {"tenant_id": 1, "created_by_user_id": uid, "workspace_id": None}
     with patch(
-        "apps.backend.infrastructure.agent_tasks_store.get_task",
+        "apps.backend.domain.agent_run_persistence.agent_tasks_store.get_task",
         return_value=row,
     ):
         with patch(

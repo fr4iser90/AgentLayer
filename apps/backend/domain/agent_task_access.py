@@ -3,9 +3,23 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import Any, Protocol
 
-from apps.backend.infrastructure.workspace_service import ensure_workspace
+
+class AgentTaskAccessDependencies(Protocol):
+    def ensure_workspace(self, workspace_id: str, user: Any) -> Any | None: ...
+
+
+_deps: AgentTaskAccessDependencies | None = None
+
+
+def register_agent_task_access_dependencies(deps: AgentTaskAccessDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+def ensure_workspace(workspace_id: str, user: Any) -> Any | None:
+    return _deps.ensure_workspace(workspace_id, user) if _deps is not None else None
 
 
 def user_may_access_workspace(*, user_id: uuid.UUID, workspace_id: uuid.UUID | str) -> bool:

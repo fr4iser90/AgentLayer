@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any
+from typing import Any, Protocol
 
 from apps.backend.core.config import config
 from apps.backend.domain.plugin_system.registry import get_registry
@@ -22,6 +22,22 @@ TOOL_INTROSPECTION: frozenset[str] = frozenset(
         "list_tools_in_category",
     }
 )
+
+
+class ToolRoutingDependencies(Protocol):
+    def effective_bool(self, key: str, *, default: bool) -> bool: ...
+
+
+_deps: ToolRoutingDependencies | None = None
+
+
+def register_tool_routing_dependencies(deps: ToolRoutingDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+def effective_bool(key: str, *, default: bool) -> bool:
+    return _deps.effective_bool(key, default=default) if _deps is not None else default
 
 
 def _tool_name(entry: Any) -> str | None:
@@ -123,9 +139,7 @@ def filter_merged_tools_by_categories(
     tools: list[Any], categories: frozenset[str]
 ) -> list[Any]:
     """Keep tools in any of ``categories`` plus introspection (list/get help, category browse)."""
-    from apps.backend.infrastructure import agent_config_effective
-
-    router_strict = agent_config_effective.effective_bool(
+    router_strict = effective_bool(
         "tool_routing.router_strict_default",
         default=config.AGENT_ROUTER_STRICT_DEFAULT,
     )

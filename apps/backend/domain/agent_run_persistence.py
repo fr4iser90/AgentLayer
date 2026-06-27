@@ -4,11 +4,38 @@ from __future__ import annotations
 
 import logging
 import uuid
+from typing import Any, Protocol
 
 from apps.backend.domain.agent_task_access import user_may_access_task_row
-from apps.backend.infrastructure.db import db
 
 logger = logging.getLogger(__name__)
+
+
+class AgentRunPersistenceDependencies(Protocol):
+    def get_task(self, *, task_id: uuid.UUID, tenant_id: int) -> dict[str, Any] | None: ...
+
+    def clear_conversation_active_task(
+        self,
+        *,
+        conversation_id: uuid.UUID,
+        user_id: uuid.UUID,
+    ) -> None: ...
+
+
+_deps: AgentRunPersistenceDependencies | None = None
+
+
+def register_agent_run_persistence_dependencies(deps: AgentRunPersistenceDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+class _AgentTasksStorePort:
+    def get_task(self, *, task_id: uuid.UUID, tenant_id: int) -> dict[str, Any] | None:
+        return _deps.get_task(task_id=task_id, tenant_id=tenant_id) if _deps is not None else None
+
+
+agent_tasks_store = _AgentTasksStorePort()
 
 
 def resolve_valid_active_task_id(
@@ -26,8 +53,6 @@ def resolve_valid_active_task_id(
     except (ValueError, TypeError):
         logger.warning("ignoring invalid active_task_id %r", raw)
         return None, None
-    from apps.backend.infrastructure import agent_tasks_store
-
     row = agent_tasks_store.get_task(task_id=task_uuid, tenant_id=tenant_id)
     if not row or not user_may_access_task_row(
         user_id=user_id, tenant_id=tenant_id, row=row
@@ -46,17 +71,11 @@ def clear_conversation_active_task(
     *, conversation_id: uuid.UUID, user_id: uuid.UUID
 ) -> None:
     try:
-        with db.pool().connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    UPDATE chat_conversations
-                    SET active_task_id = NULL, updated_at = now()
-                    WHERE id = %s AND user_id = %s AND active_task_id IS NOT NULL
-                    """,
-                    (conversation_id, user_id),
-                )
-            conn.commit()
+        if _deps is not None:
+            _deps.clear_conversation_active_task(
+                conversation_id=conversation_id,
+                user_id=user_id,
+            )
     except Exception:
         logger.warning(
             "failed to clear orphan active_task_id on conversation %s",

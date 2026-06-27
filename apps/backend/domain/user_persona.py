@@ -4,12 +4,38 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any
+import uuid
+from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
 
 MAX_PERSONA_CHARS = 8000
 MAX_PROFILE_SUMMARY_CHARS = 6000
+
+
+class UserPersonaDependencies(Protocol):
+    def user_agent_profile_get(self, user_id: uuid.UUID) -> dict[str, Any] | None: ...
+
+    def user_persona_get(self, user_id: uuid.UUID) -> dict[str, Any] | None: ...
+
+
+_deps: UserPersonaDependencies | None = None
+
+
+def register_user_persona_dependencies(deps: UserPersonaDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+class _UserPersonaDbPort:
+    def user_agent_profile_get(self, user_id: uuid.UUID) -> dict[str, Any] | None:
+        return _deps.user_agent_profile_get(user_id) if _deps is not None else None
+
+    def user_persona_get(self, user_id: uuid.UUID) -> dict[str, Any] | None:
+        return _deps.user_persona_get(user_id) if _deps is not None else None
+
+
+db = _UserPersonaDbPort()
 
 # Normalized interaction_style → system hint (also pass raw value as reference).
 INTERACTION_STYLE_HINTS: dict[str, str] = {
@@ -201,7 +227,6 @@ def apply_user_persona_system(messages: list[dict[str, Any]]) -> list[dict[str, 
     Secrets must never be stored here — use ``/v1/user/secrets`` + tools only.
     """
     from apps.backend.domain.identity import get_identity
-    from apps.backend.infrastructure.db import db
 
     _tid, uid = get_identity()
     if uid is None:

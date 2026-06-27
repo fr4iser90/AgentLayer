@@ -5,14 +5,34 @@ from __future__ import annotations
 import re
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Protocol
 
 from psycopg.rows import dict_row
 from psycopg.types.json import Json
 
-from apps.backend.infrastructure.db import db
-
 _SLUG_RE = re.compile(r"^[a-z][a-z0-9._-]{0,95}$")
+
+
+class CollectionsDbDependencies(Protocol):
+    def pool(self) -> Any: ...
+
+
+_deps: CollectionsDbDependencies | None = None
+
+
+def register_collections_db_dependencies(deps: CollectionsDbDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+class _DbPort:
+    def pool(self) -> Any:
+        if _deps is None:
+            raise RuntimeError("collections db dependencies not registered")
+        return _deps.pool()
+
+
+db = _DbPort()
 
 
 def normalize_slug(raw: str) -> str | None:

@@ -7,7 +7,7 @@ import logging
 import os
 import threading
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 from apps.backend.core.config import PLUGINS_DIR
 from apps.backend.domain.agent_plugin_loader import definition_from_yaml, discover_yaml_agents
@@ -15,6 +15,28 @@ from apps.backend.domain.agent_plugin_loader import definition_from_yaml, discov
 logger = logging.getLogger(__name__)
 
 DEFAULT_AGENT_PLUGINS_DIR = PLUGINS_DIR / "agents"
+
+
+class AgentRegistryDependencies(Protocol):
+    def policies_map(self) -> dict[tuple[str, str], dict[str, Any]]: ...
+
+    def merge_agent_definition(self, agent: dict[str, Any]) -> dict[str, Any]: ...
+
+
+_deps: AgentRegistryDependencies | None = None
+
+
+def register_agent_registry_dependencies(deps: AgentRegistryDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+def policies_map() -> dict[tuple[str, str], dict[str, Any]]:
+    return _deps.policies_map() if _deps is not None else {}
+
+
+def merge_agent_definition(agent: dict[str, Any]) -> dict[str, Any]:
+    return _deps.merge_agent_definition(agent) if _deps is not None else agent
 
 
 def _tools_for_domains(
@@ -111,7 +133,6 @@ def effective_tool_names_for_caller(
     try:
         from apps.backend.domain.plugin_system.registry import get_registry
         from apps.backend.domain.plugin_system.tool_policy import filter_chat_tool_specs
-        from apps.backend.infrastructure.tool_operator_policy_db import policies_map
 
         reg = get_registry()
         specs = [s for s in reg.chat_tool_specs if (s.get("function") or {}).get("name") in names]
@@ -326,8 +347,6 @@ class AgentRegistry:
         if not agent:
             return None
         agent = dict(agent)
-        from apps.backend.infrastructure.agent_config_effective import merge_agent_definition
-
         agent = merge_agent_definition(agent)
         agent["tool_names"] = resolve_agent_tool_names(agent)
         return agent
