@@ -4,7 +4,7 @@ Unified OpenAI-compatible LLM catalog providers.
 Every chat stack is a :class:`CatalogProviderSpec` with the same fetch + route logic. Configure via:
 
 - **Env**: ``LLM_PROVIDER_1_BASE_URL``, ``LLM_PROVIDER_2_*``, … → ``provider_1``, ``provider_2``, …
-- **Admin → Interfaces → LLM-Endpoints** → ``provider_33``, ``provider_34``, … (``32 + db_row_id``)
+- **Admin → Interfaces → LLM-Endpoints** → ``provider_db_1``, ``provider_db_2``, …
 
 Special id ``provider_failover`` tries all enabled admin endpoints in order.
 
@@ -18,13 +18,13 @@ import re
 import time
 from dataclasses import dataclass
 from typing import Any, Literal
+import uuid
 
 import httpx
 
 from apps.backend.infrastructure.db import db
 from apps.backend.infrastructure.llm_chat_attempt import make_llm_attempt
 from apps.backend.infrastructure.llm_env_providers import (
-    LLM_ENV_PROVIDER_MAX,
     EnvLlmProviderRow,
     parse_llm_env_providers,
 )
@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 LlmStack = Literal["provider_env", "provider_db"]
 
 PROVIDER_FAILOVER_ID = "provider_failover"
+_LEGACY_DB_PROVIDER_OFFSET = 32
 
 _HDR_NAME_TOKEN = re.compile(r"^[!#$%&'*+.0-9A-Z^_`a-z|~-]{1,128}\Z")
 
@@ -60,21 +61,20 @@ class CatalogProviderSpec:
 
 
 def db_catalog_provider_id(endpoint_id: int) -> str:
-    """Stable catalog id for an admin DB endpoint row (env slots use ``provider_1`` … ``provider_32``)."""
-    return f"provider_{LLM_ENV_PROVIDER_MAX + int(endpoint_id)}"
+    """Stable catalog id for an admin DB endpoint row."""
+    return f"provider_db_{int(endpoint_id)}"
 
 
 def parse_db_catalog_provider_id(provider_id: str) -> int | None:
     pid = (provider_id or "").strip().lower()
-    if not pid.startswith("provider_"):
-        return None
-    suffix = pid[len("provider_") :]
-    if not suffix.isdigit():
-        return None
-    slot = int(suffix)
-    if slot <= LLM_ENV_PROVIDER_MAX:
-        return None
-    return slot - LLM_ENV_PROVIDER_MAX
+    if pid.startswith("provider_db_"):
+        suffix = pid[len("provider_db_") :]
+        return int(suffix) if suffix.isdigit() else None
+    if pid.startswith("provider_"):
+        suffix = pid[len("provider_") :]
+        if suffix.isdigit() and int(suffix) > _LEGACY_DB_PROVIDER_OFFSET:
+            return int(suffix) - _LEGACY_DB_PROVIDER_OFFSET
+    return None
 
 
 def normalize_catalog_provider_id(raw: Any) -> str | None:
@@ -252,6 +252,12 @@ def _db_endpoint_spec(row: dict[str, Any]) -> CatalogProviderSpec:
     )
 
 
+def _provider_url_key(base_url: str) -> str:
+    from apps.backend.infrastructure.operator_settings import normalize_external_llm_base_url
+
+    return (normalize_external_llm_base_url(base_url) or base_url.rstrip("/")).lower()
+
+
 def list_provider_specs(*, force_refresh: bool = False) -> list[CatalogProviderSpec]:
     global _SPECS_CACHE
     now = time.monotonic()
@@ -264,15 +270,12 @@ def list_provider_specs(*, force_refresh: bool = False) -> list[CatalogProviderS
 
     specs: list[CatalogProviderSpec] = []
     seen: set[str] = set()
-
-    for row in parse_llm_env_providers():
-        sp = _env_row_spec(row)
-        if sp.provider_id not in seen and sp.base_url:
-            specs.append(sp)
-            seen.add(sp.provider_id)
+    seen_urls: set[str] = set()
 
     try:
-        db_rows = db.external_llm_endpoints_list_all()
+        db_rows = db.operator_provider_endpoints_list_all("chat")
+        if not db_rows:
+            db_rows = db.external_llm_endpoints_list_all()
     except RuntimeError:
         logger.debug("list_provider_specs: DB pool not ready — env providers only")
         db_rows = []
@@ -283,18 +286,83 @@ def list_provider_specs(*, force_refresh: bool = False) -> list[CatalogProviderS
         if sp.base_url:
             specs.append(sp)
             seen.add(sp.provider_id)
+            seen_urls.add(_provider_url_key(sp.base_url))
+
+    for row in parse_llm_env_providers():
+        sp = _env_row_spec(row)
+        url_key = _provider_url_key(sp.base_url)
+        if sp.provider_id not in seen and sp.base_url and url_key not in seen_urls:
+            specs.append(sp)
+            seen.add(sp.provider_id)
+            seen_urls.add(url_key)
 
     _SPECS_CACHE = (now, specs)
     return list(specs)
+
+
+def list_admin_llm_provider_rows() -> list[dict[str, Any]]:
+    """Admin-facing LLM provider rows shared by LLM settings and benchmarks."""
+    from apps.backend.infrastructure.operator_settings import normalize_external_llm_base_url
+
+    db_enabled: dict[int, bool] = {}
+    try:
+        db_rows = db.operator_provider_endpoints_list_all("chat")
+        if not db_rows:
+            db_rows = db.external_llm_endpoints_list_all()
+        for row in db_rows:
+            db_enabled[int(row["id"])] = bool(row.get("enabled", True))
+    except RuntimeError:
+        pass
+
+    seen_urls: set[str] = set()
+    out: list[dict[str, Any]] = []
+    for sp in list_provider_specs(force_refresh=True):
+        base = (sp.base_url or "").strip()
+        if not base:
+            continue
+        if sp.db_endpoint_id is not None and not db_enabled.get(sp.db_endpoint_id, True):
+            continue
+        url_key = (normalize_external_llm_base_url(base) or base).lower()
+        if url_key in seen_urls:
+            continue
+        seen_urls.add(url_key)
+        out.append(
+            {
+                "catalog_owned_by": sp.provider_id,
+                "label": sp.label,
+                "base_url": base,
+                "source": sp.source,
+                "endpoint_id": sp.db_endpoint_id,
+                "model_default": sp.model_default,
+                "model_vlm": sp.model_vlm,
+                "model_agent": sp.model_agent,
+                "model_coding": sp.model_coding,
+            }
+        )
+    return out
 
 
 def get_provider_spec(provider_id: str) -> CatalogProviderSpec | None:
     pid = normalize_catalog_provider_id(provider_id)
     if not pid:
         return None
-    for spec in list_provider_specs():
+    specs = list_provider_specs()
+    for spec in specs:
         if spec.provider_id == pid:
             return spec
+    legacy_db_id = parse_db_catalog_provider_id(pid)
+    if legacy_db_id is not None:
+        db_pid = db_catalog_provider_id(legacy_db_id)
+        for spec in specs:
+            if spec.provider_id == db_pid:
+                return spec
+    for row in parse_llm_env_providers():
+        if normalize_catalog_provider_id(row.provider_id) != pid:
+            continue
+        env_url_key = _provider_url_key(row.base_url)
+        for spec in specs:
+            if _provider_url_key(spec.base_url) == env_url_key:
+                return spec
     return None
 
 
@@ -408,13 +476,23 @@ def _parse_models_payload(data: dict[str, Any], owned_by: str) -> list[dict[str,
     return out
 
 
-def fetch_full_model_catalog() -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    return fetch_full_model_catalog_for_scope(include_hidden=False)
+def fetch_full_model_catalog(
+    *,
+    tenant_id: int | None = None,
+    user_id: uuid.UUID | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    return fetch_full_model_catalog_for_scope(
+        include_hidden=False,
+        tenant_id=tenant_id,
+        user_id=user_id,
+    )
 
 
 def fetch_full_model_catalog_for_scope(
     *,
     include_hidden: bool = False,
+    tenant_id: int | None = None,
+    user_id: uuid.UUID | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     agentlayer: dict[str, Any] = {}
     lists: list[list[dict[str, Any]]] = []
@@ -436,6 +514,10 @@ def fetch_full_model_catalog_for_scope(
         }
     if include_hidden:
         return merged, agentlayer
+    if tenant_id is not None and user_id is not None:
+        from apps.backend.infrastructure.model_access_policy import filter_catalog_rows_for_user
+
+        return filter_catalog_rows_for_user(merged, tenant_id=tenant_id, user_id=user_id), agentlayer
     return _filter_chat_visible_models(merged), agentlayer
 
 
@@ -521,7 +603,7 @@ def route_chat_by_catalog_provider(
         if not attempts:
             raise ValueError(
                 "provider_failover has no admin LLM endpoints — add endpoints under Admin → Interfaces "
-                "or pick a specific provider id (provider_33, …)."
+                "or pick a specific provider id (provider_db_1, …)."
             )
         return attempts, "provider_db"
 
@@ -541,6 +623,21 @@ def route_chat_by_catalog_provider(
     if not model:
         raise ValueError(f"Provider {pid!r} has no model id for this request.")
 
+    try:
+        from apps.backend.domain.identity import get_identity
+        from apps.backend.infrastructure.model_access_policy import is_model_allowed
+
+        tenant_id, user_id = get_identity()
+        if user_id is not None and not is_model_allowed(
+            pid,
+            model,
+            tenant_id=tenant_id,
+            user_id=user_id,
+        ):
+            raise ValueError(f"Model {model!r} is not available for provider {pid!r}.")
+    except RuntimeError:
+        pass
+
     logger.info(
         "catalog_route: provider=%s (%s) url=%s model=%r",
         pid,
@@ -558,7 +655,10 @@ def first_env_provider_id() -> str | None:
 
 
 def first_admin_provider_id() -> str | None:
-    for row in db.external_llm_endpoints_list_all():
+    rows = db.operator_provider_endpoints_list_all("chat")
+    if not rows:
+        rows = db.external_llm_endpoints_list_all()
+    for row in rows:
         if _strip_opt(row.get("base_url")):
             return db_catalog_provider_id(int(row["id"]))
     return None

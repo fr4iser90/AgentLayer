@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from typing import Any, Literal
-
-VOICE_ENV_PROVIDER_MAX = 32
 
 VoiceRole = Literal["stt", "tts"]
 SttApiStyle = Literal["openai", "whisper_cpp"]
 TtsApiStyle = Literal["openai"]
+_ENV_INDEX_RE = {
+    "stt": re.compile(r"^VOICE_STT_PROVIDER_(\d+)_BASE_URL$"),
+    "tts": re.compile(r"^VOICE_TTS_PROVIDER_(\d+)_BASE_URL$"),
+}
 
 
 def strip_env_value(raw: str | None) -> str:
@@ -49,6 +52,20 @@ def env_voice_provider_id(role: VoiceRole, index: int) -> str:
 
 def _env_prefix(role: VoiceRole) -> str:
     return "VOICE_STT_PROVIDER_" if role == "stt" else "VOICE_TTS_PROVIDER_"
+
+
+def _configured_env_indexes(role: VoiceRole) -> list[int]:
+    indexes: set[int] = set()
+    pattern = _ENV_INDEX_RE[role]
+    for key, value in os.environ.items():
+        m = pattern.match(key)
+        if not m or not strip_env_value(value):
+            continue
+        try:
+            indexes.add(int(m.group(1)))
+        except ValueError:
+            continue
+    return sorted(indexes)
 
 
 def _normalize_stt_api_style(raw: str | None) -> SttApiStyle:
@@ -111,7 +128,7 @@ def _read_numbered_env_row(role: VoiceRole, n: int) -> EnvVoiceProviderRow | Non
 
 def parse_voice_stt_env_providers() -> list[EnvVoiceProviderRow]:
     rows: list[EnvVoiceProviderRow] = []
-    for n in range(1, VOICE_ENV_PROVIDER_MAX + 1):
+    for n in _configured_env_indexes("stt"):
         row = _read_numbered_env_row("stt", n)
         if row is not None:
             rows.append(row)
@@ -120,7 +137,7 @@ def parse_voice_stt_env_providers() -> list[EnvVoiceProviderRow]:
 
 def parse_voice_tts_env_providers() -> list[EnvVoiceProviderRow]:
     rows: list[EnvVoiceProviderRow] = []
-    for n in range(1, VOICE_ENV_PROVIDER_MAX + 1):
+    for n in _configured_env_indexes("tts"):
         row = _read_numbered_env_row("tts", n)
         if row is not None:
             rows.append(row)

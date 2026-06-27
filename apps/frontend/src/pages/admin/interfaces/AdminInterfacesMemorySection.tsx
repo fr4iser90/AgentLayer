@@ -1,20 +1,134 @@
 import { useOperatorSettings } from "../../../features/admin/operatorSettings/OperatorSettingsProvider";
+import { envProviderPatternFromCleanupKeys } from "../../../features/admin/operatorSettings/operatorSettingsTypes";
 import { useTranslation } from "react-i18next";
+import { useEffect } from "react";
+
+function ProviderModelSelect({
+  id,
+  value,
+  models,
+  loading,
+  onChange,
+  placeholder,
+  loadingLabel,
+}: {
+  id: string;
+  value: string;
+  models: string[];
+  loading?: boolean;
+  onChange: (value: string) => void;
+  placeholder: string;
+  loadingLabel: string;
+}) {
+  const current = value.trim();
+  const options = current && !models.includes(current) ? [current, ...models] : models;
+  return (
+    <select
+      id={id}
+      className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white disabled:opacity-50"
+      value={current}
+      disabled={loading || options.length === 0}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      <option value="">{loading ? loadingLabel : placeholder}</option>
+      {options.map((model) => (
+        <option key={model} value={model}>
+          {model}
+        </option>
+      ))}
+    </select>
+  );
+}
 
 export function AdminInterfacesMemorySection() {
   const { t } = useTranslation(["admin"]);
   const s = useOperatorSettings();
+
+  const embedModelsOk = s.ragEmbeddingModelOptions.length > 0;
+  const embeddingProviderId = s.ragEmbeddingProviderId || s.ragEmbeddingProviderIdEffective || "";
+  const extractorProviderId = s.extractorProviderId || s.extractorProviderIdEffective || "";
+  const embeddingModelsKey = s.operatorProviderModelKey("embedding", embeddingProviderId);
+  const extractorModelsKey = s.operatorProviderModelKey("extractor", extractorProviderId);
+  const embeddingModelOptions = s.operatorProviderModelOptions[embeddingModelsKey] ?? [];
+  const extractorModelOptions = s.operatorProviderModelOptions[extractorModelsKey] ?? [];
+
+  useEffect(() => {
+    if (embeddingProviderId) void s.loadOperatorProviderModels("embedding", embeddingProviderId);
+  }, [embeddingProviderId, s.loadOperatorProviderModels]);
+
+  useEffect(() => {
+    if (extractorProviderId) void s.loadOperatorProviderModels("extractor", extractorProviderId);
+  }, [extractorProviderId, s.loadOperatorProviderModels]);
+
   if (s.loading) {
     return <p className="text-sm text-surface-muted">{t("admin:loading")}</p>;
   }
 
-  const embedModelsOk = s.ragEmbeddingModelOptions.length > 0;
+  const pendingEmbeddingEnvProviders = (s.envOperatorProviders.embedding ?? []).filter((p) => !p.already_in_db);
+  const pendingExtractorEnvProviders = (s.envOperatorProviders.extractor ?? []).filter((p) => !p.already_in_db);
+  const operatorMetadataByKind = new Map(s.operatorProviderKindMetadata.map((metadata) => [metadata.kind, metadata]));
+  const pendingEmbeddingEnvPrefix =
+    operatorMetadataByKind.get("embedding")?.env_prefix_pattern ??
+    envProviderPatternFromCleanupKeys(pendingEmbeddingEnvProviders[0]?.cleanup_keys);
+  const pendingExtractorEnvPrefix =
+    operatorMetadataByKind.get("extractor")?.env_prefix_pattern ??
+    envProviderPatternFromCleanupKeys(pendingExtractorEnvProviders[0]?.cleanup_keys);
 
   return (
     <>
       <section className="rounded-xl border border-surface-border bg-surface-raised p-5">
         <h2 className="text-sm font-medium text-white">{t("admin:ifMemEmbedTitle")}</h2>
         <p className="mt-2 text-xs text-surface-muted">{t("admin:ifMemEmbedIntro")}</p>
+        {pendingEmbeddingEnvProviders.length > 0 ? (
+          <div className="mt-4 rounded-lg border border-amber-400/25 bg-amber-500/10 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h3 className="text-sm font-medium text-amber-100">
+                  {t("admin:envProviderFoundTitle", { count: pendingEmbeddingEnvProviders.length })}
+                </h3>
+                <p className="mt-1 text-xs text-amber-100/75">
+                  {t("admin:envProviderFoundIntro", { prefix: pendingEmbeddingEnvPrefix })}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={s.envOperatorImporting === "embedding"}
+                className="rounded-md bg-amber-500 px-3 py-1.5 text-sm font-medium text-black hover:bg-amber-400 disabled:opacity-50"
+                onClick={() => void s.importOperatorEnvProviders("embedding")}
+              >
+                {s.envOperatorImporting === "embedding" ? t("admin:envLlmImporting") : t("admin:envLlmImportButton")}
+              </button>
+            </div>
+            <div className="mt-3 space-y-2">
+              {pendingEmbeddingEnvProviders.map((p) => (
+                <details key={p.provider_id} className="rounded-md border border-white/10 bg-black/25 p-3">
+                  <summary className="cursor-pointer text-xs text-amber-100">
+                    <span className="font-mono">{p.provider_id}</span> · {p.label}
+                    {p.already_in_db ? ` · ${t("admin:envLlmAlreadyInDb")}` : ""}
+                  </summary>
+                  <p className="mt-2 break-all font-mono text-[11px] text-surface-muted">{p.base_url}</p>
+                  <p className="mt-1 text-[11px] text-neutral-300">
+                    {t("admin:envLlmModels")}: <span className="font-mono">{p.model_default || "—"}</span>
+                  </p>
+                  <p className="mt-1 text-[11px] text-neutral-300">
+                    {t("admin:envLlmKey")}:{" "}
+                    {p.api_key_configured
+                      ? t("admin:envLlmKeyRedacted", { last4: p.api_key_last4 ?? t("admin:envLlmKeyLast4Unknown") })
+                      : t("admin:envLlmKeyEmpty")}
+                  </p>
+                  <ul className="mt-2 grid gap-1 sm:grid-cols-2">
+                    {p.cleanup_keys.map((key) => (
+                      <li key={key} className="font-mono text-[10px] text-amber-100/70">{key}</li>
+                    ))}
+                  </ul>
+                </details>
+              ))}
+            </div>
+            {s.envOperatorCleanupNotes.embedding ? (
+              <p className="mt-3 text-xs text-amber-100/75">{s.envOperatorCleanupNotes.embedding}</p>
+            ) : null}
+          </div>
+        ) : null}
         <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
@@ -162,14 +276,14 @@ export function AdminInterfacesMemorySection() {
                 <label className="block text-xs text-surface-muted" htmlFor="rag-model">
                   {t("admin:ifMemModelId")}
                 </label>
-                <input
+                <ProviderModelSelect
                   id="rag-model"
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
                   value={s.ragEmbeddingModel}
-                  onChange={(e) => s.setRagEmbeddingModel(e.target.value)}
+                  models={embeddingModelOptions}
+                  loading={s.operatorProviderModelsLoading[embeddingModelsKey]}
+                  onChange={(value) => s.setRagEmbeddingModel(value)}
                   placeholder={t("admin:ifMemoryModelFilePlaceholder")}
-                  list="embed-model-ids"
-                  autoComplete="off"
+                  loadingLabel={t("admin:ifMemLoadingModels")}
                 />
               </div>
               <div>
@@ -199,6 +313,47 @@ export function AdminInterfacesMemorySection() {
               )}
             </div>
             <p className="mt-2 text-xs text-surface-muted">{t("admin:ifMemExtractorIntro")}</p>
+            {pendingExtractorEnvProviders.length > 0 ? (
+              <div className="mt-4 rounded-lg border border-amber-400/25 bg-amber-500/10 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h3 className="text-sm font-medium text-amber-100">
+                      {t("admin:envProviderFoundTitle", { count: pendingExtractorEnvProviders.length })}
+                    </h3>
+                    <p className="mt-1 text-xs text-amber-100/75">
+                      {t("admin:envProviderFoundIntro", { prefix: pendingExtractorEnvPrefix })}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={s.envOperatorImporting === "extractor"}
+                    className="rounded-md bg-amber-500 px-3 py-1.5 text-sm font-medium text-black hover:bg-amber-400 disabled:opacity-50"
+                    onClick={() => void s.importOperatorEnvProviders("extractor")}
+                  >
+                    {s.envOperatorImporting === "extractor" ? t("admin:envLlmImporting") : t("admin:envLlmImportButton")}
+                  </button>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {pendingExtractorEnvProviders.map((p) => (
+                    <details key={p.provider_id} className="rounded-md border border-white/10 bg-black/25 p-3">
+                      <summary className="cursor-pointer text-xs text-amber-100">
+                        <span className="font-mono">{p.provider_id}</span> · {p.label}
+                        {p.already_in_db ? ` · ${t("admin:envLlmAlreadyInDb")}` : ""}
+                      </summary>
+                      <p className="mt-2 break-all font-mono text-[11px] text-surface-muted">{p.base_url}</p>
+                      <p className="mt-1 text-[11px] text-neutral-300">
+                        {t("admin:envLlmModels")}: <span className="font-mono">{p.model_default || "—"}</span>
+                      </p>
+                      <ul className="mt-2 grid gap-1 sm:grid-cols-2">
+                        {p.cleanup_keys.map((key) => (
+                          <li key={key} className="font-mono text-[10px] text-amber-100/70">{key}</li>
+                        ))}
+                      </ul>
+                    </details>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             {s.extractorProviders.length > 0 ? (
               <>
                 <label className="mt-3 block text-xs text-surface-muted" htmlFor="extractor-provider-id">
@@ -291,13 +446,14 @@ export function AdminInterfacesMemorySection() {
                 <label className="block text-xs text-surface-muted" htmlFor="extractor-model">
                   {t("admin:ifMemExtractorModel")}
                 </label>
-                <input
+                <ProviderModelSelect
                   id="extractor-model"
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
                   value={s.extractorModel}
-                  onChange={(e) => s.setExtractorModel(e.target.value)}
+                  models={extractorModelOptions}
+                  loading={s.operatorProviderModelsLoading[extractorModelsKey]}
+                  onChange={(value) => s.setExtractorModel(value)}
                   placeholder={t("admin:ifMemExtractorModelPlaceholder")}
-                  autoComplete="off"
+                  loadingLabel={t("admin:ifMemLoadingModels")}
                 />
               </div>
               <div>

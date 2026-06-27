@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from typing import Any
 
-EMBEDDING_ENV_PROVIDER_MAX = 32
 _ENV_PREFIX = "EMBEDDING_PROVIDER_"
+_ENV_INDEX_RE = re.compile(r"^EMBEDDING_PROVIDER_(\d+)_BASE_URL$")
 
 
 def strip_env_value(raw: str | None) -> str:
@@ -40,6 +41,19 @@ def env_embedding_provider_id(index: int) -> str:
     return f"embedding_provider_{int(index)}"
 
 
+def _configured_env_indexes() -> list[int]:
+    indexes: set[int] = set()
+    for key, value in os.environ.items():
+        m = _ENV_INDEX_RE.match(key)
+        if not m or not strip_env_value(value):
+            continue
+        try:
+            indexes.add(int(m.group(1)))
+        except ValueError:
+            continue
+    return sorted(indexes)
+
+
 def _read_numbered_env_row(n: int) -> EnvEmbeddingProviderRow | None:
     base = strip_env_value(os.environ.get(f"{_ENV_PREFIX}{n}_BASE_URL")).rstrip("/")
     if not base:
@@ -63,7 +77,7 @@ def _read_numbered_env_row(n: int) -> EnvEmbeddingProviderRow | None:
 
 def parse_embedding_env_providers() -> list[EnvEmbeddingProviderRow]:
     rows: list[EnvEmbeddingProviderRow] = []
-    for n in range(1, EMBEDDING_ENV_PROVIDER_MAX + 1):
+    for n in _configured_env_indexes():
         row = _read_numbered_env_row(n)
         if row is not None:
             rows.append(row)

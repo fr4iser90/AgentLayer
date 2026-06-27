@@ -83,44 +83,10 @@ def manifest_path_for_suite(suite: str) -> Path:
 
 
 def list_benchmark_llm_providers() -> list[dict[str, Any]]:
-    """Unified LLM providers for benchmarks: ``LLM_PROVIDER_*`` in .env plus Admin DB endpoints."""
-    from apps.backend.infrastructure.model_catalog_providers import list_provider_specs
-    from apps.backend.infrastructure.operator_settings import normalize_external_llm_base_url
+    """Compatibility wrapper: benchmarks use the shared Admin LLM provider catalog."""
+    from apps.backend.infrastructure.model_catalog_providers import list_admin_llm_provider_rows
 
-    db_enabled: dict[int, bool] = {}
-    try:
-        from apps.backend.infrastructure.db import db
-
-        for row in db.external_llm_endpoints_list_all():
-            db_enabled[int(row["id"])] = bool(row.get("enabled", True))
-    except RuntimeError:
-        pass
-
-    seen_urls: set[str] = set()
-    out: list[dict[str, Any]] = []
-    for sp in list_provider_specs(force_refresh=True):
-        base = (sp.base_url or "").strip()
-        if not base:
-            continue
-        if sp.db_endpoint_id is not None and not db_enabled.get(sp.db_endpoint_id, True):
-            continue
-        url_key = (normalize_external_llm_base_url(base) or base).lower()
-        if url_key in seen_urls:
-            continue
-        seen_urls.add(url_key)
-        out.append(
-            {
-                "catalog_owned_by": sp.provider_id,
-                "label": sp.label,
-                "base_url": base,
-                "source": sp.source,
-                "endpoint_id": sp.db_endpoint_id,
-                "model_default": sp.model_default,
-                "model_agent": sp.model_agent,
-                "model_coding": sp.model_coding,
-            }
-        )
-    return out
+    return list_admin_llm_provider_rows()
 
 
 def _validate_profiles(raw_profiles: list[dict[str, Any]]) -> None:

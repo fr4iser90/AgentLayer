@@ -138,7 +138,7 @@ def scheduler_llm_backend_to_agent_override(backend: str) -> str | None:
 
 
 def _router_model_from_row(r: dict[str, Any]) -> str:
-    return (str(r.get("llm_router_model") or "").strip() or "nemotron-3-nano:4b")[:128]
+    return str(r.get("llm_router_model") or "").strip()[:128]
 
 
 def normalize_scheduler_tools_mode(raw: Any) -> str:
@@ -162,17 +162,20 @@ def _fetch_row() -> dict[str, Any]:
         "discord_bot_agent_bearer": None,
         "discord_trigger_prefix": "!agent ",
         "discord_chat_model": None,
+        "discord_chat_model_catalog_owned_by": None,
         "telegram_application_id": None,
         "telegram_bot_enabled": False,
         "telegram_bot_token": None,
         "telegram_bot_agent_bearer": None,
         "telegram_trigger_prefix": "!agent ",
         "telegram_chat_model": None,
+        "telegram_chat_model_catalog_owned_by": None,
         "dashboard_upload_max_file_mb": None,
         "dashboard_upload_allowed_mime": None,
         "llm_primary_backend": "provider",
         "llm_smart_routing_enabled": False,
-        "llm_router_model": "nemotron-3-nano:4b",
+        "llm_router_model": "",
+        "llm_router_model_catalog_owned_by": None,
         "llm_router_local_confidence_min": 0.7,
         "llm_router_timeout_sec": 12.0,
         "llm_route_long_prompt_chars": 8000,
@@ -252,6 +255,7 @@ def _fetch_row() -> dict[str, Any]:
                            dashboard_upload_max_file_mb, dashboard_upload_allowed_mime,
                            llm_primary_backend,
                            llm_smart_routing_enabled, llm_router_model,
+                           llm_router_model_catalog_owned_by,
                            llm_router_local_confidence_min, llm_router_timeout_sec,
                            llm_route_long_prompt_chars, llm_route_short_local_max_chars,
                            llm_route_many_code_fences, llm_route_many_messages,
@@ -290,7 +294,9 @@ def _fetch_row() -> dict[str, Any]:
                            extractor_api_header_name,
                            extractor_provider_id,
                            extractor_model,
-                           extractor_timeout_sec
+                           extractor_timeout_sec,
+                           discord_chat_model_catalog_owned_by,
+                           telegram_chat_model_catalog_owned_by
                     FROM operator_settings WHERE id = 1
                     """
                 )
@@ -323,103 +329,106 @@ def _fetch_row() -> dict[str, Any]:
         "dashboard_upload_allowed_mime": row[16],
         "llm_primary_backend": normalize_llm_primary_backend(row[17] if row[17] is not None else None),
         "llm_smart_routing_enabled": bool(row[18]) if row[18] is not None else False,
-        "llm_router_model": (str(row[19]).strip() if row[19] is not None else "") or "nemotron-3-nano:4b",
-        "llm_router_local_confidence_min": float(row[20]) if row[20] is not None else 0.7,
-        "llm_router_timeout_sec": float(row[21]) if row[21] is not None else 12.0,
-        "llm_route_long_prompt_chars": int(row[22]) if row[22] is not None else 8000,
-        "llm_route_short_local_max_chars": int(row[23]) if row[23] is not None else 220,
-        "llm_route_many_code_fences": int(row[24]) if row[24] is not None else 3,
-        "llm_route_many_messages": int(row[25]) if row[25] is not None else 14,
-        "memory_graph_enabled": bool(row[26]) if row[26] is not None else True,
-        "memory_graph_max_hops": int(row[27]) if row[27] is not None else 2,
-        "memory_graph_min_score": float(row[28]) if row[28] is not None else 0.03,
-        "memory_graph_max_bullets": int(row[29]) if row[29] is not None else 14,
-        "memory_graph_max_prompt_chars": int(row[30]) if row[30] is not None else 3500,
-        "memory_graph_log_activations": bool(row[31]) if row[31] is not None else False,
-        "memory_enabled": bool(row[32]) if row[32] is not None else True,
-        "rag_enabled": bool(row[33]) if row[33] is not None else True,
-        "rag_embedding_model": _normalize_rag_embedding_model(row[34]),
-        "rag_embedding_dim": int(row[35]) if row[35] is not None else 0,
-        "rag_chunk_size": int(row[36]) if row[36] is not None else 1200,
-        "rag_chunk_overlap": int(row[37]) if row[37] is not None else 200,
-        "rag_top_k": int(row[38]) if row[38] is not None else 8,
-        "rag_embed_timeout_sec": float(row[39]) if row[39] is not None else 120.0,
+        "llm_router_model": (str(row[19]).strip() if row[19] is not None else "")[:128],
+        "llm_router_model_catalog_owned_by": normalize_model_catalog_owned_by(row[20]),
+        "llm_router_local_confidence_min": float(row[21]) if row[21] is not None else 0.7,
+        "llm_router_timeout_sec": float(row[22]) if row[22] is not None else 12.0,
+        "llm_route_long_prompt_chars": int(row[23]) if row[23] is not None else 8000,
+        "llm_route_short_local_max_chars": int(row[24]) if row[24] is not None else 220,
+        "llm_route_many_code_fences": int(row[25]) if row[25] is not None else 3,
+        "llm_route_many_messages": int(row[26]) if row[26] is not None else 14,
+        "memory_graph_enabled": bool(row[27]) if row[27] is not None else True,
+        "memory_graph_max_hops": int(row[28]) if row[28] is not None else 2,
+        "memory_graph_min_score": float(row[29]) if row[29] is not None else 0.03,
+        "memory_graph_max_bullets": int(row[30]) if row[30] is not None else 14,
+        "memory_graph_max_prompt_chars": int(row[31]) if row[31] is not None else 3500,
+        "memory_graph_log_activations": bool(row[32]) if row[32] is not None else False,
+        "memory_enabled": bool(row[33]) if row[33] is not None else True,
+        "rag_enabled": bool(row[34]) if row[34] is not None else True,
+        "rag_embedding_model": _normalize_rag_embedding_model(row[35]),
+        "rag_embedding_dim": int(row[36]) if row[36] is not None else 0,
+        "rag_chunk_size": int(row[37]) if row[37] is not None else 1200,
+        "rag_chunk_overlap": int(row[38]) if row[38] is not None else 200,
+        "rag_top_k": int(row[39]) if row[39] is not None else 8,
+        "rag_embed_timeout_sec": float(row[40]) if row[40] is not None else 120.0,
         "rag_tenant_shared_domains": (
-            str(row[40]) if row[40] is not None else "agentlayer_docs"
+            str(row[41]) if row[41] is not None else "agentlayer_docs"
         ),
-        "docs_root": row[41],
-        "pidea_enabled": bool(row[42]) if row[42] is not None else False,
-        "pidea_cdp_http_url": row[43],
-        "pidea_selector_ide": row[44],
-        "pidea_selector_version": row[45],
-        "expose_internal_errors": bool(row[46]) if row[46] is not None else False,
-        "http_client_log_level": _normalize_http_client_log_level_str(row[47]) if len(row) > 47 else "WARNING",
-        "scheduler_enabled": bool(row[48]) if len(row) > 48 and row[48] is not None else False,
-        "scheduler_interval_minutes": int(row[49]) if len(row) > 49 and row[49] is not None else 60,
-        "scheduler_user_id": row[50] if len(row) > 50 else None,
-        "scheduler_model": row[51] if len(row) > 51 else None,
-        "scheduler_max_tool_rounds": int(row[52]) if len(row) > 52 and row[52] is not None else None,
-        "scheduler_notify_only_if_not_ok": bool(row[53]) if len(row) > 53 and row[53] is not None else True,
-        "scheduler_max_outbound_per_day": int(row[54]) if len(row) > 54 and row[54] is not None else 10,
-        "scheduler_allowed_tool_packages": row[55] if len(row) > 55 else None,
-        "scheduler_llm_backend": normalize_scheduler_llm_backend(row[56] if len(row) > 56 else None),
-        "scheduler_tools_mode": normalize_scheduler_tools_mode(row[57] if len(row) > 57 else None),
-        "scheduler_pidea_enabled": bool(row[58]) if len(row) > 58 and row[58] is not None else False,
-        "scheduler_instructions": row[59] if len(row) > 59 else None,
-        "scheduler_jobs_worker_enabled": bool(row[60]) if len(row) > 60 and row[60] is not None else True,
-        "scheduler_jobs_ide_pidea_enabled": bool(row[61]) if len(row) > 61 and row[61] is not None else True,
-        "scheduler_jobs_ide_pidea_timeout_sec": float(row[62])
-        if len(row) > 62 and row[62] is not None
+        "docs_root": row[42],
+        "pidea_enabled": bool(row[43]) if row[43] is not None else False,
+        "pidea_cdp_http_url": row[44],
+        "pidea_selector_ide": row[45],
+        "pidea_selector_version": row[46],
+        "expose_internal_errors": bool(row[47]) if row[47] is not None else False,
+        "http_client_log_level": _normalize_http_client_log_level_str(row[48]) if len(row) > 48 else "WARNING",
+        "scheduler_enabled": bool(row[49]) if len(row) > 49 and row[49] is not None else False,
+        "scheduler_interval_minutes": int(row[50]) if len(row) > 50 and row[50] is not None else 60,
+        "scheduler_user_id": row[51] if len(row) > 51 else None,
+        "scheduler_model": row[52] if len(row) > 52 else None,
+        "scheduler_max_tool_rounds": int(row[53]) if len(row) > 53 and row[53] is not None else None,
+        "scheduler_notify_only_if_not_ok": bool(row[54]) if len(row) > 54 and row[54] is not None else True,
+        "scheduler_max_outbound_per_day": int(row[55]) if len(row) > 55 and row[55] is not None else 10,
+        "scheduler_allowed_tool_packages": row[56] if len(row) > 56 else None,
+        "scheduler_llm_backend": normalize_scheduler_llm_backend(row[57] if len(row) > 57 else None),
+        "scheduler_tools_mode": normalize_scheduler_tools_mode(row[58] if len(row) > 58 else None),
+        "scheduler_pidea_enabled": bool(row[59]) if len(row) > 59 and row[59] is not None else False,
+        "scheduler_instructions": row[60] if len(row) > 60 else None,
+        "scheduler_jobs_worker_enabled": bool(row[61]) if len(row) > 61 and row[61] is not None else True,
+        "scheduler_jobs_ide_pidea_enabled": bool(row[62]) if len(row) > 62 and row[62] is not None else True,
+        "scheduler_jobs_ide_pidea_timeout_sec": float(row[63])
+        if len(row) > 63 and row[63] is not None
         else 300.0,
-        "workspace_allow_self_editing": bool(row[63]) if len(row) > 63 and row[63] is not None else False,
+        "workspace_allow_self_editing": bool(row[64]) if len(row) > 64 and row[64] is not None else False,
         "embedding_api_base_url": (
-            (str(row[64]).strip() or None) if len(row) > 64 and row[64] is not None else None
-        ),
-        "embedding_api_key": (
             (str(row[65]).strip() or None) if len(row) > 65 and row[65] is not None else None
         ),
-        "embedding_api_header_name": (
+        "embedding_api_key": (
             (str(row[66]).strip() or None) if len(row) > 66 and row[66] is not None else None
         ),
-        "rag_embedding_provider_id": (
+        "embedding_api_header_name": (
             (str(row[67]).strip() or None) if len(row) > 67 and row[67] is not None else None
         ),
-        "rag_docs_ingest_fingerprint": (
+        "rag_embedding_provider_id": (
             (str(row[68]).strip() or None) if len(row) > 68 and row[68] is not None else None
         ),
+        "rag_docs_ingest_fingerprint": (
+            (str(row[69]).strip() or None) if len(row) > 69 and row[69] is not None else None
+        ),
         "workspace_index_on_write_default": (
-            str(row[69]).strip().lower()
-            if len(row) > 69 and row[69] is not None and str(row[69]).strip()
+            str(row[70]).strip().lower()
+            if len(row) > 70 and row[70] is not None and str(row[70]).strip()
             else "debounced"
         ),
-        "workspace_reindex_after_git_pull": bool(row[70]) if len(row) > 70 and row[70] is not None else False,
-        "workspace_nightly_reindex_enabled": bool(row[71]) if len(row) > 71 and row[71] is not None else False,
-        "workspace_index_on_attach_enabled": bool(row[72]) if len(row) > 72 and row[72] is not None else False,
+        "workspace_reindex_after_git_pull": bool(row[71]) if len(row) > 71 and row[71] is not None else False,
+        "workspace_nightly_reindex_enabled": bool(row[72]) if len(row) > 72 and row[72] is not None else False,
+        "workspace_index_on_attach_enabled": bool(row[73]) if len(row) > 73 and row[73] is not None else False,
         "llm_queue_policy": (
-            str(row[73]).strip().lower()
-            if len(row) > 73 and row[73] is not None and str(row[73]).strip()
+            str(row[74]).strip().lower()
+            if len(row) > 74 and row[74] is not None and str(row[74]).strip()
             else "priority"
         ),
-        "llm_queue_user_priority": int(row[74]) if len(row) > 74 and row[74] is not None else 100,
-        "llm_queue_benchmark_priority": int(row[75]) if len(row) > 75 and row[75] is not None else 10,
-        "llm_queue_scheduler_priority": int(row[76]) if len(row) > 76 and row[76] is not None else 50,
-        "delegate_enabled": bool(row[77]) if len(row) > 77 and row[77] is not None else True,
+        "llm_queue_user_priority": int(row[75]) if len(row) > 75 and row[75] is not None else 100,
+        "llm_queue_benchmark_priority": int(row[76]) if len(row) > 76 and row[76] is not None else 10,
+        "llm_queue_scheduler_priority": int(row[77]) if len(row) > 77 and row[77] is not None else 50,
+        "delegate_enabled": bool(row[78]) if len(row) > 78 and row[78] is not None else True,
         "extractor_api_base_url": (
-            (str(row[78]).strip() or None) if len(row) > 78 and row[78] is not None else None
-        ),
-        "extractor_api_key": (
             (str(row[79]).strip() or None) if len(row) > 79 and row[79] is not None else None
         ),
-        "extractor_api_header_name": (
+        "extractor_api_key": (
             (str(row[80]).strip() or None) if len(row) > 80 and row[80] is not None else None
         ),
-        "extractor_provider_id": (
+        "extractor_api_header_name": (
             (str(row[81]).strip() or None) if len(row) > 81 and row[81] is not None else None
         ),
-        "extractor_model": (
+        "extractor_provider_id": (
             (str(row[82]).strip() or None) if len(row) > 82 and row[82] is not None else None
         ),
-        "extractor_timeout_sec": float(row[83]) if len(row) > 83 and row[83] is not None else 120.0,
+        "extractor_model": (
+            (str(row[83]).strip() or None) if len(row) > 83 and row[83] is not None else None
+        ),
+        "extractor_timeout_sec": float(row[84]) if len(row) > 84 and row[84] is not None else 120.0,
+        "discord_chat_model_catalog_owned_by": normalize_model_catalog_owned_by(row[85] if len(row) > 85 else None),
+        "telegram_chat_model_catalog_owned_by": normalize_model_catalog_owned_by(row[86] if len(row) > 86 else None),
     }
 
 
@@ -462,7 +471,8 @@ def _sync_single_provider_endpoint(
     """Keep legacy single-provider forms backed by the LLM-style endpoint table."""
     base = str(base_url or "").strip().rstrip("/")
     if not base:
-        db.operator_provider_endpoints_sync(kind, [])
+        # Legacy single-provider settings may be omitted by newer Admin pages.
+        # Missing legacy values must not delete DB-managed generic providers.
         return
     rows = db.operator_provider_endpoints_list_all(kind)
     row: dict[str, Any] = {
@@ -477,7 +487,7 @@ def _sync_single_provider_endpoint(
     }
     if rows:
         row["id"] = int(rows[0]["id"])
-    db.operator_provider_endpoints_sync(kind, [row])
+    db.operator_provider_endpoints_sync(kind, [row], delete_missing=False)
 
 
 def resolved_embedding_api_base_url() -> str:
@@ -641,6 +651,9 @@ def smart_routing_params() -> dict[str, Any]:
     r = _cached_row()
     return {
         "router_model": _router_model_from_row(r),
+        "router_model_catalog_owned_by": normalize_model_catalog_owned_by(
+            r.get("llm_router_model_catalog_owned_by")
+        ),
         "local_confidence_min": _bound_float(r.get("llm_router_local_confidence_min"), 0.7, 0.0, 1.0),
         "router_timeout_sec": _bound_float(r.get("llm_router_timeout_sec"), 12.0, 1.0, 120.0),
         "long_prompt_chars": _bound_int(r.get("llm_route_long_prompt_chars"), 8000, 100, 500_000),
@@ -818,7 +831,9 @@ def resolve_external_llm_credentials_for_catalog(
         return bu, key
 
     if endpoint_id is not None:
-        row = db.external_llm_endpoint_by_id(int(endpoint_id))
+        row = db.operator_provider_endpoint_by_id("chat", int(endpoint_id))
+        if not row:
+            row = db.external_llm_endpoint_by_id(int(endpoint_id))
         if not row:
             raise ValueError("unknown_endpoint")
         bu = normalize_external_llm_base_url(_strip_opt(row.get("base_url")))
@@ -827,7 +842,7 @@ def resolve_external_llm_credentials_for_catalog(
             raise ValueError("missing_api_key")
         return bu, key
 
-    rows = db.external_llm_endpoints_list_all()
+    rows = _chat_provider_endpoint_rows()
     if rows:
         row0 = rows[0]
         bu = normalize_external_llm_base_url(_strip_opt(row0.get("base_url")))
@@ -836,6 +851,11 @@ def resolve_external_llm_credentials_for_catalog(
             return bu, key
 
     raise ValueError("no_external_endpoint")
+
+
+def _chat_provider_endpoint_rows() -> list[dict[str, Any]]:
+    rows = db.operator_provider_endpoints_list_all("chat")
+    return rows if rows else db.external_llm_endpoints_list_all()
 
 
 def _external_model_for_endpoint_row(
@@ -905,7 +925,7 @@ def _external_llm_chat_attempts(
     if pk not in ("default", "vlm", "agent", "coding"):
         pk = "default"
     attempts: list[tuple[str, dict[str, str], str, str]] = []
-    for row in db.external_llm_endpoints_list_all():
+    for row in _chat_provider_endpoint_rows():
         bu = normalize_external_llm_base_url(_strip_opt(row.get("base_url")))
         key = _strip_opt(row.get("api_key")) or ""
         ext_model = _external_model_for_endpoint_row(row, pk, is_override, model_from_resolution)
@@ -1061,17 +1081,26 @@ def public_dict() -> dict[str, Any]:
         "discord_bot_token_configured": bool(dtok),
         "discord_trigger_prefix": _discord_trigger_prefix_public(r),
         "discord_chat_model": (str(r.get("discord_chat_model") or "").strip())[:256],
+        "discord_chat_model_catalog_owned_by": normalize_model_catalog_owned_by(
+            r.get("discord_chat_model_catalog_owned_by")
+        ),
         "telegram_application_id": r.get("telegram_application_id") or "",
         "telegram_bot_enabled": bool(r.get("telegram_bot_enabled")),
         "telegram_bot_token_configured": bool(ttok),
         "telegram_trigger_prefix": _telegram_trigger_prefix_public(r),
         "telegram_chat_model": (str(r.get("telegram_chat_model") or "").strip())[:256],
+        "telegram_chat_model_catalog_owned_by": normalize_model_catalog_owned_by(
+            r.get("telegram_chat_model_catalog_owned_by")
+        ),
         "dashboard_upload_max_file_mb": r.get("dashboard_upload_max_file_mb"),
         "dashboard_upload_allowed_mime": (r.get("dashboard_upload_allowed_mime") or "").strip(),
         "dashboard_upload_effective_max_bytes": effective_dashboard_upload_max_bytes(),
         "dashboard_upload_effective_allowed_mime": sorted(effective_dashboard_upload_mime()),
         "llm_smart_routing_enabled": bool(r.get("llm_smart_routing_enabled")),
         "llm_router_model": _router_model_from_row(r),
+        "llm_router_model_catalog_owned_by": normalize_model_catalog_owned_by(
+            r.get("llm_router_model_catalog_owned_by")
+        ),
         "llm_router_local_confidence_min": _bound_float(r.get("llm_router_local_confidence_min"), 0.7, 0.0, 1.0),
         "llm_router_timeout_sec": _bound_float(r.get("llm_router_timeout_sec"), 12.0, 1.0, 120.0),
         "llm_route_long_prompt_chars": _bound_int(r.get("llm_route_long_prompt_chars"), 8000, 100, 500_000),
@@ -1161,14 +1190,17 @@ class OperatorSettingsPatch(BaseModel):
     discord_bot_token: str | None = Field(default=None, max_length=256)
     discord_trigger_prefix: str | None = Field(default=None, max_length=64)
     discord_chat_model: str | None = Field(default=None, max_length=256)
+    discord_chat_model_catalog_owned_by: str | None = Field(default=None, max_length=64)
     telegram_bot_enabled: bool | None = None
     telegram_bot_token: str | None = Field(default=None, max_length=256)
     telegram_trigger_prefix: str | None = Field(default=None, max_length=64)
     telegram_chat_model: str | None = Field(default=None, max_length=256)
+    telegram_chat_model_catalog_owned_by: str | None = Field(default=None, max_length=64)
     dashboard_upload_max_file_mb: int | None = None
     dashboard_upload_allowed_mime: str | None = Field(default=None, max_length=2000)
     llm_smart_routing_enabled: bool | None = None
     llm_router_model: str | None = Field(default=None, max_length=128)
+    llm_router_model_catalog_owned_by: str | None = Field(default=None, max_length=64)
     llm_router_local_confidence_min: float | None = Field(default=None, ge=0.0, le=1.0)
     llm_router_timeout_sec: float | None = Field(default=None, ge=1.0, le=120.0)
     llm_route_long_prompt_chars: int | None = Field(default=None, ge=100, le=500000)
@@ -1389,6 +1421,10 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
     if "discord_chat_model" in patch:
         v = patch["discord_chat_model"]
         r["discord_chat_model"] = None if v is None else (str(v).strip() or None)
+    if "discord_chat_model_catalog_owned_by" in patch:
+        r["discord_chat_model_catalog_owned_by"] = normalize_model_catalog_owned_by(
+            patch["discord_chat_model_catalog_owned_by"]
+        )
     if "telegram_bot_enabled" in patch:
         r["telegram_bot_enabled"] = bool(patch["telegram_bot_enabled"])
     if "telegram_bot_token" in patch:
@@ -1413,6 +1449,10 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
     if "telegram_chat_model" in patch:
         v = patch["telegram_chat_model"]
         r["telegram_chat_model"] = None if v is None else (str(v).strip() or None)
+    if "telegram_chat_model_catalog_owned_by" in patch:
+        r["telegram_chat_model_catalog_owned_by"] = normalize_model_catalog_owned_by(
+            patch["telegram_chat_model_catalog_owned_by"]
+        )
     if "dashboard_upload_max_file_mb" in patch:
         v = patch["dashboard_upload_max_file_mb"]
         if v is None:
@@ -1434,8 +1474,10 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
         r["llm_smart_routing_enabled"] = bool(patch["llm_smart_routing_enabled"])
     if "llm_router_model" in patch:
         v = patch["llm_router_model"]
-        r["llm_router_model"] = (
-            (str(v).strip()[:128] or "nemotron-3-nano:4b") if v is not None else "nemotron-3-nano:4b"
+        r["llm_router_model"] = (str(v).strip()[:128] if v is not None else "") or None
+    if "llm_router_model_catalog_owned_by" in patch:
+        r["llm_router_model_catalog_owned_by"] = normalize_model_catalog_owned_by(
+            patch["llm_router_model_catalog_owned_by"]
         )
     if "llm_router_local_confidence_min" in patch:
         v = patch["llm_router_local_confidence_min"]
@@ -1833,6 +1875,9 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
             if "llm_queue_policy" in patch:
                 extra_sets.append("llm_queue_policy = %s")
                 extra_params.append(str(r.get("llm_queue_policy") or "priority"))
+            if "llm_router_model_catalog_owned_by" in patch:
+                extra_sets.append("llm_router_model_catalog_owned_by = %s")
+                extra_params.append(r.get("llm_router_model_catalog_owned_by"))
             if "llm_queue_user_priority" in patch:
                 extra_sets.append("llm_queue_user_priority = %s")
                 extra_params.append(int(r.get("llm_queue_user_priority") or 100))
@@ -1863,6 +1908,12 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
             if "extractor_timeout_sec" in patch:
                 extra_sets.append("extractor_timeout_sec = %s")
                 extra_params.append(_bound_float(r.get("extractor_timeout_sec"), 120.0, 1.0, 1800.0))
+            if "discord_chat_model_catalog_owned_by" in patch:
+                extra_sets.append("discord_chat_model_catalog_owned_by = %s")
+                extra_params.append(r.get("discord_chat_model_catalog_owned_by"))
+            if "telegram_chat_model_catalog_owned_by" in patch:
+                extra_sets.append("telegram_chat_model_catalog_owned_by = %s")
+                extra_params.append(r.get("telegram_chat_model_catalog_owned_by"))
             if extra_sets:
                 # SECURITY: Column names in `extra_sets` come from the known
                 # _SETTING_KEYS mapping (see _OPERATOR_SETTINGS_KEYS).

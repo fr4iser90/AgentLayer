@@ -815,7 +815,7 @@ export function ChatPage() {
     let cancelled = false;
     void (async () => {
       try {
-        const { rows, agentlayer } = await fetchModelCatalog();
+        const { rows, agentlayer } = await fetchModelCatalog(auth);
         if (cancelled) return;
         setModelRows(rows);
         setModelCatalogAgentlayer(agentlayer);
@@ -860,7 +860,7 @@ export function ChatPage() {
     setComposerHeaderCollapsed(getChatComposerHeaderCollapsed(userId));
     setProjectPanelOpen(getChatProjectPanelOpen(userId));
     setShowSubagentsInActivity(getShowSubagentsInActivity(userId));
-  }, [userId]);
+  }, [auth, userId]);
 
   const toggleComposerHeaderCollapsed = useCallback(() => {
     setComposerHeaderCollapsed((prev) => {

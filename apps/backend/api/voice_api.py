@@ -29,7 +29,7 @@ class TtsBody(BaseModel):
 
 @router.get("/v1/voice/status")
 def voice_status(request: Request) -> dict:
-    uid, _tid = resolve_chat_identity(request)
+    uid, tid = resolve_chat_identity(request)
     op = voice_policy.operator_voice_row()
     prefs = voice_policy.user_voice_prefs_get(uid)
     from apps.backend.infrastructure.voice_catalog_providers import (
@@ -37,19 +37,30 @@ def voice_status(request: Request) -> dict:
         resolve_active_voice_tts_provider_id,
         voice_role_configured,
     )
+    from apps.backend.infrastructure.model_access_policy import is_provider_capability_allowed
 
     stt_base, stt_key = voice_policy.voice_api_credentials()
+    stt_provider_id = resolve_active_voice_stt_provider_id()
+    tts_provider_id = resolve_active_voice_tts_provider_id()
+    stt_allowed = (
+        bool(stt_provider_id)
+        and is_provider_capability_allowed("stt", stt_provider_id or "", tenant_id=tid, user_id=uid)
+    )
+    tts_allowed = (
+        bool(tts_provider_id)
+        and is_provider_capability_allowed("tts", tts_provider_id or "", tenant_id=tid, user_id=uid)
+    )
     return {
         "ok": True,
         "operator_enabled": bool(op.get("voice_enabled")),
         "api_configured": voice_role_configured("stt") and voice_role_configured("tts"),
-        "stt_configured": voice_role_configured("stt"),
-        "tts_configured": voice_role_configured("tts"),
-        "stt_provider_id": resolve_active_voice_stt_provider_id(),
-        "tts_provider_id": resolve_active_voice_tts_provider_id(),
-        "effective_enabled": voice_policy.effective_voice_enabled(user_id=uid),
-        "input_web": voice_policy.effective_voice_input(user_id=uid, channel="web"),
-        "output_web": voice_policy.effective_voice_output(user_id=uid, channel="web"),
+        "stt_configured": voice_role_configured("stt") and stt_allowed,
+        "tts_configured": voice_role_configured("tts") and tts_allowed,
+        "stt_provider_id": stt_provider_id,
+        "tts_provider_id": tts_provider_id,
+        "effective_enabled": voice_policy.effective_voice_enabled(user_id=uid) and stt_allowed and tts_allowed,
+        "input_web": voice_policy.effective_voice_input(user_id=uid, channel="web") and stt_allowed,
+        "output_web": voice_policy.effective_voice_output(user_id=uid, channel="web") and tts_allowed,
         "realtime_web": voice_policy.effective_voice_realtime(user_id=uid),
         "discord_vc": voice_policy.effective_discord_vc(user_id=uid),
         "prefs": prefs,
@@ -89,9 +100,15 @@ def put_user_voice_prefs(request: Request, body: VoicePrefsPatch) -> dict:
 
 @router.post("/v1/voice/stt")
 async def voice_stt(request: Request, file: UploadFile = File(...)) -> dict:
-    uid, _tid = resolve_chat_identity(request)
+    uid, tid = resolve_chat_identity(request)
     if not voice_policy.effective_voice_input(user_id=uid, channel="web"):
         raise HTTPException(status_code=403, detail="voice input disabled")
+    from apps.backend.infrastructure.model_access_policy import is_provider_capability_allowed
+    from apps.backend.infrastructure.voice_catalog_providers import resolve_active_voice_stt_provider_id
+
+    provider_id = resolve_active_voice_stt_provider_id()
+    if not provider_id or not is_provider_capability_allowed("stt", provider_id, tenant_id=tid, user_id=uid):
+        raise HTTPException(status_code=403, detail="voice input disabled for this user")
 
     raw = await file.read()
     mime = (file.content_type or "application/octet-stream").strip()
@@ -111,9 +128,15 @@ async def voice_stt(request: Request, file: UploadFile = File(...)) -> dict:
 
 @router.post("/v1/voice/tts")
 def voice_tts_endpoint(request: Request, body: TtsBody) -> Response:
-    uid, _tid = resolve_chat_identity(request)
+    uid, tid = resolve_chat_identity(request)
     if not voice_policy.effective_voice_output(user_id=uid, channel="web"):
         raise HTTPException(status_code=403, detail="voice output disabled")
+    from apps.backend.infrastructure.model_access_policy import is_provider_capability_allowed
+    from apps.backend.infrastructure.voice_catalog_providers import resolve_active_voice_tts_provider_id
+
+    provider_id = resolve_active_voice_tts_provider_id()
+    if not provider_id or not is_provider_capability_allowed("tts", provider_id, tenant_id=tid, user_id=uid):
+        raise HTTPException(status_code=403, detail="voice output disabled for this user")
     try:
         from apps.backend.domain.voice.speech_prep import prepare_speech_text
 

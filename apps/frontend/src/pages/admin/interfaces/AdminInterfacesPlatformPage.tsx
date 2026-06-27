@@ -9,7 +9,7 @@ export function AdminInterfacesPlatformPage() {
       title={t("admin:navPlatform")}
       description={t("admin:interfacesPlatformDescription")}
     >
-      <AdminInterfacesPlatformSection />
+      <AdminInterfacesPlatformSection mode="platform" />
     </AdminInterfacesPageShell>
   );
 }

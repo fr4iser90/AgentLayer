@@ -1082,7 +1082,7 @@ export function AdminBenchmarks() {
         fetchBenchmarkLlmProviders(auth),
         fetchBenchmarkCatalog(auth),
         fetchAdminUsers(auth),
-        fetchModelCatalog(),
+        fetchModelCatalog(auth),
         fetchBenchmarkTuningSessions(auth, 20),
       ]);
       setCatalogRows(modelCatalog.rows);
@@ -1769,8 +1769,8 @@ export function AdminBenchmarks() {
         <p className="mt-1 text-sm text-surface-muted">{t("admin:benchSubtitle")}</p>
         <p className="mt-2 text-xs text-surface-muted">
           {t("admin:benchDbProfilesHint")}{" "}
-          <Link to="/admin/interfaces/llm" className="text-sky-400/90 hover:underline">
-            {t("admin:llmRouting")}
+          <Link to="/admin/interfaces/providers" className="text-sky-400/90 hover:underline">
+            {t("admin:interfacesProvidersTitle")}
           </Link>
           . {t("admin:benchRunIdentityHint")}
         </p>
@@ -2228,8 +2228,8 @@ export function AdminBenchmarks() {
             ) : (
               <p className="mt-3 text-xs text-amber-200/90">
                 {t("admin:benchDbProfilesEmpty")}{" "}
-                <Link to="/admin/interfaces/llm" className="text-sky-400 hover:underline">
-                  {t("admin:llmRouting")}
+                <Link to="/admin/interfaces/providers" className="text-sky-400 hover:underline">
+                  {t("admin:interfacesProvidersTitle")}
                 </Link>
               </p>
             )}

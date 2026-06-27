@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from typing import Any
 
-EXTRACTOR_ENV_PROVIDER_MAX = 32
 _ENV_PREFIX = "EXTRACTOR_PROVIDER_"
+_ENV_INDEX_RE = re.compile(r"^EXTRACTOR_PROVIDER_(\d+)_BASE_URL$")
 
 
 def strip_env_value(raw: str | None) -> str:
@@ -46,6 +47,19 @@ def env_extractor_provider_id(index: int) -> str:
     return f"extractor_provider_{int(index)}"
 
 
+def _configured_env_indexes() -> list[int]:
+    indexes: set[int] = set()
+    for key, value in os.environ.items():
+        m = _ENV_INDEX_RE.match(key)
+        if not m or not strip_env_value(value):
+            continue
+        try:
+            indexes.add(int(m.group(1)))
+        except ValueError:
+            continue
+    return sorted(indexes)
+
+
 def _float_env(name: str, default: float) -> float:
     try:
         return float(strip_env_value(os.environ.get(name)) or default)
@@ -74,7 +88,7 @@ def _read_numbered_env_row(n: int) -> EnvExtractorProviderRow | None:
 
 def parse_extractor_env_providers() -> list[EnvExtractorProviderRow]:
     rows: list[EnvExtractorProviderRow] = []
-    for n in range(1, EXTRACTOR_ENV_PROVIDER_MAX + 1):
+    for n in _configured_env_indexes():
         row = _read_numbered_env_row(n)
         if row is not None:
             rows.append(row)

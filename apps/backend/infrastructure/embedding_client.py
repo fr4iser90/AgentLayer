@@ -130,6 +130,22 @@ def _embedding_url_and_headers(
     return _embeddings_url(spec=spec), _embedding_request_headers(spec=spec)
 
 
+def _ensure_embedding_provider_allowed(spec: EmbeddingProviderSpec) -> None:
+    from apps.backend.domain.identity import get_identity
+    from apps.backend.infrastructure.model_access_policy import is_provider_capability_allowed
+
+    tenant_id, user_id = get_identity()
+    if user_id is None:
+        return
+    if not is_provider_capability_allowed(
+        "embedding",
+        spec.provider_id,
+        tenant_id=tenant_id,
+        user_id=user_id,
+    ):
+        raise ValueError("embedding provider disabled for this user")
+
+
 def invalidate_embedding_catalog_cache() -> None:
     global _EMBED_HEALTH_CACHE
     _EMBED_HEALTH_CACHE = None
@@ -191,6 +207,7 @@ def fetch_embedding_vector_raw(
         spec = resolve_active_embedding_spec()
     if spec is None:
         raise ValueError("No active embedding provider configured.")
+    _ensure_embedding_provider_allowed(spec)
     raw = (text or "").strip()
     if not raw:
         raise ValueError("embedding text is empty")
@@ -276,7 +293,11 @@ def embed_one(text: str) -> list[float]:
     timeout = float(rs["embed_timeout_sec"])
     want = _expected_dim()
 
-    url, headers = _embedding_url_and_headers()
+    spec = resolve_active_embedding_spec()
+    if spec is None:
+        raise ValueError("No active embedding provider configured.")
+    _ensure_embedding_provider_allowed(spec)
+    url, headers = _embedding_url_and_headers(spec=spec)
     try:
         data = http_post_json(
             url,

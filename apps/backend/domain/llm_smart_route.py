@@ -8,8 +8,8 @@ to use for the main completion.
 
 - Heuristics alone decide (``smart_route:heuristic_*``): **one** call — only the main
   ``/v1/chat/completions``.
-- Heuristics are inconclusive: **two** calls — first a **local** router on
-  ``LLM_ROUTER_PROVIDER_ID`` (or first env provider), then the main completion.
+- Heuristics are inconclusive: **two** calls — first a configured router model/provider,
+  then the main completion.
 - Fail-safe: if the local router call fails, fall back to the local provider for the main completion.
 """
 
@@ -18,18 +18,11 @@ from __future__ import annotations
 import json
 import logging
 import re
-from typing import Any, Literal
+from typing import Any, Literal, Protocol
 
 from apps.backend.core.config import config
 from apps.backend.domain.model_routing import messages_contain_image_parts
 from apps.backend.domain.plugin_system.tool_routing import last_user_text
-from apps.backend.infrastructure.catalog_llm_client import post_catalog_chat_completions
-from apps.backend.infrastructure.model_catalog_providers import (
-    first_admin_provider_id,
-    first_env_provider_id,
-    get_provider_spec,
-)
-from apps.backend.infrastructure.operator_settings import smart_routing_params
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +44,67 @@ _EXTERNAL_HINTS = (
     "ocr",
     "transkrib",
 )
+
+
+class SmartRouteDependencies(Protocol):
+    def smart_routing_params(self) -> dict[str, Any]: ...
+
+    def catalog_provider_exists(self, provider_id: str) -> bool: ...
+
+    def post_catalog_chat_completions(
+        self,
+        *,
+        messages: list[dict[str, Any]],
+        model: str,
+        provider_id: str,
+        timeout: float,
+        temperature: int,
+        max_tokens: int,
+        stream: bool,
+    ) -> tuple[dict[str, Any], bool]: ...
+
+
+_deps: SmartRouteDependencies | None = None
+
+
+def register_smart_route_dependencies(deps: SmartRouteDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+def _require_deps() -> SmartRouteDependencies:
+    if _deps is None:
+        raise RuntimeError("smart route dependencies not registered")
+    return _deps
+
+
+def smart_routing_params() -> dict[str, Any]:
+    return _require_deps().smart_routing_params()
+
+
+def catalog_provider_exists(provider_id: str) -> bool:
+    return _require_deps().catalog_provider_exists(provider_id)
+
+
+def post_catalog_chat_completions(
+    *,
+    messages: list[dict[str, Any]],
+    model: str,
+    provider_id: str,
+    timeout: float,
+    temperature: int,
+    max_tokens: int,
+    stream: bool,
+) -> tuple[dict[str, Any], bool]:
+    return _require_deps().post_catalog_chat_completions(
+        messages=messages,
+        model=model,
+        provider_id=provider_id,
+        timeout=timeout,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        stream=stream,
+    )
 
 
 def _count_code_fences(text: str) -> int:
@@ -130,12 +184,14 @@ def _parse_router_json(content: str) -> dict[str, Any] | None:
     return None
 
 
-def _router_provider_id() -> str | None:
-    raw = (getattr(config, "LLM_ROUTER_PROVIDER_ID", None) or "").strip()
+def _router_provider_id(p: dict[str, Any]) -> str | None:
+    raw = str(p.get("router_model_catalog_owned_by") or "").strip()
+    if not raw:
+        raw = (getattr(config, "LLM_ROUTER_PROVIDER_ID", None) or "").strip()
     if raw:
-        if get_provider_spec(raw) is not None:
+        if catalog_provider_exists(raw):
             return raw
-    return first_env_provider_id()
+    return None
 
 
 def _call_local_router_model(
@@ -145,9 +201,9 @@ def _call_local_router_model(
     if not model:
         logger.warning("smart route: router model not configured in Admin → Interfaces")
         return None
-    provider_id = _router_provider_id()
+    provider_id = _router_provider_id(p)
     if not provider_id:
-        logger.warning("smart route: no local LLM provider (set LLM_PROVIDER_1_BASE_URL or LLM_ROUTER_PROVIDER_ID)")
+        logger.warning("smart route: router provider not configured or unavailable")
         return None
     last = (last_user_text(messages) or "")[:2000]
     user_payload = (
@@ -197,7 +253,7 @@ def decide_smart_backend(
     Return (backend, reason_tag) for the main LLM request.
 
     - ``provider`` = first env catalog provider (``provider_1`` by default).
-    - ``provider_db`` = first saved DB endpoint (``provider_33``, …).
+    - ``provider_db`` = first saved DB endpoint (``provider_db_1``, …).
 
     Call budget: 0 or 1 extra **local** router request (see module docstring), then
     exactly one main completion — never two admin calls caused by routing alone.

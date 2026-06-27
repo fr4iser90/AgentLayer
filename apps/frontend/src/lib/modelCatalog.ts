@@ -4,6 +4,8 @@
  */
 
 import i18n from "../i18n/config";
+import type { AuthContextValue } from "../auth/AuthContext";
+import { apiFetch } from "./api";
 
 export type ProviderHealth = {
   reachable?: boolean;
@@ -113,12 +115,14 @@ export function catalogModelOptionUnreachableTitle(
   return base;
 }
 
-export async function fetchModelCatalog(): Promise<{
+export async function fetchModelCatalog(
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">
+): Promise<{
   rows: ModelRow[];
   agentlayer: ModelCatalogAgentlayer | null;
 }> {
   try {
-    const r = await fetch("/v1/models");
+    const r = await apiFetch("/v1/models", auth);
     const raw = (await r.json().catch(() => ({}))) as {
       data?: unknown;
       agentlayer?: ModelCatalogAgentlayer;

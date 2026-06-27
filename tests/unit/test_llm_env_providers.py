@@ -27,3 +27,13 @@ def test_numbered_providers() -> None:
 def test_empty_when_no_providers() -> None:
     with patch.dict(os.environ, {}, clear=True):
         assert parse_llm_env_providers() == []
+
+
+def test_numbered_provider_scans_sparse_high_indexes() -> None:
+    env = {
+        "LLM_PROVIDER_1000_BASE_URL": "http://host-high:8080",
+        "LLM_PROVIDER_1000_LABEL": "High",
+    }
+    with patch.dict(os.environ, env, clear=True):
+        rows = parse_llm_env_providers()
+    assert [row.provider_id for row in rows] == ["provider_1000"]

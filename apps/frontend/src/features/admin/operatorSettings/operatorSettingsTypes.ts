@@ -1,5 +1,11 @@
 import type { ModelRow } from "../../../lib/modelCatalog";
 
+export function envProviderPatternFromCleanupKeys(cleanupKeys: string[] | undefined): string {
+  const first = (cleanupKeys ?? []).find((key) => /_\d+_/.test(key));
+  if (!first) return "env provider";
+  return first.replace(/_\d+_.*/, "_N_*");
+}
+
 export type InterfaceHints = {
   discord_application_id: string;
   telegram_application_id?: string;
@@ -13,22 +19,29 @@ export type OperatorPublic = {
   discord_bot_token_configured?: boolean;
   discord_trigger_prefix?: string;
   discord_chat_model?: string;
+  discord_chat_model_catalog_owned_by?: string | null;
   telegram_bot_enabled?: boolean;
   telegram_bot_token_configured?: boolean;
   telegram_trigger_prefix?: string;
   telegram_chat_model?: string;
+  telegram_chat_model_catalog_owned_by?: string | null;
   dashboard_upload_max_file_mb?: number | null;
   dashboard_upload_allowed_mime?: string;
   dashboard_upload_effective_max_bytes?: number;
   dashboard_upload_effective_allowed_mime?: string[];
   llm_smart_routing_enabled?: boolean;
   llm_router_model?: string;
+  llm_router_model_catalog_owned_by?: string | null;
   llm_router_local_confidence_min?: number;
   llm_router_timeout_sec?: number;
   llm_route_long_prompt_chars?: number;
   llm_route_short_local_max_chars?: number;
   llm_route_many_code_fences?: number;
   llm_route_many_messages?: number;
+  llm_queue_policy?: "fifo" | "priority" | "round_robin";
+  llm_queue_user_priority?: number;
+  llm_queue_benchmark_priority?: number;
+  llm_queue_scheduler_priority?: number;
   memory_graph_enabled?: boolean;
   memory_graph_max_hops?: number;
   memory_graph_min_score?: number;
@@ -151,11 +164,101 @@ export type ExternalLlmEndpointUI = {
   baseUrl: string;
   apiKey: string;
   apiKeyConfigured: boolean;
+  apiHeaderName: string;
   modelDefault: string;
   modelVlm: string;
   modelAgent: string;
   modelCoding: string;
   maxParallel: number;
+};
+
+export type EnvLlmProviderPreview = {
+  index: number;
+  provider_id: string;
+  label: string;
+  base_url: string;
+  api_key_configured: boolean;
+  api_key_last4?: string | null;
+  api_header_name: string;
+  model_default?: string | null;
+  model_vlm?: string | null;
+  model_agent?: string | null;
+  model_coding?: string | null;
+  max_parallel: number;
+  cleanup_keys: string[];
+  already_in_db: boolean;
+  matched_db_endpoint_id?: number | null;
+};
+
+export type EnvLlmProvidersPayload = {
+  providers?: EnvLlmProviderPreview[];
+  count?: number;
+  cleanup_note?: string;
+  detail?: unknown;
+};
+
+export type OperatorEnvProviderPreview = {
+  kind: string;
+  index: number;
+  provider_id: string;
+  label: string;
+  base_url: string;
+  api_key_configured: boolean;
+  api_key_last4?: string | null;
+  api_header_name: string;
+  model_default?: string | null;
+  options_json?: Record<string, unknown>;
+  cleanup_keys: string[];
+  already_in_db: boolean;
+  matched_db_endpoint_id?: number | null;
+};
+
+export type OperatorEnvProvidersPayload = {
+  providers?: OperatorEnvProviderPreview[];
+  count?: number;
+  cleanup_note?: string;
+  detail?: unknown;
+};
+
+export type OperatorProviderEndpointUI = {
+  id: number | null;
+  kind: string;
+  providerId: string;
+  source?: string;
+  enabled: boolean;
+  label: string;
+  baseUrl: string;
+  apiKey?: string;
+  apiKeyConfigured: boolean;
+  apiKeyLast4?: string | null;
+  apiHeaderName: string;
+  modelDefault: string;
+  maxParallel: number;
+  optionsJson: Record<string, unknown>;
+  models: string[];
+  modelsDetail?: string | null;
+};
+
+export type OperatorProviderKind = string;
+
+export type OperatorProviderKindMetadata = {
+  kind: string;
+  capability: string;
+  title_i18n_key: string;
+  intro_i18n_key: string;
+  empty_i18n_key: string;
+  model_label_i18n_key?: string | null;
+  model_placeholder_i18n_key?: string | null;
+  model_setting_key?: string | null;
+  env_prefix_pattern?: string | null;
+  supports_models?: boolean;
+};
+
+export type ModelDefaultProfileMetadata = {
+  profile: string;
+  capability: string;
+  title_i18n_key: string;
+  source: "catalog" | "provider_models" | string;
 };
 
 export type ModelCatalogPref = {

@@ -53,6 +53,14 @@ from apps.backend.infrastructure.operator_settings import (
     resolve_external_llm_credentials_for_catalog,
     external_api_headers,
     external_models_list_url,
+    normalize_external_llm_base_url,
+)
+from apps.backend.infrastructure.llm_env_providers import parse_llm_env_providers
+from apps.backend.infrastructure.embedding_env_providers import parse_embedding_env_providers
+from apps.backend.infrastructure.extractor_env_providers import parse_extractor_env_providers
+from apps.backend.infrastructure.voice_env_providers import (
+    parse_voice_stt_env_providers,
+    parse_voice_tts_env_providers,
 )
 from apps.backend.api.optional_http_access import (
     is_identity_deferred_route,
@@ -62,7 +70,8 @@ from apps.backend.api.optional_http_access import (
     public_http_auth_policy,
 )
 from apps.backend.domain.admin_setup import is_first_start
-from apps.backend.domain.instance_setup import (
+from apps.backend.infrastructure import smart_route_service as _smart_route_service  # noqa: F401
+from apps.backend.infrastructure.instance_setup_service import (
     apply_setup_llm_endpoint,
     build_setup_status,
     create_first_admin,
@@ -74,7 +83,7 @@ from apps.backend.domain.instance_setup import (
     validate_setup_password,
     validate_setup_token,
 )
-from apps.backend.domain.setup_catalog import (
+from apps.backend.infrastructure.setup_catalog_service import (
     SetupPreferencesBody,
     apply_setup_preferences,
     apply_enable_chat_provider_embedding,
@@ -133,7 +142,9 @@ from apps.backend.api.workspaces_admin_api import router as workspaces_admin_rou
 from apps.backend.api.github_api import router as github_router
 from apps.backend.api.agents_api import router as agents_router
 from apps.backend.api.agents_admin_api import router as agents_admin_router
+from apps.backend.api.agents_import_admin_api import router as agents_import_admin_router
 from apps.backend.api.tools_admin_api import router as tools_admin_router
+from apps.backend.api.tools_import_admin_api import router as tools_import_admin_router
 from apps.backend.api.session_runtime_api import router as session_runtime_router
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"))
@@ -381,7 +392,9 @@ app.include_router(agent_config_admin_router)
 app.include_router(benchmark_harness_admin_router)
 app.include_router(agents_router)
 app.include_router(agents_admin_router)
+app.include_router(agents_import_admin_router)
 app.include_router(tools_admin_router)
+app.include_router(tools_import_admin_router)
 app.include_router(session_runtime_router)
 app.include_router(friends_router)
 app.include_router(shares_router)
@@ -661,6 +674,15 @@ class ExternalLlmEndpointsPutBody(BaseModel):
     endpoints: list[ExternalLlmEndpointItem] = Field(default_factory=list)
 
 
+class EnvLlmProvidersImportBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    provider_indexes: list[int] | None = Field(
+        default=None,
+        description="Env provider slots to import. Omit/null imports all detected slots.",
+    )
+
+
 class ModelCatalogPrefItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -677,6 +699,39 @@ class ModelCatalogPrefsPutBody(BaseModel):
     prefs: list[ModelCatalogPrefItem] = Field(default_factory=list)
 
 
+class ModelAccessPolicyItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    provider_id: str = Field(min_length=1, max_length=64)
+    model_id: str = Field(min_length=1, max_length=512)
+    access_state: Literal["inherit", "allow", "deny"] = "inherit"
+    sort_order: int = 0
+
+
+class ModelDefaultPolicyItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    profile: Literal["default", "agent", "coding", "vlm", "embedding", "extractor", "stt", "tts"]
+    provider_id: str = Field(min_length=1, max_length=64)
+    model_id: str = Field(min_length=1, max_length=512)
+
+
+class ProviderCapabilityPolicyItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    capability: Literal["chat", "embedding", "extractor", "stt", "tts", "voice_realtime"]
+    provider_id: str = Field(min_length=1, max_length=64)
+    access_state: Literal["inherit", "allow", "deny"] = "inherit"
+
+
+class ModelAccessPoliciesPutBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    model_access: list[ModelAccessPolicyItem] = Field(default_factory=list)
+    model_defaults: list[ModelDefaultPolicyItem] = Field(default_factory=list)
+    provider_capabilities: list[ProviderCapabilityPolicyItem] = Field(default_factory=list)
+
+
 class OperatorProviderEndpointItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -688,6 +743,7 @@ class OperatorProviderEndpointItem(BaseModel):
     api_key: str | None = None
     api_header_name: str | None = None
     model_default: str | None = None
+    max_parallel: int = Field(default=1, ge=1, le=64)
     options_json: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -695,18 +751,151 @@ class OperatorProviderEndpointsPutBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     endpoints: list[OperatorProviderEndpointItem] = Field(default_factory=list)
+    delete_endpoint_ids: list[int] = Field(default_factory=list)
 
 
 def _operator_provider_kind_or_404(kind: str) -> str:
     k = (kind or "").strip().lower()
-    if k not in {"embedding", "voice_stt", "voice_tts", "extractor"}:
+    if k not in _operator_provider_endpoint_kinds():
         raise HTTPException(status_code=404, detail="Unknown provider endpoint kind.")
     return k
 
 
+def _operator_endpoint_provider_id(kind: str, endpoint_id: int) -> str:
+    if kind == "chat":
+        return f"provider_db_{int(endpoint_id)}"
+    return f"{kind}_provider_db_{int(endpoint_id)}"
+
+
+def _operator_provider_endpoint_kinds() -> tuple[str, ...]:
+    return ("chat", "embedding", "extractor", "voice_stt", "voice_tts")
+
+
+def _operator_provider_endpoint_metadata() -> tuple[dict[str, Any], ...]:
+    return (
+        {
+            "kind": "chat",
+            "capability": "chat",
+            "title_i18n_key": "modelAccessChatTitle",
+            "intro_i18n_key": "modelAccessChatIntro",
+            "empty_i18n_key": "modelAccessChatEmpty",
+            "model_label_i18n_key": "ifMemModelId",
+            "model_placeholder_i18n_key": "ifLlmSelectProviderModel",
+            "model_setting_key": "chat_model",
+            "env_prefix_pattern": "LLM_PROVIDER_N_*",
+            "supports_models": True,
+        },
+        {
+            "kind": "embedding",
+            "capability": "embedding",
+            "title_i18n_key": "modelAccessEmbeddingTitle",
+            "intro_i18n_key": "modelAccessEmbeddingIntro",
+            "empty_i18n_key": "modelAccessEmbeddingEmpty",
+            "model_label_i18n_key": "ifMemModelId",
+            "model_placeholder_i18n_key": "ifMemoryModelFilePlaceholder",
+            "model_setting_key": "rag_embedding_model",
+            "env_prefix_pattern": "EMBEDDING_PROVIDER_N_*",
+            "supports_models": True,
+        },
+        {
+            "kind": "extractor",
+            "capability": "extractor",
+            "title_i18n_key": "modelAccessExtractorTitle",
+            "intro_i18n_key": "modelAccessExtractorIntro",
+            "empty_i18n_key": "modelAccessExtractorEmpty",
+            "model_label_i18n_key": "ifMemExtractorModel",
+            "model_placeholder_i18n_key": "ifMemExtractorModelPlaceholder",
+            "model_setting_key": "extractor_model",
+            "env_prefix_pattern": "EXTRACTOR_PROVIDER_N_*",
+            "supports_models": True,
+        },
+        {
+            "kind": "voice_stt",
+            "capability": "stt",
+            "title_i18n_key": "modelAccessSttTitle",
+            "intro_i18n_key": "modelAccessSttIntro",
+            "empty_i18n_key": "modelAccessSttEmpty",
+            "model_label_i18n_key": "ifPlatformVoiceSttModel",
+            "model_placeholder_i18n_key": "ifLlmSelectProviderModel",
+            "model_setting_key": "voice_stt_model",
+            "env_prefix_pattern": "VOICE_STT_PROVIDER_N_*",
+            "supports_models": True,
+        },
+        {
+            "kind": "voice_tts",
+            "capability": "tts",
+            "title_i18n_key": "modelAccessTtsTitle",
+            "intro_i18n_key": "modelAccessTtsIntro",
+            "empty_i18n_key": "modelAccessTtsEmpty",
+            "model_label_i18n_key": "ifPlatformVoiceTtsModel",
+            "model_placeholder_i18n_key": "ifLlmSelectProviderModel",
+            "model_setting_key": "voice_tts_model",
+            "env_prefix_pattern": "VOICE_TTS_PROVIDER_N_*",
+            "supports_models": True,
+        },
+    )
+
+
+def _model_default_profile_metadata() -> tuple[dict[str, Any], ...]:
+    return (
+        {
+            "profile": "default",
+            "capability": "chat",
+            "title_i18n_key": "modelAccessDefault_default",
+            "source": "catalog",
+        },
+        {
+            "profile": "agent",
+            "capability": "chat",
+            "title_i18n_key": "modelAccessDefault_agent",
+            "source": "catalog",
+        },
+        {
+            "profile": "coding",
+            "capability": "chat",
+            "title_i18n_key": "modelAccessDefault_coding",
+            "source": "catalog",
+        },
+        {
+            "profile": "vlm",
+            "capability": "chat",
+            "title_i18n_key": "modelAccessDefault_vlm",
+            "source": "catalog",
+        },
+        {
+            "profile": "embedding",
+            "capability": "embedding",
+            "title_i18n_key": "modelAccessDefault_embedding",
+            "source": "provider_models",
+        },
+        {
+            "profile": "extractor",
+            "capability": "extractor",
+            "title_i18n_key": "modelAccessDefault_extractor",
+            "source": "provider_models",
+        },
+        {
+            "profile": "stt",
+            "capability": "stt",
+            "title_i18n_key": "modelAccessDefault_stt",
+            "source": "provider_models",
+        },
+        {
+            "profile": "tts",
+            "capability": "tts",
+            "title_i18n_key": "modelAccessDefault_tts",
+            "source": "provider_models",
+        },
+    )
+
+
 def _invalidate_non_llm_provider_caches(kind: str) -> None:
     invalidate_operator_settings_cache()
-    if kind == "embedding":
+    if kind == "chat":
+        from apps.backend.infrastructure.model_catalog_routing import invalidate_model_catalog_cache
+
+        invalidate_model_catalog_cache()
+    elif kind == "embedding":
         from apps.backend.infrastructure.embedding_catalog_providers import (
             invalidate_embedding_provider_specs_cache,
         )
@@ -728,47 +917,92 @@ def _invalidate_non_llm_provider_caches(kind: str) -> None:
 
 @app.get("/v1/admin/external-llm/endpoints")
 async def admin_get_external_llm_endpoints(request: Request):
-    """List external OpenAI-compatible endpoints (keys redacted)."""
+    """Legacy path; chat providers are stored in operator_provider_endpoints."""
     await require_admin(request)
-    out: list[dict[str, Any]] = []
-    for r in db.external_llm_endpoints_list_all():
-        k = str(r.get("api_key") or "")
-        out.append(
-            {
-                "id": r["id"],
-                "sort_order": r["sort_order"],
-                "enabled": r["enabled"],
-                "label": r.get("label") or "",
-                "base_url": r.get("base_url") or "",
-                "api_key_configured": bool(k.strip()),
-                "api_key_last4": (k[-4:] if len(k) >= 4 else None),
-                "api_header_name": (str(r.get("api_header_name") or "").strip() or "Authorization"),
-                "model_default": r.get("model_default"),
-                "model_vlm": r.get("model_vlm"),
-                "model_agent": r.get("model_agent"),
-                "model_coding": r.get("model_coding"),
-                "max_parallel": int(r.get("max_parallel") or 1),
-                "created_at": r.get("created_at"),
-                "updated_at": r.get("updated_at"),
-            }
-        )
-    return {"endpoints": out}
+    payload = await admin_get_operator_provider_endpoints(request, "chat")
+    return {
+        "endpoints": [
+            {**row, "model_vlm": None, "model_agent": None, "model_coding": None}
+            for row in payload.get("endpoints", [])
+        ]
+    }
+
+
+def _env_llm_cleanup_keys(index: int) -> list[str]:
+    prefix = f"LLM_PROVIDER_{int(index)}"
+    return [
+        f"{prefix}_BASE_URL",
+        f"{prefix}_LABEL",
+        f"{prefix}_API_KEY",
+        f"{prefix}_API_HEADER_NAME",
+        f"{prefix}_MODEL_DEFAULT",
+        f"{prefix}_MODEL_VLM",
+        f"{prefix}_MODEL_AGENT",
+        f"{prefix}_MODEL_CODING",
+        f"{prefix}_MAX_PARALLEL",
+    ]
+
+
+def _external_llm_endpoint_public_id(row: dict[str, Any]) -> int | None:
+    try:
+        return int(row.get("id")) if row.get("id") is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _env_llm_provider_preview_rows() -> list[dict[str, Any]]:
+    return _operator_env_provider_preview_rows("chat")
+
+
+@app.get("/v1/admin/external-llm/env-providers")
+async def admin_get_external_llm_env_providers(request: Request):
+    """Preview numbered LLM_PROVIDER_N_* env providers for explicit DB import."""
+    await require_admin(request)
+    providers = _env_llm_provider_preview_rows()
+    return {
+        "providers": providers,
+        "count": len(providers),
+        "cleanup_note": "Remove imported LLM_PROVIDER_N_* keys from .env/deployment env and restart to avoid duplicate providers.",
+    }
+
+
+@app.post("/v1/admin/external-llm/env-providers/import")
+async def admin_import_external_llm_env_providers(
+    request: Request,
+    body: EnvLlmProvidersImportBody = EnvLlmProvidersImportBody(),
+):
+    """Legacy path; import chat env providers into generic provider endpoints."""
+    await require_admin(request)
+    return await admin_import_operator_env_providers(request, "chat", body)
 
 
 @app.put("/v1/admin/external-llm/endpoints")
 async def admin_put_external_llm_endpoints(request: Request, body: ExternalLlmEndpointsPutBody):
-    """Replace/sync external LLM endpoints (multi-provider, multi-key failover order = sort_order)."""
+    """Legacy path; replace/sync chat endpoints in generic provider storage."""
     await require_admin(request)
-    raw = [e.model_dump() for e in body.endpoints]
-    try:
-        db.external_llm_endpoints_sync(raw)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
-    invalidate_operator_settings_cache()
-    from apps.backend.infrastructure.model_catalog_routing import invalidate_model_catalog_cache
-
-    invalidate_model_catalog_cache()
-    return await admin_get_external_llm_endpoints(request)
+    generic = OperatorProviderEndpointsPutBody(
+        endpoints=[
+            OperatorProviderEndpointItem(
+                id=e.id,
+                sort_order=e.sort_order,
+                enabled=e.enabled,
+                label=e.label,
+                base_url=e.base_url,
+                api_key=e.api_key,
+                api_header_name=e.api_header_name,
+                model_default=e.model_default,
+                max_parallel=e.max_parallel,
+            )
+            for e in body.endpoints
+        ]
+    )
+    payload = await admin_put_operator_provider_endpoints(request, "chat", generic)
+    return {
+        "endpoints": [
+            {**row, "model_vlm": None, "model_agent": None, "model_coding": None}
+            for row in payload.get("endpoints", [])
+        ]
+    }
 
 
 @app.get("/v1/admin/model-catalog")
@@ -783,6 +1017,15 @@ async def admin_get_model_catalog(request: Request):
     )
     prefs = await asyncio.to_thread(db.model_catalog_prefs_list_all)
     return {"object": "list", "data": rows, "agentlayer": agentlayer, "prefs": prefs}
+
+
+@app.get("/v1/admin/llm-providers")
+async def admin_get_llm_providers(request: Request):
+    """Admin LLM provider catalog shared by LLM settings, chat defaults and benchmarks."""
+    await require_admin(request)
+    from apps.backend.infrastructure.model_catalog_providers import list_admin_llm_provider_rows
+
+    return {"ok": True, "providers": await asyncio.to_thread(list_admin_llm_provider_rows)}
 
 
 @app.put("/v1/admin/model-catalog/prefs")
@@ -800,6 +1043,111 @@ async def admin_put_model_catalog_prefs(request: Request, body: ModelCatalogPref
     return await admin_get_model_catalog(request)
 
 
+def _model_access_payload_for_scope(scope: str, tenant_id: int | None = None, user_id: uuid.UUID | None = None) -> dict[str, Any]:
+    from apps.backend.infrastructure.model_access_policy import effective_policy_preview
+
+    return effective_policy_preview(scope=scope, tenant_id=tenant_id, user_id=user_id)
+
+
+def _sync_model_access_payload(
+    scope: str,
+    body: ModelAccessPoliciesPutBody,
+    *,
+    tenant_id: int | None = None,
+    user_id: uuid.UUID | None = None,
+) -> None:
+    db.model_access_policies_sync(
+        scope,
+        [x.model_dump() for x in body.model_access],
+        tenant_id=tenant_id,
+        user_id=user_id,
+    )
+    db.model_default_policies_sync(
+        scope,
+        [x.model_dump() for x in body.model_defaults],
+        tenant_id=tenant_id,
+        user_id=user_id,
+    )
+    db.provider_capability_policies_sync(
+        scope,
+        [x.model_dump() for x in body.provider_capabilities],
+        tenant_id=tenant_id,
+        user_id=user_id,
+    )
+    from apps.backend.infrastructure.model_catalog_routing import invalidate_model_catalog_cache
+
+    invalidate_model_catalog_cache()
+
+
+@app.get("/v1/admin/model-access/global")
+async def admin_get_global_model_access(request: Request):
+    await require_admin(request)
+    return _model_access_payload_for_scope("global")
+
+
+@app.put("/v1/admin/model-access/global")
+async def admin_put_global_model_access(request: Request, body: ModelAccessPoliciesPutBody):
+    await require_admin(request)
+    try:
+        await asyncio.to_thread(_sync_model_access_payload, "global", body)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return _model_access_payload_for_scope("global")
+
+
+@app.get("/v1/admin/model-access/tenants/{tenant_id}")
+async def admin_get_tenant_model_access(request: Request, tenant_id: int):
+    await require_admin(request)
+    if not db.tenant_exists(tenant_id):
+        raise HTTPException(status_code=404, detail="tenant not found")
+    return _model_access_payload_for_scope("tenant", tenant_id=tenant_id)
+
+
+@app.put("/v1/admin/model-access/tenants/{tenant_id}")
+async def admin_put_tenant_model_access(request: Request, tenant_id: int, body: ModelAccessPoliciesPutBody):
+    await require_admin(request)
+    if not db.tenant_exists(tenant_id):
+        raise HTTPException(status_code=404, detail="tenant not found")
+    try:
+        await asyncio.to_thread(_sync_model_access_payload, "tenant", body, tenant_id=tenant_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return _model_access_payload_for_scope("tenant", tenant_id=tenant_id)
+
+
+@app.get("/v1/admin/model-access/users/{user_id}")
+async def admin_get_user_model_access(request: Request, user_id: uuid.UUID):
+    await require_admin(request)
+    user = get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="user not found")
+    return _model_access_payload_for_scope("user", tenant_id=db.user_tenant_id(user_id), user_id=user_id)
+
+
+@app.put("/v1/admin/model-access/users/{user_id}")
+async def admin_put_user_model_access(request: Request, user_id: uuid.UUID, body: ModelAccessPoliciesPutBody):
+    await require_admin(request)
+    user = get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="user not found")
+    tenant_id = db.user_tenant_id(user_id)
+    try:
+        await asyncio.to_thread(_sync_model_access_payload, "user", body, tenant_id=tenant_id, user_id=user_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return _model_access_payload_for_scope("user", tenant_id=tenant_id, user_id=user_id)
+
+
+@app.get("/v1/admin/provider-endpoints")
+async def admin_get_operator_provider_endpoint_kinds(request: Request):
+    """List backend-owned non-LLM provider endpoint kinds for Admin UI discovery."""
+    await require_admin(request)
+    return {
+        "kinds": list(_operator_provider_endpoint_metadata()),
+        "model_default_profiles": list(_model_default_profile_metadata()),
+    }
+
+
 @app.get("/v1/admin/provider-endpoints/{kind}")
 async def admin_get_operator_provider_endpoints(request: Request, kind: str):
     """List non-LLM provider endpoints (keys redacted), using LLM-style endpoint rows."""
@@ -807,11 +1155,15 @@ async def admin_get_operator_provider_endpoints(request: Request, kind: str):
     kind_v = _operator_provider_kind_or_404(kind)
     out: list[dict[str, Any]] = []
     for r in db.operator_provider_endpoints_list_all(kind_v):
+        provider_id = _operator_endpoint_provider_id(kind_v, int(r["id"]))
+        model_payload = await _operator_provider_models_payload(kind_v, provider_id)
         k = str(r.get("api_key") or "")
         out.append(
             {
                 "id": r["id"],
                 "kind": r["kind"],
+                "provider_id": provider_id,
+                "source": "db",
                 "sort_order": r["sort_order"],
                 "enabled": r["enabled"],
                 "label": r.get("label") or "",
@@ -820,12 +1172,351 @@ async def admin_get_operator_provider_endpoints(request: Request, kind: str):
                 "api_key_last4": (k[-4:] if len(k) >= 4 else None),
                 "api_header_name": (str(r.get("api_header_name") or "").strip() or "Authorization"),
                 "model_default": r.get("model_default"),
+                "max_parallel": int(r.get("max_parallel") or 1),
                 "options_json": r.get("options_json") if isinstance(r.get("options_json"), dict) else {},
+                "models": [str(row.get("id") or "").strip() for row in model_payload.get("data", []) if str(row.get("id") or "").strip()],
+                "models_detail": model_payload.get("detail"),
                 "created_at": r.get("created_at"),
                 "updated_at": r.get("updated_at"),
             }
         )
     return {"endpoints": out}
+
+
+def _operator_env_prefix(kind: str, index: int) -> str:
+    if kind == "chat":
+        return f"LLM_PROVIDER_{int(index)}"
+    if kind == "embedding":
+        return f"EMBEDDING_PROVIDER_{int(index)}"
+    if kind == "extractor":
+        return f"EXTRACTOR_PROVIDER_{int(index)}"
+    if kind == "voice_stt":
+        return f"VOICE_STT_PROVIDER_{int(index)}"
+    if kind == "voice_tts":
+        return f"VOICE_TTS_PROVIDER_{int(index)}"
+    raise HTTPException(status_code=404, detail="Unknown provider endpoint kind.")
+
+
+def _operator_env_cleanup_keys(kind: str, index: int) -> list[str]:
+    prefix = _operator_env_prefix(kind, index)
+    if kind == "chat":
+        suffixes = [
+            "BASE_URL",
+            "LABEL",
+            "API_KEY",
+            "API_HEADER_NAME",
+            "MODEL_DEFAULT",
+            "MODEL_VLM",
+            "MODEL_AGENT",
+            "MODEL_CODING",
+            "MAX_PARALLEL",
+        ]
+    elif kind == "embedding":
+        suffixes = ["BASE_URL", "LABEL", "API_KEY", "API_HEADER_NAME", "MODEL_DEFAULT"]
+    elif kind == "extractor":
+        suffixes = ["BASE_URL", "NAME", "LABEL", "API_KEY", "API_HEADER_NAME", "MODEL", "TIMEOUT_SEC"]
+    elif kind == "voice_stt":
+        suffixes = [
+            "BASE_URL",
+            "LABEL",
+            "API_KEY",
+            "API_HEADER_NAME",
+            "MODEL",
+            "MODEL_STT",
+            "API_STYLE",
+            "STT_API_STYLE",
+            "TRANSCRIBE_PATH",
+            "STT_PATH",
+        ]
+    elif kind == "voice_tts":
+        suffixes = [
+            "BASE_URL",
+            "LABEL",
+            "API_KEY",
+            "API_HEADER_NAME",
+            "MODEL",
+            "MODEL_TTS",
+            "MODEL_TTS_VOICE",
+            "VOICE",
+        ]
+    else:
+        suffixes = []
+    return [f"{prefix}_{s}" for s in suffixes]
+
+
+def _operator_env_rows_for_kind(kind: str):
+    if kind == "chat":
+        return parse_llm_env_providers()
+    if kind == "embedding":
+        return parse_embedding_env_providers()
+    if kind == "extractor":
+        return parse_extractor_env_providers()
+    if kind == "voice_stt":
+        return parse_voice_stt_env_providers()
+    if kind == "voice_tts":
+        return parse_voice_tts_env_providers()
+    raise HTTPException(status_code=404, detail="Unknown provider endpoint kind.")
+
+
+def _operator_env_options(kind: str, row: Any) -> dict[str, Any]:
+    if kind == "extractor":
+        return {"timeout_sec": float(getattr(row, "timeout_sec", 120.0))}
+    if kind == "voice_stt":
+        return {
+            "stt_api_style": getattr(row, "stt_api_style", "openai"),
+            "stt_transcribe_path": getattr(row, "stt_transcribe_path", None),
+        }
+    if kind == "voice_tts":
+        return {"model_tts_voice": getattr(row, "model_tts_voice", None)}
+    return {}
+
+
+def _operator_env_model(kind: str, row: Any) -> str | None:
+    if kind in {"voice_stt", "voice_tts"}:
+        return str(getattr(row, "model", "") or "").strip() or None
+    return str(getattr(row, "model_default", "") or "").strip() or None
+
+
+def _operator_provider_endpoint_public_id(row: dict[str, Any]) -> int | None:
+    try:
+        return int(row.get("id")) if row.get("id") is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _operator_provider_base_url(raw: Any) -> str:
+    """Preserve the configured OpenAI-compatible base path for non-chat providers."""
+    return str(raw or "").strip().strip("'\"").rstrip("/")
+
+
+def _operator_provider_dedupe_key(raw: Any) -> str:
+    """Compare equivalent OpenAI-compatible bases without changing what we store/display."""
+    base = _operator_provider_base_url(raw)
+    return (normalize_external_llm_base_url(base) or base).lower()
+
+
+def _operator_env_provider_preview_rows(kind: str) -> list[dict[str, Any]]:
+    kind_v = _operator_provider_kind_or_404(kind)
+    db_rows = db.operator_provider_endpoints_list_all(kind_v)
+    db_by_base: dict[str, dict[str, Any]] = {}
+    for row in db_rows:
+        key = _operator_provider_dedupe_key(row.get("base_url"))
+        if key:
+            db_by_base.setdefault(key, row)
+
+    out: list[dict[str, Any]] = []
+    for row in _operator_env_rows_for_kind(kind_v):
+        base = _operator_provider_base_url(row.base_url)
+        match = db_by_base.get(_operator_provider_dedupe_key(base))
+        key = str(getattr(row, "api_key", "") or "")
+        out.append(
+            {
+                "kind": kind_v,
+                "index": int(getattr(row, "index")),
+                "provider_id": getattr(row, "provider_id"),
+                "label": getattr(row, "label"),
+                "base_url": base,
+                "api_key_configured": bool(key.strip()),
+                "api_key_last4": key[-4:] if len(key) >= 4 else None,
+                "api_header_name": getattr(row, "api_header_name", None) or "Authorization",
+                "model_default": _operator_env_model(kind_v, row),
+                "max_parallel": int(getattr(row, "max_parallel", 1) or 1),
+                "options_json": _operator_env_options(kind_v, row),
+                "cleanup_keys": _operator_env_cleanup_keys(kind_v, int(getattr(row, "index"))),
+                "already_in_db": match is not None,
+                "matched_db_endpoint_id": _operator_provider_endpoint_public_id(match or {}),
+            }
+        )
+    return out
+
+
+@app.get("/v1/admin/provider-endpoints/{kind}/env-providers")
+async def admin_get_operator_env_providers(request: Request, kind: str):
+    """Preview non-LLM numbered env providers for explicit DB import."""
+    await require_admin(request)
+    kind_v = _operator_provider_kind_or_404(kind)
+    providers = _operator_env_provider_preview_rows(kind_v)
+    return {
+        "providers": providers,
+        "count": len(providers),
+        "cleanup_note": f"Remove imported {_operator_env_prefix(kind_v, 1).rsplit('_', 1)[0]}_N_* keys from .env/deployment env and restart to avoid duplicate providers.",
+    }
+
+
+def _provider_models_url(base_url: str) -> str:
+    base = _operator_provider_base_url(base_url)
+    low = base.lower()
+    if low.endswith("/models"):
+        return base
+    if low.endswith("/v1"):
+        return f"{base}/models"
+    return f"{base}/v1/models"
+
+
+def _provider_auth_headers(api_key: str, api_header_name: str) -> dict[str, str]:
+    key = (api_key or "").strip()
+    if not key:
+        return {}
+    header = (api_header_name or "Authorization").strip() or "Authorization"
+    if header.lower() == "authorization":
+        return {"Authorization": key if key.lower().startswith("bearer ") else f"Bearer {key}"}
+    return {header: key}
+
+
+def _provider_configured_model_rows(spec: Any) -> list[dict[str, str]]:
+    ids: list[str] = []
+    for attr in ("model_default", "model", "model_stt", "model_tts"):
+        value = str(getattr(spec, attr, "") or "").strip()
+        if value and value not in ids:
+            ids.append(value)
+    return [{"id": model_id} for model_id in ids]
+
+
+@app.get("/v1/admin/provider-endpoints/{kind}/models")
+async def admin_operator_provider_models(request: Request, kind: str, provider_id: str | None = None):
+    """List model ids for one non-LLM provider. Used by Admin dropdowns."""
+    await require_admin(request)
+    kind_v = _operator_provider_kind_or_404(kind)
+    return await _operator_provider_models_payload(kind_v, provider_id)
+
+
+async def _operator_provider_models_payload(kind_v: str, provider_id: str | None = None) -> dict[str, Any]:
+    if kind_v == "chat":
+        from apps.backend.infrastructure.model_catalog_providers import fetch_full_model_catalog_for_scope
+
+        rows, _agentlayer = await asyncio.to_thread(fetch_full_model_catalog_for_scope, include_hidden=True)
+        pid = (provider_id or "").strip().lower()
+        if pid.startswith("chat_provider_db_"):
+            pid = "provider_db_" + pid[len("chat_provider_db_") :]
+        data = [
+            {"id": str(row.get("id") or "").strip()}
+            for row in rows
+            if (not pid or str(row.get("owned_by") or "").strip().lower() == pid)
+            and str(row.get("id") or "").strip()
+        ]
+        return {"data": data}
+    if kind_v == "embedding":
+        from apps.backend.infrastructure.embedding_client import fetch_embedding_models_list
+
+        models, detail = await asyncio.to_thread(fetch_embedding_models_list, provider_id=provider_id, timeout=12.0)
+        return {"data": [{"id": m} for m in models], "detail": detail}
+
+    spec: Any = None
+    if kind_v == "extractor":
+        from apps.backend.infrastructure.extractor_catalog_providers import get_extractor_provider_spec
+
+        spec = get_extractor_provider_spec(provider_id)
+    elif kind_v == "voice_stt":
+        from apps.backend.infrastructure.voice_catalog_providers import get_voice_stt_provider_spec
+
+        spec = get_voice_stt_provider_spec(provider_id or "")
+    elif kind_v == "voice_tts":
+        from apps.backend.infrastructure.voice_catalog_providers import get_voice_tts_provider_spec
+
+        spec = get_voice_tts_provider_spec(provider_id or "")
+    if spec is None:
+        raise HTTPException(status_code=404, detail="Provider not found.")
+    fallback_rows = _provider_configured_model_rows(spec)
+    url = _provider_models_url(str(spec.base_url))
+    try:
+        status, text, data = await asyncio.to_thread(
+            http_get_json,
+            url,
+            headers=_provider_auth_headers(str(spec.api_key or ""), str(spec.api_header_name or "Authorization")),
+            timeout=12.0,
+        )
+    except Exception as e:
+        return {"data": fallback_rows, "detail": f"Provider model list unavailable: {e}"}
+    if status != 200 or not isinstance(data, dict):
+        return {
+            "data": fallback_rows,
+            "detail": (text or "").strip() or f"Provider model list unavailable: HTTP {status}",
+        }
+    rows = []
+    for item in data.get("data") or []:
+        if isinstance(item, dict) and isinstance(item.get("id"), str) and item["id"].strip():
+            rows.append({"id": item["id"].strip()})
+    return {"data": rows}
+
+
+@app.post("/v1/admin/provider-endpoints/{kind}/env-providers/import")
+async def admin_import_operator_env_providers(
+    request: Request,
+    kind: str,
+    body: EnvLlmProvidersImportBody = EnvLlmProvidersImportBody(),
+):
+    """Import selected non-LLM env providers into DB endpoints without modifying .env."""
+    await require_admin(request)
+    kind_v = _operator_provider_kind_or_404(kind)
+    selected = {int(i) for i in body.provider_indexes or [] if int(i) >= 1}
+    env_rows = [
+        row
+        for row in _operator_env_rows_for_kind(kind_v)
+        if not selected or int(getattr(row, "index")) in selected
+    ]
+    existing = db.operator_provider_endpoints_list_all(kind_v)
+    combined: list[dict[str, Any]] = []
+    base_to_pos: dict[str, int] = {}
+    for row in existing:
+        clone = dict(row)
+        combined.append(clone)
+        key = _operator_provider_dedupe_key(row.get("base_url"))
+        if key:
+            base_to_pos.setdefault(key, len(combined) - 1)
+
+    imported: list[dict[str, Any]] = []
+    updated: list[dict[str, Any]] = []
+    for env_row in env_rows:
+        base = _operator_provider_base_url(env_row.base_url)
+        payload = {
+            "sort_order": len(combined),
+            "enabled": True,
+            "label": getattr(env_row, "label"),
+            "base_url": base,
+            "api_key": getattr(env_row, "api_key", ""),
+            "api_header_name": getattr(env_row, "api_header_name", None) or "Authorization",
+            "model_default": _operator_env_model(kind_v, env_row),
+            "max_parallel": int(getattr(env_row, "max_parallel", 1) or 1),
+            "options_json": _operator_env_options(kind_v, env_row),
+        }
+        key = _operator_provider_dedupe_key(base)
+        pos = base_to_pos.get(key)
+        if pos is None:
+            combined.append(payload)
+            base_to_pos[key] = len(combined) - 1
+            imported.append(
+                {"index": getattr(env_row, "index"), "provider_id": getattr(env_row, "provider_id"), "base_url": base}
+            )
+        else:
+            prev = combined[pos]
+            combined[pos] = {**prev, **payload, "id": prev.get("id"), "sort_order": prev.get("sort_order", pos)}
+            updated.append(
+                {
+                    "index": getattr(env_row, "index"),
+                    "provider_id": getattr(env_row, "provider_id"),
+                    "base_url": base,
+                    "db_endpoint_id": _operator_provider_endpoint_public_id(prev),
+                }
+            )
+
+    try:
+        db.operator_provider_endpoints_sync(kind_v, combined)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    _invalidate_non_llm_provider_caches(kind_v)
+    return {
+        "ok": True,
+        "imported": imported,
+        "updated": updated,
+        "cleanup_keys": [
+            key
+            for row in env_rows
+            for key in _operator_env_cleanup_keys(kind_v, int(getattr(row, "index")))
+        ],
+        "cleanup_note": f"Remove imported {_operator_env_prefix(kind_v, 1).rsplit('_', 1)[0]}_N_* keys from .env/deployment env and restart to avoid duplicate providers.",
+        "endpoints": (await admin_get_operator_provider_endpoints(request, kind_v))["endpoints"],
+        "env_providers": _operator_env_provider_preview_rows(kind_v),
+    }
 
 
 @app.put("/v1/admin/provider-endpoints/{kind}")
@@ -839,7 +1530,12 @@ async def admin_put_operator_provider_endpoints(
     kind_v = _operator_provider_kind_or_404(kind)
     raw = [e.model_dump() for e in body.endpoints]
     try:
-        db.operator_provider_endpoints_sync(kind_v, raw)
+        db.operator_provider_endpoints_sync(
+            kind_v,
+            raw,
+            delete_missing=False,
+            delete_ids=body.delete_endpoint_ids,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     _invalidate_non_llm_provider_caches(kind_v)
@@ -1097,9 +1793,14 @@ if _agent_index.is_file():
     @app.get("/app/admin/interfaces")
     @app.get("/app/admin/interfaces/bridges")
     @app.get("/app/admin/interfaces/llm")
+    @app.get("/app/admin/interfaces/providers")
+    @app.get("/app/admin/interfaces/model-policies")
+    @app.get("/app/admin/interfaces/routing")
     @app.get("/app/admin/interfaces/memory")
+    @app.get("/app/admin/interfaces/voice")
     @app.get("/app/admin/interfaces/automation")
     @app.get("/app/admin/interfaces/platform")
+    @app.get("/app/admin/interfaces/{rest:path}")
     @app.get("/app/admin/tools")
     @app.get("/app/admin/agents")
     @app.get("/app/admin/benchmarks")
@@ -1245,15 +1946,20 @@ def merge_model_catalog_rows(
 
 
 @app.get("/v1/models")
-async def models_proxy():
+async def models_proxy(request: Request):
     """
     OpenAI-style model list: all catalog providers (``provider_1``, ``provider_2``, external endpoints, …).
 
     One provider failing does not remove rows from others. ``agentlayer`` keys match row ``owned_by``.
     """
+    user = await get_current_user(request)
     from apps.backend.infrastructure.model_catalog_providers import fetch_full_model_catalog
 
-    merged, agentlayer = await asyncio.to_thread(fetch_full_model_catalog)
+    merged, agentlayer = await asyncio.to_thread(
+        fetch_full_model_catalog,
+        tenant_id=db.user_tenant_id(user.id),
+        user_id=user.id,
+    )
     return {"object": "list", "data": merged, "agentlayer": agentlayer}
 
 

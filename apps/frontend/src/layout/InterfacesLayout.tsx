@@ -13,8 +13,11 @@ export function InterfacesLayout() {
   const NAV = [
     { to: "/admin/interfaces", end: true, label: t("admin:overview") },
     { to: "/admin/interfaces/bridges", label: t("admin:bridges") },
-    { to: "/admin/interfaces/llm", label: t("admin:llmRouting") },
+    { to: "/admin/interfaces/providers", label: t("admin:interfacesProvidersTitle") },
+    { to: "/admin/interfaces/model-policies", label: t("admin:interfacesModelPoliciesTitle") },
+    { to: "/admin/interfaces/routing", label: t("admin:interfacesRoutingTitle") },
     { to: "/admin/interfaces/memory", label: t("admin:memoryRagTitle") },
+    { to: "/admin/interfaces/voice", label: t("admin:interfacesVoiceTitle") },
     { to: "/admin/interfaces/automation", label: t("admin:navAutomation") },
     { to: "/admin/interfaces/platform", label: t("admin:navPlatform") },
   ] as const;

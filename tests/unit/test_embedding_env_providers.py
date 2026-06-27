@@ -30,6 +30,16 @@ def test_empty_when_no_providers() -> None:
         assert parse_embedding_env_providers() == []
 
 
+def test_numbered_embedding_provider_scans_sparse_high_indexes() -> None:
+    env = {
+        "EMBEDDING_PROVIDER_1000_BASE_URL": "https://embed-high/v1",
+        "EMBEDDING_PROVIDER_1000_LABEL": "High",
+    }
+    with patch.dict(os.environ, env, clear=True):
+        rows = parse_embedding_env_providers()
+    assert [row.provider_id for row in rows] == ["embedding_provider_1000"]
+
+
 def test_embedding_db_endpoint_gets_llm_style_provider_id(monkeypatch) -> None:
     from apps.backend.infrastructure.db import db
 
@@ -57,5 +67,5 @@ def test_embedding_db_endpoint_gets_llm_style_provider_id(monkeypatch) -> None:
     with patch.dict(os.environ, {}, clear=True):
         specs = list_embedding_provider_specs(force_refresh=True)
 
-    assert [s.provider_id for s in specs] == ["embedding_provider_33"]
+    assert [s.provider_id for s in specs] == ["embedding_provider_db_1"]
     assert specs[0].source == "db"

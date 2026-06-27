@@ -70,10 +70,22 @@ export function AdminInterfacesOverviewPage() {
           to="/admin/interfaces/bridges"
         />
         <StatusCard
-          title={t("admin:llm")}
+          title={t("admin:interfacesProvidersTitle")}
           status={t("admin:endpointsCount", { count: s.extLlmEndpoints.filter((e) => e.baseUrl.trim()).length })}
-          detail={s.llmSmartRouting ? t("admin:smartRoutingOn") : t("admin:providerModelInChat")}
-          to="/admin/interfaces/llm"
+          detail={t("admin:interfacesProvidersDescription")}
+          to="/admin/interfaces/providers"
+        />
+        <StatusCard
+          title={t("admin:interfacesModelPoliciesTitle")}
+          status={t("admin:interfacesModelPoliciesStatus")}
+          detail={t("admin:interfacesModelPoliciesDescription")}
+          to="/admin/interfaces/model-policies"
+        />
+        <StatusCard
+          title={t("admin:interfacesRoutingTitle")}
+          status={s.llmSmartRouting ? t("admin:smartRoutingOn") : t("admin:providerModelInChat")}
+          detail={t("admin:interfacesRoutingDescription")}
+          to="/admin/interfaces/routing"
         />
         <StatusCard
           title={t("admin:memoryRagTitle")}

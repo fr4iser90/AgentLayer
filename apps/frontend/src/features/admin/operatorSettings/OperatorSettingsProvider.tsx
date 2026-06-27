@@ -1,20 +1,30 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../../auth/AuthContext";
 import { apiFetch } from "../../../lib/api";
 import {
   embeddingModelOptions,
+  fetchModelCatalog,
   formatEmbeddingStatusHint,
   type EmbeddingCatalogHealth,
   type ModelRow,
+  normalizeCatalogRoutingToken,
 } from "../../../lib/modelCatalog";
 import {
   type AdminModelCatalogPayload,
   detailMessage,
+  type EnvLlmProviderPreview,
+  type EnvLlmProvidersPayload,
   type ExternalLlmEndpointUI,
   type InterfaceHints,
+  type ModelDefaultProfileMetadata,
   type ModelCatalogPref,
   type OperatorPublic,
+  type OperatorEnvProviderPreview,
+  type OperatorEnvProvidersPayload,
+  type OperatorProviderEndpointUI,
+  type OperatorProviderKind,
+  type OperatorProviderKindMetadata,
 } from "./operatorSettingsTypes";
 
 function useOperatorSettingsState() {
@@ -29,11 +39,13 @@ function useOperatorSettingsState() {
   const [tokenConfigured, setTokenConfigured] = useState(false);
   const [triggerPrefix, setTriggerPrefix] = useState("!agent ");
   const [chatModel, setChatModel] = useState("");
+  const [chatModelProvider, setChatModelProvider] = useState("");
   const [discordToken, setDiscordToken] = useState("");
   const [tgBridgeEnabled, setTgBridgeEnabled] = useState(false);
   const [tgTokenConfigured, setTgTokenConfigured] = useState(false);
   const [tgTriggerPrefix, setTgTriggerPrefix] = useState("!agent ");
   const [tgChatModel, setTgChatModel] = useState("");
+  const [tgChatModelProvider, setTgChatModelProvider] = useState("");
   const [telegramToken, setTelegramToken] = useState("");
   const [uploadMaxMb, setUploadMaxMb] = useState("");
   const [uploadMime, setUploadMime] = useState("");
@@ -81,7 +93,8 @@ function useOperatorSettingsState() {
   const [voiceDiscordVcEnabled, setVoiceDiscordVcEnabled] = useState(false);
   const [extLlmEndpoints, setExtLlmEndpoints] = useState<ExternalLlmEndpointUI[]>([]);
   const [llmSmartRouting, setLlmSmartRouting] = useState(false);
-  const [llmRouterModel, setLlmRouterModel] = useState("nemotron-3-nano:4b");
+  const [llmRouterModel, setLlmRouterModel] = useState("");
+  const [llmRouterModelProvider, setLlmRouterModelProvider] = useState("");
   const [llmRouterConfMin, setLlmRouterConfMin] = useState("0.7");
   const [llmRouterTimeoutSec, setLlmRouterTimeoutSec] = useState("12");
   const [llmRouteLongChars, setLlmRouteLongChars] = useState("8000");
@@ -178,6 +191,27 @@ function useOperatorSettingsState() {
   const [extLlmModelIds, setExtLlmModelIds] = useState<string[]>([]);
   const [extLlmModelsLoading, setExtLlmModelsLoading] = useState(false);
   const [extLlmModelsHint, setExtLlmModelsHint] = useState<string | null>(null);
+  const [envLlmProviders, setEnvLlmProviders] = useState<EnvLlmProviderPreview[]>([]);
+  const [envLlmCleanupNote, setEnvLlmCleanupNote] = useState<string | null>(null);
+  const [envLlmImporting, setEnvLlmImporting] = useState(false);
+  const [envOperatorProviders, setEnvOperatorProviders] = useState<
+    Record<OperatorProviderKind, OperatorEnvProviderPreview[]>
+  >({});
+  const [operatorProviderEndpoints, setOperatorProviderEndpoints] = useState<
+    Record<OperatorProviderKind, OperatorProviderEndpointUI[]>
+  >({});
+  const [operatorProviderDeleteIds, setOperatorProviderDeleteIds] = useState<
+    Record<OperatorProviderKind, number[]>
+  >({});
+  const [envOperatorCleanupNotes, setEnvOperatorCleanupNotes] = useState<
+    Record<OperatorProviderKind, string | null>
+  >({});
+  const [operatorProviderKindMetadata, setOperatorProviderKindMetadata] = useState<OperatorProviderKindMetadata[]>([]);
+  const [modelDefaultProfileMetadata, setModelDefaultProfileMetadata] = useState<ModelDefaultProfileMetadata[]>([]);
+  const [envOperatorImporting, setEnvOperatorImporting] = useState<OperatorProviderKind | null>(null);
+  const [operatorProviderModelOptions, setOperatorProviderModelOptions] = useState<Record<string, string[]>>({});
+  const [operatorProviderModelsLoading, setOperatorProviderModelsLoading] = useState<Record<string, boolean>>({});
+  const operatorProviderModelsRequestedRef = useRef<Set<string>>(new Set());
   const [modelCatalogRows, setModelCatalogRows] = useState<ModelRow[]>([]);
   const [modelCatalogPrefs, setModelCatalogPrefs] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
@@ -192,10 +226,20 @@ function useOperatorSettingsState() {
     setLoading(true);
     setSaveMsg(null);
     try {
-      const [iRes, oRes, epRes, uRes, modelsRes] = await Promise.all([
+      const [
+        iRes,
+        oRes,
+        epRes,
+        envLlmRes,
+        operatorKindsRes,
+        uRes,
+        modelsRes,
+      ] = await Promise.all([
         apiFetch("/v1/admin/interfaces", auth),
         apiFetch("/v1/admin/operator-settings", auth),
         apiFetch("/v1/admin/external-llm/endpoints", auth),
+        apiFetch("/v1/admin/external-llm/env-providers", auth),
+        apiFetch("/v1/admin/provider-endpoints", auth),
         apiFetch("/v1/admin/users", auth),
         apiFetch("/v1/admin/model-catalog", auth),
       ]);
@@ -224,12 +268,14 @@ function useOperatorSettingsState() {
         typeof op.discord_trigger_prefix === "string" ? op.discord_trigger_prefix : "!agent "
       );
       setChatModel(op.discord_chat_model ?? "");
+      setChatModelProvider(normalizeCatalogRoutingToken(op.discord_chat_model_catalog_owned_by ?? "") ?? "");
       setTgBridgeEnabled(!!op.telegram_bot_enabled);
       setTgTokenConfigured(!!op.telegram_bot_token_configured);
       setTgTriggerPrefix(
         typeof op.telegram_trigger_prefix === "string" ? op.telegram_trigger_prefix : "!agent "
       );
       setTgChatModel(op.telegram_chat_model ?? "");
+      setTgChatModelProvider(normalizeCatalogRoutingToken(op.telegram_chat_model_catalog_owned_by ?? "") ?? "");
       const umb = op.dashboard_upload_max_file_mb;
       setUploadMaxMb(umb != null && Number.isFinite(Number(umb)) ? String(umb) : "");
       setUploadMime((op.dashboard_upload_allowed_mime ?? "").trim());
@@ -286,7 +332,8 @@ function useOperatorSettingsState() {
           ? op.voice_api_key_source
           : null
       );
-      setVoiceProviders(Array.isArray(op.voice_providers) ? op.voice_providers : []);
+      setVoiceSttProviders(Array.isArray(op.voice_stt_providers) ? op.voice_stt_providers : []);
+      setVoiceTtsProviders(Array.isArray(op.voice_tts_providers) ? op.voice_tts_providers : []);
       setVoiceSttProviderId((op.voice_stt_provider_id ?? "").trim());
       setVoiceSttProviderIdEffective(
         typeof op.voice_stt_provider_id_effective === "string" && op.voice_stt_provider_id_effective.trim()
@@ -315,7 +362,8 @@ function useOperatorSettingsState() {
       setVoiceBridgeTelegram(op.voice_bridge_telegram !== false);
       setVoiceBridgeDiscord(op.voice_bridge_discord !== false);
       setLlmSmartRouting(!!op.llm_smart_routing_enabled);
-      setLlmRouterModel((op.llm_router_model ?? "nemotron-3-nano:4b").trim() || "nemotron-3-nano:4b");
+      setLlmRouterModel((op.llm_router_model ?? "").trim());
+      setLlmRouterModelProvider(normalizeCatalogRoutingToken(op.llm_router_model_catalog_owned_by ?? "") ?? "");
       setLlmRouterConfMin(
         op.llm_router_local_confidence_min != null && Number.isFinite(op.llm_router_local_confidence_min)
           ? String(op.llm_router_local_confidence_min)
@@ -445,10 +493,9 @@ function useOperatorSettingsState() {
           : null
       );
       setRagEmbeddingModel((op.rag_embedding_model ?? "").trim());
-      try {
-        const modelsJson = (await modelsRes.json()) as AdminModelCatalogPayload & {
-          agentlayer?: { embedding?: EmbeddingCatalogHealth };
-        };
+      const applyModelCatalogPayload = (
+        modelsJson: AdminModelCatalogPayload & { agentlayer?: { embedding?: EmbeddingCatalogHealth } }
+      ) => {
         const emb = modelsJson.agentlayer?.embedding;
         setRagEmbeddingModelOptions(embeddingModelOptions(emb));
         setRagEmbeddingStatusHint(formatEmbeddingStatusHint(emb));
@@ -469,11 +516,18 @@ function useOperatorSettingsState() {
           }
         }
         setModelCatalogPrefs(prefMap);
+      };
+      try {
+        const modelsJson = (await modelsRes.json()) as AdminModelCatalogPayload & {
+          agentlayer?: { embedding?: EmbeddingCatalogHealth };
+        };
+        if (!modelsRes.ok) {
+          throw new Error(detailMessage(modelsJson));
+        }
+        applyModelCatalogPayload(modelsJson);
       } catch {
-        setRagEmbeddingModelOptions([]);
-        setRagEmbeddingStatusHint(null);
-        setModelCatalogRows([]);
-        setModelCatalogPrefs({});
+        const fallback = await fetchModelCatalog(auth);
+        applyModelCatalogPayload({ data: fallback.rows, agentlayer: fallback.agentlayer ?? undefined, prefs: [] });
       }
       setRagEmbeddingDim(
         op.rag_embedding_dim != null && Number.isFinite(op.rag_embedding_dim) ? String(op.rag_embedding_dim) : ""
@@ -582,6 +636,7 @@ function useOperatorSettingsState() {
             label?: string;
             base_url?: string;
             api_key_configured?: boolean;
+            api_header_name?: string | null;
             model_default?: string | null;
             model_vlm?: string | null;
             model_agent?: string | null;
@@ -594,11 +649,12 @@ function useOperatorSettingsState() {
           raw.map((x, i) => ({
             localKey: `ep-${x.id}-${i}`,
             id: x.id,
-            enabled: true,
+            enabled: x.enabled !== false,
             label: (x.label ?? "").trim(),
             baseUrl: (x.base_url ?? "").trim(),
             apiKey: "",
             apiKeyConfigured: !!x.api_key_configured,
+            apiHeaderName: (x.api_header_name ?? "Authorization").trim() || "Authorization",
             modelDefault: (x.model_default ?? "").trim(),
             modelVlm: (x.model_vlm ?? "").trim(),
             modelAgent: (x.model_agent ?? "").trim(),
@@ -612,6 +668,111 @@ function useOperatorSettingsState() {
       } else {
         setExtLlmEndpoints([]);
       }
+      if (envLlmRes.ok) {
+        const envData = (await envLlmRes.json()) as EnvLlmProvidersPayload;
+        setEnvLlmProviders(Array.isArray(envData.providers) ? envData.providers : []);
+        setEnvLlmCleanupNote(typeof envData.cleanup_note === "string" ? envData.cleanup_note : null);
+      } else {
+        setEnvLlmProviders([]);
+        setEnvLlmCleanupNote(null);
+      }
+      const operatorKindsData = (await operatorKindsRes.json().catch(() => ({}))) as {
+        kinds?: OperatorProviderKindMetadata[];
+        model_default_profiles?: ModelDefaultProfileMetadata[];
+      };
+      const operatorProviderMetadata =
+        operatorKindsRes.ok && Array.isArray(operatorKindsData.kinds)
+          ? operatorKindsData.kinds
+              .map((row) => ({
+                ...row,
+                kind: typeof row.kind === "string" ? row.kind.trim() : "",
+                capability: typeof row.capability === "string" ? row.capability.trim() : "",
+              }))
+              .filter((row) => row.kind && row.capability)
+          : [];
+      setOperatorProviderKindMetadata(operatorProviderMetadata);
+      setModelDefaultProfileMetadata(
+        operatorKindsRes.ok && Array.isArray(operatorKindsData.model_default_profiles)
+          ? operatorKindsData.model_default_profiles
+              .map((row) => ({
+                ...row,
+                profile: typeof row.profile === "string" ? row.profile.trim() : "",
+                capability: typeof row.capability === "string" ? row.capability.trim() : "",
+                source: typeof row.source === "string" ? row.source : "",
+              }))
+              .filter((row) => row.profile && row.capability)
+          : []
+      );
+      const operatorProviderKinds = operatorProviderMetadata.map((row) => row.kind);
+      const readOperatorEnv = async (
+        res: Response,
+      ): Promise<{ providers: OperatorEnvProviderPreview[]; note: string | null }> => {
+        if (!res.ok) return { providers: [], note: null };
+        const data = (await res.json()) as OperatorEnvProvidersPayload;
+        return {
+          providers: Array.isArray(data.providers) ? data.providers : [],
+          note: typeof data.cleanup_note === "string" ? data.cleanup_note : null,
+        };
+      };
+      const readOperatorEndpoints = async (
+        kind: OperatorProviderKind,
+        res: Response,
+      ): Promise<OperatorProviderEndpointUI[]> => {
+        if (!res.ok) return [];
+        const data = (await res.json().catch(() => ({}))) as {
+          endpoints?: Array<{
+            id?: number | null;
+            kind?: string;
+            provider_id?: string | null;
+            source?: string | null;
+            enabled?: boolean;
+            label?: string | null;
+            base_url?: string | null;
+            api_key_configured?: boolean;
+            api_key_last4?: string | null;
+            api_header_name?: string | null;
+            model_default?: string | null;
+            max_parallel?: number | null;
+            options_json?: Record<string, unknown>;
+            models?: string[];
+            models_detail?: string | null;
+          }>;
+        };
+        return (Array.isArray(data.endpoints) ? data.endpoints : []).map((row) => ({
+          id: row.id ?? null,
+          kind,
+          providerId: (row.provider_id ?? "").trim(),
+          source: (row.source ?? "").trim() || "db",
+          enabled: row.enabled !== false,
+          label: (row.label ?? "").trim(),
+          baseUrl: (row.base_url ?? "").trim(),
+          apiKey: "",
+          apiKeyConfigured: !!row.api_key_configured,
+          apiKeyLast4: typeof row.api_key_last4 === "string" ? row.api_key_last4 : null,
+          apiHeaderName: (row.api_header_name ?? "Authorization").trim() || "Authorization",
+          modelDefault: (row.model_default ?? "").trim(),
+          maxParallel: Math.max(1, Math.min(64, Math.floor(Number(row.max_parallel ?? 1) || 1))),
+          optionsJson: row.options_json && typeof row.options_json === "object" ? row.options_json : {},
+          models: Array.isArray(row.models) ? row.models.map((m) => m.trim()).filter(Boolean) : [],
+          modelsDetail: typeof row.models_detail === "string" ? row.models_detail : null,
+        }));
+      };
+      const operatorEnvEntries = await Promise.all(
+        operatorProviderKinds.map(async (kind) => {
+          const res = await apiFetch(`/v1/admin/provider-endpoints/${kind}/env-providers`, auth);
+          return [kind, await readOperatorEnv(res)] as const;
+        })
+      );
+      setEnvOperatorProviders(Object.fromEntries(operatorEnvEntries.map(([kind, data]) => [kind, data.providers])));
+      setEnvOperatorCleanupNotes(Object.fromEntries(operatorEnvEntries.map(([kind, data]) => [kind, data.note])));
+      const operatorEndpointEntries = await Promise.all(
+        operatorProviderKinds.map(async (kind) => {
+          const res = await apiFetch(`/v1/admin/provider-endpoints/${kind}`, auth);
+          return [kind, await readOperatorEndpoints(kind, res)] as const;
+        })
+      );
+      setOperatorProviderEndpoints(Object.fromEntries(operatorEndpointEntries));
+      setOperatorProviderDeleteIds({});
     } catch (e) {
       setSaveMsg({ ok: false, text: e instanceof Error ? e.message : String(e) });
     } finally {
@@ -660,6 +821,212 @@ function useOperatorSettingsState() {
     }
   }, [auth, extLlmEndpoints, t]);
 
+  const importEnvLlmProviders = useCallback(
+    async (providerIndexes?: number[]) => {
+      setSaveMsg(null);
+      setEnvLlmImporting(true);
+      try {
+        const body =
+          providerIndexes && providerIndexes.length > 0
+            ? { provider_indexes: providerIndexes }
+            : {};
+        const res = await apiFetch("/v1/admin/external-llm/env-providers/import", auth, {
+          method: "POST",
+          body: JSON.stringify(body),
+        });
+        const data = (await res.json().catch(() => ({}))) as EnvLlmProvidersPayload & {
+          imported?: unknown[];
+          updated?: unknown[];
+          cleanup_note?: string;
+          endpoints?: Array<{
+            id: number;
+            enabled?: boolean;
+            label?: string;
+            base_url?: string;
+            api_key_configured?: boolean;
+            api_header_name?: string | null;
+            model_default?: string | null;
+            model_vlm?: string | null;
+            model_agent?: string | null;
+            model_coding?: string | null;
+            max_parallel?: number;
+          }>;
+          env_providers?: EnvLlmProviderPreview[];
+        };
+        if (!res.ok) {
+          setSaveMsg({ ok: false, text: detailMessage(data) });
+          return;
+        }
+        if (Array.isArray(data.endpoints)) {
+          setExtLlmEndpoints(
+            data.endpoints.map((x, i) => ({
+              localKey: `ep-${x.id}-${i}`,
+              id: x.id,
+              enabled: x.enabled !== false,
+              label: (x.label ?? "").trim(),
+              baseUrl: (x.base_url ?? "").trim(),
+              apiKey: "",
+              apiKeyConfigured: !!x.api_key_configured,
+              apiHeaderName: (x.api_header_name ?? "Authorization").trim() || "Authorization",
+              modelDefault: (x.model_default ?? "").trim(),
+              modelVlm: (x.model_vlm ?? "").trim(),
+              modelAgent: (x.model_agent ?? "").trim(),
+              modelCoding: (x.model_coding ?? "").trim(),
+              maxParallel:
+                typeof x.max_parallel === "number" && Number.isFinite(x.max_parallel)
+                  ? Math.max(1, Math.min(64, Math.floor(x.max_parallel)))
+                  : 1,
+            }))
+          );
+        }
+        if (Array.isArray(data.env_providers)) {
+          setEnvLlmProviders(data.env_providers);
+        }
+        const imported = Array.isArray(data.imported) ? data.imported.length : 0;
+        const updated = Array.isArray(data.updated) ? data.updated.length : 0;
+        setSaveMsg({
+          ok: true,
+          text: t("admin:envLlmImportSuccess", { imported, updated }),
+        });
+        if (typeof data.cleanup_note === "string") {
+          setEnvLlmCleanupNote(data.cleanup_note);
+        }
+        window.dispatchEvent(new CustomEvent("agentlayer:provider-catalog-changed"));
+      } catch (e) {
+        setSaveMsg({ ok: false, text: e instanceof Error ? e.message : String(e) });
+      } finally {
+        setEnvLlmImporting(false);
+      }
+    },
+    [auth, t]
+  );
+
+  const importOperatorEnvProviders = useCallback(
+    async (kind: OperatorProviderKind, providerIndexes?: number[]) => {
+      setSaveMsg(null);
+      setEnvOperatorImporting(kind);
+      try {
+        const body =
+          providerIndexes && providerIndexes.length > 0
+            ? { provider_indexes: providerIndexes }
+            : {};
+        const res = await apiFetch(`/v1/admin/provider-endpoints/${kind}/env-providers/import`, auth, {
+          method: "POST",
+          body: JSON.stringify(body),
+        });
+        const data = (await res.json().catch(() => ({}))) as OperatorEnvProvidersPayload & {
+          imported?: unknown[];
+          updated?: unknown[];
+          cleanup_note?: string;
+          endpoints?: Array<{
+            id?: number | null;
+            kind?: string;
+            provider_id?: string | null;
+            source?: string | null;
+            enabled?: boolean;
+            label?: string | null;
+            base_url?: string | null;
+            api_key_configured?: boolean;
+            api_key_last4?: string | null;
+            api_header_name?: string | null;
+            model_default?: string | null;
+            max_parallel?: number | null;
+            options_json?: Record<string, unknown>;
+            models?: string[];
+            models_detail?: string | null;
+          }>;
+          env_providers?: OperatorEnvProviderPreview[];
+        };
+        if (!res.ok) {
+          setSaveMsg({ ok: false, text: detailMessage(data) });
+          return;
+        }
+        if (Array.isArray(data.env_providers)) {
+          setEnvOperatorProviders((prev) => ({ ...prev, [kind]: data.env_providers ?? [] }));
+        }
+        if (Array.isArray(data.endpoints)) {
+          setOperatorProviderEndpoints((prev) => ({
+            ...prev,
+            [kind]: data.endpoints!.map((row) => ({
+              id: row.id ?? null,
+              kind,
+              providerId: (row.provider_id ?? "").trim(),
+              source: (row.source ?? "").trim() || "db",
+              enabled: row.enabled !== false,
+              label: (row.label ?? "").trim(),
+              baseUrl: (row.base_url ?? "").trim(),
+              apiKey: "",
+              apiKeyConfigured: !!row.api_key_configured,
+              apiKeyLast4: typeof row.api_key_last4 === "string" ? row.api_key_last4 : null,
+              apiHeaderName: (row.api_header_name ?? "Authorization").trim() || "Authorization",
+              modelDefault: (row.model_default ?? "").trim(),
+              maxParallel: Math.max(1, Math.min(64, Math.floor(Number(row.max_parallel ?? 1) || 1))),
+              optionsJson: row.options_json && typeof row.options_json === "object" ? row.options_json : {},
+              models: Array.isArray(row.models) ? row.models.map((m) => m.trim()).filter(Boolean) : [],
+              modelsDetail: typeof row.models_detail === "string" ? row.models_detail : null,
+            })),
+          }));
+          setOperatorProviderDeleteIds((prev) => ({ ...prev, [kind]: [] }));
+        }
+        if (typeof data.cleanup_note === "string") {
+          setEnvOperatorCleanupNotes((prev) => ({ ...prev, [kind]: data.cleanup_note ?? null }));
+        }
+        const opRes = await apiFetch("/v1/admin/operator-settings", auth);
+        const op = (await opRes.json().catch(() => ({}))) as OperatorPublic;
+        if (opRes.ok) {
+          setEmbeddingProviders(Array.isArray(op.embedding_providers) ? op.embedding_providers : []);
+          setExtractorProviders(Array.isArray(op.extractor_providers) ? op.extractor_providers : []);
+          setVoiceSttProviders(Array.isArray(op.voice_stt_providers) ? op.voice_stt_providers : []);
+          setVoiceTtsProviders(Array.isArray(op.voice_tts_providers) ? op.voice_tts_providers : []);
+        }
+        window.dispatchEvent(new CustomEvent("agentlayer:provider-catalog-changed"));
+        const imported = Array.isArray(data.imported) ? data.imported.length : 0;
+        const updated = Array.isArray(data.updated) ? data.updated.length : 0;
+        setSaveMsg({
+          ok: true,
+          text: t("admin:envProviderImportSuccess", { imported, updated }),
+        });
+      } catch (e) {
+        setSaveMsg({ ok: false, text: e instanceof Error ? e.message : String(e) });
+      } finally {
+        setEnvOperatorImporting(null);
+      }
+    },
+    [auth, t]
+  );
+
+  const operatorProviderModelKey = useCallback((kind: OperatorProviderKind, providerId: string) => {
+    return `${kind}:${providerId.trim()}`;
+  }, []);
+
+  const loadOperatorProviderModels = useCallback(
+    async (kind: OperatorProviderKind, providerId: string) => {
+      const provider = providerId.trim();
+      if (!provider) return;
+      const key = operatorProviderModelKey(kind, provider);
+      if (operatorProviderModelsRequestedRef.current.has(key)) return;
+      operatorProviderModelsRequestedRef.current.add(key);
+      setOperatorProviderModelsLoading((prev) => ({ ...prev, [key]: true }));
+      try {
+        const qs = new URLSearchParams({ provider_id: provider });
+        const res = await apiFetch(`/v1/admin/provider-endpoints/${kind}/models?${qs}`, auth);
+        const data = (await res.json().catch(() => ({}))) as { data?: Array<{ id?: unknown }> };
+        if (!res.ok) {
+          setOperatorProviderModelOptions((prev) => ({ ...prev, [key]: [] }));
+          return;
+        }
+        const ids = (data.data ?? [])
+          .map((row) => (typeof row.id === "string" ? row.id.trim() : ""))
+          .filter(Boolean)
+          .sort((a, b) => a.localeCompare(b));
+        setOperatorProviderModelOptions((prev) => ({ ...prev, [key]: [...new Set(ids)] }));
+      } finally {
+        setOperatorProviderModelsLoading((prev) => ({ ...prev, [key]: false }));
+      }
+    },
+    [auth, operatorProviderModelKey]
+  );
+
   useEffect(() => {
     void load();
   }, [load]);
@@ -692,9 +1059,11 @@ function useOperatorSettingsState() {
         discord_bot_enabled: bridgeEnabled,
         discord_trigger_prefix: triggerPrefix.trim(),
         discord_chat_model: chatModel.trim() || null,
+        discord_chat_model_catalog_owned_by: chatModelProvider.trim() || null,
         telegram_bot_enabled: tgBridgeEnabled,
         telegram_trigger_prefix: tgTriggerPrefix.trim(),
         telegram_chat_model: tgChatModel.trim() || null,
+        telegram_chat_model_catalog_owned_by: tgChatModelProvider.trim() || null,
       };
       const mbStr = uploadMaxMb.trim();
       if (mbStr === "") {
@@ -745,7 +1114,8 @@ function useOperatorSettingsState() {
         return;
       }
       patch.llm_smart_routing_enabled = llmSmartRouting;
-      patch.llm_router_model = llmRouterModel.trim() || "nemotron-3-nano:4b";
+      patch.llm_router_model = llmRouterModel.trim() || null;
+      patch.llm_router_model_catalog_owned_by = llmRouterModelProvider.trim() || null;
       patch.llm_router_local_confidence_min = confMin;
       patch.llm_router_timeout_sec = rtSec;
       patch.llm_route_long_prompt_chars = Math.floor(longC);
@@ -957,49 +1327,96 @@ function useOperatorSettingsState() {
         });
         return;
       }
-      for (let i = 0; i < extLlmEndpoints.length; i++) {
-        const r = extLlmEndpoints[i];
-        if (!r.baseUrl.trim()) {
+      const hasGenericChatProvider = operatorProviderKindMetadata.some((metadata) => metadata.kind === "chat");
+      if (!hasGenericChatProvider) {
+        for (let i = 0; i < extLlmEndpoints.length; i++) {
+          const r = extLlmEndpoints[i];
+          if (!r.baseUrl.trim()) {
+            setSaveMsg({
+              ok: false,
+              text: t("admin:operatorSaveLlmMissingUrl", { n: i + 1 }),
+            });
+            return;
+          }
+        }
+        const epPayload = {
+          endpoints: extLlmEndpoints.map((r, idx) => {
+            const o: Record<string, unknown> = {
+              sort_order: idx,
+              enabled: r.enabled !== false,
+              label: r.label.trim(),
+              base_url: r.baseUrl.trim(),
+              api_header_name: r.apiHeaderName.trim() || "Authorization",
+              max_parallel: Math.max(1, Math.min(64, Math.floor(r.maxParallel || 1))),
+            };
+            if (r.id != null) o.id = r.id;
+            const k = r.apiKey.trim();
+            if (k) o.api_key = k;
+            return o;
+          }),
+        };
+        const epRes = await apiFetch("/v1/admin/external-llm/endpoints", auth, {
+          method: "PUT",
+          body: JSON.stringify(epPayload),
+        });
+        const epData = await epRes.json();
+        if (!epRes.ok) {
           setSaveMsg({
             ok: false,
-            text: t("admin:operatorSaveLlmMissingUrl", { n: i + 1 }),
+            text: t("admin:operatorSaveLlmEndpointsPartial", { detail: detailMessage(epData) }),
           });
           return;
         }
       }
-      const epPayload = {
-        endpoints: extLlmEndpoints.map((r, idx) => {
-          const o: Record<string, unknown> = {
-            sort_order: idx,
-            enabled: true,
-            label: r.label.trim(),
-            base_url: r.baseUrl.trim(),
-            model_default: r.modelDefault.trim() || null,
-            model_vlm: r.modelVlm.trim() || null,
-            model_agent: r.modelAgent.trim() || null,
-            model_coding: r.modelCoding.trim() || null,
-            max_parallel: Math.max(1, Math.min(64, Math.floor(r.maxParallel || 1))),
-          };
-          if (r.id != null) o.id = r.id;
-          const k = r.apiKey.trim();
-          if (k) o.api_key = k;
-          return o;
-        }),
-      };
-      const epRes = await apiFetch("/v1/admin/external-llm/endpoints", auth, {
-        method: "PUT",
-        body: JSON.stringify(epPayload),
-      });
-      const epData = await epRes.json();
-      if (!epRes.ok) {
-        setSaveMsg({
-          ok: false,
-          text: t("admin:operatorSaveLlmEndpointsPartial", { detail: detailMessage(epData) }),
+      for (const metadata of operatorProviderKindMetadata) {
+        if (!Object.prototype.hasOwnProperty.call(operatorProviderEndpoints, metadata.kind)) {
+          continue;
+        }
+        const rows = operatorProviderEndpoints[metadata.kind] ?? [];
+        const endpoints = rows.filter((row) => row.id != null || row.baseUrl.trim() || row.label.trim() || (row.apiKey ?? "").trim());
+        for (let i = 0; i < endpoints.length; i++) {
+          if (!endpoints[i].baseUrl.trim()) {
+            setSaveMsg({
+              ok: false,
+              text: t("admin:operatorSaveLlmMissingUrl", { n: i + 1 }),
+            });
+            return;
+          }
+        }
+        const providerEndpointRes = await apiFetch(`/v1/admin/provider-endpoints/${metadata.kind}`, auth, {
+          method: "PUT",
+          body: JSON.stringify({
+            delete_endpoint_ids: operatorProviderDeleteIds[metadata.kind] ?? [],
+            endpoints: endpoints.map((row, idx) => {
+              const out: Record<string, unknown> = {
+                sort_order: idx,
+                enabled: row.enabled !== false,
+                label: row.label.trim(),
+                base_url: row.baseUrl.trim(),
+                api_header_name: row.apiHeaderName.trim() || "Authorization",
+                model_default: row.modelDefault.trim() || null,
+                max_parallel: Math.max(1, Math.min(64, Math.floor(row.maxParallel || 1))),
+                options_json: row.optionsJson ?? {},
+              };
+              if (row.id != null) out.id = row.id;
+              const apiKey = (row.apiKey ?? "").trim();
+              if (apiKey) out.api_key = apiKey;
+              return out;
+            }),
+          }),
         });
-        return;
+        const providerEndpointData = await providerEndpointRes.json();
+        if (!providerEndpointRes.ok) {
+          setSaveMsg({
+            ok: false,
+            text: t("admin:operatorSaveLlmEndpointsPartial", { detail: detailMessage(providerEndpointData) }),
+          });
+          return;
+        }
+        setOperatorProviderDeleteIds((prev) => ({ ...prev, [metadata.kind]: [] }));
       }
-      const prefPayload: ModelCatalogPref[] = modelCatalogRows
-        .map((row, idx) => {
+      const prefPayload = modelCatalogRows
+        .map((row, idx): ModelCatalogPref | null => {
           const providerId = (row.owned_by ?? "").trim().toLowerCase();
           const modelId = row.id.trim();
           if (!providerId || !modelId) return null;
@@ -1041,7 +1458,7 @@ function useOperatorSettingsState() {
   const refreshEmbeddingCatalog = useCallback(async () => {
     setEmbeddingModelsLoading(true);
     try {
-      const modelsRes = await fetch("/v1/models");
+      const modelsRes = await apiFetch("/v1/models", auth);
       const modelsJson = (await modelsRes.json()) as { agentlayer?: { embedding?: EmbeddingCatalogHealth } };
       const emb = modelsJson.agentlayer?.embedding;
       setRagEmbeddingModelOptions(embeddingModelOptions(emb));
@@ -1052,7 +1469,7 @@ function useOperatorSettingsState() {
     } finally {
       setEmbeddingModelsLoading(false);
     }
-  }, [t]);
+  }, [auth, t]);
 
   async function clearTelegramToken() {
     setSaveMsg(null);
@@ -1113,6 +1530,8 @@ function useOperatorSettingsState() {
     setTriggerPrefix,
     chatModel,
     setChatModel,
+    chatModelProvider,
+    setChatModelProvider,
     discordToken,
     setDiscordToken,
     tgBridgeEnabled,
@@ -1122,6 +1541,8 @@ function useOperatorSettingsState() {
     setTgTriggerPrefix,
     tgChatModel,
     setTgChatModel,
+    tgChatModelProvider,
+    setTgChatModelProvider,
     telegramToken,
     setTelegramToken,
     uploadMaxMb,
@@ -1183,10 +1604,30 @@ function useOperatorSettingsState() {
     setVoiceDiscordVcEnabled,
     extLlmEndpoints,
     setExtLlmEndpoints,
+    envLlmProviders,
+    envLlmCleanupNote,
+    envLlmImporting,
+    importEnvLlmProviders,
+    envOperatorProviders,
+    operatorProviderEndpoints,
+    operatorProviderDeleteIds,
+    setOperatorProviderEndpoints,
+    setOperatorProviderDeleteIds,
+    envOperatorCleanupNotes,
+    operatorProviderKindMetadata,
+    modelDefaultProfileMetadata,
+    envOperatorImporting,
+    importOperatorEnvProviders,
+    operatorProviderModelOptions,
+    operatorProviderModelsLoading,
+    operatorProviderModelKey,
+    loadOperatorProviderModels,
     llmSmartRouting,
     setLlmSmartRouting,
     llmRouterModel,
     setLlmRouterModel,
+    llmRouterModelProvider,
+    setLlmRouterModelProvider,
     llmRouterConfMin,
     setLlmRouterConfMin,
     llmRouterTimeoutSec,
@@ -1321,6 +1762,7 @@ function useOperatorSettingsState() {
     extLlmModelsLoading,
     extLlmModelsHint,
     modelCatalogRows,
+    setModelCatalogRows,
     modelCatalogPrefs,
     setModelCatalogPrefs,
     modelPrefKey,

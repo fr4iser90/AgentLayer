@@ -8,13 +8,13 @@ from dataclasses import dataclass
 from typing import Any
 
 from apps.backend.infrastructure.embedding_env_providers import (
-    EMBEDDING_ENV_PROVIDER_MAX,
     EnvEmbeddingProviderRow,
     parse_embedding_env_providers,
 )
 from apps.backend.infrastructure.db import db
 
 logger = logging.getLogger(__name__)
+_LEGACY_DB_PROVIDER_OFFSET = 32
 
 _SPECS_CACHE: tuple[float, list[EmbeddingProviderSpec]] | None = None
 _SPECS_CACHE_TTL_SEC = 2.0
@@ -40,20 +40,19 @@ def normalize_embedding_provider_id(raw: Any) -> str | None:
 
 
 def db_embedding_provider_id(endpoint_id: int) -> str:
-    return f"embedding_provider_{EMBEDDING_ENV_PROVIDER_MAX + int(endpoint_id)}"
+    return f"embedding_provider_db_{int(endpoint_id)}"
 
 
 def parse_db_embedding_provider_id(provider_id: str) -> int | None:
     pid = (provider_id or "").strip().lower()
-    if not pid.startswith("embedding_provider_"):
-        return None
-    suffix = pid[len("embedding_provider_") :]
-    if not suffix.isdigit():
-        return None
-    slot = int(suffix)
-    if slot <= EMBEDDING_ENV_PROVIDER_MAX:
-        return None
-    return slot - EMBEDDING_ENV_PROVIDER_MAX
+    if pid.startswith("embedding_provider_db_"):
+        suffix = pid[len("embedding_provider_db_") :]
+        return int(suffix) if suffix.isdigit() else None
+    if pid.startswith("embedding_provider_"):
+        suffix = pid[len("embedding_provider_") :]
+        if suffix.isdigit() and int(suffix) > _LEGACY_DB_PROVIDER_OFFSET:
+            return int(suffix) - _LEGACY_DB_PROVIDER_OFFSET
+    return None
 
 
 def _env_row_spec(row: EnvEmbeddingProviderRow) -> EmbeddingProviderSpec:
@@ -82,6 +81,12 @@ def _db_endpoint_spec(row: dict[str, Any]) -> EmbeddingProviderSpec:
     )
 
 
+def _provider_url_key(base_url: str) -> str:
+    from apps.backend.infrastructure.operator_settings import normalize_external_llm_base_url
+
+    return (normalize_external_llm_base_url(base_url) or base_url.rstrip("/")).lower()
+
+
 def list_embedding_provider_specs(*, force_refresh: bool = False) -> list[EmbeddingProviderSpec]:
     global _SPECS_CACHE
     now = time.monotonic()
@@ -96,14 +101,6 @@ def list_embedding_provider_specs(*, force_refresh: bool = False) -> list[Embedd
     seen: set[str] = set()
     seen_urls: set[str] = set()
 
-    for row in parse_embedding_env_providers():
-        sp = _env_row_spec(row)
-        url_key = sp.base_url.rstrip("/").lower()
-        if sp.provider_id not in seen and sp.base_url:
-            specs.append(sp)
-            seen.add(sp.provider_id)
-            seen_urls.add(url_key)
-
     try:
         db_rows = db.operator_provider_endpoints_list_all("embedding")
     except RuntimeError:
@@ -113,10 +110,19 @@ def list_embedding_provider_specs(*, force_refresh: bool = False) -> list[Embedd
         if not row.get("enabled", True):
             continue
         sp = _db_endpoint_spec(row)
-        url_key = sp.base_url.rstrip("/").lower()
+        url_key = _provider_url_key(sp.base_url)
+        if sp.provider_id not in seen and sp.base_url:
+            specs.append(sp)
+            seen.add(sp.provider_id)
+            seen_urls.add(url_key)
+
+    for row in parse_embedding_env_providers():
+        sp = _env_row_spec(row)
+        url_key = _provider_url_key(sp.base_url)
         if sp.provider_id not in seen and sp.base_url and url_key not in seen_urls:
             specs.append(sp)
             seen.add(sp.provider_id)
+            seen_urls.add(url_key)
 
     _SPECS_CACHE = (now, specs)
     return list(specs)
@@ -126,9 +132,23 @@ def get_embedding_provider_spec(provider_id: str) -> EmbeddingProviderSpec | Non
     pid = normalize_embedding_provider_id(provider_id)
     if not pid:
         return None
-    for spec in list_embedding_provider_specs():
+    specs = list_embedding_provider_specs()
+    for spec in specs:
         if spec.provider_id == pid:
             return spec
+    legacy_db_id = parse_db_embedding_provider_id(pid)
+    if legacy_db_id is not None:
+        db_pid = db_embedding_provider_id(legacy_db_id)
+        for spec in specs:
+            if spec.provider_id == db_pid:
+                return spec
+    for row in parse_embedding_env_providers():
+        if normalize_embedding_provider_id(row.provider_id) != pid:
+            continue
+        env_url_key = _provider_url_key(row.base_url)
+        for spec in specs:
+            if _provider_url_key(spec.base_url) == env_url_key:
+                return spec
     return None
 
 

@@ -2580,6 +2580,300 @@ def model_catalog_prefs_sync(rows: list[dict[str, Any]]) -> None:
         conn.commit()
 
 
+_POLICY_SCOPES = {"global", "tenant", "user"}
+_ACCESS_STATES = {"inherit", "allow", "deny"}
+_MODEL_PROFILES = {"default", "agent", "coding", "vlm", "embedding", "extractor", "stt", "tts"}
+_PROVIDER_CAPABILITIES = {"chat", "embedding", "extractor", "stt", "tts", "voice_realtime"}
+
+
+def _policy_target_where(scope: str, tenant_id: int | None, user_id: uuid.UUID | str | None) -> tuple[str, list[Any]]:
+    s = str(scope or "").strip().lower()
+    if s not in _POLICY_SCOPES:
+        raise ValueError("invalid policy scope")
+    if s == "global":
+        return "scope = 'global' AND tenant_id IS NULL AND user_id IS NULL", []
+    if s == "tenant":
+        if tenant_id is None or int(tenant_id) < 1:
+            raise ValueError("tenant_id required for tenant scope")
+        return "scope = 'tenant' AND tenant_id = %s AND user_id IS NULL", [int(tenant_id)]
+    if user_id is None:
+        raise ValueError("user_id required for user scope")
+    return "scope = 'user' AND user_id = %s", [uuid.UUID(str(user_id))]
+
+
+def _policy_target_values(scope: str, tenant_id: int | None, user_id: uuid.UUID | str | None) -> tuple[str, int | None, uuid.UUID | None]:
+    s = str(scope or "").strip().lower()
+    if s == "global":
+        return s, None, None
+    if s == "tenant":
+        if tenant_id is None or int(tenant_id) < 1:
+            raise ValueError("tenant_id required for tenant scope")
+        return s, int(tenant_id), None
+    if s == "user":
+        if user_id is None:
+            raise ValueError("user_id required for user scope")
+        return s, tenant_id if tenant_id is not None else None, uuid.UUID(str(user_id))
+    raise ValueError("invalid policy scope")
+
+
+def _normalize_provider_id(raw: Any) -> str:
+    provider_id = str(raw or "").strip().lower()
+    if not provider_id or not re.match(r"^[a-z0-9_-]{1,64}\Z", provider_id):
+        raise ValueError(f"Invalid provider_id {provider_id!r}")
+    return provider_id
+
+
+def _normalize_access_state(raw: Any) -> str:
+    state = str(raw or "inherit").strip().lower()
+    if state not in _ACCESS_STATES:
+        raise ValueError(f"Invalid access_state {state!r}")
+    return state
+
+
+def model_access_policies_list(scope: str, tenant_id: int | None = None, user_id: uuid.UUID | str | None = None) -> list[dict[str, Any]]:
+    where, params = _policy_target_where(scope, tenant_id, user_id)
+    with pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                f"""
+                SELECT scope, tenant_id, user_id, provider_id, model_id, access_state, sort_order, updated_at
+                FROM model_access_policies
+                WHERE {where}
+                ORDER BY provider_id ASC, sort_order ASC, model_id ASC
+                """,
+                params,
+            )
+            rows = cur.fetchall()
+        conn.commit()
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        d = dict(r)
+        if d.get("user_id") is not None:
+            d["user_id"] = str(d["user_id"])
+        if d.get("tenant_id") is not None:
+            d["tenant_id"] = int(d["tenant_id"])
+        d["sort_order"] = int(d.get("sort_order") or 0)
+        v = d.get("updated_at")
+        if v is not None and hasattr(v, "isoformat"):
+            d["updated_at"] = v.isoformat()
+        out.append(d)
+    return out
+
+
+def model_access_policies_for_subject(tenant_id: int, user_id: uuid.UUID | str) -> list[dict[str, Any]]:
+    uid = uuid.UUID(str(user_id))
+    with pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                """
+                SELECT scope, tenant_id, user_id, provider_id, model_id, access_state, sort_order, updated_at
+                FROM model_access_policies
+                WHERE scope = 'global'
+                   OR (scope = 'tenant' AND tenant_id = %s)
+                   OR (scope = 'user' AND user_id = %s)
+                ORDER BY
+                  CASE scope WHEN 'global' THEN 0 WHEN 'tenant' THEN 1 ELSE 2 END,
+                  provider_id ASC, sort_order ASC, model_id ASC
+                """,
+                (int(tenant_id), uid),
+            )
+            rows = cur.fetchall()
+        conn.commit()
+    return [dict(r) for r in rows]
+
+
+def model_access_policies_sync(
+    scope: str,
+    rows: list[dict[str, Any]],
+    *,
+    tenant_id: int | None = None,
+    user_id: uuid.UUID | str | None = None,
+) -> None:
+    target_scope, target_tenant, target_user = _policy_target_values(scope, tenant_id, user_id)
+    where, params = _policy_target_where(target_scope, target_tenant, target_user)
+    with pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(f"DELETE FROM model_access_policies WHERE {where}", params)
+            for idx, raw in enumerate(rows):
+                provider_id = _normalize_provider_id(raw.get("provider_id"))
+                model_id = str(raw.get("model_id") or "").strip()
+                if not model_id:
+                    continue
+                state = _normalize_access_state(raw.get("access_state"))
+                sort_order_raw = raw.get("sort_order")
+                try:
+                    sort_order = int(sort_order_raw if sort_order_raw is not None else idx)
+                except (TypeError, ValueError):
+                    sort_order = idx
+                cur.execute(
+                    """
+                    INSERT INTO model_access_policies (
+                      scope, tenant_id, user_id, provider_id, model_id, access_state, sort_order, updated_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, now())
+                    """,
+                    (target_scope, target_tenant, target_user, provider_id, model_id[:512], state, sort_order),
+                )
+        conn.commit()
+
+
+def model_default_policies_list(scope: str, tenant_id: int | None = None, user_id: uuid.UUID | str | None = None) -> list[dict[str, Any]]:
+    where, params = _policy_target_where(scope, tenant_id, user_id)
+    with pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                f"""
+                SELECT scope, tenant_id, user_id, profile, provider_id, model_id, updated_at
+                FROM model_default_policies
+                WHERE {where}
+                ORDER BY profile ASC
+                """,
+                params,
+            )
+            rows = cur.fetchall()
+        conn.commit()
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        d = dict(r)
+        if d.get("user_id") is not None:
+            d["user_id"] = str(d["user_id"])
+        if d.get("tenant_id") is not None:
+            d["tenant_id"] = int(d["tenant_id"])
+        v = d.get("updated_at")
+        if v is not None and hasattr(v, "isoformat"):
+            d["updated_at"] = v.isoformat()
+        out.append(d)
+    return out
+
+
+def model_default_policies_for_subject(tenant_id: int, user_id: uuid.UUID | str) -> list[dict[str, Any]]:
+    uid = uuid.UUID(str(user_id))
+    with pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                """
+                SELECT scope, tenant_id, user_id, profile, provider_id, model_id, updated_at
+                FROM model_default_policies
+                WHERE scope = 'global'
+                   OR (scope = 'tenant' AND tenant_id = %s)
+                   OR (scope = 'user' AND user_id = %s)
+                ORDER BY CASE scope WHEN 'global' THEN 0 WHEN 'tenant' THEN 1 ELSE 2 END
+                """,
+                (int(tenant_id), uid),
+            )
+            rows = cur.fetchall()
+        conn.commit()
+    return [dict(r) for r in rows]
+
+
+def model_default_policies_sync(
+    scope: str,
+    rows: list[dict[str, Any]],
+    *,
+    tenant_id: int | None = None,
+    user_id: uuid.UUID | str | None = None,
+) -> None:
+    target_scope, target_tenant, target_user = _policy_target_values(scope, tenant_id, user_id)
+    where, params = _policy_target_where(target_scope, target_tenant, target_user)
+    with pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(f"DELETE FROM model_default_policies WHERE {where}", params)
+            for raw in rows:
+                profile = str(raw.get("profile") or "").strip().lower()
+                if profile not in _MODEL_PROFILES:
+                    raise ValueError(f"Invalid profile {profile!r}")
+                provider_id = _normalize_provider_id(raw.get("provider_id"))
+                model_id = str(raw.get("model_id") or "").strip()
+                if not model_id:
+                    continue
+                cur.execute(
+                    """
+                    INSERT INTO model_default_policies (
+                      scope, tenant_id, user_id, profile, provider_id, model_id, updated_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s, now())
+                    """,
+                    (target_scope, target_tenant, target_user, profile, provider_id, model_id[:512]),
+                )
+        conn.commit()
+
+
+def provider_capability_policies_list(scope: str, tenant_id: int | None = None, user_id: uuid.UUID | str | None = None) -> list[dict[str, Any]]:
+    where, params = _policy_target_where(scope, tenant_id, user_id)
+    with pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                f"""
+                SELECT scope, tenant_id, user_id, capability, provider_id, access_state, updated_at
+                FROM provider_capability_policies
+                WHERE {where}
+                ORDER BY capability ASC, provider_id ASC
+                """,
+                params,
+            )
+            rows = cur.fetchall()
+        conn.commit()
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        d = dict(r)
+        if d.get("user_id") is not None:
+            d["user_id"] = str(d["user_id"])
+        if d.get("tenant_id") is not None:
+            d["tenant_id"] = int(d["tenant_id"])
+        v = d.get("updated_at")
+        if v is not None and hasattr(v, "isoformat"):
+            d["updated_at"] = v.isoformat()
+        out.append(d)
+    return out
+
+
+def provider_capability_policies_for_subject(tenant_id: int, user_id: uuid.UUID | str) -> list[dict[str, Any]]:
+    uid = uuid.UUID(str(user_id))
+    with pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                """
+                SELECT scope, tenant_id, user_id, capability, provider_id, access_state, updated_at
+                FROM provider_capability_policies
+                WHERE scope = 'global'
+                   OR (scope = 'tenant' AND tenant_id = %s)
+                   OR (scope = 'user' AND user_id = %s)
+                ORDER BY CASE scope WHEN 'global' THEN 0 WHEN 'tenant' THEN 1 ELSE 2 END
+                """,
+                (int(tenant_id), uid),
+            )
+            rows = cur.fetchall()
+        conn.commit()
+    return [dict(r) for r in rows]
+
+
+def provider_capability_policies_sync(
+    scope: str,
+    rows: list[dict[str, Any]],
+    *,
+    tenant_id: int | None = None,
+    user_id: uuid.UUID | str | None = None,
+) -> None:
+    target_scope, target_tenant, target_user = _policy_target_values(scope, tenant_id, user_id)
+    where, params = _policy_target_where(target_scope, target_tenant, target_user)
+    with pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(f"DELETE FROM provider_capability_policies WHERE {where}", params)
+            for raw in rows:
+                capability = str(raw.get("capability") or "").strip().lower()
+                if capability not in _PROVIDER_CAPABILITIES:
+                    raise ValueError(f"Invalid capability {capability!r}")
+                provider_id = _normalize_provider_id(raw.get("provider_id"))
+                state = _normalize_access_state(raw.get("access_state"))
+                cur.execute(
+                    """
+                    INSERT INTO provider_capability_policies (
+                      scope, tenant_id, user_id, capability, provider_id, access_state, updated_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s, now())
+                    """,
+                    (target_scope, target_tenant, target_user, capability, provider_id, state),
+                )
+        conn.commit()
+
+
 def external_llm_endpoint_by_id(endpoint_id: int) -> dict[str, Any] | None:
     with pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
@@ -2744,7 +3038,7 @@ def external_llm_endpoints_sync(rows: list[dict[str, Any]]) -> None:
         conn.commit()
 
 
-_OPERATOR_PROVIDER_KINDS = frozenset({"embedding", "voice_stt", "voice_tts", "extractor"})
+_OPERATOR_PROVIDER_KINDS = frozenset({"chat", "embedding", "voice_stt", "voice_tts", "extractor"})
 
 
 def _operator_provider_kind(kind: str) -> str:
@@ -2754,16 +3048,32 @@ def _operator_provider_kind(kind: str) -> str:
     return k
 
 
+def _column_exists(cur: Any, table: str, column: str) -> bool:
+    cur.execute(
+        """
+        SELECT EXISTS (
+          SELECT 1
+            FROM information_schema.columns
+           WHERE table_name = %s AND column_name = %s
+        )
+        """,
+        (table, column),
+    )
+    row = cur.fetchone()
+    return bool(row[0] if row is not None and not isinstance(row, dict) else row.get("exists") if row else False)
+
+
 def operator_provider_endpoints_list_all(kind: str | None = None) -> list[dict[str, Any]]:
     """All non-LLM provider endpoints; includes ``api_key`` — do not expose directly."""
     kind_v = _operator_provider_kind(kind) if kind is not None else None
     with pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
+            max_parallel_expr = "max_parallel" if _column_exists(cur, "operator_provider_endpoints", "max_parallel") else "1 AS max_parallel"
             if kind_v is None:
                 cur.execute(
-                    """
+                    f"""
                     SELECT id, kind, sort_order, enabled, label, base_url, api_key,
-                           api_header_name, model_default, options_json,
+                           api_header_name, model_default, {max_parallel_expr}, options_json,
                            created_at, updated_at
                     FROM operator_provider_endpoints
                     ORDER BY kind ASC, sort_order ASC, id ASC
@@ -2771,9 +3081,9 @@ def operator_provider_endpoints_list_all(kind: str | None = None) -> list[dict[s
                 )
             else:
                 cur.execute(
-                    """
+                    f"""
                     SELECT id, kind, sort_order, enabled, label, base_url, api_key,
-                           api_header_name, model_default, options_json,
+                           api_header_name, model_default, {max_parallel_expr}, options_json,
                            created_at, updated_at
                     FROM operator_provider_endpoints
                     WHERE kind = %s
@@ -2793,6 +3103,7 @@ def operator_provider_endpoints_list_all(kind: str | None = None) -> list[dict[s
         d["id"] = int(d["id"])
         d["sort_order"] = int(d["sort_order"])
         d["enabled"] = bool(d["enabled"])
+        d["max_parallel"] = max(1, min(64, int(d.get("max_parallel") or 1)))
         if not isinstance(d.get("options_json"), dict):
             d["options_json"] = {}
         out.append(d)
@@ -2803,10 +3114,11 @@ def operator_provider_endpoint_by_id(kind: str, endpoint_id: int) -> dict[str, A
     kind_v = _operator_provider_kind(kind)
     with pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
+            max_parallel_expr = "max_parallel" if _column_exists(cur, "operator_provider_endpoints", "max_parallel") else "1 AS max_parallel"
             cur.execute(
-                """
+                f"""
                 SELECT id, kind, sort_order, enabled, label, base_url, api_key,
-                       api_header_name, model_default, options_json,
+                       api_header_name, model_default, {max_parallel_expr}, options_json,
                        created_at, updated_at
                 FROM operator_provider_endpoints
                 WHERE kind = %s AND id = %s
@@ -2821,17 +3133,26 @@ def operator_provider_endpoint_by_id(kind: str, endpoint_id: int) -> dict[str, A
     d["id"] = int(d["id"])
     d["sort_order"] = int(d["sort_order"])
     d["enabled"] = bool(d["enabled"])
+    d["max_parallel"] = max(1, min(64, int(d.get("max_parallel") or 1)))
     if not isinstance(d.get("options_json"), dict):
         d["options_json"] = {}
     return d
 
 
-def operator_provider_endpoints_sync(kind: str, rows: list[dict[str, Any]]) -> None:
+def operator_provider_endpoints_sync(
+    kind: str,
+    rows: list[dict[str, Any]],
+    *,
+    delete_missing: bool = True,
+    delete_ids: list[int] | tuple[int, ...] | set[int] | None = None,
+) -> None:
     """
-    Replace endpoint set for one non-LLM provider kind.
+    Sync endpoint rows for one provider kind.
 
-    Updates existing by ``id``, inserts rows without ``id``, deletes rows for this kind
-    whose ``id`` is omitted. Empty ``api_key`` on update keeps the stored key.
+    Updates existing by ``id`` and inserts rows without ``id``. When ``delete_missing``
+    is true, rows whose ``id`` is omitted are deleted (legacy full-replace behavior).
+    Otherwise only ids listed in ``delete_ids`` are deleted. Empty ``api_key`` on
+    update keeps the stored key.
     """
     kind_v = _operator_provider_kind(kind)
     incoming_ids: set[int] = set()
@@ -2842,9 +3163,12 @@ def operator_provider_endpoints_sync(kind: str, rows: list[dict[str, Any]]) -> N
 
     with pool().connection() as conn:
         with conn.cursor() as cur:
+            has_max_parallel = _column_exists(cur, "operator_provider_endpoints", "max_parallel")
             cur.execute("SELECT id FROM operator_provider_endpoints WHERE kind = %s", (kind_v,))
             existing = {int(r[0]) for r in cur.fetchall()}
-            for eid in existing - incoming_ids:
+            explicit_delete_ids = {int(i) for i in (delete_ids or []) if int(i) >= 1}
+            ids_to_delete = (existing - incoming_ids) if delete_missing else (existing & explicit_delete_ids)
+            for eid in ids_to_delete:
                 cur.execute(
                     "DELETE FROM operator_provider_endpoints WHERE kind = %s AND id = %s",
                     (kind_v, eid),
@@ -2860,6 +3184,11 @@ def operator_provider_endpoints_sync(kind: str, rows: list[dict[str, Any]]) -> N
                 header_in = raw.get("api_header_name")
                 model = raw.get("model_default")
                 model_v = (str(model).strip() if model is not None else None) or None
+                mp_raw = raw.get("max_parallel")
+                try:
+                    max_parallel = max(1, min(64, int(mp_raw if mp_raw is not None else 1)))
+                except (TypeError, ValueError):
+                    max_parallel = 1
                 options = raw.get("options_json")
                 options_v = options if isinstance(options, dict) else {}
                 rid = raw.get("id")
@@ -2872,25 +3201,47 @@ def operator_provider_endpoints_sync(kind: str, rows: list[dict[str, Any]]) -> N
                         if header_in is not None and str(header_in).strip()
                         else "Authorization"
                     )
-                    cur.execute(
-                        """
-                        INSERT INTO operator_provider_endpoints (
-                          kind, sort_order, enabled, label, base_url, api_key,
-                          api_header_name, model_default, options_json, updated_at
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, now())
-                        """,
-                        (
-                            kind_v,
-                            sort_order,
-                            enabled,
-                            label,
-                            base_url,
-                            key_use,
-                            header_use,
-                            model_v,
-                            Json(options_v),
-                        ),
-                    )
+                    if has_max_parallel:
+                        cur.execute(
+                            """
+                            INSERT INTO operator_provider_endpoints (
+                              kind, sort_order, enabled, label, base_url, api_key,
+                              api_header_name, model_default, max_parallel, options_json, updated_at
+                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now())
+                            """,
+                            (
+                                kind_v,
+                                sort_order,
+                                enabled,
+                                label,
+                                base_url,
+                                key_use,
+                                header_use,
+                                model_v,
+                                max_parallel,
+                                Json(options_v),
+                            ),
+                        )
+                    else:
+                        cur.execute(
+                            """
+                            INSERT INTO operator_provider_endpoints (
+                              kind, sort_order, enabled, label, base_url, api_key,
+                              api_header_name, model_default, options_json, updated_at
+                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, now())
+                            """,
+                            (
+                                kind_v,
+                                sort_order,
+                                enabled,
+                                label,
+                                base_url,
+                                key_use,
+                                header_use,
+                                model_v,
+                                Json(options_v),
+                            ),
+                        )
                 else:
                     eid = int(rid)
                     cur.execute(
@@ -2914,31 +3265,62 @@ def operator_provider_endpoints_sync(kind: str, rows: list[dict[str, Any]]) -> N
                     )
                     if not base_url:
                         raise ValueError(f"operator_provider:{kind_v}: base_url required")
-                    cur.execute(
-                        """
-                        UPDATE operator_provider_endpoints SET
-                          sort_order = %s,
-                          enabled = %s,
-                          label = %s,
-                          base_url = %s,
-                          api_key = %s,
-                          api_header_name = %s,
-                          model_default = %s,
-                          options_json = %s,
-                          updated_at = now()
-                        WHERE kind = %s AND id = %s
-                        """,
-                        (
-                            sort_order,
-                            enabled,
-                            label,
-                            base_url,
-                            key_use,
-                            header_use,
-                            model_v,
-                            Json(options_v),
-                            kind_v,
-                            eid,
-                        ),
-                    )
+                    if has_max_parallel:
+                        cur.execute(
+                            """
+                            UPDATE operator_provider_endpoints SET
+                              sort_order = %s,
+                              enabled = %s,
+                              label = %s,
+                              base_url = %s,
+                              api_key = %s,
+                              api_header_name = %s,
+                              model_default = %s,
+                              max_parallel = %s,
+                              options_json = %s,
+                              updated_at = now()
+                            WHERE kind = %s AND id = %s
+                            """,
+                            (
+                                sort_order,
+                                enabled,
+                                label,
+                                base_url,
+                                key_use,
+                                header_use,
+                                model_v,
+                                max_parallel,
+                                Json(options_v),
+                                kind_v,
+                                eid,
+                            ),
+                        )
+                    else:
+                        cur.execute(
+                            """
+                            UPDATE operator_provider_endpoints SET
+                              sort_order = %s,
+                              enabled = %s,
+                              label = %s,
+                              base_url = %s,
+                              api_key = %s,
+                              api_header_name = %s,
+                              model_default = %s,
+                              options_json = %s,
+                              updated_at = now()
+                            WHERE kind = %s AND id = %s
+                            """,
+                            (
+                                sort_order,
+                                enabled,
+                                label,
+                                base_url,
+                                key_use,
+                                header_use,
+                                model_v,
+                                Json(options_v),
+                                kind_v,
+                                eid,
+                            ),
+                        )
         conn.commit()

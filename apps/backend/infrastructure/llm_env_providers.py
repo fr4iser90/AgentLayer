@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from typing import Any
 
-LLM_ENV_PROVIDER_MAX = 32
 _ENV_PREFIX = "LLM_PROVIDER_"
+_ENV_INDEX_RE = re.compile(r"^LLM_PROVIDER_(\d+)_BASE_URL$")
 
 
 def strip_env_value(raw: str | None) -> str:
@@ -54,6 +55,19 @@ def env_provider_id(index: int) -> str:
     return f"provider_{int(index)}"
 
 
+def _configured_env_indexes() -> list[int]:
+    indexes: set[int] = set()
+    for key, value in os.environ.items():
+        m = _ENV_INDEX_RE.match(key)
+        if not m or not strip_env_value(value):
+            continue
+        try:
+            indexes.add(int(m.group(1)))
+        except ValueError:
+            continue
+    return sorted(indexes)
+
+
 def _read_numbered_env_row(n: int) -> EnvLlmProviderRow | None:
     base = strip_env_value(os.environ.get(f"{_ENV_PREFIX}{n}_BASE_URL")).rstrip("/")
     if not base:
@@ -81,7 +95,7 @@ def _read_numbered_env_row(n: int) -> EnvLlmProviderRow | None:
 
 def parse_llm_env_providers() -> list[EnvLlmProviderRow]:
     rows: list[EnvLlmProviderRow] = []
-    for n in range(1, LLM_ENV_PROVIDER_MAX + 1):
+    for n in _configured_env_indexes():
         row = _read_numbered_env_row(n)
         if row is not None:
             rows.append(row)

@@ -117,10 +117,10 @@
       "module": "command_check",
       "provider_env": "CVE_PROVIDER",
       "default_provider": "local",
-      "required": false,
       "providers": {
         "local": {
           "required_python_module": "pip_audit",
+          "nix_shell_command": "pip-audit -r requirements.txt -r plugins/interfaces/discord/requirements.txt",
           "command": [
             "python3",
             "-m",

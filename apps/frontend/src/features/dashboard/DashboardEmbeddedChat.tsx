@@ -275,7 +275,7 @@ export function DashboardEmbeddedChat({
     let cancelled = false;
     void (async () => {
       try {
-        const { rows, agentlayer } = await fetchModelCatalog();
+        const { rows, agentlayer } = await fetchModelCatalog(auth);
         if (cancelled) return;
         setModelRows(rows);
         setModelCatalogAgentlayer(agentlayer);

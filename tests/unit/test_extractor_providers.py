@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+from unittest.mock import patch
+
 from apps.backend.infrastructure.extractor_catalog_providers import (
     get_extractor_provider_spec,
     invalidate_extractor_provider_specs_cache,
@@ -23,6 +26,13 @@ def test_parse_extractor_env_provider(monkeypatch):
     assert rows[0].base_url == "https://extractor.example/v1"
     assert rows[0].api_header_name == "X-API-KEY"
     assert rows[0].model_default == "InternScience/Agents-K1"
+
+
+def test_parse_extractor_env_provider_scans_sparse_high_indexes():
+    with patch.dict(os.environ, {"EXTRACTOR_PROVIDER_1000_BASE_URL": "https://extractor-high.example/v1"}, clear=True):
+        rows = parse_extractor_env_providers()
+
+    assert [row.provider_id for row in rows] == ["extractor_provider_1000"]
 
 
 def test_extractor_catalog_first_provider(monkeypatch):
@@ -74,9 +84,9 @@ def test_extractor_catalog_db_endpoint_provider(monkeypatch):
     specs = list_extractor_provider_specs(force_refresh=True)
     spec = get_extractor_provider_spec(None)
 
-    assert [s.provider_id for s in specs] == ["extractor_provider_33"]
+    assert [s.provider_id for s in specs] == ["extractor_provider_db_1"]
     assert spec is not None
-    assert spec.provider_id == "extractor_provider_33"
+    assert spec.provider_id == "extractor_provider_db_1"
     assert spec.base_url == "https://db-extractor.example/v1"
     assert spec.model_default == "small-extractor"
     assert spec.timeout_sec == 42

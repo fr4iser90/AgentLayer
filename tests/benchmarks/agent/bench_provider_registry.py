@@ -10,12 +10,8 @@ import httpx
 from tests.benchmarks.agent.bench_profiles import BenchModelProfile
 from tests.e2e.support.helpers import E2EClient
 
-# Env slots use provider_1 … provider_32; DB endpoints use provider_33+ (see model_catalog_providers).
-_ENV_PROVIDER_MAX = 32
-
-
 def catalog_owned_by_for_endpoint_id(endpoint_id: int) -> str:
-    return f"provider_{_ENV_PROVIDER_MAX + int(endpoint_id)}"
+    return f"provider_db_{int(endpoint_id)}"
 
 
 def _bench_endpoint_label(run_id: str, profile_label: str) -> str:
@@ -67,7 +63,7 @@ def register_bench_llm_providers(
     """
     Profiles with ``base_url`` are registered as temporary Admin LLM endpoints.
 
-    Returns resolved profiles (``catalog_owned_by`` set to ``provider_33+``) and
+    Returns resolved profiles (``catalog_owned_by`` set to ``provider_db_<id>``) and
     a registry handle to restore prior endpoints on cleanup.
     """
     needs_register = [p for p in profiles if p.base_url]

@@ -11,7 +11,6 @@ from typing import Any, Literal
 from apps.backend.infrastructure.voice_env_providers import (
     EnvVoiceProviderRow,
     SttApiStyle,
-    VOICE_ENV_PROVIDER_MAX,
     VoiceRole,
     parse_voice_stt_env_providers,
     parse_voice_tts_env_providers,
@@ -24,6 +23,7 @@ logger = logging.getLogger(__name__)
 _STT_CACHE: tuple[float, list[VoiceProviderSpec]] | None = None
 _TTS_CACHE: tuple[float, list[VoiceProviderSpec]] | None = None
 _CACHE_TTL_SEC = 2.0
+_LEGACY_DB_PROVIDER_OFFSET = 32
 
 
 @dataclass(frozen=True)
@@ -51,21 +51,21 @@ def normalize_voice_provider_id(raw: Any) -> str | None:
 
 
 def db_voice_provider_id(role: VoiceRole, endpoint_id: int) -> str:
-    return f"voice_{role}_provider_{VOICE_ENV_PROVIDER_MAX + int(endpoint_id)}"
+    return f"voice_{role}_provider_db_{int(endpoint_id)}"
 
 
 def parse_db_voice_provider_id(role: VoiceRole, provider_id: str) -> int | None:
     pid = (provider_id or "").strip().lower()
+    db_prefix = f"voice_{role}_provider_db_"
+    if pid.startswith(db_prefix):
+        suffix = pid[len(db_prefix) :]
+        return int(suffix) if suffix.isdigit() else None
     prefix = f"voice_{role}_provider_"
-    if not pid.startswith(prefix):
-        return None
-    suffix = pid[len(prefix) :]
-    if not suffix.isdigit():
-        return None
-    slot = int(suffix)
-    if slot <= VOICE_ENV_PROVIDER_MAX:
-        return None
-    return slot - VOICE_ENV_PROVIDER_MAX
+    if pid.startswith(prefix):
+        suffix = pid[len(prefix) :]
+        if suffix.isdigit() and int(suffix) > _LEGACY_DB_PROVIDER_OFFSET:
+            return int(suffix) - _LEGACY_DB_PROVIDER_OFFSET
+    return None
 
 
 def _env_row_spec(row: EnvVoiceProviderRow) -> VoiceProviderSpec:
@@ -127,6 +127,12 @@ def _db_endpoint_spec(role: VoiceRole, row: dict[str, Any]) -> VoiceProviderSpec
     )
 
 
+def _provider_url_key(base_url: str) -> str:
+    from apps.backend.infrastructure.operator_settings import normalize_external_llm_base_url
+
+    return (normalize_external_llm_base_url(base_url) or base_url.rstrip("/")).lower()
+
+
 def _list_role_specs(role: VoiceRole, *, force_refresh: bool = False) -> list[VoiceProviderSpec]:
     global _STT_CACHE, _TTS_CACHE
     now = time.monotonic()
@@ -137,12 +143,7 @@ def _list_role_specs(role: VoiceRole, *, force_refresh: bool = False) -> list[Vo
     parse_env = parse_voice_stt_env_providers if role == "stt" else parse_voice_tts_env_providers
     specs: list[VoiceProviderSpec] = []
     seen: set[str] = set()
-
-    for row in parse_env():
-        sp = _env_row_spec(row)
-        if sp.provider_id not in seen and sp.base_url:
-            specs.append(sp)
-            seen.add(sp.provider_id)
+    seen_urls: set[str] = set()
 
     kind = "voice_stt" if role == "stt" else "voice_tts"
     try:
@@ -154,9 +155,19 @@ def _list_role_specs(role: VoiceRole, *, force_refresh: bool = False) -> list[Vo
         if not row.get("enabled", True):
             continue
         sp = _db_endpoint_spec(role, row)
+        url_key = _provider_url_key(sp.base_url)
         if sp.provider_id not in seen and sp.base_url:
             specs.append(sp)
             seen.add(sp.provider_id)
+            seen_urls.add(url_key)
+
+    for row in parse_env():
+        sp = _env_row_spec(row)
+        url_key = _provider_url_key(sp.base_url)
+        if sp.provider_id not in seen and sp.base_url and url_key not in seen_urls:
+            specs.append(sp)
+            seen.add(sp.provider_id)
+            seen_urls.add(url_key)
 
     if role == "stt":
         _STT_CACHE = (now, specs)
@@ -184,9 +195,23 @@ def get_voice_stt_provider_spec(provider_id: str) -> VoiceProviderSpec | None:
     pid = normalize_voice_provider_id(provider_id)
     if not pid:
         return None
-    for spec in list_voice_stt_provider_specs():
+    specs = list_voice_stt_provider_specs()
+    for spec in specs:
         if spec.provider_id == pid:
             return spec
+    legacy_db_id = parse_db_voice_provider_id("stt", pid)
+    if legacy_db_id is not None:
+        db_pid = db_voice_provider_id("stt", legacy_db_id)
+        for spec in specs:
+            if spec.provider_id == db_pid:
+                return spec
+    for row in parse_voice_stt_env_providers():
+        if normalize_voice_provider_id(row.provider_id) != pid:
+            continue
+        env_url_key = _provider_url_key(row.base_url)
+        for spec in specs:
+            if _provider_url_key(spec.base_url) == env_url_key:
+                return spec
     return None
 
 
@@ -194,9 +219,23 @@ def get_voice_tts_provider_spec(provider_id: str) -> VoiceProviderSpec | None:
     pid = normalize_voice_provider_id(provider_id)
     if not pid:
         return None
-    for spec in list_voice_tts_provider_specs():
+    specs = list_voice_tts_provider_specs()
+    for spec in specs:
         if spec.provider_id == pid:
             return spec
+    legacy_db_id = parse_db_voice_provider_id("tts", pid)
+    if legacy_db_id is not None:
+        db_pid = db_voice_provider_id("tts", legacy_db_id)
+        for spec in specs:
+            if spec.provider_id == db_pid:
+                return spec
+    for row in parse_voice_tts_env_providers():
+        if normalize_voice_provider_id(row.provider_id) != pid:
+            continue
+        env_url_key = _provider_url_key(row.base_url)
+        for spec in specs:
+            if _provider_url_key(spec.base_url) == env_url_key:
+                return spec
     return None
 
 

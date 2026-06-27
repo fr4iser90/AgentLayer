@@ -90,8 +90,8 @@ async def handle_discord_voice_slash(
         )
     if not _voice_recv_available():
         return (
-            "Discord VC needs `discord-ext-voice-recv` and PyNaCl on the server "
-            "(pip install discord-ext-voice-recv PyNaCl) plus ffmpeg."
+            "Discord VC is disabled in the default install. It needs optional "
+            "`discord-ext-voice-recv`, PyNaCl, and ffmpeg on the server."
         )
 
     parts = (prompt or "").strip().split()

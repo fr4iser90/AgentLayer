@@ -39,6 +39,7 @@ def test_build_setup_status_needs_admin() -> None:
     with (
         patch.object(mod, "is_first_start", return_value=True),
         patch.object(mod, "catalog_llm_configured", return_value=False),
+        patch.object(mod, "cached_llm_reachable", return_value=None),
     ):
         st = mod.build_setup_status()
     assert st["needs_setup"] is True
@@ -83,6 +84,7 @@ def test_build_setup_status_provider_wizard_done() -> None:
         patch.object(mod, "is_first_start", return_value=False),
         patch.object(mod, "catalog_llm_configured", return_value=True),
         patch.object(mod, "setup_preferences_saved", return_value=True),
+        patch.object(mod, "cached_llm_reachable", return_value=None),
     ):
         st = mod.build_setup_status()
     assert st["needs_provider_wizard"] is False
@@ -125,6 +127,7 @@ def test_build_setup_status_includes_token_meta() -> None:
         patch.object(mod, "is_first_start", return_value=True),
         patch.object(mod, "catalog_llm_configured", return_value=False),
         patch.object(mod, "_setup_token_from_env", return_value="x"),
+        patch.object(mod, "cached_llm_reachable", return_value=None),
     ):
         st = mod.build_setup_status()
     assert st["setup_token_required"] is True

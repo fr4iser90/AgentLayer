@@ -95,7 +95,8 @@ def _load_bridge_cfg_with_reason() -> tuple[_BridgeCfg | None, str]:
                 cur.execute(
                     """
                     SELECT telegram_bot_enabled, telegram_bot_token,
-                           telegram_trigger_prefix, telegram_chat_model
+                           telegram_trigger_prefix, telegram_chat_model,
+                           telegram_chat_model_catalog_owned_by
                     FROM operator_settings WHERE id = 1
                     """
                 )
@@ -105,7 +106,7 @@ def _load_bridge_cfg_with_reason() -> tuple[_BridgeCfg | None, str]:
         return None, "database error (see log above)"
     if not row:
         return None, "no operator_settings row for id=1"
-    enabled, ttoken, trigger, cmodel = row
+    enabled, ttoken, trigger, cmodel, catalog_owned_by = row
     if not enabled:
         return None, "telegram_bot_enabled is false (Admin → Interfaces → Telegram)"
     tok = _normalize_bot_token(str(ttoken) if ttoken is not None else "")
@@ -121,7 +122,11 @@ def _load_bridge_cfg_with_reason() -> tuple[_BridgeCfg | None, str]:
     try:
         from apps.backend.domain.catalog_chat_llm import catalog_llm_body_extras
 
-        llm = catalog_llm_body_extras(model=model_raw or None, profile_key="agent")
+        llm = catalog_llm_body_extras(
+            model=model_raw or None,
+            catalog_owned_by=(str(catalog_owned_by).strip() if catalog_owned_by is not None else None),
+            profile_key="agent",
+        )
     except ValueError as exc:
         return None, str(exc)
     return (

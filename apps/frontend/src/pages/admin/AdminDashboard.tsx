@@ -78,10 +78,10 @@ export function AdminDashboard() {
             to="/admin/interfaces/bridges"
           />
           <StatusCard
-            title={t("admin:llm")}
+            title={t("admin:interfacesRoutingTitle")}
             status={op?.llm_smart_routing_enabled ? t("admin:smartRouting") : t("admin:catalogProviders")}
             detail={t("admin:endpointsModelInComposer")}
-            to="/admin/interfaces/llm"
+            to="/admin/interfaces/routing"
           />
           <StatusCard
             title={t("admin:jobsWorker")}

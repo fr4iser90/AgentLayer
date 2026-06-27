@@ -3,31 +3,10 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Literal
+from typing import Any, Literal, Protocol
 
 from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field
-
-from apps.backend.infrastructure.embedding_client import (
-    clear_embedding_health_cache,
-    embedding_catalog_health,
-    probe_embedding_output_dim,
-)
-from apps.backend.domain.catalog_chat_llm import pick_reachable_catalog_provider
-from apps.backend.infrastructure.model_catalog_providers import (
-    fetch_full_model_catalog,
-    fetch_models_for_provider,
-    get_provider_spec,
-    list_provider_specs,
-)
-from apps.backend.infrastructure.operator_settings import (
-    OperatorSettingsPatch,
-    apply_operator_settings_patch,
-    invalidate_operator_settings_cache,
-)
-from apps.backend.infrastructure.model_catalog_routing import invalidate_model_catalog_cache
-from apps.backend.infrastructure.db import db
-from apps.backend.infrastructure.rag_embedding_sync import rank_embedding_model_ids
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +14,127 @@ ModelKind = Literal["chat", "embedding", "unknown"]
 
 _CHAT_HINTS = ("gpt-", "gpt4", "claude", "llama", "mistral", "qwen", "nemotron", "deepseek", "gemma")
 _EMBED_HINTS = ("embed", "nomic-embed", "bge", "e5", "minilm", "gte", "sentence")
+
+
+class SetupCatalogDependencies(Protocol):
+    def clear_embedding_health_cache(self) -> None: ...
+
+    def embedding_catalog_health(self, *, force_refresh: bool = False) -> dict[str, Any]: ...
+
+    def probe_embedding_output_dim(self, *, model_id: str) -> int: ...
+
+    def pick_reachable_catalog_provider(self) -> str | None: ...
+
+    def fetch_full_model_catalog(self) -> tuple[list[dict[str, Any]], dict[str, Any]]: ...
+
+    def fetch_models_for_provider(self, spec: Any) -> tuple[list[dict[str, Any]], dict[str, Any]]: ...
+
+    def get_provider_spec(self, provider_id: str) -> Any | None: ...
+
+    def list_provider_specs(self) -> list[Any]: ...
+
+    def apply_operator_settings_patch(self, patch: dict[str, Any]) -> None: ...
+
+    def invalidate_operator_settings_cache(self) -> None: ...
+
+    def invalidate_model_catalog_cache(self) -> None: ...
+
+    def normalize_external_llm_base_url(self, raw: str | None) -> str: ...
+
+    def operator_provider_endpoints_sync(
+        self, kind: str, rows: list[dict[str, Any]], *, delete_missing: bool = True
+    ) -> None: ...
+
+    def normalized_embedding_base(self) -> str: ...
+
+
+_deps: SetupCatalogDependencies | None = None
+
+
+def register_setup_catalog_dependencies(deps: SetupCatalogDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+def _require_deps() -> SetupCatalogDependencies:
+    if _deps is None:
+        raise RuntimeError("setup catalog dependencies not registered")
+    return _deps
+
+
+def clear_embedding_health_cache() -> None:
+    _require_deps().clear_embedding_health_cache()
+
+
+def embedding_catalog_health(*, force_refresh: bool = False) -> dict[str, Any]:
+    return _require_deps().embedding_catalog_health(force_refresh=force_refresh)
+
+
+def probe_embedding_output_dim(*, model_id: str) -> int:
+    return _require_deps().probe_embedding_output_dim(model_id=model_id)
+
+
+def pick_reachable_catalog_provider() -> str | None:
+    return _require_deps().pick_reachable_catalog_provider()
+
+
+def fetch_full_model_catalog() -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    return _require_deps().fetch_full_model_catalog()
+
+
+def fetch_models_for_provider(spec: Any) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    return _require_deps().fetch_models_for_provider(spec)
+
+
+def get_provider_spec(provider_id: str) -> Any | None:
+    return _require_deps().get_provider_spec(provider_id)
+
+
+def list_provider_specs() -> list[Any]:
+    return _require_deps().list_provider_specs()
+
+
+def apply_operator_settings_patch(patch: dict[str, Any]) -> None:
+    _require_deps().apply_operator_settings_patch(patch)
+
+
+def invalidate_operator_settings_cache() -> None:
+    _require_deps().invalidate_operator_settings_cache()
+
+
+def invalidate_model_catalog_cache() -> None:
+    _require_deps().invalidate_model_catalog_cache()
+
+
+def normalize_external_llm_base_url(raw: str | None) -> str:
+    return _require_deps().normalize_external_llm_base_url(raw)
+
+
+def operator_provider_endpoints_sync(
+    kind: str, rows: list[dict[str, Any]], *, delete_missing: bool = True
+) -> None:
+    _require_deps().operator_provider_endpoints_sync(kind, rows, delete_missing=delete_missing)
+
+
+def normalized_embedding_base() -> str:
+    return _require_deps().normalized_embedding_base()
+
+
+def rank_embedding_model_ids(model_ids: list[str]) -> list[str]:
+    """Sort provider model ids: embedding-like first, obvious chat models last."""
+
+    def score(mid: str) -> tuple[int, str]:
+        low = mid.lower()
+        s = 0
+        if "embed" in low:
+            s -= 20
+        if any(h in low for h in _EMBED_HINTS):
+            s -= 10
+        if any(h in low for h in _CHAT_HINTS):
+            s += 15
+        return (s, mid)
+
+    return sorted({m.strip() for m in model_ids if m.strip()}, key=score)
 
 
 def classify_model_id(model_id: str) -> ModelKind:
@@ -93,8 +193,6 @@ def chat_provider_embedding_base_url() -> str | None:
     raw = (spec.base_url if spec else "") or ""
     if not raw.strip():
         return None
-    from apps.backend.infrastructure.operator_settings import normalize_external_llm_base_url
-
     return normalize_external_llm_base_url(raw) or None
 
 
@@ -256,12 +354,10 @@ def apply_setup_preferences(body: SetupPreferencesBody) -> dict[str, Any]:
     ranked = rank_chat_model_ids([str(r.get("id") or "") for r in rows if r.get("id")])
     first = ranked[0] if ranked else None
     md = pick(body.model_default, first)
-    ma = pick(body.model_agent, md or first)
-    mc = pick(body.model_coding, ma or md or first)
-    mv = pick(body.model_vlm, None)
 
     key = spec.api_key if spec.api_key else "-"
-    db.external_llm_endpoints_sync(
+    operator_provider_endpoints_sync(
+        "chat",
         [
             {
                 "sort_order": 0,
@@ -270,11 +366,9 @@ def apply_setup_preferences(body: SetupPreferencesBody) -> dict[str, Any]:
                 "base_url": spec.base_url,
                 "api_key": key,
                 "model_default": md,
-                "model_vlm": mv,
-                "model_agent": ma,
-                "model_coding": mc,
             }
-        ]
+        ],
+        delete_missing=False,
     )
     invalidate_operator_settings_cache()
     invalidate_model_catalog_cache()
@@ -293,10 +387,10 @@ def apply_setup_preferences(body: SetupPreferencesBody) -> dict[str, Any]:
                     status_code=400,
                     detail=f"Embedding-Modell {rag_model!r} ist auf dem Embedding-Endpunkt nicht gelistet.",
                 )
-        patch = OperatorSettingsPatch(rag_embedding_model=rag_model)
+        patch: dict[str, Any] = {"rag_embedding_model": rag_model}
         try:
             dim = probe_embedding_output_dim(model_id=rag_model)
-            patch.rag_embedding_dim = dim
+            patch["rag_embedding_dim"] = dim
             rag_result["embedding_dim"] = dim
         except Exception as exc:
             logger.warning("setup: embedding dim probe failed: %s", exc)
@@ -304,17 +398,13 @@ def apply_setup_preferences(body: SetupPreferencesBody) -> dict[str, Any]:
         apply_operator_settings_patch(patch)
         rag_result["updated"] = True
     elif not rag_model:
-        from apps.backend.infrastructure.embedding_client import _normalized_embedding_base
-
-        if not _normalized_embedding_base():
-            apply_operator_settings_patch(OperatorSettingsPatch(rag_enabled=False))
+        if not normalized_embedding_base():
+            apply_operator_settings_patch({"rag_enabled": False})
             rag_result["rag_disabled"] = True
 
     return {
         "ok": True,
         "primary_provider_id": pid,
-        "model_agent": ma,
-        "model_coding": mc,
         "model_default": md,
         "rag_embedding_model": rag_model,
         "rag": rag_result,
@@ -349,11 +439,11 @@ def apply_enable_chat_provider_embedding() -> dict[str, Any]:
         )
 
     apply_operator_settings_patch(
-        OperatorSettingsPatch(
-            embedding_api_base_url=base,
-            rag_enabled=True,
-            rag_embedding_model=model,
-        )
+        {
+            "embedding_api_base_url": base,
+            "rag_enabled": True,
+            "rag_embedding_model": model,
+        }
     )
     invalidate_operator_settings_cache()
     clear_embedding_health_cache()
@@ -362,7 +452,7 @@ def apply_enable_chat_provider_embedding() -> dict[str, Any]:
     dim_result: dict[str, Any] = {}
     try:
         dim = probe_embedding_output_dim(model_id=model)
-        apply_operator_settings_patch(OperatorSettingsPatch(rag_embedding_dim=dim))
+        apply_operator_settings_patch({"rag_embedding_dim": dim})
         dim_result["embedding_dim"] = dim
     except Exception as exc:
         logger.warning("setup: chat provider embedding probe failed: %s", exc)

@@ -19,7 +19,7 @@ def test_list_benchmark_llm_providers_includes_env_without_api_key() -> None:
         source="env",
     )
     db_spec = CatalogProviderSpec(
-        provider_id="provider_33",
+        provider_id="provider_db_1",
         label="llama.cpp",
         base_url="https://llm.example.com/v1",
         api_key="secret",
@@ -32,7 +32,7 @@ def test_list_benchmark_llm_providers_includes_env_without_api_key() -> None:
     with (
         patch(
             "apps.backend.infrastructure.model_catalog_providers.list_provider_specs",
-            return_value=[env_spec, db_spec],
+            return_value=[db_spec, env_spec],
         ),
         patch("apps.backend.infrastructure.db.db.external_llm_endpoints_list_all") as list_db,
     ):
@@ -42,7 +42,7 @@ def test_list_benchmark_llm_providers_includes_env_without_api_key() -> None:
     assert len(rows) == 2
     by_id = {r["catalog_owned_by"]: r for r in rows}
     assert by_id["provider_2"]["label"] == "OLLAMA"
-    assert by_id["provider_33"]["endpoint_id"] == 1
+    assert by_id["provider_db_1"]["endpoint_id"] == 1
 
 
 def test_list_benchmark_llm_providers_dedupes_same_host_for_benchmark_ui_only() -> None:
@@ -55,7 +55,7 @@ def test_list_benchmark_llm_providers_dedupes_same_host_for_benchmark_ui_only() 
         source="env",
     )
     db_spec = CatalogProviderSpec(
-        provider_id="provider_33",
+        provider_id="provider_db_1",
         label="LLAMA db",
         base_url="https://llm.example.com",
         api_key="k",
@@ -67,7 +67,7 @@ def test_list_benchmark_llm_providers_dedupes_same_host_for_benchmark_ui_only() 
     with (
         patch(
             "apps.backend.infrastructure.model_catalog_providers.list_provider_specs",
-            return_value=[env_spec, db_spec],
+            return_value=[db_spec, env_spec],
         ),
         patch("apps.backend.infrastructure.db.db.external_llm_endpoints_list_all") as list_db,
     ):
@@ -75,4 +75,4 @@ def test_list_benchmark_llm_providers_dedupes_same_host_for_benchmark_ui_only() 
         rows = list_benchmark_llm_providers()
 
     assert len(rows) == 1
-    assert rows[0]["catalog_owned_by"] == "provider_1"
+    assert rows[0]["catalog_owned_by"] == "provider_db_1"

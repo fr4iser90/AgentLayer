@@ -540,17 +540,20 @@ CREATE TABLE operator_settings (
   discord_bot_agent_bearer TEXT,
   discord_trigger_prefix TEXT NOT NULL DEFAULT '!agent ',
   discord_chat_model TEXT,
+  discord_chat_model_catalog_owned_by VARCHAR(64),
   telegram_application_id TEXT,
   telegram_bot_enabled BOOLEAN NOT NULL DEFAULT false,
   telegram_bot_token TEXT,
   telegram_bot_agent_bearer TEXT,
   telegram_trigger_prefix TEXT NOT NULL DEFAULT '!agent ',
   telegram_chat_model TEXT,
+  telegram_chat_model_catalog_owned_by VARCHAR(64),
   dashboard_upload_max_file_mb INTEGER,
   dashboard_upload_allowed_mime TEXT,
   llm_primary_backend TEXT NOT NULL DEFAULT 'provider',
   llm_smart_routing_enabled BOOLEAN NOT NULL DEFAULT false,
-  llm_router_model TEXT NOT NULL DEFAULT 'nemotron-3-nano:4b',
+  llm_router_model TEXT NOT NULL DEFAULT '',
+  llm_router_model_catalog_owned_by VARCHAR(64),
   llm_router_local_confidence_min DOUBLE PRECISION NOT NULL DEFAULT 0.7,
   llm_router_timeout_sec DOUBLE PRECISION NOT NULL DEFAULT 12,
   llm_route_long_prompt_chars INTEGER NOT NULL DEFAULT 8000,
@@ -621,6 +624,105 @@ CREATE INDEX idx_operator_model_catalog_prefs_visible
 COMMENT ON TABLE operator_model_catalog_prefs IS
   'Admin preferences for model catalog rows. Missing rows are visible by default.';
 
+CREATE TABLE model_access_policies (
+  id BIGSERIAL PRIMARY KEY,
+  scope VARCHAR(16) NOT NULL,
+  tenant_id BIGINT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  user_id UUID NULL REFERENCES users(id) ON DELETE CASCADE,
+  provider_id VARCHAR(64) NOT NULL,
+  model_id TEXT NOT NULL,
+  access_state VARCHAR(16) NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT model_access_policies_scope_check
+    CHECK (scope IN ('global', 'tenant', 'user')),
+  CONSTRAINT model_access_policies_state_check
+    CHECK (access_state IN ('inherit', 'allow', 'deny')),
+  CONSTRAINT model_access_policies_provider_id_check
+    CHECK (provider_id ~ '^[a-z0-9_-]{1,64}$'),
+  CONSTRAINT model_access_policies_scope_target_check CHECK (
+    (scope = 'global' AND tenant_id IS NULL AND user_id IS NULL)
+    OR (scope = 'tenant' AND tenant_id IS NOT NULL AND user_id IS NULL)
+    OR (scope = 'user' AND user_id IS NOT NULL)
+  )
+);
+
+CREATE UNIQUE INDEX uq_model_access_policies_global
+  ON model_access_policies (provider_id, model_id)
+  WHERE scope = 'global';
+CREATE UNIQUE INDEX uq_model_access_policies_tenant
+  ON model_access_policies (tenant_id, provider_id, model_id)
+  WHERE scope = 'tenant';
+CREATE UNIQUE INDEX uq_model_access_policies_user
+  ON model_access_policies (user_id, provider_id, model_id)
+  WHERE scope = 'user';
+
+CREATE TABLE model_default_policies (
+  id BIGSERIAL PRIMARY KEY,
+  scope VARCHAR(16) NOT NULL,
+  tenant_id BIGINT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  user_id UUID NULL REFERENCES users(id) ON DELETE CASCADE,
+  profile VARCHAR(16) NOT NULL,
+  provider_id VARCHAR(64) NOT NULL,
+  model_id TEXT NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT model_default_policies_scope_check
+    CHECK (scope IN ('global', 'tenant', 'user')),
+  CONSTRAINT model_default_policies_profile_check
+    CHECK (profile IN ('default', 'agent', 'coding', 'vlm', 'embedding', 'extractor', 'stt', 'tts')),
+  CONSTRAINT model_default_policies_provider_id_check
+    CHECK (provider_id ~ '^[a-z0-9_-]{1,64}$'),
+  CONSTRAINT model_default_policies_scope_target_check CHECK (
+    (scope = 'global' AND tenant_id IS NULL AND user_id IS NULL)
+    OR (scope = 'tenant' AND tenant_id IS NOT NULL AND user_id IS NULL)
+    OR (scope = 'user' AND user_id IS NOT NULL)
+  )
+);
+
+CREATE UNIQUE INDEX uq_model_default_policies_global
+  ON model_default_policies (profile)
+  WHERE scope = 'global';
+CREATE UNIQUE INDEX uq_model_default_policies_tenant
+  ON model_default_policies (tenant_id, profile)
+  WHERE scope = 'tenant';
+CREATE UNIQUE INDEX uq_model_default_policies_user
+  ON model_default_policies (user_id, profile)
+  WHERE scope = 'user';
+
+CREATE TABLE provider_capability_policies (
+  id BIGSERIAL PRIMARY KEY,
+  scope VARCHAR(16) NOT NULL,
+  tenant_id BIGINT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  user_id UUID NULL REFERENCES users(id) ON DELETE CASCADE,
+  capability VARCHAR(32) NOT NULL,
+  provider_id VARCHAR(64) NOT NULL,
+  access_state VARCHAR(16) NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT provider_capability_policies_scope_check
+    CHECK (scope IN ('global', 'tenant', 'user')),
+  CONSTRAINT provider_capability_policies_capability_check
+    CHECK (capability IN ('chat', 'embedding', 'extractor', 'stt', 'tts', 'voice_realtime')),
+  CONSTRAINT provider_capability_policies_state_check
+    CHECK (access_state IN ('inherit', 'allow', 'deny')),
+  CONSTRAINT provider_capability_policies_provider_id_check
+    CHECK (provider_id ~ '^[a-z0-9_-]{1,64}$'),
+  CONSTRAINT provider_capability_policies_scope_target_check CHECK (
+    (scope = 'global' AND tenant_id IS NULL AND user_id IS NULL)
+    OR (scope = 'tenant' AND tenant_id IS NOT NULL AND user_id IS NULL)
+    OR (scope = 'user' AND user_id IS NOT NULL)
+  )
+);
+
+CREATE UNIQUE INDEX uq_provider_capability_policies_global
+  ON provider_capability_policies (capability, provider_id)
+  WHERE scope = 'global';
+CREATE UNIQUE INDEX uq_provider_capability_policies_tenant
+  ON provider_capability_policies (tenant_id, capability, provider_id)
+  WHERE scope = 'tenant';
+CREATE UNIQUE INDEX uq_provider_capability_policies_user
+  ON provider_capability_policies (user_id, capability, provider_id)
+  WHERE scope = 'user';
+
 CREATE TABLE operator_provider_endpoints (
   id BIGSERIAL PRIMARY KEY,
   kind VARCHAR(32) NOT NULL,
@@ -631,11 +733,14 @@ CREATE TABLE operator_provider_endpoints (
   api_key TEXT NOT NULL DEFAULT '',
   api_header_name VARCHAR(128) NOT NULL DEFAULT 'Authorization',
   model_default TEXT,
+  max_parallel INTEGER NOT NULL DEFAULT 1,
   options_json JSONB NOT NULL DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT operator_provider_endpoints_kind_check
-    CHECK (kind IN ('embedding', 'voice_stt', 'voice_tts', 'extractor'))
+    CHECK (kind IN ('chat', 'embedding', 'voice_stt', 'voice_tts', 'extractor')),
+  CONSTRAINT operator_provider_endpoints_max_parallel_check
+    CHECK (max_parallel >= 1 AND max_parallel <= 64)
 );
 
 CREATE INDEX idx_operator_provider_endpoints_kind_sort

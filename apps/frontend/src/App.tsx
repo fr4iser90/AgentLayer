@@ -10,8 +10,11 @@ import { AdminDashboard } from "./pages/admin/AdminDashboard";
 import { InterfacesLayout } from "./layout/InterfacesLayout";
 import { AdminInterfacesOverviewPage } from "./pages/admin/interfaces/AdminInterfacesOverviewPage";
 import { AdminInterfacesBridgesPage } from "./pages/admin/interfaces/AdminInterfacesBridgesPage";
-import { AdminInterfacesLlmPage } from "./pages/admin/interfaces/AdminInterfacesLlmPage";
+import { AdminInterfacesProvidersPage } from "./pages/admin/interfaces/AdminInterfacesProvidersPage";
+import { AdminInterfacesModelPoliciesPage } from "./pages/admin/interfaces/AdminInterfacesModelPoliciesPage";
+import { AdminInterfacesRoutingPage } from "./pages/admin/interfaces/AdminInterfacesRoutingPage";
 import { AdminInterfacesMemoryPage } from "./pages/admin/interfaces/AdminInterfacesMemoryPage";
+import { AdminInterfacesVoicePage } from "./pages/admin/interfaces/AdminInterfacesVoicePage";
 import { AdminInterfacesAutomationPage } from "./pages/admin/interfaces/AdminInterfacesAutomationPage";
 import { AdminInterfacesPlatformPage } from "./pages/admin/interfaces/AdminInterfacesPlatformPage";
 import { AdminTools } from "./pages/admin/AdminTools";
@@ -83,8 +86,12 @@ export function App() {
                   <Route path="interfaces" element={<InterfacesLayout />}>
                     <Route index element={<AdminInterfacesOverviewPage />} />
                     <Route path="bridges" element={<AdminInterfacesBridgesPage />} />
-                    <Route path="llm" element={<AdminInterfacesLlmPage />} />
+                    <Route path="providers" element={<AdminInterfacesProvidersPage />} />
+                    <Route path="model-policies" element={<AdminInterfacesModelPoliciesPage />} />
+                    <Route path="routing" element={<AdminInterfacesRoutingPage />} />
+                    <Route path="llm" element={<Navigate to="../routing" replace />} />
                     <Route path="memory" element={<AdminInterfacesMemoryPage />} />
+                    <Route path="voice" element={<AdminInterfacesVoicePage />} />
                     <Route path="automation" element={<AdminInterfacesAutomationPage />} />
                     <Route path="platform" element={<AdminInterfacesPlatformPage />} />
                   </Route>

@@ -14,7 +14,7 @@ Client → server JSON:
   - ``{"type":"chat","body":{...},...}``
         body = OpenAI-style chat completion request (``stream`` ignored).
         Optional ``body.agent_model_catalog_owned_by``: normalized ``GET /v1/models`` row ``owned_by``
-        (e.g. ``provider_1``, ``provider_33``, ``openrouter``, ``huggingface``) so chat uses the same stack as the dropdown. Unsupported
+        (e.g. ``provider_1``, ``provider_db_1``, ``openrouter``, ``huggingface``) so chat uses the same stack as the dropdown. Unsupported
         values are ignored server-side until routing exists.
         Optional ``body.agent_permission_ask`` (bool): when true and the agent definition has ``coding_tools_permission_ask`` (from ``AGENT_CODING_TOOLS_PERMISSION_ASK`` on the plugin), the server may emit
         ``agent.permission_ask`` before executing gated workspace tools (bash, writes, edits); the client must answer with

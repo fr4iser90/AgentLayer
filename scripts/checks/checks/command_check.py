@@ -97,6 +97,11 @@ def run(name: str, config: dict[str, Any]) -> CheckResult:
 
     required_module = config.get("required_python_module")
     if isinstance(required_module, str) and not _python_module_exists(required_module):
+        nix_shell_command = config.get("nix_shell_command")
+        if isinstance(nix_shell_command, str):
+            fallback = _run_nix_shell_fallback(name, nix_shell_command)
+            if fallback is not None:
+                return fallback
         if config.get("required", True):
             print_fail(name, f"missing required Python module: {required_module}")
             return CheckResult(name=name, ok=False, message=f"missing required Python module: {required_module}")

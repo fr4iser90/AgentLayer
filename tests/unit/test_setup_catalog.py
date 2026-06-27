@@ -103,13 +103,10 @@ def test_apply_setup_preferences_syncs_db() -> None:
     with (
         patch.object(mod, "get_provider_spec", return_value=spec),
         patch.object(mod, "fetch_models_for_provider", return_value=(rows, {"reachable": True})),
-        patch.object(mod.db, "external_llm_endpoints_sync") as sync,
+        patch.object(mod, "operator_provider_endpoints_sync") as sync,
         patch.object(mod, "invalidate_operator_settings_cache"),
         patch.object(mod, "invalidate_model_catalog_cache"),
-        patch(
-            "apps.backend.infrastructure.embedding_client._normalized_embedding_base",
-            return_value="",
-        ),
+        patch.object(mod, "normalized_embedding_base", return_value=""),
         patch.object(mod, "apply_operator_settings_patch"),
     ):
         out = mod.apply_setup_preferences(
@@ -122,6 +119,7 @@ def test_apply_setup_preferences_syncs_db() -> None:
         )
     assert out["ok"] is True
     sync.assert_called_once()
-    row = sync.call_args[0][0][0]
-    assert row["model_agent"] == "llama3"
+    assert sync.call_args[0][0] == "chat"
+    row = sync.call_args[0][1][0]
+    assert row["model_default"] == "llama3"
     assert row["base_url"] == "http://host:11434"

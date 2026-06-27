@@ -56,7 +56,7 @@ def test_embed_one_requires_provider() -> None:
             return_value={"embedding_model": "m", "embed_timeout_sec": 30.0, "embedding_dim": 768},
         ),
     ):
-        with pytest.raises(ValueError, match="Embeddings require"):
+        with pytest.raises(ValueError, match="No active embedding provider configured"):
             embedding_client.embed_one("x")
 
 

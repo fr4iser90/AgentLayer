@@ -47,6 +47,28 @@ type PolicyRow = {
   execution_context: string | null;
 };
 
+type ImportCandidate = {
+  kind: string;
+  name: string;
+  title: string;
+  summary?: string;
+  confidence?: number;
+  risk?: string;
+  source_paths?: string[];
+  target_dir?: string;
+  inputs_schema?: unknown;
+  side_effects?: Record<string, unknown>;
+  determinism_notes?: string[];
+};
+
+type ImportAnalyzeResult = {
+  source_type: string;
+  source_type_confidence: number;
+  source_count: number;
+  sources: Array<{ path: string; chars: number }>;
+  candidates: ImportCandidate[];
+};
+
 function parseTenantIdsInput(s: string): number[] | null {
   const trimmed = s.trim();
   if (!trimmed) return null;
@@ -87,17 +109,17 @@ const ADMIN_BUCKET_ORDER = [
 
 const ADMIN_BUCKET_SET = new Set<string>(ADMIN_BUCKET_ORDER);
 
-const ADMIN_BUCKET_LABEL_KEYS: Record<string, string> = {
-  files: "toolsBucketFiles",
-  network: "toolsBucketNetwork",
-  knowledge: "toolsBucketKnowledge",
-  secrets: "toolsBucketSecrets",
-  comms: "toolsBucketComms",
-  verticals: "toolsBucketVerticals",
-  meta: "toolsBucketMeta",
-  media: "toolsBucketMedia",
-  unsorted: "toolsBucketUnsorted",
-};
+const ADMIN_BUCKET_LABEL_KEYS = {
+  files: "admin:toolsBucketFiles",
+  network: "admin:toolsBucketNetwork",
+  knowledge: "admin:toolsBucketKnowledge",
+  secrets: "admin:toolsBucketSecrets",
+  comms: "admin:toolsBucketComms",
+  verticals: "admin:toolsBucketVerticals",
+  meta: "admin:toolsBucketMeta",
+  media: "admin:toolsBucketMedia",
+  unsorted: "admin:toolsBucketUnsorted",
+} as const;
 
 function shouldSubdivideByDomain(pkgs: ToolMeta[]): boolean {
   const keys = new Set(pkgs.map((p) => (p.domain || "").trim().toLowerCase() || "—"));
@@ -150,6 +172,12 @@ export function AdminTools() {
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [importSourceType, setImportSourceType] = useState("auto");
+  const [importMarkdown, setImportMarkdown] = useState("");
+  const [importFiles, setImportFiles] = useState<FileList | null>(null);
+  const [importBusy, setImportBusy] = useState(false);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+  const [importResult, setImportResult] = useState<ImportAnalyzeResult | null>(null);
 
   const loadAdmin = useCallback(async () => {
     setLoading(true);
@@ -274,6 +302,35 @@ export function AdminTools() {
       setMsg(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function analyzeImport() {
+    setImportBusy(true);
+    setImportMsg(null);
+    setImportResult(null);
+    try {
+      const fd = new FormData();
+      fd.set("source_type", importSourceType);
+      fd.set("markdown", importMarkdown);
+      for (const f of Array.from(importFiles ?? [])) {
+        fd.append("files", f, f.name);
+      }
+      const res = await apiFetch("/v1/admin/tools/import/analyze", auth, {
+        method: "POST",
+        body: fd,
+      });
+      const data = (await res.json().catch(() => ({}))) as ImportAnalyzeResult & { detail?: unknown };
+      if (!res.ok) {
+        setImportMsg(typeof data.detail === "string" ? data.detail : `HTTP ${res.status}`);
+        return;
+      }
+      setImportResult(data);
+      setImportMsg(t("admin:toolsImportAnalyzed", { sources: data.source_count, candidates: data.candidates.length }));
+    } catch (e) {
+      setImportMsg(e instanceof Error ? e.message : String(e));
+    } finally {
+      setImportBusy(false);
     }
   }
 
@@ -501,6 +558,113 @@ export function AdminTools() {
         <span className="text-neutral-500">{t("admin:toolsRegistryAssignUsers")}</span>
       </p>
 
+      <section className="mt-6 rounded-xl border border-surface-border bg-surface-raised/80 p-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-white">{t("admin:toolsImportTitle")}</h2>
+            <p className="mt-1 max-w-2xl text-xs text-surface-muted">
+              {t("admin:toolsImportIntro")}
+            </p>
+          </div>
+          <label className="sr-only" htmlFor="tools-import-source-type">
+            {t("admin:toolsImportSourceType")}
+          </label>
+          <select
+            id="tools-import-source-type"
+            className="w-full rounded-md border border-surface-border bg-black/30 px-2 py-1.5 text-xs text-white sm:w-56"
+            value={importSourceType}
+            onChange={(e) => setImportSourceType(e.target.value)}
+          >
+            <option value="auto">{t("admin:toolsImportAuto")}</option>
+            <option value="openclaw_skill">{t("admin:toolsImportOpenClaw")}</option>
+            <option value="cursor_skill">{t("admin:toolsImportCursor")}</option>
+            <option value="claude_command">{t("admin:toolsImportClaude")}</option>
+            <option value="generic_markdown">{t("admin:toolsImportGeneric")}</option>
+          </select>
+        </div>
+        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          <label className="flex flex-col gap-1 text-xs text-surface-muted">
+            <span>{t("admin:toolsImportPaste")}</span>
+            <textarea
+              className="min-h-40 rounded-md border border-surface-border bg-black/30 px-3 py-2 font-mono text-xs text-white placeholder:text-neutral-500"
+              value={importMarkdown}
+              onChange={(e) => setImportMarkdown(e.target.value)}
+              placeholder={t("admin:toolsImportPastePlaceholder")}
+            />
+          </label>
+          <div className="rounded-md border border-white/10 bg-black/20 p-3 text-xs text-surface-muted">
+            <label className="block">
+              <span>{t("admin:toolsImportUpload")}</span>
+              <input
+                className="mt-2 block w-full text-xs text-neutral-200 file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-xs file:text-white hover:file:bg-white/15"
+                type="file"
+                multiple
+                accept=".md,.markdown,.txt,.yaml,.yml,.json,.zip"
+                onChange={(e) => setImportFiles(e.target.files)}
+              />
+            </label>
+            <ul className="mt-3 list-disc space-y-1 pl-4 text-[11px]">
+              <li>{t("admin:toolsImportAllowed")}</li>
+              <li>{t("admin:toolsImportLimits")}</li>
+              <li>{t("admin:toolsImportZipSafety")}</li>
+              <li>{t("admin:toolsImportAnalyzeOnly")}</li>
+            </ul>
+            <button
+              type="button"
+              disabled={importBusy || (!importMarkdown.trim() && !(importFiles?.length))}
+              className="mt-4 rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+              onClick={() => void analyzeImport()}
+            >
+              {importBusy ? t("admin:toolsImportAnalyzing") : t("admin:toolsImportAnalyze")}
+            </button>
+          </div>
+        </div>
+        {importMsg ? <p className="mt-3 text-sm text-surface-muted">{importMsg}</p> : null}
+        {importResult ? (
+          <div className="mt-4 space-y-3">
+            <div className="rounded-md border border-white/10 bg-black/20 p-3 text-xs text-neutral-300">
+              {t("admin:toolsImportDetected")}: <span className="font-mono text-white">{importResult.source_type}</span>{" "}
+              <span className="text-surface-muted">
+                ({Math.round(importResult.source_type_confidence * 100)}%)
+              </span>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {importResult.sources.map((s) => (
+                  <span key={s.path} className="rounded bg-white/5 px-2 py-1 font-mono text-[11px]">
+                    {s.path} · {t("admin:toolsImportChars", { count: s.chars })}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="grid gap-3 lg:grid-cols-2">
+              {importResult.candidates.map((c) => (
+                <article key={`${c.kind}:${c.name}`} className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-neutral-200">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-sm font-semibold text-white">{c.name}</span>
+                    <span className="rounded bg-sky-900/60 px-1.5 py-0.5 text-[10px] text-sky-100">{c.kind}</span>
+                    <span className="rounded bg-amber-900/60 px-1.5 py-0.5 text-[10px] text-amber-100">
+                      {t("admin:toolsImportRisk", { risk: c.risk ?? t("admin:toolsImportUnknown") })}
+                    </span>
+                    {typeof c.confidence === "number" ? (
+                      <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px]">
+                        {Math.round(c.confidence * 100)}%
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-2 text-neutral-300">{c.title}</p>
+                  {c.summary ? <p className="mt-1 text-surface-muted">{c.summary}</p> : null}
+                  <p className="mt-2 font-mono text-[11px] text-surface-muted">{c.target_dir}</p>
+                  {c.determinism_notes?.length ? (
+                    <ul className="mt-2 list-disc space-y-1 pl-4 text-[11px] text-neutral-400">
+                      {c.determinism_notes.map((n) => <li key={n}>{n}</li>)}
+                    </ul>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </section>
+
       <div className="mt-4 flex flex-wrap gap-2">
         <button
           type="button"
@@ -550,7 +714,7 @@ export function AdminTools() {
                     <div className="flex flex-wrap items-baseline justify-between gap-2 pr-1">
                       <span className="text-sm font-medium text-neutral-200">
                         <span className="font-mono text-neutral-500">{bucket}</span> ·{" "}
-                        {t(`admin:${ADMIN_BUCKET_LABEL_KEYS[bucket] ?? "toolsBucketUnsorted"}`)}
+                        {t(ADMIN_BUCKET_LABEL_KEYS[bucket])}
                       </span>
                       <span className="font-mono text-xs text-surface-muted">
                         {t("admin:toolsPackagesCount", { count: sectionPkgs.length })}

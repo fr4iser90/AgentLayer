@@ -8,13 +8,13 @@ from typing import Any
 
 from apps.backend.infrastructure.db import db
 from apps.backend.infrastructure.extractor_env_providers import (
-    EXTRACTOR_ENV_PROVIDER_MAX,
     EnvExtractorProviderRow,
     parse_extractor_env_providers,
 )
 
 _SPECS_CACHE: tuple[float, list[ExtractorProviderSpec]] | None = None
 _SPECS_CACHE_TTL_SEC = 2.0
+_LEGACY_DB_PROVIDER_OFFSET = 32
 
 
 @dataclass(frozen=True)
@@ -38,20 +38,19 @@ def normalize_extractor_provider_id(raw: Any) -> str | None:
 
 
 def db_extractor_provider_id(endpoint_id: int) -> str:
-    return f"extractor_provider_{EXTRACTOR_ENV_PROVIDER_MAX + int(endpoint_id)}"
+    return f"extractor_provider_db_{int(endpoint_id)}"
 
 
 def parse_db_extractor_provider_id(provider_id: str) -> int | None:
     pid = (provider_id or "").strip().lower()
-    if not pid.startswith("extractor_provider_"):
-        return None
-    suffix = pid[len("extractor_provider_") :]
-    if not suffix.isdigit():
-        return None
-    slot = int(suffix)
-    if slot <= EXTRACTOR_ENV_PROVIDER_MAX:
-        return None
-    return slot - EXTRACTOR_ENV_PROVIDER_MAX
+    if pid.startswith("extractor_provider_db_"):
+        suffix = pid[len("extractor_provider_db_") :]
+        return int(suffix) if suffix.isdigit() else None
+    if pid.startswith("extractor_provider_"):
+        suffix = pid[len("extractor_provider_") :]
+        if suffix.isdigit() and int(suffix) > _LEGACY_DB_PROVIDER_OFFSET:
+            return int(suffix) - _LEGACY_DB_PROVIDER_OFFSET
+    return None
 
 
 def _env_row_spec(row: EnvExtractorProviderRow) -> ExtractorProviderSpec:
@@ -87,6 +86,12 @@ def _db_endpoint_spec(row: dict[str, Any]) -> ExtractorProviderSpec:
     )
 
 
+def _provider_url_key(base_url: str) -> str:
+    from apps.backend.infrastructure.operator_settings import normalize_external_llm_base_url
+
+    return (normalize_external_llm_base_url(base_url) or base_url.rstrip("/")).lower()
+
+
 def list_extractor_provider_specs(*, force_refresh: bool = False) -> list[ExtractorProviderSpec]:
     global _SPECS_CACHE
     now = time.monotonic()
@@ -99,11 +104,7 @@ def list_extractor_provider_specs(*, force_refresh: bool = False) -> list[Extrac
 
     specs: list[ExtractorProviderSpec] = []
     seen: set[str] = set()
-    for row in parse_extractor_env_providers():
-        sp = _env_row_spec(row)
-        if sp.provider_id not in seen and sp.base_url:
-            specs.append(sp)
-            seen.add(sp.provider_id)
+    seen_urls: set[str] = set()
     try:
         db_rows = db.operator_provider_endpoints_list_all("extractor")
     except RuntimeError:
@@ -112,9 +113,18 @@ def list_extractor_provider_specs(*, force_refresh: bool = False) -> list[Extrac
         if not row.get("enabled", True):
             continue
         sp = _db_endpoint_spec(row)
+        url_key = _provider_url_key(sp.base_url)
         if sp.provider_id not in seen and sp.base_url:
             specs.append(sp)
             seen.add(sp.provider_id)
+            seen_urls.add(url_key)
+    for row in parse_extractor_env_providers():
+        sp = _env_row_spec(row)
+        url_key = _provider_url_key(sp.base_url)
+        if sp.provider_id not in seen and sp.base_url and url_key not in seen_urls:
+            specs.append(sp)
+            seen.add(sp.provider_id)
+            seen_urls.add(url_key)
     _SPECS_CACHE = (now, specs)
     return list(specs)
 
@@ -136,6 +146,19 @@ def get_extractor_provider_spec(provider_id: str | None) -> ExtractorProviderSpe
         for spec in specs:
             if spec.provider_id == pid:
                 return spec
+        legacy_db_id = parse_db_extractor_provider_id(pid)
+        if legacy_db_id is not None:
+            db_pid = db_extractor_provider_id(legacy_db_id)
+            for spec in specs:
+                if spec.provider_id == db_pid:
+                    return spec
+        for row in parse_extractor_env_providers():
+            if normalize_extractor_provider_id(row.provider_id) != pid:
+                continue
+            env_url_key = _provider_url_key(row.base_url)
+            for spec in specs:
+                if _provider_url_key(spec.base_url) == env_url_key:
+                    return spec
         return None
     return specs[0] if specs else None
 

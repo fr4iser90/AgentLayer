@@ -58,6 +58,22 @@ def extractor_available(provider_id: str | None = None) -> bool:
     return spec is not None and bool((spec.model_default or "").strip())
 
 
+def _ensure_extractor_provider_allowed(spec: ExtractorProviderSpec) -> None:
+    from apps.backend.domain.identity import get_identity
+    from apps.backend.infrastructure.model_access_policy import is_provider_capability_allowed
+
+    tenant_id, user_id = get_identity()
+    if user_id is None:
+        return
+    if not is_provider_capability_allowed(
+        "extractor",
+        spec.provider_id,
+        tenant_id=tenant_id,
+        user_id=user_id,
+    ):
+        raise ValueError("extractor provider disabled for this user")
+
+
 def extract_units_with_llm(
     *,
     text: str,
@@ -69,6 +85,7 @@ def extract_units_with_llm(
     spec = get_extractor_provider_spec(provider_id)
     if spec is None:
         raise ValueError("No extractor provider configured (EXTRACTOR_PROVIDER_1_BASE_URL).")
+    _ensure_extractor_provider_allowed(spec)
     model = (model_id or spec.model_default or "").strip()
     if not model:
         raise ValueError("No extractor model configured (knowledge.extractor_model or EXTRACTOR_PROVIDER_N_MODEL).")

@@ -10,25 +10,12 @@ import sys
 import threading
 import time
 from collections import defaultdict
-from typing import Any, Literal
+from typing import Any, Literal, Protocol
 
 import httpx
 from fastapi import HTTPException, Request
 
 from apps.backend.core.config import AGENT_SETUP_TOKEN
-
-from apps.backend.domain.admin_setup import is_first_start, try_create_initial_admin_from_env
-from apps.backend.domain.catalog_chat_llm import cached_llm_reachable
-from apps.backend.infrastructure.model_catalog_providers import list_provider_specs
-from apps.backend.infrastructure.auth import User, insert_user_with_cursor
-from apps.backend.dashboard.db import ensure_default_dashboard_for_new_user
-from apps.backend.infrastructure.db import db
-from apps.backend.infrastructure.operator_settings import (
-    external_api_headers,
-    external_models_list_url,
-    invalidate_operator_settings_cache,
-)
-from apps.backend.infrastructure.model_catalog_routing import invalidate_model_catalog_cache
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +31,112 @@ _SETUP_RATE_MAX = 10
 _token_init_lock = threading.Lock()
 _runtime_auto_setup_token: str | None = None
 _setup_banner_logged = False
+User = Any
+
+
+class InstanceSetupDependencies(Protocol):
+    def is_first_start(self) -> bool: ...
+
+    def try_create_initial_admin_from_env(self) -> bool: ...
+
+    def cached_llm_reachable(self) -> bool | None: ...
+
+    def list_provider_specs(self) -> list[Any]: ...
+
+    def pool(self) -> Any: ...
+
+    def insert_user_with_cursor(self, cur: Any, email: str, password: str, *, role: str) -> Any: ...
+
+    def ensure_default_dashboard_for_new_user(self, user_id: Any, tenant_id: int) -> None: ...
+
+    def operator_provider_endpoints_list_all(self, kind: str) -> list[dict[str, Any]]: ...
+
+    def external_llm_endpoints_list_all(self) -> list[dict[str, Any]]: ...
+
+    def operator_provider_endpoints_sync(
+        self, kind: str, rows: list[dict[str, Any]], *, delete_missing: bool = True
+    ) -> None: ...
+
+    def external_api_headers(self, base_url: str, api_key: str) -> dict[str, str]: ...
+
+    def external_models_list_url(self, base_url: str) -> str: ...
+
+    def invalidate_operator_settings_cache(self) -> None: ...
+
+    def invalidate_model_catalog_cache(self) -> None: ...
+
+
+_deps: InstanceSetupDependencies | None = None
+
+
+def register_instance_setup_dependencies(deps: InstanceSetupDependencies) -> None:
+    global _deps
+    _deps = deps
+
+
+def _require_deps() -> InstanceSetupDependencies:
+    if _deps is None:
+        raise RuntimeError("instance setup dependencies not registered")
+    return _deps
+
+
+def is_first_start() -> bool:
+    return _require_deps().is_first_start()
+
+
+def try_create_initial_admin_from_env() -> bool:
+    return _require_deps().try_create_initial_admin_from_env()
+
+
+def cached_llm_reachable() -> bool | None:
+    return _require_deps().cached_llm_reachable()
+
+
+def list_provider_specs() -> list[Any]:
+    return _require_deps().list_provider_specs()
+
+
+class _DbPort:
+    def pool(self) -> Any:
+        return _require_deps().pool()
+
+    def operator_provider_endpoints_list_all(self, kind: str) -> list[dict[str, Any]]:
+        return _require_deps().operator_provider_endpoints_list_all(kind)
+
+    def external_llm_endpoints_list_all(self) -> list[dict[str, Any]]:
+        return _require_deps().external_llm_endpoints_list_all()
+
+    def operator_provider_endpoints_sync(
+        self, kind: str, rows: list[dict[str, Any]], *, delete_missing: bool = True
+    ) -> None:
+        _require_deps().operator_provider_endpoints_sync(kind, rows, delete_missing=delete_missing)
+
+
+db = _DbPort()
+
+
+def insert_user_with_cursor(cur: Any, email: str, password: str, *, role: str) -> Any:
+    return _require_deps().insert_user_with_cursor(cur, email, password, role=role)
+
+
+def ensure_default_dashboard_for_new_user(user_id: Any, tenant_id: int) -> None:
+    _require_deps().ensure_default_dashboard_for_new_user(user_id, tenant_id)
+
+
+def external_api_headers(base_url: str, api_key: str) -> dict[str, str]:
+    return _require_deps().external_api_headers(base_url, api_key)
+
+
+def external_models_list_url(base_url: str) -> str:
+    return _require_deps().external_models_list_url(base_url)
+
+
+def invalidate_operator_settings_cache() -> None:
+    _require_deps().invalidate_operator_settings_cache()
+
+
+def invalidate_model_catalog_cache() -> None:
+    _require_deps().invalidate_model_catalog_cache()
 
 
 def _client_id(request: Request) -> str:
@@ -212,7 +305,12 @@ def catalog_llm_configured() -> bool:
 def setup_preferences_saved() -> bool:
     """True after setup wizard saved provider profile models to DB."""
     try:
-        for row in db.external_llm_endpoints_list_all():
+        rows = db.operator_provider_endpoints_list_all("chat")
+        if not rows:
+            rows = db.external_llm_endpoints_list_all()
+        for row in rows:
+            if (str(row.get("model_default") or "")).strip():
+                return True
             if (str(row.get("model_agent") or "")).strip():
                 return True
             if (str(row.get("model_coding") or "")).strip():
@@ -317,12 +415,9 @@ def apply_setup_llm_endpoint(
         "base_url": bu,
         "api_key": key,
         "model_default": md,
-        "model_vlm": None,
-        "model_agent": md,
-        "model_coding": md,
     }
     try:
-        db.external_llm_endpoints_sync([row])
+        db.operator_provider_endpoints_sync("chat", [row], delete_missing=False)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     invalidate_operator_settings_cache()

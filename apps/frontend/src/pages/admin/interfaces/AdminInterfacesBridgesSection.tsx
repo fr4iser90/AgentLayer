@@ -1,9 +1,57 @@
+import {
+  findCatalogRowByModelId,
+  fetchModelCatalog,
+  modelCatalogSelectValue,
+  parseModelCatalogSelection,
+  type ModelCatalogAgentlayer,
+  type ModelRow,
+} from "../../../lib/modelCatalog";
+import { ModelCatalogSelect } from "../../../features/chat/ModelCatalogSelect";
 import { useOperatorSettings } from "../../../features/admin/operatorSettings/OperatorSettingsProvider";
+import { useAuth } from "../../../auth/AuthContext";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+
+function bridgeModelSelectValue(model: string, provider: string, rows: ModelRow[]): string {
+  const m = model.trim();
+  if (!m) return "";
+  const p = provider.trim();
+  if (p) return `${p}:${m}`;
+  const row = findCatalogRowByModelId(rows, m);
+  return row ? modelCatalogSelectValue(row) : m;
+}
 
 export function AdminInterfacesBridgesSection() {
   const { t } = useTranslation(["admin"]);
   const s = useOperatorSettings();
+  const auth = useAuth();
+  const [modelRows, setModelRows] = useState<ModelRow[]>([]);
+  const [modelCatalogAgentlayer, setModelCatalogAgentlayer] = useState<ModelCatalogAgentlayer | null>(null);
+  const [modelsLoading, setModelsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setModelsLoading(true);
+    void (async () => {
+      try {
+        const { rows, agentlayer } = await fetchModelCatalog(auth);
+        if (cancelled) return;
+        setModelRows(rows);
+        setModelCatalogAgentlayer(agentlayer);
+      } catch {
+        if (cancelled) return;
+        setModelRows([]);
+        setModelCatalogAgentlayer(null);
+      } finally {
+        if (!cancelled) setModelsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [auth]);
+
+  const modelOptions = modelRows;
   if (s.loading) {
     return <p className="text-sm text-surface-muted">{t("admin:loading")}</p>;
   }
@@ -65,13 +113,23 @@ export function AdminInterfacesBridgesSection() {
         <label className="mt-3 block text-xs text-surface-muted" htmlFor="model">
           {t("admin:catalogModelIdLabel")}
         </label>
-        <input
-          id="model"
-          className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
-          value={s.chatModel}
-          onChange={(e) => s.setChatModel(e.target.value)}
-          placeholder={t("admin:catalogModelIdPlaceholder")}
-        />
+        <div id="model" className="mt-1 w-full max-w-md">
+          <ModelCatalogSelect
+            rows={modelOptions}
+            agentlayer={modelCatalogAgentlayer}
+            value={bridgeModelSelectValue(s.chatModel, s.chatModelProvider, modelOptions)}
+            loading={modelsLoading}
+            loadingLabel={t("admin:loading")}
+            emptyLabel={t("admin:ifLlmChatVisibilityEmpty")}
+            ariaLabel={t("admin:catalogModelIdLabel")}
+            size="md"
+            onChange={(value) => {
+              const parsed = parseModelCatalogSelection(value);
+              s.setChatModel(parsed.modelId);
+              s.setChatModelProvider(parsed.provider ?? "");
+            }}
+          />
+        </div>
         <button
           type="button"
           className="mt-3 rounded-md border border-white/15 bg-white/5 px-3 py-1.5 text-sm text-neutral-200 hover:bg-white/10 disabled:opacity-40"
@@ -138,13 +196,23 @@ export function AdminInterfacesBridgesSection() {
         <label className="mt-3 block text-xs text-surface-muted" htmlFor="tg-model">
           {t("admin:catalogModelIdLabel")}
         </label>
-        <input
-          id="tg-model"
-          className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
-          value={s.tgChatModel}
-          onChange={(e) => s.setTgChatModel(e.target.value)}
-          placeholder={t("admin:catalogModelIdPlaceholder")}
-        />
+        <div id="tg-model" className="mt-1 w-full max-w-md">
+          <ModelCatalogSelect
+            rows={modelOptions}
+            agentlayer={modelCatalogAgentlayer}
+            value={bridgeModelSelectValue(s.tgChatModel, s.tgChatModelProvider, modelOptions)}
+            loading={modelsLoading}
+            loadingLabel={t("admin:loading")}
+            emptyLabel={t("admin:ifLlmChatVisibilityEmpty")}
+            ariaLabel={t("admin:catalogModelIdLabel")}
+            size="md"
+            onChange={(value) => {
+              const parsed = parseModelCatalogSelection(value);
+              s.setTgChatModel(parsed.modelId);
+              s.setTgChatModelProvider(parsed.provider ?? "");
+            }}
+          />
+        </div>
         <button
           type="button"
           className="mt-3 rounded-md border border-white/15 bg-white/5 px-3 py-1.5 text-sm text-neutral-200 hover:bg-white/10 disabled:opacity-40"
