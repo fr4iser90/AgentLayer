@@ -7,6 +7,8 @@ import uuid
 from unittest.mock import patch
 
 from apps.backend.infrastructure.settings.operator_settings import (
+    _discord_trigger_prefix_sql,
+    _telegram_trigger_prefix_sql,
     operator_settings_patch_field_names,
     operator_settings_patch_tool_parameters,
 )
@@ -27,6 +29,12 @@ def test_patch_tool_parameters_from_pydantic() -> None:
     assert "rag_enabled" in props
     assert params.get("additionalProperties") is False
     assert "description" not in params
+
+
+def test_empty_trigger_prefixes_persist_as_empty_strings() -> None:
+    assert _discord_trigger_prefix_sql({"discord_trigger_prefix": ""}) == ""
+    assert _telegram_trigger_prefix_sql({"telegram_trigger_prefix": ""}) == ""
+    assert _telegram_trigger_prefix_sql({"telegram_trigger_prefix": None}) == ""
 
 
 def test_settings_patch_empty_minimal_error() -> None:

@@ -505,14 +505,14 @@ def _bound_float(v: Any, default: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, n))
 
 
-def _discord_trigger_prefix_sql(r: dict[str, Any]) -> str | None:
+def _discord_trigger_prefix_sql(r: dict[str, Any]) -> str:
     raw = str(r.get("discord_trigger_prefix") or "").strip()
-    return raw[:16] or None
+    return raw[:16]
 
 
-def _telegram_trigger_prefix_sql(r: dict[str, Any]) -> str | None:
+def _telegram_trigger_prefix_sql(r: dict[str, Any]) -> str:
     raw = str(r.get("telegram_trigger_prefix") or "").strip()
-    return raw[:16] or None
+    return raw[:16]
 
 
 from apps.backend.infrastructure.settings.operator_settings_readers import (
