@@ -1,11 +1,11 @@
 {
   "profiles": {
-    "fast": ["ddd_layers", "ddd_quality", "frontend_i18n"],
-    "precommit": ["ddd_layers", "ddd_quality", "backend_unit", "frontend_i18n", "node_cve_full", "python_cve"],
+    "fast": ["ddd_layers", "ddd_quality", "agent_governance", "frontend_i18n"],
+    "precommit": ["ddd_layers", "ddd_quality", "agent_governance", "backend_unit", "frontend_i18n", "node_cve_full", "python_cve"],
     "security": ["node_cve_full", "python_cve"],
-    "architecture": ["ddd_layers_report", "ddd_quality"],
-    "quality": ["backend_unit", "frontend_i18n", "bandit"],
-    "ci": ["ddd_layers_all", "ddd_quality", "backend_unit", "frontend_i18n", "node_cve_full", "python_cve", "bandit"]
+    "architecture": ["ddd_layers_report", "ddd_quality", "agent_governance"],
+    "quality": ["agent_governance", "backend_unit", "frontend_i18n", "bandit"],
+    "ci": ["ddd_layers_all", "ddd_quality", "agent_governance", "backend_unit", "frontend_i18n", "node_cve_full", "python_cve", "bandit"]
   },
   "checks": {
     "ddd_layers": {
@@ -307,6 +307,19 @@
       "large_file_enforce": true,
       "large_file_warn_lines": 600,
       "large_file_summary_limit": 12
+    },
+    "agent_governance": {
+      "module": "agent_governance",
+      "agents_root": "plugins/agents",
+      "required_fields": ["id", "name", "description", "min_role", "requires_workspace", "execution_context"],
+      "prompt_warn_max_chars": 8000,
+      "prompt_hard_max_chars": 12000,
+      "max_pinned_tools": 12,
+      "max_tool_allowlist": 80,
+      "max_prompt_emoji": 8,
+      "forbidden_prompt_phrases": [
+        "Your tools (only these)"
+      ]
     },
     "backend_unit": {
       "module": "command_check",

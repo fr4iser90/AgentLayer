@@ -7,7 +7,6 @@ delegatable: true
 tool_domain: coding
 requires_workspace: true
 execution_context: container
-min_role: admin
 model_profile: coding
 strict_workspace: true
 coding_tools_permission_ask: false

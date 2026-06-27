@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from typing import Any
 
 from apps.backend.domain.agent_runtime.registry import effective_tool_names_for_caller, get_agent_registry
@@ -13,6 +14,7 @@ def build_agents_catalog(
     *,
     user_role: str | None,
     tenant_id: int,
+    user_id: uuid.UUID | None = None,
     delegatable_only: bool = False,
     include_tool_names: bool = False,
 ) -> dict[str, Any]:
@@ -21,7 +23,11 @@ def build_agents_catalog(
     role = (user_role or "user").strip().lower()
     admin = is_elevated_role(role)
     show_tools = bool(include_tool_names and admin)
-    delegatable_ids = effective_delegatable_agent_ids(caller_is_admin=admin)
+    delegatable_ids = effective_delegatable_agent_ids(
+        caller_is_admin=admin,
+        tenant_id=tenant_id,
+        user_id=user_id,
+    )
 
     agents_out: list[dict[str, Any]] = []
     for aid in reg.agent_ids():
@@ -30,7 +36,12 @@ def build_agents_catalog(
         ag = reg.get_agent(aid)
         if not ag:
             continue
-        allowed, _err = user_may_invoke_agent(role, aid)
+        allowed, _err = user_may_invoke_agent(
+            role,
+            aid,
+            tenant_id=tenant_id,
+            user_id=user_id,
+        )
         row: dict[str, Any] = {
             "id": aid,
             "name": ag.get("name") or aid,

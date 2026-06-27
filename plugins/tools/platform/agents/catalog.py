@@ -45,6 +45,7 @@ def catalog(arguments: dict[str, Any], context: dict[str, Any] | None = None) ->
     payload = build_agents_catalog(
         user_role=role,
         tenant_id=tenant_id,
+        user_id=uid,
         delegatable_only=_truthy(arguments.get("delegatable_only")),
         include_tool_names=_truthy(arguments.get("include_tool_names")),
     )

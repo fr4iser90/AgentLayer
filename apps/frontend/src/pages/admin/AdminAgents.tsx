@@ -23,10 +23,57 @@ type AgentDetail = AgentRow & {
   system_prompt?: string;
   tool_names?: string[];
   effective_tool_names?: string[];
-  effective_preview?: { role: string; tenant_id: number };
+  effective_preview?: { role: string; tenant_id: number; user_id?: string };
   execution_context?: string;
   model_profile?: string | null;
   strict_workspace?: boolean;
+  governance?: {
+    access: {
+      direct_allowed: boolean;
+      delegate_allowed: boolean;
+      direct_reason: string;
+      delegate_reason: string;
+      direct_source: string;
+      delegate_source: string;
+    };
+    policies: Array<{
+      id: number;
+      scope: "global" | "tenant" | "user";
+      tenant_id?: number | null;
+      user_id?: string | null;
+      agent_id: string;
+      direct_state: "inherit" | "allow" | "deny";
+      delegate_state: "inherit" | "allow" | "deny";
+      notes?: string | null;
+      updated_at?: string;
+    }>;
+    prompt: {
+      chars: number;
+      approx_tokens: number;
+      source: string;
+      effective_source?: string;
+      published_version?: number | null;
+      published_version_id?: string | null;
+      editable: boolean;
+      editing_mode: string;
+      note: string;
+    };
+  };
+};
+
+type AgentPromptVersion = {
+  id: string;
+  tenant_id: number;
+  agent_id: string;
+  version: number;
+  status: "draft" | "published" | "archived";
+  prompt_text: string;
+  notes?: string | null;
+  created_at?: string;
+  created_by?: string | null;
+  published_at?: string | null;
+  published_by?: string | null;
+  archived_at?: string | null;
 };
 
 type AgentImportResult = {
@@ -55,6 +102,18 @@ export function AdminAgents() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<AgentDetail | null>(null);
   const [previewRole, setPreviewRole] = useState<"admin" | "user">("admin");
+  const [previewUserId, setPreviewUserId] = useState("");
+  const [policyScope, setPolicyScope] = useState<"global" | "tenant" | "user">("tenant");
+  const [policyTenantId, setPolicyTenantId] = useState("");
+  const [policyUserId, setPolicyUserId] = useState("");
+  const [directState, setDirectState] = useState<"inherit" | "allow" | "deny">("inherit");
+  const [delegateState, setDelegateState] = useState<"inherit" | "allow" | "deny">("inherit");
+  const [policyBusy, setPolicyBusy] = useState(false);
+  const [policyMsg, setPolicyMsg] = useState<string | null>(null);
+  const [promptText, setPromptText] = useState("");
+  const [promptVersions, setPromptVersions] = useState<AgentPromptVersion[]>([]);
+  const [promptBusy, setPromptBusy] = useState(false);
+  const [promptMsg, setPromptMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -90,11 +149,25 @@ export function AdminAgents() {
       setDetailLoading(true);
       try {
         const q = new URLSearchParams({ role });
+        if (previewUserId.trim()) q.set("user_id", previewUserId.trim());
         const res = await apiFetch(`/v1/admin/agents/${encodeURIComponent(agentId)}?${q}`, auth);
         const data = (await res.json()) as AgentDetail;
         if (res.ok) setDetail(data);
       } finally {
         setDetailLoading(false);
+      }
+    },
+    [auth, previewUserId],
+  );
+
+  const loadPromptVersions = useCallback(
+    async (agentId: string) => {
+      try {
+        const res = await apiFetch(`/v1/admin/agents/${encodeURIComponent(agentId)}/prompt-versions`, auth);
+        const data = (await res.json()) as { versions?: AgentPromptVersion[] };
+        if (res.ok) setPromptVersions(data.versions ?? []);
+      } catch {
+        setPromptVersions([]);
       }
     },
     [auth],
@@ -106,12 +179,127 @@ export function AdminAgents() {
 
   useEffect(() => {
     if (selectedId) void loadDetail(selectedId, previewRole);
-  }, [selectedId, previewRole, loadDetail]);
+  }, [selectedId, previewRole, previewUserId, loadDetail]);
+
+  useEffect(() => {
+    if (selectedId) void loadPromptVersions(selectedId);
+  }, [selectedId, loadPromptVersions]);
+
+  useEffect(() => {
+    setPromptText(detail?.system_prompt ?? "");
+  }, [detail?.system_prompt, selectedId]);
 
   const selected = useMemo(
     () => agents.find((a) => a.id === selectedId) ?? null,
     [agents, selectedId],
   );
+
+  async function saveAccessPolicy() {
+    if (!selectedId) return;
+    setPolicyBusy(true);
+    setPolicyMsg(null);
+    try {
+      const body: Record<string, unknown> = {
+        scope: policyScope,
+        direct_state: directState,
+        delegate_state: delegateState,
+      };
+      if (policyTenantId.trim()) body.tenant_id = Number(policyTenantId.trim());
+      if (policyUserId.trim()) body.user_id = policyUserId.trim();
+      const res = await apiFetch(`/v1/admin/agents/${encodeURIComponent(selectedId)}/access-policy`, auth, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = (await res.json().catch(() => ({}))) as { detail?: unknown };
+      if (!res.ok) {
+        setPolicyMsg(typeof data.detail === "string" ? data.detail : `HTTP ${res.status}`);
+        return;
+      }
+      setPolicyMsg(t("admin:agentsPolicySaved"));
+      await loadDetail(selectedId, previewRole);
+    } catch (e) {
+      setPolicyMsg(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPolicyBusy(false);
+    }
+  }
+
+  async function deleteAccessPolicy() {
+    if (!selectedId) return;
+    setPolicyBusy(true);
+    setPolicyMsg(null);
+    try {
+      const q = new URLSearchParams({ scope: policyScope });
+      if (policyTenantId.trim()) q.set("tenant_id", policyTenantId.trim());
+      if (policyUserId.trim()) q.set("user_id", policyUserId.trim());
+      const res = await apiFetch(
+        `/v1/admin/agents/${encodeURIComponent(selectedId)}/access-policy?${q}`,
+        auth,
+        { method: "DELETE" },
+      );
+      const data = (await res.json().catch(() => ({}))) as { detail?: unknown };
+      if (!res.ok) {
+        setPolicyMsg(typeof data.detail === "string" ? data.detail : `HTTP ${res.status}`);
+        return;
+      }
+      setPolicyMsg(t("admin:agentsPolicyDeleted"));
+      await loadDetail(selectedId, previewRole);
+    } catch (e) {
+      setPolicyMsg(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPolicyBusy(false);
+    }
+  }
+
+  async function savePromptDraft() {
+    if (!selectedId) return;
+    setPromptBusy(true);
+    setPromptMsg(null);
+    try {
+      const res = await apiFetch(`/v1/admin/agents/${encodeURIComponent(selectedId)}/prompt-drafts`, auth, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt_text: promptText }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { detail?: unknown };
+      if (!res.ok) {
+        setPromptMsg(typeof data.detail === "string" ? data.detail : `HTTP ${res.status}`);
+        return;
+      }
+      setPromptMsg(t("admin:agentsPromptDraftSaved"));
+      await loadPromptVersions(selectedId);
+    } catch (e) {
+      setPromptMsg(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPromptBusy(false);
+    }
+  }
+
+  async function publishPromptVersion(versionId: string) {
+    if (!selectedId) return;
+    setPromptBusy(true);
+    setPromptMsg(null);
+    try {
+      const res = await apiFetch(
+        `/v1/admin/agents/${encodeURIComponent(selectedId)}/prompt-versions/${encodeURIComponent(versionId)}/publish`,
+        auth,
+        { method: "POST" },
+      );
+      const data = (await res.json().catch(() => ({}))) as { detail?: unknown };
+      if (!res.ok) {
+        setPromptMsg(typeof data.detail === "string" ? data.detail : `HTTP ${res.status}`);
+        return;
+      }
+      setPromptMsg(t("admin:agentsPromptPublished"));
+      await loadPromptVersions(selectedId);
+      await loadDetail(selectedId, previewRole);
+    } catch (e) {
+      setPromptMsg(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPromptBusy(false);
+    }
+  }
 
   async function analyzeImport() {
     setImportBusy(true);
@@ -398,12 +586,228 @@ export function AdminAgents() {
                   <option value="admin">{t("admin:toolsMinRoleAdmin")}</option>
                   <option value="user">{t("admin:toolsMinRoleUser")}</option>
                 </select>
+                <input
+                  className="w-72 rounded border border-surface-border bg-black/30 px-2 py-1 text-xs text-white placeholder:text-neutral-500"
+                  value={previewUserId}
+                  onChange={(e) => setPreviewUserId(e.target.value)}
+                  placeholder={t("admin:agentsPreviewUserIdPlaceholder")}
+                />
               </div>
 
               {detailLoading ? (
                 <p className="mt-3 text-xs text-surface-muted">{t("admin:agentsLoadingDetail")}</p>
               ) : (
                 <>
+                  <div className="mt-4 rounded-lg border border-white/10 bg-black/20 p-3">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
+                          {t("admin:agentsAccessGovernance")}
+                        </p>
+                        <p className="mt-1 text-xs text-neutral-300">
+                          {t("admin:agentsDirectAccess")}:{" "}
+                          <span className={detail?.governance?.access.direct_allowed ? "text-emerald-300" : "text-rose-300"}>
+                            {detail?.governance?.access.direct_allowed ? t("admin:agentsAllowed") : t("admin:agentsDenied")}
+                          </span>{" "}
+                          <span className="text-surface-muted">
+                            ({detail?.governance?.access.direct_source ?? "—"})
+                          </span>
+                        </p>
+                        <p className="mt-1 text-xs text-neutral-300">
+                          {t("admin:agentsDelegateAccess")}:{" "}
+                          <span className={detail?.governance?.access.delegate_allowed ? "text-emerald-300" : "text-rose-300"}>
+                            {detail?.governance?.access.delegate_allowed ? t("admin:agentsAllowed") : t("admin:agentsDenied")}
+                          </span>{" "}
+                          <span className="text-surface-muted">
+                            ({detail?.governance?.access.delegate_source ?? "—"})
+                          </span>
+                        </p>
+                      </div>
+                      <div className="min-w-64 flex-1">
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
+                          {t("admin:agentsPromptBudget")}
+                        </p>
+                        <p className="mt-1 text-xs text-neutral-300">
+                          {detail?.governance?.prompt.chars ?? 0} {t("admin:agentsChars")} · ~
+                          {detail?.governance?.prompt.approx_tokens ?? 0} {t("admin:agentsTokens")}
+                        </p>
+                        <p className="mt-1 text-[11px] text-surface-muted">
+                          {detail?.governance?.prompt.note ?? "—"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-2 md:grid-cols-5">
+                      <label className="text-xs text-surface-muted">
+                        {t("admin:agentsPolicyScope")}
+                        <select
+                          className="mt-1 w-full rounded border border-surface-border bg-black/30 px-2 py-1 text-xs text-white"
+                          value={policyScope}
+                          onChange={(e) => setPolicyScope(e.target.value as "global" | "tenant" | "user")}
+                        >
+                          <option value="global">{t("admin:agentsScopeGlobal")}</option>
+                          <option value="tenant">{t("admin:agentsScopeTenant")}</option>
+                          <option value="user">{t("admin:agentsScopeUser")}</option>
+                        </select>
+                      </label>
+                      <label className="text-xs text-surface-muted">
+                        {t("admin:agentsTenantId")}
+                        <input
+                          className="mt-1 w-full rounded border border-surface-border bg-black/30 px-2 py-1 text-xs text-white placeholder:text-neutral-500"
+                          value={policyTenantId}
+                          onChange={(e) => setPolicyTenantId(e.target.value)}
+                          placeholder={t("admin:agentsTenantIdPlaceholder")}
+                        />
+                      </label>
+                      <label className="text-xs text-surface-muted">
+                        {t("admin:agentsUserId")}
+                        <input
+                          className="mt-1 w-full rounded border border-surface-border bg-black/30 px-2 py-1 text-xs text-white placeholder:text-neutral-500"
+                          value={policyUserId}
+                          onChange={(e) => setPolicyUserId(e.target.value)}
+                          placeholder={t("admin:agentsUserIdPlaceholder")}
+                        />
+                      </label>
+                      <label className="text-xs text-surface-muted">
+                        {t("admin:agentsDirectAccess")}
+                        <select
+                          className="mt-1 w-full rounded border border-surface-border bg-black/30 px-2 py-1 text-xs text-white"
+                          value={directState}
+                          onChange={(e) => setDirectState(e.target.value as "inherit" | "allow" | "deny")}
+                        >
+                          <option value="inherit">{t("admin:agentsInherit")}</option>
+                          <option value="allow">{t("admin:agentsAllow")}</option>
+                          <option value="deny">{t("admin:agentsDeny")}</option>
+                        </select>
+                      </label>
+                      <label className="text-xs text-surface-muted">
+                        {t("admin:agentsDelegateAccess")}
+                        <select
+                          className="mt-1 w-full rounded border border-surface-border bg-black/30 px-2 py-1 text-xs text-white"
+                          value={delegateState}
+                          onChange={(e) => setDelegateState(e.target.value as "inherit" | "allow" | "deny")}
+                        >
+                          <option value="inherit">{t("admin:agentsInherit")}</option>
+                          <option value="allow">{t("admin:agentsAllow")}</option>
+                          <option value="deny">{t("admin:agentsDeny")}</option>
+                        </select>
+                      </label>
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={policyBusy}
+                        className="rounded-md bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+                        onClick={() => void saveAccessPolicy()}
+                      >
+                        {t("admin:agentsSavePolicy")}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={policyBusy}
+                        className="rounded-md bg-white/10 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/15 disabled:opacity-50"
+                        onClick={() => void deleteAccessPolicy()}
+                      >
+                        {t("admin:agentsDeletePolicy")}
+                      </button>
+                      {policyMsg ? <span className="text-xs text-surface-muted">{policyMsg}</span> : null}
+                    </div>
+                    <div className="mt-3">
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
+                        {t("admin:agentsActivePolicies")}
+                      </p>
+                      <div className="mt-1 space-y-1">
+                        {(detail?.governance?.policies ?? []).length === 0 ? (
+                          <p className="text-xs text-surface-muted">—</p>
+                        ) : (
+                          (detail?.governance?.policies ?? []).map((p) => (
+                            <p key={p.id} className="font-mono text-[11px] text-neutral-300">
+                              {p.scope} {p.tenant_id ?? ""} {p.user_id ?? ""} · direct={p.direct_state} · delegate=
+                              {p.delegate_state}
+                            </p>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-lg border border-white/10 bg-black/20 p-3">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
+                          {t("admin:agentsPromptEditor")}
+                        </p>
+                        <p className="mt-1 text-xs text-surface-muted">
+                          {t("admin:agentsPromptEditorHint")}
+                        </p>
+                      </div>
+                      <p className="font-mono text-[11px] text-neutral-400">
+                        {t("admin:agentsPromptSource")}: {detail?.governance?.prompt.effective_source ?? "file_default"}
+                        {detail?.governance?.prompt.published_version
+                          ? ` · v${detail.governance.prompt.published_version}`
+                          : ""}
+                      </p>
+                    </div>
+                    <textarea
+                      className="mt-3 min-h-52 w-full rounded-md border border-surface-border bg-black/30 px-3 py-2 font-mono text-xs text-white placeholder:text-neutral-500"
+                      value={promptText}
+                      onChange={(e) => setPromptText(e.target.value)}
+                      maxLength={12000}
+                    />
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-[11px] text-surface-muted">
+                        {promptText.length} / 12000 {t("admin:agentsChars")} · ~{Math.max(1, Math.floor(promptText.length / 4))}{" "}
+                        {t("admin:agentsTokens")}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={promptBusy || !promptText.trim()}
+                          className="rounded-md bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+                          onClick={() => void savePromptDraft()}
+                        >
+                          {t("admin:agentsSavePromptDraft")}
+                        </button>
+                        {promptMsg ? <span className="text-xs text-surface-muted">{promptMsg}</span> : null}
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
+                        {t("admin:agentsPromptVersions")}
+                      </p>
+                      <div className="mt-2 space-y-2">
+                        {promptVersions.length === 0 ? (
+                          <p className="text-xs text-surface-muted">—</p>
+                        ) : (
+                          promptVersions.map((v) => (
+                            <div
+                              key={v.id}
+                              className="flex flex-wrap items-center justify-between gap-2 rounded border border-white/10 bg-white/[0.03] px-2 py-2"
+                            >
+                              <div>
+                                <p className="font-mono text-xs text-neutral-200">
+                                  v{v.version} · {v.status} · {v.prompt_text.length} {t("admin:agentsChars")}
+                                </p>
+                                <p className="mt-0.5 text-[11px] text-surface-muted">
+                                  {v.created_at ?? "—"}
+                                  {v.published_at ? ` · ${t("admin:agentsPublishedAt")} ${v.published_at}` : ""}
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                disabled={promptBusy || v.status === "published"}
+                                className="rounded-md bg-white/10 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/15 disabled:opacity-50"
+                                onClick={() => void publishPromptVersion(v.id)}
+                              >
+                                {t("admin:agentsPublishPrompt")}
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="mt-3">
                     <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
                       {t("admin:agentsResolvedTools")} ({detail?.tool_names?.length ?? 0})

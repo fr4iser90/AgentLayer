@@ -12,6 +12,10 @@ architecture map for AgentLayer.
 For the executable checklist and repository checks, see
 `docs/architecture/ddd-checklist.md`.
 
+For strategic design language and bounded-context ownership, see
+`docs/architecture/strategic-design.md`. For Agent-specific policy, prompt, and
+runtime governance, see `docs/architecture/agent-governance.md`.
+
 The current refactor removed direct `apps.backend.domain` imports of
 `api`, `dashboard`, `infrastructure`, `integrations`, and `media`. That is the
 layering baseline. The next step is not moving files for its own sake; it is

@@ -106,7 +106,7 @@ def run_embedded_subagent_sync(
         except (TypeError, ValueError):
             tid = None
 
-    allowed_ids = effective_delegatable_agent_ids(caller_is_admin=is_admin, tenant_id=tid)
+    allowed_ids = effective_delegatable_agent_ids(caller_is_admin=is_admin, tenant_id=tid, user_id=uid_check)
     if aid not in allowed_ids:
         return json.dumps(
             {

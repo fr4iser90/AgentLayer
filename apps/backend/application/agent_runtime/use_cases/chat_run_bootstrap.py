@@ -151,7 +151,12 @@ async def bootstrap_chat_run(
     if agent_id and not embedded_subagent:
         from apps.backend.domain.agent_runtime.access import user_may_invoke_agent
 
-        ok_agent, agent_err = user_may_invoke_agent(_role_for_agent, agent_id)
+        ok_agent, agent_err = user_may_invoke_agent(
+            _role_for_agent,
+            agent_id,
+            tenant_id=cfg_tid,
+            user_id=user_id,
+        )
         if not ok_agent:
             raise ValueError(agent_err)
 

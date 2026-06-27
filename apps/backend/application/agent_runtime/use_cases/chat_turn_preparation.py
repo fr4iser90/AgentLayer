@@ -203,7 +203,12 @@ async def prepare_chat_turn(
         )
 
         messages = _append_system_block(
-            messages, build_delegate_agents_catalog_snippet(caller_is_admin=is_admin)
+            messages,
+            build_delegate_agents_catalog_snippet(
+                caller_is_admin=is_admin,
+                tenant_id=int(tenant_id) if tenant_id is not None else None,
+                user_id=user_id if isinstance(user_id, uuid.UUID) else None,
+            ),
         )
         from apps.backend.domain.agent_runtime.task_prompt import build_agent_tasks_context_snippet
 

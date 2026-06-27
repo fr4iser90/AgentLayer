@@ -468,10 +468,25 @@ def agent_yaml_overlay(agent_id: str, *, tenant_id: int | None = None) -> dict[s
 def merge_agent_definition(agent: dict[str, Any], *, tenant_id: int | None = None) -> dict[str, Any]:
     aid = str(agent.get("id") or "")
     overlay = agent_yaml_overlay(aid, tenant_id=tenant_id)
-    if not overlay:
-        return agent
     merged = dict(agent)
-    merged.update(overlay)
+    if overlay:
+        merged.update(overlay)
+    tid = _resolve_tenant_id(tenant_id)
+    if tid is not None and aid:
+        try:
+            from apps.backend.infrastructure.agent_runtime import agent_prompt_version_store
+
+            published = agent_prompt_version_store.get_published_prompt(tenant_id=tid, agent_id=aid)
+        except Exception as exc:
+            logger.debug("agent prompt overlay skipped for %s: %s", aid, exc)
+            published = None
+        if published and isinstance(published.get("prompt_text"), str) and published["prompt_text"].strip():
+            merged["system_prompt"] = published["prompt_text"]
+            merged["system_prompt_source"] = "db_published"
+            merged["system_prompt_version"] = published.get("version")
+            merged["system_prompt_version_id"] = published.get("id")
+    if not overlay and merged == agent:
+        return agent
     return merged
 
 

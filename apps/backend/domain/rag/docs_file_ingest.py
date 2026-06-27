@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 
 _STARTUP_RAG_DOMAIN = "agentlayer_docs"
 _MAX_MARKDOWN_BYTES = 2_000_000
-# ``apps/backend/domain/...`` → repository root (contains ``docs/``).
-_DEFAULT_DOCS_DIR = Path(__file__).resolve().parents[3] / "docs"
+# ``apps/backend/domain/rag/...`` -> repository root (contains ``docs/``).
+_DEFAULT_DOCS_DIR = Path(__file__).resolve().parents[4] / "docs"
 
 
 class RagDocsFileIngestDependencies(Protocol):

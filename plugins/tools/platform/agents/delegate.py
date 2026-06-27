@@ -32,13 +32,25 @@ TOOL_DESCRIPTION = (
 def _delegatable_ids_for_context(context: dict[str, Any] | None) -> frozenset[str]:
     ctx = context or {}
     uid = None
+    tid = None
     u = ctx.get("user")
     if u is not None:
         uid = getattr(u, "id", None)
+        tid = getattr(u, "tenant_id", None)
     if uid is None:
-        _tid, uid = get_identity()
+        tid, uid = get_identity()
+    if tid is None and ctx.get("tenant_id") is not None:
+        tid = ctx.get("tenant_id")
+    try:
+        tid_i = int(tid) if tid is not None else None
+    except (TypeError, ValueError):
+        tid_i = None
     is_adm = caller_is_admin(uid if isinstance(uid, uuid.UUID) else None)
-    return effective_delegatable_agent_ids(caller_is_admin=is_adm)
+    return effective_delegatable_agent_ids(
+        caller_is_admin=is_adm,
+        tenant_id=tid_i,
+        user_id=uid if isinstance(uid, uuid.UUID) else None,
+    )
 
 
 def _truthy(v: Any) -> bool:
@@ -74,14 +86,28 @@ def delegate(arguments: dict[str, Any], context: dict[str, Any] | None = None) -
     allowed = _delegatable_ids_for_context(context)
     if _truthy(arguments.get("list_agents")):
         uid = None
+        tid = None
         u = (context or {}).get("user")
         if u is not None:
             uid = getattr(u, "id", None)
+            tid = getattr(u, "tenant_id", None)
+        if uid is None:
+            tid, uid = get_identity()
+        if tid is None and context and context.get("tenant_id") is not None:
+            tid = context.get("tenant_id")
+        try:
+            tid_i = int(tid) if tid is not None else None
+        except (TypeError, ValueError):
+            tid_i = None
         is_adm = caller_is_admin(uid if isinstance(uid, uuid.UUID) else None)
         return json.dumps(
             {
                 "ok": True,
-                "catalog": build_delegate_agents_catalog_snippet(caller_is_admin=is_adm),
+                "catalog": build_delegate_agents_catalog_snippet(
+                    caller_is_admin=is_adm,
+                    tenant_id=tid_i,
+                    user_id=uid if isinstance(uid, uuid.UUID) else None,
+                ),
                 "agent_ids": sorted(allowed),
             },
             ensure_ascii=False,

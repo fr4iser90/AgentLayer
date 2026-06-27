@@ -6,10 +6,12 @@ import os
 from pathlib import Path
 from typing import Any
 
+from apps.backend.domain.agent_runtime import access
 from apps.backend.domain.agent_runtime import registry as domain
 from apps.backend.domain.agent_runtime import subagent_catalog
 from apps.backend.infrastructure.platform import config
 from apps.backend.infrastructure.agent_runtime import agent_config_effective
+from apps.backend.infrastructure.agent_runtime import agent_access_policy_store
 from apps.backend.infrastructure.db import db
 from apps.backend.infrastructure.agent_runtime.agent_config_effective import merge_agent_definition
 from apps.backend.infrastructure.tools.tool_operator_policy_db import policies_map
@@ -52,8 +54,20 @@ class _SubagentCatalogDeps:
     def effective_string_list(key: str, *, tenant_id: int | None = None) -> list[str]:
         return agent_config_effective.effective_string_list(key, tenant_id=tenant_id)
 
+    @staticmethod
+    def list_agent_policies(*, tenant_id=None, user_id=None, agent_id=None):
+        try:
+            return agent_access_policy_store.list_agent_policies(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                agent_id=agent_id,
+            )
+        except RuntimeError:
+            return []
+
 
 subagent_catalog.register_subagent_catalog_dependencies(_SubagentCatalogDeps())
+access.register_agent_access_dependencies(_SubagentCatalogDeps())
 
 AgentRegistry = domain.AgentRegistry
 effective_tool_names_for_caller = domain.effective_tool_names_for_caller

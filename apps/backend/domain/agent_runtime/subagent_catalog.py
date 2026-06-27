@@ -1,13 +1,21 @@
 from __future__ import annotations
 
 import uuid
-from typing import Protocol
+from typing import Any, Protocol
 
 
 class SubagentCatalogDependencies(Protocol):
     def user_role(self, user_id: uuid.UUID) -> str: ...
 
     def effective_string_list(self, key: str, *, tenant_id: int | None = None) -> list[str]: ...
+
+    def list_agent_policies(
+        self,
+        *,
+        tenant_id: int | None = None,
+        user_id: uuid.UUID | None = None,
+        agent_id: str | None = None,
+    ) -> list[dict[str, Any]]: ...
 
 
 _deps: SubagentCatalogDependencies | None = None
@@ -66,8 +74,16 @@ def effective_delegatable_agent_ids(
     *,
     caller_is_admin: bool = False,
     tenant_id: int | None = None,
+    user_id: uuid.UUID | None = None,
 ) -> frozenset[str]:
     standard, admin_only = _delegatable_sets_from_registry()
+    from apps.backend.domain.agent_runtime.governance import (
+        AgentAccessPolicy,
+        normalize_access_state,
+        resolve_agent_access,
+    )
+    from apps.backend.domain.agent_runtime.registry import get_agent_registry
+
     if caller_is_admin:
         base = standard | admin_only
     else:
@@ -77,17 +93,54 @@ def effective_delegatable_agent_ids(
         tenant_id=tenant_id,
     )
     if allowed:
-        filt = frozenset(allowed)
-        return base & filt
-    return base
+        base = base & frozenset(allowed)
+    if _deps is None:
+        return base
+
+    role = "admin" if caller_is_admin else "user"
+    reg = get_agent_registry()
+    out: set[str] = set()
+    for aid in reg.agent_ids():
+        ag = reg.get_agent(aid)
+        if not ag:
+            continue
+        rows = _deps.list_agent_policies(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            agent_id=aid,
+        )
+        policies = [
+            AgentAccessPolicy(
+                scope=str(row.get("scope") or "global"),  # type: ignore[arg-type]
+                tenant_id=int(row["tenant_id"]) if row.get("tenant_id") is not None else None,
+                user_id=str(row["user_id"]) if row.get("user_id") is not None else None,
+                agent_id=str(row.get("agent_id") or aid),
+                direct_state=normalize_access_state(row.get("direct_state")),
+                delegate_state=normalize_access_state(row.get("delegate_state")),
+            )
+            for row in rows
+        ]
+        decision = resolve_agent_access(agent=ag, user_role=role, policies=policies)
+        if decision.delegate_allowed:
+            out.add(aid)
+    return frozenset(out) & base
 
 
-def build_delegate_agents_catalog_snippet(*, caller_is_admin: bool = False) -> str:
+def build_delegate_agents_catalog_snippet(
+    *,
+    caller_is_admin: bool = False,
+    tenant_id: int | None = None,
+    user_id: uuid.UUID | None = None,
+) -> str:
     """System-prompt block: which specialists exist and how to invoke them."""
     from apps.backend.domain.agent_runtime.registry import get_agent_registry
 
     reg = get_agent_registry()
-    allowed_ids = effective_delegatable_agent_ids(caller_is_admin=caller_is_admin)
+    allowed_ids = effective_delegatable_agent_ids(
+        caller_is_admin=caller_is_admin,
+        tenant_id=tenant_id,
+        user_id=user_id,
+    )
     lines = [
         "## Specialist sub-agents",
         "You cannot run shell, git push, or security_scan tools directly. "
