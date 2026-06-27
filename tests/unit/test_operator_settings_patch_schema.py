@@ -6,7 +6,7 @@ import json
 import uuid
 from unittest.mock import patch
 
-from apps.backend.infrastructure.operator_settings import (
+from apps.backend.infrastructure.settings.operator_settings import (
     operator_settings_patch_field_names,
     operator_settings_patch_tool_parameters,
 )
@@ -59,7 +59,7 @@ def test_settings_get_no_hint_fields() -> None:
 
 
 def test_planner_skips_extra_hints_for_settings_patch() -> None:
-    from apps.backend.domain.agent_tools import (
+    from apps.backend.application.agent_runtime.runtime.tool_loop import (
         PLANNER_NO_EXTRA_HINTS_AFTER_TOOL,
         _tool_parameter_recovery_hint,
         _tool_result_followup_hint,

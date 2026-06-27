@@ -107,7 +107,7 @@ def test_coding_git_push_success(tmp_path: Path) -> None:
 
 
 def test_coding_agent_registry_includes_git_push() -> None:
-    from apps.backend.domain.agent_registry import get_agent_registry
+    from apps.backend.domain.agent_runtime.registry import get_agent_registry
 
     a = get_agent_registry().get_agent("coding")
     assert a is not None

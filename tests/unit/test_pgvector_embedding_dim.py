@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from apps.backend.infrastructure.pgvector_embedding_dim import (
+from apps.backend.infrastructure.providers.pgvector_embedding_dim import (
     deployment_pgvector_embedding_dim,
     ensure_pgvector_embedding_dim,
     read_pgvector_column_dim,
@@ -31,19 +31,19 @@ def _mock_pool(*, fetchone_results: list) -> MagicMock:
 
 def test_read_pgvector_column_dim_parses_vector_type() -> None:
     pool = _mock_pool(fetchone_results=[("vector(1024)",)])
-    with patch("apps.backend.infrastructure.pgvector_embedding_dim.db.pool", return_value=pool):
+    with patch("apps.backend.infrastructure.providers.pgvector_embedding_dim.db.pool", return_value=pool):
         assert read_pgvector_column_dim(table="rag_chunks") == 1024
 
 
 def test_read_pgvector_column_dim_missing_column() -> None:
     pool = _mock_pool(fetchone_results=[(None,)])
-    with patch("apps.backend.infrastructure.pgvector_embedding_dim.db.pool", return_value=pool):
+    with patch("apps.backend.infrastructure.providers.pgvector_embedding_dim.db.pool", return_value=pool):
         assert read_pgvector_column_dim(table="rag_chunks") is None
 
 
 def test_ensure_pgvector_noop_when_already_aligned() -> None:
     pool = _mock_pool(fetchone_results=[("vector(1024)",)])
-    with patch("apps.backend.infrastructure.pgvector_embedding_dim.db.pool", return_value=pool):
+    with patch("apps.backend.infrastructure.providers.pgvector_embedding_dim.db.pool", return_value=pool):
         summary = ensure_pgvector_embedding_dim(1024)
     assert summary["ok"] is True
     assert summary["migrated"] is False
@@ -52,9 +52,9 @@ def test_ensure_pgvector_noop_when_already_aligned() -> None:
 
 def test_ensure_pgvector_migrates_when_dim_differs() -> None:
     pool = _mock_pool(fetchone_results=[("vector(768)",)])
-    with patch("apps.backend.infrastructure.pgvector_embedding_dim.db.pool", return_value=pool):
+    with patch("apps.backend.infrastructure.providers.pgvector_embedding_dim.db.pool", return_value=pool):
         with patch(
-            "apps.backend.infrastructure.operator_settings.set_rag_docs_ingest_fingerprint"
+            "apps.backend.infrastructure.settings.operator_settings.set_rag_docs_ingest_fingerprint"
         ) as mock_fp:
             summary = ensure_pgvector_embedding_dim(1024, log_prefix="test")
     assert summary["migrated"] is True
@@ -70,5 +70,5 @@ def test_ensure_pgvector_rejects_invalid_dim() -> None:
 
 def test_deployment_pgvector_embedding_dim_delegates() -> None:
     pool = _mock_pool(fetchone_results=[("vector(768)",)])
-    with patch("apps.backend.infrastructure.pgvector_embedding_dim.db.pool", return_value=pool):
+    with patch("apps.backend.infrastructure.providers.pgvector_embedding_dim.db.pool", return_value=pool):
         assert deployment_pgvector_embedding_dim() == 768

@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from unittest.mock import MagicMock, patch
 
-from apps.backend.domain.agent import _workspace_tool_bound_workspace_id
+from apps.backend.application.agent_runtime.use_cases.workspace_bind import workspace_tool_bound_workspace_id
 from apps.backend.domain.workspace.workspace_common import normalize_git_url
 
 
@@ -91,17 +91,17 @@ def test_find_owned_git_workspace_scoped_to_owner() -> None:
     assert cur.execute.call_args[0][1] == (uid_b,)
 
 
-def test_workspace_tool_bound_workspace_id() -> None:
+def testworkspace_tool_bound_workspace_id() -> None:
     payload = (
         '{"ok": true, "bound": true, "workspace": {"id": "abc-123", "name": "PIDEA"}}'
     )
-    assert _workspace_tool_bound_workspace_id("workspace.create", payload) == "abc-123"
-    assert _workspace_tool_bound_workspace_id("bind", payload) == "abc-123"
-    assert _workspace_tool_bound_workspace_id("workspace.create", '{"ok": true, "bound": false}') is None
+    assert workspace_tool_bound_workspace_id("workspace.create", payload) == "abc-123"
+    assert workspace_tool_bound_workspace_id("bind", payload) == "abc-123"
+    assert workspace_tool_bound_workspace_id("workspace.create", '{"ok": true, "bound": false}') is None
 
 
 def test_coding_agent_includes_workspace_tools() -> None:
-    from apps.backend.domain.agent_registry import get_agent_registry
+    from apps.backend.domain.agent_runtime.registry import get_agent_registry
 
     a = get_agent_registry().get_agent("coding")
     assert a is not None

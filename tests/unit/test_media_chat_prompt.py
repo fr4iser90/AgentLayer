@@ -5,14 +5,14 @@ from __future__ import annotations
 import uuid
 from unittest.mock import patch
 
-from apps.backend.domain.media_chat_prompt import build_media_library_context_snippet
+from apps.backend.domain.agent_runtime.media_prompt import build_media_library_context_snippet
 
 
 def test_admin_snippet_when_library_disabled() -> None:
     uid = uuid.uuid4()
-    with patch("apps.backend.domain.media_chat_prompt.media_db.media_tables_exist", return_value=True):
+    with patch("apps.backend.domain.agent_runtime.media_prompt.media_db.media_tables_exist", return_value=True):
         with patch(
-            "apps.backend.domain.media_chat_prompt.media_policy.effective_media_library_enabled",
+            "apps.backend.domain.agent_runtime.media_prompt.media_policy.effective_media_library_enabled",
             return_value=False,
         ):
             snip = build_media_library_context_snippet(
@@ -29,9 +29,9 @@ def test_admin_snippet_when_library_disabled() -> None:
 
 def test_non_admin_snippet_when_library_disabled() -> None:
     uid = uuid.uuid4()
-    with patch("apps.backend.domain.media_chat_prompt.media_db.media_tables_exist", return_value=True):
+    with patch("apps.backend.domain.agent_runtime.media_prompt.media_db.media_tables_exist", return_value=True):
         with patch(
-            "apps.backend.domain.media_chat_prompt.media_policy.effective_media_library_enabled",
+            "apps.backend.domain.agent_runtime.media_prompt.media_policy.effective_media_library_enabled",
             return_value=False,
         ):
             snip = build_media_library_context_snippet(

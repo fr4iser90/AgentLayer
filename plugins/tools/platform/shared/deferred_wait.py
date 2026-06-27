@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any, Callable
 
-from apps.backend.domain.async_wait import parse_estimated_time_seconds, run_deferred_wait
+from apps.backend.domain.agent_runtime.async_wait import parse_estimated_time_seconds, run_deferred_wait
 
 __version__ = "1.0.0"
 TOOL_ID = "deferred_wait"

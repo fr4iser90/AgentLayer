@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from apps.backend.api.conversations_api import ConversationCreateBody, ConversationUpdateBody
+from apps.backend.api.conversations.controllers.conversations_api import ConversationCreateBody, ConversationUpdateBody
 
 
 class TestConversationCreateBody(unittest.TestCase):
@@ -27,7 +27,7 @@ class TestConversationCreateBody(unittest.TestCase):
         self.assertEqual(body.agent_log, payload)
 
     def test_message_item_accepts_created_at(self) -> None:
-        from apps.backend.api.conversations_api import MessageItem
+        from apps.backend.api.conversations.controllers.conversations_api import MessageItem
 
         m = MessageItem.model_validate(
             {

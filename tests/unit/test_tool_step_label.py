@@ -1,6 +1,6 @@
 """Tool step label (plugin ``tool_step_detail`` hooks)."""
 
-from apps.backend.domain.tool_step_label import format_tool_step_label_from_args
+from apps.backend.domain.tools.step_label import format_tool_step_label_from_args
 
 
 def test_coding_bash_step_detail_from_registry() -> None:

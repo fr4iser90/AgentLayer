@@ -6,8 +6,8 @@ import json
 import uuid
 from typing import Any, Callable
 
-from apps.backend.infrastructure import operator_settings
-from apps.backend.infrastructure.rag import rag as rag_service
+from apps.backend.infrastructure.settings import operator_settings
+from apps.backend.infrastructure.rag.rag import rag as rag_service
 
 try:
     from plugins.tools.workspace.lib.common import (

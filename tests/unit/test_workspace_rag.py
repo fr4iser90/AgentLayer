@@ -29,7 +29,7 @@ def test_run_docs_workspace_scope_calls_search_with_workspace_id() -> None:
             return_value={"enabled": True},
         ),
         patch(
-            "apps.backend.infrastructure.rag.rag.search_for_identity",
+            "apps.backend.infrastructure.rag.rag.rag.search_for_identity",
             return_value=fake_hits,
         ) as mock_search,
     ):

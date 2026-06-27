@@ -1,4 +1,4 @@
-"""Read/delete user_attachments with owner, collection-share, and dashboard access."""
+"""Attachment file-ref helpers and persistence port registry."""
 
 from __future__ import annotations
 
@@ -6,13 +6,23 @@ import uuid
 from datetime import datetime
 from typing import Any, Protocol
 
-from psycopg.rows import dict_row
-
-FILE_REF_PREFIX = "file:"
+from apps.backend.domain.collections.value_objects import FILE_REF_PREFIX, FileRef
 
 
 class CollectionAttachmentsDbDependencies(Protocol):
-    def pool(self) -> Any: ...
+    def attachment_get_with_access(
+        self,
+        file_id: uuid.UUID,
+        user_id: uuid.UUID,
+        tenant_id: int,
+    ) -> dict[str, Any] | None: ...
+
+    def attachment_delete_with_access(
+        self,
+        file_id: uuid.UUID,
+        user_id: uuid.UUID,
+        tenant_id: int,
+    ) -> str | None: ...
 
 
 _deps: CollectionAttachmentsDbDependencies | None = None
@@ -23,22 +33,15 @@ def register_collection_attachments_db_dependencies(deps: CollectionAttachmentsD
     _deps = deps
 
 
-class _DbPort:
-    def pool(self) -> Any:
-        if _deps is None:
-            raise RuntimeError("collection attachments db dependencies not registered")
-        return _deps.pool()
-
-
-db = _DbPort()
+def _require_deps() -> CollectionAttachmentsDbDependencies:
+    if _deps is None:
+        raise RuntimeError("collection attachments db dependencies not registered")
+    return _deps
 
 
 def parse_file_ref(value: str) -> str | None:
-    s = (value or "").strip()
-    if s.startswith(FILE_REF_PREFIX):
-        fid = s[len(FILE_REF_PREFIX) :].strip()
-        return fid or None
-    return None
+    ref = FileRef.parse(value)
+    return ref.file_id if ref is not None else None
 
 
 def file_ids_in_value(obj: Any) -> set[str]:
@@ -74,78 +77,11 @@ def attachment_get_with_access(
     file_id: uuid.UUID, user_id: uuid.UUID, tenant_id: int
 ) -> dict[str, Any] | None:
     """Owner, collection share grantee, or dashboard member (bound collection) may read."""
-    with db.pool().connection() as conn:
-        with conn.cursor(row_factory=dict_row) as cur:
-            cur.execute(
-                """
-                SELECT a.id, a.owner_user_id, a.collection_id, a.storage_relpath,
-                       a.content_type, a.size_bytes, a.original_name, a.created_at
-                FROM user_attachments a
-                WHERE a.id = %s AND a.tenant_id = %s
-                  AND (
-                    a.owner_user_id = %s
-                    OR EXISTS (
-                      SELECT 1 FROM share_permissions sp
-                      JOIN user_collections uc ON uc.owner_user_id = sp.owner_user_id
-                        AND uc.id = a.collection_id
-                      WHERE sp.grantee_user_id = %s
-                        AND sp.owner_user_id = a.owner_user_id
-                        AND sp.resource_type = 'collection'
-                        AND sp.is_allowed = TRUE
-                        AND sp.revoked_at IS NULL
-                        AND lower(sp.resource_identifier) = uc.slug
-                    )
-                    OR EXISTS (
-                      SELECT 1 FROM user_dashboards w
-                      WHERE w.id = a.dashboard_id AND w.tenant_id = a.tenant_id
-                        AND (
-                          w.owner_user_id = %s
-                          OR EXISTS (
-                            SELECT 1 FROM dashboard_members m
-                            WHERE m.dashboard_id = w.id AND m.user_id = %s
-                          )
-                          OR EXISTS (
-                            SELECT 1 FROM dashboard_block_share_grants g
-                            WHERE g.dashboard_id = w.id
-                              AND g.viewer_user_id = %s
-                              AND g.tenant_id = w.tenant_id
-                          )
-                          OR EXISTS (
-                            SELECT 1 FROM share_permissions sp
-                            WHERE sp.grantee_user_id = %s
-                              AND sp.owner_user_id = w.owner_user_id
-                              AND sp.resource_type = 'dashboard'
-                              AND sp.is_allowed = TRUE
-                              AND sp.revoked_at IS NULL
-                              AND lower(sp.resource_identifier) = lower(w.id::text)
-                          )
-                        )
-                    )
-                  )
-                """,
-                (file_id, tenant_id, user_id, user_id, user_id, user_id, user_id, user_id),
-            )
-            row = cur.fetchone()
-        conn.commit()
-    return _row(dict(row)) if row else None
+    return _require_deps().attachment_get_with_access(file_id, user_id, tenant_id)
 
 
 def attachment_delete_with_access(
     file_id: uuid.UUID, user_id: uuid.UUID, tenant_id: int
 ) -> str | None:
     """Only the attachment owner may delete."""
-    with db.pool().connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                DELETE FROM user_attachments
-                WHERE id = %s AND tenant_id = %s AND owner_user_id = %s
-                RETURNING storage_relpath
-                """,
-                (file_id, tenant_id, user_id),
-            )
-            row = cur.fetchone()
-        conn.commit()
-    if not row or row[0] is None:
-        return None
-    return str(row[0])
+    return _require_deps().attachment_delete_with_access(file_id, user_id, tenant_id)

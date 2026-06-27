@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 from contextvars import ContextVar, Token
 from typing import Any, Protocol
 
@@ -20,6 +19,8 @@ class ToolRuntimeDependencies(Protocol):
     def policies_map(self) -> dict[tuple[str, str], dict[str, Any]]: ...
 
     def user_role(self, user_id: Any) -> str: ...
+
+    def max_chain_depth(self) -> int: ...
 
 
 _deps: ToolRuntimeDependencies | None = None
@@ -45,14 +46,7 @@ def user_role(user_id: Any) -> str:
 
 
 def _max_chain_depth() -> int:
-    raw = (os.environ.get("AGENT_TOOL_CHAIN_MAX_DEPTH") or "").strip()
-    if not raw:
-        return 24
-    try:
-        n = int(raw)
-    except ValueError:
-        return 24
-    return max(1, min(256, n))
+    return _deps.max_chain_depth() if _deps is not None else 24
 
 
 def run_tool(name: str, arguments: dict, context: dict | None = None) -> str:
@@ -84,7 +78,7 @@ def run_tool(name: str, arguments: dict, context: dict | None = None) -> str:
             return mcp_invoke_tool_sync(nm, dict(arguments or {}))
         meta = reg.meta_entry_for_tool_name(nm) if nm else None
         if meta:
-            from apps.backend.domain.identity import get_identity
+            from apps.backend.domain.shared.identity import get_identity
             from apps.backend.domain.plugin_system.tool_policy import (
                 caller_fulfills_effective_policy,
                 effective_flags,

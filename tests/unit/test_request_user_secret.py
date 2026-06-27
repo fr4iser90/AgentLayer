@@ -60,7 +60,7 @@ def test_request_user_secret_emits_payload(
 def test_emit_secret_prompt_from_tool_result():
     import asyncio
 
-    from apps.backend.domain.agent import _emit_secret_prompt_from_tool_result
+    from apps.backend.domain.agent_runtime.loop_guards import _emit_secret_prompt_from_tool_result
 
     emitted: list[dict] = []
 

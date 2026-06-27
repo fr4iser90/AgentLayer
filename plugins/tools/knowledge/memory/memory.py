@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Callable
 
-from apps.backend.api import memory as memory_api
+from apps.backend.infrastructure.memory import memory_service as memory_api
 
 __version__ = "1.0.0"
 TOOL_ID = "memory"

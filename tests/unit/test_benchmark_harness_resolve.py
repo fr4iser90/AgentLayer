@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from apps.backend.infrastructure.benchmark_harness_resolve import resolve_for_profile
+from apps.backend.infrastructure.benchmarks.benchmark_harness_resolve import resolve_for_profile
 
 
 def test_resolve_model_override_beats_global() -> None:

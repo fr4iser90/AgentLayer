@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from apps.backend.dashboard.data_compute import (
+from apps.backend.infrastructure.dashboards.dashboard_data_compute import (
     collect_compute_bindings,
     evaluate_compute,
     patches_touch_compute_sources,

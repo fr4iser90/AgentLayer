@@ -1,6 +1,6 @@
 """Client completion prep: reasoning extraction and thought-block split."""
 
-from apps.backend.domain.assistant_display_sanitize import prepare_completion_assistant_for_client
+from apps.backend.domain.agent_runtime.assistant_display import prepare_completion_assistant_for_client
 
 
 def test_prepare_completion_extracts_thought_blocks_and_reasoning_fields():

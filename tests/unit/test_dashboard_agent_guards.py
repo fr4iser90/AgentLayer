@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from apps.backend.domain.dashboard_agent_guards import (
+from apps.backend.domain.agent_runtime.dashboard_guards import (
     dashboard_layout_proposal_nudge_needed,
     is_propose_layouts_tool,
     layout_proposal_intent,

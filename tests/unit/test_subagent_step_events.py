@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from apps.backend.domain.embedded_subagent import _forward_subagent_tool_event
+from apps.backend.application.agent_runtime.runtime.embedded_subagent import _forward_subagent_tool_event
 
 
 def test_forward_tool_start_includes_summary() -> None:

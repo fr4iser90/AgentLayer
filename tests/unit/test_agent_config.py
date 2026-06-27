@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from apps.backend.infrastructure import (
+from apps.backend.infrastructure.agent_runtime import (
     agent_config_effective,
     agent_config_fingerprint,
     agent_config_task_intent,
@@ -14,12 +14,11 @@ def test_effective_max_tool_rounds_registry_default(monkeypatch):
     assert agent_config_effective.max_tool_rounds(tenant_id=1) == 20
 
 
-def test_effective_value_uses_file_default_for_pinned_tools(monkeypatch):
+def test_effective_value_uses_registry_default_for_pinned_tools(monkeypatch):
     monkeypatch.setattr(agent_config_effective, "_cached_overrides", lambda _tid: {})
     val, src = agent_config_effective.effective_value("agent.general.pinned_tools", tenant_id=1)
-    assert src == "file_default"
-    assert isinstance(val, list)
-    assert "catalog" in val
+    assert src == "registry_default"
+    assert val is None
 
 
 def test_effective_db_override(monkeypatch):
@@ -42,14 +41,14 @@ def test_fingerprint_stable_for_same_state(monkeypatch):
 
 
 def test_validate_patches_rejects_unknown_knob():
-    from apps.backend.infrastructure.agent_config_service import validate_patches
+    from apps.backend.infrastructure.agent_runtime.agent_config_service import validate_patches
 
     out = validate_patches([{"knob_id": "not.real", "value": 1}])
     assert out["valid"] is False
 
 
 def test_validate_patches_rejects_rubric_knob():
-    from apps.backend.infrastructure.agent_config_service import validate_patches
+    from apps.backend.infrastructure.agent_runtime.agent_config_service import validate_patches
 
     out = validate_patches([{"knob_id": "rubric.s1_tool_catalog", "value": "x"}])
     assert out["valid"] is False
@@ -57,7 +56,7 @@ def test_validate_patches_rejects_rubric_knob():
 
 
 def test_is_harness_knob_excludes_rubrics():
-    from apps.backend.domain.agent_config_registry import is_harness_knob, knob_by_id
+    from apps.backend.domain.agent_runtime.config_registry import is_harness_knob, knob_by_id
 
     assert is_harness_knob(knob_by_id("agent.max_tool_rounds") or {}) is True
     assert is_harness_knob(knob_by_id("rubric.s1_tool_catalog") or {}) is False
@@ -97,7 +96,7 @@ def test_delegate_allowed_modes_filter(monkeypatch):
 
 
 def test_validate_patches_accepts_number_knob():
-    from apps.backend.infrastructure.agent_config_service import validate_patches
+    from apps.backend.infrastructure.agent_runtime.agent_config_service import validate_patches
 
     out = validate_patches([{"knob_id": "context.tools_budget_ratio", "value": 0.08}])
     assert out["valid"] is True
@@ -133,7 +132,7 @@ def test_knowledge_orchestration_defaults_off(monkeypatch):
 
 
 def test_knowledge_orchestration_prompt_does_not_toggle_project_rag(monkeypatch):
-    from apps.backend.infrastructure.knowledge_orchestration_prompt import (
+    from apps.backend.infrastructure.memory.knowledge_orchestration_prompt import (
         build_knowledge_orchestration_snippet,
     )
 
@@ -170,7 +169,7 @@ def test_knowledge_extractor_effective_knobs(monkeypatch):
 
 
 def test_merge_agent_definition_without_db_pool():
-    from apps.backend.domain.agent_registry import get_agent_registry
+    from apps.backend.domain.agent_runtime.registry import get_agent_registry
     from apps.backend.infrastructure.db import db
 
     assert not db.pool_ready()

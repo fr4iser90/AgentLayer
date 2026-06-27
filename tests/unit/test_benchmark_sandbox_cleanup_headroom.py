@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from unittest.mock import MagicMock
 
-from apps.backend.infrastructure import benchmark_resource_service as svc
+from apps.backend.infrastructure.benchmarks import benchmark_resource_service as svc
 
 
 def test_prepare_cleanup_reports_no_bench_headroom(monkeypatch) -> None:

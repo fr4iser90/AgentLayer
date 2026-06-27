@@ -7,7 +7,7 @@ import uuid
 from typing import Any
 
 from apps.backend.infrastructure.db import db
-from apps.backend.infrastructure.secret_otp_bundle import validate_user_secret_service_key
+from apps.backend.infrastructure.identity.secret_otp_bundle import validate_user_secret_service_key
 
 
 def _parse_secret_value(raw: str) -> str | dict[str, Any]:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from apps.backend.domain.agent_registry import get_agent_registry
+from apps.backend.domain.agent_runtime.registry import get_agent_registry
 
 # agent_id -> (expected_count, must_include, must_exclude)
 EXPECTATIONS: dict[str, tuple[int, frozenset[str], frozenset[str]]] = {

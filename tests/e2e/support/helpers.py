@@ -176,7 +176,7 @@ class E2EClient:
     @classmethod
     def for_user_id(cls, user_id: uuid.UUID | str, *, timeout: float = 60.0) -> E2EClient:
         """Mint a JWT for an existing user (in-process benchmark runner / same DB)."""
-        from apps.backend.infrastructure.auth import create_access_token, get_user_by_id
+        from apps.backend.infrastructure.identity.auth import create_access_token, get_user_by_id
 
         uid = uuid.UUID(str(user_id))
         user = get_user_by_id(uid)

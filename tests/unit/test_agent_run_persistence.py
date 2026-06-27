@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import psycopg
 
-from apps.backend.infrastructure import agent_runs_store
+from apps.backend.infrastructure.agent_runtime import agent_runs_store
 
 
 def test_insert_run_start_resilient_strips_missing_task() -> None:
@@ -22,7 +22,7 @@ def test_insert_run_start_resilient_strips_missing_task() -> None:
         return {"id": run_id}
 
     with patch(
-        "apps.backend.infrastructure.agent_tasks_store.get_task",
+        "apps.backend.infrastructure.agent_runtime.agent_tasks_store.get_task",
         return_value=None,
     ):
         with patch.object(agent_runs_store, "insert_run_start", side_effect=fake_insert):
@@ -54,7 +54,7 @@ def test_insert_run_start_resilient_retries_after_fk_error() -> None:
 
     task_id = uuid.uuid4()
     with patch(
-        "apps.backend.infrastructure.agent_tasks_store.get_task",
+        "apps.backend.infrastructure.agent_runtime.agent_tasks_store.get_task",
         return_value={"tenant_id": 1},
     ):
         with patch.object(agent_runs_store, "insert_run_start", side_effect=fake_insert):
@@ -72,12 +72,12 @@ def test_insert_run_start_resilient_retries_after_fk_error() -> None:
 
 
 def test_resolve_valid_active_task_id_rejects_missing() -> None:
-    from apps.backend.domain.agent_run_persistence import resolve_valid_active_task_id
+    from apps.backend.domain.agent_runtime.run_persistence import resolve_valid_active_task_id
 
     uid = uuid.uuid4()
     tid = uuid.uuid4()
     with patch(
-        "apps.backend.domain.agent_run_persistence.agent_tasks_store.get_task",
+        "apps.backend.domain.agent_runtime.run_persistence.agent_tasks_store.get_task",
         return_value=None,
     ):
         active, tu = resolve_valid_active_task_id(
@@ -88,17 +88,17 @@ def test_resolve_valid_active_task_id_rejects_missing() -> None:
 
 
 def test_resolve_valid_active_task_id_accepts_accessible() -> None:
-    from apps.backend.domain.agent_run_persistence import resolve_valid_active_task_id
+    from apps.backend.domain.agent_runtime.run_persistence import resolve_valid_active_task_id
 
     uid = uuid.uuid4()
     tid = uuid.uuid4()
     row = {"tenant_id": 1, "created_by_user_id": uid, "workspace_id": None}
     with patch(
-        "apps.backend.domain.agent_run_persistence.agent_tasks_store.get_task",
+        "apps.backend.domain.agent_runtime.run_persistence.agent_tasks_store.get_task",
         return_value=row,
     ):
         with patch(
-            "apps.backend.domain.agent_run_persistence.user_may_access_task_row",
+            "apps.backend.domain.agent_runtime.run_persistence.user_may_access_task_row",
             return_value=True,
         ):
             active, tu = resolve_valid_active_task_id(
@@ -109,8 +109,8 @@ def test_resolve_valid_active_task_id_accepts_accessible() -> None:
 
 
 def test_embedded_subagent_default_no_wall_clock_timeout() -> None:
-    from apps.backend.core import config
-    from apps.backend.domain.embedded_subagent import (
+    from apps.backend.infrastructure.platform import config
+    from apps.backend.application.agent_runtime.runtime.embedded_subagent import (
         run_embedded_subagent_sync,
     )
 
@@ -121,9 +121,9 @@ def test_embedded_subagent_default_no_wall_clock_timeout() -> None:
         "user": type("U", (), {"id": uid})(),
     }
     with patch.object(config, "SUBAGENT_TIMEOUT_SEC", None):
-        with patch("apps.backend.domain.identity.get_identity", return_value=(1, uid)):
+        with patch("apps.backend.domain.shared.identity.get_identity", return_value=(1, uid)):
             with patch(
-                "apps.backend.domain.embedded_subagent.ThreadPoolExecutor"
+                "apps.backend.application.agent_runtime.runtime.embedded_subagent.ThreadPoolExecutor"
             ) as tpe:
                 pool = MagicMock()
                 tpe.return_value.__enter__.return_value = pool
@@ -133,7 +133,7 @@ def test_embedded_subagent_default_no_wall_clock_timeout() -> None:
                     "choices": [{"message": {"content": "done"}, "finish_reason": "stop"}]
                 }
                 with patch(
-                    "apps.backend.infrastructure.agent_artifacts_store.create_artifact",
+                    "apps.backend.infrastructure.agent_runtime.agent_artifacts_store.create_artifact",
                     return_value={"id": uuid.uuid4()},
                 ):
                     run_embedded_subagent_sync(
@@ -147,7 +147,7 @@ def test_embedded_subagent_default_no_wall_clock_timeout() -> None:
 
 
 def test_embedded_subagent_surfaces_api_error() -> None:
-    from apps.backend.domain.embedded_subagent import (
+    from apps.backend.application.agent_runtime.runtime.embedded_subagent import (
         run_embedded_subagent_sync,
     )
 
@@ -157,9 +157,9 @@ def test_embedded_subagent_surfaces_api_error() -> None:
         "parent_model_catalog_owned_by": "provider_1",
         "user": type("U", (), {"id": uid})(),
     }
-    with patch("apps.backend.domain.identity.get_identity", return_value=(1, uid)):
+    with patch("apps.backend.domain.shared.identity.get_identity", return_value=(1, uid)):
         with patch(
-            "apps.backend.domain.embedded_subagent.ThreadPoolExecutor"
+            "apps.backend.application.agent_runtime.runtime.embedded_subagent.ThreadPoolExecutor"
         ) as tpe:
             pool = MagicMock()
             tpe.return_value.__enter__.return_value = pool
@@ -178,7 +178,7 @@ def test_embedded_subagent_surfaces_api_error() -> None:
 
 
 def test_embedded_subagent_rejects_tool_markup_as_ok() -> None:
-    from apps.backend.domain.embedded_subagent import run_embedded_subagent_sync
+    from apps.backend.application.agent_runtime.runtime.embedded_subagent import run_embedded_subagent_sync
 
     uid = uuid.uuid4()
     ctx = {
@@ -186,8 +186,8 @@ def test_embedded_subagent_rejects_tool_markup_as_ok() -> None:
         "parent_model_catalog_owned_by": "provider_1",
         "user": type("U", (), {"id": uid})(),
     }
-    with patch("apps.backend.domain.identity.get_identity", return_value=(1, uid)):
-        with patch("apps.backend.domain.embedded_subagent.ThreadPoolExecutor") as tpe:
+    with patch("apps.backend.domain.shared.identity.get_identity", return_value=(1, uid)):
+        with patch("apps.backend.application.agent_runtime.runtime.embedded_subagent.ThreadPoolExecutor") as tpe:
             pool = MagicMock()
             tpe.return_value.__enter__.return_value = pool
             pool.submit.return_value.result.return_value = {
@@ -211,7 +211,7 @@ def test_embedded_subagent_rejects_tool_markup_as_ok() -> None:
 
 
 def test_embedded_subagent_ok_when_clear_answer() -> None:
-    from apps.backend.domain.embedded_subagent import run_embedded_subagent_sync
+    from apps.backend.application.agent_runtime.runtime.embedded_subagent import run_embedded_subagent_sync
 
     uid = uuid.uuid4()
     ctx = {
@@ -219,8 +219,8 @@ def test_embedded_subagent_ok_when_clear_answer() -> None:
         "parent_model_catalog_owned_by": "provider_1",
         "user": type("U", (), {"id": uid})(),
     }
-    with patch("apps.backend.domain.identity.get_identity", return_value=(1, uid)):
-        with patch("apps.backend.domain.embedded_subagent.ThreadPoolExecutor") as tpe:
+    with patch("apps.backend.domain.shared.identity.get_identity", return_value=(1, uid)):
+        with patch("apps.backend.application.agent_runtime.runtime.embedded_subagent.ThreadPoolExecutor") as tpe:
             pool = MagicMock()
             tpe.return_value.__enter__.return_value = pool
             pool.submit.return_value.result.return_value = {
@@ -232,7 +232,7 @@ def test_embedded_subagent_ok_when_clear_answer() -> None:
                 ]
             }
             with patch(
-                "apps.backend.infrastructure.agent_artifacts_store.create_artifact",
+                "apps.backend.infrastructure.agent_runtime.agent_artifacts_store.create_artifact",
                 return_value={"id": uuid.uuid4()},
             ):
                 out = run_embedded_subagent_sync(

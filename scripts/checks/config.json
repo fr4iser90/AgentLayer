@@ -1,11 +1,11 @@
 {
   "profiles": {
-    "fast": ["ddd_layers", "frontend_i18n"],
-    "precommit": ["ddd_layers", "backend_unit", "frontend_i18n", "node_cve_full", "python_cve"],
+    "fast": ["ddd_layers", "ddd_quality", "frontend_i18n"],
+    "precommit": ["ddd_layers", "ddd_quality", "backend_unit", "frontend_i18n", "node_cve_full", "python_cve"],
     "security": ["node_cve_full", "python_cve"],
-    "architecture": ["ddd_layers_report"],
+    "architecture": ["ddd_layers_report", "ddd_quality"],
     "quality": ["backend_unit", "frontend_i18n", "bandit"],
-    "ci": ["ddd_layers_all", "backend_unit", "frontend_i18n", "node_cve_full", "python_cve", "bandit"]
+    "ci": ["ddd_layers_all", "ddd_quality", "backend_unit", "frontend_i18n", "node_cve_full", "python_cve", "bandit"]
   },
   "checks": {
     "ddd_layers": {
@@ -21,10 +21,45 @@
           "path": "apps/backend/domain",
           "forbidden_imports": [
             "apps.backend.api",
+            "apps.backend.application",
             "apps.backend.dashboard",
             "apps.backend.infrastructure",
-            "apps.backend.integrations",
-            "apps.backend.media"
+            "apps.backend.infrastructure.integrations",
+            "apps.backend.infrastructure.media"
+          ]
+        },
+        {
+          "name": "application",
+          "path": "apps/backend/application",
+          "enforce": false,
+          "forbidden_imports": [
+            "apps.backend.api",
+            "apps.backend.dashboard",
+            "apps.backend.infrastructure.integrations"
+          ]
+        },
+        {
+          "name": "api",
+          "path": "apps/backend/api",
+          "forbidden_imports": [
+            "apps.backend.dashboard",
+            "apps.backend.infrastructure",
+            "apps.backend.infrastructure.integrations"
+          ]
+        },
+        {
+          "name": "api_provider_controllers",
+          "path": "apps/backend/api/providers/controllers",
+          "forbidden_imports": [
+            "apps.backend.infrastructure"
+          ]
+        },
+        {
+          "name": "infrastructure",
+          "path": "apps/backend/infrastructure",
+          "forbidden_imports": [
+            "apps.backend.api",
+            "apps.backend.dashboard"
           ]
         }
       ]
@@ -42,10 +77,45 @@
           "path": "apps/backend/domain",
           "forbidden_imports": [
             "apps.backend.api",
+            "apps.backend.application",
             "apps.backend.dashboard",
             "apps.backend.infrastructure",
-            "apps.backend.integrations",
-            "apps.backend.media"
+            "apps.backend.infrastructure.integrations",
+            "apps.backend.infrastructure.media"
+          ]
+        },
+        {
+          "name": "application",
+          "path": "apps/backend/application",
+          "enforce": false,
+          "forbidden_imports": [
+            "apps.backend.api",
+            "apps.backend.dashboard",
+            "apps.backend.infrastructure.integrations"
+          ]
+        },
+        {
+          "name": "api",
+          "path": "apps/backend/api",
+          "forbidden_imports": [
+            "apps.backend.dashboard",
+            "apps.backend.infrastructure",
+            "apps.backend.infrastructure.integrations"
+          ]
+        },
+        {
+          "name": "api_provider_controllers",
+          "path": "apps/backend/api/providers/controllers",
+          "forbidden_imports": [
+            "apps.backend.infrastructure"
+          ]
+        },
+        {
+          "name": "infrastructure",
+          "path": "apps/backend/infrastructure",
+          "forbidden_imports": [
+            "apps.backend.api",
+            "apps.backend.dashboard"
           ]
         }
       ]
@@ -65,13 +135,178 @@
           "path": "apps/backend/domain",
           "forbidden_imports": [
             "apps.backend.api",
+            "apps.backend.application",
             "apps.backend.dashboard",
             "apps.backend.infrastructure",
-            "apps.backend.integrations",
-            "apps.backend.media"
+            "apps.backend.infrastructure.integrations",
+            "apps.backend.infrastructure.media"
+          ]
+        },
+        {
+          "name": "application",
+          "path": "apps/backend/application",
+          "enforce": false,
+          "forbidden_imports": [
+            "apps.backend.api",
+            "apps.backend.dashboard",
+            "apps.backend.infrastructure.integrations"
+          ]
+        },
+        {
+          "name": "api",
+          "path": "apps/backend/api",
+          "forbidden_imports": [
+            "apps.backend.dashboard",
+            "apps.backend.infrastructure",
+            "apps.backend.infrastructure.integrations"
+          ]
+        },
+        {
+          "name": "api_provider_controllers",
+          "path": "apps/backend/api/providers/controllers",
+          "forbidden_imports": [
+            "apps.backend.infrastructure"
+          ]
+        },
+        {
+          "name": "infrastructure",
+          "path": "apps/backend/infrastructure",
+          "forbidden_imports": [
+            "apps.backend.api",
+            "apps.backend.dashboard"
           ]
         }
       ]
+    },
+    "ddd_quality": {
+      "module": "ddd_quality",
+      "layer_roots": [
+        {
+          "name": "backend",
+          "path": "apps/backend",
+          "allow_dirs": ["api", "application", "domain", "infrastructure"],
+          "allow_files": ["__init__.py"],
+          "ignore_dirs": ["__pycache__"]
+        }
+      ],
+      "root_module_limits": [
+        {
+          "name": "infrastructure",
+          "path": "apps/backend/infrastructure",
+          "allow_files": ["__init__.py"],
+          "max_files": 0
+        }
+      ],
+      "forbidden_dirs": [],
+      "bounded_context_roots": [
+        {
+          "name": "api",
+          "path": "apps/backend/api",
+          "allow_files": ["__init__.py", "main.py"]
+        },
+        {
+          "name": "domain",
+          "path": "apps/backend/domain",
+          "allow_files": ["__init__.py"]
+        }
+      ],
+      "package_roots": [
+        {
+          "name": "api",
+          "path": "apps/backend/api",
+          "allow_files": ["__init__.py"],
+          "required_dirs": ["controllers"],
+          "ignore_dirs": ["__pycache__"]
+        }
+      ],
+      "required_context_files": [
+        {
+          "name": "application",
+          "path": "apps/backend/application",
+          "contexts": [
+            "agent_runtime",
+            "benchmarks",
+            "collections",
+            "dashboards",
+            "identity",
+            "model_routing",
+            "platform",
+            "providers",
+            "rag",
+            "setup",
+            "sharing",
+            "studio",
+            "tools",
+            "voice",
+            "workspace"
+          ],
+          "required": [
+            "__init__.py",
+            "ports.py",
+            "commands/__init__.py",
+            "queries/__init__.py",
+            "dtos/__init__.py",
+            "use_cases/__init__.py"
+          ]
+        },
+        {
+          "name": "domain",
+          "path": "apps/backend/domain",
+          "contexts": [
+            "agent_runtime",
+            "collections",
+            "dashboards",
+            "delegation",
+            "identity",
+            "model_routing",
+            "plugin_system",
+            "providers",
+            "rag",
+            "scheduling",
+            "setup",
+            "shares",
+            "studio",
+            "tools",
+            "voice",
+            "workspace"
+          ],
+          "required": [
+            "__init__.py",
+            "entities.py",
+            "repositories.py",
+            "schemas.py",
+            "value_objects.py"
+          ]
+        }
+      ],
+      "tactical_module_roots": [
+        "apps/backend/domain"
+      ],
+      "forbidden_terms": [
+        {
+          "name": "backend",
+          "path": "apps/backend",
+          "terms": ["facade"],
+          "ignore_dirs": ["__pycache__", "db/migrations"]
+        }
+      ],
+      "forbidden_module_globs": [
+        {
+          "name": "infrastructure",
+          "path": "apps/backend/infrastructure",
+          "patterns": ["*_api.py", "*_websocket.py"],
+          "ignore_dirs": ["__pycache__"]
+        }
+      ],
+      "large_file_roots": [
+        "apps/backend/api",
+        "apps/backend/infrastructure",
+        "apps/backend/domain",
+        "apps/backend/application"
+      ],
+      "large_file_enforce": true,
+      "large_file_warn_lines": 600,
+      "large_file_summary_limit": 12
     },
     "backend_unit": {
       "module": "command_check",

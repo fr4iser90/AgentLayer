@@ -8,8 +8,7 @@ import logging
 import uuid
 from typing import Any, Awaitable, Callable, Protocol
 
-from apps.backend.domain.agent import chat_completion
-from apps.backend.domain.identity import reset_identity, set_identity
+from apps.backend.domain.shared.identity import reset_identity, set_identity
 from apps.backend.domain.voice import stt, tts, voice_policy
 
 logger = logging.getLogger(__name__)
@@ -19,6 +18,8 @@ EmitFn = Callable[[dict[str, Any]], Awaitable[None]]
 
 class VoiceRealtimeTurnDependencies(Protocol):
     def user_role(self, user_id: uuid.UUID) -> str: ...
+
+    async def chat_completion(self, body: dict[str, Any], *, bearer_user_role: str | None = None) -> Any: ...
 
 
 _deps: VoiceRealtimeTurnDependencies | None = None
@@ -31,6 +32,12 @@ def register_voice_realtime_turn_dependencies(deps: VoiceRealtimeTurnDependencie
 
 def user_role(user_id: uuid.UUID) -> str:
     return _deps.user_role(user_id) if _deps is not None else ""
+
+
+async def voice_chat_completion(body: dict[str, Any], *, bearer_user_role: str | None) -> Any:
+    if _deps is None:
+        raise RuntimeError("voice realtime turn dependencies not registered")
+    return await _deps.chat_completion(body, bearer_user_role=bearer_user_role)
 
 
 def _extract_reply(data: dict[str, Any]) -> str:
@@ -103,7 +110,7 @@ async def run_voice_realtime_turn(
         if bearer_user_role is None:
             role = user_role(user_id).lower()
             bearer_user_role = role if role in ("user", "admin") else None
-        result = await chat_completion(work, bearer_user_role=bearer_user_role)
+        result = await voice_chat_completion(work, bearer_user_role=bearer_user_role)
         reply = _extract_reply(result if isinstance(result, dict) else {})
     except Exception as e:
         logger.exception("voice realtime chat_completion failed")
@@ -122,7 +129,7 @@ async def run_voice_realtime_turn(
         await emit({"type": "voice.done"})
         return
 
-    from apps.backend.domain.assistant_display_sanitize import sanitize_assistant_display_text
+    from apps.backend.domain.agent_runtime.assistant_display import sanitize_assistant_display_text
     from apps.backend.domain.voice.speech_prep import prepare_speech_text
 
     display_reply = sanitize_assistant_display_text(reply)

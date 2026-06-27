@@ -11,7 +11,7 @@ import logging
 from pathlib import Path
 from typing import Any, Callable
 
-from apps.backend.core.config import config
+from apps.backend.infrastructure.platform.config import config
 
 from plugins.tools.workspace.lib.common import (
     json_workspace_missing_error,

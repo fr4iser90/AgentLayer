@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-from apps.backend.core.config import config
+from apps.backend.infrastructure.platform.config import config
 
 __version__ = "1.2.0"
 TOOL_ID = "local_files"

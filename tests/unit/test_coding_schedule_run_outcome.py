@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from apps.backend.infrastructure import coding_schedule_execution as mod
+from apps.backend.infrastructure.codebase import coding_schedule_execution as mod
 
 
 def test_schedule_user_message_includes_doc_hints() -> None:

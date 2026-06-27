@@ -2,14 +2,15 @@
 
 import json
 
-from apps.backend.core.config import config
-from apps.backend.domain.agent import (
+from apps.backend.infrastructure.platform.config import config
+from apps.backend.infrastructure.plugins import plugin_registry_service as _plugin_registry_service  # noqa: F401
+from apps.backend.domain.agent_runtime.tool_catalog import (
     _catalog_tool_function,
     _full_schema_tool_function,
-    _registry_tool_spec_by_registered_name,
     _tools_for_chat_request,
 )
-from apps.backend.infrastructure.coding_schedule_execution import CODING_SCHEDULE_TOOL_ALLOWLIST
+from apps.backend.domain.agent_runtime.tool_schema import _registry_tool_spec_by_registered_name
+from apps.backend.infrastructure.codebase.coding_schedule_execution import CODING_SCHEDULE_TOOL_ALLOWLIST
 
 
 def test_catalog_tool_falls_back_to_description_field():

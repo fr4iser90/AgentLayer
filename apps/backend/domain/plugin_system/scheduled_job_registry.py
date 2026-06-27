@@ -14,8 +14,11 @@ import threading
 from pathlib import Path
 from typing import Any, Callable
 
-from apps.backend.core.config import config
-from apps.backend.domain.plugin_system.registry import _stable_module_slug, _iter_tool_py_files
+from apps.backend.domain.plugin_system.registry import (
+    _iter_tool_py_files,
+    _stable_module_slug,
+    tool_scan_directories,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +36,7 @@ class ScheduledJobRegistry:
         with self._lock:
             self._jobs.clear()
 
-            dirs = config.tool_scan_directories()
+            dirs = tool_scan_directories()
             if not dirs:
                 return
 

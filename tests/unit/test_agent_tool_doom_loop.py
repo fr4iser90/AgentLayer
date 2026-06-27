@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from apps.backend.domain.agent import _AGENT_TOOL_DOOM_LOOP_HINT, _agent_tool_doom_loop_tick
+from apps.backend.domain.agent_runtime.loop_guards import _AGENT_TOOL_DOOM_LOOP_HINT, _agent_tool_doom_loop_tick
 
 
 class AgentToolDoomLoopTickTests(unittest.TestCase):

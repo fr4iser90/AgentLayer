@@ -6,7 +6,7 @@ import json
 import uuid
 from unittest.mock import patch
 
-from apps.backend.dashboard.data_paths import apply_data_patches, get_path, set_path
+from apps.backend.infrastructure.dashboards.dashboard_data_paths import apply_data_patches, get_path, set_path
 import plugins.tools.personal.dashboard.dashboard as mod
 
 
@@ -72,7 +72,7 @@ def test_dashboard_read_and_patch_data() -> None:
             return_value=ws,
         ),
         patch(
-            "apps.backend.domain.collections.service.patch_fields",
+            "apps.backend.infrastructure.collections.collections_view_service.patch_fields",
             return_value={"ok": True, "source": "domain", "applied": [{"path": "notes"}]},
         ) as mock_up,
     ):

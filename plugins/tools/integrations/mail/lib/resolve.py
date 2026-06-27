@@ -7,7 +7,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-from apps.backend.domain.identity import get_identity
+from apps.backend.domain.shared.identity import get_identity
 from plugins.tools.integrations.mail.lib.providers import MAIL_PROVIDERS, MailProviderSpec
 from apps.backend.infrastructure.db import db
 

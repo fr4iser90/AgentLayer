@@ -63,7 +63,7 @@ Verified against the repo as of this document.
 | Operator settings UI | Admin → Interfaces, `PATCH /v1/admin/operator-settings` | No changelog, no benchmark trigger |
 | Agent registry read API | `GET /v1/admin/agents`, `GET /v1/admin/agents/{id}` | Read-only; no experiment linkage |
 | Tool domains API | `GET /v1/admin/tools/domains` | Not wired to tuning workflow |
-| RAG fingerprint precedent | `apps/backend/domain/rag_ingest_common.py` | Reuse pattern for agent config fingerprint |
+| RAG fingerprint precedent | `apps/backend/domain/rag/ingest_common.py` | Reuse pattern for agent config fingerprint |
 | Model matrix benchmarks | Admin → Benchmarks | No experiment workflow |
 | On-disk exports | `benchmarks/results/{run_id}/` | Not exposed via HTTP API |
 | **Runtime tuning mode** | — | **Not built** — no unified API-first tuning loop |
@@ -144,7 +144,7 @@ Existing `settings_patch` stays for bridge/RAG/smart-route fields already in `Op
 Phase order:
 
 1. Add DB columns or JSONB on `operator_settings` (or `agent_config` table) for `benchmark_sensitive` knobs from [`knob-registry.yaml`](./knob-registry.yaml).
-2. Change `apps/backend/core/config.py` readers to **effective** = DB override ?? env default (same pattern as embedding base URL).
+2. Change `apps/backend/infrastructure/config.py` readers to **effective** = DB override ?? env default (same pattern as embedding base URL).
 3. Expose via `agent-config` API + operator tools.
 4. **Deprecate** tuning via `.env` in docs/UI (env remains for first boot only).
 
@@ -342,7 +342,7 @@ Runtime code stays the source of truth for behavior. The tuning platform adds **
 
 ### Problem
 
-Knobs are scattered across `.env`, `apps/backend/core/config.py`, `operator_settings`, `plugins/agents/**`, router YAMLs, `tool_routing.py`, rubrics, and harness options — without unified metadata.
+Knobs are scattered across `.env`, `apps/backend/infrastructure/config.py`, `operator_settings`, `plugins/agents/**`, router YAMLs, `tool_routing.py`, rubrics, and harness options — without unified metadata.
 
 ### Solution
 
@@ -371,7 +371,7 @@ Each knob entry:
 | Delegate routers | `plugins/tools/platform/agents/delegate.router.yaml`, `catalog.router.yaml`, `task.router.yaml` | router_yaml |
 | System prompts | `plugins/agents/*/system_prompt.md` | agent_yaml |
 | Planner limits | `AGENT_MAX_TOOL_ROUNDS` (default **8**), `SUBAGENT_MAX_TOOL_ROUNDS`, thrash/doom loop | env |
-| Model routing | `AGENT_MODEL_PROFILE_*`, subagent inherit in `model_routing.py` | env + code |
+| Model routing | `AGENT_MODEL_PROFILE_*`, subagent inherit in `model_routing/resolution.py` | env + code |
 | Smart route (chat) | Operator `llm_smart_routing_*` | operator |
 | Rubrics / scenarios | `tests/benchmarks/agent/rubrics.py`, scenario prompts | rubric |
 | Benchmark harness | timeout, retries, `AGENT_BENCH_CAPTURE_TIMELINE`, suite, locale | bench |
@@ -412,7 +412,7 @@ On every benchmark-sensitive change:
 
 **Git commits:** On benchmark start (or CI), diff against last cohort fingerprint → match changed paths to registry → append changelog if missing.
 
-**Precedent:** `compute_rag_ingest_fingerprint()` in `rag_ingest_common.py` → `compute_agent_config_fingerprint()`.
+**Precedent:** `compute_rag_ingest_fingerprint()` in `rag/ingest_common.py` -> `compute_agent_config_fingerprint()`.
 
 ---
 
@@ -841,8 +841,8 @@ See §2.2–2.3 for full tables.
 | Tool routing | `apps/backend/domain/plugin_system/tool_routing.py` |
 | Tool forward | `apps/backend/domain/tool_forward_policy.py` |
 | Planner | `apps/backend/domain/agent_planner.py` |
-| Model routing | `apps/backend/domain/model_routing.py` |
-| Smart route | `apps/backend/domain/llm_smart_route.py` |
+| Model routing | `apps/backend/domain/model_routing/resolution.py` |
+| Smart route | `apps/backend/domain/model_routing/smart_route.py` |
 | Agent registry | `apps/backend/domain/agent_registry.py`, `plugins/agents/` |
 | Delegate router | `plugins/tools/platform/agents/delegate.router.yaml` |
-| RAG fingerprint | `apps/backend/domain/rag_ingest_common.py` |
+| RAG fingerprint | `apps/backend/domain/rag/ingest_common.py` |

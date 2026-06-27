@@ -41,7 +41,7 @@ def _fetch_scan_status(scan_id: str) -> tuple[int, Any, str | None, int | None]:
         st = str(data.get("scan_status") or "").strip().lower() or None
     estimated_sec = None
     if isinstance(data, dict):
-        from apps.backend.domain.async_wait import parse_estimated_time_seconds
+        from apps.backend.domain.agent_runtime.async_wait import parse_estimated_time_seconds
 
         estimated_sec = parse_estimated_time_seconds(data)
     return status_code, data, st, estimated_sec
@@ -88,7 +88,7 @@ def _maybe_auto_deferred_wait(
     estimated_sec: int | None,
     context: dict[str, Any],
 ) -> dict[str, Any] | None:
-    from apps.backend.domain.async_wait import run_deferred_wait
+    from apps.backend.domain.agent_runtime.async_wait import run_deferred_wait
 
     def poll_fn() -> tuple[dict[str, Any] | None, str | None]:
         _sc, dat, pst, _est = _fetch_scan_status(scan_id)

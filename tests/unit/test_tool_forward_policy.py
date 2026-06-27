@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from apps.backend.domain.tool_forward_policy import (
+from apps.backend.infrastructure.plugins import plugin_registry_service as _plugin_registry_service  # noqa: F401
+from apps.backend.infrastructure.tools import tool_forward_policy_service as _tool_forward_policy_service  # noqa: F401
+from apps.backend.domain.tools.forward_policy import (
     ToolForwardContext,
     apply_schema_modes_to_specs,
     build_tool_forward_plan,
@@ -25,7 +27,7 @@ def _spec(name: str) -> dict[str, Any]:
 
 
 def test_compute_tool_forward_limits_uses_context_budget():
-    from apps.backend.core import config as cfg
+    from apps.backend.infrastructure.platform import config as cfg
 
     cfg.config.AGENT_TOOLS_BUDGET_RATIO = 0.06
     cfg.config.AGENT_TOOLS_COUNT_CAP_RATIO = 0.0004
@@ -41,11 +43,11 @@ def test_build_tool_forward_plan_uses_ranking_not_pins(monkeypatch):
     specs = [_spec(n) for n in ("dashboard.read", "propose_layouts", "patch_layout", "list", "other_a", "other_b")]
 
     monkeypatch.setattr(
-        "apps.backend.domain.tool_forward_policy.rank_tools_for_forward",
+        "apps.backend.domain.tools.forward_policy.rank_tools_for_forward",
         lambda tools, text, triggers, **kw: (list(reversed(tools)), True),
     )
     monkeypatch.setattr(
-        "apps.backend.domain.tool_forward_policy._pinned_tools_for_agent",
+        "apps.backend.domain.tools.forward_policy._pinned_tools_for_agent",
         lambda agent_id: frozenset(),
     )
 
@@ -54,7 +56,7 @@ def test_build_tool_forward_plan_uses_ranking_not_pins(monkeypatch):
             return {"pinned_tools": []}
 
     monkeypatch.setattr(
-        "apps.backend.domain.agent_registry.get_agent_registry",
+        "apps.backend.domain.agent_runtime.registry.get_agent_registry",
         lambda: _NoPinsReg(),
     )
 
@@ -97,8 +99,8 @@ def test_build_tool_triggers_map_from_plugin_domains():
 
 
 def test_local_context_window_tool_count_is_ratio_only(monkeypatch):
-    from apps.backend.core import config as cfg
-    from apps.backend.infrastructure.context_budget import completion_quotas_from_window
+    from apps.backend.infrastructure.platform import config as cfg
+    from apps.backend.infrastructure.agent_runtime.context_budget import completion_quotas_from_window
 
     monkeypatch.setattr(cfg.config, "AGENT_TOOLS_COUNT_CAP_RATIO", 0.0004)
     q = completion_quotas_from_window(32_768, source="test")
@@ -106,12 +108,12 @@ def test_local_context_window_tool_count_is_ratio_only(monkeypatch):
 
 
 def test_build_tool_forward_plan_always_catalog(monkeypatch):
-    from apps.backend.domain.agent import _registry_tool_spec_by_registered_name
+    from apps.backend.domain.agent_runtime.tool_schema import _registry_tool_spec_by_registered_name
 
     ws = _registry_tool_spec_by_registered_name("workspace.create")
     assert ws is not None
     monkeypatch.setattr(
-        "apps.backend.domain.tool_forward_policy.rank_tools_for_forward",
+        "apps.backend.domain.tools.forward_policy.rank_tools_for_forward",
         lambda tools, text, triggers, **kw: (list(tools), False),
     )
     plan = build_tool_forward_plan(
@@ -132,11 +134,11 @@ def test_build_tool_forward_plan_pins_first(monkeypatch):
     specs = [_spec(n) for n in ("delegate", "catalog", "workspace.create", "grep", "read_file")]
 
     monkeypatch.setattr(
-        "apps.backend.domain.tool_forward_policy.rank_tools_for_forward",
+        "apps.backend.domain.tools.forward_policy.rank_tools_for_forward",
         lambda tools, text, triggers, **kw: (list(reversed(tools)), True),
     )
     monkeypatch.setattr(
-        "apps.backend.domain.tool_forward_policy._pinned_tools_for_agent",
+        "apps.backend.domain.tools.forward_policy._pinned_tools_for_agent",
         lambda agent_id: frozenset({"delegate", "catalog", "workspace.create"}),
     )
 
@@ -145,7 +147,7 @@ def test_build_tool_forward_plan_pins_first(monkeypatch):
             return {"pinned_tools": ["delegate", "catalog", "workspace.create"]}
 
     monkeypatch.setattr(
-        "apps.backend.domain.agent_registry.get_agent_registry",
+        "apps.backend.domain.agent_runtime.registry.get_agent_registry",
         lambda: _FakeReg(),
     )
 

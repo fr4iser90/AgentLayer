@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from unittest.mock import patch
 
-from apps.backend.infrastructure.voice_catalog_providers import (
+from apps.backend.infrastructure.voice.voice_catalog_providers import (
     list_voice_stt_provider_specs,
     invalidate_voice_provider_specs_cache,
     resolve_active_voice_stt_provider_id,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from apps.backend.domain.agent_io import media_play_websocket_event
+from apps.backend.application.agent_runtime.runtime.io import media_play_websocket_event
 
 
 def test_media_play_event_from_enqueue_with_play_now() -> None:

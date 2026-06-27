@@ -213,7 +213,7 @@ def is_blocked(command: str) -> str | None:
 
 
 def strict_allowed_prefixes() -> frozenset[str]:
-    from apps.backend.core.config import config
+    from apps.backend.infrastructure.platform.config import config
 
     raw = (os.environ.get("AGENT_CODING_BASH_ALLOWED_PREFIXES") or "").strip()
     if raw:
@@ -293,7 +293,7 @@ def strict_mode_reject_reason(command: str) -> str | None:
 
 
 def coding_bash_strict_enabled() -> bool:
-    from apps.backend.core.config import config
+    from apps.backend.infrastructure.platform.config import config
 
     return bool(getattr(config, "CODING_BASH_STRICT", False))
 
@@ -348,7 +348,7 @@ def subprocess_env_for_coding(
     """
     Build subprocess env: workspace HOME/PWD, optional scrub of operator secrets from ``os.environ``.
     """
-    from apps.backend.core.config import config
+    from apps.backend.infrastructure.platform.config import config
 
     out: dict[str, str] = {
         "HOME": home,

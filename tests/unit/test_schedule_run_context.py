@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 
-from apps.backend.domain.schedule_run_context import (
+from apps.backend.domain.scheduling.run_context import (
     begin_schedule_run_collection,
     get_schedule_tool_events,
     record_schedule_tool_event,

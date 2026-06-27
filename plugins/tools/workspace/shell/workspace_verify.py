@@ -10,7 +10,7 @@ import uuid
 from pathlib import Path
 from typing import Any, Callable, cast
 
-from apps.backend.core.config import config
+from apps.backend.infrastructure.platform.config import config
 
 from plugins.tools.workspace.shell.bash import _tail
 from plugins.tools.workspace.lib.bash_policy import is_blocked as _is_blocked
@@ -56,7 +56,7 @@ def _persist_run(
     error_message: str | None = None,
 ) -> None:
     try:
-        from apps.backend.infrastructure.workspace_verify_store import insert_verify_run
+        from apps.backend.infrastructure.workspace.workspace_verify_store import insert_verify_run
 
         insert_verify_run(
             workspace_id=uuid.UUID(str(workspace_id)),

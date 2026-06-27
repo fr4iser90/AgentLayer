@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from apps.backend.infrastructure.benchmark_stats import aggregate_benchmark_stats
+from apps.backend.infrastructure.benchmarks.benchmark_stats import aggregate_benchmark_stats
 
 
 def _run(

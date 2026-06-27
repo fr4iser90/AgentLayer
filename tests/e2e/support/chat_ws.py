@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 from typing import Any
 
 from tests.e2e.support.helpers import ws_url
@@ -95,7 +96,27 @@ def first_catalog_model(client) -> dict[str, Any]:
     rows = models_resp.get("data") if isinstance(models_resp, dict) else None
     if not rows or not isinstance(rows, list):
         raise RuntimeError("no models in GET /v1/models — configure LLM_PROVIDER_* or Admin LLM")
-    row = rows[0]
+    preferred = [
+        (os.environ.get("AGENT_E2E_MODEL_ID") or "").strip(),
+        (os.environ.get("LLM_PROVIDER_1_MODEL_DEFAULT") or "").strip(),
+    ]
+    row = None
+    for wanted in preferred:
+        if not wanted:
+            continue
+        row = next(
+            (
+                item
+                for item in rows
+                if isinstance(item, dict)
+                and str(item.get("id") or "").removesuffix(".gguf") == wanted.removesuffix(".gguf")
+            ),
+            None,
+        )
+        if row is not None:
+            break
+    if row is None:
+        row = rows[0]
     if not isinstance(row, dict) or not row.get("id"):
         raise RuntimeError(f"invalid model row: {row!r}")
     return row

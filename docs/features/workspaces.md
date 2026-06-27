@@ -87,7 +87,7 @@ Helper functions:
 
 ## Agent tools (dashboard id)
 
-`dashboard_id` may be **omitted** when the user has exactly **one** dashboard; the server picks it automatically. If there are several, the tool returns a short list of `id` + `title` so the model can ask or pass the UUID. If none exist, call `dashboard.create_dashboard` first. Logic: `apps/backend/dashboard/tool_dashboard_resolve.py`.
+`dashboard_id` may be **omitted** when the user has exactly **one** dashboard; the server picks it automatically. If there are several, the tool returns a short list of `id` + `title` so the model can ask or pass the UUID. If none exist, call `dashboard.create_dashboard` first. Logic: `apps/backend/infrastructure/dashboard_tool_dashboard_resolve.py`.
 
 ### Generic tools (any kind)
 

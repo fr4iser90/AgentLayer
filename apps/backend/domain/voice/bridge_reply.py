@@ -37,7 +37,7 @@ async def synthesize_for_bridge(
     if not should_send_voice_reply(user_id, channel):
         return None
     try:
-        from apps.backend.domain.assistant_display_sanitize import sanitize_assistant_display_text
+        from apps.backend.domain.agent_runtime.assistant_display import sanitize_assistant_display_text
         from apps.backend.domain.voice.speech_prep import prepare_speech_text
 
         cleaned = sanitize_assistant_display_text(text) or text

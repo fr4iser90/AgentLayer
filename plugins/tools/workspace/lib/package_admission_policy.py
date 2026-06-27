@@ -48,7 +48,7 @@ def _parse_lookup_failure(raw: str, *, mode: AdmissionMode) -> LookupFailureActi
 
 
 def default_policy_from_config() -> PackageAdmissionPolicy:
-    from apps.backend.core.config import config
+    from apps.backend.infrastructure.platform.config import config
 
     mode = _parse_mode(getattr(config, "PACKAGE_ADMISSION_MODE", "monitor"))
     enabled = mode != "off"

@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from unittest.mock import MagicMock, patch
 
-from apps.backend.domain.agent import _try_auto_create_workspace_from_git_url
+from apps.backend.application.agent_runtime.use_cases.auto_workspace import try_auto_create_workspace_from_git_url
 
 
 def test_auto_create_for_general_admin_with_git_url() -> None:
@@ -22,7 +22,7 @@ def test_auto_create_for_general_admin_with_git_url() -> None:
     }
 
     with patch(
-        "apps.backend.domain.agent._is_elevated_admin",
+        "apps.backend.application.agent_runtime.use_cases.auto_workspace.is_elevated_admin",
         return_value=True,
     ):
         with patch(
@@ -30,18 +30,18 @@ def test_auto_create_for_general_admin_with_git_url() -> None:
             return_value=None,
         ):
             with patch(
-                "apps.backend.domain.agent_io.create_project_workspace_for_user",
+                "apps.backend.application.agent_runtime.use_cases.auto_workspace.create_project_workspace_for_user",
                 return_value={"id": str(ws_id)},
             ) as create_mock:
                 with patch(
-                    "apps.backend.domain.agent_io.ensure_workspace",
+                    "apps.backend.application.agent_runtime.use_cases.auto_workspace.ensure_workspace",
                     return_value=created_ws,
                 ):
                     with patch(
-                        "apps.backend.domain.agent_io.slug_from_git_url",
+                        "apps.backend.application.agent_runtime.use_cases.auto_workspace.slug_from_git_url",
                         return_value="agentlayer",
                     ):
-                        out = _try_auto_create_workspace_from_git_url(
+                        out = try_auto_create_workspace_from_git_url(
                             agent_id="general",
                             user_id=uid,
                             user_obj=user,
@@ -73,7 +73,7 @@ def test_auto_create_reuses_owned_git_workspace_without_creating() -> None:
     bound = {**existing, "path": "/data/ws"}
 
     with patch(
-        "apps.backend.domain.agent._is_elevated_admin",
+        "apps.backend.application.agent_runtime.use_cases.auto_workspace.is_elevated_admin",
         return_value=True,
     ):
         with patch(
@@ -81,13 +81,13 @@ def test_auto_create_reuses_owned_git_workspace_without_creating() -> None:
             return_value=existing,
         ) as find_mock:
             with patch(
-                "apps.backend.domain.agent_io.create_project_workspace_for_user",
+                "apps.backend.application.agent_runtime.use_cases.auto_workspace.create_project_workspace_for_user",
             ) as create_mock:
                 with patch(
-                    "apps.backend.domain.agent_io.ensure_workspace",
+                    "apps.backend.application.agent_runtime.use_cases.auto_workspace.ensure_workspace",
                     return_value=bound,
                 ) as ensure_mock:
-                    out = _try_auto_create_workspace_from_git_url(
+                    out = try_auto_create_workspace_from_git_url(
                         agent_id="general",
                         user_id=uid,
                         user_obj=user,
@@ -108,16 +108,16 @@ def test_auto_create_skipped_when_prompt_defers_to_workspace_create_tool() -> No
     user.role = "admin"
 
     with patch(
-        "apps.backend.domain.agent._is_elevated_admin",
+        "apps.backend.application.agent_runtime.use_cases.auto_workspace.is_elevated_admin",
         return_value=True,
     ):
         with patch(
             "apps.backend.domain.workspace.workspace_common.find_owned_git_workspace",
         ) as find_mock:
             with patch(
-                "apps.backend.domain.agent_io.create_project_workspace_for_user",
+                "apps.backend.application.agent_runtime.use_cases.auto_workspace.create_project_workspace_for_user",
             ) as create_mock:
-                out = _try_auto_create_workspace_from_git_url(
+                out = try_auto_create_workspace_from_git_url(
                     agent_id="general",
                     user_id=uid,
                     user_obj=user,
@@ -133,17 +133,17 @@ def test_auto_create_skipped_when_prompt_defers_to_workspace_create_tool() -> No
     create_mock.assert_not_called()
 
 
-def test_user_defers_git_workspace_to_tool() -> None:
-    from apps.backend.domain.agent import _user_defers_git_workspace_to_tool
+def testuser_defers_git_workspace_to_tool() -> None:
+    from apps.backend.application.agent_runtime.use_cases.auto_workspace import user_defers_git_workspace_to_tool
 
-    assert _user_defers_git_workspace_to_tool(
+    assert user_defers_git_workspace_to_tool(
         'Use workspace.create with source=git, git_url="https://github.com/x/y.git"'
     )
-    assert not _user_defers_git_workspace_to_tool("clone https://github.com/x/y.git please")
+    assert not user_defers_git_workspace_to_tool("clone https://github.com/x/y.git please")
 
 
 def test_auto_create_skipped_for_embedded_subagent() -> None:
-    out = _try_auto_create_workspace_from_git_url(
+    out = try_auto_create_workspace_from_git_url(
         agent_id="general",
         user_id=uuid.uuid4(),
         user_obj=MagicMock(),

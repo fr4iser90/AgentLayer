@@ -122,11 +122,11 @@ def test_frontend_route_manifest_matches_app_routes() -> None:
     assert not missing, f"routes-manifest.mjs missing paths from App.tsx: {missing}"
     assert not extra, f"routes-manifest.mjs has unknown paths vs App.tsx: {extra}"
 
-    main_py = (REPO_ROOT / "apps/backend/api/main.py").read_text(encoding="utf-8")
-    spa_routes = set(re.findall(r'@app\.get\("(/app[^"]+)"\)', main_py))
+    web_api_py = (REPO_ROOT / "apps/backend/api/platform/controllers/web_api.py").read_text(encoding="utf-8")
+    spa_routes = set(re.findall(r'@app\.get\("(/app[^"]+)"\)', web_api_py))
     # /app/ is served via agent_ui_spa_root, not the multi-decorator shell
     missing_spa = sorted(paths_in_app - spa_routes - {"/app/"})
     assert not missing_spa, (
-        "main.py agent_ui_spa_shell missing hard-refresh routes: "
+        "web_api.py agent_ui_spa_shell missing hard-refresh routes: "
         f"{missing_spa}"
     )

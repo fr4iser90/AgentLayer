@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import patch
 
-from apps.backend.infrastructure.workspace_retrieval_bootstrap import (
+from apps.backend.infrastructure.workspace.workspace_retrieval_bootstrap import (
     build_retrieval_bootstrap_snippet,
     is_index_stale,
     list_repo_top_level,
@@ -73,7 +73,7 @@ class TestWorkspaceRetrievalBootstrap(unittest.TestCase):
             self.assertTrue(is_index_stale(ws))
 
     def test_maybe_schedule_respects_flag(self) -> None:
-        from apps.backend.infrastructure.workspace_retrieval_bootstrap import (
+        from apps.backend.infrastructure.workspace.workspace_retrieval_bootstrap import (
             maybe_schedule_index_on_attach,
         )
 
@@ -85,7 +85,7 @@ class TestWorkspaceRetrievalBootstrap(unittest.TestCase):
             "last_index_at": None,
         }
         with patch(
-            "apps.backend.core.config.config.AGENT_WORKSPACE_INDEX_ON_ATTACH",
+            "apps.backend.infrastructure.platform.config.config.AGENT_WORKSPACE_INDEX_ON_ATTACH",
             False,
         ):
             self.assertFalse(maybe_schedule_index_on_attach(ws))

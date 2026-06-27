@@ -6,11 +6,11 @@ import json
 import uuid
 from typing import Any, Callable
 
-from apps.backend.core.config import PUBLIC_BASE_URL
+from apps.backend.infrastructure.platform.config import PUBLIC_BASE_URL
 from plugins.tools.integrations.messaging.lib.outbound import OutboundDeliveryError, send_discord_to_user, send_telegram_to_user
 from plugins.tools.integrations.friends.lib.common import resolve_contact_email, resolve_message_recipient
-from apps.backend.domain.identity import get_identity
-from apps.backend.infrastructure.auth import get_user_by_email
+from apps.backend.domain.shared.identity import get_identity
+from apps.backend.infrastructure.identity.auth import get_user_by_email
 
 __version__ = "1.0.0"
 TOOL_ID = "message"

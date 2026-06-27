@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 
-from apps.backend.domain import agent as agent_mod
+from apps.backend.application.agent_runtime.runtime import io as agent_mod
 from plugins.tools.workspace.lib.bash_policy import unattended_coding_bash_reject_reason
 from plugins.tools.integrations.github.git_sync import _classify_pull_output, _pull_next_steps
 

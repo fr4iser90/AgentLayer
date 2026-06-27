@@ -7,7 +7,7 @@ import re
 import uuid
 from typing import Any, Protocol
 
-from apps.backend.domain.identity import get_identity
+from apps.backend.domain.shared.identity import get_identity
 
 _GITHUB_SLUG_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 AGENTLAYER_SELF_NAME = "agentlayer-self"

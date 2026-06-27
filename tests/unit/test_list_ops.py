@@ -6,7 +6,7 @@ import unittest
 import uuid
 from unittest.mock import patch
 
-from apps.backend.dashboard.list_ops import (
+from apps.backend.infrastructure.dashboards.dashboard_list_ops import (
     append_list_rows,
     delete_list_row,
     resolve_list_path,
@@ -60,9 +60,9 @@ class TestListOps(unittest.TestCase):
         self.assertEqual(resolve_list_path(ws, None), "repos")
         self.assertEqual(resolve_list_path(ws, "events"), "events")
 
-    @patch("apps.backend.dashboard.list_ops.domain_svc.append_items")
-    @patch("apps.backend.dashboard.list_ops.domain_svc.resolve_bindings_for_dashboard")
-    @patch("apps.backend.dashboard.list_ops.dashboard_db.dashboard_get")
+    @patch("apps.backend.infrastructure.dashboards.dashboard_list_ops.domain_svc.append_items")
+    @patch("apps.backend.infrastructure.dashboards.dashboard_list_ops.domain_svc.resolve_bindings_for_dashboard")
+    @patch("apps.backend.infrastructure.dashboards.dashboard_list_ops.dashboard_db.dashboard_get")
     def test_append_writes_domain(self, mock_get, mock_bindings, mock_append) -> None:
         uid = uuid.uuid4()
         did = uuid.uuid4()
@@ -86,10 +86,10 @@ class TestListOps(unittest.TestCase):
         self.assertEqual(result.get("source"), "domain")
         mock_append.assert_called_once()
 
-    @patch("apps.backend.dashboard.list_ops.domain_svc.delete_item")
-    @patch("apps.backend.dashboard.list_ops.domain_svc.update_item")
-    @patch("apps.backend.dashboard.list_ops.domain_svc.resolve_bindings_for_dashboard")
-    @patch("apps.backend.dashboard.list_ops.dashboard_db.dashboard_get")
+    @patch("apps.backend.infrastructure.dashboards.dashboard_list_ops.domain_svc.delete_item")
+    @patch("apps.backend.infrastructure.dashboards.dashboard_list_ops.domain_svc.update_item")
+    @patch("apps.backend.infrastructure.dashboards.dashboard_list_ops.domain_svc.resolve_bindings_for_dashboard")
+    @patch("apps.backend.infrastructure.dashboards.dashboard_list_ops.dashboard_db.dashboard_get")
     def test_update_and_delete_row(self, mock_get, mock_bindings, mock_update, mock_delete) -> None:
         uid = uuid.uuid4()
         did = uuid.uuid4()
@@ -111,8 +111,8 @@ class TestListOps(unittest.TestCase):
         self.assertTrue(upd.get("ok"))
         self.assertEqual(upd["row"]["title"], "New")
 
-        with patch("apps.backend.domain.collections.db.collection_get") as mock_col:
-            with patch("apps.backend.domain.collections.db.items_list") as mock_items:
+        with patch("apps.backend.infrastructure.collections.collections_db_service.collection_get") as mock_col:
+            with patch("apps.backend.infrastructure.collections.collections_db_service.items_list") as mock_items:
                 mock_col.return_value = {"id": str(uuid.uuid4())}
                 mock_items.return_value = []
                 deleted = delete_list_row(uid, 1, did, row_id=row_id)
@@ -121,10 +121,10 @@ class TestListOps(unittest.TestCase):
 
 
 class TestListAppendDedupeField(unittest.TestCase):
-    @patch("apps.backend.dashboard.list_ops.domain_svc.resolve_bindings_for_dashboard")
-    @patch("apps.backend.domain.collections.db.items_list")
-    @patch("apps.backend.domain.collections.db.collection_get")
-    @patch("apps.backend.dashboard.list_ops.dashboard_db.dashboard_get")
+    @patch("apps.backend.infrastructure.dashboards.dashboard_list_ops.domain_svc.resolve_bindings_for_dashboard")
+    @patch("apps.backend.infrastructure.collections.collections_db_service.items_list")
+    @patch("apps.backend.infrastructure.collections.collections_db_service.collection_get")
+    @patch("apps.backend.infrastructure.dashboards.dashboard_list_ops.dashboard_db.dashboard_get")
     def test_skips_duplicate_remote_url(
         self, mock_get, mock_col_get, mock_items_list, mock_bindings
     ) -> None:

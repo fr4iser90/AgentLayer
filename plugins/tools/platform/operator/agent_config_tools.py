@@ -7,12 +7,13 @@ import json
 import uuid
 from typing import Any, Callable
 
-from apps.backend.domain.agent_config_registry import all_knobs, load_knob_registry
-from apps.backend.domain.identity import get_identity
-from apps.backend.infrastructure import agent_config_service, agent_config_store, benchmark_runs_store
-from apps.backend.infrastructure.agent_config_fingerprint import compute_fingerprint, snapshot
-from apps.backend.infrastructure.auth import get_user_by_id
-from apps.backend.infrastructure.benchmark_runner import start_benchmark_run
+from apps.backend.domain.agent_runtime.config_registry import all_knobs, load_knob_registry
+from apps.backend.domain.shared.identity import get_identity
+from apps.backend.infrastructure.agent_runtime import agent_config_service, agent_config_store
+from apps.backend.infrastructure.benchmarks import benchmark_runs_store
+from apps.backend.infrastructure.agent_runtime.agent_config_fingerprint import compute_fingerprint, snapshot
+from apps.backend.infrastructure.identity.auth import get_user_by_id
+from apps.backend.infrastructure.benchmarks.benchmark_runner import start_benchmark_run
 from apps.backend.infrastructure.db import db
 
 __version__ = "1.0.0"
@@ -66,7 +67,7 @@ def _parse_uuid(raw: Any, *, field: str) -> uuid.UUID | None:
 
 
 def _knob_public(knob: dict[str, Any], *, tenant_id: int) -> dict[str, Any]:
-    from apps.backend.infrastructure import agent_config_effective
+    from apps.backend.infrastructure.agent_runtime import agent_config_effective
 
     kid = str(knob.get("id") or "")
     layer = str(knob.get("layer") or "")
@@ -260,7 +261,7 @@ def agents_list(arguments: dict[str, Any]) -> str:
     g = _require_admin()
     if isinstance(g, str):
         return g
-    from apps.backend.domain.agent_registry import get_agent_registry
+    from apps.backend.domain.agent_runtime.registry import get_agent_registry
 
     reg = get_agent_registry()
     return _ok({"agents": reg.to_list_dict()})
@@ -273,7 +274,7 @@ def agents_get(arguments: dict[str, Any]) -> str:
     aid = str(arguments.get("agent_id") or "").strip()
     if not aid:
         return _err("agent_id required")
-    from apps.backend.domain.agent_registry import get_agent_registry
+    from apps.backend.domain.agent_runtime.registry import get_agent_registry
 
     agent = get_agent_registry().get_agent(aid)
     if not agent:

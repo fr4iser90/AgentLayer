@@ -6,10 +6,10 @@ import json
 import uuid
 from typing import Any, Callable
 
-from apps.backend.core.config import config
-from apps.backend.domain.identity import get_identity
-from apps.backend.infrastructure.secret_otp_bundle import validate_user_secret_service_key
-from apps.backend.infrastructure.user_secret_forms import form_spec_for_service_key
+from apps.backend.infrastructure.platform.config import config
+from apps.backend.domain.shared.identity import get_identity
+from apps.backend.infrastructure.identity.secret_otp_bundle import validate_user_secret_service_key
+from apps.backend.infrastructure.identity.user_secret_forms import form_spec_for_service_key
 from plugins.tools.platform.secrets.save_user_secret import _catalog_service_keys
 
 __version__ = "1.0.0"

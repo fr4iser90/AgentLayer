@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from apps.backend.domain.async_wait import parse_estimated_time_seconds, run_deferred_wait
+from apps.backend.domain.agent_runtime.async_wait import parse_estimated_time_seconds, run_deferred_wait
 
 # Scanner API payloads — estimated_time_seconds is always from SSC, never invented here.
 _SSC_PENDING = {
@@ -47,8 +47,8 @@ def test_run_deferred_wait_polls_until_ready():
     def fake_poll():
         return responses.pop(0)
 
-    with patch("apps.backend.domain.async_wait.time.sleep"), patch(
-        "apps.backend.domain.async_wait.time.monotonic",
+    with patch("apps.backend.domain.agent_runtime.async_wait.time.sleep"), patch(
+        "apps.backend.domain.agent_runtime.async_wait.time.monotonic",
         side_effect=[0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0],
     ):
         out = run_deferred_wait(

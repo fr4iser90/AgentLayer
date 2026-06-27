@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import unittest
 
-from apps.backend.dashboard.bundle import (
+from apps.backend.infrastructure.dashboards.dashboard_bundle import (
     bundles_by_template_id,
     template_catalog,
     template_path_for_template_id,
 )
-from apps.backend.dashboard.create_helpers import (
+from apps.backend.infrastructure.dashboards.dashboard_create_helpers import (
     resolve_create_target,
     validate_template_id,
 )

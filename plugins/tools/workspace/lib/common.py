@@ -156,7 +156,7 @@ def maybe_enqueue_incremental_index(
 ) -> None:
     """After a successful coding write, queue debounced Qdrant + Neo4j update for touched paths."""
     try:
-        from apps.backend.infrastructure.workspace_index_incremental import (
+        from apps.backend.infrastructure.workspace.workspace_index_incremental import (
             enqueue_incremental_index_from_context,
         )
 

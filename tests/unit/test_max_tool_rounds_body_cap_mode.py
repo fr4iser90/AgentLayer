@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from apps.backend.core import config
+from apps.backend.infrastructure.platform import config
 
 
 def _effective_max_rounds(raw: object) -> int:

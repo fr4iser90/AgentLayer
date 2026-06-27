@@ -21,7 +21,7 @@ These directories hold **bundles** you can add, fork, or omit without changing c
 | **`plugins/image_generation/`** | ComfyUI JSON graphs and presets (e.g. Studio workflow files referenced from `studio_catalog`). |
 | **`plugins/interfaces/`** | Optional out-of-band integrations (e.g. Discord/Telegram bots) deployed beside the app, not the web UI. |
 
-**Naming note:** `apps/backend/dashboard/` is **server code** for `/v1/dashboards`; `plugins/dashboard/` is **content** (kinds/bundles). Same word, different layer.
+**Naming note:** `apps/backend/infrastructure/dashboard_*` is **server code** for `/v1/dashboards`; `plugins/dashboard/` is **content** (kinds/bundles). Same word, different layer.
 
 ## Operations
 

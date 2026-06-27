@@ -15,6 +15,11 @@ AgentLayer is an OpenAI-compatible HTTP API + tool runtime around local models (
 
 ## Main components
 
+For the backend DDD target architecture, bounded context map, and migration
+workflow, see `docs/architecture/ddd-architecture-map.md`.
+For the executable checklist and repository checks, see
+`docs/architecture/ddd-checklist.md`.
+
 ### HTTP API server
 
 - Entry: `src/api/main.py`

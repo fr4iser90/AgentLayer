@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import unittest
 
-from apps.backend.domain.agent import (
+from apps.backend.domain.agent_runtime.loop_guards import (
     _agent_final_text_looks_like_placeholder_tool_markup,
-    _assistant_plain_text_from_message,
     _sanitize_final_completion_assistant_content,
     _strip_prose_fake_tool_markup,
 )
+from apps.backend.domain.agent_runtime.tool_transcript import _assistant_plain_text_from_message
 
 
 class FinalRoundRecoveryHeuristicTests(unittest.TestCase):

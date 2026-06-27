@@ -32,6 +32,8 @@ This folder is written for **humans** and for **RAG ingestion**.
 ### Start here
 
 - **Architecture**: [`docs/architecture/overview.md`](./architecture/overview.md)
+- **DDD architecture map**: [`docs/architecture/ddd-architecture-map.md`](./architecture/ddd-architecture-map.md)
+- **DDD checklist and checks**: [`docs/architecture/ddd-checklist.md`](./architecture/ddd-checklist.md)
 - **Tool system**: [`docs/architecture/tools.md`](./architecture/tools.md)
 - **Dashboards**: [`docs/features/dashboards.md`](./features/dashboards.md)
 - **Memory**: [`docs/features/memory.md`](./features/memory.md)

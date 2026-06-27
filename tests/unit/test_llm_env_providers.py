@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from unittest.mock import patch
 
-from apps.backend.infrastructure.llm_env_providers import parse_llm_env_providers
+from apps.backend.infrastructure.agent_runtime.llm_env_providers import parse_llm_env_providers
 
 
 def test_numbered_providers() -> None:

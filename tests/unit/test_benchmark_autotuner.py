@@ -1,4 +1,4 @@
-from apps.backend.infrastructure.benchmark_autotuner import (
+from apps.backend.infrastructure.benchmarks.benchmark_autotuner import (
     _patch_signature,
     _promotion_decision,
     _reviewer_mode,

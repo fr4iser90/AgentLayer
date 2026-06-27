@@ -6,7 +6,7 @@ import json
 import uuid
 from typing import Any
 
-from apps.backend.infrastructure.conversations_db import conversation_get
+from apps.backend.infrastructure.platform.conversations_db import conversation_get
 
 __version__ = "1.0.0"
 TOOL_ID = "conversation"
@@ -67,7 +67,7 @@ def _content_preview(content: Any, max_len: int = 4000) -> str:
 
 
 def read(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> str:
-    from apps.backend.domain.identity import get_identity
+    from apps.backend.domain.shared.identity import get_identity
 
     _tenant_id, user_id = get_identity()
     if user_id is None:

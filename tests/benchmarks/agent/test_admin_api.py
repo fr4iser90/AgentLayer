@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from unittest.mock import MagicMock, patch
 
-from apps.backend.api.benchmarks_admin_api import _readiness_for_user, _sandbox_stats_for_user
+from apps.backend.api.benchmarks.controllers.benchmarks_admin_api import _readiness_for_user, _sandbox_stats_for_user
 
 
 def _empty_sandbox_stats() -> dict[str, int | bool]:
@@ -35,14 +35,14 @@ def test_readiness_for_user_reports_configured_secrets() -> None:
     user.role = "admin"
 
     with (
-        patch("apps.backend.api.benchmarks_admin_api.get_user_by_id", return_value=user),
-        patch("apps.backend.api.benchmarks_admin_api.config") as cfg,
+        patch("apps.backend.api.benchmarks.controllers.benchmarks_admin_api.get_user_by_id", return_value=user),
+        patch("apps.backend.api.benchmarks.controllers.benchmarks_admin_api.config") as cfg,
         patch(
-            "apps.backend.api.benchmarks_admin_api._sandbox_stats_for_user",
+            "apps.backend.api.benchmarks.controllers.benchmarks_admin_api._sandbox_stats_for_user",
             return_value=_empty_sandbox_stats(),
         ),
         patch(
-            "apps.backend.api.benchmarks_admin_api.db.user_secret_list_service_keys",
+            "apps.backend.api.benchmarks.controllers.benchmarks_admin_api.db.user_secret_list_service_keys",
             return_value=["gmail", "ssc_api_key"],
         ),
     ):
@@ -75,7 +75,7 @@ def test_sandbox_stats_for_user_delegates_to_snapshot() -> None:
     }
 
     with patch(
-        "apps.backend.infrastructure.benchmark_resource_service.benchmark_sandbox_snapshot",
+        "apps.backend.application.benchmarks.use_cases.benchmark_controller_services.benchmark_sandbox_snapshot",
         return_value=snap,
     ) as mock_snap:
         out = _sandbox_stats_for_user(uid)
@@ -94,13 +94,13 @@ def test_readiness_for_user_when_secrets_disabled() -> None:
     user.role = "user"
 
     with (
-        patch("apps.backend.api.benchmarks_admin_api.get_user_by_id", return_value=user),
-        patch("apps.backend.api.benchmarks_admin_api.config") as cfg,
+        patch("apps.backend.api.benchmarks.controllers.benchmarks_admin_api.get_user_by_id", return_value=user),
+        patch("apps.backend.api.benchmarks.controllers.benchmarks_admin_api.config") as cfg,
         patch(
-            "apps.backend.api.benchmarks_admin_api._sandbox_stats_for_user",
+            "apps.backend.api.benchmarks.controllers.benchmarks_admin_api._sandbox_stats_for_user",
             return_value=_empty_sandbox_stats(),
         ),
-        patch("apps.backend.api.benchmarks_admin_api.db.user_secret_list_service_keys") as list_keys,
+        patch("apps.backend.api.benchmarks.controllers.benchmarks_admin_api.db.user_secret_list_service_keys") as list_keys,
     ):
         cfg.SECRETS_MASTER_KEY = ""
         out = _readiness_for_user(uid)

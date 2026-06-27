@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 from apps.backend.domain.plugin_system import capability_governance as cg
-from apps.backend.domain.tool_invocation_context import (
+from apps.backend.domain.tools.invocation_context import (
     bind_capability_confirmed,
     reset_capability_confirmed,
 )

@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from apps.backend.domain.agent_task_prompt import (
+from apps.backend.domain.agent_runtime.task_prompt import (
     build_artifact_context_block,
     enrich_delegate_prompt,
     format_requirements_block,
@@ -28,7 +28,7 @@ def test_enrich_delegate_prompt_empty() -> None:
 
 def test_build_artifact_context_block_missing() -> None:
     with patch(
-        "apps.backend.domain.agent_task_prompt.agent_artifacts_store.get_artifact",
+        "apps.backend.domain.agent_runtime.task_prompt.agent_artifacts_store.get_artifact",
         return_value=None,
     ):
         block = build_artifact_context_block(

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from apps.backend.infrastructure.rag_embedding_sync import (
+from apps.backend.infrastructure.rag.rag_embedding_sync import (
     rank_embedding_model_ids,
     resolve_rag_embedding_model_from_provider,
 )

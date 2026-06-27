@@ -7,8 +7,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi import HTTPException
 
-from apps.backend.domain import setup_catalog as mod
-from apps.backend.domain.setup_catalog import SetupPreferencesBody
+from apps.backend.domain.setup import catalog as mod
+from apps.backend.domain.setup.catalog import SetupPreferencesBody
 
 
 def test_classify_model_id_embedding() -> None:
@@ -70,7 +70,10 @@ def test_apply_setup_preferences_unreachable_provider() -> None:
 
 def test_chat_provider_embedding_base_url_from_spec() -> None:
     spec = MagicMock(base_url="http://host:11434", provider_id="provider_1")
-    with patch.object(mod, "get_provider_spec", return_value=spec):
+    with (
+        patch.object(mod, "get_provider_spec", return_value=spec),
+        patch.object(mod, "normalize_external_llm_base_url", side_effect=lambda raw: str(raw).rstrip("/")),
+    ):
         url = mod.chat_provider_embedding_base_url()
     assert url == "http://host:11434"
 

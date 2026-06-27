@@ -6,8 +6,8 @@ import unittest
 import uuid
 from unittest.mock import patch
 
-from apps.backend.dashboard.data_compute import finalize_dashboard_data
-from apps.backend.dashboard.list_ops import append_list_rows
+from apps.backend.infrastructure.dashboards.dashboard_data_compute import finalize_dashboard_data
+from apps.backend.infrastructure.dashboards.dashboard_list_ops import append_list_rows
 
 
 def _mega_layout() -> dict:
@@ -70,9 +70,9 @@ def _ws(*, did: uuid.UUID, layout: dict) -> dict:
 
 
 class TestMegaBoardGeneric(unittest.TestCase):
-    @patch("apps.backend.dashboard.list_ops.domain_svc.append_items")
-    @patch("apps.backend.dashboard.list_ops.domain_svc.resolve_bindings_for_dashboard")
-    @patch("apps.backend.dashboard.list_ops.dashboard_db.dashboard_get")
+    @patch("apps.backend.infrastructure.dashboards.dashboard_list_ops.domain_svc.append_items")
+    @patch("apps.backend.infrastructure.dashboards.dashboard_list_ops.domain_svc.resolve_bindings_for_dashboard")
+    @patch("apps.backend.infrastructure.dashboards.dashboard_list_ops.dashboard_db.dashboard_get")
     def test_custom_board_two_lists_and_compute(
         self, mock_get, mock_bindings, mock_append
     ) -> None:

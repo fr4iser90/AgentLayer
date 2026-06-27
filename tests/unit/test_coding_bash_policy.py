@@ -59,7 +59,7 @@ class TestSubprocessEnvScrub(unittest.TestCase):
             clear=False,
         ):
             with patch(
-                "apps.backend.core.config.config"
+                "apps.backend.infrastructure.platform.config.config"
             ) as mock_cfg:
                 mock_cfg.CODING_BASH_ENV_SCRUB = True
                 env = subprocess_env_for_coding(home="/ws", cwd="/ws")

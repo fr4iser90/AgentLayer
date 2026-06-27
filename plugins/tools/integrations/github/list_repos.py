@@ -6,7 +6,7 @@ import json
 from typing import Any, Callable
 
 from plugins.tools.integrations.github.lib.repos import list_user_repos
-from apps.backend.domain.identity import get_identity
+from apps.backend.domain.shared.identity import get_identity
 from plugins.tools.integrations.github._client import USER_SECRET_KEY
 
 __version__ = "1.0.0"

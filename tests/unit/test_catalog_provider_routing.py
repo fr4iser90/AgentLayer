@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from apps.backend.infrastructure.model_catalog_providers import (
+from apps.backend.infrastructure.providers.model_catalog_providers import (
     CatalogProviderSpec,
     _filter_chat_visible_models,
     _parse_models_payload,
@@ -26,7 +26,7 @@ def test_route_env_provider_spec() -> None:
         source="env",
     )
     with patch(
-        "apps.backend.infrastructure.model_catalog_providers.get_provider_spec",
+        "apps.backend.infrastructure.providers.model_catalog_providers.get_provider_spec",
         return_value=spec,
     ):
         attempts, stack = route_chat_by_catalog_provider(
@@ -56,7 +56,7 @@ def test_route_admin_provider_spec() -> None:
         db_endpoint_id=7,
     )
     with patch(
-        "apps.backend.infrastructure.model_catalog_providers.get_provider_spec",
+        "apps.backend.infrastructure.providers.model_catalog_providers.get_provider_spec",
         return_value=spec,
     ):
         attempts, stack = route_chat_by_catalog_provider(
@@ -71,7 +71,7 @@ def test_route_admin_provider_spec() -> None:
 
 def test_route_unknown_provider_raises() -> None:
     with patch(
-        "apps.backend.infrastructure.model_catalog_providers.get_provider_spec",
+        "apps.backend.infrastructure.providers.model_catalog_providers.get_provider_spec",
         return_value=None,
     ):
         with pytest.raises(ValueError, match="Unknown catalog provider"):

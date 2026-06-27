@@ -6,8 +6,8 @@ import json
 import uuid
 from typing import Any, Callable, cast
 
-from apps.backend.domain.embedded_subagent import run_embedded_subagent_sync
-from apps.backend.domain.delegate_enforcement import subagent_reject_reason
+from apps.backend.application.agent_runtime.runtime.embedded_subagent import run_embedded_subagent_sync
+from apps.backend.domain.delegation.enforcement import subagent_reject_reason
 
 __version__ = "1.0.0"
 TOOL_ID = "task"

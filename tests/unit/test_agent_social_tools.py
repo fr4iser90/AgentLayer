@@ -63,7 +63,7 @@ class TestMailSendTool(unittest.TestCase):
         with mock.patch.object(mail_tools, "resolve_mail_session", return_value=session):
             with mock.patch.object(mail_tools, "resolve_contact_email", return_value="sandra@example.com"):
                 with mock.patch(
-                    "apps.backend.domain.identity.get_identity", return_value=(1, uid)
+                    "apps.backend.domain.shared.identity.get_identity", return_value=(1, uid)
                 ):
                     out = json.loads(
                         mail_tools.compose(

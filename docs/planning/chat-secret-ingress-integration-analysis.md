@@ -22,7 +22,7 @@ Today the request `body` is normalized, then a **copy** of chat history is built
         if agent_id:
             messages = _inject_agent_system_prompt(messages, agent_id)
         if agent_id and agent_id in config.AGENT_SKILLS_PROMPT_AGENT_IDS:
-            from apps.backend.infrastructure.skills_prompt import load_combined_skills_prompt
+            from apps.backend.infrastructure.plugins.skills_prompt import load_combined_skills_prompt
 
             skills_snip = load_combined_skills_prompt(agent_id)
             if skills_snip:
@@ -52,8 +52,8 @@ Either is fine; pick one and keep it stable for tests.
 |-----------|----------------|--------|
 | HTTP OpenAI-style chat | `apps/backend/api/main.py` (`POST /v1/chat/completions`, `~1117–1144`) | Body contains full `messages[]`. |
 | WebSocket chat | `apps/backend/api/chat_websocket.py` (`~165–175`) | `work` dict is the same shape; `stream` ignored. |
-| Discord bridge | `apps/backend/integrations/discord_bridge.py` (`~239`) | Builds `work` via bridge session helpers; user text can contain secrets. |
-| Telegram bridge | `apps/backend/integrations/telegram_bridge.py` (`~255`) | Same pattern. |
+| Discord bridge | `apps/backend/infrastructure/integrations/discord_bridge.py` (`~239`) | Builds `work` via bridge session helpers; user text can contain secrets. |
+| Telegram bridge | `apps/backend/infrastructure/integrations/telegram_bridge.py` (`~255`) | Same pattern. |
 | Scheduler / jobs | `apps/backend/infrastructure/scheduler.py`, `scheduler_jobs_runner.py` | Same `chat_completion` entry; usually no user secrets — still safe to run ingress (no-op). |
 
 No change required at each call site if ingress is **inside** `chat_completion`.
@@ -116,7 +116,7 @@ Do not conflate the two; message ingress does not sanitize tool JSON automatical
 
 ## Feature flag and testing hooks
 
-- Config/env gate in `apps/backend/core/config.py` (pattern used elsewhere).
+- Config/env gate in `apps/backend/infrastructure/config.py` (pattern used elsewhere).
 - Unit tests: golden user strings → expected rewritten `messages` + vault fixture (no real crypto in CI if using abstract interface).
 - Integration: one HTTP `chat_completion` and one `POST /v1/user/conversations` with the same payload to ensure **both** paths match.
 

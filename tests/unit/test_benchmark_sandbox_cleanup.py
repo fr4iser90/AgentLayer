@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from unittest.mock import MagicMock
 
-from apps.backend.infrastructure import benchmark_resource_service as svc
+from apps.backend.infrastructure.benchmarks import benchmark_resource_service as svc
 
 
 def test_merge_deleted_stats_sums_all_resource_types() -> None:
@@ -107,11 +107,11 @@ def test_cleanup_benchmark_dashboards_only(monkeypatch) -> None:
         return True
 
     monkeypatch.setattr(
-        "apps.backend.dashboard.db.dashboard_delete",
+        "apps.backend.infrastructure.dashboards.dashboard_persistence.dashboard_delete",
         _fake_delete,
     )
     monkeypatch.setattr(
-        "apps.backend.infrastructure.notifications_store.delete_benchmark_notifications",
+        "apps.backend.infrastructure.notifications.notifications_store.delete_benchmark_notifications",
         lambda *a, **k: 2,
     )
     stats = svc.cleanup_benchmark_dashboards(uid)

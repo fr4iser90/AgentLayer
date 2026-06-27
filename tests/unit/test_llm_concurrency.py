@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from apps.backend.infrastructure.llm_concurrency import (
+from apps.backend.infrastructure.agent_runtime.llm_concurrency import (
     acquire_llm_slot,
     bind_llm_wait_notifier,
     invalidate_llm_concurrency_cache,
@@ -17,7 +17,7 @@ from apps.backend.infrastructure.llm_concurrency import (
     release_llm_slot,
     reset_llm_wait_notifier,
 )
-from apps.backend.infrastructure.llm_queue_policy import QueueConfig
+from apps.backend.infrastructure.agent_runtime.llm_queue_policy import QueueConfig
 
 
 @pytest.fixture(autouse=True)
@@ -38,7 +38,7 @@ def _fifo_cfg() -> QueueConfig:
 
 def test_max_parallel_clamps_to_64():
     with patch(
-        "apps.backend.infrastructure.model_catalog_providers.get_provider_spec",
+        "apps.backend.infrastructure.providers.model_catalog_providers.get_provider_spec",
         return_value=type("S", (), {"max_parallel": 999})(),
     ):
         assert max_parallel_for_provider("provider_1") == 64
@@ -57,10 +57,10 @@ def test_llm_slot_blocks_when_at_limit():
     def worker():
         nonlocal active, peak
         with patch(
-            "apps.backend.infrastructure.llm_concurrency.max_parallel_for_provider",
+            "apps.backend.infrastructure.agent_runtime.llm_concurrency.max_parallel_for_provider",
             return_value=2,
         ), patch(
-            "apps.backend.infrastructure.llm_queue_policy.load_queue_config",
+            "apps.backend.infrastructure.agent_runtime.llm_queue_policy.load_queue_config",
             return_value=_fifo_cfg(),
         ):
             with llm_slot("test_provider"):
@@ -101,20 +101,20 @@ def test_slot_wait_notifier_fires_when_blocked():
 
     def _worker_acquire() -> None:
         with patch(
-            "apps.backend.infrastructure.llm_concurrency.max_parallel_for_provider",
+            "apps.backend.infrastructure.agent_runtime.llm_concurrency.max_parallel_for_provider",
             return_value=1,
         ), patch(
-            "apps.backend.infrastructure.llm_queue_policy.load_queue_config",
+            "apps.backend.infrastructure.agent_runtime.llm_queue_policy.load_queue_config",
             return_value=_fifo_cfg(),
         ):
             acquire_llm_slot("test_busy")
 
     try:
         with patch(
-            "apps.backend.infrastructure.llm_concurrency.max_parallel_for_provider",
+            "apps.backend.infrastructure.agent_runtime.llm_concurrency.max_parallel_for_provider",
             return_value=1,
         ), patch(
-            "apps.backend.infrastructure.llm_queue_policy.load_queue_config",
+            "apps.backend.infrastructure.agent_runtime.llm_queue_policy.load_queue_config",
             return_value=_fifo_cfg(),
         ):
             acquire_llm_slot("test_busy")
@@ -145,10 +145,10 @@ def test_slot_wait_queue_reports_position():
         tok = bind_llm_wait_notifier(_note)
         try:
             with patch(
-                "apps.backend.infrastructure.llm_concurrency.max_parallel_for_provider",
+                "apps.backend.infrastructure.agent_runtime.llm_concurrency.max_parallel_for_provider",
                 return_value=1,
             ), patch(
-                "apps.backend.infrastructure.llm_queue_policy.load_queue_config",
+                "apps.backend.infrastructure.agent_runtime.llm_queue_policy.load_queue_config",
                 return_value=_fifo_cfg(),
             ):
                 acquire_llm_slot("test_busy")
@@ -157,10 +157,10 @@ def test_slot_wait_queue_reports_position():
 
     try:
         with patch(
-            "apps.backend.infrastructure.llm_concurrency.max_parallel_for_provider",
+            "apps.backend.infrastructure.agent_runtime.llm_concurrency.max_parallel_for_provider",
             return_value=1,
         ), patch(
-            "apps.backend.infrastructure.llm_queue_policy.load_queue_config",
+            "apps.backend.infrastructure.agent_runtime.llm_queue_policy.load_queue_config",
             return_value=_fifo_cfg(),
         ):
             acquire_llm_slot("test_busy")

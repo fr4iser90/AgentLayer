@@ -69,7 +69,7 @@ class _User:
 
 class TestSelfWorkspaceReset(unittest.TestCase):
     def test_reset_with_backup_moves_old_tree(self) -> None:
-        from apps.backend.infrastructure import workspace_service as ws
+        from apps.backend.infrastructure.workspace import workspace_service as ws
 
         with tempfile.TemporaryDirectory() as td:
             base = Path(td)
@@ -95,7 +95,7 @@ class TestSelfWorkspaceReset(unittest.TestCase):
             old_target = ws.self_workspace_target_path
 
             import apps.backend.infrastructure.db.db as db_mod
-            import apps.backend.domain.workspace_resolver as resolver_mod
+            import apps.backend.domain.workspace.resolver as resolver_mod
 
             old_pool_fn = db_mod.pool
             old_resolve = resolver_mod.resolve_db_workspace
@@ -125,7 +125,7 @@ class TestSelfWorkspaceReset(unittest.TestCase):
                 resolver_mod.resolve_db_workspace = old_resolve
 
     def test_reset_without_backup_deletes_old_tree(self) -> None:
-        from apps.backend.infrastructure import workspace_service as ws
+        from apps.backend.infrastructure.workspace import workspace_service as ws
 
         with tempfile.TemporaryDirectory() as td:
             base = Path(td)
@@ -148,7 +148,7 @@ class TestSelfWorkspaceReset(unittest.TestCase):
             old_target = ws.self_workspace_target_path
 
             import apps.backend.infrastructure.db.db as db_mod
-            import apps.backend.domain.workspace_resolver as resolver_mod
+            import apps.backend.domain.workspace.resolver as resolver_mod
 
             old_pool_fn = db_mod.pool
             old_resolve = resolver_mod.resolve_db_workspace

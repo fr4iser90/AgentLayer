@@ -6,10 +6,10 @@ import json
 import uuid
 from typing import Any, Callable
 
-from apps.backend.domain.identity import get_identity
-from apps.backend.infrastructure.coding_workflow import normalize_coding_workflow
+from apps.backend.domain.shared.identity import get_identity
+from apps.backend.infrastructure.codebase.coding_workflow import normalize_coding_workflow
 from apps.backend.infrastructure.db import db
-from apps.backend.infrastructure import project_runs_store
+from apps.backend.infrastructure.projects import project_runs_store
 
 __version__ = "0.1.0"
 TOOL_ID = "project_runs"

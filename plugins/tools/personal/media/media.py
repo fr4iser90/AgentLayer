@@ -6,13 +6,13 @@ import json
 import uuid
 from typing import Any, Callable
 
-from apps.backend.dashboard import db as dashboard_db
-from apps.backend.dashboard.data_paths import get_path, set_path, top_level_key
-from apps.backend.dashboard.layout_tree import iter_layout_blocks
-from apps.backend.dashboard.tool_dashboard_resolve import resolve_dashboard_id
-from apps.backend.domain.identity import get_identity
-from apps.backend.media import media_db, media_policy
-from apps.backend.media.stream_probe import validate_stream_for_library
+from apps.backend.infrastructure.dashboards import dashboard_db
+from apps.backend.infrastructure.dashboards.dashboard_data_paths import get_path, set_path, top_level_key
+from apps.backend.infrastructure.dashboards.dashboard_layout_tree import iter_layout_blocks
+from apps.backend.infrastructure.dashboards.dashboard_tool_dashboard_resolve import resolve_dashboard_id
+from apps.backend.domain.shared.identity import get_identity
+from apps.backend.infrastructure.media import media_db, media_policy
+from apps.backend.infrastructure.media.stream_probe import validate_stream_for_library
 
 __version__ = "0.1.0"
 TOOL_ID = "media"
@@ -208,7 +208,7 @@ def _save_dashboard_data(
     ws: dict[str, Any],
     new_data: dict[str, Any],
 ) -> str | None:
-    from apps.backend.domain.collections import service as domain_svc
+    from apps.backend.infrastructure.collections import collections_view_service as domain_svc
 
     bindings = domain_svc.resolve_bindings_for_dashboard(ws)
     old_data = ws.get("data") if isinstance(ws.get("data"), dict) else {}
@@ -227,7 +227,7 @@ def _save_dashboard_data(
         if not result.get("ok"):
             return str(result.get("error") or "domain update failed")
     try:
-        from apps.backend.infrastructure.notifications_service import notify_dashboard_agent_update
+        from apps.backend.infrastructure.notifications.notifications_service import notify_dashboard_agent_update
 
         notify_dashboard_agent_update(
             tenant_id=tid,
@@ -573,8 +573,8 @@ def delete_item(arguments: dict[str, Any]) -> str:
     if relpath is None:
         return _err("could not delete item")
     if relpath:
-        from apps.backend.core.config import config
-        from apps.backend.dashboard import file_storage
+        from apps.backend.infrastructure.platform.config import config
+        from apps.backend.infrastructure.dashboards import dashboard_file_storage as file_storage
 
         file_storage.unlink_if_exists(config.media_upload_dir(), relpath)
     return json.dumps({"ok": True, "deleted": str(mid)}, ensure_ascii=False)
@@ -695,7 +695,7 @@ def share_grant(arguments: dict[str, Any]) -> str:
                 license=lic,
                 license_note=str(arguments.get("license_note") or "").strip(),
             )
-    from apps.backend.infrastructure.auth import get_user_by_email
+    from apps.backend.infrastructure.identity.auth import get_user_by_email
 
     target = get_user_by_email(email)
     if target is None:

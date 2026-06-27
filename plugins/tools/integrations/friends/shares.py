@@ -10,7 +10,7 @@ import json
 import uuid
 from typing import Any, Callable
 
-from apps.backend.domain.identity import get_identity
+from apps.backend.domain.shared.identity import get_identity
 from apps.backend.domain.shares.catalog import (
     catalog_for_api,
     canonical_resource_type,
@@ -86,7 +86,7 @@ def _validate_collection_grant(
     owner_user_id: uuid.UUID,
     resource_identifier: str,
 ) -> str | None:
-    from apps.backend.domain.collections import db as col_db
+    from apps.backend.infrastructure.collections import collections_db_service as col_db
 
     ident = (resource_identifier or "").strip().lower()
     if ident in ("", "primary"):
@@ -107,7 +107,7 @@ def _validate_dashboard_grant(
 ) -> str | None:
     if resource_type != "dashboard":
         return None
-    from apps.backend.dashboard import db as dashboard_db
+    from apps.backend.infrastructure.dashboards import dashboard_db
     from apps.backend.domain.shares.dashboard_grant import grant_matches_dashboard
     from apps.backend.infrastructure.db.db import user_tenant_id
 
@@ -125,7 +125,7 @@ def _validate_dashboard_grant(
     block_ids = raw_policy.get("block_ids")
     if isinstance(block_ids, list) and block_ids:
         ul = ws.get("ui_layout") if isinstance(ws.get("ui_layout"), dict) else {}
-        from apps.backend.dashboard.layout_tree import flatten_block_ids
+        from apps.backend.infrastructure.dashboards.dashboard_layout_tree import flatten_block_ids
 
         valid = flatten_block_ids(ul)
         bad = [str(x) for x in block_ids if str(x).strip() not in valid]

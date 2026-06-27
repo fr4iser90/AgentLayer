@@ -54,7 +54,7 @@ These should stay true regardless of UI. Code pointers are the source of truth.
 
 | Invariant | Where it lives (today) |
 |-----------|-------------------------|
-| Coding file ops stay under a configured root; blocklist for dangerous prefixes | `apps/backend/core/config.py` — `CODING_ROOT`, `CODING_PATH_BLOCKLIST`, `CODING_MAX_FILE_BYTES`, `CODING_ENABLED` |
+| Coding file ops stay under a configured root; blocklist for dangerous prefixes | `apps/backend/infrastructure/config.py` — `CODING_ROOT`, `CODING_PATH_BLOCKLIST`, `CODING_MAX_FILE_BYTES`, `CODING_ENABLED` |
 | Tools can be disabled, role-gated, tenant-scoped, host vs container | `apps/backend/domain/plugin_system/tool_policy.py`, `apps/backend/domain/plugin_system/tools.py::run_tool` |
 | Chat runs with identity + optional workspace in tool context | `apps/backend/domain/agent.py::chat_completion` (`tool_context`: `workspace`, `user`) |
 

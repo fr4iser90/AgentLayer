@@ -6,13 +6,13 @@ import json
 import uuid
 from typing import Any, Callable, cast
 
-from apps.backend.domain.agent_task_access import (
+from apps.backend.domain.agent_runtime.task_access import (
     user_may_access_task_row,
     user_may_access_workspace,
 )
-from apps.backend.domain.identity import get_identity
-from apps.backend.infrastructure import agent_artifacts_store, agent_tasks_store
-from apps.backend.domain.task_approval import normalize_new_task_status
+from apps.backend.domain.shared.identity import get_identity
+from apps.backend.infrastructure.agent_runtime import agent_artifacts_store, agent_tasks_store
+from apps.backend.domain.agent_runtime.task_approval import normalize_new_task_status
 from apps.backend.infrastructure.db import db
 
 __version__ = "1.0.0"

@@ -9,7 +9,9 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from apps.backend.domain.agent_run_cancel import (
+from apps.backend.infrastructure.agent_runtime import agent_registry_service as _agent_registry_service  # noqa: F401
+from apps.backend.infrastructure.plugins import plugin_registry_service as _plugin_registry_service  # noqa: F401
+from apps.backend.domain.agent_runtime.run_cancel import (
     register_parent_cancel,
     reset_parent_cancel_registry_for_tests,
     unregister_parent_cancel,
@@ -48,10 +50,10 @@ def test_delegate_uses_subagent_cancel_event_not_parent_asyncio_event() -> None:
             "choices": [{"message": {"content": "Plan summary from mock sub-agent."}, "finish_reason": "stop"}],
         }
 
-    with patch("apps.backend.domain.agent.chat_completion", new=AsyncMock(side_effect=fake_cc)):
-        with patch("apps.backend.domain.identity.get_identity", return_value=(1, uid)):
+    with patch("apps.backend.application.agent_runtime.runtime.embedded_subagent._chat_completion_handler", new=AsyncMock(side_effect=fake_cc)):
+        with patch("apps.backend.domain.shared.identity.get_identity", return_value=(1, uid)):
             with patch(
-                "apps.backend.infrastructure.agent_artifacts_store.create_artifact",
+                "apps.backend.infrastructure.agent_runtime.agent_artifacts_store.create_artifact",
                 return_value={"id": uuid.uuid4()},
             ):
                 out = delegate(

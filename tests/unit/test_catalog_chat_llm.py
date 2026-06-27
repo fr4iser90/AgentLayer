@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from apps.backend.domain import catalog_chat_llm as mod
+from apps.backend.domain.model_routing import catalog_chat as mod
 
 
 def _normalize(raw: str | None) -> str | None:
@@ -17,7 +17,7 @@ def test_finalize_requires_catalog_provider() -> None:
     with (
         patch.object(mod, "normalize_model_catalog_owned_by", side_effect=_normalize),
         patch(
-            "apps.backend.domain.catalog_chat_llm.infer_catalog_owned_by",
+            "apps.backend.domain.model_routing.catalog_chat.infer_catalog_owned_by",
             return_value=None,
         ),
         pytest.raises(ValueError, match="No LLM catalog provider"),
@@ -36,9 +36,9 @@ def test_finalize_resolves_profile_via_endpoint() -> None:
     spec.model_default = "default-model"
     with (
         patch.object(mod, "normalize_model_catalog_owned_by", side_effect=_normalize),
-        patch("apps.backend.domain.catalog_chat_llm.get_provider_spec", return_value=spec),
+        patch("apps.backend.domain.model_routing.catalog_chat.get_provider_spec", return_value=spec),
         patch(
-            "apps.backend.domain.catalog_chat_llm.resolve_model_for_provider",
+            "apps.backend.domain.model_routing.catalog_chat.resolve_model_for_provider",
             return_value="resolved-agent",
         ),
     ):
@@ -56,13 +56,13 @@ def test_finalize_vlm_rejects_model_not_exposed_by_provider() -> None:
     spec = MagicMock()
     with (
         patch.object(mod, "normalize_model_catalog_owned_by", side_effect=_normalize),
-        patch("apps.backend.domain.catalog_chat_llm.get_provider_spec", return_value=spec),
+        patch("apps.backend.domain.model_routing.catalog_chat.get_provider_spec", return_value=spec),
         patch(
-            "apps.backend.domain.catalog_chat_llm.resolve_model_for_provider",
+            "apps.backend.domain.model_routing.catalog_chat.resolve_model_for_provider",
             return_value="missing-vlm.gguf",
         ),
         patch(
-            "apps.backend.domain.catalog_chat_llm.fetch_models_for_provider",
+            "apps.backend.domain.model_routing.catalog_chat.fetch_models_for_provider",
             return_value=(
                 [{"id": "text-model.gguf"}, {"id": "vision-model.gguf"}],
                 {"reachable": True},

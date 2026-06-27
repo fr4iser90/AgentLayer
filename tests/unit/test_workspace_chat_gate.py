@@ -5,7 +5,8 @@ from __future__ import annotations
 import unittest
 import uuid
 
-from apps.backend.domain.agent import WorkspaceAccessDenied, _raise_if_workspace_inaccessible
+from apps.backend.application.agent_runtime.runtime.prompts import WorkspaceAccessDenied
+from apps.backend.application.agent_runtime.runtime.io import _raise_if_workspace_inaccessible
 
 
 class TestWorkspaceChatGate(unittest.TestCase):

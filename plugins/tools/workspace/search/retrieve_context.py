@@ -7,7 +7,7 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Callable
 
-from apps.backend.infrastructure import operator_settings
+from apps.backend.infrastructure.settings import operator_settings
 
 from plugins.tools.workspace.lib.common import (
     json_workspace_missing_error,
@@ -73,7 +73,7 @@ def _json_loads_safe(raw: str) -> dict[str, Any]:
 
 
 def _run_code_grep(query: str, context: dict[str, Any] | None, limit: int) -> dict[str, Any]:
-    from apps.backend.core.config import config as cfg
+    from apps.backend.infrastructure.platform.config import config as cfg
 
     cap = min(limit, int(cfg.WORKSPACE_MAX_SEARCH_MATCHES))
     raw = coding_search({"query": query, "regex": False}, context=context)
@@ -111,7 +111,7 @@ def _run_docs(
         except ValueError:
             return {"ok": False, "error": "invalid workspace id in context"}
         try:
-            from apps.backend.infrastructure.rag import rag as rag_service
+            from apps.backend.infrastructure.rag.rag import rag as rag_service
 
             rows = rag_service.search_for_identity(query, limit=limit, workspace_id=ws_uuid)
         except Exception as e:
@@ -121,7 +121,7 @@ def _run_docs(
     else:
         dom = (domain or "agentlayer_docs").strip() or "agentlayer_docs"
         try:
-            from apps.backend.infrastructure.rag import rag as rag_service
+            from apps.backend.infrastructure.rag.rag import rag as rag_service
 
             rows = rag_service.search_for_identity(query, domain=dom, limit=limit)
         except Exception as e:
@@ -167,7 +167,7 @@ def _run_memory(query: str, limit: int) -> dict[str, Any]:
     if not operator_settings.memory_service_enabled():
         return {"ok": False, "skipped": True, "reason": "memory_disabled"}
     try:
-        from apps.backend.api.memory import note_search_for_identity
+        from apps.backend.infrastructure.memory.memory_service import note_search_for_identity
 
         notes = note_search_for_identity(query=query, dashboard_id=None, limit=limit)
     except Exception as e:
@@ -189,7 +189,7 @@ def _run_memory(query: str, limit: int) -> dict[str, Any]:
 
 def _run_graph(query: str, context: dict[str, Any] | None, limit: int) -> dict[str, Any]:
     try:
-        from apps.backend.infrastructure.code_graph_neo4j import get_code_graph
+        from apps.backend.infrastructure.codebase.code_graph_neo4j import get_code_graph
     except ImportError:
         return {"ok": False, "skipped": True, "reason": "neo4j_not_installed"}
 
@@ -319,7 +319,7 @@ def retrieve_context(arguments: dict[str, Any], context: dict | None = None) -> 
     if not query:
         return json.dumps({"ok": False, "error": "query is required"}, ensure_ascii=False)
 
-    from apps.backend.infrastructure.workspace_index_policy import resolve_retrieve_context_sources
+    from apps.backend.infrastructure.workspace.workspace_index_policy import resolve_retrieve_context_sources
 
     ws = workspace_binding_from_context(context)
     agent_id = (context or {}).get("agent_id") if context else None

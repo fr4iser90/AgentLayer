@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from apps.backend.domain.agent_tools import (
+from apps.backend.application.agent_runtime.runtime.tool_loop import (
     _AGENT_CREDENTIAL_TOOL_NAMES,
     _credential_tools_for_agent,
     _partition_tool_specs_by_name,

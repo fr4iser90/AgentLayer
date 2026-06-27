@@ -5,7 +5,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from apps.backend.media import stream_probe
+from apps.backend.infrastructure.media import stream_probe
 
 
 def test_probe_rejects_http_404(monkeypatch: pytest.MonkeyPatch) -> None:

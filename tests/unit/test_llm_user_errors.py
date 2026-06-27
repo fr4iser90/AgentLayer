@@ -6,7 +6,7 @@ import unittest
 
 import httpx
 
-from apps.backend.infrastructure.llm_user_errors import user_visible_llm_transport_error
+from apps.backend.infrastructure.agent_runtime.llm_user_errors import user_visible_llm_transport_error
 
 
 class TestLlmUserErrors(unittest.TestCase):

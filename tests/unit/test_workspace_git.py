@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from apps.backend.infrastructure.workspace_git import (
+from apps.backend.infrastructure.workspace.workspace_git import (
     parse_diff_stat_files,
     workspace_git_changes_summary,
     workspace_git_file_diff,

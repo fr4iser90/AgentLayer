@@ -93,7 +93,7 @@ def github_pat_for_user_id(user_id: Any) -> str | None:
 
 
 def github_pat_for_current_user() -> str | None:
-    from apps.backend.domain.identity import get_identity
+    from apps.backend.domain.shared.identity import get_identity
     from apps.backend.infrastructure.db import db
 
     _tid, uid = get_identity()

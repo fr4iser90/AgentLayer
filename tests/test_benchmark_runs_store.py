@@ -5,7 +5,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 
-from apps.backend.infrastructure.benchmark_runs_store import reconcile_orphaned_runs_on_startup
+from apps.backend.infrastructure.benchmarks.benchmark_runs_store import reconcile_orphaned_runs_on_startup
 
 
 @contextmanager
@@ -16,7 +16,7 @@ def _mock_db_cursor(*, rowcount: int):
     conn.cursor.return_value.__enter__.return_value = cur
     pool = MagicMock()
     pool.connection.return_value.__enter__.return_value = conn
-    with patch("apps.backend.infrastructure.benchmark_runs_store.db.pool", return_value=pool):
+    with patch("apps.backend.infrastructure.benchmarks.benchmark_runs_store.db.pool", return_value=pool):
         yield cur, conn
 
 

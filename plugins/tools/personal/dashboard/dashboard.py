@@ -9,10 +9,10 @@ from copy import deepcopy
 from datetime import datetime
 from typing import Any, Callable
 
-from apps.backend.dashboard import db as dashboard_db
-from apps.backend.dashboard import public_share
-from apps.backend.dashboard.bundle import bundles_by_kind, bundles_by_template_id
-from apps.backend.dashboard.create_helpers import (
+from apps.backend.infrastructure.dashboards import dashboard_db
+from apps.backend.infrastructure.dashboards import dashboard_public_share as public_share
+from apps.backend.infrastructure.dashboards.dashboard_bundle import bundles_by_kind, bundles_by_template_id
+from apps.backend.infrastructure.dashboards.dashboard_create_helpers import (
     create_dashboard_payload,
     default_title_for_kind,
     default_title_for_template_id,
@@ -20,29 +20,29 @@ from apps.backend.dashboard.create_helpers import (
     validate_create_kind,
     validate_template_id,
 )
-from apps.backend.dashboard.data_paths import get_path, top_level_key
-from apps.backend.dashboard.tool_dashboard_resolve import resolve_dashboard_id
-from apps.backend.dashboard.layout_tree import (
+from apps.backend.infrastructure.dashboards.dashboard_data_paths import get_path, top_level_key
+from apps.backend.infrastructure.dashboards.dashboard_tool_dashboard_resolve import resolve_dashboard_id
+from apps.backend.infrastructure.dashboards.dashboard_layout_tree import (
     count_layout_blocks,
     data_paths_from_blocks,
     resolve_blocks_target,
 )
-from apps.backend.dashboard.pins import pin_block_to_dashboard
-from apps.backend.dashboard.data_compute import (
+from apps.backend.infrastructure.dashboards.dashboard_pins import pin_block_to_dashboard
+from apps.backend.infrastructure.dashboards.dashboard_data_compute import (
     finalize_dashboard_data,
     patches_should_recompute_stats,
 )
-from apps.backend.dashboard.file_upload import upload_dashboard_image
-from apps.backend.dashboard.list_ops import (
+from apps.backend.infrastructure.dashboards.dashboard_file_upload import upload_dashboard_image
+from apps.backend.infrastructure.dashboards.dashboard_list_ops import (
     append_list_rows,
     delete_list_row,
     update_list_row,
 )
-from apps.backend.dashboard.layout_proposals import store_proposal_set
-from apps.backend.dashboard.template_ops import export_template_payload, validate_template_import
+from apps.backend.infrastructure.dashboards.dashboard_layout_proposals import store_proposal_set
+from apps.backend.infrastructure.dashboards.dashboard_template_ops import export_template_payload, validate_template_import
 from plugins.tools.integrations.friends.lib.common import resolve_contact_email
-from apps.backend.domain.identity import get_identity
-from apps.backend.infrastructure.auth import get_user_by_email
+from apps.backend.domain.shared.identity import get_identity
+from apps.backend.infrastructure.identity.auth import get_user_by_email
 from apps.backend.infrastructure.db import db
 
 __version__ = "1.0.0"
@@ -653,7 +653,7 @@ def patch_data(arguments: dict[str, Any]) -> str:
             return _err(f"granular share cannot write data.{top_level_key(path)!r}")
         norm_patches.append({"path": path, "value": p.get("value")})
 
-    from apps.backend.domain.collections import service as domain_svc
+    from apps.backend.infrastructure.collections import collections_view_service as domain_svc
 
     owner_raw = ws.get("owner_user_id")
     try:
@@ -671,7 +671,7 @@ def patch_data(arguments: dict[str, Any]) -> str:
     )
     if not result.get("ok"):
         return _err(str(result.get("error") or "domain patch failed"))
-    from apps.backend.infrastructure.notifications_service import notify_dashboard_agent_update
+    from apps.backend.infrastructure.notifications.notifications_service import notify_dashboard_agent_update
 
     notify_dashboard_agent_update(
         tenant_id=tid,
@@ -717,7 +717,7 @@ def patch_layout(arguments: dict[str, Any]) -> str:
     if lerr:
         return _err(lerr)
     if new_data != data:
-        from apps.backend.domain.collections import service as domain_svc
+        from apps.backend.infrastructure.collections import collections_view_service as domain_svc
 
         owner_raw = ws.get("owner_user_id")
         try:
@@ -1056,7 +1056,7 @@ def propose_layouts(arguments: dict[str, Any]) -> str:
     )
     if perr or pset is None:
         return _err(perr or "could not store proposals")
-    from apps.backend.infrastructure.notifications_service import emit_notification
+    from apps.backend.infrastructure.notifications.notifications_service import emit_notification
 
     emit_notification(
         tenant_id=tid,

@@ -68,10 +68,10 @@ def test_prepare_speech_text_fallback_when_llm_fails(monkeypatch: pytest.MonkeyP
 
 
 def test_attach_speech_text_to_completion_when_voice_enabled(monkeypatch: pytest.MonkeyPatch):
-    from apps.backend.domain import agent_io
+    from apps.backend.application.agent_runtime.runtime import io as agent_io
 
     uid = uuid.uuid4()
-    monkeypatch.setattr("apps.backend.domain.identity.get_identity", lambda: (1, uid))
+    monkeypatch.setattr("apps.backend.domain.shared.identity.get_identity", lambda: (1, uid))
     monkeypatch.setattr(
         "apps.backend.domain.voice.voice_policy.effective_voice_output",
         lambda **kwargs: kwargs.get("channel") == "web",

@@ -2,7 +2,7 @@
 
 import json
 
-from apps.backend.domain.agent import (
+from apps.backend.domain.agent_runtime.tool_transcript import (
     _build_client_tool_context_markdown,
     _build_tool_transcript_recap,
     _merge_deterministic_tool_recap_into_final_completion,

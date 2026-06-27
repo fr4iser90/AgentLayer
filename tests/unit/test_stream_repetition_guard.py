@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from apps.backend.infrastructure.stream_repetition_guard import (
+from apps.backend.infrastructure.agent_runtime.stream_repetition_guard import (
     apply_repetition_guard_to_completion,
     truncate_tail_triple_repeat,
 )
-from apps.backend.infrastructure.openai_stream_aggregate import (
+from apps.backend.infrastructure.agent_runtime.openai_stream_aggregate import (
     OpenAIStreamAccumulator,
     stream_accumulator_feed,
 )
@@ -43,7 +43,7 @@ def test_apply_repetition_guard_to_completion_mutates():
 
 
 def test_stream_accumulator_feed_aborts_on_repetition(monkeypatch):
-    from apps.backend.core import config as cmod
+    from apps.backend.infrastructure.platform import config as cmod
 
     monkeypatch.setattr(cmod, "AGENT_STREAM_REPETITION_GUARD", True)
     block = "Z" * 85

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from apps.backend.infrastructure import workspace_service as ws_svc
+from apps.backend.infrastructure.workspace import workspace_service as ws_svc
 
 
 class TestImplementationBranchSlug(unittest.TestCase):

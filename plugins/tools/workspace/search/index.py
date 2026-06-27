@@ -19,13 +19,13 @@ from plugins.tools.workspace.lib.common import (
 )
 
 try:
-    from apps.backend.infrastructure.code_index_qdrant import get_code_index
+    from apps.backend.infrastructure.codebase.code_index_qdrant import get_code_index
     _HAS_QDRANT = True
 except ImportError:
     _HAS_QDRANT = False
 
 try:
-    from apps.backend.infrastructure.code_graph_neo4j import get_code_graph
+    from apps.backend.infrastructure.codebase.code_graph_neo4j import get_code_graph
     _HAS_NEO4J = True
 except ImportError:
     _HAS_NEO4J = False
@@ -146,7 +146,7 @@ def index(arguments: dict[str, Any], context: dict | None = None) -> str:
         result["neo4j_error"] = neo4j_error
     if workspace_id:
         try:
-            from apps.backend.infrastructure.workspace_retrieval import _persist_index_result
+            from apps.backend.infrastructure.workspace.workspace_retrieval import _persist_index_result
 
             stats_payload = {
                 "scan": stats,

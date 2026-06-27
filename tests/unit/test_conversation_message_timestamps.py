@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 from datetime import datetime, timezone
 
-from apps.backend.infrastructure.conversations_db import _parse_message_created_at
+from apps.backend.infrastructure.platform.conversations_db import _parse_message_created_at
 
 
 class TestConversationMessageTimestamps(unittest.TestCase):

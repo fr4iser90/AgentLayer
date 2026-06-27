@@ -6,7 +6,7 @@ import json
 import uuid
 from unittest.mock import patch
 
-from apps.backend.infrastructure.user_secrets_bootstrap import build_user_secrets_bootstrap_snippet
+from apps.backend.infrastructure.platform.user_secrets_bootstrap import build_user_secrets_bootstrap_snippet
 from plugins.tools.platform.secrets.user_secrets_status import user_secrets_status
 
 
@@ -22,7 +22,7 @@ def test_bootstrap_snippet_per_user_lists_only_that_users_keys() -> None:
         return []
 
     with patch(
-        "apps.backend.infrastructure.user_secrets_bootstrap.config"
+        "apps.backend.infrastructure.platform.user_secrets_bootstrap.config"
     ) as cfg:
         cfg.SECRETS_MASTER_KEY = "test-key"
         with patch(

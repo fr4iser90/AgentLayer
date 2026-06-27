@@ -9,7 +9,7 @@ from typing import Any
 import httpx
 
 from apps.backend.infrastructure.db import db
-from apps.backend.domain.identity import get_identity
+from apps.backend.domain.shared.identity import get_identity
 
 GITHUB_API = "https://api.github.com"
 USER_SECRET_KEY = "github_pat"

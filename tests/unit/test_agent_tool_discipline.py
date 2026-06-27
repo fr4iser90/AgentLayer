@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from apps.backend.infrastructure.skill_plugins import (
+from apps.backend.infrastructure.plugins.skill_plugins import (
     collect_plugin_skills_markdown,
     load_skill_text_by_id,
 )
-from apps.backend.infrastructure.skills_prompt import load_combined_skills_prompt
+from apps.backend.infrastructure.plugins.skills_prompt import load_combined_skills_prompt
 
 
 def test_research_gets_tool_usage_not_secrets() -> None:

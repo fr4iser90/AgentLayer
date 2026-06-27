@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from apps.backend.api.workspaces_api import safe_resolve_under_workspace
+from apps.backend.api.workspaces.controllers.workspaces_api import safe_resolve_under_workspace
 
 
 class TestSafeResolveUnderWorkspace(unittest.TestCase):

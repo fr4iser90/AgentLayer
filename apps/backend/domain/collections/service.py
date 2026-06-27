@@ -18,6 +18,46 @@ class CollectionsServiceDependencies(Protocol):
 
     def delete_collection_items_for_list(self, collection_id: uuid.UUID, list_key: str) -> None: ...
 
+    def append_items(
+        self,
+        *,
+        owner_user_id: uuid.UUID,
+        tenant_id: int,
+        bindings: dict[str, str],
+        ui_layout: dict[str, Any] | None,
+        list_path: str,
+        rows: list[dict[str, Any]],
+    ) -> dict[str, Any]: ...
+
+    def update_item(
+        self,
+        *,
+        owner_user_id: uuid.UUID,
+        bindings: dict[str, str],
+        list_path: str,
+        row_id: str,
+        patch: dict[str, Any],
+    ) -> dict[str, Any]: ...
+
+    def delete_item(
+        self,
+        *,
+        owner_user_id: uuid.UUID,
+        bindings: dict[str, str],
+        list_path: str,
+        row_id: str,
+    ) -> dict[str, Any]: ...
+
+    def patch_fields(
+        self,
+        *,
+        owner_user_id: uuid.UUID,
+        tenant_id: int,
+        bindings: dict[str, str],
+        ui_layout: dict[str, Any] | None,
+        patches: list[dict[str, Any]],
+    ) -> dict[str, Any]: ...
+
 
 _deps: CollectionsServiceDependencies | None = None
 
@@ -58,6 +98,15 @@ def append_items(
     list_path: str,
     rows: list[dict[str, Any]],
 ) -> dict[str, Any]:
+    if _deps is not None:
+        return _deps.append_items(
+            owner_user_id=owner_user_id,
+            tenant_id=tenant_id,
+            bindings=bindings,
+            ui_layout=ui_layout,
+            list_path=list_path,
+            rows=rows,
+        )
     slug = collection_slug_for_path(bindings, list_path)
     if not slug:
         return {"ok": False, "error": "no collection binding for list_path"}
@@ -91,6 +140,14 @@ def update_item(
     row_id: str,
     patch: dict[str, Any],
 ) -> dict[str, Any]:
+    if _deps is not None:
+        return _deps.update_item(
+            owner_user_id=owner_user_id,
+            bindings=bindings,
+            list_path=list_path,
+            row_id=row_id,
+            patch=patch,
+        )
     slug = collection_slug_for_path(bindings, list_path)
     if not slug:
         return {"ok": False, "error": "no collection binding for list_path"}
@@ -117,6 +174,13 @@ def delete_item(
     list_path: str,
     row_id: str,
 ) -> dict[str, Any]:
+    if _deps is not None:
+        return _deps.delete_item(
+            owner_user_id=owner_user_id,
+            bindings=bindings,
+            list_path=list_path,
+            row_id=row_id,
+        )
     slug = collection_slug_for_path(bindings, list_path)
     if not slug:
         return {"ok": False, "error": "no collection binding for list_path"}
@@ -143,6 +207,14 @@ def patch_fields(
     ui_layout: dict[str, Any] | None,
     patches: list[dict[str, Any]],
 ) -> dict[str, Any]:
+    if _deps is not None:
+        return _deps.patch_fields(
+            owner_user_id=owner_user_id,
+            tenant_id=tenant_id,
+            bindings=bindings,
+            ui_layout=ui_layout,
+            patches=patches,
+        )
     applied: list[dict[str, Any]] = []
     errors: list[str] = []
     by_slug: dict[str, dict[str, Any]] = {}

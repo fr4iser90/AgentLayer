@@ -10,8 +10,8 @@ from cryptography.fernet import Fernet
 
 
 def test_rewrite_heuristic_disabled_no_change(monkeypatch: pytest.MonkeyPatch) -> None:
-    import apps.backend.core.config as cmod
-    from apps.backend.infrastructure.chat_secret_ingress import rewrite_user_text
+    import apps.backend.infrastructure.platform.config as cmod
+    from apps.backend.infrastructure.platform.chat_secret_ingress import rewrite_user_text
 
     monkeypatch.setattr(cmod, "CHAT_SECRET_HEURISTIC_REDACT_ENABLED", False)
     uid = uuid.uuid4()
@@ -23,8 +23,8 @@ def test_rewrite_heuristic_disabled_no_change(monkeypatch: pytest.MonkeyPatch) -
 
 
 def test_rewrite_heuristic_redacts_openai_sk(monkeypatch: pytest.MonkeyPatch) -> None:
-    import apps.backend.core.config as cmod
-    from apps.backend.infrastructure import chat_secret_ingress as csi
+    import apps.backend.infrastructure.platform.config as cmod
+    from apps.backend.infrastructure.platform import chat_secret_ingress as csi
 
     monkeypatch.setattr(cmod, "CHAT_SECRET_HEURISTIC_REDACT_ENABLED", True)
     uid = uuid.uuid4()
@@ -37,9 +37,9 @@ def test_rewrite_heuristic_redacts_openai_sk(monkeypatch: pytest.MonkeyPatch) ->
 
 
 def test_resolve_roundtrip(monkeypatch: pytest.MonkeyPatch) -> None:
-    import apps.backend.core.config as cmod
-    from apps.backend.infrastructure import chat_secret_vault as vaultmod
-    from apps.backend.infrastructure import chat_secret_ingress as csi
+    import apps.backend.infrastructure.platform.config as cmod
+    from apps.backend.infrastructure.platform import chat_secret_vault as vaultmod
+    from apps.backend.infrastructure.platform import chat_secret_ingress as csi
 
     key = Fernet.generate_key().decode()
     monkeypatch.setattr(cmod, "CHAT_SECRET_INGRESS_ENABLED", True)
@@ -69,9 +69,9 @@ def test_resolve_roundtrip(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_json_redact_nested(monkeypatch: pytest.MonkeyPatch) -> None:
-    import apps.backend.core.config as cmod
-    from apps.backend.infrastructure import chat_secret_vault as vaultmod
-    from apps.backend.infrastructure import chat_secret_ingress as csi
+    import apps.backend.infrastructure.platform.config as cmod
+    from apps.backend.infrastructure.platform import chat_secret_vault as vaultmod
+    from apps.backend.infrastructure.platform import chat_secret_ingress as csi
 
     key = Fernet.generate_key().decode()
     monkeypatch.setattr(cmod, "CHAT_SECRET_INGRESS_ENABLED", True)
@@ -91,9 +91,9 @@ def test_json_redact_nested(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_vault_json_skipped_without_user_id(monkeypatch: pytest.MonkeyPatch) -> None:
-    import apps.backend.core.config as cmod
-    from apps.backend.infrastructure import chat_secret_vault as vaultmod
-    from apps.backend.infrastructure import chat_secret_ingress as csi
+    import apps.backend.infrastructure.platform.config as cmod
+    from apps.backend.infrastructure.platform import chat_secret_vault as vaultmod
+    from apps.backend.infrastructure.platform import chat_secret_ingress as csi
 
     key = Fernet.generate_key().decode()
     monkeypatch.setattr(cmod, "CHAT_SECRET_INGRESS_ENABLED", True)

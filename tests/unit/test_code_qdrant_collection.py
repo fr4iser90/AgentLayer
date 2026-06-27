@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from apps.backend.infrastructure.code_qdrant_collection import (
+from apps.backend.infrastructure.codebase.code_qdrant_collection import (
     invalidate_code_qdrant_target_cache,
     resolve_code_qdrant_target,
 )
@@ -31,8 +31,8 @@ def _clear_cache() -> None:
     invalidate_code_qdrant_target_cache()
 
 
-@patch("apps.backend.infrastructure.code_qdrant_collection.operator_settings.rag_settings")
-@patch("apps.backend.infrastructure.code_qdrant_collection.config.QDRANT_URL", "http://qdrant:6333")
+@patch("apps.backend.infrastructure.codebase.code_qdrant_collection.operator_settings.rag_settings")
+@patch("apps.backend.infrastructure.codebase.code_qdrant_collection.config.QDRANT_URL", "http://qdrant:6333")
 def test_resolve_uses_base_when_dim_matches(mock_rag_settings: MagicMock) -> None:
     mock_rag_settings.return_value = {"embedding_dim": 768}
 
@@ -51,8 +51,8 @@ def test_resolve_uses_base_when_dim_matches(mock_rag_settings: MagicMock) -> Non
     assert target.auto_switched is False
 
 
-@patch("apps.backend.infrastructure.code_qdrant_collection.operator_settings.rag_settings")
-@patch("apps.backend.infrastructure.code_qdrant_collection.config.QDRANT_URL", "http://qdrant:6333")
+@patch("apps.backend.infrastructure.codebase.code_qdrant_collection.operator_settings.rag_settings")
+@patch("apps.backend.infrastructure.codebase.code_qdrant_collection.config.QDRANT_URL", "http://qdrant:6333")
 def test_resolve_switches_to_dim_suffix_when_base_mismatch(mock_rag_settings: MagicMock) -> None:
     mock_rag_settings.return_value = {"embedding_dim": 1024}
 
@@ -71,8 +71,8 @@ def test_resolve_switches_to_dim_suffix_when_base_mismatch(mock_rag_settings: Ma
     assert target.auto_switched is True
 
 
-@patch("apps.backend.infrastructure.code_qdrant_collection.operator_settings.rag_settings")
-@patch("apps.backend.infrastructure.code_qdrant_collection.config.QDRANT_URL", "http://qdrant:6333")
+@patch("apps.backend.infrastructure.codebase.code_qdrant_collection.operator_settings.rag_settings")
+@patch("apps.backend.infrastructure.codebase.code_qdrant_collection.config.QDRANT_URL", "http://qdrant:6333")
 def test_resolve_creates_base_when_missing(mock_rag_settings: MagicMock) -> None:
     mock_rag_settings.return_value = {"embedding_dim": 1024}
 

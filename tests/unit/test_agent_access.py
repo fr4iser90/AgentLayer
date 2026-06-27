@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from apps.backend.domain.agent_access import (
+from apps.backend.domain.agent_runtime.access import (
     default_agent_for_workspace,
     user_may_invoke_agent,
 )
@@ -33,7 +33,7 @@ def test_default_agent_for_workspace_by_role() -> None:
 
 
 def test_general_agent_has_no_bash_or_push_tools() -> None:
-    from apps.backend.domain.agent_registry import get_agent_registry
+    from apps.backend.domain.agent_runtime.registry import get_agent_registry
 
     ag = get_agent_registry().get_agent("general")
     assert ag is not None

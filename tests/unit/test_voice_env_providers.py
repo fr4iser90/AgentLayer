@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from unittest.mock import patch
 
-from apps.backend.infrastructure.voice_env_providers import (
+from apps.backend.infrastructure.voice.voice_env_providers import (
     parse_voice_stt_env_providers,
     parse_voice_tts_env_providers,
 )

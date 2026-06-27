@@ -13,8 +13,8 @@ from typing import Any
 
 import httpx
 
-from apps.backend.core.config import config
-from apps.backend.infrastructure.catalog_llm_client import post_catalog_chat_completions
+from apps.backend.infrastructure.platform.config import config
+from apps.backend.infrastructure.agent_runtime.catalog_llm_client import post_catalog_chat_completions
 from apps.backend.domain.plugin_system.tool_authoring import tool_authoring
 from apps.backend.domain.plugin_system.registry import get_registry, reload_registry
 from apps.backend.domain.plugin_system.tool_name_hints import suggest_tool_names

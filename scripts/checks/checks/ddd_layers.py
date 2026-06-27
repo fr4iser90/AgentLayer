@@ -14,6 +14,7 @@ class LayerRule:
     name: str
     path: Path
     forbidden_imports: tuple[str, ...]
+    enforce: bool = True
 
 
 @dataclass(frozen=True)
@@ -24,6 +25,7 @@ class Violation:
     layer: str
     reason: str
     import_name: str
+    enforce: bool
 
 
 def _module_name_for_path(root: Path, file_path: Path) -> str:
@@ -71,7 +73,8 @@ def _load_rules(root: Path, config: dict[str, Any]) -> list[LayerRule]:
         name = str(raw["name"])
         path = root / str(raw["path"])
         forbidden = tuple(str(item) for item in raw.get("forbidden_imports", []))
-        rules.append(LayerRule(name=name, path=path, forbidden_imports=forbidden))
+        enforce = bool(raw.get("enforce", True))
+        rules.append(LayerRule(name=name, path=path, forbidden_imports=forbidden, enforce=enforce))
     return rules
 
 
@@ -134,14 +137,18 @@ def _violations_for_file(root: Path, file_path: Path, rules: list[LayerRule]) ->
                             layer=rule.name,
                             reason=f"{rule.name} layer must not import {forbidden}",
                             import_name=import_name,
+                            enforce=rule.enforce,
                         )
                     )
     return violations
 
 
 def _print_violations(violations: list[Violation]) -> None:
-    print(f"[check:ddd_layers] FAILED: {len(violations)} layer violation(s)")
+    enforced = [violation for violation in violations if violation.enforce]
+    print(f"[check:ddd_layers] FAILED: {len(enforced)} enforced layer violation(s)")
     for violation in violations:
+        if not violation.enforce:
+            continue
         print()
         print(f"{violation.code} {violation.file}:{violation.line}")
         print(f"  {violation.reason}")
@@ -149,7 +156,9 @@ def _print_violations(violations: list[Violation]) -> None:
 
 
 def _print_violation_summary(violations: list[Violation], *, limit: int = 20) -> None:
-    print(f"[check:ddd_layers] report: {len(violations)} layer violation(s)")
+    enforced = sum(1 for violation in violations if violation.enforce)
+    advisory = len(violations) - enforced
+    print(f"[check:ddd_layers] report: {len(violations)} layer violation(s) ({enforced} enforced, {advisory} advisory)")
     if not violations:
         return
 
@@ -183,9 +192,12 @@ def run(name: str, config: dict[str, Any]) -> CheckResult:
         print_pass(name)
         return CheckResult(name=name, ok=True, message=f"{len(violations)} layer violation(s)")
 
-    if violations:
+    enforced_violations = [violation for violation in violations if violation.enforce]
+    if enforced_violations:
         _print_violations(violations)
-        return CheckResult(name=name, ok=False, message=f"{len(violations)} layer violation(s)")
+        return CheckResult(name=name, ok=False, message=f"{len(enforced_violations)} enforced layer violation(s)")
+    if violations:
+        _print_violation_summary(violations, limit=int(config.get("summary_limit") or 20))
 
     print_pass(name)
     return CheckResult(name=name, ok=True)

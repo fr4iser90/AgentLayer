@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi import HTTPException
 
-from apps.backend.domain import instance_setup as mod
+from apps.backend.domain.setup import instance as mod
 
 
 def test_validate_setup_email_rejects_invalid() -> None:

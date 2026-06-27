@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any, Callable
 
-from apps.backend.core.config import config
+from apps.backend.infrastructure.platform.config import config
 
 from plugins.tools.workspace.lib.index_lib import (
     _HAS_TS,

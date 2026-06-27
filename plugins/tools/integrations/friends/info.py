@@ -6,7 +6,7 @@ Call this tool ONLY when the user asks about a specific person or friend.
 from __future__ import annotations
 
 from typing import Any, Callable
-from apps.backend.domain.identity import get_identity
+from apps.backend.domain.shared.identity import get_identity
 from apps.backend.infrastructure.db import db
 
 __version__ = "1.0.0"

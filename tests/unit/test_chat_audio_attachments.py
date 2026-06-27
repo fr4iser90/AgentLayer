@@ -5,7 +5,7 @@ from __future__ import annotations
 import base64
 import uuid
 
-from apps.backend.domain.chat_audio_attachments import (
+from apps.backend.domain.agent_runtime.chat_audio_attachments import (
     format_ingested_audio_system_block,
     ingest_chat_audio_attachments,
 )

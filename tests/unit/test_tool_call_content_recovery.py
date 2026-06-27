@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import json
 
-from apps.backend.domain.agent_turn_hooks import turn_hooks_for_agent
-from apps.backend.domain.tool_call_content_recovery import (
+from apps.backend.domain.agent_runtime.turn_hooks import turn_hooks_for_agent
+from apps.backend.domain.tools.call_content_recovery import (
     recover_tool_calls_from_assistant_content,
 )
 
@@ -107,7 +107,7 @@ def test_skips_tool_not_in_allowlist():
 
 def test_general_turn_hooks_delegate_to_recovery(monkeypatch):
     monkeypatch.setattr(
-        "apps.backend.domain.agent_turn_hooks._agent_behavior_flags",
+        "apps.backend.domain.agent_runtime.turn_hooks._agent_behavior_flags",
         lambda aid: {"tool_discipline_preset": None},
     )
     hooks = turn_hooks_for_agent("general")

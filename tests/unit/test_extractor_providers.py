@@ -5,12 +5,12 @@ from __future__ import annotations
 import os
 from unittest.mock import patch
 
-from apps.backend.infrastructure.extractor_catalog_providers import (
+from apps.backend.infrastructure.providers.extractor_catalog_providers import (
     get_extractor_provider_spec,
     invalidate_extractor_provider_specs_cache,
     list_extractor_provider_specs,
 )
-from apps.backend.infrastructure.extractor_env_providers import parse_extractor_env_providers
+from apps.backend.infrastructure.providers.extractor_env_providers import parse_extractor_env_providers
 
 
 def test_parse_extractor_env_provider(monkeypatch):

@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 
 from plugins.tools.workspace.shell.workspace_verify import workspace_verify
-from apps.backend.domain.agent import _format_workspace_verify_recap
+from apps.backend.application.agent_runtime.use_cases.workspace_bind import format_workspace_verify_recap
 
 
 class _User:
@@ -71,7 +71,7 @@ class TestCodingWorkspaceVerify(unittest.TestCase):
                 "output": "hi\n",
             }
         )
-        recap = _format_workspace_verify_recap(raw)
+        recap = format_workspace_verify_recap(raw)
         self.assertIsNotNone(recap)
         assert recap is not None
         self.assertIn("[Workspace verify recap]", recap)

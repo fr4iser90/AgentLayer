@@ -127,7 +127,7 @@ phrases:
 
 | knob_id | What | Code | Value schema today |
 |---------|------|------|-------------------|
-| `model.resolve_effective` | Subagent model inheritance | `model_routing.py` | **code only** |
+| `model.resolve_effective` | Subagent model inheritance | `model_routing/resolution.py` | **code only** |
 
 Tuning = code changes + `model_profile` in agent yaml (implicit string enum per agent).
 
@@ -145,7 +145,7 @@ Tuning = code changes + `model_profile` in agent yaml (implicit string enum per 
 
 | knob_id | What | Code | Value schema today |
 |---------|------|------|-------------------|
-| `operator.llm_smart_routing_enabled` | Chat model routing | `llm_smart_route.py` + operator_settings | **Yes** — fields on `OperatorSettingsPatch` |
+| `operator.llm_smart_routing_enabled` | Chat model routing | `model_routing/smart_route.py` + operator_settings | **Yes** — fields on `OperatorSettingsPatch` |
 
 Related fields (all in `OperatorSettingsPatch`): `llm_router_model`, `llm_router_local_confidence_min`, `llm_route_*`, `llm_queue_*`.
 

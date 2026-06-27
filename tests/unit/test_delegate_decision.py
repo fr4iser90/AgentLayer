@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import unittest
 
-from apps.backend.domain.delegate_decision import _autonomy_blocks_action
-from apps.backend.domain.delegate_config_schema import default_delegate_config
+from apps.backend.domain.delegation.decision import _autonomy_blocks_action
+from apps.backend.domain.delegation.config_schema import default_delegate_config
 
 
 class TestDelegateDecision(unittest.TestCase):

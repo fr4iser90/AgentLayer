@@ -12,7 +12,7 @@ from plugins.tools.workspace.lib.common import (
 )
 
 try:
-    from apps.backend.infrastructure.code_index_qdrant import get_code_index
+    from apps.backend.infrastructure.codebase.code_index_qdrant import get_code_index
 
     _HAS_QDRANT = True
 except ImportError:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from apps.backend.dashboard.template_ops import export_template_payload, validate_template_import
+from apps.backend.infrastructure.dashboards.dashboard_template_ops import export_template_payload, validate_template_import
 
 
 class TestTemplateOps(unittest.TestCase):

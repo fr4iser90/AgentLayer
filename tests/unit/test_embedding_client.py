@@ -1,4 +1,4 @@
-"""Unit tests for :mod:`apps.backend.infrastructure.embedding_client`."""
+"""Unit tests for :mod:`apps.backend.infrastructure.providers.embedding_client`."""
 
 from __future__ import annotations
 
@@ -7,9 +7,9 @@ from unittest.mock import MagicMock, patch
 import httpx
 import pytest
 
-import apps.backend.core.config as cfgmod
-from apps.backend.infrastructure import embedding_client
-from apps.backend.infrastructure.embedding_catalog_providers import EmbeddingProviderSpec
+import apps.backend.infrastructure.platform.config as cfgmod
+from apps.backend.infrastructure.providers import embedding_client
+from apps.backend.infrastructure.providers.embedding_catalog_providers import EmbeddingProviderSpec
 
 
 def _spec(**kwargs: object) -> EmbeddingProviderSpec:
@@ -95,7 +95,7 @@ def test_fetch_embedding_models_list_parses_ids() -> None:
     with (
         patch.object(embedding_client, "resolve_active_embedding_spec", return_value=_spec()),
         patch(
-            "apps.backend.infrastructure.openai_compat_http.http_get_json",
+            "apps.backend.infrastructure.providers.openai_compat_http.http_get_json",
             return_value=(200, "", payload),
         ) as get_json,
     ):

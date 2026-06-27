@@ -4,16 +4,16 @@ from __future__ import annotations
 
 import asyncio
 
-from apps.backend.infrastructure.chat_context import (
+from apps.backend.infrastructure.agent_runtime.chat_context import (
     cap_message_content,
     message_content_text,
     prepare_chat_history_for_llm,
 )
-from apps.backend.infrastructure.context_budget import limits_from_context_window
+from apps.backend.infrastructure.agent_runtime.context_budget import limits_from_context_window
 
 
 def test_prepare_trims_sliding_window_when_over_max(monkeypatch):
-    from apps.backend.core import config as cfg
+    from apps.backend.infrastructure.platform import config as cfg
 
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_PREP_ENABLED", True)
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_COMPACTION_ENABLED", False)
@@ -36,7 +36,7 @@ def test_prepare_trims_sliding_window_when_over_max(monkeypatch):
 def test_prepare_records_messages_compacted_this_run(monkeypatch):
     import uuid
 
-    from apps.backend.core import config as cfg
+    from apps.backend.infrastructure.platform import config as cfg
 
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_PREP_ENABLED", True)
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_COMPACTION_ENABLED", True)
@@ -44,15 +44,15 @@ def test_prepare_records_messages_compacted_this_run(monkeypatch):
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_RECENT_VERBATIM_MESSAGES", 2)
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_DEFAULT_BUDGET_TOKENS", 0)
     monkeypatch.setattr(
-        "apps.backend.infrastructure.chat_context._run_compaction_llm",
+        "apps.backend.infrastructure.agent_runtime.chat_context._run_compaction_llm",
         lambda **_: "summary",
     )
     monkeypatch.setattr(
-        "apps.backend.infrastructure.chat_context._load_summary_state",
+        "apps.backend.infrastructure.agent_runtime.chat_context._load_summary_state",
         lambda _cid: ("", 0),
     )
     monkeypatch.setattr(
-        "apps.backend.infrastructure.chat_context._save_summary_state",
+        "apps.backend.infrastructure.agent_runtime.chat_context._save_summary_state",
         lambda *a, **k: None,
     )
 
@@ -68,7 +68,7 @@ def test_prepare_records_messages_compacted_this_run(monkeypatch):
 
 
 def test_prepare_caps_oversized_message(monkeypatch):
-    from apps.backend.core import config as cfg
+    from apps.backend.infrastructure.platform import config as cfg
 
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_PREP_ENABLED", True)
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_COMPACTION_ENABLED", False)

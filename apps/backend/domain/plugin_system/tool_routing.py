@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import logging
-import os
 from typing import Any, Protocol
 
-from apps.backend.core.config import config
 from apps.backend.domain.plugin_system.registry import get_registry
 
 logger = logging.getLogger(__name__)
+_DEFAULT_ROUTER_STRICT = True
 
 # Cross-cutting tools included when ``X-Agent-Tool-Domain`` / ``TOOL_DOMAIN`` is set.
 TOOL_DOMAIN_SHARED: str = "shared"
@@ -27,6 +26,8 @@ TOOL_INTROSPECTION: frozenset[str] = frozenset(
 class ToolRoutingDependencies(Protocol):
     def effective_bool(self, key: str, *, default: bool) -> bool: ...
 
+    def minimal_router_tool_names(self) -> frozenset[str]: ...
+
 
 _deps: ToolRoutingDependencies | None = None
 
@@ -38,6 +39,10 @@ def register_tool_routing_dependencies(deps: ToolRoutingDependencies) -> None:
 
 def effective_bool(key: str, *, default: bool) -> bool:
     return _deps.effective_bool(key, default=default) if _deps is not None else default
+
+
+def minimal_router_tool_names() -> frozenset[str]:
+    return _deps.minimal_router_tool_names() if _deps is not None else TOOL_INTROSPECTION
 
 
 def _tool_name(entry: Any) -> str | None:
@@ -84,10 +89,8 @@ def filter_merged_tools_by_category(tools: list[Any], category: str) -> list[Any
 
 def _minimal_router_allow_names() -> frozenset[str]:
     """Tool names allowed when router falls back to the small default set (strict mode)."""
-    raw = (os.environ.get("AGENT_ROUTER_MINIMAL_TOOLS") or "").strip()
-    if raw:
-        return frozenset(x.strip().lower() for x in raw.split(",") if x.strip())
-    return TOOL_INTROSPECTION
+    configured = minimal_router_tool_names()
+    return configured or TOOL_INTROSPECTION
 
 
 def filter_merged_tools_router_minimal(tools: list[Any]) -> list[Any]:
@@ -141,7 +144,7 @@ def filter_merged_tools_by_categories(
     """Keep tools in any of ``categories`` plus introspection (list/get help, category browse)."""
     router_strict = effective_bool(
         "tool_routing.router_strict_default",
-        default=config.AGENT_ROUTER_STRICT_DEFAULT,
+        default=_DEFAULT_ROUTER_STRICT,
     )
     if not categories:
         if router_strict:

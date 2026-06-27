@@ -21,7 +21,7 @@ def list_user_workspaces(client: E2EClient) -> list[dict[str, Any]]:
 
 
 def workspace_quota_snapshot(client: E2EClient, *, bench_prefix: str = BENCH_RESOURCE_PREFIX) -> dict[str, int]:
-    from apps.backend.infrastructure.benchmark_resource_service import workspace_quota_snapshot as _snap
+    from apps.backend.infrastructure.benchmarks.benchmark_resource_service import workspace_quota_snapshot as _snap
 
     snap = _snap(uuid.UUID(client.user_id), include_legacy_prefix=True)
     return {
@@ -38,7 +38,7 @@ def cleanup_bench_dashboards(
     benchmark_run_id: uuid.UUID | None = None,
 ) -> dict[str, Any]:
     """Delete bench sandboxes dashboards for the client user (workspaces untouched)."""
-    from apps.backend.infrastructure.benchmark_resource_service import (
+    from apps.backend.infrastructure.benchmarks.benchmark_resource_service import (
         cleanup_benchmark_dashboards,
     )
 
@@ -59,7 +59,7 @@ def cleanup_prefix(
     benchmark_run_id: uuid.UUID | None = None,
 ) -> dict[str, Any]:
     """Delete benchmark sandboxes for the client user (marker + optional legacy prefix)."""
-    from apps.backend.infrastructure.benchmark_resource_service import cleanup_benchmark_sandboxes
+    from apps.backend.infrastructure.benchmarks.benchmark_resource_service import cleanup_benchmark_sandboxes
 
     del prefix, include_conversations  # legacy args; cleanup uses DB markers + bench-* fallback
     return cleanup_benchmark_sandboxes(
@@ -79,7 +79,7 @@ def prepare_bench_sandbox_cleanup(
     extra_deleted: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     del bench_prefix  # legacy arg
-    from apps.backend.infrastructure.benchmark_resource_service import (
+    from apps.backend.infrastructure.benchmarks.benchmark_resource_service import (
         prepare_benchmark_sandbox_cleanup,
     )
 

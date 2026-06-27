@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from apps.backend.dashboard import public_share
+from apps.backend.infrastructure.dashboards import dashboard_public_share as public_share
 from apps.backend.domain.collections.attachments_db import file_ids_in_value
 
 

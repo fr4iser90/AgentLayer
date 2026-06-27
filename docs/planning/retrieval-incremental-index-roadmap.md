@@ -69,7 +69,7 @@ tags: [planning, retrieval, coding-agent, qdrant, neo4j, index]
 
 | Ort | Änderung |
 |-----|----------|
-| `apps/backend/core/config.py` | `AGENT_WORKSPACE_INDEX_ON_WRITE` = `off` \| `debounced` \| `immediate` (Default: **`debounced`**); `AGENT_WORKSPACE_INDEX_DEBOUNCE_SEC` (Default 3). |
+| `apps/backend/infrastructure/config.py` | `AGENT_WORKSPACE_INDEX_ON_WRITE` = `off` \| `debounced` \| `immediate` (Default: **`debounced`**); `AGENT_WORKSPACE_INDEX_DEBOUNCE_SEC` (Default 3). |
 | Operator (später Stufe B) | `workspace_index_on_write` in `operator_settings` + Migration. |
 
 Für **Stufe A** reicht zunächst **nur Env**; Operator-UI kann in Stufe B folgen.

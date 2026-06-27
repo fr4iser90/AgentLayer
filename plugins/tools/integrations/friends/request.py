@@ -6,8 +6,8 @@ import json
 from typing import Any, Callable
 
 from plugins.tools.integrations.friends.lib.common import resolve_contact_email
-from apps.backend.domain.identity import get_identity
-from apps.backend.infrastructure.auth import get_user_by_email
+from apps.backend.domain.shared.identity import get_identity
+from apps.backend.infrastructure.identity.auth import get_user_by_email
 from apps.backend.infrastructure.db.friends_db import (
     friend_get,
     friend_request_create,

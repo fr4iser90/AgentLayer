@@ -1,6 +1,6 @@
 """Generic tool-arg normalization (unwrap only — no prose recovery)."""
 
-from apps.backend.domain.agent import _normalize_tool_call_arguments
+from apps.backend.domain.agent_runtime.tool_schema import _normalize_tool_call_arguments
 
 
 def test_retrieve_context_empty_without_assistant_prose():

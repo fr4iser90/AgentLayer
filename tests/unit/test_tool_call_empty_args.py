@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from apps.backend.domain.agent_tools import (
+from apps.backend.application.agent_runtime.runtime.tool_loop import (
     _normalize_tool_call_arguments,
     format_tool_call_validation_error,
     validate_tool_call_arguments,
@@ -56,7 +56,7 @@ def test_validation_error_json_has_hint_and_parameters():
 
 
 def test_tool_call_warrants_full_schema_promotion():
-    from apps.backend.domain.agent_tools import tool_call_warrants_full_schema_promotion
+    from apps.backend.application.agent_runtime.runtime.tool_loop import tool_call_warrants_full_schema_promotion
 
     assert tool_call_warrants_full_schema_promotion(
         rejected=True, wire_args={}, normalized_args={}, result_ok=False
@@ -90,7 +90,7 @@ def test_tool_call_warrants_full_schema_promotion():
 
 
 def test_lookup_schema_exact_name_not_fuzzy_suffix():
-    from apps.backend.domain.agent_tools import _lookup_tool_parameter_schema
+    from apps.backend.application.agent_runtime.runtime.tool_loop import _lookup_tool_parameter_schema
 
     ws = _lookup_tool_parameter_schema("workspace.create")
     bare = _lookup_tool_parameter_schema("create")

@@ -9,7 +9,9 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from apps.backend.domain.agent_run_cancel import (
+from apps.backend.infrastructure.agent_runtime import agent_registry_service as _agent_registry_service  # noqa: F401
+from apps.backend.infrastructure.plugins import plugin_registry_service as _plugin_registry_service  # noqa: F401
+from apps.backend.domain.agent_runtime.run_cancel import (
     parent_cancel_event,
     register_parent_cancel,
     reset_parent_cancel_registry_for_tests,
@@ -37,7 +39,7 @@ def test_signal_parent_cancel_sets_thread_event() -> None:
 
 
 def test_root_cancel_propagates_to_nested_runs() -> None:
-    from apps.backend.domain.agent_run_cancel import (
+    from apps.backend.domain.agent_runtime.run_cancel import (
         link_run_to_cancel_root,
         root_cancel_event,
     )
@@ -88,10 +90,10 @@ def test_delegate_subagent_receives_linked_cancel_event() -> None:
             "choices": [{"message": {"content": "ok"}, "finish_reason": "stop"}],
         }
 
-    with patch("apps.backend.domain.agent.chat_completion", new=AsyncMock(side_effect=fake_cc)):
-        with patch("apps.backend.domain.identity.get_identity", return_value=(1, uid)):
+    with patch("apps.backend.application.agent_runtime.runtime.embedded_subagent._chat_completion_handler", new=AsyncMock(side_effect=fake_cc)):
+        with patch("apps.backend.domain.shared.identity.get_identity", return_value=(1, uid)):
             with patch(
-                "apps.backend.infrastructure.agent_artifacts_store.create_artifact",
+                "apps.backend.infrastructure.agent_runtime.agent_artifacts_store.create_artifact",
                 return_value={"id": uuid.uuid4()},
             ):
                 signal_parent_cancel(parent_id)

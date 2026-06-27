@@ -11,11 +11,11 @@ from typing import Any, Callable
 import feedparser
 import httpx
 
-from apps.backend.dashboard import db as dashboard_db
-from apps.backend.dashboard.tool_dashboard_resolve import resolve_dashboard_id
-from apps.backend.domain.agent import chat_completion
-from apps.backend.domain.identity import get_identity, reset_identity, set_identity
-from apps.backend.infrastructure.conversations_db import conversation_append_message, conversation_create
+from apps.backend.infrastructure.dashboards import dashboard_db
+from apps.backend.infrastructure.dashboards.dashboard_tool_dashboard_resolve import resolve_dashboard_id
+from apps.backend.application.agent_runtime.use_cases.chat_completion import chat_completion
+from apps.backend.domain.shared.identity import get_identity, reset_identity, set_identity
+from apps.backend.infrastructure.platform.conversations_db import conversation_append_message, conversation_create
 
 __version__ = "1.0.0"
 TOOL_ID = "rss"
@@ -230,7 +230,7 @@ def summarize(arguments: dict[str, Any]) -> str:
                     "error": "persist_dashboard requires dashboard_id (or omit persist_dashboard to get markdown only)",
                     "markdown": md,
                 }
-            from apps.backend.domain.collections import service as domain_svc
+            from apps.backend.infrastructure.collections import collections_view_service as domain_svc
 
             ws_full = dashboard_db.dashboard_get(caller_uid, tenant_id, wid)
             if ws_full is None:

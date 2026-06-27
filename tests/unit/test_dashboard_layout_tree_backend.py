@@ -1,8 +1,8 @@
-"""Unit tests for apps.backend.dashboard.layout_tree."""
+"""Unit tests for dashboard layout tree helpers."""
 
 from __future__ import annotations
 
-from apps.backend.dashboard.layout_tree import (
+from apps.backend.infrastructure.dashboards.dashboard_layout_tree import (
     count_layout_blocks,
     filter_layout_blocks,
     find_block_in_layout,

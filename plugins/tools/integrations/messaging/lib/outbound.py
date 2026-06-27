@@ -8,9 +8,9 @@ from typing import Any
 
 import httpx
 
-from apps.backend.infrastructure import notification_prefs_store
+from apps.backend.infrastructure.notifications import notification_prefs_store
 from apps.backend.infrastructure.db import db
-from apps.backend.infrastructure import operator_settings
+from apps.backend.infrastructure.settings import operator_settings
 
 logger = logging.getLogger(__name__)
 

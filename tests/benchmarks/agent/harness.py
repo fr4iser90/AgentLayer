@@ -491,7 +491,7 @@ def load_manifest(path: Path) -> tuple[
 
 def profiles_from_admin_endpoints(client: E2EClient) -> list[ModelProfile]:
     """Enabled rows from Admin → Interfaces → LLM endpoints (keys stay in DB)."""
-    from apps.backend.infrastructure.model_catalog_providers import db_catalog_provider_id
+    from apps.backend.infrastructure.providers.model_catalog_providers import db_catalog_provider_id
 
     payload = client.get_json("/v1/admin/external-llm/endpoints")
     rows = payload.get("endpoints") if isinstance(payload.get("endpoints"), list) else []
@@ -1604,7 +1604,7 @@ def run_benchmark(
 
         harness_matrix = None
         if tenant_id is not None and use_harness_matrix:
-            from apps.backend.infrastructure.benchmark_harness_resolve import load_matrix
+            from apps.backend.infrastructure.benchmarks.benchmark_harness_resolve import load_matrix
 
             harness_matrix = load_matrix(tenant_id)
 
@@ -1721,7 +1721,7 @@ def run_benchmark(
                 eff_stream: bool | None = None
                 eff_capture: bool | None = None
                 if tenant_id is not None:
-                    from apps.backend.infrastructure.benchmark_harness_resolve import resolve_for_profile
+                    from apps.backend.infrastructure.benchmarks.benchmark_harness_resolve import resolve_for_profile
 
                     eff = resolve_for_profile(
                         tenant_id=tenant_id,

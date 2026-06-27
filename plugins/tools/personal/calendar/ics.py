@@ -15,10 +15,10 @@ from urllib.parse import urlparse
 import httpx
 from icalendar import Calendar
 
-from apps.backend.core.config import config
+from apps.backend.infrastructure.platform.config import config
 from apps.backend.infrastructure.db import db
-from apps.backend.domain.identity import get_identity
-from apps.backend.infrastructure.secret_otp_bundle import secret_otp_bundle
+from apps.backend.domain.shared.identity import get_identity
+from apps.backend.infrastructure.identity.secret_otp_bundle import secret_otp_bundle
 
 logger = logging.getLogger(__name__)
 

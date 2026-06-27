@@ -261,7 +261,7 @@ def send(arguments: dict[str, Any]) -> str:
         to_list = [str(to_raw).strip()]
 
     resolved: list[str] = []
-    from apps.backend.domain.identity import get_identity
+    from apps.backend.domain.shared.identity import get_identity
 
     _tid, uid = get_identity()
     for entry in to_list:

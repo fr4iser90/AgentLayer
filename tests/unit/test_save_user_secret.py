@@ -6,7 +6,7 @@ import json
 import uuid
 from unittest.mock import patch
 
-from apps.backend.infrastructure.secret_otp_bundle import validate_user_secret_service_key
+from apps.backend.infrastructure.identity.secret_otp_bundle import validate_user_secret_service_key
 from plugins.tools.platform.secrets.save_user_secret import save_user_secret
 
 

@@ -6,7 +6,7 @@ import re
 import uuid
 from unittest import mock
 
-from apps.backend.domain.current_time_context import (
+from apps.backend.domain.agent_runtime.time_context import (
     apply_current_time_context,
     build_current_time_context_snippet,
     resolve_user_timezone,
@@ -30,7 +30,7 @@ def test_snippet_without_timezone_no_fake_local() -> None:
 def test_request_timezone_persisted_and_used() -> None:
     uid = uuid.uuid4()
     with mock.patch(
-        "apps.backend.domain.current_time_context._persist_request_timezone"
+        "apps.backend.domain.agent_runtime.time_context._persist_request_timezone"
     ) as mock_persist:
         tz = resolve_user_timezone(
             uid,
@@ -44,7 +44,7 @@ def test_request_timezone_persisted_and_used() -> None:
 def test_profile_timezone_when_no_request() -> None:
     uid = uuid.uuid4()
     with mock.patch(
-        "apps.backend.domain.current_time_context._profile_timezone",
+        "apps.backend.domain.agent_runtime.time_context._profile_timezone",
         return_value="Europe/Vienna",
     ):
         tz = resolve_user_timezone(uid, 1, request_timezone=None)
@@ -54,7 +54,7 @@ def test_profile_timezone_when_no_request() -> None:
 def test_no_timezone_returns_none_not_utc() -> None:
     uid = uuid.uuid4()
     with mock.patch(
-        "apps.backend.domain.current_time_context._profile_timezone",
+        "apps.backend.domain.agent_runtime.time_context._profile_timezone",
         return_value=None,
     ):
         tz = resolve_user_timezone(uid, 1, request_timezone=None)

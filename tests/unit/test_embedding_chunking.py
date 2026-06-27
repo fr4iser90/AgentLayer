@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from apps.backend.infrastructure import embedding_chunking as ec
+from apps.backend.infrastructure.providers import embedding_chunking as ec
 
 
 def test_parse_batch_limit_from_llamacpp_error() -> None:

@@ -105,7 +105,7 @@ def create(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> 
     else:
         bind_after = bool(bind_after)
 
-    from apps.backend.infrastructure.workspace_service import (
+    from apps.backend.infrastructure.workspace.workspace_service import (
         WorkspaceCreateError,
         create_project_workspace_for_user,
         ensure_workspace,
@@ -121,7 +121,7 @@ def create(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> 
             benchmark_run_id = None
     if benchmark_run_id is None:
         try:
-            from apps.backend.domain.identity import get_benchmark_run_id
+            from apps.backend.domain.shared.identity import get_benchmark_run_id
 
             benchmark_run_id = get_benchmark_run_id()
         except Exception:
@@ -132,7 +132,7 @@ def create(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> 
         wid = str(existing["id"])
         if benchmark_run_id is not None and user.id:
             try:
-                from apps.backend.infrastructure.benchmark_resource_service import (
+                from apps.backend.infrastructure.benchmarks.benchmark_resource_service import (
                     tag_workspace_benchmark_run,
                 )
 
@@ -233,7 +233,7 @@ def bind(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> st
     wid_raw = arguments.get("workspace_id") or arguments.get("id")
     name_arg = str(arguments.get("name") or "").strip()
 
-    from apps.backend.infrastructure.workspace_service import ensure_workspace
+    from apps.backend.infrastructure.workspace.workspace_service import ensure_workspace
 
     wid: str | None = None
     if wid_raw is not None and str(wid_raw).strip():

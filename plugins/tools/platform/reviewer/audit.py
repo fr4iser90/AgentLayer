@@ -6,14 +6,15 @@ import json
 import uuid
 from typing import Any, Callable
 
-from apps.backend.domain.agent_registry import get_agent_registry
-from apps.backend.domain.identity import get_identity
-from apps.backend.infrastructure import agent_config_service, agent_config_store, benchmark_runs_store
-from apps.backend.infrastructure.agent_config_fingerprint import fingerprint_response, snapshot
-from apps.backend.infrastructure.auth import get_user_by_id
-from apps.backend.infrastructure.benchmark_analysis import analyze_runs, compare_cohorts, list_cohorts
-from apps.backend.infrastructure.benchmark_review_service import run_review
-from apps.backend.infrastructure.benchmark_stats import aggregate_benchmark_stats
+from apps.backend.domain.agent_runtime.registry import get_agent_registry
+from apps.backend.domain.shared.identity import get_identity
+from apps.backend.infrastructure.agent_runtime import agent_config_service, agent_config_store
+from apps.backend.infrastructure.benchmarks import benchmark_runs_store
+from apps.backend.infrastructure.agent_runtime.agent_config_fingerprint import fingerprint_response, snapshot
+from apps.backend.infrastructure.identity.auth import get_user_by_id
+from apps.backend.infrastructure.benchmarks.benchmark_analysis import analyze_runs, compare_cohorts, list_cohorts
+from apps.backend.infrastructure.benchmarks.benchmark_review_service import run_review
+from apps.backend.infrastructure.benchmarks.benchmark_stats import aggregate_benchmark_stats
 from apps.backend.infrastructure.db import db
 
 __version__ = "1.0.0"
@@ -258,7 +259,7 @@ def run_trace_get(arguments: dict[str, Any]) -> str:
     run_id = _parse_uuid(arguments.get("run_id"), field="run_id")
     if not run_id:
         return _err("run_id required")
-    from apps.backend.infrastructure import agent_runs_store, agent_tasks_store
+    from apps.backend.infrastructure.agent_runtime import agent_runs_store, agent_tasks_store
     from apps.backend.infrastructure.db import db
     from psycopg.rows import dict_row
 

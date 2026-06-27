@@ -26,11 +26,11 @@ class TestScanPaths(unittest.TestCase):
 
 class TestIncrementalEnqueue(unittest.TestCase):
     def test_enqueue_off_mode_is_noop(self) -> None:
-        from apps.backend.infrastructure import workspace_index_incremental as inc
+        from apps.backend.infrastructure.workspace import workspace_index_incremental as inc
 
         inc._PENDING.clear()
         with mock.patch(
-            "apps.backend.infrastructure.workspace_index_incremental.config.AGENT_WORKSPACE_INDEX_ON_WRITE",
+            "apps.backend.infrastructure.workspace.workspace_index_incremental.config.AGENT_WORKSPACE_INDEX_ON_WRITE",
             "off",
         ):
             inc.enqueue_incremental_index(
@@ -42,14 +42,14 @@ class TestIncrementalEnqueue(unittest.TestCase):
             self.assertEqual(inc._PENDING, {})
 
     def test_enqueue_debounced_batches_paths(self) -> None:
-        from apps.backend.infrastructure import workspace_index_incremental as inc
+        from apps.backend.infrastructure.workspace import workspace_index_incremental as inc
 
         with mock.patch(
-            "apps.backend.infrastructure.workspace_index_incremental.config.AGENT_WORKSPACE_INDEX_ON_WRITE",
+            "apps.backend.infrastructure.workspace.workspace_index_incremental.config.AGENT_WORKSPACE_INDEX_ON_WRITE",
             "debounced",
         ):
             with mock.patch(
-                "apps.backend.infrastructure.workspace_index_incremental.config.AGENT_WORKSPACE_INDEX_DEBOUNCE_SEC",
+                "apps.backend.infrastructure.workspace.workspace_index_incremental.config.AGENT_WORKSPACE_INDEX_DEBOUNCE_SEC",
                 99,
             ):
                 with mock.patch.object(inc, "_full_index_running", return_value=False):
@@ -65,7 +65,7 @@ class TestIncrementalEnqueue(unittest.TestCase):
 
 class TestRunIncrementalIndex(unittest.TestCase):
     def test_run_incremental_skips_when_semantic_off(self) -> None:
-        from apps.backend.infrastructure.workspace_retrieval import run_incremental_index
+        from apps.backend.infrastructure.workspace.workspace_retrieval import run_incremental_index
 
         out = run_incremental_index(
             str(uuid.uuid4()),

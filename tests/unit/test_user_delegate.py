@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import unittest
 
-from apps.backend.domain.delegate_config_schema import (
+from apps.backend.domain.delegation.config_schema import (
     default_delegate_config,
     normalize_delegate_config,
 )
-from apps.backend.domain.delegate_merge import build_delegate_context_block, merge_delegate_configs
+from apps.backend.domain.delegation.merge import build_delegate_context_block, merge_delegate_configs
 
 
 class TestDelegateConfigSchema(unittest.TestCase):

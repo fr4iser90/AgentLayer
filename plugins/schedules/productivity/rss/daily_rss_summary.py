@@ -18,7 +18,7 @@ from typing import Any
 import httpx
 
 from apps.backend.infrastructure.db import db
-from apps.backend.domain.agent import chat_completion
+from apps.backend.application.agent_runtime.use_cases.chat_completion import chat_completion
 
 logger = logging.getLogger(__name__)
 

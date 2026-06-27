@@ -1,0 +1,21 @@
+"""Agent runtime write commands."""
+from __future__ import annotations
+
+import uuid
+from dataclasses import dataclass, field
+
+
+@dataclass(frozen=True, slots=True)
+class SaveAgentRunCommand:
+    run_id: uuid.UUID
+    agent_id: str
+    status: str
+    user_id: str
+    transcript: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True, slots=True)
+class AppendAgentTurnCommand:
+    run_id: uuid.UUID
+    role: str
+    content: str

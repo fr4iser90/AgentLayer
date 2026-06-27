@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from apps.backend.infrastructure.openai_compat_http import _normalize_chat_request_body
-from apps.backend.infrastructure.openai_stream_aggregate import _prepare_json_body
+from apps.backend.infrastructure.providers.openai_compat_http import _normalize_chat_request_body
+from apps.backend.infrastructure.agent_runtime.openai_stream_aggregate import _prepare_json_body
 
 
 def test_normalize_chat_request_merges_leading_system_messages() -> None:

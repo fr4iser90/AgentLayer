@@ -25,7 +25,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Callable
 
-from apps.backend.core.config import config
+from apps.backend.infrastructure.platform.config import config
 
 logger = logging.getLogger(__name__)
 

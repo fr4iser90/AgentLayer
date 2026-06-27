@@ -20,7 +20,7 @@ Example (extra plugin)::
         return json.dumps({"ok": True, "score": 7.2})
 
 Use the **registered tool function name** (e.g. ``forecast``), not the file name.
-Prefer :func:`apps.domain.tool_executor.execute_tool` for clarity (same execution path as chat).
+Prefer :func:`apps.domain.tools.executor.execute_tool` for clarity (same execution path as chat).
 Avoid recursion (tool A calling tool A) and very deep chains; see
 ``AGENT_TOOL_CHAIN_MAX_DEPTH`` in ``.env.example``.
 """
@@ -29,7 +29,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from apps.backend.domain.tool_executor import execute_tool
+from apps.backend.domain.tools.executor import execute_tool
 
 __all__ = ["invoke_registered_tool"]
 

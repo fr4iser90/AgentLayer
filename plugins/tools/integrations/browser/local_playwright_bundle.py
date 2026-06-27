@@ -57,11 +57,17 @@ _REPO_ROOT = Path(__file__).resolve().parents[4]
 
 
 def _output_root() -> Path:
-    from apps.backend.domain.identity import get_identity
-    from apps.backend.domain.user_output import user_output_subdir
+    from apps.backend.domain.shared.identity import get_identity
+    from apps.backend.domain.agent_runtime.user_output import user_output_subdir
+    from apps.backend.infrastructure.platform.config import config
 
     _, user_id = get_identity()
-    return user_output_subdir(user_id, "browser", "local-playwright-bundles")
+    return user_output_subdir(
+        user_id,
+        "browser",
+        "local-playwright-bundles",
+        base_dir=Path(config.DATA_DIR),
+    )
 
 
 def _parse_plan(raw: dict[str, Any] | None) -> dict[str, Any] | None:

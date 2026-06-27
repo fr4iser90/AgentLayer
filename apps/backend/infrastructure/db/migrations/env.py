@@ -1,8 +1,8 @@
-"""Alembic environment that loads DB URL from `apps.backend.core.config`.
+"""Alembic environment that loads DB URL from `apps.backend.infrastructure.platform.config`.
 
 This file configures Alembic to run SQL migrations stored under
 `migrations/sql/*.sql`. The `sqlalchemy.url` option is set from
-`apps.backend.core.config.config.DATABASE_URL` so you don't need to edit
+`apps.backend.infrastructure.platform.config.config.DATABASE_URL` so you don't need to edit
 `alembic.ini` with credentials.
 """
 from __future__ import annotations
@@ -19,7 +19,7 @@ ROOT = str(Path(__file__).resolve().parents[5])
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from apps.backend.core.config import config as app_config  # type: ignore
+from apps.backend.infrastructure.platform.config import config as app_config  # type: ignore
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

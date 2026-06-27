@@ -5,8 +5,8 @@ from __future__ import annotations
 import unittest
 import uuid
 
-from apps.backend.dashboard.layout_data_init import merge_data_for_layout
-from apps.backend.dashboard.layout_proposals import (
+from apps.backend.infrastructure.dashboards.dashboard_layout_data_init import merge_data_for_layout
+from apps.backend.infrastructure.dashboards.dashboard_layout_proposals import (
     get_latest_proposal_set,
     get_proposal_set,
     store_proposal_set,

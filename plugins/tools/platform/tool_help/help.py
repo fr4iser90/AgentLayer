@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any, Callable
 
-from apps.backend.core.config import config
+from apps.backend.infrastructure.platform.config import config
 from apps.backend.domain.plugin_system.registry import get_registry
 from apps.backend.domain.plugin_system.tool_name_hints import suggest_tool_names
 

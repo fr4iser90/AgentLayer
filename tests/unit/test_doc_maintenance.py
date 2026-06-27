@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import pytest
 
-from apps.backend.infrastructure.coding_workflow import normalize_coding_workflow
-from apps.backend.infrastructure.doc_maintenance import (
+from apps.backend.infrastructure.codebase.coding_workflow import normalize_coding_workflow
+from apps.backend.infrastructure.platform.doc_maintenance import (
     DOC_MAINTENANCE_MODE_BOOTSTRAP,
     DOC_MAINTENANCE_MODE_RESPECT,
     build_doc_maintenance_instructions,
     parse_doc_maintenance_mode,
 )
-from apps.backend.infrastructure import coding_schedule_execution as sched
+from apps.backend.infrastructure.codebase import coding_schedule_execution as sched
 
 
 def test_parse_doc_maintenance_mode_default_respect():

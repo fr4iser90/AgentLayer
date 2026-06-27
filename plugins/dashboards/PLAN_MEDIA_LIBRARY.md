@@ -68,7 +68,7 @@ ALTER TABLE operator_settings ADD COLUMN IF NOT EXISTS
   media_embed_allowed_hosts TEXT;     -- kommagetrennt, NULL = Code-Default
 ```
 
-Env-Fallbacks (Vorschlag in `apps/backend/core/config.py`):
+Env-Fallbacks (Vorschlag in `apps/backend/infrastructure/config.py`):
 
 - `AGENT_MEDIA_UPLOAD_DIR` → `{AGENT_DATA_DIR}/media_uploads/`
 - `AGENT_MEDIA_DEFAULT_USER_QUOTA_MB` → `500`
@@ -242,7 +242,7 @@ CREATE INDEX idx_media_share_grants_viewer ON media_share_grants (viewer_user_id
 
 ## Track M — HTTP API
 
-Router-Vorschlag: `apps/backend/media/router.py` (Prefix `/v1/media`).
+Router-Vorschlag: `apps/backend/api/media_api.py` (Prefix `/v1/media`).
 
 | Methode | Pfad | Zweck |
 |---------|------|--------|
@@ -432,11 +432,11 @@ Erweiterung `AdminUsers.tsx` (pro User):
 
 | Bereich | Pfade |
 |---------|--------|
-| Config | `apps/backend/core/config.py` |
+| Config | `apps/backend/infrastructure/config.py` |
 | Operator | `apps/backend/infrastructure/operator_settings.py` |
 | DB | `apps/backend/infrastructure/db/migrations/versions/schema_NNN_*.py` |
-| Media API | `apps/backend/media/router.py`, `media_db.py`, `media_policy.py` |
-| Storage | `apps/backend/dashboard/file_storage.py` (reuse) |
+| Media API | `apps/backend/api/media_api.py`, `media_db.py`, `media_policy.py` |
+| Storage | `apps/backend/infrastructure/dashboard_file_storage.py` (reuse) |
 | Dashboard blocks | `apps/frontend/src/features/dashboard/MediaPlayerBlock.tsx` |
 | Agent tools | `plugins/tools/personal/media/media.py` |
 | Admin UI | `AdminInterfacesPlatformSection.tsx`, `AdminUsers.tsx` |

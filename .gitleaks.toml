@@ -11,6 +11,6 @@ regexes = [
   '''(?i)"run_key"\s*:\s*"comfy_txt2img_default"''',
 ]
 paths = [
-  "src/domain/studio_catalog.py",
-  "src/domain/studio_jobs.py",
+  "apps/backend/domain/studio/catalog.py",
+  "apps/backend/infrastructure/studio_jobs.py",
 ]

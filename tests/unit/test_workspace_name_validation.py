@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from apps.backend.infrastructure.workspace_service import (
+from apps.backend.infrastructure.workspace.workspace_service import (
     WorkspaceCreateError,
     resolve_user_workspace_dir,
     validate_workspace_name,

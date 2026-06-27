@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from apps.backend.media import media_policy
-from apps.backend.media.upload_bytes import sniff_media_mime
+from apps.backend.infrastructure.media import media_policy
+from apps.backend.infrastructure.media.upload_bytes import sniff_media_mime
 
 
 def test_sniff_mp3_id3() -> None:

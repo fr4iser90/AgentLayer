@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from apps.backend.infrastructure.workspace_k1_lite import (
+from apps.backend.infrastructure.workspace.workspace_k1_lite import (
     build_workspace_knowledge_units,
     extract_knowledge_units_for_file,
 )
@@ -68,7 +68,7 @@ def test_hybrid_merges_llm_units(monkeypatch, tmp_path):
             }
         ]
 
-    monkeypatch.setattr("apps.backend.infrastructure.workspace_k1_lite._llm_units_for_file", fake_llm)
+    monkeypatch.setattr("apps.backend.infrastructure.workspace.workspace_k1_lite._llm_units_for_file", fake_llm)
 
     out = build_workspace_knowledge_units(tmp_path, extractor_backend="hybrid")
 

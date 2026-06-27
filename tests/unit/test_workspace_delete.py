@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from unittest.mock import MagicMock, patch
 
-from apps.backend.infrastructure.workspace_service import (
+from apps.backend.infrastructure.workspace.workspace_project_service import (
     _delete_workspace_db_dependencies,
     delete_owned_workspace,
 )
@@ -47,10 +47,10 @@ def test_delete_owned_workspace_calls_task_cleanup_before_row_delete() -> None:
         pool.return_value.connection.return_value.__enter__ = lambda s: conn
         pool.return_value.connection.return_value.__exit__ = MagicMock(return_value=False)
         with patch(
-            "apps.backend.infrastructure.workspace_service._delete_workspace_files"
+            "apps.backend.infrastructure.workspace.workspace_project_service._delete_workspace_files"
         ):
             with patch(
-                "apps.backend.infrastructure.workspace_service._delete_workspace_index_sidecars"
+                "apps.backend.infrastructure.workspace.workspace_project_service._delete_workspace_index_sidecars"
             ):
                 ok = delete_owned_workspace(
                     workspace_id=str(wid), owner_user_id=uid

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from apps.backend.domain.agent_registry import _tools_for_capabilities_any, _tools_for_domains
+from apps.backend.domain.agent_runtime.registry import _tools_for_capabilities_any, _tools_for_domains
 
 
 def _repo(names: list[str], base: str) -> bool:
@@ -26,7 +26,7 @@ def test_tools_for_capabilities_resolves_coding_read() -> None:
 
 
 def test_coding_agent_uses_explicit_allowlist() -> None:
-    from apps.backend.domain.agent_registry import get_agent_registry
+    from apps.backend.domain.agent_runtime.registry import get_agent_registry
 
     a = get_agent_registry().get_agent("coding")
     assert a is not None
@@ -43,7 +43,7 @@ def test_coding_agent_uses_explicit_allowlist() -> None:
 
 
 def test_creative_and_dashboard_agents() -> None:
-    from apps.backend.domain.agent_registry import get_agent_registry
+    from apps.backend.domain.agent_runtime.registry import get_agent_registry
 
     reg = get_agent_registry()
     c = reg.get_agent("creative")
@@ -58,7 +58,7 @@ def test_creative_and_dashboard_agents() -> None:
 
 
 def test_general_agent_orchestrator_only() -> None:
-    from apps.backend.domain.agent_registry import get_agent_registry
+    from apps.backend.domain.agent_runtime.registry import get_agent_registry
 
     a = get_agent_registry().get_agent("general")
     assert a is not None
@@ -78,7 +78,7 @@ def test_general_agent_orchestrator_only() -> None:
 
 
 def test_coding_agent_has_workspace_repository_tools() -> None:
-    from apps.backend.domain.agent_registry import get_agent_registry
+    from apps.backend.domain.agent_runtime.registry import get_agent_registry
 
     a = get_agent_registry().get_agent("coding")
     assert a is not None
@@ -92,7 +92,7 @@ def test_coding_agent_has_workspace_repository_tools() -> None:
 
 
 def test_operator_agent_matches_capabilities() -> None:
-    from apps.backend.domain.agent_registry import get_agent_registry
+    from apps.backend.domain.agent_runtime.registry import get_agent_registry
 
     a = get_agent_registry().get_agent("operator")
     assert a is not None
@@ -103,7 +103,7 @@ def test_operator_agent_matches_capabilities() -> None:
 
 
 def test_security_auditor_agent_resolves_domains_and_rag_capability() -> None:
-    from apps.backend.domain.agent_registry import get_agent_registry
+    from apps.backend.domain.agent_runtime.registry import get_agent_registry
 
     a = get_agent_registry().get_agent("security_auditor")
     assert a is not None
@@ -117,7 +117,7 @@ def test_security_auditor_agent_resolves_domains_and_rag_capability() -> None:
 
 
 def test_coding_plan_agent_read_only_via_allowlist() -> None:
-    from apps.backend.domain.agent_registry import get_agent_registry
+    from apps.backend.domain.agent_runtime.registry import get_agent_registry
 
     a = get_agent_registry().get_agent("coding_plan")
     assert a is not None
@@ -139,7 +139,7 @@ def test_coding_plan_agent_read_only_via_allowlist() -> None:
 
 
 def test_general_agent_yaml_uses_tool_allowlist() -> None:
-    from apps.backend.core.config import PLUGINS_DIR
+    from apps.backend.infrastructure.platform.config import PLUGINS_DIR
 
     general_yaml = PLUGINS_DIR / "agents" / "general" / "agent.yaml"
     assert general_yaml.is_file()
@@ -148,7 +148,7 @@ def test_general_agent_yaml_uses_tool_allowlist() -> None:
     assert "tool_domains:" not in text
     assert "tool_capability_any:" not in text
 
-    from apps.backend.domain.agent_registry import get_agent_registry
+    from apps.backend.domain.agent_runtime.registry import get_agent_registry
 
     a = get_agent_registry().get_agent("general")
     assert a is not None
@@ -159,7 +159,7 @@ def test_general_agent_yaml_uses_tool_allowlist() -> None:
 
 
 def test_agents_loaded_from_yaml_directories() -> None:
-    from apps.backend.domain.agent_registry import get_agent_registry
+    from apps.backend.domain.agent_runtime.registry import get_agent_registry
 
     reg = get_agent_registry()
     for aid in ("coding_plan", "coding", "operator", "security_auditor", "general", "creative", "dashboard"):
@@ -171,7 +171,7 @@ def test_agents_loaded_from_yaml_directories() -> None:
 
 
 def test_missing_tools_not_in_allowlist() -> None:
-    from apps.backend.domain.agent_registry import get_agent_registry
+    from apps.backend.domain.agent_runtime.registry import get_agent_registry
 
     reg = get_agent_registry()
     reg.ensure_loaded()
@@ -187,7 +187,7 @@ def test_missing_tools_not_in_allowlist() -> None:
 
 
 def test_agent_behavior_flags_come_from_plugins_not_ids() -> None:
-    from apps.backend.domain.agent import _agent_behavior_flags
+    from apps.backend.domain.agent_runtime.agent_behavior import _agent_behavior_flags
 
     c = _agent_behavior_flags("coding")
     assert c["coding_tools_permission_ask"] is False

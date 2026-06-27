@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import unittest
 
-from apps.backend.domain.agent import (
+from apps.backend.domain.agent_runtime.tool_loop_policy import (
     _agent_final_round_text_only_hint,
     _agent_near_max_tool_rounds_reminder,
-    _agent_session_tool_recap_system_message,
     _agent_tool_budget_system_message,
 )
+from apps.backend.domain.agent_runtime.tool_transcript import _agent_session_tool_recap_system_message
 
 
 class AgentToolBudgetMessageTests(unittest.TestCase):

@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from apps.backend.infrastructure.mcp_runtime import (
+from apps.backend.infrastructure.plugins.mcp_runtime import (
     McpStdioServer,
     _parse_servers_payload,
     mcp_openai_function_name,
@@ -53,24 +53,24 @@ def test_parse_servers_rejects_bad_id() -> None:
 
 
 def test_mcp_runtime_status_when_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
-    import apps.backend.core.config as cfg_mod
+    import apps.backend.infrastructure.platform.config as cfg_mod
     import asyncio
 
     monkeypatch.setattr(cfg_mod, "AGENT_MCP_ENABLED", False, raising=False)
 
-    from apps.backend.infrastructure.mcp_runtime import mcp_runtime_status
+    from apps.backend.infrastructure.plugins.mcp_runtime import mcp_runtime_status
 
     st = asyncio.run(mcp_runtime_status())
     assert st["enabled"] is False
     assert st["servers"] == []
 
 
-    import apps.backend.core.config as cfg_mod
+    import apps.backend.infrastructure.platform.config as cfg_mod
 
     payload = [{"id": "x", "command": "true", "args": []}]
     monkeypatch.setattr(cfg_mod, "AGENT_MCP_SERVERS_FILE", "", raising=False)
     monkeypatch.setattr(cfg_mod, "AGENT_MCP_SERVERS_JSON", json.dumps(payload), raising=False)
-    from apps.backend.infrastructure import mcp_runtime
+    from apps.backend.infrastructure.plugins import mcp_runtime
 
     servers = mcp_runtime.load_mcp_stdio_servers()
     assert len(servers) == 1

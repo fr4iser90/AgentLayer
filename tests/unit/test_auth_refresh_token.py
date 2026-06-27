@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from unittest.mock import MagicMock, patch
 
-from apps.backend.infrastructure import auth as mod
+from apps.backend.infrastructure.identity import auth as mod
 
 
 def test_hash_refresh_token_is_sha256_hex() -> None:

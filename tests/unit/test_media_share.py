@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from apps.backend.media import media_policy
+from apps.backend.infrastructure.media import media_policy
 
 
 def test_normalize_media_license() -> None:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from apps.backend.infrastructure import workspace_retrieval as wr
+from apps.backend.infrastructure.workspace import workspace_retrieval as wr
 
 
 class TestWorkspaceIndexJob(unittest.TestCase):

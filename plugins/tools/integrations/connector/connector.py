@@ -14,7 +14,7 @@ from plugins.tools.integrations.http.lib.profiles_db import (
     normalize_profile_id,
 )
 from plugins.tools.integrations.http.lib.request import execute_http
-from apps.backend.domain.identity import get_identity
+from apps.backend.domain.shared.identity import get_identity
 
 __version__ = "1.0.0"
 TOOL_ID = "connector"

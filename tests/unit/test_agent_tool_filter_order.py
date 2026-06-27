@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from apps.backend.core import config as cfg
+from apps.backend.infrastructure.platform import config as cfg
 from apps.backend.domain.plugin_system.registry import reload_registry
 from apps.backend.domain.plugin_system.tool_routing import (
     TOOL_INTROSPECTION,
@@ -113,8 +113,8 @@ def test_general_allowlist_survives_repository_category_mismatch() -> None:
 def test_explicit_allowlist_agent_keeps_repository_tools_despite_coding_domain() -> None:
     """coding_plan/coding YAML allowlists repository.* tools; domain=coding must not strip them first."""
     reload_registry()
-    from apps.backend.domain.agent_registry import get_agent_registry
-    from apps.backend.domain.agent_prompts import _tool_spec_name
+    from apps.backend.domain.agent_runtime.registry import get_agent_registry
+    from apps.backend.application.agent_runtime.runtime.prompts import _tool_spec_name
     from apps.backend.domain.plugin_system.registry import get_registry
     from apps.backend.domain.plugin_system.tool_routing import filter_merged_tools_by_domain
 

@@ -5,7 +5,7 @@ Capability gate (ADR 0003): optional env allow/block/confirm lists applied at :f
 - **Allowed** (if non-empty): tool must declare at least one capability intersecting the allowlist.
   Tools with no declared capabilities are denied when an allowlist is active (strict governance).
 - **Confirm**: tool needs capabilities in the confirm set; caller must list them in
-  :func:`apps.domain.tool_invocation_context.get_capability_confirmed` (set by chat body
+  :func:`apps.domain.tools.invocation_context.get_capability_confirmed` (set by chat body
   ``agent_capability_confirm`` or HTTP header on ``/tools/run``).
 
 Empty env lists = that dimension disabled (backward compatible).
@@ -15,13 +15,24 @@ from __future__ import annotations
 
 import json
 import logging
-import os
-from typing import Any
+from typing import Any, Protocol
 
 from apps.backend.domain.plugin_system.capability_index import effective_capabilities_for_tool
-from apps.backend.domain.tool_invocation_context import get_capability_confirmed
+from apps.backend.domain.tools.invocation_context import get_capability_confirmed
 
 logger = logging.getLogger(__name__)
+
+
+class CapabilityGovernanceDependencies(Protocol):
+    def gate_sets(self) -> tuple[frozenset[str], frozenset[str], frozenset[str]]: ...
+
+
+_deps: CapabilityGovernanceDependencies | None = None
+
+
+def register_capability_governance_dependencies(deps: CapabilityGovernanceDependencies) -> None:
+    global _deps
+    _deps = deps
 
 
 def _parse_csv_caps(raw: str | None) -> frozenset[str]:
@@ -46,12 +57,9 @@ def parse_user_capability_confirm(raw: Any) -> frozenset[str]:
     return frozenset()
 
 
-def gate_sets_from_env() -> tuple[frozenset[str], frozenset[str], frozenset[str]]:
+def gate_sets() -> tuple[frozenset[str], frozenset[str], frozenset[str]]:
     """(allowed, blocked, confirm_required) — each may be empty."""
-    allow = _parse_csv_caps(os.environ.get("AGENT_CAPABILITY_GATE_ALLOW") or "")
-    block = _parse_csv_caps(os.environ.get("AGENT_CAPABILITY_GATE_BLOCK") or "")
-    confirm = _parse_csv_caps(os.environ.get("AGENT_CAPABILITY_GATE_CONFIRM") or "")
-    return allow, block, confirm
+    return _deps.gate_sets() if _deps is not None else (frozenset(), frozenset(), frozenset())
 
 
 def capability_gate_error_json(
@@ -61,7 +69,7 @@ def capability_gate_error_json(
     """
     Return a JSON error string if this tool call must be blocked, else None.
     """
-    allow, block, confirm = gate_sets_from_env()
+    allow, block, confirm = gate_sets()
     if not allow and not block and not confirm:
         return None
 

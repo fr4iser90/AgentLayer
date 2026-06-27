@@ -33,7 +33,7 @@ def _domain_tools() -> dict[str, list[str]]:
 
 
 def _agent_summary() -> list[tuple[str, list[str], int]]:
-    from apps.backend.domain.agent_registry import get_agent_registry
+    from apps.backend.domain.agent_runtime.registry import get_agent_registry
 
     reg = get_agent_registry()
     rows: list[tuple[str, list[str], int]] = []

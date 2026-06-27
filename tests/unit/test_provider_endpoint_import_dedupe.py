@@ -16,11 +16,11 @@ class _EnvRow:
 
 
 def test_generic_embedding_preview_matches_db_without_stripping_visible_v1(monkeypatch) -> None:
-    from apps.backend.api import main
+    from apps.backend.api.providers.controllers import operator_common
 
     monkeypatch.setattr(
-        main.db,
-        "operator_provider_endpoints_list_all",
+        operator_common,
+        "list_operator_provider_endpoints",
         lambda kind: [
             {
                 "id": 37,
@@ -31,7 +31,7 @@ def test_generic_embedding_preview_matches_db_without_stripping_visible_v1(monke
         ],
     )
     monkeypatch.setattr(
-        main,
+        operator_common,
         "_operator_env_rows_for_kind",
         lambda kind: [
             _EnvRow(
@@ -43,7 +43,7 @@ def test_generic_embedding_preview_matches_db_without_stripping_visible_v1(monke
         ],
     )
 
-    rows = main._operator_env_provider_preview_rows("embedding")
+    rows = operator_common._operator_env_provider_preview_rows("embedding")
 
     assert rows[0]["already_in_db"] is True
     assert rows[0]["matched_db_endpoint_id"] == 37
@@ -51,11 +51,11 @@ def test_generic_embedding_preview_matches_db_without_stripping_visible_v1(monke
 
 
 def test_generic_chat_preview_uses_same_dedupe_path(monkeypatch) -> None:
-    from apps.backend.api import main
+    from apps.backend.api.providers.controllers import operator_common
 
     monkeypatch.setattr(
-        main.db,
-        "operator_provider_endpoints_list_all",
+        operator_common,
+        "list_operator_provider_endpoints",
         lambda kind: [
             {
                 "id": 12,
@@ -66,7 +66,7 @@ def test_generic_chat_preview_uses_same_dedupe_path(monkeypatch) -> None:
         ],
     )
     monkeypatch.setattr(
-        main,
+        operator_common,
         "_operator_env_rows_for_kind",
         lambda kind: [
             _EnvRow(
@@ -79,14 +79,14 @@ def test_generic_chat_preview_uses_same_dedupe_path(monkeypatch) -> None:
         ],
     )
 
-    rows = main._operator_env_provider_preview_rows("chat")
+    rows = operator_common._operator_env_provider_preview_rows("chat")
 
     assert rows[0]["already_in_db"] is True
     assert rows[0]["matched_db_endpoint_id"] == 12
 
 
 def test_legacy_single_provider_sync_does_not_delete_when_base_missing(monkeypatch) -> None:
-    from apps.backend.infrastructure import operator_settings
+    from apps.backend.infrastructure.settings import operator_settings
 
     calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
     monkeypatch.setattr(
@@ -107,7 +107,7 @@ def test_legacy_single_provider_sync_does_not_delete_when_base_missing(monkeypat
 
 
 def test_legacy_single_provider_sync_is_non_destructive(monkeypatch) -> None:
-    from apps.backend.infrastructure import operator_settings
+    from apps.backend.infrastructure.settings import operator_settings
 
     calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
     monkeypatch.setattr(

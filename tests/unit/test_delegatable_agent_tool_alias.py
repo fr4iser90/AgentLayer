@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from apps.backend.domain.agent_tools import _rewrite_delegatable_agent_tool_alias
+from apps.backend.application.agent_runtime.runtime.tool_loop import _rewrite_delegatable_agent_tool_alias
 
 
 def test_math_alias_becomes_delegate() -> None:

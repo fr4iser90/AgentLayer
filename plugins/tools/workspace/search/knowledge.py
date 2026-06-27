@@ -12,8 +12,8 @@ from plugins.tools.workspace.lib.common import (
 )
 
 try:
-    from apps.backend.infrastructure.code_graph_neo4j import get_code_graph
-    from apps.backend.infrastructure.workspace_k1_lite import build_workspace_knowledge_units
+    from apps.backend.infrastructure.codebase.code_graph_neo4j import get_code_graph
+    from apps.backend.infrastructure.workspace.workspace_k1_lite import build_workspace_knowledge_units
 
     _HAS_K1 = True
 except ImportError:
@@ -56,9 +56,9 @@ def knowledge_index(arguments: dict[str, Any], context: dict | None = None) -> s
     workspace_id = str(ws.get("id") or "")
     max_files = max(10, min(int(arguments.get("max_files") or 1000), 20000))
     try:
-        from apps.backend.domain.identity import get_identity
-        from apps.backend.infrastructure import agent_config_effective
-        from apps.backend.infrastructure.extractor_catalog_providers import get_extractor_provider_spec
+        from apps.backend.domain.shared.identity import get_identity
+        from apps.backend.infrastructure.agent_runtime import agent_config_effective
+        from apps.backend.infrastructure.providers.extractor_catalog_providers import get_extractor_provider_spec
 
         tenant_id, _user_id = get_identity()
         cfg_tid = int(tenant_id) if tenant_id is not None else None

@@ -15,12 +15,12 @@ from typing import Any, Callable, Literal
 import httpx
 from pydantic import BaseModel, ConfigDict, Field
 
-from apps.backend.domain.identity import get_identity
-from apps.backend.infrastructure.rag_docs_file_ingest_service import ingest_markdown_tree, resolve_docs_root
+from apps.backend.domain.shared.identity import get_identity
+from apps.backend.infrastructure.rag.rag_docs_file_ingest_service import ingest_markdown_tree, resolve_docs_root
 from apps.backend.domain.plugin_system.registry import get_registry, reload_registry
-from apps.backend.api.tools_api import ToolPoliciesPutBody
-from apps.backend.infrastructure import operator_settings
-from apps.backend.infrastructure.auth import (
+from apps.backend.api.tools.controllers.tools_api import ToolPoliciesPutBody
+from apps.backend.infrastructure.settings import operator_settings
+from apps.backend.infrastructure.identity.auth import (
     create_user,
     get_user_by_email,
     get_user_by_id,
@@ -28,7 +28,7 @@ from apps.backend.infrastructure.auth import (
     update_user_tenant,
 )
 from apps.backend.infrastructure.db import db
-from apps.backend.infrastructure.operator_settings import (
+from apps.backend.infrastructure.settings.operator_settings import (
     InterfaceHintsPayload,
     OperatorSettingsPatch,
     apply_interface_hints,
@@ -42,11 +42,11 @@ from apps.backend.infrastructure.operator_settings import (
     public_dict as operator_settings_public_dict,
     resolve_external_llm_credentials_for_catalog,
 )
-from apps.backend.infrastructure import scheduler_jobs_store
-from apps.backend.infrastructure import project_runs_store
-from apps.backend.infrastructure.public_error import http_500_detail
-import apps.backend.api.rag as rag_service
-from apps.backend.infrastructure.chat_secret_ingress import (
+from apps.backend.infrastructure.scheduling import scheduler_jobs_store
+from apps.backend.infrastructure.projects import project_runs_store
+from apps.backend.infrastructure.platform.public_error import http_500_detail
+import apps.backend.infrastructure.rag.rag_core as rag_service
+from apps.backend.infrastructure.platform.chat_secret_ingress import (
     consume_placeholders_in_obj,
     resolve_placeholders_deep,
 )
@@ -422,7 +422,7 @@ def tools_catalog(arguments: dict[str, Any]) -> str:
     if isinstance(g_adm, str):
         return g_adm
     try:
-        from apps.backend.infrastructure.tool_operator_policy_db import list_policies, policies_map
+        from apps.backend.infrastructure.tools.tool_operator_policy_db import list_policies, policies_map
         from apps.backend.domain.plugin_system.tool_policy import enrich_meta_for_admin
 
         pmap = policies_map()
@@ -445,7 +445,7 @@ def tool_policies_put(arguments: dict[str, Any]) -> str:
     except Exception as e:
         return _err(f"invalid body: {e}")
     try:
-        from apps.backend.infrastructure.tool_operator_policy_db import replace_all_policies
+        from apps.backend.infrastructure.tools.tool_operator_policy_db import replace_all_policies
 
         replace_all_policies([p.model_dump() for p in body.policies])
     except Exception as e:
@@ -582,7 +582,7 @@ def scheduler_job_list(arguments: dict[str, Any]) -> str:
     include_archived = bool(arguments.get("include_archived", False))
     tgt_raw = arguments.get("execution_target")
     tgt = str(tgt_raw).strip().lower() or None if tgt_raw is not None else None
-    from apps.backend.domain.scheduler_targets import (
+    from apps.backend.domain.scheduling.targets import (
         execution_target_error,
         is_valid_execution_target,
         normalize_execution_target,
@@ -615,7 +615,7 @@ def scheduler_job_create(arguments: dict[str, Any]) -> str:
         return g_adm
     _tid, uid = g_adm
     tenant_id = db.user_tenant_id(uid)
-    from apps.backend.domain.scheduler_targets import (
+    from apps.backend.domain.scheduling.targets import (
         agent_requires_workspace_for_target,
         execution_target_error,
         is_valid_execution_target,
@@ -641,7 +641,7 @@ def scheduler_job_create(arguments: dict[str, Any]) -> str:
     ws = _parse_uuid(arguments.get("dashboard_id"), field="dashboard_id")
     if arguments.get("dashboard_id") is not None and str(arguments.get("dashboard_id")).strip() and ws is None:
         return _err("invalid dashboard_id UUID")
-    from apps.backend.infrastructure.coding_workflow import normalize_coding_workflow
+    from apps.backend.infrastructure.codebase.coding_workflow import normalize_coding_workflow
 
     wf_raw: dict[str, Any] = {}
     if arguments.get("coding_workflow") is not None:
@@ -696,7 +696,7 @@ def scheduler_job_patch(arguments: dict[str, Any]) -> str:
     wf_norm: dict[str, Any] | None = None
     if wf is not None:
         try:
-            from apps.backend.infrastructure.coding_workflow import normalize_coding_workflow
+            from apps.backend.infrastructure.codebase.coding_workflow import normalize_coding_workflow
 
             wf_norm = normalize_coding_workflow(wf)
         except (ValueError, TypeError) as e:
@@ -780,7 +780,7 @@ def scheduler_presets_list(arguments: dict[str, Any]) -> str:
     g_adm = _require_admin()
     if isinstance(g_adm, str):
         return g_adm
-    from apps.backend.core.config import PLUGINS_DIR
+    from apps.backend.infrastructure.platform.config import PLUGINS_DIR
 
     root = PLUGINS_DIR / "schedules" / "presets"
     rows: list[dict[str, Any]] = []
@@ -846,7 +846,7 @@ def run_create(arguments: dict[str, Any]) -> str:
     ws = _parse_uuid(arguments.get("dashboard_id"), field="dashboard_id")
     if arguments.get("dashboard_id") is not None and str(arguments.get("dashboard_id")).strip() and ws is None:
         return _err("invalid dashboard_id UUID")
-    from apps.backend.infrastructure.coding_workflow import normalize_coding_workflow
+    from apps.backend.infrastructure.codebase.coding_workflow import normalize_coding_workflow
 
     wf_raw: dict[str, Any] = {}
     if isinstance(arguments.get("coding_workflow"), dict):

@@ -1,6 +1,6 @@
 """Scheduler execution_target = registry agent ids."""
 
-from apps.backend.domain.scheduler_targets import (
+from apps.backend.domain.scheduling.targets import (
     EXECUTION_CODING,
     EXECUTION_GENERAL,
     agent_requires_workspace_for_target,

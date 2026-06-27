@@ -216,7 +216,7 @@ def test_security_scan_status_auto_waits_when_still_running_in_agent_context():
     with patch("plugins.tools.security.security_scan.common.httpx.Client") as client_cls:
         client = client_cls.return_value.__enter__.return_value
         client.request.side_effect = [_resp(running_body), _resp(ready_body), _resp(ready_body)]
-        with patch("apps.backend.domain.async_wait.time.sleep"):
+        with patch("apps.backend.domain.agent_runtime.async_wait.time.sleep"):
             out = json.loads(status({"scan_id": "x"}, ctx))
     assert out["status"] == "ready"
     assert out["still_running"] is False
@@ -365,7 +365,7 @@ def test_security_scan_finding_policy_schema_nested_schema_key():
 
 
 def test_schedule_allowlist_includes_scan_tools():
-    from apps.backend.infrastructure.coding_schedule_execution import _schedule_tool_allowlist
+    from apps.backend.infrastructure.codebase.coding_schedule_execution import _schedule_tool_allowlist
 
     names = _schedule_tool_allowlist(
         {"security_scan": True},

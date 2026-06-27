@@ -1,6 +1,6 @@
 """Unit tests for agent completion parsing (tool_calls extraction)."""
 
-from apps.backend.domain import agent as agent_mod
+from apps.backend.application.agent_runtime.runtime import io as agent_mod
 
 
 def test_extract_tool_calls_native():

@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import pytest
 
-from apps.backend.domain.identity import (
+from apps.backend.domain.shared.identity import (
     reset_benchmark_run_id,
     reset_identity,
     reset_llm_queue_source,
@@ -17,12 +17,12 @@ from apps.backend.domain.identity import (
     set_identity,
     set_llm_queue_source,
 )
-from apps.backend.infrastructure.llm_concurrency import (
+from apps.backend.infrastructure.agent_runtime.llm_concurrency import (
     acquire_llm_slot,
     invalidate_llm_concurrency_cache,
     release_llm_slot,
 )
-from apps.backend.infrastructure.llm_queue_policy import (
+from apps.backend.infrastructure.agent_runtime.llm_queue_policy import (
     QueueConfig,
     load_queue_config,
     resolve_waiter_meta,
@@ -47,14 +47,14 @@ def test_resolve_waiter_meta_benchmark_lower_than_user():
         scheduler_priority=50,
     )
     try:
-        with patch("apps.backend.infrastructure.llm_queue_policy.load_queue_config", return_value=cfg):
+        with patch("apps.backend.infrastructure.agent_runtime.llm_queue_policy.load_queue_config", return_value=cfg):
             user_meta = resolve_waiter_meta()
         assert user_meta.queue_class == "user"
         assert user_meta.priority == 100
 
         bench_tok = set_benchmark_run_id(bench)
         try:
-            with patch("apps.backend.infrastructure.llm_queue_policy.load_queue_config", return_value=cfg):
+            with patch("apps.backend.infrastructure.agent_runtime.llm_queue_policy.load_queue_config", return_value=cfg):
                 bench_meta = resolve_waiter_meta()
             assert bench_meta.queue_class == "benchmark"
             assert bench_meta.priority == 10
@@ -82,10 +82,10 @@ def test_user_served_before_benchmark_when_both_waiting():
         bench_tok = set_benchmark_run_id(bench) if bench is not None else None
         try:
             with patch(
-                "apps.backend.infrastructure.llm_concurrency.max_parallel_for_provider",
+                "apps.backend.infrastructure.agent_runtime.llm_concurrency.max_parallel_for_provider",
                 return_value=1,
             ), patch(
-                "apps.backend.infrastructure.llm_queue_policy.load_queue_config",
+                "apps.backend.infrastructure.agent_runtime.llm_queue_policy.load_queue_config",
                 return_value=cfg,
             ):
                 acquire_llm_slot("prio_test")
@@ -98,10 +98,10 @@ def test_user_served_before_benchmark_when_both_waiting():
             reset_identity(id_tok)
 
     with patch(
-        "apps.backend.infrastructure.llm_concurrency.max_parallel_for_provider",
+        "apps.backend.infrastructure.agent_runtime.llm_concurrency.max_parallel_for_provider",
         return_value=1,
     ), patch(
-        "apps.backend.infrastructure.llm_queue_policy.load_queue_config",
+        "apps.backend.infrastructure.agent_runtime.llm_queue_policy.load_queue_config",
         return_value=cfg,
     ):
         acquire_llm_slot("prio_test")
@@ -135,10 +135,10 @@ def test_two_users_round_robin_within_priority_tier():
         id_tok = set_identity(1, user_id)
         try:
             with patch(
-                "apps.backend.infrastructure.llm_concurrency.max_parallel_for_provider",
+                "apps.backend.infrastructure.agent_runtime.llm_concurrency.max_parallel_for_provider",
                 return_value=1,
             ), patch(
-                "apps.backend.infrastructure.llm_queue_policy.load_queue_config",
+                "apps.backend.infrastructure.agent_runtime.llm_queue_policy.load_queue_config",
                 return_value=cfg,
             ):
                 acquire_llm_slot("rr_test")
@@ -149,10 +149,10 @@ def test_two_users_round_robin_within_priority_tier():
             reset_identity(id_tok)
 
     with patch(
-        "apps.backend.infrastructure.llm_concurrency.max_parallel_for_provider",
+        "apps.backend.infrastructure.agent_runtime.llm_concurrency.max_parallel_for_provider",
         return_value=1,
     ), patch(
-        "apps.backend.infrastructure.llm_queue_policy.load_queue_config",
+        "apps.backend.infrastructure.agent_runtime.llm_queue_policy.load_queue_config",
         return_value=cfg,
     ):
         acquire_llm_slot("rr_test")
@@ -175,7 +175,7 @@ def test_two_users_round_robin_within_priority_tier():
 
 def test_load_queue_config_defaults_when_unknown_policy(monkeypatch):
     monkeypatch.setattr(
-        "apps.backend.infrastructure.operator_settings._cached_row",
+        "apps.backend.infrastructure.settings.operator_settings._cached_row",
         lambda: {"llm_queue_policy": "unknown"},
     )
     cfg = load_queue_config()

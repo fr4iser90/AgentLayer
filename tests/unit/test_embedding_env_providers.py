@@ -5,8 +5,8 @@ from __future__ import annotations
 import os
 from unittest.mock import patch
 
-from apps.backend.infrastructure.embedding_env_providers import parse_embedding_env_providers
-from apps.backend.infrastructure.embedding_catalog_providers import (
+from apps.backend.infrastructure.providers.embedding_env_providers import parse_embedding_env_providers
+from apps.backend.infrastructure.providers.embedding_catalog_providers import (
     invalidate_embedding_provider_specs_cache,
     list_embedding_provider_specs,
 )

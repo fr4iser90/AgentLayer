@@ -110,4 +110,6 @@ def run(name: str, config: dict[str, Any]) -> CheckResult:
 
     cwd = repo_root() / str(config["cwd"]) if config.get("cwd") else repo_root()
     env = {str(k): str(v) for k, v in dict(config.get("env") or {}).items()}
+    if "PYTHONPATH" in env and os.environ.get("PYTHONPATH"):
+        env["PYTHONPATH"] = os.pathsep.join([env["PYTHONPATH"], os.environ["PYTHONPATH"]])
     return run_command(name=name, command=command, cwd=Path(cwd), env=env)

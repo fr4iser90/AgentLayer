@@ -615,7 +615,7 @@ def package_admission_gate(
     if intent is None:
         return None, command
 
-    from apps.backend.core.config import config
+    from apps.backend.infrastructure.platform.config import config
 
     timeout = float(getattr(config, "PACKAGE_OSV_TIMEOUT_SEC", 8))
     verdict = evaluate_install(intent, policy=policy, context=context, osv_timeout_sec=timeout)

@@ -15,13 +15,13 @@
       },
       {
         "rule_id": "B105",
-        "path_regex": "apps/backend/dashboard/public_share\\.py$",
+        "path_regex": "apps/backend/infrastructure/dashboard_*public_share\\.py$",
         "message_regex": "X-Dashboard-Share-Password",
         "reason": "False positive: HTTP header name constant for dashboard share auth, not a secret value."
       },
       {
         "rule_id": "B105",
-        "path_regex": "apps/backend/dashboard/router\\.py$",
+        "path_regex": "apps/backend/infrastructure/dashboard_*router\\.py$",
         "message_regex": "True",
         "reason": "False positive: JSON field password_required (boolean), not a hardcoded password."
       },
@@ -121,7 +121,7 @@
       },
       {
         "rule_id": "B101",
-        "path_regex": "apps/backend/integrations/discord_bridge\\.py$|plugins/interfaces/discord/bot\\.py$",
+        "path_regex": "apps/backend/infrastructure/integrations/discord_bridge\\.py$|plugins/interfaces/discord/bot\\.py$",
         "message_regex": "assert",
         "reason": "False positive: discord.py on_ready invariant (self.user set after login); type-narrowing only, not security enforcement."
       },
@@ -201,7 +201,7 @@
       },
       {
         "rule_id": "py/weak-sensitive-data-hashing",
-        "path_regex": "apps/backend/api/memory\\.py$|apps/backend/dashboard/public_share\\.py$",
+        "path_regex": "apps/backend/api/memory\\.py$|apps/backend/infrastructure/dashboard_*public_share\\.py$",
         "reason": "False positive: SHA-256 used for query activation fingerprints and share-token/password derivations with server-side pepper context—not for storing user login passwords."
       },
       {
@@ -226,7 +226,7 @@
       },
       {
         "rule_id": "py/full-ssrf",
-        "path_regex": "apps/backend/media/stream_probe\\.py$",
+        "path_regex": "apps/backend/infrastructure/media/stream_probe\\.py$",
         "reason": "False positive: probe_stream_url rejects URLs failing media_policy.stream_url_allowed (HTTPS/HTTP + hostname allowlist) before httpx GET; intentional stream validation, not open SSRF."
       },
       {
@@ -241,7 +241,7 @@
       },
       {
         "rule_id": "py/clear-text-storage-sensitive-data",
-        "path_regex": "apps/backend/dashboard/file_storage\\.py$",
+        "path_regex": "apps/backend/infrastructure/dashboard_*file_storage\\.py$",
         "reason": "False positive: write_bytes persists user attachment bytes to disk under path-validated upload root; CodeQL taint on generic data param, not credential storage."
       }
     ]
@@ -340,7 +340,7 @@
       },
       {
         "rule_id": "javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket",
-        "path_regex": "apps/backend/core/config\\.py$",
+        "path_regex": "apps/backend/infrastructure/config\\.py$",
         "message_regex": "WebSocket|ws",
         "reason": "False positive: Semgrep matches a comment mentioning ws://; runtime default PIDEA_CDP_HTTP_URL is http://127.0.0.1:9222 (HTTP CDP), not an insecure WebSocket client connection."
       },

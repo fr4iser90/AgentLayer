@@ -7,6 +7,8 @@ import unittest
 import uuid
 from unittest.mock import AsyncMock, patch
 
+from apps.backend.infrastructure.agent_runtime import agent_registry_service as _agent_registry_service  # noqa: F401
+from apps.backend.infrastructure.plugins import plugin_registry_service as _plugin_registry_service  # noqa: F401
 
 class TestCodingTaskPlanSubagent(unittest.TestCase):
     def test_plan_subagent_requires_prompt(self) -> None:
@@ -70,18 +72,18 @@ class TestCodingTaskPlanSubagent(unittest.TestCase):
                 ]
             }
 
-        with patch("apps.backend.domain.agent.chat_completion", new=AsyncMock(side_effect=fake_cc)):
-            with patch("apps.backend.domain.identity.get_identity", return_value=(1, uid)):
+        with patch("apps.backend.application.agent_runtime.runtime.embedded_subagent._chat_completion_handler", new=AsyncMock(side_effect=fake_cc)):
+            with patch("apps.backend.domain.shared.identity.get_identity", return_value=(1, uid)):
                 with patch(
-                    "apps.backend.infrastructure.agent_artifacts_store.create_artifact",
+                    "apps.backend.infrastructure.agent_runtime.agent_artifacts_store.create_artifact",
                     return_value={"id": uuid.uuid4()},
                 ):
                     with patch(
-                        "apps.backend.infrastructure.agent_runs_store.insert_run_start_resilient",
+                        "apps.backend.infrastructure.agent_runtime.agent_runs_store.insert_run_start_resilient",
                         return_value=({"id": uuid.uuid4()}, []),
                     ):
                         with patch(
-                            "apps.backend.infrastructure.agent_runs_store.finish_run",
+                            "apps.backend.infrastructure.agent_runtime.agent_runs_store.finish_run",
                             return_value=True,
                         ):
                             out = task(
@@ -103,7 +105,7 @@ class TestCodingTaskPlanSubagent(unittest.TestCase):
         b0 = bodies[0]
         self.assertEqual(b0.get("agent_id"), "coding_plan")
         self.assertEqual(b0.get("workspace_id"), str(ws_id))
-        from apps.backend.infrastructure import agent_config_effective
+        from apps.backend.infrastructure.agent_runtime import agent_config_effective
 
         self.assertEqual(
             b0.get("agent_max_tool_rounds"),
@@ -134,22 +136,22 @@ class TestCodingTaskPlanSubagent(unittest.TestCase):
                 "choices": [{"message": {"content": "Plan summary from mock."}, "finish_reason": "stop"}]
             }
 
-        with patch("apps.backend.domain.agent.chat_completion", new=AsyncMock(side_effect=fake_cc)):
-            with patch("apps.backend.domain.identity.get_identity", return_value=(1, None)):
+        with patch("apps.backend.application.agent_runtime.runtime.embedded_subagent._chat_completion_handler", new=AsyncMock(side_effect=fake_cc)):
+            with patch("apps.backend.domain.shared.identity.get_identity", return_value=(1, None)):
                 with patch(
                     "apps.backend.infrastructure.db.db.user_tenant_id",
                     return_value=42,
                 ):
                     with patch(
-                        "apps.backend.infrastructure.agent_artifacts_store.create_artifact",
+                        "apps.backend.infrastructure.agent_runtime.agent_artifacts_store.create_artifact",
                         return_value={"id": uuid.uuid4()},
                     ):
                         with patch(
-                            "apps.backend.infrastructure.agent_runs_store.insert_run_start_resilient",
+                            "apps.backend.infrastructure.agent_runtime.agent_runs_store.insert_run_start_resilient",
                             return_value=({"id": uuid.uuid4()}, []),
                         ):
                             with patch(
-                                "apps.backend.infrastructure.agent_runs_store.finish_run",
+                                "apps.backend.infrastructure.agent_runtime.agent_runs_store.finish_run",
                                 return_value=True,
                             ):
                                 out = task(

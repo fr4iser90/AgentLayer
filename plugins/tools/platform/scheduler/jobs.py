@@ -7,17 +7,17 @@ import json
 import uuid
 from typing import Any, Callable
 
-from apps.backend.domain.identity import get_identity
+from apps.backend.domain.shared.identity import get_identity
 from apps.backend.infrastructure.db import db
-from apps.backend.domain.scheduler_targets import (
+from apps.backend.domain.scheduling.targets import (
     agent_requires_workspace_for_target,
     execution_target_error,
     is_valid_execution_target,
     normalize_execution_target,
     schedule_permission_error,
 )
-from apps.backend.infrastructure import scheduler_jobs_store
-from apps.backend.dashboard.db import dashboard_access_ex
+from apps.backend.infrastructure.scheduling import scheduler_jobs_store
+from apps.backend.infrastructure.dashboards.dashboard_db import dashboard_access_ex
 
 __version__ = "1.0.0"
 TOOL_ID = "scheduler_jobs"
@@ -129,7 +129,7 @@ def create(arguments: dict[str, Any]) -> str:
         if not _dashboard_allows_schedule(tenant_id, caller_uid, dashboard_id):
             return _err("no permission to attach a schedule to this dashboard")
 
-    from apps.backend.infrastructure.coding_workflow import normalize_coding_workflow
+    from apps.backend.infrastructure.codebase.coding_workflow import normalize_coding_workflow
 
     wf_raw: dict[str, Any] = {}
     if arguments.get("coding_workflow") is not None:

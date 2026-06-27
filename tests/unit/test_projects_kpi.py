@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from apps.backend.dashboard.layout_tree import primary_list_data_path
+from apps.backend.infrastructure.dashboards.dashboard_layout_tree import primary_list_data_path
 
 
 class TestPrimaryListDataPath(unittest.TestCase):

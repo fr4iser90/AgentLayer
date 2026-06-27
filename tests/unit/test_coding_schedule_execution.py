@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from apps.backend.infrastructure import coding_schedule_execution as mod
+from apps.backend.infrastructure.codebase import coding_schedule_execution as mod
 
 
 def test_schedule_llm_uses_coding_profile_token() -> None:
@@ -30,7 +30,7 @@ def test_pick_provider_prefers_first_reachable_in_order() -> None:
     with (
         patch.object(mod, "_provider_configured", return_value=True),
         patch(
-            "apps.backend.infrastructure.model_catalog_providers.fetch_full_model_catalog",
+            "apps.backend.infrastructure.providers.model_catalog_providers.fetch_full_model_catalog",
             return_value=(
                 [],
                 {
@@ -47,7 +47,7 @@ def test_pick_provider_uses_provider_1_when_only_provider_1_reachable() -> None:
     with (
         patch.object(mod, "_provider_configured", return_value=True),
         patch(
-            "apps.backend.infrastructure.model_catalog_providers.fetch_full_model_catalog",
+            "apps.backend.infrastructure.providers.model_catalog_providers.fetch_full_model_catalog",
             return_value=(
                 [],
                 {

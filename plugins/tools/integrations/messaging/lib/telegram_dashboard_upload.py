@@ -5,8 +5,8 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from apps.backend.dashboard import db as dashboard_db
-from apps.backend.dashboard.file_upload import store_dashboard_image
+from apps.backend.infrastructure.dashboards import dashboard_db
+from apps.backend.infrastructure.dashboards.dashboard_file_upload import store_dashboard_image
 from apps.backend.infrastructure.db import db
 
 
@@ -78,7 +78,7 @@ def upload_image_bytes(
         raise ValueError(str(stored.get("error") or "upload failed"))
 
     gallery_ref = str(stored.get("gallery_ref") or "")
-    from apps.backend.dashboard.list_ops import append_list_rows
+    from apps.backend.infrastructure.dashboards.dashboard_list_ops import append_list_rows
 
     list_path = f"albums.{album_index}.photos"
     result = append_list_rows(

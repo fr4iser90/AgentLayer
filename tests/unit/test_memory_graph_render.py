@@ -6,7 +6,7 @@ import uuid
 from datetime import UTC, datetime
 from unittest.mock import patch
 
-from apps.backend.api import memory as memory_api
+from apps.backend.infrastructure.memory import memory_service as memory_api
 
 
 def test_graph_render_for_identity_uses_max_hops_from_settings() -> None:

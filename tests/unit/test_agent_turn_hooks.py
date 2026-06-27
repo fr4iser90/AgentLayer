@@ -6,13 +6,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from apps.backend.domain.agent_turn_hooks import turn_hooks_for_agent
-from apps.backend.domain.dashboard_agent_guards import DashboardTurnHooks
+from apps.backend.domain.agent_runtime.turn_hooks import turn_hooks_for_agent
+from apps.backend.domain.agent_runtime.dashboard_guards import DashboardTurnHooks
 
 
 def test_turn_hooks_dashboard_preset(monkeypatch):
     monkeypatch.setattr(
-        "apps.backend.domain.agent_turn_hooks._agent_behavior_flags",
+        "apps.backend.domain.agent_runtime.turn_hooks._agent_behavior_flags",
         lambda aid: {"tool_discipline_preset": "dashboard"},
     )
     hooks = turn_hooks_for_agent("dashboard")
@@ -21,7 +21,7 @@ def test_turn_hooks_dashboard_preset(monkeypatch):
 
 def test_turn_hooks_noop_for_general(monkeypatch):
     monkeypatch.setattr(
-        "apps.backend.domain.agent_turn_hooks._agent_behavior_flags",
+        "apps.backend.domain.agent_runtime.turn_hooks._agent_behavior_flags",
         lambda aid: {"tool_discipline_preset": None},
     )
     hooks = turn_hooks_for_agent("general")

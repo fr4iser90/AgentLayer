@@ -21,7 +21,7 @@ def test_delegate_disabled_returns_error(monkeypatch):
     from plugins.tools.platform.agents import delegate as delegate_mod
 
     monkeypatch.setattr(
-        "apps.backend.infrastructure.operator_settings.delegate_enabled",
+        "apps.backend.infrastructure.settings.operator_settings.delegate_enabled",
         lambda: False,
     )
     out = delegate_mod.delegate({"run_subagent": True, "agent_id": "coding", "prompt": "hi"}, {})

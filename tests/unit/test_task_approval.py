@@ -1,6 +1,6 @@
 """Task approval policy for queued agent tasks."""
 
-from apps.backend.domain.task_approval import normalize_new_task_status
+from apps.backend.domain.agent_runtime.task_approval import normalize_new_task_status
 
 
 def test_non_admin_queued_becomes_draft():

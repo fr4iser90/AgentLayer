@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from apps.backend.core.config import PLUGINS_DIR
-from apps.backend.domain.agent_plugin_loader import definition_from_yaml, discover_yaml_agents
+from apps.backend.infrastructure.platform.config import PLUGINS_DIR
+from apps.backend.domain.agent_runtime.plugin_loader import definition_from_yaml, discover_yaml_agents
 
 
 def test_discover_yaml_agents_finds_built_ins() -> None:

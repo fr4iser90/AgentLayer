@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from apps.backend.api.optional_http_access import is_media_stream_route
+from apps.backend.api.platform.controllers.optional_http_access import is_media_stream_route
 
 
 def test_media_stream_route_matches_uuid_path() -> None:

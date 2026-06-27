@@ -8,7 +8,7 @@ import unittest
 import uuid
 from unittest import mock
 
-from apps.backend.dashboard.file_upload import (
+from apps.backend.infrastructure.dashboards.dashboard_file_upload import (
     decode_image_base64,
     store_dashboard_image,
     upload_dashboard_image,
@@ -72,10 +72,10 @@ class TestUploadFileTool(unittest.TestCase):
 
 
 class TestStoreDashboardImage(unittest.TestCase):
-    @mock.patch("apps.backend.domain.collections.db.attachment_insert")
-    @mock.patch("apps.backend.domain.collections.service.resolve_bindings_for_dashboard")
-    @mock.patch("apps.backend.dashboard.file_upload.file_storage.write_bytes")
-    @mock.patch("apps.backend.dashboard.file_upload.dashboard_db.dashboard_get")
+    @mock.patch("apps.backend.infrastructure.dashboards.dashboard_file_upload.col_db.attachment_insert")
+    @mock.patch("apps.backend.infrastructure.dashboards.dashboard_file_upload.domain_svc.resolve_bindings_for_dashboard")
+    @mock.patch("apps.backend.infrastructure.dashboards.dashboard_file_upload.file_storage.write_bytes")
+    @mock.patch("apps.backend.infrastructure.dashboards.dashboard_file_upload.dashboard_db.dashboard_get")
     def test_store_ok(
         self,
         mock_get: mock.MagicMock,

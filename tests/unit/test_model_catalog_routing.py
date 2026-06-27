@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from apps.backend.infrastructure import model_catalog_routing as mcr
+from apps.backend.infrastructure.providers import model_catalog_routing as mcr
 
 
 def test_infer_unique_provider() -> None:

@@ -1,4 +1,4 @@
-from apps.backend.infrastructure.operator_settings import (
+from apps.backend.infrastructure.settings.operator_settings import (
     external_chat_completions_url,
     external_models_list_url,
     normalize_external_llm_base_url,

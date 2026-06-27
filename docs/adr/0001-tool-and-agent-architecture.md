@@ -45,7 +45,7 @@ The Agent Layer loads Python tools from disk, exposes them to chat (Ollama-compa
 
 ### 4. Memory
 
-- **`src/domain/tool_memory.py`**: Placeholder module documenting planned concerns (retry policy, last successful `service_key`, preferences). **Not** wired to DB yet — avoids fake persistence.
+- **`apps/backend/domain/tools/memory.py`**: Placeholder module documenting planned concerns (retry policy, last successful `service_key`, preferences). **Not** wired to DB yet — avoids fake persistence.
 
 ### 5. Folder layout (convention)
 

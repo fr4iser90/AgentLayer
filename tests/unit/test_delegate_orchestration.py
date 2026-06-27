@@ -89,7 +89,7 @@ def test_plan_denies_bash_and_edit_tools() -> None:
 
 
 def test_infer_git_forensics_from_prompt() -> None:
-    from apps.backend.domain.agent_task_prompt import infer_plan_delegate_mode
+    from apps.backend.domain.agent_runtime.task_prompt import infer_plan_delegate_mode
 
     assert infer_plan_delegate_mode("Verify branch and commits on security/fix-high-issues") == "git_forensics"
 
@@ -116,7 +116,7 @@ def test_ssc_artifact_dedupes_per_scan_id() -> None:
         {"path": "apps/foo.py", "line": 10, "severity": "HIGH", "message": "x"},
     ]
     with patch(
-        "apps.backend.infrastructure.agent_artifacts_store.create_artifact",
+        "apps.backend.infrastructure.agent_runtime.agent_artifacts_store.create_artifact",
         return_value={"id": uuid.uuid4()},
     ) as create:
         with patch(
@@ -134,7 +134,7 @@ def test_ssc_artifact_dedupes_per_scan_id() -> None:
 
 
 def test_enrich_delegate_git_forensics_mode() -> None:
-    from apps.backend.domain.agent_task_prompt import enrich_delegate_prompt
+    from apps.backend.domain.agent_runtime.task_prompt import enrich_delegate_prompt
 
     out = enrich_delegate_prompt(
         tenant_id=1,

@@ -72,7 +72,7 @@ Survival across container restarts requires a **Docker volume** (or host bind) c
 ## Implementation (backend)
 
 - **`apps/backend/infrastructure/workspace_service.py`:** `self_editing_allowed`, `materialize_agentlayer_self_workspace`, `try_resolve_agentlayer_self_db`, `ensure_workspace` (legacy alias `__agentlayer_self__`). Seed: first of `/workspace/AgentLayer`, `/app` with `.git`. Writable tree: `{AGENTLAYER_WORKSPACE_PATH}/{user_id}/agentlayer-self`. Legacy DB rows with wrong `path` are updated on materialize.
-- **`apps/backend/domain/workspace_resolver.py`:** `resolve_workspace` is **DB-only** (no magic self id).
+- **`apps/backend/domain/workspace/resolver.py`:** `resolve_workspace` is **DB-only** (no magic self id).
 - **`apps/backend/domain/agent.py`:** Loads DB user (real `role`) before `ensure_workspace` so self-editing gates apply correctly.
 - **`apps/backend/api/workspaces_api.py`:** `_get_self_workspace` returns the same list JSON shape as other workspaces; `POST /v1/workspaces` rejects reserved name `agentlayer-self`.
 
@@ -82,4 +82,4 @@ Survival across container restarts requires a **Docker volume** (or host bind) c
 
 - `docs/planning/coding-agent-roadmap.md` — epic F, professionalization section
 - `docs/runbooks/workspace-persistence.md` — Docker volume + path changes
-- `apps/backend/domain/workspace_resolver.py`, `apps/backend/infrastructure/workspace_service.py`, `apps/backend/api/workspaces_api.py`, `apps/backend/domain/agent.py`
+- `apps/backend/domain/workspace/resolver.py`, `apps/backend/infrastructure/workspace_service.py`, `apps/backend/api/workspaces_api.py`, `apps/backend/domain/agent.py`

@@ -6,13 +6,13 @@ import json
 import uuid
 from typing import Any, Callable, cast
 
-from apps.backend.domain.embedded_subagent import (
+from apps.backend.application.agent_runtime.runtime.embedded_subagent import (
     build_delegate_agents_catalog_snippet,
     caller_is_admin,
     effective_delegatable_agent_ids,
     run_embedded_subagent_sync,
 )
-from apps.backend.domain.identity import get_identity
+from apps.backend.domain.shared.identity import get_identity
 
 __version__ = "1.0.0"
 TOOL_ID = "delegate"
@@ -64,7 +64,7 @@ def _sanitize_task_id(raw: Any) -> str | None:
 
 
 def delegate(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> str:
-    from apps.backend.infrastructure.operator_settings import delegate_enabled as _delegate_enabled
+    from apps.backend.infrastructure.settings.operator_settings import delegate_enabled as _delegate_enabled
 
     if not _delegate_enabled():
         return json.dumps(

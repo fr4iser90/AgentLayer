@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from apps.backend.domain.agent import _normalize_tool_call_arguments
+from apps.backend.domain.agent_runtime.tool_schema import _normalize_tool_call_arguments
 
 
 class AgentToolArgProseRecoveryTests(unittest.TestCase):

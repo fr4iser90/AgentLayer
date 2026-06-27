@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from apps.backend.domain.voice import stt, voice_policy
-from apps.backend.infrastructure.voice_catalog_providers import VoiceProviderSpec
+from apps.backend.infrastructure.voice.voice_catalog_providers import VoiceProviderSpec
 
 
 def _stt_spec(

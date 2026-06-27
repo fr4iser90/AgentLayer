@@ -32,7 +32,7 @@ def _user_and_tenant(context: dict[str, Any] | None) -> tuple[uuid.UUID | None, 
             tid = None
     if tid is None:
         try:
-            from apps.backend.domain.identity import get_identity
+            from apps.backend.domain.shared.identity import get_identity
 
             t, u2 = get_identity()
             if t is not None:
@@ -114,7 +114,7 @@ def maybe_persist_ssc_scan_artifact(
         parts = [f"{k}:{v}" for k, v in sorted(sev_counts.items())]
         summary_line += " (" + ", ".join(parts) + ")"
 
-    from apps.backend.infrastructure import agent_artifacts_store
+    from apps.backend.infrastructure.agent_runtime import agent_artifacts_store
 
     try:
         art = agent_artifacts_store.create_artifact(

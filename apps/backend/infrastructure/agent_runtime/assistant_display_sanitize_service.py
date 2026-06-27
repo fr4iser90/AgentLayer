@@ -1,0 +1,18 @@
+"""Infrastructure adapter for assistant display sanitization."""
+
+from __future__ import annotations
+
+from apps.backend.domain.agent_runtime import assistant_display as domain
+from apps.backend.infrastructure.agent_runtime.stream_repetition_guard import guard_assistant_text
+
+
+class _AssistantDisplaySanitizeDeps:
+    guard_assistant_text = staticmethod(guard_assistant_text)
+
+
+domain.register_assistant_display_sanitize_dependencies(_AssistantDisplaySanitizeDeps())
+
+prepare_completion_assistant_for_client = domain.prepare_completion_assistant_for_client
+sanitize_assistant_display_text = domain.sanitize_assistant_display_text
+sanitize_completion_for_dashboard_agent = domain.sanitize_completion_for_dashboard_agent
+synthetic_dashboard_tool_calls_from_message = domain.synthetic_dashboard_tool_calls_from_message

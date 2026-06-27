@@ -5,10 +5,10 @@ from __future__ import annotations
 import json
 from typing import Any, Callable
 
-from apps.backend.core.config import config
+from apps.backend.infrastructure.platform.config import config
 from apps.backend.infrastructure.db import db
-from apps.backend.domain.identity import get_identity
-from apps.backend.infrastructure.secret_otp_bundle import secret_otp_bundle
+from apps.backend.domain.shared.identity import get_identity
+from apps.backend.infrastructure.identity.secret_otp_bundle import secret_otp_bundle
 
 __version__ = "1.0.0"
 TOOL_ID = "secrets_help"

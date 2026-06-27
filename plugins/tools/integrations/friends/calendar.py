@@ -7,7 +7,7 @@ from __future__ import annotations
 import uuid
 from typing import Any, Callable
 
-from apps.backend.domain.identity import get_identity
+from apps.backend.domain.shared.identity import get_identity
 from apps.backend.domain.shares.policy import effective_days_ahead
 from apps.backend.infrastructure.db.share_permissions_db import (
     SHARE_RESOURCE_GOOGLE_CALENDAR,

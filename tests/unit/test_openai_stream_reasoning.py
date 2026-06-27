@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from apps.backend.infrastructure.openai_stream_aggregate import (
+from apps.backend.infrastructure.agent_runtime.openai_stream_aggregate import (
     OpenAIStreamAccumulator,
     stream_accumulator_build_completion,
     stream_accumulator_feed,

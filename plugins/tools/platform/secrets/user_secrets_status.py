@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from typing import Any, Callable
 
-from apps.backend.core.config import config
-from apps.backend.domain.identity import get_identity
+from apps.backend.infrastructure.platform.config import config
+from apps.backend.domain.shared.identity import get_identity
 from apps.backend.infrastructure.db import db
 
 __version__ = "1.0.0"

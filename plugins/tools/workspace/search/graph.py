@@ -11,7 +11,7 @@ from plugins.tools.workspace.lib.common import (
 )
 
 try:
-    from apps.backend.infrastructure.code_graph_neo4j import get_code_graph
+    from apps.backend.infrastructure.codebase.code_graph_neo4j import get_code_graph
     _HAS_NEO4J = True
 except ImportError:
     _HAS_NEO4J = False

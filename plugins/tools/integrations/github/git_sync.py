@@ -150,8 +150,8 @@ def git_sync(arguments: dict[str, Any], context: dict | None = None) -> str:
             )
             payload["next_steps"] = _pull_next_steps(pull_result)
             try:
-                from apps.backend.infrastructure.operator_settings import fetch_operator_settings_row
-                from apps.backend.infrastructure.workspace_retrieval import start_semantic_index_async
+                from apps.backend.infrastructure.settings.operator_settings import fetch_operator_settings_row
+                from apps.backend.infrastructure.workspace.workspace_retrieval import start_semantic_index_async
 
                 if fetch_operator_settings_row().get("workspace_reindex_after_git_pull"):
                     wid = str(ws.get("id") or "").strip()

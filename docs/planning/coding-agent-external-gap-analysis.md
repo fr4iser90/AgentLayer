@@ -422,7 +422,7 @@ Das ist die **technische** Grundlage hinter der Doku-Zeile „`allow` / `ask` / 
 | LLM-Fehler | `apps/backend/infrastructure/llm_user_errors.py` |
 | Coding-Agent | `plugins/agents/coding.py`, `plugins/agents/coding_plan.py` |
 | Registry | `apps/backend/domain/agent_registry.py` |
-| Config | `apps/backend/core/config.py`, `.env.example` |
+| Config | `apps/backend/infrastructure/config.py`, `.env.example` |
 
 ### 8.2 Umgebungsvariablen (Auszug)
 

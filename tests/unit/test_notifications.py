@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import unittest
 
-from apps.backend.infrastructure.notifications_delivery import should_deliver_external
-from apps.backend.infrastructure.notifications_service import infer_block_ids_from_patches
+from apps.backend.infrastructure.notifications.notifications_delivery import should_deliver_external
+from apps.backend.infrastructure.notifications.notifications_service import infer_block_ids_from_patches
 
 
 class TestNotificationBlockInference(unittest.TestCase):

@@ -10,7 +10,7 @@ from urllib.parse import parse_qs, urljoin, urlparse
 
 import httpx
 
-from apps.backend.domain.identity import get_identity
+from apps.backend.domain.shared.identity import get_identity
 from apps.backend.infrastructure.db import db
 
 USER_SECRET_KEY = "ssc_api_key"

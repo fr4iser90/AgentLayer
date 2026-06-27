@@ -7,8 +7,8 @@ import uuid
 from typing import Any, Callable
 
 from apps.backend.domain.collections import access as col_access
-from apps.backend.domain.collections import db as col_db
-from apps.backend.domain.identity import get_identity
+from apps.backend.domain.shared.identity import get_identity
+from apps.backend.infrastructure.collections import collections_db_service as col_db
 
 __version__ = "1.0.0"
 TOOL_ID = "collection"

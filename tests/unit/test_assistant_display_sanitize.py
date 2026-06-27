@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from apps.backend.domain.assistant_display_sanitize import (
+from apps.backend.domain.agent_runtime.assistant_display import (
     sanitize_assistant_display_text,
     synthetic_dashboard_tool_calls_from_message,
 )

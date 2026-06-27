@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from apps.backend.infrastructure.context_budget import (
+from apps.backend.infrastructure.agent_runtime.context_budget import (
     CompletionQuotas,
     ContextBudget,
     completion_quotas_from_window,
@@ -40,7 +40,7 @@ def test_extract_context_length_llama_cpp_meta_n_ctx_train_only() -> None:
 
 
 def test_limits_from_context_window_percentages() -> None:
-    from apps.backend.core import config as cfg
+    from apps.backend.infrastructure.platform import config as cfg
 
     cfg.config.CHAT_CONTEXT_SOFT_LIMIT_RATIO = 0.6
     cfg.config.CHAT_CONTEXT_HARD_LIMIT_RATIO = 0.85
@@ -51,7 +51,7 @@ def test_limits_from_context_window_percentages() -> None:
 
 
 def test_should_compact_by_usage_provider_tokens(monkeypatch) -> None:
-    from apps.backend.core import config as cfg
+    from apps.backend.infrastructure.platform import config as cfg
 
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_SOFT_LIMIT_RATIO", 0.6)
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_HARD_LIMIT_RATIO", 0.85)
@@ -67,7 +67,7 @@ def test_usage_prompt_tokens_openai_shape() -> None:
 
 
 def test_resolve_context_budget_operator_override(monkeypatch) -> None:
-    from apps.backend.core import config as cfg
+    from apps.backend.infrastructure.platform import config as cfg
 
     monkeypatch.setattr(
         cfg.config,
@@ -82,7 +82,7 @@ def test_resolve_context_budget_operator_override(monkeypatch) -> None:
 
 
 def test_completion_quotas_all_percentages_of_window(monkeypatch) -> None:
-    from apps.backend.core import config as cfg
+    from apps.backend.infrastructure.platform import config as cfg
 
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_SOFT_LIMIT_RATIO", 0.8)
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_HARD_LIMIT_RATIO", 0.95)
@@ -101,7 +101,7 @@ def test_completion_quotas_all_percentages_of_window(monkeypatch) -> None:
 
 
 def test_lookup_model_context_length_direct_provider_fetch(monkeypatch) -> None:
-    from apps.backend.infrastructure import model_catalog_providers as mcp
+    from apps.backend.infrastructure.providers import model_catalog_providers as mcp
 
     spec = mcp.CatalogProviderSpec(
         provider_id="provider_1",

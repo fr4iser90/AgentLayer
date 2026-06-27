@@ -721,7 +721,7 @@ knobs:
   # --- model_routing ---
   - id: model.resolve_effective
     layer: code
-    path: apps/backend/domain/model_routing.py
+    path: apps/backend/domain/model_routing/resolution.py
     type: fingerprint
     writable: false
     apply_via: none

@@ -13,7 +13,7 @@ from plugins.tools.security.security_scan.common import (
     ssc_domain_attrs,
     ssc_status,
 )
-from apps.backend.domain.async_wait import parse_estimated_time_seconds
+from apps.backend.domain.agent_runtime.async_wait import parse_estimated_time_seconds
 
 __version__ = "1.1.0"
 _attrs = ssc_domain_attrs()

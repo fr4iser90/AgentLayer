@@ -8,9 +8,9 @@ import logging
 from pathlib import Path
 from typing import Any, Callable
 
-from apps.backend.domain.chat_image_attachments import merge_chat_images_into_html_build_assets
+from apps.backend.domain.agent_runtime.chat_image_attachments import merge_chat_images_into_html_build_assets
 from apps.backend.domain.plugin_system.tool_routing import last_user_text
-from apps.backend.domain.tool_invocation_context import get_tool_invocation_messages
+from apps.backend.domain.tools.invocation_context import get_tool_invocation_messages
 
 logger = logging.getLogger(__name__)
 

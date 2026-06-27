@@ -54,7 +54,7 @@ def test_tool_libs_live_under_plugins() -> None:
 
 def test_async_wait_stays_platform_generic() -> None:
     """Generic wait loop is platform infra, not a tool domain package."""
-    path = _BACKEND_DOMAIN / "async_wait.py"
+    path = _BACKEND_DOMAIN / "agent_runtime" / "async_wait.py"
     assert path.is_file()
     text = path.read_text(encoding="utf-8")
     assert "security_scan" not in text.lower()

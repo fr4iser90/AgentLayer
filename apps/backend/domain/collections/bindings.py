@@ -6,6 +6,7 @@ import uuid
 from typing import Any, Protocol
 
 from apps.backend.domain.collections import db as col_db
+from apps.backend.domain.collections.value_objects import CollectionSlug
 
 
 class CollectionsViewDependencies(Protocol):
@@ -51,10 +52,7 @@ def data_paths_from_blocks(blocks: list[Any]) -> list[str]:
 
 def default_collection_slug_for_path(data_path: str) -> str:
     """Top-level list paths use their name as slug; nested paths use dotted slug."""
-    dp = (data_path or "").strip()
-    if not dp:
-        return "items"
-    return dp.replace(" ", "_").lower()
+    return str(CollectionSlug.for_data_path(data_path))
 
 
 def parse_view_bindings(raw: Any) -> dict[str, str]:

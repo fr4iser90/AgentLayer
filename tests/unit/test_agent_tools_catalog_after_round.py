@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from apps.backend.core.config import config
-from apps.backend.domain.agent import _full_schema_tool_function, _registry_tool_spec_by_registered_name
-from apps.backend.domain.tool_forward_policy import apply_schema_modes_to_specs
+from apps.backend.infrastructure.platform.config import config
+from apps.backend.infrastructure.plugins import plugin_registry_service as _plugin_registry_service  # noqa: F401
+from apps.backend.domain.agent_runtime.tool_catalog import _full_schema_tool_function
+from apps.backend.domain.agent_runtime.tool_schema import _registry_tool_spec_by_registered_name
+from apps.backend.domain.tools.forward_policy import apply_schema_modes_to_specs
 
 
 def test_catalog_after_first_round_config_default_true():

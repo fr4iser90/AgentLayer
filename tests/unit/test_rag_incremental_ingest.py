@@ -6,7 +6,7 @@ import uuid
 from pathlib import Path
 from unittest.mock import patch
 
-from apps.backend.domain import rag_ingest_common as ric
+from apps.backend.domain.rag import ingest_common as ric
 
 
 def test_compute_rag_ingest_fingerprint_stable() -> None:
@@ -40,14 +40,14 @@ def test_incremental_skips_unchanged_file(tmp_path: Path) -> None:
     existing = {"agentlayer-docs:a.md": {"id": 42, "content_sha256": content_hash}}
 
     with (
-        patch("apps.backend.domain.rag_ingest_common.embed_one"),
+        patch("apps.backend.domain.rag.ingest_common.embed_one"),
         patch.object(ric.operator_settings, "rag_docs_ingest_fingerprint", return_value="fp"),
         patch.object(ric, "ingest_config_changed", return_value=False),
         patch(
-            "apps.backend.domain.rag_ingest_common.db.rag_documents_by_tenant_domain_index",
+            "apps.backend.domain.rag.ingest_common.db.rag_documents_by_tenant_domain_index",
             return_value=existing,
         ),
-        patch("apps.backend.domain.rag_ingest_common.ingest_for_user") as mock_ingest,
+        patch("apps.backend.domain.rag.ingest_common.ingest_for_user") as mock_ingest,
         patch.object(ric.operator_settings, "set_rag_docs_ingest_fingerprint") as mock_set_fp,
     ):
         out = ric.ingest_markdown_paths(
@@ -75,16 +75,16 @@ def test_incremental_reingests_when_hash_changes(tmp_path: Path) -> None:
     existing = {"agentlayer-docs:b.md": {"id": 7, "content_sha256": "stale"}}
 
     with (
-        patch("apps.backend.domain.rag_ingest_common.embed_one"),
+        patch("apps.backend.domain.rag.ingest_common.embed_one"),
         patch.object(ric.operator_settings, "rag_docs_ingest_fingerprint", return_value="fp"),
         patch.object(ric, "ingest_config_changed", return_value=False),
         patch(
-            "apps.backend.domain.rag_ingest_common.db.rag_documents_by_tenant_domain_index",
+            "apps.backend.domain.rag.ingest_common.db.rag_documents_by_tenant_domain_index",
             return_value=existing,
         ),
-        patch("apps.backend.domain.rag_ingest_common.db.rag_delete_document_by_id", return_value=True),
+        patch("apps.backend.domain.rag.ingest_common.db.rag_delete_document_by_id", return_value=True),
         patch(
-            "apps.backend.domain.rag_ingest_common.ingest_for_user",
+            "apps.backend.domain.rag.ingest_common.ingest_for_user",
             return_value={"chunk_count": 3},
         ) as mock_ingest,
         patch.object(ric.operator_settings, "set_rag_docs_ingest_fingerprint"),
@@ -109,15 +109,15 @@ def test_config_change_purges_domain(tmp_path: Path) -> None:
     doc.write_text("x\n", encoding="utf-8")
 
     with (
-        patch("apps.backend.domain.rag_ingest_common.embed_one"),
+        patch("apps.backend.domain.rag.ingest_common.embed_one"),
         patch.object(ric.operator_settings, "rag_docs_ingest_fingerprint", return_value="old"),
         patch.object(ric, "ingest_config_changed", return_value=True),
         patch(
-            "apps.backend.domain.rag_ingest_common.db.rag_delete_documents_by_tenant_domain",
+            "apps.backend.domain.rag.ingest_common.db.rag_delete_documents_by_tenant_domain",
             return_value=5,
         ) as mock_purge,
         patch(
-            "apps.backend.domain.rag_ingest_common.ingest_for_user",
+            "apps.backend.domain.rag.ingest_common.ingest_for_user",
             return_value={"chunk_count": 1},
         ),
         patch.object(ric.operator_settings, "set_rag_docs_ingest_fingerprint"),

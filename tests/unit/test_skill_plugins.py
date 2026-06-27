@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from apps.backend.infrastructure.skill_plugins import collect_plugin_skills_markdown
-from apps.backend.infrastructure.skills_prompt import load_combined_skills_prompt
+from apps.backend.infrastructure.plugins.skill_plugins import collect_plugin_skills_markdown
+from apps.backend.infrastructure.plugins.skills_prompt import load_combined_skills_prompt
 
 
 def test_collect_plugin_skills_from_markdown(monkeypatch, tmp_path) -> None:
@@ -35,7 +35,7 @@ def test_collect_plugin_skills_respects_skill_agents(monkeypatch, tmp_path) -> N
 
 
 def test_load_combined_skills_includes_file(monkeypatch, tmp_path) -> None:
-    import apps.backend.core.config as cfg
+    import apps.backend.infrastructure.platform.config as cfg
 
     monkeypatch.setenv("AGENT_SKILL_DIRS", str(tmp_path))
     (tmp_path / "p.py").write_text(

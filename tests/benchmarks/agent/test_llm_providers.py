@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from apps.backend.infrastructure.benchmark_runner import list_benchmark_llm_providers
-from apps.backend.infrastructure.model_catalog_providers import CatalogProviderSpec
+from apps.backend.infrastructure.benchmarks.benchmark_runner import list_benchmark_llm_providers
+from apps.backend.infrastructure.providers.model_catalog_providers import CatalogProviderSpec
 
 
 def test_list_benchmark_llm_providers_includes_env_without_api_key() -> None:
@@ -31,7 +31,7 @@ def test_list_benchmark_llm_providers_includes_env_without_api_key() -> None:
 
     with (
         patch(
-            "apps.backend.infrastructure.model_catalog_providers.list_provider_specs",
+            "apps.backend.infrastructure.providers.model_catalog_providers.list_provider_specs",
             return_value=[db_spec, env_spec],
         ),
         patch("apps.backend.infrastructure.db.db.external_llm_endpoints_list_all") as list_db,
@@ -66,7 +66,7 @@ def test_list_benchmark_llm_providers_dedupes_same_host_for_benchmark_ui_only() 
 
     with (
         patch(
-            "apps.backend.infrastructure.model_catalog_providers.list_provider_specs",
+            "apps.backend.infrastructure.providers.model_catalog_providers.list_provider_specs",
             return_value=[db_spec, env_spec],
         ),
         patch("apps.backend.infrastructure.db.db.external_llm_endpoints_list_all") as list_db,

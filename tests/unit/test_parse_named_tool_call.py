@@ -1,4 +1,4 @@
-from apps.backend.domain.agent_io import _parse_named_parenthesized_tool_call
+from apps.backend.application.agent_runtime.runtime.io import _parse_named_parenthesized_tool_call
 
 
 def test_parse_named_parenthesized_tool_call():

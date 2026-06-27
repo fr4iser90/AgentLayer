@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from apps.backend.domain.agents_catalog import build_agents_catalog
+from apps.backend.domain.agent_runtime.catalog import build_agents_catalog
 
 
 def test_build_agents_catalog_includes_general() -> None:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from apps.backend.infrastructure.agent_config_model_resolve import match_model_override
+from apps.backend.infrastructure.agent_runtime.agent_config_model_resolve import match_model_override
 
 
 def test_match_model_override_exact_before_provider():
@@ -29,7 +29,7 @@ def test_match_model_override_provider_fallback():
 
 
 def test_effective_value_model_override_priority():
-    from apps.backend.infrastructure import agent_config_effective
+    from apps.backend.infrastructure.agent_runtime import agent_config_effective
 
     rows = [
         {
@@ -39,7 +39,7 @@ def test_effective_value_model_override_priority():
             "knobs_json": {"agent.max_tool_rounds": 7},
         }
     ]
-    with patch("apps.backend.infrastructure.agent_config_effective.db.pool_ready", return_value=True):
+    with patch("apps.backend.infrastructure.agent_runtime.agent_config_effective.db.pool_ready", return_value=True):
         with patch.object(agent_config_effective, "_cached_model_override_rows", return_value=rows):
             with patch.object(agent_config_effective, "_cached_overrides", return_value={"agent.max_tool_rounds": 20}):
                 val, src = agent_config_effective.effective_value(

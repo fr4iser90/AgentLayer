@@ -6,7 +6,7 @@ import json
 import uuid
 from unittest.mock import patch
 
-from apps.backend.domain.delegate_enforcement import (
+from apps.backend.domain.delegation.enforcement import (
     coding_delegate_tool_blocked,
     delegate_excerpt_is_actionable,
     delegate_fingerprint,
@@ -121,7 +121,7 @@ def test_handoff_artifact_ids_from_delegate_payload() -> None:
 def test_load_delegate_allowed_paths() -> None:
     aid = uuid.uuid4()
     with patch(
-        "apps.backend.infrastructure.agent_artifacts_store.get_artifact",
+        "apps.backend.domain.delegation.enforcement.agent_artifacts_store.get_artifact",
         return_value={
             "content": {"high_paths": ["plugins/tools/x.py"]},
         },
@@ -218,7 +218,7 @@ def test_delegate_excerpt_is_actionable_rejects_tool_markup() -> None:
 
 
 def test_tool_result_display_line_delegate() -> None:
-    from apps.backend.domain.delegate_enforcement import tool_result_display_line
+    from apps.backend.domain.delegation.enforcement import tool_result_display_line
 
     ok_json = json.dumps(
         {"ok": True, "assistant_excerpt": "README.md: Hello World!"}
