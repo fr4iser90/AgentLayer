@@ -141,6 +141,18 @@ def test_user_b_admin_rag_ingest_403(
     _expect_status(resp, {403})
 
 
+def test_user_b_admin_tool_mutations_403(
+    e2e_server: None,
+    user_b_client: E2EClient,
+) -> None:
+    for path, body in (
+        ("/v1/admin/reload-tools", {}),
+        ("/v1/admin/create-tool", {"name": "e2e_probe"}),
+    ):
+        resp = user_b_client.http.post(path, json=body)
+        _expect_status(resp, {403}, label=path)
+
+
 # --- Cross-user IDOR: dashboards --------------------------------------------
 
 

@@ -64,9 +64,9 @@ Everything below is implemented for **admin-authenticated** HTTP (`require_admin
 | Method | Path | Purpose | Notes |
 |--------|------|---------|--------|
 | `GET` | `/v1/admin/tools` | Tool metadata + operator policy rows. | `require_admin` |
-| `POST` | `/v1/admin/reload-tools` | Rescan plugin tool directories. | `@require_permission("write", "tool")` |
+| `POST` | `/v1/admin/reload-tools` | Rescan plugin tool directories. | `require_admin` |
 | `PUT` | `/v1/admin/tool-policies` | Replace entire operator tool policy table. | `require_admin` |
-| `POST` | `/v1/admin/create-tool` | Server-side `create` codegen. | `@require_permission("write", "tool")` |
+| `POST` | `/v1/admin/create-tool` | Server-side `create` codegen. | `require_admin` |
 
 ### HTTP: RAG admin (`apps/backend/api/rag_api.py`, mounted as `rag_router`)
 

@@ -21,7 +21,7 @@ from apps.backend.domain.plugin_system.tool_policy import (
     filter_chat_tool_specs,
     filter_tools_meta,
 )
-from apps.backend.application.identity.use_cases.request_auth import require_admin, require_permission
+from apps.backend.application.identity.use_cases.request_auth import require_admin
 from apps.backend.application.platform.use_cases.platform_controller_services import db
 from apps.backend.application.platform.use_cases.platform_controller_services import http_500_detail
 
@@ -109,13 +109,13 @@ async def admin_list_tools(request: Request):
 
 
 @router.post("/v1/admin/reload-tools")
-@require_permission("write", "tool")
-async def admin_reload_tools(request: Request, user, scope: Literal["all", "extra"] = "all"):
+async def admin_reload_tools(request: Request, scope: Literal["all", "extra"] = "all"):
     """
     Rescan all configured tool directories (``AGENT_TOOL_DIRS`` or defaults).
     Broken or conflicting tools are skipped with logs. ``scope`` is accepted for API
     compatibility; both values perform the same full rescan.
     """
+    await require_admin(request)
     try:
         reg = reload_registry(scope=scope)
     except ValueError as e:
@@ -163,11 +163,11 @@ async def admin_put_tool_policies(request: Request, body: ToolPoliciesPutBody):
 
 
 @router.post("/v1/admin/create-tool")
-@require_permission("write", "tool")
-async def admin_create_tool(request: Request, user):
+async def admin_create_tool(request: Request):
     """
     Same JSON body as the chat tool ``create`` (codegen without ``source``, or full module in ``source``).
     """
+    await require_admin(request)
     try:
         body = await request.json()
     except Exception:

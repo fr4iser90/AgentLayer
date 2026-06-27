@@ -83,7 +83,9 @@ Legend: **401** = unauthenticated, **403** = authenticated but forbidden, **404*
 | `GET /v1/admin/users` | 403 | `require_admin()` |
 | `POST /v1/admin/users` | 403 | `require_admin()` |
 | `POST /v1/admin/rag/ingest` | 403 | `require_admin()` |
+| `POST /v1/admin/reload-tools` | 403 | `require_admin()` |
 | `PUT /v1/admin/tool-policies` | 403 | `require_admin()` |
+| `POST /v1/admin/create-tool` | 403 | `require_admin()` |
 
 Users **cannot** self-promote via `POST /auth/setup` after the first admin exists (409).
 
