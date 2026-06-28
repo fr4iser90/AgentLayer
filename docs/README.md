@@ -23,6 +23,7 @@ This folder is written for **humans** and for **RAG ingestion**.
 - **Coding agent roadmap & backlog** (guardrails, epics, Git phases): [`docs/planning/coding-agent-roadmap.md`](./planning/coding-agent-roadmap.md)
 - **Coding agent vs. external reference (gap analysis):** [`docs/planning/coding-agent-external-gap-analysis.md`](./planning/coding-agent-external-gap-analysis.md)
 - **Chat secret ingress — where to hook in code:** [`docs/planning/chat-secret-ingress-integration-analysis.md`](./planning/chat-secret-ingress-integration-analysis.md)
+- **Healthcare clinical companion plan** (tenant roles, CMS, sensitive-data boundary, roadmap): [`docs/planning/healthcare-clinical-companion-plan.md`](./planning/healthcare-clinical-companion-plan.md)
 
 ### Agents (product)
 
