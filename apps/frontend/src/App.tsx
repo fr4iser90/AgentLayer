@@ -24,7 +24,8 @@ import { AdminScheduledJobs } from "./pages/admin/AdminScheduledJobs";
 import { AdminSchedules } from "./pages/admin/AdminSchedules";
 import { AdminAgentTraces } from "./pages/admin/AdminAgentTraces";
 import { AdminBenchmarks } from "./pages/admin/AdminBenchmarks";
-import { AdminAgentConfig } from "./pages/admin/AdminAgentConfig";
+import { OrgAdminLayout } from "./layout/OrgAdminLayout";
+import { OrgKnowledgePage } from "./pages/org/OrgKnowledgePage";
 import { ChatPage } from "./pages/ChatPage";
 import { DocsPage } from "./pages/DocsPage";
 import { HomePage } from "./pages/HomePage";
@@ -79,6 +80,12 @@ export function App() {
                 <Route path="delegate" element={<DelegateSettings />} />
                 <Route path="shares" element={<SharesSettings />} />
                 <Route path="experimental" element={<Navigate to="/settings/profile" replace />} />
+              </Route>
+              <Route path="org" element={<RequireAdmin />}>
+                <Route element={<OrgAdminLayout />}>
+                  <Route index element={<Navigate to="knowledge" replace />} />
+                  <Route path="knowledge" element={<OrgKnowledgePage />} />
+                </Route>
               </Route>
               <Route path="admin" element={<RequireAdmin />}>
                 <Route element={<AdminLayout />}>

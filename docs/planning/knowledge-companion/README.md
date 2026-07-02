@@ -15,18 +15,23 @@ Split backlog for the **industry-agnostic** strategy in
 
 **Rule:** ship **one task / one PR at a time**.
 
+**Roles model (read first):** [`00-roles-and-scopes.md`](./00-roles-and-scopes.md)
+
 ### Platform tasks (all verticals)
 
 | # | Task | Status | Depends on |
 |---|------|--------|------------|
+| 00 | [Roles and scopes (spec)](./00-roles-and-scopes.md) | **draft** | — |
 | 01 | [Docs and boundaries](./01-docs-and-boundaries.md) | **done** | — |
-| 02 | [RAG pilot + knowledge companion](./02-rag-pilot-knowledge-companion-agent.md) | pending | 01 |
+| 02 | [RAG pilot + knowledge companion](./02-rag-pilot-knowledge-companion-agent.md) | **done** | 01 |
 | 03 | [Tenant user onboarding](./03-tenant-user-onboarding.md) | pending | 02 |
+| 03b | [Identity roles + surfaces](./03b-identity-roles-and-surfaces.md) | pending | 03 |
 | 04 | [CMS light (`tenant_content`)](./04-cms-light.md) | pending | 02 |
-| 05 | [Profession RBAC](./05-profession-rbac.md) | pending | 03, 04 |
+| 05 | [Profession RBAC](./05-profession-rbac.md) | pending | 03b, 04 |
 | 06 | [Review and approval workflow](./06-review-approval-workflow.md) | pending | 05 |
+| 07 | [Tenant templates](./07-tenant-templates.md) | pending | 06 |
 
-### Vertical profiles (optional, after platform 01–06)
+### Vertical profiles (optional; connectors after platform 01–06)
 
 | Profile | Doc | Gated tasks |
 |---------|-----|-------------|
@@ -37,10 +42,12 @@ Split backlog for the **industry-agnostic** strategy in
 ### Recommended order
 
 ```text
-01 (done) → 02 → 03 → 04 → 05 → 06 → optional vertical (e.g. healthcare H1)
+01 (done) → 02 (done) → 03 → 03b → 04 → 05 → 06 → 07 → optional vertical (e.g. healthcare H1)
 ```
 
 ### Principles
+
+- **Three role layers:** site → tenant membership → profession — [`00-roles-and-scopes.md`](./00-roles-and-scopes.md).
 
 - **Generic platform names** in code: `knowledge_companion`, `tenant_knowledge`, `tenant_content`.
 - **No sensitive context data** in platform tasks 01–06 (define blocks per vertical).
@@ -50,5 +57,8 @@ Split backlog for the **industry-agnostic** strategy in
 ### Related docs
 
 - Platform plan: [`../knowledge-companion-plan.md`](../knowledge-companion-plan.md)
+- **Roles model:** [`./00-roles-and-scopes.md`](./00-roles-and-scopes.md)
+- **Onboarding checklist:** [`./tenant-onboarding-checklist.md`](./tenant-onboarding-checklist.md)
+- **Pilot runbook:** [`./RUNBOOK-pilot.md`](./RUNBOOK-pilot.md)
 - Healthcare redirect (old path): [`../healthcare-clinical-companion-plan.md`](../healthcare-clinical-companion-plan.md)
 - RAG: [`../../features/rag.md`](../../features/rag.md)

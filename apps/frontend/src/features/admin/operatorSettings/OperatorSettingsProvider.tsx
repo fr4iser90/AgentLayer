@@ -165,7 +165,7 @@ function useOperatorSettingsState() {
   const [ragChunkOverlap, setRagChunkOverlap] = useState("200");
   const [ragTopK, setRagTopK] = useState("8");
   const [ragEmbedTimeout, setRagEmbedTimeout] = useState("120");
-  const [ragTenantDomains, setRagTenantDomains] = useState("agentlayer_docs");
+  const [ragTenantDomains, setRagTenantDomains] = useState("agentlayer_docs,tenant_knowledge");
   const [ragTenantEffective, setRagTenantEffective] = useState<string[]>([]);
   const [docsRoot, setDocsRoot] = useState("");
   const [exposeInternalErrors, setExposeInternalErrors] = useState(false);

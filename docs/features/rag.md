@@ -13,7 +13,9 @@ RAG provides **semantic search** over ingested documents using:
 
 By default, vectors are scoped to **tenant + user** (private notes and uploads stay per user).
 
-The domain **`agentlayer_docs`** is **tenant-wide**: after an admin ingests documentation, every user in that tenant can retrieve the same chunks with `rag_search(..., domain="agentlayer_docs")`. Configure the allowlist in **Admin → Interfaces** as **`rag_tenant_shared_domains`** (comma-separated; default includes `agentlayer_docs`; empty string disables tenant-wide domains).
+The domain **`agentlayer_docs`** is **tenant-wide**: after an admin ingests documentation, every user in that tenant can retrieve the same chunks with `rag_search(..., domain="agentlayer_docs")`. Configure the allowlist in **Admin → Interfaces** as **`rag_tenant_shared_domains`**
+(comma-separated; default includes `agentlayer_docs` and `tenant_knowledge`; empty
+string disables tenant-wide domains).
 
 ## Where it lives
 
@@ -48,7 +50,7 @@ Chunking, timeouts, model id (`rag_embedding_model`), and vector width remain in
 
 Both routes require a Bearer token for a user with **`role=admin`**:
 
-- `POST /v1/admin/rag/ingest` — body: `text`, optional `domain`, `title`, `source_uri`
+- `POST /v1/admin/rag/ingest` — body: `text`, optional `domain`, `title`, `source_uri` (Web UI: **Organization → Knowledge base**)
 - `POST /v1/admin/rag/ingest-docs` — optional JSON: `docs_root`, `domain` (default `agentlayer_docs`), `purge_first` (default `false`), `incremental` (default `true`). Walks `*.md` under `docs_root`. **Incremental** (default): skip files whose `content_sha256` matches the DB row for the same `source_uri`; remove DB rows for files no longer on disk; full re-embed when embedding model/dim or chunk settings change (stored **ingest fingerprint** in `operator_settings`). Set `purge_first: true` for a full rebuild of that tenant + domain.
 
 CLI helper (stdlib HTTP only):
@@ -60,6 +62,7 @@ On each API process start, the server **attempts** an **incremental** sync of `d
 Recommended `domain` values:
 
 - `agentlayer_docs` (repo docs, tenant-visible)
+- `tenant_knowledge` (published team operational notes, tenant-visible — knowledge companion)
 - `user_uploads`
 - `manual_notes`
 

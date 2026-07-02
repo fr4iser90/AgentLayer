@@ -26,6 +26,8 @@ import deTasks from "../locales/de/tasks.json";
 import enTasks from "../locales/en/tasks.json";
 import deWorkspace from "../locales/de/workspace.json";
 import enWorkspace from "../locales/en/workspace.json";
+import deOrg from "../locales/de/org.json";
+import enOrg from "../locales/en/org.json";
 
 const SUPPORTED = ["en", "de"] as const;
 
@@ -47,6 +49,7 @@ void i18n
         dashboard: enDashboard,
         notifications: enNotifications,
         workspace: enWorkspace,
+        org: enOrg,
       },
       de: {
         common: deCommon,
@@ -61,12 +64,13 @@ void i18n
         dashboard: deDashboard,
         notifications: deNotifications,
         workspace: deWorkspace,
+        org: deOrg,
       },
     },
     fallbackLng: "en",
     supportedLngs: [...SUPPORTED],
     defaultNS: "common",
-    ns: ["common", "errors", "chat", "coding", "setup", "admin", "auth", "settings", "tasks", "dashboard", "notifications", "workspace"],
+    ns: ["common", "errors", "chat", "coding", "setup", "admin", "auth", "settings", "tasks", "dashboard", "notifications", "workspace", "org"],
     interpolation: { escapeValue: false },
     detection: {
       order: ["localStorage", "navigator"],

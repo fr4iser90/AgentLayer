@@ -214,7 +214,7 @@ def _fetch_row() -> dict[str, Any]:
         "rag_chunk_overlap": 200,
         "rag_top_k": 8,
         "rag_embed_timeout_sec": 120.0,
-        "rag_tenant_shared_domains": "agentlayer_docs",
+        "rag_tenant_shared_domains": "agentlayer_docs,tenant_knowledge",
         "embedding_api_base_url": None,
         "embedding_api_key": None,
         "embedding_api_header_name": None,

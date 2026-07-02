@@ -54,14 +54,24 @@ export function UserMenu() {
             {t("userMenu.settings")}
           </Link>
           {isAdmin ? (
-            <Link
-              role="menuitem"
-              to="/admin"
-              className="block px-3 py-2 text-sm text-neutral-200 hover:bg-white/10"
-              onClick={() => setOpen(false)}
-            >
-              {t("userMenu.admin")}
-            </Link>
+            <>
+              <Link
+                role="menuitem"
+                to="/org"
+                className="block px-3 py-2 text-sm text-neutral-200 hover:bg-white/10"
+                onClick={() => setOpen(false)}
+              >
+                {t("userMenu.organization")}
+              </Link>
+              <Link
+                role="menuitem"
+                to="/admin"
+                className="block px-3 py-2 text-sm text-neutral-200 hover:bg-white/10"
+                onClick={() => setOpen(false)}
+              >
+                {t("userMenu.platformAdmin")}
+              </Link>
+            </>
           ) : null}
           <div className="border-t border-white/10 px-3 py-2">
             <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-surface-muted">

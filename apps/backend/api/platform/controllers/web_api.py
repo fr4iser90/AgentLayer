@@ -57,6 +57,7 @@ def register_web_routes(app: FastAPI) -> None:
         @app.get("/app/settings/friends")
         @app.get("/app/settings/shares")
         @app.get("/app/studio")
+        @app.get("/app/org/knowledge")
         @app.get("/app/admin")
         @app.get("/app/admin/interfaces")
         @app.get("/app/admin/interfaces/bridges")

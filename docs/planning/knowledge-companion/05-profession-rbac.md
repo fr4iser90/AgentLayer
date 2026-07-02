@@ -8,7 +8,8 @@ status: pending
 ## Task 05 — Profession RBAC
 
 **Status:** pending  
-**Depends on:** [03](./03-tenant-user-onboarding.md), [04](./04-cms-light.md)  
+**Depends on:** [03b](./03b-identity-roles-and-surfaces.md), [04](./04-cms-light.md)  
+**Spec:** [Layer 3 in roles model](./00-roles-and-scopes.md#layer-3--profession--content-roles-tenant-local)  
 **Goal:** Tenant Admin can define **profession roles**, departments, and
 qualifications (generic platform); content and tools filter by effective policy.
 Healthcare pilot uses example values (anesthesia nurse, OTA, trainee).
@@ -22,7 +23,8 @@ Healthcare pilot uses example values (anesthesia nurse, OTA, trainee).
   - `profession_roles` (tenant-configurable templates)
   - `user_profession_assignments` (user ↔ profession role ↔ department)
   - `user_qualifications` (type, valid_until, evidence ref)
-- [ ] Keep platform `admin` / `user` separate from profession role assignments.
+- [ ] Keep **site role** (`site_admin` / `site_user`) separate from **tenant membership**
+      and from profession roles — see [`00-roles-and-scopes.md`](./00-roles-and-scopes.md).
 
 #### Tenant Admin APIs / UI
 

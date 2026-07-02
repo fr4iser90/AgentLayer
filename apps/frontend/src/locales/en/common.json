@@ -22,7 +22,8 @@
   "userMenu": {
     "account": "Account",
     "settings": "Settings",
-    "admin": "Admin",
+    "organization": "Organization",
+    "platformAdmin": "Platform admin",
     "signOut": "Sign out"
   },
   "language": {

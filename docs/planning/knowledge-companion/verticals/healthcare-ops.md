@@ -16,8 +16,12 @@ CMS — plus healthcare-specific policy and connectors.
 ### When to use this profile
 
 - Hospitals, clinics, clinical departments
-- Anesthesia, OR, ICU, medtech teams
+- Anesthesia, OP, ICU, medtech teams
 - Self-authored workflow notes **without PHI** in Phase 1
+
+**Onboarding:** create a live tenant from template `tpl_healthcare_ops` when the
+template engine exists (see platform plan — *Tenant Provisioning And Templates*).
+For solo dev, one manual tenant with `vertical_profile: healthcare_ops` is enough.
 
 ### Configuration
 

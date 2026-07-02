@@ -25,6 +25,11 @@ not the platform itself. See
 **Implementation backlog (one PR per task):**
 [`docs/planning/knowledge-companion/README.md`](./knowledge-companion/README.md)
 
+**Deployment mode:** the knowledge companion product assumes
+`deployment_mode = multi_tenant` (firms/orgs). For homelab-style **agent system**
+(installation without firms — admin + users only), see
+[`knowledge-companion/00-roles-and-scopes.md`](./knowledge-companion/00-roles-and-scopes.md#deployment-mode-chosen-once-in-appsetup).
+
 ## North Star
 
 The knowledge companion is a universal **role-aware interface for operational
@@ -223,6 +228,107 @@ Recommended tenant-level objects:
 Tenant admins are required so each organization can configure staff, content,
 and policies without platform operator involvement.
 
+## Tenant Provisioning And Templates
+
+A **tenant** is one organization’s isolated workspace. A **tenant template** is a
+**blueprint** used when creating a new tenant — not a shared production tenant
+that multiple customers use at once.
+
+### Three provisioning modes
+
+| Mode | Who creates it | Purpose | Production data? |
+|------|----------------|---------|------------------|
+| **Live tenant** | Platform or Tenant Admin | real org (clinic, team, company) | yes (their content) |
+| **Demo tenant** | Platform Admin | showcase, training, sales | sample/synthetic only |
+| **Tenant template** | Platform Admin | clone config when spawning new tenants | no (blueprint only) |
+
+```text
+Tenant template (blueprint, not shared runtime)
+  -> Platform Admin: "Create tenant from template"
+  -> New live tenant (empty content, copied config)
+  -> Tenant Admin onboarded
+  -> Team adds own tenant_knowledge content
+```
+
+### What a tenant template should include
+
+Templates copy **configuration**, not another customer’s data:
+
+- `vertical_profile` (e.g. `healthcare_ops`, `field_service_ops`, `default_ops`)
+- default `rag_tenant_shared_domains` (`tenant_knowledge`, …)
+- enabled agents (`knowledge_companion` policy)
+- enabled tool capabilities (`knowledge.search`, …)
+- default profession role templates (names only, no users)
+- default department list (optional starter set)
+- default qualification types (optional)
+- content workflow defaults (draft → review → publish)
+- disclaimer and blocked-query policy from vertical profile
+- optional **seed content** flag: copy demo Markdown into new tenant (off by default for live orgs)
+
+Templates should **not** include:
+
+- users or passwords from another tenant
+- RAG chunks from another tenant
+- PHI, customer PII, or copied official documents
+- live connector credentials
+
+### Planned template catalog (examples)
+
+| Template id | Vertical profile | Intended use |
+|-------------|------------------|--------------|
+| `tpl_default_ops` | `default_ops` | generic team / internal ops |
+| `tpl_healthcare_ops` | `healthcare_ops` | hospital department pilot |
+| `tpl_field_service_ops` | `field_service_ops` | technicians / maintenance (stub) |
+| `tpl_demo_healthcare` | `healthcare_ops` | demo tenant with sample checklists |
+| `tpl_demo_default` | `default_ops` | generic demo / sandbox |
+
+Naming convention:
+
+- `tpl_*` — blueprint used to **create** tenants
+- `demo_*` — pre-provisioned **demo tenants** (optional, read-heavy)
+- live tenant slug — org-chosen, e.g. `klinik-pilot-nord`, `acme-field-service`
+
+### Who does what
+
+**Platform Admin (you / operator):**
+
+- maintain tenant templates and demo tenants
+- create live tenant from template for a new customer or pilot
+- assign first Tenant Admin user
+
+**Tenant Admin (customer / department lead):**
+
+- invite users into **their** tenant only
+- define profession roles and departments (or adjust template defaults)
+- publish `tenant_knowledge` content
+- never sees other tenants’ data
+
+**End users:**
+
+- search/read in their tenant via `knowledge_companion`
+- no cross-tenant access
+
+### Solo pilot (you, now)
+
+You do **not** need a template engine on day one. Minimum path:
+
+1. Create one live tenant (or use default `tenant_id=1`).
+2. Set `vertical_profile: healthcare_ops` manually.
+3. Ingest self-authored notes into `tenant_knowledge`.
+4. Invite colleagues into the **same** tenant.
+
+Add templates when you onboard a **second** org or vertical and repeat the same setup often.
+
+### Implementation note (future task)
+
+Not built yet. Likely surface:
+
+- `POST /v1/admin/tenants` body: `{ "name", "template_id", "seed_demo_content": false }`
+- template store: JSON or DB table `tenant_templates`
+- clone: operator settings slice, agent policy, role templates — **not** RAG rows
+
+Track as [Task 07 — Tenant templates](./knowledge-companion/07-tenant-templates.md).
+
 ## Role And Permission Model
 
 Use a combined RBAC/ABAC model.
@@ -386,6 +492,9 @@ Draft content may be available in an admin preview mode, clearly labeled.
 
 ## Tenant Admin Operations
 
+> **Canonical roles model:** [`knowledge-companion/00-roles-and-scopes.md`](./knowledge-companion/00-roles-and-scopes.md)  
+> Three layers: **Site** (deployment) → **Tenant membership** → **Profession/content**.
+
 Tenant admins configure who may use the knowledge companion, which profession
 roles and departments apply, and which content and tools are available. This section
 describes the target operating model. Most of it is **not implemented yet** in
@@ -407,6 +516,16 @@ admin-only. See `docs/features/operator-agent.md` and `docs/features/rag.md`.
 Platform `admin` should not be confused with **Tenant Admin**. A deployment may
 have one platform admin who bootstraps tenants; each tenant then manages its own
 staff, content, and policies.
+
+**Web UI separation (pilot):**
+
+| Surface | Route | Scope |
+|---------|-------|-------|
+| Platform admin | `/app/admin` | Operator: embedding, RAG domains, all tenants |
+| Organization | `/app/org` | Tenant Admin: team knowledge, future team/users |
+
+Task **03b** will restrict `/org` to tenant membership admins (`tenant_admin`) without
+access to `/admin`. Task **05** adds profession/content roles (Layer 3).
 
 ### Tenant Admin Responsibilities
 
@@ -580,7 +699,7 @@ Optional UI alias: expose the same agent as `clinical_companion` when
 Today, add `tenant_knowledge` alongside `agentlayer_docs` in:
 
 - operator setting **`rag_tenant_shared_domains`**
-- ingest calls: `POST /v1/admin/rag/ingest` with `domain: "tenant_knowledge"`
+- ingest: **Admin → Interfaces → Memory & RAG → Team knowledge** (or `POST /v1/admin/rag/ingest` with `domain: "tenant_knowledge"`)
 - tool calls: `rag_search({ query, domain: "tenant_knowledge" })`
 
 Future work: move ingest from platform-admin-only to Content Approver with
@@ -637,10 +756,8 @@ Validation should check:
 
 **Today (interim):**
 
-- Admin calls `POST /v1/admin/rag/ingest` with:
-  - `domain: "tenant_knowledge"`
-  - `title`, `text`, optional `source_uri` (CMS content id or slug)
-- Or bulk-ingest Markdown files via a future tenant content export path.
+- Tenant Admin publishes via **Organization → Knowledge base** (`/app/org/knowledge`).
+- Platform operator enables RAG + `tenant_knowledge` domain under **Platform admin → Interfaces → Memory**.
 
 **Target:**
 
@@ -752,11 +869,12 @@ Summary mapping (details and acceptance criteria live in each task file):
 | Task | Theme |
 |------|--------|
 | 01 | Docs and boundaries (**done**) |
-| 02 | RAG pilot + `knowledge_companion` ← **start here** |
+| 02 | RAG pilot + `knowledge_companion` (**done** — see runbook) |
 | 03 | Tenant user onboarding |
 | 04 | CMS light (`tenant_content`) + publish → RAG |
 | 05 | Profession RBAC |
 | 06 | Review and approval workflow |
+| 07 | Tenant templates (`tpl_*` → new live tenant) |
 | — | **Vertical profiles** (e.g. healthcare H1–H3): [`verticals/`](./knowledge-companion/verticals/README.md) |
 
 The slices below remain the architectural breakdown; implement them through the
@@ -893,7 +1011,7 @@ Recommended next 10 tasks:
 3. Create a first qualification matrix.
 4. Define the first `tenant_content` schema.
 5. Implement Task 02: `knowledge_companion` + `tenant_knowledge`.
-6. Pilot interim ingest via `POST /v1/admin/rag/ingest`.
+6. Pilot interim ingest via Admin UI (Team knowledge section).
 7. Add `tenant_knowledge` to `rag_tenant_shared_domains`.
 8. Define generic `knowledge.*` tool capabilities.
 9. Select 20-50 self-authored pilot documents.

@@ -25,6 +25,7 @@ This folder is written for **humans** and for **RAG ingestion**.
 - **Chat secret ingress — where to hook in code:** [`docs/planning/chat-secret-ingress-integration-analysis.md`](./planning/chat-secret-ingress-integration-analysis.md)
 - **Knowledge companion plan** (all industries / professions): [`docs/planning/knowledge-companion-plan.md`](./planning/knowledge-companion-plan.md)
 - **Knowledge companion tasks** (platform backlog 01–06): [`docs/planning/knowledge-companion/README.md`](./planning/knowledge-companion/README.md)
+- **Tenant onboarding checklist:** [`docs/planning/knowledge-companion/tenant-onboarding-checklist.md`](./planning/knowledge-companion/tenant-onboarding-checklist.md)
 - **Vertical profiles** (healthcare, …): [`docs/planning/knowledge-companion/verticals/README.md`](./planning/knowledge-companion/verticals/README.md)
 
 ### Agents (product)

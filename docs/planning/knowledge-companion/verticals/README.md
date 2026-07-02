@@ -35,6 +35,17 @@ Platform code uses generic ids: `knowledge_companion`, `tenant_knowledge`,
 4. Do **not** fork `knowledge_companion` or `tenant_knowledge` unless an ADR
    requires it.
 
+### Tenant templates vs vertical profiles
+
+| | Vertical profile | Tenant template |
+|---|----------------|-----------------|
+| **What** | policy pack (prompts, blocks, connectors) | blueprint to spawn a new tenant |
+| **Scope** | reused across many tenants | copied once per new tenant |
+| **Example** | `healthcare_ops` PHI rules | `tpl_healthcare_ops` → new tenant "klinik-pilot" |
+
+See **Tenant Provisioning And Templates** in
+[`../knowledge-companion-plan.md`](../knowledge-companion-plan.md).
+
 ### Healthcare-only gated tasks
 
 Regulated clinical connectors live under
