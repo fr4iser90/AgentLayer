@@ -82,6 +82,13 @@ from apps.backend.infrastructure.db.identity_tenants import (
     user_telegram_user_id_get,
     user_telegram_user_id_set,
     user_tenant_id,
+    user_site_role,
+    user_membership_role,
+    tenant_membership_upsert,
+    tenant_get,
+    tenant_update_org_profile,
+    tenant_mark_setup_completed,
+    user_is_tenant_admin,
 )
 def _require_user_uuid() -> tuple[int, uuid.UUID]:
     tenant_id, user_id = get_identity()
@@ -423,12 +430,44 @@ from apps.backend.infrastructure.db.memory_persistence import (
 )
 from apps.backend.infrastructure.db.rag_persistence import (
     rag_delete_document_by_id,
+    rag_delete_documents_by_source_uri,
     rag_delete_documents_by_tenant_domain,
     rag_delete_documents_by_workspace,
     rag_document_and_chunks_insert,
     rag_documents_by_tenant_domain_index,
     rag_vector_search,
     rag_vector_search_by_workspace,
+)
+from apps.backend.infrastructure.db.tenant_content_persistence import (
+    tenant_content_audit_insert,
+    tenant_content_audit_list,
+    tenant_content_get,
+    tenant_content_get_published_by_slug,
+    tenant_content_insert,
+    tenant_content_list,
+    tenant_content_slug_exists,
+    tenant_content_update,
+    tenant_content_version_get,
+    tenant_content_version_insert,
+    tenant_content_versions_list,
+)
+from apps.backend.infrastructure.db.tenant_profession_persistence import (
+    department_get,
+    department_get_by_slug,
+    department_insert,
+    departments_list,
+    profession_assignment_get,
+    profession_assignment_upsert,
+    profession_assignments_list,
+    profession_role_get,
+    profession_role_get_by_slug,
+    profession_role_insert,
+    profession_roles_count,
+    profession_roles_list,
+    qualification_delete,
+    qualification_insert,
+    qualifications_list,
+    tenant_content_get_by_source_uri,
 )
 from apps.backend.infrastructure.db.user_profiles import (
     DEFAULT_AGENT_PROFILE,
@@ -439,117 +478,12 @@ from apps.backend.infrastructure.db.user_profiles import (
     user_resolve_in_tenant,
     user_timezone_persist,
 )
-def kb_note_is_owner(note_id: int, user_id: uuid.UUID, tenant_id: int) -> bool:
-    with pool().connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT 1 FROM user_kb_notes
-                WHERE id = %s AND user_id = %s AND tenant_id = %s
-                """,
-                (note_id, user_id, tenant_id),
-            )
-            row = cur.fetchone()
-        conn.commit()
-    return row is not None
-
-
-def kb_note_share_create(
-    note_id: int,
-    owner_user_id: uuid.UUID,
-    tenant_id: int,
-    grantee_user_id: uuid.UUID,
-) -> int:
-    if grantee_user_id == owner_user_id:
-        raise ValueError("cannot share a note with yourself")
-    with pool().connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT user_id, tenant_id FROM user_kb_notes WHERE id = %s",
-                (note_id,),
-            )
-            nrow = cur.fetchone()
-            if not nrow:
-                raise ValueError("note not found")
-            nu, nt = nrow[0], int(nrow[1])
-            ou = nu if isinstance(nu, uuid.UUID) else uuid.UUID(str(nu))
-            if ou != owner_user_id or nt != tenant_id:
-                raise ValueError("not the owner of this note")
-            cur.execute(
-                "SELECT tenant_id FROM users WHERE id = %s",
-                (grantee_user_id,),
-            )
-            grow = cur.fetchone()
-            if not grow or int(grow[0]) != tenant_id:
-                raise ValueError("grantee not in the same tenant")
-            cur.execute(
-                """
-                INSERT INTO user_kb_note_shares (note_id, grantee_user_id)
-                VALUES (%s, %s)
-                ON CONFLICT (note_id, grantee_user_id) DO NOTHING
-                RETURNING id
-                """,
-                (note_id, grantee_user_id),
-            )
-            ins = cur.fetchone()
-            if not ins:
-                raise ValueError("this user already has access")
-            sid = int(ins[0])
-        conn.commit()
-    return sid
-
-
-def kb_note_share_list(
-    note_id: int, owner_user_id: uuid.UUID, tenant_id: int
-) -> list[dict[str, Any]]:
-    with pool().connection() as conn:
-        with conn.cursor(row_factory=dict_row) as cur:
-            cur.execute(
-                """
-                SELECT s.id, s.grantee_user_id, s.created_at, u.email, u.external_sub
-                FROM user_kb_note_shares s
-                JOIN user_kb_notes n ON n.id = s.note_id
-                JOIN users u ON u.id = s.grantee_user_id
-                WHERE s.note_id = %s AND n.user_id = %s AND n.tenant_id = %s
-                ORDER BY s.created_at DESC
-                """,
-                (note_id, owner_user_id, tenant_id),
-            )
-            rows = cur.fetchall()
-        conn.commit()
-    out: list[dict[str, Any]] = []
-    for r in rows:
-        gid = r["grantee_user_id"]
-        out.append(
-            {
-                "share_id": int(r["id"]),
-                "grantee_user_id": str(gid),
-                "grantee_email": r.get("email"),
-                "grantee_external_sub": r.get("external_sub"),
-                "created_at": r["created_at"].isoformat() if r.get("created_at") else None,
-            }
-        )
-    return out
-
-
-def kb_note_share_delete(share_id: int, owner_user_id: uuid.UUID, tenant_id: int) -> bool:
-    with pool().connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                DELETE FROM user_kb_note_shares s
-                USING user_kb_notes n
-                WHERE s.id = %s AND s.note_id = n.id
-                  AND n.user_id = %s AND n.tenant_id = %s
-                RETURNING s.id
-                """,
-                (share_id, owner_user_id, tenant_id),
-            )
-            row = cur.fetchone()
-        conn.commit()
-    return row is not None
-
-
+from apps.backend.infrastructure.db.kb_note_sharing import (
+    kb_note_is_owner,
+    kb_note_share_create,
+    kb_note_share_delete,
+    kb_note_share_list,
+)
 from apps.backend.infrastructure.db.model_catalog_and_policies import (
     external_llm_endpoint_by_id,
     external_llm_endpoints_enabled_ordered,

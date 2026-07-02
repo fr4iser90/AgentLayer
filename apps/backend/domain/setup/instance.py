@@ -65,6 +65,10 @@ class InstanceSetupDependencies(Protocol):
 
     def setup_token(self) -> str: ...
 
+    def deployment_mode(self) -> str: ...
+
+    def apply_deployment_mode_patch(self, mode: str) -> None: ...
+
 
 _deps: InstanceSetupDependencies | None = None
 
@@ -137,6 +141,14 @@ def invalidate_operator_settings_cache() -> None:
 
 def invalidate_model_catalog_cache() -> None:
     _require_deps().invalidate_model_catalog_cache()
+
+
+def deployment_mode() -> str:
+    return _require_deps().deployment_mode()
+
+
+def apply_deployment_mode_patch(mode: str) -> None:
+    _require_deps().apply_deployment_mode_patch(mode)
 
 
 def _client_id(request: Request) -> str:
@@ -328,6 +340,7 @@ def build_setup_status() -> dict[str, Any]:
     reachable = cached_llm_reachable()
     llm_reachable = reachable if reachable is not None else False
     src = setup_token_source()
+    deployment = deployment_mode()
     return {
         "needs_setup": needs_admin,
         "needs_admin": needs_admin,
@@ -336,7 +349,22 @@ def build_setup_status() -> dict[str, Any]:
         "llm_reachable": llm_reachable,
         "setup_token_required": bool(needs_admin),
         "setup_token_source": src,
+        "deployment_mode": deployment,
+        "needs_deployment_mode": needs_admin,
     }
+
+
+def apply_setup_deployment_mode(*, deployment_mode: str) -> dict[str, Any]:
+    if not is_first_start():
+        raise HTTPException(
+            status_code=409,
+            detail="Deployment mode can only be set during initial setup.",
+        )
+    mode = (deployment_mode or "").strip().lower()
+    if mode not in ("agent_system", "multi_tenant"):
+        raise HTTPException(status_code=400, detail="deployment_mode must be agent_system or multi_tenant")
+    apply_deployment_mode_patch(mode)
+    return {"ok": True, "deployment_mode": mode}
 
 
 def _normalize_base_url(raw: str) -> str:

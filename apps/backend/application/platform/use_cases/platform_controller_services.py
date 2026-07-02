@@ -3,6 +3,7 @@ from __future__ import annotations
 from apps.backend.infrastructure.agent_runtime.llm_queue_policy import invalidate_user_priority_cache
 from apps.backend.infrastructure.db import db
 from apps.backend.infrastructure.identity.instance_setup_service import (
+    apply_setup_deployment_mode,
     apply_setup_llm_endpoint,
     build_setup_status,
     create_first_admin,
@@ -25,6 +26,7 @@ from apps.backend.infrastructure.identity.setup_catalog_service import (
     build_setup_catalog,
     test_embedding_model,
 )
+from apps.backend.infrastructure.settings import operator_settings
 from apps.backend.infrastructure.platform.config import PLUGINS_DIR, config
 from apps.backend.infrastructure.platform.public_error import http_500_detail
 from apps.backend.infrastructure.providers.model_catalog_providers import (

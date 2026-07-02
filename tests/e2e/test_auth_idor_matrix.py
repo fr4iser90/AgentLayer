@@ -83,8 +83,14 @@ def test_anon_admin_routes_401(e2e_server: None) -> None:
             "/v1/tasks",
             "/v1/workspaces",
             "/v1/user/persona",
+            "/v1/org/tenant",
+            "/v1/org/rag/ingest",
         ):
-            _expect_status(anon.get(path), {401}, label=path)
+            if path.endswith("/ingest"):
+                resp = anon.post(path, json={"text": "probe"})
+            else:
+                resp = anon.get(path)
+            _expect_status(resp, {401}, label=path)
 
 
 def test_anon_chat_completions_401(e2e_server: None) -> None:
@@ -139,6 +145,25 @@ def test_user_b_admin_rag_ingest_403(
         json={"text": "e2e probe", "domain": "test"},
     )
     _expect_status(resp, {403})
+
+
+def test_user_b_org_tenant_403(
+    e2e_server: None,
+    user_b_client: E2EClient,
+) -> None:
+    resp = user_b_client.http.get("/v1/org/tenant")
+    _expect_status(resp, {403, 404})
+
+
+def test_user_b_org_rag_ingest_403(
+    e2e_server: None,
+    user_b_client: E2EClient,
+) -> None:
+    resp = user_b_client.http.post(
+        "/v1/org/rag/ingest",
+        json={"text": "e2e org probe", "title": "probe"},
+    )
+    _expect_status(resp, {403, 404})
 
 
 def test_user_b_admin_tool_mutations_403(

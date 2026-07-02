@@ -326,9 +326,41 @@ def get_user_for_bearer_token(token: str) -> Optional[User]:
 
 
 async def require_admin(request: Request) -> User:
+    """Site admin (platform operator). Alias for require_site_admin."""
+    return await require_site_admin(request)
+
+
+async def require_site_admin(request: Request) -> User:
     user = await get_current_user(request)
-    if user.role != "admin":
-        raise HTTPException(status_code=403, detail="admin required")
+    if db.user_site_role(user.id) != "site_admin":
+        raise HTTPException(status_code=403, detail="site admin required")
+    return user
+
+
+async def require_tenant_admin(request: Request) -> User:
+    from apps.backend.infrastructure.settings import operator_settings
+
+    user = await get_current_user(request)
+    mode = operator_settings.deployment_mode()
+    if mode != "multi_tenant":
+        raise HTTPException(status_code=404, detail="organization admin not available in agent_system mode")
+    tid = db.user_tenant_id(user.id)
+    if db.user_is_tenant_admin(user.id, tid):
+        return user
+    raise HTTPException(status_code=403, detail="tenant admin required")
+
+
+async def require_tenant_member(request: Request) -> User:
+    """Any tenant membership (multi_tenant mode)."""
+    from apps.backend.infrastructure.settings import operator_settings
+
+    user = await get_current_user(request)
+    mode = operator_settings.deployment_mode()
+    if mode != "multi_tenant":
+        raise HTTPException(status_code=404, detail="organization not available in agent_system mode")
+    tid = db.user_tenant_id(user.id)
+    if db.user_membership_role(user.id, tid) is None:
+        raise HTTPException(status_code=403, detail="tenant membership required")
     return user
 
 
@@ -342,8 +374,8 @@ def require_permission(action: str, resource_type: Optional[str] = None) -> Call
         async def wrapper(request: Request, *args: Any, **kwargs: Any) -> Any:
             user = await get_current_user(request)
 
-            # Admin has all permissions
-            if user.role == "admin":
+            # Site admin has all permissions
+            if db.user_site_role(user.id) == "site_admin":
                 return await func(request, *args, **kwargs, user=user)
 
             # Set identity context for downstream code (tenant from DB, never spoofable headers)
@@ -363,15 +395,25 @@ def insert_user_with_cursor(cur, email: str, password: str, role: str = "user", 
     user_id = uuid.uuid4()
     password_hash = hash_password(password)
     external_sub = f"manual:{email}"
+    site_role = "site_admin" if (role or "").strip().lower() == "admin" else "site_user"
     cur.execute(
         """
-        INSERT INTO users (id, email, password_hash, role, tenant_id, external_sub)
-        VALUES (%s, %s, %s, %s, %s, %s)
+        INSERT INTO users (id, email, password_hash, role, site_role, tenant_id, external_sub)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
         RETURNING created_at
         """,
-        (user_id, email, password_hash, role, tenant_id, external_sub),
+        (user_id, email, password_hash, role, site_role, tenant_id, external_sub),
     )
     created_at = cur.fetchone()[0]
+    membership = "tenant_owner" if site_role == "site_admin" else "tenant_member"
+    cur.execute(
+        """
+        INSERT INTO tenant_memberships (user_id, tenant_id, membership_role)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (user_id, tenant_id) DO UPDATE SET membership_role = EXCLUDED.membership_role
+        """,
+        (user_id, tenant_id, membership),
+    )
     return User(
         id=user_id,
         email=email,

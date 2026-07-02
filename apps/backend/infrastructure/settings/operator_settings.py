@@ -252,6 +252,7 @@ def _fetch_row() -> dict[str, Any]:
         "llm_queue_benchmark_priority": 10,
         "llm_queue_scheduler_priority": 50,
         "delegate_enabled": True,
+        "deployment_mode": "multi_tenant",
         "extractor_api_base_url": None,
         "extractor_api_key": None,
         "extractor_api_header_name": None,
@@ -314,7 +315,8 @@ def _fetch_row() -> dict[str, Any]:
                            extractor_model,
                            extractor_timeout_sec,
                            discord_chat_model_catalog_owned_by,
-                           telegram_chat_model_catalog_owned_by
+                           telegram_chat_model_catalog_owned_by,
+                           deployment_mode
                     FROM operator_settings WHERE id = 1
                     """
                 )
@@ -447,6 +449,11 @@ def _fetch_row() -> dict[str, Any]:
         "extractor_timeout_sec": float(row[84]) if len(row) > 84 and row[84] is not None else 120.0,
         "discord_chat_model_catalog_owned_by": normalize_model_catalog_owned_by(row[85] if len(row) > 85 else None),
         "telegram_chat_model_catalog_owned_by": normalize_model_catalog_owned_by(row[86] if len(row) > 86 else None),
+        "deployment_mode": (
+            str(row[87]).strip().lower()
+            if len(row) > 87 and row[87] is not None and str(row[87]).strip().lower() in ("agent_system", "multi_tenant")
+            else "multi_tenant"
+        ),
     }
 
 
@@ -518,6 +525,7 @@ def _telegram_trigger_prefix_sql(r: dict[str, Any]) -> str:
 from apps.backend.infrastructure.settings.operator_settings_readers import (
     code_graph_enabled,
     delegate_enabled,
+    deployment_mode,
     effective_dashboard_upload_max_bytes,
     effective_dashboard_upload_mime,
     effective_docs_root_str,

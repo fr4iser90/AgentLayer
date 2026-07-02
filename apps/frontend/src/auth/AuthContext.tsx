@@ -14,10 +14,29 @@ import {
 } from "./tokenRefresh";
 import { fetchWithTimeout } from "./fetchWithTimeout";
 
+export type ProfessionPolicy = {
+  profession_role_slug?: string | null;
+  profession_role_name?: string | null;
+  role_kind?: string;
+  department_slug?: string | null;
+  department_name?: string | null;
+  capabilities?: string[];
+  can_edit_content?: boolean;
+  can_review_content?: boolean;
+  can_publish_content?: boolean;
+  can_manage_profession?: boolean;
+};
+
 export type AuthUser = {
   id: string;
   email: string;
   role: string;
+  site_role?: string;
+  tenant_id?: number;
+  membership_role?: string | null;
+  deployment_mode?: string;
+  org_setup_required?: boolean;
+  profession_policy?: ProfessionPolicy;
 };
 
 export type SetupStatus = {
@@ -28,6 +47,8 @@ export type SetupStatus = {
   llm_reachable: boolean;
   setup_token_required?: boolean;
   setup_token_source?: "env" | "auto" | null;
+  deployment_mode?: string;
+  needs_deployment_mode?: boolean;
 };
 
 /** Set while setup steps 2–3 are in progress (survives brief redirects). */
@@ -94,6 +115,19 @@ function applyAuthPayload(
   setUser(data.user ?? null);
 }
 
+async function fetchUserProfile(accessToken: string): Promise<Partial<AuthUser> | null> {
+  try {
+    const r = await fetchWithTimeout("/auth/me", {
+      credentials: "include",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!r.ok) return null;
+    return (await r.json()) as Partial<AuthUser>;
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -149,6 +183,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (r.ok) {
       const d = (await r.json()) as AuthPayload;
       applyAuthPayload(d, setAccessToken, setUser);
+      const profile = await fetchUserProfile(d.access_token);
+      if (profile) {
+        setUser((prev) => (prev ? { ...prev, ...profile } : prev));
+      }
       scheduleProactiveRefresh(d.access_token);
       return d.access_token;
     }
@@ -174,6 +212,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const d = (await r.json()) as AuthPayload;
     applyAuthPayload(d, setAccessToken, setUser);
+    const profile = await fetchUserProfile(d.access_token);
+    if (profile) {
+      setUser((prev) => (prev ? { ...prev, ...profile } : prev));
+    }
     scheduleProactiveRefresh(d.access_token);
     return true;
   }, [scheduleProactiveRefresh]);
@@ -208,6 +250,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       const d = (await r.json()) as AuthPayload;
       applyAuthPayload(d, setAccessToken, setUser);
+      const profile = await fetchUserProfile(d.access_token);
+      if (profile) {
+        setUser((prev) => (prev ? { ...prev, ...profile } : prev));
+      }
       scheduleProactiveRefresh(d.access_token);
       await refreshSetupStatus();
       return { ok: true };

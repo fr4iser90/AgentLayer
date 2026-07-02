@@ -44,6 +44,7 @@ class OperatorSettingsPatch(BaseModel):
     llm_queue_benchmark_priority: int | None = Field(default=None, ge=0, le=1000)
     llm_queue_scheduler_priority: int | None = Field(default=None, ge=0, le=1000)
     delegate_enabled: bool | None = None
+    deployment_mode: str | None = Field(default=None, max_length=32)
     memory_graph_enabled: bool | None = None
     memory_graph_max_hops: int | None = Field(default=None, ge=0, le=4)
     memory_graph_min_score: float | None = Field(default=None, ge=0.0, le=1.0)

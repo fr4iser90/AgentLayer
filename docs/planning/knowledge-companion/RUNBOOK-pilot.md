@@ -16,7 +16,7 @@ Two admin surfaces — do not mix them:
 | **Platform admin** | `/app/admin` | Operator / you | RAG on/off, embedding, `rag_tenant_shared_domains`, tenants bootstrap |
 | **Organization** | `/app/org` | Tenant Admin | Publish team notes → `tenant_knowledge` |
 
-Pilot note: both routes still require `role=admin` (dual hat) until Task **03b**.
+Pilot note: Task **03b** is implemented — platform admin uses `site_role=site_admin`; organization uses `tenant_memberships` (`tenant_owner` / `tenant_admin`). Regular users cannot access `/v1/admin/*` or `/v1/org/*`.
 Full model: [`00-roles-and-scopes.md`](./00-roles-and-scopes.md).
 
 ### 1. Platform operator settings
@@ -40,11 +40,12 @@ User menu → **Platform admin** → **Interfaces → Memory & RAG** → Save:
 
 User menu → **Organization** → complete **Setup** if prompted, then **Knowledge base**:
 
-1. Upload `content/healthcare-pilot/beatmungsschlauch-wechsel.md` or paste the Markdown.
-2. Set title (auto-filled from filename) and optional source id.
-3. Click **Publish to knowledge base**.
+1. Create a note (draft), then **Publish** — or use setup wizard publish step.
+2. Draft notes are **not** searchable; only published notes enter `tenant_knowledge` RAG.
+3. Re-publish after edits replaces chunks via stable `tenant-content/{id}` source URI.
+4. **Archive** removes a note from search.
 
-Re-publish with the same source id to replace an existing note.
+Legacy direct ingest API still exists for operators; CMS is the supported path (Task 04).
 
 ### 4. Chat smoke test
 
@@ -53,9 +54,14 @@ Re-publish with the same source id to replace an existing note.
 3. Expect citation from ingested title/source.
 4. Ask: „Patient Müller Allergien?“ → refusal (healthcare_ops prompt rules).
 
-### 5. Invite colleague (task 03)
+### 5. Invite colleague (Task 03)
 
-**Platform admin → Users** — same tenant, `role=user`, repeat search test.
+**Platform admin → Users** — same `tenant_id`, `role=user`:
+
+1. Create user (or use existing User B from `.env.e2e`).
+2. Login as colleague → `/app/chat?agent=knowledge_companion`.
+3. Ask the same question as in step 4 → expect the same `tenant_knowledge` source hit.
+4. Optional automated check: `pytest tests/e2e/test_tenant_rag_isolation.py -m e2e`
 
 ### 6. Reload agents after plugin changes
 

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import uuid
 from typing import Any
 
@@ -10,6 +11,8 @@ from apps.backend.infrastructure.settings import operator_settings
 from apps.backend.infrastructure.db import db
 from apps.backend.infrastructure.providers.embedding_chunking import chunk_text_for_embedding
 from apps.backend.infrastructure.providers.embedding_client import embed_one
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "chunk_text",
@@ -109,7 +112,7 @@ def search_for_identity(
     dom_raw = (domain or "").strip() if domain else ""
     dom_lc = dom_raw.lower()
     tenant_wide = bool(dom_lc and dom_lc in operator_settings.effective_rag_tenant_shared_domains())
-    return db.rag_vector_search(
+    rows = db.rag_vector_search(
         tenant_id,
         user_id,
         emb,
@@ -117,3 +120,33 @@ def search_for_identity(
         int(lim),
         tenant_wide_domain=tenant_wide,
     )
+    if dom_lc == "tenant_knowledge_draft":
+        from apps.backend.application.tenant_profession.use_cases.profession_policy_service import (
+            effective_policy,
+        )
+        from apps.backend.domain.tenant_profession.policy import (
+            CAP_CONTENT_EDITOR,
+            CAP_CONTENT_REVIEW,
+        )
+
+        policy = effective_policy(user_id, tenant_id)
+        if not (policy.has(CAP_CONTENT_EDITOR) or policy.has(CAP_CONTENT_REVIEW)):
+            return []
+    if dom_lc == "tenant_knowledge" and user_id is not None:
+        from apps.backend.application.tenant_profession.use_cases.profession_policy_service import (
+            effective_policy,
+            filter_rag_hits,
+        )
+
+        policy = effective_policy(user_id, tenant_id)
+        rows = filter_rag_hits(rows, policy)
+    logger.info(
+        "rag_search tenant_id=%s user_id=%s domain=%s query_chars=%d hit_count=%d document_ids=%s",
+        tenant_id,
+        user_id,
+        dom_lc or (domain or ""),
+        len(q),
+        len(rows),
+        [r.get("document_id") for r in rows],
+    )
+    return rows

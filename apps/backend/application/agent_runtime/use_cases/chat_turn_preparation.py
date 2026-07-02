@@ -195,6 +195,19 @@ async def prepare_chat_turn(
     messages = _inject_dashboard_context(messages, dashboard_ctx)
     if agent_id:
         messages = _inject_agent_system_prompt(messages, agent_id)
+    if (
+        agent_id == "knowledge_companion"
+        and user_id is not None
+        and tenant_id is not None
+        and isinstance(user_id, uuid.UUID)
+    ):
+        from apps.backend.application.tenant_profession.use_cases.profession_policy_service import (
+            build_profession_capsule,
+        )
+
+        capsule = build_profession_capsule(user_id, int(tenant_id))
+        if capsule:
+            messages = _append_system_block(messages, capsule)
     if agent_storage_images:
         messages = _append_system_block(messages, _storage_upload_prompt(agent_storage_images))
     if agent_id == "general":

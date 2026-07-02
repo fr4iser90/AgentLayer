@@ -26,6 +26,11 @@ def delegate_enabled() -> bool:
     return bool(_cached_row().get("delegate_enabled", True))
 
 
+def deployment_mode() -> str:
+    v = str(_cached_row().get("deployment_mode") or "multi_tenant").strip().lower()
+    return v if v in ("agent_system", "multi_tenant") else "multi_tenant"
+
+
 def rag_docs_ingest_fingerprint() -> str:
     """Last successful incremental docs ingest (embedding model/dim + chunking)."""
     return (str(_cached_row().get("rag_docs_ingest_fingerprint") or "").strip())
@@ -440,6 +445,7 @@ def public_dict() -> dict[str, Any]:
         "llm_queue_benchmark_priority": _bound_int(r.get("llm_queue_benchmark_priority"), 10, 0, 1000),
         "llm_queue_scheduler_priority": _bound_int(r.get("llm_queue_scheduler_priority"), 50, 0, 1000),
         "delegate_enabled": bool(r.get("delegate_enabled", True)),
+        "deployment_mode": deployment_mode(),
         "memory_graph_enabled": bool(r.get("memory_graph_enabled", True)),
         "memory_graph_max_hops": _bound_int(r.get("memory_graph_max_hops"), 2, 0, 4),
         "memory_graph_min_score": _bound_float(r.get("memory_graph_min_score"), 0.03, 0.0, 1.0),

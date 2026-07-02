@@ -166,6 +166,9 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
         r["llm_queue_scheduler_priority"] = _bound_int(v, 50, 0, 1000) if v is not None else 50
     if "delegate_enabled" in patch:
         r["delegate_enabled"] = bool(patch["delegate_enabled"])
+    if "deployment_mode" in patch:
+        v = str(patch["deployment_mode"] or "multi_tenant").strip().lower()
+        r["deployment_mode"] = v if v in ("agent_system", "multi_tenant") else "multi_tenant"
     if "memory_graph_enabled" in patch:
         r["memory_graph_enabled"] = bool(patch["memory_graph_enabled"])
     if "memory_graph_max_hops" in patch:

@@ -2,7 +2,9 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-route
 import { SettingsLayout } from "./layout/SettingsLayout";
 import { AuthProvider } from "./auth/AuthContext";
 import { FriendsSettings } from "./pages/settings/FriendsSettings";
-import { RequireAdmin } from "./auth/RequireAdmin";
+import { RequireSiteAdmin } from "./auth/RequireSiteAdmin";
+import { RequireOrgAdmin } from "./auth/RequireOrgAdmin";
+import { OrgSetupPage } from "./pages/org/OrgSetupPage";
 import { RequireSession } from "./auth/RequireSession";
 import { AppLayout } from "./layout/AppLayout";
 import { AdminLayout } from "./layout/AdminLayout";
@@ -26,6 +28,7 @@ import { AdminAgentTraces } from "./pages/admin/AdminAgentTraces";
 import { AdminBenchmarks } from "./pages/admin/AdminBenchmarks";
 import { OrgAdminLayout } from "./layout/OrgAdminLayout";
 import { OrgKnowledgePage } from "./pages/org/OrgKnowledgePage";
+import { OrgTeamPage } from "./pages/org/OrgTeamPage";
 import { ChatPage } from "./pages/ChatPage";
 import { DocsPage } from "./pages/DocsPage";
 import { HomePage } from "./pages/HomePage";
@@ -81,13 +84,15 @@ export function App() {
                 <Route path="shares" element={<SharesSettings />} />
                 <Route path="experimental" element={<Navigate to="/settings/profile" replace />} />
               </Route>
-              <Route path="org" element={<RequireAdmin />}>
+              <Route path="org" element={<RequireOrgAdmin />}>
                 <Route element={<OrgAdminLayout />}>
                   <Route index element={<Navigate to="knowledge" replace />} />
+                  <Route path="setup" element={<OrgSetupPage />} />
                   <Route path="knowledge" element={<OrgKnowledgePage />} />
+                  <Route path="team" element={<OrgTeamPage />} />
                 </Route>
               </Route>
-              <Route path="admin" element={<RequireAdmin />}>
+              <Route path="admin" element={<RequireSiteAdmin />}>
                 <Route element={<AdminLayout />}>
                   <Route index element={<AdminDashboard />} />
                   <Route path="interfaces" element={<InterfacesLayout />}>

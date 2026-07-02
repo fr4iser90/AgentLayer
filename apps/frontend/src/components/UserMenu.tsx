@@ -12,7 +12,11 @@ export function UserMenu() {
 
   const email = user?.email ?? "";
   const initial = (email.split("@")[0]?.[0] ?? user?.email?.[0] ?? "?").toUpperCase();
-  const isAdmin = user?.role?.toLowerCase() === "admin";
+  const siteAdmin =
+    user?.site_role === "site_admin" || user?.role?.toLowerCase() === "admin";
+  const showOrg =
+    user?.deployment_mode === "multi_tenant" &&
+    (user?.membership_role === "tenant_owner" || user?.membership_role === "tenant_admin");
 
   useEffect(() => {
     if (!open) return;
@@ -53,25 +57,25 @@ export function UserMenu() {
           >
             {t("userMenu.settings")}
           </Link>
-          {isAdmin ? (
-            <>
-              <Link
-                role="menuitem"
-                to="/org"
-                className="block px-3 py-2 text-sm text-neutral-200 hover:bg-white/10"
-                onClick={() => setOpen(false)}
-              >
-                {t("userMenu.organization")}
-              </Link>
-              <Link
-                role="menuitem"
-                to="/admin"
-                className="block px-3 py-2 text-sm text-neutral-200 hover:bg-white/10"
-                onClick={() => setOpen(false)}
-              >
-                {t("userMenu.platformAdmin")}
-              </Link>
-            </>
+          {showOrg ? (
+            <Link
+              role="menuitem"
+              to="/org"
+              className="block px-3 py-2 text-sm text-neutral-200 hover:bg-white/10"
+              onClick={() => setOpen(false)}
+            >
+              {t("userMenu.organization")}
+            </Link>
+          ) : null}
+          {siteAdmin ? (
+            <Link
+              role="menuitem"
+              to="/admin"
+              className="block px-3 py-2 text-sm text-neutral-200 hover:bg-white/10"
+              onClick={() => setOpen(false)}
+            >
+              {t("userMenu.platformAdmin")}
+            </Link>
           ) : null}
           <div className="border-t border-white/10 px-3 py-2">
             <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-surface-muted">

@@ -16,6 +16,33 @@ def test_enduser_may_only_invoke_general() -> None:
     assert "not available" in err.lower()
 
 
+def test_enduser_may_invoke_knowledge_companion() -> None:
+    ok, err = user_may_invoke_agent("user", "knowledge_companion")
+    assert ok is True, err
+
+
+def test_enduser_knowledge_companion_with_governance_deps() -> None:
+    from unittest.mock import MagicMock
+
+    from apps.backend.domain.agent_runtime import access as access_mod
+
+    mock_deps = MagicMock()
+    mock_deps.list_agent_policies.return_value = []
+    prev = access_mod._deps
+    access_mod.register_agent_access_dependencies(mock_deps)
+    try:
+        ok, err = access_mod.user_may_invoke_agent(
+            "user",
+            "knowledge_companion",
+            tenant_id=1,
+        )
+        assert ok is True, err
+        ok, err = access_mod.user_may_invoke_agent("user", "coding", tenant_id=1)
+        assert ok is False
+    finally:
+        access_mod._deps = prev
+
+
 def test_admin_may_invoke_coding() -> None:
     ok, _ = user_may_invoke_agent("admin", "coding")
     assert ok is True

@@ -23,6 +23,8 @@ export const APP_ROUTES = [
   { path: "/app/settings/delegate", page: "DelegateSettings", file: "pages/settings/DelegateSettings.tsx", auth: "session" },
   { path: "/app/settings/shares", page: "SharesSettings", file: "pages/settings/SharesSettings.tsx", auth: "session" },
   { path: "/app/org/knowledge", page: "OrgKnowledgePage", file: "pages/org/OrgKnowledgePage.tsx", auth: "admin" },
+  { path: "/app/org/setup", page: "OrgSetupPage", file: "pages/org/OrgSetupPage.tsx", auth: "admin" },
+  { path: "/app/org/team", page: "OrgTeamPage", file: "pages/org/OrgTeamPage.tsx", auth: "admin" },
   { path: "/app/admin", page: "AdminDashboard", file: "pages/admin/AdminDashboard.tsx", auth: "admin" },
   { path: "/app/admin/interfaces", page: "AdminInterfacesOverviewPage", file: "pages/admin/interfaces/AdminInterfacesOverviewPage.tsx", auth: "admin" },
   { path: "/app/admin/interfaces/bridges", page: "AdminInterfacesBridgesPage", file: "pages/admin/interfaces/AdminInterfacesBridgesPage.tsx", auth: "admin" },

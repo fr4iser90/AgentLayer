@@ -133,6 +133,33 @@ def rag_delete_document_by_id(document_id: int) -> bool:
     return n > 0
 
 
+def rag_delete_documents_by_source_uri(
+    tenant_id: int,
+    domain: str,
+    source_uri: str,
+) -> int:
+    """Delete RAG documents matching tenant, domain, and exact source_uri."""
+    dom = (domain or "").strip().lower()
+    uri = (source_uri or "").strip()
+    if not dom or not uri:
+        return 0
+    with pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                DELETE FROM rag_documents
+                WHERE tenant_id = %s
+                  AND lower(trim(domain)) = %s
+                  AND source_uri = %s
+                  AND workspace_id IS NULL
+                """,
+                (tenant_id, dom, uri),
+            )
+            n = cur.rowcount or 0
+        conn.commit()
+    return int(n)
+
+
 def rag_delete_documents_by_tenant_domain(tenant_id: int, domain: str) -> int:
     """Delete all ``rag_documents`` for a tenant and domain (case-insensitive). Cascades to chunks."""
     dom = (domain or "").strip().lower()
@@ -234,6 +261,7 @@ def rag_vector_search(
                           d.id AS document_id,
                           d.title,
                           d.domain,
+                          d.source_uri,
                           (c.embedding <=> %s::vector) AS distance
                         FROM rag_chunks c
                         JOIN rag_documents d ON d.id = c.document_id
@@ -281,6 +309,7 @@ def rag_vector_search(
                 "document_id": r["document_id"],
                 "title": r["title"],
                 "domain": r["domain"],
+                "source_uri": r.get("source_uri"),
                 "distance": float(dist) if dist is not None else None,
             }
         )

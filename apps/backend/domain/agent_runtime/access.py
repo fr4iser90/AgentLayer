@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from typing import Any, Protocol
 
-ENDUSER_ALLOWED_AGENT_IDS = frozenset({"general"})
+ENDUSER_ALLOWED_AGENT_IDS = frozenset({"general", "knowledge_companion"})
 
 
 class AgentAccessDependencies(Protocol):

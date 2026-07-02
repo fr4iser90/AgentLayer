@@ -49,6 +49,13 @@ from apps.backend.api.platform.controllers.web_api import register_web_routes
 from apps.backend.api.providers.controllers.operator_admin_api import router as operator_admin_router
 from apps.backend.api.projects.controllers.github_api import router as github_router
 from apps.backend.api.projects.controllers.project_runs_api import router as project_runs_router
+from apps.backend.api.org.controllers.org_api import router as org_router
+from apps.backend.api.org.controllers.org_profession_api import router as org_profession_router
+from apps.backend.api.tenant_content.controllers.tenant_content_api import (
+    admin_router as tenant_content_admin_router,
+    org_router as tenant_content_org_router,
+    router as tenant_content_router,
+)
 from apps.backend.api.rag.controllers.rag_api import router as rag_router
 from apps.backend.api.scheduling.controllers.scheduler_job_presets_api import router as scheduler_job_presets_router
 from apps.backend.api.scheduling.controllers.scheduler_job_presets_user_api import router as scheduler_job_presets_user_router
@@ -91,6 +98,11 @@ for router in (
     delegate_router,
     memory_router,
     tools_router,
+    org_router,
+    org_profession_router,
+    tenant_content_router,
+    tenant_content_org_router,
+    tenant_content_admin_router,
     rag_router,
     codebase_router,
     chat_ws_router,

@@ -2,34 +2,35 @@
 doc_id: healthcare-task-03-tenant-onboarding
 domain: agentlayer_docs
 tags: [healthcare, task, tenant, users]
-status: pending
+status: done
 ---
 
 ## Task 03 — Tenant user onboarding
 
-**Status:** pending  
+**Status:** done  
 **Depends on:** [02](./02-rag-pilot-knowledge-companion-agent.md)  
 **Goal:** Invite colleagues into the same tenant so they can **search** published
 tenant knowledge via `knowledge_companion` — still no Content Editor role yet.
 
 ### Scope
 
-- [ ] Document tenant user invite flow for pilot (admin creates users via
+- [x] Document tenant user invite flow for pilot (admin creates users via
       `POST /v1/admin/users` with `role=user`, same `tenant_id`).
-- [ ] Verify `knowledge_companion` is invokable by `role=user` (`min_role: user`).
-- [ ] Verify RAG search on `tenant_knowledge` works for non-admin users in the
+- [x] Verify `knowledge_companion` is invokable by `role=user` (`min_role: user`).
+- [x] Verify RAG search on `tenant_knowledge` works for non-admin users in the
       same tenant (tenant-wide domain).
-- [ ] Verify tenant isolation: user in `tenant_id=2` cannot retrieve tenant 1 chunks.
-- [ ] Add minimal audit expectation (log or document): who searched, which domain,
-      which document ids returned (implementation may be logging-only in this task).
-- [ ] Optional: link to pilot runbook for chosen vertical profile
+- [x] Verify tenant isolation: user in `tenant_id=2` cannot retrieve tenant 1 chunks.
+- [x] Add minimal audit expectation (log or document): who searched, which domain,
+      which document ids returned (logging in `search_for_identity`).
+- [x] Optional: link to pilot runbook for chosen vertical profile
 
 ### Files likely touched
 
 - `docs/planning/knowledge-companion/03-tenant-user-onboarding.md`
 - `docs/security/idor-auth-test-matrix.md` (add tenant_knowledge RAG row if tests added)
-- `tests/unit/` or `tests/e2e/` for tenant RAG isolation (recommended)
-- `apps/frontend/src/pages/admin/` (optional UX only)
+- `tests/unit/test_tenant_rag_isolation.py`, `tests/e2e/test_tenant_rag_isolation.py`
+- `apps/backend/domain/agent_runtime/governance.py`, `access.py`
+- `apps/frontend/src/pages/ChatPage.tsx` (`?agent=knowledge_companion`)
 
 ### Out of scope
 
@@ -40,23 +41,23 @@ tenant knowledge via `knowledge_companion` — still no Content Editor role yet.
 
 ### Acceptance criteria
 
-- [ ] Admin creates second user in same tenant; user can chat with
+- [x] Admin creates second user in same tenant; user can chat with
       `knowledge_companion` and retrieve shared `tenant_knowledge` hits.
-- [ ] Second tenant cannot see first tenant's knowledge chunks.
-- [ ] Non-admin cannot call `POST /v1/admin/rag/ingest` (403/401).
-- [ ] Pilot runbook explains: admin publishes, users read/search only.
+- [x] Second tenant cannot see first tenant's knowledge chunks.
+- [x] Non-admin cannot call `POST /v1/admin/rag/ingest` (403/401).
+- [x] Pilot runbook explains: admin publishes, users read/search only.
 
 ### Manual smoke test
 
 1. Admin ingests content to `tenant_knowledge`.
 2. Create `user_b@…` with `role=user`, same tenant.
-3. Login as `user_b`, ask knowledge companion the same question → same source hit.
+3. Login as `user_b`, open `/app/chat?agent=knowledge_companion`, ask the same question → same source hit.
 4. Create user in different tenant → no cross-tenant hits.
 
 ### Exit criteria
 
-- [ ] Acceptance criteria met.
-- [ ] README status updated.
+- [x] Acceptance criteria met.
+- [x] README status updated.
 
 ### Next task
 

@@ -37,9 +37,12 @@ export function OrgAdminLayout() {
             </NavLink>
           </NavGroup>
           <NavGroup label={t("org:navTeam")}>
-            <span className={`${item} cursor-not-allowed opacity-50`} title={t("org:navTeamSoon")}>
-              {t("org:navTeamSoon")}
-            </span>
+            <NavLink
+              to="/org/team"
+              className={({ isActive }) => `${item} ${isActive ? itemActive : itemIdle}`}
+            >
+              {t("org:navTeam")}
+            </NavLink>
           </NavGroup>
         </nav>
         <NavLink

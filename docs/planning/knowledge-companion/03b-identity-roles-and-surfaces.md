@@ -2,12 +2,12 @@
 doc_id: knowledge-task-03b-identity-roles
 domain: agentlayer_docs
 tags: [knowledge-companion, task, identity, rbac, tenant, site-admin]
-status: pending
+status: done
 ---
 
 ## Task 03b — Identity roles and admin surfaces
 
-**Status:** pending  
+**Status:** done (baseline — migration + guards + UI; tenant switch deferred)  
 **Depends on:** [03](./03-tenant-user-onboarding.md)  
 **Blocks:** clean [05 — Profession RBAC](./05-profession-rbac.md)  
 **Spec:** [`00-roles-and-scopes.md`](./00-roles-and-scopes.md)

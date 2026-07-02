@@ -59,7 +59,10 @@ export function SetupWizardPage() {
   const navigate = useNavigate();
   const { accessToken, loading, setupStatus, refreshSetupStatus, completeSetup } = useAuth();
 
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0);
+  const [deploymentMode, setDeploymentMode] = useState<"agent_system" | "multi_tenant">("multi_tenant");
+  const [deploymentPending, setDeploymentPending] = useState(false);
+  const [deploymentError, setDeploymentError] = useState<string | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
 
   const [setupToken, setSetupToken] = useState("");
@@ -152,7 +155,7 @@ export function SetupWizardPage() {
       const wizardActive =
         sessionStorage.getItem(SETUP_WIZARD_ACTIVE_KEY) === "1" ||
         setupStatus.needs_provider_wizard === true;
-      if (wizardActive && step < 2) {
+      if (wizardActive && step <= 1) {
         setStep(2);
       }
     }
@@ -179,6 +182,40 @@ export function SetupWizardPage() {
     }
     setLlmTestOk(null);
     setLlmError(null);
+  }
+
+  async function onDeploymentSubmit(e: FormEvent) {
+    e.preventDefault();
+    setDeploymentPending(true);
+    setDeploymentError(null);
+    try {
+      const r = await fetch("/auth/setup/deployment-mode", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          deployment_mode: deploymentMode,
+          setup_token: setupToken.trim(),
+        }),
+      });
+      if (!r.ok) {
+        let msg = t("setup:deploymentFailed");
+        try {
+          const d = (await r.json()) as { detail?: string };
+          if (typeof d.detail === "string") msg = d.detail;
+        } catch {
+          /* ignore */
+        }
+        setDeploymentError(msg);
+        return;
+      }
+      await refreshSetupStatus();
+      setStep(1);
+    } catch {
+      setDeploymentError(t("setup:deploymentFailed"));
+    } finally {
+      setDeploymentPending(false);
+    }
   }
 
   async function onAdminSubmit(e: FormEvent) {
@@ -422,8 +459,73 @@ export function SetupWizardPage() {
     <div className="h-full min-h-0 overflow-y-auto">
       <div className="mx-auto max-w-lg px-6 py-12">
         <p className="text-xs font-medium uppercase tracking-wide text-surface-muted">
-          {t("setup:stepOf", { step })}
+          {t("setup:stepOf", { step: step + 1, total: 4 })}
         </p>
+
+        {step === 0 ? (
+          <>
+            <h1 className="mt-2 text-2xl font-semibold text-white">{t("setup:step0Title")}</h1>
+            <p className="mt-2 text-sm text-surface-muted">{t("setup:step0Intro")}</p>
+            <form onSubmit={onDeploymentSubmit} className="mt-8 flex flex-col gap-4">
+              {setupStatus?.setup_token_required ? (
+                <label className="flex flex-col gap-1.5 text-sm">
+                  <span className="text-surface-muted">{t("setup:setupToken")}</span>
+                  <input
+                    type="password"
+                    name="setup_token"
+                    autoComplete="off"
+                    value={setupToken}
+                    onChange={(ev) => setSetupToken(ev.target.value)}
+                    required
+                    className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                  />
+                </label>
+              ) : null}
+              <fieldset className="space-y-3">
+                <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-surface-border p-4">
+                  <input
+                    type="radio"
+                    name="deployment_mode"
+                    value="agent_system"
+                    checked={deploymentMode === "agent_system"}
+                    onChange={() => setDeploymentMode("agent_system")}
+                    className="mt-1"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium text-white">{t("setup:modeAgentTitle")}</span>
+                    <span className="mt-1 block text-xs text-surface-muted">{t("setup:modeAgentDesc")}</span>
+                  </span>
+                </label>
+                <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-surface-border p-4">
+                  <input
+                    type="radio"
+                    name="deployment_mode"
+                    value="multi_tenant"
+                    checked={deploymentMode === "multi_tenant"}
+                    onChange={() => setDeploymentMode("multi_tenant")}
+                    className="mt-1"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium text-white">{t("setup:modeTenantTitle")}</span>
+                    <span className="mt-1 block text-xs text-surface-muted">{t("setup:modeTenantDesc")}</span>
+                  </span>
+                </label>
+              </fieldset>
+              {deploymentError ? (
+                <p className="text-sm text-red-400" role="alert">
+                  {deploymentError}
+                </p>
+              ) : null}
+              <button
+                type="submit"
+                disabled={deploymentPending}
+                className="rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+              >
+                {deploymentPending ? t("setup:deploymentPending") : t("setup:continueBtn")}
+              </button>
+            </form>
+          </>
+        ) : null}
 
         {step === 1 ? (
           <>

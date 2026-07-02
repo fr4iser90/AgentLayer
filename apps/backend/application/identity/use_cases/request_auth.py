@@ -17,6 +17,9 @@ from apps.backend.infrastructure.identity.auth import (
     hash_refresh_token as _hash_refresh_token,
     list_all_users as _list_all_users,
     require_admin as _require_admin,
+    require_site_admin as _require_site_admin,
+    require_tenant_admin as _require_tenant_admin,
+    require_tenant_member as _require_tenant_member,
     require_permission as _require_permission,
     revoke_refresh_token as _revoke_refresh_token,
     update_user_password as _update_user_password,
@@ -32,6 +35,18 @@ async def get_current_user(request: Request) -> Any:
 
 async def require_admin(request: Request) -> Any:
     return await _require_admin(request)
+
+
+async def require_site_admin(request: Request) -> Any:
+    return await _require_site_admin(request)
+
+
+async def require_tenant_admin(request: Request) -> Any:
+    return await _require_tenant_admin(request)
+
+
+async def require_tenant_member(request: Request) -> Any:
+    return await _require_tenant_member(request)
 
 
 def get_user_by_id(user_id: Any) -> Any:

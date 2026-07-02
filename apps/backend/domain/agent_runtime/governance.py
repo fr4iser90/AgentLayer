@@ -6,6 +6,9 @@ from typing import Literal
 AccessState = Literal["inherit", "allow", "deny"]
 AccessScope = Literal["global", "tenant", "user"]
 
+# End-user agents allowed for direct chat without an explicit access policy row.
+_ENDUSER_DIRECT_AGENT_IDS = frozenset({"general", "knowledge_companion"})
+
 
 @dataclass(frozen=True)
 class AgentAccessPolicy:
@@ -48,8 +51,8 @@ def _base_direct(agent: dict, *, user_role: str | None) -> tuple[bool, str]:
         return False, "agent requires admin role"
     if _is_elevated_role(user_role):
         return True, "admin role may invoke registered agents"
-    if aid == "general":
-        return True, "general assistant is available by default"
+    if aid in _ENDUSER_DIRECT_AGENT_IDS:
+        return True, f"{aid} is available by default"
     return False, "direct access is not available by default for this role"
 
 

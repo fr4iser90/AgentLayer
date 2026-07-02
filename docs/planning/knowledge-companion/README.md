@@ -24,11 +24,11 @@ Split backlog for the **industry-agnostic** strategy in
 | 00 | [Roles and scopes (spec)](./00-roles-and-scopes.md) | **draft** | — |
 | 01 | [Docs and boundaries](./01-docs-and-boundaries.md) | **done** | — |
 | 02 | [RAG pilot + knowledge companion](./02-rag-pilot-knowledge-companion-agent.md) | **done** | 01 |
-| 03 | [Tenant user onboarding](./03-tenant-user-onboarding.md) | pending | 02 |
-| 03b | [Identity roles + surfaces](./03b-identity-roles-and-surfaces.md) | pending | 03 |
-| 04 | [CMS light (`tenant_content`)](./04-cms-light.md) | pending | 02 |
-| 05 | [Profession RBAC](./05-profession-rbac.md) | pending | 03b, 04 |
-| 06 | [Review and approval workflow](./06-review-approval-workflow.md) | pending | 05 |
+| 03 | [Tenant user onboarding](./03-tenant-user-onboarding.md) | **done** | 02 |
+| 03b | [Identity roles + surfaces](./03b-identity-roles-and-surfaces.md) | **done** (baseline) | 03 |
+| 04 | [CMS light (`tenant_content`)](./04-cms-light.md) | **done** | 02 |
+| 05 | [Profession RBAC](./05-profession-rbac.md) | **done** (baseline) | 03b, 04 |
+| 06 | [Review and approval workflow](./06-review-approval-workflow.md) | done | 05 |
 | 07 | [Tenant templates](./07-tenant-templates.md) | pending | 06 |
 
 ### Vertical profiles (optional; connectors after platform 01–06)
@@ -42,7 +42,7 @@ Split backlog for the **industry-agnostic** strategy in
 ### Recommended order
 
 ```text
-01 (done) → 02 (done) → 03 → 03b → 04 → 05 → 06 → 07 → optional vertical (e.g. healthcare H1)
+01 (done) → 02 (done) → 03b (done) → 03 (done) → 04 (done) → 05 (done, baseline) → 06 → 07
 ```
 
 ### Principles

@@ -14,6 +14,8 @@ from apps.backend.infrastructure.db import db
 from apps.backend.infrastructure.providers.model_catalog_providers import list_provider_specs
 from apps.backend.infrastructure.providers.model_catalog_routing import invalidate_model_catalog_cache
 from apps.backend.infrastructure.settings.operator_settings import (
+    OperatorSettingsPatch,
+    apply_operator_settings_patch,
     external_api_headers,
     external_models_list_url,
     invalidate_operator_settings_cache,
@@ -37,12 +39,24 @@ class _InstanceSetupDeps:
     invalidate_model_catalog_cache = staticmethod(invalidate_model_catalog_cache)
 
     @staticmethod
+    def deployment_mode() -> str:
+        from apps.backend.infrastructure.settings import operator_settings
+
+        return operator_settings.deployment_mode()
+
+    @staticmethod
+    def apply_deployment_mode_patch(mode: str) -> None:
+        apply_operator_settings_patch(OperatorSettingsPatch(deployment_mode=mode))
+        invalidate_operator_settings_cache()
+
+    @staticmethod
     def setup_token() -> str:
         return AGENT_SETUP_TOKEN
 
 
 domain.register_instance_setup_dependencies(_InstanceSetupDeps())
 
+apply_setup_deployment_mode = domain.apply_setup_deployment_mode
 apply_setup_llm_endpoint = domain.apply_setup_llm_endpoint
 build_setup_status = domain.build_setup_status
 create_first_admin = domain.create_first_admin

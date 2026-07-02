@@ -207,6 +207,9 @@ def persist_operator_settings_patch(r: dict[str, Any], patch: dict[str, Any], me
             if "delegate_enabled" in patch:
                 extra_sets.append("delegate_enabled = %s")
                 extra_params.append(bool(r.get("delegate_enabled", True)))
+            if "deployment_mode" in patch:
+                extra_sets.append("deployment_mode = %s")
+                extra_params.append(str(r.get("deployment_mode") or "multi_tenant"))
             if "extractor_api_base_url" in patch:
                 extra_sets.append("extractor_api_base_url = %s")
                 extra_params.append(r.get("extractor_api_base_url"))

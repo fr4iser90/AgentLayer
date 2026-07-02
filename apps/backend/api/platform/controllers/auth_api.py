@@ -8,7 +8,7 @@ import os
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Literal
 
 import httpx
 from fastapi import APIRouter, FastAPI, HTTPException, Request
@@ -37,14 +37,20 @@ from apps.backend.domain.shared.identity import reset_identity, set_identity
 from apps.backend.domain.shared.http_identity import resolve_chat_identity
 from apps.backend.application.platform.use_cases.platform_controller_services import http_500_detail
 from apps.backend.application.platform.use_cases.platform_controller_services import (
+    apply_setup_deployment_mode,
     apply_setup_llm_endpoint,
     build_setup_status,
     create_first_admin,
     enforce_setup_rate_limit,
+    operator_settings,
     probe_llm_endpoint,
     validate_setup_email,
     validate_setup_password,
     validate_setup_token,
+)
+from apps.backend.application.tenant_profession.use_cases.profession_policy_service import (
+    effective_policy,
+    ensure_tenant_profession_defaults,
 )
 from apps.backend.application.platform.use_cases.platform_controller_services import (
     SetupPreferencesBody,
@@ -156,6 +162,13 @@ async def auth_logout(request: Request):
     return response
 
 
+class AuthSetupDeploymentModeBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    deployment_mode: Literal["agent_system", "multi_tenant"]
+    setup_token: str
+
+
 class AuthSetupBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -179,6 +192,14 @@ class AuthSetupLlmBody(BaseModel):
 async def auth_setup_status():
     """Initial instance configuration state (admin account, LLM catalog)."""
     return build_setup_status()
+
+
+@router.post("/auth/setup/deployment-mode")
+async def auth_setup_deployment_mode(request: Request, body: AuthSetupDeploymentModeBody):
+    """Choose agent_system vs multi_tenant before first admin is created."""
+    enforce_setup_rate_limit(request)
+    validate_setup_token(body.setup_token)
+    return apply_setup_deployment_mode(deployment_mode=body.deployment_mode)
 
 
 @router.post("/auth/setup")
@@ -266,15 +287,34 @@ async def get_current_user_info(request: Request):
     user = await get_current_user(request)
     discord_uid = db.user_discord_user_id_get(user.id)
     telegram_uid = db.user_telegram_user_id_get(user.id)
+    tid = db.user_tenant_id(user.id)
+    tenant_row = db.tenant_get(tid)
+    deployment = operator_settings.deployment_mode()
+    site_role = db.user_site_role(user.id)
+    membership = db.user_membership_role(user.id, tid)
+    setup_required = (
+        deployment == "multi_tenant"
+        and membership in ("tenant_owner", "tenant_admin")
+        and tenant_row is not None
+        and tenant_row.get("setup_completed_at") is None
+    )
     base = {
         "id": str(user.id),
         "email": user.email,
         "role": user.role,
+        "site_role": site_role,
+        "tenant_id": tid,
+        "membership_role": membership,
+        "deployment_mode": deployment,
+        "org_setup_required": setup_required,
         "created_at": user.created_at.isoformat(),
         "discord_user_id": discord_uid,
         "telegram_user_id": telegram_uid,
     }
-    if user.role != "admin":
+    if deployment == "multi_tenant" and membership:
+        ensure_tenant_profession_defaults(tid)
+        base["profession_policy"] = effective_policy(user.id, tid).to_public_dict()
+    if site_role != "site_admin":
         id_token = set_identity(1, user.id)
         try:
             return base

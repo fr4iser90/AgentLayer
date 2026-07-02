@@ -358,3 +358,150 @@ def scheduler_outbound_increment_utc(user_id: uuid.UUID) -> int:
         return 1
 
 
+_TENANT_ADMIN_ROLES = frozenset({"tenant_owner", "tenant_admin"})
+
+
+def user_site_role(user_id: uuid.UUID | None) -> str:
+    if user_id is None:
+        return "site_user"
+    with pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT site_role, role FROM users WHERE id = %s",
+                (user_id,),
+            )
+            row = cur.fetchone()
+        conn.commit()
+    if not row:
+        return "site_user"
+    site = str(row[0] or "").strip().lower()
+    if site in ("site_admin", "site_user"):
+        return site
+    legacy = str(row[1] or "").strip().lower()
+    return "site_admin" if legacy == "admin" else "site_user"
+
+
+def user_membership_role(user_id: uuid.UUID, tenant_id: int | None = None) -> str | None:
+    tid = tenant_id if tenant_id is not None else user_tenant_id(user_id)
+    with pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT membership_role FROM tenant_memberships
+                WHERE user_id = %s AND tenant_id = %s
+                """,
+                (user_id, tid),
+            )
+            row = cur.fetchone()
+        conn.commit()
+    if not row or row[0] is None:
+        return None
+    return str(row[0]).strip().lower()
+
+
+def tenant_membership_upsert(
+    user_id: uuid.UUID,
+    tenant_id: int,
+    membership_role: str,
+) -> None:
+    role = (membership_role or "tenant_member").strip().lower()
+    if role not in ("tenant_owner", "tenant_admin", "tenant_member"):
+        role = "tenant_member"
+    with pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO tenant_memberships (user_id, tenant_id, membership_role)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (user_id, tenant_id) DO UPDATE SET
+                  membership_role = EXCLUDED.membership_role
+                """,
+                (user_id, tenant_id, role),
+            )
+        conn.commit()
+
+
+def tenant_get(tenant_id: int) -> dict[str, Any] | None:
+    with pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                """
+                SELECT id, name, created_at, setup_completed_at, vertical_profile
+                FROM tenants WHERE id = %s
+                """,
+                (tenant_id,),
+            )
+            row = cur.fetchone()
+        conn.commit()
+    if not row:
+        return None
+    d = dict(row)
+    for key in ("created_at", "setup_completed_at"):
+        val = d.get(key)
+        if val is not None and hasattr(val, "isoformat"):
+            d[key] = val.isoformat()
+    return d
+
+
+def tenant_update_org_profile(
+    tenant_id: int,
+    *,
+    name: str | None = None,
+    vertical_profile: str | None = None,
+) -> dict[str, Any] | None:
+    sets: list[str] = []
+    params: list[Any] = []
+    if name is not None:
+        sets.append("name = %s")
+        params.append((name or "").strip() or "tenant")
+    if vertical_profile is not None:
+        sets.append("vertical_profile = %s")
+        params.append((vertical_profile or "").strip() or None)
+    if not sets:
+        return tenant_get(tenant_id)
+    params.append(tenant_id)
+    with pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                f"UPDATE tenants SET {', '.join(sets)} WHERE id = %s RETURNING id, name, created_at, setup_completed_at, vertical_profile",
+                tuple(params),
+            )
+            row = cur.fetchone()
+        conn.commit()
+    if not row:
+        return None
+    d = dict(row)
+    for key in ("created_at", "setup_completed_at"):
+        val = d.get(key)
+        if val is not None and hasattr(val, "isoformat"):
+            d[key] = val.isoformat()
+    return d
+
+
+def tenant_mark_setup_completed(tenant_id: int) -> dict[str, Any] | None:
+    with pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                """
+                UPDATE tenants SET setup_completed_at = COALESCE(setup_completed_at, now())
+                WHERE id = %s
+                RETURNING id, name, created_at, setup_completed_at, vertical_profile
+                """,
+                (tenant_id,),
+            )
+            row = cur.fetchone()
+        conn.commit()
+    if not row:
+        return None
+    d = dict(row)
+    for key in ("created_at", "setup_completed_at"):
+        val = d.get(key)
+        if val is not None and hasattr(val, "isoformat"):
+            d[key] = val.isoformat()
+    return d
+
+
+def user_is_tenant_admin(user_id: uuid.UUID, tenant_id: int | None = None) -> bool:
+    role = user_membership_role(user_id, tenant_id)
+    return role in _TENANT_ADMIN_ROLES
+

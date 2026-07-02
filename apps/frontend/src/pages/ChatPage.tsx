@@ -426,8 +426,13 @@ export function ChatPage() {
     (voiceStatus.prefs.mode_web === "hands_free" || voiceStatus.prefs.mode_web === "realtime");
 
   const isAdminUser = (user?.role ?? "").toLowerCase() === "admin";
-  /** Single Chat UI: General by default; Dashboard when ?dashboard= context. */
-  const composerAgentId = dashboardChatId ? "dashboard" : "general";
+  /** Single Chat UI: General by default; Dashboard when ?dashboard=; ?agent= for specialists. */
+  const agentParam = (searchParams.get("agent") ?? "").trim().toLowerCase();
+  const composerAgentId = dashboardChatId
+    ? "dashboard"
+    : agentParam === "knowledge_companion"
+      ? "knowledge_companion"
+      : "general";
 
   const [workspaces, setWorkspaces] = useState<WorkspaceApiRecord[]>([]);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);

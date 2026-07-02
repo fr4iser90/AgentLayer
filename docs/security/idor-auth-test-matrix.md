@@ -121,6 +121,10 @@ Users **cannot** self-promote via `POST /auth/setup` after the first admin exist
 | Action | User B expected | Enforcement |
 |--------|-----------------|-------------|
 | Chat as `coding` agent | Blocked in planner | `user_may_invoke_agent` → general only |
+| Chat as `knowledge_companion` | Allowed (Task 03) | `governance._ENDUSER_DIRECT_AGENT_IDS` |
+| `POST /tools/run` `rag_search` same tenant | 200 + hits | Tenant-wide `tenant_knowledge` domain |
+| `POST /tools/run` `rag_search` cross tenant | 200 + no foreign hits | E2E: `test_cross_tenant_user_cannot_see_other_tenant_knowledge` |
+| `POST /v1/admin/rag/ingest` as User B | 403 | E2E: `test_user_b_admin_rag_ingest_403` |
 | `POST /tools/run` admin-only tool | 200 + `ok: false` in JSON | `caller_fulfills_effective_policy` |
 | `GET /v1/tools` | No admin-only tools in list | `filter_chat_tool_specs` |
 

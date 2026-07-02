@@ -34,8 +34,9 @@ Related:
 Do **not** put tenant content workflows under Platform → Interfaces. Interfaces is
 operator infrastructure only.
 
-Pilot limitation: both surfaces require `role=admin` today (dual hat). See
-[`00-roles-and-scopes.md`](./00-roles-and-scopes.md) and Task **03b** for the target split.
+Pilot limitation: Task **03b** split platform vs org admin; Task **03** enables
+colleague search via `knowledge_companion` in the same tenant.
+See [`00-roles-and-scopes.md`](./00-roles-and-scopes.md) and Task **03b** for the target split.
 
 ---
 
@@ -126,14 +127,12 @@ After wizard: define remaining departments, profession templates, qualifications
 
 ### 4. Publish to knowledge base
 
-**Web UI (today — Task 02):**
+**Web UI (Task 04 CMS):**
 
-- [ ] **Organization → Knowledge base** (`/app/org/knowledge`) — paste or upload Markdown, publish
-- [ ] Verify with `knowledge_companion`: question → answer cites your title/source
+- [ ] **Organization → Knowledge base** (`/app/org/knowledge`) — draft → publish
+- [ ] Verify with `knowledge_companion`: question → answer cites your title/source + version
 
-**CMS (Task 04+):**
-
-- [ ] Create draft in `tenant_content` → review → publish → auto RAG ingest
+**Legacy direct ingest** (operator API) still available; prefer CMS.
 
 ### 5. Pilot smoke test
 

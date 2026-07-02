@@ -2,41 +2,41 @@
 doc_id: healthcare-task-06-review-approval
 domain: agentlayer_docs
 tags: [healthcare, task, cms, workflow]
-status: pending
+status: done
 ---
 
 ## Task 06 — Review and approval workflow
 
-**Status:** pending  
-**Depends on:** [05](./05-clinical-rbac.md)  
+**Status:** done  
+**Depends on:** [05](./05-profession-rbac.md)  
 **Goal:** Multi-step clinical content governance before production RAG ingest.
 
 ### Scope
 
 #### Status workflow
 
-- [ ] Extend CMS statuses: `draft` → `in_review` → `approved` → `published`
-- [ ] Optional: `deprecated`, `archived`
-- [ ] Only `published` triggers `tenant_knowledge` RAG ingest (unchanged rule).
+- [x] Extend CMS statuses: `draft` → `in_review` → `approved` → `published`
+- [x] Optional: `deprecated`, `archived`
+- [x] Only `published` triggers `tenant_knowledge` RAG ingest (unchanged rule).
 
 #### Roles
 
-- [ ] **Content Editor:** create/edit drafts, submit for review
-- [ ] **Content Reviewer:** comment, approve or send back
-- [ ] **Content Approver:** publish to production (+ RAG ingest)
-- [ ] **Tenant Admin:** override in emergency (audited)
+- [x] **Content Editor:** create/edit drafts, submit for review
+- [x] **Content Reviewer:** comment, approve or send back
+- [x] **Content Approver:** publish to production (+ RAG ingest)
+- [x] **Tenant Admin:** override in emergency (audited via `?override=true`)
 
 #### Features
 
-- [ ] Reviewer queue UI or API list `in_review`
-- [ ] Version history on each publish
-- [ ] Diff view between versions (minimal: text diff)
-- [ ] `tenant_knowledge_draft` domain for preview mode (editors/reviewers only;
+- [x] Reviewer queue UI or API list `in_review`
+- [x] Version history on each publish
+- [x] Diff view between versions (minimal: unified text diff)
+- [x] `tenant_knowledge_draft` domain for preview mode (editors/reviewers only;
       production `knowledge_companion` must not use it)
 
 #### Audit
 
-- [ ] Log: submit, review decision, publish, who approved, content version id
+- [x] Log: submit, review decision, publish, who approved, content version id
 
 ### Out of scope
 
@@ -46,16 +46,16 @@ status: pending
 
 ### Acceptance criteria
 
-- [ ] Editor cannot publish directly without Approver role.
-- [ ] Reviewer can reject back to draft with comment.
-- [ ] Published version visible in companion with approver metadata.
-- [ ] Draft / in_review never in production RAG.
+- [x] Editor cannot publish directly without Approver role.
+- [x] Reviewer can reject back to draft with comment.
+- [x] Published version visible in companion with approver metadata.
+- [x] Draft / in_review never in production RAG.
 
 ### Exit criteria
 
-- [ ] Phase 1 MVP complete for governed team use (still no PHI).
-- [ ] README: tasks 01–06 marked done when applicable.
+- [x] Phase 1 MVP complete for governed team use (still no PHI).
+- [x] README: tasks 01–06 marked done when applicable.
 
 ### Next task (gated)
 
-→ [07 — FHIR read-only](./07-fhir-read-only.md) — **only after privacy/clinical sign-off**
+→ [07 — Tenant templates](./07-tenant-templates.md)

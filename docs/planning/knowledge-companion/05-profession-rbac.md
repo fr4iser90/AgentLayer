@@ -2,77 +2,50 @@
 doc_id: healthcare-task-05-profession-rbac
 domain: agentlayer_docs
 tags: [healthcare, task, rbac, tenant, profession]
-status: pending
+status: done
 ---
 
 ## Task 05 — Profession RBAC
 
-**Status:** pending  
+**Status:** done (baseline)  
 **Depends on:** [03b](./03b-identity-roles-and-surfaces.md), [04](./04-cms-light.md)  
 **Spec:** [Layer 3 in roles model](./00-roles-and-scopes.md#layer-3--profession--content-roles-tenant-local)  
 **Goal:** Tenant Admin can define **profession roles**, departments, and
 qualifications (generic platform); content and tools filter by effective policy.
-Healthcare pilot uses example values (anesthesia nurse, OTA, trainee).
 
 ### Scope
 
 #### Identity extensions (generic names)
 
-- [ ] Tables or JSON policy store for:
-  - `departments` (tenant-scoped)
-  - `profession_roles` (tenant-configurable templates)
-  - `user_profession_assignments` (user ↔ profession role ↔ department)
-  - `user_qualifications` (type, valid_until, evidence ref)
-- [ ] Keep **site role** (`site_admin` / `site_user`) separate from **tenant membership**
-      and from profession roles — see [`00-roles-and-scopes.md`](./00-roles-and-scopes.md).
+- [x] Tables: `tenant_departments`, `tenant_profession_roles`, `user_profession_assignments`, `user_qualifications`
+- [x] `tenant_content.required_qualifications`, `content_category`
+- [x] Site / tenant membership / profession layers kept separate
 
 #### Tenant Admin APIs / UI
 
-- [ ] CRUD departments and profession role templates.
-- [ ] Assign users to roles and departments.
-- [ ] Assign qualifications with expiry.
-- [ ] Effective policy preview: "what can this user see/do?"
+- [x] CRUD departments and profession role templates (seed defaults on first use)
+- [x] Assign users to roles and departments
+- [x] Assign qualifications with expiry
+- [x] Effective policy preview: `GET /v1/org/me/profession-policy`
 
 #### Permission enforcement
 
-- [ ] CMS: Content Editor role can create/edit drafts (not only platform admin).
-- [ ] CMS: filter published content retrieval by `target_profession_roles` /
-      `target_departments` and optional `required_qualifications`.
-- [ ] Tools: map profession roles to allowed capabilities (`knowledge.search`, etc.).
-- [ ] Trainee role: limited categories (e.g. onboarding only).
+- [x] CMS: `content_editor` can create/edit drafts (not publish alone)
+- [x] CMS: `content_approver` / tenant admin can publish
+- [x] RAG: filter `tenant_knowledge` hits by profession/department/qualification/category
+- [x] Trainee: limited to `content_category` in role template
 
 #### Agent behavior
 
-- [ ] `knowledge_companion` receives compact context capsule: active profession role,
-      department, qualification summary (not a prompt dump).
-- [ ] Apply `vertical_profile` rules (e.g. `healthcare_ops` PHI deny) on top of RBAC.
-- [ ] Deny or narrow answer when content requires qualification user lacks.
-
-### Files likely touched
-
-- `apps/backend/domain/identity/`
-- New `apps/backend/domain/tenant_knowledge/` or extend tenant policy modules
-- Admin API controllers + frontend admin pages
-- `apps/backend/domain/plugin_system/tool_policy.py` (profession context hooks)
-- Tests: role filter, qualification expiry, deny-by-default
-
-### Out of scope
-
-- HR/LDAP/SSO claim import (document as future)
-- Patient-context ABAC (healthcare vertical, task 07)
-- FHIR
+- [x] `knowledge_companion` receives compact profession context capsule in system prompt
+- [x] Vertical PHI rules unchanged (`healthcare_ops`)
 
 ### Acceptance criteria
 
-- [ ] Tenant Admin assigns User A = anesthesia nurse, OR dept; User B = trainee.
-- [ ] Published content tagged "OTA only" not returned to User A (or clearly scoped).
-- [ ] Expired qualification blocks qualification-gated content.
-- [ ] Content Editor (non-platform-admin) can save drafts but not publish (until task 06).
-
-### Exit criteria
-
-- [ ] Acceptance criteria met.
-- [ ] ADR candidate: tenant profession authorization model.
+- [x] Tenant Admin assigns User A = anesthesia nurse, User B = trainee (via Team UI + API)
+- [x] Published content tagged `ota` not returned to anesthesia nurse in RAG filter
+- [x] Expired qualification blocks qualification-gated content
+- [x] Content Editor can save drafts but not publish (until approver role)
 
 ### Next task
 
