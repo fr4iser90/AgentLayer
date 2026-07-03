@@ -4,7 +4,14 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 
-type TenantRow = { id: number; name?: string | null };
+type TenantTemplateRow = {
+  id: string;
+  name: string;
+  description?: string;
+  vertical_profile?: string;
+};
+
+type TenantRow = { id: number; name?: string | null; vertical_profile?: string | null };
 
 type UserRow = {
   id: string;
@@ -53,8 +60,24 @@ export function AdminUsers() {
   const [createMsg, setCreateMsg] = useState<string | null>(null);
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
   const [newTenantName, setNewTenantName] = useState("");
+  const [tenantTemplates, setTenantTemplates] = useState<TenantTemplateRow[]>([]);
+  const [newTenantTemplateId, setNewTenantTemplateId] = useState("");
+  const [seedDemoContent, setSeedDemoContent] = useState(false);
   const [tenantCreateBusy, setTenantCreateBusy] = useState(false);
   const [tenantCreateMsg, setTenantCreateMsg] = useState<string | null>(null);
+
+  const loadTenantTemplates = useCallback(async () => {
+    try {
+      const res = await apiFetch("/v1/admin/tenant-templates", auth);
+      const data = (await res.json()) as { items?: TenantTemplateRow[] };
+      if (res.ok && Array.isArray(data.items)) {
+        setTenantTemplates(data.items);
+        setNewTenantTemplateId((prev) => prev || data.items?.[0]?.id || "");
+      }
+    } catch {
+      setTenantTemplates([]);
+    }
+  }, [auth]);
 
   const loadTenants = useCallback(async () => {
     try {
@@ -91,8 +114,8 @@ export function AdminUsers() {
   }, [auth]);
 
   const reloadAll = useCallback(async () => {
-    await Promise.all([loadUsers(), loadTenants()]);
-  }, [loadUsers, loadTenants]);
+    await Promise.all([loadUsers(), loadTenants(), loadTenantTemplates()]);
+  }, [loadUsers, loadTenants, loadTenantTemplates]);
 
   useEffect(() => {
     void reloadAll();
@@ -286,9 +309,18 @@ export function AdminUsers() {
     try {
       const res = await apiFetch("/v1/admin/tenants", auth, {
         method: "POST",
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({
+          name,
+          template_id: newTenantTemplateId.trim() || null,
+          seed_demo_content: seedDemoContent,
+        }),
       });
-      const data = (await res.json()) as { detail?: unknown; tenant?: { id: number } };
+      const data = (await res.json()) as {
+        detail?: unknown;
+        tenant?: { id: number };
+        template_id?: string | null;
+        seeded_content?: { title?: string }[];
+      };
       if (!res.ok) {
         setTenantCreateMsg(typeof data.detail === "string" ? data.detail : t("admin:usersCreateFailed"));
         return;
@@ -298,6 +330,11 @@ export function AdminUsers() {
         t("admin:usersTenantCreated", {
           name,
           idSuffix: id != null ? ` (id ${id})` : "",
+          templateSuffix: data.template_id ? ` · ${data.template_id}` : "",
+          seedSuffix:
+            data.seeded_content && data.seeded_content.length > 0
+              ? ` · ${data.seeded_content.length} demo note(s)`
+              : "",
         })
       );
       setNewTenantName("");
@@ -544,6 +581,31 @@ export function AdminUsers() {
               placeholder={t("admin:tenantDisplayNamePlaceholder")}
               autoComplete="off"
             />
+          </label>
+          <label className="block text-xs text-surface-muted">
+            {t("admin:usersTenantTemplate")}
+            <select
+              className="mt-1 block w-full min-w-[14rem] rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+              value={newTenantTemplateId}
+              onChange={(e) => setNewTenantTemplateId(e.target.value)}
+            >
+              <option value="">{t("admin:usersTenantTemplateNone")}</option>
+              {tenantTemplates.map((tpl) => (
+                <option key={tpl.id} value={tpl.id}>
+                  {tpl.name} ({tpl.vertical_profile ?? tpl.id})
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex items-center gap-2 text-xs text-surface-muted sm:mb-2">
+            <input
+              type="checkbox"
+              className="rounded border-surface-border"
+              checked={seedDemoContent}
+              disabled={!newTenantTemplateId}
+              onChange={(e) => setSeedDemoContent(e.target.checked)}
+            />
+            {t("admin:usersTenantSeedDemo")}
           </label>
           <button
             type="button"

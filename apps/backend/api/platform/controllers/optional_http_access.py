@@ -129,6 +129,7 @@ def public_http_auth_policy() -> dict[str, Any]:
             "GET/PUT/PATCH /v1/admin/operator-settings",
             "POST /v1/admin/external-llm/models",
             "GET/PUT /v1/admin/interfaces",
+            "GET /v1/admin/tenant-templates",
             "GET/POST /v1/admin/tenants",
             "GET /v1/admin/users",
             "POST /v1/admin/users",

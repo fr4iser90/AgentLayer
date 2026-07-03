@@ -17,6 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 
 from apps.backend.application.platform.use_cases.platform_controller_services import db
+from apps.backend.application.tenant_provisioning.use_cases import tenant_provision_controller_services as tenant_prov
 from apps.backend.application.identity.use_cases.request_auth import (
     LoginRequest,
     create_access_token,
@@ -50,6 +51,8 @@ class AdminCreateUserBody(BaseModel):
 
 class AdminCreateTenantBody(BaseModel):
     name: str = Field(..., min_length=1, max_length=128)
+    template_id: str | None = Field(default=None, max_length=64)
+    seed_demo_content: bool = False
 
 
 class AdminPatchUserBody(BaseModel):
@@ -65,6 +68,13 @@ class AdminPatchUserBody(BaseModel):
     llm_queue_priority: int | None = Field(default=None, ge=0, le=1000)
 
 
+@router.get("/v1/admin/tenant-templates")
+async def admin_list_tenant_templates(request: Request):
+    """List tenant blueprint templates (Task 07)."""
+    await require_admin(request)
+    return {"items": tenant_prov.list_templates_public()}
+
+
 @router.get("/v1/admin/tenants")
 async def admin_list_tenants(request: Request):
     """List tenants (``tenants.id`` = value for tool allowlists and ``users.tenant_id``)."""
@@ -74,10 +84,24 @@ async def admin_list_tenants(request: Request):
 
 @router.post("/v1/admin/tenants")
 async def admin_create_tenant(request: Request, body: AdminCreateTenantBody):
-    """Create a tenant (e.g. work / friends). Admin only."""
+    """Create a tenant; optional ``template_id`` clones org config (Task 07)."""
     await require_admin(request)
-    row = db.tenant_insert(body.name)
-    return {"ok": True, "tenant": row}
+    if body.seed_demo_content and not body.template_id:
+        raise HTTPException(status_code=400, detail="seed_demo_content requires template_id")
+    user = await get_current_user(request)
+    try:
+        out = tenant_prov.provision.provision_tenant(
+            name=body.name,
+            template_id=body.template_id,
+            seed_demo_content=body.seed_demo_content,
+            actor_user_id=user.id,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        logger.exception("admin_create_tenant failed")
+        raise HTTPException(status_code=500, detail=http_500_detail(e)) from e
+    return {"ok": True, **out}
 
 
 @router.get("/v1/admin/users")

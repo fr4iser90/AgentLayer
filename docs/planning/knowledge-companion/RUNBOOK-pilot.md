@@ -9,6 +9,9 @@ tags: [planning, knowledge-companion, runbook]
 Quick steps after Task 02 implementation. Full checklist:
 [`tenant-onboarding-checklist.md`](./tenant-onboarding-checklist.md).
 
+**Phase 7 sign-off:** structured test cases (review workflow, RBAC, templates, isolation):
+[`PILOT-TESTPLAN.md`](./PILOT-TESTPLAN.md).
+
 Two admin surfaces — do not mix them:
 
 | Surface | Route | Who | Purpose |
@@ -49,10 +52,7 @@ Legacy direct ingest API still exists for operators; CMS is the supported path (
 
 ### 4. Chat smoke test
 
-1. Select agent **Knowledge Companion** (`knowledge_companion`).
-2. Ask: „Wann Beatmungsschlauch wechseln laut unserer Notiz?“
-3. Expect citation from ingested title/source.
-4. Ask: „Patient Müller Allergien?“ → refusal (healthcare_ops prompt rules).
+See **P06** in [`PILOT-TESTPLAN.md`](./PILOT-TESTPLAN.md) for full criteria.
 
 ### 5. Invite colleague (Task 03)
 

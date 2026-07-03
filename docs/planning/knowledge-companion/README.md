@@ -29,7 +29,7 @@ Split backlog for the **industry-agnostic** strategy in
 | 04 | [CMS light (`tenant_content`)](./04-cms-light.md) | **done** | 02 |
 | 05 | [Profession RBAC](./05-profession-rbac.md) | **done** (baseline) | 03b, 04 |
 | 06 | [Review and approval workflow](./06-review-approval-workflow.md) | done | 05 |
-| 07 | [Tenant templates](./07-tenant-templates.md) | pending | 06 |
+| 07 | [Tenant templates](./07-tenant-templates.md) | done | 06 |
 
 ### Vertical profiles (optional; connectors after platform 01–06)
 
@@ -60,5 +60,6 @@ Split backlog for the **industry-agnostic** strategy in
 - **Roles model:** [`./00-roles-and-scopes.md`](./00-roles-and-scopes.md)
 - **Onboarding checklist:** [`./tenant-onboarding-checklist.md`](./tenant-onboarding-checklist.md)
 - **Pilot runbook:** [`./RUNBOOK-pilot.md`](./RUNBOOK-pilot.md)
+- **Pilot test plan (Phase 7):** [`./PILOT-TESTPLAN.md`](./PILOT-TESTPLAN.md)
 - Healthcare redirect (old path): [`../healthcare-clinical-companion-plan.md`](../healthcare-clinical-companion-plan.md)
 - RAG: [`../../features/rag.md`](../../features/rag.md)

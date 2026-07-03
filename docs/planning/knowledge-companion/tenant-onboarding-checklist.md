@@ -136,6 +136,8 @@ After wizard: define remaining departments, profession templates, qualifications
 
 ### 5. Pilot smoke test
 
+Detailed cases **P01–P10**: [`PILOT-TESTPLAN.md`](./PILOT-TESTPLAN.md)
+
 - [ ] Admin finds ingested content via companion
 - [ ] End user in same tenant sees same published content
 - [ ] User in **different** tenant does **not** see your content

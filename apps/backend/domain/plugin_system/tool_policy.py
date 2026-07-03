@@ -202,8 +202,14 @@ def filter_chat_tool_specs(
             out.append(spec)
             continue
         eff = effective_flags(meta, name, pmap)
-        if eff["enabled"] and caller_fulfills_effective_policy(user_role, tenant_id, eff):
-            out.append(spec)
+        if not eff["enabled"] or not caller_fulfills_effective_policy(user_role, tenant_id, eff):
+            continue
+        from apps.backend.domain.tenant_capability.policy import tool_domain_allowed_for_tenant
+
+        dom = str(meta.get("domain") or "").strip()
+        if not tool_domain_allowed_for_tenant(tenant_id, dom):
+            continue
+        out.append(spec)
     return out
 
 
@@ -226,8 +232,12 @@ def filter_tools_meta(
                 continue
             eff = effective_flags(entry, tn, pmap)
             if eff["enabled"] and caller_fulfills_effective_policy(user_role, tenant_id, eff):
-                out.append(entry)
-                break
+                from apps.backend.domain.tenant_capability.policy import tool_domain_allowed_for_tenant
+
+                dom = str(entry.get("domain") or "").strip()
+                if tool_domain_allowed_for_tenant(tenant_id, dom):
+                    out.append(entry)
+                    break
     return out
 
 

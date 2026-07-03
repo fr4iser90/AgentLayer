@@ -259,9 +259,11 @@ Tenant Admin first login → **mandatory** `/app/org/setup` (disclaimer; publish
 | Create tenant | yes | no | no | no |
 | Add `tenant_knowledge` to shared domains | yes | no* | no | no |
 | Invite user to own tenant | yes† | yes | no | no |
-| Publish note to `tenant_knowledge` | yes† | yes | no | no‡ |
-| Chat with knowledge_companion | yes | yes | yes | yes |
-| POST `/v1/admin/rag/ingest` | yes† | yes§ | no | no‡ |
+| Publish note to `tenant_knowledge` | no (use `/org`) | yes | no | no‡ |
+| POST `/v1/admin/tenant-content` | **403** in `multi_tenant` | — | — | — |
+| POST `/v1/admin/rag/ingest` (`tenant_knowledge`) | **403** in `multi_tenant` | — | — | — |
+| POST `/v1/admin/rag/ingest` (`agentlayer_docs`) | yes | no | no | no |
+| Chat with knowledge_companion | yes (own tenant) | yes | yes | yes |
 
 \* Tenant Admin may *request* domain enablement; Site Admin applies operator settings.  
 † Site Admin acting on a tenant for support — audited, not the normal customer path.  

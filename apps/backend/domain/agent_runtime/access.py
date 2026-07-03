@@ -68,6 +68,17 @@ def user_may_invoke_agent(
     if min_r == "admin" and not is_elevated_role(user_role):
         return False, "This agent is only available to admin users."
 
+    if not is_elevated_role(user_role):
+        if tenant_id is not None:
+            from apps.backend.domain.tenant_capability.policy import tenant_chat_allowed_agent_ids
+
+            allowed = tenant_chat_allowed_agent_ids(int(tenant_id))
+            if allowed is not None and aid not in allowed:
+                return (
+                    False,
+                    "This agent is not enabled for your organization.",
+                )
+
     if _deps is not None:
         from apps.backend.domain.agent_runtime.governance import (
             AgentAccessPolicy,

@@ -61,7 +61,10 @@ def _local_health_ok(url: str, *, timeout: float = 1.5) -> bool:
     try:
         with httpx.Client(timeout=timeout) as client:
             resp = client.get(f"{url.rstrip('/')}/health")
-        return resp.status_code == 200
+        if resp.status_code != 200:
+            return False
+        data = resp.json()
+        return isinstance(data, dict) and data.get("status") == "ok"
     except Exception:
         return False
 

@@ -1,14 +1,15 @@
-"""Tenant CMS HTTP — org admin, site admin, and runtime read."""
-
 from __future__ import annotations
 
 import uuid
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+from apps.backend.application.org.use_cases.org_surface_guard import (
+    reject_admin_tenant_content_in_multi_tenant,
+)
 from apps.backend.application.tenant_content.use_cases import tenant_content_controller_services as cms_ctrl
 from apps.backend.application.identity.use_cases.request_auth import (
     require_site_admin,
@@ -31,7 +32,7 @@ logger = __import__("logging").getLogger(__name__)
 
 router = APIRouter()
 org_router = APIRouter()
-admin_router = APIRouter()
+admin_router = APIRouter(dependencies=[Depends(reject_admin_tenant_content_in_multi_tenant)])
 
 
 class TenantContentCreateBody(BaseModel):

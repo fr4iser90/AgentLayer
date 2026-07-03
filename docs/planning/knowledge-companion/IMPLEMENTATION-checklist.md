@@ -93,8 +93,10 @@ Master checklist for everything agreed in planning. Spec:
 
 ### Phase 7 — Verification
 
-- [ ] `agent_system`: setup → admin publishes team knowledge → user searches in chat
-- [ ] `multi_tenant`: setup → tenant admin completes `/org/setup` → publish → user search
+Sign-off: [`PILOT-TESTPLAN.md`](./PILOT-TESTPLAN.md) — automated via `tests/e2e/test_knowledge_companion_pilot.py`
+
+- [ ] `agent_system`: setup → admin publishes team knowledge → user searches in chat (Path B; partial E2E)
+- [ ] `multi_tenant`: setup → review workflow → publish → user search (Path A; **E2E automated**)
 - [x] Cross-tenant RAG isolation (Task 03 — unit + e2e tests)
 - [x] Same-tenant user search (Task 03)
 - [x] RUNBOOK + README updated for 03b baseline
@@ -106,7 +108,7 @@ Master checklist for everything agreed in planning. Spec:
 - [x] Task 04 — CMS `tenant_content` (draft/publish/archive → RAG)
 - [x] Task 05 — Profession RBAC (departments, roles, assignments, RAG filter)
 - [x] Task 06 — Review workflow (draft → in_review → approved → published)
-- [ ] Task 07 — Tenant templates
+- [x] Task 07 — Tenant templates (`content/tenant-templates/`, Admin UI)
 - [ ] Site admin tenant switch banner in `/admin`
 
 ---

@@ -13,6 +13,9 @@ from apps.backend.application.rag.use_cases.rag_controller_services import inges
 from apps.backend.application.rag.use_cases.rag_controller_services import operator_settings
 from apps.backend.application.platform.use_cases.platform_controller_services import http_500_detail
 from apps.backend.application.identity.use_cases.request_auth import require_admin
+from apps.backend.application.org.use_cases.org_surface_guard import (
+    reject_admin_tenant_knowledge_rag_ingest,
+)
 from apps.backend.application.platform.use_cases.platform_controller_services import db
 from apps.backend.application.rag.use_cases.rag_controller_services import rag_service
 
@@ -57,6 +60,7 @@ async def admin_rag_ingest(request: Request):
     if not isinstance(text, str) or not text.strip():
         raise HTTPException(status_code=400, detail="text (non-empty string) is required")
     domain = body.get("domain") if isinstance(body.get("domain"), str) else ""
+    reject_admin_tenant_knowledge_rag_ingest(domain)
     title = body.get("title") if isinstance(body.get("title"), str) else ""
     source_uri = body.get("source_uri")
     su = source_uri if isinstance(source_uri, str) and source_uri.strip() else None

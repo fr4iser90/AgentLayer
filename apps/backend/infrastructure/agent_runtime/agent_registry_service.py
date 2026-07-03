@@ -9,6 +9,7 @@ from typing import Any
 from apps.backend.domain.agent_runtime import access
 from apps.backend.domain.agent_runtime import registry as domain
 from apps.backend.domain.agent_runtime import subagent_catalog
+from apps.backend.domain.tenant_capability import policy as tenant_capability_policy
 from apps.backend.infrastructure.platform import config
 from apps.backend.infrastructure.agent_runtime import agent_config_effective
 from apps.backend.infrastructure.agent_runtime import agent_access_policy_store
@@ -68,6 +69,24 @@ class _SubagentCatalogDeps:
 
 subagent_catalog.register_subagent_catalog_dependencies(_SubagentCatalogDeps())
 access.register_agent_access_dependencies(_SubagentCatalogDeps())
+
+
+class _TenantCapabilityDeps:
+    @staticmethod
+    def config_string_list(tenant_id: int, knob_id: str) -> frozenset[str] | None:
+        try:
+            from apps.backend.infrastructure.agent_runtime import agent_config_store
+
+            val = agent_config_store.get_override(tenant_id, knob_id)
+        except RuntimeError:
+            return None
+        if isinstance(val, list):
+            items = tuple(str(x).strip() for x in val if str(x).strip())
+            return frozenset(items) if items else None
+        return None
+
+
+tenant_capability_policy.register_tenant_capability_dependencies(_TenantCapabilityDeps())
 
 AgentRegistry = domain.AgentRegistry
 effective_tool_names_for_caller = domain.effective_tool_names_for_caller

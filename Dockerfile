@@ -22,6 +22,7 @@ RUN pip install --no-cache-dir --upgrade pip \
 COPY apps ./apps
 COPY plugins ./plugins
 COPY docs ./docs
+COPY content ./content
 COPY benchmarks ./benchmarks
 COPY tests/benchmarks ./tests/benchmarks
 COPY tests/e2e ./tests/e2e

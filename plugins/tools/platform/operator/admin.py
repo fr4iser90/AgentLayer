@@ -325,12 +325,25 @@ def tenant_create(arguments: dict[str, Any]) -> str:
     name = str(arguments.get("name") or "").strip()
     if not name:
         return _err("name is required")
+    template_id = str(arguments.get("template_id") or "").strip() or None
+    seed_demo = bool(arguments.get("seed_demo_content"))
+    if seed_demo and not template_id:
+        return _err("seed_demo_content requires template_id")
     try:
-        row = db.tenant_insert(name[:128])
+        from apps.backend.application.tenant_provisioning.use_cases import tenant_provision_service as provision
+        from apps.backend.infrastructure.db import db as db_mod
+
+        actor = db_mod.user_first_admin_id()
+        out = provision.provision_tenant(
+            name=name[:128],
+            template_id=template_id,
+            seed_demo_content=seed_demo,
+            actor_user_id=actor,
+        )
     except Exception as e:
         logger.exception("tenant_create")
         return _err(http_500_detail(e))
-    return _ok({"tenant": row})
+    return _ok(out)
 
 
 def users_list(arguments: dict[str, Any]) -> str:

@@ -1,0 +1,24 @@
+{
+  "id": "tpl_healthcare_ops",
+  "name": "Healthcare operations",
+  "description": "Hospital department pilot — anesthesia/OR roles, healthcare vertical profile, PHI guardrails.",
+  "vertical_profile": "healthcare_ops",
+  "departments": [
+    { "slug": "anesthesia", "name": "Anesthesia" },
+    { "slug": "or", "name": "Operating room" }
+  ],
+  "profession_roles": [
+    { "slug": "anesthesia_nurse", "name": "Anesthesia nurse", "role_kind": "end_user", "content_categories": [] },
+    { "slug": "ota", "name": "OTA", "role_kind": "end_user", "content_categories": [] },
+    { "slug": "trainee", "name": "Trainee", "role_kind": "trainee", "content_categories": ["onboarding"] },
+    { "slug": "content_editor", "name": "Content editor", "role_kind": "content_editor", "content_categories": [] },
+    { "slug": "content_reviewer", "name": "Content reviewer", "role_kind": "content_reviewer", "content_categories": [] },
+    { "slug": "content_approver", "name": "Content approver", "role_kind": "content_approver", "content_categories": [] }
+  ],
+  "workflow_defaults": {
+    "content_review_required": true
+  },
+  "enabled_agent_ids": ["general", "knowledge_companion"],
+  "enabled_tool_domains": ["rag", "knowledge", "shared"],
+  "seed_content_glob": "content/healthcare-pilot/*.md"
+}
