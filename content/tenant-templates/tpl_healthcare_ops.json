@@ -20,5 +20,5 @@
   },
   "enabled_agent_ids": ["general", "knowledge_companion"],
   "enabled_tool_domains": ["rag", "knowledge", "shared"],
-  "seed_content_glob": "content/healthcare-pilot/*.md"
+  "seed_content_glob": "content/_private/pilot/*.md"
 }

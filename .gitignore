@@ -11,6 +11,10 @@ output/
 .env.e2e
 benchmarks/results/
 
+# Local-only paths (never publish to public remotes)
+docs/planning/knowledge-companion/verticals/_private/
+content/_private/
+
 # logs
 logs/
 
@@ -23,4 +27,3 @@ compose.traefik.yaml
 
 # Full upstream PIDEA checkout (optional local copy); prompts live under integrations/pidea/content-library/
 apps/backend/infrastructure/integrations/pidea/PIDEA/
-

@@ -6,7 +6,7 @@ from typing import Literal
 
 from fastapi import APIRouter, HTTPException
 
-from apps.backend.infrastructure.legal.legal_content import (
+from apps.backend.application.platform.use_cases.legal_pages import (
     legal_page_body_md,
     legal_page_title,
     legal_public_index,

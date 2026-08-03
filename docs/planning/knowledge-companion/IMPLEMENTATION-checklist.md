@@ -86,7 +86,7 @@ Master checklist for everything agreed in planning. Spec:
 
 - [x] `knowledge_companion` agent plugin
 - [x] Default `rag_tenant_shared_domains` includes `tenant_knowledge`
-- [x] Sample content `content/healthcare-pilot/`
+- [x] Sample content for private verticals: operator-local only
 - [x] Org knowledge publish UI component wired to org API
 
 ---

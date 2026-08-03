@@ -48,11 +48,11 @@ Use when onboarding a **new organization** (clinic team, field service unit, int
 
 | Profile | Template (future) | Use when |
 |---------|-------------------|----------|
-| `healthcare_ops` | `tpl_healthcare_ops` | clinical teams, hospital departments |
+| `healthcare_ops` | `tpl_healthcare_ops` | care-ops style tenants (details stay operator-local) |
 | `default_ops` | `tpl_default_ops` | generic internal ops, IT, logistics |
 | `field_service_ops` | `tpl_field_service_ops` | technicians, maintenance (stub) |
 
-See [`verticals/healthcare-ops.md`](./verticals/healthcare-ops.md) for healthcare rules.
+See platform plan / template defaults for `healthcare_ops`; keep any extra vertical rules operator-local.
 
 ### 2. Create live tenant
 
@@ -122,8 +122,8 @@ After wizard: define remaining departments, profession templates, qualifications
 
 - [ ] Write Markdown notes: checklists, intervals, onboarding, FAQs
 - [ ] Set metadata: author, disclaimer (`learning_aid`), target roles/departments
-- [ ] **Do not** upload scans of official SOPs, vendor PDFs, or screenshots with identifiers
-- [ ] Healthcare: see [`verticals/healthcare-ops.md`](./verticals/healthcare-ops.md) content rules
+- [ ] **Do not** upload scans of official procedure PDFs, vendor manuals, or screenshots with identifiers
+- [ ] Keep operator-local vertical notes out of public git
 
 ### 4. Publish to knowledge base
 

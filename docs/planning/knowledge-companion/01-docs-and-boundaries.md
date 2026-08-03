@@ -15,7 +15,7 @@ MVP content rules, RAG separation, and tenant admin ops before runtime changes.
 
 - [x] Platform plan: `docs/planning/knowledge-companion-plan.md`
 - [x] Vertical profiles: `docs/planning/knowledge-companion/verticals/`
-- [x] Healthcare as first vertical: `verticals/healthcare-ops.md` (not platform name)
+- [x] Healthcare as first vertical profile id (`healthcare_ops`); detailed docs stay operator-local
 - [x] Self-authored MVP content boundary
 - [x] Tenant admin operations
 - [x] RAG domain model (`tenant_knowledge` vs `agentlayer_docs`)

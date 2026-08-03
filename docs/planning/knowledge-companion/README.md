@@ -35,7 +35,7 @@ Split backlog for the **industry-agnostic** strategy in
 
 | Profile | Doc | Gated tasks |
 |---------|-----|-------------|
-| `healthcare_ops` | [healthcare-ops.md](./verticals/healthcare-ops.md) · [clinic web surface](./verticals/healthcare-ops/clinic-web-surface.md) | [H1–H3](./verticals/healthcare-ops/) |
+| `healthcare_ops` | operator-local (not in public docs) | — |
 | `field_service_ops` | _(stub)_ | — |
 | `default_ops` | platform plan only | — |
 
@@ -61,5 +61,4 @@ Split backlog for the **industry-agnostic** strategy in
 - **Onboarding checklist:** [`./tenant-onboarding-checklist.md`](./tenant-onboarding-checklist.md)
 - **Pilot runbook:** [`./RUNBOOK-pilot.md`](./RUNBOOK-pilot.md)
 - **Pilot test plan (Phase 7):** [`./PILOT-TESTPLAN.md`](./PILOT-TESTPLAN.md)
-- Healthcare redirect (old path): [`../healthcare-clinical-companion-plan.md`](../healthcare-clinical-companion-plan.md)
 - RAG: [`../../features/rag.md`](../../features/rag.md)

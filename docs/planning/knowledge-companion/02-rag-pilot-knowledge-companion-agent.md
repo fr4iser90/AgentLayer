@@ -16,7 +16,7 @@ status: done
 - [x] `plugins/agents/knowledge_companion/` (`agent.yaml`, `system_prompt.md`)
 - [x] Default `rag_tenant_shared_domains` includes `tenant_knowledge` (new installs / file default)
 - [x] Organization Web UI: `/app/org/knowledge` (Tenant Admin surface; pilot uses platform admin role)
-- [x] Sample content: `content/healthcare-pilot/beatmungsschlauch-wechsel.md`
+- [x] Sample content for regulated verticals: operator-local only (not in public tree)
 - [x] Pilot runbook (Web UI only)
 
 ### Manual verification still required

@@ -5,6 +5,7 @@
 export const APP_ROUTES = [
   { path: "/app/login", page: "LoginPage", file: "pages/LoginPage.tsx", auth: "public" },
   { path: "/app/setup", page: "SetupWizardPage", file: "pages/SetupWizardPage.tsx", auth: "public" },
+  { path: "/app/legal/:slug", page: "LegalPage", file: "pages/LegalPage.tsx", auth: "public" },
   { path: "/app/", page: "HomePage", file: "pages/HomePage.tsx", auth: "session" },
   { path: "/app/chat", page: "ChatPage", file: "pages/ChatPage.tsx", auth: "session" },
   { path: "/app/studio", page: "StudioPage", file: "pages/StudioPage.tsx", auth: "session" },

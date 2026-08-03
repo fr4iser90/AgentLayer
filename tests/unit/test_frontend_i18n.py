@@ -124,8 +124,16 @@ def test_frontend_route_manifest_matches_app_routes() -> None:
 
     web_api_py = (REPO_ROOT / "apps/backend/api/platform/controllers/web_api.py").read_text(encoding="utf-8")
     spa_routes = set(re.findall(r'@app\.get\("(/app[^"]+)"\)', web_api_py))
+
+    def _dyn_key(path: str) -> str:
+        # React ``:slug`` and FastAPI ``{slug}`` / ``{rest:path}`` are equivalent for coverage.
+        return re.sub(r"/(:[^/]+|\{[^}]+\})", "/*", path)
+
+    spa_keys = {_dyn_key(p) for p in spa_routes}
     # /app/ is served via agent_ui_spa_root, not the multi-decorator shell
-    missing_spa = sorted(paths_in_app - spa_routes - {"/app/"})
+    missing_spa = sorted(
+        p for p in paths_in_app if p != "/app/" and _dyn_key(p) not in spa_keys
+    )
     assert not missing_spa, (
         "web_api.py agent_ui_spa_shell missing hard-refresh routes: "
         f"{missing_spa}"

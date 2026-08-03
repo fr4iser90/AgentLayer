@@ -20,7 +20,7 @@ qualifications, publish workflow — **without regulated third-party context dat
 
 **Healthcare** is documented as the **first vertical profile** (`healthcare_ops`),
 not the platform itself. See
-[`knowledge-companion/verticals/healthcare-ops.md`](./knowledge-companion/verticals/healthcare-ops.md).
+operator-local vertical docs (not published in this repository).
 
 **Implementation backlog (one PR per task):**
 [`docs/planning/knowledge-companion/README.md`](./knowledge-companion/README.md)
@@ -99,7 +99,7 @@ Examples of sensitive context (by vertical):
 
 | Vertical | Sensitive context (defer to vertical doc + gates) |
 |----------|---------------------------------------------------|
-| Healthcare | PHI, vitals, FHIR patient resources — [healthcare-ops](./knowledge-companion/verticals/healthcare-ops.md) |
+| Healthcare | PHI, vitals, FHIR patient resources — profile `healthcare_ops` (details operator-local) |
 | Field service | customer site credentials, live work orders |
 | IT ops | live credentials, production customer data |
 | Any | PII, secrets, copied copyrighted manuals without permission |
@@ -149,7 +149,7 @@ The companion presents self-authored content as **orientation / learning aid**,
 not as an official order or replacement for approved procedures and local policy.
 
 Healthcare-specific content rules: see
-[healthcare-ops vertical](./knowledge-companion/verticals/healthcare-ops.md).
+the `healthcare_ops` vertical profile (operator-local detail docs).
 
 ## Current AgentLayer Baseline
 
@@ -196,7 +196,7 @@ The main drifts from the target are:
   `agentlayer_docs`) and per-Agent search policy are documented here but not
   enforced in a dedicated `knowledge_companion` agent yet.
 - There are no vertical connector packs yet (healthcare FHIR/PDMS documented under
-  [`verticals/healthcare-ops/`](./knowledge-companion/verticals/healthcare-ops.md)).
+  operator-local vertical docs).
 - Audit exists as a platform direction, but knowledge answers need stronger
   structure: who asked, which context was active, which source version was used,
   which tool ran, and whether the answer was advisory or blocked.
@@ -365,7 +365,7 @@ Profession roles (tenant-configurable). Examples:
 
 | Vertical | Example profession roles |
 |----------|-------------------------|
-| Healthcare | anesthesia nurse, OTA, ICU nurse — [healthcare-ops](./knowledge-companion/verticals/healthcare-ops.md) |
+| Healthcare | anesthesia nurse, OTA, ICU nurse — profile `healthcare_ops` (details operator-local) |
 | Field service | technician, senior tech, dispatcher |
 | IT ops | L1 support, sysadmin, on-call |
 | Manufacturing | operator, maintenance, shift lead |
@@ -855,7 +855,7 @@ Goal: operational context (shift, location, assignment) without regulated export
 Regulated or live-system integration is **per vertical profile**, not core platform.
 
 Example: healthcare FHIR/PDMS/ML →
-[`knowledge-companion/verticals/healthcare-ops/`](./knowledge-companion/verticals/healthcare-ops/).
+operator-local vertical docs (not in this repository).
 
 Other verticals add their own connector docs when needed.
 
@@ -996,11 +996,11 @@ numbered tasks above rather than in one shot.
 Not part of the core platform. See
 [`knowledge-companion/verticals/`](./knowledge-companion/verticals/README.md).
 
-Healthcare patient/FHIR gateway: [`verticals/healthcare-ops/07-fhir-read-only.md`](./knowledge-companion/verticals/healthcare-ops/07-fhir-read-only.md).
+Patient/FHIR gateway: operator-local gated task docs.
 
 ### Slice I — Vertical real-time / ML (example: healthcare)
 
-Healthcare PDMS/ML: [`verticals/healthcare-ops/`](./knowledge-companion/verticals/healthcare-ops/).
+PDMS/ML: local operator-local vertical docs.
 
 ## Immediate Next Steps
 
@@ -1026,4 +1026,4 @@ Recommended next 10 tasks:
 - What is the minimum audit log before any vertical enables live integrations?
 
 Healthcare-specific open questions:
-[`knowledge-companion/verticals/healthcare-ops.md`](./knowledge-companion/verticals/healthcare-ops.md)
+operator-local vertical docs (not published in this repository)
