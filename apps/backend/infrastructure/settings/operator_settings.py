@@ -259,6 +259,16 @@ def _fetch_row() -> dict[str, Any]:
         "extractor_provider_id": None,
         "extractor_model": None,
         "extractor_timeout_sec": 120.0,
+        "legal_enabled": False,
+        "legal_jurisdiction": "none",
+        "legal_entity_name": None,
+        "legal_entity_address": None,
+        "legal_entity_email": None,
+        "legal_entity_phone": None,
+        "legal_terms_enabled": False,
+        "legal_impressum_md": None,
+        "legal_privacy_md": None,
+        "legal_terms_md": None,
     }
     try:
         with db.pool().connection() as conn:
@@ -316,7 +326,12 @@ def _fetch_row() -> dict[str, Any]:
                            extractor_timeout_sec,
                            discord_chat_model_catalog_owned_by,
                            telegram_chat_model_catalog_owned_by,
-                           deployment_mode
+                           deployment_mode,
+                           legal_enabled, legal_jurisdiction,
+                           legal_entity_name, legal_entity_address,
+                           legal_entity_email, legal_entity_phone,
+                           legal_terms_enabled,
+                           legal_impressum_md, legal_privacy_md, legal_terms_md
                     FROM operator_settings WHERE id = 1
                     """
                 )
@@ -454,6 +469,28 @@ def _fetch_row() -> dict[str, Any]:
             if len(row) > 87 and row[87] is not None and str(row[87]).strip().lower() in ("agent_system", "multi_tenant")
             else "multi_tenant"
         ),
+        "legal_enabled": bool(row[88]) if len(row) > 88 and row[88] is not None else False,
+        "legal_jurisdiction": (
+            str(row[89]).strip().lower()
+            if len(row) > 89 and row[89] is not None and str(row[89]).strip().lower() in ("none", "de", "en", "custom")
+            else "none"
+        ),
+        "legal_entity_name": (
+            (str(row[90]).strip() or None) if len(row) > 90 and row[90] is not None else None
+        ),
+        "legal_entity_address": (
+            (str(row[91]).strip() or None) if len(row) > 91 and row[91] is not None else None
+        ),
+        "legal_entity_email": (
+            (str(row[92]).strip() or None) if len(row) > 92 and row[92] is not None else None
+        ),
+        "legal_entity_phone": (
+            (str(row[93]).strip() or None) if len(row) > 93 and row[93] is not None else None
+        ),
+        "legal_terms_enabled": bool(row[94]) if len(row) > 94 and row[94] is not None else False,
+        "legal_impressum_md": row[95] if len(row) > 95 else None,
+        "legal_privacy_md": row[96] if len(row) > 96 else None,
+        "legal_terms_md": row[97] if len(row) > 97 else None,
     }
 
 

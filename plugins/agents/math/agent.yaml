@@ -1,6 +1,6 @@
 id: math
 name: Math
-icon: 🔢
+icon: calculator
 description: Numeric calculation — expressions, percentages, unit conversion, and statistics
 requires_workspace: false
 execution_context: auto

@@ -280,7 +280,7 @@ class AgentRegistry:
         definition = {
             "id": agent_id,
             "name": getattr(module, "AGENT_NAME", agent_id),
-            "icon": getattr(module, "AGENT_ICON", "🤖"),
+            "icon": getattr(module, "AGENT_ICON", "bot"),
             "description": getattr(module, "AGENT_DESCRIPTION", ""),
             "system_prompt": getattr(module, "AGENT_SYSTEM_PROMPT", ""),
             "tool_domain": getattr(module, "AGENT_TOOL_DOMAIN", None),
@@ -312,7 +312,7 @@ class AgentRegistry:
         self._agents["general"] = {
             "id": "general",
             "name": "General",
-            "icon": "🧠",
+            "icon": "brain",
             "description": "General purpose assistant (plugin missing — no tools until general is loaded)",
             "system_prompt": "You are a helpful AI assistant.",
             "tool_domain": None,

@@ -1,6 +1,6 @@
 id: communications
 name: Communications
-icon: ✉️
+icon: mail
 description: Mail, messaging, friends, and shared calendars
 min_role: user
 delegatable: true

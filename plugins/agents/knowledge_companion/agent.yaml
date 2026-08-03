@@ -1,6 +1,6 @@
 id: knowledge_companion
 name: Knowledge Companion
-icon: 📚
+icon: book-open
 description: Tenant operational knowledge — search published team notes, checklists, and runbooks (tenant_knowledge RAG)
 min_role: user
 delegatable: true

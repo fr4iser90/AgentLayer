@@ -1,6 +1,6 @@
 id: creative
 name: Creative
-icon: 🎨
+icon: palette
 description: HTML pages and ComfyUI inpainting
 min_role: user
 delegatable: true

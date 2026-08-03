@@ -35,7 +35,7 @@ Split backlog for the **industry-agnostic** strategy in
 
 | Profile | Doc | Gated tasks |
 |---------|-----|-------------|
-| `healthcare_ops` | [healthcare-ops.md](./verticals/healthcare-ops.md) | [H1–H3](./verticals/healthcare-ops/) |
+| `healthcare_ops` | [healthcare-ops.md](./verticals/healthcare-ops.md) · [clinic web surface](./verticals/healthcare-ops/clinic-web-surface.md) | [H1–H3](./verticals/healthcare-ops/) |
 | `field_service_ops` | _(stub)_ | — |
 | `default_ops` | platform plan only | — |
 

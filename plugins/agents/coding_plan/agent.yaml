@@ -1,6 +1,6 @@
 id: coding_plan
 name: Coding (plan)
-icon: 📋
+icon: clipboard-list
 description: "Plan mode: read-only codebase exploration — no bash or file edits"
 min_role: user
 delegatable: true

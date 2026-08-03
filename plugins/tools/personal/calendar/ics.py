@@ -167,7 +167,7 @@ def _to_utc_datetime(val: Any) -> datetime | None:
     if val is None:
         return None
     if isinstance(val, datetime):
-        # ✅ Fix icalendar vDatetime Bug: native datetime casten ZUERST!
+        # Fix icalendar vDatetime Bug: native datetime casten ZUERST!
         # vDatetime.astimezone() ist seit 2019 kaputt und macht gar nichts
         native = datetime(
             val.year, val.month, val.day,
@@ -295,7 +295,7 @@ def list_events(arguments: dict[str, Any]) -> str:
 
     now = datetime.now(UTC)
     
-    # ✅ Korrekte Kalender Monat Berechnung statt * 31
+    # Korrekte Kalender Monat Berechnung statt * 31
     win_end = now + timedelta(days=days_ahead) + relativedelta(months=+months_ahead)
     win_start = now - timedelta(days=days_back) - relativedelta(months=months_back)
     

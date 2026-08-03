@@ -1,6 +1,6 @@
 id: research
 name: Research
-icon: 🔍
+icon: search
 description: Web search, RAG, personal notes (kb), and memory
 min_role: user
 delegatable: true

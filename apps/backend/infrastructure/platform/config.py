@@ -385,6 +385,27 @@ CODING_BASH_ENV_SCRUB = _env_bool("AGENT_CODING_BASH_ENV_SCRUB", True)
 # Opt-in strict prefix allowlist for coding_bash (default off — normal agent keeps broad shell).
 CODING_BASH_STRICT = _env_bool("AGENT_CODING_BASH_STRICT", False)
 
+# LSP tool: cap diagnostics returned to the model; timeout waiting for publishDiagnostics.
+AGENT_LSP_DIAGNOSTICS_MAX = max(1, min(_env_int("AGENT_LSP_DIAGNOSTICS_MAX", 40), 200))
+AGENT_LSP_DIAGNOSTICS_TIMEOUT_SEC = max(1, min(_env_int("AGENT_LSP_DIAGNOSTICS_TIMEOUT_SEC", 10), 120))
+
+
+def lsp_server_cmd_override(language: str) -> list[str] | None:
+    """Optional per-language LSP argv from env, e.g. AGENT_LSP_PYTHON_CMD='pyright-langserver --stdio'."""
+    import shlex
+
+    lang = (language or "").strip().lower()
+    if not lang:
+        return None
+    raw = (os.environ.get(f"AGENT_LSP_{lang.upper()}_CMD") or "").strip()
+    if not raw:
+        return None
+    try:
+        parts = shlex.split(raw)
+    except ValueError:
+        parts = raw.split()
+    return parts or None
+
 # Package admission for coding_bash pip/npm installs (off | monitor | enforce).
 PACKAGE_ADMISSION_MODE = (os.environ.get("AGENT_PACKAGE_ADMISSION") or "monitor").strip().lower()
 if PACKAGE_ADMISSION_MODE not in ("off", "monitor", "enforce"):

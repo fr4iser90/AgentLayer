@@ -21,6 +21,8 @@ _DASHBOARD_PUBLIC_SHARE_PATH_RE = re.compile(
     re.IGNORECASE,
 )
 
+_PUBLIC_LEGAL_PATH_RE = re.compile(r"^/v1/public/legal(?:/[\w-]+)?$", re.IGNORECASE)
+
 _MIDDLEWARE_PUBLIC_EXACT: frozenset[str] = frozenset(
     {
         "/",
@@ -86,6 +88,11 @@ def is_dashboard_public_share_route(path: str, method: str) -> bool:
     return (method or "").upper() == "GET" and bool(_DASHBOARD_PUBLIC_SHARE_PATH_RE.match(path))
 
 
+def is_public_legal_route(path: str, method: str) -> bool:
+    """Operator legal pages (Impressum, privacy, terms) — no auth."""
+    return (method or "").upper() == "GET" and bool(_PUBLIC_LEGAL_PATH_RE.match(path))
+
+
 def public_http_auth_policy() -> dict[str, Any]:
     """Machine-readable policy for ``GET /auth/policy``."""
     return {
@@ -103,6 +110,8 @@ def public_http_auth_policy() -> dict[str, Any]:
                     "/v1/media/items/{uuid}/stream",
                     "/v1/dashboards/shared/{token}",
                     "/v1/dashboards/shared/{token}/files/{uuid}/content",
+                    "/v1/public/legal",
+                    "/v1/public/legal/{slug}",
                 ],
             },
             "identity_deferred_routes": {

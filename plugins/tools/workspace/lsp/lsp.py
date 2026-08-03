@@ -36,7 +36,8 @@ TOOL_DESCRIPTION = (
     "LSP operations: goToDefinition, findReferences, hover, documentSymbol, workspaceSymbol, "
     "diagnostics, completion, signatureHelp, rename. Supports Python, Go, Rust, TypeScript, "
     "JavaScript, Java, Ruby, PHP, C#, Dart, Elixir, Haskell, Lua, Terraform, SQL. "
-    "Server auto-detected from PATH. Workspace root found via project markers (go.mod, pyproject.toml, etc.)."
+    "Server auto-detected from PATH (see docs/runbooks/lsp.md). "
+    "For diagnostics prefer wait=true; results use 1-based line/character and severity labels."
 )
 
 logger = logging.getLogger(__name__)
@@ -141,8 +142,14 @@ def lsp(arguments: dict[str, Any], context: dict | None = None) -> str:
     new_name = (arguments.get("newName") or "").strip()
 
     if operation == "diagnostics":
-        wait = arguments.get("wait", False)
-        result = client.diagnostics(uri=uri, wait=bool(wait))
+        # Default wait=true so the model actually sees publishDiagnostics instead of an empty map.
+        wait = True if "wait" not in arguments else bool(arguments.get("wait"))
+        result = client.diagnostics(
+            uri=uri,
+            wait=wait,
+            workspace_root=root,
+            requested_path=rel,
+        )
         return json.dumps(result, ensure_ascii=False)
 
     op_methods = {
@@ -175,7 +182,8 @@ TOOLS: list[dict[str, Any]] = [
             "TOOL_DESCRIPTION": "LSP operations: goToDefinition, findReferences, hover, documentSymbol, workspaceSymbol, "
             "diagnostics, completion, signatureHelp, rename. Supports Python, Go, Rust, TypeScript, "
             "JavaScript, Java, Ruby, PHP, C#, Dart, Elixir, Haskell, Lua, Terraform, SQL. "
-            "Server auto-detected from PATH. Workspace root found via project markers (go.mod, pyproject.toml, etc.).",
+            "Server auto-detected from PATH (docs/runbooks/lsp.md). "
+            "diagnostics returns summary + 1-based path:line items; use wait=true (default).",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -205,7 +213,7 @@ TOOLS: list[dict[str, Any]] = [
                     },
                     "wait": {
                         "type": "boolean",
-                        "TOOL_DESCRIPTION": "Wait for diagnostics (default false)",
+                        "TOOL_DESCRIPTION": "Wait for publishDiagnostics before returning (default true)",
                     },
                 },
                 "required": ["operation"],

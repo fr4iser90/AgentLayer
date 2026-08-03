@@ -1,6 +1,6 @@
 id: coding
 name: Coding
-icon: 💻
+icon: code
 description: "Build mode: edits, bash, git, GitHub in the workspace — no security scans"
 min_role: user
 delegatable: true

@@ -42,10 +42,10 @@ def build_agents_catalog(
             tenant_id=tenant_id,
             user_id=user_id,
         )
+        # Omit icon: UI-only metadata must not enter LLM tool/catalog context.
         row: dict[str, Any] = {
             "id": aid,
             "name": ag.get("name") or aid,
-            "icon": ag.get("icon"),
             "description": (ag.get("description") or "").strip(),
             "min_role": ag.get("min_role") or "user",
             "requires_workspace": bool(ag.get("requires_workspace")),

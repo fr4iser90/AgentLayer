@@ -19,6 +19,9 @@ def test_build_agents_catalog_includes_general() -> None:
     assert general["tool_domains"] == []
     assert general["tool_capability_any"] == []
     assert general["tool_names_count"] == 6
+    # Icons are UI-only — must not appear in LLM catalog payloads.
+    assert "icon" not in general
+    assert all("icon" not in a for a in out["agents"])
 
 
 def test_delegatable_agents_include_tool_names_for_user() -> None:

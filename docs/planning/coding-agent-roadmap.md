@@ -150,7 +150,7 @@ Single backlog derived from “what agentic coding needs in general,” mapped t
 | **Read → Plan → Act** | Weniger blindes Editieren | **Habt ihr:** `coding_plan` Agent + Registry-Allowlist (read/meta only); UI wählt Agent. **Next:** Auto-Routing erste N Runden optional. |
 | **Patch-first Editing** | Stabilere Edits | **Habt ihr:** `apply_patch`, replace, edit. **Next:** Prompt/Default „prefer patch“; Metriken ob Patch vs. full write. |
 | **Schnelle Suche** | Repo ohne 20× `list_dir` | **Habt ihr:** `search`, `glob`, Index/Qdrant optional; bei Cap **`truncation_hint`** im JSON. **Next:** Ripgrep-Pfad in Container, Index-on-open optional. |
-| **LSP / Diags** | Echter Code-Intellekt | **Habt ihr:** `lsp`. **Next:** Image/PATH-Doku, pro-Sprache Smoke, Fehler in Tool-Result klar surfaced. |
+| **LSP / Diags** | Echter Code-Intellekt | **Habt ihr:** `lsp` + model-facing diagnostics JSON + [`docs/runbooks/lsp.md`](../runbooks/lsp.md) / `scripts/lsp_path_smoke.py`. **Next:** optional servers in image if ops want zero host install. |
 | **Tests/Linter im Loop** | „Fertig“ definiert | **Teilweise:** optional `verify_command` / `note` in Workspace-Root **`.agentlayer.json`** (Hinweis im ersten System-Prompt; kein Auto-Run). **Next:** explizites Ausführen vor „done“; CI-Webhook (Epic E). |
 | **Budgets** | Tokens, Runden, Zeit | **Habt ihr:** `AGENT_MAX_TOOL_ROUNDS`, Rescue. **Next:** pro-Agent-Override, UI-Warnung bei niedrigem Budget. |
 | **User-Memory vs Thread** | Langzeit vs. Session | **Habt ihr:** Facts/Notes/Graph + `messages`; **Session tool recap** nach Tool-Blöcken (`AGENT_SESSION_TOOL_RECAP_*`). **Next:** komprimierte inhaltliche Zusammenfassung (nicht nur Tool-Namen). |
@@ -189,8 +189,9 @@ Each phase should end with **manual smoke** + **one paragraph** in this doc or A
 **Implemented (slice):**
 
 - `glob` / `search`: bei Cap ein Feld **`truncation_hint`** mit konkreter Anweisung (narrower glob, `path_prefix`, Limits in Config).
+- **LSP runbook + diagnostics polish:** `docs/runbooks/lsp.md`, `scripts/lsp_path_smoke.py` (Python/TS PATH), model-facing diagnostics (`summary`, 1-based locations, severity labels), `AGENT_LSP_<LANG>_CMD`.
 
-**Still open:** Index-on-attach (Flag), LSP-Runbook pro Stack, optional Ripgrep.
+**Still open:** Index-on-attach progress in UI (flag exists); optional Ripgrep image packaging if `rg` missing.
 
 #### Phase 4 — Verify-in-the-loop & session working memory
 

@@ -82,7 +82,7 @@ def definition_from_yaml(
     return {
         "id": agent_id,
         "name": str(data.get("name") or agent_id),
-        "icon": str(data.get("icon") or "🤖"),
+        "icon": str(data.get("icon") or "bot"),
         "description": str(data.get("description") or ""),
         "system_prompt": _read_system_prompt(agent_dir, data),
         "tool_domain": tool_domain,

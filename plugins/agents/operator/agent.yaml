@@ -1,6 +1,6 @@
 id: operator
 name: Operator
-icon: ⚙️
+icon: settings
 description: 'Admin-only assistant for AgentLayer: interfaces, tools, scheduler jobs,
   and RAG docs search — not for arbitrary repo coding (use the Coding agent).'
 requires_workspace: false

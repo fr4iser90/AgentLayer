@@ -496,6 +496,20 @@ def public_dict() -> dict[str, Any]:
         "workspace_reindex_after_git_pull": bool(r.get("workspace_reindex_after_git_pull", False)),
         "workspace_nightly_reindex_enabled": bool(r.get("workspace_nightly_reindex_enabled", False)),
         "workspace_index_on_attach_enabled": bool(r.get("workspace_index_on_attach_enabled", False)),
+        "legal_enabled": bool(r.get("legal_enabled", False)),
+        "legal_jurisdiction": (
+            str(r.get("legal_jurisdiction") or "none").strip().lower()
+            if str(r.get("legal_jurisdiction") or "none").strip().lower() in ("none", "de", "en", "custom")
+            else "none"
+        ),
+        "legal_entity_name": (str(r.get("legal_entity_name") or "").strip()),
+        "legal_entity_address": (str(r.get("legal_entity_address") or "").strip()),
+        "legal_entity_email": (str(r.get("legal_entity_email") or "").strip()),
+        "legal_entity_phone": (str(r.get("legal_entity_phone") or "").strip()),
+        "legal_terms_enabled": bool(r.get("legal_terms_enabled", False)),
+        "legal_impressum_md": (str(r.get("legal_impressum_md") or "").strip()),
+        "legal_privacy_md": (str(r.get("legal_privacy_md") or "").strip()),
+        "legal_terms_md": (str(r.get("legal_terms_md") or "").strip()),
         **media_settings_public_fields(),
         **voice_settings_public_fields(),
     }

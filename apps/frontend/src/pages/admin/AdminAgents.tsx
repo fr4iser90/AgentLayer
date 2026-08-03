@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
@@ -18,6 +18,28 @@ type AgentRow = {
   source_path?: string | null;
   tool_discipline_preset?: string | null;
 };
+
+/** Lucide-style keys (ascii) → initial badge; legacy emoji icons still render as-is. */
+function AgentIcon({ icon, name }: { icon?: string; name: string }): ReactNode {
+  const raw = (icon || "").trim();
+  const isKey = raw.length > 0 && /^[a-z0-9_-]+$/i.test(raw);
+  if (isKey || !raw) {
+    return (
+      <span
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-border/60 text-xs font-medium text-surface-muted"
+        aria-hidden
+        title={isKey ? raw : undefined}
+      >
+        {(name || "?").slice(0, 1).toUpperCase()}
+      </span>
+    );
+  }
+  return (
+    <span className="text-lg" aria-hidden>
+      {raw}
+    </span>
+  );
+}
 
 type AgentDetail = AgentRow & {
   system_prompt?: string;
@@ -519,9 +541,7 @@ export function AdminAgents() {
                   }`}
                 >
                   <div className="flex items-start gap-2">
-                    <span className="text-lg" aria-hidden>
-                      {a.icon}
-                    </span>
+                    <AgentIcon icon={a.icon} name={a.name} />
                     <div className="min-w-0 flex-1">
                       <p className="font-medium text-white">
                         {a.name}{" "}
@@ -540,8 +560,9 @@ export function AdminAgents() {
 
           {selected ? (
             <div className="rounded-xl border border-surface-border bg-surface-raised/50 p-4">
-              <h2 className="text-lg font-semibold text-white">
-                {selected.icon} {selected.name}
+              <h2 className="flex items-center gap-2 text-lg font-semibold text-white">
+                <AgentIcon icon={selected.icon} name={selected.name} />
+                {selected.name}
               </h2>
               <p className="mt-1 text-sm text-surface-muted">{selected.description}</p>
 

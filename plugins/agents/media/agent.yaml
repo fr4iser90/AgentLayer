@@ -1,6 +1,6 @@
 id: media
 name: Media
-icon: 🎵
+icon: music
 description: Media library, queues, streams, and playback
 min_role: user
 delegatable: true

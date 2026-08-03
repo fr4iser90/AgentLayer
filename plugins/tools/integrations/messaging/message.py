@@ -43,7 +43,7 @@ def _append_upload_hint(body: str, *, photo_upload_hint: bool) -> str:
     if not photo_upload_hint:
         return body
     hint = (
-        "\n\n📷 Fotos: Schick sie als Bild direkt an diesen Telegram-Bot — "
+        "\n\nFotos: Schick sie als Bild direkt an diesen Telegram-Bot — "
         "sie landen im geteilten Album (wenn du Bearbeitungs-Recht auf dem Dashboard hast)."
     )
     return (body.rstrip() + hint)[:4000]

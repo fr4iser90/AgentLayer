@@ -49,10 +49,10 @@ def calendar(arguments: dict[str, Any]) -> Any:
         
         # First check for auto filled entity parameter from trigger system, then fall back to name
         name_query = arguments.get("entity") or arguments.get("name") or arguments.get("friend") or arguments.get("friend_name")
-        logger.info("🔍 get_friend_calendar CALLED with arguments: %s | name_query=%s", arguments, name_query)
+        logger.info("get_friend_calendar CALLED with arguments: %s | name_query=%s", arguments, name_query)
         
         if not name_query:
-            logger.warning("❌ get_friend_calendar: NO NAME PARAMETER")
+            logger.warning("get_friend_calendar: NO NAME PARAMETER")
             return json.dumps({"error": "name or entity parameter is required"}, ensure_ascii=False)
 
         # Step 1: Find friend by name
@@ -62,7 +62,7 @@ def calendar(arguments: dict[str, Any]) -> Any:
             res = {
                 "result": f"Could not find {name_query} in your friends list. Only confirmed friends can share calendars."
             }
-            logger.info("✅ get_friend_calendar RESULT: %s", res)
+            logger.info("get_friend_calendar RESULT: %s", res)
             return json.dumps(res, ensure_ascii=False)
         
         friend_user_id = uuid.UUID(friend_user["friend_user_id"])
@@ -80,7 +80,7 @@ def calendar(arguments: dict[str, Any]) -> Any:
             res = {
                 "result": f"{friend_display_name} has not shared their calendar with you."
             }
-            logger.info("✅ get_friend_calendar RESULT: %s", res)
+            logger.info("get_friend_calendar RESULT: %s", res)
             return json.dumps(res, ensure_ascii=False)
 
         # Step 3: Get friend's ICS calendar URL (google_calendar or calendar_ics secret)
@@ -90,7 +90,7 @@ def calendar(arguments: dict[str, Any]) -> Any:
             res = {
                 "result": f"{friend_display_name} has a calendar connected but no sharing is configured."
             }
-            logger.info("✅ get_friend_calendar RESULT: %s", res)
+            logger.info("get_friend_calendar RESULT: %s", res)
             return json.dumps(res, ensure_ascii=False)
 
         # Step 4: Delegate to existing calendar parser
@@ -115,7 +115,7 @@ def calendar(arguments: dict[str, Any]) -> Any:
                 "share_policy": grant.get("policy") or {},
                 "calendar": calendar_result,
             }
-            logger.info("✅ get_friend_calendar RESULT: %s", res)
+            logger.info("get_friend_calendar RESULT: %s", res)
             return json.dumps(res, ensure_ascii=False)
             
         except ImportError:
@@ -123,12 +123,12 @@ def calendar(arguments: dict[str, Any]) -> Any:
                 "friend_name": friend_display_name,
                 "result": "Calendar access granted but calendar parser is not available."
             }
-            logger.info("✅ get_friend_calendar RESULT: %s", res)
+            logger.info("get_friend_calendar RESULT: %s", res)
             return json.dumps(res, ensure_ascii=False)
 
     except Exception as e:
         res = {"error": str(e)}
-        logger.warning("❌ get_friend_calendar EXCEPTION: %s", str(e))
+        logger.warning("get_friend_calendar EXCEPTION: %s", str(e))
         return json.dumps(res, ensure_ascii=False)
 
 
@@ -152,15 +152,16 @@ TOOLS: list[dict[str, Any]] = [
                             "type": "string",
                             "TOOL_DESCRIPTION": (
                                 "Name OR EMAIL of the friend whose calendar you want to see. "
-                                "This will be matched against your friends list. ❗ REQUIRED PARAMETER. "
-                                "PREFER TO PASS THE EMAIL ADDRESS WHEN AVAILABLE, IT IS UNIQUE AND MORE RELIABLE."
+                                "This will be matched against your friends list. Required parameter. "
+                                "Prefer the email address when available; it is unique and more reliable."
                             ),
                         },
                         "entity": {
                             "type": "string",
                             "TOOL_DESCRIPTION": (
-                                "GET FRIEND WORK SCHEDULE AND CALENDAR. "
-                                "⚠️ CALL THIS TOOL DIRECTLY FIRST. DO NOT CALL get_friend_info BEFORE. DO NOT CALL get_tool_help. "
+                                "Get friend work schedule and calendar. "
+                                "Call this tool directly first. Do not call get_friend_info before. "
+                                "Do not call get_tool_help. "
                                 "This tool resolves the friend name automatically, checks permissions and returns calendar entries. "
                                 "Use this when user asks: 'when is NAME working', 'when must NAME go to work', 'work schedule', 'shifts'. "
                                 "You do not need any other tools before this."

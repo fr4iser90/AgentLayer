@@ -94,6 +94,7 @@ services:
       PLAYWRIGHT_BROWSERS_PATH: /data/pidea/ms-playwright
       # DB-backed project workspaces (manual/git/agentlayer-self). Separate from /workspace/AgentLayer (read-only seed).
       # See docs/runbooks/workspace-persistence.md
+      # LSP servers are not in the image — put them on PATH or set AGENT_LSP_*_CMD (docs/runbooks/lsp.md).
       AGENTLAYER_WORKSPACE_PATH: /data/project_workspaces
     volumes:
       # create_tool / Default AGENT_TOOLS_EXTRA_DIR=/data/tools — ohne Mount existiert der Pfad nicht.

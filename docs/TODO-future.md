@@ -61,7 +61,7 @@ Order below is **recommended implementation priority** (security and correctness
 
 - [ ] **Index-on-attach (operator flag):** Optional background index when a workspace is selected or opened; cap CPU/time; surface progress in UI or logs. **Done:** `maybe_schedule_index_on_attach`; operator toggle `workspace_index_on_attach_enabled` (Admin → Interfaces → Platform) or env `AGENT_WORKSPACE_INDEX_ON_ATTACH`. **Open:** attach progress in UI.
 - [x] **Ripgrep or fast path:** Literal ``search`` uses **ripgrep** when ``rg`` is on ``PATH`` (or ``AGENT_RIPGREP_PATH``); timeout ``AGENT_RIPGREP_TIMEOUT_SEC``; falls back to Python walk. Regex mode stays Python. Response includes ``search_engine``.
-- [ ] **LSP runbook:** Per-language smoke (Python/TS minimum), compose PATH notes, and clearer surfacing of diagnostics inside tool JSON for the model.
+- [x] **LSP runbook:** Per-language smoke (Python/TS minimum), compose PATH notes, and clearer surfacing of diagnostics inside tool JSON for the model. **Done:** `docs/runbooks/lsp.md`, `scripts/lsp_path_smoke.py`, model-facing diagnostics (`summary` + 1-based `path`/`line`/`severity`), `AGENT_LSP_<LANG>_CMD` + caps in config / `.env.example`.
 
 **Retrieval / incremental index (3-stage plan):** Full spec + file-level change list → [`docs/planning/retrieval-incremental-index-roadmap.md`](planning/retrieval-incremental-index-roadmap.md).
 

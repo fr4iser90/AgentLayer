@@ -1,3 +1,4 @@
+import { AdminInterfacesLegalSection } from "./AdminInterfacesLegalSection";
 import { useOperatorSettings } from "../../../features/admin/operatorSettings/OperatorSettingsProvider";
 import {
   envProviderPatternFromCleanupKeys,
@@ -240,6 +241,8 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               placeholder={t("admin:ifPlatformMediaEmbedHostsPlaceholder")}
             />
           </section>
+
+          <AdminInterfacesLegalSection />
 
           </>
           ) : null}

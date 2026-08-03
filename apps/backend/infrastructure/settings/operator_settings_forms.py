@@ -119,6 +119,16 @@ class OperatorSettingsPatch(BaseModel):
     voice_bridge_discord: bool | None = None
     voice_realtime_enabled: bool | None = None
     voice_discord_vc_enabled: bool | None = None
+    legal_enabled: bool | None = None
+    legal_jurisdiction: str | None = Field(default=None, max_length=16)
+    legal_entity_name: str | None = Field(default=None, max_length=256)
+    legal_entity_address: str | None = Field(default=None, max_length=4000)
+    legal_entity_email: str | None = Field(default=None, max_length=256)
+    legal_entity_phone: str | None = Field(default=None, max_length=64)
+    legal_terms_enabled: bool | None = None
+    legal_impressum_md: str | None = Field(default=None, max_length=200_000)
+    legal_privacy_md: str | None = Field(default=None, max_length=200_000)
+    legal_terms_md: str | None = Field(default=None, max_length=200_000)
 
 
 def operator_settings_patch_field_names() -> tuple[str, ...]:

@@ -1,6 +1,6 @@
 id: dashboard
 name: Dashboard
-icon: 📊
+icon: layout-dashboard
 description: Board layouts, list data, collections, task artifacts
 min_role: user
 delegatable: true

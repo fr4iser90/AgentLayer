@@ -7,6 +7,7 @@ import { NotificationProvider } from "../features/notifications/NotificationProv
 import { GlobalMediaProvider } from "../features/media/GlobalMediaProvider";
 import { MediaMiniPlayer } from "../features/media/MediaMiniPlayer";
 import { SUPPORTED } from "../i18n/config";
+import { LegalFooterLinks } from "../components/LegalFooterLinks";
 
 const GITHUB_REPO =
   "https://github.com/fr4iser90/AgentLayer_-_Jetson-Orin-Nano-Super-Developer-Kit-dedicated";
@@ -112,6 +113,7 @@ export function AppLayout() {
       <MediaMiniPlayer />
       <footer className="shrink-0 border-t border-surface-border bg-surface-raised/80 px-4 py-2">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-surface-muted">
+          <LegalFooterLinks />
           <a
             href={GITHUB_REPO}
             target="_blank"

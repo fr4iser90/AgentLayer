@@ -122,9 +122,12 @@ Only you merge changes to your host codebase.
 | `glob` | Find files by pattern |
 | `search` | Search in files |
 | `retrieve_context` | Grep + semantic (Qdrant) + RAG docs (+ optional memory) in one call |
+| `lsp` | Definitions, references, hover, **diagnostics** (language server on `PATH`) |
 | `index` | Build symbol index |
 | `bash` | Run shell commands |
 | `symbols` | List symbols in file |
+
+Language servers are **not** in the default image. Install Python/TS servers and verify with `python scripts/lsp_path_smoke.py` — details: [`docs/runbooks/lsp.md`](../runbooks/lsp.md).
 
 ### Tool Guidelines
 

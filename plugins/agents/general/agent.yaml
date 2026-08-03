@@ -1,6 +1,6 @@
 id: general
 name: General
-icon: 🧠
+icon: brain
 description: Orchestrator — routes work to specialist agents via delegate; binds workspaces when a repo is needed
 requires_workspace: false
 execution_context: auto

@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../../auth/AuthContext";
 import { apiFetch } from "../../../lib/api";
+import { invalidateLegalIndexCache } from "../../legal/useLegalPages";
 import {
   embeddingModelOptions,
   fetchModelCatalog,
@@ -187,6 +188,16 @@ function useOperatorSettingsState() {
   const [workspaceReindexAfterGitPull, setWorkspaceReindexAfterGitPull] = useState(false);
   const [workspaceNightlyReindexEnabled, setWorkspaceNightlyReindexEnabled] = useState(false);
   const [workspaceIndexOnAttachEnabled, setWorkspaceIndexOnAttachEnabled] = useState(false);
+  const [legalEnabled, setLegalEnabled] = useState(false);
+  const [legalJurisdiction, setLegalJurisdiction] = useState("none");
+  const [legalEntityName, setLegalEntityName] = useState("");
+  const [legalEntityAddress, setLegalEntityAddress] = useState("");
+  const [legalEntityEmail, setLegalEntityEmail] = useState("");
+  const [legalEntityPhone, setLegalEntityPhone] = useState("");
+  const [legalTermsEnabled, setLegalTermsEnabled] = useState(false);
+  const [legalImpressumMd, setLegalImpressumMd] = useState("");
+  const [legalPrivacyMd, setLegalPrivacyMd] = useState("");
+  const [legalTermsMd, setLegalTermsMd] = useState("");
   const [adminUsers, setAdminUsers] = useState<Array<{ id: string; email?: string | null; display_name?: string | null }>>([]);
   const [extLlmModelIds, setExtLlmModelIds] = useState<string[]>([]);
   const [extLlmModelsLoading, setExtLlmModelsLoading] = useState(false);
@@ -597,6 +608,19 @@ function useOperatorSettingsState() {
       setWorkspaceReindexAfterGitPull(!!op.workspace_reindex_after_git_pull);
       setWorkspaceNightlyReindexEnabled(!!op.workspace_nightly_reindex_enabled);
       setWorkspaceIndexOnAttachEnabled(!!op.workspace_index_on_attach_enabled);
+      const jur = String(op.legal_jurisdiction ?? "none").trim().toLowerCase();
+      setLegalEnabled(!!op.legal_enabled);
+      setLegalJurisdiction(
+        jur === "de" || jur === "en" || jur === "custom" ? jur : "none"
+      );
+      setLegalEntityName((op.legal_entity_name ?? "").trim());
+      setLegalEntityAddress((op.legal_entity_address ?? "").trim());
+      setLegalEntityEmail((op.legal_entity_email ?? "").trim());
+      setLegalEntityPhone((op.legal_entity_phone ?? "").trim());
+      setLegalTermsEnabled(!!op.legal_terms_enabled);
+      setLegalImpressumMd((op.legal_impressum_md ?? "").trim());
+      setLegalPrivacyMd((op.legal_privacy_md ?? "").trim());
+      setLegalTermsMd((op.legal_terms_md ?? "").trim());
 
       if (uRes.ok) {
         const uData = (await uRes.json()) as { users?: Array<{ id: string; email?: string | null; display_name?: string | null }> };
@@ -1238,6 +1262,17 @@ function useOperatorSettingsState() {
       patch.workspace_reindex_after_git_pull = workspaceReindexAfterGitPull;
       patch.workspace_nightly_reindex_enabled = workspaceNightlyReindexEnabled;
       patch.workspace_index_on_attach_enabled = workspaceIndexOnAttachEnabled;
+      patch.legal_enabled = legalEnabled;
+      const jur = legalJurisdiction.trim().toLowerCase();
+      patch.legal_jurisdiction = jur === "de" || jur === "en" || jur === "custom" ? jur : "none";
+      patch.legal_entity_name = legalEntityName.trim() || null;
+      patch.legal_entity_address = legalEntityAddress.trim() || null;
+      patch.legal_entity_email = legalEntityEmail.trim() || null;
+      patch.legal_entity_phone = legalEntityPhone.trim() || null;
+      patch.legal_terms_enabled = legalTermsEnabled;
+      patch.legal_impressum_md = legalImpressumMd.trim() || null;
+      patch.legal_privacy_md = legalPrivacyMd.trim() || null;
+      patch.legal_terms_md = legalTermsMd.trim() || null;
       patch.media_library_enabled = mediaLibraryEnabled;
       patch.media_user_upload_enabled = mediaUserUploadEnabled;
       patch.media_sharing_enabled = mediaSharingEnabled;
@@ -1445,6 +1480,7 @@ function useOperatorSettingsState() {
       }
       setDiscordToken("");
       setTelegramToken("");
+      invalidateLegalIndexCache();
       await load();
       setSaveMsg({
         ok: true,
@@ -1757,6 +1793,26 @@ function useOperatorSettingsState() {
     setWorkspaceNightlyReindexEnabled,
     workspaceIndexOnAttachEnabled,
     setWorkspaceIndexOnAttachEnabled,
+    legalEnabled,
+    setLegalEnabled,
+    legalJurisdiction,
+    setLegalJurisdiction,
+    legalEntityName,
+    setLegalEntityName,
+    legalEntityAddress,
+    setLegalEntityAddress,
+    legalEntityEmail,
+    setLegalEntityEmail,
+    legalEntityPhone,
+    setLegalEntityPhone,
+    legalTermsEnabled,
+    setLegalTermsEnabled,
+    legalImpressumMd,
+    setLegalImpressumMd,
+    legalPrivacyMd,
+    setLegalPrivacyMd,
+    legalTermsMd,
+    setLegalTermsMd,
     adminUsers,
     extLlmModelIds,
     extLlmModelsLoading,

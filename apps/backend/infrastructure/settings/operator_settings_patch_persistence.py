@@ -234,6 +234,36 @@ def persist_operator_settings_patch(r: dict[str, Any], patch: dict[str, Any], me
             if "telegram_chat_model_catalog_owned_by" in patch:
                 extra_sets.append("telegram_chat_model_catalog_owned_by = %s")
                 extra_params.append(r.get("telegram_chat_model_catalog_owned_by"))
+            if "legal_enabled" in patch:
+                extra_sets.append("legal_enabled = %s")
+                extra_params.append(bool(r.get("legal_enabled", False)))
+            if "legal_jurisdiction" in patch:
+                extra_sets.append("legal_jurisdiction = %s")
+                extra_params.append(str(r.get("legal_jurisdiction") or "none"))
+            if "legal_entity_name" in patch:
+                extra_sets.append("legal_entity_name = %s")
+                extra_params.append(r.get("legal_entity_name"))
+            if "legal_entity_address" in patch:
+                extra_sets.append("legal_entity_address = %s")
+                extra_params.append(r.get("legal_entity_address"))
+            if "legal_entity_email" in patch:
+                extra_sets.append("legal_entity_email = %s")
+                extra_params.append(r.get("legal_entity_email"))
+            if "legal_entity_phone" in patch:
+                extra_sets.append("legal_entity_phone = %s")
+                extra_params.append(r.get("legal_entity_phone"))
+            if "legal_terms_enabled" in patch:
+                extra_sets.append("legal_terms_enabled = %s")
+                extra_params.append(bool(r.get("legal_terms_enabled", False)))
+            if "legal_impressum_md" in patch:
+                extra_sets.append("legal_impressum_md = %s")
+                extra_params.append(r.get("legal_impressum_md"))
+            if "legal_privacy_md" in patch:
+                extra_sets.append("legal_privacy_md = %s")
+                extra_params.append(r.get("legal_privacy_md"))
+            if "legal_terms_md" in patch:
+                extra_sets.append("legal_terms_md = %s")
+                extra_params.append(r.get("legal_terms_md"))
             if extra_sets:
                 # SECURITY: Column names in `extra_sets` come from the known
                 # _SETTING_KEYS mapping (see _OPERATOR_SETTINGS_KEYS).

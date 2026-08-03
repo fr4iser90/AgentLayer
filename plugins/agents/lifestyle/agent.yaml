@@ -1,6 +1,6 @@
 id: lifestyle
 name: Lifestyle
-icon: 🌤️
+icon: cloud-sun
 description: Weather, clocks, and calendar events
 min_role: user
 delegatable: true

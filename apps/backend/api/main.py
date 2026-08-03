@@ -17,6 +17,7 @@ from apps.backend.api.platform.controllers.optional_http_access import (
     is_dashboard_public_share_route,
     is_identity_deferred_route,
     is_media_stream_route,
+    is_public_legal_route,
     middleware_path_is_public,
 )
 
@@ -45,6 +46,7 @@ from apps.backend.api.platform.controllers.admin_users_api import router as admi
 from apps.backend.api.platform.controllers.auth_api import router as auth_router
 from apps.backend.api.platform.controllers.health_api import merge_model_catalog_rows
 from apps.backend.api.platform.controllers.health_api import router as health_router
+from apps.backend.api.platform.controllers.legal_api import router as legal_router
 from apps.backend.api.platform.controllers.web_api import register_web_routes
 from apps.backend.api.providers.controllers.operator_admin_api import router as operator_admin_router
 from apps.backend.api.projects.controllers.github_api import router as github_router
@@ -136,6 +138,7 @@ for router in (
     operator_admin_router,
     admin_users_router,
     health_router,
+    legal_router,
     openapi_tools_router,
 ):
     app.include_router(router)
@@ -168,6 +171,8 @@ async def auth_middleware(request: Request, call_next):
     if is_media_stream_route(path, request.method):
         return await call_next(request)
     if is_dashboard_public_share_route(path, request.method):
+        return await call_next(request)
+    if is_public_legal_route(path, request.method):
         return await call_next(request)
     try:
         await authenticate_request(request)

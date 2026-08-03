@@ -356,7 +356,7 @@ async def _run_polling_session(cfg: _BridgeCfg) -> None:
         targets = list_telegram_upload_targets(user_id)
         if not targets:
             await msg.reply_text(
-                "📷 Kein bearbeitbares Dashboard mit Foto-Album gefunden. "
+                "Kein bearbeitbares Dashboard mit Foto-Album gefunden. "
                 "Du brauchst Bearbeitungs-Recht (z. B. friends.shares mit permission=edit).",
                 **thread_kw,
             )
@@ -398,7 +398,7 @@ async def _run_polling_session(cfg: _BridgeCfg) -> None:
                 caption=caption,
             )
             await msg.reply_text(
-                f"✅ Foto hochgeladen ({result.get('photos_count')} im Album).",
+                f"Foto hochgeladen ({result.get('photos_count')} im Album).",
                 **thread_kw,
             )
         except Exception as e:

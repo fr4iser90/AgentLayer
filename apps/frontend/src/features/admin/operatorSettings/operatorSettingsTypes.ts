@@ -153,6 +153,16 @@ export type OperatorPublic = {
   voice_bridge_discord?: boolean;
   voice_realtime_enabled?: boolean;
   voice_discord_vc_enabled?: boolean;
+  legal_enabled?: boolean;
+  legal_jurisdiction?: "none" | "de" | "en" | "custom" | string;
+  legal_entity_name?: string;
+  legal_entity_address?: string;
+  legal_entity_email?: string;
+  legal_entity_phone?: string;
+  legal_terms_enabled?: boolean;
+  legal_impressum_md?: string;
+  legal_privacy_md?: string;
+  legal_terms_md?: string;
   detail?: unknown;
 };
 

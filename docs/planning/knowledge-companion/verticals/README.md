@@ -50,3 +50,6 @@ See **Tenant Provisioning And Templates** in
 
 Regulated clinical connectors live under
 [`healthcare-ops/`](./healthcare-ops/) — not in the core platform backlog.
+
+**Clinic product shape (web tenant + tiles, not store apps):**
+[`healthcare-ops/clinic-web-surface.md`](./healthcare-ops/clinic-web-surface.md).

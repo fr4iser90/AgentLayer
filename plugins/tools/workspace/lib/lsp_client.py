@@ -161,6 +161,164 @@ LANGUAGE_SERVERS: dict[Language, dict[str, Any]] = {
     },
 }
 
+# LSP DiagnosticSeverity → label for tool JSON (1=Error … 4=Hint).
+_SEVERITY_LABELS: dict[int, str] = {
+    1: "error",
+    2: "warning",
+    3: "information",
+    4: "hint",
+}
+_SEVERITY_RANK: dict[str, int] = {
+    "error": 0,
+    "warning": 1,
+    "information": 2,
+    "hint": 3,
+    "unknown": 4,
+}
+
+
+def _tried_server_bins(language: Language) -> list[str]:
+    cfg = LANGUAGE_SERVERS.get(language, {})
+    bins: list[str] = []
+    primary = cfg.get("command") or []
+    if primary:
+        bins.append(str(primary[0]))
+    for alt in cfg.get("alternatives") or []:
+        if alt:
+            bins.append(str(alt[0]))
+    return bins
+
+
+def _uri_to_workspace_path(uri: str, workspace_root: Path | None) -> str:
+    path = _uri_to_path(uri)
+    if path is None:
+        return uri
+    try:
+        resolved = path.resolve()
+    except OSError:
+        resolved = path
+    if workspace_root is not None:
+        try:
+            return str(resolved.relative_to(workspace_root.resolve()))
+        except ValueError:
+            pass
+    return str(resolved)
+
+
+def format_one_diagnostic(
+    raw: dict[str, Any],
+    *,
+    path: str,
+) -> dict[str, Any]:
+    """Normalize one LSP diagnostic into model-friendly 1-based locations."""
+    severity_raw = raw.get("severity", 1)
+    try:
+        severity_n = int(severity_raw)
+    except (TypeError, ValueError):
+        severity_n = 1
+    severity = _SEVERITY_LABELS.get(severity_n, "unknown")
+    rng = raw.get("range") or {}
+    start = rng.get("start") or {}
+    end = rng.get("end") or {}
+    try:
+        line = int(start.get("line", 0)) + 1
+    except (TypeError, ValueError):
+        line = 1
+    try:
+        character = int(start.get("character", 0)) + 1
+    except (TypeError, ValueError):
+        character = 1
+    try:
+        end_line = int(end.get("line", start.get("line", 0))) + 1
+    except (TypeError, ValueError):
+        end_line = line
+    try:
+        end_character = int(end.get("character", start.get("character", 0))) + 1
+    except (TypeError, ValueError):
+        end_character = character
+    code = raw.get("code")
+    if isinstance(code, dict):
+        code = code.get("value")
+    item: dict[str, Any] = {
+        "path": path,
+        "severity": severity,
+        "line": line,
+        "character": character,
+        "end_line": end_line,
+        "end_character": end_character,
+        "message": str(raw.get("message") or "")[:500],
+    }
+    if code is not None and str(code).strip():
+        item["code"] = str(code)[:64]
+    source = raw.get("source")
+    if source:
+        item["source"] = str(source)[:64]
+    return item
+
+
+def format_diagnostics_payload(
+    raw_by_uri: dict[str, list[dict[str, Any]]],
+    *,
+    workspace_root: Path | None,
+    requested_path: str | None = None,
+    language: str | None = None,
+    server_command: list[str] | None = None,
+    max_items: int | None = None,
+) -> dict[str, Any]:
+    """Build tool JSON with summary + capped, sorted diagnostics (errors first)."""
+    cap = max_items if max_items is not None else int(getattr(config, "AGENT_LSP_DIAGNOSTICS_MAX", 40))
+    items: list[dict[str, Any]] = []
+    for uri, diags in (raw_by_uri or {}).items():
+        rel = _uri_to_workspace_path(uri, workspace_root)
+        for d in diags or []:
+            if isinstance(d, dict):
+                items.append(format_one_diagnostic(d, path=rel))
+    items.sort(
+        key=lambda d: (
+            _SEVERITY_RANK.get(str(d.get("severity")), 4),
+            str(d.get("path") or ""),
+            int(d.get("line") or 0),
+            int(d.get("character") or 0),
+        )
+    )
+    summary = {"error": 0, "warning": 0, "information": 0, "hint": 0, "unknown": 0, "total": len(items)}
+    for d in items:
+        key = str(d.get("severity") or "unknown")
+        if key not in summary:
+            key = "unknown"
+        summary[key] = int(summary[key]) + 1
+    truncated = len(items) > cap
+    shown = items[:cap]
+    payload: dict[str, Any] = {
+        "ok": True,
+        "operation": "diagnostics",
+        "path": requested_path,
+        "language": language,
+        "summary": summary,
+        "diagnostics": shown,
+    }
+    if server_command:
+        payload["server"] = server_command
+    if truncated:
+        payload["truncated"] = True
+        payload["truncation_hint"] = (
+            f"Showing {cap} of {summary['total']} diagnostics (errors first). "
+            "Fix top errors, re-run with wait=true, or narrow to one path."
+        )
+    if summary["error"] > 0:
+        payload["hint"] = (
+            "Fix diagnostic errors before claiming the change is done; "
+            "use apply_patch / edit on the cited path:line locations."
+        )
+    elif summary["total"] == 0:
+        payload["hint"] = (
+            "No diagnostics published for this file. "
+            "If that seems wrong, call operation=status or restart, then diagnostics with wait=true."
+        )
+    else:
+        payload["hint"] = "No errors; review warnings if they touch your change."
+    return payload
+
 
 def _find_workspace_root(file_path: Path, language: Language) -> Path | None:
     markers = ROOT_MARKERS.get(language.value, ())
@@ -247,7 +405,19 @@ class LSPClient:
         self._stderr_thread: threading.Thread | None = None
         self._init_error: str | None = None
         self._start_lock = threading.Lock()
-        self._command = server_cmd or LANGUAGE_SERVERS.get(language, {}).get("command", [])
+        override = None
+        if server_cmd is None:
+            try:
+                override = config.lsp_server_cmd_override(language.value)
+            except Exception:
+                override = None
+        self._command = server_cmd or override or LANGUAGE_SERVERS.get(language, {}).get("command", [])
+        try:
+            self.diagnostics_timeout_s = int(
+                getattr(config, "AGENT_LSP_DIAGNOSTICS_TIMEOUT_SEC", diagnostics_timeout_s)
+            )
+        except Exception:
+            self.diagnostics_timeout_s = diagnostics_timeout_s
 
     @property
     def is_alive(self) -> bool:
@@ -283,9 +453,12 @@ class LSPClient:
                     self._command = alt
                     break
             else:
+                tried = ", ".join(_tried_server_bins(self.language)) or cmd
+                env_key = f"AGENT_LSP_{self.language.value.upper()}_CMD"
                 self._init_error = (
-                    f"LSP server '{cmd}' not found in PATH. "
-                    f"Install it or set AGENT_LSP_SERVER_CMD."
+                    f"LSP server for {self.language.value} not found in PATH "
+                    f"(tried: {tried}). Install one or set {env_key}. "
+                    f"See docs/runbooks/lsp.md."
                 )
                 self.state = LSPServerState.FAILED
                 logger.error("LSP %s: %s", self.language.value, self._init_error)
@@ -814,9 +987,9 @@ class LSPClient:
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             with self._diagnostics_lock:
-                info = self._diagnostics.get(uri)
-                if info and info.diagnostics:
-                    return info.diagnostics
+                # Accept empty publish (clean file) — presence of the URI key means publish arrived.
+                if uri in self._diagnostics:
+                    return self._diagnostics[uri].diagnostics
             time.sleep(0.05)
         return []
 
@@ -946,15 +1119,35 @@ class LSPClient:
             return {"ok": False, "error": resp["error"].get("message", "LSP error")}
         return {"ok": True, "operation": "rename", "result": resp.get("result")}
 
-    def diagnostics(self, uri: str | None = None, wait: bool = False) -> dict[str, Any]:
+    def diagnostics(
+        self,
+        uri: str | None = None,
+        wait: bool = False,
+        *,
+        workspace_root: Path | None = None,
+        requested_path: str | None = None,
+        format_for_model: bool = True,
+    ) -> dict[str, Any]:
         if not self.is_alive:
             if not self.start():
                 return {"ok": False, "error": self._init_error or "LSP server not available"}
         if wait and uri:
+            with self._diagnostics_lock:
+                self._diagnostics.pop(uri, None)
             self._ensure_document_open(uri)
             self.wait_for_diagnostics(uri)
+        elif uri:
+            self._ensure_document_open(uri)
         diags = self.get_diagnostics(uri)
-        return {"ok": True, "operation": "diagnostics", "result": diags}
+        if not format_for_model:
+            return {"ok": True, "operation": "diagnostics", "result": diags}
+        return format_diagnostics_payload(
+            diags,
+            workspace_root=workspace_root or self.root_path,
+            requested_path=requested_path,
+            language=self.language.value,
+            server_command=list(self._command) if self._command else None,
+        )
 
     def _ensure_document_open(self, uri: str) -> None:
         if uri not in self._documents:

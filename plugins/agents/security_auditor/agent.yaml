@@ -1,6 +1,6 @@
 id: security_auditor
 name: Security auditor
-icon: 🛡️
+icon: shield
 description: "Admin SSC scans + read-only workspace review"
 min_role: admin
 delegatable: true

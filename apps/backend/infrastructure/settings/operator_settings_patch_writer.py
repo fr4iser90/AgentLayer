@@ -347,6 +347,34 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
         r["workspace_nightly_reindex_enabled"] = bool(patch["workspace_nightly_reindex_enabled"])
     if "workspace_index_on_attach_enabled" in patch:
         r["workspace_index_on_attach_enabled"] = bool(patch["workspace_index_on_attach_enabled"])
+    if "legal_enabled" in patch:
+        r["legal_enabled"] = bool(patch["legal_enabled"])
+    if "legal_jurisdiction" in patch:
+        v = str(patch["legal_jurisdiction"] or "none").strip().lower()
+        r["legal_jurisdiction"] = v if v in ("none", "de", "en", "custom") else "none"
+    if "legal_entity_name" in patch:
+        v = patch["legal_entity_name"]
+        r["legal_entity_name"] = None if v is None else (str(v).strip()[:256] or None)
+    if "legal_entity_address" in patch:
+        v = patch["legal_entity_address"]
+        r["legal_entity_address"] = None if v is None else (str(v).strip()[:4000] or None)
+    if "legal_entity_email" in patch:
+        v = patch["legal_entity_email"]
+        r["legal_entity_email"] = None if v is None else (str(v).strip()[:256] or None)
+    if "legal_entity_phone" in patch:
+        v = patch["legal_entity_phone"]
+        r["legal_entity_phone"] = None if v is None else (str(v).strip()[:64] or None)
+    if "legal_terms_enabled" in patch:
+        r["legal_terms_enabled"] = bool(patch["legal_terms_enabled"])
+    if "legal_impressum_md" in patch:
+        v = patch["legal_impressum_md"]
+        r["legal_impressum_md"] = None if v is None else (str(v).strip() or None)
+    if "legal_privacy_md" in patch:
+        v = patch["legal_privacy_md"]
+        r["legal_privacy_md"] = None if v is None else (str(v).strip() or None)
+    if "legal_terms_md" in patch:
+        v = patch["legal_terms_md"]
+        r["legal_terms_md"] = None if v is None else (str(v).strip() or None)
 
     media_patch = {
         k: patch[k]

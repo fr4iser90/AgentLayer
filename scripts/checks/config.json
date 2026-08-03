@@ -316,7 +316,7 @@
       "prompt_hard_max_chars": 12000,
       "max_pinned_tools": 12,
       "max_tool_allowlist": 80,
-      "max_prompt_emoji": 8,
+      "max_prompt_emoji": 0,
       "forbidden_prompt_phrases": [
         "Your tools (only these)"
       ]

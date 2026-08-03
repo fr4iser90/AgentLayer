@@ -18,6 +18,10 @@
     "docs": "Docs",
     "brand": "Agent Layer"
   },
+  "legal": {
+    "back": "Back",
+    "notFound": "This page is not available."
+  },
   "settings": "Settings",
   "userMenu": {
     "account": "Account",

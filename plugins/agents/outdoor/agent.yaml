@@ -1,6 +1,6 @@
 id: outdoor
 name: Outdoor
-icon: 🏕️
+icon: tent
 description: Fishing, hunting, and survival planning
 min_role: user
 delegatable: true

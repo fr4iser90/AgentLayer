@@ -47,6 +47,7 @@ This folder is written for **humans** and for **RAG ingestion**.
 - **HTTP API**: [`docs/api/http.md`](./api/http.md)
 - **Ops runbooks**: [`docs/runbooks/`](./runbooks/)
 - **Workspace persistence (Docker)**: [`docs/runbooks/workspace-persistence.md`](./runbooks/workspace-persistence.md)
+- **LSP / language servers (PATH smoke)**: [`docs/runbooks/lsp.md`](./runbooks/lsp.md)
 - **Glossary**: [`docs/glossary.md`](./glossary.md)
 
 ### Benchmarks & agent tuning
