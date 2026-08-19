@@ -15,7 +15,8 @@ export type BlockType =
   | "section"
   | "card_grid"
   | "dashboard_ref"
-  | "share_widget";
+  | "share_widget"
+  | "formula_calc";
 
 export interface GridPos {
   x: number;

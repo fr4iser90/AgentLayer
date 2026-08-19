@@ -1,10 +1,10 @@
 id: media
+requires_workspace: false
 name: Media
 icon: music
 description: Media library, queues, streams, and playback
 min_role: user
 delegatable: true
-requires_workspace: false
 execution_context: auto
 tool_allowlist:
   - media_add_embed

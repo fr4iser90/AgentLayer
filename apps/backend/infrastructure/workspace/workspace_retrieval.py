@@ -107,7 +107,7 @@ def qdrant_status() -> dict[str, Any]:
     if not url:
         return {"configured": False, "reachable": None}
     try:
-        from apps.backend.infrastructure.codebase.code_index_qdrant import get_code_index
+        get_code_index = None  # codebase removed
 
         idx = get_code_index()
         ok = idx.ensure_collection()
@@ -193,7 +193,7 @@ def index_status_payload(row: tuple | None) -> dict[str, Any]:
 
 def neo4j_status() -> dict[str, Any]:
     try:
-        from apps.backend.infrastructure.codebase.code_graph_neo4j import neo4j_status as _neo
+        _neo = None  # codebase removed
 
         return _neo()
     except Exception as e:

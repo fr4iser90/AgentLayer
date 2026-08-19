@@ -36,6 +36,11 @@ export type AuthUser = {
   membership_role?: string | null;
   deployment_mode?: string;
   org_setup_required?: boolean;
+  vertical_profile?: string | null;
+  /** When set by tenant capability ``ui.allowed_nav``, first-party chrome is limited. */
+  allowed_nav?: string[] | null;
+  /** False when tenant policy limits structure edit to admin memberships. */
+  dashboard_structure_edit?: boolean;
   profession_policy?: ProfessionPolicy;
 };
 

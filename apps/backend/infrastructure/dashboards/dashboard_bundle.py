@@ -184,12 +184,27 @@ def _fallback_label(kind: str) -> str:
     return k.replace("_", " ").title()
 
 
-def kind_catalog() -> list[dict[str, Any]]:
+def _filter_catalog_rows(
+    rows: list[dict[str, Any]],
+    *,
+    tenant_id: int | None,
+) -> list[dict[str, Any]]:
+    if tenant_id is None:
+        return rows
+    from apps.backend.domain.tenant_capability.policy import tenant_allowed_dashboard_kinds
+
+    allowed = tenant_allowed_dashboard_kinds(tenant_id)
+    if allowed is None:
+        return rows
+    return [r for r in rows if (r.get("kind") or "").strip().lower() in allowed]
+
+
+def kind_catalog(*, tenant_id: int | None = None) -> list[dict[str, Any]]:
     """Legacy catalog keyed by ``kind`` — prefer ``template_catalog()``."""
-    return template_catalog()
+    return template_catalog(tenant_id=tenant_id)
 
 
-def template_catalog() -> list[dict[str, Any]]:
+def template_catalog(*, tenant_id: int | None = None) -> list[dict[str, Any]]:
     """UI + API: one row per gallery template (``template_id`` primary key)."""
     rows: list[dict[str, Any]] = []
     for tid, b in sorted(bundles_by_template_id().items()):
@@ -208,7 +223,7 @@ def template_catalog() -> list[dict[str, Any]]:
                 "has_setup": bool(b.setup and b.setup.is_file()),
             }
         )
-    return rows
+    return _filter_catalog_rows(rows, tenant_id=tenant_id)
 
 
 def template_path_for_template_id(template_id: str) -> Path | None:

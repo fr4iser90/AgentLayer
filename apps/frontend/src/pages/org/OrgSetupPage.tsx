@@ -21,7 +21,7 @@ export function OrgSetupPage() {
   const navigate = useNavigate();
   const [wizardStep, setWizardStep] = useState(1);
   const [name, setName] = useState("");
-  const [verticalProfile, setVerticalProfile] = useState("healthcare_ops");
+  const [verticalProfile, setVerticalProfile] = useState("default_ops");
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
   const [startEmpty, setStartEmpty] = useState(false);
   const [published, setPublished] = useState(false);
@@ -34,7 +34,7 @@ export function OrgSetupPage() {
       const data = (await res.json()) as TenantResponse;
       if (res.ok && data.tenant) {
         setName((data.tenant.name ?? "").trim());
-        setVerticalProfile((data.tenant.vertical_profile ?? "healthcare_ops").trim() || "healthcare_ops");
+        setVerticalProfile((data.tenant.vertical_profile ?? "default_ops").trim() || "default_ops");
         if (!data.setup_required) {
           navigate("/org/knowledge", { replace: true });
         }
@@ -126,16 +126,14 @@ export function OrgSetupPage() {
           <label className="block text-xs text-surface-muted" htmlFor="org-vertical">
             {t("org:setupVerticalProfile")}
           </label>
-          <select
+          <input
             id="org-vertical"
             className="w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
             value={verticalProfile}
             onChange={(e) => setVerticalProfile(e.target.value)}
-          >
-            <option value="healthcare_ops">{t("org:verticalHealthcare")}</option>
-            <option value="default_ops">{t("org:verticalDefault")}</option>
-            <option value="field_service_ops">{t("org:verticalFieldService")}</option>
-          </select>
+            required
+          />
+          <p className="text-[11px] text-surface-muted">{t("org:setupVerticalProfileHint")}</p>
           {err ? <p className="text-sm text-red-400">{err}</p> : null}
           <button
             type="submit"

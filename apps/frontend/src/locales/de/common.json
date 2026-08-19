@@ -40,7 +40,11 @@
     "chatDesc": "Open-WebUI-ähnliche Shell (P2: WebSocket)",
     "studioDesc": "ComfyUI-Presets — GET /v1/studio/catalog",
     "tasksDesc": "Globales und projektbezogenes Backlog — Task beim Chatten binden",
-    "dashboardDesc": "Mehrere Arten (u. a. Aufgaben, Freunde, Haustiere) — Schema einmal installieren, dann Dashboards anlegen"
+    "dashboardDesc": "Mehrere Arten (u. a. Aufgaben, Freunde, Haustiere) — Schema einmal installieren, dann Dashboards anlegen",
+    "hubTitle": "Arbeitsbereich",
+    "hubIntro": "Dieser Tenant nutzt eine vom Operator konfigurierte, eingeschränkte Oberfläche.",
+    "hubDashboardDesc": "Boards und Rechner, die für Ihre Organisation freigeschaltet sind",
+    "hubChatDesc": "Chat mit den für diesen Tenant erlaubten Agenten"
   },
   "docs": {
     "title": "Dokumentation",

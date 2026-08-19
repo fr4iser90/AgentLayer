@@ -57,6 +57,33 @@ def validate_template_id(template_id: str) -> str | None:
     return None
 
 
+def validate_kind_for_tenant(tenant_id: int, kind: str) -> str | None:
+    """Return an error when the tenant may not create this dashboard kind."""
+    from apps.backend.domain.tenant_capability.policy import (
+        dashboard_kind_allowed_for_tenant,
+        tenant_allowed_dashboard_kinds,
+    )
+
+    if dashboard_kind_allowed_for_tenant(tenant_id, kind):
+        return None
+    allowed = tenant_allowed_dashboard_kinds(tenant_id) or frozenset()
+    known = ", ".join(sorted(allowed)) or "(none)"
+    return f"dashboard kind {kind!r} is not allowed for this tenant — allowed: {known}"
+
+
+def validate_structure_edit_for_user(tenant_id: int, user_id) -> str | None:
+    """Return an error when membership policy forbids creating/editing board structure."""
+    from apps.backend.domain.tenant_capability.policy import tenant_can_structure_edit_dashboards
+    from apps.backend.infrastructure.db import db
+
+    membership = db.user_membership_role(user_id, tenant_id)
+    if tenant_can_structure_edit_dashboards(tenant_id, membership):
+        return None
+    return (
+        "dashboard structure edit is not allowed for your membership role on this tenant "
+        "(ask a tenant admin to change layout or boards)"
+    )
+
 def resolve_create_target(
     *,
     template_id: str | None = None,

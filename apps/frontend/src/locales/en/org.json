@@ -81,6 +81,7 @@
   "setupPageIntro": "Complete these steps before using the knowledge base. This wizard is required once per organization.",
   "setupOrgName": "Organization name",
   "setupVerticalProfile": "Vertical profile",
+  "setupVerticalProfileHint": "Opaque slug for this organization (e.g. default_ops). Operator templates may set policy knobs separately.",
   "setupContinue": "Continue",
   "setupDisclaimer": "I confirm that published content is self-authored learning material only — no patient data or copied official documents.",
   "setupContentStep": "Knowledge base",

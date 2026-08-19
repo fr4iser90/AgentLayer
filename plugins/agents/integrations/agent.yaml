@@ -1,10 +1,10 @@
 id: integrations
+requires_workspace: false
 name: Integrations
 icon: plug
 description: HTTP, RSS, and connector profiles
 min_role: user
 delegatable: true
-requires_workspace: false
 execution_context: auto
 tool_allowlist:
   - call

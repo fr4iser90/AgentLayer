@@ -39,8 +39,8 @@ def is_elevated_role(role: str | None) -> bool:
 
 
 def default_agent_for_workspace(user_role: str | None) -> str:
-    """Bridge / workspace attach default when no explicit agent is set."""
-    return "coding" if is_elevated_role(user_role) else "general"
+    """Default agent when no explicit agent is set."""
+    return "general"
 
 
 def user_may_invoke_agent(

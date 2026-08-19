@@ -654,7 +654,7 @@ def scheduler_job_create(arguments: dict[str, Any]) -> str:
     ws = _parse_uuid(arguments.get("dashboard_id"), field="dashboard_id")
     if arguments.get("dashboard_id") is not None and str(arguments.get("dashboard_id")).strip() and ws is None:
         return _err("invalid dashboard_id UUID")
-    from apps.backend.infrastructure.codebase.coding_workflow import normalize_coding_workflow
+    normalize_coding_workflow = None  # codebase removed
 
     wf_raw: dict[str, Any] = {}
     if arguments.get("coding_workflow") is not None:
@@ -709,7 +709,7 @@ def scheduler_job_patch(arguments: dict[str, Any]) -> str:
     wf_norm: dict[str, Any] | None = None
     if wf is not None:
         try:
-            from apps.backend.infrastructure.codebase.coding_workflow import normalize_coding_workflow
+            normalize_coding_workflow = None  # codebase removed
 
             wf_norm = normalize_coding_workflow(wf)
         except (ValueError, TypeError) as e:
@@ -859,7 +859,7 @@ def run_create(arguments: dict[str, Any]) -> str:
     ws = _parse_uuid(arguments.get("dashboard_id"), field="dashboard_id")
     if arguments.get("dashboard_id") is not None and str(arguments.get("dashboard_id")).strip() and ws is None:
         return _err("invalid dashboard_id UUID")
-    from apps.backend.infrastructure.codebase.coding_workflow import normalize_coding_workflow
+    normalize_coding_workflow = None  # codebase removed
 
     wf_raw: dict[str, Any] = {}
     if isinstance(arguments.get("coding_workflow"), dict):

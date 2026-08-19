@@ -8,7 +8,11 @@ from unittest.mock import patch
 
 from apps.backend.application.tenant_profession.use_cases import profession_policy_service as prof_svc
 from apps.backend.application.tenant_profession.use_cases.profession_policy_service import effective_policy
-from apps.backend.domain.tenant_profession.policy import EffectiveProfessionPolicy, content_visible_to_policy
+from apps.backend.domain.tenant_profession.policy import (
+    EffectiveProfessionPolicy,
+    content_in_write_scope,
+    content_visible_to_policy,
+)
 
 
 def _policy(**kwargs) -> EffectiveProfessionPolicy:
@@ -82,6 +86,61 @@ def test_trainee_limited_to_onboarding_category() -> None:
 
     onboarding = {**content, "content_category": "onboarding"}
     assert content_visible_to_policy(onboarding, policy) is True
+
+
+def test_scoped_moderator_write_scope_by_category() -> None:
+    """content_reviewer with content_categories may only touch matching notes."""
+    policy = _policy(
+        role_kind="content_reviewer",
+        profession_role_slug="hygiene_moderator",
+        content_categories=("hygiene",),
+        capabilities=frozenset({"knowledge.search", "content.editor", "content.review"}),
+    )
+    assert content_in_write_scope(policy, content_category="hygiene") is True
+    assert content_in_write_scope(policy, content_category="abx") is False
+    assert content_in_write_scope(policy, content_category=None) is False
+    # Empty categories on role = unrestricted (global editor)
+    open_editor = _policy(
+        role_kind="content_editor",
+        content_categories=(),
+        capabilities=frozenset({"knowledge.search", "content.editor"}),
+    )
+    assert content_in_write_scope(open_editor, content_category="abx") is True
+    assert content_in_write_scope(open_editor, content_category=None) is True
+
+
+def test_scoped_moderator_department_gate() -> None:
+    policy = _policy(
+        role_kind="content_reviewer",
+        department_slug="or",
+        content_categories=("peri_op",),
+        capabilities=frozenset({"knowledge.search", "content.editor", "content.review"}),
+    )
+    assert (
+        content_in_write_scope(
+            policy,
+            content_category="peri_op",
+            target_departments=["or"],
+        )
+        is True
+    )
+    assert (
+        content_in_write_scope(
+            policy,
+            content_category="peri_op",
+            target_departments=["anesthesia"],
+        )
+        is False
+    )
+
+
+def test_tenant_admin_bypasses_write_scope() -> None:
+    policy = _policy(
+        is_tenant_admin=True,
+        content_categories=("hygiene",),
+        capabilities=frozenset({"knowledge.search", "content.editor", "content.review", "content.publish", "profession.admin"}),
+    )
+    assert content_in_write_scope(policy, content_category="abx") is True
 
 
 def test_filter_rag_hits_strips_restricted_cms_chunks() -> None:

@@ -32,6 +32,9 @@ class TenantTemplate:
     seed_content_glob: str | None
     enabled_agent_ids: tuple[str, ...] = ()
     enabled_tool_domains: tuple[str, ...] = ()
+    enabled_dashboard_kinds: tuple[str, ...] = ()
+    enabled_nav_items: tuple[str, ...] = ()
+    enabled_dashboard_write_roles: tuple[str, ...] = ()
 
     def to_public_dict(self) -> dict[str, Any]:
         return {
@@ -45,4 +48,7 @@ class TenantTemplate:
             "workflow_defaults": dict(self.workflow_defaults),
             "enabled_agent_ids": list(self.enabled_agent_ids),
             "enabled_tool_domains": list(self.enabled_tool_domains),
+            "enabled_dashboard_kinds": list(self.enabled_dashboard_kinds),
+            "enabled_nav_items": list(self.enabled_nav_items),
+            "enabled_dashboard_write_roles": list(self.enabled_dashboard_write_roles),
         }

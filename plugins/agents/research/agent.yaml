@@ -1,10 +1,10 @@
 id: research
+requires_workspace: false
 name: Research
 icon: search
 description: Web search, RAG, personal notes (kb), and memory
 min_role: user
 delegatable: true
-requires_workspace: false
 execution_context: auto
 tool_allowlist:
   - deep_search

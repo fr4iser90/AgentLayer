@@ -10,11 +10,12 @@ export function BlockExpandModal(props: {
   data: Record<string, unknown>;
   setData: Dispatch<SetStateAction<Record<string, unknown>>>;
   readOnly: boolean;
+  interactOnly?: boolean;
   dashboardId: string | null;
   onClose: () => void;
 }) {
   const { t } = useTranslation(["dashboard"]);
-  const { block, data, setData, readOnly, dashboardId, onClose } = props;
+  const { block, data, setData, readOnly, interactOnly = false, dashboardId, onClose } = props;
   const title = blockExpandTitle(block, t);
 
   useEffect(() => {
@@ -54,6 +55,7 @@ export function BlockExpandModal(props: {
             data={data}
             setData={setData}
             readOnly={readOnly}
+            interactOnly={interactOnly}
             dashboardId={dashboardId}
             displayMode="expanded"
           />

@@ -191,13 +191,14 @@ class PostgresCollectionPersistenceAdapter:
                 if start_sort is None:
                     cur.execute(
                         """
-                        SELECT COALESCE(MAX(sort_order), -1) + 1
+                        SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_sort
                         FROM collection_items
                         WHERE collection_id = %s AND list_key = %s
                         """,
                         (collection_id, key),
                     )
-                    base = int(cur.fetchone()[0])
+                    row = cur.fetchone() or {}
+                    base = int(row.get("next_sort") or 0)
                 else:
                     base = int(start_sort)
                 for i, entry in enumerate(rows):

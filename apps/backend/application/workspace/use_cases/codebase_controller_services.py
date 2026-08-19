@@ -1,4 +1,4 @@
 from __future__ import annotations
 
-from apps.backend.infrastructure.codebase.code_index_qdrant import get_code_index
+get_code_index = None  # codebase removed
 from apps.backend.infrastructure.platform.config import config

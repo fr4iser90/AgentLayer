@@ -19,18 +19,26 @@ async def dashboard_install_status(request: Request):
     from apps.backend.application.dashboards.use_cases.dashboard_controller_services import kind_catalog, kinds_with_schema_sql, kinds_with_templates
 
     user = await get_current_user(request)
+    tid = db.user_tenant_id(user.id)
+    from apps.backend.domain.tenant_capability.policy import tenant_allowed_dashboard_kinds
+
+    allowed = tenant_allowed_dashboard_kinds(tid)
     installed = dashboard_tables_exist()
-    cat = kind_catalog()
-    template_kinds = kinds_with_templates()
+    cat = kind_catalog(tenant_id=tid)
+    if allowed is None:
+        template_kinds = kinds_with_templates()
+        offers = kinds_with_schema_sql() if not installed else []
+    else:
+        template_kinds = [k for k in kinds_with_templates() if k in allowed]
+        offers = [k for k in kinds_with_schema_sql() if k in allowed] if not installed else []
     installed_kinds: list[str] | None = None
     if installed:
-        tid = db.user_tenant_id(user.id)
         installed_kinds = dashboard_db.tenant_installed_template_kinds(tid)
     return {
         "ok": True,
         "schema_installed": installed,
         "kind_catalog": cat,
-        "schema_install_offers": kinds_with_schema_sql() if not installed else [],
+        "schema_install_offers": offers,
         "template_kinds": template_kinds,
         "installed_template_kinds": installed_kinds,
     }
@@ -39,6 +47,8 @@ async def dashboard_install_status(request: Request):
 @router.post("/install")
 async def dashboard_install(request: Request, body: DashboardInstallBody):
     """Apply ``schema_sql`` only for ``body.kinds`` — does not create dashboard rows."""
+    from apps.backend.application.dashboards.use_cases.dashboard_controller_services import validate_kind_for_tenant
+
     user = await get_current_user(request)
     if dashboard_tables_exist():
         return {"ok": True, "already": True}
@@ -48,6 +58,11 @@ async def dashboard_install(request: Request, body: DashboardInstallBody):
             status_code=400,
             detail="select at least one kind (body.kinds) to install schema for; nothing is installed by default",
         )
+    tid = db.user_tenant_id(user.id)
+    for k in kinds:
+        kerr = validate_kind_for_tenant(tid, k)
+        if kerr:
+            raise HTTPException(status_code=403, detail=kerr)
     try:
         ensure_dashboard_schema(kinds)
     except FileNotFoundError as e:
@@ -56,7 +71,6 @@ async def dashboard_install(request: Request, body: DashboardInstallBody):
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=http_500_detail(e)) from e
-    tid = db.user_tenant_id(user.id)
     dashboard_db.tenant_merge_installed_template_kinds(tid, kinds)
     return {"ok": True, "already": False}
 
@@ -64,6 +78,8 @@ async def dashboard_install(request: Request, body: DashboardInstallBody):
 @router.post("/install-templates")
 async def dashboard_install_templates(request: Request, body: DashboardInstallBody):
     """Install more template kinds for this tenant (idempotent DDL + merge). Requires base schema."""
+    from apps.backend.application.dashboards.use_cases.dashboard_controller_services import validate_kind_for_tenant
+
     require_dashboard_schema()
     user = await get_current_user(request)
     kinds = [str(k).strip().lower() for k in body.kinds if str(k).strip()]
@@ -72,6 +88,11 @@ async def dashboard_install_templates(request: Request, body: DashboardInstallBo
             status_code=400,
             detail="send at least one kind in body.kinds",
         )
+    tid = db.user_tenant_id(user.id)
+    for k in kinds:
+        kerr = validate_kind_for_tenant(tid, k)
+        if kerr:
+            raise HTTPException(status_code=403, detail=kerr)
     try:
         ensure_dashboard_schema(kinds)
     except FileNotFoundError as e:
@@ -80,7 +101,6 @@ async def dashboard_install_templates(request: Request, body: DashboardInstallBo
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=http_500_detail(e)) from e
-    tid = db.user_tenant_id(user.id)
     dashboard_db.tenant_merge_installed_template_kinds(tid, kinds)
     merged = dashboard_db.tenant_installed_template_kinds(tid)
     return {"ok": True, "installed_template_kinds": merged}

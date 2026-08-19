@@ -1,10 +1,10 @@
 id: creative
+requires_workspace: false
 name: Creative
 icon: palette
 description: HTML pages and ComfyUI inpainting
 min_role: user
 delegatable: true
-requires_workspace: false
 execution_context: auto
 tool_allowlist:
   - build

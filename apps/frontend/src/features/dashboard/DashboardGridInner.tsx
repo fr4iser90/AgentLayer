@@ -111,6 +111,8 @@ export type DashboardGridInnerProps = {
   setData: Dispatch<SetStateAction<Record<string, unknown>>>;
   editMode: boolean;
   contentReadOnly?: boolean;
+  /** Use-mode: formulas/checklists work while structure stays locked. */
+  interactOnly?: boolean;
   dashboardId?: string | null;
   /** 0 = root dashboard grid; 1 = inside a section block */
   depth?: 0 | 1;
@@ -147,6 +149,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
     setData,
     editMode,
     contentReadOnly = false,
+    interactOnly = false,
     dashboardId,
     depth = 0,
     rootLayout,
@@ -406,6 +409,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                       data={data}
                       setData={setData}
                       readOnly={contentReadOnly}
+                      interactOnly={interactOnly}
                       dashboardId={dashboardId ?? null}
                       rootLayout={effectiveRootLayout}
                       setRootLayout={effectiveSetRootLayout}
@@ -445,6 +449,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
           data={data}
           setData={setData}
           readOnly={contentReadOnly}
+          interactOnly={interactOnly}
           dashboardId={dashboardId ?? null}
           onClose={() => setExpandedBlockId(null)}
         />
@@ -481,6 +486,7 @@ export function DashboardGridCanvas(props: {
   setData: Dispatch<SetStateAction<Record<string, unknown>>>;
   editMode: boolean;
   contentReadOnly?: boolean;
+  interactOnly?: boolean;
   dashboardId?: string | null;
   hideToolbar?: boolean;
   onPinBlock?: (blockId: string) => void;

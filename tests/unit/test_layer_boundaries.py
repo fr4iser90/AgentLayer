@@ -22,13 +22,11 @@ _FORBIDDEN_BACKEND_FILES = frozenset({"ssc_scan_artifact.py", "coding_plan_searc
 
 _EXPECTED_PLUGIN_PATHS = (
     _PLUGINS_TOOLS / "integrations" / "mail" / "lib" / "providers.py",
-    _PLUGINS_TOOLS / "integrations" / "github" / "lib" / "auth.py",
     _PLUGINS_TOOLS / "platform" / "tool_factory" / "common.py",
     _PLUGINS_TOOLS / "security" / "security_scan" / "common.py",
     _PLUGINS_TOOLS / "security" / "security_scan" / "artifact.py",
     _PLUGINS_TOOLS / "platform" / "shared" / "deferred_wait.py",
-    _PLUGINS_TOOLS / "workspace" / "lib" / "common.py",
-    _PLUGINS_TOOLS / "workspace" / "lib" / "index_lib.py",
+    _PLUGINS_TOOLS / "knowledge" / "lib" / "common.py",
     _PLUGINS_TOOLS / "integrations" / "http" / "lib" / "request.py",
     _PLUGINS_TOOLS / "integrations" / "friends" / "lib" / "common.py",
     _PLUGINS_TOOLS / "integrations" / "messaging" / "lib" / "outbound.py",

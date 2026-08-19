@@ -18,7 +18,17 @@ from apps.backend.infrastructure.dashboards.dashboard_bundle import (
     template_catalog,
     template_ids_with_templates,
 )
-from apps.backend.infrastructure.dashboards.dashboard_create_helpers import resolve_create_target
+from apps.backend.infrastructure.dashboards.dashboard_create_helpers import (
+    resolve_create_target,
+    validate_kind_for_tenant,
+    validate_structure_edit_for_user,
+    create_dashboard_payload,
+    parse_only_if_none,
+    default_title_for_kind,
+    default_title_for_template_id,
+    validate_create_kind,
+    validate_template_id,
+)
 from apps.backend.infrastructure.dashboards.dashboard_layout_proposals import (
     apply_layout_proposal,
     get_latest_proposal_set,

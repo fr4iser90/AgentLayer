@@ -14,6 +14,8 @@ benchmarks/results/
 # Local-only paths (never publish to public remotes)
 docs/planning/knowledge-companion/verticals/_private/
 content/_private/
+plugins/dashboards/_private/**
+!plugins/dashboards/_private/README.md
 
 # logs
 logs/

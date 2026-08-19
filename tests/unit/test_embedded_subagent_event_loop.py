@@ -59,7 +59,7 @@ def test_delegate_uses_subagent_cancel_event_not_parent_asyncio_event() -> None:
                 out = delegate(
                     {
                         "run_subagent": True,
-                        "agent_id": "coding_plan",
+                        "agent_id": "research",
                         "prompt": "ping",
                         "description": "test",
                     },

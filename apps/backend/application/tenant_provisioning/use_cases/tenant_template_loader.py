@@ -16,11 +16,17 @@ from apps.backend.domain.tenant_templates.entities import (
 
 _REPO_ROOT = Path(__file__).resolve().parents[5]
 _TEMPLATES_DIR = _REPO_ROOT / "content" / "tenant-templates"
+# Operator-local templates (gitignored under content/_private/) — same schema, not published.
+_PRIVATE_TEMPLATES_DIR = _REPO_ROOT / "content" / "_private" / "tenant-templates"
 _CACHE: dict[str, TenantTemplate] | None = None
 
 
 def templates_dir() -> Path:
     return _TEMPLATES_DIR
+
+
+def template_search_dirs() -> list[Path]:
+    return [_TEMPLATES_DIR, _PRIVATE_TEMPLATES_DIR]
 
 
 def _parse_template(raw: dict[str, Any]) -> TenantTemplate:
@@ -53,6 +59,21 @@ def _parse_template(raw: dict[str, Any]) -> TenantTemplate:
         for x in (raw.get("enabled_tool_domains") or [])
         if isinstance(x, (str, int)) and str(x).strip()
     )
+    dashboard_kinds = tuple(
+        str(x).strip().lower()
+        for x in (raw.get("enabled_dashboard_kinds") or [])
+        if isinstance(x, (str, int)) and str(x).strip()
+    )
+    nav_items = tuple(
+        str(x).strip().lower()
+        for x in (raw.get("enabled_nav_items") or [])
+        if isinstance(x, (str, int)) and str(x).strip()
+    )
+    write_roles = tuple(
+        str(x).strip().lower()
+        for x in (raw.get("enabled_dashboard_write_roles") or [])
+        if isinstance(x, (str, int)) and str(x).strip()
+    )
     return TenantTemplate(
         id=tid,
         name=str(raw.get("name") or tid),
@@ -64,6 +85,9 @@ def _parse_template(raw: dict[str, Any]) -> TenantTemplate:
         seed_content_glob=str(seed).strip() if seed else None,
         enabled_agent_ids=agents,
         enabled_tool_domains=tool_domains,
+        enabled_dashboard_kinds=dashboard_kinds,
+        enabled_nav_items=nav_items,
+        enabled_dashboard_write_roles=write_roles,
     )
 
 
@@ -72,13 +96,14 @@ def load_all_templates(*, reload: bool = False) -> dict[str, TenantTemplate]:
     if _CACHE is not None and not reload:
         return _CACHE
     out: dict[str, TenantTemplate] = {}
-    if not _TEMPLATES_DIR.is_dir():
-        _CACHE = out
-        return out
-    for path in sorted(_TEMPLATES_DIR.glob("*.json")):
-        raw = json.loads(path.read_text(encoding="utf-8"))
-        tpl = _parse_template(raw)
-        out[tpl.id] = tpl
+    for directory in template_search_dirs():
+        if not directory.is_dir():
+            continue
+        for path in sorted(directory.glob("*.json")):
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            tpl = _parse_template(raw)
+            # Later dirs win (private overlays public id if both exist).
+            out[tpl.id] = tpl
     _CACHE = out
     return out
 

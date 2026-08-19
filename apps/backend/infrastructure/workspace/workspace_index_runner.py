@@ -143,7 +143,7 @@ def run_incremental_index(
     if not config.CODING_ENABLED:
         return {"ok": False, "error": "coding tools disabled"}
 
-    from plugins.tools.workspace.lib.index_lib import _HAS_TS, get_index
+    _HAS_TS = False; get_index = None  # codebase removed
 
     if not _HAS_TS:
         return {"ok": False, "error": "tree-sitter not installed"}
@@ -189,7 +189,7 @@ def run_incremental_index(
     removed = 0
 
     try:
-        from apps.backend.infrastructure.codebase.code_index_qdrant import get_code_index
+        get_code_index = None  # codebase removed
 
         code_index = get_code_index()
         for rel in normalized:
@@ -212,8 +212,8 @@ def run_incremental_index(
     graph_on = _workspace_graph_index_enabled(workspace_id)
 
     try:
-        from apps.backend.infrastructure.codebase.code_graph_neo4j import get_code_graph
-        from plugins.tools.workspace.lib.graph_extract import resolve_import_relationships
+        get_code_graph = None  # codebase removed
+        resolve_import_relationships = None  # codebase removed
 
         graph = get_code_graph()
         if graph.available() and graph_on:
@@ -334,10 +334,8 @@ def run_semantic_index(
                 error=docs_error,
             )
         return {"ok": ok, "stats": stats, "docs_rag": docs_stats}
-    from plugins.tools.workspace.lib.index_lib import (
-        _HAS_TS,
-        get_index,
-    )
+    _HAS_TS = False
+    get_index = None  # codebase removed
 
     def _progress(**fields: Any) -> None:
         if track_progress:
@@ -398,7 +396,7 @@ def run_semantic_index(
     qdrant_indexed = 0
     qdrant_error: str | None = None
     try:
-        from apps.backend.infrastructure.codebase.code_index_qdrant import get_code_index
+        get_code_index = None  # codebase removed
 
         code_index = get_code_index()
         files_with_syms = [f for f in idx._files.values() if f.symbols]
@@ -421,7 +419,7 @@ def run_semantic_index(
     neo4j_edges = 0
     neo4j_error: str | None = None
     try:
-        from apps.backend.infrastructure.codebase.code_graph_neo4j import get_code_graph
+        get_code_graph = None  # codebase removed
 
         graph = get_code_graph()
         if graph.available() and _workspace_graph_index_enabled(workspace_id):

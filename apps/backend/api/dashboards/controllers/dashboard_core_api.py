@@ -36,29 +36,42 @@ async def list_dashboards(request: Request):
     )
 
     user = await get_current_user(request)
-    cat = template_catalog()
-    template_kinds = kinds_with_templates()
-    template_ids = template_ids_with_templates()
+    tid = db.user_tenant_id(user.id)
+    from apps.backend.domain.tenant_capability.policy import tenant_allowed_dashboard_kinds
+
+    allowed = tenant_allowed_dashboard_kinds(tid)
+    cat = template_catalog(tenant_id=tid)
+    if allowed is None:
+        template_kinds = kinds_with_templates()
+        template_ids = template_ids_with_templates()
+        schema_offers = kinds_with_schema_sql()
+    else:
+        template_kinds = [k for k in kinds_with_templates() if k in allowed]
+        template_ids = [
+            tid_
+            for tid_ in template_ids_with_templates()
+            if any(str(r.get("template_id") or "") == tid_ for r in cat)
+        ]
+        schema_offers = [k for k in kinds_with_schema_sql() if k in allowed]
     if not dashboard_tables_exist():
         return {
             "ok": True,
             "dashboards": [],
             "schema_installed": False,
-            "kind_catalog": kind_catalog(),
+            "kind_catalog": kind_catalog(tenant_id=tid),
             "template_catalog": cat,
-            "schema_install_offers": kinds_with_schema_sql(),
+            "schema_install_offers": schema_offers,
             "template_kinds": template_kinds,
             "template_ids": template_ids,
             "installed_template_kinds": [],
         }
-    tid = db.user_tenant_id(user.id)
     items = dashboard_db.dashboard_list(user.id, tid)
     installed_kinds = dashboard_db.tenant_installed_template_kinds(tid)
     return {
         "ok": True,
         "dashboards": items,
         "schema_installed": True,
-        "kind_catalog": kind_catalog(),
+        "kind_catalog": kind_catalog(tenant_id=tid),
         "template_catalog": cat,
         "schema_install_offers": [],
         "template_kinds": template_kinds,
@@ -72,13 +85,15 @@ async def list_template_catalog(request: Request):
     """Gallery templates (``template_id`` primary; ``kind`` legacy mirror)."""
     from apps.backend.application.dashboards.use_cases.dashboard_controller_services import template_catalog
 
-    await get_current_user(request)
-    return {"ok": True, "templates": template_catalog()}
+    user = await get_current_user(request)
+    tid = db.user_tenant_id(user.id)
+    return {"ok": True, "templates": template_catalog(tenant_id=tid)}
 
 
 @router.post("")
 async def create_dashboard(request: Request, body: DashboardCreateBody):
     from apps.backend.application.dashboards.use_cases.dashboard_controller_services import resolve_create_target
+    from apps.backend.application.dashboards.use_cases.dashboard_controller_services import validate_kind_for_tenant
 
     require_dashboard_schema()
     user = await get_current_user(request)
@@ -89,6 +104,16 @@ async def create_dashboard(request: Request, body: DashboardCreateBody):
     )
     if err:
         raise HTTPException(status_code=400, detail=err)
+    kerr = validate_kind_for_tenant(tid, kind)
+    if kerr:
+        raise HTTPException(status_code=403, detail=kerr)
+    from apps.backend.application.dashboards.use_cases.dashboard_controller_services import (
+        validate_structure_edit_for_user,
+    )
+
+    serr = validate_structure_edit_for_user(tid, user.id)
+    if serr:
+        raise HTTPException(status_code=403, detail=serr)
     row = dashboard_db.dashboard_create(
         user.id,
         tid,
@@ -106,6 +131,10 @@ async def create_dashboard(request: Request, body: DashboardCreateBody):
 async def create_dashboard_from_template(request: Request, body: DashboardFromTemplateBody):
     """Create a new dashboard from an exported layout snapshot (copy, not live sync)."""
     from apps.backend.application.dashboards.use_cases.dashboard_controller_services import resolve_create_target
+    from apps.backend.application.dashboards.use_cases.dashboard_controller_services import (
+        validate_kind_for_tenant,
+        validate_structure_edit_for_user,
+    )
 
     require_dashboard_schema()
     user = await get_current_user(request)
@@ -116,6 +145,12 @@ async def create_dashboard_from_template(request: Request, body: DashboardFromTe
     )
     if cerr:
         raise HTTPException(status_code=400, detail=cerr)
+    kerr = validate_kind_for_tenant(tid, kind)
+    if kerr:
+        raise HTTPException(status_code=403, detail=kerr)
+    serr = validate_structure_edit_for_user(tid, user.id)
+    if serr:
+        raise HTTPException(status_code=403, detail=serr)
     ul, dt, err = validate_template_import(
         kind=kind,
         template_id=template_id,
@@ -283,15 +318,22 @@ async def get_dashboard(request: Request, dashboard_id: uuid.UUID):
 async def patch_dashboard(
     request: Request, dashboard_id: uuid.UUID, body: DashboardPatchBody
 ):
+    from apps.backend.application.dashboards.use_cases.dashboard_controller_services import (
+        validate_structure_edit_for_user,
+    )
+
     require_dashboard_schema()
     user = await get_current_user(request)
     tid = db.user_tenant_id(user.id)
+    structure_err = validate_structure_edit_for_user(tid, user.id)
+    if structure_err and (body.title is not None or body.ui_layout is not None):
+        raise HTTPException(status_code=403, detail=structure_err)
     row = dashboard_db.dashboard_update(
         user.id,
         tid,
         dashboard_id,
-        title=body.title,
-        ui_layout=body.ui_layout,
+        title=body.title if not structure_err else None,
+        ui_layout=body.ui_layout if not structure_err else None,
         data=body.data,
     )
     if not row:
@@ -301,9 +343,16 @@ async def patch_dashboard(
 
 @router.delete("/{dashboard_id}")
 async def delete_dashboard(request: Request, dashboard_id: uuid.UUID):
+    from apps.backend.application.dashboards.use_cases.dashboard_controller_services import (
+        validate_structure_edit_for_user,
+    )
+
     require_dashboard_schema()
     user = await get_current_user(request)
     tid = db.user_tenant_id(user.id)
+    serr = validate_structure_edit_for_user(tid, user.id)
+    if serr:
+        raise HTTPException(status_code=403, detail=serr)
     if not dashboard_db.dashboard_delete(user.id, tid, dashboard_id):
         raise HTTPException(status_code=404, detail="dashboard not found")
     return {"ok": True, "deleted": True}

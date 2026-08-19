@@ -36,8 +36,8 @@ def test_router_strict_after_agent_allowlist_keeps_minimal(monkeypatch):
             "list_tool_categories",
             "list_tools_in_category",
             "catalog",
-            "bash",
-            "read_file",
+            "delegate",
+            "rag_search",
         )
     ]
     general_allow = frozenset(
@@ -47,8 +47,8 @@ def test_router_strict_after_agent_allowlist_keeps_minimal(monkeypatch):
             "list_tool_categories",
             "list_tools_in_category",
             "catalog",
-            "bash",
-            "read_file",
+            "delegate",
+            "rag_search",
         }
     )
     after_agent = _intersect_agent_allowlist(pool, general_allow)
@@ -58,7 +58,7 @@ def test_router_strict_after_agent_allowlist_keeps_minimal(monkeypatch):
     names = {t["function"]["name"] for t in after_router}
     assert names == set(TOOL_INTROSPECTION)
     assert "catalog" not in names
-    assert "bash" not in names
+    assert "delegate" not in names
 
 
 def test_replacing_with_full_allowlist_would_break_router_minimal():
@@ -71,10 +71,9 @@ def test_replacing_with_full_allowlist_would_break_router_minimal():
             "list_tool_categories",
             "list_tools_in_category",
             "catalog",
-            "bash",
+            "delegate",
         }
     )
-    # Old code: after router minimal (4 tools), replace with all specs matching allowlist
     all_specs = [_spec(n) for n in general_allow]
     rebuilt = [t for t in all_specs if t["function"]["name"] in general_allow]
     assert len(rebuilt) == 6
@@ -82,23 +81,19 @@ def test_replacing_with_full_allowlist_would_break_router_minimal():
     assert len(rebuilt) > len(pool)
 
 
-def test_general_allowlist_survives_repository_category_mismatch() -> None:
-    """S3-style prompt: router picks repository tools; general orchestrator keeps delegate."""
+def test_general_allowlist_survives_knowledge_category_match() -> None:
+    """Research-style prompt: router picks knowledge tools; general keeps delegate."""
     reload_registry()
     general_tools = [
         _spec(n)
         for n in (
             "delegate",
             "catalog",
-            "workspace.create",
-            "workspace.list",
-            "bind",
             "user_secrets_status",
         )
     ]
-    text = "Read README.md at the repository root and reply with the first line."
+    text = "Search the knowledge base for onboarding docs and summarize."
     cats = classify_user_tool_categories(text)
-    assert "repository" in cats
     after_router = filter_merged_tools_by_categories_for_agent(
         general_tools,
         cats,
@@ -107,57 +102,45 @@ def test_general_allowlist_survives_repository_category_mismatch() -> None:
     names = {t["function"]["name"] for t in after_router}
     assert "delegate" in names
     assert "catalog" in names
-    assert len(names) == 6
+    assert len(names) == 3
 
 
-def test_explicit_allowlist_agent_keeps_repository_tools_despite_coding_domain() -> None:
-    """coding_plan/coding YAML allowlists repository.* tools; domain=coding must not strip them first."""
+def test_research_agent_keeps_knowledge_tools() -> None:
+    """research YAML allowlist includes rag_search and web search tools."""
     reload_registry()
     from apps.backend.domain.agent_runtime.registry import get_agent_registry
     from apps.backend.application.agent_runtime.runtime.prompts import _tool_spec_name
     from apps.backend.domain.plugin_system.registry import get_registry
-    from apps.backend.domain.plugin_system.tool_routing import filter_merged_tools_by_domain
 
     reg = get_registry()
-    agent = get_agent_registry().get_agent("coding_plan")
+    agent = get_agent_registry().get_agent("research")
     assert agent is not None
     merged = list(reg.chat_tool_specs)
-    agent_has_explicit_allowlist = bool(agent.get("tool_allowlist"))
-    tool_domain_agent = agent.get("tool_domain")
     tool_names_agent = agent.get("tool_names", [])
-    if tool_domain_agent and not agent_has_explicit_allowlist:
-        merged = filter_merged_tools_by_domain(merged, tool_domain_agent)
-    if tool_names_agent:
-        allowed_tool_names = frozenset(tool_names_agent)
-        merged = [
-            t
-            for t in merged
-            if (n := _tool_spec_name(t)) is None or n in allowed_tool_names
-        ]
+    allowed_tool_names = frozenset(tool_names_agent)
+    merged = [
+        t
+        for t in merged
+        if (n := _tool_spec_name(t)) is None or n in allowed_tool_names
+    ]
     names = {_tool_spec_name(t) for t in merged if _tool_spec_name(t)}
-    assert "repository.read_file" in names
+    assert "rag_search" in names
+    assert "web_search.search" in names
     assert len(names) >= 10
 
 
 def test_general_allowlist_survives_partial_category_match() -> None:
-    """W1-style prompt: router matches workspace tools only; general keeps delegate too."""
+    """Messaging prompt: router matches comms tools; general keeps delegate too."""
     reload_registry()
     general_tools = [
         _spec(n)
         for n in (
             "delegate",
             "catalog",
-            "workspace.create",
-            "workspace.list",
-            "bind",
             "user_secrets_status",
         )
     ]
-    text = (
-        'Clone the Git repository https://github.com/octocat/Hello-World.git (branch master) '
-        'into a new workspace named exactly "bench-git" and bind it. '
-        "Read README.md at the repository root and reply with the first non-empty line."
-    )
+    text = "Send a message to the team channel with today's summary."
     cats = classify_user_tool_categories(text)
     after_router = filter_merged_tools_by_categories_for_agent(
         general_tools,
@@ -166,5 +149,4 @@ def test_general_allowlist_survives_partial_category_match() -> None:
     )
     names = {t["function"]["name"] for t in after_router}
     assert "delegate" in names
-    assert "workspace.create" in names
-    assert len(names) == 6
+    assert len(names) == 3

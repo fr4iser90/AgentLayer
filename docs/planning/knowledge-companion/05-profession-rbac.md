@@ -32,6 +32,11 @@ qualifications (generic platform); content and tools filter by effective policy.
 
 - [x] CMS: `content_editor` can create/edit drafts (not publish alone)
 - [x] CMS: `content_approver` / tenant admin can publish
+- [x] CMS: **write scope** — when a profession role sets `content_categories`,
+  edit/review/publish is limited to notes with that `content_category`
+  (plus department match when the note has `target_departments` and the user
+  has a department). Empty categories = unrestricted editor/reviewer.
+  Tenant admin / `profession.admin` bypasses scope.
 - [x] RAG: filter `tenant_knowledge` hits by profession/department/qualification/category
 - [x] Trainee: limited to `content_category` in role template
 

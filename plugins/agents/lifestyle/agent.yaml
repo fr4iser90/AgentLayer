@@ -1,10 +1,10 @@
 id: lifestyle
+requires_workspace: false
 name: Lifestyle
 icon: cloud-sun
 description: Weather, clocks, and calendar events
 min_role: user
 delegatable: true
-requires_workspace: false
 execution_context: auto
 tool_allowlist:
   - current

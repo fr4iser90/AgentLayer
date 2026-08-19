@@ -18,31 +18,31 @@ def test_build_agents_catalog_includes_general() -> None:
     assert "tool_names" not in general
     assert general["tool_domains"] == []
     assert general["tool_capability_any"] == []
-    assert general["tool_names_count"] == 6
-    # Icons are UI-only — must not appear in LLM catalog payloads.
+    assert general["tool_names_count"] == 3
     assert "icon" not in general
     assert all("icon" not in a for a in out["agents"])
 
 
 def test_delegatable_agents_include_tool_names_for_user() -> None:
     out = build_agents_catalog(user_role="user", tenant_id=1, delegatable_only=True)
-    coding = next(a for a in out["agents"] if a["id"] == "coding")
-    assert "tool_names" in coding
-    assert "bash" in coding["tool_names"]
+    research = next(a for a in out["agents"] if a["id"] == "research")
+    assert "tool_names" in research
+    assert "web_search.search" in research["tool_names"]
 
 
 def test_delegatable_only_filters() -> None:
     out = build_agents_catalog(user_role="user", tenant_id=1, delegatable_only=True)
     ids = {a["id"] for a in out["agents"]}
     assert "general" not in ids
-    assert "coding" in ids
+    assert "research" in ids
+    assert "coding" not in ids
 
 
 def test_admin_include_tool_names() -> None:
     out = build_agents_catalog(user_role="admin", tenant_id=1, include_tool_names=True)
-    coding = next(a for a in out["agents"] if a["id"] == "coding")
-    assert "tool_names" in coding
-    assert "bash" in coding["tool_names"] or "repository.read_file" in coding.get("tool_names", [])
+    research = next(a for a in out["agents"] if a["id"] == "research")
+    assert "tool_names" in research
+    assert "web_search.search" in research.get("tool_names", [])
 
 
 def test_catalog_tool_smoke() -> None:

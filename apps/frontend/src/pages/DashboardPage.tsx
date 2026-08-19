@@ -155,6 +155,7 @@ type HubPanel = "home" | "catalog" | "overview";
 export function DashboardPage() {
   const { t } = useTranslation(["dashboard", "admin"]);
   const auth = useAuth();
+  const user = auth.user;
   const [searchParams, setSearchParams] = useSearchParams();
   const { dashboardUnreadCount, blockUnreadIds, markDashboardSeen, refreshSummary } =
     useNotificationContext();
@@ -223,6 +224,10 @@ export function DashboardPage() {
   const isPrimaryOwner = accessRole === "owner";
   const canManageMembers = accessRole === "owner" || accessRole === "co_owner";
   const canEditContent = !isViewer;
+  const structureEditAllowed = user?.dashboard_structure_edit !== false;
+  const canEditStructure = canEditContent && structureEditAllowed;
+  const useMode = Boolean(detail) && !canEditStructure;
+  const canInteract = Boolean(detail);
 
   const pinTargetOptions = useMemo(
     () =>
@@ -882,16 +887,19 @@ export function DashboardPage() {
   };
 
   const save = async () => {
-    if (!selectedId || !detail || !canEditContent) return;
+    if (!selectedId || !detail) return;
+    if (!canEditStructure && !canInteract) return;
     setSaving(true);
     setError(null);
     try {
       const body: Record<string, unknown> = {
-        title: title.trim() || detail.title,
         data,
       };
-      if (layoutEditMode) {
-        body.ui_layout = layoutDraft;
+      if (canEditStructure) {
+        body.title = title.trim() || detail.title;
+        if (layoutEditMode) {
+          body.ui_layout = layoutDraft;
+        }
       }
       const res = await apiFetch(`/v1/dashboards/${selectedId}`, auth, {
         method: "PATCH",
@@ -1249,18 +1257,20 @@ export function DashboardPage() {
           {t("dashboard:actions")}
         </p>
         <div className="flex flex-col gap-0.5">
-          <button
-            type="button"
-            onClick={() => {
-              setNewWsModalOpen(true);
-              setHubPanel("home");
-              setSelectedId(null);
-              setActionsSidebarOpen(false);
-            }}
-            className="rounded-md px-2 py-1.5 text-left text-xs text-neutral-200 transition hover:bg-white/5"
-          >
-            {t("dashboard:createNew")}
-          </button>
+          {structureEditAllowed ? (
+            <button
+              type="button"
+              onClick={() => {
+                setNewWsModalOpen(true);
+                setHubPanel("home");
+                setSelectedId(null);
+                setActionsSidebarOpen(false);
+              }}
+              className="rounded-md px-2 py-1.5 text-left text-xs text-neutral-200 transition hover:bg-white/5"
+            >
+              {t("dashboard:createNew")}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => {
@@ -1489,14 +1499,14 @@ export function DashboardPage() {
                   <div className="min-w-[200px] flex-1">
                     <label className="mb-1 block text-xs text-surface-muted">{t("dashboard:dashboardTitleLabel")}</label>
                     <input
-                      readOnly={isViewer}
+                      readOnly={!canEditStructure}
                       className="w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-500/50 read-only:cursor-default read-only:opacity-90"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                     />
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {canEditContent ? (
+                    {canEditStructure ? (
                       !layoutEditMode ? (
                         <button
                           type="button"
@@ -1515,7 +1525,7 @@ export function DashboardPage() {
                         </button>
                       )
                     ) : null}
-                    {canEditContent ? (
+                    {canEditStructure || (useMode && canEditContent) ? (
                       <button
                         type="button"
                         disabled={saving}
@@ -1525,7 +1535,7 @@ export function DashboardPage() {
                         {saving ? t("dashboard:saving") : t("admin:save")}
                       </button>
                     ) : null}
-                    {canEditContent && selectedId && layoutHasImportableList(uiLayout) ? (
+                    {canEditStructure && selectedId && layoutHasImportableList(uiLayout) ? (
                       <button
                         type="button"
                         className="rounded-lg border border-violet-500/40 bg-violet-950/25 px-4 py-2 text-sm text-violet-100 hover:bg-violet-900/35"
@@ -1534,16 +1544,16 @@ export function DashboardPage() {
                         {t("dashboard:importFromGithub")}
                       </button>
                     ) : null}
-                    {detail ? (
+                    {detail && canEditStructure ? (
                       <button
                         type="button"
                         className="rounded-lg border border-surface-border px-4 py-2 text-sm text-neutral-200 hover:bg-white/5"
                         onClick={() => setSettingsOpen(true)}
                       >
-                        Settings
+                        {t("dashboard:settingsLabel")}
                       </button>
                     ) : null}
-                    {isPrimaryOwner ? (
+                    {isPrimaryOwner && canEditStructure ? (
                       <button
                         type="button"
                         className="rounded-lg border border-white/10 px-4 py-2 text-sm text-red-300 hover:bg-red-950/40"
@@ -1554,20 +1564,26 @@ export function DashboardPage() {
                     ) : null}
                   </div>
                 </div>
-                {canManageMembers ? (
+                {canManageMembers && canEditStructure ? (
                   <p className="mb-4 text-xs text-surface-muted">
                     {t("dashboard:membersMovedHint")}{" "}
                     <span className="text-white/80">{t("dashboard:settingsLabel")}</span>.
                   </p>
                 ) : null}
-                <p className="mb-4 text-xs text-surface-muted">
-                  Template:{" "}
-                  <span className="text-white/80">
-                    {subtitleForDashboardKind(detail!.kind, kindCatalog, detail!.template_id)}
-                  </span>
-                </p>
+                {useMode ? (
+                  <p className="mb-4 rounded-lg border border-sky-500/30 bg-sky-950/30 px-3 py-2 text-xs text-sky-100">
+                    {t("dashboard:useModeHint")}
+                  </p>
+                ) : (
+                  <p className="mb-4 text-xs text-surface-muted">
+                    {t("dashboard:templateLabel")}:{" "}
+                    <span className="text-white/80">
+                      {subtitleForDashboardKind(detail!.kind, kindCatalog, detail!.template_id)}
+                    </span>
+                  </p>
+                )}
                 {detail?.onboarding &&
-                !isViewer &&
+                canEditStructure &&
                 !onboardingHidden &&
                 !isOnboardingDismissed(selectedId!) ? (
                   <DashboardOnboardingBanner
@@ -1587,19 +1603,22 @@ export function DashboardPage() {
                   setLayout={setLayoutDraft}
                   data={data}
                   setData={setData}
-                  editMode={layoutEditMode && canEditContent}
-                  contentReadOnly={isViewer}
+                  editMode={layoutEditMode && canEditStructure}
+                  contentReadOnly={!canEditStructure}
+                  interactOnly={useMode && canInteract}
                   dashboardId={selectedId}
                   unreadBlockIds={selectedId ? blockUnreadIds(selectedId) : undefined}
                   highlightBlockId={highlightBlockId}
                   onBlockSeen={markBlockSeen}
                   onPinBlock={
-                    selectedId && pinTargetOptions.length > 0 ? openPinModal : undefined
+                    canEditStructure && selectedId && pinTargetOptions.length > 0
+                      ? openPinModal
+                      : undefined
                   }
-                  onPinBlockToChat={!isViewer ? pinBlockToChat : undefined}
+                  onPinBlockToChat={canEditContent ? pinBlockToChat : undefined}
                   chatFocusedBlockId={chatFocusedBlockId}
-                  onBlockPropsSave={canEditContent ? persistBlockProps : undefined}
-                  blockSettingsAutoSave={canEditContent && !layoutEditMode}
+                  onBlockPropsSave={canEditStructure ? persistBlockProps : undefined}
+                  blockSettingsAutoSave={canEditStructure && !layoutEditMode}
                   blockSettingsSaving={saving}
                 />
               </>

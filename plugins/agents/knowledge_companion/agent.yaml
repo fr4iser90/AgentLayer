@@ -1,10 +1,10 @@
 id: knowledge_companion
+requires_workspace: false
 name: Knowledge Companion
 icon: book-open
 description: Tenant operational knowledge — search published team notes, checklists, and runbooks (tenant_knowledge RAG)
 min_role: user
 delegatable: true
-requires_workspace: false
 execution_context: auto
 tool_allowlist:
   - rag_search

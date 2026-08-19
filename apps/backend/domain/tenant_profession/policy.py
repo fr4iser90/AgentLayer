@@ -9,8 +9,6 @@ from typing import Any
 
 from fastapi import HTTPException
 
-from fastapi import HTTPException
-
 CAP_KNOWLEDGE_SEARCH = "knowledge.search"
 CAP_CONTENT_EDITOR = "content.editor"
 CAP_CONTENT_REVIEW = "content.review"
@@ -102,6 +100,10 @@ class EffectiveProfessionPolicy:
             "can_review_content": self.has(CAP_CONTENT_REVIEW),
             "can_publish_content": self.has(CAP_CONTENT_PUBLISH),
             "can_manage_profession": self.has(CAP_PROFESSION_ADMIN),
+            # Non-empty content_categories on the role = edit/review limited to those categories.
+            "write_scope_categories": list(self.content_categories),
+            "write_scope_limited": bool(self.content_categories)
+            and not (self.is_tenant_admin or self.has(CAP_PROFESSION_ADMIN)),
         }
 
 
@@ -124,6 +126,59 @@ def _qualification_valid(row: dict[str, Any]) -> bool:
 def require_capability(policy: EffectiveProfessionPolicy, capability: str) -> None:
     if not policy.has(capability):
         raise HTTPException(status_code=403, detail=f"missing capability: {capability}")
+
+
+def write_scope_unrestricted(policy: EffectiveProfessionPolicy) -> bool:
+    """Tenant admins / profession admins and roles without category limits may touch all content."""
+    if policy.is_tenant_admin or policy.has(CAP_PROFESSION_ADMIN):
+        return True
+    return not bool(policy.content_categories)
+
+
+def content_in_write_scope(
+    policy: EffectiveProfessionPolicy,
+    *,
+    content_category: str | None = None,
+    target_departments: list[str] | None = None,
+) -> bool:
+    """
+    Edit/review/publish scope for scoped moderators/editors.
+
+    When the profession role lists ``content_categories``, the note's category must be
+    one of them (empty category is out of scope). When the note lists
+    ``target_departments`` and the user has a department assignment, that department
+    must be included.
+    """
+    if write_scope_unrestricted(policy):
+        return True
+
+    allowed_cats = {str(c).strip().lower() for c in policy.content_categories if str(c).strip()}
+    cat = (content_category or "").strip().lower()
+    if not cat or cat not in allowed_cats:
+        return False
+
+    depts = [str(x).strip().lower() for x in (target_departments or []) if str(x).strip()]
+    user_dept = (policy.department_slug or "").strip().lower()
+    if depts and user_dept and user_dept not in depts:
+        return False
+    return True
+
+
+def require_content_in_write_scope(
+    policy: EffectiveProfessionPolicy,
+    *,
+    content_category: str | None = None,
+    target_departments: list[str] | None = None,
+) -> None:
+    if not content_in_write_scope(
+        policy,
+        content_category=content_category,
+        target_departments=target_departments,
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="content outside your edit/review scope (category or department)",
+        )
 
 
 def content_visible_to_policy(content: dict[str, Any], policy: EffectiveProfessionPolicy) -> bool:

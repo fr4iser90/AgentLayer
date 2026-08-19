@@ -20,7 +20,10 @@ class TestTemplateCatalog(unittest.TestCase):
         by_tid = bundles_by_template_id()
         self.assertGreater(len(by_tid), 0)
         for tid, bundle in by_tid.items():
-            self.assertTrue(tid.endswith("-v1") or tid == "custom")
+            self.assertTrue(
+                tid.endswith("-v1") or tid.endswith("-v2") or tid == "custom",
+                msg=f"unexpected template_id: {tid}",
+            )
             self.assertEqual(bundle.template_id, tid)
 
     def test_projects_template_resolves(self) -> None:

@@ -1,8 +1,8 @@
 id: reviewer
+requires_workspace: false
 name: Reviewer
 icon: search-check
 description: 'Admin-only benchmark auditor: read-only analysis and verdicts — never applies config or starts runs.'
-requires_workspace: false
 schedulable: false
 execution_context: auto
 min_role: admin

@@ -198,13 +198,13 @@ def _delete_workspace_files(ws_path: Path) -> None:
 def _delete_workspace_index_sidecars(workspace_id: str) -> None:
     """Best-effort Qdrant / Neo4j cleanup (non-fatal)."""
     try:
-        from apps.backend.infrastructure.codebase.code_index_qdrant import get_code_index
+        get_code_index = None  # codebase removed
 
         get_code_index().delete_workspace(workspace_id)
     except Exception as e:
         logger.debug("qdrant delete_workspace skipped: %s", e)
     try:
-        from apps.backend.infrastructure.codebase.code_graph_neo4j import get_code_graph
+        get_code_graph = None  # codebase removed
 
         get_code_graph().delete_workspace(workspace_id)
     except Exception as e:

@@ -137,7 +137,7 @@ def test_embedded_subagent_default_no_wall_clock_timeout() -> None:
                     return_value={"id": uuid.uuid4()},
                 ):
                     run_embedded_subagent_sync(
-                        subagent_agent_id="coding",
+                        subagent_agent_id="research",
                         prompt="work",
                         context=ctx,
                         tool_name="delegate",
@@ -165,7 +165,7 @@ def test_embedded_subagent_surfaces_api_error() -> None:
             tpe.return_value.__enter__.return_value = pool
             pool.submit.return_value.result.return_value = {"error": "model unavailable"}
             out = run_embedded_subagent_sync(
-                subagent_agent_id="coding",
+                subagent_agent_id="research",
                 prompt="work",
                 context=ctx,
                 tool_name="delegate",
@@ -199,7 +199,7 @@ def test_embedded_subagent_rejects_tool_markup_as_ok() -> None:
                 ]
             }
             out = run_embedded_subagent_sync(
-                subagent_agent_id="coding_plan",
+                subagent_agent_id="research",
                 prompt="Read README.md first line",
                 context=ctx,
                 tool_name="delegate",
@@ -236,7 +236,7 @@ def test_embedded_subagent_ok_when_clear_answer() -> None:
                 return_value={"id": uuid.uuid4()},
             ):
                 out = run_embedded_subagent_sync(
-                    subagent_agent_id="coding_plan",
+                    subagent_agent_id="research",
                     prompt="Read README.md first line",
                     context=ctx,
                     tool_name="delegate",

@@ -7,7 +7,7 @@ import uuid
 from typing import Any, Callable
 
 from apps.backend.domain.shared.identity import get_identity
-from apps.backend.infrastructure.codebase.coding_workflow import normalize_coding_workflow
+normalize_coding_workflow = None  # codebase removed
 from apps.backend.infrastructure.db import db
 from apps.backend.infrastructure.projects import project_runs_store
 

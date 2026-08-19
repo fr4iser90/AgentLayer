@@ -1,0 +1,23 @@
+{
+  "id": "tpl_ops_hub",
+  "name": "Ops hub",
+  "description": "Restricted first-party chrome: Home, Chat, and Dashboards only. Use enabled_dashboard_kinds / agents via template or operator overrides for a vertical.",
+  "vertical_profile": "default_ops",
+  "departments": [
+    { "slug": "operations", "name": "Operations" }
+  ],
+  "profession_roles": [
+    { "slug": "end_user", "name": "Team member", "role_kind": "end_user", "content_categories": [] },
+    { "slug": "content_editor", "name": "Content editor", "role_kind": "content_editor", "content_categories": [] },
+    { "slug": "content_reviewer", "name": "Content reviewer", "role_kind": "content_reviewer", "content_categories": [] },
+    { "slug": "content_approver", "name": "Content approver", "role_kind": "content_approver", "content_categories": [] }
+  ],
+  "workflow_defaults": {
+    "content_review_required": true
+  },
+  "enabled_agent_ids": ["general", "knowledge_companion"],
+  "enabled_tool_domains": ["rag", "knowledge", "shared"],
+  "enabled_nav_items": ["home", "chat", "dashboard"],
+  "enabled_dashboard_write_roles": ["tenant_owner", "tenant_admin"],
+  "seed_content_glob": null
+}

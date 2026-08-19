@@ -409,7 +409,7 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
         pass
     if "rag_embedding_dim" in patch or "rag_embedding_model" in patch:
         try:
-            from apps.backend.infrastructure.codebase.code_index_qdrant import invalidate_code_index_cache
+            invalidate_code_index_cache = None  # codebase removed
 
             invalidate_code_index_cache()
         except Exception:

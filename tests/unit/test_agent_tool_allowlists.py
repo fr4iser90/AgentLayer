@@ -8,7 +8,7 @@ from apps.backend.domain.agent_runtime.registry import get_agent_registry
 
 # agent_id -> (expected_count, must_include, must_exclude)
 EXPECTATIONS: dict[str, tuple[int, frozenset[str], frozenset[str]]] = {
-    "general": (6, frozenset({"delegate", "catalog"}), frozenset({"bash", "deferred_wait"})),
+    "general": (3, frozenset({"delegate", "catalog"}), frozenset({"bash", "deferred_wait"})),
     "math": (4, frozenset({"math_eval", "math_percentage", "math_convert_units", "math_statistics"}), frozenset({"deferred_wait"})),
     "creative": (2, frozenset({"build"}), frozenset({"deferred_wait"})),
     "research": (17, frozenset({"web_search.search", "rag_search"}), frozenset({"bash"})),
@@ -18,9 +18,6 @@ EXPECTATIONS: dict[str, tuple[int, frozenset[str], frozenset[str]]] = {
     "outdoor": (8, frozenset({"bite_index"}), frozenset({"bash"})),
     "lifestyle": (4, frozenset({"forecast", "current_time"}), frozenset({"bash"})),
     "dashboard": (27, frozenset({"dashboard.read", "propose_layouts"}), frozenset({"media_list", "git_push"})),
-    "coding": (43, frozenset({"bash", "repository.write_file"}), frozenset({"delegate", "start", "deferred_wait"})),
-    "coding_plan": (19, frozenset({"repository.read_file"}), frozenset({"bash", "deferred_wait"})),
-    "security_auditor": (33, frozenset({"start", "deferred_wait"}), frozenset({"bash", "delegate"})),
 }
 
 

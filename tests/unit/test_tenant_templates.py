@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
 from unittest.mock import patch
 
 import pytest
@@ -16,18 +15,20 @@ from apps.backend.application.tenant_provisioning.use_cases.tenant_template_load
 )
 
 
-def test_load_seed_templates() -> None:
+def test_load_public_templates() -> None:
     templates = load_all_templates(reload=True)
     assert "tpl_default_ops" in templates
-    assert "tpl_healthcare_ops" in templates
-    assert templates["tpl_healthcare_ops"].vertical_profile == "healthcare_ops"
+    assert "tpl_ops_hub" in templates
+    assert templates["tpl_ops_hub"].enabled_nav_items
 
 
 def test_list_templates_public_shape() -> None:
     items = list_templates_public()
     ids = {i["id"] for i in items}
     assert "tpl_default_ops" in ids
+    assert "tpl_ops_hub" in ids
     assert all("vertical_profile" in i for i in items)
+    assert all("enabled_nav_items" in i for i in items)
 
 
 def test_unknown_template_raises() -> None:
@@ -37,9 +38,9 @@ def test_unknown_template_raises() -> None:
 
 
 def test_provision_applies_template_config() -> None:
-    tenant_row = {"id": 99, "name": "Pilot Nord"}
-    updated = {**tenant_row, "vertical_profile": "healthcare_ops"}
-    tpl = get_template("tpl_healthcare_ops")
+    tenant_row = {"id": 99, "name": "Ops Hub"}
+    updated = {**tenant_row, "vertical_profile": "default_ops"}
+    tpl = get_template("tpl_ops_hub")
     with (
         patch.object(provision.db, "tenant_insert", return_value=tenant_row),
         patch.object(provision.db, "tenant_update_org_profile", return_value=updated) as upd,
@@ -47,12 +48,12 @@ def test_provision_applies_template_config() -> None:
         patch.object(provision, "apply_template_capability_config") as apply_cap,
         patch.object(provision.db, "tenant_get", return_value=updated),
     ):
-        out = provision.provision_tenant(name="Pilot Nord", template_id="tpl_healthcare_ops")
+        out = provision.provision_tenant(name="Ops Hub", template_id="tpl_ops_hub")
     upd.assert_called_once()
     apply_cfg.assert_called_once_with(99, tpl)
     apply_cap.assert_called_once()
-    assert out["template_id"] == "tpl_healthcare_ops"
-    assert out["tenant"]["vertical_profile"] == "healthcare_ops"
+    assert out["template_id"] == "tpl_ops_hub"
+    assert out["tenant"]["vertical_profile"] == "default_ops"
 
 
 def test_provision_without_template_legacy() -> None:

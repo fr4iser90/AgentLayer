@@ -14,15 +14,14 @@ def test_catalog_after_first_round_config_default_true():
 
 
 def test_apply_schema_modes_catalog_uses_required_stubs_not_full_schema():
-    spec = _registry_tool_spec_by_registered_name("write_file")
+    spec = _registry_tool_spec_by_registered_name("delegate")
     assert spec is not None
     fn = spec["function"]
-    full = _full_schema_tool_function("write_file", fn)
+    full = _full_schema_tool_function("delegate", fn)
     full_props = full["function"]["parameters"].get("properties") or {}
-    assert "path" in full_props
-    assert "TOOL_DESCRIPTION" in full_props["path"] or "description" in full_props["path"]
+    assert "prompt" in full_props
 
-    catalog_modes = {"write_file": "catalog"}
+    catalog_modes = {"delegate": "catalog"}
     rebuilt = apply_schema_modes_to_specs(
         [spec],
         catalog_modes,
@@ -30,32 +29,29 @@ def test_apply_schema_modes_catalog_uses_required_stubs_not_full_schema():
     )
     cat_params = rebuilt[0]["function"]["parameters"]
     cat_props = cat_params.get("properties") or {}
-    assert set(cat_props.keys()) == {"path", "content"}
-    assert cat_props["path"] == {"type": "string"}
-    assert "TOOL_DESCRIPTION" not in cat_props["path"]
-    assert "path" in cat_params.get("required", [])
+    assert "prompt" in cat_props
+    assert "description" in cat_props
 
 
-def test_catalog_includes_optional_property_stubs_for_workspace_create():
-    spec = _registry_tool_spec_by_registered_name("workspace.create")
+def test_catalog_includes_optional_property_stubs_for_delegate():
+    spec = _registry_tool_spec_by_registered_name("delegate")
     assert spec is not None
     rebuilt = apply_schema_modes_to_specs(
         [spec],
-        {"workspace.create": "catalog"},
+        {"delegate": "catalog"},
         default_full_schema=False,
     )
     props = rebuilt[0]["function"]["parameters"].get("properties") or {}
-    assert "name" in props
-    assert "git_url" in props
-    assert "source" in props
-    assert props["source"].get("enum") == ["manual", "git"]
+    assert "prompt" in props
+    assert "description" in props
+    assert "run_subagent" in props
 
 
 def test_catalog_rebuild_preserves_forward_specs_reference_names():
-    bash = _registry_tool_spec_by_registered_name("bash")
-    write = _registry_tool_spec_by_registered_name("write_file")
-    assert bash is not None and write is not None
-    forward_specs = [bash, write]
+    delegate = _registry_tool_spec_by_registered_name("delegate")
+    catalog = _registry_tool_spec_by_registered_name("catalog")
+    assert delegate is not None and catalog is not None
+    forward_specs = [delegate, catalog]
     modes = {
         str(s["function"]["name"]): "catalog"
         for s in forward_specs
@@ -63,4 +59,4 @@ def test_catalog_rebuild_preserves_forward_specs_reference_names():
     }
     rebuilt = apply_schema_modes_to_specs(forward_specs, modes, default_full_schema=False)
     names = [t["function"]["name"] for t in rebuilt]
-    assert names == ["bash", "write_file"]
+    assert names == ["delegate", "catalog"]

@@ -1,8 +1,8 @@
 id: math
+requires_workspace: false
 name: Math
 icon: calculator
 description: Numeric calculation — expressions, percentages, unit conversion, and statistics
-requires_workspace: false
 execution_context: auto
 min_role: user
 delegatable: true

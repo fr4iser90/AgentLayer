@@ -307,6 +307,7 @@ async def get_current_user_info(request: Request):
         "membership_role": membership,
         "deployment_mode": deployment,
         "org_setup_required": setup_required,
+        "vertical_profile": (tenant_row or {}).get("vertical_profile"),
         "created_at": user.created_at.isoformat(),
         "discord_user_id": discord_uid,
         "telegram_user_id": telegram_uid,
@@ -317,7 +318,23 @@ async def get_current_user_info(request: Request):
     if site_role != "site_admin":
         id_token = set_identity(1, user.id)
         try:
-            return base
+            return _enrich_capability_fields(base, tid)
         finally:
             reset_identity(id_token)
+    return _enrich_capability_fields(base, tid)
+
+
+def _enrich_capability_fields(base: dict, tid: int) -> dict:
+    from apps.backend.domain.tenant_capability.policy import (
+        tenant_allowed_nav_items,
+        tenant_can_structure_edit_dashboards,
+    )
+
+    nav = tenant_allowed_nav_items(tid)
+    if nav is not None:
+        base["allowed_nav"] = sorted(nav)
+    membership = base.get("membership_role")
+    base["dashboard_structure_edit"] = tenant_can_structure_edit_dashboards(
+        tid, str(membership) if membership else None
+    )
     return base

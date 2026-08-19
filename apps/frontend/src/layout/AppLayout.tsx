@@ -1,6 +1,7 @@
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
+import { navItemAllowed, hasRestrictedNav } from "../auth/tenantSurface";
 import { UserMenu } from "../components/UserMenu";
 import { NotificationBell } from "../components/NotificationBell";
 import { NotificationProvider } from "../features/notifications/NotificationProvider";
@@ -28,6 +29,7 @@ export function AppLayout() {
   const { accessToken, user, loading } = useAuth();
   const location = useLocation();
   const signedIn = !!accessToken && !!user;
+  const showDocsFooter = !signedIn || !hasRestrictedNav(user);
   const isPublicDashboardShare = location.pathname.includes("/dashboard/shared");
 
   if (isPublicDashboardShare) {
@@ -49,27 +51,41 @@ export function AppLayout() {
             <span className="px-3 py-2 text-xs text-surface-muted">{t("nav.loading")}</span>
           ) : signedIn ? (
             <>
-              <NavLink to="/" end className={linkClass}>
-                {t("nav.home")}
-              </NavLink>
-              <NavLink to="/chat" className={linkClass}>
-                {t("nav.chat")}
-              </NavLink>
-              <NavLink to="/studio" className={linkClass}>
-                {t("nav.studio")}
-              </NavLink>
-              <NavLink to="/dashboard" className={linkClass}>
-                {t("nav.dashboard")}
-              </NavLink>
-              <NavLink to="/schedules" className={linkClass}>
-                {t("nav.schedules")}
-              </NavLink>
-              <NavLink to="/tasks" className={linkClass}>
-                {t("nav.tasks")}
-              </NavLink>
-              <NavLink to="/settings/shares" className={linkClass}>
-                🔗 {t("nav.shares")}
-              </NavLink>
+              {navItemAllowed(user, "home") ? (
+                <NavLink to="/" end className={linkClass}>
+                  {t("nav.home")}
+                </NavLink>
+              ) : null}
+              {navItemAllowed(user, "chat") ? (
+                <NavLink to="/chat" className={linkClass}>
+                  {t("nav.chat")}
+                </NavLink>
+              ) : null}
+              {navItemAllowed(user, "studio") ? (
+                <NavLink to="/studio" className={linkClass}>
+                  {t("nav.studio")}
+                </NavLink>
+              ) : null}
+              {navItemAllowed(user, "dashboard") ? (
+                <NavLink to="/dashboard" className={linkClass}>
+                  {t("nav.dashboard")}
+                </NavLink>
+              ) : null}
+              {navItemAllowed(user, "schedules") ? (
+                <NavLink to="/schedules" className={linkClass}>
+                  {t("nav.schedules")}
+                </NavLink>
+              ) : null}
+              {navItemAllowed(user, "tasks") ? (
+                <NavLink to="/tasks" className={linkClass}>
+                  {t("nav.tasks")}
+                </NavLink>
+              ) : null}
+              {navItemAllowed(user, "shares") ? (
+                <NavLink to="/settings/shares" className={linkClass}>
+                  🔗 {t("nav.shares")}
+                </NavLink>
+              ) : null}
             </>
           ) : (
             <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -114,23 +130,27 @@ export function AppLayout() {
       <footer className="shrink-0 border-t border-surface-border bg-surface-raised/80 px-4 py-2">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-surface-muted">
           <LegalFooterLinks />
-          <a
-            href={GITHUB_REPO}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-neutral-300"
-          >
-            {t("footer.github")}
-          </a>
-          <span className="text-white/15" aria-hidden>
-            ·
-          </span>
-          <NavLink to="/docs" className="hover:text-neutral-300">
-            {t("footer.docs")}
-          </NavLink>
-          <span className="text-white/15" aria-hidden>
-            ·
-          </span>
+          {showDocsFooter ? (
+            <>
+              <a
+                href={GITHUB_REPO}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-neutral-300"
+              >
+                {t("footer.github")}
+              </a>
+              <span className="text-white/15" aria-hidden>
+                ·
+              </span>
+              <NavLink to="/docs" className="hover:text-neutral-300">
+                {t("footer.docs")}
+              </NavLink>
+              <span className="text-white/15" aria-hidden>
+                ·
+              </span>
+            </>
+          ) : null}
           <span className="text-white/25">{t("footer.brand")}</span>
         </div>
       </footer>

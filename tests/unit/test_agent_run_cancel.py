@@ -100,7 +100,7 @@ def test_delegate_subagent_receives_linked_cancel_event() -> None:
                 out = delegate(
                     {
                         "run_subagent": True,
-                        "agent_id": "coding_plan",
+                        "agent_id": "research",
                         "prompt": "ping",
                         "description": "test",
                     },

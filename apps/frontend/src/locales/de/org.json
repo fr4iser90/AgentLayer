@@ -81,6 +81,7 @@
   "setupPageIntro": "Diese Schritte sind einmal pro Organisation erforderlich, bevor du die Wissensbasis nutzt.",
   "setupOrgName": "Organisationsname",
   "setupVerticalProfile": "Vertical-Profil",
+  "setupVerticalProfileHint": "Freier Slug für diese Organisation (z. B. default_ops). Operator-Templates setzen Policy-Knobs separat.",
   "setupContinue": "Weiter",
   "setupDisclaimer": "Ich bestätige, dass veröffentlichte Inhalte nur eigene Lernnotizen sind — keine Patientendaten oder kopierten offiziellen Dokumente.",
   "setupContentStep": "Wissensbasis",

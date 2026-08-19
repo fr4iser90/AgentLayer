@@ -1,10 +1,10 @@
 id: dashboard
+requires_workspace: false
 name: Dashboard
 icon: layout-dashboard
 description: Board layouts, list data, collections, task artifacts
 min_role: user
 delegatable: true
-requires_workspace: false
 execution_context: auto
 tool_discipline_preset: dashboard
 pinned_tools:

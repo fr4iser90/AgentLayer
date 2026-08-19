@@ -26,12 +26,13 @@ import { AdminScheduledJobs } from "./pages/admin/AdminScheduledJobs";
 import { AdminSchedules } from "./pages/admin/AdminSchedules";
 import { AdminAgentTraces } from "./pages/admin/AdminAgentTraces";
 import { AdminBenchmarks } from "./pages/admin/AdminBenchmarks";
+import { AdminAgentConfig } from "./pages/admin/AdminAgentConfig";
 import { OrgAdminLayout } from "./layout/OrgAdminLayout";
 import { OrgKnowledgePage } from "./pages/org/OrgKnowledgePage";
 import { OrgTeamPage } from "./pages/org/OrgTeamPage";
 import { ChatPage } from "./pages/ChatPage";
 import { DocsPage } from "./pages/DocsPage";
-import { HomePage } from "./pages/HomePage";
+import { HomePage, RestrictedNavRedirect } from "./pages/HomePage";
 import { AgentSettings } from "./pages/settings/AgentSettings";
 import { DelegateSettings } from "./pages/settings/DelegateSettings";
 import { NotificationsSettings } from "./pages/settings/NotificationsSettings";
@@ -68,10 +69,31 @@ export function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="chat" element={<ChatPage />} />
               <Route path="coding-agent" element={<LegacyCodingAgentRedirect />} />
-              <Route path="studio" element={<StudioPage />} />
+              <Route
+                path="studio"
+                element={
+                  <RestrictedNavRedirect nav="studio">
+                    <StudioPage />
+                  </RestrictedNavRedirect>
+                }
+              />
               <Route path="dashboard" element={<DashboardPage />} />
-              <Route path="schedules" element={<MySchedulesPage />} />
-              <Route path="tasks" element={<TasksPage />} />
+              <Route
+                path="schedules"
+                element={
+                  <RestrictedNavRedirect nav="schedules">
+                    <MySchedulesPage />
+                  </RestrictedNavRedirect>
+                }
+              />
+              <Route
+                path="tasks"
+                element={
+                  <RestrictedNavRedirect nav="tasks">
+                    <TasksPage />
+                  </RestrictedNavRedirect>
+                }
+              />
               <Route path="docs" element={<DocsPage />} />
               <Route path="settings" element={<SettingsLayout />}>
                 <Route index element={<Navigate to="/settings/profile" replace />} />
@@ -83,7 +105,14 @@ export function App() {
                 <Route path="tools" element={<ToolsSettings />} />
                 <Route path="agent" element={<AgentSettings />} />
                 <Route path="delegate" element={<DelegateSettings />} />
-                <Route path="shares" element={<SharesSettings />} />
+                <Route
+                  path="shares"
+                  element={
+                    <RestrictedNavRedirect nav="shares">
+                      <SharesSettings />
+                    </RestrictedNavRedirect>
+                  }
+                />
                 <Route path="experimental" element={<Navigate to="/settings/profile" replace />} />
               </Route>
               <Route path="org" element={<RequireOrgAdmin />}>

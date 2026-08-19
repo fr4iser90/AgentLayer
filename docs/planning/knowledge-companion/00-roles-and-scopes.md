@@ -186,11 +186,15 @@ flowchart TB
 | Role | Purpose |
 |------|---------|
 | `content_editor` | Draft CMS notes |
-| `content_reviewer` | Review drafts |
+| `content_reviewer` | Review drafts (optional: limit via `content_categories` = scoped moderator) |
 | `content_approver` | Publish → RAG ingest |
 | `domain_admin` | Manage profession templates / departments |
 | `end_user` | Search published knowledge |
 | `trainee` | Limited categories until qualified |
+
+**Scoped moderator example:** role `hygiene_moderator` with
+`role_kind=content_reviewer` and `content_categories=["hygiene"]` may only
+edit/review notes whose `content_category` is `hygiene`.
 
 These are **not** site roles and **not** a substitute for `tenant_admin`.
 

@@ -16,30 +16,12 @@ def test_tools_for_domains_matches_tool_domain_metadata() -> None:
     assert out == ["read_file"]
 
 
-def test_tools_for_capabilities_resolves_coding_read() -> None:
-    names = ["repository.read_file", "bash", "write_file", "git_read"]
-    out = _tools_for_capabilities_any(["coding.read"], names)
-    assert "repository.read_file" in out
-    assert "git_read" in out
+def test_tools_for_capabilities_resolves_knowledge_retrieve() -> None:
+    names = ["rag_search", "bash", "write_file", "git_read"]
+    out = _tools_for_capabilities_any(["knowledge.retrieve"], names)
+    assert "rag_search" in out
     assert "bash" not in out
     assert "write_file" not in out
-
-
-def test_coding_agent_uses_explicit_allowlist() -> None:
-    from apps.backend.domain.agent_runtime.registry import get_agent_registry
-
-    a = get_agent_registry().get_agent("coding")
-    assert a is not None
-    names = a["tool_names"]
-    assert _repo(names, "read_file")
-    assert "project_explain" in names
-    assert "save_user_secret" in names
-    assert "workspace.list" in names
-    assert "git_read" in names
-    assert "git_push" in names
-    assert "list_available_tools" not in names
-    assert "delegate" not in names
-    assert (a.get("tool_domains") or []) == []
 
 
 def test_creative_and_dashboard_agents() -> None:
@@ -63,9 +45,7 @@ def test_general_agent_orchestrator_only() -> None:
     a = get_agent_registry().get_agent("general")
     assert a is not None
     names = a["tool_names"]
-    assert names == sorted(
-        ["bind", "catalog", "delegate", "user_secrets_status", "workspace.create", "workspace.list"]
-    )
+    assert names == sorted(["catalog", "delegate", "user_secrets_status"])
     assert (a.get("tool_domains") or []) == []
     assert (a.get("tool_capability_any") or []) == []
     assert "github" not in names
@@ -75,20 +55,6 @@ def test_general_agent_orchestrator_only() -> None:
     assert "git_read" not in names
     assert "task" not in names
     assert "todo" not in names
-
-
-def test_coding_agent_has_workspace_repository_tools() -> None:
-    from apps.backend.domain.agent_runtime.registry import get_agent_registry
-
-    a = get_agent_registry().get_agent("coding")
-    assert a is not None
-    names = a["tool_names"]
-    assert "workspace.list" in names
-    assert _repo(names, "read_file")
-    assert "bash" in names
-    assert "delegate" not in names
-    assert "task" in names
-    assert "todo" in names
 
 
 def test_operator_agent_matches_capabilities() -> None:
@@ -102,40 +68,15 @@ def test_operator_agent_matches_capabilities() -> None:
     assert "scheduler.list" in names
 
 
-def test_security_auditor_agent_resolves_domains_and_rag_capability() -> None:
+def test_research_agent_has_knowledge_tools() -> None:
     from apps.backend.domain.agent_runtime.registry import get_agent_registry
 
-    a = get_agent_registry().get_agent("security_auditor")
+    a = get_agent_registry().get_agent("research")
     assert a is not None
     names = a["tool_names"]
-    assert _repo(names, "read_file")
-    assert "project_explain" in names
+    assert "web_search.search" in names
     assert "rag_search" in names
-    assert "save_user_secret" in names
-    for denied in ("bash", "write_file", "edit", "apply_patch", "git_push"):
-        assert denied not in names
-
-
-def test_coding_plan_agent_read_only_via_allowlist() -> None:
-    from apps.backend.domain.agent_runtime.registry import get_agent_registry
-
-    a = get_agent_registry().get_agent("coding_plan")
-    assert a is not None
-    names = a["tool_names"]
-    assert _repo(names, "read_file")
-    assert _repo(names, "search")
-    assert "git_read" in names
-    assert "workspace.list" in names
-    for denied in (
-        "bash",
-        "git_sync",
-        "git_push",
-        "write_file",
-        "edit",
-        "replace",
-        "apply_patch",
-    ):
-        assert denied not in names
+    assert "bash" not in names
 
 
 def test_general_agent_yaml_uses_tool_allowlist() -> None:
@@ -162,7 +103,7 @@ def test_agents_loaded_from_yaml_directories() -> None:
     from apps.backend.domain.agent_runtime.registry import get_agent_registry
 
     reg = get_agent_registry()
-    for aid in ("coding_plan", "coding", "operator", "security_auditor", "general", "creative", "dashboard"):
+    for aid in ("operator", "general", "creative", "dashboard", "research"):
         a = reg.get_agent(aid)
         assert a is not None, aid
         assert a.get("source_kind") == "yaml"
@@ -189,15 +130,9 @@ def test_missing_tools_not_in_allowlist() -> None:
 def test_agent_behavior_flags_come_from_plugins_not_ids() -> None:
     from apps.backend.domain.agent_runtime.agent_behavior import _agent_behavior_flags
 
-    c = _agent_behavior_flags("coding")
-    assert c["coding_tools_permission_ask"] is False
-    assert c["strict_workspace"] is False
-    assert c["tool_discipline_preset"] == "coding_build"
+    r = _agent_behavior_flags("research")
+    assert r["strict_workspace"] is False
+    assert r["tool_discipline_preset"] is None
 
-    p = _agent_behavior_flags("coding_plan")
-    assert p["strict_workspace"] is True
-    assert p["coding_tools_permission_ask"] is False
-    assert p["tool_discipline_preset"] == "coding_plan"
-
-    s = _agent_behavior_flags("security_auditor")
-    assert s["strict_workspace"] is True
+    o = _agent_behavior_flags("operator")
+    assert o["strict_workspace"] is False

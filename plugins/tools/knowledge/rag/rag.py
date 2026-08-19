@@ -10,7 +10,7 @@ from apps.backend.infrastructure.settings import operator_settings
 from apps.backend.infrastructure.rag.rag import rag as rag_service
 
 try:
-    from plugins.tools.workspace.lib.common import (
+    from plugins.tools.knowledge.lib.common import (
         workspace_docs_rag_enabled,
         workspace_id_from_context,
     )

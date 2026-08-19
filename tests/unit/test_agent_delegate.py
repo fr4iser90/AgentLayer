@@ -18,14 +18,14 @@ from plugins.tools.platform.agents.delegate import delegate
 
 
 def test_delegatable_agent_ids() -> None:
-    assert "security_auditor" in standard_delegatable_agent_ids()
-    assert "coding" in standard_delegatable_agent_ids()
+    assert "research" in standard_delegatable_agent_ids()
     assert "creative" in standard_delegatable_agent_ids()
     assert "dashboard" in standard_delegatable_agent_ids()
     assert "math" in standard_delegatable_agent_ids()
-    assert "research" in standard_delegatable_agent_ids()
     assert "communications" in standard_delegatable_agent_ids()
     assert "media" in standard_delegatable_agent_ids()
+    assert "coding" not in standard_delegatable_agent_ids()
+    assert "security_auditor" not in standard_delegatable_agent_ids()
     assert "operator" in admin_only_delegatable_agent_ids()
     assert "operator" not in standard_delegatable_agent_ids()
     assert "general" not in standard_delegatable_agent_ids()
@@ -67,24 +67,23 @@ def test_catalog_snippet_mentions_operator_for_admin() -> None:
 def test_catalog_snippet_lists_specialists() -> None:
     snip = build_delegate_agents_catalog_snippet()
     assert "delegate" in snip
-    assert "security_auditor" in snip
-    assert "coding" in snip
+    assert "research" in snip
 
 
 def test_list_agents_mode() -> None:
     out = delegate({"list_agents": True}, context=None)
     data = json.loads(out)
     assert data.get("ok") is True
-    assert "security_auditor" in data.get("agent_ids", [])
+    assert "research" in data.get("agent_ids", [])
 
 
 def test_delegate_requires_parent_model_from_ui() -> None:
     out = delegate(
         {
             "run_subagent": True,
-            "agent_id": "coding",
+            "agent_id": "research",
             "prompt": "do work",
-            "description": "build",
+            "description": "research task",
         },
         context={"agent_run_id": "p1"},
     )
@@ -95,17 +94,16 @@ def test_delegate_requires_parent_model_from_ui() -> None:
 
 def test_delegate_requires_run_subagent() -> None:
     out = delegate(
-        {"agent_id": "security_auditor", "prompt": "scan", "description": "ssc"},
+        {"agent_id": "research", "prompt": "scan", "description": "research"},
         context=None,
     )
     data = json.loads(out)
     assert data.get("ok") is False
 
 
-def test_delegate_invokes_security_auditor() -> None:
+def test_delegate_invokes_research() -> None:
     uid = uuid.uuid4()
     ctx = {
-        "workspace": {"id": str(uuid.uuid4()), "path": "/tmp/ws"},
         "user": type("U", (), {"id": uid})(),
         "agent_run_id": "parent-1",
         "parent_effective_model": "__mock_ui_model__",
@@ -115,7 +113,7 @@ def test_delegate_invokes_security_auditor() -> None:
 
     async def fake_cc(body: dict, **kwargs: object) -> dict:
         bodies.append(dict(body))
-        return {"choices": [{"message": {"content": "Scan report."}, "finish_reason": "stop"}]}
+        return {"choices": [{"message": {"content": "Research summary."}, "finish_reason": "stop"}]}
 
     art_id = uuid.uuid4()
     with patch("apps.backend.application.agent_runtime.runtime.embedded_subagent._chat_completion_handler", new=AsyncMock(side_effect=fake_cc)):
@@ -135,9 +133,9 @@ def test_delegate_invokes_security_auditor() -> None:
                         out = delegate(
                             {
                                 "run_subagent": True,
-                                "agent_id": "security_auditor",
-                                "prompt": "Run SSC scan and summarize findings",
-                                "description": "SSC scan",
+                                "agent_id": "research",
+                                "prompt": "Summarize recent findings on topic X",
+                                "description": "Research",
                             },
                             context=ctx,
                         )
@@ -145,8 +143,8 @@ def test_delegate_invokes_security_auditor() -> None:
     data = json.loads(out)
     assert data.get("ok") is True, data
     assert data.get("artifact_id") == str(art_id)
-    assert data.get("agent_id") == "security_auditor"
+    assert data.get("agent_id") == "research"
     assert len(bodies) == 1
-    assert bodies[0].get("agent_id") == "security_auditor"
+    assert bodies[0].get("agent_id") == "research"
     assert bodies[0].get("model") == "__mock_ui_model__"
     assert bodies[0].get("agent_model_catalog_owned_by") == "__mock_ui_provider__"

@@ -220,7 +220,7 @@ def ensure_rag_embedding_aligned(*, log_prefix: str = "rag_embedding_sync") -> d
 
 def _invalidate_embedding_caches() -> None:
     try:
-        from apps.backend.infrastructure.codebase.code_index_qdrant import invalidate_code_index_cache
+        invalidate_code_index_cache = None  # codebase removed
 
         invalidate_code_index_cache()
     except Exception:

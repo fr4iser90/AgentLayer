@@ -40,7 +40,11 @@
     "chatDesc": "Open WebUI–style shell (P2: WebSocket)",
     "studioDesc": "ComfyUI presets — GET /v1/studio/catalog",
     "tasksDesc": "Global and per-project backlog — bind a task when chatting",
-    "dashboardDesc": "Multiple kinds (tasks, friends, pets, …) — install schema once, then create dashboards"
+    "dashboardDesc": "Multiple kinds (tasks, friends, pets, …) — install schema once, then create dashboards",
+    "hubTitle": "Workspace",
+    "hubIntro": "This tenant uses a restricted app surface configured by the operator.",
+    "hubDashboardDesc": "Boards and calculators available for your organization",
+    "hubChatDesc": "Chat with agents allowed for this tenant"
   },
   "docs": {
     "title": "Documentation",

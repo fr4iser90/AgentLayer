@@ -110,8 +110,8 @@ def test_local_context_window_tool_count_is_ratio_only(monkeypatch):
 def test_build_tool_forward_plan_always_catalog(monkeypatch):
     from apps.backend.domain.agent_runtime.tool_schema import _registry_tool_spec_by_registered_name
 
-    ws = _registry_tool_spec_by_registered_name("workspace.create")
-    assert ws is not None
+    delegate_spec = _registry_tool_spec_by_registered_name("delegate")
+    assert delegate_spec is not None
     monkeypatch.setattr(
         "apps.backend.domain.tools.forward_policy.rank_tools_for_forward",
         lambda tools, text, triggers, **kw: (list(tools), False),
@@ -121,17 +121,17 @@ def test_build_tool_forward_plan_always_catalog(monkeypatch):
             agent_id="general",
             model_id="gpt-4o",
             context_window_tokens=128_000,
-            user_text="Use workspace.create with git_url=...",
-            tool_specs=[ws],
+            user_text="Delegate research to a specialist sub-agent",
+            tool_specs=[delegate_spec],
             ranking_enabled=False,
             full_schema_preference=True,
         )
     )
-    assert plan.schema_mode_per_tool["workspace.create"] == "catalog"
+    assert plan.schema_mode_per_tool["delegate"] == "catalog"
 
 
 def test_build_tool_forward_plan_pins_first(monkeypatch):
-    specs = [_spec(n) for n in ("delegate", "catalog", "workspace.create", "grep", "read_file")]
+    specs = [_spec(n) for n in ("delegate", "catalog", "user_secrets_status", "rag_search", "web_search.search")]
 
     monkeypatch.setattr(
         "apps.backend.domain.tools.forward_policy.rank_tools_for_forward",
@@ -139,12 +139,12 @@ def test_build_tool_forward_plan_pins_first(monkeypatch):
     )
     monkeypatch.setattr(
         "apps.backend.domain.tools.forward_policy._pinned_tools_for_agent",
-        lambda agent_id: frozenset({"delegate", "catalog", "workspace.create"}),
+        lambda agent_id: frozenset({"delegate", "catalog", "user_secrets_status"}),
     )
 
     class _FakeReg:
         def get_agent(self, agent_id):
-            return {"pinned_tools": ["delegate", "catalog", "workspace.create"]}
+            return {"pinned_tools": ["delegate", "catalog", "user_secrets_status"]}
 
     monkeypatch.setattr(
         "apps.backend.domain.agent_runtime.registry.get_agent_registry",
@@ -156,12 +156,12 @@ def test_build_tool_forward_plan_pins_first(monkeypatch):
             agent_id="general",
             model_id="qwen2.5:7b",
             context_window_tokens=262_144,
-            user_text="clone repo and delegate scan",
+            user_text="delegate research task",
             tool_specs=specs,
             ranking_enabled=True,
             full_schema_preference=False,
         )
     )
-    assert plan.forward_names[:3] == ["delegate", "catalog", "workspace.create"]
-    assert plan.pins_included == ["delegate", "catalog", "workspace.create"]
+    assert plan.forward_names[:3] == ["delegate", "catalog", "user_secrets_status"]
+    assert plan.pins_included == ["delegate", "catalog", "user_secrets_status"]
     assert plan.meta["pinned_count"] == 3

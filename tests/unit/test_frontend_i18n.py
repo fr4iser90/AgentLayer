@@ -58,19 +58,44 @@ def _app_route_paths_from_tsx(content: str) -> set[str]:
             return "/app/"
         return "/app/" + "/".join(stack)
 
+    route_open = False
+    route_pushed_seg = False
+
     for line in content.splitlines():
         if "</Route>" in line:
             if stack:
                 stack.pop()
+            route_open = False
+            route_pushed_seg = False
             continue
         if "<Route" not in line:
+            if route_open:
+                path_m = re.search(r'path="([^"]+)"', line)
+                if path_m:
+                    seg = path_m.group(1)
+                    if seg not in skip_segment and seg != "/":
+                        stack.append(seg.strip("/"))
+                        route_pushed_seg = True
+                if re.search(
+                    r"<\w+(?:Page|Settings|Tools|Users|Schedules|ScheduledJobs|AgentTraces|Agents|Benchmarks|Dashboard)\s*/?>",
+                    line,
+                ):
+                    paths.add(full_path())
+                if line.strip().endswith("/>") and route_pushed_seg:
+                    stack.pop()
+                    route_open = False
+                    route_pushed_seg = False
             continue
+
+        if not line.strip().endswith("/>"):
+            route_open = True
+            route_pushed_seg = False
 
         self_closing = line.strip().endswith("/>")
         pushed = False
 
         if re.search(
-            r'element=\{<(Navigate|SettingsLayout|AdminLayout|InterfacesLayout|RequireAdmin|RequireSession|AppLayout)',
+            r'element=\{<(Navigate|SettingsLayout|AdminLayout|InterfacesLayout|RequireAdmin|RequireSession|AppLayout|RequireOrgAdmin|OrgAdminLayout)',
             line,
         ):
             path_m = re.search(r'path="([^"]+)"', line)
@@ -79,8 +104,11 @@ def _app_route_paths_from_tsx(content: str) -> set[str]:
                 if seg not in skip_segment and seg != "/":
                     stack.append(seg.strip("/"))
                     pushed = True
+                    route_pushed_seg = True
             if self_closing and pushed:
                 stack.pop()
+                route_open = False
+                route_pushed_seg = False
             continue
 
         path_m = re.search(r'path="([^"]+)"', line)
@@ -93,15 +121,25 @@ def _app_route_paths_from_tsx(content: str) -> set[str]:
                 continue
             stack.append(seg.strip("/"))
             pushed = True
+            route_pushed_seg = True
 
         if re.search(r"<Route\s+index\b", line) or re.search(
             r"element=\{<[A-Z][A-Za-z]+(?:Page|Settings|Tools|Users|Schedules|ScheduledJobs|AgentTraces|Agents|Benchmarks|Dashboard)",
+            line,
+        ) or re.search(
+            r"<\w+(?:Page|Settings|Tools|Users|Schedules|ScheduledJobs|AgentTraces|Agents|Benchmarks|Dashboard)\s*/?>",
             line,
         ):
             paths.add(full_path())
 
         if self_closing and pushed:
             stack.pop()
+            route_open = False
+            route_pushed_seg = False
+        elif self_closing and route_open and route_pushed_seg and "<Route" not in line:
+            stack.pop()
+            route_open = False
+            route_pushed_seg = False
 
     return paths
 

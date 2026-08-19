@@ -27,4 +27,25 @@ def apply_template_capability_config(
             list(template.enabled_tool_domains),
             user_id=actor_user_id,
         )
+    if template.enabled_dashboard_kinds:
+        set_override(
+            tenant_id,
+            "dashboards.allowed_kinds",
+            list(template.enabled_dashboard_kinds),
+            user_id=actor_user_id,
+        )
+    if template.enabled_nav_items:
+        set_override(
+            tenant_id,
+            "ui.allowed_nav",
+            list(template.enabled_nav_items),
+            user_id=actor_user_id,
+        )
+    if template.enabled_dashboard_write_roles:
+        set_override(
+            tenant_id,
+            "dashboards.write_membership_roles",
+            list(template.enabled_dashboard_write_roles),
+            user_id=actor_user_id,
+        )
     invalidate_agent_config_cache(tenant_id)

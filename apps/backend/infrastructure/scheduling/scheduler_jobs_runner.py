@@ -20,7 +20,7 @@ from apps.backend.domain.scheduling.targets import (
 )
 from apps.backend.infrastructure.settings import operator_settings
 from apps.backend.infrastructure.scheduling import scheduler_jobs_store
-from apps.backend.infrastructure.codebase.coding_schedule_execution import run_coding_schedule_row
+run_coding_schedule_row = None  # codebase removed
 from apps.backend.infrastructure.db import db
 
 logger = logging.getLogger(__name__)

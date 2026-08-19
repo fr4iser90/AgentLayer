@@ -47,7 +47,10 @@ def test_pilot_tenant_templates_list(admin_client: E2EClient, e2e_server: None) 
             "no tenant templates on server — rebuild Docker after COPY content/ or run API from repo root"
         )
     assert "tpl_default_ops" in ids
-    assert "tpl_healthcare_ops" in ids
+    assert "tpl_ops_hub" in ids
+    # Operator-local templates (content/_private/tenant-templates) are optional on CI images.
+    if "tpl_healthcare_ops" not in ids:
+        pytest.skip("operator-local tpl_healthcare_ops not present in this environment")
 
 
 def test_pilot_org_setup_required_gate(

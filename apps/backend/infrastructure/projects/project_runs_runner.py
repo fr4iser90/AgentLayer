@@ -11,7 +11,7 @@ from typing import Any
 from apps.backend.infrastructure.projects import project_runs_store
 from apps.backend.infrastructure.settings import operator_settings
 from apps.backend.infrastructure.projects.project_runs_store import RunStatus
-from apps.backend.infrastructure.codebase.coding_schedule_execution import run_coding_schedule_row
+run_coding_schedule_row = None  # codebase removed
 
 logger = logging.getLogger(__name__)
 

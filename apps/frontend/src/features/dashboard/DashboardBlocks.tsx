@@ -16,6 +16,7 @@ import { ProjectRowDetailDrawer } from "./ProjectRowDetailDrawer";
 import { DashboardRefBlockBody } from "./DashboardRefBlock";
 import { ShareWidgetBlockBody } from "./ShareWidgetBlock";
 import { SectionBlockBody } from "./SectionBlock";
+import { FormulaCalcBlockBody } from "./FormulaCalcBlock";
 import { getPath, setPath } from "./dashboardDataPaths";
 import {
   EXECUTION_TARGET_OPTIONS,
@@ -60,6 +61,8 @@ export function DashboardBlockTile(props: {
   data: Record<string, unknown>;
   setData: Dispatch<SetStateAction<Record<string, unknown>>>;
   readOnly?: boolean;
+  /** When true with readOnly, allow formula inputs / checklist toggles (use mode). */
+  interactOnly?: boolean;
   dashboardId?: string | null;
   displayMode?: "grid" | "expanded";
   rootLayout?: UiLayout;
@@ -77,6 +80,7 @@ export function DashboardBlockTile(props: {
       data={props.data}
       setData={props.setData}
       readOnly={props.readOnly === true}
+      interactOnly={props.interactOnly === true}
       dashboardId={props.dashboardId ?? null}
       displayMode={props.displayMode ?? "grid"}
       rootLayout={props.rootLayout}
@@ -557,6 +561,7 @@ function BlockView(props: {
   setData: Dispatch<SetStateAction<Record<string, unknown>>>;
   dashboardId: string | null;
   readOnly: boolean;
+  interactOnly?: boolean;
   displayMode?: "grid" | "expanded";
   rootLayout?: UiLayout;
   setRootLayout?: Dispatch<SetStateAction<UiLayout>>;
@@ -573,16 +578,19 @@ function BlockView(props: {
     setData,
     dashboardId,
     readOnly,
+    interactOnly = false,
     displayMode = "grid",
     rootLayout,
     setRootLayout,
-    gridEditMode = false,
-    gridContentReadOnly = false,
-    gridDashboardId = null,
+    gridEditMode,
+    gridContentReadOnly,
+    gridDashboardId,
     unreadBlockIds,
     highlightBlockId,
     onBlockSeen,
   } = props;
+  const structureLocked = readOnly;
+  const allowInteract = interactOnly || !readOnly;
   const { t } = useTranslation(["dashboard", "admin"]);
   const dp = block.props.dataPath || "";
 
@@ -764,6 +772,34 @@ function BlockView(props: {
     return <ShareWidgetBlockBody block={block} />;
   }
 
+    if (block.type === "formula_calc") {
+    const inputs = Array.isArray(block.props.formulaInputs)
+      ? (block.props.formulaInputs as {
+          key: string;
+          label: string;
+          optional?: boolean;
+          control?: "number" | "select" | "percent";
+          options?: { label: string; value: number }[];
+          defaultValue?: number;
+          step?: number;
+          placeholder?: string;
+        }[])
+      : [];
+    const outputs = Array.isArray(block.props.formulaOutputs)
+      ? (block.props.formulaOutputs as { key: string; label: string; expr: string }[])
+      : [];
+    return (
+      <FormulaCalcBlockBody
+        title={typeof block.props.title === "string" ? block.props.title : undefined}
+        disclaimer={typeof block.props.disclaimer === "string" ? block.props.disclaimer : undefined}
+        formulaNote={typeof block.props.formulaNote === "string" ? block.props.formulaNote : undefined}
+        inputs={inputs}
+        outputs={outputs}
+        readOnly={structureLocked && !allowInteract}
+      />
+    );
+  }
+
   if (block.type === "gallery") {
     return (
       <GalleryBlockBody
@@ -875,7 +911,7 @@ function BlockView(props: {
                 className="w-56 rounded-md border border-surface-border bg-black/30 px-3 py-1.5 text-xs text-neutral-100 outline-none focus:border-sky-500/50"
               />
             ) : null}
-            {!readOnly ? (
+            {!structureLocked ? (
               <button
                 type="button"
                 className="rounded-md bg-sky-600/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
@@ -896,18 +932,18 @@ function BlockView(props: {
                   </th>
                 ))}
                 {enableRowDetail ? <th className="w-12 px-2 py-2" /> : null}
-                {!readOnly ? <th className="w-10 px-2 py-2" /> : null}
+                {!structureLocked ? <th className="w-10 px-2 py-2" /> : null}
               </tr>
             </thead>
             <tbody>
               {filteredRows.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={cols.length + (enableRowDetail ? 1 : 0) + (readOnly ? 0 : 1)}
+                    colSpan={cols.length + (enableRowDetail ? 1 : 0) + (structureLocked ? 0 : 1)}
                     className="px-2 py-6 text-center text-surface-muted"
                   >
                     {rows.length === 0
-                      ? readOnly
+                      ? structureLocked
                         ? t("dashboard:tableEmptyReadOnly")
                         : t("dashboard:tableEmptyEditable")
                       : t("dashboard:tableNoMatches")}
@@ -921,7 +957,7 @@ function BlockView(props: {
                         <CellInput
                           col={c}
                           value={row[c.field]}
-                          readOnly={readOnly}
+                          readOnly={c.kind === "checkbox" ? !allowInteract : structureLocked}
                           onChange={(v) => {
                             const rowId = String(row.id ?? "");
                             if (!rowId) return updateRow(ri, c.field, v);
@@ -943,7 +979,7 @@ function BlockView(props: {
                         </button>
                       </td>
                     ) : null}
-                    {!readOnly ? (
+                    {!structureLocked ? (
                       <td className="px-1">
                         <button
                           type="button"

@@ -14,7 +14,6 @@ from apps.backend.application.agent_runtime.dependencies import (
     bind_llm_wait_notifier,
     db,
     ensure_workspace,
-    maybe_schedule_index_on_attach,
 )
 from apps.backend.application.agent_runtime.runtime.io import *  # noqa: F403
 from apps.backend.application.agent_runtime.runtime.prompts import *  # noqa: F403
@@ -210,11 +209,6 @@ async def bootstrap_chat_run(
         _p = workspace.get("path")
         if isinstance(_p, str) and _p.strip():
             tool_context["workspace"] = workspace
-        if agent_id in ("coding", "coding_plan"):
-            try:
-                maybe_schedule_index_on_attach(workspace)
-            except Exception as e:
-                logger.debug("index-on-attach skipped: %s", e)
     if cancel_event is not None:
         tool_context["cancel_event"] = cancel_event
 
@@ -277,7 +271,6 @@ async def bootstrap_chat_run(
     tool_context["workspace_verify_succeeded"] = False
     tool_context["permission_always_allow_tools"] = set()
     _abf = _agent_behavior_flags(agent_id if isinstance(agent_id, str) else None)
-    tool_context["agent_coding_tools_permission_ask"] = _abf["coding_tools_permission_ask"]
     tool_context["agent_unattended"] = agent_unattended
     if isinstance(agent_id, str) and agent_id.strip():
         tool_context["agent_id"] = agent_id.strip()

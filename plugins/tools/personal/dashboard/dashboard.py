@@ -542,6 +542,12 @@ def create_dashboard(arguments: dict[str, Any]) -> str:
     if cerr:
         return _err(cerr)
 
+    from apps.backend.infrastructure.dashboards.dashboard_create_helpers import validate_kind_for_tenant
+
+    kerr = validate_kind_for_tenant(tid, kind)
+    if kerr:
+        return _err(kerr)
+
     default_title = (
         default_title_for_template_id(template_id)
         if template_id
@@ -973,6 +979,11 @@ def import_layout(arguments: dict[str, Any]) -> str:
     )
     if cerr:
         return _err(cerr)
+    from apps.backend.infrastructure.dashboards.dashboard_create_helpers import validate_kind_for_tenant
+
+    kerr = validate_kind_for_tenant(tid, kind)
+    if kerr:
+        return _err(kerr)
     title = str(arguments.get("title") or "Dashboard").strip()[:500]
     ul = arguments.get("ui_layout")
     if not isinstance(ul, dict):
