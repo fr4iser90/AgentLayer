@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import secrets
 import bcrypt
 import jwt
 import uuid
@@ -290,6 +291,99 @@ async def get_current_user(request: Request) -> User:
     raise HTTPException(status_code=401, detail="Unauthorized")
 
 
+API_KEY_PREFIX = "al_"
+
+
+def bearer_is_interactive_session(token: str) -> bool:
+    """
+    True for a JWT access token, False for an API key.
+
+    Key management is gated on this so a leaked key cannot mint a replacement that outlives
+    its own revocation.
+    """
+    return bool(decode_access_token((token or "").strip()))
+
+
+def hash_api_key(token: str) -> str:
+    """Fixed-length digest for indexed DB lookup (not bcrypt — API keys are high-entropy)."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def generate_api_key() -> str:
+    """Opaque bearer secret. The prefix makes it recognisable in logs and secret scanners."""
+    return f"{API_KEY_PREFIX}{secrets.token_urlsafe(32)}"
+
+
+def create_api_key(
+    user_id: uuid.UUID,
+    name: str,
+    expires_at: Optional[datetime] = None,
+) -> tuple[str, dict[str, Any]]:
+    """Mint a key. Returns (secret, metadata) — the secret is not recoverable afterwards."""
+    token = generate_api_key()
+    with db.pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO api_keys (user_id, key_hash, name, expires_at)
+                VALUES (%s, %s, %s, %s)
+                RETURNING id, name, created_at, last_used_at, expires_at
+                """,
+                (user_id, hash_api_key(token), name, expires_at),
+            )
+            row = cur.fetchone()
+        conn.commit()
+    meta = {
+        "id": str(row[0]),
+        "name": row[1],
+        "created_at": row[2],
+        "last_used_at": row[3],
+        "expires_at": row[4],
+    }
+    return token, meta
+
+
+def list_api_keys(user_id: uuid.UUID) -> list[dict[str, Any]]:
+    """Metadata only — the secret is never stored and cannot be listed."""
+    with db.pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, name, created_at, last_used_at, expires_at
+                FROM api_keys
+                WHERE user_id = %s
+                ORDER BY created_at DESC
+                """,
+                (user_id,),
+            )
+            rows = cur.fetchall()
+        conn.commit()
+    return [
+        {
+            "id": str(r[0]),
+            "name": r[1],
+            "created_at": r[2],
+            "last_used_at": r[3],
+            "expires_at": r[4],
+            "expired": bool(r[4] and r[4] <= datetime.now(timezone.utc)),
+        }
+        for r in rows
+    ]
+
+
+def revoke_api_key(user_id: uuid.UUID, key_id: uuid.UUID) -> bool:
+    """Scoped by user_id so one user cannot revoke another's key."""
+    with db.pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM api_keys WHERE id = %s AND user_id = %s",
+                (key_id, user_id),
+            )
+            deleted = cur.rowcount
+        conn.commit()
+    return deleted > 0
+
+
 def get_user_for_bearer_token(token: str) -> Optional[User]:
     """
     Resolve user from JWT access token or API key string (same rules as ``Authorization: Bearer``).
@@ -306,11 +400,16 @@ def get_user_for_bearer_token(token: str) -> Optional[User]:
                 return user
         except (ValueError, TypeError):
             pass
+    digest = hash_api_key(raw)
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT user_id FROM api_keys WHERE key_hash = %s",
-                (raw,),
+                """
+                SELECT user_id FROM api_keys
+                WHERE key_hash = %s
+                  AND (expires_at IS NULL OR expires_at > NOW())
+                """,
+                (digest,),
             )
             row = cur.fetchone()
             if row:
@@ -318,7 +417,7 @@ def get_user_for_bearer_token(token: str) -> Optional[User]:
                 if user:
                     cur.execute(
                         "UPDATE api_keys SET last_used_at = NOW() WHERE key_hash = %s",
-                        (raw,),
+                        (digest,),
                     )
                     conn.commit()
                     return user

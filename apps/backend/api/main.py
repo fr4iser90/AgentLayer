@@ -25,6 +25,7 @@ from apps.backend.api.platform.controllers.user_data_api import router as user_d
 from apps.backend.api.delegation.controllers.delegate_api import router as delegate_router
 from apps.backend.api.rag.controllers.memory_api import router as memory_router
 from apps.backend.api.platform.controllers.user_secrets_api import router as user_secrets_router
+from apps.backend.api.platform.controllers.api_keys_api import router as api_keys_router
 from apps.backend.api.agents.controllers.agent_config_admin_api import router as agent_config_admin_router
 from apps.backend.api.agents.controllers.agents_admin_api import router as agents_admin_router
 from apps.backend.api.agents.controllers.agents_api import router as agents_router
@@ -89,6 +90,7 @@ app = FastAPI(title="agent-layer", version="0.7.7", lifespan=server_lifespan)
 
 for router in (
     user_secrets_router,
+    api_keys_router,
     conversations_router,
     message_feedback_router,
     message_feedback_admin_router,

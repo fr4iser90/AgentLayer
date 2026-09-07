@@ -24,6 +24,10 @@ logs/
 apps/frontend/node_modules/
 apps/frontend/dist/
 
+# TUI client: local virtualenv (the package itself is installed with pip -e)
+apps/tui/.venv/
+apps/tui/*.egg-info/
+
 # Traefik
 compose.traefik.yaml
 

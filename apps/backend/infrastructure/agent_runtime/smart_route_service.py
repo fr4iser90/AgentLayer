@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from apps.backend.domain.model_routing import smart_route as domain
 from apps.backend.infrastructure.agent_runtime.catalog_llm_client import post_catalog_chat_completions
+from apps.backend.infrastructure.platform.config import config
 from apps.backend.infrastructure.providers.model_catalog_providers import get_provider_spec
 from apps.backend.infrastructure.settings.operator_settings import smart_routing_params
 
@@ -15,6 +16,10 @@ class _SmartRouteDeps:
     @staticmethod
     def catalog_provider_exists(provider_id: str) -> bool:
         return get_provider_spec(provider_id) is not None
+
+    @staticmethod
+    def router_provider_id() -> str:
+        return str(getattr(config, "LLM_ROUTER_PROVIDER_ID", None) or "")
 
 
 domain.register_smart_route_dependencies(_SmartRouteDeps())

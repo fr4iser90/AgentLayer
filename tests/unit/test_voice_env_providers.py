@@ -17,6 +17,10 @@ def test_numbered_stt_providers() -> None:
         "VOICE_STT_PROVIDER_1_LABEL": "Whisper",
         "VOICE_STT_PROVIDER_1_API_KEY": "stt-key",
         "VOICE_STT_PROVIDER_1_MODEL": "whisper-1",
+        # Left blank on purpose: this case covers the default style, and a real .env on the
+        # developer's machine would otherwise leak its own value in through clear=False.
+        "VOICE_STT_PROVIDER_1_API_STYLE": "",
+        "VOICE_STT_PROVIDER_1_STT_API_STYLE": "",
     }
     with patch.dict(os.environ, env, clear=False):
         rows = parse_voice_stt_env_providers()

@@ -4,6 +4,8 @@ exclude_dirs = ["tests"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests/unit", "tests/e2e", "tests/benchmarks"]
+# apps/tui is a standalone package (its own pyproject); make it importable without installing.
+pythonpath = ["apps/tui"]
 markers = [
     "e2e: HTTP/Playwright end-to-end tests against a running Agent Layer instance",
     "benchmark: live LLM provider/model benchmarks (requires running server, real models)",

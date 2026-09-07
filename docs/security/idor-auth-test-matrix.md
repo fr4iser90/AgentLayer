@@ -89,6 +89,19 @@ Legend: **401** = unauthenticated, **403** = authenticated but forbidden, **404*
 
 Users **cannot** self-promote via `POST /auth/setup` after the first admin exists (409).
 
+### Credential class
+
+An API key authenticates the same routes as a JWT, with one deliberate exception: it cannot manage keys.
+
+| Route | With JWT | With API key | Enforcement |
+|-------|----------|--------------|-------------|
+| `POST /v1/user/api-keys` | 200 | 403 | `_require_interactive_session` — a leaked key must not mint a successor |
+| `DELETE /v1/user/api-keys/{id}` | 200 | 403 | same |
+| everything else | 200 | 200 | `get_user_for_bearer_token` accepts both |
+
+Expired keys (`expires_at <= NOW()`) fail closed on HTTP **and** on WS `/ws/v1/chat`, enforced in the
+lookup query rather than in the caller. Live coverage: `scripts/verify_api_keys.py`.
+
 ### Cross-user IDOR (User A resource → User B)
 
 | Resource | User B read | User B write | Enforcement |
@@ -100,6 +113,7 @@ Users **cannot** self-promote via `POST /auth/setup` after the first admin exist
 | `GET /v1/user/memory/facts` | 200 (own keys only) | N/A | Identity-scoped memory service |
 | `GET /v1/user/secrets` | 200 (own keys only) | N/A | `resolve_chat_identity` + `user_id`; E2E: `test_user_b_cannot_list_admin_secret_keys` |
 | `GET /v1/workspaces/{id}` | 404 | 404 on mutating routes | `owner_user_id` in SQL; E2E: `test_user_b_cannot_read_admin_workspace` |
+| `GET /v1/user/api-keys` | 200 (own keys only) | 404 on `DELETE /{id}` | `user_id` in both SQL clauses; unit: `test_revoke_is_scoped_to_the_owning_user` |
 | Dashboard block render (no share) | 403 or 404 | — | E2E: `test_dashboard_nested_ref` |
 
 ### Shared access (positive — must succeed)

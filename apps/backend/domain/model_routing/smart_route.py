@@ -50,6 +50,8 @@ class SmartRouteDependencies(Protocol):
 
     def catalog_provider_exists(self, provider_id: str) -> bool: ...
 
+    def router_provider_id(self) -> str: ...
+
     def post_catalog_chat_completions(
         self,
         *,
@@ -83,6 +85,11 @@ def smart_routing_params() -> dict[str, Any]:
 
 def catalog_provider_exists(provider_id: str) -> bool:
     return _require_deps().catalog_provider_exists(provider_id)
+
+
+def router_provider_id() -> str:
+    """Operator-wide fallback router provider; the domain must not read config itself."""
+    return _require_deps().router_provider_id()
 
 
 def post_catalog_chat_completions(
@@ -186,7 +193,7 @@ def _parse_router_json(content: str) -> dict[str, Any] | None:
 def _router_provider_id(p: dict[str, Any]) -> str | None:
     raw = str(p.get("router_model_catalog_owned_by") or "").strip()
     if not raw:
-        raw = (getattr(config, "LLM_ROUTER_PROVIDER_ID", None) or "").strip()
+        raw = router_provider_id().strip()
     if raw:
         if catalog_provider_exists(raw):
             return raw

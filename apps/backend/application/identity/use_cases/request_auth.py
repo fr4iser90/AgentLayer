@@ -7,7 +7,9 @@ from fastapi import Request
 from apps.backend.infrastructure.identity.auth import (
     LoginRequest,
     User,
+    bearer_is_interactive_session as _bearer_is_interactive_session,
     create_access_token as _create_access_token,
+    create_api_key as _create_api_key,
     create_refresh_token as _create_refresh_token,
     create_user as _create_user,
     get_current_user as _get_current_user,
@@ -16,11 +18,13 @@ from apps.backend.infrastructure.identity.auth import (
     get_user_for_bearer_token as _get_user_for_bearer_token,
     hash_refresh_token as _hash_refresh_token,
     list_all_users as _list_all_users,
+    list_api_keys as _list_api_keys,
     require_admin as _require_admin,
     require_site_admin as _require_site_admin,
     require_tenant_admin as _require_tenant_admin,
     require_tenant_member as _require_tenant_member,
     require_permission as _require_permission,
+    revoke_api_key as _revoke_api_key,
     revoke_refresh_token as _revoke_refresh_token,
     update_user_password as _update_user_password,
     update_user_tenant as _update_user_tenant,
@@ -103,3 +107,19 @@ def update_user_tenant(user_id: Any, tenant_id: int) -> bool:
 
 def update_user_password(user_id: Any, password: str) -> None:
     _update_user_password(user_id, password)
+
+
+def bearer_is_interactive_session(token: str) -> bool:
+    return _bearer_is_interactive_session(token)
+
+
+def create_api_key(user_id: Any, name: str, expires_at: Any = None) -> tuple[str, dict[str, Any]]:
+    return _create_api_key(user_id, name, expires_at)
+
+
+def list_api_keys(user_id: Any) -> list[dict[str, Any]]:
+    return _list_api_keys(user_id)
+
+
+def revoke_api_key(user_id: Any, key_id: Any) -> bool:
+    return _revoke_api_key(user_id, key_id)

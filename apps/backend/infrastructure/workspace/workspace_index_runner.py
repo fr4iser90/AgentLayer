@@ -14,7 +14,14 @@ from psycopg.types.json import Json
 from apps.backend.infrastructure.platform.config import config
 from apps.backend.infrastructure.settings import operator_settings
 from apps.backend.infrastructure.db import db
-from apps.backend.infrastructure.workspace.workspace_retrieval import _index_job_clear, _index_job_set, _row_flags
+from apps.backend.infrastructure.workspace.workspace_retrieval import (
+    _index_job_clear,
+    _index_job_get,
+    _index_job_set,
+    _row_flags,
+    index_job_for_status,
+    qdrant_status,
+)
 
 logger = logging.getLogger(__name__)
 _DEFAULT_MAX_FILES = 5000

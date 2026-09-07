@@ -19,7 +19,7 @@ __version__ = "1.0.0"
 TOOL_ID = "conversation_goal"
 TOOL_BUCKET = "meta"
 TOOL_DOMAIN = "conversation_goal"
-TOOL_LABEL = "Session goal, todos & plan mode"
+TOOL_LABEL = "Conversation goal, todos & plan mode"
 TOOL_DESCRIPTION = (
     "Manage the current chat's ongoing goal, short todo list, and plan mode for this run. "
     "Use for multi-step work in this conversation. "
