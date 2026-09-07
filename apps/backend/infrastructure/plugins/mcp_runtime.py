@@ -24,12 +24,19 @@ _EXEC = ThreadPoolExecutor(max_workers=2, thread_name_prefix="mcp_stdio")
 
 
 @dataclass(frozen=True)
-class McpStdioServer:
+class McpServer:
     server_id: str
-    command: str
-    args: list[str]
-    env: dict[str, str] | None
-    cwd: str | None
+    transport: str  # stdio | streamable-http
+    command: str | None = None
+    args: tuple[str, ...] = ()
+    env: dict[str, str] | None = None
+    cwd: str | None = None
+    url: str | None = None
+    headers: dict[str, str] | None = None
+
+
+# Back-compat alias
+McpStdioServer = McpServer
 
 
 def _b64url_decode_padded(segment: str) -> str:
@@ -63,24 +70,39 @@ def parse_mcp_openai_function_name(name: str) -> tuple[str, str] | None:
     return sid, tool
 
 
-def _parse_servers_payload(data: Any) -> list[McpStdioServer]:
+def _workspace_mcp_stdio_dicts() -> list[dict[str, Any]] | None:
+    """Non-empty list from workspace identity → workspace-only MCP."""
+    from apps.backend.domain.shared.identity import get_workspace
+
+    ws = get_workspace()
+    if not isinstance(ws, dict):
+        return None
+    raw = ws.get("mcp_stdio_servers")
+    if isinstance(raw, list) and len(raw) > 0:
+        return list(raw)
+    return None
+
+
+def _parse_servers_payload(data: Any) -> list[McpServer]:
     if not isinstance(data, list):
         raise ValueError("MCP servers config must be a JSON array")
-    out: list[McpStdioServer] = []
+    out: list[McpServer] = []
     for i, row in enumerate(data):
         if not isinstance(row, dict):
             raise ValueError(f"MCP server entry {i} must be an object")
         sid = str(row.get("id") or "").strip()
-        cmd = str(row.get("command") or "").strip()
-        args = row.get("args")
-        if not sid or not cmd:
-            raise ValueError(f"MCP server entry {i} needs non-empty id and command")
+        if not sid:
+            raise ValueError(f"MCP server entry {i} needs non-empty id")
         if not _SERVER_ID_RE.match(sid):
             raise ValueError(
                 f"MCP server id {sid!r} must match {_SERVER_ID_RE.pattern} (no underscores)"
             )
-        if not isinstance(args, list) or not all(isinstance(a, str) for a in args):
-            raise ValueError(f"MCP server {sid!r}: args must be a list of strings")
+        transport = str(row.get("transport") or "stdio").strip().lower()
+        if transport in ("http", "sse", "streamable_http"):
+            transport = "streamable-http"
+        if transport not in ("stdio", "streamable-http"):
+            raise ValueError(f"MCP server {sid!r}: transport must be stdio or streamable-http")
+
         env_raw = row.get("env")
         env: dict[str, str] | None = None
         if env_raw is not None:
@@ -89,13 +111,52 @@ def _parse_servers_payload(data: Any) -> list[McpStdioServer]:
             ):
                 raise ValueError(f"MCP server {sid!r}: env must be an object of string keys/values")
             env = {str(k): str(v) for k, v in env_raw.items()}
-        cwd_raw = row.get("cwd")
-        cwd = str(cwd_raw).strip() if isinstance(cwd_raw, str) and cwd_raw.strip() else None
-        out.append(McpStdioServer(server_id=sid, command=cmd, args=list(args), env=env, cwd=cwd))
+
+        if transport == "stdio":
+            cmd = str(row.get("command") or "").strip()
+            args = row.get("args")
+            if not cmd:
+                raise ValueError(f"MCP server entry {i} needs non-empty command for stdio")
+            if not isinstance(args, list) or not all(isinstance(a, str) for a in args):
+                raise ValueError(f"MCP server {sid!r}: args must be a list of strings")
+            cwd_raw = row.get("cwd")
+            cwd = str(cwd_raw).strip() if isinstance(cwd_raw, str) and cwd_raw.strip() else None
+            out.append(
+                McpServer(
+                    server_id=sid,
+                    transport="stdio",
+                    command=cmd,
+                    args=tuple(args),
+                    env=env,
+                    cwd=cwd,
+                )
+            )
+        else:
+            url = str(row.get("url") or "").strip()
+            if not url.startswith(("http://", "https://")):
+                raise ValueError(f"MCP server {sid!r}: url must be http(s) for streamable-http")
+            headers_raw = row.get("headers")
+            headers: dict[str, str] | None = None
+            if headers_raw is not None:
+                if not isinstance(headers_raw, dict) or not all(
+                    isinstance(k, str) and isinstance(v, str) for k, v in headers_raw.items()
+                ):
+                    raise ValueError(f"MCP server {sid!r}: headers must be string key/value object")
+                headers = {str(k): str(v) for k, v in headers_raw.items()}
+            out.append(
+                McpServer(
+                    server_id=sid,
+                    transport="streamable-http",
+                    url=url,
+                    headers=headers,
+                    env=env,
+                )
+            )
     return out
 
 
-def load_mcp_stdio_servers() -> list[McpStdioServer]:
+def load_mcp_stdio_servers() -> list[McpServer]:
+    """Load MCP servers from AGENT_MCP_SERVERS_* (stdio and/or streamable-http)."""
     raw: str | None = None
     fp = (_cfg.AGENT_MCP_SERVERS_FILE or "").strip()
     if fp:
@@ -109,20 +170,7 @@ def load_mcp_stdio_servers() -> list[McpStdioServer]:
     return _parse_servers_payload(data)
 
 
-def _workspace_mcp_stdio_dicts() -> list[dict[str, Any]] | None:
-    """Non-empty list from :func:`apps.backend.domain.shared.identity.get_workspace` → workspace-only MCP."""
-    from apps.backend.domain.shared.identity import get_workspace
-
-    ws = get_workspace()
-    if not isinstance(ws, dict):
-        return None
-    raw = ws.get("mcp_stdio_servers")
-    if isinstance(raw, list) and len(raw) > 0:
-        return list(raw)
-    return None
-
-
-def _mcp_stdio_servers_effective() -> list[McpStdioServer]:
+def _mcp_stdio_servers_effective() -> list[McpServer]:
     """Workspace JSON (non-empty) replaces global ``AGENT_MCP_*`` for the current chat identity."""
     wr = _workspace_mcp_stdio_dicts()
     if wr is not None:
@@ -180,48 +228,70 @@ def _serialize_call_tool_result(result: Any) -> dict[str, Any]:
     return out
 
 
-async def _list_tools_for_server(srv: McpStdioServer) -> list[Any]:
-    from mcp import ClientSession, StdioServerParameters
+async def _with_mcp_session(srv: McpServer, fn):
+    """Open ClientSession via stdio or streamable-http and run ``fn(session)``."""
+    from mcp import ClientSession
+
+    if srv.transport == "streamable-http":
+        try:
+            from mcp.client.streamable_http import streamablehttp_client as http_client
+        except ImportError:
+            try:
+                from mcp.client.streamable_http import streamable_http_client as http_client
+            except ImportError as e:
+                raise RuntimeError(
+                    "MCP streamable-http transport requires mcp.client.streamable_http"
+                ) from e
+        url = (srv.url or "").strip()
+        headers = dict(srv.headers or {})
+        async with http_client(url, headers=headers) as streams:
+            # SDK may return (read, write) or (read, write, get_session_id)
+            read, write = streams[0], streams[1]
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                return await fn(session)
+
+    from mcp import StdioServerParameters
     from mcp.client.stdio import stdio_client
 
     sp = StdioServerParameters(
-        command=srv.command,
-        args=srv.args,
+        command=srv.command or "",
+        args=list(srv.args),
         env=srv.env,
         cwd=srv.cwd,
     )
+    async with stdio_client(sp) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            return await fn(session)
+
+
+async def _list_tools_for_server(srv: McpServer) -> list[Any]:
     tmo = float(_cfg.AGENT_MCP_LIST_TIMEOUT_SEC)
+
+    async def _list(session):
+        res = await session.list_tools()
+        return list(res.tools)
+
     async with asyncio.timeout(tmo):
-        async with stdio_client(sp) as (read, write):
-            async with ClientSession(read, write) as session:
-                await session.initialize()
-                res = await session.list_tools()
-                return list(res.tools)
+        return await _with_mcp_session(srv, _list)
 
 
 async def _call_tool_on_server(
-    srv: McpStdioServer, tool_name: str, arguments: dict[str, Any]
+    srv: McpServer, tool_name: str, arguments: dict[str, Any]
 ) -> dict[str, Any]:
-    from mcp import ClientSession, StdioServerParameters
-    from mcp.client.stdio import stdio_client
-
-    sp = StdioServerParameters(
-        command=srv.command,
-        args=srv.args,
-        env=srv.env,
-        cwd=srv.cwd,
-    )
     tmo = float(_cfg.AGENT_MCP_CALL_TIMEOUT_SEC)
+
+    async def _call(session):
+        result = await session.call_tool(
+            tool_name,
+            arguments,
+            read_timeout_seconds=timedelta(seconds=tmo),
+        )
+        return _serialize_call_tool_result(result)
+
     async with asyncio.timeout(tmo):
-        async with stdio_client(sp) as (read, write):
-            async with ClientSession(read, write) as session:
-                await session.initialize()
-                result = await session.call_tool(
-                    tool_name,
-                    arguments,
-                    read_timeout_seconds=timedelta(seconds=tmo),
-                )
-                return _serialize_call_tool_result(result)
+        return await _with_mcp_session(srv, _call)
 
 
 async def mcp_runtime_status(*, workspace_stdio: list[Any] | None = None) -> dict[str, Any]:
@@ -252,9 +322,11 @@ async def mcp_runtime_status(*, workspace_stdio: list[Any] | None = None) -> dic
     for srv in servers:
         row: dict[str, Any] = {
             "id": srv.server_id,
+            "transport": srv.transport,
             "command": srv.command,
             "args": list(srv.args),
             "cwd": srv.cwd,
+            "url": srv.url,
         }
         try:
             tools = await _list_tools_for_server(srv)

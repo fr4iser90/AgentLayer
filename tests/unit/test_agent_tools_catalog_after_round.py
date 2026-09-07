@@ -9,8 +9,11 @@ from apps.backend.domain.agent_runtime.tool_schema import _registry_tool_spec_by
 from apps.backend.domain.tools.forward_policy import apply_schema_modes_to_specs
 
 
-def test_catalog_after_first_round_config_default_true():
-    assert config.AGENT_TOOLS_CATALOG_AFTER_FIRST_ROUND is True
+def test_catalog_after_first_round_defaults_off():
+    # Downgrading to catalog mid-loop drops the parameter docs the model needs to keep
+    # calling tools correctly; catalog is a small-window fallback, not the default.
+    assert config.AGENT_TOOLS_CATALOG_AFTER_FIRST_ROUND is False
+    assert config.AGENT_TOOLS_FULL_SCHEMA is True
 
 
 def test_apply_schema_modes_catalog_uses_required_stubs_not_full_schema():

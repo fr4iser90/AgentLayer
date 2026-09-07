@@ -1,0 +1,23 @@
+domain: conversation_goal
+phrases:
+  en:
+    - goal
+    - todos
+    - todo
+    - todo list
+    - session todo
+    - task list
+    - ongoing goal
+    - session plan
+  de:
+    - ziel
+    - todos
+    - todo
+    - to-do
+    - todo liste
+    - session todo
+    - aufgabe
+    - aufgabenliste
+    - task list
+    - laufendes ziel
+    - session plan

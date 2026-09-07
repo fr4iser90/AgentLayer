@@ -13,3 +13,10 @@ tool_allowlist:
   - run
   - save_profile
   - summarize
+  - goal_get
+  - goal_create
+  - goal_update
+  - todo_write
+  - todo_read
+  - plan_mode_set
+  - exit_plan_mode

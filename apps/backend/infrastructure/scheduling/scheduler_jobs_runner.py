@@ -127,43 +127,36 @@ async def _run_chat_agent_job(row: dict[str, Any], *, agent_id: str) -> None:
     finally:
         reset_identity(id_tok)
 
-    if failed:
-        from apps.backend.infrastructure.notifications.notifications_service import notify_scheduler_job_finished
-
-        notify_scheduler_job_finished(
-            tenant_id=tenant_id,
-            user_id=user_id,
-            row=row,
-            success=False,
-            error=err_text,
-        )
-        return
-
+    # Also stamp failed attempts: due-ness is COALESCE(last_run_at, created_at) + interval,
+    # so leaving it unset keeps a permanently failing job due on every tick.
     if scheduler_jobs_store.mark_job_last_run(job_id=job_id, tenant_id=tenant_id):
-        logger.info(
-            "scheduler_jobs: finished job job_id=%s user=%s agent_id=%s",
-            job_id,
-            user_id,
-            agent_id,
-        )
-        from apps.backend.infrastructure.notifications.notifications_service import notify_scheduler_job_finished
-
-        notify_scheduler_job_finished(
-            tenant_id=tenant_id,
-            user_id=user_id,
-            row=row,
-            success=True,
-        )
+        if not failed:
+            logger.info(
+                "scheduler_jobs: finished job job_id=%s user=%s agent_id=%s",
+                job_id,
+                user_id,
+                agent_id,
+            )
     else:
         logger.warning("scheduler_jobs: could not mark last_run_at job_id=%s", job_id)
+
+    from apps.backend.infrastructure.notifications.notifications_service import notify_scheduler_job_finished
+
+    notify_scheduler_job_finished(
+        tenant_id=tenant_id,
+        user_id=user_id,
+        row=row,
+        success=not failed,
+        error=err_text,
+    )
 
 
 async def _run_workspace_agent_job(row: dict[str, Any]) -> None:
     job_id = _uid(row, "id")
     tenant_id = _tenant_id(row)
     ok, err, _summary = await run_coding_schedule_row(row, row_kind="scheduler_job")
+    scheduler_jobs_store.mark_job_last_run(job_id=job_id, tenant_id=tenant_id)
     if ok:
-        scheduler_jobs_store.mark_job_last_run(job_id=job_id, tenant_id=tenant_id)
         logger.info("scheduler_jobs: finished workspace job job_id=%s", job_id)
     else:
         logger.warning(

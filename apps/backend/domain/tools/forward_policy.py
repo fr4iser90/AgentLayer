@@ -52,7 +52,16 @@ def rank_tools_for_forward(
     tool_triggers: dict[str, tuple[str, ...]],
     *,
     category_routed: bool = False,
+    drop_irrelevant: bool = True,
 ) -> tuple[list[Any], bool]:
+    """Order ``tools`` by keyword relevance to ``user_input``.
+
+    With ``drop_irrelevant`` the result keeps only tools that matched, which suits
+    router-driven turns where the pool is the whole registry. Pass ``False`` to sort
+    without discarding — an agent that declares its own allowlist must keep every tool
+    it declared, even when the user never names it ("fix the login bug" mentions
+    neither ``bash`` nor ``edit``).
+    """
     text = (user_input or "").lower()
     if not text:
         return list(tools), False
@@ -68,7 +77,7 @@ def rank_tools_for_forward(
         scored.append((idx, score))
     scored.sort(key=lambda item: item[1], reverse=True)
     ranked = [tools[idx] for idx, _score in scored]
-    if category_routed:
+    if category_routed or not drop_irrelevant:
         return ranked, True
     relevant = [tools[idx] for idx, score in scored if score > 0]
     return (relevant or ranked), True
@@ -108,6 +117,10 @@ class ToolForwardContext:
     category_routed: bool = False
     round_index: int = 0
     prompt_tokens_so_far: int | None = None
+    #: Agent declared its own ``tool_allowlist`` in plugin YAML — that set is authoritative,
+    #: so relevance ranking may reorder it but must not drop from it (same rule as the
+    #: router bypass in ``tool_routing.filter_merged_tools_by_categories_for_agent``).
+    has_explicit_allowlist: bool = False
 
 
 @dataclass
@@ -141,17 +154,27 @@ def compute_tool_forward_limits(
     return quotas.tools_budget_tokens, quotas.max_tool_count
 
 
-def _estimate_tool_spec_tokens(spec: Any) -> int:
+def _estimate_tool_spec_tokens(spec: Any, *, schema_mode: SchemaMode = "catalog") -> int:
+    """Estimated tokens for one ``tools[]`` entry as it will actually be rendered.
+
+    Measures the built entry rather than the registry spec, because catalog and full
+    schema differ a lot per tool — catalog strips parameter docs but appends the shared
+    param hint, so it is not reliably the cheaper of the two.
+    """
+    name = _tool_spec_name(spec)
+    fn = spec.get("function") if isinstance(spec, dict) else None
+    if not name or not isinstance(fn, dict):
+        try:
+            payload = json.dumps(spec, ensure_ascii=False, default=str)
+        except TypeError:
+            payload = str(spec)
+        return max(80, len(payload) // 4)
+    builder = _full_schema_tool_function if schema_mode == "full" else _catalog_tool_function
     try:
-        payload = json.dumps(spec, ensure_ascii=False, default=str)
+        rendered = json.dumps(builder(name, fn), ensure_ascii=False, default=str)
     except TypeError:
-        payload = str(spec)
-    fn = spec.get("function") if isinstance(spec, dict) else {}
-    if isinstance(fn, dict):
-        chars = min(len(payload), 400 + len(str(fn.get("name") or "")) + len(str(fn.get("description") or "")))
-    else:
-        chars = len(payload)
-    return max(80, chars // 4)
+        rendered = str(fn)
+    return max(80, len(rendered) // 4)
 
 
 def build_tool_triggers_map(tool_names: list[str]) -> dict[str, tuple[str, ...]]:
@@ -176,6 +199,7 @@ def _cap_ranked_pool(
     *,
     max_slots: int,
     token_budget: int,
+    schema_mode: SchemaMode = "catalog",
 ) -> list[Any]:
     if max_slots <= 0:
         return []
@@ -184,7 +208,7 @@ def _cap_ranked_pool(
     for spec in ranked:
         if len(out) >= max_slots:
             break
-        est = _estimate_tool_spec_tokens(spec)
+        est = _estimate_tool_spec_tokens(spec, schema_mode=schema_mode)
         if out and used_tokens + est > token_budget:
             continue
         out.append(spec)
@@ -221,7 +245,11 @@ def build_tool_forward_plan(ctx: ToolForwardContext) -> ToolForwardPlan:
     pinned_specs = _ordered_pinned_specs(specs, pin_names)
     _, rest_specs = _partition_tool_specs_by_name(specs, pin_set)
 
-    pin_tokens = sum(_estimate_tool_spec_tokens(s) for s in pinned_specs)
+    default_mode: SchemaMode = "full" if ctx.full_schema_preference else "catalog"
+
+    pin_tokens = sum(
+        _estimate_tool_spec_tokens(s, schema_mode=default_mode) for s in pinned_specs
+    )
     remaining_slots = max(0, max_count - len(pinned_specs))
     remaining_budget = max(0, token_budget - pin_tokens)
 
@@ -236,6 +264,7 @@ def build_tool_forward_plan(ctx: ToolForwardContext) -> ToolForwardPlan:
                 ctx.user_text,
                 triggers,
                 category_routed=ctx.category_routed,
+                drop_irrelevant=not ctx.has_explicit_allowlist,
             )
         except Exception:
             logger.warning("tool forward: ranking failed", exc_info=True)
@@ -245,9 +274,23 @@ def build_tool_forward_plan(ctx: ToolForwardContext) -> ToolForwardPlan:
         ranked_rest,
         max_slots=remaining_slots,
         token_budget=remaining_budget,
+        schema_mode=default_mode,
     )
     forward_specs = pinned_specs + capped_rest
     forward_names = [n for s in forward_specs if (n := _tool_spec_name(s))]
+    dropped_count = len(specs) - len(forward_specs)
+    if dropped_count > 0 and ctx.has_explicit_allowlist:
+        logger.info(
+            "tool forward: agent %s declared %d tools, %d fit (window=%d, budget=%d tokens, "
+            "slots=%d, schema=%s) — raise AGENT_TOOLS_BUDGET_RATIO or use a larger context window",
+            ctx.agent_id,
+            len(specs),
+            len(forward_specs),
+            ctx.context_window_tokens,
+            token_budget,
+            max_count,
+            default_mode,
+        )
 
     schema_modes: dict[str, SchemaMode] = {}
     used_est = 0
@@ -255,8 +298,8 @@ def build_tool_forward_plan(ctx: ToolForwardContext) -> ToolForwardPlan:
         n = _tool_spec_name(spec)
         if not n:
             continue
-        schema_modes[n] = "catalog"
-        used_est += _estimate_tool_spec_tokens(spec)
+        schema_modes[n] = default_mode
+        used_est += _estimate_tool_spec_tokens(spec, schema_mode=default_mode)
 
     return ToolForwardPlan(
         forward_specs=forward_specs,
@@ -282,11 +325,14 @@ def apply_schema_modes_to_specs(
     *,
     default_full_schema: bool,
 ) -> list[Any]:
-    """Rebuild specs list with per-tool full vs catalog builders."""
-    _ = default_full_schema
-    if not schema_mode_per_tool or all(m == "catalog" for m in schema_mode_per_tool.values()):
-        return _tools_for_chat_request(specs, full_schema=False)
+    """Rebuild specs list with per-tool full vs catalog builders.
 
+    ``default_full_schema`` covers specs the plan has no explicit mode for.
+    """
+    if not schema_mode_per_tool:
+        return _tools_for_chat_request(specs, full_schema=default_full_schema)
+
+    default_mode: SchemaMode = "full" if default_full_schema else "catalog"
     out: list[Any] = []
     for spec in specs:
         if not isinstance(spec, dict):
@@ -297,7 +343,7 @@ def apply_schema_modes_to_specs(
             out.append(spec)
             continue
         name = str(fn.get("name") or "").strip()
-        mode = schema_mode_per_tool.get(name, "catalog")
+        mode = schema_mode_per_tool.get(name, default_mode)
         builder = _full_schema_tool_function if mode == "full" else _catalog_tool_function
         out.append(builder(name, fn))
     return out

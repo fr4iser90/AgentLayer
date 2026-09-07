@@ -4,6 +4,9 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from apps.backend.application.agent_runtime.use_cases.media_events import media_play_websocket_event
+from apps.backend.application.agent_runtime.use_cases.conversation_goal_events import (
+    conversation_goal_websocket_events,
+)
 from apps.backend.application.agent_runtime.runtime.tool_loop import _emit_secret_prompt_from_tool_result
 from apps.backend.domain.plugin_system.registry import get_registry
 
@@ -118,6 +121,8 @@ async def emit_tool_done_events(
         await event_emit(storage_upload_event)
     if media_ev:
         await event_emit(media_ev)
+    for goal_ev in conversation_goal_websocket_events(name, result):
+        await event_emit(goal_ev)
 
 
 __all__ = ["emit_tool_done_events", "emit_tool_start_event"]

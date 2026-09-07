@@ -4,7 +4,8 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import { fetchTask, setConversationActiveTask } from "../lib/tasksApi";
 import { ConfirmModal } from "../components/ConfirmModal";
-import { apiFetch, addUsageTotals, emptyTokenUsage, fetchSessionRuntime, type ChatContextMeta, type SessionRuntimePayload, type TokenUsageTotals, type WorkspaceApiRecord } from "../lib/api";
+import { apiFetch, addUsageTotals, emptyTokenUsage, fetchChatRuntime, type ChatContextMeta, type ConversationGoal, type ChatRuntimePayload, type ConversationTodo, type TokenUsageTotals, type WorkspaceApiRecord } from "../lib/api";
+import { OngoingGoalBar, PlanModeBanner, ConversationTodosPanel } from "../features/chat/ConversationGoalPanels";
 import {
   deleteWorkspaceApi,
   isAgentlayerSelfWorkspace,
@@ -133,7 +134,7 @@ import {
   filterThreadsForChatSidebar,
   threadsVisibleInSidebar,
 } from "../features/chat/groupThreadsForSidebar";
-import { SessionRuntimeBar } from "../features/chat/SessionRuntimeBar";
+import { ChatRuntimeBar } from "../features/chat/ChatRuntimeBar";
 import { useOptionalGlobalMedia } from "../features/media/GlobalMediaProvider";
 import { applyMediaPlayFromWs } from "../features/media/applyMediaPlayFromWs";
 import {
@@ -408,7 +409,10 @@ export function ChatPage() {
   const [hydrated, setHydrated] = useState(false);
   const [composerDragActive, setComposerDragActive] = useState(false);
   const [dashboardTitles, setDashboardTitles] = useState<Record<string, string>>({});
-  const [sessionRuntime, setSessionRuntime] = useState<SessionRuntimePayload | null>(null);
+  const [chatRuntime, setChatRuntime] = useState<ChatRuntimePayload | null>(null);
+  const [sessionGoal, setConversationGoal] = useState<ConversationGoal | null>(null);
+  const [sessionTodos, setConversationTodos] = useState<ConversationTodo[]>([]);
+  const [sessionPlanMode, setSessionPlanMode] = useState(false);
   const [tokenUsage, setTokenUsage] = useState<TokenUsageTotals>(() => emptyTokenUsage());
   const [chatContextMeta, setChatContextMeta] = useState<ChatContextMeta | null>(null);
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus | null>(null);
@@ -462,6 +466,8 @@ export function ChatPage() {
   const skipQueueDrainOnFinishRef = useRef(false);
   /** After interrupting a turn, send this message as soon as the in-flight turn finishes. */
   const pendingForceSendRef = useRef<QueuedComposerMessage | null>(null);
+  /** Soft goal-round continue prompt from ``agent.goal_round`` (sent after turn finishes). */
+  const pendingGoalRoundRef = useRef<string | null>(null);
   const tryDispatchPendingForceSendRef = useRef<() => boolean>(() => false);
   /** In-flight HTTP chat completion (stream or JSON). */
   const chatAbortControllerRef = useRef<AbortController | null>(null);
@@ -761,7 +767,7 @@ export function ChatPage() {
     [model, modelProvider, defaultSelectValue, modelRows]
   );
 
-  const sessionRuntimeMcpAddon = useMemo(() => {
+  const chatRuntimeMcpAddon = useMemo(() => {
     if (
       !selectedWorkspaceId ||
       !selectedWorkspace ||
@@ -840,25 +846,37 @@ export function ChatPage() {
     };
   }, []);
 
-  const sessionRuntimeQuery = useMemo(
+  const chatRuntimeQuery = useMemo(
     () => ({
       workspaceId: selectedWorkspaceId,
       model: (model || defaultModel).trim() || null,
       modelCatalogOwnedBy: (modelProvider || "").trim() || null,
+      conversationId: activeThreadId || null,
     }),
-    [selectedWorkspaceId, model, modelProvider, defaultModel]
+    [selectedWorkspaceId, model, modelProvider, defaultModel, activeThreadId]
   );
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const r = await fetchSessionRuntime(auth, sessionRuntimeQuery);
-      if (!cancelled) setSessionRuntime(r);
+      const r = await fetchChatRuntime(auth, chatRuntimeQuery);
+      if (cancelled) return;
+      setChatRuntime(r);
+      const h = r?.conversation_goal;
+      if (h) {
+        setConversationGoal((h.goal as ConversationGoal | null) ?? null);
+        setConversationTodos(Array.isArray(h.todos) ? (h.todos as ConversationTodo[]) : []);
+        setSessionPlanMode(Boolean(h.plan_mode));
+      } else if (!chatRuntimeQuery.conversationId) {
+        setConversationGoal(null);
+        setConversationTodos([]);
+        setSessionPlanMode(false);
+      }
     })();
     return () => {
       cancelled = true;
     };
-  }, [auth, sessionRuntimeQuery]);
+  }, [auth, chatRuntimeQuery]);
 
   useEffect(() => {
     if (!userId) return;
@@ -1179,12 +1197,19 @@ export function ChatPage() {
   const addPickedFiles = useCallback(async (files: FileList | File[] | null) => {
     if (!files?.length) return;
     try {
-      const next = await filesToAttachments(files);
+      const list = Array.from(files);
+      const visionOk = chatRuntime?.vision?.available !== false;
+      const filtered = visionOk ? list : list.filter((f) => !f.type.startsWith("image/"));
+      if (!filtered.length) {
+        setError(t("chat:attachVisionUnavailable"));
+        return;
+      }
+      const next = await filesToAttachments(filtered);
       setPendingAttachments((prev) => [...prev, ...next]);
     } catch {
       setError(t("chat:couldNotReadFile"));
     }
-  }, [t]);
+  }, [chatRuntime?.vision?.available, t]);
 
   const setMode = useCallback(
     (m: ChatMode) => {
@@ -1751,12 +1776,12 @@ export function ChatPage() {
     const turnStartedAtMs = Date.now();
     setAgentTurnStartedAtMs(turnStartedAtMs);
     setTokenUsage(emptyTokenUsage());
-    void fetchSessionRuntime(auth, {
+    void fetchChatRuntime(auth, {
       workspaceId: selectedWorkspaceId,
       model: routed.model,
       modelCatalogOwnedBy: routed.provider ?? null,
     }).then((r) => {
-      if (r) setSessionRuntime(r);
+      if (r) setChatRuntime(r);
     });
     patchThread(tid, {
       messages: nextMessages,
@@ -1823,6 +1848,28 @@ export function ChatPage() {
       }
       if (tryDispatchPendingForceSendRef.current()) {
         return;
+      }
+      const goalContinue = pendingGoalRoundRef.current;
+      pendingGoalRoundRef.current = null;
+      if (
+        goalContinue &&
+        agentChatSession.isPageMounted() &&
+        !cancelAgentTurnRef.current
+      ) {
+        const tid = activeThreadIdRef.current;
+        const queued = tid ? composerQueueRef.current.get(tid) : undefined;
+        if (!queued?.length) {
+          skipQueueDrainOnFinishRef.current = true;
+          window.setTimeout(() => {
+            if (cancelAgentTurnRef.current) return;
+            void runAgentWsRef.current({
+              id: newMessageId(),
+              draft: goalContinue,
+              attachments: [],
+            });
+          }, 40);
+          return;
+        }
       }
       const skipDrain = skipQueueDrainOnFinishRef.current;
       if (skipDrain) {
@@ -1956,12 +2003,12 @@ export function ChatPage() {
           const em = msg.effective_model != null ? String(msg.effective_model) : "";
           const mr = msg.model_resolution != null ? String(msg.model_resolution) : "";
           appendAgentLine("session", [em && `model: ${em}`, mr && `(${mr})`].filter(Boolean).join(" "));
-          void fetchSessionRuntime(auth, {
+          void fetchChatRuntime(auth, {
             workspaceId: selectedWorkspaceId,
-            model: (em || sessionRuntimeQuery.model || "").trim() || null,
-            modelCatalogOwnedBy: sessionRuntimeQuery.modelCatalogOwnedBy,
+            model: (em || chatRuntimeQuery.model || "").trim() || null,
+            modelCatalogOwnedBy: chatRuntimeQuery.modelCatalogOwnedBy,
           }).then((r) => {
-            if (r) setSessionRuntime(r);
+            if (r) setChatRuntime(r);
           });
           if (msg.context && typeof msg.context === "object") {
             const ctx = msg.context as ChatContextMeta;
@@ -2240,6 +2287,65 @@ export function ChatPage() {
           applyMediaPlayFromWs(globalMediaRef.current, msg as Record<string, unknown>);
           return;
         }
+        if (typ === "agent.goal") {
+          const g = msg.goal;
+          if (g && typeof g === "object") {
+            setConversationGoal(g as ConversationGoal);
+            const phase = String((g as ConversationGoal).phase || "");
+            if (phase !== "active") {
+              pendingGoalRoundRef.current = null;
+            }
+            const obj = String((g as ConversationGoal).objective || "").slice(0, 120);
+            appendAgentLine("goal", obj ? `Goal (${phase || "update"}): ${obj}` : "Goal updated", {
+              streamOffset: assistantStreamOffset(),
+            });
+          } else {
+            setConversationGoal(null);
+            pendingGoalRoundRef.current = null;
+            appendAgentLine("goal", "Goal cleared", { streamOffset: assistantStreamOffset() });
+          }
+          return;
+        }
+        if (typ === "agent.todos") {
+          const todos = Array.isArray(msg.todos) ? (msg.todos as ConversationTodo[]) : [];
+          setConversationTodos(todos);
+          appendAgentLine("todos", `Todos updated (${todos.length})`, {
+            streamOffset: assistantStreamOffset(),
+          });
+          return;
+        }
+        if (typ === "agent.plan_mode") {
+          const on = Boolean(msg.plan_mode);
+          setSessionPlanMode(on);
+          appendAgentLine("plan", on ? t("chat:planModeOnLine") : t("chat:planModeOffLine"), {
+            streamOffset: assistantStreamOffset(),
+          });
+          return;
+        }
+        if (typ === "agent.goal_round") {
+          const g = msg.goal;
+          if (g && typeof g === "object") {
+            setConversationGoal(g as ConversationGoal);
+          }
+          const cont = Boolean(msg.continue);
+          const prompt = typeof msg.prompt === "string" ? msg.prompt.trim() : "";
+          if (cont && prompt) {
+            pendingGoalRoundRef.current = prompt;
+          } else {
+            pendingGoalRoundRef.current = null;
+          }
+          const round = msg.round != null ? String(msg.round) : "?";
+          const max = msg.max_goal_rounds != null ? String(msg.max_goal_rounds) : "?";
+          const reason = typeof msg.reason === "string" ? msg.reason : "";
+          appendAgentLine(
+            "goal",
+            cont
+              ? t("chat:goalRoundContinueLine", { round, max })
+              : t("chat:goalRoundStopLine", { reason: reason || "done" }),
+            { streamOffset: assistantStreamOffset() },
+          );
+          return;
+        }
         if (typ === "agent.tool_done") {
           const n = msg.name != null ? String(msg.name) : "tool";
           const ch = msg.result_chars != null ? Number(msg.result_chars) : undefined;
@@ -2467,6 +2573,7 @@ export function ChatPage() {
     chatAbortControllerRef.current = null;
     cancelAgentTurnRef.current = true;
     skipQueueDrainOnFinishRef.current = true;
+    pendingGoalRoundRef.current = null;
 
     const snapshot = inFlightTurnRef.current;
     if (snapshot && snapshot.threadId === activeThreadIdRef.current) {
@@ -2730,9 +2837,6 @@ export function ChatPage() {
             >
               {t("chat:newChat")}
             </button>
-            <p className="mt-2 text-[11px] leading-snug text-surface-muted">
-              Agent: WebSocket mit mehreren Runden. Chats sync zum Server.
-            </p>
           </div>
 
           <div className="flex-1 overflow-y-auto px-2 py-2">
@@ -2829,13 +2933,10 @@ export function ChatPage() {
               </button>
             </div>
             <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-4 py-12 text-center sm:px-6">
-            <p className="max-w-md text-sm text-surface-muted">
-              {t("chat:noConversationOpenLead")}{" "}
-              <strong className="text-neutral-400">{t("chat:noConversationOpenBoldNone")}</strong>{" "}
-              {t("chat:noConversationOpenMid")}{" "}
-              <strong className="text-neutral-400">{t("chat:noConversationOpenBoldNew")}</strong>{" "}
-              {t("chat:noConversationOpenEnd")}
-            </p>
+            <div className="max-w-md">
+              <p className="text-sm font-medium text-white">{t("chat:noConversationOpenTitle")}</p>
+              <p className="mt-1 text-sm text-surface-muted">{t("chat:noConversationOpenBody")}</p>
+            </div>
             <button
               type="button"
               onClick={() => {
@@ -2908,14 +3009,14 @@ export function ChatPage() {
             </div>
           ) : null}
           {mode === "agent" ? (
-            <SessionRuntimeBar
-              runtime={sessionRuntime}
+            <ChatRuntimeBar
+              runtime={chatRuntime}
               usage={tokenUsage}
               contextMeta={chatContextMeta}
               agentRunning={activityLoading}
               agentMode
               className={composerHeaderCollapsed ? "mt-2 w-full" : "mb-2 w-full lg:hidden"}
-              mcpAddon={sessionRuntimeMcpAddon}
+              mcpAddon={chatRuntimeMcpAddon}
             />
           ) : null}
           {!composerHeaderCollapsed ? (
@@ -3101,6 +3202,7 @@ export function ChatPage() {
                     persistShowSubagentsPref(userId, on);
                   }}
                 />
+                <ConversationTodosPanel todos={sessionTodos} />
               </div>
             ) : (
               <div className="flex min-h-0 items-center rounded-lg border border-white/10 bg-black/30 px-2.5 py-2">
@@ -3111,14 +3213,14 @@ export function ChatPage() {
             )}
             <div className="flex min-w-0 flex-col gap-2 lg:border-l lg:border-surface-border lg:pl-4">
               {mode === "agent" ? (
-                <SessionRuntimeBar
-                  runtime={sessionRuntime}
+                <ChatRuntimeBar
+                  runtime={chatRuntime}
                   usage={tokenUsage}
                   contextMeta={chatContextMeta}
                   agentRunning={activityLoading}
                   agentMode
                   className="hidden w-full lg:block"
-                  mcpAddon={sessionRuntimeMcpAddon}
+                  mcpAddon={chatRuntimeMcpAddon}
                 />
               ) : null}
               <div className="w-full">
@@ -3410,11 +3512,84 @@ export function ChatPage() {
               type="file"
               multiple
               className="hidden"
-              accept="image/*,.txt,.md,.json,.csv,.log,.yaml,.yml,.zip"
+              accept={
+                chatRuntime?.vision?.available === false
+                  ? ".txt,.md,.json,.csv,.log,.yaml,.yml,.zip"
+                  : "image/*,.txt,.md,.json,.csv,.log,.yaml,.yml,.zip"
+              }
               onChange={(e) => {
                 const files = e.target.files ? Array.from(e.target.files) : [];
                 e.target.value = "";
                 void addPickedFiles(files);
+              }}
+            />
+            <PlanModeBanner active={sessionPlanMode} />
+            <OngoingGoalBar
+              goal={sessionGoal}
+              disabled={!activeThreadId || loading}
+              onPause={() => {
+                if (!activeThreadId || !sessionGoal) return;
+                pendingGoalRoundRef.current = null;
+                void apiFetch(`/v1/user/conversations/${activeThreadId}/goal`, auth, {
+                  method: "PATCH",
+                  body: JSON.stringify({
+                    goal_id: sessionGoal.id,
+                    revision: sessionGoal.revision,
+                    action: "pause",
+                  }),
+                }).then(async (r) => {
+                  if (!r.ok) return;
+                  const j = (await r.json()) as { goal?: ConversationGoal | null };
+                  setConversationGoal(j.goal ?? null);
+                });
+              }}
+              onResume={() => {
+                if (!activeThreadId || !sessionGoal) return;
+                void apiFetch(`/v1/user/conversations/${activeThreadId}/goal`, auth, {
+                  method: "PATCH",
+                  body: JSON.stringify({
+                    goal_id: sessionGoal.id,
+                    revision: sessionGoal.revision,
+                    action: "resume",
+                  }),
+                }).then(async (r) => {
+                  if (!r.ok) return;
+                  const j = (await r.json()) as { goal?: ConversationGoal | null };
+                  setConversationGoal(j.goal ?? null);
+                });
+              }}
+              onEdit={() => {
+                if (!activeThreadId || !sessionGoal) return;
+                const next = window.prompt(t("chat:ongoingGoalEditPrompt"), sessionGoal.objective);
+                if (next == null || !next.trim()) return;
+                void apiFetch(`/v1/user/conversations/${activeThreadId}/goal`, auth, {
+                  method: "PATCH",
+                  body: JSON.stringify({
+                    goal_id: sessionGoal.id,
+                    revision: sessionGoal.revision,
+                    action: "edit",
+                    objective: next.trim(),
+                  }),
+                }).then(async (r) => {
+                  if (!r.ok) return;
+                  const j = (await r.json()) as { goal?: ConversationGoal | null };
+                  setConversationGoal(j.goal ?? null);
+                });
+              }}
+              onClear={() => {
+                if (!activeThreadId || !sessionGoal) return;
+                pendingGoalRoundRef.current = null;
+                void apiFetch(`/v1/user/conversations/${activeThreadId}/goal`, auth, {
+                  method: "PATCH",
+                  body: JSON.stringify({
+                    goal_id: sessionGoal.id,
+                    revision: sessionGoal.revision,
+                    action: "clear",
+                  }),
+                }).then(async (r) => {
+                  if (!r.ok) return;
+                  setConversationGoal(null);
+                });
               }}
             />
             <div
@@ -3562,11 +3737,24 @@ export function ChatPage() {
               <div className="mt-2 flex items-center justify-between gap-2">
                 <button
                   type="button"
-                  disabled={voiceTranscribing}
+                  disabled={
+                    voiceTranscribing ||
+                    (chatRuntime?.vision?.available === false &&
+                      /* still allow non-image files */ false)
+                  }
                   className="rounded-lg border border-white/10 bg-black/20 p-2 text-surface-muted hover:bg-white/5 hover:text-neutral-200 disabled:opacity-40"
-                  title={t("chat:attachTitle")}
+                  title={
+                    chatRuntime?.vision?.available === false
+                      ? t("chat:attachVisionUnavailable")
+                      : t("chat:attachTitle")
+                  }
                   aria-label={t("chat:attachFiles")}
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => {
+                    if (chatRuntime?.vision?.available === false) {
+                      // Images disabled; still open picker for text/zip via accept filter.
+                    }
+                    fileInputRef.current?.click();
+                  }}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
@@ -3684,7 +3872,7 @@ export function ChatPage() {
                 const j = (await r.json()) as { workspaces?: WorkspaceApiRecord[] };
                 setWorkspaces(j.workspaces ?? []);
               }
-              setSessionRuntime(await fetchSessionRuntime(auth, sessionRuntimeQuery));
+              setChatRuntime(await fetchChatRuntime(auth, chatRuntimeQuery));
             } catch {
               /* ignore */
             }

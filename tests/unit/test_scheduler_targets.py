@@ -1,6 +1,7 @@
 """Scheduler execution_target = registry agent ids."""
 
 from apps.backend.domain.scheduling.targets import (
+    EXECUTION_CODING,
     EXECUTION_GENERAL,
     agent_requires_workspace_for_target,
     execution_target_catalog,
@@ -14,15 +15,14 @@ from apps.backend.domain.scheduling.targets import (
 def test_normalize_agent_ids() -> None:
     assert normalize_execution_target("general") == EXECUTION_GENERAL
     assert normalize_execution_target("GENERAL") == EXECUTION_GENERAL
-    assert normalize_execution_target("research") == "research"
+    assert normalize_execution_target("coding") == EXECUTION_CODING
 
 
 def test_valid_schedulable_agents() -> None:
     assert is_valid_execution_target("general")
-    assert is_valid_execution_target("research")
-    assert not is_valid_execution_target("coding")
-    assert not is_valid_execution_target("coding_plan")
-    assert not is_valid_execution_target("security_auditor")
+    assert is_valid_execution_target("coding")
+    assert is_valid_execution_target("coding_plan")
+    assert is_valid_execution_target("security_auditor")
     assert not is_valid_execution_target("coding_agent")
     assert not is_valid_execution_target("operator")
     assert not is_valid_execution_target("bogus")
@@ -31,12 +31,12 @@ def test_valid_schedulable_agents() -> None:
 def test_unknown_target_error_lists_agents() -> None:
     err = execution_target_error("bogus")
     assert "general" in err
-    assert "research" in err
+    assert "coding" in err
 
 
 def test_workspace_flag() -> None:
     assert not agent_requires_workspace_for_target("general")
-    assert not agent_requires_workspace_for_target("research")
+    assert agent_requires_workspace_for_target("coding")
 
 
 def test_execution_target_catalog_matches_registry() -> None:
@@ -44,6 +44,8 @@ def test_execution_target_catalog_matches_registry() -> None:
     values = {row["value"] for row in cat}
     assert values == set(schedulable_agent_ids())
     assert EXECUTION_GENERAL in values
-    assert "coding" not in values
+    assert EXECUTION_CODING in values
     assert "operator" not in values
     assert all(row.get("agent_id") == row["value"] for row in cat)
+    coding_row = next(r for r in cat if r["value"] == "coding")
+    assert coding_row.get("requires_workspace") is True

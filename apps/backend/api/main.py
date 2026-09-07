@@ -29,7 +29,8 @@ from apps.backend.api.agents.controllers.agent_config_admin_api import router as
 from apps.backend.api.agents.controllers.agents_admin_api import router as agents_admin_router
 from apps.backend.api.agents.controllers.agents_api import router as agents_router
 from apps.backend.api.agents.controllers.agents_import_admin_api import router as agents_import_admin_router
-from apps.backend.api.agents.controllers.session_runtime_api import router as session_runtime_router
+from apps.backend.api.agents.controllers.chat_runtime_api import router as chat_runtime_router
+from apps.backend.api.agents.controllers.conversation_goal_api import router as conversation_goal_router
 from apps.backend.api.benchmarks.controllers.benchmark_harness_admin_api import router as benchmark_harness_admin_router
 from apps.backend.api.benchmarks.controllers.benchmarks_admin_api import router as benchmarks_admin_router
 from apps.backend.api.chat.controllers.chat_completions_api import router as chat_completions_router
@@ -37,6 +38,7 @@ from apps.backend.api.chat.controllers.chat_websocket import router as chat_ws_r
 from apps.backend.api.chat.controllers.message_feedback_api import admin_router as message_feedback_admin_router
 from apps.backend.api.chat.controllers.message_feedback_api import router as message_feedback_router
 from apps.backend.api.chat.controllers.run_traces_admin_api import router as run_traces_admin_router
+from apps.backend.api.codebase.controllers.codebase_api import router as codebase_router
 from apps.backend.api.conversations.controllers.conversations_api import router as conversations_router
 from apps.backend.api.dashboards.controllers.dashboard_api import router as dashboard_router
 from apps.backend.api.media.controllers.media_api import router as media_router
@@ -48,6 +50,8 @@ from apps.backend.api.platform.controllers.health_api import router as health_ro
 from apps.backend.api.platform.controllers.legal_api import router as legal_router
 from apps.backend.api.platform.controllers.web_api import register_web_routes
 from apps.backend.api.providers.controllers.operator_admin_api import router as operator_admin_router
+from apps.backend.api.projects.controllers.github_api import router as github_router
+from apps.backend.api.projects.controllers.project_runs_api import router as project_runs_router
 from apps.backend.api.org.controllers.org_api import router as org_router
 from apps.backend.api.org.controllers.org_profession_api import router as org_profession_router
 from apps.backend.api.tenant_content.controllers.tenant_content_api import (
@@ -73,6 +77,9 @@ from apps.backend.api.tools.controllers.tools_api import router as tools_router
 from apps.backend.api.tools.controllers.tools_import_admin_api import router as tools_import_admin_router
 from apps.backend.api.voice.controllers.voice_api import router as voice_router
 from apps.backend.api.voice.controllers.voice_realtime_websocket import router as voice_realtime_ws_router
+from apps.backend.api.workspaces.controllers.workspaces_admin_api import router as workspaces_admin_router
+from apps.backend.api.workspaces.controllers.workspaces_api import router as workspaces_router
+
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"))
 configure_server_logging()
 logger = logging.getLogger(__name__)
@@ -100,6 +107,7 @@ for router in (
     tenant_content_org_router,
     tenant_content_admin_router,
     rag_router,
+    codebase_router,
     chat_ws_router,
     chat_completions_router,
     studio_router,
@@ -109,6 +117,7 @@ for router in (
     scheduler_job_runs_user_router,
     scheduler_job_runs_admin_router,
     scheduler_job_presets_user_router,
+    project_runs_router,
     tasks_router,
     task_artifacts_router,
     run_traces_admin_router,
@@ -120,9 +129,13 @@ for router in (
     agents_import_admin_router,
     tools_admin_router,
     tools_import_admin_router,
-    session_runtime_router,
+    chat_runtime_router,
+    conversation_goal_router,
     friends_router,
     shares_router,
+    workspaces_router,
+    workspaces_admin_router,
+    github_router,
     auth_router,
     operator_admin_router,
     admin_users_router,

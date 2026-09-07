@@ -7,7 +7,6 @@ import json
 import pytest
 
 from apps.backend.infrastructure.plugins.mcp_runtime import (
-    McpStdioServer,
     _parse_servers_payload,
     mcp_openai_function_name,
     parse_mcp_openai_function_name,
@@ -40,9 +39,31 @@ def test_parse_servers_payload() -> None:
         }
     ]
     servers = _parse_servers_payload(rows)
-    assert servers == [
-        McpStdioServer(server_id="s1", command="uvx", args=["tool"], env={"FOO": "bar"}, cwd="/tmp")
-    ]
+    assert len(servers) == 1
+    assert servers[0].server_id == "s1"
+    assert servers[0].transport == "stdio"
+    assert servers[0].command == "uvx"
+    assert servers[0].args == ("tool",)
+    assert servers[0].env == {"FOO": "bar"}
+    assert servers[0].cwd == "/tmp"
+
+
+def test_parse_servers_streamable_http() -> None:
+    servers = _parse_servers_payload(
+        [
+            {
+                "id": "remote",
+                "transport": "streamable-http",
+                "url": "https://mcp.example/mcp",
+                "headers": {"Authorization": "Bearer x"},
+            }
+        ]
+    )
+    assert len(servers) == 1
+    assert servers[0].transport == "streamable-http"
+    assert servers[0].url == "https://mcp.example/mcp"
+    assert servers[0].headers == {"Authorization": "Bearer x"}
+    assert servers[0].command is None
 
 
 def test_parse_servers_rejects_bad_id() -> None:

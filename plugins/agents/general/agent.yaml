@@ -2,15 +2,28 @@ id: general
 requires_workspace: false
 name: General
 icon: brain
-description: Orchestrator — routes work to specialist agents via delegate
+description: Orchestrator — routes work to specialist agents via delegate; binds workspaces when a repo is needed
 execution_context: auto
 min_role: user
 delegatable: false
 tool_allowlist:
   - delegate
   - catalog
+  - workspace.create
+  - workspace.list
+  - bind
   - user_secrets_status
+  - goal_get
+  - goal_create
+  - goal_update
+  - todo_write
+  - todo_read
+  - plan_mode_set
+  - exit_plan_mode
 pinned_tools:
   - delegate
   - catalog
+  - workspace.create
+  - workspace.list
+  - bind
   - user_secrets_status

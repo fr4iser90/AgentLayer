@@ -46,13 +46,19 @@ export function hasRestrictedNav(user: AuthUser | null | undefined): boolean {
   return allowedNavItems(user) !== null;
 }
 
+export function pathForNavItem(id: NavItemId): string {
+  if (id === "home") return "/";
+  return `/${id === "shares" ? "settings/shares" : id}`;
+}
+
+/** Chat-first landing; restricted tenants prefer chat, then dashboard, then home. */
 export function defaultLandingPath(user: AuthUser | null | undefined): string {
   const allowed = allowedNavItems(user);
-  if (allowed === null) return "/";
-  for (const id of ["dashboard", "home", "chat"] as const) {
+  if (allowed === null) return "/chat";
+  for (const id of ["chat", "dashboard", "home"] as const) {
     if (allowed.includes(id)) {
-      return id === "home" ? "/" : `/${id}`;
+      return pathForNavItem(id);
     }
   }
-  return "/";
+  return pathForNavItem(allowed[0]!);
 }

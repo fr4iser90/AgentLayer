@@ -24,3 +24,10 @@ tool_allowlist:
   - note_add
   - note_delete
   - note_search
+  - goal_get
+  - goal_create
+  - goal_update
+  - todo_write
+  - todo_read
+  - plan_mode_set
+  - exit_plan_mode

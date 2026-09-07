@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date, timedelta
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 from apps.backend.application.tenant_profession.use_cases import profession_policy_service as prof_svc
@@ -66,7 +66,9 @@ def test_expired_qualification_blocks_content() -> None:
         qualifications=(
             {
                 "qualification_type": "basic_life_support",
-                "valid_until": (date.today() - timedelta(days=1)).isoformat(),
+                # UTC, matching _qualification_valid — a local "yesterday" is still today
+                # in UTC for negative offsets and late evenings east of Greenwich.
+                "valid_until": (datetime.now(UTC).date() - timedelta(days=1)).isoformat(),
             },
         )
     )

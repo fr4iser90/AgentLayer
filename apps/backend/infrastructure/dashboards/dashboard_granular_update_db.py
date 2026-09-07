@@ -63,20 +63,40 @@ def _allowed_data_keys_from_layout(full_layout: dict[str, Any], allowed: frozens
     return keys
 
 
-def _merge_granular_data(
-    full_data: dict[str, Any],
-    patch: dict[str, Any] | None,
+def _write_granular_data(
+    *,
+    row: dict[str, Any],
+    dashboard_id: uuid.UUID,
+    tenant_id: int,
+    fallback_user_id: uuid.UUID,
     full_layout: dict[str, Any],
+    data: dict[str, Any],
     allowed: frozenset[str],
-) -> dict[str, Any]:
-    keys = _allowed_data_keys_from_layout(full_layout, allowed)
-    out = dict(full_data)
-    if not patch:
-        return out
-    for k in keys:
-        if k in patch:
-            out[k] = patch[k]
-    return out
+) -> None:
+    """Write only the data keys that belong to blocks shared with this viewer."""
+    from apps.backend.infrastructure.dashboards.dashboard_data_write import (
+        split_reserved_data,
+        write_dashboard_data,
+    )
+
+    content, _reserved = split_reserved_data(data)
+    if not content:
+        return
+    owner_raw = row.get("owner_user_id")
+    try:
+        owner_uuid = owner_raw if isinstance(owner_raw, uuid.UUID) else uuid.UUID(str(owner_raw))
+    except (ValueError, TypeError):
+        owner_uuid = fallback_user_id
+    write_dashboard_data(
+        dashboard_id=dashboard_id,
+        owner_user_id=owner_uuid,
+        tenant_id=tenant_id,
+        ui_layout=full_layout,
+        view_bindings=row.get("view_bindings") if isinstance(row.get("view_bindings"), dict) else {},
+        template_id=row.get("template_id"),
+        data=content,
+        allowed_top_keys=_allowed_data_keys_from_layout(full_layout, allowed),
+    )
 
 
 def _merge_ui_layout_granular(
@@ -132,7 +152,8 @@ def _dashboard_update_granular(
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
                 """
-                SELECT ui_layout, data FROM user_dashboards
+                SELECT ui_layout, data, view_bindings, template_id, owner_user_id
+                FROM user_dashboards
                 WHERE id = %s AND tenant_id = %s
                 """,
                 (dashboard_id, tenant_id),
@@ -142,19 +163,22 @@ def _dashboard_update_granular(
                 conn.commit()
                 return None
             full_ul = row["ui_layout"] if isinstance(row["ui_layout"], dict) else {}
-            full_dt = row["data"] if isinstance(row["data"], dict) else {}
             new_ul = full_ul
-            new_dt = full_dt
-            if data is not None:
-                _ = _merge_granular_data(full_dt, data, full_ul, allowed)
-                logger.debug(
-                    "granular data merge ignored for %s — use domain collections",
-                    dashboard_id,
-                )
+            granular_row = dict(row)
             if ui_layout is not None:
                 new_ul = _merge_ui_layout_granular(full_ul, ui_layout, allowed)
             if new_ul == full_ul:
                 conn.commit()
+                if data is not None:
+                    _write_granular_data(
+                        row=granular_row,
+                        dashboard_id=dashboard_id,
+                        tenant_id=tenant_id,
+                        fallback_user_id=user_id,
+                        full_layout=full_ul,
+                        data=data,
+                        allowed=allowed,
+                    )
                 return dashboard_get(user_id, tenant_id, dashboard_id)
             sets.append("ui_layout = %s")
             args.append(Json(new_ul))
@@ -182,6 +206,17 @@ def _dashboard_update_granular(
         conn.commit()
     if not urow:
         return None
+    if data is not None:
+        _write_granular_data(
+            row=granular_row,
+            dashboard_id=dashboard_id,
+            tenant_id=tenant_id,
+            fallback_user_id=user_id,
+            full_layout=new_ul,
+            data=data,
+            allowed=allowed,
+        )
+        return dashboard_get(user_id, tenant_id, dashboard_id)
     out = _row_dict(dict(urow))
     d = dashboard_access_ex(user_id, tenant_id, dashboard_id)
     out["access_role"] = d.role or "editor"

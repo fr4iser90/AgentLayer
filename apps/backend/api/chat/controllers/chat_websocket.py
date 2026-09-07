@@ -23,7 +23,7 @@ Client → server JSON:
 
 Server → client JSON events (subset):
   - ``agent.session``, ``agent.context_update``, ``agent.context_compacted``, ``agent.llm_round_start``, ``agent.llm_delta`` (token chunks when ``agent_stream_llm``), ``agent.llm_round`` (optional ``usage`` when the LLM returns OpenAI-style token counts), ``agent.tool_start``,
-    ``agent.tool_done``, ``agent.secret_prompt``, ``agent.permission_ask``, ``agent.subagent_start``, ``agent.subagent_step``,
+    ``agent.tool_done``, ``agent.goal``, ``agent.todos``, ``agent.secret_prompt``, ``agent.permission_ask``, ``agent.subagent_start``, ``agent.subagent_step``,
     ``agent.subagent_done``,
     ``agent.done``, ``agent.cancelled``
   - ``chat.completion`` — final OpenAI-shaped response (or error payload on failure)

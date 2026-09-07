@@ -155,32 +155,37 @@ def test_slot_wait_queue_reports_position():
         finally:
             reset_llm_wait_notifier(tok)
 
-    try:
-        with patch(
-            "apps.backend.infrastructure.agent_runtime.llm_concurrency.max_parallel_for_provider",
-            return_value=1,
-        ), patch(
-            "apps.backend.infrastructure.agent_runtime.llm_queue_policy.load_queue_config",
-            return_value=_fifo_cfg(),
-        ):
-            acquire_llm_slot("test_busy")
+    with patch(
+        "apps.backend.infrastructure.agent_runtime.llm_concurrency.max_parallel_for_provider",
+        return_value=1,
+    ), patch(
+        "apps.backend.infrastructure.agent_runtime.llm_queue_policy.load_queue_config",
+        return_value=_fifo_cfg(),
+    ):
+        acquire_llm_slot("test_busy")
+        try:
             for _ in range(2):
                 t = threading.Thread(target=worker)
                 threads.append(t)
                 t.start()
-            deadline = time.time() + 3
-            while time.time() < deadline:
+
+            def _saw_a_full_queue() -> bool:
                 with lock:
-                    if len(seen) >= 2:
-                        break
+                    return any((e.get("queue_size") or 0) >= 2 for e in seen)
+
+            # Wait for the exact condition under test. Both waiters can be notified before
+            # the second one enqueues, so "two notifications" does not imply "queue of two".
+            deadline = time.time() + 3
+            while time.time() < deadline and not _saw_a_full_queue():
                 time.sleep(0.05)
             with lock:
                 assert len(seen) >= 2
-                sizes = {e.get("queue_size") for e in seen if e.get("queue_size")}
-                assert any(s and s >= 2 for s in sizes)
-            release_llm_slot("test_busy")
+                assert any((e.get("queue_size") or 0) >= 2 for e in seen)
+        finally:
+            # Hand every slot back while max_parallel is still patched — the gate is keyed
+            # on (provider, max_parallel), so releasing outside this block would free a
+            # different gate and leave these non-daemon waiters blocked forever.
+            for _ in range(len(threads) + 1):
+                release_llm_slot("test_busy")
             for t in threads:
                 t.join(timeout=2)
-                release_llm_slot("test_busy")
-    finally:
-        pass

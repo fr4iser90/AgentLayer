@@ -84,9 +84,12 @@ def test_resolve_context_budget_operator_override(monkeypatch) -> None:
 def test_completion_quotas_all_percentages_of_window(monkeypatch) -> None:
     from apps.backend.infrastructure.platform import config as cfg
 
+    from apps.backend.infrastructure.agent_runtime import agent_config_effective as ace
+
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_SOFT_LIMIT_RATIO", 0.8)
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_HARD_LIMIT_RATIO", 0.95)
-    monkeypatch.setattr(cfg.config, "AGENT_TOOLS_BUDGET_RATIO", 0.06)
+    # The tools ratio is a runtime knob, so the registry default outranks the env constant.
+    monkeypatch.setattr(ace, "context_tools_budget_ratio", lambda **_kw: 0.06)
     monkeypatch.setattr(cfg.config, "AGENT_TOOLS_COUNT_CAP_RATIO", 0.00012)
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_MAX_MESSAGE_RATIO", 0.015)
     monkeypatch.setattr(cfg.config, "CHAT_CONTEXT_TOOL_RESULT_MAX_RATIO", 0.008)

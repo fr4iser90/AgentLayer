@@ -86,6 +86,57 @@ class TestProjection(unittest.TestCase):
         self.assertEqual(data.get("pets"), [{"id": "r_1", "name": "Kira"}])
         self.assertEqual(data.get("notes"), "hello")
 
+    @mock.patch("apps.backend.domain.collections.projection.col_db.collection_metadata_patch")
+    @mock.patch("apps.backend.domain.collections.projection.col_db.items_append")
+    @mock.patch("apps.backend.domain.collections.projection.col_db.collection_ensure")
+    @mock.patch("apps.backend.domain.collections.projection.col_db.collection_get")
+    @mock.patch("apps.backend.domain.collections.projection.col_db.items_list")
+    @mock.patch("apps.backend.domain.collections.projection.bindings_for_dashboard")
+    def _project_with_legacy(
+        self,
+        collection_metadata: dict,
+        mock_bindings: mock.MagicMock,
+        mock_items: mock.MagicMock,
+        mock_get: mock.MagicMock,
+        mock_ensure: mock.MagicMock,
+        mock_append: mock.MagicMock,
+        mock_meta_patch: mock.MagicMock,
+    ) -> tuple[dict, mock.MagicMock]:
+        """Project an empty ``pets`` collection against a legacy payload that has rows."""
+        mock_bindings.return_value = {"pets": "my-pets"}
+        col = {"id": str(uuid.uuid4()), "slug": "my-pets", "metadata": collection_metadata}
+        mock_get.return_value = col
+        mock_ensure.return_value = col
+        mock_items.return_value = []
+        ui = {
+            "version": 1,
+            "blocks": [{"id": "t", "type": "table", "props": {"dataPath": "pets"}}],
+        }
+        data = project_dashboard_data(
+            dashboard_id=uuid.uuid4(),
+            owner_user_id=uuid.uuid4(),
+            tenant_id=1,
+            ui_layout=ui,
+            view_bindings={},
+            template_id="pets-v1",
+            legacy_data={"pets": [{"id": "r_1", "name": "Kira"}]},
+        )
+        return data, mock_append
+
+    def test_legacy_import_runs_once_for_a_fresh_collection(self) -> None:
+        _data, mock_append = self._project_with_legacy({})
+        mock_append.assert_called_once()
+
+    def test_emptied_list_is_not_refilled_from_legacy_data(self) -> None:
+        # The marker means the one-time migration already ran, so an empty list is intentional.
+        _data, mock_append = self._project_with_legacy({"__legacy_import__pets": True})
+        mock_append.assert_not_called()
+
+    def test_internal_metadata_keys_are_not_projected(self) -> None:
+        data, _append = self._project_with_legacy({"__legacy_import__pets": True, "notes": "hi"})
+        self.assertEqual(data.get("notes"), "hi")
+        self.assertNotIn("__legacy_import__pets", data)
+
 
 if __name__ == "__main__":
     unittest.main()

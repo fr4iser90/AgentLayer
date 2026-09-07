@@ -6,7 +6,11 @@ import uuid
 from typing import Any, Protocol
 
 from apps.backend.domain.collections import db as col_db
-from apps.backend.domain.collections.bindings import bindings_for_dashboard, is_list_path
+from apps.backend.domain.collections.bindings import (
+    RESERVED_DATA_KEYS,
+    bindings_for_dashboard,
+    is_list_path,
+)
 
 
 class CollectionsProjectionDependencies(Protocol):
@@ -70,6 +74,18 @@ def finalize_dashboard_data(data: dict[str, Any], ui_layout: dict[str, Any] | No
     return _deps.finalize_dashboard_data(data, ui_layout) if _deps is not None else data
 
 
+#: Collection metadata keys with this prefix are bookkeeping, never projected into ``data``.
+_INTERNAL_META_PREFIX = "__"
+
+
+def _is_internal_meta_key(key: str) -> bool:
+    return key.startswith(_INTERNAL_META_PREFIX)
+
+
+def _legacy_import_marker(path: str) -> str:
+    return f"{_INTERNAL_META_PREFIX}legacy_import__{path}"
+
+
 def _metadata_to_data_paths(metadata: dict[str, Any], ui_layout: dict[str, Any] | None) -> dict[str, Any]:
     """Apply metadata keys that match block dataPaths (scalars / markdown)."""
     data: dict[str, Any] = {}
@@ -123,7 +139,7 @@ def project_dashboard_data(
         meta = col.get("metadata") if isinstance(col.get("metadata"), dict) else {}
         for mk, mv in meta.items():
             mp = str(mk).strip()
-            if mp:
+            if mp and not _is_internal_meta_key(mp):
                 data = set_path(data, mp, mv)
 
     # List paths from bindings
@@ -136,6 +152,12 @@ def project_dashboard_data(
         cid = uuid.UUID(str(col["id"]))
         rows = col_db.items_list(cid, path)
         data = set_path(data, path, rows)
+
+    # Dashboard-level config is not bound to a block dataPath and stays in the row.
+    if isinstance(legacy_data, dict):
+        for key in RESERVED_DATA_KEYS:
+            if key in legacy_data:
+                data[key] = legacy_data[key]
 
     # Legacy one-time import: if domain empty but legacy JSON had content
     if legacy_data and isinstance(legacy_data, dict):
@@ -159,7 +181,7 @@ def project_dashboard_data(
                 meta = col.get("metadata") if isinstance(col.get("metadata"), dict) else {}
                 for mk, mv in meta.items():
                     mp = str(mk).strip()
-                    if mp and get_path(data, mp) is None:
+                    if mp and not _is_internal_meta_key(mp) and get_path(data, mp) is None:
                         data = set_path(data, mp, mv)
 
     return finalize_dashboard_data(data, ui_layout if isinstance(ui_layout, dict) else None)
@@ -185,12 +207,17 @@ def _maybe_import_legacy(
             )
         cid = uuid.UUID(str(col["id"]))
         if is_list_path(ui_layout, path):
-            existing = col_db.items_list(cid, path, limit=1)
-            if existing:
+            meta = col.get("metadata") if isinstance(col.get("metadata"), dict) else {}
+            marker = _legacy_import_marker(path)
+            if meta.get(marker):
+                # Already migrated — an emptied list must stay empty, not resurrect the seed.
                 continue
-            raw = get_path(legacy_data, path)
-            if isinstance(raw, list) and raw:
-                col_db.items_append(cid, path, [r for r in raw if isinstance(r, dict)])
+            existing = col_db.items_list(cid, path, limit=1)
+            if not existing:
+                raw = get_path(legacy_data, path)
+                if isinstance(raw, list) and raw:
+                    col_db.items_append(cid, path, [r for r in raw if isinstance(r, dict)])
+            col_db.collection_metadata_patch(owner_user_id, slug, {marker: True})
         else:
             meta = col.get("metadata") if isinstance(col.get("metadata"), dict) else {}
             if path in meta:

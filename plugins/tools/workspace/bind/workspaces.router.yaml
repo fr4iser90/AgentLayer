@@ -1,0 +1,22 @@
+# Co-located router phrases for workspaces.router.py — locale keys are authoring-only.
+domain: workspace
+phrases:
+  en:
+    - workspace
+    - project workspace
+    - clone repo
+    - switch workspace
+    - bind workspace
+    - create workspace
+  de:
+    - workspace
+    - projekt workspace
+    - projekt arbeitsbereich
+    - repo klonen
+    - repository klonen
+    - workspace wechseln
+    - arbeitsbereich wechseln
+    - workspace binden
+    - arbeitsbereich binden
+    - workspace erstellen
+    - arbeitsbereich erstellen

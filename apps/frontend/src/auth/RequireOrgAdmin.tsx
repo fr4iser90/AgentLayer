@@ -1,6 +1,7 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "./AuthContext";
+import { defaultLandingPath } from "./tenantSurface";
 
 /** Tenant org surface — `/app/org` (multi_tenant only). */
 export function RequireOrgAdmin() {
@@ -22,7 +23,7 @@ export function RequireOrgAdmin() {
   }
 
   if (user?.deployment_mode === "agent_system") {
-    return <Navigate to="/" replace />;
+    return <Navigate to={defaultLandingPath(user)} replace />;
   }
 
   const tenantAdmin =
@@ -40,7 +41,7 @@ export function RequireOrgAdmin() {
 
   const orgAllowed = tenantAdmin || canEditContent || (onTeam && canManageTeam);
   if (!orgAllowed) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={defaultLandingPath(user)} replace />;
   }
 
   if (user?.org_setup_required && !onSetup) {

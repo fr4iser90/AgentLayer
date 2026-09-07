@@ -31,6 +31,12 @@ function newRowId(): string {
   return `r_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
+function scheduleEnabledPill(enabled: boolean): string {
+  return enabled
+    ? "bg-emerald-600/25 text-emerald-200 border-emerald-500/40"
+    : "bg-white/10 text-surface-muted border-surface-border";
+}
+
 export function DashboardBlocks(props: {
   uiLayout: UiLayout | null | undefined;
   data: Record<string, unknown>;
@@ -1161,7 +1167,7 @@ function BlockView(props: {
                 {jobs.map((j) => (
                   <tr key={j.id} className="border-b border-white/5">
                     <td className="px-2 py-2">
-                      <span className={`rounded-md border px-2 py-0.5 text-xs ${pill(j.enabled)}`}>
+                      <span className={`rounded-md border px-2 py-0.5 text-xs ${scheduleEnabledPill(j.enabled)}`}>
                         {j.enabled ? t("admin:schedulesEnabledLabel") : t("admin:schedulesDisabledLabel")}
                       </span>
                     </td>

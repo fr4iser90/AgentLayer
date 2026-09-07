@@ -130,7 +130,7 @@ knobs:
     writable: true
     apply_via: agent-config/apply
     value_schema: runtime-config-values.json#/$defs/toolsBudgetRatio
-    default: 0.06
+    default: 0.25
     ui_group: context_harness
     affects_agents: [general, coding]
     affects_clusters: [S, C, W, D, SEC, SOC]
@@ -437,12 +437,14 @@ knobs:
     writable: true
     apply_via: agent-config/apply
     value_schema: runtime-config-values.json#/$defs/toolsFullSchema
-    default: false
+    default: true
     ui_group: tool_forward
     affects_agents: [general, coding]
     affects_clusters: [S, C, W, D, SEC]
     benchmark_sensitive: true
-    doc: Send full JSON schema for forwarded tools to LLM.
+    doc: >
+      Send full JSON schema for forwarded tools to LLM. Off falls back to catalog stubs,
+      which drop parameter docs and are not cheaper for large agents.
 
   - id: tool_forward.catalog_after_first_round
     layer: runtime_config
@@ -451,12 +453,12 @@ knobs:
     writable: true
     apply_via: agent-config/apply
     value_schema: runtime-config-values.json#/$defs/catalogAfterFirstRound
-    default: true
+    default: false
     ui_group: tool_forward
     affects_agents: [general]
     affects_clusters: [S]
     benchmark_sensitive: true
-    doc: Promote catalog tools after first LLM round.
+    doc: Downgrade forwarded tools to catalog stubs from the second LLM round on.
 
   - id: agent.tool_choice_required_retry
     layer: runtime_config

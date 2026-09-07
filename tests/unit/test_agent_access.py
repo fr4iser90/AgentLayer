@@ -54,9 +54,9 @@ def test_admin_only_agent_blocked_for_user() -> None:
     assert "admin" in err.lower()
 
 
-def test_default_agent_for_workspace_is_general() -> None:
+def test_default_agent_for_workspace_by_role() -> None:
     assert default_agent_for_workspace("user") == "general"
-    assert default_agent_for_workspace("admin") == "general"
+    assert default_agent_for_workspace("admin") == "coding"
 
 
 def test_general_agent_has_no_bash_or_push_tools() -> None:
@@ -65,7 +65,23 @@ def test_general_agent_has_no_bash_or_push_tools() -> None:
     ag = get_agent_registry().get_agent("general")
     assert ag is not None
     names = ag.get("tool_names") or []
-    assert names == sorted(["catalog", "delegate", "user_secrets_status"])
+    assert names == sorted(
+        [
+            "bind",
+            "catalog",
+            "delegate",
+            "exit_plan_mode",
+            "goal_create",
+            "goal_get",
+            "goal_update",
+            "plan_mode_set",
+            "todo_read",
+            "todo_write",
+            "user_secrets_status",
+            "workspace.create",
+            "workspace.list",
+        ]
+    )
     assert "delegate" in names
     assert "catalog" in names
     assert "task" not in names

@@ -1,0 +1,11 @@
+# Co-located router phrases for get_issue.router.py — locale keys are authoring-only.
+domain: github
+phrases:
+  en:
+    - github issue
+    - get issue
+  de:
+    - github issue
+    - github ticket
+    - issue abrufen
+    - ticket abrufen

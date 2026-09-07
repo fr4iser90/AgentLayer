@@ -18,7 +18,7 @@ def test_build_agents_catalog_includes_general() -> None:
     assert "tool_names" not in general
     assert general["tool_domains"] == []
     assert general["tool_capability_any"] == []
-    assert general["tool_names_count"] == 3
+    assert general["tool_names_count"] == 13
     assert "icon" not in general
     assert all("icon" not in a for a in out["agents"])
 
@@ -35,7 +35,7 @@ def test_delegatable_only_filters() -> None:
     ids = {a["id"] for a in out["agents"]}
     assert "general" not in ids
     assert "research" in ids
-    assert "coding" not in ids
+    assert "coding" in ids
 
 
 def test_admin_include_tool_names() -> None:

@@ -1,0 +1,98 @@
+{
+  "dashboard_id": "1e89defc-5ef2-43eb-8cb0-6908c3fd62b5",
+  "source_dashboard_id": "35b5997d-98e2-4588-b42f-d2c20e0a8c29",
+  "friend_user_id": "6b524749-9314-459c-bcda-f4b0808150ac",
+  "title": "UX Audit \u2014 All Blocks",
+  "url": "http://127.0.0.1:8088/app/dashboard?id=1e89defc-5ef2-43eb-8cb0-6908c3fd62b5",
+  "blocks": [
+    {
+      "id": "demo-table",
+      "type": "table"
+    },
+    {
+      "id": "demo-markdown",
+      "type": "markdown"
+    },
+    {
+      "id": "demo-rich-md",
+      "type": "rich_markdown"
+    },
+    {
+      "id": "demo-gallery",
+      "type": "gallery"
+    },
+    {
+      "id": "demo-hero",
+      "type": "hero"
+    },
+    {
+      "id": "demo-timeline",
+      "type": "timeline"
+    },
+    {
+      "id": "demo-stat",
+      "type": "stat"
+    },
+    {
+      "id": "demo-chart",
+      "type": "chart"
+    },
+    {
+      "id": "demo-spark",
+      "type": "sparkline"
+    },
+    {
+      "id": "demo-kanban",
+      "type": "kanban"
+    },
+    {
+      "id": "demo-embed",
+      "type": "embed"
+    },
+    {
+      "id": "demo-media",
+      "type": "media_player"
+    },
+    {
+      "id": "demo-section",
+      "type": "section"
+    },
+    {
+      "id": "demo-cards",
+      "type": "card_grid"
+    },
+    {
+      "id": "demo-share",
+      "type": "share_widget"
+    },
+    {
+      "id": "demo-formula",
+      "type": "formula_calc"
+    },
+    {
+      "id": "demo-ref",
+      "type": "dashboard_ref"
+    },
+    {
+      "id": "demo-schedules",
+      "type": "schedules"
+    }
+  ],
+  "projected_keys": [
+    "cards",
+    "chart",
+    "embed",
+    "hero",
+    "items",
+    "kanban",
+    "kpi",
+    "media_queue",
+    "notes",
+    "photos",
+    "rich_notes",
+    "section_notes",
+    "spark",
+    "timeline"
+  ],
+  "scheduler_jobs": 2
+}

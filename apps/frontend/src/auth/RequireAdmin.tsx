@@ -1,6 +1,7 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "./AuthContext";
+import { defaultLandingPath } from "./tenantSurface";
 
 export function RequireAdmin() {
   const { t } = useTranslation(["auth"]);
@@ -24,7 +25,7 @@ export function RequireAdmin() {
   }
 
   if (user?.role?.toLowerCase() !== "admin") {
-    return <Navigate to="/" replace />;
+    return <Navigate to={defaultLandingPath(user)} replace />;
   }
 
   return <Outlet />;

@@ -11,3 +11,10 @@ tool_allowlist:
   - forecast
   - current_time
   - list_events
+  - goal_get
+  - goal_create
+  - goal_update
+  - todo_write
+  - todo_read
+  - plan_mode_set
+  - exit_plan_mode

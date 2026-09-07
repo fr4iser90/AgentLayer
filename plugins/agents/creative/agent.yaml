@@ -9,3 +9,10 @@ execution_context: auto
 tool_allowlist:
   - build
   - inpainting_realvision
+  - goal_get
+  - goal_create
+  - goal_update
+  - todo_write
+  - todo_read
+  - plan_mode_set
+  - exit_plan_mode

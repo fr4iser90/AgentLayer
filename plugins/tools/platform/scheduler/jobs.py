@@ -129,7 +129,7 @@ def create(arguments: dict[str, Any]) -> str:
         if not _dashboard_allows_schedule(tenant_id, caller_uid, dashboard_id):
             return _err("no permission to attach a schedule to this dashboard")
 
-    normalize_coding_workflow = None  # codebase removed
+    from apps.backend.infrastructure.codebase.coding_workflow import normalize_coding_workflow
 
     wf_raw: dict[str, Any] = {}
     if arguments.get("coding_workflow") is not None:

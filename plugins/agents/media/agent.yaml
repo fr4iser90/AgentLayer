@@ -20,3 +20,10 @@ tool_allowlist:
   - media_set_now_playing
   - media_share_grant
   - media_update_metadata
+  - goal_get
+  - goal_create
+  - goal_update
+  - todo_write
+  - todo_read
+  - plan_mode_set
+  - exit_plan_mode

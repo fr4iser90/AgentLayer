@@ -9,6 +9,10 @@ from apps.backend.domain.collections import db as col_db
 from apps.backend.domain.collections.value_objects import CollectionSlug
 
 
+#: Dashboard-level config kept in ``user_dashboards.data`` (not bound to a block dataPath).
+RESERVED_DATA_KEYS = frozenset({"_agentlayer"})
+
+
 class CollectionsViewDependencies(Protocol):
     def top_level_key(self, data_path: str) -> str: ...
 

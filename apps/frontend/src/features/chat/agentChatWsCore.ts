@@ -34,6 +34,17 @@ export type AgentWsTurnCallbacks = {
   onToolDone?: (ev: AgentToolDoneEvent) => void;
   /** Footer mini-player after successful ``media_enqueue`` with ``now_playing_id``. */
   onMediaPlay?: (payload: Record<string, unknown>) => void;
+  /** Conversation goal / todos / plan-mode / goal-round updates. */
+  onConversationGoal?: (ev: {
+    type: "agent.goal" | "agent.todos" | "agent.plan_mode" | "agent.goal_round";
+    goal?: unknown;
+    todos?: unknown;
+    counts?: unknown;
+    plan_mode?: boolean;
+    continue?: boolean;
+    prompt?: string;
+    reason?: string;
+  }) => void;
   streamEnabled?: boolean;
 };
 
@@ -288,6 +299,59 @@ export function handleAgentWsMessage(msg: Record<string, unknown>, ctx: HandlerC
 
   if (typ === "agent.media_play") {
     callbacks.onMediaPlay?.(msg);
+    return;
+  }
+
+  if (typ === "agent.goal" || typ === "agent.todos") {
+    callbacks.onConversationGoal?.({
+      type: typ,
+      goal: msg.goal,
+      todos: msg.todos,
+      counts: msg.counts,
+    });
+    if (typ === "agent.goal") {
+      const phase = msg.goal && typeof msg.goal === "object" ? String((msg.goal as { phase?: string }).phase || "") : "";
+      const obj =
+        msg.goal && typeof msg.goal === "object"
+          ? String((msg.goal as { objective?: string }).objective || "").slice(0, 120)
+          : "";
+      appendAgentLine(liveTurn, "goal", obj ? `Goal (${phase || "update"}): ${obj}` : "Goal updated");
+    } else {
+      const n = Array.isArray(msg.todos) ? msg.todos.length : 0;
+      appendAgentLine(liveTurn, "todos", `Todos updated (${n})`);
+    }
+    return;
+  }
+
+  if (typ === "agent.plan_mode") {
+    callbacks.onConversationGoal?.({
+      type: "agent.plan_mode",
+      plan_mode: Boolean(msg.plan_mode),
+    });
+    appendAgentLine(
+      liveTurn,
+      "plan",
+      msg.plan_mode ? "Plan mode on" : "Plan mode off",
+    );
+    return;
+  }
+
+  if (typ === "agent.goal_round") {
+    const cont = Boolean(msg.continue);
+    callbacks.onConversationGoal?.({
+      type: "agent.goal_round",
+      continue: cont,
+      prompt: typeof msg.prompt === "string" ? msg.prompt : undefined,
+      goal: msg.goal,
+      reason: typeof msg.reason === "string" ? msg.reason : undefined,
+    });
+    const round = msg.round != null ? String(msg.round) : "?";
+    const max = msg.max_goal_rounds != null ? String(msg.max_goal_rounds) : "?";
+    appendAgentLine(
+      liveTurn,
+      "goal",
+      cont ? `Goal round ${round}/${max} — continuing` : `Goal round stopped (${msg.reason || "done"})`,
+    );
     return;
   }
 

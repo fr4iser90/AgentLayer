@@ -1,0 +1,14 @@
+# Co-located router phrases for list_pull_requests.router.py — locale keys are authoring-only.
+domain: github
+phrases:
+  en:
+    - list prs
+    - list pull requests
+    - github prs
+  de:
+    - pull requests listen
+    - prs auflisten
+    - pull requests auflisten
+    - prs listen
+    - github pull requests
+    - github prs

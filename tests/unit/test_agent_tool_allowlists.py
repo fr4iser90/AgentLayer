@@ -7,17 +7,36 @@ import pytest
 from apps.backend.domain.agent_runtime.registry import get_agent_registry
 
 # agent_id -> (expected_count, must_include, must_exclude)
+# +5 session harness tools (goal_*/todo_*) on user-facing agents
+_HARNESS = frozenset(
+    {
+        "goal_get",
+        "goal_create",
+        "goal_update",
+        "todo_write",
+        "todo_read",
+        "plan_mode_set",
+        "exit_plan_mode",
+    }
+)
 EXPECTATIONS: dict[str, tuple[int, frozenset[str], frozenset[str]]] = {
-    "general": (3, frozenset({"delegate", "catalog"}), frozenset({"bash", "deferred_wait"})),
-    "math": (4, frozenset({"math_eval", "math_percentage", "math_convert_units", "math_statistics"}), frozenset({"deferred_wait"})),
-    "creative": (2, frozenset({"build"}), frozenset({"deferred_wait"})),
-    "research": (17, frozenset({"web_search.search", "rag_search"}), frozenset({"bash"})),
-    "communications": (10, frozenset({"send", "messaging.send"}), frozenset({"bash"})),
-    "media": (13, frozenset({"media_list"}), frozenset({"dashboard.read"})),
-    "integrations": (6, frozenset({"call", "summarize"}), frozenset({"git_push"})),
-    "outdoor": (8, frozenset({"bite_index"}), frozenset({"bash"})),
-    "lifestyle": (4, frozenset({"forecast", "current_time"}), frozenset({"bash"})),
-    "dashboard": (27, frozenset({"dashboard.read", "propose_layouts"}), frozenset({"media_list", "git_push"})),
+    "general": (13, frozenset({"delegate", "catalog", "bind"}) | _HARNESS, frozenset({"bash", "deferred_wait"})),
+    "math": (11, frozenset({"math_eval", "math_percentage", "math_convert_units", "math_statistics"}) | _HARNESS, frozenset({"deferred_wait"})),
+    "creative": (9, frozenset({"build"}) | _HARNESS, frozenset({"deferred_wait"})),
+    "research": (24, frozenset({"web_search.search", "rag_search"}) | _HARNESS, frozenset({"bash"})),
+    "communications": (17, frozenset({"send", "messaging.send"}) | _HARNESS, frozenset({"bash"})),
+    "media": (20, frozenset({"media_list"}) | _HARNESS, frozenset({"dashboard.read"})),
+    "integrations": (13, frozenset({"call", "summarize"}) | _HARNESS, frozenset({"git_push"})),
+    "outdoor": (15, frozenset({"bite_index"}) | _HARNESS, frozenset({"bash"})),
+    "lifestyle": (11, frozenset({"forecast", "current_time"}) | _HARNESS, frozenset({"bash"})),
+    "dashboard": (34, frozenset({"dashboard.read", "propose_layouts"}) | _HARNESS, frozenset({"media_list", "git_push"})),
+    "coding": (49, frozenset({"bash", "repository.write_file"}) | _HARNESS, frozenset({"delegate", "start", "deferred_wait", "todo"})),
+    "coding_plan": (25, frozenset({"repository.read_file"}) | _HARNESS, frozenset({"bash", "deferred_wait", "todo"})),
+    "security_auditor": (
+        37,
+        frozenset({"start", "deferred_wait", "goal_create", "todo_write", "todo_read"}),
+        frozenset({"bash", "delegate", "todo", "exit_plan_mode"}),
+    ),
 }
 
 

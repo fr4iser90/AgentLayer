@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
@@ -21,8 +22,143 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
       : "text-surface-muted hover:bg-white/5 hover:text-neutral-200",
   ].join(" ");
 
+const menuItemClass =
+  "block w-full px-3 py-2 text-left text-sm text-neutral-200 hover:bg-white/10";
+
 const signInClass =
   "rounded-md px-3 py-2 text-sm text-surface-muted hover:bg-white/5 hover:text-neutral-200";
+
+function MoreNavMenu({
+  showSchedulesMobile,
+  showConnectionsMobile,
+  showDashboard,
+  showStudio,
+  showTasks,
+  showShares,
+  showDocs,
+}: {
+  showSchedulesMobile: boolean;
+  showConnectionsMobile: boolean;
+  showDashboard: boolean;
+  showStudio: boolean;
+  showTasks: boolean;
+  showShares: boolean;
+  showDocs: boolean;
+}) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  const hasMobileExtras = showSchedulesMobile || showConnectionsMobile;
+  const hasDesktopExtras = showDashboard || showStudio || showTasks || showShares || showDocs;
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  if (!hasMobileExtras && !hasDesktopExtras) return null;
+
+  return (
+    <div className={hasDesktopExtras ? "relative" : "relative md:hidden"} ref={rootRef}>
+      <button
+        type="button"
+        className={linkClass({ isActive: open })}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        onClick={() => setOpen((v) => !v)}
+      >
+        {t("nav.more")}
+      </button>
+      {open ? (
+        <div
+          role="menu"
+          className="absolute left-0 z-50 mt-1 min-w-[11rem] rounded-lg border border-surface-border bg-[#1a1a1a] py-1 shadow-xl"
+        >
+          {hasMobileExtras ? (
+            <div className="md:hidden">
+              {showSchedulesMobile ? (
+                <NavLink
+                  role="menuitem"
+                  to="/schedules"
+                  className={menuItemClass}
+                  onClick={() => setOpen(false)}
+                >
+                  {t("nav.schedules")}
+                </NavLink>
+              ) : null}
+              {showConnectionsMobile ? (
+                <NavLink
+                  role="menuitem"
+                  to="/settings/connections"
+                  className={menuItemClass}
+                  onClick={() => setOpen(false)}
+                >
+                  {t("nav.connections")}
+                </NavLink>
+              ) : null}
+              {hasDesktopExtras ? <div className="my-1 border-t border-white/10" /> : null}
+            </div>
+          ) : null}
+          {showDashboard ? (
+            <NavLink
+              role="menuitem"
+              to="/dashboard"
+              className={menuItemClass}
+              onClick={() => setOpen(false)}
+            >
+              {t("nav.dashboard")}
+            </NavLink>
+          ) : null}
+          {showStudio ? (
+            <NavLink
+              role="menuitem"
+              to="/studio"
+              className={menuItemClass}
+              onClick={() => setOpen(false)}
+            >
+              {t("nav.studio")}
+            </NavLink>
+          ) : null}
+          {showTasks ? (
+            <NavLink
+              role="menuitem"
+              to="/tasks"
+              className={menuItemClass}
+              onClick={() => setOpen(false)}
+            >
+              {t("nav.tasks")}
+            </NavLink>
+          ) : null}
+          {showShares ? (
+            <NavLink
+              role="menuitem"
+              to="/settings/shares"
+              className={menuItemClass}
+              onClick={() => setOpen(false)}
+            >
+              {t("nav.shares")}
+            </NavLink>
+          ) : null}
+          {showDocs ? (
+            <NavLink
+              role="menuitem"
+              to="/docs"
+              className={menuItemClass}
+              onClick={() => setOpen(false)}
+            >
+              {t("footer.docs")}
+            </NavLink>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 export function AppLayout() {
   const { t, i18n } = useTranslation();
@@ -42,50 +178,40 @@ export function AppLayout() {
 
   const shell = (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden">
-      <header className="flex shrink-0 items-center gap-3 border-b border-surface-border bg-surface-raised px-4 py-3">
+      <header className="flex shrink-0 items-center gap-3 border-b border-surface-border bg-surface-raised px-4 py-2">
         <span className="shrink-0 text-sm font-semibold tracking-tight text-white">
           {t("app.title")}
         </span>
-        <nav className="flex min-w-0 flex-1 flex-wrap gap-1">
+        <nav className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
           {loading ? (
             <span className="px-3 py-2 text-xs text-surface-muted">{t("nav.loading")}</span>
           ) : signedIn ? (
             <>
-              {navItemAllowed(user, "home") ? (
-                <NavLink to="/" end className={linkClass}>
-                  {t("nav.home")}
-                </NavLink>
-              ) : null}
               {navItemAllowed(user, "chat") ? (
                 <NavLink to="/chat" className={linkClass}>
                   {t("nav.chat")}
                 </NavLink>
               ) : null}
-              {navItemAllowed(user, "studio") ? (
-                <NavLink to="/studio" className={linkClass}>
-                  {t("nav.studio")}
-                </NavLink>
-              ) : null}
-              {navItemAllowed(user, "dashboard") ? (
-                <NavLink to="/dashboard" className={linkClass}>
-                  {t("nav.dashboard")}
-                </NavLink>
-              ) : null}
               {navItemAllowed(user, "schedules") ? (
-                <NavLink to="/schedules" className={linkClass}>
+                <NavLink to="/schedules" className={({ isActive }) => `${linkClass({ isActive })} hidden md:inline-flex`}>
                   {t("nav.schedules")}
                 </NavLink>
               ) : null}
-              {navItemAllowed(user, "tasks") ? (
-                <NavLink to="/tasks" className={linkClass}>
-                  {t("nav.tasks")}
-                </NavLink>
-              ) : null}
-              {navItemAllowed(user, "shares") ? (
-                <NavLink to="/settings/shares" className={linkClass}>
-                  🔗 {t("nav.shares")}
-                </NavLink>
-              ) : null}
+              <NavLink
+                to="/settings/connections"
+                className={({ isActive }) => `${linkClass({ isActive })} hidden md:inline-flex`}
+              >
+                {t("nav.connections")}
+              </NavLink>
+              <MoreNavMenu
+                showSchedulesMobile={navItemAllowed(user, "schedules")}
+                showConnectionsMobile
+                showDashboard={navItemAllowed(user, "dashboard")}
+                showStudio={navItemAllowed(user, "studio")}
+                showTasks={navItemAllowed(user, "tasks")}
+                showShares={navItemAllowed(user, "shares")}
+                showDocs={showDocsFooter}
+              />
             </>
           ) : (
             <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -130,7 +256,7 @@ export function AppLayout() {
       <footer className="shrink-0 border-t border-surface-border bg-surface-raised/80 px-4 py-2">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-surface-muted">
           <LegalFooterLinks />
-          {showDocsFooter ? (
+          {showDocsFooter && !signedIn ? (
             <>
               <a
                 href={GITHUB_REPO}

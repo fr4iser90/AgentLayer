@@ -32,7 +32,7 @@ import { OrgKnowledgePage } from "./pages/org/OrgKnowledgePage";
 import { OrgTeamPage } from "./pages/org/OrgTeamPage";
 import { ChatPage } from "./pages/ChatPage";
 import { DocsPage } from "./pages/DocsPage";
-import { HomePage, RestrictedNavRedirect } from "./pages/HomePage";
+import { DefaultLandingRedirect, HomePage, RestrictedNavRedirect } from "./pages/HomePage";
 import { AgentSettings } from "./pages/settings/AgentSettings";
 import { DelegateSettings } from "./pages/settings/DelegateSettings";
 import { NotificationsSettings } from "./pages/settings/NotificationsSettings";
@@ -153,7 +153,7 @@ export function App() {
                 </Route>
               </Route>
             </Route>
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<DefaultLandingRedirect />} />
           </Route>
         </Routes>
       </AuthProvider>

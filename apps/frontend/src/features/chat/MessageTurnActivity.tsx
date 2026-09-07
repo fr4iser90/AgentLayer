@@ -25,7 +25,7 @@ function isStepKind(kind: string): boolean {
   );
 }
 
-/** LLM/tool/subagent steps in the assistant bubble (not context tokens — those stay in SessionRuntimeBar). */
+/** LLM/tool/subagent steps in the assistant bubble (not context tokens — those stay in ChatRuntimeBar). */
 export function MessageTurnActivity({ entries, running = false, waitHint = null }: Props) {
   const { t } = useTranslation(["chat"]);
   const cards = buildRunCardsFromTimeline(entries);

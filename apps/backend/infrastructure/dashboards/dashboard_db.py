@@ -12,6 +12,10 @@ from psycopg.types.json import Json
 
 from apps.backend.infrastructure.platform.config import config
 from apps.backend.infrastructure.db import db
+from apps.backend.infrastructure.dashboards.dashboard_data_write import (
+    split_reserved_data,
+    write_dashboard_data,
+)
 from apps.backend.infrastructure.dashboards.dashboard_defaults import defaults_for_kind
 from apps.backend.infrastructure.dashboards.dashboard_layout_tree import (
     data_paths_from_blocks,
@@ -413,13 +417,12 @@ def dashboard_update(
     if ui_layout is not None:
         sets.append("ui_layout = %s")
         args.append(Json(ui_layout))
-    # Domain collections are source of truth — do not persist board content in user_dashboards.data.
-    if data is not None:
-        logger.debug(
-            "dashboard_update ignored data payload for %s (use domain collections)",
-            dashboard_id,
-        )
-    if not sets:
+    # Board content goes to domain collections (below); only reserved config stays in the column.
+    content_data, reserved_data = split_reserved_data(data)
+    if reserved_data:
+        sets.append("data = COALESCE(w.data, '{}'::jsonb) || %s::jsonb")
+        args.append(Json(reserved_data))
+    if not sets and data is None:
         return dashboard_get(user_id, tenant_id, dashboard_id)
     sets.append("updated_at = now()")
     args.extend([dashboard_id, row_tid, user_id, user_id])
@@ -440,7 +443,8 @@ def dashboard_update(
                         AND m.role IN ('editor', 'co_owner')
                     )
                   )
-                RETURNING w.id, w.kind, w.template_id, w.title, w.ui_layout, w.data, w.created_at, w.updated_at
+                RETURNING w.id, w.kind, w.template_id, w.title, w.ui_layout, w.data,
+                          w.view_bindings, w.owner_user_id, w.created_at, w.updated_at
                 """,
                 args,
             )
@@ -448,7 +452,26 @@ def dashboard_update(
         conn.commit()
     if not row:
         return None
-    out = _row_dict(dict(row))
+    raw = dict(row)
+    if content_data:
+        owner_raw = raw.get("owner_user_id")
+        try:
+            owner_uuid = owner_raw if isinstance(owner_raw, uuid.UUID) else uuid.UUID(str(owner_raw))
+        except (ValueError, TypeError):
+            owner_uuid = user_id
+        write_dashboard_data(
+            dashboard_id=dashboard_id,
+            owner_user_id=owner_uuid,
+            tenant_id=row_tid,
+            ui_layout=raw.get("ui_layout") if isinstance(raw.get("ui_layout"), dict) else {},
+            view_bindings=raw.get("view_bindings") if isinstance(raw.get("view_bindings"), dict) else {},
+            template_id=raw.get("template_id"),
+            data=content_data,
+        )
+    if data is not None:
+        # Reply with the projected board so clients do not overwrite state with the raw column.
+        return dashboard_get(user_id, tenant_id, dashboard_id)
+    out = _row_dict(raw)
     out["access_role"] = role
     return out
 

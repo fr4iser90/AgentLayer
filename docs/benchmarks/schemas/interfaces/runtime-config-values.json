@@ -47,11 +47,11 @@
     },
     "toolsFullSchema": {
       "allOf": [{ "$ref": "#/$defs/booleanConfig" }],
-      "default": false
+      "default": true
     },
     "catalogAfterFirstRound": {
       "allOf": [{ "$ref": "#/$defs/booleanConfig" }],
-      "default": true
+      "default": false
     },
     "keepRecentToolRounds": {
       "type": "integer",
@@ -64,7 +64,7 @@
       "type": "number",
       "minimum": 0.01,
       "maximum": 0.25,
-      "default": 0.06,
+      "default": 0.25,
       "description": "context.tools_budget_ratio — fraction of context window for tool schemas."
     },
     "toolResultMaxRatio": {

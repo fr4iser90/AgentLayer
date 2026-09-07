@@ -2,10 +2,11 @@ import { type FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { SETUP_WIZARD_ACTIVE_KEY, useAuth } from "../auth/AuthContext";
+import { defaultLandingPath } from "../auth/tenantSurface";
 
 export function LoginPage() {
   const { t } = useTranslation(["auth"]);
-  const { accessToken, loading, setupStatus, login } = useAuth();
+  const { accessToken, user, loading, setupStatus, login } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,9 +27,9 @@ export function LoginPage() {
         navigate("/setup", { replace: true });
         return;
       }
-      navigate("/", { replace: true });
+      navigate(defaultLandingPath(user), { replace: true });
     }
-  }, [loading, accessToken, setupStatus, navigate]);
+  }, [loading, accessToken, user, setupStatus, navigate]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -40,7 +41,7 @@ export function LoginPage() {
       setError(t("auth:invalidCredentials"));
       return;
     }
-    navigate("/", { replace: true });
+    // Landing path runs in useEffect once ``user`` (incl. allowed_nav) is set.
   }
 
   return (

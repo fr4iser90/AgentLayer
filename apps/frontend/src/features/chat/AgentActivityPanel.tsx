@@ -10,7 +10,7 @@ type Props = {
   className?: string;
   /** Taller scroll area when placed in the header grid beside model/MCP controls. */
   layout?: "compact" | "header";
-  /** Show checkbox to toggle sub-agent rows (delegated coding_task runs). */
+  /** Show checkbox to toggle sub-agent rows (delegated specialist runs). */
   showSubagentToggle?: boolean;
   showSubagents?: boolean;
   onShowSubagentsChange?: (show: boolean) => void;
@@ -21,7 +21,10 @@ function borderForKind(kind: string): string {
   if (kind === "subagent_done") return "border-indigo-400/45";
   if (kind === "tool_start") return "border-sky-500/50";
   if (kind === "tool_done") return "border-emerald-500/50";
-  if (kind === "llm") return "border-violet-500/45";
+  if (kind === "llm" || kind === "think") return "border-violet-500/45";
+  if (kind === "goal") return "border-amber-500/45";
+  if (kind === "todos") return "border-teal-500/45";
+  if (kind === "plan") return "border-sky-500/45";
   if (kind === "llm_queue") return "border-amber-500/45";
   if (kind === "deferred_wait" || kind === "scan_queue") return "border-orange-500/45";
   if (kind === "permission") return "border-amber-500/50";
@@ -35,7 +38,11 @@ function labelForKind(kind: string, tr: TFunction<"chat">): string {
   if (kind === "subagent_done") return tr("chat:activityKindSubDone");
   if (kind === "tool_start") return tr("chat:activityKindTool");
   if (kind === "tool_done") return tr("chat:activityKindDone");
+  if (kind === "think") return tr("chat:activityKindThink");
   if (kind === "llm") return tr("chat:activityKindLlm");
+  if (kind === "goal") return tr("chat:activityKindGoal");
+  if (kind === "todos") return tr("chat:activityKindTodos");
+  if (kind === "plan") return tr("chat:activityKindPlan");
   if (kind === "llm_queue") return tr("chat:activityKindLlmQueue");
   if (kind === "deferred_wait" || kind === "scan_queue") return tr("chat:activityKindDeferredWait");
   if (kind === "permission") return tr("chat:activityKindPerm");

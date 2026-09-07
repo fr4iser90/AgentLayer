@@ -1,0 +1,14 @@
+# Co-located router phrases for glob.router.py — locale keys are authoring-only.
+domain: repository
+phrases:
+  en:
+    - coding glob
+    - find files
+    - glob pattern
+    - file pattern
+  de:
+    - dateien suchen
+    - glob muster
+    - dateien finden
+    - dateimuster
+    - file pattern

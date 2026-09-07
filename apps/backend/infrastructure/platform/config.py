@@ -227,10 +227,13 @@ AGENT_TOOLS_DENYLIST = frozenset(
     if x.strip()
 )
 # Tool Ranking (Semantic Search based)
-# Chat tools[]: catalog mode (required field stubs). Full JSON Schema only after reactive promotion.
-AGENT_TOOLS_FULL_SCHEMA = _env_bool("AGENT_TOOLS_FULL_SCHEMA", False)
-# Tool loop round 2+: re-send tool names in catalog mode (no full JSON Schema) to save prompt tokens.
-AGENT_TOOLS_CATALOG_AFTER_FIRST_ROUND = _env_bool("AGENT_TOOLS_CATALOG_AFTER_FIRST_ROUND", True)
+# Chat tools[]: real JSON Schema per tool. Catalog mode (type-only param stubs) is the fallback for
+# tiny context windows — it is not actually cheaper, because the shared param hint is repeated per
+# tool (measure with scripts/measure_tool_schema_cost.py: coding = 7.5k full vs 10.1k catalog).
+AGENT_TOOLS_FULL_SCHEMA = _env_bool("AGENT_TOOLS_FULL_SCHEMA", True)
+# Tool loop round 2+: downgrade to catalog mode to save prompt tokens. Off by default — dropping the
+# parameter docs mid-loop is what makes models call tools with empty or invented arguments.
+AGENT_TOOLS_CATALOG_AFTER_FIRST_ROUND = _env_bool("AGENT_TOOLS_CATALOG_AFTER_FIRST_ROUND", False)
 
 # LLM text degeneration: abort when the same tail block repeats consecutively at stream end.
 AGENT_STREAM_REPETITION_GUARD = _env_bool("AGENT_STREAM_REPETITION_GUARD", True)
@@ -272,10 +275,13 @@ CHAT_CONTEXT_KEEP_RECENT_TOOL_ROUNDS = max(2, _env_int("CHAT_CONTEXT_KEEP_RECENT
 
 AGENT_TOOLS_RANKING_ENABLED = _env_bool("AGENT_TOOLS_RANKING_ENABLED", True)
 # Dynamic tool forward budget — ratios of provider context window only (context_budget.py).
-AGENT_TOOLS_BUDGET_RATIO = max(0.01, min(0.25, float(os.environ.get("AGENT_TOOLS_BUDGET_RATIO", "0.06"))))
+# 0.25 fits our largest agent (coding: 49 tools ≈ 7.5k tokens with real schemas) from a 32k window
+# on. Below that the plan logs how many tools it had to drop.
+AGENT_TOOLS_BUDGET_RATIO = max(0.01, min(0.25, float(os.environ.get("AGENT_TOOLS_BUDGET_RATIO", "0.25"))))
 # Max tools[] count ≈ ratio × context_window (safety ceiling; fit enforced by tools_budget_tokens).
+# 0.002 → 65 slots at 32k, so a declared allowlist is bounded by real token cost, not by this cap.
 AGENT_TOOLS_COUNT_CAP_RATIO = max(
-    0.00001, min(0.01, float(os.environ.get("AGENT_TOOLS_COUNT_CAP_RATIO", "0.0004")))
+    0.00001, min(0.01, float(os.environ.get("AGENT_TOOLS_COUNT_CAP_RATIO", "0.002")))
 )
 
 
@@ -535,14 +541,8 @@ AGENT_MCP_CALL_TIMEOUT_SEC = max(5, min(_env_int("AGENT_MCP_CALL_TIMEOUT_SEC", 1
 AGENT_MCP_MAX_TOOLS = max(1, min(_env_int("AGENT_MCP_MAX_TOOLS", 32), 256))
 
 
-def _parse_mcp_agent_ids() -> frozenset[str]:
-    raw = (os.environ.get("AGENT_MCP_AGENT_IDS") or "coding,coding_plan").strip()
-    if not raw:
-        return frozenset()
-    return frozenset(x.strip() for x in raw.split(",") if x.strip())
-
-
-AGENT_MCP_AGENT_IDS = _parse_mcp_agent_ids()
+_MCP_AGENT_DEFAULT = "general,knowledge_companion,research,lifestyle,outdoor,dashboard,creative,media,communications,integrations,math"
+AGENT_MCP_AGENT_IDS = frozenset(x.strip() for x in (os.environ.get("AGENT_MCP_AGENT_IDS") or _MCP_AGENT_DEFAULT).split(",") if x.strip())
 
 # Optional: append one markdown/text file to the system message (plain-text operator “skills” snippet).
 AGENT_SKILLS_PROMPT_FILE = (os.environ.get("AGENT_SKILLS_PROMPT_FILE") or "").strip()

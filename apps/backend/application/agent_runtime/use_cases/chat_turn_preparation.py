@@ -64,6 +64,56 @@ def _model_routing_settings() -> ModelRoutingSettings:
     )
 
 
+def _agent_goal_tool_names(agent_id: str | None) -> frozenset[str]:
+    """Goal/todo tools this agent may call — empty when the agent is unknown."""
+    from apps.backend.domain.agent_runtime.registry import get_agent_registry
+    from apps.backend.domain.agent_runtime.conversation_goal import (
+        GOAL_TOOLS,
+        PLAN_TOOLS,
+        TODO_TOOLS,
+    )
+
+    if not agent_id:
+        return frozenset()
+    agent = get_agent_registry().get_agent(agent_id)
+    if not agent:
+        return frozenset()
+    names = {str(n).strip() for n in (agent.get("tool_names") or [])}
+    return frozenset(names & (GOAL_TOOLS | TODO_TOOLS | PLAN_TOOLS))
+
+
+def _inject_conversation_goal_block(
+    messages: list[dict[str, Any]],
+    *,
+    agent_id: str | None,
+    user_id: uuid.UUID,
+    conversation_id: uuid.UUID,
+) -> list[dict[str, Any]]:
+    """Tell the agent which goal/todo tools it has and what the current goal/todos are."""
+    from apps.backend.domain.agent_runtime.conversation_goal import (
+        PLAN_MODE_GUIDANCE,
+        conversation_goal_prompt_block,
+    )
+    from apps.backend.infrastructure.agent_runtime import conversation_goal_store as goal_store
+
+    state = goal_store.get_conversation_goal(user_id, conversation_id)
+    if not state:
+        return messages
+    goal_tools = _agent_goal_tool_names(agent_id)
+    if not goal_tools:
+        # Agentless chats resolve tools per turn, so naming tools would be a guess.
+        if state.get("plan_mode"):
+            return _append_system_block(messages, PLAN_MODE_GUIDANCE)
+        return messages
+    block = conversation_goal_prompt_block(
+        tool_names=goal_tools,
+        goal=state.get("goal") if isinstance(state.get("goal"), dict) else None,
+        todos=state.get("todos") if isinstance(state.get("todos"), list) else [],
+        plan_mode=bool(state.get("plan_mode")),
+    )
+    return _append_system_block(messages, block) if block else messages
+
+
 @dataclass
 class ChatTurnPreparation:
     messages: list[dict[str, Any]]
@@ -195,6 +245,16 @@ async def prepare_chat_turn(
     messages = _inject_dashboard_context(messages, dashboard_ctx)
     if agent_id:
         messages = _inject_agent_system_prompt(messages, agent_id)
+    if conversation_uuid is not None and user_id is not None and isinstance(user_id, uuid.UUID):
+        try:
+            messages = _inject_conversation_goal_block(
+                messages,
+                agent_id=agent_id if isinstance(agent_id, str) else None,
+                user_id=user_id,
+                conversation_id=conversation_uuid,
+            )
+        except Exception:
+            logger.exception("conversation goal prompt inject failed")
     if (
         agent_id == "knowledge_companion"
         and user_id is not None

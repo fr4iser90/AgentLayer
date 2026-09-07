@@ -1,0 +1,16 @@
+# Co-located router phrases for symbols.router.py — locale keys are authoring-only.
+domain: repository
+phrases:
+  en:
+    - coding symbols
+    - find symbol
+    - symbol lookup
+    - code index
+  de:
+    - symbol suchen
+    - symbole finden
+    - symbol finden
+    - symbol nachschlagen
+    - symbol lookup
+    - code index
+    - code-index

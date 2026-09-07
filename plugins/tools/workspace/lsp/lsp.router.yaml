@@ -1,0 +1,17 @@
+# Co-located router phrases for lsp.router.py — locale keys are authoring-only.
+domain: repository
+phrases:
+  en:
+    - coding lsp
+    - go to definition
+    - find references
+    - hover
+  de:
+    - lsp
+    - definition springen
+    - referenzen finden
+    - zur definition springen
+    - definition anzeigen
+    - verweise finden
+    - hover
+    - info anzeigen

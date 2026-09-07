@@ -65,7 +65,7 @@ export type ChatContextMeta = {
   tool_rounds_dropped?: number;
 };
 
-export type SessionRuntimePayload = {
+export type ChatRuntimePayload = {
   mcp: {
     enabled: boolean;
     import_ok: boolean;
@@ -82,6 +82,32 @@ export type SessionRuntimePayload = {
     ChatContextMeta,
     "context_window_tokens" | "soft_limit_tokens" | "hard_limit_tokens" | "budget_source"
   > | null;
+  vision?: {
+    available: boolean;
+    model?: string | null;
+    catalog_owned_by?: string | null;
+    reason?: string;
+  };
+  conversation_goal?: {
+    goal: ConversationGoal | null;
+    todos: ConversationTodo[];
+    plan_mode?: boolean;
+  } | null;
+};
+
+export type ConversationGoal = {
+  id: string;
+  revision: number;
+  objective: string;
+  phase: "active" | "paused" | "completed" | "blocked";
+  rounds_started?: number;
+  max_goal_rounds?: number;
+  blocked_reason?: string | null;
+};
+
+export type ConversationTodo = {
+  content: string;
+  status: "pending" | "in_progress" | "completed";
 };
 
 export type TokenUsageTotals = {
@@ -115,17 +141,18 @@ export function addUsageTotals(prev: TokenUsageTotals, usage: unknown): TokenUsa
   };
 }
 
-export type FetchSessionRuntimeOpts = {
+export type FetchChatRuntimeOpts = {
   workspaceId?: string | null;
   model?: string | null;
   modelCatalogOwnedBy?: string | null;
+  conversationId?: string | null;
 };
 
-export async function fetchSessionRuntime(
+export async function fetchChatRuntime(
   auth: Pick<AuthContextValue, "accessToken" | "refresh">,
-  opts?: string | null | FetchSessionRuntimeOpts
-): Promise<SessionRuntimePayload | null> {
-  const o: FetchSessionRuntimeOpts =
+  opts?: string | null | FetchChatRuntimeOpts
+): Promise<ChatRuntimePayload | null> {
+  const o: FetchChatRuntimeOpts =
     typeof opts === "string" || opts == null
       ? { workspaceId: opts ?? null }
       : (opts ?? {});
@@ -136,10 +163,12 @@ export async function fetchSessionRuntime(
   if (model) params.set("model", model);
   const owned = typeof o.modelCatalogOwnedBy === "string" ? o.modelCatalogOwnedBy.trim() : "";
   if (owned) params.set("model_catalog_owned_by", owned);
+  const cid = typeof o.conversationId === "string" ? o.conversationId.trim() : "";
+  if (cid) params.set("conversation_id", cid);
   const qs = params.toString();
-  const r = await apiFetch(`/v1/session/runtime${qs ? `?${qs}` : ""}`, auth);
+  const r = await apiFetch(`/v1/chat/runtime${qs ? `?${qs}` : ""}`, auth);
   if (!r.ok) return null;
-  return r.json() as Promise<SessionRuntimePayload>;
+  return r.json() as Promise<ChatRuntimePayload>;
 }
 
 export type WorkspaceApiRecord = {

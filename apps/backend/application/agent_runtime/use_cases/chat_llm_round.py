@@ -522,6 +522,16 @@ async def process_llm_tool_round(
                     "round": round_i + 1,
                 }
             )
+            from apps.backend.application.agent_runtime.use_cases.goal_round_driver import (
+                maybe_emit_goal_round,
+            )
+
+            await maybe_emit_goal_round(
+                event_emit=event_emit,
+                tool_context=tool_context,
+                agent_run_id=agent_run_id,
+                round_num=round_i + 1,
+            )
         return LlmToolRoundResult(
             final_response=_completion_attach_agent_run_id(
                 data,

@@ -21,9 +21,9 @@ plugins/tools/
     shell/              # bash, workspace_verify
     search/             # search, semantic_search, retrieve_context, index, …
     lsp/
-    planning/           # todo (in-turn checklist)
   platform/
     agents/             # delegate, task
+    conversation_goal/    # goal_*, todo_write/read, plan mode (this run only)
     tasks/              # agent_tasks OS queue
     secrets/
     scheduler/

@@ -8,5 +8,19 @@ delegatable: true
 execution_context: auto
 tool_allowlist:
   - rag_search
+  - goal_get
+  - goal_create
+  - goal_update
+  - todo_write
+  - todo_read
+  - plan_mode_set
+  - exit_plan_mode
 pinned_tools:
   - rag_search
+  - goal_get
+  - goal_create
+  - goal_update
+  - todo_write
+  - todo_read
+  - plan_mode_set
+  - exit_plan_mode

@@ -1,0 +1,156 @@
+{
+  "base": "http://127.0.0.1:8088",
+  "dashId": "1e89defc-5ef2-43eb-8cb0-6908c3fd62b5",
+  "results": [
+    {
+      "id": "full-board",
+      "type": "page",
+      "path": "/work/example/dashboard-ux-audit/screenshots/00-full-board.png",
+      "ok": true
+    },
+    {
+      "id": "demo-table",
+      "type": "table",
+      "path": "/work/example/dashboard-ux-audit/screenshots/01-table-demo-table.png",
+      "ok": true,
+      "width": 728,
+      "height": 408
+    },
+    {
+      "id": "demo-markdown",
+      "type": "markdown",
+      "path": "/work/example/dashboard-ux-audit/screenshots/02-markdown-demo-markdown.png",
+      "ok": true,
+      "width": 728,
+      "height": 288
+    },
+    {
+      "id": "demo-rich-md",
+      "type": "rich_markdown",
+      "path": "/work/example/dashboard-ux-audit/screenshots/03-rich_markdown-demo-rich-md.png",
+      "ok": true,
+      "width": 728,
+      "height": 408
+    },
+    {
+      "id": "demo-gallery",
+      "type": "gallery",
+      "path": "/work/example/dashboard-ux-audit/screenshots/04-gallery-demo-gallery.png",
+      "ok": true,
+      "width": 728,
+      "height": 468
+    },
+    {
+      "id": "demo-hero",
+      "type": "hero",
+      "path": "/work/example/dashboard-ux-audit/screenshots/05-hero-demo-hero.png",
+      "ok": true,
+      "width": 728,
+      "height": 408
+    },
+    {
+      "id": "demo-timeline",
+      "type": "timeline",
+      "path": "/work/example/dashboard-ux-audit/screenshots/06-timeline-demo-timeline.png",
+      "ok": true,
+      "width": 728,
+      "height": 468
+    },
+    {
+      "id": "demo-stat",
+      "type": "stat",
+      "path": "/work/example/dashboard-ux-audit/screenshots/07-stat-demo-stat.png",
+      "ok": true,
+      "width": 728,
+      "height": 288
+    },
+    {
+      "id": "demo-chart",
+      "type": "chart",
+      "path": "/work/example/dashboard-ux-audit/screenshots/08-chart-demo-chart.png",
+      "ok": true,
+      "width": 728,
+      "height": 588
+    },
+    {
+      "id": "demo-spark",
+      "type": "sparkline",
+      "path": "/work/example/dashboard-ux-audit/screenshots/09-sparkline-demo-spark.png",
+      "ok": true,
+      "width": 728,
+      "height": 288
+    },
+    {
+      "id": "demo-kanban",
+      "type": "kanban",
+      "path": "/work/example/dashboard-ux-audit/screenshots/10-kanban-demo-kanban.png",
+      "ok": true,
+      "width": 728,
+      "height": 708
+    },
+    {
+      "id": "demo-embed",
+      "type": "embed",
+      "path": "/work/example/dashboard-ux-audit/screenshots/11-embed-demo-embed.png",
+      "ok": true,
+      "width": 728,
+      "height": 588
+    },
+    {
+      "id": "demo-media",
+      "type": "media_player",
+      "path": "/work/example/dashboard-ux-audit/screenshots/12-media_player-demo-media.png",
+      "ok": true,
+      "width": 728,
+      "height": 528
+    },
+    {
+      "id": "demo-section",
+      "type": "section",
+      "path": "/work/example/dashboard-ux-audit/screenshots/13-section-demo-section.png",
+      "ok": true,
+      "width": 728,
+      "height": 588
+    },
+    {
+      "id": "demo-cards",
+      "type": "card_grid",
+      "path": "/work/example/dashboard-ux-audit/screenshots/14-card_grid-demo-cards.png",
+      "ok": true,
+      "width": 728,
+      "height": 588
+    },
+    {
+      "id": "demo-share",
+      "type": "share_widget",
+      "path": "/work/example/dashboard-ux-audit/screenshots/15-share_widget-demo-share.png",
+      "ok": true,
+      "width": 728,
+      "height": 288
+    },
+    {
+      "id": "demo-formula",
+      "type": "formula_calc",
+      "path": "/work/example/dashboard-ux-audit/screenshots/16-formula_calc-demo-formula.png",
+      "ok": true,
+      "width": 728,
+      "height": 528
+    },
+    {
+      "id": "demo-ref",
+      "type": "dashboard_ref",
+      "path": "/work/example/dashboard-ux-audit/screenshots/17-dashboard_ref-demo-ref.png",
+      "ok": true,
+      "width": 728,
+      "height": 348
+    },
+    {
+      "id": "demo-schedules",
+      "type": "schedules",
+      "path": "/work/example/dashboard-ux-audit/screenshots/18-schedules-demo-schedules.png",
+      "ok": true,
+      "width": 728,
+      "height": 468
+    }
+  ]
+}

@@ -1,5 +1,10 @@
 # AgentLayer × DeepSeek Harness — Integrationsplan
 
+> **Status-Update (Sep 2026):** Dieser Doc behält die **historischen Phasen-Skizzen** (DDD-Greenfield).  
+> **Ist-Stand** und Drift-Bewertung: [`dsh-agentlayer-capability-comparison.md`](./dsh-agentlayer-capability-comparison.md).  
+> **Goal / Todos / Plan / Round-Driver Workplan:** [`agent-runtime-ux-goal-todos-plan.md`](./agent-runtime-ux-goal-todos-plan.md).  
+> Kurz: Compaction + Context-Budget, Session Plan/Todo/Goal, MCP (stdio + HTTP) sind **AL-Style erledigt** — nicht 1:1 wie die Skizzen unten. Externe dsh-Schnittstelle: **won't do**.
+
 ## Architektur-Muster
 
 AgentLayer folgt **Domain-Driven Design (DDD) mit Clean Architecture**:
@@ -18,157 +23,136 @@ Alle neuen Features folgen diesem Pattern — kein direkter Import von `infrastr
 
 ## 0. Ausgangslage
 
-| Schicht | AgentLayer | dsh |
-|---------|-----------|-----|
+| Schicht | AgentLayer (Sep 2026) | dsh |
+|---------|------------------------|-----|
 | **Inhalt / Tools** | ✅ Python-Tools, Skills, Dashboards, Templates | ✅ TypeScript-Plugins |
 | **Auth / Tenant** | ✅ vollständig | ❌ nicht vorhanden |
 | **Dashboards** | ✅ vollständig | ❌ nicht vorhanden |
 | **Agent-Loop / Session** | ✅ `application/agent_runtime/` | ✅ `session/` |
-| **Compaction** | ❌ fehlt | ✅ `compaction-basic/` |
-| **Plan-Mode** | ❌ fehlt | ✅ `plan/` |
-| **Todo-Tracking** | ❌ fehlt | ✅ `tool-todo/` |
-| **Context-Window-Mgmt** | ❌ fehlt | ✅ Token-Meter + Compaction |
-| **MCP-Client** | ❌ fehlt | ✅ `mcp-client/` |
-| **Sandbox** | ❌ fehlt | ✅ `sandbox/`, `e2b/` |
+| **Compaction** | ✅ AL-Style (pre-turn + mid-loop; nicht dsh Surface) | ✅ `compaction-basic/` |
+| **Plan-Mode** | ✅ Session soft plan (`plan_mode_*` + Banner) | ✅ `plan/` |
+| **Todo-Tracking** | ✅ Session `todo_*` + UI; parallel `agent_tasks` | ✅ `tool-todo/` |
+| **Ongoing Goal** | ✅ `goal_*` + Bar + Round-Driver | ✅ `packages/goal/` |
+| **Context-Window-Mgmt** | ✅ Budget Soft/Hard + Provider-Usage | ✅ Token-Meter + Compaction |
+| **MCP-Client** | ✅ stdio + streamable-http (`mcp_runtime.py`) | ✅ `mcp-client/` |
+| **Sandbox** | ⚠️ Docker + Policy; kein Kernel-Jail | ✅ `sandbox/`, `e2b/` |
 
-**Strategie:** dsh **nicht ersetzen** — selektiv die fehlenden Runtime-Teile aus dsh **adaptieren** (in Python), weil dein Stack Python/FastAPI ist und dsh TypeScript. Direktes Einbetten von dsh-Packages wäre ein Technologie-Bruch.
+**Strategie (Stand jetzt):**
+- AgentLayer ist **kein Coding-Produkt** (Coding-Agent/Workspace-Tools entfernt). Fokus: Everyday Tools, Dashboards, Knowledge Companion, Multi-Tenant.
+- dsh **nicht** als Coding-Ersatz in AgentLayer einbetten.
+- Runtime-Ideen aus dsh nur **selektiv in Python adaptieren** — kein TypeScript-Embed. (Großteil der Phasen unten: erledigt AL-Style oder bewusst dünner.)
+
+### Externe Coding-Schnittstelle — **won't do**
+
+Keine dünne Control-Plane in AgentLayer, über die ein externes Coding-Harness (z.B. DeepSeek Harness) angestoßen/orchestriert wird. Coding bleibt außerhalb; AgentLayer bleibt Everyday/Knowledge/Dashboards.
+
+*(Früher: consider / undecided — bewusst verworfen.)*
 
 ---
 
 ## Phase 1 — Compaction (Höchste Priorität)
 
+**Status:** ✅ **done (AL-Style)** — nicht der Greenfield-Pfad unten. Siehe Comparison Doc Phase 1.  
+Ist: `chat_context.py` / `chat_context_loop.py` / `context_budget.py`.
+
 **Was:** Wenn der Kontext zu lang wird, fasst der Agent ältere Teile automatisch zusammen statt zu brechen oder blind zu vergessen.
 
 **Inspiration aus dsh:** `compaction-basic/` — Token-Druck-Messung → Zusammenfassung via LLM → Surface-Replacement
 
-### Umsetzung in AgentLayer (DDD-konform)
+### Historische Skizze (nicht so gebaut)
 
 ```
 apps/backend/
   domain/agent_runtime/
-    compaction.py             ← CompactionEngine (abstrakt, pure), CompactionPolicy
-    compaction_policy.py      ← ThresholdRatio, RetainRatio, Config (Value Objects)
-    value_objects.py          ← CompactionResult, CompactionRange (ergänzen)
-
-  application/agent_runtime/
-    ports.py                  ← CompactionSummarizer Protocol (ergänzen)
-    use_cases/
-      compact_session.py      ← CompactIfNeeded, CompactNow (orchestriert domain + infra)
-
-  infrastructure/agent_runtime/
-    compaction_basic.py       ← LLM-Summarizer (konkreter IO-Adapter)
-    token_meter_tiktoken.py   ← Token-Zählen via tiktoken (konkreter Adapter)
+    compaction.py             ← Plan: CompactionEngine — Ist: in chat_context* verdrahtet
+    …
 ```
 
-**Kernlogik (aus dsh portiert):**
-1. Nach jedem Step: Tokens messen (`tokenMeter`)
-2. Über Schwellenwert (default 80% des Context-Window)? → compact
-3. Älteste Surface-Einträge nehmen, Tail behalten (default 16%)
-4. LLM-Call zur Zusammenfassung → `<compacted-summary>` Tag
-5. Original-Messages durch Summary ersetzen in Session
+**Kernlogik (dsh-Inspiration; AL anders umgesetzt):**
+1. Soft/Hard über Context-Budget + Provider-Usage
+2. Pre-turn History-Summary + Mid-loop Tool-Round-Drop
+3. **Nicht** `<compacted-summary>` Surface-Protocol
 
-**Aufwand:** ~3-4 Tage
+**Aufwand (historisch geschätzt):** ~3-4 Tage  
 **Lizenz:** MIT — Logik adaptieren ist legal, kein Code-Copy nötig
 
 ---
 
-## Phase 2 — Plan-Mode + Todo-Tracking
+## Phase 2 — Plan-Mode + Todo-Tracking (+ Ongoing Goal)
 
-**Was:** Der Agent arbeitet strukturiert Pläne ab, tracked Todos in der Session, zeigt Fortschritt.
+**Status:** ✅ **done (dünnes Session-Harness)** — nicht DB-PlanSteps + Step-Boundary-Review.  
+Ist: `conversation_goal.py`, Tools `goal_*` / `todo_*` / `plan_mode_*`, UI Bar/Panel, Round-Driver.  
+Workplan: [`agent-runtime-ux-goal-todos-plan.md`](./agent-runtime-ux-goal-todos-plan.md).
 
-**Inspiration aus dsh:** `plan/plan-mode/`, `todo/tool-todo/`
+**Was:** Der Agent arbeitet strukturiert, tracked Session-Todos, optional Plan-Mode und Ongoing Goal.
 
-### Umsetzung in AgentLayer (DDD-konform)
+**Inspiration aus dsh:** `plan/plan-mode/`, `todo/tool-todo/`, `packages/goal/`
+
+### Historische Skizze (überdimensioniert; nicht so gebaut)
 
 ```
 apps/backend/
   domain/agent_runtime/
-    plan_mode.py              ← PlanModeState, PlanStep, StepStatus (Entities/VOs, pure)
-    todo_list.py              ← TodoItem, TodoList (Entities, pure)
+    plan_mode.py              ← Plan: PlanSteps/Review — Ist: soft PLAN_MODE_GUIDANCE + flag
+    todo_list.py              ← Ist: normalize_todos in conversation_goal.py
 
-  application/agent_runtime/
-    use_cases/
-      plan_execution.py       ← StepTransition, ReviewFlow (orchestriert domain + infra)
-    dtos/
-      plan_dtos.py            ← PlanCreateRequest, PlanStepDTO
-
-  infrastructure/agent_runtime/
-    plan_persistence.py       ← DB-Adapter für Plan/Todo-State
-
-plugins/tools/platform/
-  plan/plan.py                ← Tool: plan_create, plan_update, plan_complete
-  todo/todo.py                ← Tool: todo_write, todo_read
+plugins/tools/platform/conversation_goal/
+  session_goal_todos.py       ← Ist: goal_*, todo_*, plan_mode_*
 ```
 
-**Kernlogik:**
-- Plan-Mode ist **separater Zustand** pro Session (nicht generischer Mode-Switch)
-- Todos sind **Session-scoped**, persistent in der DB
-- Step-Boundary: nach jedem Tool-Call prüfen ob Step abgeschlossen
-- Review-Flow: Plan-Step → Agent-Bestätigung → nächster Step
+**Kernlogik (Ist):**
+- Plan-Mode = Session-Flag + Soft-Prompt + `exit_plan_mode` (Markdown-Plan)
+- Todos = Session-scoped JSONB, WS-Projection
+- Ongoing Goal + Round-Driver für Auto-Continue
+- **Kein** Review nach jedem Tool-Call
 
-**Aufwand:** ~2-3 Tage
-**Abhängigkeit:** Phase 1 (Compaction) empfohlen vorher
+**Aufwand (historisch):** ~2-3 Tage  
+**Abhängigkeit:** Compaction war empfohlen; parallel möglich gewesen
 
 ---
 
 ## Phase 3 — Context-Window-Management (Token-Meter)
 
-**Was:** Genaue Token-Messung des aktuellen Kontexts (System-Prompt + Tools + History + Buffer).
+**Status:** ✅ **done (AL-Style)** — Budget + Usage, kein tiktoken-Surface-Meter.  
+Ist: `context_budget.py`, Soft 0.8 / Hard 0.95.
+
+**Was:** Token-/Druck-Schätzung des aktuellen Kontexts für Compaction-Trigger und Quotas.
 
 **Inspiration aus dsh:** `llm/token-meter/`
 
-### Umsetzung in AgentLayer (DDD-konform)
+### Historische Skizze (nicht so gebaut)
 
 ```
 apps/backend/
-  domain/agent_runtime/
-    token_meter.py            ← TokenMeter Protocol, ContextBudget (VO, pure)
-
-  application/agent_runtime/
-    ports.py                  ← TokenMeterPort Protocol (ergänzen)
-
   infrastructure/agent_runtime/
-    token_meter_tiktoken.py   ← tiktoken-basierter Adapter (OpenAI/DeepSeek)
-    token_meter_anthropic.py  ← Anthropic Token-Adapter (optional)
+    context_budget.py         ← Ist: Window/Ratios/Quotas
+    # token_meter_tiktoken.py — nicht als dsh-Port nötig
 ```
 
-**Kernlogik:**
-- Messe nach jedem Step: System-Prompt + Tools-Schema + History + aktueller Buffer
-- Liefert: `{ total, system, tools, history, buffer, capacity, pressure_ratio }`
-- Wird von Compaction (Phase 1) konsumiert
+**Kernlogik (Ist):**
+- Window aus Katalog/Overrides; Soft/Hard-Ratios
+- Trigger vor allem über `usage.prompt_tokens` nach LLM-Round
+- Kein lokales Surface-Fold
 
-**Aufwand:** ~1-2 Tage
-**Abhängigkeit:** Wird für Phase 1 gebraucht — sollte zuerst gebaut werden
+**Aufwand (historisch):** ~1-2 Tage  
+**Hinweis:** Alter Plan sagte „zuerst Token-Meter“ — AL hatte Budget schon vor dem Greenfield-Plan.
 
 ---
 
 ## Phase 4 — MCP-Client (Größte Capability-Erweiterung)
 
-**Was:** Beliebige MCP-Server anbinden → sofort hunderte externer Tools nutzbar ohne Python-Wrapper.
+**Status:** ✅ **done (Core)** — stdio + streamable-http in `mcp_runtime.py`; Allowlist live Agents.  
+Reconnect/Pool optional offen. Default weiter `AGENT_MCP_ENABLED=false`.
+
+**Was:** Beliebige MCP-Server anbinden → externe Tools ohne Python-Wrapper.
 
 **Inspiration aus dsh:** `mcp/mcp-client/`
 
-### Umsetzung in AgentLayer (DDD-konform)
+### Historische Skizze vs Ist
 
 ```
-apps/backend/
-  domain/tools/
-    mcp_server.py             ← McpServer Entity, McpToolDefinition (pure)
-
-  application/tools/
-    use_cases/
-      mcp_tool_discovery.py   ← Tool-Discovery + Registration Use Case
-    ports.py                  ← McpClientPort Protocol
-
-  infrastructure/mcp/
-    mcp_client.py             ← MCP-Protokoll-Client stdio/SSE (IO-Adapter)
-    mcp_registry.py           ← Server-Registry (DB/Config-Adapter)
-
-plugins/tools/integrations/
-  mcp/mcp_bridge.py           ← MCP-Tools als AgentLayer-Tools exposen
-
-content/mcp-servers/
-  servers.yaml                ← Konfigurierte MCP-Server je Tenant
+apps/backend/infrastructure/plugins/mcp_runtime.py   ← Ist (nicht separates domain/mcp_*)
+# AGENT_MCP_SERVERS_JSON: stdio und/oder transport:streamable-http + url/headers
 ```
 
 **Was das bringt:**
@@ -177,36 +161,36 @@ content/mcp-servers/
 - GitHub-Integration (GitHub MCP)
 - Jede MCP-kompatible API sofort nutzbar
 
-**Aufwand:** ~3-4 Tage
-**Abhängigkeit:** Keine — kann parallel zu Phase 1-3 gebaut werden
+**Aufwand (historisch):** ~3-4 Tage  
+**Abhängigkeit:** Keine
 
 ---
 
 ## Phase 5 — Sandbox / Isolation (Optional, später)
 
+**Status:** ⏸️ zurückgestellt (Docker + Tool-Policy reicht).
+
 **Was:** Tool-Ausführung isolieren damit kein Tool den Host beschädigen kann.
 
 **Inspiration aus dsh:** `sandbox/`, `bash-sandbox/`, `fs-sandbox/`
 
-**Entscheidung:** Erstmal zurückstellen — dein Stack läuft Docker-containerisiert, das ist bereits eine Isolation-Schicht. Relevant wenn Multi-Tenant-Code-Ausführung kommt.
+**Entscheidung:** Zurückstellen — Stack läuft Docker-containerisiert. Relevant wenn Multi-Tenant Host-Exec kommt.
 
 ---
 
 ## Empfohlene Reihenfolge
 
-```
-Phase 3 (Token-Meter)     ← 1-2 Tage  — Fundament für Compaction
-    ↓
-Phase 1 (Compaction)      ← 3-4 Tage  — Größter Impact auf Qualität
-    ↓
-Phase 2 (Plan + Todo)     ← 2-3 Tage  — Strukturiertes Arbeiten
-    ↓
-Phase 4 (MCP-Client)      ← 3-4 Tage  — Capability-Explosion
-    ↓
-Phase 5 (Sandbox)         ← später    — Nice to have
-```
+**Historisch (Plan):** Token-Meter → Compaction → Plan+Todo → MCP → Sandbox.
 
-**Gesamtaufwand:** ~10-13 Tage für Phasen 1-4
+**Ist (Sep 2026):** Compaction + Budget + Session Goal/Todos/Plan + MCP Allowlist/HTTP erledigt AL-Style. Offen: Compaction-Drifts bei Schmerz, MCP Connection-Pool, Sandbox nur bei Need. Externe dsh-Schnittstelle: won't do.
+
+```
+Phase 3 (Token-Meter / Budget)  ← done AL-Style
+Phase 1 (Compaction)            ← done AL-Style
+Phase 2 (Plan + Todo + Goal)    ← done (Session-Harness)
+Phase 4 (MCP-Client)            ← done Core (stdio + HTTP)
+Phase 5 (Sandbox)               ← später
+```
 
 ---
 
@@ -230,3 +214,5 @@ Einzige Pflicht: MIT-Copyright-Notice von dsh beibehalten wenn du dsh-Source-Cod
 - dsh Compaction-Doku: `packages/compaction/README.md`
 - dsh Plan-Doku: `packages/plan/README.md`
 - dsh MCP-Doku: `packages/mcp/README.md`
+- Aktueller Vergleich: [`dsh-agentlayer-capability-comparison.md`](./dsh-agentlayer-capability-comparison.md)
+- Goal/Todos Workplan: [`agent-runtime-ux-goal-todos-plan.md`](./agent-runtime-ux-goal-todos-plan.md)

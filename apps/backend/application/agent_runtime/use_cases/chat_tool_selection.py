@@ -262,12 +262,13 @@ async def select_tools_for_chat_turn(
             ranking_enabled=tools_ranking_enabled,
             full_schema_preference=tools_full_schema,
             category_routed=bool(cats),
+            has_explicit_allowlist=agent_has_explicit_allowlist,
         )
     )
     tools_for_request = apply_schema_modes_to_specs(
         forward_plan.forward_specs,
         forward_plan.schema_mode_per_tool,
-        default_full_schema=False,
+        default_full_schema=tools_full_schema,
     )
     tools_pre_rank_count = tools_allowlist_count
     tools_rank_pool_count = int(forward_plan.meta.get("rank_pool_count") or 0)
