@@ -188,6 +188,12 @@ function useOperatorSettingsState() {
   const [workspaceReindexAfterGitPull, setWorkspaceReindexAfterGitPull] = useState(false);
   const [workspaceNightlyReindexEnabled, setWorkspaceNightlyReindexEnabled] = useState(false);
   const [workspaceIndexOnAttachEnabled, setWorkspaceIndexOnAttachEnabled] = useState(false);
+  const [workspaceIndexConsentMax, setWorkspaceIndexConsentMax] = useState("text");
+  const [surfacePreset, setSurfacePreset] = useState<"WEB_ONLY" | "WEB_AND_TUI" | "TUI_ONLY">("WEB_AND_TUI");
+  const [webUiEnabled, setWebUiEnabled] = useState(true);
+  const [apiKeyClientsEnabled, setApiKeyClientsEnabled] = useState(true);
+  const [apiKeyWorkspaceModes, setApiKeyWorkspaceModes] = useState<"server" | "client" | "both">("both");
+  const [serverWorkspacesAdminOnly, setServerWorkspacesAdminOnly] = useState(true);
   const [legalEnabled, setLegalEnabled] = useState(false);
   const [legalJurisdiction, setLegalJurisdiction] = useState("none");
   const [legalEntityName, setLegalEntityName] = useState("");
@@ -608,6 +614,24 @@ function useOperatorSettingsState() {
       setWorkspaceReindexAfterGitPull(!!op.workspace_reindex_after_git_pull);
       setWorkspaceNightlyReindexEnabled(!!op.workspace_nightly_reindex_enabled);
       setWorkspaceIndexOnAttachEnabled(!!op.workspace_index_on_attach_enabled);
+      setWorkspaceIndexConsentMax(
+        op.workspace_index_consent_max === "none" || op.workspace_index_consent_max === "symbols"
+          ? op.workspace_index_consent_max
+          : "text"
+      );
+      const preset =
+        op.surface_preset === "WEB_ONLY" || op.surface_preset === "TUI_ONLY"
+          ? op.surface_preset
+          : "WEB_AND_TUI";
+      setSurfacePreset(preset);
+      setWebUiEnabled(op.web_ui_enabled !== false);
+      setApiKeyClientsEnabled(op.api_key_clients_enabled !== false);
+      setApiKeyWorkspaceModes(
+        op.api_key_workspace_modes === "server" || op.api_key_workspace_modes === "client"
+          ? op.api_key_workspace_modes
+          : "both"
+      );
+      setServerWorkspacesAdminOnly(op.server_workspaces_admin_only !== false);
       const jur = String(op.legal_jurisdiction ?? "none").trim().toLowerCase();
       setLegalEnabled(!!op.legal_enabled);
       setLegalJurisdiction(
@@ -1262,6 +1286,12 @@ function useOperatorSettingsState() {
       patch.workspace_reindex_after_git_pull = workspaceReindexAfterGitPull;
       patch.workspace_nightly_reindex_enabled = workspaceNightlyReindexEnabled;
       patch.workspace_index_on_attach_enabled = workspaceIndexOnAttachEnabled;
+      patch.workspace_index_consent_max = workspaceIndexConsentMax;
+      patch.surface_preset = surfacePreset;
+      patch.web_ui_enabled = webUiEnabled;
+      patch.api_key_clients_enabled = apiKeyClientsEnabled;
+      patch.api_key_workspace_modes = apiKeyWorkspaceModes;
+      patch.server_workspaces_admin_only = serverWorkspacesAdminOnly;
       patch.legal_enabled = legalEnabled;
       const jur = legalJurisdiction.trim().toLowerCase();
       patch.legal_jurisdiction = jur === "de" || jur === "en" || jur === "custom" ? jur : "none";
@@ -1793,6 +1823,18 @@ function useOperatorSettingsState() {
     setWorkspaceNightlyReindexEnabled,
     workspaceIndexOnAttachEnabled,
     setWorkspaceIndexOnAttachEnabled,
+    workspaceIndexConsentMax,
+    setWorkspaceIndexConsentMax,
+    surfacePreset,
+    setSurfacePreset,
+    webUiEnabled,
+    setWebUiEnabled,
+    apiKeyClientsEnabled,
+    setApiKeyClientsEnabled,
+    apiKeyWorkspaceModes,
+    setApiKeyWorkspaceModes,
+    serverWorkspacesAdminOnly,
+    setServerWorkspacesAdminOnly,
     legalEnabled,
     setLegalEnabled,
     legalJurisdiction,

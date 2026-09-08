@@ -57,7 +57,7 @@ class InstanceSetupDependencies(Protocol):
 
     def external_api_headers(self, base_url: str, api_key: str) -> dict[str, str]: ...
 
-    def external_models_list_url(self, base_url: str) -> str: ...
+    def external_models_list_url(self, base_url: str, *, kinds: str | None = None) -> str: ...
 
     def invalidate_operator_settings_cache(self) -> None: ...
 
@@ -131,8 +131,8 @@ def external_api_headers(base_url: str, api_key: str) -> dict[str, str]:
     return _require_deps().external_api_headers(base_url, api_key)
 
 
-def external_models_list_url(base_url: str) -> str:
-    return _require_deps().external_models_list_url(base_url)
+def external_models_list_url(base_url: str, *, kinds: str | None = None) -> str:
+    return _require_deps().external_models_list_url(base_url, kinds=kinds)
 
 
 def invalidate_operator_settings_cache() -> None:
@@ -384,7 +384,7 @@ def _effective_api_key(api_key: str | None) -> str:
 async def probe_llm_endpoint(*, base_url: str, api_key: str | None) -> dict[str, Any]:
     bu = _normalize_base_url(base_url)
     key = _effective_api_key(api_key)
-    url = external_models_list_url(bu)
+    url = external_models_list_url(bu, kinds="chat")
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.get(

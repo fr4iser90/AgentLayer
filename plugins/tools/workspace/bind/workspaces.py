@@ -150,6 +150,17 @@ def create(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> 
                     "workspace": existing,
                 }
             )
+        from apps.backend.infrastructure.platform.client_surface_policy import (
+            refuse_api_key_workspace_mode,
+            refuse_server_workspace_for_user,
+        )
+
+        mode_refuse = refuse_api_key_workspace_mode(materialized.get("execution_mode"))
+        if mode_refuse:
+            return dump({"ok": False, "error": mode_refuse})
+        admin_refuse = refuse_server_workspace_for_user(user, materialized.get("execution_mode"))
+        if admin_refuse:
+            return dump({"ok": False, "error": admin_refuse})
         bound = False
         conversation_updated = False
         if bind_after:
@@ -255,6 +266,18 @@ def bind(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> st
     workspace = ensure_workspace(wid, user)
     if not workspace:
         return dump({"ok": False, "error": f"workspace not found or not accessible: {wid}"})
+
+    from apps.backend.infrastructure.platform.client_surface_policy import (
+        refuse_api_key_workspace_mode,
+        refuse_server_workspace_for_user,
+    )
+
+    mode_refuse = refuse_api_key_workspace_mode(workspace.get("execution_mode"))
+    if mode_refuse:
+        return dump({"ok": False, "error": mode_refuse})
+    admin_refuse = refuse_server_workspace_for_user(user, workspace.get("execution_mode"))
+    if admin_refuse:
+        return dump({"ok": False, "error": admin_refuse})
 
     previous: str | None = None
     if context:

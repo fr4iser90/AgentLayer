@@ -98,6 +98,11 @@ class OperatorSettingsPatch(BaseModel):
     workspace_nightly_reindex_enabled: bool | None = None
     workspace_index_on_attach_enabled: bool | None = None
     workspace_index_consent_max: str | None = Field(default=None, max_length=16)
+    web_ui_enabled: bool | None = None
+    api_key_clients_enabled: bool | None = None
+    api_key_workspace_modes: str | None = Field(default=None, max_length=16)
+    surface_preset: str | None = Field(default=None, max_length=32)
+    server_workspaces_admin_only: bool | None = None
     media_library_enabled: bool | None = None
     media_user_upload_enabled: bool | None = None
     media_sharing_enabled: bool | None = None

@@ -352,6 +352,30 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
 
         cap = normalize_index_consent(patch["workspace_index_consent_max"])
         r["workspace_index_consent_max"] = cap or "text"
+    if "surface_preset" in patch and patch.get("surface_preset") is not None:
+        from apps.backend.infrastructure.platform.client_surface_policy import apply_surface_preset
+
+        try:
+            applied = apply_surface_preset(str(patch["surface_preset"]))
+            r["web_ui_enabled"] = bool(applied["web_ui_enabled"])
+            r["api_key_clients_enabled"] = bool(applied["api_key_clients_enabled"])
+            if "api_key_workspace_modes" not in patch:
+                r["api_key_workspace_modes"] = applied["api_key_workspace_modes"]
+        except ValueError:
+            pass
+    if "web_ui_enabled" in patch:
+        r["web_ui_enabled"] = bool(patch["web_ui_enabled"])
+    if "api_key_clients_enabled" in patch:
+        r["api_key_clients_enabled"] = bool(patch["api_key_clients_enabled"])
+    if "api_key_workspace_modes" in patch:
+        from apps.backend.infrastructure.platform.client_surface_policy import (
+            normalize_workspace_modes,
+        )
+
+        modes = normalize_workspace_modes(patch["api_key_workspace_modes"])
+        r["api_key_workspace_modes"] = modes or "both"
+    if "server_workspaces_admin_only" in patch:
+        r["server_workspaces_admin_only"] = bool(patch["server_workspaces_admin_only"])
     if "legal_enabled" in patch:
         r["legal_enabled"] = bool(patch["legal_enabled"])
     if "legal_jurisdiction" in patch:

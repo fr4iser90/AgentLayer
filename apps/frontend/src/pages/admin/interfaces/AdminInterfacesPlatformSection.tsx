@@ -494,6 +494,112 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
 
           {showPlatform ? (
           <section className="mt-6 rounded-lg border border-surface-border p-4">
+            <h3 className="text-sm font-medium text-white">{t("admin:ifPlatformSurfacesTitle")}</h3>
+            <p className="mt-1 text-xs text-surface-muted">{t("admin:ifPlatformSurfacesIntro")}</p>
+            <label className="mt-4 block text-xs text-surface-muted" htmlFor="surface-preset">
+              {t("admin:ifPlatformSurfacePreset")}
+            </label>
+            <select
+              id="surface-preset"
+              className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+              value={s.surfacePreset}
+              onChange={(e) => {
+                const preset = e.target.value as "WEB_ONLY" | "WEB_AND_TUI" | "TUI_ONLY";
+                s.setSurfacePreset(preset);
+                if (preset === "WEB_ONLY") {
+                  s.setWebUiEnabled(true);
+                  s.setApiKeyClientsEnabled(false);
+                } else if (preset === "TUI_ONLY") {
+                  s.setWebUiEnabled(false);
+                  s.setApiKeyClientsEnabled(true);
+                } else {
+                  s.setWebUiEnabled(true);
+                  s.setApiKeyClientsEnabled(true);
+                }
+              }}
+            >
+              <option value="WEB_AND_TUI">{t("admin:ifPlatformSurfaceWebAndTui")}</option>
+              <option value="WEB_ONLY">{t("admin:ifPlatformSurfaceWebOnly")}</option>
+              <option value="TUI_ONLY">{t("admin:ifPlatformSurfaceTuiOnly")}</option>
+            </select>
+            <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-white">
+              <input
+                type="checkbox"
+                className="rounded border-surface-border"
+                checked={s.webUiEnabled}
+                onChange={(e) => {
+                  const on = e.target.checked;
+                  s.setWebUiEnabled(on);
+                  if (on && s.apiKeyClientsEnabled) s.setSurfacePreset("WEB_AND_TUI");
+                  else if (on) s.setSurfacePreset("WEB_ONLY");
+                  else s.setSurfacePreset("TUI_ONLY");
+                }}
+              />
+              {t("admin:ifPlatformWebUiEnabled")}
+            </label>
+            <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-white">
+              <input
+                type="checkbox"
+                className="rounded border-surface-border"
+                checked={s.apiKeyClientsEnabled}
+                onChange={(e) => {
+                  const on = e.target.checked;
+                  s.setApiKeyClientsEnabled(on);
+                  if (s.webUiEnabled && on) s.setSurfacePreset("WEB_AND_TUI");
+                  else if (s.webUiEnabled) s.setSurfacePreset("WEB_ONLY");
+                  else s.setSurfacePreset("TUI_ONLY");
+                }}
+              />
+              {t("admin:ifPlatformApiKeyClientsEnabled")}
+            </label>
+            <label className="mt-4 block text-xs text-surface-muted" htmlFor="api-key-ws-modes">
+              {t("admin:ifPlatformApiKeyWorkspaceModes")}
+            </label>
+            <select
+              id="api-key-ws-modes"
+              className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+              value={s.apiKeyWorkspaceModes}
+              onChange={(e) =>
+                s.setApiKeyWorkspaceModes(e.target.value as "server" | "client" | "both")
+              }
+              disabled={!s.apiKeyClientsEnabled}
+            >
+              <option value="both">{t("admin:ifPlatformApiKeyModesBoth")}</option>
+              <option value="server">{t("admin:ifPlatformApiKeyModesServer")}</option>
+              <option value="client">{t("admin:ifPlatformApiKeyModesClient")}</option>
+            </select>
+            <p className="mt-2 text-xs text-surface-muted">{t("admin:ifPlatformApiKeyModesHint")}</p>
+            <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-white">
+              <input
+                type="checkbox"
+                className="rounded border-surface-border"
+                checked={s.serverWorkspacesAdminOnly}
+                onChange={(e) => s.setServerWorkspacesAdminOnly(e.target.checked)}
+              />
+              {t("admin:ifPlatformServerWorkspacesAdminOnly")}
+            </label>
+            <p className="mt-2 text-xs text-surface-muted">
+              {t("admin:ifPlatformServerWorkspacesAdminOnlyHint")}
+            </p>
+            <label className="mt-4 block text-xs text-surface-muted" htmlFor="ws-index-consent-max">
+              {t("admin:ifPlatformIndexConsentMax")}
+            </label>
+            <select
+              id="ws-index-consent-max"
+              className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+              value={s.workspaceIndexConsentMax}
+              onChange={(e) => s.setWorkspaceIndexConsentMax(e.target.value)}
+            >
+              <option value="text">{t("admin:ifPlatformIndexConsentText")}</option>
+              <option value="symbols">{t("admin:ifPlatformIndexConsentSymbols")}</option>
+              <option value="none">{t("admin:ifPlatformIndexConsentNone")}</option>
+            </select>
+            <p className="mt-2 text-xs text-surface-muted">{t("admin:ifPlatformIndexConsentHint")}</p>
+          </section>
+          ) : null}
+
+          {showPlatform ? (
+          <section className="mt-6 rounded-lg border border-surface-border p-4">
             <h3 className="text-sm font-medium text-white">{t("admin:ifPlatformWorkspacesTitle")}</h3>
             <p className="mt-1 text-xs text-surface-muted">{t("admin:ifPlatformWorkspacesIntro")}</p>
             <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-white">

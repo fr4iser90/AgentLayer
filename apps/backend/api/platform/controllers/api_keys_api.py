@@ -55,6 +55,11 @@ async def api_key_create(request: Request, body: ApiKeyCreateBody) -> dict[str, 
     """Mint a key. The secret is shown exactly once — it cannot be recovered later."""
     user = await get_current_user(request)
     _require_interactive_session(request)
+    from apps.backend.application.platform.use_cases.client_surface_policy import refuse_api_key_mint
+
+    mint_refuse = refuse_api_key_mint()
+    if mint_refuse:
+        raise HTTPException(status_code=403, detail=mint_refuse)
     if len(list_api_keys(user.id)) >= _MAX_KEYS_PER_USER:
         raise HTTPException(
             status_code=409,

@@ -26,6 +26,7 @@ type UserRow = {
   telegram_user_id?: string | null;
   workspace_quota?: number;
   workspace_self_allowed?: boolean;
+  schedules_allowed?: boolean;
   media_storage_quota_mb?: number | null;
   media_enabled?: boolean | null;
   media_upload_enabled?: boolean | null;
@@ -251,6 +252,29 @@ export function AdminUsers() {
     }
   }
 
+  async function patchSchedulesAllowed(userId: string, allowed: boolean) {
+    setSavingUserId(userId);
+    setListErr(null);
+    try {
+      const res = await apiFetch(`/v1/admin/users/${userId}`, auth, {
+        method: "PATCH",
+        body: JSON.stringify({ schedules_allowed: allowed }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { detail?: unknown };
+      if (!res.ok) {
+        setListErr(
+          typeof data.detail === "string" ? data.detail : t("admin:schedulesPermissionUpdateFailed")
+        );
+        return;
+      }
+      await loadUsers();
+    } catch (e) {
+      setListErr(e instanceof Error ? e.message : t("admin:schedulesPermissionUpdateFailed"));
+    } finally {
+      setSavingUserId(null);
+    }
+  }
+
 
   async function createUser() {
     const email = newEmail.trim();
@@ -383,6 +407,7 @@ export function AdminUsers() {
                 <th className="px-4 py-3 font-medium">{t("admin:usersColLlmPrio")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColMedia")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColSelfEdit")}</th>
+                <th className="px-4 py-3 font-medium">{t("admin:usersColSchedules")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColDiscord")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColTelegram")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColCreated")}</th>
@@ -391,19 +416,19 @@ export function AdminUsers() {
             <tbody>
               {listLoading ? (
                 <tr>
-                  <td colSpan={11} className="px-4 py-6 text-center text-surface-muted">
+                  <td colSpan={12} className="px-4 py-6 text-center text-surface-muted">
                     {t("admin:loading")}
                   </td>
                 </tr>
               ) : listErr ? (
                 <tr>
-                  <td colSpan={11} className="px-4 py-6 text-center text-red-400">
+                  <td colSpan={12} className="px-4 py-6 text-center text-red-400">
                     {listErr}
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="px-4 py-6 text-center text-surface-muted">
+                  <td colSpan={12} className="px-4 py-6 text-center text-surface-muted">
                     {t("admin:usersNoUsers")}
                   </td>
                 </tr>
@@ -532,6 +557,16 @@ export function AdminUsers() {
                           checked={r.workspace_self_allowed ?? false}
                           disabled={saving || r.role?.toLowerCase() === "admin"}
                           onChange={(e) => void patchWorkspaceSelfAllowed(r.id, e.target.checked)}
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <input
+                          type="checkbox"
+                          className="rounded border-surface-border"
+                          checked={r.schedules_allowed ?? false}
+                          disabled={saving || r.role?.toLowerCase() === "admin"}
+                          title={t("admin:usersSchedulesHint")}
+                          onChange={(e) => void patchSchedulesAllowed(r.id, e.target.checked)}
                         />
                       </td>
                       <td className="px-4 py-3 font-mono text-xs text-neutral-400">

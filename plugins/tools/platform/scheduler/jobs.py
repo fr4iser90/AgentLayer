@@ -9,6 +9,9 @@ from typing import Any, Callable
 
 from apps.backend.domain.shared.identity import get_identity
 from apps.backend.infrastructure.db import db
+from apps.backend.application.scheduling.use_cases.scheduling_controller_services import (
+    schedule_feature_permission_error,
+)
 from apps.backend.domain.scheduling.targets import (
     agent_requires_workspace_for_target,
     execution_target_error,
@@ -29,7 +32,8 @@ TOOL_DESCRIPTION = (
     "tick in Admin → Interfaces). Use schedule_job_create to queue work for the coding agent or server; "
     "schedule_job_list to inspect; schedule_job_set_enabled to pause/resume. "
     "execution_target is a registry agent_id (see schedule_job_list / execution-targets catalog); "
-    "workspace agents need workspace_id; admin-only agents need admin role."
+    "workspace agents need workspace_id; admin-only agents need admin role. "
+    "Non-admins need schedules_allowed (Admin → Users) to create or change jobs."
 )
 # Router phrases: co-located jobs.router.yaml (all locales unioned at load).
 TOOL_TRIGGERS: tuple[str, ...] = ()
@@ -92,7 +96,15 @@ def create(arguments: dict[str, Any]) -> str:
     if not raw_target or not is_valid_execution_target(raw_target):
         return _err(execution_target_error(arguments.get("execution_target")))
 
-    perm_err = schedule_permission_error(user_role=role or "user", execution_target=raw_target or "")
+    feat_err = schedule_feature_permission_error(user_id=caller_uid, user_role=role or "user")
+    if feat_err:
+        return _err(feat_err)
+
+    perm_err = schedule_permission_error(
+        user_role=role or "user",
+        execution_target=raw_target or "",
+        user_id=caller_uid,
+    )
     if perm_err:
         return _err(perm_err)
 
@@ -202,7 +214,11 @@ def set_enabled(arguments: dict[str, Any]) -> str:
     if not idt:
         return _err("missing identity — not authenticated")
     tenant_id, caller_uid = idt
-    is_admin = db.user_role(caller_uid) == "admin"
+    role = db.user_role(caller_uid)
+    is_admin = role == "admin"
+    feat_err = schedule_feature_permission_error(user_id=caller_uid, user_role=role or "user")
+    if feat_err:
+        return _err(feat_err)
 
     jid = _parse_uuid(arguments.get("job_id"), field="job_id")
     if jid is None:

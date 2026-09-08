@@ -21,3 +21,5 @@ agentlayer
 ```
 
 From a clone of this repo: `pipx install ./apps/tui` (or `uv tool install ./apps/tui`). On NixOS, use a venv instead of pipx — see [ADR 0008](docs/adr/0008-tui-client-contract.md). PyPI (`pipx install agentlayer-tui`) is not published yet.
+
+**Operator surfaces:** Admin → Interfaces → Platform can set `WEB_ONLY` / `WEB_AND_TUI` / `TUI_ONLY`, API-key workspace modes (`server`|`client`|`both`), and the index-consent cap. See [ADR 0009](docs/adr/0009-client-side-execution.md#operator-client-surfaces). Traefik may gate paths at the edge; the server still enforces.

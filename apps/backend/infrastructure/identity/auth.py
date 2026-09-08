@@ -188,6 +188,7 @@ def list_all_users() -> list[dict[str, Any]]:
                        u.tenant_id, t.name AS tenant_name, u.discord_user_id, u.telegram_user_id,
                        COALESCE(u.workspace_quota, 10) AS workspace_quota,
                        COALESCE(u.workspace_self_allowed, false) AS workspace_self_allowed,
+                       COALESCE(u.schedules_allowed, false) AS schedules_allowed,
                        u.media_storage_quota_mb,
                        u.media_enabled,
                        u.media_upload_enabled,
@@ -213,6 +214,7 @@ def list_all_users() -> list[dict[str, Any]]:
             telegram_uid,
             workspace_quota,
             workspace_self_allowed,
+            schedules_allowed,
             media_storage_quota_mb,
             media_enabled,
             media_upload_enabled,
@@ -235,6 +237,7 @@ def list_all_users() -> list[dict[str, Any]]:
                 "telegram_user_id": tu or None,
                 "workspace_quota": workspace_quota if workspace_quota is not None else 10,
                 "workspace_self_allowed": bool(workspace_self_allowed) if workspace_self_allowed is not None else False,
+                "schedules_allowed": bool(schedules_allowed) if schedules_allowed is not None else False,
                 "media_storage_quota_mb": int(media_storage_quota_mb)
                 if media_storage_quota_mb is not None
                 else None,
@@ -268,6 +271,9 @@ def get_user_by_id(user_id: uuid.UUID) -> Optional[User]:
             )
 
 
+API_KEY_PREFIX = "al_"
+
+
 async def get_current_user(request: Request) -> User:
     """
     Middleware to resolve current user from request
@@ -288,10 +294,14 @@ async def get_current_user(request: Request) -> User:
     if user:
         return user
 
+    if not decode_access_token(token) and token.startswith(API_KEY_PREFIX):
+        from apps.backend.infrastructure.platform.client_surface_policy import refuse_api_key_auth
+
+        refuse = refuse_api_key_auth()
+        if refuse:
+            raise HTTPException(status_code=403, detail=refuse)
+
     raise HTTPException(status_code=401, detail="Unauthorized")
-
-
-API_KEY_PREFIX = "al_"
 
 
 def bearer_is_interactive_session(token: str) -> bool:
@@ -389,17 +399,28 @@ def get_user_for_bearer_token(token: str) -> Optional[User]:
     Resolve user from JWT access token or API key string (same rules as ``Authorization: Bearer``).
     For WebSockets where headers/query carry the token without a full ``Request`` cycle.
     """
+    from apps.backend.infrastructure.platform.client_surface_policy import (
+        refuse_api_key_auth,
+        reset_auth_material,
+        set_auth_material,
+    )
+
     raw = (token or "").strip()
     if not raw:
+        reset_auth_material()
         return None
     payload = decode_access_token(raw)
     if payload and payload.get("sub"):
         try:
             user = get_user_by_id(uuid.UUID(str(payload["sub"])))
             if user:
+                set_auth_material("jwt")
                 return user
         except (ValueError, TypeError):
             pass
+    if refuse_api_key_auth():
+        reset_auth_material()
+        return None
     digest = hash_api_key(raw)
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
@@ -420,7 +441,9 @@ def get_user_for_bearer_token(token: str) -> Optional[User]:
                         (digest,),
                     )
                     conn.commit()
+                    set_auth_material("api_key")
                     return user
+    reset_auth_material()
     return None
 
 

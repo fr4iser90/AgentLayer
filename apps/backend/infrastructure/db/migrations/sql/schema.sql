@@ -30,6 +30,7 @@ CREATE TABLE users (
   telegram_user_id TEXT,
   workspace_quota INTEGER NOT NULL DEFAULT 10,
   workspace_self_allowed BOOLEAN NOT NULL DEFAULT false,
+  schedules_allowed BOOLEAN NOT NULL DEFAULT false,
   UNIQUE (tenant_id, external_sub)
 );
 
@@ -807,6 +808,9 @@ COMMENT ON COLUMN users.workspace_quota IS
   'Max workspaces this user may create.';
 COMMENT ON COLUMN users.workspace_self_allowed IS
   'User may access the AgentLayer self-editing workspace.';
+
+COMMENT ON COLUMN users.schedules_allowed IS
+  'Non-admin may create/manage user schedules (scheduler_jobs). Admins always may. Default false.';
 
 -- Server-side chat threads (first-party UI sync; per user, per tenant).
 

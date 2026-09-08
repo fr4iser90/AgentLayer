@@ -292,7 +292,7 @@ def external_llm_models_list(arguments: dict[str, Any]) -> str:
             "no_external_endpoint": "no enabled external LLM endpoint configured",
         }
         return _err(hints.get(tag, tag))
-    url = external_models_list_url(bu)
+    url = external_models_list_url(bu, kinds="chat")
     try:
         with httpx.Client(timeout=httpx.Timeout(45.0)) as client:
             resp = client.get(url, headers=external_api_headers(bu, key))
@@ -389,6 +389,7 @@ class _AdminPatchUserBody(BaseModel):
     tenant_id: int | None = Field(default=None, ge=1)
     workspace_quota: int | None = Field(default=None, ge=1, le=1000)
     workspace_self_allowed: bool | None = None
+    schedules_allowed: bool | None = None
 
 
 def user_patch(arguments: dict[str, Any]) -> str:
@@ -399,8 +400,15 @@ def user_patch(arguments: dict[str, Any]) -> str:
         body = _AdminPatchUserBody.model_validate(arguments)
     except Exception as e:
         return _err(f"invalid body: {e}")
-    if body.tenant_id is None and body.workspace_quota is None and body.workspace_self_allowed is None:
-        return _err("at least one of tenant_id, workspace_quota, workspace_self_allowed required")
+    if (
+        body.tenant_id is None
+        and body.workspace_quota is None
+        and body.workspace_self_allowed is None
+        and body.schedules_allowed is None
+    ):
+        return _err(
+            "at least one of tenant_id, workspace_quota, workspace_self_allowed, schedules_allowed required"
+        )
     try:
         user_id = uuid.UUID(str(body.user_id).strip())
     except (ValueError, TypeError):
@@ -422,6 +430,11 @@ def user_patch(arguments: dict[str, Any]) -> str:
         db.query(
             "UPDATE users SET workspace_self_allowed = %s WHERE id = %s",
             (body.workspace_self_allowed, user_id),
+        )
+    if body.schedules_allowed is not None:
+        db.query(
+            "UPDATE users SET schedules_allowed = %s WHERE id = %s",
+            (body.schedules_allowed, user_id),
         )
     return _ok({"id": str(user_id), "tenant_id": db.user_tenant_id(user_id)})
 
@@ -1005,7 +1018,7 @@ TOOLS: list[dict[str, Any]] = [
     ),
     _tool_fn(
         "user_patch",
-        "Patch user: user_id (UUID), optional tenant_id, workspace_quota, workspace_self_allowed.",
+        "Patch user: user_id (UUID), optional tenant_id, workspace_quota, workspace_self_allowed, schedules_allowed.",
         {
             "type": "object",
             "properties": {
@@ -1013,6 +1026,7 @@ TOOLS: list[dict[str, Any]] = [
                 "tenant_id": {"type": "integer"},
                 "workspace_quota": {"type": "integer"},
                 "workspace_self_allowed": {"type": "boolean"},
+                "schedules_allowed": {"type": "boolean"},
             },
             "required": ["user_id"],
         },

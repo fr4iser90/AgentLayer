@@ -192,6 +192,21 @@ def persist_operator_settings_patch(r: dict[str, Any], patch: dict[str, Any], me
             if "workspace_index_consent_max" in patch:
                 extra_sets.append("workspace_index_consent_max = %s")
                 extra_params.append(str(r.get("workspace_index_consent_max") or "text"))
+            if "surface_preset" in patch or "web_ui_enabled" in patch:
+                extra_sets.append("web_ui_enabled = %s")
+                extra_params.append(bool(r.get("web_ui_enabled", True)))
+            if "surface_preset" in patch or "api_key_clients_enabled" in patch:
+                extra_sets.append("api_key_clients_enabled = %s")
+                extra_params.append(bool(r.get("api_key_clients_enabled", True)))
+            if (
+                "surface_preset" in patch
+                or "api_key_workspace_modes" in patch
+            ):
+                extra_sets.append("api_key_workspace_modes = %s")
+                extra_params.append(str(r.get("api_key_workspace_modes") or "both"))
+            if "server_workspaces_admin_only" in patch:
+                extra_sets.append("server_workspaces_admin_only = %s")
+                extra_params.append(bool(r.get("server_workspaces_admin_only", True)))
             if "llm_queue_policy" in patch:
                 extra_sets.append("llm_queue_policy = %s")
                 extra_params.append(str(r.get("llm_queue_policy") or "priority"))

@@ -61,6 +61,7 @@ class AdminPatchUserBody(BaseModel):
     tenant_id: int | None = Field(default=None, ge=1)
     workspace_quota: int | None = Field(default=None, ge=1, le=1000)
     workspace_self_allowed: bool | None = None
+    schedules_allowed: bool | None = None
     media_storage_quota_mb: int | None = Field(default=None, ge=1, le=50_000)
     media_enabled: bool | None = None
     media_upload_enabled: bool | None = None
@@ -113,9 +114,19 @@ async def admin_list_users(request: Request):
 
 @router.patch("/v1/admin/users/{user_id}")
 async def admin_patch_user(request: Request, user_id: uuid.UUID, body: AdminPatchUserBody):
-    """Update ``tenant_id``, ``workspace_quota``, ``workspace_self_allowed``. Admin only."""
+    """Update ``tenant_id``, ``workspace_quota``, ``workspace_self_allowed``, ``schedules_allowed``. Admin only."""
     await require_admin(request)
-    if body.tenant_id is None and body.workspace_quota is None and body.workspace_self_allowed is None and body.media_storage_quota_mb is None and body.media_enabled is None and body.media_upload_enabled is None and body.media_sharing_enabled is None and body.llm_queue_priority is None:
+    if (
+        body.tenant_id is None
+        and body.workspace_quota is None
+        and body.workspace_self_allowed is None
+        and body.schedules_allowed is None
+        and body.media_storage_quota_mb is None
+        and body.media_enabled is None
+        and body.media_upload_enabled is None
+        and body.media_sharing_enabled is None
+        and body.llm_queue_priority is None
+    ):
         raise HTTPException(status_code=400, detail="no fields to patch")
     u = get_user_by_id(user_id)
     if not u:
@@ -137,6 +148,12 @@ async def admin_patch_user(request: Request, user_id: uuid.UUID, body: AdminPatc
         db.query(
             "UPDATE users SET workspace_self_allowed = %s WHERE id = %s",
             (body.workspace_self_allowed, user_id),
+        )
+
+    if body.schedules_allowed is not None:
+        db.query(
+            "UPDATE users SET schedules_allowed = %s WHERE id = %s",
+            (body.schedules_allowed, user_id),
         )
 
     if body.media_storage_quota_mb is not None:
@@ -196,5 +213,12 @@ async def admin_create_user(request: Request, body: AdminCreateUserBody):
 
 @router.get("/auth/policy")
 def http_auth_policy():
-    """Public JSON: path classes, middleware auth behavior, admin routes."""
-    return public_http_auth_policy()
+    """Public JSON: path classes, middleware auth behavior, admin routes, client surfaces."""
+    out = public_http_auth_policy()
+    try:
+        from apps.backend.application.platform.use_cases.client_surface_policy import public_policy
+
+        out["client_surface"] = public_policy()
+    except Exception:
+        pass
+    return out

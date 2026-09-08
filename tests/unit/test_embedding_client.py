@@ -87,7 +87,7 @@ def test_strip_env_value_removes_quotes() -> None:
 def test_embedding_models_list_url_no_double_v1() -> None:
     with patch.object(embedding_client, "resolve_active_embedding_spec", return_value=_spec()):
         url = embedding_client._embedding_models_list_url()
-    assert url == "https://llm.example/v1/models"
+    assert url == "https://llm.example/v1/models?kinds=embed"
 
 
 def test_fetch_embedding_models_list_parses_ids() -> None:

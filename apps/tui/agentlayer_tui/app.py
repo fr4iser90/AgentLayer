@@ -100,6 +100,7 @@ class AgentLayerTui(App[None]):
     .error { color: $error; text-style: bold; }
     #strip { height: 2; padding: 0 1; background: $panel; color: $text-muted; }
     #hint { height: 1; padding: 0 1; color: $text-muted; }
+    #suggest { height: auto; max-height: 10; padding: 0 1; color: $text-muted; background: $panel; }
     #prompt { border: none; background: $surface; }
     PermissionScreen { align: center middle; }
     PermissionScreen > Static { width: 80%; }
@@ -136,6 +137,8 @@ class AgentLayerTui(App[None]):
         self._workspace_local = False
         self._workspace_path = ""
         self._local_always: set[str] = set()
+        self._tab_cycle = 0
+        self._suggest_key = ""
 
     # ---------------------------------------------------------------- layout
 
@@ -145,8 +148,9 @@ class AgentLayerTui(App[None]):
         yield Static(self._title_text(), id="title", markup=False)
         yield VerticalScroll(id="transcript")
         yield Static("", id="strip", markup=False)
+        yield Static("", id="suggest", markup=False)
         yield Static("", id="hint", markup=False)
-        yield Input(placeholder="Ask, or /help", id="prompt")
+        yield Input(placeholder="Ask, or /help — type / for commands", id="prompt")
         yield Footer()
 
     def _title_text(self) -> str:
@@ -206,6 +210,22 @@ class AgentLayerTui(App[None]):
     def _set_hint(self, text: str) -> None:
         self.query_one("#hint", Static).update(text)
 
+    def _set_suggest(self, text: str) -> None:
+        self.query_one("#suggest", Static).update(text or "")
+
+    def _refresh_slash_suggest(self, value: str) -> None:
+        """Live command palette while the prompt starts with ``/``."""
+        if not (value or "").startswith("/"):
+            self._tab_cycle = 0
+            self._suggest_key = ""
+            self._set_suggest("")
+            return
+        if value != self._suggest_key:
+            self._tab_cycle = 0
+            self._suggest_key = value
+        matches = commands.suggest(value)
+        self._set_suggest(commands.format_suggest_panel(matches))
+
     def _refresh_strip(self) -> None:
         rows = goal_strip(self._state)
         self.query_one("#strip", Static).update("\n".join(rows))
@@ -218,12 +238,20 @@ class AgentLayerTui(App[None]):
 
     def action_complete(self) -> None:
         prompt = self.query_one("#prompt", Input)
-        matches = commands.completions(prompt.value)
-        if len(matches) == 1:
-            prompt.value = matches[0] + " "
-            prompt.cursor_position = len(prompt.value)
-        elif matches:
-            self._append(Line("dim", "  ".join(matches)))
+        value = prompt.value
+        if not value.startswith("/"):
+            return
+        new_value, next_cycle, matches = commands.apply_tab(value, self._tab_cycle)
+        self._tab_cycle = next_cycle
+        self._suggest_key = new_value
+        if new_value != value:
+            prompt.value = new_value
+            prompt.cursor_position = len(new_value)
+        self._set_suggest(commands.format_suggest_panel(matches))
+
+    @on(Input.Changed, "#prompt")
+    def _prompt_changed(self, event: Input.Changed) -> None:
+        self._refresh_slash_suggest(event.value)
 
     # ----------------------------------------------------------------- turns
 
@@ -231,6 +259,9 @@ class AgentLayerTui(App[None]):
     async def _submitted(self, event: Input.Submitted) -> None:
         text = event.value.strip()
         event.input.value = ""
+        self._set_suggest("")
+        self._tab_cycle = 0
+        self._suggest_key = ""
         if not text:
             return
         command = commands.parse(text)

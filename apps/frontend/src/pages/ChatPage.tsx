@@ -7,6 +7,10 @@ import { ConfirmModal } from "../components/ConfirmModal";
 import { apiFetch, addUsageTotals, emptyTokenUsage, fetchChatRuntime, type ChatContextMeta, type ConversationGoal, type ChatRuntimePayload, type ConversationTodo, type TokenUsageTotals, type WorkspaceApiRecord } from "../lib/api";
 import { OngoingGoalBar, PlanModeBanner, ConversationTodosPanel } from "../features/chat/ConversationGoalPanels";
 import {
+  PermissionAskCard,
+  type PermissionAskPayload,
+} from "../features/chat/PermissionAskCard";
+import {
   deleteWorkspaceApi,
   isAgentlayerSelfWorkspace,
 } from "../lib/workspacesApi";
@@ -442,7 +446,9 @@ export function ChatPage() {
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
   const [showWorkspaceMcpModal, setShowWorkspaceMcpModal] = useState(false);
   const [workspaceScopeHint, setWorkspaceScopeHint] = useState<string | null>(null);
-  const [composerHeaderCollapsed, setComposerHeaderCollapsed] = useState(false);
+  const [composerHeaderCollapsed, setComposerHeaderCollapsed] = useState(true);
+  const [pendingPermissionAsk, setPendingPermissionAsk] = useState<PermissionAskPayload | null>(null);
+  const [stepPaused, setStepPaused] = useState(false);
   const [messageFeedback, setMessageFeedback] = useState<Map<number, "up" | "down">>(new Map());
   const [projectPanelOpen, setProjectPanelOpen] = useState(false);
   const [threadSidebarOpen, setThreadSidebarOpen] = useState(false);
@@ -1335,6 +1341,38 @@ export function ChatPage() {
       );
     }
   }, [agentChatSession]);
+
+  const handlePermissionReply = useCallback(
+    (reply: "once" | "always" | "reject") => {
+      const pending = pendingPermissionAsk;
+      if (!pending) return;
+      const ws = agentChatSession.getSocket();
+      if (ws?.readyState === WebSocket.OPEN) {
+        ws.send(
+          JSON.stringify({
+            type: "permission_reply",
+            request_id: pending.requestId,
+            reply,
+          })
+        );
+      }
+      appendAgentLine("permission", `${pending.toolName}: ${reply}`, {
+        streamOffset: assistantStreamOffset(),
+        toolName: pending.toolName,
+      });
+      setPendingPermissionAsk(null);
+    },
+    [agentChatSession, appendAgentLine, pendingPermissionAsk]
+  );
+
+  const handleContinueStep = useCallback(() => {
+    const ws = agentChatSession.getSocket();
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "continue_step" }));
+    }
+    setStepPaused(false);
+    appendAgentLine("wait", t("chat:continueStep"), { streamOffset: assistantStreamOffset() });
+  }, [agentChatSession, appendAgentLine, t]);
 
   const handleIndexActivity = useCallback(
     (ev: IndexActivityEvent) => {
@@ -2394,16 +2432,42 @@ export function ChatPage() {
         }
         if (typ === "agent.step_wait") {
           appendAgentLine("wait", t("chat:pausedStepMode"));
+          setStepPaused(true);
           return;
         }
-        if (typ === "agent.done" || typ === "agent.aborted" || typ === "agent.cancelled") {
+        if (typ === "agent.permission_ask") {
+          const requestId = String(msg.request_id ?? "").trim();
+          const toolName = String(msg.tool_name ?? "tool").trim() || "tool";
+          if (!requestId) return;
+          const argsPreview =
+            typeof msg.args_preview === "string"
+              ? msg.args_preview
+              : JSON.stringify(msg.arguments ?? {}, null, 0).slice(0, 1200);
+          setPendingPermissionAsk({
+            requestId,
+            toolName,
+            argsPreview,
+            round: typeof msg.round === "number" ? msg.round : null,
+          });
+          appendAgentLine("permission", toolName, {
+            streamOffset: assistantStreamOffset(),
+            toolName,
+          });
+          return;
+        }
+        if (typ === "agent.aborted" || typ === "agent.cancelled" || typ === "agent.done") {
+          setPendingPermissionAsk(null);
+          setStepPaused(false);
+        }
+        if (typ === "agent.aborted" || typ === "agent.cancelled") {
           appendAgentLine(String(typ), String(msg.detail ?? ""));
-          if (typ === "agent.done") {
-            setProjectTreeRefreshKey((k) => k + 1);
-            delegateScheduleRef.current();
-          } else {
-            delegateClearRef.current();
-          }
+          delegateClearRef.current();
+          return;
+        }
+        if (typ === "agent.done") {
+          appendAgentLine(String(typ), String(msg.detail ?? ""));
+          setProjectTreeRefreshKey((k) => k + 1);
+          delegateScheduleRef.current();
           return;
         }
         appendAgentLine(String(typ ?? "event"), JSON.stringify(msg).slice(0, 300));
@@ -2449,6 +2513,7 @@ export function ChatPage() {
               : {}),
             ...(disabledTools.length ? { agent_disabled_tools: disabledTools } : {}),
             agent_model_catalog_owned_by: routed.provider,
+            agent_permission_ask: true,
             ...(getAgentStreamLlm() ? { agent_stream_llm: true } : {}),
           },
         })
@@ -3376,6 +3441,17 @@ export function ChatPage() {
                   {t("chat:emptyHello", { name: displayName })}
                 </h1>
                 <p className="mt-2 max-w-md text-sm text-surface-muted">{t("chat:emptyIntro")}</p>
+                <ul className="mt-6 max-w-md space-y-2 text-left text-sm text-surface-muted">
+                  <li className="rounded-md border border-surface-border/80 bg-black/20 px-3 py-2">
+                    {t("chat:emptyStarterBind")}
+                  </li>
+                  <li className="rounded-md border border-surface-border/80 bg-black/20 px-3 py-2">
+                    {t("chat:emptyStarterContinue")}
+                  </li>
+                  <li className="rounded-md border border-surface-border/80 bg-black/20 px-3 py-2">
+                    {t("chat:suggested1")}
+                  </li>
+                </ul>
               </div>
             ) : (
               <ul className="mx-auto flex w-full max-w-3xl flex-col gap-3">
@@ -3524,6 +3600,26 @@ export function ChatPage() {
               }}
             />
             <PlanModeBanner active={sessionPlanMode} />
+            {pendingPermissionAsk ? (
+              <div className="mb-3">
+                <PermissionAskCard
+                  request={pendingPermissionAsk}
+                  onReply={handlePermissionReply}
+                />
+              </div>
+            ) : null}
+            {stepPaused ? (
+              <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-sky-500/40 bg-sky-500/10 px-4 py-2.5 text-sm text-white">
+                <span className="text-surface-muted">{t("chat:pausedStepModeHint")}</span>
+                <button
+                  type="button"
+                  className="shrink-0 rounded-md bg-sky-500/90 px-3 py-1.5 text-xs font-medium text-black"
+                  onClick={handleContinueStep}
+                >
+                  {t("chat:continueStep")}
+                </button>
+              </div>
+            ) : null}
             <OngoingGoalBar
               goal={sessionGoal}
               disabled={!activeThreadId || loading}

@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Request
 from apps.backend.application.providers.use_cases.provider_admin_acl import (
     chat_provider_model_rows,
     embedding_provider_model_rows,
+    gateway_models_kinds_for_provider_kind,
     http_get_json,
     list_operator_provider_endpoints,
     provider_auth_headers,
@@ -128,7 +129,8 @@ async def _operator_provider_models_payload(kind_v: str, provider_id: str | None
     if spec is None:
         raise HTTPException(status_code=404, detail="Provider not found.")
     fallback_rows = provider_configured_model_rows(spec)
-    url = provider_models_url(str(spec.base_url), _operator_provider_base_url)
+    kinds = gateway_models_kinds_for_provider_kind(kind_v)
+    url = provider_models_url(str(spec.base_url), _operator_provider_base_url, kinds=kinds)
     try:
         status, text, data = await asyncio.to_thread(
             http_get_json,

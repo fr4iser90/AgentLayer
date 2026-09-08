@@ -58,6 +58,12 @@ def _workspace_index_consent_max_public() -> str:
     return operator_index_consent_max()
 
 
+def _client_surface_public_fields() -> dict[str, Any]:
+    from apps.backend.infrastructure.platform.client_surface_policy import public_policy
+
+    return public_policy()
+
+
 def resolved_embedding_api_base_url() -> str:
     from apps.backend.infrastructure.providers.embedding_catalog_providers import resolve_active_embedding_spec
 
@@ -503,6 +509,7 @@ def public_dict() -> dict[str, Any]:
         "workspace_nightly_reindex_enabled": bool(r.get("workspace_nightly_reindex_enabled", False)),
         "workspace_index_on_attach_enabled": bool(r.get("workspace_index_on_attach_enabled", False)),
         "workspace_index_consent_max": _workspace_index_consent_max_public(),
+        **_client_surface_public_fields(),
         "legal_enabled": bool(r.get("legal_enabled", False)),
         "legal_jurisdiction": (
             str(r.get("legal_jurisdiction") or "none").strip().lower()

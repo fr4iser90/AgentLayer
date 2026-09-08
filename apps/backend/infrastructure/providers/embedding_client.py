@@ -90,7 +90,7 @@ def _embedding_models_list_url(*, spec: EmbeddingProviderSpec | None = None) -> 
         return None
     from apps.backend.infrastructure.settings.operator_settings import external_models_list_url
 
-    return external_models_list_url(_normalized_base_for_spec(active))
+    return external_models_list_url(_normalized_base_for_spec(active), kinds="embed")
 
 
 def _auth_headers_for_spec(spec: EmbeddingProviderSpec) -> dict[str, str]:

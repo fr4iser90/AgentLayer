@@ -3,10 +3,27 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Literal
+from urllib.parse import urlencode
 
 from apps.backend.infrastructure.db import db
 
 logger = logging.getLogger(__name__)
+
+# Gateway ``GET /v1/models?kinds=…`` values for operator provider endpoint kinds.
+# Embedding uses ``embed`` (not ``embedding``) to match the gateway contract.
+GATEWAY_MODELS_KINDS_BY_PROVIDER_KIND: dict[str, str] = {
+    "chat": "chat",
+    "embedding": "embed",
+    "extractor": "extractor",
+    "voice_stt": "stt",
+    "voice_tts": "tts",
+}
+
+
+def gateway_models_kinds_for_provider_kind(kind: str | None) -> str | None:
+    """Map operator provider kind (``chat``, ``embedding``, …) to gateway ``kinds`` query value."""
+    k = (kind or "").strip().lower()
+    return GATEWAY_MODELS_KINDS_BY_PROVIDER_KIND.get(k)
 
 def _strip_opt(s: Any) -> str | None:
     if s is None:
@@ -65,10 +82,18 @@ def external_chat_completions_url(base_url: str) -> str:
     return f"{bu.rstrip('/')}/v1/chat/completions"
 
 
-def external_models_list_url(base_url: str) -> str:
-    """``GET`` for OpenAI-style model list (admin); Gemini OpenAI-compat uses ``…/openai/v1/models``."""
+def external_models_list_url(base_url: str, *, kinds: str | None = None) -> str:
+    """``GET`` for OpenAI-style model list (admin); Gemini OpenAI-compat uses ``…/openai/v1/models``.
+
+    Optional ``kinds`` appends ``?kinds=…`` for gateways that merge chat/embed/extractor/voice
+    catalogs under one base URL (e.g. ``chat``, ``embed``, ``extractor``, ``stt``, ``tts``).
+    """
     bu = (normalize_external_llm_base_url(base_url) or base_url).rstrip("/")
-    return f"{bu}/v1/models"
+    url = f"{bu}/v1/models"
+    k = (kinds or "").strip()
+    if k:
+        url = f"{url}?{urlencode({'kinds': k})}"
+    return url
 
 
 def resolve_external_llm_credentials_for_catalog(

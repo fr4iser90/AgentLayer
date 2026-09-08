@@ -198,3 +198,26 @@ result as though it were server-produced, e.g. for governance or benchmark recor
    workspaces by uploading chunks, with the consent visible wherever a workspace is listed.~~ **Done.**
    `POST /v1/workspaces/{id}/index/text` takes client-read markdown. `POST /index` crawl still cannot
    walk a client path, regardless of consent.
+
+## Operator client surfaces
+
+Presets (Admin → Interfaces → Platform, or `PATCH` `surface_preset`):
+
+| Preset | `web_ui_enabled` | `api_key_clients_enabled` |
+| --- | --- | --- |
+| `WEB_AND_TUI` (default) | true | true |
+| `WEB_ONLY` | true | false |
+| `TUI_ONLY` | false | true |
+
+- **TUI_ONLY** refuses browser chat/dashboard SPA routes with HTTP 403; `/app/login`, `/app/setup`,
+  and `/app/admin*` stay so operators can mint keys after JWT login.
+- **WEB_ONLY** refuses API-key auth and minting (403). JWT sessions continue.
+- **`api_key_workspace_modes`**: `server` | `client` | `both` — limits create/bind for API-key
+  material only. JWT/Web UI is not limited. Indexing remains gated by `workspace_index_consent_max`.
+- Public policy: `GET /auth/policy` → `client_surface`, also on `/` JSON and `/auth/me`.
+- Traefik/edge routing can hide surfaces, but the server enforces the same rules (one API for Web JWT
+  and TUI API keys).
+
+**Server workspaces (default):** `server_workspaces_admin_only=true` — only `role=admin` (or
+`site_admin`) may create/bind/use `execution_mode=server` hosted coding. Everyone else is
+client-workspace-only. Toggle under Admin → Interfaces → Platform.

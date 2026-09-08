@@ -22,6 +22,7 @@ from apps.backend.infrastructure.settings.operator_settings_llm_transport import
     external_chat_completions_url,
     external_llm_should_failover,
     external_models_list_url,
+    gateway_models_kinds_for_provider_kind,
     llm_chat_transport,
     normalize_external_llm_base_url,
     normalize_model_catalog_owned_by,
@@ -58,6 +59,14 @@ def _invalidate() -> None:
         )
 
         invalidate_embedding_provider_specs_cache()
+    except Exception:
+        pass
+    try:
+        from apps.backend.infrastructure.platform.client_surface_policy import (
+            invalidate_client_surface_cache,
+        )
+
+        invalidate_client_surface_cache()
     except Exception:
         pass
     try:

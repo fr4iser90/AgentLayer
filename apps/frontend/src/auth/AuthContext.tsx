@@ -41,6 +41,10 @@ export type AuthUser = {
   allowed_nav?: string[] | null;
   /** False when tenant policy limits structure edit to admin memberships. */
   dashboard_structure_edit?: boolean;
+  /** Admin always; otherwise requires ``users.schedules_allowed``. */
+  may_use_schedules?: boolean;
+  /** Hosted server workspaces (ADR 0009). */
+  may_use_server_workspaces?: boolean;
   profession_policy?: ProfessionPolicy;
 };
 

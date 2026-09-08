@@ -35,7 +35,18 @@ export function allowedNavItems(user: AuthUser | null | undefined): NavItemId[] 
   return out.length ? out : null;
 }
 
+/** Schedules: admin/site_admin, or ``may_use_schedules`` from /auth/me. */
+export function canUseSchedules(user: AuthUser | null | undefined): boolean {
+  if (!user) return false;
+  if (user.may_use_schedules === true) return true;
+  if (user.may_use_schedules === false) return false;
+  const role = (user.role || "").trim().toLowerCase();
+  if (role === "admin") return true;
+  return (user.site_role || "").trim().toLowerCase() === "site_admin";
+}
+
 export function navItemAllowed(user: AuthUser | null | undefined, item: NavItemId): boolean {
+  if (item === "schedules" && !canUseSchedules(user)) return false;
   const allowed = allowedNavItems(user);
   if (allowed === null) return true;
   return allowed.includes(item);

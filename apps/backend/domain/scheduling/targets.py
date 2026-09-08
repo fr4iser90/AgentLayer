@@ -79,10 +79,20 @@ def agent_requires_workspace_for_target(raw: str | None) -> bool:
     return bool(agent and agent.get("requires_workspace"))
 
 
-def schedule_permission_error(*, user_role: str, execution_target: str) -> str | None:
+def schedule_permission_error(
+    *,
+    user_role: str,
+    execution_target: str,
+    user_id: Any | None = None,
+) -> str | None:
     """
     Return an HTTP/tool error message if the user may not create this schedule, else None.
+
+    Feature access (``schedules_allowed``) is checked by callers via
+    ``infrastructure.scheduling.schedules_access``; this covers agent ``min_role`` only.
+    ``user_id`` is accepted for call-site compatibility and ignored here.
     """
+    _ = user_id
     t = normalize_execution_target(execution_target)
     if not t or not is_agent_schedulable(t):
         return execution_target_error(execution_target)

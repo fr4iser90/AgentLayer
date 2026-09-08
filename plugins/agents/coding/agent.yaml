@@ -8,7 +8,7 @@ tool_domain: coding
 requires_workspace: true
 execution_context: container
 model_profile: coding
-coding_tools_permission_ask: false
+coding_tools_permission_ask: true
 tool_discipline_preset: coding_build
 tool_allowlist:
   - bind

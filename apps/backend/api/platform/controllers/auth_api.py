@@ -312,6 +312,24 @@ async def get_current_user_info(request: Request):
         "discord_user_id": discord_uid,
         "telegram_user_id": telegram_uid,
     }
+    try:
+        from apps.backend.application.platform.use_cases.client_surface_policy import (
+            public_policy,
+            user_may_use_server_workspaces,
+        )
+
+        base["client_surface"] = public_policy()
+        base["may_use_server_workspaces"] = user_may_use_server_workspaces(user)
+    except Exception:
+        pass
+    try:
+        from apps.backend.application.scheduling.use_cases.scheduling_controller_services import (
+            user_may_use_schedules,
+        )
+
+        base["may_use_schedules"] = user_may_use_schedules(user=user, user_role=user.role)
+    except Exception:
+        base["may_use_schedules"] = str(user.role or "").strip().lower() == "admin"
     if deployment == "multi_tenant" and membership:
         ensure_tenant_profession_defaults(tid)
         base["profession_policy"] = effective_policy(user.id, tid).to_public_dict()

@@ -23,6 +23,7 @@ from apps.backend.infrastructure.settings.operator_settings import (
     apply_update as apply_operator_settings_update,
     external_api_headers,
     external_models_list_url,
+    gateway_models_kinds_for_provider_kind,
     interface_hints_public,
     invalidate_operator_settings_cache,
     normalize_external_llm_base_url,
@@ -148,14 +149,28 @@ def tenant_id_for_user(user_id: uuid.UUID) -> int | None:
     return db.user_tenant_id(user_id)
 
 
-def provider_models_url(base_url: str, normalize_base_url) -> str:
+def provider_models_url(
+    base_url: str,
+    normalize_base_url,
+    *,
+    kinds: str | None = None,
+) -> str:
+    """Build OpenAI-style models list URL; optional ``kinds`` for merged gateways."""
     base = normalize_base_url(base_url)
     low = base.lower()
     if low.endswith("/models"):
-        return base
-    if low.endswith("/v1"):
-        return f"{base}/models"
-    return f"{base}/v1/models"
+        url = base
+    elif low.endswith("/v1"):
+        url = f"{base}/models"
+    else:
+        url = f"{base}/v1/models"
+    k = (kinds or "").strip()
+    if k:
+        from urllib.parse import urlencode
+
+        sep = "&" if "?" in url else "?"
+        url = f"{url}{sep}{urlencode({'kinds': k})}"
+    return url
 
 
 def provider_auth_headers(api_key: str, api_header_name: str) -> dict[str, str]:
@@ -216,7 +231,7 @@ def provider_spec_for_kind(kind: str, provider_id: str | None) -> Any:
 
 
 async def fetch_external_llm_models_payload(base_url: str, api_key: str) -> Any:
-    url = external_models_list_url(base_url)
+    url = external_models_list_url(base_url, kinds="chat")
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.get(

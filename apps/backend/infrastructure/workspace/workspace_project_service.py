@@ -68,6 +68,17 @@ def create_project_workspace_for_user(
         raise WorkspaceCreateError("git_url is required when source is git")
 
     mode = normalize_execution_mode(execution_mode)
+    from apps.backend.infrastructure.platform.client_surface_policy import (
+        refuse_api_key_workspace_mode,
+        refuse_server_workspace_for_user,
+    )
+
+    mode_refuse = refuse_api_key_workspace_mode(mode)
+    if mode_refuse:
+        raise WorkspaceCreateError(mode_refuse)
+    admin_refuse = refuse_server_workspace_for_user(user, mode)
+    if admin_refuse:
+        raise WorkspaceCreateError(admin_refuse)
     if mode == CLIENT_EXECUTION and src == "git":
         raise WorkspaceCreateError(
             "A client workspace cannot be git-cloned on the server. "

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
@@ -9,6 +8,14 @@ from fastapi.responses import FileResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 logger = logging.getLogger(__name__)
+
+
+def _refuse_web_ui_or_none(path: str) -> None:
+    from apps.backend.application.platform.use_cases.client_surface_policy import refuse_web_ui_path
+
+    detail = refuse_web_ui_path(path)
+    if detail:
+        raise HTTPException(status_code=403, detail=detail)
 
 
 def register_web_routes(app: FastAPI) -> None:
@@ -28,6 +35,7 @@ def register_web_routes(app: FastAPI) -> None:
         @app.get("/coding-agent")
         async def redirect_legacy_coding_agent(request: Request):
             """Legacy deep links: Coding UI removed; Chat is the only project surface."""
+            _refuse_web_ui_or_none("/app/chat")
             q = request.url.query
             target = "/app/chat" + (f"?{q}" if q else "")
             return RedirectResponse(url=target, status_code=302)
@@ -35,6 +43,10 @@ def register_web_routes(app: FastAPI) -> None:
         @app.get("/app")
         async def agent_ui_spa_root():
             """``/app`` without trailing slash: same shell as ``/app/`` (hard refresh must not 405)."""
+            from apps.backend.application.platform.use_cases.client_surface_policy import web_ui_enabled
+
+            if not web_ui_enabled():
+                return RedirectResponse(url="/app/login", status_code=302)
             return FileResponse(_agent_index)
 
         @app.get("/app/chat")
@@ -83,8 +95,9 @@ def register_web_routes(app: FastAPI) -> None:
         @app.get("/app/admin/schedules")
         @app.get("/app/admin/workflows")
         @app.get("/app/admin/agent-config/{rest:path}")
-        async def agent_ui_spa_shell():
+        async def agent_ui_spa_shell(request: Request):
             """Serve SPA index for client-side routes (must register before mount /app)."""
+            _refuse_web_ui_or_none(request.url.path)
             return FileResponse(_agent_index)
 
         app.mount(
@@ -103,7 +116,10 @@ def register_web_routes(app: FastAPI) -> None:
             "text/html" in accept and not first.startswith("application/json")
         )
         if wants_html and _agent_index.is_file():
-            return RedirectResponse(url="/app/", status_code=302)
+            from apps.backend.application.platform.use_cases.client_surface_policy import web_ui_enabled
+
+            target = "/app/" if web_ui_enabled() else "/app/login"
+            return RedirectResponse(url=target, status_code=302)
 
         out: dict[str, object] = {
             "service": "agent-layer",
@@ -113,6 +129,12 @@ def register_web_routes(app: FastAPI) -> None:
         }
         if _agent_index.is_file():
             out["operator_admin_ui"] = "/app/admin"
+        try:
+            from apps.backend.application.platform.use_cases.client_surface_policy import public_policy
+
+            out["client_surface"] = public_policy()
+        except Exception:
+            pass
         return out
 
 
@@ -135,10 +157,15 @@ def register_web_routes(app: FastAPI) -> None:
     @app.get("/chat")
     def browser_chat_entry():
         """Short URL → SPA (public: loading the shell must not require JWT)."""
+        _refuse_web_ui_or_none("/app/chat")
         return RedirectResponse(url="/app/chat", status_code=307)
 
 
     @app.get("/dashboard")
     def browser_dashboard_entry():
         """Short URL → first-party app home (`/app/`)."""
+        from apps.backend.application.platform.use_cases.client_surface_policy import web_ui_enabled
+
+        if not web_ui_enabled():
+            return RedirectResponse(url="/app/login", status_code=307)
         return RedirectResponse(url="/app/", status_code=307)

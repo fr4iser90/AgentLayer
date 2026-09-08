@@ -73,8 +73,12 @@ def test_bearer_lookup_hashes_the_presented_token() -> None:
     with patch.object(mod.db, "pool") as pool_mock:
         pool_mock.return_value.connection.return_value = conn
         with patch.object(mod, "decode_access_token", return_value=None):
-            with patch.object(mod, "get_user_by_id", return_value=_user(user_id)) as get_user:
-                out = mod.get_user_for_bearer_token(raw)
+            with patch(
+                "apps.backend.infrastructure.platform.client_surface_policy.refuse_api_key_auth",
+                return_value=None,
+            ):
+                with patch.object(mod, "get_user_by_id", return_value=_user(user_id)) as get_user:
+                    out = mod.get_user_for_bearer_token(raw)
 
     assert out is not None
     sql, params = cur.execute.call_args_list[0][0][0], cur.execute.call_args_list[0][0][1]
@@ -91,7 +95,11 @@ def test_bearer_lookup_rejects_expired_keys_in_sql() -> None:
     with patch.object(mod.db, "pool") as pool_mock:
         pool_mock.return_value.connection.return_value = conn
         with patch.object(mod, "decode_access_token", return_value=None):
-            out = mod.get_user_for_bearer_token("al_expired")
+            with patch(
+                "apps.backend.infrastructure.platform.client_surface_policy.refuse_api_key_auth",
+                return_value=None,
+            ):
+                out = mod.get_user_for_bearer_token("al_expired")
 
     assert out is None
     sql = cur.execute.call_args_list[0][0][0]

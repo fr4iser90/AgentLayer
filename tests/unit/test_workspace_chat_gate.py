@@ -25,7 +25,7 @@ class TestWorkspaceChatGate(unittest.TestCase):
     def test_ok_when_workspace_resolved(self) -> None:
         uid = uuid.uuid4()
         wid = str(uuid.uuid4())
-        ws = {"id": wid, "path": "/tmp/x"}
+        ws = {"id": wid, "path": "/tmp/x", "execution_mode": "client"}
         _raise_if_workspace_inaccessible(
             workspace_id=wid,
             user_id=uid,

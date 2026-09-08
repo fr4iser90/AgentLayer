@@ -117,6 +117,14 @@ export type OperatorPublic = {
   workspace_reindex_after_git_pull?: boolean;
   workspace_nightly_reindex_enabled?: boolean;
   workspace_index_on_attach_enabled?: boolean;
+  workspace_index_consent_max?: "none" | "symbols" | "text" | string;
+  web_ui_enabled?: boolean;
+  api_key_clients_enabled?: boolean;
+  api_key_workspace_modes?: "server" | "client" | "both" | string;
+  surface_preset?: "WEB_ONLY" | "WEB_AND_TUI" | "TUI_ONLY" | string;
+  api_key_may_use_server_workspaces?: boolean;
+  api_key_may_use_client_workspaces?: boolean;
+  server_workspaces_admin_only?: boolean;
   media_library_enabled?: boolean;
   media_user_upload_enabled?: boolean;
   media_sharing_enabled?: boolean;

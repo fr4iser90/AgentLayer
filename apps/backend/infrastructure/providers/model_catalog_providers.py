@@ -159,7 +159,7 @@ def _models_list_url(spec: CatalogProviderSpec) -> str | None:
     base = spec.base_url.strip().rstrip("/")
     if not base:
         return None
-    return external_models_list_url(base)
+    return external_models_list_url(base, kinds="chat")
 
 
 def _chat_completions_url(spec: CatalogProviderSpec) -> str:

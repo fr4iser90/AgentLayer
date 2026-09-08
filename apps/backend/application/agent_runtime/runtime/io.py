@@ -366,6 +366,19 @@ def _raise_if_workspace_inaccessible(
         raise WorkspaceAccessDenied(
             f"{aid} requires a workspace_id that resolves to an accessible project workspace."
         )
+    if workspace and isinstance(workspace, dict) and user_id is not None:
+        from apps.backend.infrastructure.platform.client_surface_policy import (
+            refuse_server_workspace_for_user,
+        )
+
+        class _UserRef:
+            def __init__(self, uid: Any) -> None:
+                self.id = uid
+                self.role = None
+
+        refuse = refuse_server_workspace_for_user(_UserRef(user_id), workspace.get("execution_mode"))
+        if refuse:
+            raise WorkspaceAccessDenied(refuse)
 
 
 def _attach_speech_text_to_completion(data: dict[str, Any]) -> dict[str, Any]:

@@ -13,6 +13,9 @@ from apps.backend.application.scheduling.use_cases.scheduling_controller_service
 from apps.backend.application.platform.use_cases.platform_controller_services import db
 from apps.backend.application.scheduling.use_cases.scheduling_controller_services import scheduler_jobs_store
 from apps.backend.application.scheduling.use_cases.scheduling_controller_services import dashboard_access_ex
+from apps.backend.application.scheduling.use_cases.scheduling_controller_services import (
+    schedule_feature_permission_error,
+)
 from apps.backend.domain.scheduling.targets import (
     agent_requires_workspace_for_target,
     execution_target_error,
@@ -51,7 +54,10 @@ class SchedulerJobPatchBody(BaseModel):
 @router.get("/execution-targets")
 async def scheduler_execution_targets_catalog(request: Request) -> dict[str, Any]:
     """Scheduled job modes (not the full agent registry — only targets with a cron runner)."""
-    await get_current_user(request)
+    user = await get_current_user(request)
+    feat_err = schedule_feature_permission_error(user_id=user.id, user_role=user.role)
+    if feat_err:
+        raise HTTPException(status_code=403, detail=feat_err)
     from apps.backend.domain.scheduling.targets import execution_target_catalog
 
     return {"ok": True, "targets": execution_target_catalog()}
@@ -84,7 +90,12 @@ async def scheduler_job_create(request: Request, body: SchedulerJobCreateBody) -
     tgt = normalize_execution_target(body.execution_target)
     if not tgt or not is_valid_execution_target(tgt):
         raise HTTPException(status_code=400, detail=execution_target_error(body.execution_target))
-    perm_err = schedule_permission_error(user_role=user.role, execution_target=tgt or "")
+    feat_err = schedule_feature_permission_error(user_id=user.id, user_role=user.role)
+    if feat_err:
+        raise HTTPException(status_code=403, detail=feat_err)
+    perm_err = schedule_permission_error(
+        user_role=user.role, execution_target=tgt or "", user_id=user.id
+    )
     if perm_err:
         if "requires admin" in perm_err:
             raise HTTPException(status_code=403, detail=perm_err)
@@ -135,6 +146,9 @@ async def scheduler_job_create(request: Request, body: SchedulerJobCreateBody) -
 @router.patch("/{job_id}")
 async def scheduler_job_patch(request: Request, job_id: str, body: SchedulerJobPatchBody) -> dict[str, Any]:
     user = await get_current_user(request)
+    feat_err = schedule_feature_permission_error(user_id=user.id, user_role=user.role)
+    if feat_err:
+        raise HTTPException(status_code=403, detail=feat_err)
     tenant_id = db.user_tenant_id(user.id)
     try:
         jid = uuid.UUID(job_id.strip())
@@ -158,6 +172,9 @@ async def scheduler_job_patch(request: Request, job_id: str, body: SchedulerJobP
 @router.delete("/{job_id}")
 async def scheduler_job_hard_delete(request: Request, job_id: str) -> dict[str, Any]:
     user = await get_current_user(request)
+    feat_err = schedule_feature_permission_error(user_id=user.id, user_role=user.role)
+    if feat_err:
+        raise HTTPException(status_code=403, detail=feat_err)
     tenant_id = db.user_tenant_id(user.id)
     try:
         jid = uuid.UUID(job_id.strip())
@@ -179,6 +196,9 @@ async def scheduler_job_set_enabled(
     request: Request, job_id: str, body: SchedulerJobSetEnabledBody
 ) -> dict[str, Any]:
     user = await get_current_user(request)
+    feat_err = schedule_feature_permission_error(user_id=user.id, user_role=user.role)
+    if feat_err:
+        raise HTTPException(status_code=403, detail=feat_err)
     tenant_id = db.user_tenant_id(user.id)
     try:
         jid = uuid.UUID(job_id.strip())
