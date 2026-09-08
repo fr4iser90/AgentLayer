@@ -74,6 +74,12 @@ def create_task(
             root_id = uuid.UUID(str(root_raw))
         if scope == "workspace" and workspace_id is None and parent.get("workspace_id"):
             workspace_id = uuid.UUID(str(parent["workspace_id"]))
+    if workspace_id is not None:
+        from apps.backend.infrastructure.workspace.workspace_execution import (
+            raise_if_client_workspace,
+        )
+
+        raise_if_client_workspace(workspace_id)
     with db.pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(

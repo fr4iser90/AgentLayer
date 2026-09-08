@@ -32,6 +32,16 @@ class WorkspaceCreateBody(BaseModel):
     source: str = Field(default="manual", max_length=32)
     git_url: str | None = None
     git_branch: str = Field(default="main", max_length=255)
+    execution_mode: str = Field(
+        default="server",
+        max_length=16,
+        description="server (default) or client — files live on the connected client (ADR 0009)",
+    )
+    path: str | None = Field(
+        default=None,
+        max_length=4096,
+        description="Required when execution_mode=client: absolute path on the client machine",
+    )
 
 
 class WorkspaceUpdateBody(BaseModel):
@@ -140,6 +150,8 @@ async def create_workspace(request: Request, body: WorkspaceCreateBody):
             source=body.source,
             git_url=body.git_url,
             git_branch=body.git_branch or "main",
+            execution_mode=body.execution_mode,
+            path=body.path,
         )
     except ws_services.WorkspaceCreateError as e:
         raise HTTPException(status_code=400, detail=e.message)
@@ -187,6 +199,10 @@ async def workspace_run_index(
     if (row[2] or "").strip() == ws_services.AGENTLAYER_SELF_NAME and not ws_services.self_editing_allowed(user):
         raise HTTPException(status_code=404, detail="Workspace not found or no edit permission")
 
+    index_refuse = ws_services.client_workspace_refusal(row, kind="index")
+    if index_refuse:
+        raise HTTPException(status_code=400, detail=index_refuse)
+
     sem, _ret, docs_rag = ws_services.workspace_retrieval._row_flags(row)
     mode = (body.mode if body else "full").strip().lower()
     if mode not in ("full", "code", "docs"):
@@ -225,12 +241,15 @@ async def workspace_git_changes(
 ):
     """Read-only working-tree change summary (``git status`` / ``diff --stat``) and optional per-file diff."""
     user = await get_current_user(request)
-    row = ws_services.fetch_owned_workspace_path_name(workspace_id, user.id)
+    row = ws_services.fetch_owned_workspace_row(workspace_id, user.id)
     if not row:
         raise HTTPException(status_code=404, detail="Workspace not found")
-    if (row[1] or "").strip() == ws_services.AGENTLAYER_SELF_NAME and not ws_services.self_editing_allowed(user):
+    if (row[2] or "").strip() == ws_services.AGENTLAYER_SELF_NAME and not ws_services.self_editing_allowed(user):
         raise HTTPException(status_code=404, detail="Workspace not found")
-    root_disk = Path(row[0])
+    browse_refuse = ws_services.client_workspace_refusal(row, kind="browse")
+    if browse_refuse:
+        raise HTTPException(status_code=400, detail=browse_refuse)
+    root_disk = Path(row[3])
     summary = ws_services.workspace_git_changes_summary(root_disk)
     if not summary.get("is_git_repo"):
         raise HTTPException(status_code=400, detail=str(summary.get("error") or "not a git repository"))

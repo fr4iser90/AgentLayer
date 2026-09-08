@@ -137,15 +137,24 @@ class RestClient:
         return [w for w in rows if isinstance(w, dict)] if isinstance(rows, list) else []
 
     async def create_workspace(
-        self, name: str, *, git_url: str = "", git_branch: str = "main"
+        self,
+        name: str,
+        *,
+        git_url: str = "",
+        git_branch: str = "main",
+        execution_mode: str = "server",
+        path: str = "",
     ) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "name": name,
             "source": "git" if git_url else "manual",
             "git_branch": git_branch or "main",
+            "execution_mode": execution_mode or "server",
         }
         if git_url:
             payload["git_url"] = git_url
+        if path:
+            payload["path"] = path
         r = await self._http.post("/v1/workspaces", headers=self._headers, json=payload)
         if r.status_code == 400:
             raise AgentLayerError(str((r.json() or {}).get("detail") or "invalid workspace"))
@@ -259,6 +268,24 @@ class ChatSocket:
 
     async def send_permission(self, request_id: str, reply: str) -> None:
         await self._send({"type": "permission_reply", "request_id": request_id, "reply": reply})
+
+    async def send_tool_result(
+        self,
+        request_id: str,
+        *,
+        ok: bool,
+        result: str | None = None,
+        error: str | None = None,
+    ) -> None:
+        payload: dict[str, Any] = {"type": "tool_result", "request_id": request_id, "ok": ok}
+        if ok:
+            payload["result"] = result if result is not None else ""
+        else:
+            payload["error"] = error or "client tool failed"
+        await self._send(payload)
+
+    async def send_client_capabilities(self, workspace_tools: list[str]) -> None:
+        await self._send({"type": "client_capabilities", "workspace_tools": list(workspace_tools)})
 
     async def send_add_tools(self, names: list[str]) -> None:
         await self._send({"type": "add_tools", "names": names})

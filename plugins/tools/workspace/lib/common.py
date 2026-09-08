@@ -24,12 +24,33 @@ def get_workspace_from_context(context: dict | None = None) -> Path | None:
     return Path(ws["path"])
 
 
+class ClientWorkspaceExecutionError(RuntimeError):
+    """A server-side tool reached a workspace whose files live on the client (ADR 0009).
+
+    Raised rather than returned because every workspace tool funnels through
+    ``workspace_binding_from_context``, and ``run_tool`` turns the exception into the usual
+    ``{"ok": false, "error": …}`` payload — one message, no per-tool plumbing.
+    """
+
+
 def workspace_binding_from_context(context: dict | None) -> dict[str, Any] | None:
-    """Return workspace dict if ``context`` has a usable ``workspace`` with ``path`` (not ``None``)."""
+    """Return workspace dict if ``context`` has a usable ``workspace`` with ``path`` (not ``None``).
+
+    Raises :class:`ClientWorkspaceExecutionError` for a client-side workspace: the path belongs to
+    the user's machine, so reading or writing it here would either fail confusingly or, worse, hit
+    an unrelated path that happens to exist in the container.
+    """
     if not context:
         return None
     ws = context.get("workspace")
     if isinstance(ws, dict):
+        if str(ws.get("execution_mode") or "server").strip().lower() == "client":
+            raise ClientWorkspaceExecutionError(
+                f"Workspace {str(ws.get('name') or ws.get('id') or '?')!r} runs on the client: "
+                "its files are on the user's machine, not on the server, so this tool cannot "
+                "read or write them here (ADR 0009). The chat runtime must dispatch it over "
+                "the WebSocket instead of calling the server handler."
+            )
         p = ws.get("path")
         if isinstance(p, str) and p.strip():
             return ws

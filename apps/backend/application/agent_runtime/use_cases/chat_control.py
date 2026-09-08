@@ -35,6 +35,7 @@ class ChatControlQueue:
         self.event_emit = event_emit
         self.agent_run_id = agent_run_id
         self.max_tool_rounds_eff = max_tool_rounds_eff
+        self.client_workspace_tools: set[str] = set()
 
     def merge_add_tools_from_message(self, names: list[Any]) -> None:
         existing = {
@@ -67,7 +68,17 @@ class ChatControlQueue:
             raw_names = m.get("names")
             nlist = raw_names if isinstance(raw_names, list) else []
             self.merge_add_tools_from_message(nlist)
+        if t == "client_capabilities":
+            self.apply_client_capabilities(m)
         return False
+
+    def apply_client_capabilities(self, m: dict[str, Any]) -> None:
+        raw = m.get("workspace_tools")
+        if not isinstance(raw, list):
+            return
+        names = {str(x).strip() for x in raw if str(x).strip()}
+        self.client_workspace_tools.clear()
+        self.client_workspace_tools.update(names)
 
     async def drain(self) -> None:
         if self.control_queue is None:
@@ -84,6 +95,12 @@ class ChatControlQueue:
                 continue
             if m.get("type") == "permission_reply":
                 logger.debug("discarding stray permission_reply (not waiting for permission)")
+                continue
+            if m.get("type") == "tool_result":
+                logger.debug("discarding stray tool_result (not waiting for a client tool)")
+                continue
+            if m.get("type") == "client_capabilities":
+                self.apply_client_capabilities(m)
                 continue
             if m.get("type") == "secret_saved" and m.get("ok") is True:
                 sk = str(m.get("service_key") or "").strip().lower()
@@ -123,6 +140,12 @@ class ChatControlQueue:
                 continue
             if m.get("type") == "permission_reply":
                 logger.debug("discarding permission_reply during step_wait")
+                continue
+            if m.get("type") == "tool_result":
+                logger.debug("discarding tool_result during step_wait")
+                continue
+            if m.get("type") == "client_capabilities":
+                self.apply_client_capabilities(m)
                 continue
             if m.get("type") == "continue_step":
                 await self.drain()

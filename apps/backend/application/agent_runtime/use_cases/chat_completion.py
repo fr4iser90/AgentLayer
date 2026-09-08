@@ -15,6 +15,7 @@ from typing import Any, Awaitable, Callable, Literal
 import httpx
 
 from apps.backend.infrastructure.platform.config import config
+from apps.backend.infrastructure.workspace.workspace_execution import is_client_execution
 from apps.backend.application.agent_runtime.dependencies import (
     agent_config_effective,
     agent_runs_store,
@@ -54,6 +55,10 @@ from apps.backend.application.agent_runtime.dependencies import (
 )
 from apps.backend.application.agent_runtime.use_cases.chat_context_budget import ChatContextBudgetEnforcer
 from apps.backend.application.agent_runtime.use_cases.chat_control import ChatControlQueue
+from apps.backend.application.agent_runtime.use_cases.chat_client_dispatch import (
+    advertised_workspace_tools,
+    filter_tools_for_client_workspace,
+)
 from apps.backend.application.agent_runtime.use_cases.chat_llm_transport import execute_llm_completion_round
 from apps.backend.application.agent_runtime.use_cases.chat_run_bootstrap import bootstrap_chat_run
 from apps.backend.application.agent_runtime.use_cases.chat_tool_events import emit_tool_done_events, emit_tool_start_event
@@ -132,6 +137,7 @@ async def chat_completion(
     cancel_event: asyncio.Event | None = None,
     stream_requested: bool = False,
     embedded_subagent: bool = False,
+    client_workspace_tools: frozenset[str] | set[str] | list[str] | None = None,
 ) -> dict[str, Any] | AsyncIterator[bytes]:
     # Without ``stream_requested`` + plain completion, the tool loop uses blocking HTTP; HTTP callers may
     # wrap the final JSON as SSE. True streaming is returned as an async byte iterator (upstream SSE passthrough).
@@ -162,6 +168,9 @@ async def chat_completion(
     _raw_catalog_owned = body.pop("agent_model_catalog_owned_by", None)
     catalog_owned_by = normalize_model_catalog_owned_by(_raw_catalog_owned)
     _raw_tool_allow = body.pop("agent_tool_name_allowlist", None)
+    _raw_client_tools = body.pop("agent_client_workspace_tools", None)
+    if client_workspace_tools is None:
+        client_workspace_tools = _raw_client_tools
     _raw_tools_ranking = body.pop("agent_tools_ranking_enabled", None)
     tools_ranking_enabled = bool(config.AGENT_TOOLS_RANKING_ENABLED)
     if _raw_tools_ranking is not None:
@@ -381,6 +390,12 @@ async def chat_completion(
         forward_names = tool_selection.forward_names
         turn_hooks = tool_selection.turn_hooks
         _tf_plan = tool_selection.forward_plan
+        advertised = advertised_workspace_tools(client_workspace_tools)
+        tool_context["client_workspace_tools"] = set(advertised)
+        if isinstance(workspace, dict) and is_client_execution(workspace.get("execution_mode")):
+            tools_for_request = filter_tools_for_client_workspace(tools_for_request, advertised)
+            tool_selection.tools_for_request = tools_for_request
+            forward_names = [n for t in tools_for_request if (n := _tool_spec_name(t)) is not None]
         pause_between_rounds = _coerce_body_bool(body.get("agent_pause_between_rounds"), False)
         if pause_between_rounds and control_queue is None:
             pause_between_rounds = False
@@ -422,6 +437,7 @@ async def chat_completion(
             agent_run_id=agent_run_id,
             max_tool_rounds_eff=max_tool_rounds_eff,
         )
+        control.client_workspace_tools = tool_context["client_workspace_tools"]
         handle_control_dict = control.handle_control_dict
         drain_control_queue = control.drain
         wait_for_continue_step_after_round = control.wait_for_continue_step_after_round

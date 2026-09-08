@@ -34,6 +34,11 @@ events. It lives at `apps/tui/` beside `apps/backend` and `apps/frontend`.
 Consequence of this choice: the TUI is *one more consumer of one contract*. Anything the WebUI can do
 that the TUI cannot is a gap in the TUI, not in the backend — which keeps the runtime single-sourced.
 
+This holds as long as tools run on the server. Executing them on the client machine instead is the one
+extension that genuinely needs a new runtime path, and it is specified separately in
+[ADR 0009](0009-client-side-execution.md); until that is implemented, workspaces are server-side and
+the statement above is unqualified.
+
 ### Transport
 
 Two options exist; the TUI uses the WebSocket.
@@ -64,6 +69,8 @@ Client → server:
 | `{"type":"cancel"}` | aborts the in-flight turn immediately, without waiting for the round boundary |
 | `{"type":"continue_step"}` | resumes after `agent.step_wait` when `agent_pause_between_rounds` is set |
 | `{"type":"permission_reply","request_id":…,"reply":"once"\|"always"\|"reject"}` | answers `agent.permission_ask` |
+| `{"type":"tool_result","request_id":…,"ok":true,"result":…}` / `"ok":false,"error":…` | answers `agent.tool_invoke` (ADR 0009; unknown `request_id` is ignored) |
+| `{"type":"client_capabilities","workspace_tools":[…]}` | tools this client can run locally; sent on connect and again on `/bind` |
 | `{"type":"add_tools","names":[…]}` | merges extra allowed tools before the next LLM call |
 | `{"type":"secret_saved",…}` | acknowledges an in-chat secret prompt |
 | `{"type":"ping"}` | → `{"type":"pong"}`; the server drops idle sockets after 3600s |
@@ -77,7 +84,8 @@ Server → client, all as `{"type": …}` JSON:
   human-readable `step_label` and a `summary` — this is what a Claude-Code-style tool line renders
   from. `agent.tool_start` also reports `rejected` with a `validation` breakdown when the model sent
   malformed arguments, which is worth surfacing: it is the signal that a model is guessing at a
-  schema.
+  schema. For a client-placed workspace the server also emits `agent.tool_invoke` (path, arguments,
+  `request_id`); the client runs the tool locally and replies with `tool_result`.
 - Sub-runs: `agent.subagent_start`, `agent.subagent_step`, `agent.subagent_done`. Delegation to
   `coding` shows up here, so the TUI can nest specialist activity under the parent turn.
 - Context: `agent.context_update`, `agent.context_compacted`.

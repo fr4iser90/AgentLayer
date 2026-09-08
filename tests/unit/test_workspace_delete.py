@@ -37,7 +37,7 @@ def test_delete_owned_workspace_calls_task_cleanup_before_row_delete() -> None:
             calls.append("project_workspaces")
 
     cur.execute.side_effect = _track
-    cur.fetchone.return_value = ("/tmp/ws", "e2e-test")
+    cur.fetchone.return_value = ("/tmp/ws", "e2e-test", "server")
 
     conn = MagicMock()
     conn.cursor.return_value.__enter__ = lambda s: cur
@@ -59,3 +59,27 @@ def test_delete_owned_workspace_calls_task_cleanup_before_row_delete() -> None:
     assert ok is True
     assert "agent_tasks" in calls
     assert calls.index("agent_tasks") < calls.index("project_workspaces")
+
+
+def test_delete_owned_client_workspace_does_not_touch_the_stored_path() -> None:
+    uid = uuid.uuid4()
+    wid = uuid.uuid4()
+    cur = MagicMock()
+    cur.fetchone.return_value = ("/home/me/secret-repo", "laptop", "client")
+    conn = MagicMock()
+    conn.cursor.return_value.__enter__ = lambda s: cur
+    conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+
+    with patch("apps.backend.infrastructure.db.db.pool") as pool:
+        pool.return_value.connection.return_value.__enter__ = lambda s: conn
+        pool.return_value.connection.return_value.__exit__ = MagicMock(return_value=False)
+        with patch(
+            "apps.backend.infrastructure.workspace.workspace_project_service._delete_workspace_files"
+        ) as rm:
+            with patch(
+                "apps.backend.infrastructure.workspace.workspace_project_service._delete_workspace_index_sidecars"
+            ):
+                ok = delete_owned_workspace(workspace_id=str(wid), owner_user_id=uid)
+
+    assert ok is True
+    rm.assert_not_called()

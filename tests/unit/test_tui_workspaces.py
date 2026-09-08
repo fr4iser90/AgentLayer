@@ -11,9 +11,11 @@ from agentlayer_tui import commands
 from agentlayer_tui.workspaces import (
     format_index_status,
     format_workspace_rows,
+    is_client_workspace,
     normalize_index_mode,
     resolve_workspace,
     short_id,
+    take_flag,
 )
 
 ROWS = [
@@ -109,6 +111,20 @@ class TestListRendering:
     def test_empty_list_points_at_create(self) -> None:
         assert "create" in format_workspace_rows([])[0]
 
+    def test_client_workspace_is_labelled_instead_of_index_flags(self) -> None:
+        rows = [
+            {
+                "id": "c" * 36,
+                "name": "laptop-repo",
+                "execution_mode": "client",
+                "path": "/home/me/code/laptop-repo",
+            }
+        ]
+        line = next(line for line in format_workspace_rows(rows) if "laptop-repo" in line)
+        assert "client" in line
+        assert "/home/me/code/laptop-repo" in line
+        assert "srd" not in line
+
 
 class TestIndexStatus:
     def test_reports_why_the_index_is_stale(self) -> None:
@@ -181,3 +197,26 @@ class TestCommandSurface:
         blob = "\n".join(commands.help_lines())
         assert "/bind" in blob
         assert "/index" in blob
+        assert "--local" in blob
+
+
+class TestLocalFlag:
+    def test_strips_the_flag_and_keeps_a_path_with_spaces(self) -> None:
+        found, rest = take_flag("--local /home/me/my repo", "--local")
+        assert found is True
+        assert rest == "/home/me/my repo"
+
+    def test_flag_alone(self) -> None:
+        found, rest = take_flag("--local", "--local")
+        assert found is True
+        assert rest == ""
+
+    def test_absent_flag_leaves_the_query(self) -> None:
+        found, rest = take_flag("my_workspace", "--local")
+        assert found is False
+        assert rest == "my_workspace"
+
+    def test_is_client_workspace(self) -> None:
+        assert is_client_workspace({"execution_mode": "client"})
+        assert not is_client_workspace({"execution_mode": "server"})
+        assert not is_client_workspace({})

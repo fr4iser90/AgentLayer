@@ -146,18 +146,21 @@ def create(arguments: dict[str, Any]) -> str:
     except (ValueError, TypeError) as e:
         return _err(str(e))
 
-    row = scheduler_jobs_store.insert_job(
-        tenant_id=tenant_id,
-        created_by_user_id=caller_uid,
-        execution_user_id=exec_uid,
-        dashboard_id=dashboard_id,
-        execution_target=raw_target,
-        title=title,
-        instructions=instructions,
-        interval_minutes=interval_m,
-        enabled=bool(arguments.get("enabled", True)),
-        coding_workflow=coding_wf,
-    )
+    try:
+        row = scheduler_jobs_store.insert_job(
+            tenant_id=tenant_id,
+            created_by_user_id=caller_uid,
+            execution_user_id=exec_uid,
+            dashboard_id=dashboard_id,
+            execution_target=raw_target,
+            title=title,
+            instructions=instructions,
+            interval_minutes=interval_m,
+            enabled=bool(arguments.get("enabled", True)),
+            coding_workflow=coding_wf,
+        )
+    except ValueError as e:
+        return _err(str(e))
     if not row:
         return _err("failed to create job")
     return _ok({"job": scheduler_jobs_store.row_to_public(row)})

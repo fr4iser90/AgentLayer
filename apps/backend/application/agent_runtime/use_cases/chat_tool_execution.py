@@ -8,6 +8,11 @@ from typing import Any
 
 from apps.backend.application.agent_runtime.runtime.prompts import AgentChatCancelled, _wait_for_tool_permission_reply
 from apps.backend.application.agent_runtime.runtime.tool_loop import _CODING_TOOLS_PERMISSION_ASK, _thread_with_cancel
+from apps.backend.application.agent_runtime.use_cases.chat_client_dispatch import (
+    CLIENT_PATH_TOOLS,
+    dispatch_client_workspace_tool,
+    workspace_is_client,
+)
 from apps.backend.domain.tools.executor import execute_tool
 from apps.backend.domain.tools.invocation_context import (
     reset_tool_invocation_messages,
@@ -50,6 +55,19 @@ async def execute_tool_with_agent_policy(
         )
     if policy_block:
         return json.dumps({"ok": False, "error": policy_block}, ensure_ascii=False)
+
+    if workspace_is_client(tool_context) and name in CLIENT_PATH_TOOLS:
+        return await dispatch_client_workspace_tool(
+            name=name,
+            args=args,
+            tool_context=tool_context,
+            control_queue=control_queue,
+            cancel_event=cancel_event,
+            event_emit=event_emit,
+            agent_run_id=agent_run_id,
+            round_i=round_i,
+            handle_control_dict=handle_control_dict,
+        )
 
     tctx = set_tool_invocation_messages(list(messages))
     try:

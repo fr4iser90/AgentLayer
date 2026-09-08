@@ -23,6 +23,7 @@ from apps.backend.infrastructure.workspace.workspace_project_common import (
     WorkspaceState,
     resolve_user_workspace_dir,
     slug_from_git_url,
+    validate_client_workspace_path,
     validate_workspace_name,
     workspace_base_path,
 )
@@ -432,7 +433,7 @@ def create_implementation_git_branch(
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT path, name, git_branch, source
+                    SELECT path, name, git_branch, source, execution_mode
                     FROM project_workspaces
                     WHERE id = %s AND owner_user_id = %s AND access_role IN ('owner', 'editor')
                     """,
@@ -445,6 +446,14 @@ def create_implementation_git_branch(
 
     if not row:
         return {"ok": False, "error": "workspace not found or no permission to modify"}
+
+    from apps.backend.infrastructure.workspace.workspace_execution import (
+        BROWSE_REFUSAL,
+        is_client_execution,
+    )
+
+    if is_client_execution(row[4] if len(row) > 4 else None):
+        return {"ok": False, "error": BROWSE_REFUSAL}
 
     repo_path = Path(str(row[0])).resolve()
     ws_name = str(row[1] or "")

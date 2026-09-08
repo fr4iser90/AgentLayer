@@ -49,6 +49,11 @@ def insert_job(
     coding_workflow: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     wf = coding_workflow if coding_workflow is not None else {}
+    from apps.backend.infrastructure.workspace.workspace_execution import (
+        raise_if_workflow_targets_client,
+    )
+
+    raise_if_workflow_targets_client(wf)
     with db.pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
@@ -258,6 +263,12 @@ def update_job(
     new_instr = job.get("instructions") if instructions is None else instructions
     new_interval = job.get("interval_minutes") if interval_minutes is None else interval_minutes
     new_wf = job.get("coding_workflow") if coding_workflow is None else coding_workflow
+    from apps.backend.infrastructure.workspace.workspace_execution import (
+        raise_if_workflow_targets_client,
+    )
+
+    if isinstance(new_wf, dict):
+        raise_if_workflow_targets_client(new_wf)
     with db.pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(

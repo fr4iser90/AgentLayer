@@ -10,6 +10,12 @@ Client → server JSON:
   - ``{"type":"continue_step"}`` → after ``agent.step_wait``, resume the tool/LLM loop (see ``agent_pause_between_rounds`` in chat body)
   - ``{"type":"permission_reply","request_id":"…","reply":"once"|"always"|"reject","message":"?"}`` →
         response to ``agent.permission_ask`` (``body.agent_permission_ask`` + agent plugins with ``AGENT_CODING_TOOLS_PERMISSION_ASK``) before a gated tool runs
+  - ``{"type":"tool_result","request_id":"…","ok":true,"result":"…"}`` or
+        ``{"type":"tool_result","request_id":"…","ok":false,"error":"…"}`` → result of ``agent.tool_invoke``
+        (ADR 0009: client-executed workspace tools). Unknown ``request_id`` is ignored.
+  - ``{"type":"client_capabilities","workspace_tools":["read_file","bash",…]}`` → tools this client
+        can run locally; sent on connect and again on bind. The backend drops the rest from the
+        forwarded set for a client-placed workspace.
   - ``{"type":"secret_saved","prompt_id":"…","service_key":"ssc_api_key","ok":true}`` → optional ack after the user saved via the in-chat secret card
   - ``{"type":"chat","body":{...},...}``
         body = OpenAI-style chat completion request (``stream`` ignored).
@@ -23,7 +29,7 @@ Client → server JSON:
 
 Server → client JSON events (subset):
   - ``agent.session``, ``agent.context_update``, ``agent.context_compacted``, ``agent.llm_round_start``, ``agent.llm_delta`` (token chunks when ``agent_stream_llm``), ``agent.llm_round`` (optional ``usage`` when the LLM returns OpenAI-style token counts), ``agent.tool_start``,
-    ``agent.tool_done``, ``agent.goal``, ``agent.todos``, ``agent.secret_prompt``, ``agent.permission_ask``, ``agent.subagent_start``, ``agent.subagent_step``,
+    ``agent.tool_done``, ``agent.tool_invoke`` (ADR 0009: run this workspace tool locally, then reply with ``tool_result``), ``agent.goal``, ``agent.todos``, ``agent.secret_prompt``, ``agent.permission_ask``, ``agent.subagent_start``, ``agent.subagent_step``,
     ``agent.subagent_done``,
     ``agent.done``, ``agent.cancelled``
   - ``chat.completion`` — final OpenAI-shaped response (or error payload on failure)
@@ -88,6 +94,14 @@ async def chat_websocket(websocket: WebSocket) -> None:
     control_queue: asyncio.Queue = asyncio.Queue()
     cancel_event = asyncio.Event()
     pump_stop = asyncio.Event()
+    session_workspace_tools: set[str] = set()
+
+    def _apply_client_capabilities(msg: dict[str, Any]) -> None:
+        raw = msg.get("workspace_tools")
+        if not isinstance(raw, list):
+            return
+        session_workspace_tools.clear()
+        session_workspace_tools.update(str(x).strip() for x in raw if str(x).strip())
 
     async def emit(ev: dict[str, Any]) -> None:
         try:
@@ -140,6 +154,12 @@ async def chat_websocket(websocket: WebSocket) -> None:
             if ft == "ping":
                 await emit({"type": "pong"})
                 continue
+            if ft == "client_capabilities":
+                _apply_client_capabilities(first)
+                continue
+            if ft in ("tool_result", "permission_reply", "cancel", "add_tools", "continue_step", "secret_saved"):
+                # Stray control frames between turns: ignore rather than fail the next chat.
+                continue
             if ft != "chat":
                 await emit({"type": "error", "detail": "expected type=chat to start a turn"})
                 continue
@@ -186,6 +206,7 @@ async def chat_websocket(websocket: WebSocket) -> None:
                     event_emit=emit,
                     control_queue=control_queue,
                     cancel_event=cancel_event,
+                    client_workspace_tools=frozenset(session_workspace_tools),
                 )
             except AgentChatCancelled:
                 await emit({"type": "agent.aborted", "detail": "cancelled"})

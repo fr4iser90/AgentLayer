@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 from typing import Any
+import asyncio
+import json
 
 from rich.markup import escape
 from textual import on
@@ -16,13 +19,25 @@ from textual.widgets import Button, Footer, Input, Static
 from . import commands
 from .client import AgentLayerError, ChatSocket, RestClient, chat_body
 from .config import Settings
-from .events import Line, PermissionRequest, TurnState, answer_from_completion, goal_strip, interpret
+from .events import (
+    Line,
+    PermissionRequest,
+    ToolInvoke,
+    TurnState,
+    answer_from_completion,
+    goal_strip,
+    interpret,
+)
+from .jail import bind_refusal_reason
+from .local_exec import ADVERTISED_TOOLS, GATED_TOOLS, execute
 from .workspaces import (
     format_index_status,
     format_workspace_rows,
+    is_client_workspace,
     normalize_index_mode,
     resolve_workspace,
     short_id,
+    take_flag,
 )
 
 
@@ -113,6 +128,9 @@ class AgentLayerTui(App[None]):
         self._conversation_id = ""
         self._workspace_id = ""
         self._workspace_name = ""
+        self._workspace_local = False
+        self._workspace_path = ""
+        self._local_always: set[str] = set()
 
     # ---------------------------------------------------------------- layout
 
@@ -130,7 +148,10 @@ class AgentLayerTui(App[None]):
         s = self._settings
         bits = [s.base_url, s.model or "default model", s.agent_id or "general"]
         if self._workspace_name or self._workspace_id:
-            bits.append(f"ws:{self._workspace_name or short_id(self._workspace_id)}")
+            label = f"ws:{self._workspace_name or short_id(self._workspace_id)}"
+            if self._workspace_local:
+                label += " (local)"
+            bits.append(label)
         return "  AgentLayer  \u00b7  " + "  \u00b7  ".join(bits)
 
     async def on_mount(self) -> None:
@@ -144,6 +165,10 @@ class AgentLayerTui(App[None]):
             self._set_hint("not connected")
             return
         self._append(Line("info", "connected. /help for commands."))
+        try:
+            await self._socket.send_client_capabilities(sorted(ADVERTISED_TOOLS))
+        except AgentLayerError as e:
+            self._append(Line("warn", f"could not advertise local tools: {e}"))
         self.run_worker(self._consume_events(), exclusive=False, name="events")
         await self._load_runtime_snapshot()
 
@@ -308,6 +333,9 @@ class AgentLayerTui(App[None]):
         if update.permission is not None:
             self._ask_permission(update.permission)
 
+        if update.tool_invoke is not None:
+            self.run_worker(self._run_local_tool(update.tool_invoke), exclusive=False)
+
         if update.completion is not None:
             self._finish(update.completion)
         elif update.finished:
@@ -340,6 +368,51 @@ class AgentLayerTui(App[None]):
             self._append(Line("warn", f"{request.tool_name}: {chosen}"))
 
         self.push_screen(PermissionScreen(request), reply)
+
+    async def _run_local_tool(self, invoke: ToolInvoke) -> None:
+        """Execute an ``agent.tool_invoke`` against the bound local directory and reply."""
+
+        async def reply(*, ok: bool, result: str = "", error: str = "") -> None:
+            try:
+                await self._socket.send_tool_result(
+                    invoke.request_id, ok=ok, result=result, error=error
+                )
+            except AgentLayerError as e:
+                self._append(Line("error", str(e)))
+
+        if not invoke.request_id:
+            return
+        if not self._workspace_local or not self._workspace_path:
+            await reply(ok=False, error="unsupported")
+            self._append(Line("warn", f"{invoke.tool_name}: no local workspace bound"))
+            return
+        root = Path(self._workspace_path)
+        if invoke.tool_name in GATED_TOOLS and invoke.tool_name not in self._local_always:
+            preview = json.dumps(invoke.arguments, ensure_ascii=False, default=str)[:2000]
+            request = PermissionRequest(
+                request_id=invoke.request_id,
+                tool_name=invoke.tool_name,
+                args_preview=preview,
+                round=invoke.round,
+            )
+            chosen = await self.push_screen_wait(PermissionScreen(request))
+            answer = chosen or "reject"
+            if answer == "always":
+                self._local_always.add(invoke.tool_name)
+            if answer not in ("once", "always"):
+                await reply(ok=False, error="User rejected permission for this tool call.")
+                self._append(Line("warn", f"{invoke.tool_name}: rejected"))
+                return
+            self._append(Line("warn", f"{invoke.tool_name}: {answer}"))
+        payload = await asyncio.to_thread(execute, invoke.tool_name, invoke.arguments, root)
+        try:
+            parsed = json.loads(payload)
+            ok = bool(parsed.get("ok")) if isinstance(parsed, dict) else True
+        except (TypeError, ValueError):
+            ok = True
+        await reply(ok=True, result=payload)
+        mark = "ok" if ok else "failed"
+        self._append(Line("tool_done" if ok else "tool_error", f"{invoke.tool_name} {mark} (local)"))
 
     # -------------------------------------------------------------- commands
 
@@ -491,20 +564,41 @@ class AgentLayerTui(App[None]):
 
     # ------------------------------------------------------------ workspaces
 
+    def _local_bind_path(self, raw: str) -> tuple[str, str | None]:
+        """Resolve a ``--local`` path and refuse home, ``/``, and system trees."""
+        path = (raw or "").strip() or str(Path.cwd())
+        candidate = Path(path).expanduser()
+        if not candidate.is_absolute():
+            candidate = candidate.resolve()
+        else:
+            try:
+                candidate = candidate.resolve()
+            except OSError as e:
+                return path, str(e)
+        reason = bind_refusal_reason(candidate)
+        if reason:
+            return str(candidate), reason
+        return str(candidate), None
+
     async def _adopt_workspace(self, workspace_id: str) -> None:
         """Mirror a conversation's stored binding locally, naming it if we can."""
         self._workspace_id = workspace_id
         self._workspace_name = ""
+        self._workspace_local = False
+        self._workspace_path = ""
         if workspace_id:
             try:
                 for row in await self._rest.workspaces():
                     if str(row.get("id")) == workspace_id:
                         self._workspace_name = str(row.get("name") or "")
+                        self._workspace_local = is_client_workspace(row)
+                        self._workspace_path = str(row.get("path") or "")
                         break
             except Exception:  # noqa: BLE001 — a name is cosmetic, the id is what matters
                 pass
+            where = " (local)" if self._workspace_local else ""
             self._append(
-                Line("dim", f"workspace {self._workspace_name or short_id(workspace_id)}")
+                Line("dim", f"workspace {self._workspace_name or short_id(workspace_id)}{where}")
             )
         self.query_one("#title", Static).update(self._title_text())
 
@@ -512,6 +606,29 @@ class AgentLayerTui(App[None]):
         verb, _, rest = args.partition(" ")
         try:
             if verb.strip().lower() == "create":
+                local, rest = take_flag(rest, "--local")
+                if local:
+                    name, _, raw_path = rest.partition(" ")
+                    if not name:
+                        self._append(
+                            Line("warn", "/workspace create --local <name> [absolute path]")
+                        )
+                        return
+                    path, err = self._local_bind_path(raw_path.strip() or str(Path.cwd()))
+                    if err:
+                        self._append(Line("warn", err))
+                        return
+                    row = await self._rest.create_workspace(
+                        name, execution_mode="client", path=path
+                    )
+                    self._append(
+                        Line(
+                            "info",
+                            f"created local {short_id(row.get('id'))}  {row.get('name')}  {path}",
+                        )
+                    )
+                    await self._bind_row(row)
+                    return
                 name, _, git_url = rest.strip().partition(" ")
                 if not name:
                     self._append(Line("warn", "/workspace create <name> [git url]"))
@@ -541,11 +658,47 @@ class AgentLayerTui(App[None]):
                 self._append(Line("dim", "nothing bound — /workspace to list"))
             return
 
+        local, local_path = take_flag(query, "--local")
+        if local:
+            path, err = self._local_bind_path(local_path or str(Path.cwd()))
+            if err:
+                self._append(Line("warn", err))
+                return
+            try:
+                rows = await self._rest.workspaces()
+            except Exception as e:  # noqa: BLE001
+                self._append(Line("error", f"{type(e).__name__}: {e}"))
+                return
+            match = next(
+                (
+                    r
+                    for r in rows
+                    if is_client_workspace(r) and str(r.get("path") or "") == path
+                ),
+                None,
+            )
+            if match is None:
+                name = Path(path).name or "local"
+                try:
+                    match = await self._rest.create_workspace(
+                        name, execution_mode="client", path=path
+                    )
+                except AgentLayerError as e:
+                    self._append(Line("error", str(e)))
+                    return
+                self._append(
+                    Line("info", f"created local {short_id(match.get('id'))}  {name}  {path}")
+                )
+            await self._bind_row(match)
+            return
+
         if query.lower() in ("off", "none", "clear"):
             if not await self._ensure_conversation():
                 return
             await self._rest.bind_workspace(self._conversation_id, None)
             self._workspace_id = self._workspace_name = ""
+            self._workspace_local = False
+            self._workspace_path = ""
             self._append(Line("info", "unbound"))
             self.query_one("#title", Static).update(self._title_text())
             return
@@ -576,9 +729,19 @@ class AgentLayerTui(App[None]):
         ok = await self._rest.bind_workspace(self._conversation_id, workspace_id)
         self._workspace_id = workspace_id
         self._workspace_name = str(row.get("name") or "")
+        self._workspace_local = is_client_workspace(row)
+        self._workspace_path = str(row.get("path") or "")
         self.query_one("#title", Static).update(self._title_text())
+        if self._workspace_local:
+            try:
+                await self._socket.send_client_capabilities(sorted(ADVERTISED_TOOLS))
+            except AgentLayerError:
+                pass
         if ok:
-            self._append(Line("info", f"bound {self._workspace_name} ({short_id(workspace_id)})"))
+            extra = "  local" if self._workspace_local else ""
+            self._append(
+                Line("info", f"bound {self._workspace_name} ({short_id(workspace_id)}){extra}")
+            )
         else:
             # The turn still gets workspace_id in its body, so coding works this session.
             self._append(Line("warn", "bound for this session only \u2014 saving the preference failed"))
@@ -586,6 +749,15 @@ class AgentLayerTui(App[None]):
     async def _cmd_index(self, args: str) -> None:
         if not self._workspace_id:
             self._append(Line("warn", "bind a workspace first — /workspace, then /bind <name>"))
+            return
+        if self._workspace_local:
+            self._append(
+                Line(
+                    "warn",
+                    "this workspace runs on the client: the server has no tree to index "
+                    "(ADR 0009, milestone 3)",
+                )
+            )
             return
         arg = args.strip().lower()
         try:

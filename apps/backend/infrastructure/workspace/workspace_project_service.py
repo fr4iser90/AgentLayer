@@ -8,12 +8,20 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from apps.backend.infrastructure.workspace.workspace_columns import (
+    CLIENT_EXECUTION,
+    SERVER_EXECUTION,
+    WORKSPACE_SELECT_SQL,
+    normalize_execution_mode,
+    workspace_row_to_api,
+)
 from apps.backend.infrastructure.workspace.workspace_project_common import (
     AGENTLAYER_SELF_NAME,
     WorkspaceCreateError,
     WorkspaceState,
     resolve_user_workspace_dir,
     slug_from_git_url,
+    validate_client_workspace_path,
     validate_workspace_name,
     workspace_base_path,
 )
@@ -32,6 +40,8 @@ def create_project_workspace_for_user(
     git_url: str | None = None,
     git_branch: str = "main",
     benchmark_run_id: uuid.UUID | None = None,
+    execution_mode: str = SERVER_EXECUTION,
+    path: str | None = None,
 ) -> dict[str, Any]:
     """
     Create a row in ``project_workspaces`` and materialize on disk (same rules as ``POST /v1/workspaces``).
@@ -56,6 +66,13 @@ def create_project_workspace_for_user(
         raise WorkspaceCreateError("source must be manual or git")
     if src == "git" and not (git_url or "").strip():
         raise WorkspaceCreateError("git_url is required when source is git")
+
+    mode = normalize_execution_mode(execution_mode)
+    if mode == CLIENT_EXECUTION and src == "git":
+        raise WorkspaceCreateError(
+            "A client workspace cannot be git-cloned on the server. "
+            "Clone it locally, then create with execution_mode=client and the local path."
+        )
 
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
@@ -94,36 +111,41 @@ def create_project_workspace_for_user(
                         f"Workspace quota exceeded ({quota} max). Delete some workspaces first."
                     )
 
-    base = _workspace_base_path()
-    user_workspace_dir = resolve_user_workspace_dir(base, user.id, nm)
-
-    if src == "git":
-        gu = git_url.strip()
-        user_workspace_dir.parent.mkdir(parents=True, exist_ok=True)
-        if user_workspace_dir.exists():
-            shutil.rmtree(user_workspace_dir, ignore_errors=True)
-        user_workspace_dir.mkdir(parents=True, exist_ok=True)
-        br = (git_branch or "main").strip() or "main"
-        result = subprocess.run(
-            [
-                "git",
-                "clone",
-                "--branch",
-                br,
-                "--depth",
-                "1",
-                gu,
-                str(user_workspace_dir),
-            ],
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            shutil.rmtree(user_workspace_dir, ignore_errors=True)
-            err = (result.stderr or result.stdout or "").strip() or "git clone failed"
-            raise WorkspaceCreateError(f"Git clone failed: {err[:800]}")
+    materialized_dir: Path | None = None
+    if mode == CLIENT_EXECUTION:
+        stored_path = validate_client_workspace_path(path)
     else:
-        user_workspace_dir.mkdir(parents=True, exist_ok=True)
+        base = _workspace_base_path()
+        user_workspace_dir = resolve_user_workspace_dir(base, user.id, nm)
+        if src == "git":
+            gu = git_url.strip()
+            user_workspace_dir.parent.mkdir(parents=True, exist_ok=True)
+            if user_workspace_dir.exists():
+                shutil.rmtree(user_workspace_dir, ignore_errors=True)
+            user_workspace_dir.mkdir(parents=True, exist_ok=True)
+            br = (git_branch or "main").strip() or "main"
+            result = subprocess.run(
+                [
+                    "git",
+                    "clone",
+                    "--branch",
+                    br,
+                    "--depth",
+                    "1",
+                    gu,
+                    str(user_workspace_dir),
+                ],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0:
+                shutil.rmtree(user_workspace_dir, ignore_errors=True)
+                err = (result.stderr or result.stdout or "").strip() or "git clone failed"
+                raise WorkspaceCreateError(f"Git clone failed: {err[:800]}")
+        else:
+            user_workspace_dir.mkdir(parents=True, exist_ok=True)
+        stored_path = str(user_workspace_dir)
+        materialized_dir = user_workspace_dir
 
     br_ins = (git_branch or "main").strip() or "main"
     gu_ins = (git_url or "").strip() if src == "git" else None
@@ -134,44 +156,34 @@ def create_project_workspace_for_user(
                 cur.execute(
                     """
                     INSERT INTO project_workspaces (
-                      owner_user_id, name, path, source, git_url, git_branch, access_role, benchmark_run_id
+                      owner_user_id, name, path, source, git_url, git_branch,
+                      access_role, benchmark_run_id, execution_mode
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, 'owner', %s)
-                    RETURNING id, owner_user_id, name, path, source, git_url, git_branch, access_role, created_at, updated_at,
-                              verify_command, verify_required
+                    VALUES (%s, %s, %s, %s, %s, %s, 'owner', %s, %s)
+                    RETURNING id
                     """,
-                    (user.id, nm, str(user_workspace_dir), src, gu_ins, br_ins, bench_run_id),
+                    (user.id, nm, stored_path, src, gu_ins, br_ins, bench_run_id, mode),
+                )
+                created = cur.fetchone()
+                if not created:
+                    raise WorkspaceCreateError("Failed to create workspace (no row returned)")
+                cur.execute(
+                    "SELECT " + WORKSPACE_SELECT_SQL + " FROM project_workspaces WHERE id = %s",
+                    (created[0],),
                 )
                 row = cur.fetchone()
             conn.commit()
         if not row:
             raise WorkspaceCreateError("Failed to create workspace (no row returned)")
-        return {
-            "id": str(row[0]),
-            "owner_user_id": str(row[1]),
-            "name": row[2],
-            "path": row[3],
-            "source": row[4],
-            "git_url": row[5],
-            "git_branch": row[6],
-            "access_role": row[7],
-            "created_at": row[8].isoformat() if row[8] else None,
-            "updated_at": row[9].isoformat() if row[9] else None,
-            "verify_command": row[10],
-            "verify_required": bool(row[11]) if row[11] is not None else False,
-            "semantic_index_enabled": True,
-            "retrieval_enabled": True,
-            "last_index_at": None,
-            "last_index_stats": None,
-            "last_index_error": None,
-        }
+        return workspace_row_to_api(row)
     except Exception as e:
         from psycopg.errors import UniqueViolation
 
         ex: BaseException | None = e
         while ex is not None and not isinstance(ex, UniqueViolation):
             ex = ex.__cause__ or ex.__context__
-        shutil.rmtree(user_workspace_dir, ignore_errors=True)
+        if materialized_dir is not None:
+            shutil.rmtree(materialized_dir, ignore_errors=True)
         if isinstance(ex, UniqueViolation):
             raise WorkspaceCreateError(
                 "Workspace name already exists for this user; pick a different name."
@@ -224,7 +236,7 @@ def delete_owned_workspace(*, workspace_id: str, owner_user_id: Any) -> bool:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT path, name FROM project_workspaces
+                    SELECT path, name, execution_mode FROM project_workspaces
                     WHERE id = %s AND owner_user_id = %s AND access_role = 'owner'
                     """,
                     (wid, owner_user_id),
@@ -234,11 +246,15 @@ def delete_owned_workspace(*, workspace_id: str, owner_user_id: Any) -> bool:
                     return False
 
                 ws_path = Path(row[0])
+                client_side = normalize_execution_mode(row[2]) == CLIENT_EXECUTION
                 _delete_workspace_db_dependencies(cur, wid)
                 cur.execute("DELETE FROM project_workspaces WHERE id = %s", (wid,))
             conn.commit()
 
-        _delete_workspace_files(ws_path)
+        # The stored path for a client workspace belongs to the user's machine. Deleting
+        # it here would walk whatever happens to exist at that path in the container.
+        if not client_side:
+            _delete_workspace_files(ws_path)
         _delete_workspace_index_sidecars(wid)
         logger.info("deleted workspace %s (%s)", wid, row[1])
         return True

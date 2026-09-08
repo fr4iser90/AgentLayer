@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any
+import json
 
 TOOL_GLYPH = "\u23fa"  # ⏺
 OK_MARK = "\u2713"  # ✓
@@ -36,6 +37,16 @@ class PermissionRequest:
     round: int | None = None
 
 
+@dataclass(frozen=True)
+class ToolInvoke:
+    """``agent.tool_invoke``: run this tool locally and reply with ``tool_result``."""
+
+    request_id: str
+    tool_name: str
+    arguments: dict[str, Any]
+    round: int | None = None
+
+
 @dataclass
 class Update:
     """Everything one event changes. Fields left at their default mean "unchanged"."""
@@ -45,6 +56,7 @@ class Update:
     reasoning_delta: str = ""
     strip_changed: bool = False
     permission: PermissionRequest | None = None
+    tool_invoke: ToolInvoke | None = None
     completion: dict[str, Any] | None = None
     finished: bool = False
     error: str | None = None
@@ -331,6 +343,22 @@ def interpret(msg: dict[str, Any], state: TurnState) -> Update:
                 args_preview=_s(msg, "args_preview"),
                 round=_i(msg, "round"),
             )
+        )
+
+    if typ == "agent.tool_invoke":
+        raw_args = msg.get("arguments")
+        arguments = dict(raw_args) if isinstance(raw_args, dict) else {}
+        name = _s(msg, "tool_name") or "tool"
+        preview = json.dumps(arguments, ensure_ascii=False, default=str)[:200]
+        return Update(
+            lines=[Line("tool_start", f"{TOOL_GLYPH} {name} (local)", key=f"invoke:{_s(msg, 'request_id')}")],
+            tool_invoke=ToolInvoke(
+                request_id=_s(msg, "request_id"),
+                tool_name=name,
+                arguments=arguments,
+                round=_i(msg, "round"),
+            ),
+            wait_hint=f"running {name} locally" + (f" — {preview}" if preview and preview != "{}" else ""),
         )
 
     if typ == "agent.secret_prompt":

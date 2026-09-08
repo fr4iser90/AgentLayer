@@ -49,21 +49,20 @@ async def project_run_create(request: Request, body: ProjectRunCreateBody) -> di
         wf_raw.setdefault("workspace_id", str(body.workspace_id).strip())
     try:
         wf = normalize_coding_workflow(wf_raw, require_workspace=True)
+        row = project_runs_store.insert_run(
+            tenant_id=tenant_id,
+            created_by_user_id=user.id,
+            execution_user_id=user.id,
+            scheduler_job_id=None,
+            dashboard_id=ws_id,
+            project_row_id=(body.project_row_id or "").strip() or None,
+            project_title=(body.project_title or "").strip() or None,
+            execution_target="coding",
+            instructions=instr,
+            coding_workflow=wf,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-
-    row = project_runs_store.insert_run(
-        tenant_id=tenant_id,
-        created_by_user_id=user.id,
-        execution_user_id=user.id,
-        scheduler_job_id=None,
-        dashboard_id=ws_id,
-        project_row_id=(body.project_row_id or "").strip() or None,
-        project_title=(body.project_title or "").strip() or None,
-        execution_target="coding",
-        instructions=instr,
-        coding_workflow=wf,
-    )
     if not row:
         raise HTTPException(status_code=500, detail="failed to create run")
     return {"ok": True, "run": project_runs_store.row_to_public(row)}

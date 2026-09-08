@@ -113,21 +113,20 @@ async def scheduler_job_create(request: Request, body: SchedulerJobCreateBody) -
         wf = normalize_coding_workflow(
             wf_raw, require_workspace=agent_requires_workspace_for_target(tgt)
         )
+        row = scheduler_jobs_store.insert_job(
+            tenant_id=tenant_id,
+            created_by_user_id=user.id,
+            execution_user_id=user.id,
+            dashboard_id=ws_id,
+            execution_target=tgt,
+            title=(body.title or "").strip() or None,
+            instructions=body.instructions.strip(),
+            interval_minutes=int(body.interval_minutes),
+            enabled=bool(body.enabled),
+            coding_workflow=wf,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-
-    row = scheduler_jobs_store.insert_job(
-        tenant_id=tenant_id,
-        created_by_user_id=user.id,
-        execution_user_id=user.id,
-        dashboard_id=ws_id,
-        execution_target=tgt,
-        title=(body.title or "").strip() or None,
-        instructions=body.instructions.strip(),
-        interval_minutes=int(body.interval_minutes),
-        enabled=bool(body.enabled),
-        coding_workflow=wf,
-    )
     if not row:
         raise HTTPException(status_code=500, detail="failed to create job")
     return {"ok": True, "job": scheduler_jobs_store.row_to_public(row)}

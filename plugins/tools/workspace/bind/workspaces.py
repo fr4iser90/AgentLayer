@@ -52,6 +52,7 @@ def list(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> st
             "git_url": w.get("git_url"),
             "git_branch": w.get("git_branch"),
             "path": w.get("path"),
+            "execution_mode": w.get("execution_mode") or "server",
         }
         for w in workspaces
     ]

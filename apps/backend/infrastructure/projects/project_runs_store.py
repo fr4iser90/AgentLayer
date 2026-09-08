@@ -31,6 +31,11 @@ def insert_run(
     coding_workflow: dict[str, Any] | None,
 ) -> dict[str, Any]:
     wf = coding_workflow if coding_workflow is not None else {}
+    from apps.backend.infrastructure.workspace.workspace_execution import (
+        raise_if_workflow_targets_client,
+    )
+
+    raise_if_workflow_targets_client(wf)
     with db.pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(

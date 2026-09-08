@@ -114,21 +114,24 @@ async def scheduler_job_create(request: Request, body: SchedulerJobCreateBody) -
             ws_id = uuid.UUID(str(body.dashboard_id).strip())
         except (ValueError, TypeError) as e:
             raise HTTPException(status_code=400, detail="invalid dashboard_id") from e
-    wf = _merge_coding_workflow(
-        body.coding_workflow, body.workspace_id, execution_target=tgt
-    )
-    row = scheduler_jobs_store.insert_job(
-        tenant_id=tenant_id,
-        created_by_user_id=user.id,
-        execution_user_id=user.id,
-        dashboard_id=ws_id,
-        execution_target=tgt,
-        title=(body.title or "").strip() or None,
-        instructions=body.instructions.strip(),
-        interval_minutes=int(body.interval_minutes),
-        enabled=bool(body.enabled),
-        coding_workflow=wf,
-    )
+    try:
+        wf = _merge_coding_workflow(
+            body.coding_workflow, body.workspace_id, execution_target=tgt
+        )
+        row = scheduler_jobs_store.insert_job(
+            tenant_id=tenant_id,
+            created_by_user_id=user.id,
+            execution_user_id=user.id,
+            dashboard_id=ws_id,
+            execution_target=tgt,
+            title=(body.title or "").strip() or None,
+            instructions=body.instructions.strip(),
+            interval_minutes=int(body.interval_minutes),
+            enabled=bool(body.enabled),
+            coding_workflow=wf,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     if not row:
         raise HTTPException(status_code=500, detail="failed to create job")
     return {"ok": True, "job": scheduler_jobs_store.row_to_public(row)}
@@ -149,21 +152,27 @@ async def scheduler_job_patch(request: Request, job_id: str, body: SchedulerJobP
         merged = dict(existing.get("coding_workflow") or {})
         if isinstance(body.coding_workflow, dict):
             merged.update(body.coding_workflow)
-        wf = _merge_coding_workflow(
-            merged,
-            body.workspace_id,
-            execution_target=normalize_execution_target(tgt) or tgt or "coding",
+        try:
+            wf = _merge_coding_workflow(
+                merged,
+                body.workspace_id,
+                execution_target=normalize_execution_target(tgt) or tgt or "coding",
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+    try:
+        row = scheduler_jobs_store.update_job(
+            job_id=jid,
+            tenant_id=tenant_id,
+            actor_user_id=user.id,
+            actor_is_admin=True,
+            title=body.title.strip() if isinstance(body.title, str) else None,
+            instructions=body.instructions.strip() if isinstance(body.instructions, str) else None,
+            interval_minutes=body.interval_minutes,
+            coding_workflow=wf,
         )
-    row = scheduler_jobs_store.update_job(
-        job_id=jid,
-        tenant_id=tenant_id,
-        actor_user_id=user.id,
-        actor_is_admin=True,
-        title=body.title.strip() if isinstance(body.title, str) else None,
-        instructions=body.instructions.strip() if isinstance(body.instructions, str) else None,
-        interval_minutes=body.interval_minutes,
-        coding_workflow=wf,
-    )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     if not row:
         raise HTTPException(status_code=404, detail="job not found")
     return {"ok": True, "job": scheduler_jobs_store.row_to_public(row)}

@@ -170,6 +170,10 @@ def maybe_schedule_index_on_attach(workspace: dict[str, Any]) -> bool:
 
     if not operator_index_on_attach_enabled():
         return False
+    from apps.backend.infrastructure.workspace.workspace_execution import is_client_execution
+
+    if is_client_execution(workspace.get("execution_mode")):
+        return False
     if not config.CODING_ENABLED:
         return False
     if workspace.get("semantic_index_enabled") is False:

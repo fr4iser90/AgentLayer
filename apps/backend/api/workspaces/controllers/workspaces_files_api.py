@@ -37,15 +37,19 @@ def _row_to_workspace(row: tuple) -> dict[str, Any]:
 async def validate_workspace_path(request: Request, workspace_id: str):
     """Check if workspace path exists and is accessible."""
     user = await get_current_user(request)
-    row = ws_services.fetch_owned_workspace_path_name(workspace_id, user.id)
+    row = ws_services.fetch_owned_workspace_row(workspace_id, user.id)
 
     if not row:
         raise HTTPException(status_code=404, detail="Workspace not found")
 
-    if (row[1] or "").strip() == ws_services.AGENTLAYER_SELF_NAME and not ws_services.self_editing_allowed(user):
+    if (row[2] or "").strip() == ws_services.AGENTLAYER_SELF_NAME and not ws_services.self_editing_allowed(user):
         raise HTTPException(status_code=404, detail="Workspace not found")
 
-    workspace_path = Path(row[0])
+    browse_refuse = ws_services.client_workspace_refusal(row, kind="browse")
+    if browse_refuse:
+        raise HTTPException(status_code=400, detail=browse_refuse)
+
+    workspace_path = Path(row[3])
     return {
         "exists": workspace_path.exists(),
         "path": str(workspace_path),
@@ -54,17 +58,21 @@ async def validate_workspace_path(request: Request, workspace_id: str):
 
 
 async def _workspace_root_path_row(request: Request, workspace_id: str) -> tuple[Path, tuple]:
-    """Filesystem root path and DB row (path, name) for workspace owned by user."""
+    """Filesystem root path and full DB row for a workspace owned by the user."""
     user = await get_current_user(request)
-    row = ws_services.fetch_owned_workspace_path_name(workspace_id, user.id)
+    row = ws_services.fetch_owned_workspace_row(workspace_id, user.id)
 
     if not row:
         raise HTTPException(status_code=404, detail="Workspace not found")
 
-    if (row[1] or "").strip() == ws_services.AGENTLAYER_SELF_NAME and not ws_services.self_editing_allowed(user):
+    if (row[2] or "").strip() == ws_services.AGENTLAYER_SELF_NAME and not ws_services.self_editing_allowed(user):
         raise HTTPException(status_code=404, detail="Workspace not found")
 
-    return Path(row[0]), row
+    browse_refuse = ws_services.client_workspace_refusal(row, kind="browse")
+    if browse_refuse:
+        raise HTTPException(status_code=400, detail=browse_refuse)
+
+    return Path(row[3]), row
 
 
 def _looks_textish(blob: bytes) -> bool:

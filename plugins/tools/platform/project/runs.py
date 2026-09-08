@@ -77,21 +77,20 @@ def run_create(arguments: dict[str, Any]) -> str:
         wf_raw.setdefault("workspace_id", str(ws_arg).strip())
     try:
         wf = normalize_coding_workflow(wf_raw, require_workspace=True)
+        row = project_runs_store.insert_run(
+            tenant_id=tenant_id,
+            created_by_user_id=caller_uid,
+            execution_user_id=exec_uid,
+            scheduler_job_id=None,
+            dashboard_id=None,
+            project_row_id=None,
+            project_title=None,
+            execution_target="coding",
+            instructions=instructions,
+            coding_workflow=wf,
+        )
     except (ValueError, TypeError) as e:
         return _err(str(e))
-
-    row = project_runs_store.insert_run(
-        tenant_id=tenant_id,
-        created_by_user_id=caller_uid,
-        execution_user_id=exec_uid,
-        scheduler_job_id=None,
-        dashboard_id=None,
-        project_row_id=None,
-        project_title=None,
-        execution_target="coding",
-        instructions=instructions,
-        coding_workflow=wf,
-    )
     if not row:
         return _err("failed to create run")
     return _ok({"run": project_runs_store.row_to_public(row)})

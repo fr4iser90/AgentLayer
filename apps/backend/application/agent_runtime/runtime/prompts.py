@@ -144,6 +144,9 @@ async def _wait_for_tool_permission_reply(
                 return "reject", fb
             logger.debug("invalid permission_reply reply=%r; still waiting", raw)
             continue
+        if m.get("type") == "tool_result":
+            logger.debug("discarding tool_result while waiting for permission_reply")
+            continue
         if handle_control(m):
             raise AgentChatCancelled()
         if cancel_event is not None and cancel_event.is_set():

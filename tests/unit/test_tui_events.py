@@ -249,6 +249,22 @@ class TestTurnLifecycle:
         assert up.permission.request_id == "abc"
         assert up.permission.tool_name == "bash"
 
+    def test_tool_invoke_is_passed_through_and_labelled_local(self, state: TurnState) -> None:
+        up = interpret(
+            {
+                "type": "agent.tool_invoke",
+                "request_id": "rid-9",
+                "tool_name": "read_file",
+                "arguments": {"path": "README.md"},
+                "round": 1,
+            },
+            state,
+        )
+        assert up.tool_invoke is not None
+        assert up.tool_invoke.request_id == "rid-9"
+        assert up.tool_invoke.arguments["path"] == "README.md"
+        assert up.lines and "local" in up.lines[0].text
+
     def test_slot_wait_becomes_a_hint_not_a_line(self, state: TurnState) -> None:
         up = interpret(
             {"type": "agent.llm_slot_wait", "waited_sec": 4, "queue_ahead": 2}, state

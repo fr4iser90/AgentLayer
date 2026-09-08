@@ -58,6 +58,7 @@ class _WorkspaceResolverDeps:
                 "index_on_write": api.get("index_on_write"),
                 "graph_index_enabled": api.get("graph_index_enabled", True),
                 "retrieve_context_sources": api.get("retrieve_context_sources"),
+                "execution_mode": api.get("execution_mode"),
             }
         except Exception as exc:
             logger.error("failed to resolve workspace from DB: %s", exc)

@@ -10,8 +10,16 @@ WORKSPACE_SELECT_SQL = """
     created_at, updated_at, verify_command, verify_required, mcp_stdio_servers_json,
     semantic_index_enabled, retrieval_enabled, last_index_at, last_index_stats, last_index_error,
     docs_rag_enabled, last_docs_rag_at, last_docs_rag_stats, last_docs_rag_error,
-    index_on_write, graph_index_enabled, retrieve_context_sources
+    index_on_write, graph_index_enabled, retrieve_context_sources, execution_mode
 """
+
+SERVER_EXECUTION = "server"
+CLIENT_EXECUTION = "client"
+
+
+def normalize_execution_mode(raw: Any) -> str:
+    """Anything unrecognised means ``server``, so a bad value can never grant client semantics."""
+    return CLIENT_EXECUTION if str(raw or "").strip().lower() == CLIENT_EXECUTION else SERVER_EXECUTION
 
 
 def workspace_row_to_api(row: tuple) -> dict[str, Any]:
@@ -48,4 +56,5 @@ def workspace_row_to_api(row: tuple) -> dict[str, Any]:
         "retrieve_context_sources": (
             list(row[24]) if len(row) > 24 and isinstance(row[24], list) else None
         ),
+        "execution_mode": normalize_execution_mode(row[25] if len(row) > 25 else None),
     }

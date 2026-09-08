@@ -8,6 +8,7 @@ from typing import Any
 
 AGENTLAYER_SELF_NAME = "agentlayer-self"
 _WORKSPACE_NAME_MAX_LEN = 255
+_CLIENT_PATH_MAX_LEN = 4096
 
 
 class WorkspaceCreateError(Exception):
@@ -40,6 +41,25 @@ def validate_workspace_name(name: str) -> str:
     if "\0" in nm or "/" in nm or "\\" in nm:
         raise WorkspaceCreateError("workspace name must not contain path separators")
     return nm
+
+
+def validate_client_workspace_path(raw: str | None) -> str:
+    """Absolute path on the *client* machine. The backend must never open this string."""
+    p = (raw or "").strip()
+    if not p:
+        raise WorkspaceCreateError("path is required for a client workspace")
+    if len(p) > _CLIENT_PATH_MAX_LEN:
+        raise WorkspaceCreateError(
+            f"client workspace path must be at most {_CLIENT_PATH_MAX_LEN} characters"
+        )
+    if "\0" in p:
+        raise WorkspaceCreateError("invalid path")
+    posix = p.startswith("/")
+    windows_drive = len(p) >= 3 and p[0].isalpha() and p[1] == ":" and p[2] in "/\\"
+    windows_unc = p.startswith("\\\\")
+    if not (posix or windows_drive or windows_unc):
+        raise WorkspaceCreateError("client workspace path must be absolute")
+    return p
 
 
 def resolve_user_workspace_dir(base: Path, user_id: Any, name: str) -> Path:

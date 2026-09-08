@@ -10,6 +10,11 @@ from apps.backend.infrastructure.platform.config import config
 from apps.backend.infrastructure.plugins.mcp_runtime import _parse_servers_payload
 from apps.backend.infrastructure.workspace import workspace_delegate_store, workspace_retrieval
 from apps.backend.infrastructure.workspace.workspace_columns import WORKSPACE_SELECT_SQL, workspace_row_to_api
+from apps.backend.infrastructure.workspace.workspace_execution import (
+    BROWSE_REFUSAL,
+    INDEX_REFUSAL,
+    is_client_execution,
+)
 from apps.backend.infrastructure.workspace.workspace_git import (
     workspace_git_changes_summary,
     workspace_git_file_diff,
@@ -33,6 +38,16 @@ from apps.backend.infrastructure.workspace.workspace_service import (
 
 def row_to_workspace(row: tuple) -> dict[str, Any]:
     return workspace_row_to_api(row)
+
+
+def client_workspace_refusal(row: tuple | None, *, kind: str) -> str | None:
+    """HTTP 400 detail when ``row`` is a client workspace; ``None`` otherwise."""
+    if not row:
+        return None
+    api = workspace_row_to_api(row)
+    if not is_client_execution(api.get("execution_mode")):
+        return None
+    return INDEX_REFUSAL if kind == "index" else BROWSE_REFUSAL
 
 
 def workspace_base_path(default: str = "/workspace") -> Path:

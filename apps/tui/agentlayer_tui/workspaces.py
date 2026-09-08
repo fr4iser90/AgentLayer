@@ -22,6 +22,22 @@ def short_id(value: Any) -> str:
     return str(value or "")[:8]
 
 
+def is_client_workspace(row: dict[str, Any]) -> bool:
+    return _s(row, "execution_mode").lower() == "client"
+
+
+def take_flag(args: str, flag: str) -> tuple[bool, str]:
+    """Strip a leading ``--local``-style flag. The rest is left intact so paths may contain spaces."""
+    raw = (args or "").strip()
+    token = flag.strip()
+    if raw == token:
+        return True, ""
+    prefix = token + " "
+    if raw.startswith(prefix):
+        return True, raw[len(prefix) :].strip()
+    return False, raw
+
+
 def resolve_workspace(
     rows: list[dict[str, Any]], query: str
 ) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
@@ -65,11 +81,19 @@ def resolve_workspace(
 def format_workspace_rows(rows: list[dict[str, Any]], bound_id: str = "") -> list[str]:
     """One line per workspace; an arrow marks the one bound to this conversation."""
     if not rows:
-        return ["no workspaces — /workspace create <name> [git url]"]
+        return ["no workspaces — /workspace create <name> [git url]  or  /workspace create --local <name> [path]"]
     width = min(max((len(_s(r, "name")) for r in rows), default=4) + 2, 32)
     out: list[str] = []
     for row in rows:
         marker = "\u2192" if bound_id and _s(row, "id") == bound_id else " "
+        name = _s(row, "name")
+        if is_client_workspace(row):
+            origin = _s(row, "path") or "local"
+            out.append(
+                f"{marker} {short_id(row.get('id'))}  {name.ljust(width)}"
+                f"{'client':<10}----  on this machine  {origin[:44]}"
+            )
+            continue
         flags = "".join(
             (
                 "s" if row.get("semantic_index_enabled") else "-",
@@ -79,13 +103,12 @@ def format_workspace_rows(rows: list[dict[str, Any]], bound_id: str = "") -> lis
             )
         )
         indexed = "indexed" if row.get("last_index_at") else "not indexed"
-        name = _s(row, "name")
         origin = _s(row, "git_url") or _s(row, "source") or "manual"
         out.append(
             f"{marker} {short_id(row.get('id'))}  {name.ljust(width)}"
             f"{_s(row, 'git_branch') or '?':<10}{flags}  {indexed:<12}{origin[:44]}"
         )
-    out.append("  flags: s=semantic r=retrieval d=docs g=graph")
+    out.append("  flags: s=semantic r=retrieval d=docs g=graph   client = files stay on this machine")
     return out
 
 
