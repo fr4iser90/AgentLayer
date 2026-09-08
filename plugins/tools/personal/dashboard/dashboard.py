@@ -1012,15 +1012,20 @@ def import_layout(arguments: dict[str, Any]) -> str:
 
 
 def _normalize_proposal_ui_layout(raw: Any) -> dict[str, Any] | None:
-    """Accept ``{version, blocks}`` or a bare blocks array from weaker models."""
+    """Accept ``{version, blocks}`` or a bare blocks array from weaker models.
+
+    Proposals are always ``mode=grid`` (compacting); infinite canvas is a human edit mode.
+    """
     if isinstance(raw, builtins.list):
-        return {"version": 1, "blocks": raw}
+        return {"version": 1, "mode": "grid", "blocks": raw}
     if isinstance(raw, dict):
         blocks = raw.get("blocks")
         if isinstance(blocks, builtins.list):
             out = dict(raw)
             if "version" not in out:
                 out["version"] = 1
+            out["mode"] = "grid"
+            out.pop("canvas", None)
             return out
     return None
 

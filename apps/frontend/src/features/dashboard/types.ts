@@ -25,6 +25,17 @@ export interface GridPos {
   h: number;
 }
 
+/** Dashboard placement engine. ``grid`` = compacting 12-col; ``canvas`` = free infinite plane. */
+export type DashboardLayoutMode = "grid" | "canvas";
+
+export interface DashboardCanvasViewport {
+  /** Zoom factor (1 = 100%). */
+  zoom?: number;
+  /** Pan offset in screen px at zoom=1 (world origin shift). */
+  panX?: number;
+  panY?: number;
+}
+
 export interface ColumnDef {
   field: string;
   kind: "checkbox" | "text" | "number" | "select";
@@ -74,6 +85,10 @@ export interface UiBlock {
 
 export interface UiLayout {
   version: 1 | 2;
+  /** Default ``grid``. ``canvas`` = infinite free placement (root only). */
+  mode?: DashboardLayoutMode;
+  /** Optional viewport hint for canvas mode (client may also keep ephemeral pan/zoom). */
+  canvas?: DashboardCanvasViewport;
   blocks: UiBlock[];
 }
 

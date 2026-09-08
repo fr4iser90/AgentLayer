@@ -9,13 +9,11 @@ import {
   publicSharePasswordStorageKey,
 } from "../features/dashboard/DashboardPublicShareContext";
 import { publicShareUsesGalleryPresentation } from "../features/dashboard/publicSharePresentation";
+import { parseUiLayout } from "../features/dashboard/layoutMode";
 import type { DashboardDetail, UiLayout } from "../features/dashboard/types";
 
 function asUiLayout(raw: unknown): UiLayout | null {
-  if (!raw || typeof raw !== "object") return null;
-  const o = raw as { version?: number; blocks?: unknown };
-  if (!Array.isArray(o.blocks)) return null;
-  return { version: Number(o.version) || 1, blocks: o.blocks as UiLayout["blocks"] };
+  return parseUiLayout(raw);
 }
 
 export function DashboardPublicSharePage() {

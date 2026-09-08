@@ -1,5 +1,6 @@
 import type { AuthContextValue } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
+import { parseUiLayout } from "./layoutMode";
 import type { UiLayout } from "./types";
 
 export type LayoutProposalRow = {
@@ -16,10 +17,7 @@ export type LayoutProposalSet = {
 };
 
 export function asUiLayout(raw: unknown): UiLayout | null {
-  if (!raw || typeof raw !== "object") return null;
-  const o = raw as { version?: number; blocks?: unknown };
-  if (!Array.isArray(o.blocks)) return null;
-  return { version: Number(o.version) || 1, blocks: o.blocks as UiLayout["blocks"] };
+  return parseUiLayout(raw);
 }
 
 export function normalizeProposalSet(raw: unknown): LayoutProposalSet | null {

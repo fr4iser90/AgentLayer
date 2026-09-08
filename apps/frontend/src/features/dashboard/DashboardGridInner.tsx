@@ -63,6 +63,7 @@ function uniqueDataPath(prefix: string, blocks: UiBlock[], data: Record<string, 
 function mergeRglIntoBlocks(prev: UiLayout, rgl: Layout): UiLayout {
   const pos = new Map(rgl.map((it) => [it.i, it]));
   return {
+    ...prev,
     version: prev.version === 2 ? 2 : 1,
     blocks: prev.blocks.map((b) => {
       const L = pos.get(b.id);
@@ -232,6 +233,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
           : layout.blocks.reduce((m, b) => Math.max(m, b.grid.y + b.grid.h), 0);
       const block = createGridBlock(type, dp, y);
       setLayout((prev) => ({
+        ...prev,
         version: type === "section" || prev.version === 2 ? 2 : prev.version,
         blocks: [...prev.blocks, block],
       }));
@@ -247,6 +249,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
       const b = layout.blocks.find((x) => x.id === id);
       const dp = b?.props?.dataPath;
       setLayout((prev) => ({
+        ...prev,
         version: prev.version,
         blocks: prev.blocks.filter((x) => x.id !== id),
       }));
@@ -477,27 +480,4 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
       ) : null}
     </div>
   );
-}
-
-export function DashboardGridCanvas(props: {
-  layout: UiLayout;
-  setLayout: Dispatch<SetStateAction<UiLayout>>;
-  data: Record<string, unknown>;
-  setData: Dispatch<SetStateAction<Record<string, unknown>>>;
-  editMode: boolean;
-  contentReadOnly?: boolean;
-  interactOnly?: boolean;
-  dashboardId?: string | null;
-  hideToolbar?: boolean;
-  onPinBlock?: (blockId: string) => void;
-  onPinBlockToChat?: (blockId: string) => void;
-  chatFocusedBlockId?: string | null;
-  onBlockPropsSave?: (blockId: string, nextProps: UiBlock["props"]) => void | Promise<void>;
-  blockSettingsAutoSave?: boolean;
-  blockSettingsSaving?: boolean;
-  unreadBlockIds?: Set<string>;
-  highlightBlockId?: string | null;
-  onBlockSeen?: (blockId: string) => void;
-}) {
-  return <DashboardGridInner {...props} depth={0} rootLayout={props.layout} setRootLayout={props.setLayout} />;
 }

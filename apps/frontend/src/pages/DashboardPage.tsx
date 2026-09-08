@@ -43,12 +43,10 @@ import type {
   DashboardPublicShareRow,
   DashboardSummary,
 } from "../features/dashboard/types";
+import { layoutModeOf, parseUiLayout, withLayoutMode } from "../features/dashboard/layoutMode";
 
 function asUiLayout(raw: unknown): UiLayout | null {
-  if (!raw || typeof raw !== "object") return null;
-  const o = raw as { version?: number; blocks?: unknown };
-  if (!Array.isArray(o.blocks)) return null;
-  return { version: Number(o.version) || 1, blocks: o.blocks as UiLayout["blocks"] };
+  return parseUiLayout(raw);
 }
 
 type KindCatalogRow = {
@@ -184,6 +182,10 @@ export function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [layoutEditMode, setLayoutEditMode] = useState(false);
   const [layoutDraft, setLayoutDraft] = useState<UiLayout>({ version: 1, blocks: [] });
+  /** Canvas board: hide chrome and grow the surface. */
+  const [boardFocus, setBoardFocus] = useState(false);
+  /** Assistant column width while viewing a dashboard. */
+  const [chatDock, setChatDock] = useState<"full" | "mini" | "hidden">("full");
   const [members, setMembers] = useState<DashboardMemberRow[]>([]);
   const [memberEmail, setMemberEmail] = useState("");
   const [memberRole, setMemberRole] = useState<"viewer" | "editor" | "co_owner">("viewer");
@@ -248,6 +250,11 @@ export function DashboardPage() {
     () => (layoutEditMode ? layoutDraft : uiLayout ?? { version: 1, blocks: [] }),
     [layoutEditMode, layoutDraft, uiLayout]
   );
+  const isCanvasBoard = layoutModeOf(gridLayout) === "canvas";
+
+  useEffect(() => {
+    if (!isCanvasBoard) setBoardFocus(false);
+  }, [isCanvasBoard]);
 
   const chatFocusedBlock = useMemo(() => {
     if (!chatFocusedBlockId) return null;
@@ -1466,19 +1473,29 @@ export function DashboardPage() {
   if (selectedId) {
     main = (
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <div className="shrink-0 border-b border-surface-border px-4 py-3 md:px-6">
-          <p className="text-sm text-surface-muted">
-            Dashboard /{" "}
-            <span className="text-white">
-              {dashboardReady ? detail?.title || title || "…" : "…"}
-            </span>
-          </p>
-        </div>
+        {!(boardFocus && isCanvasBoard) ? (
+          <div className="shrink-0 border-b border-surface-border px-4 py-3 md:px-6">
+            <p className="text-sm text-surface-muted">
+              Dashboard /{" "}
+              <span className="text-white">
+                {dashboardReady ? detail?.title || title || "…" : "…"}
+              </span>
+            </p>
+          </div>
+        ) : null}
         <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
           <div className="flex min-h-0 min-w-0 flex-1 flex-col lg:overflow-hidden">
-            <div className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
+            <div
+              className={[
+                "min-h-0 flex-1",
+                isCanvasBoard
+                  ? "flex flex-col overflow-hidden p-3 md:p-4"
+                  : "overflow-y-auto p-4 md:p-6",
+                boardFocus && isCanvasBoard ? "p-2 md:p-2" : "",
+              ].join(" ")}
+            >
             {error ? (
-              <div className="mb-4 rounded-lg border border-red-500/40 bg-red-950/30 px-3 py-2 text-sm text-red-200">
+              <div className="mb-4 shrink-0 rounded-lg border border-red-500/40 bg-red-950/30 px-3 py-2 text-sm text-red-200">
                 {error}
               </div>
             ) : null}
@@ -1486,6 +1503,47 @@ export function DashboardPage() {
             <p className="text-sm text-surface-muted">{t("dashboard:loading")}</p>
             ) : (
               <>
+                {isCanvasBoard ? (
+                  <div className="mb-2 flex shrink-0 flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      className={[
+                        "rounded-lg border px-3 py-1.5 text-xs",
+                        boardFocus
+                          ? "border-sky-500/50 bg-sky-950/40 text-sky-100"
+                          : "border-surface-border text-neutral-200 hover:bg-white/5",
+                      ].join(" ")}
+                      onClick={() => setBoardFocus((v) => !v)}
+                    >
+                      {boardFocus ? t("dashboard:boardFocusExit") : t("dashboard:boardFocusEnter")}
+                    </button>
+                    <div className="flex overflow-hidden rounded-lg border border-surface-border text-xs">
+                      {(
+                        [
+                          ["full", "chatDockFull"],
+                          ["mini", "chatDockMini"],
+                          ["hidden", "chatDockHide"],
+                        ] as const
+                      ).map(([mode, labelKey]) => (
+                        <button
+                          key={mode}
+                          type="button"
+                          className={[
+                            "px-2.5 py-1.5",
+                            chatDock === mode
+                              ? "bg-sky-600 text-white"
+                              : "text-neutral-200 hover:bg-white/5",
+                          ].join(" ")}
+                          onClick={() => setChatDock(mode)}
+                        >
+                          {t(`dashboard:${labelKey}`)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {!boardFocus ? (
+                  <>
                 {isViewer ? (
                   <p className="mb-4 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-surface-muted">
                     {detail?.access_scope === "granular" ? (
@@ -1516,13 +1574,45 @@ export function DashboardPage() {
                           {t("dashboard:editLayout")}
                         </button>
                       ) : (
-                        <button
-                          type="button"
-                          className="rounded-lg border border-surface-border px-4 py-2 text-sm text-neutral-200 hover:bg-white/5"
-                          onClick={() => cancelLayoutEdit()}
-                        >
-                          {t("admin:cancel")}
-                        </button>
+                        <>
+                          <div className="flex overflow-hidden rounded-lg border border-surface-border">
+                            <button
+                              type="button"
+                              className={[
+                                "px-3 py-2 text-sm",
+                                layoutModeOf(layoutDraft) === "grid"
+                                  ? "bg-sky-600 text-white"
+                                  : "bg-transparent text-neutral-200 hover:bg-white/5",
+                              ].join(" ")}
+                              onClick={() =>
+                                setLayoutDraft((prev) => withLayoutMode(prev, "grid"))
+                              }
+                            >
+                              {t("dashboard:layoutModeGrid")}
+                            </button>
+                            <button
+                              type="button"
+                              className={[
+                                "px-3 py-2 text-sm",
+                                layoutModeOf(layoutDraft) === "canvas"
+                                  ? "bg-sky-600 text-white"
+                                  : "bg-transparent text-neutral-200 hover:bg-white/5",
+                              ].join(" ")}
+                              onClick={() =>
+                                setLayoutDraft((prev) => withLayoutMode(prev, "canvas"))
+                              }
+                            >
+                              {t("dashboard:layoutModeCanvas")}
+                            </button>
+                          </div>
+                          <button
+                            type="button"
+                            className="rounded-lg border border-surface-border px-4 py-2 text-sm text-neutral-200 hover:bg-white/5"
+                            onClick={() => cancelLayoutEdit()}
+                          >
+                            {t("admin:cancel")}
+                          </button>
+                        </>
                       )
                     ) : null}
                     {canEditStructure || (useMode && canEditContent) ? (
@@ -1597,6 +1687,57 @@ export function DashboardPage() {
                     onDismiss={() => setOnboardingHidden(true)}
                   />
                 ) : null}
+                  </>
+                ) : (
+                  <div className="mb-2 flex shrink-0 flex-wrap items-center gap-2">
+                    <span className="min-w-0 flex-1 truncate text-sm text-white">
+                      {title || detail?.title || "…"}
+                    </span>
+                    {canEditStructure ? (
+                      !layoutEditMode ? (
+                        <button
+                          type="button"
+                          className="rounded-lg border border-surface-border px-3 py-1.5 text-xs text-neutral-200 hover:bg-white/5"
+                          onClick={() => startLayoutEdit()}
+                        >
+                          {t("dashboard:editLayout")}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="rounded-lg border border-sky-500/50 bg-sky-950/40 px-3 py-1.5 text-xs text-sky-100"
+                          onClick={() => cancelLayoutEdit()}
+                        >
+                          {t("admin:cancel")}
+                        </button>
+                      )
+                    ) : null}
+                    {canEditStructure || (useMode && canEditContent) ? (
+                      <button
+                        type="button"
+                        disabled={saving}
+                        className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+                        onClick={() => void save()}
+                      >
+                        {saving ? t("dashboard:saving") : t("admin:save")}
+                      </button>
+                    ) : null}
+                    {detail && canEditStructure ? (
+                      <button
+                        type="button"
+                        className="rounded-lg border border-surface-border px-3 py-1.5 text-xs text-neutral-200 hover:bg-white/5"
+                        onClick={() => setSettingsOpen(true)}
+                      >
+                        {t("dashboard:settingsLabel")}
+                      </button>
+                    ) : null}
+                  </div>
+                )}
+                <div
+                  className={
+                    isCanvasBoard ? "flex min-h-0 min-w-0 flex-1 flex-col" : undefined
+                  }
+                >
                 <DashboardGridCanvas
                   key={selectedId}
                   layout={gridLayout}
@@ -1620,14 +1761,29 @@ export function DashboardPage() {
                   onBlockPropsSave={canEditStructure ? persistBlockProps : undefined}
                   blockSettingsAutoSave={canEditStructure && !layoutEditMode}
                   blockSettingsSaving={saving}
+                  fillViewport={isCanvasBoard}
                 />
+                </div>
               </>
             )}
             </div>
           </div>
-          {dashboardReady ? (
-            <aside className="flex w-full shrink-0 flex-col border-t border-surface-border bg-[#0d0d0d]/80 lg:min-h-0 lg:w-[min(400px,36vw)] lg:max-w-md lg:border-t-0 lg:border-l lg:border-surface-border">
-              <div className="flex min-h-[280px] flex-1 flex-col p-3 md:p-4 lg:min-h-0 lg:max-h-[calc(100vh-7rem)]">
+          {dashboardReady && chatDock !== "hidden" ? (
+            <aside
+              className={[
+                "flex w-full shrink-0 flex-col border-t border-surface-border bg-[#0d0d0d]/80 lg:min-h-0 lg:border-t-0 lg:border-l lg:border-surface-border",
+                chatDock === "mini"
+                  ? "lg:w-[min(220px,28vw)] lg:max-w-[220px]"
+                  : "lg:w-[min(400px,36vw)] lg:max-w-md",
+              ].join(" ")}
+            >
+              <div
+                className={[
+                  "flex min-h-[280px] flex-1 flex-col p-3 md:p-4 lg:min-h-0",
+                  chatDock === "mini" ? "lg:max-h-none lg:p-2" : "lg:max-h-[calc(100vh-7rem)]",
+                  isCanvasBoard ? "lg:max-h-none" : "",
+                ].join(" ")}
+              >
                 <DashboardEmbeddedChat
                   key={selectedId}
                   dashboardId={selectedId}
@@ -1653,6 +1809,14 @@ export function DashboardPage() {
                 />
               </div>
             </aside>
+          ) : dashboardReady && chatDock === "hidden" && isCanvasBoard ? (
+            <button
+              type="button"
+              className="fixed bottom-6 right-6 z-20 rounded-lg border border-sky-500/40 bg-sky-950/90 px-3 py-2 text-xs font-medium text-sky-100 shadow-lg hover:bg-sky-900/90 lg:bottom-8 lg:right-8"
+              onClick={() => setChatDock("mini")}
+            >
+              {t("dashboard:chatDockShow")}
+            </button>
           ) : null}
         </div>
       </div>

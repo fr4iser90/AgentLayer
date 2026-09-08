@@ -42,6 +42,7 @@ export function SectionBlockBody(props: {
   const setNestedLayout = useCallback(
     (updater: SetStateAction<UiLayout>) => {
       setRootLayout((prev) => ({
+        ...prev,
         version: 2,
         blocks: prev.blocks.map((b) => {
           if (b.id !== block.id) return b;
@@ -63,6 +64,7 @@ export function SectionBlockBody(props: {
   const patchSectionProps = useCallback(
     (patch: Record<string, unknown>) => {
       setRootLayout((prev) => ({
+        ...prev,
         version: 2,
         blocks: prev.blocks.map((b) =>
           b.id === block.id ? { ...b, props: { ...b.props, ...patch } } : b
