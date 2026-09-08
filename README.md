@@ -9,3 +9,15 @@ visit https://github.com/fr4iser90/AgentLayer_-_Jetson-Orin-Nano-Super-Developer
 **Repo layout (``apps/`` vs ``plugins/``):** [docs/architecture/repo-layout.md](docs/architecture/repo-layout.md).
 
 RAG-Docs / Embed: 404 auf Ollama-Embed-Routen → Embedding-Modell auf dem Ollama-Host ziehen (z. B. ollama pull nomic-embed-text) oder OLLAMA_BASE_URL/Modell prüfen – betrifft nur die automatische Doku-Ingestion, nicht den Rest.
+
+## TUI client (no server checkout)
+
+`apps/tui/` is a standalone package (`agentlayer-tui`). It talks HTTP + WebSocket only; it does not import the backend. Install it without cloning this tree:
+
+```bash
+pipx install "git+https://github.com/fr4iser90/AgentLayer---Jetson-Orin-Nano-Super-Developer-Kit-dedicated-.git#subdirectory=apps/tui"
+agentlayer --login --server https://your-agentlayer-host
+agentlayer
+```
+
+From a clone of this repo: `pipx install ./apps/tui` (or `uv tool install ./apps/tui`). On NixOS, use a venv instead of pipx — see [ADR 0008](docs/adr/0008-tui-client-contract.md). PyPI (`pipx install agentlayer-tui`) is not published yet.
