@@ -347,6 +347,11 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
         r["workspace_nightly_reindex_enabled"] = bool(patch["workspace_nightly_reindex_enabled"])
     if "workspace_index_on_attach_enabled" in patch:
         r["workspace_index_on_attach_enabled"] = bool(patch["workspace_index_on_attach_enabled"])
+    if "workspace_index_consent_max" in patch:
+        from apps.backend.infrastructure.workspace.workspace_index_consent import normalize_index_consent
+
+        cap = normalize_index_consent(patch["workspace_index_consent_max"])
+        r["workspace_index_consent_max"] = cap or "text"
     if "legal_enabled" in patch:
         r["legal_enabled"] = bool(patch["legal_enabled"])
     if "legal_jurisdiction" in patch:

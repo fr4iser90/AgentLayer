@@ -10,10 +10,11 @@ from typing import Any, Callable
 from apps.backend.infrastructure.settings import operator_settings
 
 from plugins.tools.workspace.lib.common import (
+    ClientWorkspaceExecutionError,
     json_workspace_missing_error,
-    workspace_binding_from_context,
     workspace_docs_rag_enabled,
     workspace_id_from_context,
+    workspace_record_from_context,
     workspace_retrieval_flags,
 )
 from plugins.tools.workspace.search.search import search as coding_search
@@ -76,7 +77,10 @@ def _run_code_grep(query: str, context: dict[str, Any] | None, limit: int) -> di
     from apps.backend.infrastructure.platform.config import config as cfg
 
     cap = min(limit, int(cfg.WORKSPACE_MAX_SEARCH_MATCHES))
-    raw = coding_search({"query": query, "regex": False}, context=context)
+    try:
+        raw = coding_search({"query": query, "regex": False}, context=context)
+    except ClientWorkspaceExecutionError:
+        return {"ok": False, "skipped": True, "reason": "client_workspace_use_search"}
     data = _json_loads_safe(raw)
     if not data.get("ok"):
         return data
@@ -197,7 +201,7 @@ def _run_graph(query: str, context: dict[str, Any] | None, limit: int) -> dict[s
     if not graph.available():
         return {"ok": False, "skipped": True, "reason": "neo4j_unavailable"}
 
-    ws = workspace_binding_from_context(context)
+    ws = workspace_record_from_context(context)
     if ws is None:
         return {"ok": False, "skipped": True, "reason": "no_workspace"}
     workspace_id = str(ws.get("id") or "")
@@ -321,13 +325,30 @@ def retrieve_context(arguments: dict[str, Any], context: dict | None = None) -> 
 
     from apps.backend.infrastructure.workspace.workspace_index_policy import resolve_retrieve_context_sources
 
-    ws = workspace_binding_from_context(context)
+    ws = workspace_record_from_context(context)
     agent_id = (context or {}).get("agent_id") if context else None
     sources = resolve_retrieve_context_sources(
         ws,
         agent_id=str(agent_id) if agent_id else None,
         requested=arguments.get("sources"),
     )
+    from apps.backend.infrastructure.workspace.workspace_execution import is_client_execution
+    from apps.backend.infrastructure.workspace.workspace_index_consent import (
+        INDEX_CONSENT_SYMBOLS,
+        INDEX_CONSENT_TEXT,
+        consent_covers,
+        effective_index_consent,
+    )
+
+    if ws is not None:
+        eff = effective_index_consent(ws)
+        if not consent_covers(eff, INDEX_CONSENT_SYMBOLS):
+            sources = [s for s in sources if s not in ("code_semantic", "graph")]
+        if not consent_covers(eff, INDEX_CONSENT_TEXT):
+            sources = [s for s in sources if s not in ("docs", "memory")]
+        if is_client_execution(ws.get("execution_mode")):
+            sources = [s for s in sources if s != "code_grep"]
+
     domain = str(arguments.get("domain") or "agentlayer_docs").strip()
     grep_limit = _clamp_int(arguments.get("grep_limit"), 25, 1, 50)
     semantic_limit = _clamp_int(arguments.get("semantic_limit"), 12, 1, 50)
@@ -337,7 +358,7 @@ def retrieve_context(arguments: dict[str, Any], context: dict | None = None) -> 
     fused_limit = _clamp_int(arguments.get("fused_limit"), 25, 1, 50)
 
     needs_workspace = "code_grep" in sources or "code_semantic" in sources or "graph" in sources
-    if needs_workspace and workspace_binding_from_context(context) is None:
+    if needs_workspace and workspace_record_from_context(context) is None:
         return json_workspace_missing_error()
 
     sem_on, ret_on = workspace_retrieval_flags(context)

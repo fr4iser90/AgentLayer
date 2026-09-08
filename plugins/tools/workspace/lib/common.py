@@ -57,9 +57,26 @@ def workspace_binding_from_context(context: dict | None) -> dict[str, Any] | Non
     return None
 
 
+def workspace_record_from_context(context: dict | None) -> dict[str, Any] | None:
+    """Bound workspace dict, including client-placed rows.
+
+    Path-opening tools must keep using :func:`workspace_binding_from_context`, which raises.
+    Index-query tools (semantic_search, graph, knowledge_query) only need the id.
+    """
+    if not context:
+        return None
+    ws = context.get("workspace")
+    if not isinstance(ws, dict):
+        return None
+    wid = ws.get("id")
+    if wid is None or not str(wid).strip():
+        return None
+    return ws
+
+
 def workspace_retrieval_flags(context: dict | None) -> tuple[bool, bool]:
     """(semantic_index_enabled, retrieval_enabled) from bound workspace dict."""
-    ws = workspace_binding_from_context(context)
+    ws = workspace_record_from_context(context)
     if ws is None:
         return True, True
     return (
@@ -69,7 +86,7 @@ def workspace_retrieval_flags(context: dict | None) -> tuple[bool, bool]:
 
 
 def workspace_id_from_context(context: dict | None) -> str | None:
-    ws = workspace_binding_from_context(context)
+    ws = workspace_record_from_context(context)
     if ws is None:
         return None
     wid = ws.get("id")
@@ -80,10 +97,18 @@ def workspace_id_from_context(context: dict | None) -> str | None:
 
 
 def workspace_docs_rag_enabled(context: dict | None) -> bool:
-    ws = workspace_binding_from_context(context)
+    ws = workspace_record_from_context(context)
     if ws is None:
         return False
-    return bool(ws.get("docs_rag_enabled", True))
+    if not bool(ws.get("docs_rag_enabled", True)):
+        return False
+    from apps.backend.infrastructure.workspace.workspace_index_consent import (
+        INDEX_CONSENT_TEXT,
+        consent_covers,
+        effective_index_consent,
+    )
+
+    return consent_covers(effective_index_consent(ws), INDEX_CONSENT_TEXT)
 
 
 def json_workspace_missing_error() -> str:

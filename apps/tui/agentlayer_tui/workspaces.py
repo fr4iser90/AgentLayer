@@ -89,9 +89,10 @@ def format_workspace_rows(rows: list[dict[str, Any]], bound_id: str = "") -> lis
         name = _s(row, "name")
         if is_client_workspace(row):
             origin = _s(row, "path") or "local"
+            consent = _s(row, "index_consent") or "none"
             out.append(
                 f"{marker} {short_id(row.get('id'))}  {name.ljust(width)}"
-                f"{'client':<10}----  on this machine  {origin[:44]}"
+                f"{'client':<10}{consent:<8}  on this machine  {origin[:44]}"
             )
             continue
         flags = "".join(
@@ -109,6 +110,7 @@ def format_workspace_rows(rows: list[dict[str, Any]], bound_id: str = "") -> lis
             f"{_s(row, 'git_branch') or '?':<10}{flags}  {indexed:<12}{origin[:44]}"
         )
     out.append("  flags: s=semantic r=retrieval d=docs g=graph   client = files stay on this machine")
+    out.append("  consent: none | symbols | text  (server decides who may raise it)")
     return out
 
 
@@ -172,10 +174,14 @@ def format_index_status(payload: dict[str, Any]) -> list[str]:
         )
     )
     out.append(f"flags    {flags}")
+    consent = payload.get("index_consent_effective") or payload.get("index_consent")
+    cap = payload.get("index_consent_operator_max")
+    if consent or cap:
+        out.append(f"consent  {consent or '?'}  (operator max {cap or '?'})")
     return out
 
 
-INDEX_MODES = ("full", "code", "docs")
+INDEX_MODES = ("full", "code", "docs", "symbols", "text")
 
 
 def normalize_index_mode(raw: str) -> str | None:

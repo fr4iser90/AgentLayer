@@ -29,6 +29,7 @@ from .events import (
     interpret,
 )
 from .jail import bind_refusal_reason
+from .symbol_scan import scan_markdown, scan_symbols
 from .local_exec import ADVERTISED_TOOLS, GATED_TOOLS, execute
 from .workspaces import (
     format_index_status,
@@ -78,6 +79,9 @@ class PermissionScreen(ModalScreen[str]):
 
 
 class AgentLayerTui(App[None]):
+    # Mouse-drag selects transcript text; ctrl+c copies a selection, otherwise cancels the turn.
+    ALLOW_SELECT = True
+
     CSS = """
     Screen { layers: base overlay; }
     #transcript { height: 1fr; padding: 0 1; }
@@ -105,7 +109,8 @@ class AgentLayerTui(App[None]):
     """
 
     BINDINGS = [
-        Binding("ctrl+c", "cancel_turn", "cancel", priority=True, show=True),
+        Binding("ctrl+c", "cancel_turn", "copy / cancel", priority=True, show=True),
+        Binding("ctrl+shift+c", "copy_selection", "copy", show=True),
         Binding("ctrl+d", "quit", "quit", priority=True, show=True),
         Binding("ctrl+l", "clear", "clear", show=False),
         # priority, or the focused Input swallows tab for focus navigation. There is only one
@@ -282,7 +287,23 @@ class AgentLayerTui(App[None]):
         self._append(Line("dim", f"conversation {self._conversation_id[:8]}"))
         return True
 
+    def _copy_selection(self) -> bool:
+        """Copy highlighted transcript text. Returns True when there was a selection."""
+        selected = self.screen.get_selected_text()
+        if not selected:
+            return False
+        self.copy_to_clipboard(selected)
+        preview = selected.replace("\n", " ")[:48]
+        self._set_hint(f"copied {len(selected)} chars: {preview}")
+        return True
+
+    def action_copy_selection(self) -> None:
+        if not self._copy_selection():
+            self._set_hint("select text first (drag with the mouse)")
+
     async def action_cancel_turn(self) -> None:
+        if self._copy_selection():
+            return
         if not self._busy:
             self._set_hint("nothing running")
             return
@@ -529,6 +550,10 @@ class AgentLayerTui(App[None]):
             await self._cmd_index(args)
             return
 
+        if name == "consent":
+            await self._cmd_consent(args)
+            return
+
         await self._run_rest_command(name, args)
 
     async def _resume(self, query: str) -> None:
@@ -750,23 +775,17 @@ class AgentLayerTui(App[None]):
         if not self._workspace_id:
             self._append(Line("warn", "bind a workspace first — /workspace, then /bind <name>"))
             return
-        if self._workspace_local:
-            self._append(
-                Line(
-                    "warn",
-                    "this workspace runs on the client: the server has no tree to index "
-                    "(ADR 0009, milestone 3)",
-                )
-            )
-            return
         arg = args.strip().lower()
         try:
             if arg in ("status", "state", "?"):
                 for line in format_index_status(await self._rest.index_status(self._workspace_id)):
                     self._append(Line("dim", line))
                 return
+            if self._workspace_local:
+                await self._cmd_index_local(arg)
+                return
             mode = normalize_index_mode(arg)
-            if mode is None:
+            if mode is None or mode in ("symbols", "text"):
                 self._append(Line("warn", "mode must be full, code or docs"))
                 return
             result = await self._rest.index_workspace(self._workspace_id, mode)
@@ -776,6 +795,76 @@ class AgentLayerTui(App[None]):
                 self._append(Line("info", f"index ({mode}) started — /index status to follow"))
             else:
                 self._append(Line("warn", f"index ({mode}) did not start"))
+        except AgentLayerError as e:
+            self._append(Line("error", str(e)))
+        except Exception as e:  # noqa: BLE001
+            self._append(Line("error", f"{type(e).__name__}: {e}"))
+
+    async def _cmd_index_local(self, arg: str) -> None:
+        """Scan this machine and upload. The server never sees the tree."""
+        root = Path(self._workspace_path) if self._workspace_path else Path.cwd()
+        mode = (arg or "symbols").strip().lower()
+        if mode in ("", "code"):
+            mode = "symbols"
+        if mode == "docs":
+            mode = "text"
+        if mode == "full":
+            await self._upload_local_symbols(root)
+            await self._upload_local_text(root)
+            return
+        if mode == "symbols":
+            await self._upload_local_symbols(root)
+            return
+        if mode == "text":
+            await self._upload_local_text(root)
+            return
+        self._append(Line("warn", "local index mode must be symbols, text, or full"))
+
+    async def _upload_local_symbols(self, root: Path) -> None:
+        self._append(Line("dim", f"scanning symbols under {root} …"))
+        files, errors = scan_symbols(root)
+        for err in errors[:8]:
+            self._append(Line("warn", err))
+        result = await self._rest.upload_index_symbols(self._workspace_id, files)
+        inner = result.get("result") if isinstance(result.get("result"), dict) else result
+        n = inner.get("files") if isinstance(inner, dict) else len(files)
+        q = inner.get("qdrant_indexed") if isinstance(inner, dict) else "?"
+        self._append(Line("info", f"uploaded {n} file(s), {q} symbols embedded"))
+
+    async def _upload_local_text(self, root: Path) -> None:
+        self._append(Line("dim", f"scanning markdown under {root} …"))
+        docs, errors = scan_markdown(root)
+        for err in errors[:8]:
+            self._append(Line("warn", err))
+        if not docs:
+            self._append(Line("warn", "no markdown files to upload"))
+            return
+        result = await self._rest.upload_index_text(self._workspace_id, docs)
+        inner = result.get("result") if isinstance(result.get("result"), dict) else result
+        n = inner.get("files_ingested") if isinstance(inner, dict) else len(docs)
+        self._append(Line("info", f"uploaded {n} markdown file(s) for docs RAG"))
+
+    async def _cmd_consent(self, args: str) -> None:
+        if not self._workspace_id:
+            self._append(Line("warn", "bind a workspace first — /workspace, then /bind <name>"))
+            return
+        want = args.strip().lower()
+        try:
+            if not want:
+                status = await self._rest.index_status(self._workspace_id)
+                have = status.get("index_consent_effective") or status.get("index_consent") or "?"
+                cap = status.get("index_consent_operator_max") or "?"
+                self._append(Line("dim", f"index_consent={have}  operator max={cap}"))
+                self._append(Line("dim", "set with /consent none|symbols|text — the server may refuse a raise"))
+                return
+            if want not in ("none", "symbols", "text"):
+                self._append(Line("warn", "consent must be none, symbols, or text"))
+                return
+            row = await self._rest.patch_workspace(self._workspace_id, index_consent=want)
+            have = row.get("index_consent_effective") or row.get("index_consent") or want
+            cap = row.get("index_consent_operator_max")
+            extra = f"  (operator max {cap})" if cap else ""
+            self._append(Line("info", f"index_consent={have}{extra}"))
         except AgentLayerError as e:
             self._append(Line("error", str(e)))
         except Exception as e:  # noqa: BLE001

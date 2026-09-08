@@ -35,8 +35,8 @@ class TestFilter(unittest.TestCase):
         ]
         kept = filter_tools_for_client_workspace(specs, advertised_workspace_tools(["read_file", "bash"]))
         names = [s["function"]["name"] for s in kept]
-        self.assertEqual(names, ["read_file", "list", "web_search", "bash"])
-        self.assertNotIn("retrieve_context", names)
+        self.assertEqual(names, ["read_file", "retrieve_context", "list", "web_search", "bash"])
+        self.assertIn("retrieve_context", names)
 
     def test_empty_advertisement_drops_every_path_tool(self) -> None:
         specs = [_spec("read_file"), _spec("list"), _spec("memory_search")]
@@ -118,7 +118,7 @@ class TestWaitLoop(unittest.IsolatedAsyncioTestCase):
 
     async def test_unadvertised_dispatch_is_unsupported(self) -> None:
         out = await dispatch_client_workspace_tool(
-            name="retrieve_context",
+            name="search",
             args={"query": "x"},
             tool_context={
                 "workspace": {"path": "/home/me/repo", "execution_mode": "client"},

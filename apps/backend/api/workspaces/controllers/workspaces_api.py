@@ -59,6 +59,11 @@ class WorkspaceUpdateBody(BaseModel):
     )
     graph_index_enabled: bool | None = None
     retrieve_context_sources: list[str] | None = None
+    index_consent: str | None = Field(
+        default=None,
+        max_length=16,
+        description="none | symbols | text — what may leave a client machine (ADR 0009)",
+    )
 
 
 class WorkspaceIndexBody(BaseModel):
@@ -67,6 +72,16 @@ class WorkspaceIndexBody(BaseModel):
         default="full",
         description="full: code (Qdrant+Neo4j) + workspace docs RAG; code: symbols+graph only; docs: *.md RAG only",
     )
+
+
+class WorkspaceSymbolBody(BaseModel):
+    files: list[dict[str, Any]] = Field(default_factory=list)
+    replace_all: bool = True
+
+
+class WorkspaceTextBody(BaseModel):
+    documents: list[dict[str, Any]] = Field(default_factory=list)
+    purge_first: bool = True
 
 
 class ImplementationBranchBody(BaseModel):
@@ -203,10 +218,15 @@ async def workspace_run_index(
     if index_refuse:
         raise HTTPException(status_code=400, detail=index_refuse)
 
-    sem, _ret, docs_rag = ws_services.workspace_retrieval._row_flags(row)
+    api = _row_to_workspace(row)
     mode = (body.mode if body else "full").strip().lower()
     if mode not in ("full", "code", "docs"):
         mode = "full"
+    refused = ws_services.crawl_index_consent_refusal(api, mode)
+    if refused:
+        raise HTTPException(status_code=400, detail=refused)
+
+    sem, _ret, docs_rag = ws_services.workspace_retrieval._row_flags(row)
 
     if mode in ("full", "code") and not sem:
         raise HTTPException(status_code=400, detail="semantic_index_enabled is off for this workspace")
@@ -227,6 +247,57 @@ async def workspace_run_index(
         "job": kick.get("job"),
         "status": status,
     }
+
+
+def _editable_workspace_or_404(request_user, workspace_id: str):
+    row = ws_services.fetch_editable_workspace_row(workspace_id, request_user.id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Workspace not found or no edit permission")
+    if (row[2] or "").strip() == ws_services.AGENTLAYER_SELF_NAME and not ws_services.self_editing_allowed(
+        request_user
+    ):
+        raise HTTPException(status_code=404, detail="Workspace not found or no edit permission")
+    return row
+
+
+@router.post("/{workspace_id}/index/symbols")
+async def workspace_upload_symbols(
+    request: Request, workspace_id: str, body: WorkspaceSymbolBody
+) -> dict[str, Any]:
+    """Client-scanned symbol table. The server never opens the workspace path."""
+    user = await get_current_user(request)
+    row = _editable_workspace_or_404(user, workspace_id)
+    api = _row_to_workspace(row)
+    try:
+        result = ws_services.ingest_client_symbol_upload(
+            workspace_id, api, body.files, replace_all=body.replace_all
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    status = ws_services.workspace_retrieval.index_status_payload(
+        ws_services.workspace_retrieval.fetch_workspace_row(workspace_id, user.id)
+    )
+    return {"ok": bool(result.get("ok")), "result": result, "status": status}
+
+
+@router.post("/{workspace_id}/index/text")
+async def workspace_upload_text(
+    request: Request, workspace_id: str, body: WorkspaceTextBody
+) -> dict[str, Any]:
+    """Client-read markdown for docs RAG. The server never opens the workspace path."""
+    user = await get_current_user(request)
+    row = _editable_workspace_or_404(user, workspace_id)
+    api = _row_to_workspace(row)
+    try:
+        result = ws_services.ingest_client_text_upload(
+            workspace_id, api, body.documents, purge_first=body.purge_first
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    status = ws_services.workspace_retrieval.index_status_payload(
+        ws_services.workspace_retrieval.fetch_workspace_row(workspace_id, user.id)
+    )
+    return {"ok": bool(result.get("ok")), "result": result, "status": status}
 
 
 @router.get("/{workspace_id}/git/changes")
@@ -388,6 +459,13 @@ async def update_workspace(request: Request, workspace_id: str, body: WorkspaceU
                 raise HTTPException(status_code=400, detail="retrieve_context_sources invalid")
             updates.append("retrieve_context_sources = %s::jsonb")
             params.append(ws_services.encode_jsonb(parsed))
+    if "index_consent" in patch and patch["index_consent"] is not None:
+        try:
+            requested = ws_services.normalize_index_consent_patch(patch["index_consent"])
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        updates.append("index_consent = %s")
+        params.append(requested)
 
     if updates:
         ws_services.update_workspace_row(workspace_id, updates, params)

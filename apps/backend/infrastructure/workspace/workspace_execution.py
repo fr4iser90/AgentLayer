@@ -17,8 +17,9 @@ BROWSE_REFUSAL = (
     "This workspace runs on the client: the server has no files to browse (ADR 0009)."
 )
 INDEX_REFUSAL = (
-    "This workspace runs on the client: the server has no tree to index "
-    "(ADR 0009, milestone 3)."
+    "This workspace runs on the client: the server has no tree to crawl. "
+    "Upload symbols via POST /v1/workspaces/{id}/index/symbols after setting "
+    "index_consent, or markdown via POST /v1/workspaces/{id}/index/text (ADR 0009)."
 )
 
 

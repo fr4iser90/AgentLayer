@@ -42,3 +42,4 @@ domain.register_workspace_rag_ingest_dependencies(_WorkspaceRagIngestDeps())
 
 WORKSPACE_RAG_DOMAIN = domain.WORKSPACE_RAG_DOMAIN
 ingest_workspace_markdown_tree = domain.ingest_workspace_markdown_tree
+ingest_workspace_markdown_documents = domain.ingest_workspace_markdown_documents

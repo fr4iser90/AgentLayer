@@ -59,3 +59,13 @@ def test_bind_refuses_missing_and_non_dir(tmp_path: Path) -> None:
     file = tmp_path / "file.txt"
     file.write_text("x")
     assert "not a directory" in (bind_refusal_reason(file) or "")
+
+
+def test_tui_app_imports_the_jail() -> None:
+    """Regression: /bind --local crashed with NameError after the index-consent import shuffle."""
+    from pathlib import Path
+
+    src = Path(__file__).resolve().parents[2] / "apps/tui/agentlayer_tui/app.py"
+    text = src.read_text(encoding="utf-8")
+    assert "from .jail import bind_refusal_reason" in text
+    assert "ALLOW_SELECT = True" in text

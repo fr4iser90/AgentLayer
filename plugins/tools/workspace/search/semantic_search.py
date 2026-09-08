@@ -7,7 +7,7 @@ from typing import Any, Callable
 
 from plugins.tools.workspace.lib.common import (
     json_workspace_missing_error,
-    workspace_binding_from_context,
+    workspace_record_from_context,
     workspace_retrieval_flags,
 )
 
@@ -55,9 +55,17 @@ def semantic_search(arguments: dict[str, Any], context: dict | None = None) -> s
     limit = int(arguments.get("limit", _DEFAULT_LIMIT))
     limit = max(1, min(limit, 100))
 
-    ws = workspace_binding_from_context(context)
+    ws = workspace_record_from_context(context)
     if ws is None:
         return json_workspace_missing_error()
+    from apps.backend.infrastructure.workspace.workspace_index_consent import (
+        INDEX_CONSENT_SYMBOLS,
+        consent_refusal,
+    )
+
+    refused = consent_refusal(ws, INDEX_CONSENT_SYMBOLS)
+    if refused:
+        return json.dumps({"ok": False, "skipped": True, "reason": "index_consent", "error": refused}, ensure_ascii=False)
     sem_on, _ = workspace_retrieval_flags(context)
     if not sem_on:
         return json.dumps(

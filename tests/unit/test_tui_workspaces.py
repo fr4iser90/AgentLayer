@@ -122,6 +122,7 @@ class TestListRendering:
         ]
         line = next(line for line in format_workspace_rows(rows) if "laptop-repo" in line)
         assert "client" in line
+        assert "none" in line
         assert "/home/me/code/laptop-repo" in line
         assert "srd" not in line
 
@@ -182,6 +183,8 @@ class TestIndexMode:
     def test_known_modes(self) -> None:
         assert normalize_index_mode("code") == "code"
         assert normalize_index_mode(" DOCS ") == "docs"
+        assert normalize_index_mode("symbols") == "symbols"
+        assert normalize_index_mode("text") == "text"
 
     def test_unknown_mode_is_rejected_rather_than_defaulted(self) -> None:
         assert normalize_index_mode("everything") is None
@@ -189,7 +192,7 @@ class TestIndexMode:
 
 class TestCommandSurface:
     def test_workspace_commands_are_listed_and_completable(self) -> None:
-        for name in ("workspace", "bind", "index"):
+        for name in ("workspace", "bind", "index", "consent"):
             assert name in commands.COMMANDS
             assert f"/{name}" in commands.completions(f"/{name[:3]}")
 
@@ -197,6 +200,7 @@ class TestCommandSurface:
         blob = "\n".join(commands.help_lines())
         assert "/bind" in blob
         assert "/index" in blob
+        assert "/consent" in blob
         assert "--local" in blob
 
 

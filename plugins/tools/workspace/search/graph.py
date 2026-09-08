@@ -7,7 +7,7 @@ from typing import Any, Callable
 
 from plugins.tools.workspace.lib.common import (
     json_workspace_missing_error,
-    workspace_binding_from_context,
+    workspace_record_from_context,
 )
 
 try:
@@ -42,9 +42,17 @@ def graph(arguments: dict[str, Any], context: dict | None = None) -> str:
             ensure_ascii=False,
         )
 
-    ws = workspace_binding_from_context(context)
+    ws = workspace_record_from_context(context)
     if ws is None:
         return json_workspace_missing_error()
+    from apps.backend.infrastructure.workspace.workspace_index_consent import (
+        INDEX_CONSENT_SYMBOLS,
+        consent_refusal,
+    )
+
+    refused = consent_refusal(ws, INDEX_CONSENT_SYMBOLS)
+    if refused:
+        return json.dumps({"ok": False, "skipped": True, "reason": "index_consent", "error": refused}, ensure_ascii=False)
     if ws.get("graph_index_enabled") is False:
         return json.dumps(
             {"ok": False, "skipped": True, "reason": "graph_index_disabled"},

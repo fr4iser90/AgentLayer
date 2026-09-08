@@ -37,7 +37,15 @@ from apps.backend.infrastructure.workspace.workspace_service import (
 
 
 def row_to_workspace(row: tuple) -> dict[str, Any]:
-    return workspace_row_to_api(row)
+    api = workspace_row_to_api(row)
+    from apps.backend.infrastructure.workspace.workspace_index_consent import (
+        effective_index_consent,
+        operator_index_consent_max,
+    )
+
+    api["index_consent_effective"] = effective_index_consent(api)
+    api["index_consent_operator_max"] = operator_index_consent_max()
+    return api
 
 
 def client_workspace_refusal(row: tuple | None, *, kind: str) -> str | None:
@@ -158,3 +166,81 @@ def update_workspace_row(workspace_id: str, updates: list[str], params: list[Any
 
 def encode_jsonb(value: Any) -> str:
     return json.dumps(value)
+
+
+def crawl_index_consent_refusal(api: dict[str, Any], mode: str) -> str | None:
+    from apps.backend.infrastructure.workspace.workspace_index_consent import (
+        consent_refusal,
+        mode_needs_consent,
+    )
+
+    return consent_refusal(api, mode_needs_consent(mode))
+
+
+def normalize_index_consent_patch(raw: Any) -> str:
+    """Raise ValueError with the HTTP 400 detail if the PATCH is invalid or above the operator cap."""
+    from apps.backend.infrastructure.workspace.workspace_index_consent import (
+        normalize_index_consent,
+        refuse_if_above_operator_cap,
+    )
+
+    cap_err = refuse_if_above_operator_cap(raw)
+    if cap_err:
+        raise ValueError(cap_err)
+    requested = normalize_index_consent(raw)
+    if requested is None:
+        raise ValueError("index_consent must be none, symbols, or text")
+    return requested
+
+
+def ingest_client_symbol_upload(
+    workspace_id: str,
+    api: dict[str, Any],
+    files: list[dict[str, Any]],
+    *,
+    replace_all: bool,
+) -> dict[str, Any]:
+    """Raise ValueError with the HTTP 400 detail when the workspace may not receive symbols."""
+    from apps.backend.infrastructure.workspace.workspace_client_index import ingest_client_symbols
+    from apps.backend.infrastructure.workspace.workspace_execution import is_client_execution
+    from apps.backend.infrastructure.workspace.workspace_index_consent import (
+        INDEX_CONSENT_SYMBOLS,
+        consent_refusal,
+    )
+
+    if not is_client_execution(api.get("execution_mode")):
+        raise ValueError(
+            "This endpoint is for client workspaces. Use POST /v1/workspaces/{id}/index to crawl a server tree."
+        )
+    refused = consent_refusal(api, INDEX_CONSENT_SYMBOLS)
+    if refused:
+        raise ValueError(refused)
+    if not api.get("semantic_index_enabled", True):
+        raise ValueError("semantic_index_enabled is off for this workspace")
+    return ingest_client_symbols(workspace_id, files, replace_all=replace_all)
+
+
+def ingest_client_text_upload(
+    workspace_id: str,
+    api: dict[str, Any],
+    documents: list[dict[str, Any]],
+    *,
+    purge_first: bool,
+) -> dict[str, Any]:
+    from apps.backend.infrastructure.workspace.workspace_client_index import ingest_client_text
+    from apps.backend.infrastructure.workspace.workspace_execution import is_client_execution
+    from apps.backend.infrastructure.workspace.workspace_index_consent import (
+        INDEX_CONSENT_TEXT,
+        consent_refusal,
+    )
+
+    if not is_client_execution(api.get("execution_mode")):
+        raise ValueError(
+            "This endpoint is for client workspaces. Use POST /v1/workspaces/{id}/index with mode=docs to crawl."
+        )
+    refused = consent_refusal(api, INDEX_CONSENT_TEXT)
+    if refused:
+        raise ValueError(refused)
+    if not api.get("docs_rag_enabled", True):
+        raise ValueError("docs_rag_enabled is off for this workspace")
+    return ingest_client_text(workspace_id, documents, purge_first=purge_first)

@@ -10,7 +10,8 @@ WORKSPACE_SELECT_SQL = """
     created_at, updated_at, verify_command, verify_required, mcp_stdio_servers_json,
     semantic_index_enabled, retrieval_enabled, last_index_at, last_index_stats, last_index_error,
     docs_rag_enabled, last_docs_rag_at, last_docs_rag_stats, last_docs_rag_error,
-    index_on_write, graph_index_enabled, retrieve_context_sources, execution_mode
+    index_on_write, graph_index_enabled, retrieve_context_sources, execution_mode,
+    index_consent
 """
 
 SERVER_EXECUTION = "server"
@@ -57,4 +58,14 @@ def workspace_row_to_api(row: tuple) -> dict[str, Any]:
             list(row[24]) if len(row) > 24 and isinstance(row[24], list) else None
         ),
         "execution_mode": normalize_execution_mode(row[25] if len(row) > 25 else None),
+        "index_consent": _index_consent_from_row(row),
     }
+
+
+def _index_consent_from_row(row: tuple) -> str:
+    mode = normalize_execution_mode(row[25] if len(row) > 25 else None)
+    raw = row[26] if len(row) > 26 else None
+    v = str(raw or "").strip().lower()
+    if v in ("none", "symbols", "text"):
+        return v
+    return "none" if mode == CLIENT_EXECUTION else "text"

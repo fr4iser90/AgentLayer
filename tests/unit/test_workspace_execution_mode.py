@@ -18,6 +18,7 @@ from apps.backend.infrastructure.workspace.workspace_service import (
 from plugins.tools.workspace.lib.common import (
     ClientWorkspaceExecutionError,
     workspace_binding_from_context,
+    workspace_record_from_context,
     workspace_retrieval_flags,
 )
 
@@ -56,6 +57,7 @@ class TestBinding(unittest.TestCase):
             workspace_binding_from_context({"workspace": ws})
         self.assertIn("runs on the client", str(ctx.exception))
         self.assertIn("ADR 0009", str(ctx.exception))
+        self.assertEqual(workspace_record_from_context({"workspace": ws}), ws)
 
     def test_client_without_a_path_still_raises(self) -> None:
         with self.assertRaises(ClientWorkspaceExecutionError):

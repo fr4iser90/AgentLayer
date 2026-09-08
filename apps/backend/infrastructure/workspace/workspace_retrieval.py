@@ -131,6 +131,13 @@ def index_status_payload(row: tuple | None) -> dict[str, Any]:
     if row is None:
         return {"ok": False, "error": "workspace not found"}
     api = workspace_row_to_api(row)
+    from apps.backend.infrastructure.workspace.workspace_execution import is_client_execution
+    from apps.backend.infrastructure.workspace.workspace_index_consent import (
+        effective_index_consent,
+        operator_index_consent_max,
+    )
+
+    client = is_client_execution(api.get("execution_mode"))
     sem, ret, docs_rag = _row_flags(row)
     qd = qdrant_status()
     emb = embedding_status()
@@ -147,7 +154,7 @@ def index_status_payload(row: tuple | None) -> dict[str, Any]:
         stale_info["stale"] = bool(is_index_stale(api))
         stale_info["reason"] = index_stale_reason(api)
         p = api.get("path")
-        if isinstance(p, str) and p.strip():
+        if (not client) and isinstance(p, str) and p.strip():
             tree = list_repo_top_level(Path(p))
     except Exception:
         pass
@@ -159,7 +166,7 @@ def index_status_payload(row: tuple | None) -> dict[str, Any]:
 
         index_on_write_effective = effective_index_on_write(api)
         p = api.get("path")
-        if isinstance(p, str) and p.strip() and api.get("id"):
+        if (not client) and isinstance(p, str) and p.strip() and api.get("id"):
             files_stale = count_files_out_of_date(str(api["id"]), Path(p))
     except Exception:
         pass
@@ -171,6 +178,10 @@ def index_status_payload(row: tuple | None) -> dict[str, Any]:
         "retrieval_enabled": ret,
         "docs_rag_enabled": docs_rag,
         "graph_index_enabled": api.get("graph_index_enabled", True),
+        "index_consent": api.get("index_consent"),
+        "index_consent_effective": effective_index_consent(api),
+        "index_consent_operator_max": operator_index_consent_max(),
+        "execution_mode": api.get("execution_mode"),
         "index_on_write": api.get("index_on_write"),
         "index_on_write_effective": index_on_write_effective,
         "files_out_of_date": files_stale,

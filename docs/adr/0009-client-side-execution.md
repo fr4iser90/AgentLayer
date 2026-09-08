@@ -8,12 +8,11 @@ tags: [adr, tui, workspaces, coding-agent, security, indexing, retrieval]
 
 ## Status
 
-**Accepted and in progress.** Milestones 1 and 2 are implemented: `project_workspaces.execution_mode`
-exists, client workspaces store a client path the backend never opens, unattended enqueue and
-server-side browse/index refuse them, and the TUI can `/workspace create --local` / `/bind --local`.
-Workspace-path tools on a client workspace are dispatched over the chat WebSocket
-(`agent.tool_invoke` / `tool_result`) and run in the TUI behind a path jail and mandatory prompts.
-Indexing consent (milestones 3–4) is not implemented yet.
+**Accepted.** Milestones 1–4 are implemented: `execution_mode` and `index_consent` exist, client
+workspaces store a client path the backend never opens, unattended enqueue and server-side browse
+refuse them, path tools round-trip over the chat WebSocket, and indexing is opt-in in tiers
+(`none` / `symbols` / `text`) with an operator cap. The TUI can `/workspace create --local`,
+`/bind --local`, `/consent`, and `/index symbols|text` (local scan + upload).
 
 ## Context
 
@@ -191,7 +190,11 @@ result as though it were server-produced, e.g. for governance or benchmark recor
    advertisement, and a local executor in the TUI for reads, writes, patches, glob, grep and `bash`
    behind mandatory prompts.~~ **Done.** `/bind --local` of `/`, `$HOME`, `/etc`, `/usr` and the other
    system trees is refused; tool paths are jailed with `resolve()` + `relative_to`.
-3. **Symbols tier.** Local scan, `POST /v1/workspaces/{id}/index/symbols`, `index_consent` enforcement,
-   `code_semantic` and `graph` over a local repository with client-resolved snippets.
-4. **Text tier.** Explicit opt-in that enables docs RAG, `knowledge_*` and `memory` for client
-   workspaces by uploading chunks, with the consent visible wherever a workspace is listed.
+3. ~~**Symbols tier.** Local scan, `POST /v1/workspaces/{id}/index/symbols`, `index_consent` enforcement,
+   `code_semantic` and `graph` over a local repository with client-resolved snippets.~~ **Done.**
+   Owner/editor only; operator cap `workspace_index_consent_max` is a hard ceiling. Semantic/graph
+   query the existing Qdrant/Neo4j stores by `workspace_id` and stay on the server.
+4. ~~**Text tier.** Explicit opt-in that enables docs RAG, `knowledge_*` and `memory` for client
+   workspaces by uploading chunks, with the consent visible wherever a workspace is listed.~~ **Done.**
+   `POST /v1/workspaces/{id}/index/text` takes client-read markdown. `POST /index` crawl still cannot
+   walk a client path, regardless of consent.

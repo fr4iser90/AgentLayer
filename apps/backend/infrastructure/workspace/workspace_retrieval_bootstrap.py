@@ -55,7 +55,12 @@ def is_index_stale(workspace: dict[str, Any]) -> bool:
     """True when never indexed, git HEAD newer than index, or indexed files differ on disk."""
     if workspace.get("semantic_index_enabled") is False:
         return False
+    from apps.backend.infrastructure.workspace.workspace_execution import is_client_execution
+
     last_at = _parse_iso(workspace.get("last_index_at"))
+    if is_client_execution(workspace.get("execution_mode")):
+        return last_at is None
+
     path = workspace.get("path") or workspace.get("repo_path")
     root: Path | None = Path(path) if isinstance(path, str) and path.strip() else None
 
@@ -102,6 +107,10 @@ def index_stale_reason(workspace: dict[str, Any]) -> str | None:
         return None
     if not workspace.get("last_index_at"):
         return "never_indexed"
+    from apps.backend.infrastructure.workspace.workspace_execution import is_client_execution
+
+    if is_client_execution(workspace.get("execution_mode")):
+        return None
     path = workspace.get("path") or workspace.get("repo_path")
     if isinstance(path, str) and path.strip():
         try:
@@ -129,6 +138,11 @@ def build_retrieval_bootstrap_snippet(workspace: dict[str, Any]) -> str:
     sem_on = workspace.get("semantic_index_enabled", True) is not False
     ret_on = workspace.get("retrieval_enabled", True) is not False
     lines.append(f"Semantic index: {'on' if sem_on else 'off'} · Retrieval: {'on' if ret_on else 'off'}")
+    from apps.backend.infrastructure.workspace.workspace_execution import is_client_execution
+    from apps.backend.infrastructure.workspace.workspace_index_consent import effective_index_consent
+
+    if is_client_execution(workspace.get("execution_mode")):
+        lines.append(f"Execution: client · index_consent: {effective_index_consent(workspace)}")
 
     stats = workspace.get("last_index_stats")
     sym = stats.get("total_symbols") if isinstance(stats, dict) else None
@@ -149,7 +163,7 @@ def build_retrieval_bootstrap_snippet(workspace: dict[str, Any]) -> str:
     elif stale == "never_indexed" and sem_on:
         lines.append("No semantic index yet — use `search` / grep; run index for Qdrant symbol search.")
 
-    if root and root.is_dir():
+    if (not is_client_execution(workspace.get("execution_mode"))) and root and root.is_dir():
         top = list_repo_top_level(root)
         if top:
             lines.append("Top-level: " + ", ".join(top))

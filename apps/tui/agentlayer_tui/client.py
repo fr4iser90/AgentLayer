@@ -186,6 +186,54 @@ class RestClient:
         data = r.json()
         return data if isinstance(data, dict) else {}
 
+    async def patch_workspace(self, workspace_id: str, **fields: Any) -> dict[str, Any]:
+        r = await self._http.patch(
+            f"/v1/workspaces/{workspace_id}",
+            headers=self._headers,
+            json=fields,
+        )
+        if r.status_code == 400:
+            raise AgentLayerError(str((r.json() or {}).get("detail") or "update refused"))
+        if r.status_code == 404:
+            raise AgentLayerError("workspace not found or not editable")
+        r.raise_for_status()
+        row = (r.json() or {}).get("workspace")
+        return row if isinstance(row, dict) else {}
+
+    async def upload_index_symbols(
+        self, workspace_id: str, files: list[dict[str, Any]], *, replace_all: bool = True
+    ) -> dict[str, Any]:
+        r = await self._http.post(
+            f"/v1/workspaces/{workspace_id}/index/symbols",
+            headers=self._headers,
+            json={"files": files, "replace_all": replace_all},
+            timeout=120.0,
+        )
+        if r.status_code == 400:
+            raise AgentLayerError(str((r.json() or {}).get("detail") or "symbol upload refused"))
+        if r.status_code == 404:
+            raise AgentLayerError("workspace not found or not editable")
+        r.raise_for_status()
+        data = r.json()
+        return data if isinstance(data, dict) else {}
+
+    async def upload_index_text(
+        self, workspace_id: str, documents: list[dict[str, str]], *, purge_first: bool = True
+    ) -> dict[str, Any]:
+        r = await self._http.post(
+            f"/v1/workspaces/{workspace_id}/index/text",
+            headers=self._headers,
+            json={"documents": documents, "purge_first": purge_first},
+            timeout=120.0,
+        )
+        if r.status_code == 400:
+            raise AgentLayerError(str((r.json() or {}).get("detail") or "text upload refused"))
+        if r.status_code == 404:
+            raise AgentLayerError("workspace not found or not editable")
+        r.raise_for_status()
+        data = r.json()
+        return data if isinstance(data, dict) else {}
+
     async def index_status(self, workspace_id: str) -> dict[str, Any]:
         data = await self._get(f"/v1/workspaces/{workspace_id}/index/status")
         return data if isinstance(data, dict) else {}

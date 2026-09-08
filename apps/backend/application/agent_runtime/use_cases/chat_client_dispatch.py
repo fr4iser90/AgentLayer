@@ -17,6 +17,8 @@ from apps.backend.infrastructure.workspace.workspace_execution import is_client_
 logger = logging.getLogger(__name__)
 
 # LLM-visible names that open ``context["workspace"]["path"]`` on the server.
+# Index *query* tools (semantic_search, graph, retrieve_context, knowledge_query) stay
+# on the server: they key off workspace_id, not the laptop path.
 CLIENT_PATH_TOOLS = frozenset(
     {
         "read_file",
@@ -29,13 +31,9 @@ CLIENT_PATH_TOOLS = frozenset(
         "replace",
         "bash",
         "git_sync",
-        "retrieve_context",
-        "semantic_search",
-        "graph",
         "symbols",
         "index",
         "knowledge_index",
-        "knowledge_query",
         "lsp",
         "workspace_verify",
     }

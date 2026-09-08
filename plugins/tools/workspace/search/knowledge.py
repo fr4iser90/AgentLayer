@@ -9,6 +9,7 @@ from typing import Any, Callable
 from plugins.tools.workspace.lib.common import (
     json_workspace_missing_error,
     workspace_binding_from_context,
+    workspace_record_from_context,
 )
 
 try:
@@ -35,6 +36,24 @@ def _workspace_or_error(context: dict | None) -> tuple[dict[str, Any] | None, st
     ws = workspace_binding_from_context(context)
     if ws is None:
         return None, json_workspace_missing_error()
+    return ws, None
+
+
+def _workspace_query_or_error(context: dict | None) -> tuple[dict[str, Any] | None, str | None]:
+    ws = workspace_record_from_context(context)
+    if ws is None:
+        return None, json_workspace_missing_error()
+    from apps.backend.infrastructure.workspace.workspace_index_consent import (
+        INDEX_CONSENT_TEXT,
+        consent_refusal,
+    )
+
+    refused = consent_refusal(ws, INDEX_CONSENT_TEXT)
+    if refused:
+        return None, json.dumps(
+            {"ok": False, "skipped": True, "reason": "index_consent", "error": refused},
+            ensure_ascii=False,
+        )
     return ws, None
 
 
@@ -124,7 +143,7 @@ def knowledge_index(arguments: dict[str, Any], context: dict | None = None) -> s
 def knowledge_query(arguments: dict[str, Any], context: dict | None = None) -> str:
     if not _HAS_K1:
         return json.dumps({"ok": False, "error": "K1-lite dependencies are unavailable"}, ensure_ascii=False)
-    ws, err = _workspace_or_error(context)
+    ws, err = _workspace_query_or_error(context)
     if err:
         return err
     assert ws is not None

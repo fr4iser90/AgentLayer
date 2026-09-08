@@ -189,6 +189,9 @@ def persist_operator_settings_patch(r: dict[str, Any], patch: dict[str, Any], me
             if "workspace_index_on_attach_enabled" in patch:
                 extra_sets.append("workspace_index_on_attach_enabled = %s")
                 extra_params.append(bool(r.get("workspace_index_on_attach_enabled", False)))
+            if "workspace_index_consent_max" in patch:
+                extra_sets.append("workspace_index_consent_max = %s")
+                extra_params.append(str(r.get("workspace_index_consent_max") or "text"))
             if "llm_queue_policy" in patch:
                 extra_sets.append("llm_queue_policy = %s")
                 extra_params.append(str(r.get("llm_queue_policy") or "priority"))

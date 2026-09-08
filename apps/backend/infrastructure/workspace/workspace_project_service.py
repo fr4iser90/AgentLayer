@@ -150,6 +150,14 @@ def create_project_workspace_for_user(
     br_ins = (git_branch or "main").strip() or "main"
     gu_ins = (git_url or "").strip() if src == "git" else None
 
+    from apps.backend.infrastructure.workspace.workspace_index_consent import (
+        INDEX_CONSENT_NONE,
+        INDEX_CONSENT_TEXT,
+        clamp_index_consent,
+    )
+
+    index_consent = INDEX_CONSENT_NONE if mode == CLIENT_EXECUTION else clamp_index_consent(INDEX_CONSENT_TEXT)
+
     try:
         with db.pool().connection() as conn:
             with conn.cursor() as cur:
@@ -157,12 +165,12 @@ def create_project_workspace_for_user(
                     """
                     INSERT INTO project_workspaces (
                       owner_user_id, name, path, source, git_url, git_branch,
-                      access_role, benchmark_run_id, execution_mode
+                      access_role, benchmark_run_id, execution_mode, index_consent
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, 'owner', %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, 'owner', %s, %s, %s)
                     RETURNING id
                     """,
-                    (user.id, nm, stored_path, src, gu_ins, br_ins, bench_run_id, mode),
+                    (user.id, nm, stored_path, src, gu_ins, br_ins, bench_run_id, mode, index_consent),
                 )
                 created = cur.fetchone()
                 if not created:

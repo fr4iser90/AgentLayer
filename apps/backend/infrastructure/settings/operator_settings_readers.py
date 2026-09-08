@@ -52,6 +52,12 @@ def set_rag_docs_ingest_fingerprint(value: str) -> None:
     _invalidate()
 
 
+def _workspace_index_consent_max_public() -> str:
+    from apps.backend.infrastructure.workspace.workspace_index_consent import operator_index_consent_max
+
+    return operator_index_consent_max()
+
+
 def resolved_embedding_api_base_url() -> str:
     from apps.backend.infrastructure.providers.embedding_catalog_providers import resolve_active_embedding_spec
 
@@ -496,6 +502,7 @@ def public_dict() -> dict[str, Any]:
         "workspace_reindex_after_git_pull": bool(r.get("workspace_reindex_after_git_pull", False)),
         "workspace_nightly_reindex_enabled": bool(r.get("workspace_nightly_reindex_enabled", False)),
         "workspace_index_on_attach_enabled": bool(r.get("workspace_index_on_attach_enabled", False)),
+        "workspace_index_consent_max": _workspace_index_consent_max_public(),
         "legal_enabled": bool(r.get("legal_enabled", False)),
         "legal_jurisdiction": (
             str(r.get("legal_jurisdiction") or "none").strip().lower()

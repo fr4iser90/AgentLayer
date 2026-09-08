@@ -116,30 +116,13 @@ def ingest_workspace_markdown_tree(
             text = path.read_text(encoding="utf-8", errors="replace").strip()
             if not text:
                 continue
-            title = rel
-            source_uri = f"workspace:{workspace_id}:{rel}"
-            out = _require_deps().ingest_for_user(
-                tenant_id,
-                user_id,
-                WORKSPACE_RAG_DOMAIN,
-                title,
-                text,
-                source_uri,
-                workspace_id=workspace_id,
-            )
-            total_chunks += int(out.get("chunk_count") or 0)
+            chunks, err = _ingest_one_markdown(workspace_id, tenant_id, user_id, rel, text)
+            if err:
+                errors.append({"path": rel, "error": err})
+                continue
+            total_chunks += chunks
             files_ok.append(rel)
         except (OSError, UnicodeError) as e:
-            errors.append({"path": rel, "error": str(e)})
-        except ValueError as e:
-            errors.append({"path": rel, "error": str(e)})
-        except httpx.HTTPStatusError as e:
-            logger.warning("workspace rag ingest HTTP error path=%s: %s", rel, e)
-            errors.append({"path": rel, "error": f"embedding HTTP: {e!s}"})
-        except httpx.RequestError as e:
-            errors.append({"path": rel, "error": f"embedding unreachable: {e!s}"})
-        except Exception as e:
-            logger.warning("workspace rag ingest failed path=%s: %s", rel, e)
             errors.append({"path": rel, "error": str(e)})
 
     return {
@@ -153,3 +136,94 @@ def ingest_workspace_markdown_tree(
         "files": files_ok,
         "errors": errors,
     }
+
+
+def ingest_workspace_markdown_documents(
+    workspace_id: uuid.UUID,
+    documents: list[tuple[str, str]],
+    *,
+    purge_first: bool = True,
+    max_files: int = _MAX_MARKDOWN_FILES,
+) -> dict[str, object]:
+    """Ingest already-read ``(relative_path, text)`` pairs. Does not open a workspace path."""
+    if not _require_deps().rag_settings()["enabled"]:
+        return {"ok": False, "error": "rag_disabled", "files_ingested": 0, "chunk_count_total": 0}
+
+    tenant_id, user_id = get_identity()
+    if user_id is None:
+        return {"ok": False, "error": "no user identity", "files_ingested": 0, "chunk_count_total": 0}
+
+    try:
+        _require_deps().embed_one("workspace rag probe")
+    except Exception as e:
+        return {
+            "ok": False,
+            "workspace_id": str(workspace_id),
+            "files_ingested": 0,
+            "chunk_count_total": 0,
+            "errors": [{"path": "(embed probe)", "error": str(e)}],
+        }
+
+    deleted_docs = 0
+    if purge_first:
+        deleted_docs = _require_deps().rag_delete_documents_by_workspace(tenant_id, workspace_id)
+
+    files_ok: list[str] = []
+    errors: list[dict[str, str]] = []
+    total_chunks = 0
+    max_files = max(1, min(int(max_files), _MAX_MARKDOWN_FILES))
+
+    for rel, text in documents[:max_files]:
+        chunks, err = _ingest_one_markdown(workspace_id, tenant_id, user_id, rel, text)
+        if err:
+            errors.append({"path": rel, "error": err})
+            continue
+        if chunks == 0 and not text.strip():
+            continue
+        total_chunks += chunks
+        files_ok.append(rel)
+
+    return {
+        "ok": len(errors) == 0,
+        "workspace_id": str(workspace_id),
+        "domain": WORKSPACE_RAG_DOMAIN,
+        "docs_root": None,
+        "purge_deleted_documents": deleted_docs,
+        "files_ingested": len(files_ok),
+        "chunk_count_total": total_chunks,
+        "files": files_ok,
+        "errors": errors,
+    }
+
+
+def _ingest_one_markdown(
+    workspace_id: uuid.UUID,
+    tenant_id: int,
+    user_id: uuid.UUID,
+    rel: str,
+    text: str,
+) -> tuple[int, str | None]:
+    if not text:
+        return 0, None
+    source_uri = f"workspace:{workspace_id}:{rel}"
+    try:
+        out = _require_deps().ingest_for_user(
+            tenant_id,
+            user_id,
+            WORKSPACE_RAG_DOMAIN,
+            rel,
+            text,
+            source_uri,
+            workspace_id=workspace_id,
+        )
+        return int(out.get("chunk_count") or 0), None
+    except ValueError as e:
+        return 0, str(e)
+    except httpx.HTTPStatusError as e:
+        logger.warning("workspace rag ingest HTTP error path=%s: %s", rel, e)
+        return 0, f"embedding HTTP: {e!s}"
+    except httpx.RequestError as e:
+        return 0, f"embedding unreachable: {e!s}"
+    except Exception as e:
+        logger.warning("workspace rag ingest failed path=%s: %s", rel, e)
+        return 0, str(e)

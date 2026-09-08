@@ -61,6 +61,14 @@ def _invalidate() -> None:
     except Exception:
         pass
     try:
+        from apps.backend.infrastructure.workspace.workspace_index_consent import (
+            invalidate_index_consent_cap_cache,
+        )
+
+        invalidate_index_consent_cap_cache()
+    except Exception:
+        pass
+    try:
         from apps.backend.infrastructure.providers.extractor_catalog_providers import (
             invalidate_extractor_provider_specs_cache,
         )
