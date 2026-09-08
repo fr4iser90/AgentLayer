@@ -46,6 +46,7 @@ This folder is written for **humans** and for **RAG ingestion**.
 - **Discord**: [`docs/features/discord.md`](./features/discord.md)
 - **HTTP API**: [`docs/api/http.md`](./api/http.md)
 - **Ops runbooks**: [`docs/runbooks/`](./runbooks/)
+- **Git collaboration / PRs / branch protection**: [`docs/runbooks/collaboration.md`](./runbooks/collaboration.md)
 - **Workspace persistence (Docker)**: [`docs/runbooks/workspace-persistence.md`](./runbooks/workspace-persistence.md)
 - **LSP / language servers (PATH smoke)**: [`docs/runbooks/lsp.md`](./runbooks/lsp.md)
 - **Glossary**: [`docs/glossary.md`](./glossary.md)

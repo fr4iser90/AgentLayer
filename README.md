@@ -8,6 +8,8 @@ visit https://github.com/fr4iser90/AgentLayer_-_Jetson-Orin-Nano-Super-Developer
 
 **Repo layout (``apps/`` vs ``plugins/``):** [docs/architecture/repo-layout.md](docs/architecture/repo-layout.md).
 
+**Collaborate (branches, PRs, CI gate):** [docs/runbooks/collaboration.md](docs/runbooks/collaboration.md).
+
 RAG-Docs / Embed: 404 auf Ollama-Embed-Routen → Embedding-Modell auf dem Ollama-Host ziehen (z. B. ollama pull nomic-embed-text) oder OLLAMA_BASE_URL/Modell prüfen – betrifft nur die automatische Doku-Ingestion, nicht den Rest.
 
 ## TUI client (no server checkout)

@@ -9,6 +9,7 @@ workflows. Put scoped helpers in subdirectories.
 - `checks/run.py` - modular repository checks configured by `checks/config.json`.
 - `pre-commit-check.sh` - git pre-commit entry point for modular checks.
 - `install-git-pre-commit-hook.sh` - installs `.git/hooks/pre-commit`.
+- CI gate: `.github/workflows/ci.yml` runs `--profile ci` (see `docs/runbooks/collaboration.md`).
 - `alembic_entrypoint.sh` - Docker migration entry point.
 - `run-unit-tests.sh` - unit test runner.
 - `run-e2e-journeys.sh` - live E2E journey runner.
