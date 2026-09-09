@@ -6,7 +6,7 @@ from typing import Protocol
 
 # Well-known first-party nav ids (UI filters when ``ui.allowed_nav`` is set).
 KNOWN_NAV_ITEMS: frozenset[str] = frozenset(
-    {"home", "chat", "studio", "dashboard", "schedules", "tasks", "shares"}
+    {"home", "chat", "studio", "dashboard", "projects", "schedules", "tasks", "shares"}
 )
 
 

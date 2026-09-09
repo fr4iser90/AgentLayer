@@ -125,6 +125,80 @@ class TestCodingBashIntegration(unittest.TestCase):
                 out = json.loads(bash({"command": "echo hi"}, context=ctx))
         self.assertTrue(out["ok"])
 
+    def test_missing_executable_is_structured(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            ctx = {"workspace": {"path": str(root), "id": "ws-1"}}
+            with patch(
+                "plugins.tools.workspace.shell.bash.coding_bash_strict_enabled",
+                return_value=False,
+            ), patch(
+                "plugins.tools.workspace.shell.bash.subprocess.run",
+                side_effect=FileNotFoundError(2, "No such file or directory", "node"),
+            ):
+                out = json.loads(bash({"command": "node --version"}, context=ctx))
+        self.assertFalse(out["ok"])
+        self.assertTrue(out.get("missing_in_environment"))
+        self.assertEqual(out.get("missing_executable"), "node")
+        self.assertIn("Node.js", out.get("hint") or "")
+
+
+class TestHostToolchain(unittest.TestCase):
+    def test_first_command_program(self) -> None:
+        from plugins.tools.workspace.lib.host_toolchain import first_command_program
+
+        self.assertEqual(first_command_program("node --version"), "node")
+        self.assertEqual(first_command_program("/usr/bin/npx mycli"), "npx")
+        self.assertIsNone(first_command_program(""))
+
+    def test_probe_marks_absent_binary(self) -> None:
+        from plugins.tools.workspace.lib.host_toolchain import probe_coding_environment
+
+        with patch("plugins.tools.workspace.lib.host_toolchain.shutil.which", return_value=None):
+            out = probe_coding_environment(env={"PATH": "/none"})
+        self.assertTrue(out["ok"])
+        self.assertIn("node", out["missing"])
+        self.assertIn("node", out["hints"])
+
+
+class TestEnvSecretBridge(unittest.TestCase):
+    def test_roundtrip_bindings_file(self) -> None:
+        from plugins.tools.workspace.lib.env_secret_bridge import (
+            load_env_bindings,
+            save_env_bindings,
+            redact_injected_secrets,
+        )
+
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            saved = save_env_bindings(
+                root, {"FOO_PASSWORD": "foo_password", "FOO_USERNAME": "foo_username"}
+            )
+            self.assertEqual(saved["FOO_PASSWORD"], "foo_password")
+            loaded = load_env_bindings(root)
+            self.assertEqual(loaded, saved)
+            self.assertTrue((root / ".agentlayer" / "env_bindings.json").is_file())
+
+        redacted = redact_injected_secrets(
+            "pass=supersecret99 end", {"FOO_PASSWORD": "supersecret99"}
+        )
+        self.assertNotIn("supersecret99", redacted)
+        self.assertIn("***", redacted)
+
+    def test_resolve_missing_without_user(self) -> None:
+        from plugins.tools.workspace.lib.env_secret_bridge import (
+            resolve_bound_secrets,
+            save_env_bindings,
+        )
+
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            save_env_bindings(root, {"FOO_PASSWORD": "foo_password"})
+            env_extra, missing, names = resolve_bound_secrets(root, user_id=None)
+        self.assertEqual(env_extra, {})
+        self.assertEqual(missing, ["foo_password"])
+        self.assertEqual(names, ["FOO_PASSWORD"])
+
 
 if __name__ == "__main__":
     unittest.main()

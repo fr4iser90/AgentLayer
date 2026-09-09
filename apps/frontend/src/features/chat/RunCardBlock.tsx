@@ -48,7 +48,7 @@ function formatDuration(ms: number | undefined): string | null {
 function collapsedStepPreview(card: RunCard): string[] {
   const steps = allSubagentStepLabels(card);
   if (steps.length > 0) {
-    const max = card.status === "running" ? COLLAPSED_PREVIEW_RUNNING : COLLAPSED_PREVIEW_DONE;
+  const max = card.status === "running" ? COLLAPSED_PREVIEW_RUNNING : COLLAPSED_PREVIEW_DONE;
     return steps.slice(-max);
   }
   const cur = card.currentStep?.trim();
@@ -166,7 +166,9 @@ export function RunCardBlock({
       ? t("chat:runCardStatusRunning")
       : card.status === "failed"
         ? t("chat:runCardStatusFailed")
-        : t("chat:runCardStatusDone");
+        : card.status === "cancelled"
+          ? t("chat:runCardStatusCancelled")
+          : t("chat:runCardStatusDone");
 
   const meta: string[] = [statusLabel];
   if (duration) meta.push(duration);

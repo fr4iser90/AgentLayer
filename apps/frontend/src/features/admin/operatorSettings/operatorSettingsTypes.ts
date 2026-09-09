@@ -135,6 +135,10 @@ export type OperatorPublic = {
   media_effective_upload_max_bytes?: number;
   media_effective_upload_allowed_mime?: string[];
   media_effective_default_quota_mb?: number;
+  chat_max_conversation_mb?: number | null;
+  chat_max_personal_sessions?: number | null;
+  chat_max_dashboard_sessions?: number | null;
+  chat_warn_ratio?: number | null;
   voice_enabled?: boolean;
   voice_api_base_url?: string;
   voice_api_base_source?: "env" | "operator_settings" | null;

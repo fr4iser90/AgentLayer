@@ -8,6 +8,7 @@ import { NotificationBell } from "../components/NotificationBell";
 import { NotificationProvider } from "../features/notifications/NotificationProvider";
 import { GlobalMediaProvider } from "../features/media/GlobalMediaProvider";
 import { MediaMiniPlayer } from "../features/media/MediaMiniPlayer";
+import { AgentRunningBadge } from "../features/chat/AgentRunningBadge";
 import { SUPPORTED } from "../i18n/config";
 import { LegalFooterLinks } from "../components/LegalFooterLinks";
 
@@ -32,6 +33,7 @@ function MoreNavMenu({
   showSchedulesMobile,
   showConnectionsMobile,
   showDashboard,
+  showProjects,
   showStudio,
   showTasks,
   showShares,
@@ -40,6 +42,7 @@ function MoreNavMenu({
   showSchedulesMobile: boolean;
   showConnectionsMobile: boolean;
   showDashboard: boolean;
+  showProjects: boolean;
   showStudio: boolean;
   showTasks: boolean;
   showShares: boolean;
@@ -50,7 +53,8 @@ function MoreNavMenu({
   const rootRef = useRef<HTMLDivElement>(null);
 
   const hasMobileExtras = showSchedulesMobile || showConnectionsMobile;
-  const hasDesktopExtras = showDashboard || showStudio || showTasks || showShares || showDocs;
+  const hasDesktopExtras =
+    showDashboard || showProjects || showStudio || showTasks || showShares || showDocs;
 
   useEffect(() => {
     if (!open) return;
@@ -112,6 +116,16 @@ function MoreNavMenu({
               onClick={() => setOpen(false)}
             >
               {t("nav.dashboard")}
+            </NavLink>
+          ) : null}
+          {showProjects ? (
+            <NavLink
+              role="menuitem"
+              to="/projects"
+              className={menuItemClass}
+              onClick={() => setOpen(false)}
+            >
+              {t("nav.projects")}
             </NavLink>
           ) : null}
           {showStudio ? (
@@ -192,9 +206,18 @@ export function AppLayout() {
                   {t("nav.chat")}
                 </NavLink>
               ) : null}
+              <AgentRunningBadge />
               {navItemAllowed(user, "schedules") ? (
                 <NavLink to="/schedules" className={({ isActive }) => `${linkClass({ isActive })} hidden md:inline-flex`}>
                   {t("nav.schedules")}
+                </NavLink>
+              ) : null}
+              {navItemAllowed(user, "projects") ? (
+                <NavLink
+                  to="/projects"
+                  className={({ isActive }) => `${linkClass({ isActive })} hidden md:inline-flex`}
+                >
+                  {t("nav.projects")}
                 </NavLink>
               ) : null}
               <NavLink
@@ -207,6 +230,7 @@ export function AppLayout() {
                 showSchedulesMobile={navItemAllowed(user, "schedules")}
                 showConnectionsMobile
                 showDashboard={navItemAllowed(user, "dashboard")}
+                showProjects={navItemAllowed(user, "projects")}
                 showStudio={navItemAllowed(user, "studio")}
                 showTasks={navItemAllowed(user, "tasks")}
                 showShares={navItemAllowed(user, "shares")}

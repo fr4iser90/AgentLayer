@@ -72,6 +72,30 @@ def created_at_iso(dt: datetime | None) -> str:
     return ensure_utc(dt).isoformat()
 
 
+def parse_client_message_id(message: dict[str, Any]) -> str | None:
+    raw = message.get("client_message_id")
+    if raw is None:
+        raw = message.get("id")
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s or len(s) > 128:
+        return None
+    return s
+
+
+def parse_message_reasoning(message: dict[str, Any]) -> str | None:
+    raw = message.get("reasoning")
+    if raw is None:
+        raw = message.get("reasoning_content")
+    if raw is None:
+        return None
+    if not isinstance(raw, str):
+        raw = str(raw)
+    s = raw.strip()
+    return s if s else None
+
+
 def insert_chat_message(
     cur: Any,
     conversation_id: uuid.UUID,
@@ -83,21 +107,29 @@ def insert_chat_message(
     if role not in ("user", "assistant", "system"):
         role = "user"
     created = parse_message_created_at(message.get("created_at"))
+    client_id = parse_client_message_id(message)
+    reasoning = parse_message_reasoning(message) if role == "assistant" else None
     if created is not None:
         cur.execute(
             """
-            INSERT INTO chat_messages (conversation_id, position, role, content, created_at)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO chat_messages (
+              conversation_id, position, role, content, created_at,
+              client_message_id, reasoning
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
             """,
-            (conversation_id, position, role, content, created),
+            (conversation_id, position, role, content, created, client_id, reasoning),
         )
     else:
         cur.execute(
             """
-            INSERT INTO chat_messages (conversation_id, position, role, content)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO chat_messages (
+              conversation_id, position, role, content,
+              client_message_id, reasoning
+            )
+            VALUES (%s, %s, %s, %s, %s, %s)
             """,
-            (conversation_id, position, role, content),
+            (conversation_id, position, role, content, client_id, reasoning),
         )
 
 

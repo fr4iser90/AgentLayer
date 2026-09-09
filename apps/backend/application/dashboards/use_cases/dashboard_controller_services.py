@@ -42,9 +42,15 @@ from apps.backend.infrastructure.dashboards.dashboard_template_ops import (
     validate_template_import,
 )
 from apps.backend.infrastructure.dashboards.dashboard_upload_bytes import (
+    decode_text_payload,
+    is_image_mime,
+    is_text_like_mime,
     normalized_content_type,
     sniff_image_mime,
+    sniff_upload_mime,
 )
+from apps.backend.infrastructure.dashboards.dashboard_data_paths import top_level_key
+from apps.backend.infrastructure.dashboards.dashboard_layout_tree import data_paths_from_blocks
 from apps.backend.infrastructure.db import db
 from apps.backend.infrastructure.platform.config import config
 from apps.backend.infrastructure.platform.public_error import http_500_detail

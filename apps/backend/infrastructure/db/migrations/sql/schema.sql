@@ -850,10 +850,15 @@ CREATE TABLE chat_messages (
   role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
   content TEXT NOT NULL DEFAULT '',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  client_message_id TEXT NULL,
+  reasoning TEXT NULL,
   UNIQUE (conversation_id, position)
 );
 
 CREATE INDEX idx_chat_msg_conv ON chat_messages (conversation_id, position);
+CREATE UNIQUE INDEX idx_chat_msg_client_id
+  ON chat_messages (conversation_id, client_message_id)
+  WHERE client_message_id IS NOT NULL;
 
 -- Bridges (Telegram, Discord, …): rolling conversation per (user, provider, chat/channel, optional thread).
 

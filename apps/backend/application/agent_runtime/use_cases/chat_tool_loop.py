@@ -87,6 +87,12 @@ async def run_chat_tool_loop(
     thrash_streak_max: int,
     doom_enabled: bool,
     doom_streak_max: int,
+    output_echo_enabled: bool,
+    output_echo_streak_max: int,
+    output_echo_min_chars: int,
+    result_echo_enabled: bool,
+    result_echo_streak_max: int,
+    result_echo_min_chars: int,
     run_persisted: bool,
     run_persist_warnings: list[str],
 ) -> dict[str, Any]:
@@ -95,9 +101,22 @@ async def run_chat_tool_loop(
     thrash_count = 0
     doom_key: str | None = None
     doom_count = 0
+    output_echo_key: str | None = None
+    output_echo_count = 0
+    result_echo_key: str | None = None
+    result_echo_count = 0
     force_no_tools_round = False
-    force_no_tools_reason: str | None = None  # "thrash" | "doom"
+    force_no_tools_reason: str | None = None
     tools_need_full_schema: set[str] = set()
+    advice_thresholds = _normalize_advice_thresholds(
+        list(config.AGENT_TOOL_REPEAT_ADVICE_THRESHOLDS)
+        + [
+            thrash_streak_max,
+            doom_streak_max,
+            output_echo_streak_max,
+            result_echo_streak_max,
+        ]
+    )
 
     context_budget_enforcer = ChatContextBudgetEnforcer(
         messages=messages,
@@ -180,6 +199,19 @@ async def run_chat_tool_loop(
         model = llm_round.model or model
         attempts = llm_round.attempts or attempts
         llm_backend = llm_round.llm_backend or llm_backend
+
+        if output_echo_enabled:
+            raw_content = msg.get("content") if isinstance(msg, dict) else None
+            content_s = raw_content if isinstance(raw_content, str) else ""
+            output_echo_key, output_echo_count, out_hint = _agent_assistant_output_echo_tick(
+                output_echo_key,
+                output_echo_count,
+                content=content_s,
+                thresholds=advice_thresholds,
+                min_chars=output_echo_min_chars,
+            )
+            if out_hint:
+                messages.append({"role": "system", "content": out_hint})
 
         messages.append(msg)
 
@@ -419,38 +451,29 @@ async def run_chat_tool_loop(
                     agent_run_id=agent_run_id,
                 )
             if thrash_enabled:
-                nk, nc, thr_hint, force_next = _agent_tool_thrash_tick(
+                nk, nc, thr_hint = _agent_tool_thrash_tick(
                     thrash_key,
                     thrash_count,
                     tool_name=name,
                     ok_r=ok_sum,
                     err_r=err_sum,
-                    max_streak=thrash_streak_max,
+                    thresholds=advice_thresholds,
                 )
                 thrash_key, thrash_count = nk, nc
                 if thr_hint:
                     messages.append({"role": "system", "content": thr_hint})
-                if force_next:
-                    force_no_tools_round = True
-                    force_no_tools_reason = "thrash"
-                    logger.info(
-                        "tool loop guard: thrash streak reached for tool=%r — next LLM round will omit tools[]",
-                        name,
-                    )
             if doom_enabled:
                 dk, dc, doom_hint = _agent_tool_doom_loop_tick(
                     doom_key,
                     doom_count,
                     tool_name=name,
                     args=args,
-                    max_streak=doom_streak_max,
+                    thresholds=advice_thresholds,
                     exclude_names=config.AGENT_TOOL_DOOM_LOOP_EXCLUDE,
                 )
                 doom_key, doom_count = dk, dc
                 if doom_hint:
                     messages.append({"role": "system", "content": doom_hint})
-                    force_no_tools_round = True
-                    force_no_tools_reason = "doom"
                     try:
                         _args_preview = json.dumps(dict(args), sort_keys=True, separators=(",", ":"), default=str)
                     except TypeError:
@@ -458,14 +481,23 @@ async def run_chat_tool_loop(
                     if len(_args_preview) > 400:
                         _args_preview = _args_preview[:400] + "…"
                     logger.info(
-                        "tool loop guard: doom-loop streak reached (tool=%r args=%s max_streak=%d) — "
-                        "next LLM round will omit tools[]",
+                        "tool loop guard: advisory doom reminder (tool=%r args=%s streak=%d) — tools remain available",
                         name,
                         _args_preview,
-                        doom_streak_max,
+                        dc,
                     )
-                    if tool_context.get("agent_unattended"):
-                        record_schedule_abort("repeated_tool_loop")
+            if result_echo_enabled:
+                rk, rc, res_hint = _agent_tool_result_echo_tick(
+                    result_echo_key,
+                    result_echo_count,
+                    tool_name=name,
+                    result=result,
+                    thresholds=advice_thresholds,
+                    min_chars=result_echo_min_chars,
+                )
+                result_echo_key, result_echo_count = rk, rc
+                if res_hint:
+                    messages.append({"role": "system", "content": res_hint})
             await emit_tool_done_events(
                 event_emit=event_emit,
                 agent_run_id=agent_run_id,

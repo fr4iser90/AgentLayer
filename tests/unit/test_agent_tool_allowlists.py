@@ -20,7 +20,23 @@ _HARNESS = frozenset(
     }
 )
 EXPECTATIONS: dict[str, tuple[int, frozenset[str], frozenset[str]]] = {
-    "general": (13, frozenset({"delegate", "catalog", "bind"}) | _HARNESS, frozenset({"bash", "deferred_wait"})),
+    "general": (
+        18,
+        frozenset(
+            {
+                "delegate",
+                "catalog",
+                "bind",
+                "env_bindings",
+                "save_user_secret",
+                "request_user_secret",
+                "secrets_help",
+                "register_secrets",
+            }
+        )
+        | _HARNESS,
+        frozenset({"bash", "deferred_wait"}),
+    ),
     "math": (11, frozenset({"math_eval", "math_percentage", "math_convert_units", "math_statistics"}) | _HARNESS, frozenset({"deferred_wait"})),
     "creative": (9, frozenset({"build"}) | _HARNESS, frozenset({"deferred_wait"})),
     "research": (24, frozenset({"web_search.search", "rag_search"}) | _HARNESS, frozenset({"bash"})),
@@ -30,8 +46,16 @@ EXPECTATIONS: dict[str, tuple[int, frozenset[str], frozenset[str]]] = {
     "outdoor": (15, frozenset({"bite_index"}) | _HARNESS, frozenset({"bash"})),
     "lifestyle": (11, frozenset({"forecast", "current_time"}) | _HARNESS, frozenset({"bash"})),
     "dashboard": (34, frozenset({"dashboard.read", "propose_layouts"}) | _HARNESS, frozenset({"media_list", "git_push"})),
-    "coding": (49, frozenset({"bash", "repository.write_file"}) | _HARNESS, frozenset({"delegate", "start", "deferred_wait", "todo"})),
-    "coding_plan": (25, frozenset({"repository.read_file"}) | _HARNESS, frozenset({"bash", "deferred_wait", "todo"})),
+    "coding": (
+        51,
+        frozenset({"bash", "repository.write_file", "environment", "env_bindings"}) | _HARNESS,
+        frozenset({"delegate", "start", "deferred_wait", "todo"}),
+    ),
+    "coding_plan": (
+        26,
+        frozenset({"repository.read_file", "environment"}) | _HARNESS,
+        frozenset({"bash", "deferred_wait", "todo"}),
+    ),
     "security_auditor": (
         37,
         frozenset({"start", "deferred_wait", "goal_create", "todo_write", "todo_read"}),

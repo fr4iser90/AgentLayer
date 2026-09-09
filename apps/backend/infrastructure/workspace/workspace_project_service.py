@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import logging
 import shutil
-import subprocess
 import uuid
 from pathlib import Path
 from typing import Any
@@ -131,28 +130,16 @@ def create_project_workspace_for_user(
         if src == "git":
             gu = git_url.strip()
             user_workspace_dir.parent.mkdir(parents=True, exist_ok=True)
-            if user_workspace_dir.exists():
-                shutil.rmtree(user_workspace_dir, ignore_errors=True)
-            user_workspace_dir.mkdir(parents=True, exist_ok=True)
             br = (git_branch or "main").strip() or "main"
-            result = subprocess.run(
-                [
-                    "git",
-                    "clone",
-                    "--branch",
-                    br,
-                    "--depth",
-                    "1",
-                    gu,
-                    str(user_workspace_dir),
-                ],
-                capture_output=True,
-                text=True,
+            from apps.backend.infrastructure.workspace.workspace_git_clone import (
+                GitCloneError,
+                clone_shallow_repo,
             )
-            if result.returncode != 0:
-                shutil.rmtree(user_workspace_dir, ignore_errors=True)
-                err = (result.stderr or result.stdout or "").strip() or "git clone failed"
-                raise WorkspaceCreateError(f"Git clone failed: {err[:800]}")
+
+            try:
+                clone_shallow_repo(gu, user_workspace_dir, branch=br)
+            except GitCloneError as e:
+                raise WorkspaceCreateError(str(e)) from e
         else:
             user_workspace_dir.mkdir(parents=True, exist_ok=True)
         stored_path = str(user_workspace_dir)

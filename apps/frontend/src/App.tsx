@@ -43,6 +43,7 @@ import { ToolsSettings } from "./pages/settings/ToolsSettings";
 import SharesSettings from "./pages/settings/SharesSettings";
 import { StudioPage } from "./pages/StudioPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { ProjectsPage } from "./pages/ProjectsPage";
 import { DashboardPublicSharePage } from "./pages/DashboardPublicSharePage";
 import { LegalPage } from "./pages/LegalPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -78,6 +79,14 @@ export function App() {
                 }
               />
               <Route path="dashboard" element={<DashboardPage />} />
+              <Route
+                path="projects"
+                element={
+                  <RestrictedNavRedirect nav="projects">
+                    <ProjectsPage />
+                  </RestrictedNavRedirect>
+                }
+              />
               <Route
                 path="schedules"
                 element={

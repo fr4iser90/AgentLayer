@@ -7,6 +7,7 @@ export type NavItemId =
   | "chat"
   | "studio"
   | "dashboard"
+  | "projects"
   | "schedules"
   | "tasks"
   | "shares";
@@ -25,6 +26,7 @@ export function allowedNavItems(user: AuthUser | null | undefined): NavItemId[] 
       id === "chat" ||
       id === "studio" ||
       id === "dashboard" ||
+      id === "projects" ||
       id === "schedules" ||
       id === "tasks" ||
       id === "shares"

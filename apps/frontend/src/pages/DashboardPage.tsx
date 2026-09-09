@@ -19,6 +19,7 @@ import {
 } from "../features/dashboard/DashboardOnboardingBanner";
 import { DashboardGridCanvas } from "../features/dashboard/DashboardGridCanvas";
 import { DashboardSettingsDrawer } from "../features/dashboard/DashboardSettingsDrawer";
+import { DashboardBoardFilesPanel } from "../features/dashboard/DashboardBoardFilesPanel";
 import { DashboardSidebarNav } from "../features/dashboard/DashboardSidebarNav";
 import { DashboardOverviewPanel } from "../features/dashboard/DashboardOverviewPanel";
 import { ProjectsImportModal } from "../features/dashboard/ProjectsImportModal";
@@ -1889,6 +1890,8 @@ export function DashboardPage() {
                 </p>
               </div>
             </div>
+
+            <DashboardBoardFilesPanel dashboardId={detail.id} />
 
             {canEditContent ? (
               <div className="rounded-xl border border-surface-border bg-black/20 p-4">

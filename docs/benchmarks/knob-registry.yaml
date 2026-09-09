@@ -159,12 +159,12 @@ knobs:
     writable: true
     apply_via: agent-config/apply
     value_schema: runtime-config-values.json#/$defs/booleanConfig
-    default: false
+    default: true
     ui_group: loop_guards
     affects_agents: [general, coding]
     affects_clusters: [S, C, W, D, SEC]
     benchmark_sensitive: true
-    doc: Detect repeated identical tool calls and inject recovery hint.
+    doc: Advisory reminders on identical tool failures (DSH-style; never disables tools).
 
   - id: agent.tool_thrash_streak_max
     layer: runtime_config
@@ -173,12 +173,12 @@ knobs:
     writable: true
     apply_via: agent-config/apply
     value_schema: runtime-config-values.json#/$defs/loopGuardStreakMax
-    default: 10
+    default: 5
     ui_group: loop_guards
     affects_agents: [general, coding]
     affects_clusters: [S, C, W, D, SEC]
     benchmark_sensitive: true
-    doc: Identical tool-call streak before thrash guard fires.
+    doc: Legacy single threshold; prefer AGENT_TOOL_REPEAT_ADVICE_THRESHOLDS (3,5,8).
 
   - id: agent.doom_loop_enabled
     layer: runtime_config
@@ -187,12 +187,12 @@ knobs:
     writable: true
     apply_via: agent-config/apply
     value_schema: runtime-config-values.json#/$defs/booleanConfig
-    default: false
+    default: true
     ui_group: loop_guards
     affects_agents: [general, coding]
     affects_clusters: [S, C, W, D, SEC]
     benchmark_sensitive: true
-    doc: Detect alternating tool-call patterns (doom loop) and inject recovery hint.
+    doc: Advisory reminders on identical tool+args (never blocks tools; long coding continues).
 
   - id: agent.doom_loop_streak_max
     layer: runtime_config
@@ -201,12 +201,68 @@ knobs:
     writable: true
     apply_via: agent-config/apply
     value_schema: runtime-config-values.json#/$defs/loopGuardStreakMax
-    default: 10
+    default: 5
     ui_group: loop_guards
     affects_agents: [general, coding]
     affects_clusters: [S, C, W, D, SEC]
     benchmark_sensitive: true
-    doc: Alternating-pattern streak before doom-loop guard fires.
+    doc: Legacy single threshold; prefer AGENT_TOOL_REPEAT_ADVICE_THRESHOLDS (3,5,8).
+
+  - id: agent.assistant_output_echo_enabled
+    layer: runtime_config
+    bootstrap_env_key: AGENT_ASSISTANT_OUTPUT_ECHO_ENABLED
+    type: boolean
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: runtime-config-values.json#/$defs/booleanConfig
+    default: true
+    ui_group: loop_guards
+    affects_agents: [general, coding]
+    affects_clusters: [S, C, W, D, SEC]
+    benchmark_sensitive: true
+    doc: Advisory reminder when identical assistant text repeats across rounds.
+
+  - id: agent.assistant_output_echo_streak_max
+    layer: runtime_config
+    bootstrap_env_key: AGENT_ASSISTANT_OUTPUT_ECHO_STREAK_MAX
+    type: integer
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: runtime-config-values.json#/$defs/loopGuardStreakMax
+    default: 3
+    ui_group: loop_guards
+    affects_agents: [general, coding]
+    affects_clusters: [S, C, W, D, SEC]
+    benchmark_sensitive: true
+    doc: Legacy; shared advice thresholds default to 3,5,8.
+
+  - id: agent.tool_result_echo_enabled
+    layer: runtime_config
+    bootstrap_env_key: AGENT_TOOL_RESULT_ECHO_ENABLED
+    type: boolean
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: runtime-config-values.json#/$defs/booleanConfig
+    default: true
+    ui_group: loop_guards
+    affects_agents: [general, coding]
+    affects_clusters: [S, C, W, D, SEC]
+    benchmark_sensitive: true
+    doc: Advisory reminder when identical tool results repeat (never disables tools).
+
+  - id: agent.tool_result_echo_streak_max
+    layer: runtime_config
+    bootstrap_env_key: AGENT_TOOL_RESULT_ECHO_STREAK_MAX
+    type: integer
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: runtime-config-values.json#/$defs/loopGuardStreakMax
+    default: 5
+    ui_group: loop_guards
+    affects_agents: [general, coding]
+    affects_clusters: [S, C, W, D, SEC]
+    benchmark_sensitive: true
+    doc: Legacy; shared advice thresholds default to 3,5,8.
 
   # --- tool_routing ---
   - id: tool_routing.domain_order

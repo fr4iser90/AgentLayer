@@ -29,10 +29,14 @@ def build_user_secrets_bootstrap_snippet(user_id: uuid.UUID | None) -> str:
 
     if not keys:
         return (
-            "## User secrets (Settings → Connections)\n\n"
-            "No per-user secrets are stored yet. If a tool needs a credential, use "
-            "**``request_user_secret``** (in-chat card) or **``save_user_secret``** when they pasted "
-            "a key in chat, or Settings → Connections — do not write keys into ``.env`` files."
+            "## User secrets\n\n"
+            "No per-user secrets are stored yet. When the user pastes a credential in chat, "
+            "call **``save_user_secret``** immediately (signed-in users; not admin-only). "
+            "Derive ``service_key`` by lowercasing the env/var name (``FOO_BAR`` → ``foo_bar``), "
+            "or use a catalog key when declared. "
+            "Use **``request_user_secret``** for an in-chat card when they have not pasted a value. "
+            "Settings → Connections is optional"
+            "Do not write keys into ``.env`` files."
         )
 
     listed = ", ".join(f"``{k}``" for k in keys)

@@ -79,18 +79,15 @@ async def process_llm_tool_round(
 ) -> LlmToolRoundResult:
     round_full_schema_tools: list[str] = []
     if force_no_tools_round:
-        _guard_reason = force_no_tools_reason or "thrash"
+        # Reserved path (e.g. future hard guards). Loop-hygiene reminders are advisory and
+        # never set this flag — final-round text-only uses a separate branch below.
         logger.info(
             "chat tool loop round %d/%d: forwarding 0 tools (reason=loop_guard_%s)",
             round_i + 1,
             max_tool_rounds_eff,
-            _guard_reason,
+            force_no_tools_reason or "unknown",
         )
         tools_for_round = []
-        if force_no_tools_reason == "doom":
-            messages.append({"role": "system", "content": _AGENT_TOOL_DOOM_FORCE_TEXT})
-        else:
-            messages.append({"role": "system", "content": _AGENT_TOOL_THRASH_FORCE_TEXT})
         force_no_tools_round = False
         force_no_tools_reason = None
     else:

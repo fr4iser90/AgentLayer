@@ -255,6 +255,7 @@ def is_browser_chat_path(path: str) -> bool:
         "/app/docs",
         "/app/schedules",
         "/app/tasks",
+        "/app/projects",
         "/app/studio",
         "/app/settings",
         "/app/org",

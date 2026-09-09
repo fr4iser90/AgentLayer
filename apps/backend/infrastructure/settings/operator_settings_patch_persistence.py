@@ -20,7 +20,13 @@ from apps.backend.infrastructure.settings.operator_settings import (
 )
 from apps.backend.infrastructure.settings.operator_settings_patch_writer import _maybe_align_pgvector_embedding_dim
 
-def persist_operator_settings_patch(r: dict[str, Any], patch: dict[str, Any], media_patch: dict[str, Any]) -> None:
+def persist_operator_settings_patch(
+    r: dict[str, Any],
+    patch: dict[str, Any],
+    media_patch: dict[str, Any],
+    *,
+    chat_quota_patch: dict[str, Any] | None = None,
+) -> None:
     _maybe_align_pgvector_embedding_dim(r, patch)
 
     with db.pool().connection() as conn:
@@ -333,6 +339,10 @@ def persist_operator_settings_patch(r: dict[str, Any], patch: dict[str, Any], me
         from apps.backend.infrastructure.media.operator_media_settings import apply_media_operator_patch
 
         apply_media_operator_patch(media_patch)
+    if chat_quota_patch:
+        from apps.backend.infrastructure.platform.chat_storage_quota import apply_chat_quota_operator_patch
+
+        apply_chat_quota_operator_patch(chat_quota_patch)
     voice_patch = {
         k: patch[k]
         for k in (

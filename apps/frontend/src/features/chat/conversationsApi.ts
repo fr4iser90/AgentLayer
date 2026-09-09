@@ -23,7 +23,15 @@ function modelProviderFromApi(item: Record<string, unknown>): string | undefined
   return normalizeCatalogRoutingToken(raw);
 }
 
-type ApiMessage = { role: "user" | "assistant" | "system"; content: unknown; created_at?: unknown };
+type ApiMessage = {
+  role: "user" | "assistant" | "system";
+  content: unknown;
+  created_at?: unknown;
+  id?: unknown;
+  client_message_id?: unknown;
+  reasoning?: unknown;
+  reasoning_content?: unknown;
+};
 
 function apiErrorDetail(err: unknown, fallback: string): string {
   if (!err || typeof err !== "object" || !("detail" in err)) return fallback;
@@ -51,6 +59,68 @@ function serializeMessageContent(content: string): string | unknown[] {
     }
   }
   return content;
+}
+
+export type ConversationStorageInfo = {
+  used_bytes?: number;
+  limit_bytes?: number;
+  warn?: boolean;
+  over_limit?: boolean;
+  warn_ratio?: number;
+};
+
+/** Show a once-per-conversation warning when storage ≥ 80% of the admin limit. */
+export function noticeConversationStorageWarn(
+  conversationId: string,
+  storage: ConversationStorageInfo | null | undefined,
+  notify: (title: string, body: string) => void,
+  t: (key: string, opts?: Record<string, string | number>) => string
+): void {
+  if (!storage?.warn || !conversationId) return;
+  const key = `agentlayer:chat-storage-warn:${conversationId}`;
+  try {
+    if (sessionStorage.getItem(key) === "1") return;
+    sessionStorage.setItem(key, "1");
+  } catch {
+    /* ignore */
+  }
+  const used = Number(storage.used_bytes ?? 0);
+  const limit = Number(storage.limit_bytes ?? 0);
+  const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 80;
+  const limitMb = limit > 0 ? Math.max(1, Math.round(limit / (1024 * 1024))) : 2048;
+  notify(t("chat:storageWarnTitle"), t("chat:storageWarnBody", { pct, limitMb }));
+}
+
+function storageFromConversationPayload(
+  raw: Record<string, unknown> | undefined
+): ConversationStorageInfo | null {
+  const s = raw?.storage;
+  if (!s || typeof s !== "object") return null;
+  return s as ConversationStorageInfo;
+}
+
+function emitStorageWarn(conversationId: string, raw: Record<string, unknown> | undefined): void {
+  const storage = storageFromConversationPayload(raw);
+  noticeConversationStorageWarn(
+    conversationId,
+    storage,
+    (title, body) => {
+      window.dispatchEvent(
+        new CustomEvent("agentlayer:chat-storage-warn", { detail: { title, body } })
+      );
+    },
+    (key, opts) => {
+      if (key === "chat:storageWarnTitle") {
+        return "Chat storage almost full";
+      }
+      if (key === "chat:storageWarnBody") {
+        const pct = opts?.pct ?? 80;
+        const limitMb = opts?.limitMb ?? 2048;
+        return `This conversation is using ${pct}% of the ${limitMb} MB limit. Consider starting a new chat soon.`;
+      }
+      return key;
+    }
+  );
 }
 
 function normalizeSource(raw: unknown): ChatSource {
@@ -98,7 +168,7 @@ export function mapListItemToThread(item: Record<string, unknown>): ChatThread {
   };
 }
 
-/** Prefer server fields; keep local ``createdAt`` when server row lacks it (same index). */
+/** Prefer server fields; keep local ``createdAt`` / message ``id`` when server lacks them. */
 export function mergeServerThreadWithLocal(
   server: ChatThread,
   local: ChatThread | undefined
@@ -108,14 +178,36 @@ export function mergeServerThreadWithLocal(
   if (!server.modelProvider && local.modelProvider) {
     merged = { ...merged, modelProvider: local.modelProvider };
   }
-  if (server.messages.length === local.messages.length) {
-    const messages = server.messages.map((sm, i) => {
-      if (sm.createdAt != null) return sm;
+  if (local.messages.length > 0 && server.messages.length > 0) {
+    const head = server.messages.map((sm, i) => {
       const lm = local.messages[i];
-      if (lm?.createdAt != null) return { ...sm, createdAt: lm.createdAt };
-      return sm;
+      if (!lm || lm.role !== sm.role) return sm;
+      let out = sm;
+      if (sm.createdAt == null && lm.createdAt != null) {
+        out = { ...out, createdAt: lm.createdAt };
+      }
+      // Prefer server ids when present; otherwise keep local ids for turnLogs / run cards.
+      if (!sm.id && lm.id) {
+        out = { ...out, id: lm.id };
+      }
+      if (!sm.reasoningContent && lm.reasoningContent) {
+        out = { ...out, reasoningContent: lm.reasoningContent };
+      }
+      return out;
     });
-    merged = { ...merged, messages };
+    // Never drop a trailing optimistic assistant that the server has not persisted yet
+    // (completion PUT race with visibility/poll refetch).
+    const messages =
+      local.messages.length > server.messages.length
+        ? [...head, ...local.messages.slice(server.messages.length)]
+        : head;
+    merged = { ...merged, messages, messageCount: messages.length };
+  } else if (local.messages.length > server.messages.length) {
+    merged = {
+      ...merged,
+      messages: local.messages,
+      messageCount: local.messages.length,
+    };
   }
   const agentLogPatch = mergeAgentLogPreferRicher(server, local);
   merged = { ...merged, ...agentLogPatch };
@@ -129,6 +221,10 @@ export function mapServerToThread(raw: Record<string, unknown>): ChatThread {
           role: m.role,
           content: (m as { content?: unknown }).content,
           created_at: m.created_at,
+          id: m.id,
+          client_message_id: m.client_message_id,
+          reasoning: m.reasoning,
+          reasoning_content: m.reasoning_content,
         });
         return {
           ...ui,
@@ -211,7 +307,9 @@ export async function fetchConversationDetail(
   const r = await apiFetch(`/v1/user/conversations/${encodeURIComponent(id)}`, auth);
   const data = (await r.json()) as { conversation?: Record<string, unknown> };
   if (!r.ok) throw new Error("failed to load conversation");
-  return mapServerToThread(data.conversation ?? {});
+  const conv = data.conversation ?? {};
+  emitStorageWarn(id, conv);
+  return mapServerToThread(conv);
 }
 
 export async function createConversation(
@@ -249,7 +347,9 @@ export async function createConversation(
   });
   const data = (await r.json()) as { conversation?: Record<string, unknown> };
   if (!r.ok) throw new Error(apiErrorDetail(data, "failed to create conversation"));
-  return mapServerToThread(data.conversation ?? {});
+  const conv = data.conversation ?? {};
+  emitStorageWarn(String(conv.id ?? ""), conv);
+  return mapServerToThread(conv);
 }
 
 export async function putConversation(
@@ -278,8 +378,36 @@ export async function putConversation(
     );
   }
   const data = (await r.json()) as { conversation?: Record<string, unknown> };
-  const fromServer = mapServerToThread(data.conversation ?? {});
+  const conv = data.conversation ?? {};
+  emitStorageWarn(thread.id, conv);
+  const fromServer = mapServerToThread(conv);
   return mergeServerThreadWithLocal(fromServer, thread);
+}
+
+/**
+ * Update agent_log only — does not send ``messages``, so the server keeps existing
+ * chat rows. Use this for mid-turn / finish flushes to avoid racing a completion PUT
+ * that already appended the assistant reply.
+ */
+export async function putConversationAgentLog(
+  auth: Pick<AuthContextValue, "accessToken" | "refresh">,
+  conversationId: string,
+  thread: Pick<ChatThread, "agentLog" | "turnLogs">
+): Promise<void> {
+  const r = await apiFetch(`/v1/user/conversations/${encodeURIComponent(conversationId)}`, auth, {
+    method: "PUT",
+    body: JSON.stringify({
+      agent_log: serializeAgentLogPayload(thread),
+    }),
+  });
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    throw new Error(
+      err && typeof err === "object" && "detail" in err
+        ? String((err as { detail: unknown }).detail)
+        : "agent_log save failed"
+    );
+  }
 }
 
 export async function deleteConversationApi(

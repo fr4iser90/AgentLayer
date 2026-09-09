@@ -16,6 +16,10 @@ tool_allowlist:
   - workspace.list
   - apply_patch
   - bash
+  - environment
+  - repository.environment
+  - env_bindings
+  - repository.env_bindings
   - edit
   - graph
   - index

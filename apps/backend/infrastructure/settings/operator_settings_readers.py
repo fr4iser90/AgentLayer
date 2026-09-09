@@ -403,6 +403,7 @@ def public_dict() -> dict[str, Any]:
     from apps.backend.infrastructure.settings.operator_voice_settings_service import voice_settings_public_fields
     from apps.backend.infrastructure.providers.extractor_catalog_providers import extractor_providers_public_fields
     from apps.backend.infrastructure.media.operator_media_settings import media_settings_public_fields
+    from apps.backend.infrastructure.platform.chat_storage_quota import chat_quota_settings_public_fields
 
     r = _cached_row()
     dtok = (r.get("discord_bot_token") or "").strip()
@@ -525,6 +526,7 @@ def public_dict() -> dict[str, Any]:
         "legal_privacy_md": (str(r.get("legal_privacy_md") or "").strip()),
         "legal_terms_md": (str(r.get("legal_terms_md") or "").strip()),
         **media_settings_public_fields(),
+        **chat_quota_settings_public_fields(),
         **voice_settings_public_fields(),
     }
 

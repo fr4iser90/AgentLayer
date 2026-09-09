@@ -472,14 +472,19 @@ from apps.backend.domain.agent_runtime.tool_transcript import (  # noqa: E402
 
 
 from apps.backend.domain.agent_runtime.loop_guards import (  # noqa: E402
+    _AGENT_OUTPUT_ECHO_FORCE_TEXT,
+    _AGENT_OUTPUT_ECHO_HINT,
     _AGENT_TOOL_DOOM_FORCE_TEXT,
     _AGENT_TOOL_DOOM_LOOP_HINT,
     _AGENT_TOOL_THRASH_FORCE_TEXT,
     _AGENT_TOOL_THRASH_HINT,
+    _agent_assistant_output_echo_tick,
     _agent_final_text_looks_like_placeholder_tool_markup,
     _agent_tool_doom_loop_tick,
+    _agent_tool_result_echo_tick,
     _agent_tool_thrash_tick,
     _emit_secret_prompt_from_tool_result,
+    _normalize_advice_thresholds,
     _sanitize_final_completion_assistant_content,
     _strip_prose_fake_tool_markup,
     _synthetic_final_llm_http_error_completion,
@@ -526,6 +531,8 @@ _CODING_TOOLS_PERMISSION_ASK = frozenset(
 __all__ = [
     '_AGENT_CREDENTIAL_TOOL_NAMES',
     '_AGENT_GIT_NETWORK_TOOL_NAMES',
+    '_AGENT_OUTPUT_ECHO_FORCE_TEXT',
+    '_AGENT_OUTPUT_ECHO_HINT',
     '_AGENT_TOOL_DOOM_FORCE_TEXT',
     '_AGENT_TOOL_DOOM_LOOP_HINT',
     '_AGENT_TOOL_THRASH_FORCE_TEXT',
@@ -536,6 +543,9 @@ __all__ = [
     'PLANNER_NO_EXTRA_HINTS_AFTER_TOOL',
     '_MAX_DASHBOARD_AGENT_INSTRUCTIONS_CHARS',
     '_MAX_DASHBOARD_TOOL_ALLOWLIST_LEN',
+    '_agent_assistant_output_echo_tick',
+    '_agent_tool_result_echo_tick',
+    '_normalize_advice_thresholds',
     '_rewrite_delegatable_agent_tool_alias',
     '_ROUNDS_DIGEST_HEADER',
     '_SECURITY_AUDITOR_READ_PINS',

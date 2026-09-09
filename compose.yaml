@@ -97,16 +97,10 @@ services:
       # LSP servers are not in the image — put them on PATH or set AGENT_LSP_*_CMD (docs/runbooks/lsp.md).
       AGENTLAYER_WORKSPACE_PATH: /data/project_workspaces
     volumes:
-      # create_tool / Default AGENT_TOOLS_EXTRA_DIR=/data/tools — ohne Mount existiert der Pfad nicht.
       - ./plugins/tools/agent_created:/data/tools:rw
-      # Coding workspace -> mount the actual source code
       - .:/code:ro
-      # Self-editing workspace (Hybrid: local bevorzugt)
       - .:/workspace/AgentLayer:ro
-      # Writable per-user project dirs (survives container recreate). Matches AGENTLAYER_WORKSPACE_PATH above.
-      - agent_project_workspaces:/data/project_workspaces:rw
-      # Backups (replace_tool/update_tool): Default /data/tool_backups liegt NICHT auf diesem Mount →
-      # in .env setzen: AGENT_TOOLS_BACKUP_DIR=/data/tools/.tool_backups (Ordner erscheint unter ./plugins/tools/agent_created/.tool_backups)
+      - ./workspace:/data/project_workspaces:rw
     # Optional read-only:  - ./plugins/tools/agent_created:/data/tools:ro
     # Optional: mount dirs for fs_* if you need host files in-container (paths are cwd/absolute; no AGENT_DASHBOARD_ROOT).
     networks:
@@ -115,7 +109,6 @@ volumes:
   agent_pg_data:
   agent_qdrant_data:
   agent_neo4j_data:
-  agent_project_workspaces:
 networks:
   ai-net:
     external: true

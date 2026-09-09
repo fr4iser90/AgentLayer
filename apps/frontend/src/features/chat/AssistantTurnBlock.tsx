@@ -15,16 +15,38 @@ import type { AgentTimelineEntry } from "./chatThreadStorage";
 import type { Proposal, ProposalOption } from "../../lib/proposalParser";
 import { TurnElapsedRuntime } from "./TurnElapsedRuntime";
 
-const ReasoningPanel = memo(function ReasoningPanel({ text }: { text: string }) {
+const ReasoningPanel = memo(function ReasoningPanel({
+  text,
+  running = false,
+}: {
+  text: string;
+  running?: boolean;
+}) {
   const { t } = useTranslation(["chat"]);
   const trimmed = text.trim();
-  if (!trimmed || !getAgentShowReasoning()) return null;
+  if (!trimmed) return null;
+  const defaultOpen = getAgentShowReasoning();
   return (
-    <details className="mb-3 rounded-md border border-white/5 bg-black/25 px-3 py-2 text-xs text-neutral-500">
-      <summary className="cursor-pointer select-none font-medium uppercase tracking-wide text-neutral-500">
-        {t("chat:reasoningPanelLabel")}
+    <details className="mb-3 group" defaultOpen={defaultOpen}>
+      <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-md border border-sky-500/35 bg-sky-950/40 px-2 py-1 text-[11px] font-medium text-sky-100/90 marker:content-none [&::-webkit-details-marker]:hidden hover:bg-sky-950/55">
+        <span
+          className={`relative flex h-1.5 w-1.5 shrink-0 ${running ? "animate-pulse" : ""}`}
+          aria-hidden
+        >
+          <span className="absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75" />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-sky-300" />
+        </span>
+        {t("chat:thinkingBadge")}
+        <span className="text-[10px] font-normal text-sky-200/60 group-open:hidden">
+          {t("chat:thinkingBadgeExpandHint")}
+        </span>
+        <span className="hidden text-[10px] font-normal text-sky-200/60 group-open:inline">
+          {t("chat:thinkingBadgeCollapseHint")}
+        </span>
       </summary>
-      <pre className="mt-2 whitespace-pre-wrap break-words font-sans text-neutral-500">{trimmed}</pre>
+      <pre className="mt-2 max-h-64 overflow-y-auto whitespace-pre-wrap break-words rounded-md border border-white/5 bg-black/30 px-3 py-2 font-sans text-xs leading-relaxed text-neutral-400">
+        {trimmed}
+      </pre>
     </details>
   );
 });
@@ -49,6 +71,10 @@ type Props = {
   runStartedAtMs?: number | null;
   waitHint?: string | null;
 };
+
+function timelineTurnCancelled(entries: AgentTimelineEntry[]): boolean {
+  return entries.some((e) => e.kind === "agent.cancelled" || e.kind === "agent.aborted");
+}
 
 const InterleavedStreamBody = memo(function InterleavedStreamBody({
   segments,
@@ -137,6 +163,8 @@ export const AssistantTurnBlock = memo(function AssistantTurnBlock({
       s.type === "card" ||
       s.type === "secret_prompt"
   );
+  const turnCancelled = timelineTurnCancelled(timelineEntries);
+
   const timeLabel =
     createdAt != null
       ? new Date(createdAt).toLocaleTimeString(undefined, {
@@ -165,7 +193,7 @@ export const AssistantTurnBlock = memo(function AssistantTurnBlock({
         {running && runStartedAtMs != null ? (
           <TurnElapsedRuntime startedAtMs={runStartedAtMs} className="mb-2" />
         ) : null}
-        <ReasoningPanel text={reasoningContent ?? ""} />
+        <ReasoningPanel text={reasoningContent ?? ""} running={running} />
         {hasStreamBody ? (
           <InterleavedStreamBody
             segments={segments}
@@ -178,6 +206,13 @@ export const AssistantTurnBlock = memo(function AssistantTurnBlock({
           />
         ) : running ? (
           <p className="text-neutral-300/90">{waitHint?.trim() || t("chat:agentRunning")}</p>
+        ) : null}
+        {turnCancelled && !running ? (
+          <div className="mt-3 flex justify-start">
+            <span className="inline-flex items-center rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-100/95">
+              {t("chat:turnCancelledBadge")}
+            </span>
+          </div>
         ) : null}
         {!running && messagePosition != null ? (
           <MessageFeedbackButtons

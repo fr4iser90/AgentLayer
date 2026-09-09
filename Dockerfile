@@ -10,8 +10,17 @@ RUN npm run build
 FROM python:3.11-slim-bookworm
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends tzdata git ffmpeg \
+    && apt-get install -y --no-install-recommends tzdata git ffmpeg ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
+# Node/npm/npx for coding-agent workspace shells (same major as UI builder).
+# Copy only Node bits — do not overwrite Python under /usr/local/bin.
+COPY --from=agent_ui_builder /usr/local/bin/node /usr/local/bin/node
+COPY --from=agent_ui_builder /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
+    && node --version \
+    && npm --version
 
 WORKDIR /app
 

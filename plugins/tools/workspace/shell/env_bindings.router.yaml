@@ -1,0 +1,9 @@
+# Co-located router phrases for env_bindings
+en:
+  - env bindings
+  - bind secrets to env
+  - workspace env secrets
+de:
+  - env bindings
+  - secrets an env
+  - umgebungsvariablen secrets

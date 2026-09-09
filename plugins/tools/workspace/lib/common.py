@@ -156,12 +156,25 @@ def json_blocked_credential_path_error(rel: str) -> str:
             "ok": False,
             "error": (
                 f"Refusing to modify credential/env file {rel!r}. "
-                "Never edit docker/.env or .env for API keys or tokens."
+                "Never write secrets into .env / docker/.env — use encrypted user_secrets + env_bindings."
             ),
             "hint": (
-                "Use save_user_secret(service_key=<catalog key>, secret=<value>) — "
-                "e.g. service_key='ssc_api_key' for SimpleSecCheck. "
-                "Operator-only env vars stay in docker/.env (human/ops, not the agent)."
+                "Do this instead (no .env file):\n"
+                "1) save_user_secret(service_key=…, secret=…) if the user pasted the value, "
+                "or request_user_secret(service_key=…) for an in-chat card;\n"
+                "2) env_bindings action=set with bindings like "
+                '{"FOO_BAR":"foo_bar"} (env name → lowercased service_key, names only);\n'
+                "3) re-run bash — secrets are injected into the process env at runtime.\n"
+                "Operator-only deploy secrets stay in docker/.env (human/ops, not the agent)."
+            ),
+            "for_assistant_must_say_de": (
+                "`.env` wird nicht geschrieben. Secrets landen in user_secrets "
+                "(save_user_secret / request_user_secret), Mapping über env_bindings; "
+                "bash injiziert sie zur Laufzeit."
+            ),
+            "for_assistant_must_say_en": (
+                "Won't write `.env`. Store secrets with save_user_secret / request_user_secret, "
+                "map env names via env_bindings; bash injects them at runtime."
             ),
         },
         ensure_ascii=False,

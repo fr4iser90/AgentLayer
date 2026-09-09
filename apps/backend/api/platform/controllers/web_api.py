@@ -59,6 +59,7 @@ def register_web_routes(app: FastAPI) -> None:
         @app.get("/app/legal/{rest:path}")
         @app.get("/app/schedules")
         @app.get("/app/tasks")
+        @app.get("/app/projects")
         @app.get("/app/settings")
         @app.get("/app/settings/profile")
         @app.get("/app/settings/voice")

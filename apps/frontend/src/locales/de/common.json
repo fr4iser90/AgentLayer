@@ -8,6 +8,7 @@
     "chat": "Chat",
     "studio": "Bildgenerierung",
     "dashboard": "Arbeitsbereich",
+    "projects": "Projekte",
     "schedules": "Zeitpläne",
     "tasks": "Aufgaben",
     "shares": "Shares",
@@ -46,6 +47,7 @@
     "hubTitle": "Arbeitsbereich",
     "hubIntro": "Dieser Tenant nutzt eine vom Operator konfigurierte, eingeschränkte Oberfläche.",
     "hubDashboardDesc": "Boards und Rechner, die für Ihre Organisation freigeschaltet sind",
+    "hubProjectsDesc": "Deine Coding-Workspaces — Dateien browsen, löschen und bereinigen",
     "hubChatDesc": "Chat mit den für diesen Tenant erlaubten Agenten"
   },
   "docs": {

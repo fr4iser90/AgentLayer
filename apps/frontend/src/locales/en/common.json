@@ -8,6 +8,7 @@
     "chat": "Chat",
     "studio": "Image generation",
     "dashboard": "Dashboard",
+    "projects": "Projects",
     "schedules": "Schedules",
     "tasks": "Tasks",
     "shares": "Shares",
@@ -46,6 +47,7 @@
     "hubTitle": "Workspace",
     "hubIntro": "This tenant uses a restricted app surface configured by the operator.",
     "hubDashboardDesc": "Boards and calculators available for your organization",
+    "hubProjectsDesc": "Your coding workspaces — browse files, delete and clean",
     "hubChatDesc": "Chat with agents allowed for this tenant"
   },
   "docs": {

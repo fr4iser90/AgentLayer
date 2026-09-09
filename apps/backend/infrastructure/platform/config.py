@@ -157,15 +157,8 @@ def _resolve_llm_chat_timeout_sec() -> float | None:
 
 
 LLM_CHAT_TIMEOUT_SEC: float | None = _resolve_llm_chat_timeout_sec()
-# Phase 1 (coding-agent-roadmap): break identical tool failure loops (e.g. empty JSON / same parameter error).
-# Off by default — forcing text-only rounds breaks some GGUF models (fake <tool_call> markup → empty chat).
-AGENT_TOOL_THRASH_ENABLED = _env_bool("AGENT_TOOL_THRASH_ENABLED", False)
-AGENT_TOOL_THRASH_STREAK_MAX = max(2, _env_int("AGENT_TOOL_THRASH_STREAK_MAX", 10))
-# Doom loop guard: same tool + same arguments repeated (any result).
-AGENT_TOOL_DOOM_LOOP_ENABLED = _env_bool("AGENT_TOOL_DOOM_LOOP_ENABLED", False)
-AGENT_TOOL_DOOM_LOOP_STREAK_MAX = max(2, _env_int("AGENT_TOOL_DOOM_LOOP_STREAK_MAX", 10))
-# Comma-separated tool names that do **not** participate in the doom-loop counter (idempotent reads / search).
-# Set to a single ``-`` to disable this exclusion (all tools count). Empty env = use the default list below.
+from apps.backend.infrastructure.platform.loop_guard_env import *  # noqa: E402,F403
+# Doom-loop exclusions (idempotent reads). ``-`` disables; empty env = defaults below.
 _DOOM_EXCL_ENV = os.environ.get("AGENT_TOOL_DOOM_LOOP_EXCLUDE")
 if _DOOM_EXCL_ENV is None:
     _DOOM_EXCL_PARTS = (
@@ -440,9 +433,11 @@ def WORKSPACE_upload_dir() -> Path:
 
 
 def WORKSPACE_upload_env_allowed_mime() -> frozenset[str]:
+    from apps.backend.infrastructure.dashboards.dashboard_upload_bytes import DEFAULT_BOARD_UPLOAD_MIME
+
     raw = (
         os.environ.get("AGENT_WORKSPACE_UPLOAD_ALLOWED_MIME")
-        or "image/jpeg,image/png,image/gif,image/webp"
+        or DEFAULT_BOARD_UPLOAD_MIME
     ).strip()
     return frozenset(x.strip().lower() for x in raw.split(",") if x.strip())
 

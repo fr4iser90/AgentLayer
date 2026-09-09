@@ -242,6 +242,48 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             />
           </section>
 
+          <section className="mt-8 rounded-xl border border-surface-border bg-surface-raised p-5">
+            <h2 className="text-sm font-medium text-white">{t("admin:ifPlatformChatQuotaTitle")}</h2>
+            <p className="mt-2 text-xs text-surface-muted">{t("admin:ifPlatformChatQuotaIntro")}</p>
+            <label className="mt-4 block text-xs text-surface-muted" htmlFor="chat-max-mb">
+              {t("admin:ifPlatformChatMaxConversationMb")}
+            </label>
+            <input
+              id="chat-max-mb"
+              type="number"
+              min={1}
+              max={50000}
+              className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+              value={s.chatMaxConversationMb}
+              onChange={(e) => s.setChatMaxConversationMb(e.target.value)}
+            />
+            <label className="mt-4 block text-xs text-surface-muted" htmlFor="chat-max-personal">
+              {t("admin:ifPlatformChatMaxPersonalSessions")}
+            </label>
+            <input
+              id="chat-max-personal"
+              type="number"
+              min={1}
+              max={10000}
+              className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+              value={s.chatMaxPersonalSessions}
+              onChange={(e) => s.setChatMaxPersonalSessions(e.target.value)}
+            />
+            <label className="mt-4 block text-xs text-surface-muted" htmlFor="chat-max-dashboard">
+              {t("admin:ifPlatformChatMaxDashboardSessions")}
+            </label>
+            <input
+              id="chat-max-dashboard"
+              type="number"
+              min={1}
+              max={10000}
+              className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+              value={s.chatMaxDashboardSessions}
+              onChange={(e) => s.setChatMaxDashboardSessions(e.target.value)}
+            />
+            <p className="mt-3 text-xs text-surface-muted">{t("admin:ifPlatformChatQuotaWarnHint")}</p>
+          </section>
+
           <AdminInterfacesLegalSection />
 
           </>

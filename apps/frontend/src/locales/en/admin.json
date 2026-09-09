@@ -90,8 +90,8 @@
   "harnessKnobHelp_context_keep_recent_tool_rounds": "How many recent tool-round groups stay verbatim during loop compaction (halved at hard limit).",
   "harnessKnobHelp_context_tools_budget_ratio": "Fraction of model context window reserved for tool schemas per LLM call (0.01–0.25).",
   "harnessKnobHelp_context_tool_result_max_ratio": "Max size per tool-result message as fraction of context window.",
-  "harnessKnobHelp_agent_tool_thrash_enabled": "Detect repeated identical tool calls and inject a recovery hint; may force a no-tools LLM round.",
-  "harnessKnobHelp_agent_tool_thrash_streak_max": "Identical tool-call streak before thrash guard fires.",
+  "harnessKnobHelp_agent_tool_thrash_enabled": "Advisory reminders on identical tool failures (never disables tools).",
+  "harnessKnobHelp_agent_tool_thrash_streak_max": "Legacy threshold; shared advice uses 3,5,8 by default.",
   "harnessKnobHelp_agent_doom_loop_enabled": "Detect alternating tool-call patterns (doom loop) and inject recovery hint.",
   "harnessKnobHelp_agent_doom_loop_streak_max": "Alternating-pattern streak before doom-loop guard fires.",
   "harnessKnobHelp_agent_coding_system_prompt": "Coding specialist system prompt — build mode discipline, tool order, delegate handoff rules.",
@@ -589,13 +589,10 @@
   "bridgeOn": "Bridge on",
   "bridgeOff": "Bridge off",
   "tokenStored": "Token stored",
-  "noToken": "No token",
   "smartRoutingOn": "Smart routing on",
   "providerModelInChat": "Provider + model in chat",
   "memoryRagTitle": "Memory & RAG",
   "statusOff": "Off",
-  "operatorTickOn": "Operator tick on",
-  "operatorTickOff": "Operator tick off",
   "schedulerWorkerOn": "scheduler_jobs worker on",
   "schedulerWorkerOff": "scheduler_jobs worker off",
   "selfEditWorkspaceAllowed": "Self-edit workspace allowed",
@@ -1180,10 +1177,8 @@
   "schedulesColLastRun": "Last run",
   "schedulesScopeGlobal": "global",
   "schedulesScopeDashboardShort": "dashboard",
-  "schedulesIntervalMin": "{{minutes}} min"
-  ,
-  "created": "Created"
-  ,
+  "schedulesIntervalMin": "{{minutes}} min",
+  "created": "Created",
   "schedulesIntro": "Persisted schedules (scheduler_jobs). Doc/coverage presets use a workspace agent (e.g. coding) on a project workspace. Enable the worker under Admin → Interfaces first.",
   "schedulesCreateHelpUser": "Creates a new scheduler job for your user.",
   "schedulesRuns": "Runs",
@@ -1226,6 +1221,13 @@
   "harnessDelete": "Delete",
   "benchUseHarnessMatrix": "Use saved harness matrix (per model)",
   "benchUseHarnessMatrixHint": "When enabled, each profile uses overrides from Harness config. Advanced harness fields below are fallbacks only.",
-  "benchHarnessConfigLink": "Harness config"
+  "benchHarnessConfigLink": "Harness config",
+  "ifPlatformChatQuotaTitle": "Chat storage & sessions",
+  "ifPlatformChatQuotaIntro": "Limits for personal chats and dashboard chats (separate). Default size is 2 GB per conversation; a warning is shown at 80% usage.",
+  "ifPlatformChatMaxConversationMb": "Max size per conversation (MB)",
+  "ifPlatformChatMaxPersonalSessions": "Max personal chat sessions per user",
+  "ifPlatformChatMaxDashboardSessions": "Max chat sessions per dashboard",
+  "ifPlatformChatQuotaWarnHint": "Users see a warning at 80% of the conversation size limit; writes are blocked at 100%.",
+  "operatorSaveChatQuotaInvalid": "Chat max conversation size must be a positive number (MB).",
+  "operatorSaveChatSessionsInvalid": "Chat session limits must be positive integers."
 }
-

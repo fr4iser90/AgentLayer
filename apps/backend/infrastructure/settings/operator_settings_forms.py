@@ -110,6 +110,9 @@ class OperatorSettingsPatch(BaseModel):
     media_upload_max_file_mb: int | None = Field(default=None, ge=1, le=512)
     media_upload_allowed_mime: str | None = Field(default=None, max_length=2000)
     media_embed_allowed_hosts: str | None = Field(default=None, max_length=4000)
+    chat_max_conversation_mb: int | None = Field(default=None, ge=1, le=50_000)
+    chat_max_personal_sessions: int | None = Field(default=None, ge=1, le=10_000)
+    chat_max_dashboard_sessions: int | None = Field(default=None, ge=1, le=10_000)
     voice_enabled: bool | None = None
     voice_provider_id: str | None = Field(default=None, max_length=64)
     voice_stt_provider_id: str | None = Field(default=None, max_length=64)

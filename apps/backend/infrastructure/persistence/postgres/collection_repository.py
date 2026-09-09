@@ -422,6 +422,19 @@ class PostgresCollectionPersistenceAdapter:
             return None
         return str(row[0])
 
+    def attachment_list_for_dashboard(
+        self,
+        dashboard_id: uuid.UUID,
+        tenant_id: int,
+        *,
+        limit: int = 200,
+    ) -> list[dict[str, Any]]:
+        from apps.backend.infrastructure.persistence.postgres.collection_attachment_queries import (
+            attachment_list_for_dashboard as _list,
+        )
+
+        return _list(dashboard_id, tenant_id, limit=limit)
+
 
 _persistence = PostgresCollectionPersistenceAdapter()
 
@@ -569,3 +582,14 @@ class PostgresAttachmentRepository(AttachmentRepository):
         tenant_id: int,
     ) -> str | None:
         return _persistence.attachment_delete_with_access(file_id, user_id, tenant_id)
+
+    def list_for_dashboard(
+        self,
+        dashboard_id: uuid.UUID,
+        tenant_id: int,
+        *,
+        limit: int = 200,
+    ) -> list[dict[str, Any]]:
+        return _persistence.attachment_list_for_dashboard(
+            dashboard_id, tenant_id, limit=limit
+        )

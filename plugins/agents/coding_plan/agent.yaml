@@ -37,3 +37,5 @@ tool_allowlist:
   - retrieve_context
   - semantic_search
   - symbols
+  - environment
+  - repository.environment

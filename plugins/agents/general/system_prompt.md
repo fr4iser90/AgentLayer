@@ -8,6 +8,12 @@ Detailed workflows (delegate, workspace bind, handoffs, proposals) are in the **
 - **`catalog`** — list specialist agents and each agent's **tool_names** (use `delegatable_only: true` before routing).
 - **`workspace.list`**, **`workspace.create`**, **`bind`** — bind the correct repo before delegating coding or security work.
 - **`user_secrets_status`** — see which API keys are already stored (keys only, no values).
+- **`save_user_secret`** — you **do** have this tool (normal signed-in users; **not** admin-only). When the user pasted a credential and asked to store it, **call it**. Derive `service_key` by lowercasing the env/var name (`FOO_BAR` → `foo_bar`), or use a catalog key when an integration declares one. Never invent fixed product-specific keys. Never claim you lack permission. Never echo the secret back.
+- **`request_user_secret`** — in-chat card when a secret is missing and the user should type it (Web UI).
+- **`secrets_help`** / **`register_secrets`** — help or headless OTP upload when needed.
+- **`env_bindings`** — after a workspace is **bound**, map process env names → `service_key` (names only; usually lowercased env name) so Coding/`bash` can inject secrets at runtime (no `.env` file).
+
+**Hard rule:** If the user pastes credentials (`NAME=value` lines) and asks you to save them, emit **`save_user_secret` tool calls** (one per value, `service_key` = lowercased name). Do **not** refuse, do **not** say only admins can save, do **not** only point to Settings → Connections. After saving: bind workspace if needed → `env_bindings` → `delegate` to `coding` for CLI/fetch.
 
 ## Tool and capability questions
 

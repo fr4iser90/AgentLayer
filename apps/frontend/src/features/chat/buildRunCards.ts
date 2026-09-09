@@ -3,7 +3,7 @@ import { activityForTurn } from "./agentLogStorage";
 import type { ChatThread, UiMessage } from "./chatThreadStorage";
 
 export type RunCardKind = "subagent" | "index" | "tool" | "compaction";
-export type RunCardStatus = "running" | "done" | "failed";
+export type RunCardStatus = "running" | "done" | "failed" | "cancelled";
 
 export type RunCard = {
   id: string;
@@ -310,6 +310,24 @@ export function buildRunCardsFromTimeline(entries: AgentTimelineEntry[]): RunCar
         if (!open.details.includes(e)) open.details.push(e);
         openTools.delete(tool);
       }
+      continue;
+    }
+
+    if (e.kind === "agent.cancelled" || e.kind === "agent.aborted") {
+      for (const card of cards) {
+        if (card.status === "running") {
+          card.status = "cancelled";
+          card.currentStep = undefined;
+          if (e.text.trim()) card.subtitle = e.text.trim();
+        }
+      }
+      for (const open of openTools.values()) {
+        if (open.status === "running") {
+          open.status = "cancelled";
+          open.currentStep = undefined;
+        }
+      }
+      openTools.clear();
     }
   }
 

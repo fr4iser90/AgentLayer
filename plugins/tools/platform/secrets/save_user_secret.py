@@ -18,7 +18,10 @@ TOOL_LABEL = "Secrets"
 TOOL_DESCRIPTION = (
     "Store a per-user credential for the signed-in chat user (encrypted in Postgres). "
     "Use when the user pasted a credential in chat and asked to save it. "
-    "service_key must match the integration tool's TOOL_SECRETS_REQUIRED / Connections catalog entry."
+    "service_key: lowercase [a-z0-9._-] — prefer catalog keys when an integration declares them "
+    "(e.g. ssc_api_key); otherwise derive from the env/var name the user gave "
+    "(FOO_BAR → foo_bar). Available to normal signed-in users (not admin-only). "
+    "Never echo the secret value back. Never invent project-specific key names."
 )
 # Router phrases: co-located save_user_secret.router.yaml (all locales unioned at load).
 TOOL_TRIGGERS: tuple[str, ...] = ()
@@ -85,8 +88,9 @@ def save_user_secret(arguments: dict[str, Any]) -> str:
                 "error": "invalid service_key (lowercase [a-z0-9._-], max 63 chars)",
                 "catalog_service_keys": _catalog_service_keys(),
                 "hint": (
-                    "Use the service_key from the integration tool that needs the credential "
-                    "(TOOL_SECRETS_REQUIRED / Settings → Connections), not a made-up name."
+                    "Prefer a catalog key when an integration declares one. "
+                    "For project env vars, derive service_key by lowercasing the env name "
+                    "(FOO_BAR → foo_bar), then map with env_bindings."
                 ),
             },
             ensure_ascii=False,
@@ -132,9 +136,10 @@ TOOLS: list[dict[str, Any]] = [
             "name": "save_user_secret",
             "chat_full_parameters": True,
             "TOOL_DESCRIPTION": (
-                "Store a user secret immediately (no OTP curl). Use when the user pasted a credential in chat "
-                "and asked to save it. Required: service_key (from the target integration tool schema / "
-                "Connections catalog) and secret (plain string or JSON). Never echo the secret value back."
+                "Store a user secret immediately (no OTP curl). Use when the user pasted a credential "
+                "in chat and asked to save it. Required: service_key (lowercase [a-z0-9._-] — catalog "
+                "key if declared, else derive from the user's env/var name: FOO_BAR → foo_bar) and "
+                "secret. Available to the signed-in chat user. Never echo the secret."
             ),
             "parameters": {
                 "type": "object",
@@ -142,8 +147,9 @@ TOOLS: list[dict[str, Any]] = [
                     "service_key": {
                         "type": "string",
                         "TOOL_DESCRIPTION": (
-                            "Integration secret slot name (lowercase [a-z0-9._-]); "
-                            "must match TOOL_SECRETS_REQUIRED on the tool that will consume it."
+                            "Secret slot name (lowercase [a-z0-9._-]). Prefer catalog keys "
+                            "(e.g. ssc_api_key). For project env vars, lowercase the env name "
+                            "(FOO_BAR → foo_bar). Do not invent fixed product-specific names."
                         ),
                     },
                     "secret": {

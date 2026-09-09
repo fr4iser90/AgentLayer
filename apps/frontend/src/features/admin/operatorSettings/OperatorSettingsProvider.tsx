@@ -62,6 +62,9 @@ function useOperatorSettingsState() {
   const [mediaEffUploadBytes, setMediaEffUploadBytes] = useState<number | null>(null);
   const [mediaEffUploadMime, setMediaEffUploadMime] = useState<string[]>([]);
   const [mediaEffDefaultQuotaMb, setMediaEffDefaultQuotaMb] = useState<number | null>(null);
+  const [chatMaxConversationMb, setChatMaxConversationMb] = useState("2048");
+  const [chatMaxPersonalSessions, setChatMaxPersonalSessions] = useState("100");
+  const [chatMaxDashboardSessions, setChatMaxDashboardSessions] = useState("30");
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [voiceApiBaseUrl, setVoiceApiBaseUrl] = useState("https://api.openai.com/v1");
   const [voiceApiBaseSource, setVoiceApiBaseSource] = useState<"env" | "operator_settings" | null>(
@@ -329,6 +332,21 @@ function useOperatorSettingsState() {
       );
       setMediaEffDefaultQuotaMb(
         typeof op.media_effective_default_quota_mb === "number" ? op.media_effective_default_quota_mb : null
+      );
+      setChatMaxConversationMb(
+        op.chat_max_conversation_mb != null && Number.isFinite(Number(op.chat_max_conversation_mb))
+          ? String(op.chat_max_conversation_mb)
+          : "2048"
+      );
+      setChatMaxPersonalSessions(
+        op.chat_max_personal_sessions != null && Number.isFinite(Number(op.chat_max_personal_sessions))
+          ? String(op.chat_max_personal_sessions)
+          : "100"
+      );
+      setChatMaxDashboardSessions(
+        op.chat_max_dashboard_sessions != null && Number.isFinite(Number(op.chat_max_dashboard_sessions))
+          ? String(op.chat_max_dashboard_sessions)
+          : "30"
       );
       setVoiceEnabled(!!op.voice_enabled);
       setVoiceApiBaseUrl((op.voice_api_base_url ?? "").trim());
@@ -1330,6 +1348,33 @@ function useOperatorSettingsState() {
       }
       patch.media_upload_allowed_mime = mediaUploadMime.trim() === "" ? null : mediaUploadMime.trim();
       patch.media_embed_allowed_hosts = mediaEmbedHosts.trim() === "" ? null : mediaEmbedHosts.trim();
+      const ccm = chatMaxConversationMb.trim();
+      {
+        const n = Number(ccm);
+        if (!Number.isFinite(n) || n < 1) {
+          setSaveMsg({ ok: false, text: t("admin:operatorSaveChatQuotaInvalid") });
+          return;
+        }
+        patch.chat_max_conversation_mb = Math.min(50_000, Math.floor(n));
+      }
+      const cps = chatMaxPersonalSessions.trim();
+      {
+        const n = Number(cps);
+        if (!Number.isFinite(n) || n < 1) {
+          setSaveMsg({ ok: false, text: t("admin:operatorSaveChatSessionsInvalid") });
+          return;
+        }
+        patch.chat_max_personal_sessions = Math.min(10_000, Math.floor(n));
+      }
+      const cds = chatMaxDashboardSessions.trim();
+      {
+        const n = Number(cds);
+        if (!Number.isFinite(n) || n < 1) {
+          setSaveMsg({ ok: false, text: t("admin:operatorSaveChatSessionsInvalid") });
+          return;
+        }
+        patch.chat_max_dashboard_sessions = Math.min(10_000, Math.floor(n));
+      }
       patch.voice_enabled = voiceEnabled;
       patch.voice_stt_provider_id = voiceSttProviderId.trim() || null;
       patch.voice_tts_provider_id = voiceTtsProviderId.trim() || null;
@@ -1634,6 +1679,12 @@ function useOperatorSettingsState() {
     mediaEffUploadBytes,
     mediaEffUploadMime,
     mediaEffDefaultQuotaMb,
+    chatMaxConversationMb,
+    setChatMaxConversationMb,
+    chatMaxPersonalSessions,
+    setChatMaxPersonalSessions,
+    chatMaxDashboardSessions,
+    setChatMaxDashboardSessions,
     voiceEnabled,
     setVoiceEnabled,
     voiceApiBaseUrl,

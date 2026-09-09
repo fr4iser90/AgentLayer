@@ -131,26 +131,23 @@ export function createLiveTurnStore(): LiveTurnStore {
       notifyStream();
       notifyReasoningStream();
       notifyLog();
+      notifyWaitHint();
     },
     endTurn: () => {
       cancelRaf();
       active = false;
-      streamText = "";
-      streamReasoningText = "";
       waitHint = null;
-      notifyStream();
-      notifyReasoningStream();
+      // Keep streamText/reasoning until beginTurn so a sync store notify cannot flash
+      // an empty in-flight bubble while React still has loading=true.
       notifyWaitHint();
     },
     resetAfterCommit: () => {
       cancelRaf();
       active = false;
-      streamText = "";
-      streamReasoningText = "";
       agentLog = [];
       waitHint = null;
-      notifyStream();
-      notifyReasoningStream();
+      // Do not clear streamText here — beginTurn clears for the next turn. Clearing
+      // + notify while loading=true forces "Agent running…" over the streamed answer.
       notifyLog();
       notifyWaitHint();
     },

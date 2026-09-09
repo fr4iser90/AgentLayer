@@ -519,6 +519,12 @@ async def chat_completion(
             thrash_streak_max=_thrash_streak_max,
             doom_enabled=_doom_enabled,
             doom_streak_max=_doom_streak_max,
+            output_echo_enabled=turn_prep.output_echo_enabled,
+            output_echo_streak_max=turn_prep.output_echo_streak_max,
+            output_echo_min_chars=turn_prep.output_echo_min_chars,
+            result_echo_enabled=turn_prep.result_echo_enabled,
+            result_echo_streak_max=turn_prep.result_echo_streak_max,
+            result_echo_min_chars=turn_prep.result_echo_min_chars,
             run_persisted=_run_persisted,
             run_persist_warnings=_run_persist_warnings,
         )

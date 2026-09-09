@@ -327,26 +327,20 @@ def create_db_workspace(workspace_id: str, user) -> dict[str, Any] | None:
                     ws_path.parent.mkdir(parents=True, exist_ok=True)
 
                     if ws_source == "git" and ws_git_url:
-                        # Clone git repo
                         logger.info("cloning git repo: %s", ws_git_url)
-                        import subprocess
-
-                        result = subprocess.run(
-                            [
-                                "git",
-                                "clone",
-                                "--depth",
-                                "1",
-                                "--branch",
-                                ws_branch,
-                                ws_git_url,
-                                str(ws_path),
-                            ],
-                            capture_output=True,
-                            text=True,
+                        from apps.backend.infrastructure.workspace.workspace_git_clone import (
+                            GitCloneError,
+                            clone_shallow_repo,
                         )
-                        if result.returncode != 0:
-                            logger.error("git clone failed: %s", result.stderr)
+
+                        try:
+                            clone_shallow_repo(
+                                ws_git_url,
+                                ws_path,
+                                branch=ws_branch or "main",
+                            )
+                        except GitCloneError as e:
+                            logger.error("git clone failed: %s", e)
                             return None
                     else:
                         # Create empty directory

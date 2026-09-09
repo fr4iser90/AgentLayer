@@ -21,6 +21,9 @@ from apps.backend.application.agent_runtime.use_cases.conversation_controller_se
     conversations_list,
 )
 from apps.backend.application.agent_runtime.use_cases.conversation_controller_services import dashboard_db
+from apps.backend.application.agent_runtime.use_cases.conversation_controller_services import (
+    chat_storage_quota,
+)
 
 router = APIRouter(prefix="/v1/user/conversations", tags=["conversations"])
 
@@ -29,6 +32,10 @@ class MessageItem(BaseModel):
     role: Literal["user", "assistant", "system"] = "user"
     content: Any = ""  # str or OpenAI multimodal list
     created_at: str | None = None  # ISO-8601; preserved on save when provided
+    id: str | None = Field(default=None, max_length=128)
+    client_message_id: str | None = Field(default=None, max_length=128)
+    reasoning: str | None = None
+    reasoning_content: str | None = None
 
 
 # Legacy: JSON array of timeline entries. Current UI: v2 object ``{v, current, turns}``.
@@ -91,12 +98,19 @@ async def create_conversation(request: Request, body: ConversationCreateBody):
         if dashboard_db.dashboard_get(user.id, tid, ws_id) is None:
             raise HTTPException(status_code=403, detail="dashboard not accessible")
     try:
+        chat_storage_quota.assert_session_create_allowed(user.id, dashboard_id=ws_id)
+        msgs = [m.model_dump() for m in body.messages]
+        storage = chat_storage_quota.assert_conversation_size_allowed(
+            conversation_id=None,
+            messages=msgs,
+            agent_log=body.agent_log,
+        )
         data = conversation_create(
             user.id,
             title=body.title,
             mode=body.mode,
             model=body.model,
-            messages=[m.model_dump() for m in body.messages],
+            messages=msgs,
             agent_log=body.agent_log,
             dashboard_id=ws_id,
             shared=body.shared,
@@ -108,7 +122,11 @@ async def create_conversation(request: Request, body: ConversationCreateBody):
     except PermissionError:
         raise HTTPException(status_code=403, detail="not allowed to create this conversation") from None
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        detail = str(e)
+        status = 413 if "storage limit" in detail else 400
+        raise HTTPException(status_code=status, detail=detail) from e
+    if isinstance(data, dict):
+        data = {**data, "storage": storage}
     return {"ok": True, "conversation": data}
 
 
@@ -118,6 +136,8 @@ async def get_conversation(request: Request, conversation_id: uuid.UUID):
     data = conversation_get(user.id, conversation_id)
     if not data:
         raise HTTPException(status_code=404, detail="conversation not found")
+    if isinstance(data, dict):
+        data = {**data, "storage": chat_storage_quota.storage_snapshot(conversation_id)}
     return {"ok": True, "conversation": data}
 
 
@@ -155,6 +175,14 @@ async def put_conversation(
                 ):
                     raise HTTPException(status_code=404, detail="task not found")
             prefs["active_task_id"] = body.active_task_id
+    try:
+        storage = chat_storage_quota.assert_conversation_size_allowed(
+            conversation_id=conversation_id,
+            messages=msgs,
+            agent_log=body.agent_log,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=413, detail=str(e)) from e
     data = conversation_replace(
         user.id,
         conversation_id,
@@ -167,6 +195,11 @@ async def put_conversation(
     )
     if not data:
         raise HTTPException(status_code=404, detail="conversation not found")
+    if isinstance(data, dict):
+        # Prefer measured post-write size when we have a conversation id.
+        data = {**data, "storage": chat_storage_quota.storage_snapshot(conversation_id)}
+        if storage.get("warn") and not data["storage"].get("warn"):
+            data["storage"] = {**data["storage"], "warn": True}
     return {"ok": True, "conversation": data}
 
 

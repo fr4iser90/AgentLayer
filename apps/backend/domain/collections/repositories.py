@@ -98,3 +98,11 @@ class AttachmentRepository(Protocol):
         user_id: uuid.UUID,
         tenant_id: int,
     ) -> str | None: ...
+
+    def list_for_dashboard(
+        self,
+        dashboard_id: uuid.UUID,
+        tenant_id: int,
+        *,
+        limit: int = 200,
+    ) -> list[dict[str, Any]]: ...

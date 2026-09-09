@@ -15,6 +15,11 @@ from plugins.tools.workspace.lib.bash_policy import (
     strict_mode_reject_reason,
     subprocess_env_for_coding,
 )
+from plugins.tools.workspace.lib.env_secret_bridge import (
+    redact_injected_secrets,
+    resolve_bound_secrets,
+)
+from plugins.tools.workspace.lib.host_toolchain import missing_executable_payload
 from plugins.tools.workspace.lib.package_admission import package_admission_gate
 from plugins.tools.workspace.lib.common import (
     json_workspace_missing_error,
@@ -40,8 +45,13 @@ TOOL_CAPABILITIES = ("coding.execute",)
 TOOL_LABEL = "Coding: Bash"
 TOOL_DESCRIPTION = (
     "Run a shell command within the coding workspace (tests, builds, git, npm, docker, …). "
+    "Commands run in the **AgentLayer server container** PATH (not the user laptop unless "
+    "execution_mode=client). If a binary is missing, the error includes missing_executable "
+    "and a hint — call repository.environment to list available CLIs. "
+    "Workspace env_bindings inject user_secrets as process env (no .env file). "
     "Prefer coding_read_file, coding_search, and coding_glob for reads and search; "
-    "prefer coding_git_sync for git pull/fetch. Output is truncated; use workdir instead of cd."
+    "prefer coding_git_sync for git pull/fetch. Output is truncated; use workdir instead of cd. "
+    "Do not chain with &&/||/; — run one simple command per call (shell=False)."
 )
 
 DEFAULT_TIMEOUT = 120
@@ -131,6 +141,27 @@ def bash(arguments: dict[str, Any], context: dict | None = None) -> str:
             return json.dumps(no_github_pat_payload(), ensure_ascii=False)
         extra_env, askpass_cleanup = askpass_extra_env(pat_token)
 
+    from apps.backend.domain.shared.identity import get_identity
+
+    _tid, uid = get_identity()
+    secret_env, missing_secrets, bound_names = resolve_bound_secrets(root, user_id=uid)
+    if missing_secrets:
+        return json.dumps(
+            {
+                "ok": False,
+                "error": "workspace env bindings reference missing user secrets",
+                "missing_service_keys": missing_secrets,
+                "bound_env_names": bound_names,
+                "hint": (
+                    "Call request_user_secret or save_user_secret for each missing service_key, "
+                    "or adjust bindings via env_bindings. Secrets are not written to .env."
+                ),
+            },
+            ensure_ascii=False,
+        )
+    if secret_env:
+        extra_env = {**extra_env, **secret_env}
+
     env = subprocess_env_for_coding(home=str(root.resolve()), cwd=cwd, extra=extra_env)
 
     try:
@@ -154,6 +185,7 @@ def bash(arguments: dict[str, Any], context: dict | None = None) -> str:
         if e.stderr:
             out_text += "\n" + str(e.stderr)
         out_text = redact_secrets(out_text, pat_token)
+        out_text = redact_injected_secrets(out_text, secret_env)
         preview, cut = _tail(out_text, MAX_OUTPUT_BYTES)
         detail = "..." if cut else ""
         return json.dumps(
@@ -167,7 +199,7 @@ def bash(arguments: dict[str, Any], context: dict | None = None) -> str:
             ensure_ascii=False,
         )
     except OSError as e:
-        return json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False)
+        return json.dumps(missing_executable_payload(command, e), ensure_ascii=False)
     finally:
         if askpass_cleanup:
             cleanup_askpass_paths(askpass_cleanup)
@@ -181,6 +213,7 @@ def bash(arguments: dict[str, Any], context: dict | None = None) -> str:
     if not combined:
         combined = "(no output)"
     combined = redact_secrets(combined, pat_token)
+    combined = redact_injected_secrets(combined, secret_env)
     preview, cut = _tail(combined, MAX_OUTPUT_BYTES)
     exit_code = int(result.returncode)
     payload: dict[str, Any] = {
@@ -190,6 +223,8 @@ def bash(arguments: dict[str, Any], context: dict | None = None) -> str:
         "output": preview,
         "command": command,
     }
+    if secret_env:
+        payload["env_secrets_injected"] = sorted(secret_env.keys())
     if needs_pat:
         payload["github_auth"] = "pat_injected"
         reason = git_auth_failure_reason(combined, exit_code)

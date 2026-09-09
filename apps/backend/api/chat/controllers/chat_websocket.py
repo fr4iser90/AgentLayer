@@ -40,6 +40,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import uuid
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
@@ -50,6 +51,11 @@ from apps.backend.application.agent_runtime.use_cases.chat_completion import cha
 from apps.backend.domain.shared.http_identity import resolve_chat_identity_ws
 from apps.backend.domain.shared.identity import reset_identity, set_identity
 from apps.backend.application.identity.use_cases.request_auth import get_user_for_bearer_token
+from apps.backend.application.agent_runtime.use_cases.conversation_controller_services import (
+    conversation_append_message,
+    conversation_get,
+    extract_bridge_reply,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +74,121 @@ def _ws_connection_authorized(websocket: WebSocket) -> bool:
     """Require JWT or user API key (same material as HTTP Bearer)."""
     bearer = _bearer_from_ws(websocket)
     return bool(get_user_for_bearer_token(bearer))
+
+
+def _normalize_msg_content(content: Any) -> str:
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content.strip()
+    try:
+        return json.dumps(content, ensure_ascii=False, sort_keys=True).strip()
+    except (TypeError, ValueError):
+        return str(content).strip()
+
+
+def _last_user_content_from_work(work: dict[str, Any]) -> Any | None:
+    messages = work.get("messages")
+    if not isinstance(messages, list):
+        return None
+    for msg in reversed(messages):
+        if not isinstance(msg, dict):
+            continue
+        if str(msg.get("role") or "").strip() != "user":
+            continue
+        return msg.get("content")
+    return None
+
+
+def _ensure_ws_user_message(user_id: uuid.UUID, work: dict[str, Any]) -> None:
+    """Persist the latest user prompt if the client refresh raced the pre-send PUT."""
+    raw_cid = work.get("conversation_id")
+    if raw_cid is None:
+        return
+    cid_s = str(raw_cid).strip()
+    if not cid_s:
+        return
+    try:
+        conv_id = uuid.UUID(cid_s)
+    except ValueError:
+        return
+    user_content = _last_user_content_from_work(work)
+    if user_content is None:
+        return
+    want = _normalize_msg_content(user_content)
+    if not want:
+        return
+    try:
+        conv = conversation_get(user_id, conv_id)
+    except Exception:
+        logger.exception("ws chat: conversation_get failed (conversation_id=%s)", conv_id)
+        return
+    if not conv:
+        return
+    existing = conv.get("messages") if isinstance(conv, dict) else None
+    if not isinstance(existing, list):
+        existing = []
+    last_user = None
+    for msg in reversed(existing):
+        if isinstance(msg, dict) and str(msg.get("role") or "").strip() == "user":
+            last_user = msg
+            break
+    if last_user is not None and _normalize_msg_content(last_user.get("content")) == want:
+        return
+    try:
+        if conversation_append_message(user_id, conv_id, role="user", content=user_content):
+            logger.info(
+                "ws chat: persisted missing user message (conversation_id=%s)",
+                conv_id,
+            )
+    except Exception:
+        logger.exception(
+            "ws chat: failed to persist user message (conversation_id=%s)",
+            conv_id,
+        )
+
+
+def _persist_ws_assistant_completion(
+    user_id: uuid.UUID,
+    work: dict[str, Any],
+    data: Any,
+) -> None:
+    """When the client disconnects mid-turn, still save the final assistant reply."""
+    raw_cid = work.get("conversation_id")
+    if raw_cid is None:
+        return
+    cid_s = str(raw_cid).strip()
+    if not cid_s:
+        return
+    try:
+        conv_id = uuid.UUID(cid_s)
+    except ValueError:
+        return
+    if not isinstance(data, dict):
+        return
+    reply = extract_bridge_reply(data)
+    if (
+        not reply.strip()
+        or reply.startswith("AgentLayer error:")
+        or reply.startswith("Unexpected response:")
+    ):
+        return
+    try:
+        if conversation_append_message(user_id, conv_id, role="assistant", content=reply):
+            logger.info(
+                "ws chat: persisted assistant after client disconnect (conversation_id=%s)",
+                conv_id,
+            )
+        else:
+            logger.warning(
+                "ws chat: failed to persist assistant after disconnect (conversation_id=%s)",
+                conv_id,
+            )
+    except Exception:
+        logger.exception(
+            "ws chat: exception persisting assistant after disconnect (conversation_id=%s)",
+            conv_id,
+        )
 
 
 @router.websocket("/ws/v1/chat")
@@ -95,6 +216,7 @@ async def chat_websocket(websocket: WebSocket) -> None:
     cancel_event = asyncio.Event()
     pump_stop = asyncio.Event()
     session_workspace_tools: set[str] = set()
+    client_connected = True
 
     def _apply_client_capabilities(msg: dict[str, Any]) -> None:
         raw = msg.get("workspace_tools")
@@ -103,13 +225,18 @@ async def chat_websocket(websocket: WebSocket) -> None:
         session_workspace_tools.clear()
         session_workspace_tools.update(str(x).strip() for x in raw if str(x).strip())
 
-    async def emit(ev: dict[str, Any]) -> None:
+    async def emit(ev: dict[str, Any]) -> bool:
+        nonlocal client_connected
         try:
             await websocket.send_json(ev)
+            return True
         except Exception:
+            client_connected = False
             logger.debug("ws emit failed", exc_info=True)
+            return False
 
     async def pump_incoming() -> None:
+        nonlocal client_connected
         try:
             while not pump_stop.is_set():
                 try:
@@ -132,10 +259,14 @@ async def chat_websocket(websocket: WebSocket) -> None:
                     cancel_event.set()
                 await control_queue.put(msg)
         except WebSocketDisconnect:
-            cancel_event.set()
+            # Do not cancel the in-flight turn on refresh/navigation disconnect —
+            # the run continues and completion is persisted server-side if emit fails.
+            client_connected = False
+            logger.debug("ws client disconnected; turn continues until cancel or completion")
         except Exception:
             logger.exception("ws pump_incoming failed")
             cancel_event.set()
+            client_connected = False
 
     pump_task = asyncio.create_task(pump_incoming())
 
@@ -157,7 +288,14 @@ async def chat_websocket(websocket: WebSocket) -> None:
             if ft == "client_capabilities":
                 _apply_client_capabilities(first)
                 continue
-            if ft in ("tool_result", "permission_reply", "cancel", "add_tools", "continue_step", "secret_saved"):
+            if ft in (
+                "tool_result",
+                "permission_reply",
+                "cancel",
+                "add_tools",
+                "continue_step",
+                "secret_saved",
+            ):
                 # Stray control frames between turns: ignore rather than fail the next chat.
                 continue
             if ft != "chat":
@@ -195,6 +333,7 @@ async def chat_websocket(websocket: WebSocket) -> None:
             id_token = set_identity(tenant_id, user_id)
             cancel_event.clear()
             try:
+                await asyncio.to_thread(_ensure_ws_user_message, user_id, work)
                 data = await chat_completion(
                     work,
                     router_categories_header=router_hdr,
@@ -229,9 +368,18 @@ async def chat_websocket(websocket: WebSocket) -> None:
                     logger.warning("ws chat_completion failed: %s (%s)", detail, e)
                 await emit({"type": "error", "detail": detail})
             else:
-                await emit({"type": "chat.completion", "data": data})
+                delivered = await emit({"type": "chat.completion", "data": data})
+                # Only server-persist when the completion frame never reached the client,
+                # so a live client + persistDetachedAgentCompletion cannot double-append.
+                if not delivered:
+                    await asyncio.to_thread(
+                        _persist_ws_assistant_completion, user_id, work, data
+                    )
             finally:
                 reset_identity(id_token)
+            if not client_connected and control_queue.empty():
+                # Client gone and no queued control frames: end the WS loop.
+                break
     finally:
         pump_stop.set()
         pump_task.cancel()

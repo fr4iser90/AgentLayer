@@ -13,6 +13,12 @@ tool_allowlist:
   - workspace.list
   - bind
   - user_secrets_status
+  - save_user_secret
+  - request_user_secret
+  - secrets_help
+  - register_secrets
+  - env_bindings
+  - repository.env_bindings
   - goal_get
   - goal_create
   - goal_update
@@ -27,3 +33,6 @@ pinned_tools:
   - workspace.list
   - bind
   - user_secrets_status
+  - save_user_secret
+  - request_user_secret
+  - env_bindings

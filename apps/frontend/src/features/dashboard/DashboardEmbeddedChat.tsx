@@ -52,11 +52,17 @@ import {
   setEmbeddedChatSessionOpen,
 } from "./embeddedChatSessionPrefs";
 import type { UiBlock, UiLayout } from "./types";
-import { uploadDashboardGalleryFile } from "./gallery/galleryUpload";
+import {
+  BOARD_FILE_ACCEPT,
+  listDashboardBoardFiles,
+  type BoardFileMeta,
+  uploadDashboardBoardFile,
+} from "./gallery/galleryUpload";
 import { ModelCatalogSelect } from "../chat/ModelCatalogSelect";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type GalleryTarget = { blockId: string; dataPath: string; title: string };
+type MarkdownTarget = { blockId: string; dataPath: string; title: string };
 
 function dashboardThreadsForPanel(
   list: Record<string, unknown>[],
@@ -140,6 +146,46 @@ function pickGalleryTarget(
   return targets[0] ?? null;
 }
 
+function markdownTargets(layout: UiLayout | null | undefined): MarkdownTarget[] {
+  const out: MarkdownTarget[] = [];
+  walkBlocks(layout?.blocks, (block) => {
+    if (block.type !== "markdown" && block.type !== "rich_markdown") return;
+    const dataPath = block.props.dataPath?.trim();
+    if (!dataPath) return;
+    const title = String(block.props.title || dataPath).trim() || dataPath;
+    out.push({ blockId: block.id, dataPath, title });
+  });
+  return out;
+}
+
+function pickMarkdownTarget(
+  layout: UiLayout | null | undefined,
+  focusedBlockId: string | null
+): MarkdownTarget | null {
+  const targets = markdownTargets(layout);
+  if (!targets.length) return null;
+  const focused = (focusedBlockId || "").trim();
+  if (focused) {
+    const hit = targets.find((t) => t.blockId === focused);
+    if (hit) return hit;
+  }
+  return targets[0] ?? null;
+}
+
+function isImageFile(file: File): boolean {
+  return (file.type || "").startsWith("image/");
+}
+
+function isMarkdownFile(file: File): boolean {
+  const name = (file.name || "").toLowerCase();
+  const type = (file.type || "").toLowerCase();
+  return (
+    type === "text/markdown" ||
+    name.endsWith(".md") ||
+    name.endsWith(".markdown")
+  );
+}
+
 type Props = {
   dashboardId: string;
   dashboardTitle?: string;
@@ -218,6 +264,11 @@ export function DashboardEmbeddedChat({
   const [threadOptions, setThreadOptions] = useState<ChatThread[]>([]);
   const [noSharedChatYet, setNoSharedChatYet] = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
+  /** When true, picked files go to board attachments/blocks; when false, chat-only. */
+  const [pinFilesToBoard, setPinFilesToBoard] = useState(true);
+  const [boardFiles, setBoardFiles] = useState<BoardFileMeta[]>([]);
+  const [boardFilesBusy, setBoardFilesBusy] = useState(false);
+  const [boardLibraryOpen, setBoardLibraryOpen] = useState(false);
   const [modelBeforeFirstSend, setModelBeforeFirstSend] = useState("");
   const lastModelSelectionRef = useRef("");
   const endRef = useRef<HTMLDivElement>(null);
@@ -394,49 +445,131 @@ export function DashboardEmbeddedChat({
   const addPickedFiles = useCallback(async (files: FileList | null) => {
     if (!files?.length || readOnly) return;
     const picked = Array.from(files);
-    const imageFiles = picked.filter((f) => f.type.startsWith("image/"));
-    const otherFiles = picked.filter((f) => !f.type.startsWith("image/"));
+
+    if (!pinFilesToBoard) {
+      const next = await filesToAttachments(picked);
+      setPendingAttachments((prev) => [...prev, ...next]);
+      return;
+    }
+
+    if (!accessToken) {
+      setSendErr(t("dashboard:uploadAuthRequired"));
+      return;
+    }
+
+    const imageFiles = picked.filter(isImageFile);
+    const markdownFiles = picked.filter((f) => !isImageFile(f) && isMarkdownFile(f));
+    const otherFiles = picked.filter((f) => !isImageFile(f) && !isMarkdownFile(f));
+    let changed = false;
 
     if (imageFiles.length > 0) {
-      if (!accessToken) {
-        setSendErr(t("dashboard:uploadAuthRequired"));
-        return;
-      }
       const target = pickGalleryTarget(dashboardLayout, focusedBlockId);
       if (!target) {
         setSendErr(t("dashboard:chatImageUploadNoGallery"));
-        return;
+      } else {
+        setSendErr(null);
+        setSendSlowHint(
+          t("dashboard:chatImageUploading", { count: imageFiles.length, target: target.title })
+        );
+        let uploaded = 0;
+        for (const file of imageFiles) {
+          const result = await uploadDashboardBoardFile(dashboardId, file, auth, t, {
+            appendListPath: target.dataPath,
+            caption: file.name,
+          });
+          if (!result.ok) {
+            setSendErr(result.error);
+            break;
+          }
+          uploaded += 1;
+        }
+        setSendSlowHint(null);
+        if (uploaded > 0) {
+          changed = true;
+          setDraft((d) => {
+            const note = t("dashboard:chatImageUploadedNote", {
+              count: uploaded,
+              target: target.title,
+            });
+            return d.trim() ? `${d.trim()}\n\n${note}` : note;
+          });
+        }
       }
+    }
+
+    if (markdownFiles.length > 0) {
+      const target = pickMarkdownTarget(dashboardLayout, focusedBlockId);
+      if (!target) {
+        setSendErr(t("dashboard:chatMarkdownUploadNoNotes"));
+      } else {
+        setSendErr(null);
+        setSendSlowHint(
+          t("dashboard:chatMarkdownUploading", {
+            count: markdownFiles.length,
+            target: target.title,
+          })
+        );
+        let uploaded = 0;
+        for (const file of markdownFiles) {
+          const result = await uploadDashboardBoardFile(dashboardId, file, auth, t, {
+            appendTextPath: target.dataPath,
+          });
+          if (!result.ok) {
+            setSendErr(result.error);
+            break;
+          }
+          if (result.textApplyError) {
+            setSendErr(result.textApplyError);
+            break;
+          }
+          uploaded += 1;
+        }
+        setSendSlowHint(null);
+        if (uploaded > 0) {
+          changed = true;
+          setDraft((d) => {
+            const note = t("dashboard:chatMarkdownUploadedNote", {
+              count: uploaded,
+              target: target.title,
+            });
+            return d.trim() ? `${d.trim()}\n\n${note}` : note;
+          });
+        }
+      }
+    }
+
+    if (otherFiles.length > 0) {
       setSendErr(null);
-      setSendSlowHint(t("dashboard:chatImageUploading", { count: imageFiles.length, target: target.title }));
+      setSendSlowHint(t("dashboard:chatBoardFileUploading", { count: otherFiles.length }));
       let uploaded = 0;
-      for (const file of imageFiles) {
-        const result = await uploadDashboardGalleryFile(dashboardId, file, auth, t, {
-          appendListPath: target.dataPath,
-          caption: file.name,
-        });
+      const chatFallback: File[] = [];
+      for (const file of otherFiles) {
+        const result = await uploadDashboardBoardFile(dashboardId, file, auth, t);
         if (!result.ok) {
-          setSendErr(result.error);
-          break;
+          chatFallback.push(file);
+          continue;
         }
         uploaded += 1;
       }
       setSendSlowHint(null);
       if (uploaded > 0) {
-        onDashboardChanged?.();
+        changed = true;
         setDraft((d) => {
-          const note = t("dashboard:chatImageUploadedNote", {
-            count: uploaded,
-            target: target.title,
-          });
+          const note = t("dashboard:chatBoardFileUploadedNote", { count: uploaded });
           return d.trim() ? `${d.trim()}\n\n${note}` : note;
         });
       }
+      if (chatFallback.length > 0) {
+        const next = await filesToAttachments(chatFallback);
+        setPendingAttachments((prev) => [...prev, ...next]);
+      }
     }
 
-    if (otherFiles.length > 0) {
-      const next = await filesToAttachments(otherFiles);
-      setPendingAttachments((prev) => [...prev, ...next]);
+    if (changed) {
+      onDashboardChanged?.();
+      void listDashboardBoardFiles(dashboardId, auth, t).then((res) => {
+        if (res.ok) setBoardFiles(res.files);
+      });
     }
   }, [
     accessToken,
@@ -445,9 +578,37 @@ export function DashboardEmbeddedChat({
     dashboardLayout,
     focusedBlockId,
     onDashboardChanged,
+    pinFilesToBoard,
     readOnly,
     t,
   ]);
+
+  const refreshBoardFiles = useCallback(async () => {
+    if (!accessToken || readOnly) return;
+    setBoardFilesBusy(true);
+    const res = await listDashboardBoardFiles(dashboardId, auth, t);
+    setBoardFilesBusy(false);
+    if (!res.ok) {
+      setSendErr(res.error || t("dashboard:boardFilesLoadError"));
+      return;
+    }
+    setBoardFiles(res.files);
+  }, [accessToken, auth, dashboardId, readOnly, t]);
+
+  const pickBoardLibraryFile = useCallback(
+    (fileId: string) => {
+      const hit = boardFiles.find((f) => f.id === fileId);
+      if (!hit) return;
+      const ref = hit.file_ref || hit.gallery_ref || `file:${hit.id}`;
+      const note = t("dashboard:boardFilePickedNote", {
+        name: hit.original_name || hit.id,
+        ref,
+      });
+      setDraft((d) => (d.trim() ? `${d.trim()}\n\n${note}` : note));
+      setBoardLibraryOpen(false);
+    },
+    [boardFiles, t]
+  );
 
   useEffect(() => {
     if (open && endRef.current) {
@@ -950,13 +1111,75 @@ export function DashboardEmbeddedChat({
                   type="file"
                   multiple
                   className="hidden"
-                  accept="image/*,.txt,.md,.json,.csv,.log,.yaml,.yml"
+                  accept={BOARD_FILE_ACCEPT}
                   onChange={(e) => {
                     const files = e.target.files;
                     e.target.value = "";
                     void addPickedFiles(files);
                   }}
                 />
+                {!readOnly ? (
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <label
+                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-white/10 bg-black/25 px-2 py-1 text-[10px] text-neutral-300"
+                      title={t("dashboard:pinFilesToBoardHint")}
+                    >
+                      <input
+                        type="checkbox"
+                        className="rounded border-white/20"
+                        checked={pinFilesToBoard}
+                        onChange={(e) => setPinFilesToBoard(e.target.checked)}
+                      />
+                      <span>{pinFilesToBoard ? t("dashboard:pinFilesToBoard") : t("dashboard:chatOnlyFiles")}</span>
+                    </label>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        disabled={sendLoading || boardFilesBusy}
+                        className="rounded-md border border-white/10 bg-black/25 px-2 py-1 text-[10px] text-neutral-300 hover:bg-white/5 disabled:opacity-40"
+                        title={t("dashboard:boardFilesLibraryHint")}
+                        onClick={() => {
+                          const next = !boardLibraryOpen;
+                          setBoardLibraryOpen(next);
+                          if (next) void refreshBoardFiles();
+                        }}
+                      >
+                        {t("dashboard:boardFilesLibrary")}
+                        {boardFiles.length > 0 ? ` (${boardFiles.length})` : ""}
+                      </button>
+                      {boardLibraryOpen ? (
+                        <div className="absolute bottom-full left-0 z-20 mb-1 max-h-48 w-64 overflow-y-auto rounded-md border border-surface-border bg-surface-raised p-1 shadow-lg">
+                          {boardFilesBusy ? (
+                            <p className="px-2 py-1 text-[10px] text-surface-muted">{t("dashboard:loading")}</p>
+                          ) : boardFiles.length === 0 ? (
+                            <p className="px-2 py-1 text-[10px] text-surface-muted">
+                              {t("dashboard:boardFilesLibraryEmpty")}
+                            </p>
+                          ) : (
+                            <ul className="space-y-0.5">
+                              {boardFiles.map((f) => (
+                                <li key={f.id}>
+                                  <button
+                                    type="button"
+                                    className="flex w-full flex-col rounded px-2 py-1 text-left hover:bg-white/5"
+                                    onClick={() => pickBoardLibraryFile(f.id)}
+                                  >
+                                    <span className="truncate text-[10px] text-neutral-200">
+                                      {f.original_name || f.id}
+                                    </span>
+                                    <span className="truncate text-[9px] text-surface-muted">
+                                      {f.content_type || "file"} · {f.file_ref || f.gallery_ref}
+                                    </span>
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
                 {focusedBlockId && !readOnly ? (
                   <div className="mb-2 flex max-w-full items-center gap-1.5 rounded-md border border-emerald-500/25 bg-emerald-950/20 px-2 py-1 text-[10px] text-emerald-100">
                     <span className="shrink-0 text-emerald-400/90">◎</span>

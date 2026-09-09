@@ -27,6 +27,14 @@ export function HomePage() {
       desc: t("common:home.hubDashboardDesc"),
     });
   }
+  if (navItemAllowed(user, "projects")) {
+    cards.push({
+      to: "/projects",
+      nav: "projects",
+      title: t("common:nav.projects"),
+      desc: t("common:home.hubProjectsDesc"),
+    });
+  }
 
   return (
     <div className="h-full min-h-0 overflow-y-auto">

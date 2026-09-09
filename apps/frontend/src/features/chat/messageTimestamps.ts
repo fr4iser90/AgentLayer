@@ -32,6 +32,10 @@ type ApiMessageRow = {
   role?: string;
   content?: unknown;
   created_at?: unknown;
+  id?: unknown;
+  client_message_id?: unknown;
+  reasoning?: unknown;
+  reasoning_content?: unknown;
 };
 
 export function apiMessageToUi(m: ApiMessageRow): UiMessage {
@@ -43,7 +47,16 @@ export function apiMessageToUi(m: ApiMessageRow): UiMessage {
         ? JSON.stringify(m.content)
         : "";
   const createdAt = parseMessageCreatedAt(m.created_at);
-  return createdAt != null ? { role, content, createdAt } : { role, content };
+  const idRaw = m.id ?? m.client_message_id;
+  const id = typeof idRaw === "string" && idRaw.trim() ? idRaw.trim() : undefined;
+  const reasoningRaw = m.reasoning ?? m.reasoning_content;
+  const reasoningContent =
+    typeof reasoningRaw === "string" && reasoningRaw.trim() ? reasoningRaw.trim() : undefined;
+  const out: UiMessage = { role, content };
+  if (createdAt != null) out.createdAt = createdAt;
+  if (id) out.id = id;
+  if (reasoningContent) out.reasoningContent = reasoningContent;
+  return out;
 }
 
 export function uiMessageToApiPayload(
@@ -56,6 +69,12 @@ export function uiMessageToApiPayload(
   };
   const iso = messageCreatedAtToApi(m.createdAt);
   if (iso) out.created_at = iso;
+  if (m.id?.trim()) {
+    out.id = m.id.trim();
+    out.client_message_id = m.id.trim();
+  }
+  const reasoning = m.reasoningContent?.trim();
+  if (reasoning) out.reasoning = reasoning;
   return out;
 }
 

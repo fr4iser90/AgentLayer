@@ -418,10 +418,19 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
         )
         if k in patch
     }
+    chat_quota_patch = {
+        k: patch[k]
+        for k in (
+            "chat_max_conversation_mb",
+            "chat_max_personal_sessions",
+            "chat_max_dashboard_sessions",
+        )
+        if k in patch
+    }
 
     from apps.backend.infrastructure.settings.operator_settings_patch_persistence import persist_operator_settings_patch
 
-    persist_operator_settings_patch(r, patch, media_patch)
+    persist_operator_settings_patch(r, patch, media_patch, chat_quota_patch=chat_quota_patch)
     _invalidate()
     if any(k in patch for k in ("llm_queue_policy", "llm_queue_user_priority", "llm_queue_benchmark_priority", "llm_queue_scheduler_priority")):
         try:

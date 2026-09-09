@@ -134,6 +134,12 @@ class ChatTurnPreparation:
     thrash_streak_max: int
     doom_enabled: bool
     doom_streak_max: int
+    output_echo_enabled: bool
+    output_echo_streak_max: int
+    output_echo_min_chars: int
+    result_echo_enabled: bool
+    result_echo_streak_max: int
+    result_echo_min_chars: int
     context_prep_meta: dict[str, Any]
     compaction_attempt: tuple[str, dict[str, str], str, str] | None
     context_budget: Any
@@ -415,6 +421,14 @@ async def prepare_chat_turn(
     _thrash_streak_max = ace.tool_thrash_streak_max(tenant_id=cfg_tid)
     _doom_enabled = ace.doom_loop_enabled(tenant_id=cfg_tid)
     _doom_streak_max = ace.doom_loop_streak_max(tenant_id=cfg_tid)
+    from apps.backend.infrastructure.agent_runtime import agent_config_echo as ace_echo
+
+    _output_echo_enabled = ace_echo.assistant_output_echo_enabled(tenant_id=cfg_tid)
+    _output_echo_streak_max = ace_echo.assistant_output_echo_streak_max(tenant_id=cfg_tid)
+    _output_echo_min_chars = ace_echo.assistant_output_echo_min_chars(tenant_id=cfg_tid)
+    _result_echo_enabled = ace_echo.tool_result_echo_enabled(tenant_id=cfg_tid)
+    _result_echo_streak_max = ace_echo.tool_result_echo_streak_max(tenant_id=cfg_tid)
+    _result_echo_min_chars = ace_echo.tool_result_echo_min_chars(tenant_id=cfg_tid)
     if not embedded_subagent and raw_max_rounds is not None:
         try:
             client_v = int(raw_max_rounds)
@@ -508,6 +522,12 @@ async def prepare_chat_turn(
         thrash_streak_max=_thrash_streak_max,
         doom_enabled=_doom_enabled,
         doom_streak_max=_doom_streak_max,
+        output_echo_enabled=_output_echo_enabled,
+        output_echo_streak_max=_output_echo_streak_max,
+        output_echo_min_chars=_output_echo_min_chars,
+        result_echo_enabled=_result_echo_enabled,
+        result_echo_streak_max=_result_echo_streak_max,
+        result_echo_min_chars=_result_echo_min_chars,
         context_prep_meta=context_prep_meta,
         compaction_attempt=compaction_attempt,
         context_budget=_context_budget,

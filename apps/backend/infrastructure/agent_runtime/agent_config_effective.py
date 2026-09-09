@@ -549,6 +549,12 @@ def display_value(
     if knob_id == "agent.doom_loop_streak_max":
         return doom_loop_streak_max(tenant_id=tenant_id), "implicit_default"
 
+    from apps.backend.infrastructure.agent_runtime.agent_config_echo import display_echo_value
+
+    echoed = display_echo_value(knob_id, tenant_id=tenant_id)
+    if echoed is not None:
+        return echoed
+
     if knob_id == "delegate.max_artifact_refs":
         return delegate_max_artifact_refs(tenant_id=tenant_id), "implicit_default"
 

@@ -8,33 +8,44 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+# Advisory only (Deepseek-harness-style): never disable tools / never force text-only.
 _AGENT_TOOL_THRASH_HINT = (
-    "Tool loop guard: the same tool has failed **repeatedly** with the **same error message**. "
-    "On the next assistant message you must either fix the JSON arguments (non-empty fields per schema) "
-    "or answer the user in **plain text** explaining what is wrong — do not repeat identical failing tool calls."
+    "You are repeating the same tool failure with the same error. Carefully analyze the previous result "
+    "before calling again: fix the arguments, try a different approach, or answer the user in plain text."
 )
 
-_AGENT_TOOL_THRASH_FORCE_TEXT = (
-    "Repeated identical tool failures were detected. **Tools are disabled for this round** — respond with a "
-    "normal assistant message only: summarize the error, quote it briefly, and state the exact JSON fields "
-    "required for the next successful call (e.g. coding_bash → `{\"command\": \"…\"}`)."
+_AGENT_TOOL_THRASH_HINT_DETAILED = (
+    "Repeated identical tool failure detected. The repeated calls are not making progress. "
+    "Do not call this tool with the same failing arguments again. Inspect the latest error and choose a "
+    "different action, different arguments, or finish if enough evidence has been gathered."
 )
 
 _AGENT_TOOL_DOOM_LOOP_HINT = (
-    "Loop guard: the **same tool** was called with the **same arguments** repeatedly. "
-    "Stop repeating that call: change parameters, try a different approach, or answer the user in **plain text** "
-    "with what you learned and what to do next. "
-    "If this is **read-only Plan** mode, synthesize your **handoff plan** now (markdown): proposed edits, files for Build, "
-    "checklist — do not call that tool again with the same args."
+    "You are repeating the exact same tool call with identical arguments. Carefully analyze the previous "
+    "result before calling again: if the task is not complete, try a different approach or different "
+    "arguments instead of repeating the call."
 )
 
-_AGENT_TOOL_DOOM_FORCE_TEXT = (
-    "Repeated identical tool calls were detected. **Tools are disabled for this assistant turn** — reply with a "
-    "normal message only: summarize what tool output you already have, then deliver a **complete plan** "
-    "(markdown): proposed changes, files/paths for the Build agent, ordered steps. "
-    "Ask at most one clarifying question if something essential is still unknown. "
-    "Do **not** emit fake `<tool_call>` / `</tool_call>` or XML tool markup — the chat API does not parse that from text."
+_AGENT_TOOL_DOOM_LOOP_HINT_DETAILED = (
+    "Repeated tool call detected. The repeated calls are not making progress. Do not call this tool with "
+    "these exact arguments again. Inspect the latest result and choose a different action, different "
+    "arguments, or finish the task if enough evidence has been gathered."
 )
+
+# Kept for import compatibility; advisory mode never injects these as a tools-disabled round.
+_AGENT_TOOL_THRASH_FORCE_TEXT = _AGENT_TOOL_THRASH_HINT_DETAILED
+_AGENT_TOOL_DOOM_FORCE_TEXT = _AGENT_TOOL_DOOM_LOOP_HINT_DETAILED
+_AGENT_OUTPUT_ECHO_FORCE_TEXT = (
+    "Identical assistant text or tool results are repeating without progress. Analyze what you already "
+    "have, change approach, or finish — do not keep emitting the same output."
+)
+
+_AGENT_OUTPUT_ECHO_HINT = (
+    "Identical output is repeating. Change approach (different tool args / files / commands) "
+    "or answer the user in plain text — do not keep emitting the same text or re-fetching the same result."
+)
+
+_AGENT_OUTPUT_ECHO_HINT_DETAILED = _AGENT_OUTPUT_ECHO_FORCE_TEXT
 
 
 def _agent_final_text_looks_like_placeholder_tool_markup(text: str) -> bool:
@@ -159,34 +170,100 @@ def _synthetic_final_llm_http_error_completion(*, status: int, model_id: str) ->
     }
 
 
+def _normalize_advice_thresholds(
+    thresholds: list[int] | tuple[int, ...] | None = None,
+    *,
+    max_streak: int | None = None,
+) -> tuple[int, ...]:
+    """DSH-style reminder counts (default 3, 5, 8). Advisory only — never a hard stop."""
+    vals: set[int] = set()
+    if thresholds:
+        for x in thresholds:
+            try:
+                n = int(x)
+            except (TypeError, ValueError):
+                continue
+            if n >= 2:
+                vals.add(n)
+    if max_streak is not None:
+        try:
+            ms = int(max_streak)
+        except (TypeError, ValueError):
+            ms = 0
+        if ms >= 2:
+            vals.add(ms)
+    if not vals:
+        vals.update((3, 5, 8))
+    return tuple(sorted(vals))
+
+
+def _advice_hint_for_count(
+    count: int,
+    thresholds: tuple[int, ...],
+    *,
+    gentle: str,
+    detailed: str,
+) -> str | None:
+    if count not in thresholds:
+        return None
+    return gentle if count == thresholds[0] else detailed
+
+
 def _agent_tool_doom_loop_tick(
     doom_key: str | None,
     doom_count: int,
     *,
     tool_name: str,
     args: dict[str, Any],
-    max_streak: int,
+    max_streak: int | None = None,
+    thresholds: list[int] | tuple[int, ...] | None = None,
     exclude_names: frozenset[str],
+    args_preview_chars: int = 500,
 ) -> tuple[str | None, int, str | None]:
-    """Detect repeated identical tool invocations (stuck doom-loop guard)."""
-    if max_streak < 2:
-        return doom_key, doom_count, None
+    """
+    Advisory repeat detector (same tool + same args).
+
+    Reminds at configured thresholds; never blocks tools. Chain continues counting
+    after a reminder (DSH ``repeat-tool-reminder`` semantics).
+    """
+    th = _normalize_advice_thresholds(thresholds, max_streak=max_streak)
     if tool_name in exclude_names:
         return doom_key, doom_count, None
     try:
         args_canon = json.dumps(dict(args), sort_keys=True, separators=(",", ":"), default=str)
     except TypeError:
         args_canon = str(args)
-    if len(args_canon) > 1200:
-        args_canon = args_canon[:1200] + "…"
+    preview = args_canon
+    if len(preview) > args_preview_chars:
+        omitted = len(preview) - args_preview_chars
+        preview = preview[:args_preview_chars] + f"… (+{omitted} more chars)"
     dk = f"{tool_name}|{args_canon}"
     if dk == doom_key:
         n = doom_count + 1
     else:
         dk, n = dk, 1
-    if n >= max_streak:
-        return None, 0, _AGENT_TOOL_DOOM_LOOP_HINT
-    return dk, n, None
+    hint = _advice_hint_for_count(
+        n,
+        th,
+        gentle=_AGENT_TOOL_DOOM_LOOP_HINT,
+        detailed=(
+            "Repeated tool call detected:\n"
+            f"- tool: `{tool_name}`\n"
+            f"- consecutive_calls: {n}\n"
+            f"- arguments: `{preview}`\n"
+            "The repeated calls are not making progress. Do not call this tool with these exact "
+            "arguments again. Inspect the latest result and choose a different action, different "
+            "arguments, or finish the task if enough evidence has been gathered."
+        ),
+    )
+    if hint:
+        logger.info(
+            "agent tool repeat advice: streak=%d tool=%s thresholds=%s (advisory, tools still available)",
+            n,
+            tool_name,
+            th,
+        )
+    return dk, n, hint
 
 
 def _tool_result_summary(result: str | None) -> tuple[bool | None, str | None]:
@@ -309,46 +386,145 @@ def _agent_tool_thrash_tick(
     tool_name: str,
     ok_r: bool | None,
     err_r: str | None,
-    max_streak: int,
-) -> tuple[str | None, int, str | None, bool]:
+    max_streak: int | None = None,
+    thresholds: list[int] | tuple[int, ...] | None = None,
+) -> tuple[str | None, int, str | None]:
     """
-    Advance thrash detector after one tool result.
+    Advisory identical-failure detector.
 
-    Returns ``(new_key, new_count, optional_system_hint, force_text_only_next_round)``.
+    Returns ``(new_key, new_count, optional_system_hint)`` — never disables tools.
     """
-    if max_streak < 2:
-        return thrash_key, thrash_count, None, False
+    th = _normalize_advice_thresholds(thresholds, max_streak=max_streak)
     if ok_r is True:
-        return None, 0, None, False
+        return None, 0, None
     if ok_r is None:
-        return thrash_key, thrash_count, None, False
+        return thrash_key, thrash_count, None
     err_norm = (err_r or "(no error text)")[:200]
     key = f"{tool_name}|{err_norm}"
     if key == thrash_key:
         n = thrash_count + 1
     else:
         n = 1
-    if n >= max_streak:
-        logger.warning(
-            "agent tool thrash: streak=%d tool=%s — forcing text-only next round",
+    hint = _advice_hint_for_count(
+        n,
+        th,
+        gentle=_AGENT_TOOL_THRASH_HINT,
+        detailed=_AGENT_TOOL_THRASH_HINT_DETAILED,
+    )
+    if hint:
+        logger.info(
+            "agent tool thrash advice: streak=%d tool=%s (advisory, tools still available)",
             n,
             tool_name,
         )
-        return None, 0, None, True
-    if n == max_streak - 1:
-        return key, n, _AGENT_TOOL_THRASH_HINT, False
-    return key, n, None, False
+    return key, n, hint
+
+
+def _normalize_echo_fingerprint(text: str, *, min_chars: int, max_chars: int = 4000) -> str | None:
+    """Stable fingerprint for identical-output detection; None if too short to count."""
+    if not text:
+        return None
+    collapsed = re.sub(r"\s+", " ", text.strip())
+    if len(collapsed) < min_chars:
+        return None
+    return collapsed[:max_chars]
+
+
+def _agent_assistant_output_echo_tick(
+    echo_key: str | None,
+    echo_count: int,
+    *,
+    content: str | None,
+    max_streak: int | None = None,
+    thresholds: list[int] | tuple[int, ...] | None = None,
+    min_chars: int,
+) -> tuple[str | None, int, str | None]:
+    """
+    Advisory identical assistant-text detector across consecutive LLM rounds.
+
+    Short / empty content resets the streak. Never disables tools.
+    """
+    th = _normalize_advice_thresholds(thresholds, max_streak=max_streak)
+    fp = _normalize_echo_fingerprint(content or "", min_chars=min_chars)
+    if fp is None:
+        return None, 0, None
+    if fp == echo_key:
+        n = echo_count + 1
+    else:
+        n = 1
+    hint = _advice_hint_for_count(
+        n,
+        th,
+        gentle=_AGENT_OUTPUT_ECHO_HINT,
+        detailed=_AGENT_OUTPUT_ECHO_HINT_DETAILED,
+    )
+    if hint:
+        logger.info(
+            "agent assistant output echo advice: streak=%d chars=%d (advisory)",
+            n,
+            len(fp),
+        )
+    return fp, n, hint
+
+
+def _agent_tool_result_echo_tick(
+    echo_key: str | None,
+    echo_count: int,
+    *,
+    tool_name: str,
+    result: str | None,
+    max_streak: int | None = None,
+    thresholds: list[int] | tuple[int, ...] | None = None,
+    min_chars: int,
+) -> tuple[str | None, int, str | None]:
+    """
+    Advisory identical tool-result detector (incl. doom-excluded reads).
+
+    Never disables tools.
+    """
+    th = _normalize_advice_thresholds(thresholds, max_streak=max_streak)
+    body = _normalize_echo_fingerprint(result or "", min_chars=min_chars)
+    if body is None:
+        return None, 0, None
+    key = f"{tool_name}|{body}"
+    if key == echo_key:
+        n = echo_count + 1
+    else:
+        n = 1
+    hint = _advice_hint_for_count(
+        n,
+        th,
+        gentle=_AGENT_OUTPUT_ECHO_HINT,
+        detailed=_AGENT_OUTPUT_ECHO_HINT_DETAILED,
+    )
+    if hint:
+        logger.info(
+            "agent tool result echo advice: streak=%d tool=%s (advisory)",
+            n,
+            tool_name,
+        )
+    return key, n, hint
 
 
 __all__ = [
+    "_AGENT_OUTPUT_ECHO_FORCE_TEXT",
+    "_AGENT_OUTPUT_ECHO_HINT",
+    "_AGENT_OUTPUT_ECHO_HINT_DETAILED",
     "_AGENT_TOOL_DOOM_FORCE_TEXT",
     "_AGENT_TOOL_DOOM_LOOP_HINT",
+    "_AGENT_TOOL_DOOM_LOOP_HINT_DETAILED",
     "_AGENT_TOOL_THRASH_FORCE_TEXT",
     "_AGENT_TOOL_THRASH_HINT",
+    "_AGENT_TOOL_THRASH_HINT_DETAILED",
+    "_advice_hint_for_count",
+    "_agent_assistant_output_echo_tick",
     "_agent_final_text_looks_like_placeholder_tool_markup",
     "_agent_tool_doom_loop_tick",
+    "_agent_tool_result_echo_tick",
     "_agent_tool_thrash_tick",
     "_emit_secret_prompt_from_tool_result",
+    "_normalize_advice_thresholds",
+    "_normalize_echo_fingerprint",
     "_sanitize_final_completion_assistant_content",
     "_strip_prose_fake_tool_markup",
     "_synthetic_final_llm_http_error_completion",

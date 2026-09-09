@@ -5,7 +5,7 @@ import { useAuth } from "../auth/AuthContext";
 import { fetchTask, setConversationActiveTask } from "../lib/tasksApi";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { apiFetch, addUsageTotals, emptyTokenUsage, fetchChatRuntime, type ChatContextMeta, type ConversationGoal, type ChatRuntimePayload, type ConversationTodo, type TokenUsageTotals, type WorkspaceApiRecord } from "../lib/api";
-import { OngoingGoalBar, PlanModeBanner, ConversationTodosPanel } from "../features/chat/ConversationGoalPanels";
+import { PlanModeBanner, SessionGoalTodosStrip } from "../features/chat/ConversationGoalPanels";
 import {
   PermissionAskCard,
   type PermissionAskPayload,
@@ -55,7 +55,6 @@ import { getAgentChatSession } from "../features/chat/agentChatSession";
 import { deferredWaitMessage, llmSlotWaitMessage } from "../features/chat/agentChatWsCore";
 import {
   persistDetachedAgentCompletion,
-  persistDetachedAgentLog,
 } from "../features/chat/detachedTurnPersist";
 import { indexActivityToTimeline, type IndexActivityEvent } from "../features/chat/indexActivity";
 import { compactionEventToTimeline } from "../features/chat/compactionActivity";
@@ -111,6 +110,7 @@ import {
   mapListItemToThread,
   mergeServerThreadWithLocal,
   putConversation,
+  putConversationAgentLog,
 } from "../features/chat/conversationsApi";
 import {
   fetchConversationFeedback,
@@ -293,13 +293,11 @@ type SendTurnOptions = {
   resendUserMsgId?: string;
 };
 
-type ApplyInFlightRestoreOpts = {
-  restoreComposer?: boolean;
-  rewindUserMessage?: boolean;
-};
-
 type AbortInFlightOpts = {
-  /** Cancel without restoring the in-flight draft; keep user message and strip partial assistant. */
+  /**
+   * Interrupt the current turn and (via pendingForceSend) start a new one.
+   * Same transcript UX as cancel: keep user + streamed assistant, mark cancelled.
+   */
   forceSend?: boolean;
 };
 
@@ -329,7 +327,7 @@ function assistantMessage(
 ): UiMessage {
   const createdAt =
     prior?.role === "assistant" && prior.createdAt != null ? prior.createdAt : Date.now();
-  const msg: UiMessage = { role: "assistant", content, createdAt };
+  const msg: UiMessage = { role: "assistant", content, createdAt, id: newMessageId() };
   const reasoning = reasoningContent?.trim();
   if (reasoning) msg.reasoningContent = reasoning;
   return msg;
@@ -346,19 +344,31 @@ function stripTrailingEmptyAssistantMessages(msgs: UiMessage[]): UiMessage[] {
   return out;
 }
 
-function stripTrailingAssistantsAfterLastUser(msgs: UiMessage[]): UiMessage[] {
-  let out = [...msgs];
-  while (out.length > 0 && out[out.length - 1]?.role === "assistant") {
-    out = out.slice(0, -1);
-  }
-  return out;
-}
-
 function lastUserMessageIndex(msgs: UiMessage[]): number {
   for (let i = msgs.length - 1; i >= 0; i -= 1) {
     if (msgs[i]?.role === "user") return i;
   }
   return -1;
+}
+
+function composerModEnterLabel(): string {
+  if (typeof navigator === "undefined") return "Ctrl+Enter";
+  const ua = navigator.userAgent || "";
+  const platform = (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData
+    ?.platform;
+  const mac =
+    /Mac|iPhone|iPad|iPod/i.test(platform || "") ||
+    /Mac|iPhone|iPad|iPod/i.test(navigator.platform || "") ||
+    (/Macintosh|Mac OS X/i.test(ua) && !/Windows/i.test(ua));
+  return mac ? "⌘↵" : "Ctrl+Enter";
+}
+
+function ComposerKbd({ children }: { children: string }) {
+  return (
+    <kbd className="ml-1.5 inline-flex items-center rounded border border-white/15 bg-black/35 px-1 py-px font-mono text-[10px] font-normal leading-none text-white/65">
+      {children}
+    </kbd>
+  );
 }
 
 function turnHasAssistantAfter(msgs: UiMessage[], userMsgId: string): boolean {
@@ -472,6 +482,11 @@ export function ChatPage() {
   const skipQueueDrainOnFinishRef = useRef(false);
   /** After interrupting a turn, send this message as soon as the in-flight turn finishes. */
   const pendingForceSendRef = useRef<QueuedComposerMessage | null>(null);
+  /**
+   * After force-send, ignore stale ``agent.cancelled`` / cancel ``chat.completion`` frames
+   * from the interrupted turn until the new turn gets ``agent.session``.
+   */
+  const suppressWsCancelEchoRef = useRef(false);
   /** Soft goal-round continue prompt from ``agent.goal_round`` (sent after turn finishes). */
   const pendingGoalRoundRef = useRef<string | null>(null);
   const tryDispatchPendingForceSendRef = useRef<() => boolean>(() => false);
@@ -511,7 +526,11 @@ export function ChatPage() {
     const live = agentLiveTurnRef.current;
     const agentLog =
       live.isActive() ? live.takeAgentLogSnapshot() : (th.agentLog ?? []);
-    void putConversation(authRef.current, { ...th, agentLog }).catch(() => {});
+    // agent_log-only — never rewrite messages mid-turn (completion PUT race).
+    void putConversationAgentLog(authRef.current, tid, {
+      agentLog,
+      turnLogs: th.turnLogs ?? [],
+    }).catch(() => {});
   }, []);
 
   const schedulePersistAgentLog = useCallback(() => {
@@ -1088,35 +1107,167 @@ export function ChatPage() {
   }, [workspaces, hydrated, threads, searchParams, setSearchParams, t]);
 
   useEffect(() => {
-    agentChatSession.setPageMounted(true);
-    return () => agentChatSession.setPageMounted(false);
-  }, [agentChatSession]);
+    const onWarn = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ title?: string; body?: string }>).detail;
+      const title = detail?.title?.trim() || t("chat:storageWarnTitle");
+      const body = detail?.body?.trim() || "";
+      setError(body ? `${title}: ${body}` : title);
+    };
+    window.addEventListener("agentlayer:chat-storage-warn", onWarn as EventListener);
+    return () => window.removeEventListener("agentlayer:chat-storage-warn", onWarn as EventListener);
+  }, [t]);
 
+  // Flush activity log on refresh/close so run cards aren't lost with the tab.
   useEffect(() => {
-    if (!hydrated || !activeThreadId) return;
-    const turn = agentChatSession.getActiveTurn();
-    if (
-      turn &&
-      turn.threadId === activeThreadId &&
-      agentChatSession.liveTurn.isActive()
-    ) {
+    const onHide = () => {
+      if (!agentChatSession.getActiveTurn()) return;
+      flushPersistAgentLog();
+    };
+    window.addEventListener("pagehide", onHide);
+    return () => window.removeEventListener("pagehide", onHide);
+  }, [agentChatSession, flushPersistAgentLog]);
+
+  // After navigating away mid-turn, remount may miss the optimistic completion —
+  // re-fetch the open thread when the page is shown again.
+  useEffect(() => {
+    if (!hydrated || !activeThreadId || !auth.accessToken) return;
+    const onVis = () => {
+      if (document.visibilityState !== "visible") return;
+      const id = activeThreadIdRef.current;
+      if (!id) return;
+      void fetchConversationDetail(authRef.current, id)
+        .then((full) => {
+          setThreads((prev) =>
+            prev.map((th) => (th.id === id ? mergeServerThreadWithLocal(full, th) : th))
+          );
+        })
+        .catch(() => {});
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [hydrated, activeThreadId, auth.accessToken]);
+
+  // Resume UI + poll after hard refresh / unexpected WS drop. Previously WS onclose
+  // called finish() which cleared sessionStorage — refresh looked "cancelled".
+  useEffect(() => {
+    if (!hydrated || !activeThreadId || !auth.accessToken) return;
+
+    let cancelled = false;
+    let pollTimer: ReturnType<typeof setTimeout> | null = null;
+    let polling = false;
+
+    const turnForThread = () => {
+      const turn = agentChatSession.getActiveTurn();
+      return turn && turn.threadId === activeThreadId ? turn : null;
+    };
+
+    const stopPolling = () => {
+      polling = false;
+      if (pollTimer != null) {
+        clearTimeout(pollTimer);
+        pollTimer = null;
+      }
+    };
+
+    const clearActiveTurnUi = () => {
+      stopPolling();
+      try {
+        sessionStorage.removeItem("agentlayer:active-agent-turn");
+      } catch {
+        /* ignore */
+      }
+      agentChatSession.endTurn();
+      agentChatSession.liveTurn.resetAfterCommit();
+      setLoading(false);
+      setAgentTurnStartedAtMs(null);
+    };
+
+    const startPoll = (baselineAssistantCount: number) => {
+      if (polling || cancelled) return;
+      polling = true;
+      const started = Date.now();
+      const maxMs = 15 * 60 * 1000;
+      const tick = async () => {
+        if (cancelled) return;
+        if (Date.now() - started >= maxMs) {
+          clearActiveTurnUi();
+          return;
+        }
+        // Live WS handler is attached again — stop polling.
+        if (
+          agentChatSession.liveTurn.isActive() &&
+          agentChatSession.getSocket()?.readyState === WebSocket.OPEN
+        ) {
+          stopPolling();
+          return;
+        }
+        try {
+          const full = await fetchConversationDetail(authRef.current, activeThreadId);
+          if (cancelled) return;
+          setThreads((prev) =>
+            prev.map((th) =>
+              th.id === activeThreadId ? mergeServerThreadWithLocal(full, th) : th
+            )
+          );
+          const assistantCount = full.messages.filter((m) => m.role === "assistant").length;
+          const last = full.messages[full.messages.length - 1];
+          const lastAssistantHasText =
+            last?.role === "assistant" &&
+            (typeof last.content === "string"
+              ? last.content.trim().length > 0
+              : last.content != null);
+          if (assistantCount > baselineAssistantCount && lastAssistantHasText) {
+            clearActiveTurnUi();
+            return;
+          }
+        } catch {
+          /* keep polling */
+        }
+        if (!cancelled && polling) {
+          pollTimer = setTimeout(() => {
+            void tick();
+          }, 2000);
+        }
+      };
+      void tick();
+    };
+
+    const resumeIfNeeded = () => {
+      const turn = turnForThread();
+      if (!turn) return;
+
       setLoading(true);
       setAgentTurnStartedAtMs(turn.startedAtMs);
-      setSelectedTurnId(turn.userMsgId);
-      return;
-    }
-    try {
-      const raw = sessionStorage.getItem("agentlayer:active-agent-turn");
-      if (raw) {
-        const stored = JSON.parse(raw) as { threadId?: string };
-        if (stored.threadId === activeThreadId) {
-          sessionStorage.removeItem("agentlayer:active-agent-turn");
-        }
+      if (turn.userMsgId) setSelectedTurnId(turn.userMsgId);
+
+      const socketOpen = agentChatSession.getSocket()?.readyState === WebSocket.OPEN;
+      if (agentChatSession.liveTurn.isActive() && socketOpen) {
+        // Soft remount: stream still live via singleton.
+        return;
       }
-    } catch {
-      /* ignore */
-    }
-  }, [hydrated, activeThreadId, agentChatSession]);
+
+      const th = threadsRef.current.find((t) => t.id === activeThreadId);
+      const baseline = th?.messages.filter((m) => m.role === "assistant").length ?? 0;
+      startPoll(baseline);
+    };
+
+    resumeIfNeeded();
+
+    const unsub = agentChatSession.subscribeDisconnect(() => {
+      if (cancelled) return;
+      if (!turnForThread()) return;
+      setLoading(true);
+      const th = threadsRef.current.find((t) => t.id === activeThreadId);
+      const baseline = th?.messages.filter((m) => m.role === "assistant").length ?? 0;
+      startPoll(baseline);
+    });
+
+    return () => {
+      cancelled = true;
+      stopPolling();
+      unsub();
+    };
+  }, [hydrated, activeThreadId, auth.accessToken, agentChatSession]);
 
   useEffect(() => {
     if (mode !== "agent") {
@@ -1387,47 +1538,6 @@ export function ChatPage() {
     [appendAgentLine, assistantStreamOffset]
   );
 
-  const applyInFlightRestore = useCallback(
-    (snapshot: InFlightTurnSnapshot, opts?: ApplyInFlightRestoreOpts) => {
-      const tid = snapshot.threadId;
-      const rewind =
-        opts?.rewindUserMessage ?? snapshot.rewindUserMessage;
-      const restoreComposer = opts?.restoreComposer ?? rewind;
-      if (restoreComposer) {
-        setDraft(snapshot.draft);
-        setPendingAttachments([...snapshot.attachments]);
-      }
-      const priorUsers = snapshot.priorMessages.filter((m) => m.role === "user" && m.id);
-      setSelectedTurnId(
-        priorUsers[priorUsers.length - 1]?.id ?? snapshot.userMsgId ?? null
-      );
-
-      setThreads((prev) => {
-        const next = prev.map((th) => {
-          if (th.id !== tid) return th;
-          const messages = rewind
-            ? [...snapshot.priorMessages]
-            : stripTrailingAssistantsAfterLastUser(
-                th.messages.length ? th.messages : snapshot.priorMessages
-              );
-          const updated: ChatThread = {
-            ...th,
-            messages,
-            title: snapshot.priorTitle,
-            agentLog: rewind ? [...snapshot.priorAgentLog] : [],
-            turnLogs: rewind ? [...snapshot.priorTurnLogs] : th.turnLogs,
-            messageCount: messages.length,
-            updatedAt: Date.now(),
-          };
-          void putConversation(auth, updated).catch(() => {});
-          return updated;
-        });
-        return next;
-      });
-    },
-    [auth]
-  );
-
   const tryDispatchPendingForceSend = useCallback(() => {
     const pending = pendingForceSendRef.current;
     if (!pending) return false;
@@ -1435,9 +1545,15 @@ export function ChatPage() {
     cancelAgentTurnRef.current = false;
     skipQueueDrainOnFinishRef.current = false;
     const tid = activeThreadIdRef.current;
-    if (!tid) return true;
+    if (!tid) {
+      suppressWsCancelEchoRef.current = false;
+      return true;
+    }
     const thread = threadsRef.current.find((x) => x.id === tid);
     const chatMode = thread?.mode ?? "agent";
+    if (chatMode === "chat") {
+      suppressWsCancelEchoRef.current = false;
+    }
     queueMicrotask(() => {
       void (chatMode === "chat"
         ? runChatHttpRef.current(pending)
@@ -1504,17 +1620,24 @@ export function ChatPage() {
       archivePatch = archiveTurnBeforeNewPrompt(thread);
     }
 
-    if (!isResend && (thread.agentLog?.length ?? 0) > 0) {
-      void putConversation(auth, {
-        ...thread,
-        messages: nextMessages,
-        ...archivePatch,
-        title: nextTitle,
-        model: routed.model,
-        modelProvider: routed.provider,
-        messageCount: nextMessages.length,
-        updatedAt: Date.now(),
-      }).catch(() => {});
+    // Always persist the user row before the turn starts (not only when agentLog
+    // is non-empty). Otherwise a first-turn / empty-log completion fetch+append
+    // can leave the server with assistant-only history and wipe the local user msg.
+    if (!isResend) {
+      try {
+        await putConversation(auth, {
+          ...thread,
+          messages: nextMessages,
+          ...archivePatch,
+          title: nextTitle,
+          model: routed.model,
+          modelProvider: routed.provider,
+          messageCount: nextMessages.length,
+          updatedAt: Date.now(),
+        });
+      } catch {
+        /* best-effort; local UI still has the user row */
+      }
     }
 
     const apiPayload = buildAgentRequestUserContent(
@@ -1717,7 +1840,8 @@ export function ChatPage() {
   const runAgentWs = useCallback(async (queued?: QueuedComposerMessage, opts?: SendTurnOptions) => {
     if (!accessToken || !activeThreadId) return;
     const tid = activeThreadId;
-    const thread = threads.find((x) => x.id === tid);
+    // Prefer ref so force-send after cancel sees the just-written cancelled transcript.
+    const thread = threadsRef.current.find((x) => x.id === tid) ?? threads.find((x) => x.id === tid);
     const routed = resolveSendModelRouting(modelRows, {
       lastSelection: lastModelSelectionRef.current,
       modelSelectValue,
@@ -1727,6 +1851,12 @@ export function ChatPage() {
     });
     if (!thread || !routed) {
       setError(t("errors:resolveModelProviderFailed"));
+      if (queued) {
+        setDraft(queued.draft);
+        setPendingAttachments([...queued.attachments]);
+      }
+      suppressWsCancelEchoRef.current = false;
+      setLoading(false);
       return;
     }
     lastModelSelectionRef.current = routed.selectValue;
@@ -1761,7 +1891,15 @@ export function ChatPage() {
       sendDraft = queued?.draft ?? draft;
       sendAttachments = queued?.attachments ?? pendingAttachments;
       const userContent = buildUserMessageContent(sendDraft, sendAttachments);
-      if (!userContent) return;
+      if (!userContent) {
+        if (queued) {
+          setDraft(queued.draft);
+          setPendingAttachments([...queued.attachments]);
+        }
+        suppressWsCancelEchoRef.current = false;
+        setLoading(false);
+        return;
+      }
       const firstUser = thread.messages.length === 0;
       userMsgId = newMessageId();
       nextMessages = [
@@ -1772,17 +1910,24 @@ export function ChatPage() {
       archivePatch = archiveTurnBeforeNewPrompt(thread);
     }
 
-    if (!isResend && (thread.agentLog?.length ?? 0) > 0) {
-      void putConversation(auth, {
-        ...thread,
-        messages: nextMessages,
-        ...archivePatch,
-        title: nextTitle,
-        model: routed.model,
-        modelProvider: routed.provider,
-        messageCount: nextMessages.length,
-        updatedAt: Date.now(),
-      }).catch(() => {});
+    // Always persist the user row before the turn starts (not only when agentLog
+    // is non-empty). Otherwise a first-turn / empty-log completion fetch+append
+    // can leave the server with assistant-only history and wipe the local user msg.
+    if (!isResend) {
+      try {
+        await putConversation(auth, {
+          ...thread,
+          messages: nextMessages,
+          ...archivePatch,
+          title: nextTitle,
+          model: routed.model,
+          modelProvider: routed.provider,
+          messageCount: nextMessages.length,
+          updatedAt: Date.now(),
+        });
+      } catch {
+        /* best-effort; local UI still has the user row */
+      }
     }
 
     const requestPayload = buildAgentRequestUserContent(
@@ -1794,7 +1939,15 @@ export function ChatPage() {
     storageOnlyImages = requestPayload.storageOnlyImages;
     const omitHistoryImagesForApi = isImageStorageRequest(sendDraft);
     const requestAgentId = agentIdForRequest(composerAgentId, sendDraft);
-    if (!requestUserContent) return;
+    if (!requestUserContent) {
+      if (queued) {
+        setDraft(queued.draft);
+        setPendingAttachments([...queued.attachments]);
+      }
+      suppressWsCancelEchoRef.current = false;
+      setLoading(false);
+      return;
+    }
 
     inFlightTurnRef.current = {
       threadId: tid,
@@ -1862,15 +2015,16 @@ export function ChatPage() {
       }
       const id = activeThreadIdRef.current;
       const live = agentLiveTurnRef.current;
-      let pendingAgentLog: AgentTimelineEntry[] | null = null;
       if (id && live.isActive()) {
         const log = live.takeAgentLogSnapshot();
-        pendingAgentLog = log;
         const th = threadsRef.current.find((t) => t.id === id);
-        if (th && log.length > 0) {
-          void putConversation(authRef.current, { ...th, agentLog: log }).catch(() => {});
-        } else if (!agentChatSession.isPageMounted() && log.length > 0) {
-          void persistDetachedAgentLog(authRef.current, id, log).catch(() => {});
+        if (log.length > 0) {
+          // Never PUT messages here — threadsRef may still lack the assistant
+          // row that chat.completion just scheduled; a full replace would wipe it.
+          void putConversationAgentLog(authRef.current, id, {
+            agentLog: log,
+            turnLogs: th?.turnLogs ?? [],
+          }).catch(() => {});
         }
         if (agentChatSession.isPageMounted()) {
           setThreads((prev) =>
@@ -1916,8 +2070,8 @@ export function ChatPage() {
         scheduleDrainComposerQueue();
       }
       if (id && !skipDrain && agentChatSession.isPageMounted()) {
-        setThreads((prev) => {
-          const next = prev.map((th) => {
+        setThreads((prev) =>
+          prev.map((th) => {
             if (th.id !== id) return th;
             const messages = stripTrailingEmptyAssistantMessages(th.messages);
             if (messages.length === th.messages.length) return th;
@@ -1927,17 +2081,8 @@ export function ChatPage() {
               messageCount: messages.length,
               updatedAt: Date.now(),
             };
-          });
-          const th = next.find((x) => x.id === id);
-          if (th) {
-            const toSave =
-              pendingAgentLog && pendingAgentLog.length > 0
-                ? { ...th, agentLog: pendingAgentLog }
-                : th;
-            void putConversation(authRef.current, toSave).catch(() => {});
-          }
-          return next;
-        });
+          })
+        );
       }
     };
     agentTurnFinishRef.current = finish;
@@ -1949,16 +2094,25 @@ export function ChatPage() {
         const typ = typeof msg.type === "string" ? msg.type : String(msg.type ?? "");
         if (typ === "pong") return;
         if (typ === "error") {
+          if (finished) return;
           setError(typeof msg.detail === "string" ? msg.detail : t("errors:agentError"));
           finish();
           return;
         }
         if (typ === "chat.completion") {
           if (msg.error) {
-            setError(typeof msg.detail === "string" ? msg.detail : t("chat:cancelledOrFailed"));
+            const detail = typeof msg.detail === "string" ? msg.detail : "";
+            const cancelEcho =
+              suppressWsCancelEchoRef.current &&
+              /cancel|abort/i.test(detail || "cancelled");
+            if (cancelEcho || finished) {
+              return;
+            }
+            setError(detail || t("chat:cancelledOrFailed"));
             finish();
             return;
           }
+          suppressWsCancelEchoRef.current = false;
           const data = msg.data;
           if (data && typeof data === "object" && "usage" in data) {
             setTokenUsage((prev) => addUsageTotals(prev, (data as { usage?: unknown }).usage));
@@ -1977,32 +2131,50 @@ export function ChatPage() {
           const liveLog = agentLiveTurnRef.current.takeAgentLogSnapshot();
           if (id && content.trim()) {
             inFlightTurnRef.current = null;
+            // Always persist via fetch+append so a stale local message list cannot wipe
+            // the assistant row (also covers ChatPage remount mid-turn).
+            void persistDetachedAgentCompletion(
+              authRef.current,
+              id,
+              content,
+              liveLog,
+              reasoningContent
+            )
+              .then(async () => {
+                if (!agentChatSession.isPageMounted()) return;
+                try {
+                  const full = await fetchConversationDetail(authRef.current, id);
+                  setThreads((prev) =>
+                    prev.map((th) =>
+                      th.id === id ? mergeServerThreadWithLocal(full, th) : th
+                    )
+                  );
+                } catch {
+                  /* keep optimistic UI */
+                }
+              })
+              .catch(() => {});
             if (agentChatSession.isPageMounted()) {
-              setThreads((prev) => {
-                const next = prev.map((th) => {
+              setThreads((prev) =>
+                prev.map((th) => {
                   if (th.id !== id) return th;
-                  const prevMsgs = th.messages;
                   const messages: UiMessage[] = [
-                    ...prevMsgs,
+                    ...th.messages,
                     assistantMessage(content, undefined, reasoningContent),
                   ];
-                  const updated: ChatThread = {
+                  return {
                     ...th,
                     messages,
                     agentLog: liveLog,
                     messageCount: messages.length,
                     updatedAt: Date.now(),
                   };
-                  void putConversation(authRef.current, updated).catch(() => {});
-                  return updated;
-                });
-                return next;
-              });
-            } else {
-              void persistDetachedAgentCompletion(authRef.current, id, content, liveLog).catch(
-                () => {}
+                })
               );
             }
+            // Finish (loading=false) before resetting live turn so useSyncExternalStore
+            // cannot paint an empty in-flight "Agent running…" over the streamed text.
+            finish();
             agentLiveTurnRef.current.resetAfterCommit();
             const vs = voiceStatusRef.current;
             const speechText = extractSpeechTextFromCompletion(data);
@@ -2012,32 +2184,37 @@ export function ChatPage() {
                 preferServer: Boolean(vs.api_configured),
               });
             }
+            return;
           } else if (id && liveLog.length > 0) {
+            const th = threadsRef.current.find((t) => t.id === id);
+            void putConversationAgentLog(authRef.current, id, {
+              agentLog: liveLog,
+              turnLogs: th?.turnLogs ?? [],
+            }).catch(() => {});
             if (agentChatSession.isPageMounted()) {
               setThreads((prev) =>
-                prev.map((th) => {
-                  if (th.id !== id) return th;
-                  const updated: ChatThread = {
-                    ...th,
+                prev.map((row) => {
+                  if (row.id !== id) return row;
+                  return {
+                    ...row,
                     agentLog: liveLog,
                     updatedAt: Date.now(),
                   };
-                  void putConversation(authRef.current, updated).catch(() => {});
-                  return updated;
                 })
               );
-            } else {
-              void persistDetachedAgentLog(authRef.current, id, liveLog).catch(() => {});
             }
+            finish();
             agentLiveTurnRef.current.resetAfterCommit();
+            return;
           } else {
             inFlightTurnRef.current = null;
+            finish();
             agentLiveTurnRef.current.resetAfterCommit();
+            return;
           }
-          finish();
-          return;
         }
         if (typ === "agent.session") {
+          suppressWsCancelEchoRef.current = false;
           const em = msg.effective_model != null ? String(msg.effective_model) : "";
           const mr = msg.model_resolution != null ? String(msg.model_resolution) : "";
           appendAgentLine("session", [em && `model: ${em}`, mr && `(${mr})`].filter(Boolean).join(" "));
@@ -2460,6 +2637,9 @@ export function ChatPage() {
           setStepPaused(false);
         }
         if (typ === "agent.aborted" || typ === "agent.cancelled") {
+          if (suppressWsCancelEchoRef.current || finished) {
+            return;
+          }
           appendAgentLine(String(typ), String(msg.detail ?? ""));
           delegateClearRef.current();
           return;
@@ -2522,6 +2702,11 @@ export function ChatPage() {
       setError(e instanceof Error ? e.message : String(e));
       setAgentTurnStartedAtMs(null);
       setLoading(false);
+      if (queued) {
+        setDraft(queued.draft);
+        setPendingAttachments([...queued.attachments]);
+      }
+      suppressWsCancelEchoRef.current = false;
       scheduleDrainComposerQueue();
     }
   }, [
@@ -2639,27 +2824,79 @@ export function ChatPage() {
     cancelAgentTurnRef.current = true;
     skipQueueDrainOnFinishRef.current = true;
     pendingGoalRoundRef.current = null;
+    if (forceSend) {
+      // Server will still emit cancel/completion-error for the old turn; ignore until
+      // the replacement turn's agent.session so we don't finish() the new turn.
+      suppressWsCancelEchoRef.current = true;
+    }
 
     const snapshot = inFlightTurnRef.current;
     if (snapshot && snapshot.threadId === activeThreadIdRef.current) {
-      if (forceSend) {
-        applyInFlightRestore(snapshot, { restoreComposer: false, rewindUserMessage: false });
-      } else {
-        applyInFlightRestore(snapshot);
-      }
+      // Keep user + any streamed assistant text; badge via agent.cancelled in the timeline.
+      // Force-send uses the same transcript UX (then pendingForceSend starts the next turn).
+      const tid = snapshot.threadId;
+      const live = agentLiveTurnRef.current;
+      const streamText = live.getStreamText().trim();
+      const streamReasoning = live.getStreamReasoningText().trim();
+      const logBase = live.isActive()
+        ? live.takeAgentLogSnapshot()
+        : (threadsRef.current.find((x) => x.id === tid)?.agentLog ?? []);
+      const cancelledLog = appendTimelineEntry(logBase, {
+        kind: "agent.cancelled",
+        text: t("chat:turnCancelled"),
+      });
+      setThreads((prev) => {
+        const next = prev.map((th) => {
+          if (th.id !== tid) return th;
+          let messages = stripTrailingEmptyAssistantMessages(th.messages);
+          const last = messages[messages.length - 1];
+          if (last?.role === "assistant") {
+            const merged = streamText
+              ? {
+                  ...last,
+                  content: streamText,
+                  ...(streamReasoning ? { reasoningContent: streamReasoning } : {}),
+                }
+              : last;
+            messages = [...messages.slice(0, -1), merged];
+          } else {
+            messages = [
+              ...messages,
+              assistantMessage(streamText, undefined, streamReasoning || undefined),
+            ];
+          }
+          const updated: ChatThread = {
+            ...th,
+            messages,
+            agentLog: cancelledLog,
+            messageCount: messages.length,
+            updatedAt: Date.now(),
+          };
+          void putConversation(authRef.current, updated).catch(() => {});
+          return updated;
+        });
+        // Keep threadsRef in sync for the force-send microtask (before React re-renders).
+        threadsRef.current = next;
+        return next;
+      });
       inFlightTurnRef.current = null;
     }
 
     agentLiveTurnRef.current.resetAfterCommit();
-    agentTurnFinishRef.current?.();
+    const finishFn = agentTurnFinishRef.current;
     agentTurnFinishRef.current = null;
     agentChatSession.setFinishCallback(null);
+    if (finishFn) {
+      finishFn();
+    } else if (forceSend) {
+      tryDispatchPendingForceSendRef.current();
+    }
     agentChatSession.endTurn();
     if (!forceSend) {
       setLoading(false);
     }
     agentChatSession.sendCancel();
-  }, [agentChatSession, applyInFlightRestore]);
+  }, [agentChatSession, t]);
 
   const onCancelInFlight = useCallback(() => {
     abortInFlightTurn();
@@ -2841,38 +3078,93 @@ export function ChatPage() {
     return composerHasContent;
   }, [activeThreadId, loading, model, defaultModel, accessToken, composerHasContent]);
 
-  const canForceSend = canQueue;
-
-  const onForceSend = useCallback(() => {
-    if (!activeThreadId || !composerHasContent) return;
-    if (!(model || defaultModel) || !accessToken) return;
-    const item: QueuedComposerMessage = {
-      id: newMessageId(),
-      draft,
-      attachments: [...pendingAttachments],
-    };
-    if (!loading) {
-      void (mode === "chat" ? runChatHttp(item) : runAgentWs(item));
-      return;
-    }
-    pendingForceSendRef.current = item;
-    setDraft("");
-    setPendingAttachments([]);
-    abortInFlightTurn({ forceSend: true });
+  const canForceSend = useMemo(() => {
+    if (!activeThreadId || !loading || !(model || defaultModel) || !accessToken) return false;
+    return composerHasContent || activeComposerQueue.length > 0;
   }, [
-    abortInFlightTurn,
     accessToken,
+    activeComposerQueue.length,
     activeThreadId,
     composerHasContent,
     defaultModel,
-    draft,
     loading,
-    mode,
+    model,
+  ]);
+
+  const composerModEnter = useMemo(() => composerModEnterLabel(), []);
+
+  const forceSendItem = useCallback(
+    (item: QueuedComposerMessage) => {
+      if (!activeThreadId || !(model || defaultModel) || !accessToken) return;
+      if (!loading) {
+        void (mode === "chat" ? runChatHttp(item) : runAgentWs(item));
+        return;
+      }
+      pendingForceSendRef.current = item;
+      setDraft("");
+      setPendingAttachments([]);
+      abortInFlightTurn({ forceSend: true });
+    },
+    [
+      abortInFlightTurn,
+      accessToken,
+      activeThreadId,
+      defaultModel,
+      loading,
+      mode,
+      model,
+      runAgentWs,
+      runChatHttp,
+    ]
+  );
+
+  const onForceSend = useCallback(() => {
+    if (!activeThreadId || !(model || defaultModel) || !accessToken) return;
+    if (composerHasContent) {
+      forceSendItem({
+        id: newMessageId(),
+        draft,
+        attachments: [...pendingAttachments],
+      });
+      return;
+    }
+    const tid = activeThreadId;
+    const q = composerQueueRef.current.get(tid);
+    if (!q?.length) return;
+    const item = q.shift()!;
+    if (q.length) composerQueueRef.current.set(tid, q);
+    else composerQueueRef.current.delete(tid);
+    bumpComposerQueue();
+    forceSendItem(item);
+  }, [
+    accessToken,
+    activeThreadId,
+    bumpComposerQueue,
+    composerHasContent,
+    defaultModel,
+    draft,
+    forceSendItem,
     model,
     pendingAttachments,
-    runAgentWs,
-    runChatHttp,
   ]);
+
+  const onForceSendQueuedItem = useCallback(
+    (itemId: string) => {
+      const tid = activeThreadId;
+      if (!tid) return;
+      const q = composerQueueRef.current.get(tid);
+      if (!q?.length) return;
+      const idx = q.findIndex((item) => item.id === itemId);
+      if (idx < 0) return;
+      const [item] = q.splice(idx, 1);
+      if (!item) return;
+      if (q.length) composerQueueRef.current.set(tid, q);
+      else composerQueueRef.current.delete(tid);
+      bumpComposerQueue();
+      forceSendItem(item);
+    },
+    [activeThreadId, bumpComposerQueue, forceSendItem]
+  );
 
   if (!hydrated || !userId) {
     return (
@@ -3267,7 +3559,6 @@ export function ChatPage() {
                     persistShowSubagentsPref(userId, on);
                   }}
                 />
-                <ConversationTodosPanel todos={sessionTodos} />
               </div>
             ) : (
               <div className="flex min-h-0 items-center rounded-lg border border-white/10 bg-black/30 px-2.5 py-2">
@@ -3498,7 +3789,10 @@ export function ChatPage() {
                       s.type === "card" ||
                       s.type === "secret_prompt"
                   );
-                  if (!hasStreamBody && !inFlight) return null;
+                  const turnCancelled = timelineEntries.some(
+                    (e) => e.kind === "agent.cancelled" || e.kind === "agent.aborted"
+                  );
+                  if (!hasStreamBody && !inFlight && !turnCancelled) return null;
                   const prevUser =
                     i > 0 && displayMessages[i - 1]?.role === "user"
                       ? displayMessages[i - 1]
@@ -3620,8 +3914,9 @@ export function ChatPage() {
                 </button>
               </div>
             ) : null}
-            <OngoingGoalBar
+            <SessionGoalTodosStrip
               goal={sessionGoal}
+              todos={sessionTodos}
               disabled={!activeThreadId || loading}
               onPause={() => {
                 if (!activeThreadId || !sessionGoal) return;
@@ -3782,6 +4077,17 @@ export function ChatPage() {
                       <span className="min-w-0 flex-1 truncate" title={queueItemPreview(item)}>
                         {queueItemPreview(item)}
                       </span>
+                      {loading ? (
+                        <button
+                          type="button"
+                          className="shrink-0 rounded px-1.5 text-[10px] font-medium uppercase tracking-wide text-sky-300/90 hover:bg-sky-500/15 hover:text-sky-100"
+                          title={t("chat:composerQueueSendNow")}
+                          aria-label={t("chat:composerQueueSendNow")}
+                          onClick={() => onForceSendQueuedItem(item.id)}
+                        >
+                          {t("chat:composerForceSend")}
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         className="shrink-0 rounded px-1 text-surface-muted hover:text-white"
@@ -3821,7 +4127,11 @@ export function ChatPage() {
                 ref={composerTextareaRef}
                 value={draft}
                 disabled={voiceTranscribing}
-                placeholder={t("chat:composerPlaceholder")}
+                placeholder={
+                  loading
+                    ? t("chat:composerPlaceholderBusy", { modEnter: composerModEnter })
+                    : t("chat:composerPlaceholder")
+                }
                 onChange={setDraft}
                 canForceSend={loading && canForceSend}
                 onEnterForceSend={() => onForceSend()}
@@ -3830,6 +4140,14 @@ export function ChatPage() {
                   else if (canQueue) onQueue();
                 }}
               />
+              {loading ? (
+                <p className="mt-1.5 text-[10px] leading-snug text-surface-muted">
+                  {t("chat:composerBusyHint", {
+                    enter: "↵",
+                    modEnter: composerModEnter,
+                  })}
+                </p>
+              ) : null}
               <div className="mt-2 flex items-center justify-between gap-2">
                 <button
                   type="button"
@@ -3885,25 +4203,27 @@ export function ChatPage() {
                   />
                 ) : null}
                 {loading ? (
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center justify-end gap-2">
                     {canQueue ? (
                       <button
                         type="button"
-                        className="rounded-lg border border-violet-500/50 bg-violet-950/40 px-4 py-2 text-sm font-medium text-violet-100 hover:bg-violet-900/50"
+                        className="inline-flex items-center rounded-lg border border-violet-500/50 bg-violet-950/40 px-3 py-2 text-sm font-medium text-violet-100 hover:bg-violet-900/50"
                         title={t("chat:composerQueueAddTitle")}
                         onClick={() => onQueue()}
                       >
                         {t("chat:composerQueueAdd")}
+                        <ComposerKbd>↵</ComposerKbd>
                       </button>
                     ) : null}
                     {canForceSend ? (
                       <button
                         type="button"
-                        className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
-                        title={t("chat:composerForceSendTitle")}
+                        className="inline-flex items-center rounded-lg bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-500"
+                        title={t("chat:composerForceSendTitle", { modEnter: composerModEnter })}
                         onClick={() => onForceSend()}
                       >
                         {t("chat:composerForceSend")}
+                        <ComposerKbd>{composerModEnter}</ComposerKbd>
                       </button>
                     ) : null}
                     <button
@@ -3918,10 +4238,12 @@ export function ChatPage() {
                   <button
                     type="button"
                     disabled={!canSend || voiceTranscribing}
-                    className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-40"
+                    className="inline-flex items-center rounded-lg bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-40"
+                    title={t("chat:composerSendTitle")}
                     onClick={() => onSend()}
                   >
-                    {t("dashboard:send")}
+                    {t("chat:composerSend")}
+                    <ComposerKbd>↵</ComposerKbd>
                   </button>
                 )}
               </div>
