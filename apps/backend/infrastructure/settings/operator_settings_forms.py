@@ -71,10 +71,6 @@ class OperatorSettingsPatch(BaseModel):
     rag_embed_timeout_sec: float | None = Field(default=None, ge=5.0, le=600.0)
     rag_tenant_shared_domains: str | None = Field(default=None, max_length=4000)
     docs_root: str | None = Field(default=None, max_length=4096)
-    pidea_enabled: bool | None = None
-    pidea_cdp_http_url: str | None = Field(default=None, max_length=512)
-    pidea_selector_ide: str | None = Field(default=None, max_length=32)
-    pidea_selector_version: str | None = Field(default=None, max_length=64)
     expose_internal_errors: bool | None = None
     http_client_log_level: str | None = Field(default=None, max_length=16)
     scheduler_enabled: bool | None = None
@@ -87,11 +83,8 @@ class OperatorSettingsPatch(BaseModel):
     scheduler_allowed_tool_packages: str | None = Field(default=None, max_length=4000)
     scheduler_llm_backend: str | None = Field(default=None, max_length=16)
     scheduler_tools_mode: str | None = Field(default=None, max_length=16)
-    scheduler_pidea_enabled: bool | None = None
     scheduler_instructions: str | None = Field(default=None, max_length=32000)
     scheduler_jobs_worker_enabled: bool | None = None
-    scheduler_jobs_ide_pidea_enabled: bool | None = None
-    scheduler_jobs_ide_pidea_timeout_sec: float | None = Field(default=None, ge=30.0, le=900.0)
     workspace_allow_self_editing: bool | None = None
     workspace_index_on_write_default: str | None = Field(default=None, max_length=16)
     workspace_reindex_after_git_pull: bool | None = None

@@ -94,7 +94,7 @@ def create(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> 
                     "ok": False,
                     "error": (
                         "git_url is required for source=git "
-                        '(HTTPS URL or "owner/repo", e.g. fr4iser90/PIDEA)'
+                        '(HTTPS URL or "owner/repo", e.g. fr4iser90/AgentLayer)'
                     ),
                 }
             )

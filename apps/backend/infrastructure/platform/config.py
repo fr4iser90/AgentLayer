@@ -383,6 +383,19 @@ CODING_PATH_BLOCKLIST = frozenset(
 CODING_BASH_ENV_SCRUB = _env_bool("AGENT_CODING_BASH_ENV_SCRUB", True)
 # Opt-in strict prefix allowlist for coding_bash (default off — normal agent keeps broad shell).
 CODING_BASH_STRICT = _env_bool("AGENT_CODING_BASH_STRICT", False)
+# Inject AGENTS.md / CLAUDE.md into selected agent prompts (DSH-style; labeled untrusted).
+WORKSPACE_AGENT_INSTRUCTIONS_ENABLED = _env_bool("AGENT_WORKSPACE_AGENT_INSTRUCTIONS", True)
+WORKSPACE_AGENT_INSTRUCTIONS_MAX_BYTES = max(
+    1024, min(_env_int("AGENT_WORKSPACE_AGENT_INSTRUCTIONS_MAX_BYTES", 65_536), 262_144)
+)
+# Comma-separated agent ids that receive workspace instruction injection.
+# Default: general,coding,coding_plan
+_WORKSPACE_AGENT_INSTRUCTIONS_AGENTS_RAW = (
+    os.environ.get("AGENT_WORKSPACE_AGENT_INSTRUCTIONS_AGENTS") or ""
+).strip()
+WORKSPACE_AGENT_INSTRUCTIONS_AGENTS: str | None = (
+    _WORKSPACE_AGENT_INSTRUCTIONS_AGENTS_RAW or None
+)
 
 # LSP tool: cap diagnostics returned to the model; timeout waiting for publishDiagnostics.
 AGENT_LSP_DIAGNOSTICS_MAX = max(1, min(_env_int("AGENT_LSP_DIAGNOSTICS_MAX", 40), 200))
@@ -508,14 +521,6 @@ QDRANT_COLLECTION_CODE = "code_symbols"
 NEO4J_URL = (os.environ.get("NEO4J_URL") or "bolt://neo4j:7687").strip()
 NEO4J_USER = (os.environ.get("NEO4J_USER") or "neo4j").strip()
 NEO4J_PASSWORD = (os.environ.get("NEO4J_PASSWORD") or "").strip()
-
-# --- PIDEA (DOM / Cursor·VSCode·Windsurf via Playwright + CDP) ---
-# Cursor mit --remote-debugging-port; Playwright nutzt die HTTP-CDP-URL (nicht ws:// direkt).
-# Operator-Override: Admin → IDE Agent (DB). Env nur wenn du bewusst setzt — nicht in compose „mitverdrahten“.
-PIDEA_CDP_HTTP_URL = (os.environ.get("PIDEA_CDP_HTTP_URL") or "http://127.0.0.1:9222").strip().rstrip("/")
-PIDEA_SELECTOR_IDE = (os.environ.get("PIDEA_SELECTOR_IDE") or "cursor").strip().lower()
-PIDEA_SELECTOR_VERSION = (os.environ.get("PIDEA_SELECTOR_VERSION") or "1.7.17").strip()
-PIDEA_DEFAULT_TIMEOUT_MS = _env_int("PIDEA_DEFAULT_TIMEOUT_MS", 30_000)
 
 # --- RAG + memory (facts/notes) ---
 # Chunking, embedding model, tenant-wide domains, docs ingest path, and memory kill-switch live in

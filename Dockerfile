@@ -9,6 +9,9 @@ RUN npm run build
 
 FROM python:3.11-slim-bookworm
 
+# Pin for reproducible Chromium deps + seed (coding workspaces share PLAYWRIGHT_BROWSERS_PATH).
+ARG PLAYWRIGHT_VERSION=1.49.1
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends tzdata git ffmpeg ca-certificates \
     && rm -rf /var/lib/apt/lists/*
@@ -21,6 +24,16 @@ RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
     && ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
     && node --version \
     && npm --version
+
+# Playwright: OS libs + Chromium seed (copied onto the compose volume on first boot).
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright-seed
+RUN apt-get update \
+    && npx --yes "playwright@${PLAYWRIGHT_VERSION}" install-deps chromium \
+    && mkdir -p /opt/ms-playwright-seed \
+    && npx --yes "playwright@${PLAYWRIGHT_VERSION}" install chromium \
+    && chmod -R a+rX /opt/ms-playwright-seed \
+    && rm -rf /var/lib/apt/lists/* /root/.npm /tmp/*
+ENV PLAYWRIGHT_BROWSERS_PATH=/data/ms-playwright
 
 WORKDIR /app
 

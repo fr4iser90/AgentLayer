@@ -36,6 +36,9 @@ class TestWorkspaceRetrievalBootstrap(unittest.TestCase):
             )
         self.assertIn("retrieve_context", snip)
         self.assertIn("Top-level:", snip)
+        self.assertIn("Container path (bash cwd):", snip)
+        self.assertIn(str(root.resolve()), snip)
+        self.assertIn("workdir", snip)
 
     def test_list_repo_top_level_skips_hidden(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

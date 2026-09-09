@@ -123,6 +123,37 @@ _ENV_ASSIGN_PREFIX = re.compile(
 
 _BARE_SHELL_BUILTINS = frozenset({"cd", "export", "test", "true", "false", "[", "]", "exec"})
 
+# Builtins that are not OS executables under ``subprocess shell=False`` (unlike ``true``/``test``).
+_UNSUPPORTED_SHELL_BUILTINS = frozenset(
+    {
+        "cd",
+        "export",
+        "source",
+        ".",
+        "alias",
+        "declare",
+        "typeset",
+        "readonly",
+        "local",
+        "unset",
+        "set",
+        "eval",
+        "pushd",
+        "popd",
+        "dirs",
+        "exec",
+        "ulimit",
+        "umask",
+        "wait",
+        "fg",
+        "bg",
+        "jobs",
+        "shift",
+        "getopts",
+        "read",
+    }
+)
+
 _SECRET_ENV_MARKERS = (
     "SECRET",
     "PASSWORD",
@@ -180,6 +211,7 @@ _SAFE_ENV_PREFIXES = (
     "BUN_",
     "COMPOSE_",
     "DOCKER_",
+    "PLAYWRIGHT_",
 )
 
 
@@ -211,6 +243,26 @@ def is_blocked(command: str) -> str | None:
             return f"command blocked: matches dangerous pattern '{_BLOCKED_PATTERNS[i]}' (2)"
     return None
 
+
+def unsupported_shell_builtin_reason(command: str) -> str | None:
+    """Reject shell builtins that cannot run under ``subprocess.run(..., shell=False)``."""
+    word = _first_word(command).strip()
+    if not word:
+        return None
+    # Basename for accidental absolute paths like /usr/bin/cd (still not useful).
+    bare = word.rsplit("/", 1)[-1].lower()
+    if bare not in _UNSUPPORTED_SHELL_BUILTINS and word.lower() not in _UNSUPPORTED_SHELL_BUILTINS:
+        return None
+    if bare == "cd" or word.lower() == "cd":
+        return (
+            "shell builtin not supported: `cd` cannot run (commands use shell=False). "
+            "Pass a relative `workdir` on the bash tool instead, e.g. "
+            '{"command": "ls", "workdir": "bin"}.'
+        )
+    return (
+        f"shell builtin not supported: `{bare}` is not an OS executable under shell=False. "
+        "Run one real program per call; use `workdir` instead of `cd`."
+    )
 
 def strict_allowed_prefixes() -> frozenset[str]:
     from apps.backend.infrastructure.platform.config import config

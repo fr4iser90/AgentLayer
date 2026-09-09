@@ -14,6 +14,7 @@ from plugins.tools.workspace.lib.bash_policy import (
     resolve_path_under_workspace,
     strict_mode_reject_reason,
     subprocess_env_for_coding,
+    unsupported_shell_builtin_reason,
 )
 from plugins.tools.workspace.lib.env_secret_bridge import (
     redact_injected_secrets,
@@ -107,6 +108,17 @@ def bash(arguments: dict[str, Any], context: dict | None = None) -> str:
     policy_err = is_blocked(command)
     if policy_err:
         return json.dumps({"ok": False, "error": policy_err}, ensure_ascii=False)
+    builtin_err = unsupported_shell_builtin_reason(command)
+    if builtin_err:
+        return json.dumps(
+            {
+                "ok": False,
+                "error": builtin_err,
+                "shell_builtin": True,
+                "hint": "Use the bash tool `workdir` argument instead of `cd`.",
+            },
+            ensure_ascii=False,
+        )
     if coding_bash_strict_enabled():
         strict_err = strict_mode_reject_reason(command)
         if strict_err:

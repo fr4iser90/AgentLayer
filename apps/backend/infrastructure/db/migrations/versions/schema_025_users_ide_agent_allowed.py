@@ -1,4 +1,4 @@
-"""users.ide_agent_allowed — non-admin access to IDE Agent when operator enables PIDEA.
+"""users.ide_agent_allowed — later dropped in schema_052 (legacy IDE access grant).
 
 Revision ID: schema_025
 Revises: schema_024
@@ -24,7 +24,7 @@ def upgrade() -> None:
     op.execute(
         """
         COMMENT ON COLUMN users.ide_agent_allowed IS
-          'When operator PIDEA is on: non-admins with true may use IDE Agent; admins always may.';
+          'Legacy: non-admin IDE agent access grant (column dropped in schema_052).';
         """
     )
 

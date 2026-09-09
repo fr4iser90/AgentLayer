@@ -185,10 +185,6 @@ def _fetch_row() -> dict[str, Any]:
         "rag_embedding_provider_id": None,
         "rag_docs_ingest_fingerprint": None,
         "docs_root": None,
-        "pidea_enabled": False,
-        "pidea_cdp_http_url": None,
-        "pidea_selector_ide": None,
-        "pidea_selector_version": None,
         "expose_internal_errors": False,
         "http_client_log_level": "WARNING",
         "scheduler_enabled": False,
@@ -201,11 +197,8 @@ def _fetch_row() -> dict[str, Any]:
         "scheduler_allowed_tool_packages": None,
         "scheduler_llm_backend": "inherit",
         "scheduler_tools_mode": "none",
-        "scheduler_pidea_enabled": False,
         "scheduler_instructions": None,
         "scheduler_jobs_worker_enabled": True,
-        "scheduler_jobs_ide_pidea_enabled": True,
-        "scheduler_jobs_ide_pidea_timeout_sec": 300.0,
         "workspace_allow_self_editing": False,
         "workspace_index_on_write_default": "debounced",
         "workspace_reindex_after_git_pull": False,
@@ -258,15 +251,13 @@ def _fetch_row() -> dict[str, Any]:
                            memory_enabled, rag_enabled, rag_embedding_model, rag_embedding_dim,
                            rag_chunk_size, rag_chunk_overlap, rag_top_k, rag_embed_timeout_sec,
                            rag_tenant_shared_domains, docs_root,
-                           pidea_enabled, pidea_cdp_http_url, pidea_selector_ide, pidea_selector_version,
                            expose_internal_errors, http_client_log_level,
                            scheduler_enabled, scheduler_interval_minutes, scheduler_user_id,
                            scheduler_model, scheduler_max_tool_rounds, scheduler_notify_only_if_not_ok,
                            scheduler_max_outbound_per_day, scheduler_allowed_tool_packages,
-                           scheduler_llm_backend, scheduler_tools_mode, scheduler_pidea_enabled,
+                           scheduler_llm_backend, scheduler_tools_mode,
                            scheduler_instructions,
-                           scheduler_jobs_worker_enabled, scheduler_jobs_ide_pidea_enabled,
-                           scheduler_jobs_ide_pidea_timeout_sec,
+                           scheduler_jobs_worker_enabled,
                            workspace_allow_self_editing,
                            embedding_api_base_url,
                            embedding_api_key,
@@ -354,107 +345,98 @@ def _fetch_row() -> dict[str, Any]:
             str(row[41]) if row[41] is not None else "agentlayer_docs"
         ),
         "docs_root": row[42],
-        "pidea_enabled": bool(row[43]) if row[43] is not None else False,
-        "pidea_cdp_http_url": row[44],
-        "pidea_selector_ide": row[45],
-        "pidea_selector_version": row[46],
-        "expose_internal_errors": bool(row[47]) if row[47] is not None else False,
-        "http_client_log_level": _normalize_http_client_log_level_str(row[48]) if len(row) > 48 else "WARNING",
-        "scheduler_enabled": bool(row[49]) if len(row) > 49 and row[49] is not None else False,
-        "scheduler_interval_minutes": int(row[50]) if len(row) > 50 and row[50] is not None else 60,
-        "scheduler_user_id": row[51] if len(row) > 51 else None,
-        "scheduler_model": row[52] if len(row) > 52 else None,
-        "scheduler_max_tool_rounds": int(row[53]) if len(row) > 53 and row[53] is not None else None,
-        "scheduler_notify_only_if_not_ok": bool(row[54]) if len(row) > 54 and row[54] is not None else True,
-        "scheduler_max_outbound_per_day": int(row[55]) if len(row) > 55 and row[55] is not None else 10,
-        "scheduler_allowed_tool_packages": row[56] if len(row) > 56 else None,
-        "scheduler_llm_backend": normalize_scheduler_llm_backend(row[57] if len(row) > 57 else None),
-        "scheduler_tools_mode": normalize_scheduler_tools_mode(row[58] if len(row) > 58 else None),
-        "scheduler_pidea_enabled": bool(row[59]) if len(row) > 59 and row[59] is not None else False,
-        "scheduler_instructions": row[60] if len(row) > 60 else None,
-        "scheduler_jobs_worker_enabled": bool(row[61]) if len(row) > 61 and row[61] is not None else True,
-        "scheduler_jobs_ide_pidea_enabled": bool(row[62]) if len(row) > 62 and row[62] is not None else True,
-        "scheduler_jobs_ide_pidea_timeout_sec": float(row[63])
-        if len(row) > 63 and row[63] is not None
-        else 300.0,
-        "workspace_allow_self_editing": bool(row[64]) if len(row) > 64 and row[64] is not None else False,
+        "expose_internal_errors": bool(row[43]) if row[43] is not None else False,
+        "http_client_log_level": _normalize_http_client_log_level_str(row[44]) if len(row) > 44 else "WARNING",
+        "scheduler_enabled": bool(row[45]) if len(row) > 45 and row[45] is not None else False,
+        "scheduler_interval_minutes": int(row[46]) if len(row) > 46 and row[46] is not None else 60,
+        "scheduler_user_id": row[47] if len(row) > 47 else None,
+        "scheduler_model": row[48] if len(row) > 48 else None,
+        "scheduler_max_tool_rounds": int(row[49]) if len(row) > 49 and row[49] is not None else None,
+        "scheduler_notify_only_if_not_ok": bool(row[50]) if len(row) > 50 and row[50] is not None else True,
+        "scheduler_max_outbound_per_day": int(row[51]) if len(row) > 51 and row[51] is not None else 10,
+        "scheduler_allowed_tool_packages": row[52] if len(row) > 52 else None,
+        "scheduler_llm_backend": normalize_scheduler_llm_backend(row[53] if len(row) > 53 else None),
+        "scheduler_tools_mode": normalize_scheduler_tools_mode(row[54] if len(row) > 54 else None),
+        "scheduler_instructions": row[55] if len(row) > 55 else None,
+        "scheduler_jobs_worker_enabled": bool(row[56]) if len(row) > 56 and row[56] is not None else True,
+        "workspace_allow_self_editing": bool(row[57]) if len(row) > 57 and row[57] is not None else False,
         "embedding_api_base_url": (
-            (str(row[65]).strip() or None) if len(row) > 65 and row[65] is not None else None
+            (str(row[58]).strip() or None) if len(row) > 58 and row[58] is not None else None
         ),
         "embedding_api_key": (
-            (str(row[66]).strip() or None) if len(row) > 66 and row[66] is not None else None
+            (str(row[59]).strip() or None) if len(row) > 59 and row[59] is not None else None
         ),
         "embedding_api_header_name": (
-            (str(row[67]).strip() or None) if len(row) > 67 and row[67] is not None else None
+            (str(row[60]).strip() or None) if len(row) > 60 and row[60] is not None else None
         ),
         "rag_embedding_provider_id": (
-            (str(row[68]).strip() or None) if len(row) > 68 and row[68] is not None else None
+            (str(row[61]).strip() or None) if len(row) > 61 and row[61] is not None else None
         ),
         "rag_docs_ingest_fingerprint": (
-            (str(row[69]).strip() or None) if len(row) > 69 and row[69] is not None else None
+            (str(row[62]).strip() or None) if len(row) > 62 and row[62] is not None else None
         ),
         "workspace_index_on_write_default": (
-            str(row[70]).strip().lower()
-            if len(row) > 70 and row[70] is not None and str(row[70]).strip()
+            str(row[63]).strip().lower()
+            if len(row) > 63 and row[63] is not None and str(row[63]).strip()
             else "debounced"
         ),
-        "workspace_reindex_after_git_pull": bool(row[71]) if len(row) > 71 and row[71] is not None else False,
-        "workspace_nightly_reindex_enabled": bool(row[72]) if len(row) > 72 and row[72] is not None else False,
-        "workspace_index_on_attach_enabled": bool(row[73]) if len(row) > 73 and row[73] is not None else False,
+        "workspace_reindex_after_git_pull": bool(row[64]) if len(row) > 64 and row[64] is not None else False,
+        "workspace_nightly_reindex_enabled": bool(row[65]) if len(row) > 65 and row[65] is not None else False,
+        "workspace_index_on_attach_enabled": bool(row[66]) if len(row) > 66 and row[66] is not None else False,
         "llm_queue_policy": (
-            str(row[74]).strip().lower()
-            if len(row) > 74 and row[74] is not None and str(row[74]).strip()
+            str(row[67]).strip().lower()
+            if len(row) > 67 and row[67] is not None and str(row[67]).strip()
             else "priority"
         ),
-        "llm_queue_user_priority": int(row[75]) if len(row) > 75 and row[75] is not None else 100,
-        "llm_queue_benchmark_priority": int(row[76]) if len(row) > 76 and row[76] is not None else 10,
-        "llm_queue_scheduler_priority": int(row[77]) if len(row) > 77 and row[77] is not None else 50,
-        "delegate_enabled": bool(row[78]) if len(row) > 78 and row[78] is not None else True,
+        "llm_queue_user_priority": int(row[68]) if len(row) > 68 and row[68] is not None else 100,
+        "llm_queue_benchmark_priority": int(row[69]) if len(row) > 69 and row[69] is not None else 10,
+        "llm_queue_scheduler_priority": int(row[70]) if len(row) > 70 and row[70] is not None else 50,
+        "delegate_enabled": bool(row[71]) if len(row) > 71 and row[71] is not None else True,
         "extractor_api_base_url": (
-            (str(row[79]).strip() or None) if len(row) > 79 and row[79] is not None else None
+            (str(row[72]).strip() or None) if len(row) > 72 and row[72] is not None else None
         ),
         "extractor_api_key": (
-            (str(row[80]).strip() or None) if len(row) > 80 and row[80] is not None else None
+            (str(row[73]).strip() or None) if len(row) > 73 and row[73] is not None else None
         ),
         "extractor_api_header_name": (
-            (str(row[81]).strip() or None) if len(row) > 81 and row[81] is not None else None
+            (str(row[74]).strip() or None) if len(row) > 74 and row[74] is not None else None
         ),
         "extractor_provider_id": (
-            (str(row[82]).strip() or None) if len(row) > 82 and row[82] is not None else None
+            (str(row[75]).strip() or None) if len(row) > 75 and row[75] is not None else None
         ),
         "extractor_model": (
-            (str(row[83]).strip() or None) if len(row) > 83 and row[83] is not None else None
+            (str(row[76]).strip() or None) if len(row) > 76 and row[76] is not None else None
         ),
-        "extractor_timeout_sec": float(row[84]) if len(row) > 84 and row[84] is not None else 120.0,
-        "discord_chat_model_catalog_owned_by": normalize_model_catalog_owned_by(row[85] if len(row) > 85 else None),
-        "telegram_chat_model_catalog_owned_by": normalize_model_catalog_owned_by(row[86] if len(row) > 86 else None),
+        "extractor_timeout_sec": float(row[77]) if len(row) > 77 and row[77] is not None else 120.0,
+        "discord_chat_model_catalog_owned_by": normalize_model_catalog_owned_by(row[78] if len(row) > 78 else None),
+        "telegram_chat_model_catalog_owned_by": normalize_model_catalog_owned_by(row[79] if len(row) > 79 else None),
         "deployment_mode": (
-            str(row[87]).strip().lower()
-            if len(row) > 87 and row[87] is not None and str(row[87]).strip().lower() in ("agent_system", "multi_tenant")
+            str(row[80]).strip().lower()
+            if len(row) > 80 and row[80] is not None and str(row[80]).strip().lower() in ("agent_system", "multi_tenant")
             else "multi_tenant"
         ),
-        "legal_enabled": bool(row[88]) if len(row) > 88 and row[88] is not None else False,
+        "legal_enabled": bool(row[81]) if len(row) > 81 and row[81] is not None else False,
         "legal_jurisdiction": (
-            str(row[89]).strip().lower()
-            if len(row) > 89 and row[89] is not None and str(row[89]).strip().lower() in ("none", "de", "en", "custom")
+            str(row[82]).strip().lower()
+            if len(row) > 82 and row[82] is not None and str(row[82]).strip().lower() in ("none", "de", "en", "custom")
             else "none"
         ),
         "legal_entity_name": (
-            (str(row[90]).strip() or None) if len(row) > 90 and row[90] is not None else None
+            (str(row[83]).strip() or None) if len(row) > 83 and row[83] is not None else None
         ),
         "legal_entity_address": (
-            (str(row[91]).strip() or None) if len(row) > 91 and row[91] is not None else None
+            (str(row[84]).strip() or None) if len(row) > 84 and row[84] is not None else None
         ),
         "legal_entity_email": (
-            (str(row[92]).strip() or None) if len(row) > 92 and row[92] is not None else None
+            (str(row[85]).strip() or None) if len(row) > 85 and row[85] is not None else None
         ),
         "legal_entity_phone": (
-            (str(row[93]).strip() or None) if len(row) > 93 and row[93] is not None else None
+            (str(row[86]).strip() or None) if len(row) > 86 and row[86] is not None else None
         ),
-        "legal_terms_enabled": bool(row[94]) if len(row) > 94 and row[94] is not None else False,
-        "legal_impressum_md": row[95] if len(row) > 95 else None,
-        "legal_privacy_md": row[96] if len(row) > 96 else None,
-        "legal_terms_md": row[97] if len(row) > 97 else None,
+        "legal_terms_enabled": bool(row[87]) if len(row) > 87 and row[87] is not None else False,
+        "legal_impressum_md": row[88] if len(row) > 88 else None,
+        "legal_privacy_md": row[89] if len(row) > 89 else None,
+        "legal_terms_md": row[90] if len(row) > 90 else None,
     }
 
 
@@ -536,7 +518,6 @@ from apps.backend.infrastructure.settings.operator_settings_readers import (
     expose_internal_errors_in_responses,
     memory_graph_prompt_settings,
     memory_service_enabled,
-    pidea_effective_enabled,
     public_dict,
     rag_docs_ingest_fingerprint,
     rag_embedding_ready,

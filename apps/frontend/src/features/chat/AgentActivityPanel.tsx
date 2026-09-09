@@ -29,6 +29,7 @@ function borderForKind(kind: string): string {
   if (kind === "deferred_wait" || kind === "scan_queue") return "border-orange-500/45";
   if (kind === "permission") return "border-amber-500/50";
   if (kind === "session") return "border-neutral-600";
+  if (kind === "context_inject") return "border-amber-500/45";
   if (kind === "agent.done") return "border-emerald-600/40";
   return "border-surface-border";
 }
@@ -47,6 +48,7 @@ function labelForKind(kind: string, tr: TFunction<"chat">): string {
   if (kind === "deferred_wait" || kind === "scan_queue") return tr("chat:activityKindDeferredWait");
   if (kind === "permission") return tr("chat:activityKindPerm");
   if (kind === "session") return tr("chat:activityKindSession");
+  if (kind === "context_inject") return tr("chat:activityKindContextInject");
   if (kind.startsWith("agent.")) return kind.replace("agent.", "");
   return kind;
 }
@@ -74,7 +76,9 @@ export function AgentActivityPanel({
           e.kind !== "subagent_done" &&
           e.kind !== "subagent_step"
       )).filter(
-    (e) => e.kind !== "subagent_step" || e.stepPhase !== "done"
+    (e) =>
+      e.kind !== "context_inject" &&
+      (e.kind !== "subagent_step" || e.stepPhase !== "done")
   );
 
   return (

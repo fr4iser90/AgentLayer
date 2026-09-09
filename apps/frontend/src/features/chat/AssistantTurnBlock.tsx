@@ -7,6 +7,7 @@ import type { RunCard } from "./buildRunCards";
 import { RunCardBlock } from "./RunCardBlock";
 import { SecretRegisterCard } from "./SecretRegisterCard";
 import { MessageFeedbackButtons } from "./MessageFeedbackButtons";
+import { ContextInjectionGroup } from "./ContextInjectionGroup";
 import {
   buildInterleavedTurnSegments,
   type TurnSegment,
@@ -118,6 +119,9 @@ const InterleavedStreamBody = memo(function InterleavedStreamBody({
             />
           );
         }
+        if (seg.type === "context_inject_group") {
+          return <ContextInjectionGroup key={seg.key} items={seg.items} />;
+        }
         return (
           <RunCardBlock
             key={seg.key}
@@ -161,7 +165,8 @@ export const AssistantTurnBlock = memo(function AssistantTurnBlock({
     (s) =>
       (s.type === "text" && s.text.trim().length > 0) ||
       s.type === "card" ||
-      s.type === "secret_prompt"
+      s.type === "secret_prompt" ||
+      s.type === "context_inject_group"
   );
   const turnCancelled = timelineTurnCancelled(timelineEntries);
 

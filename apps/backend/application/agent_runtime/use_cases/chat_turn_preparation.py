@@ -37,6 +37,7 @@ from apps.backend.application.agent_runtime.runtime.prompts import (
     _inject_workspace_bound_context,
     _inject_workspace_retrieval_bootstrap,
     _inject_workspace_verify_hints,
+    _inject_workspace_agent_instructions,
 )
 from apps.backend.application.agent_runtime.use_cases.upload_storage_images import (
     storage_upload_prompt as _storage_upload_prompt,
@@ -103,7 +104,9 @@ def _inject_conversation_goal_block(
     if not goal_tools:
         # Agentless chats resolve tools per turn, so naming tools would be a guess.
         if state.get("plan_mode"):
-            return _append_system_block(messages, PLAN_MODE_GUIDANCE)
+            return _append_system_block(
+                messages, PLAN_MODE_GUIDANCE, kind="conversation_goal", label="Plan mode"
+            )
         return messages
     block = conversation_goal_prompt_block(
         tool_names=goal_tools,
@@ -111,7 +114,13 @@ def _inject_conversation_goal_block(
         todos=state.get("todos") if isinstance(state.get("todos"), list) else [],
         plan_mode=bool(state.get("plan_mode")),
     )
-    return _append_system_block(messages, block) if block else messages
+    return (
+        _append_system_block(
+            messages, block, kind="conversation_goal", label="Goal / todos / plan"
+        )
+        if block
+        else messages
+    )
 
 
 @dataclass
@@ -147,6 +156,7 @@ class ChatTurnPreparation:
     attempts: list[tuple[str, dict[str, str], str, str]]
     llm_backend: str
     harness_profile_token: Any
+    context_injections: list[dict[str, Any]]
 
 
 async def prepare_chat_turn(
@@ -178,8 +188,14 @@ async def prepare_chat_turn(
     tools_ranking_enabled: bool,
     tools_full_schema: bool,
 ) -> ChatTurnPreparation:
+    from apps.backend.domain.agent_runtime.context_injection import (
+        begin_inject_ledger,
+        take_inject_ledger,
+    )
+
     ace = agent_config_effective
     routing_settings = _model_routing_settings()
+    _inject_tok = begin_inject_ledger()
 
     chat_history_raw = list(body.get("messages") or [])
     context_prep_meta: dict[str, Any] = {}
@@ -247,7 +263,9 @@ async def prepare_chat_turn(
         )
         _audio_block = format_ingested_audio_system_block(_ingested_audio)
         if _audio_block:
-            messages = _append_system_block(messages, _audio_block)
+            messages = _append_system_block(
+                messages, _audio_block, kind="audio_ingest", label="Ingested audio"
+            )
     messages = _inject_dashboard_context(messages, dashboard_ctx)
     if agent_id:
         messages = _inject_agent_system_prompt(messages, agent_id)
@@ -273,9 +291,16 @@ async def prepare_chat_turn(
 
         capsule = build_profession_capsule(user_id, int(tenant_id))
         if capsule:
-            messages = _append_system_block(messages, capsule)
+            messages = _append_system_block(
+                messages, capsule, kind="profession", label="Profession capsule"
+            )
     if agent_storage_images:
-        messages = _append_system_block(messages, _storage_upload_prompt(agent_storage_images))
+        messages = _append_system_block(
+            messages,
+            _storage_upload_prompt(agent_storage_images),
+            kind="storage_upload",
+            label="Storage uploads",
+        )
     if agent_id == "general":
         from apps.backend.application.agent_runtime.runtime.embedded_subagent import (
             build_delegate_agents_catalog_snippet,
@@ -288,12 +313,16 @@ async def prepare_chat_turn(
                 tenant_id=int(tenant_id) if tenant_id is not None else None,
                 user_id=user_id if isinstance(user_id, uuid.UUID) else None,
             ),
+            kind="delegate_catalog",
+            label="Delegate catalog",
         )
         from apps.backend.domain.agent_runtime.task_prompt import build_agent_tasks_context_snippet
 
         tasks_snip = build_agent_tasks_context_snippet(active_task_id=active_task_id)
         if tasks_snip:
-            messages = _append_system_block(messages, tasks_snip)
+            messages = _append_system_block(
+                messages, tasks_snip, kind="agent_tasks", label="Agent tasks"
+            )
     if agent_id in ("general", "dashboard") and user_id is not None and tenant_id is not None:
         _media_snip = build_media_library_context_snippet(
             user_id=user_id if isinstance(user_id, uuid.UUID) else None,
@@ -302,13 +331,17 @@ async def prepare_chat_turn(
             caller_is_admin=is_admin,
         )
         if _media_snip:
-            messages = _append_system_block(messages, _media_snip)
+            messages = _append_system_block(
+                messages, _media_snip, kind="media_library", label="Media library"
+            )
     if agent_id and not plain_completion:
         skills_snip = load_combined_skills_prompt(
             agent_id, delegate_mode=agent_delegate_mode
         )
         if skills_snip:
-            messages = _append_system_block(messages, skills_snip)
+            messages = _append_system_block(
+                messages, skills_snip, kind="skills", label="Skills"
+            )
     pf = body.get("tool_prefetch")
     if isinstance(pf, dict):
         _apply_tool_prefetch(messages, pf, create_tool_max_bytes=config.CREATE_TOOL_MAX_BYTES)
@@ -329,12 +362,20 @@ async def prepare_chat_turn(
     messages = _inject_workspace_retrieval_bootstrap(
         messages, workspace, agent_id if isinstance(agent_id, str) else None
     )
+    messages = _inject_workspace_agent_instructions(
+        messages, workspace, agent_id if isinstance(agent_id, str) else None
+    )
     messages = _inject_workspace_verify_hints(messages, workspace)
     if agent_id in ("coding", "coding_plan"):
         try:
             _knowledge_snip = build_knowledge_orchestration_snippet(tenant_id=cfg_tid)
             if _knowledge_snip:
-                messages = _append_system_block(messages, _knowledge_snip)
+                messages = _append_system_block(
+                    messages,
+                    _knowledge_snip,
+                    kind="knowledge_orchestration",
+                    label="Knowledge orchestration",
+                )
         except Exception:
             logger.debug("knowledge orchestration prompt skipped", exc_info=True)
 
@@ -401,6 +442,8 @@ async def prepare_chat_turn(
                 + ", ".join(_task_intent_ids)
                 + "\n"
                 + "\n".join(f"- {hint}" for hint in _task_intent_hints),
+                kind="task_intent",
+                label="Task intent overlay",
             )
     _catalog_after_first_round = ace.effective_bool(
         "tool_forward.catalog_after_first_round",
@@ -503,6 +546,8 @@ async def prepare_chat_turn(
         catalog_owned_by=catalog_owned_by,
     )
 
+    context_injections = take_inject_ledger(_inject_tok)
+
     return ChatTurnPreparation(
         messages=messages,
         model=model,
@@ -535,6 +580,7 @@ async def prepare_chat_turn(
         attempts=attempts,
         llm_backend=llm_backend,
         harness_profile_token=_harness_prof_tok,
+        context_injections=context_injections,
     )
 
 

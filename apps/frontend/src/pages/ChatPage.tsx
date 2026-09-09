@@ -58,6 +58,7 @@ import {
 } from "../features/chat/detachedTurnPersist";
 import { indexActivityToTimeline, type IndexActivityEvent } from "../features/chat/indexActivity";
 import { compactionEventToTimeline } from "../features/chat/compactionActivity";
+import { appendContextInjectionsFromSession } from "../features/chat/contextInjectionTimeline";
 import { buildInterleavedTurnSegments } from "../features/chat/interleavedTurnSegments";
 import { timelineForTurn, userTurnIdBeforeAssistant } from "../features/chat/turnRunCards";
 import {
@@ -112,6 +113,16 @@ import {
   putConversation,
   putConversationAgentLog,
 } from "../features/chat/conversationsApi";
+import {
+  chatPerfBeginPoll,
+  chatPerfBeginTurn,
+  chatPerfEndTurn,
+  chatPerfNoteFirstDelta,
+  chatPerfNotePollAssistant,
+  chatPerfRecord,
+  chatPerfTimeAsync,
+  installChatPerfConsole,
+} from "../features/chat/chatPerfMetrics";
 import {
   fetchConversationFeedback,
   patchDelegatePrefs,
@@ -1007,7 +1018,9 @@ export function ChatPage() {
     let cancelled = false;
     void (async () => {
       try {
-        const listRaw = await fetchConversationList(authRef.current);
+        const listRaw = await chatPerfTimeAsync("conversations_list", { phase: "hydrate" }, () =>
+          fetchConversationList(authRef.current)
+        );
         if (cancelled) return;
         if (listRaw.length === 0) {
           setThreads([]);
@@ -1031,7 +1044,11 @@ export function ChatPage() {
           return;
         }
         setActiveThreadId(pick);
-        const full = await fetchConversationDetail(authRef.current, pick);
+        const full = await chatPerfTimeAsync(
+          "conversation_detail",
+          { phase: "hydrate", threadId: pick },
+          () => fetchConversationDetail(authRef.current, pick)
+        );
         if (cancelled) return;
         setThreads((prev) =>
           prev.map((th) => (th.id === full.id ? mergeServerThreadWithLocal(full, th) : th))
@@ -1182,9 +1199,10 @@ export function ChatPage() {
       setAgentTurnStartedAtMs(null);
     };
 
-    const startPoll = (baselineAssistantCount: number) => {
+    const startPoll = (baselineAssistantCount: number, reason: string) => {
       if (polling || cancelled) return;
       polling = true;
+      chatPerfBeginPoll(activeThreadId, reason);
       const started = Date.now();
       const maxMs = 15 * 60 * 1000;
       const tick = async () => {
@@ -1217,6 +1235,7 @@ export function ChatPage() {
               ? last.content.trim().length > 0
               : last.content != null);
           if (assistantCount > baselineAssistantCount && lastAssistantHasText) {
+            chatPerfNotePollAssistant(activeThreadId);
             clearActiveTurnUi();
             return;
           }
@@ -1248,7 +1267,7 @@ export function ChatPage() {
 
       const th = threadsRef.current.find((t) => t.id === activeThreadId);
       const baseline = th?.messages.filter((m) => m.role === "assistant").length ?? 0;
-      startPoll(baseline);
+      startPoll(baseline, "hard_refresh_or_resume");
     };
 
     resumeIfNeeded();
@@ -1259,7 +1278,7 @@ export function ChatPage() {
       setLoading(true);
       const th = threadsRef.current.find((t) => t.id === activeThreadId);
       const baseline = th?.messages.filter((m) => m.role === "assistant").length ?? 0;
-      startPoll(baseline);
+      startPoll(baseline, "ws_disconnect");
     });
 
     return () => {
@@ -1268,6 +1287,14 @@ export function ChatPage() {
       unsub();
     };
   }, [hydrated, activeThreadId, auth.accessToken, agentChatSession]);
+
+  useEffect(() => {
+    agentChatSession.setPageMounted(true);
+    installChatPerfConsole();
+    return () => {
+      agentChatSession.setPageMounted(false);
+    };
+  }, [agentChatSession]);
 
   useEffect(() => {
     if (mode !== "agent") {
@@ -1292,7 +1319,11 @@ export function ChatPage() {
       setSearchParams({ c: id });
       setError(null);
       try {
+        const t0 = performance.now();
         const full = await fetchConversationDetail(auth, id);
+        const ms = performance.now() - t0;
+        chatPerfRecord("conversation_detail", ms, { phase: "thread_switch", threadId: id });
+        chatPerfRecord("thread_switch", ms, { threadId: id });
         setThreads((prev) =>
           prev.map((th) => (th.id === id ? mergeServerThreadWithLocal(full, th) : th))
         );
@@ -1998,11 +2029,13 @@ export function ChatPage() {
       startedAtMs: turnStartedAtMs,
       streamEnabled: getAgentStreamLlm(),
     });
+    chatPerfBeginTurn(tid, userMsgId);
 
     let finished = false;
     const finish = () => {
       if (finished) return;
       finished = true;
+      chatPerfEndTurn(tid, userMsgId);
       agentTurnFinishRef.current = null;
       agentChatSession.setFinishCallback(null);
       agentChatSession.endTurn();
@@ -2035,9 +2068,7 @@ export function ChatPage() {
         }
         live.endTurn();
       }
-      if (agentChatSession.isPageMounted()) {
-        setLoading(false);
-      }
+      setLoading(false);
       if (tryDispatchPendingForceSendRef.current()) {
         return;
       }
@@ -2045,7 +2076,6 @@ export function ChatPage() {
       pendingGoalRoundRef.current = null;
       if (
         goalContinue &&
-        agentChatSession.isPageMounted() &&
         !cancelAgentTurnRef.current
       ) {
         const tid = activeThreadIdRef.current;
@@ -2066,7 +2096,9 @@ export function ChatPage() {
       const skipDrain = skipQueueDrainOnFinishRef.current;
       if (skipDrain) {
         skipQueueDrainOnFinishRef.current = false;
-      } else if (agentChatSession.isPageMounted()) {
+      } else {
+        // Always drain the composer queue after a finished turn (do not gate on
+        // isPageMounted — that previously left queued messages stuck forever).
         scheduleDrainComposerQueue();
       }
       if (id && !skipDrain && agentChatSession.isPageMounted()) {
@@ -2218,6 +2250,7 @@ export function ChatPage() {
           const em = msg.effective_model != null ? String(msg.effective_model) : "";
           const mr = msg.model_resolution != null ? String(msg.model_resolution) : "";
           appendAgentLine("session", [em && `model: ${em}`, mr && `(${mr})`].filter(Boolean).join(" "));
+          appendContextInjectionsFromSession(appendAgentLine, msg.context_injections);
           void fetchChatRuntime(auth, {
             workspaceId: selectedWorkspaceId,
             model: (em || chatRuntimeQuery.model || "").trim() || null,
@@ -2411,6 +2444,10 @@ export function ChatPage() {
           }
           const d = msg.delta != null ? String(msg.delta) : "";
           if (!d) return;
+          const snap = inFlightTurnRef.current;
+          if (snap?.threadId && snap.userMsgId) {
+            chatPerfNoteFirstDelta(snap.threadId, snap.userMsgId);
+          }
           agentLiveTurnRef.current.appendStreamDelta(d);
           return;
         }
@@ -2753,6 +2790,8 @@ export function ChatPage() {
   const drainComposerQueue = useCallback(() => {
     const tid = activeThreadIdRef.current;
     if (!tid) return;
+    if (inFlightTurnRef.current) return;
+    if (agentChatSession.isTurnInProgress()) return;
     const q = composerQueueRef.current.get(tid);
     if (!q?.length) return;
     const next = q.shift();
@@ -2763,7 +2802,7 @@ export function ChatPage() {
     const thread = threadsRef.current.find((x) => x.id === tid);
     const chatMode = thread?.mode ?? "agent";
     void (chatMode === "chat" ? runChatHttpRef.current(next) : runAgentWsRef.current(next));
-  }, [bumpComposerQueue]);
+  }, [agentChatSession, bumpComposerQueue]);
   drainComposerQueueRef.current = drainComposerQueue;
 
   const onQueue = useCallback(() => {
@@ -3787,7 +3826,8 @@ export function ChatPage() {
                     (s) =>
                       (s.type === "text" && s.text.trim().length > 0) ||
                       s.type === "card" ||
-                      s.type === "secret_prompt"
+                      s.type === "secret_prompt" ||
+                      s.type === "context_inject_group"
                   );
                   const turnCancelled = timelineEntries.some(
                     (e) => e.kind === "agent.cancelled" || e.kind === "agent.aborted"

@@ -7,7 +7,18 @@ import {
 export type TurnSegment =
   | { type: "text"; text: string; key: string }
   | { type: "card"; card: RunCard; key: string }
-  | { type: "secret_prompt"; prompt: SecretPromptPayload; key: string };
+  | { type: "secret_prompt"; prompt: SecretPromptPayload; key: string }
+  | {
+      type: "context_inject_group";
+      items: {
+        key: string;
+        label: string;
+        body?: string;
+        chars?: number;
+        injectKind?: string;
+      }[];
+      key: string;
+    };
 
 const INDEX_TOOL = "index";
 const DELEGATE_TOOL = "delegate";
@@ -30,6 +41,10 @@ function isSecretPromptAnchor(e: AgentTimelineEntry): boolean {
   return e.kind === "secret_prompt" && !!e.secretPrompt;
 }
 
+function isContextInjectEntry(e: AgentTimelineEntry): boolean {
+  return e.kind === "context_inject";
+}
+
 function isCardAnchorEntry(e: AgentTimelineEntry): boolean {
   if (e.kind === "compaction_done") return true;
   if (e.kind === "subagent_start" || e.kind === "index_start") return true;
@@ -44,19 +59,47 @@ function isCardAnchorEntry(e: AgentTimelineEntry): boolean {
   );
 }
 
+function contextInjectGroupSegment(entries: AgentTimelineEntry[]): TurnSegment | null {
+  const items: {
+    key: string;
+    label: string;
+    body?: string;
+    chars?: number;
+    injectKind?: string;
+  }[] = [];
+  for (const e of entries) {
+    if (!isContextInjectEntry(e)) continue;
+    const label = (e.injectLabel || e.text || e.injectKind || "Context").trim();
+    items.push({
+      key: `inject-${e.id}`,
+      label,
+      body: e.injectBody,
+      chars: e.injectChars,
+      injectKind: e.injectKind,
+    });
+  }
+  if (!items.length) return null;
+  return { type: "context_inject_group", items, key: "context-inject-group" };
+}
+
 /**
  * Interleave streamed assistant text with tool/subagent cards in timeline order.
  * Uses ``streamOffset`` on anchor entries (set when the tool/subagent starts).
+ * Context injections appear as one collapsed group at the top of the turn.
  */
 export function buildInterleavedTurnSegments(
   content: string,
   entries: AgentTimelineEntry[]
 ): TurnSegment[] {
+  const injectGroup = contextInjectGroupSegment(entries);
   const cards = buildRunCardsFromTimeline(entries);
   const secretAnchors = entries.filter(isSecretPromptAnchor);
   if (cards.length === 0 && secretAnchors.length === 0) {
     const trimmed = (content ?? "").trim();
-    return trimmed ? [{ type: "text", text: content, key: "stream-text-primary" }] : [];
+    const segs: TurnSegment[] = [];
+    if (injectGroup) segs.push(injectGroup);
+    if (trimmed) segs.push({ type: "text", text: content, key: "stream-text-primary" });
+    return segs;
   }
 
   const cardById = new Map(cards.map((c) => [c.id, c]));
@@ -79,6 +122,7 @@ export function buildInterleavedTurnSegments(
 
   if (withOffset.length === 0) {
     const segments: TurnSegment[] = [];
+    if (injectGroup) segments.push(injectGroup);
     const trimmed = (content ?? "").trim();
     if (trimmed && (cards.length > 0 || secretAnchors.length > 0)) {
       const leadEnd = leadingTextSplitIndex(content);
@@ -101,6 +145,7 @@ export function buildInterleavedTurnSegments(
     (a, b) => (a.streamOffset ?? 0) - (b.streamOffset ?? 0)
   );
   const segments: TurnSegment[] = [];
+  if (injectGroup) segments.push(injectGroup);
   const len = content.length;
   let pos = 0;
   const placed = new Set<string>();

@@ -82,6 +82,11 @@ export type AgentTimelineEntry = {
   queueSize?: number;
   /** SimpleSecCheck scan wait estimate (seconds). */
   estimatedTimeSeconds?: number;
+  /** ``context_inject`` — provenance for system context badges. */
+  injectKind?: string;
+  injectLabel?: string;
+  injectBody?: string;
+  injectChars?: number;
 };
 
 export type AgentTurnLog = {

@@ -30,6 +30,3 @@ apps/tui/*.egg-info/
 
 # Traefik
 compose.traefik.yaml
-
-# Full upstream PIDEA checkout (optional local copy); prompts live under integrations/pidea/content-library/
-apps/backend/infrastructure/integrations/pidea/PIDEA/

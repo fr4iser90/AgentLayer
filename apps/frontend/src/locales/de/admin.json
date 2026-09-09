@@ -1017,7 +1017,7 @@
   "ifAutoToolsNone": "none — nur Text, keine Tools",
   "ifAutoToolsAllowlist": "allowlist — nur Packages oben",
   "ifAutoToolsFull": "full — alle erlaubten Tools (Policy)",
-  "ifAutoLegacyNote": "Legacy IDE/PIDEA ist entfernt. Persistierte Jobs: general (Agent general) und coding (Workspace-Agent coding, workspace_id erforderlich). Worker-Timeout gilt für beide Ziele.",
+  "ifAutoLegacyNote": "Legacy IDE ist entfernt. Persistierte Jobs: general (Agent general) und coding (Workspace-Agent coding, workspace_id erforderlich). Worker-Timeout gilt für beide Ziele.",
   "ifAutoInstructions": "Anweisungen (Prompt)",
   "ifAutoPersistedJobs": "Persistierte Jobs (scheduler_jobs)",
   "ifAutoPersistedJobsIntro": "Hintergrund-Thread für gespeicherte Jobs (Registry-agent_id, z. B. general, coding).",

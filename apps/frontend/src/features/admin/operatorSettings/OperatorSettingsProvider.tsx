@@ -1294,11 +1294,8 @@ function useOperatorSettingsState() {
       patch.scheduler_allowed_tool_packages = schedulerPackages.trim() || null;
       patch.scheduler_llm_backend = schedulerLlmBackend;
       patch.scheduler_tools_mode = schedulerToolsMode;
-      patch.scheduler_pidea_enabled = false;
       patch.scheduler_instructions = schedulerInstructions.trim() || null;
       patch.scheduler_jobs_worker_enabled = schedulerJobsWorkerEnabled;
-      patch.scheduler_jobs_ide_pidea_enabled = false;
-      patch.scheduler_jobs_ide_pidea_timeout_sec = 300;
       patch.workspace_allow_self_editing = workspaceAllowSelfEditing;
       patch.workspace_index_on_write_default = workspaceIndexOnWriteDefault;
       patch.workspace_reindex_after_git_pull = workspaceReindexAfterGitPull;

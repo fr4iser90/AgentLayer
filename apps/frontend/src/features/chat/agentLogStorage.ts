@@ -176,6 +176,18 @@ export function appendTimelineEntry(
         ? { streamOffset: entry.streamOffset }
         : {}),
       ...(entry.secretPrompt != null ? { secretPrompt: entry.secretPrompt } : {}),
+      ...(entry.injectKind != null ? { injectKind: entry.injectKind } : {}),
+      ...(entry.injectLabel != null ? { injectLabel: entry.injectLabel } : {}),
+      ...(entry.injectBody != null ? { injectBody: entry.injectBody } : {}),
+      ...(entry.injectChars != null ? { injectChars: entry.injectChars } : {}),
+      ...(entry.messagesCompacted != null
+        ? { messagesCompacted: entry.messagesCompacted }
+        : {}),
+      ...(entry.queueAhead != null ? { queueAhead: entry.queueAhead } : {}),
+      ...(entry.queueSize != null ? { queueSize: entry.queueSize } : {}),
+      ...(entry.estimatedTimeSeconds != null
+        ? { estimatedTimeSeconds: entry.estimatedTimeSeconds }
+        : {}),
     },
   ];
 }

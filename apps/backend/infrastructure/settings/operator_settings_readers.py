@@ -362,43 +362,6 @@ def effective_dashboard_upload_mime() -> frozenset[str]:
     return app_config.WORKSPACE_upload_env_allowed_mime()
 
 
-def pidea_effective_enabled() -> bool:
-    """DB ``pidea_enabled`` unless :envvar:`AGENT_PIDEA_ENABLED` overrides (true/false)."""
-    raw = (os.environ.get("AGENT_PIDEA_ENABLED") or "").strip().lower()
-    if raw in ("0", "false", "no", "off"):
-        return False
-    if raw in ("1", "true", "yes", "on"):
-        return True
-    return bool(_cached_row().get("pidea_enabled", False))
-
-
-# def resolved_pidea_connection_config() -> Any:
-#     """``ConnectionConfig`` for PIDEA (DB overrides, sonst ``config``)."""
-#     from apps.backend.infrastructure.integrations.pidea.types import ConnectionConfig
-
-#     r = _cached_row()
-#     cdp = (
-#         str(r.get("pidea_cdp_http_url") or "").strip().rstrip("/")
-#         or str(getattr(config, "PIDEA_CDP_HTTP_URL", "") or "").strip().rstrip("/")
-#         or "http://0.0.0.0:9222"
-#     )
-#     ide = (
-#         str(r.get("pidea_selector_ide") or "").strip().lower()
-#         or str(getattr(config, "PIDEA_SELECTOR_IDE", "cursor") or "").strip().lower()
-#     )
-#     ver = (
-#         str(r.get("pidea_selector_version") or "").strip()
-#         or str(getattr(config, "PIDEA_SELECTOR_VERSION", "1.7.17") or "").strip()
-#     )
-#     timeout = int(getattr(config, "PIDEA_DEFAULT_TIMEOUT_MS", 30_000))
-#     return ConnectionConfig(
-#         cdp_http_url=cdp,
-#         selector_ide=ide,
-#         selector_version=ver,
-#         default_timeout_ms=timeout,
-#     )
-
-
 def public_dict() -> dict[str, Any]:
     from apps.backend.infrastructure.settings.operator_voice_settings_service import voice_settings_public_fields
     from apps.backend.infrastructure.providers.extractor_catalog_providers import extractor_providers_public_fields
@@ -478,11 +441,6 @@ def public_dict() -> dict[str, Any]:
         "rag_tenant_shared_domains": (str(r.get("rag_tenant_shared_domains") or "").strip()),
         "rag_tenant_shared_domains_effective": sorted(effective_rag_tenant_shared_domains()),
         "docs_root": (str(r.get("docs_root") or "").strip()),
-        "pidea_enabled": bool(r.get("pidea_enabled", False)),
-        "pidea_effective_enabled": pidea_effective_enabled(),
-        "pidea_cdp_http_url": (str(r.get("pidea_cdp_http_url") or "").strip()),
-        "pidea_selector_ide": (str(r.get("pidea_selector_ide") or "").strip()),
-        "pidea_selector_version": (str(r.get("pidea_selector_version") or "").strip()),
         "expose_internal_errors": bool(r.get("expose_internal_errors", False)),
         "http_client_log_level": _normalize_http_client_log_level_str(r.get("http_client_log_level")),
         "scheduler_enabled": bool(r.get("scheduler_enabled", False)),
@@ -497,13 +455,8 @@ def public_dict() -> dict[str, Any]:
         "scheduler_allowed_tool_packages": (str(r.get("scheduler_allowed_tool_packages") or "").strip()),
         "scheduler_llm_backend": normalize_scheduler_llm_backend(r.get("scheduler_llm_backend")),
         "scheduler_tools_mode": normalize_scheduler_tools_mode(r.get("scheduler_tools_mode")),
-        "scheduler_pidea_enabled": bool(r.get("scheduler_pidea_enabled", False)),
         "scheduler_instructions": (str(r.get("scheduler_instructions") or "").strip()),
         "scheduler_jobs_worker_enabled": bool(r.get("scheduler_jobs_worker_enabled", True)),
-        "scheduler_jobs_ide_pidea_enabled": bool(r.get("scheduler_jobs_ide_pidea_enabled", True)),
-        "scheduler_jobs_ide_pidea_timeout_sec": _bound_float(
-            r.get("scheduler_jobs_ide_pidea_timeout_sec"), 300.0, 30.0, 900.0
-        ),
         "workspace_allow_self_editing": bool(r.get("workspace_allow_self_editing", False)),
         "workspace_index_on_write_default": str(r.get("workspace_index_on_write_default") or "debounced"),
         "workspace_reindex_after_git_pull": bool(r.get("workspace_reindex_after_git_pull", False)),

@@ -69,6 +69,9 @@ from apps.backend.infrastructure.workspace.workspace_retrieval_bootstrap import 
     build_retrieval_bootstrap_snippet,
     maybe_schedule_index_on_attach,
 )
+from apps.backend.infrastructure.workspace.workspace_agent_instructions import (
+    build_workspace_agent_instructions_snippet,
+)
 from apps.backend.infrastructure.workspace.workspace_service import (
     WorkspaceCreateError,
     create_project_workspace_for_user,

@@ -15,6 +15,7 @@ from plugins.tools.workspace.lib.bash_policy import (
     resolve_path_under_workspace,
     strict_mode_reject_reason,
     subprocess_env_for_coding,
+    unsupported_shell_builtin_reason,
 )
 
 
@@ -30,6 +31,20 @@ class TestCodingBashBlocklist(unittest.TestCase):
 
     def test_allows_git_status(self) -> None:
         self.assertIsNone(is_blocked("git status"))
+
+
+class TestUnsupportedShellBuiltins(unittest.TestCase):
+    def test_rejects_cd(self) -> None:
+        reason = unsupported_shell_builtin_reason("cd bin")
+        self.assertIsNotNone(reason)
+        self.assertIn("workdir", reason or "")
+
+    def test_rejects_export(self) -> None:
+        self.assertIsNotNone(unsupported_shell_builtin_reason("export FOO=1"))
+
+    def test_allows_real_programs(self) -> None:
+        self.assertIsNone(unsupported_shell_builtin_reason("ls -la"))
+        self.assertIsNone(unsupported_shell_builtin_reason("git status"))
 
 
 class TestResolvePathUnderWorkspace(unittest.TestCase):
@@ -141,6 +156,15 @@ class TestCodingBashIntegration(unittest.TestCase):
         self.assertTrue(out.get("missing_in_environment"))
         self.assertEqual(out.get("missing_executable"), "node")
         self.assertIn("Node.js", out.get("hint") or "")
+
+    def test_cd_rejected_before_spawn(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            ctx = {"workspace": {"path": str(root), "id": "ws-1"}}
+            out = json.loads(bash({"command": "cd bin"}, context=ctx))
+        self.assertFalse(out["ok"])
+        self.assertTrue(out.get("shell_builtin"))
+        self.assertIn("workdir", out["error"])
 
 
 class TestHostToolchain(unittest.TestCase):

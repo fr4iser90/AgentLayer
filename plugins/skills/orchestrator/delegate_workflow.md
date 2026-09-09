@@ -13,6 +13,7 @@ agents: general
 - Prefer **one well-chosen delegate** over many discovery rounds. Do not loop on tools without a user-facing summary.
 - In delegate **prompts**, use **repo-relative paths** (e.g. `README.md`) — never container paths like `/data/project_workspaces/...`.
 - For **read file** tasks: **one** delegate to **`coding_plan`**; do not switch to **`coding`** unless edits or bash are required.
+- For **run / fetch / execute / CLI** (including `npx`, project scripts, or commands from workspace `AGENTS.md`): **one** delegate to **`coding`** — **never** `coding_plan` (Plan has no bash; do not only explain the command).
 - When **`delegate`** returns **`ok: true`**, reply using **`assistant_excerpt`** only — never invent file contents from general knowledge.
 - When **`delegate`** returns **`ok: false`**, retry once with a simpler prompt or tell the user the specialist could not read the repo — **do not guess**.
 - For **security scans and remediation**: **`delegate`** to **`security_auditor`** (start → status / deferred_wait → findings) — never route through **`coding_plan`** or **`task`**.

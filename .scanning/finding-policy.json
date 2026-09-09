@@ -339,12 +339,6 @@
         "reason": "False positive: pgvector dimension migration DDL uses f-strings for table/column/index names from compile-time _PGVECTOR_TARGETS constants and integer dim from operator embedding probe—not request-time user input."
       },
       {
-        "rule_id": "javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket",
-        "path_regex": "apps/backend/infrastructure/config\\.py$",
-        "message_regex": "WebSocket|ws",
-        "reason": "False positive: Semgrep matches a comment mentioning ws://; runtime default PIDEA_CDP_HTTP_URL is http://127.0.0.1:9222 (HTTP CDP), not an insecure WebSocket client connection."
-      },
-      {
         "rule_id": "dockerfile.security.missing-user-entrypoint.missing-user-entrypoint",
         "path_regex": "^Dockerfile$",
         "reason": "Accepted: application image intentionally omits USER; process identity is constrained at deploy time (compose/Kubernetes securityContext) rather than in this multi-stage build Dockerfile."

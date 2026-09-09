@@ -28,7 +28,7 @@ Client → server JSON:
         the server emits ``agent.llm_delta`` events (``delta`` text chunks) before ``agent.llm_round`` / tools.
 
 Server → client JSON events (subset):
-  - ``agent.session``, ``agent.context_update``, ``agent.context_compacted``, ``agent.llm_round_start``, ``agent.llm_delta`` (token chunks when ``agent_stream_llm``), ``agent.llm_round`` (optional ``usage`` when the LLM returns OpenAI-style token counts), ``agent.tool_start``,
+  - ``agent.session`` (optional ``context_injections``: list of ``{kind,label,body,chars,truncated}`` for UI badges), ``agent.context_update``, ``agent.context_compacted``, ``agent.llm_round_start``, ``agent.llm_delta`` (token chunks when ``agent_stream_llm``), ``agent.llm_round`` (optional ``usage`` when the LLM returns OpenAI-style token counts), ``agent.tool_start``,
     ``agent.tool_done``, ``agent.tool_invoke`` (ADR 0009: run this workspace tool locally, then reply with ``tool_result``), ``agent.goal``, ``agent.todos``, ``agent.secret_prompt``, ``agent.permission_ask``, ``agent.subagent_start``, ``agent.subagent_step``,
     ``agent.subagent_done``,
     ``agent.done``, ``agent.cancelled``

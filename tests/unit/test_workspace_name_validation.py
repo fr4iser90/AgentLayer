@@ -16,7 +16,7 @@ from apps.backend.infrastructure.workspace.workspace_service import (
 class TestValidateWorkspaceName(unittest.TestCase):
     def test_accepts_normal_names(self) -> None:
         self.assertEqual(validate_workspace_name("  my-project  "), "my-project")
-        self.assertEqual(validate_workspace_name("PIDEA"), "PIDEA")
+        self.assertEqual(validate_workspace_name("DemoRepo"), "DemoRepo")
         self.assertEqual(validate_workspace_name("repo-1.0"), "repo-1.0")
 
     def test_rejects_empty(self) -> None:

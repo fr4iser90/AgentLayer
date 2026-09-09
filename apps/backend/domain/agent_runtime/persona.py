@@ -53,20 +53,33 @@ INTERACTION_STYLE_HINTS: dict[str, str] = {
 }
 
 
-def _append_system_block(messages: list[dict[str, Any]], block: str) -> list[dict[str, Any]]:
+def _append_system_block(
+    messages: list[dict[str, Any]],
+    block: str,
+    *,
+    kind: str = "system",
+    label: str | None = None,
+) -> list[dict[str, Any]]:
     out = list(messages)
     if not block.strip():
         return out
+    text = block.strip()
+    try:
+        from apps.backend.domain.agent_runtime.context_injection import record_injection
+
+        record_injection(kind, text, label=label)
+    except Exception:
+        pass
     if not out:
-        return [{"role": "system", "content": block.strip()}]
+        return [{"role": "system", "content": text}]
     if out[0].get("role") == "system":
         existing = out[0].get("content") or ""
         out[0] = {
             **out[0],
-            "content": (existing + "\n\n" + block).strip(),
+            "content": (existing + "\n\n" + text).strip(),
         }
     else:
-        out.insert(0, {"role": "system", "content": block.strip()})
+        out.insert(0, {"role": "system", "content": text})
     return out
 
 
@@ -263,4 +276,4 @@ def apply_user_persona_system(messages: list[dict[str, Any]]) -> list[dict[str, 
         return messages
 
     combined = "\n\n".join(blocks)
-    return _append_system_block(messages, combined)
+    return _append_system_block(messages, combined, kind="persona", label="User persona / profile")

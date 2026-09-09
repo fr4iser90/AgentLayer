@@ -7,6 +7,7 @@ import {
   extractSpeechTextFromCompletion,
 } from "./assistantCompletionExtract";
 import { compactionEventToTimeline } from "./compactionActivity";
+import { appendContextInjectionsFromSession } from "./contextInjectionTimeline";
 import { formatToolStepLabel } from "./toolStepLabel";
 import type { LiveTurnStore } from "./useAgentLiveTurn";
 
@@ -207,6 +208,10 @@ export function handleAgentWsMessage(msg: Record<string, unknown>, ctx: HandlerC
       liveTurn,
       "session",
       [em && `model: ${em}`, mr && `(${mr})`].filter(Boolean).join(" ")
+    );
+    appendContextInjectionsFromSession(
+      (kind, text, extras) => appendAgentLine(liveTurn, kind, text, extras),
+      msg.context_injections
     );
     if (msg.context && typeof msg.context === "object") {
       const ctxMeta = msg.context as Record<string, unknown>;

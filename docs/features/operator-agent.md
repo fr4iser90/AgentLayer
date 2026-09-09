@@ -122,10 +122,9 @@ Source: `apps/backend/infrastructure/operator_settings.py`. `public_dict()` alre
 | **LLM** | `operator_external_llm_endpoints` (catalog providers), optional `llm_smart_routing_enabled`, `llm_router_*`, `llm_route_*` heuristics |
 | **Memory** | `memory_graph_*`, `memory_enabled` |
 | **RAG** | `rag_*`, `docs_root` |
-| **PIDEA** | `pidea_*` |
 | **Diagnostics** | `expose_internal_errors`, `http_client_log_level` |
 | **Legacy server scheduler** | `scheduler_enabled`, `scheduler_interval_minutes`, `scheduler_model`, `scheduler_*` caps and tool modes, `scheduler_instructions`, … |
-| **Scheduler jobs worker** | `scheduler_jobs_worker_enabled`, `scheduler_jobs_ide_pidea_*` |
+| **Scheduler jobs worker** | `scheduler_jobs_worker_enabled` |
 | **Workspaces** | `workspace_allow_self_editing` |
 
 **DB columns not on `OperatorSettingsPatch` today:** `discord_bot_agent_bearer`, `telegram_bot_agent_bearer`, `optional_connection_key` — still in the row / SQL writer; extending PATCH or a **dedicated secret form** may be required before an Operator tool can manage them safely.

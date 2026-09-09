@@ -471,6 +471,7 @@ async def chat_completion(
                     "workspace_bound": workspace_bound_from_conversation,
                     "agent_auto_routed": agent_auto_routed,
                     "context": tool_context.get("chat_context_meta") or None,
+                    "context_injections": list(getattr(turn_prep, "context_injections", None) or []),
                 }
             )
 

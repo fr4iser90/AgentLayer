@@ -264,17 +264,6 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
         else:
             s = str(v).strip()
             r["docs_root"] = s or None
-    if "pidea_enabled" in patch:
-        r["pidea_enabled"] = bool(patch["pidea_enabled"])
-    if "pidea_cdp_http_url" in patch:
-        v = patch["pidea_cdp_http_url"]
-        r["pidea_cdp_http_url"] = None if v is None else (str(v).strip() or None)
-    if "pidea_selector_ide" in patch:
-        v = patch["pidea_selector_ide"]
-        r["pidea_selector_ide"] = None if v is None else (str(v).strip().lower()[:32] or None)
-    if "pidea_selector_version" in patch:
-        v = patch["pidea_selector_version"]
-        r["pidea_selector_version"] = None if v is None else (str(v).strip()[:64] or None)
     if "expose_internal_errors" in patch:
         r["expose_internal_errors"] = bool(patch["expose_internal_errors"])
     if "http_client_log_level" in patch:
@@ -320,20 +309,11 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
     if "scheduler_tools_mode" in patch:
         v = patch["scheduler_tools_mode"]
         r["scheduler_tools_mode"] = normalize_scheduler_tools_mode(v)
-    if "scheduler_pidea_enabled" in patch:
-        r["scheduler_pidea_enabled"] = bool(patch["scheduler_pidea_enabled"])
     if "scheduler_instructions" in patch:
         v = patch["scheduler_instructions"]
         r["scheduler_instructions"] = None if v is None else (str(v).strip() or None)
     if "scheduler_jobs_worker_enabled" in patch:
         r["scheduler_jobs_worker_enabled"] = bool(patch["scheduler_jobs_worker_enabled"])
-    if "scheduler_jobs_ide_pidea_enabled" in patch:
-        r["scheduler_jobs_ide_pidea_enabled"] = bool(patch["scheduler_jobs_ide_pidea_enabled"])
-    if "scheduler_jobs_ide_pidea_timeout_sec" in patch:
-        v = patch["scheduler_jobs_ide_pidea_timeout_sec"]
-        r["scheduler_jobs_ide_pidea_timeout_sec"] = (
-            _bound_float(v, 300.0, 30.0, 900.0) if v is not None else 300.0
-        )
     if "workspace_allow_self_editing" in patch:
         r["workspace_allow_self_editing"] = bool(patch["workspace_allow_self_editing"])
     if "workspace_index_on_write_default" in patch:

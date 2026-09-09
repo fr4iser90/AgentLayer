@@ -7,6 +7,7 @@
     "i18n:check": "node scripts/validate-i18n.mjs",
     "i18n:scan": "node scripts/scan-i18n-ui.mjs",
     "test": "node scripts/test-frontend-i18n.mjs",
+    "test:chat-perf": "node --experimental-strip-types scripts/test-chat-perf-metrics.mts",
     "test:i18n": "npm run test",
     "e2e:i18n": "node scripts/e2e-playwright-i18n.mjs",
     "build": "npm run test && vite build",

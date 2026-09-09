@@ -137,4 +137,4 @@ def apply_current_time_context(
         request_timezone=request_timezone,
     )
     snippet = build_current_time_context_snippet(timezone_name=tz)
-    return _append_system_block(messages, snippet)
+    return _append_system_block(messages, snippet, kind="time_context", label="Current time")

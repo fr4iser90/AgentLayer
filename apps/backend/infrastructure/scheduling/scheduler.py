@@ -125,9 +125,6 @@ async def _run_one_tick() -> None:
     tenant_id = db.user_tenant_id(user_id)
     role = db.user_role(user_id)
 
-    if r.get("scheduler_pidea_enabled"):
-        logger.debug("scheduler: scheduler_pidea_enabled is ignored in this version (MVP)")
-
     max_out = _clamp_int(r.get("scheduler_max_outbound_per_day"), 10, 0, 10_000)
     if max_out > 0 and db.scheduler_outbound_count_today_utc(user_id) >= max_out:
         logger.info("scheduler: daily outbound cap reached for user %s — skip tick", user_id)

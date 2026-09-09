@@ -1,1 +1,1 @@
-"""Optional integrations (Discord / Telegram gateways, PIDEA DOM bridge) started from the main API process."""
+"""Optional integrations (Discord / Telegram gateways) started from the main API process."""

@@ -48,6 +48,7 @@ This folder is written for **humans** and for **RAG ingestion**.
 - **Ops runbooks**: [`docs/runbooks/`](./runbooks/)
 - **Git collaboration / PRs / branch protection**: [`docs/runbooks/collaboration.md`](./runbooks/collaboration.md)
 - **Workspace persistence (Docker)**: [`docs/runbooks/workspace-persistence.md`](./runbooks/workspace-persistence.md)
+- **Playwright / Chromium (coding workspaces)**: [`docs/runbooks/playwright.md`](./runbooks/playwright.md)
 - **LSP / language servers (PATH smoke)**: [`docs/runbooks/lsp.md`](./runbooks/lsp.md)
 - **Glossary**: [`docs/glossary.md`](./glossary.md)
 

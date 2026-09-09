@@ -18,9 +18,7 @@ def upgrade() -> None:
     op.execute(
         """
         ALTER TABLE operator_settings
-          ADD COLUMN IF NOT EXISTS scheduler_jobs_worker_enabled BOOLEAN NOT NULL DEFAULT true,
-          ADD COLUMN IF NOT EXISTS scheduler_jobs_ide_pidea_enabled BOOLEAN NOT NULL DEFAULT true,
-          ADD COLUMN IF NOT EXISTS scheduler_jobs_ide_pidea_timeout_sec DOUBLE PRECISION NOT NULL DEFAULT 300;
+          ADD COLUMN IF NOT EXISTS scheduler_jobs_worker_enabled BOOLEAN NOT NULL DEFAULT true;
         """
     )
     op.execute(
@@ -35,8 +33,6 @@ def downgrade() -> None:
     op.execute(
         """
         ALTER TABLE operator_settings
-          DROP COLUMN IF EXISTS scheduler_jobs_ide_pidea_timeout_sec,
-          DROP COLUMN IF EXISTS scheduler_jobs_ide_pidea_enabled,
           DROP COLUMN IF EXISTS scheduler_jobs_worker_enabled;
         """
     )

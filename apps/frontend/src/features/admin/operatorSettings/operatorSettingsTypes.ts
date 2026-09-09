@@ -107,11 +107,8 @@ export type OperatorPublic = {
   scheduler_allowed_tool_packages?: string;
   scheduler_llm_backend?: string;
   scheduler_tools_mode?: string;
-  scheduler_pidea_enabled?: boolean;
   scheduler_instructions?: string;
   scheduler_jobs_worker_enabled?: boolean;
-  scheduler_jobs_ide_pidea_enabled?: boolean;
-  scheduler_jobs_ide_pidea_timeout_sec?: number;
   workspace_allow_self_editing?: boolean;
   workspace_index_on_write_default?: string;
   workspace_reindex_after_git_pull?: boolean;
