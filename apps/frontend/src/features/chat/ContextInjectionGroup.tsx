@@ -32,6 +32,7 @@ export const ContextInjectionGroup = memo(function ContextInjectionGroup({
     if (k === "agent_system_prompt") return 1;
     if (k === "workspace_bound" || k === "workspace_retrieval") return 2;
     if (k === "skills") return 3;
+    if (k === "context_omit_stub") return 20;
     return 10;
   };
   const sorted = [...items].sort(

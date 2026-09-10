@@ -12,10 +12,13 @@ from unittest.mock import patch
 from plugins.tools.workspace.shell.bash import bash
 from plugins.tools.workspace.lib.bash_policy import (
     is_blocked,
+    prepare_coding_bash_command,
     resolve_path_under_workspace,
     strict_mode_reject_reason,
+    strip_noop_shell_redirects,
     subprocess_env_for_coding,
     unsupported_shell_builtin_reason,
+    unsupported_shell_chain_reason,
 )
 
 
@@ -31,6 +34,53 @@ class TestCodingBashBlocklist(unittest.TestCase):
 
     def test_allows_git_status(self) -> None:
         self.assertIsNone(is_blocked("git status"))
+
+
+class TestUnsupportedShellChains(unittest.TestCase):
+    def test_rejects_or_chain(self) -> None:
+        reason = unsupported_shell_chain_reason("ls ./pdfs 2>/dev/null || echo missing")
+        self.assertIsNotNone(reason)
+        self.assertIn("||", reason or "")
+
+    def test_rejects_and_chain(self) -> None:
+        reason = unsupported_shell_chain_reason("ls && pwd")
+        self.assertIsNotNone(reason)
+        self.assertIn("&&", reason or "")
+
+    def test_rejects_semicolon_without_spaces(self) -> None:
+        reason = unsupported_shell_chain_reason("sleep 5;ls -la")
+        self.assertIsNotNone(reason)
+        self.assertIn(";", reason or "")
+
+    def test_allows_simple_ls(self) -> None:
+        self.assertIsNone(unsupported_shell_chain_reason("ls -la ./pdfs"))
+
+
+class TestPrepareCodingBashCommand(unittest.TestCase):
+    def test_strips_dev_null_redirect(self) -> None:
+        cleaned, stripped = strip_noop_shell_redirects("ls -la ./pdfs 2>/dev/null")
+        self.assertEqual(cleaned, "ls -la ./pdfs")
+        self.assertTrue(stripped)
+
+    def test_prepare_runs_after_strip(self) -> None:
+        cleaned, err, stripped = prepare_coding_bash_command("ls ./pdfs 2>/dev/null")
+        self.assertIsNone(err)
+        self.assertEqual(cleaned, "ls ./pdfs")
+        self.assertTrue(stripped)
+
+    def test_prepare_rejects_or_after_strip(self) -> None:
+        cleaned, err, _stripped = prepare_coding_bash_command(
+            "ls ./pdfs 2>/dev/null || echo missing"
+        )
+        self.assertIsNone(cleaned)
+        self.assertIsNotNone(err)
+        self.assertIn("||", err or "")
+
+    def test_prepare_rejects_file_redirect(self) -> None:
+        cleaned, err, _stripped = prepare_coding_bash_command("echo hi > out.txt")
+        self.assertIsNone(cleaned)
+        self.assertIsNotNone(err)
+        self.assertIn("redirect", (err or "").lower())
 
 
 class TestUnsupportedShellBuiltins(unittest.TestCase):
@@ -166,6 +216,49 @@ class TestCodingBashIntegration(unittest.TestCase):
         self.assertTrue(out.get("shell_builtin"))
         self.assertIn("workdir", out["error"])
 
+    def test_or_chain_rejected_before_spawn(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            ctx = {"workspace": {"path": str(root), "id": "ws-1"}}
+            out = json.loads(
+                bash(
+                    {
+                        "command": (
+                            "ls ./pdfs 2>/dev/null || echo "
+                            "'Verzeichnis ./pdfs existiert nicht'"
+                        )
+                    },
+                    context=ctx,
+                )
+            )
+        self.assertFalse(out["ok"])
+        self.assertTrue(out.get("shell_meta"))
+        self.assertIn("||", out["error"])
+
+    def test_dev_null_redirect_stripped_then_runs(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            ctx = {"workspace": {"path": str(root), "id": "ws-1"}}
+            seen: list[list[str]] = []
+
+            def fake_run(cmd, **kwargs):
+                seen.append(list(cmd))
+                return subprocess.CompletedProcess(cmd, 0, stdout="ok\n", stderr="")
+
+            with patch(
+                "plugins.tools.workspace.shell.bash.coding_bash_strict_enabled",
+                return_value=False,
+            ), patch(
+                "plugins.tools.workspace.shell.bash.subprocess.run",
+                side_effect=fake_run,
+            ):
+                out = json.loads(
+                    bash({"command": "ls -la ./pdfs 2>/dev/null"}, context=ctx)
+                )
+        self.assertTrue(out["ok"])
+        self.assertTrue(out.get("redirects_stripped"))
+        self.assertEqual(seen[0], ["ls", "-la", "./pdfs"])
+
 
 class TestHostToolchain(unittest.TestCase):
     def test_first_command_program(self) -> None:
@@ -186,22 +279,8 @@ class TestHostToolchain(unittest.TestCase):
 
 
 class TestEnvSecretBridge(unittest.TestCase):
-    def test_roundtrip_bindings_file(self) -> None:
-        from plugins.tools.workspace.lib.env_secret_bridge import (
-            load_env_bindings,
-            save_env_bindings,
-            redact_injected_secrets,
-        )
-
-        with tempfile.TemporaryDirectory() as d:
-            root = Path(d)
-            saved = save_env_bindings(
-                root, {"FOO_PASSWORD": "foo_password", "FOO_USERNAME": "foo_username"}
-            )
-            self.assertEqual(saved["FOO_PASSWORD"], "foo_password")
-            loaded = load_env_bindings(root)
-            self.assertEqual(loaded, saved)
-            self.assertTrue((root / ".agentlayer" / "env_bindings.json").is_file())
+    def test_redact_injected_secrets(self) -> None:
+        from plugins.tools.workspace.lib.env_secret_bridge import redact_injected_secrets
 
         redacted = redact_injected_secrets(
             "pass=supersecret99 end", {"FOO_PASSWORD": "supersecret99"}
@@ -210,18 +289,76 @@ class TestEnvSecretBridge(unittest.TestCase):
         self.assertIn("***", redacted)
 
     def test_resolve_missing_without_user(self) -> None:
-        from plugins.tools.workspace.lib.env_secret_bridge import (
-            resolve_bound_secrets,
-            save_env_bindings,
-        )
+        from plugins.tools.workspace.lib.env_secret_bridge import resolve_bound_secrets
 
-        with tempfile.TemporaryDirectory() as d:
-            root = Path(d)
-            save_env_bindings(root, {"FOO_PASSWORD": "foo_password"})
-            env_extra, missing, names = resolve_bound_secrets(root, user_id=None)
+        with patch(
+            "plugins.tools.workspace.lib.env_secret_bridge.load_env_bindings",
+            return_value={"FOO_PASSWORD": "foo_password"},
+        ):
+            env_extra, missing, names = resolve_bound_secrets(
+                None, user_id=None, workspace_id=None
+            )
         self.assertEqual(env_extra, {})
         self.assertEqual(missing, ["foo_password"])
         self.assertEqual(names, ["FOO_PASSWORD"])
+
+    def test_resolve_prefers_workspace_over_global(self) -> None:
+        import uuid
+
+        from plugins.tools.workspace.lib.env_secret_bridge import resolve_bound_secrets
+
+        uid = uuid.uuid4()
+        wid = uuid.uuid4()
+
+        def _resolve(_uid, sk, *, workspace_id=None):
+            if sk == "loga3_password" and workspace_id == wid:
+                return "ws-secret", "workspace"
+            if sk == "loga3_password":
+                return "global-secret", "global"
+            return None, "missing"
+
+        with (
+            patch(
+                "plugins.tools.workspace.lib.env_secret_bridge.load_env_bindings",
+                return_value={"LOGA3_PASSWORD": "loga3_password"},
+            ),
+            patch(
+                "apps.backend.infrastructure.db.workspace_secrets.resolve_secret_plaintext",
+                side_effect=_resolve,
+            ),
+        ):
+            env_extra, missing, names = resolve_bound_secrets(
+                None, user_id=uid, workspace_id=wid
+            )
+        self.assertEqual(env_extra, {"LOGA3_PASSWORD": "ws-secret"})
+        self.assertEqual(missing, [])
+        self.assertEqual(names, ["LOGA3_PASSWORD"])
+
+    def test_seed_bindings_from_workspace_secrets(self) -> None:
+        import uuid
+
+        from plugins.tools.workspace.lib.env_secret_bridge import (
+            _seed_bindings_from_workspace_secrets,
+        )
+
+        uid = uuid.uuid4()
+        wid = uuid.uuid4()
+        with (
+            patch(
+                "apps.backend.infrastructure.db.workspace_secrets.user_workspace_secret_list_service_keys",
+                return_value=["loga3_user", "loga3_password"],
+            ),
+            patch(
+                "apps.backend.infrastructure.db.workspace_secrets.workspace_env_bindings_replace",
+                side_effect=lambda _u, _w, b: dict(b),
+            ) as mock_replace,
+        ):
+            out = _seed_bindings_from_workspace_secrets(uid, wid)
+        self.assertEqual(
+            out,
+            {"LOGA3_USER": "loga3_user", "LOGA3_PASSWORD": "loga3_password"},
+        )
+        mock_replace.assert_called_once()
 
 
 if __name__ == "__main__":

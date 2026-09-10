@@ -46,6 +46,11 @@ def _norm_service_key(raw: str) -> str:
 class UserSecretBody(BaseModel):
     service_key: str = Field(..., min_length=1, max_length=64)
     secret: str = Field(..., min_length=1, max_length=65536)
+    scope: str | None = Field(
+        default=None,
+        description="global (default) or workspace — workspace requires workspace_id",
+    )
+    workspace_id: str | None = Field(default=None, max_length=64)
 
     @field_validator("secret", mode="before")
     @classmethod
@@ -103,34 +108,100 @@ def register_secret_with_otp(request: Request, body: RegisterWithOtpBody):
 
 
 @router.get("")
-def list_user_secrets(request: Request):
+def list_user_secrets(request: Request, workspace_id: str | None = None):
     """List configured service keys for this user (no secret values)."""
+    import uuid as _uuid
+
     _require_user_secrets_enabled()
     uid, _tid = resolve_chat_identity(request)
-    return {"ok": True, "services": db.user_secret_list_service_keys(uid)}
+    global_keys = db.user_secret_list_service_keys(uid)
+    workspace_keys: list[str] = []
+    wid_out: str | None = None
+    if workspace_id and str(workspace_id).strip():
+        try:
+            wid = _uuid.UUID(str(workspace_id).strip())
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail="invalid workspace_id") from e
+        workspace_keys = db.user_workspace_secret_list_service_keys(uid, wid)
+        wid_out = str(wid)
+    return {
+        "ok": True,
+        "services": sorted(set(global_keys) | set(workspace_keys)),
+        "services_global": global_keys,
+        "services_workspace": workspace_keys,
+        "workspace_id": wid_out,
+    }
 
 
 @router.post("")
 def upsert_user_secret(request: Request, body: UserSecretBody):
-    """Store or replace an encrypted secret for this user."""
+    """Store or replace an encrypted secret for this user (global or workspace)."""
+    import uuid as _uuid
+
     _require_user_secrets_enabled()
     uid, _tid = resolve_chat_identity(request)
     sk = _norm_service_key(body.service_key)
+    scope = (body.scope or "global").strip().lower()
+    if scope in ("user",):
+        scope = "global"
+    if scope not in ("global", "workspace"):
+        raise HTTPException(status_code=400, detail="scope must be global or workspace")
     try:
+        if scope == "workspace":
+            if not body.workspace_id or not str(body.workspace_id).strip():
+                raise HTTPException(
+                    status_code=400,
+                    detail="workspace_id is required when scope=workspace",
+                )
+            wid = _uuid.UUID(str(body.workspace_id).strip())
+            db.user_workspace_secret_upsert(uid, wid, sk, body.secret)
+            from plugins.tools.workspace.lib.env_secret_bridge import (
+                ensure_env_binding_for_secret,
+            )
+
+            bind_info = ensure_env_binding_for_secret(
+                user_id=uid,
+                workspace_id=wid,
+                service_key=sk,
+            )
+            return {
+                "ok": True,
+                "service_key": sk,
+                "stored": True,
+                "scope": "workspace",
+                "workspace_id": str(wid),
+                "env_binding": bind_info,
+            }
         db.user_secret_upsert(uid, sk, body.secret)
+    except HTTPException:
+        raise
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e)) from e
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-    return {"ok": True, "service_key": sk, "stored": True}
+    return {"ok": True, "service_key": sk, "stored": True, "scope": "global"}
 
 
 @router.delete("/{service_key}")
-def delete_user_secret(service_key: str, request: Request):
-    """Remove a stored secret."""
+def delete_user_secret(
+    service_key: str,
+    request: Request,
+    workspace_id: str | None = None,
+):
+    """Remove a stored secret (global, or workspace when workspace_id is set)."""
+    import uuid as _uuid
+
     _require_user_secrets_enabled()
     uid, _tid = resolve_chat_identity(request)
     sk = _norm_service_key(service_key)
+    if workspace_id and str(workspace_id).strip():
+        try:
+            wid = _uuid.UUID(str(workspace_id).strip())
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail="invalid workspace_id") from e
+        if not db.user_workspace_secret_delete(uid, wid, sk):
+            raise HTTPException(status_code=404, detail="no such workspace secret")
+        return {"ok": True, "deleted": sk, "scope": "workspace", "workspace_id": str(wid)}
     if not db.user_secret_delete(uid, sk):
         raise HTTPException(status_code=404, detail="no such secret for this user")
-    return {"ok": True, "deleted": sk}
+    return {"ok": True, "deleted": sk, "scope": "global"}

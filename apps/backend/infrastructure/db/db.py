@@ -269,6 +269,17 @@ from apps.backend.infrastructure.db.user_secrets import (
     user_secret_register_with_otp,
     user_secret_upsert,
 )
+from apps.backend.infrastructure.db.workspace_secrets import (
+    resolve_secret_plaintext,
+    user_owns_workspace,
+    user_workspace_secret_delete,
+    user_workspace_secret_get_plaintext,
+    user_workspace_secret_list_service_keys,
+    user_workspace_secret_upsert,
+    workspace_env_bindings_load,
+    workspace_env_bindings_merge,
+    workspace_env_bindings_replace,
+)
 def kb_note_append(title: str, body: str) -> int:
     tenant_id, user_id = _require_user_uuid()
     title = (title or "").strip()

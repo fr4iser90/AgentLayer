@@ -12,14 +12,11 @@ from apps.backend.application.agent_runtime.dependencies import (
     ContextPrepMeta,
     agent_config_effective,
     apply_budget_to_meta,
-    build_media_library_context_snippet,
-    build_knowledge_orchestration_snippet,
     categories_for_matches,
     format_ingested_audio_system_block,
     hints_for_matches,
     ingress_openai_messages_inplace,
     ingest_chat_audio_attachments,
-    load_combined_skills_prompt,
     llm_chat_transport,
     match_task_intents,
     prepare_chat_history_for_llm,
@@ -39,8 +36,17 @@ from apps.backend.application.agent_runtime.runtime.prompts import (
     _inject_workspace_verify_hints,
     _inject_workspace_agent_instructions,
 )
-from apps.backend.application.agent_runtime.use_cases.upload_storage_images import (
-    storage_upload_prompt as _storage_upload_prompt,
+from apps.backend.application.agent_runtime.use_cases.chat_turn_agent_blocks import (
+    inject_agent_catalog_blocks,
+    inject_conversation_goal_block,
+    inject_knowledge_orchestration_block,
+)
+from apps.backend.application.agent_runtime.use_cases.chat_turn_inject_state import (
+    apply_omit_stub_and_ledger,
+    inject_agent_key,
+    load_prior_inject_digests,
+    needs_full_reinject,
+    persist_inject_digests,
 )
 from apps.backend.domain.model_routing.smart_route import decide_smart_backend
 from apps.backend.domain.model_routing.resolution import ModelRoutingSettings, resolve_effective_model
@@ -62,64 +68,6 @@ def _model_routing_settings() -> ModelRoutingSettings:
         allow_model_override=config.AGENT_ALLOW_MODEL_OVERRIDE,
         override_roles=config.AGENT_MODEL_OVERRIDE_ROLES,
         override_anonymous=config.AGENT_MODEL_OVERRIDE_ANONYMOUS,
-    )
-
-
-def _agent_goal_tool_names(agent_id: str | None) -> frozenset[str]:
-    """Goal/todo tools this agent may call — empty when the agent is unknown."""
-    from apps.backend.domain.agent_runtime.registry import get_agent_registry
-    from apps.backend.domain.agent_runtime.conversation_goal import (
-        GOAL_TOOLS,
-        PLAN_TOOLS,
-        TODO_TOOLS,
-    )
-
-    if not agent_id:
-        return frozenset()
-    agent = get_agent_registry().get_agent(agent_id)
-    if not agent:
-        return frozenset()
-    names = {str(n).strip() for n in (agent.get("tool_names") or [])}
-    return frozenset(names & (GOAL_TOOLS | TODO_TOOLS | PLAN_TOOLS))
-
-
-def _inject_conversation_goal_block(
-    messages: list[dict[str, Any]],
-    *,
-    agent_id: str | None,
-    user_id: uuid.UUID,
-    conversation_id: uuid.UUID,
-) -> list[dict[str, Any]]:
-    """Tell the agent which goal/todo tools it has and what the current goal/todos are."""
-    from apps.backend.domain.agent_runtime.conversation_goal import (
-        PLAN_MODE_GUIDANCE,
-        conversation_goal_prompt_block,
-    )
-    from apps.backend.infrastructure.agent_runtime import conversation_goal_store as goal_store
-
-    state = goal_store.get_conversation_goal(user_id, conversation_id)
-    if not state:
-        return messages
-    goal_tools = _agent_goal_tool_names(agent_id)
-    if not goal_tools:
-        # Agentless chats resolve tools per turn, so naming tools would be a guess.
-        if state.get("plan_mode"):
-            return _append_system_block(
-                messages, PLAN_MODE_GUIDANCE, kind="conversation_goal", label="Plan mode"
-            )
-        return messages
-    block = conversation_goal_prompt_block(
-        tool_names=goal_tools,
-        goal=state.get("goal") if isinstance(state.get("goal"), dict) else None,
-        todos=state.get("todos") if isinstance(state.get("todos"), list) else [],
-        plan_mode=bool(state.get("plan_mode")),
-    )
-    return (
-        _append_system_block(
-            messages, block, kind="conversation_goal", label="Goal / todos / plan"
-        )
-        if block
-        else messages
     )
 
 
@@ -190,12 +138,14 @@ async def prepare_chat_turn(
 ) -> ChatTurnPreparation:
     from apps.backend.domain.agent_runtime.context_injection import (
         begin_inject_ledger,
-        take_inject_ledger,
+        clear_omitable_digests,
+        take_inject_digests,
     )
 
     ace = agent_config_effective
     routing_settings = _model_routing_settings()
-    _inject_tok = begin_inject_ledger()
+    _aid_key = inject_agent_key(agent_id)
+    _prior_digests = load_prior_inject_digests(user_id, conversation_uuid, _aid_key)
 
     chat_history_raw = list(body.get("messages") or [])
     context_prep_meta: dict[str, Any] = {}
@@ -251,6 +201,20 @@ async def prepare_chat_turn(
         context_prep_meta = _ctx_meta.as_dict()
     tool_context["chat_context_meta"] = context_prep_meta
 
+    # Force full re-inject of omitable kinds after compaction or periodic refresh.
+    if needs_full_reinject(context_prep_meta, body.get("messages") or []) and _prior_digests:
+        _prior_digests = clear_omitable_digests(_prior_digests)
+
+    _omit_enabled = (
+        bool(getattr(config, "CHAT_CONTEXT_INJECT_OMIT", True))
+        and not embedded_subagent
+        and conversation_uuid is not None
+    )
+    _inject_tok = begin_inject_ledger(
+        prior_digests=_prior_digests,
+        skip_llm_when_unchanged=_omit_enabled,
+    )
+
     messages = _inject_system_prompt(
         list(body.get("messages") or []),
         system_prompt_extra=config.SYSTEM_PROMPT_EXTRA,
@@ -271,7 +235,7 @@ async def prepare_chat_turn(
         messages = _inject_agent_system_prompt(messages, agent_id)
     if conversation_uuid is not None and user_id is not None and isinstance(user_id, uuid.UUID):
         try:
-            messages = _inject_conversation_goal_block(
+            messages = inject_conversation_goal_block(
                 messages,
                 agent_id=agent_id if isinstance(agent_id, str) else None,
                 user_id=user_id,
@@ -279,69 +243,18 @@ async def prepare_chat_turn(
             )
         except Exception:
             logger.exception("conversation goal prompt inject failed")
-    if (
-        agent_id == "knowledge_companion"
-        and user_id is not None
-        and tenant_id is not None
-        and isinstance(user_id, uuid.UUID)
-    ):
-        from apps.backend.application.tenant_profession.use_cases.profession_policy_service import (
-            build_profession_capsule,
-        )
-
-        capsule = build_profession_capsule(user_id, int(tenant_id))
-        if capsule:
-            messages = _append_system_block(
-                messages, capsule, kind="profession", label="Profession capsule"
-            )
-    if agent_storage_images:
-        messages = _append_system_block(
-            messages,
-            _storage_upload_prompt(agent_storage_images),
-            kind="storage_upload",
-            label="Storage uploads",
-        )
-    if agent_id == "general":
-        from apps.backend.application.agent_runtime.runtime.embedded_subagent import (
-            build_delegate_agents_catalog_snippet,
-        )
-
-        messages = _append_system_block(
-            messages,
-            build_delegate_agents_catalog_snippet(
-                caller_is_admin=is_admin,
-                tenant_id=int(tenant_id) if tenant_id is not None else None,
-                user_id=user_id if isinstance(user_id, uuid.UUID) else None,
-            ),
-            kind="delegate_catalog",
-            label="Delegate catalog",
-        )
-        from apps.backend.domain.agent_runtime.task_prompt import build_agent_tasks_context_snippet
-
-        tasks_snip = build_agent_tasks_context_snippet(active_task_id=active_task_id)
-        if tasks_snip:
-            messages = _append_system_block(
-                messages, tasks_snip, kind="agent_tasks", label="Agent tasks"
-            )
-    if agent_id in ("general", "dashboard") and user_id is not None and tenant_id is not None:
-        _media_snip = build_media_library_context_snippet(
-            user_id=user_id if isinstance(user_id, uuid.UUID) else None,
-            tenant_id=int(tenant_id),
-            ingested_audio=_ingested_audio,
-            caller_is_admin=is_admin,
-        )
-        if _media_snip:
-            messages = _append_system_block(
-                messages, _media_snip, kind="media_library", label="Media library"
-            )
-    if agent_id and not plain_completion:
-        skills_snip = load_combined_skills_prompt(
-            agent_id, delegate_mode=agent_delegate_mode
-        )
-        if skills_snip:
-            messages = _append_system_block(
-                messages, skills_snip, kind="skills", label="Skills"
-            )
+    messages = inject_agent_catalog_blocks(
+        messages,
+        agent_id=agent_id,
+        user_id=user_id,
+        tenant_id=tenant_id,
+        is_admin=is_admin,
+        active_task_id=active_task_id,
+        plain_completion=plain_completion,
+        agent_delegate_mode=agent_delegate_mode,
+        agent_storage_images=agent_storage_images,
+        ingested_audio=_ingested_audio,
+    )
     pf = body.get("tool_prefetch")
     if isinstance(pf, dict):
         _apply_tool_prefetch(messages, pf, create_tool_max_bytes=config.CREATE_TOOL_MAX_BYTES)
@@ -366,18 +279,9 @@ async def prepare_chat_turn(
         messages, workspace, agent_id if isinstance(agent_id, str) else None
     )
     messages = _inject_workspace_verify_hints(messages, workspace)
-    if agent_id in ("coding", "coding_plan"):
-        try:
-            _knowledge_snip = build_knowledge_orchestration_snippet(tenant_id=cfg_tid)
-            if _knowledge_snip:
-                messages = _append_system_block(
-                    messages,
-                    _knowledge_snip,
-                    kind="knowledge_orchestration",
-                    label="Knowledge orchestration",
-                )
-        except Exception:
-            logger.debug("knowledge orchestration prompt skipped", exc_info=True)
+    messages = inject_knowledge_orchestration_block(
+        messages, agent_id=agent_id, cfg_tid=cfg_tid
+    )
 
     model, model_reason, profile_key, model_is_override = resolve_effective_model(
         messages=messages,
@@ -546,7 +450,8 @@ async def prepare_chat_turn(
         catalog_owned_by=catalog_owned_by,
     )
 
-    context_injections = take_inject_ledger(_inject_tok)
+    messages, context_injections = apply_omit_stub_and_ledger(messages, _inject_tok)
+    persist_inject_digests(user_id, conversation_uuid, _aid_key, take_inject_digests())
 
     return ChatTurnPreparation(
         messages=messages,

@@ -801,6 +801,37 @@ CREATE TABLE project_workspaces (
 
 CREATE INDEX idx_project_workspaces_owner ON project_workspaces (owner_user_id);
 
+-- Per-user secrets scoped to one project workspace (same service_key may differ per project).
+CREATE TABLE user_workspace_secrets (
+  id BIGSERIAL PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  workspace_id UUID NOT NULL REFERENCES project_workspaces(id) ON DELETE CASCADE,
+  service_key TEXT NOT NULL,
+  ciphertext BYTEA NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (user_id, workspace_id, service_key)
+);
+
+CREATE INDEX idx_user_workspace_secrets_ws ON user_workspace_secrets (workspace_id);
+CREATE INDEX idx_user_workspace_secrets_user ON user_workspace_secrets (user_id);
+
+-- Env name → service_key map for bash injection (names only; values in user_*_secrets).
+CREATE TABLE workspace_env_bindings (
+  id BIGSERIAL PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  workspace_id UUID NOT NULL REFERENCES project_workspaces(id) ON DELETE CASCADE,
+  env_name TEXT NOT NULL,
+  service_key TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (user_id, workspace_id, env_name),
+  CHECK (env_name ~ '^[A-Za-z_][A-Za-z0-9_]*$'),
+  CHECK (service_key ~ '^[a-z0-9][a-z0-9_.-]{0,62}$')
+);
+
+CREATE INDEX idx_workspace_env_bindings_ws ON workspace_env_bindings (workspace_id);
+
 COMMENT ON TABLE project_workspaces IS
   'User Git project workspaces for coding agent (separate from dashboards).';
 
@@ -826,6 +857,7 @@ CREATE TABLE chat_conversations (
   session_goal JSONB NULL,
   session_todos JSONB NOT NULL DEFAULT '[]'::jsonb,
   session_plan_mode BOOLEAN NOT NULL DEFAULT false,
+  context_inject_digests JSONB NULL,
   shared BOOLEAN NOT NULL DEFAULT false,
   pref_agent_id TEXT,
   pref_workspace_id UUID REFERENCES project_workspaces(id) ON DELETE SET NULL,

@@ -4,118 +4,19 @@ from __future__ import annotations
 
 import json
 import re
-import uuid
-from typing import Any, Protocol
+from typing import Any
 
 from apps.backend.domain.agent_runtime.task_prompt import parse_delegate_mode
+from apps.backend.domain.delegation.artifact_handoff import (
+    artifact_ref_ids,
+    normalize_repo_path,
+)
+from apps.backend.domain.delegation.excerpt_quality import delegate_excerpt_is_actionable
 
 _CAP_REPO_WRITE = frozenset({"coding.write"})
 _CAP_REPO_EXECUTE = frozenset({"coding.execute"})
 
 _PATCH_PATH_RE = re.compile(r"^[+-]{3}\s+(?:a/|b/)?(.+)$")
-
-
-class DelegateEnforcementDependencies(Protocol):
-    def get_artifact(self, *, artifact_id: uuid.UUID, tenant_id: int) -> dict[str, Any] | None: ...
-
-
-_deps: DelegateEnforcementDependencies | None = None
-
-
-def register_delegate_enforcement_dependencies(deps: DelegateEnforcementDependencies) -> None:
-    global _deps
-    _deps = deps
-
-
-class _AgentArtifactsStorePort:
-    def get_artifact(self, *, artifact_id: uuid.UUID, tenant_id: int) -> dict[str, Any] | None:
-        return _deps.get_artifact(artifact_id=artifact_id, tenant_id=tenant_id) if _deps is not None else None
-
-
-agent_artifacts_store = _AgentArtifactsStorePort()
-
-
-def parse_requirement_value(requirements: Any, key: str) -> str | None:
-    """Read ``branch: foo`` / ``mode: bar`` style entries from a requirements list."""
-    if requirements is None:
-        return None
-    if isinstance(requirements, str):
-        requirements = [requirements]
-    if not isinstance(requirements, list):
-        return None
-    prefix = f"{key.lower().strip()}:"
-    for ln in requirements:
-        low = str(ln).lower().strip()
-        if low.startswith(prefix):
-            val = str(ln).split(":", 1)[1].strip()
-            return val or None
-    return None
-
-
-def normalize_repo_path(path: str) -> str:
-    p = str(path or "").strip().replace("\\", "/")
-    while p.startswith("./"):
-        p = p[2:]
-    return p.lstrip("/")
-
-
-def paths_from_artifact_content(content: Any) -> list[str]:
-    """Collect file paths from any artifact JSON (findings, path lists, etc.)."""
-    if not isinstance(content, dict):
-        return []
-    out: list[str] = []
-    seen: set[str] = set()
-
-    def _add(raw: Any) -> None:
-        if not raw:
-            return
-        norm = normalize_repo_path(str(raw))
-        if norm and norm not in seen:
-            seen.add(norm)
-            out.append(norm)
-
-    for key in ("paths", "high_paths", "target_paths", "files"):
-        raw_list = content.get(key)
-        if isinstance(raw_list, list):
-            for item in raw_list:
-                _add(item)
-
-    findings = content.get("findings")
-    if isinstance(findings, list):
-        for row in findings:
-            if isinstance(row, dict):
-                _add(row.get("path"))
-
-    return out
-
-
-def load_delegate_allowed_paths(
-    *,
-    tenant_id: int,
-    artifact_refs: Any,
-    max_artifacts: int = 8,
-) -> list[str]:
-    ids: list[uuid.UUID] = []
-    if isinstance(artifact_refs, str):
-        artifact_refs = [artifact_refs]
-    if isinstance(artifact_refs, list):
-        for item in artifact_refs[:max_artifacts]:
-            try:
-                ids.append(uuid.UUID(str(item).strip()))
-            except (ValueError, TypeError):
-                continue
-
-    paths: list[str] = []
-    seen: set[str] = set()
-    for aid in ids:
-        row = agent_artifacts_store.get_artifact(artifact_id=aid, tenant_id=tenant_id)
-        if not row:
-            continue
-        for p in paths_from_artifact_content(row.get("content") or {}):
-            if p not in seen:
-                seen.add(p)
-                paths.append(p)
-    return paths
 
 
 def _delegate_mode(tool_context: dict[str, Any] | None) -> str:
@@ -293,101 +194,6 @@ def _truthy_flag(v: Any) -> bool:
     return str(v).strip().lower() in ("1", "true", "yes", "on")
 
 
-def delegate_excerpt_is_actionable(excerpt: str) -> bool:
-    """True when a delegate assistant_excerpt is usable for the orchestrator reply (not markup/meta)."""
-    from apps.backend.domain.agent_runtime.loop_guards import _agent_final_text_looks_like_placeholder_tool_markup
-
-    t = (excerpt or "").strip()
-    if len(t) < 2:
-        return False
-    if _agent_final_text_looks_like_placeholder_tool_markup(t):
-        return False
-    low = t.lower()
-    if "tool-call markup instead of plain text" in low:
-        return False
-    if _delegate_excerpt_is_meta_only(t):
-        return False
-    return True
-
-
-_TOOL_NAME_ONLY_RE = re.compile(
-    r"^\s*(?:\[)?(?:read_file|search|glob|list_dir|git_read|repository\.read_file)(?:\])?\s*$",
-    re.IGNORECASE,
-)
-
-
-def _delegate_excerpt_is_meta_only(text: str) -> bool:
-    """Prose that describes tool use without an actual answer (path + excerpt, header, quote, etc.)."""
-    t = (text or "").strip()
-    if not t:
-        return True
-    if _TOOL_NAME_ONLY_RE.match(t):
-        return True
-    low = t.lower()
-    if low in ("done", "ok", "success", "completed"):
-        return True
-    # Bracketed tool name with nothing else substantive
-    if re.fullmatch(r"\[?(?:read_file|search|glob|list_dir)\]?", low):
-        return True
-    # Path mentioned but no delivered content (no colon/em-dash content, no markdown header, no quotes)
-    has_path = bool(re.search(r"\.[a-z0-9]{1,8}\b", t, re.IGNORECASE))
-    has_delivery = bool(
-        re.search(r"\.[a-z0-9]{1,8}\b\s*[:—\-]\s*\S", t, re.IGNORECASE)
-        or re.search(r"^#\s+\S", t, re.MULTILINE)
-        or re.search(r'["\'].{2,}["\']', t)
-        or re.search(r"\n\s*\S", t)
-    )
-    if has_path and not has_delivery and len(t) < 120:
-        if re.search(r"\b(read|called|used|searched|grep|opened)\b", low):
-            return True
-    # Short status without file signal
-    if len(t) < 35 and re.search(r"\b(read|called|used|tool|successfully)\b", low):
-        if not has_path and not re.search(r"^#\s", t, re.MULTILINE):
-            return True
-    if re.search(r"\bthe command\b", low) and re.search(r"\bwill:\b", low):
-        return True
-    if re.search(r"\bwill:\s*$", low, re.MULTILINE):
-        return True
-    stripped = t.strip()
-    if stripped.startswith("{") and stripped.endswith("}"):
-        try:
-            obj = json.loads(stripped)
-        except json.JSONDecodeError:
-            obj = None
-        if isinstance(obj, dict) and "command" in obj:
-            return True
-    if re.search(r'^[\s`]*\{[\s\n]*"command"\s*:', t, re.MULTILINE):
-        return True
-    return False
-
-
-def tool_result_display_line(tool_name: str, result: str) -> str | None:
-    """
-    Human-readable one-line summary for benchmark UI / WS ``result_display``.
-
-    For ``delegate``: ``assistant_excerpt`` on success, ``error`` on failure.
-    """
-    name = (tool_name or "").strip()
-    raw = (result or "").strip()
-    if not raw:
-        return None
-    if name != "delegate" and not name.endswith(".delegate"):
-        return None
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError:
-        return None
-    if not isinstance(data, dict):
-        return None
-    if data.get("ok") is False:
-        err = data.get("error")
-        return str(err).strip()[:500] if isinstance(err, str) and err.strip() else "failed"
-    ex = data.get("assistant_excerpt")
-    if isinstance(ex, str) and ex.strip():
-        return ex.strip()[:500]
-    return None
-
-
 def record_orchestrator_delegate_success(
     tool_context: dict[str, Any],
     args: dict[str, Any],
@@ -476,63 +282,6 @@ def orchestrator_pre_tool_blocked(
     return None
 
 
-def extract_handoff_artifact_ids(result: str) -> list[str]:
-    """Artifact ids intended for the next delegate step (from tool JSON or delegate payload)."""
-    try:
-        data = json.loads(result)
-    except json.JSONDecodeError:
-        return []
-    if not isinstance(data, dict) or data.get("ok") is False:
-        return []
-    handoff = data.get("handoff_artifact_ids")
-    if isinstance(handoff, list):
-        out = [str(x).strip() for x in handoff if str(x).strip()]
-        if out:
-            return out
-    return extract_artifact_ids_from_tool_result(result)
-
-
-def extract_artifact_ids_from_tool_result(result: str) -> list[str]:
-    """Pull artifact_id from specialist tool JSON (any integration)."""
-    try:
-        data = json.loads(result)
-    except json.JSONDecodeError:
-        return []
-    if not isinstance(data, dict) or data.get("ok") is False:
-        return []
-    out: list[str] = []
-    aid = data.get("artifact_id")
-    if aid:
-        out.append(str(aid).strip())
-    arts = data.get("artifact_ids")
-    if isinstance(arts, list):
-        for item in arts:
-            s = str(item).strip()
-            if s:
-                out.append(s)
-    return [x for x in out if x]
-
-
-def _artifact_ref_ids(artifact_refs: Any) -> list[str]:
-    if artifact_refs is None:
-        return []
-    if isinstance(artifact_refs, str):
-        artifact_refs = [artifact_refs]
-    if not isinstance(artifact_refs, list):
-        return []
-    out: list[str] = []
-    for item in artifact_refs:
-        s = str(item).strip()
-        if not s:
-            continue
-        try:
-            uuid.UUID(s)
-            out.append(s)
-        except (ValueError, TypeError):
-            continue
-    return out
-
-
 def subagent_reject_reason(
     *,
     agent_id: str,
@@ -547,7 +296,7 @@ def subagent_reject_reason(
             "artifact_refs from the prior run, and requirements including mode: fix_from_artifact and branch: <name>."
         )
     if mode == "fix_from_artifact" and agent_id == "coding":
-        refs = _artifact_ref_ids(artifact_refs)
+        refs = artifact_ref_ids(artifact_refs)
         if not refs:
             return (
                 "fix_from_artifact requires artifact_refs from a prior specialist run (e.g. security_auditor "

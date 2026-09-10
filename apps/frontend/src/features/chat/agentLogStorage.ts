@@ -155,6 +155,7 @@ export function appendTimelineEntry(
       ...(entry.stepPhase != null ? { stepPhase: entry.stepPhase } : {}),
       ...(entry.toolOk != null ? { toolOk: entry.toolOk } : {}),
       ...(entry.toolError != null ? { toolError: entry.toolError } : {}),
+      ...(entry.resultDisplay != null ? { resultDisplay: entry.resultDisplay } : {}),
       ...(entry.toolRound != null ? { toolRound: entry.toolRound } : {}),
       ...(entry.nested === true ? { nested: true } : {}),
       ...(entry.indexMode != null ? { indexMode: entry.indexMode } : {}),

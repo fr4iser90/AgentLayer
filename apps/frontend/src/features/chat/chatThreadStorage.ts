@@ -28,6 +28,9 @@ export type SecretPromptPayload = {
   promptId: string;
   serviceKey: string;
   mode: "authenticated" | "otp";
+  /** global = account-wide; workspace = bound project only */
+  scope?: "global" | "workspace";
+  workspaceId?: string;
   title?: string;
   help?: string;
   reason?: string;
@@ -56,6 +59,8 @@ export type AgentTimelineEntry = {
   toolOk?: boolean;
   /** Tool error excerpt on failed ``stepPhase=done``. */
   toolError?: string;
+  /** Bash/tool stdout preview from WS ``result_display`` (secret-redacted). */
+  resultDisplay?: string;
   toolRound?: number;
   /** Indent in activity panel (delegated run). */
   nested?: boolean;

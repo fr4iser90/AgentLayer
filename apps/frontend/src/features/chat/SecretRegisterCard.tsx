@@ -31,7 +31,11 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
         ? { title: prompt.title, help: prompt.help, fields }
         : undefined,
       fieldValues,
-      rawSecret
+      rawSecret,
+      {
+        scope: prompt.scope === "workspace" ? "workspace" : "global",
+        workspaceId: prompt.workspaceId,
+      }
     );
     if (!body) {
       setLocalError(t("chat:secretCardFillRequired"));
@@ -66,6 +70,8 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
     prompt.help,
     prompt.promptId,
     prompt.serviceKey,
+    prompt.scope,
+    prompt.workspaceId,
     prompt.title,
     rawSecret,
     t,

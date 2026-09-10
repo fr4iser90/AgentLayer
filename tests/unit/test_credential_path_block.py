@@ -29,7 +29,7 @@ class TestCredentialPathBlock(unittest.TestCase):
         self.assertIn("request_user_secret", hint)
         self.assertIn("env_bindings", hint)
         self.assertIn("bash", hint)
-        self.assertIn("env_bindings", payload["for_assistant_must_say_en"])
+        self.assertIn("automatic", payload["for_assistant_must_say_en"])
 
 
 if __name__ == "__main__":

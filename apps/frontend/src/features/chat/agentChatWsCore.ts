@@ -388,6 +388,10 @@ export function handleAgentWsMessage(msg: Record<string, unknown>, ctx: HandlerC
       typeof msg.result_error === "string" && msg.result_error.trim()
         ? msg.result_error.trim().slice(0, 500)
         : undefined;
+    const resultDisplay =
+      typeof msg.result_display === "string" && msg.result_display.trim()
+        ? msg.result_display.trim().slice(0, 4000)
+        : undefined;
     let durationMs = msg.duration_ms != null ? Number(msg.duration_ms) : null;
     if (durationMs == null || durationMs < 0) {
       const startTime = toolStartTimes.get(n);
@@ -414,6 +418,7 @@ export function handleAgentWsMessage(msg: Record<string, unknown>, ctx: HandlerC
       toolName: n,
       toolOk,
       toolError,
+      resultDisplay,
       durationMs: durationMs ?? undefined,
       resultChars: ch,
     });

@@ -44,13 +44,15 @@ _MISSING_HINTS: dict[str, str] = {
     "go": "Go is not installed in the agent container.",
     "rg": "ripgrep (rg) is not installed in the agent container.",
     "chrome": (
-        "Playwright Chromium is missing under PLAYWRIGHT_BROWSERS_PATH. "
-        "Rebuild/restart agent-layer so the image seed copies, or run: npx playwright install chromium. "
+        "Playwright Chromium is missing under PLAYWRIGHT_BROWSERS_PATH "
+        "(often a revision mismatch, e.g. project wants chromium-1208 but the volume only has an older seed). "
+        "Rebuild agent-layer (Dockerfile PLAYWRIGHT_VERSION) or run: npx playwright install chromium. "
         "See docs/runbooks/playwright.md."
     ),
     "chromium": (
-        "Playwright Chromium is missing under PLAYWRIGHT_BROWSERS_PATH. "
-        "Rebuild/restart agent-layer so the image seed copies, or run: npx playwright install chromium. "
+        "Playwright Chromium is missing under PLAYWRIGHT_BROWSERS_PATH "
+        "(often a revision mismatch, e.g. project wants chromium-1208 but the volume only has an older seed). "
+        "Rebuild agent-layer (Dockerfile PLAYWRIGHT_VERSION) or run: npx playwright install chromium. "
         "See docs/runbooks/playwright.md."
     ),
 }

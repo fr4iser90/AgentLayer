@@ -325,7 +325,7 @@ def _tool_result_followup_hint(tool_name: str, result: str | None) -> str | None
     if tool_name == "delegate" and o.get("ok") is True:
         excerpt = o.get("assistant_excerpt")
         if isinstance(excerpt, str) and excerpt.strip():
-            from apps.backend.domain.delegation.enforcement import delegate_excerpt_is_actionable
+            from apps.backend.domain.delegation.excerpt_quality import delegate_excerpt_is_actionable
 
             body = excerpt.strip()[:2000]
             if delegate_excerpt_is_actionable(excerpt):
@@ -376,6 +376,12 @@ async def _emit_secret_prompt_from_tool_result(
         "fields": sp.get("fields") if isinstance(sp.get("fields"), list) else [],
         "reason": sp.get("reason"),
     }
+    scope = sp.get("scope")
+    if isinstance(scope, str) and scope.strip():
+        ev["scope"] = scope.strip().lower()
+    wid = sp.get("workspace_id")
+    if wid is not None and str(wid).strip():
+        ev["workspace_id"] = str(wid).strip()
     await event_emit(ev)
 
 

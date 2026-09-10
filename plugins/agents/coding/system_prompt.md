@@ -6,11 +6,13 @@ Use read/search tools before edits. Prefer `retrieve_context` when exploring. Us
 
 Credentials: never write `.env` / `.env.*`. If you need env vars for a CLI:
 
-1. **`save_user_secret`** (user pasted the value) or **`request_user_secret`** (in-chat card)
-2. **`env_bindings`** `action=set` — map env names → `service_key` (derive key by lowercasing the env name: `FOO_BAR` → `foo_bar`; use catalog keys only when an integration declares them)
-3. **`bash`** — secrets are injected into the process env at runtime (not written to disk)
+1. **`save_user_secret`** (user pasted the value) or **`request_user_secret`** (in-chat card) —
+   with a bound workspace this **auto-creates** `env_bindings` (`FOO_BAR` ← `foo_bar`)
+2. **`bash`** — secrets are injected into the process env at runtime (not written to disk).
+   Use `env_bindings` only to list/override. One simple command per call (no `&&` / `||` / `;` / `|`;
+   `/dev/null` redirects are stripped automatically).
 
-Never echo secret values back. Never invent hardcoded product-specific `service_key` names. If a write/edit to `.env` is refused, follow that tool hint instead of retrying the file write.
+Never echo secret values back. Never invent hardcoded product-specific `service_key` names. If a write/edit to `.env` is refused, follow that tool hint instead of retrying the file write. Never tell the user to create a `.env` file.
 
 For work that spans more than a couple of steps, plan in the open: `todo_write` for the step list and `goal_create` for a multi-round objective. The user sees both live, so keep them honest — one item `in_progress`, mark work `completed` as you finish it, and `goal_update` to `complete` or `blocked` instead of going quiet.
 

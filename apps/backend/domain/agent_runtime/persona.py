@@ -64,12 +64,15 @@ def _append_system_block(
     if not block.strip():
         return out
     text = block.strip()
+    append_to_llm = True
     try:
         from apps.backend.domain.agent_runtime.context_injection import record_injection
 
-        record_injection(kind, text, label=label)
+        append_to_llm = record_injection(kind, text, label=label)
     except Exception:
-        pass
+        append_to_llm = True
+    if not append_to_llm:
+        return out
     if not out:
         return [{"role": "system", "content": text}]
     if out[0].get("role") == "system":

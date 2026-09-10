@@ -6,6 +6,8 @@ export type ContextInjectionPayload = {
   body?: string;
   chars?: number;
   truncated?: boolean;
+  unchanged?: boolean;
+  digest?: string;
 };
 
 /** Append expandable context-injection timeline rows from ``agent.session``. */
@@ -17,11 +19,17 @@ export function appendContextInjectionsFromSession(
   for (const item of raw) {
     if (!item || typeof item !== "object") continue;
     const row = item as ContextInjectionPayload;
+    // Backend only lists blocks actually sent to the LLM; skip legacy "unchanged" rows.
+    if (row.unchanged === true) continue;
     const label =
       (typeof row.label === "string" && row.label.trim()) ||
       (typeof row.kind === "string" && row.kind.trim()) ||
       "Context";
     const body = typeof row.body === "string" ? row.body : "";
+    if (!body.trim() && !(typeof row.chars === "number" && row.chars > 0)) {
+      // Empty placeholder — nothing was injected.
+      continue;
+    }
     const chars =
       typeof row.chars === "number" && Number.isFinite(row.chars)
         ? Math.max(0, Math.floor(row.chars))

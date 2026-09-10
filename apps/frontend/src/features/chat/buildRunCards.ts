@@ -25,6 +25,10 @@ export type RunCard = {
   stepCount?: number;
   /** Completed steps (newest last), capped when building. */
   recentSteps?: string[];
+  /** Streamed specialist assistant text (delegated sub-agent). */
+  assistantExcerpt?: string;
+  /** Streamed specialist reasoning/thinking. */
+  reasoningExcerpt?: string;
   compactionPhase?: "history" | "loop";
   providerPromptTokens?: number;
   softLimitTokens?: number;
@@ -69,6 +73,7 @@ function isFailedText(text: string): boolean {
 }
 
 const RECENT_STEPS_MAX = 8;
+const SUBAGENT_EXCERPT_MAX = 12_000;
 
 function findRunningSubagentCard(
   cards: RunCard[],
@@ -90,21 +95,30 @@ function findRunningSubagentCard(
   );
 }
 
+function appendExcerpt(prev: string | undefined, chunk: string): string {
+  return ((prev || "") + chunk).slice(0, SUBAGENT_EXCERPT_MAX);
+}
+
 function applySubagentStep(card: RunCard, e: AgentTimelineEntry): void {
   if (e.stepPhase === "done") {
+    // Keep successful done rows when they carry command output for the run card.
+    if (e.resultDisplay?.trim() || e.toolOk === false) {
+      if (!card.details.includes(e)) card.details.push(e);
+    }
     if (e.toolOk !== false) {
       return;
     }
-    if (!card.details.includes(e)) card.details.push(e);
     const label = e.text.trim();
     if (label) {
       const rs = card.recentSteps ?? [];
       card.recentSteps = (rs.length ? [...rs.slice(0, -1), label] : [label]).slice(
         -RECENT_STEPS_MAX
       );
-      card.subtitle = label;
+      // Keep running — a failed tool step is not the whole sub-agent run failing.
+      if (card.status === "running") {
+        card.subtitle = label;
+      }
     }
-    card.status = "failed";
     return;
   }
   if (!card.details.includes(e)) card.details.push(e);
@@ -116,15 +130,10 @@ function applySubagentStep(card: RunCard, e: AgentTimelineEntry): void {
   card.stepCount = (card.stepCount ?? 0) + 1;
 }
 
-function subagentCardHasFailedToolStep(card: RunCard): boolean {
-  return card.details.some(
-    (d) => d.kind === "subagent_step" && d.stepPhase === "done" && d.toolOk === false
-  );
-}
-
 function completeSubagentCard(card: RunCard, done: AgentTimelineEntry): void {
-  card.status =
-    isFailedText(done.text) || subagentCardHasFailedToolStep(card) ? "failed" : "done";
+  // Card status follows the sub-agent outcome, not intermediate tool exit codes
+  // (bash often fails on missing dirs while the specialist continues successfully).
+  card.status = isFailedText(done.text) ? "failed" : "done";
   card.durationMs = done.durationMs ?? card.durationMs;
   card.resultChars = done.resultChars ?? card.resultChars;
   card.subagentRunId = card.subagentRunId ?? done.subagentRunId;
@@ -132,6 +141,8 @@ function completeSubagentCard(card: RunCard, done: AgentTimelineEntry): void {
   if (!card.details.includes(done)) card.details.push(done);
   if (isFailedText(done.text) && done.text.trim()) {
     card.subtitle = done.text.trim();
+  } else if (card.assistantExcerpt?.trim()) {
+    card.subtitle = card.assistantExcerpt.trim().slice(0, 160);
   }
 }
 
@@ -198,6 +209,23 @@ export function buildRunCardsFromTimeline(entries: AgentTimelineEntry[]): RunCar
     if (e.kind === "subagent_step") {
       const card = findRunningSubagentCard(cards, e.subagentRunId, e.subagentAgentId);
       if (card) applySubagentStep(card, e);
+      continue;
+    }
+
+    if (e.kind === "subagent_delta" || e.kind === "subagent_reasoning") {
+      const card = findRunningSubagentCard(cards, e.subagentRunId, e.subagentAgentId);
+      if (card) {
+        const chunk = e.text || "";
+        if (chunk) {
+          if (e.kind === "subagent_reasoning") {
+            card.reasoningExcerpt = appendExcerpt(card.reasoningExcerpt, chunk);
+          } else {
+            card.assistantExcerpt = appendExcerpt(card.assistantExcerpt, chunk);
+          }
+        }
+        // Keep at most one coalesced row in details (same id when coalesced upstream).
+        if (!card.details.some((d) => d.id === e.id)) card.details.push(e);
+      }
       continue;
     }
 
@@ -282,7 +310,11 @@ export function buildRunCardsFromTimeline(entries: AgentTimelineEntry[]): RunCar
       if (tool === DELEGATE_TOOL) {
         continue;
       }
-      const notable = tool.startsWith("coding_") || tool === "retrieve_context" || tool.startsWith("security_scan");
+      const notable =
+        tool.startsWith("coding_") ||
+        tool === "bash" ||
+        tool === "retrieve_context" ||
+        tool.startsWith("security_scan");
       if (notable) {
         const card: RunCard = {
           id: e.id,

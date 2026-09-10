@@ -13,8 +13,11 @@ agents: general
   Never echo the secret value back.
 - If a secret is missing and the user should type it in the Web UI, call **`request_user_secret`**.
 - Optional: **`secrets_help`** / **`register_secrets`** for headless OTP flows.
-- For CLI env vars after a workspace is **bound**: **`env_bindings`** maps env names → ``service_key``
-  (names only; usually the lowercased env name); Coding/`bash` injects values at runtime.
+- For CLI env vars after a workspace is **bound**: **`save_user_secret`** ``scope=workspace``
+  **auto-creates** ``env_bindings`` (``FOO_BAR`` ← ``foo_bar``) so Coding/`bash` injects at
+  runtime — no separate ``env_bindings`` call and **never** a repo ``.env`` file.
+  Use ``env_bindings`` only to list/override. Catalog keys (``github_pat``, …) stay ``scope=global``
+  and are not auto-bound unless ``env_name`` is passed.
   Then **delegate** to `coding` for fetch/build.
 - If **[User secrets]** already lists a key (e.g. ``ssc_api_key``, ``github_pat``), do **not** ask
   the user to paste it again — **delegate** to the right specialist (`security_auditor`, `coding`, …).

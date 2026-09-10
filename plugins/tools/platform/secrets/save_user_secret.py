@@ -3,33 +3,35 @@
 from __future__ import annotations
 
 import json
+import uuid
 from typing import Any, Callable
 
 from apps.backend.infrastructure.platform.config import config
 from apps.backend.domain.shared.identity import get_identity
 from apps.backend.infrastructure.db import db
 from apps.backend.infrastructure.identity.secret_otp_bundle import validate_user_secret_service_key
+from plugins.tools.workspace.lib.common import workspace_id_from_context
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 TOOL_ID = "save_user_secret"
 TOOL_BUCKET = "secrets"
 TOOL_DOMAIN = "secrets"
 TOOL_LABEL = "Secrets"
 TOOL_DESCRIPTION = (
-    "Store a per-user credential for the signed-in chat user (encrypted in Postgres). "
-    "Use when the user pasted a credential in chat and asked to save it. "
-    "service_key: lowercase [a-z0-9._-] — prefer catalog keys when an integration declares them "
-    "(e.g. ssc_api_key); otherwise derive from the env/var name the user gave "
-    "(FOO_BAR → foo_bar). Available to normal signed-in users (not admin-only). "
-    "Never echo the secret value back. Never invent project-specific key names."
+    "Store an encrypted credential for the signed-in chat user. "
+    "scope=workspace (default when a project workspace is bound and the key is not a "
+    "catalog integration key) stores under this workspace so projects can share env names "
+    "with different values. scope=global stores account-wide (github_pat, ssc_api_key, …). "
+    "service_key: lowercase [a-z0-9._-] — catalog key or FOO_BAR → foo_bar. "
+    "When a workspace is bound, non-catalog keys auto-create env_bindings "
+    "(FOO_BAR ← foo_bar) so bash injects them — no separate env_bindings call needed. "
+    "Never echo the secret value back. Never write .env files."
 )
-# Router phrases: co-located save_user_secret.router.yaml (all locales unioned at load).
 TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("secrets.user",)
 
 
 def _catalog_service_keys() -> list[str]:
-    """Keys declared by integration tools (TOOL_SECRETS_REQUIRED / user_secret_forms)."""
     try:
         from apps.backend.domain.plugin_system.registry import get_registry
 
@@ -59,7 +61,40 @@ def _coerce_secret_body(raw: Any) -> str | None:
     return None
 
 
-def save_user_secret(arguments: dict[str, Any]) -> str:
+def _parse_workspace_id(raw: Any) -> uuid.UUID | None:
+    if raw is None:
+        return None
+    try:
+        return uuid.UUID(str(raw).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def _resolve_scope(
+    arguments: dict[str, Any],
+    *,
+    service_key: str,
+    bound_workspace_id: uuid.UUID | None,
+) -> tuple[str, uuid.UUID | None]:
+    """Return (scope, workspace_id) with defaults."""
+    catalog = set(_catalog_service_keys())
+    raw_scope = str(arguments.get("scope") or "").strip().lower()
+    arg_wid = _parse_workspace_id(arguments.get("workspace_id"))
+    wid = arg_wid or bound_workspace_id
+
+    if raw_scope in ("global", "user"):
+        return "global", None
+    if raw_scope in ("workspace", "project"):
+        return "workspace", wid
+    # Default: catalog → global; otherwise workspace when bound.
+    if service_key in catalog:
+        return "global", None
+    if wid is not None:
+        return "workspace", wid
+    return "global", None
+
+
+def save_user_secret(arguments: dict[str, Any], context: dict | None = None) -> str:
     if not config.SECRETS_MASTER_KEY:
         return json.dumps(
             {
@@ -90,7 +125,8 @@ def save_user_secret(arguments: dict[str, Any]) -> str:
                 "hint": (
                     "Prefer a catalog key when an integration declares one. "
                     "For project env vars, derive service_key by lowercasing the env name "
-                    "(FOO_BAR → foo_bar), then map with env_bindings."
+                    "(FOO_BAR → foo_bar); env_bindings are created automatically when a "
+                    "workspace is bound."
                 ),
             },
             ensure_ascii=False,
@@ -106,26 +142,68 @@ def save_user_secret(arguments: dict[str, Any]) -> str:
             {"ok": False, "error": "secret too large (max 65536 chars)"},
             ensure_ascii=False,
         )
+
+    bound_wid = _parse_workspace_id(workspace_id_from_context(context))
+    scope, wid = _resolve_scope(arguments, service_key=sk, bound_workspace_id=bound_wid)
+    explicit_env = str(arguments.get("env_name") or "").strip() or None
+
     try:
-        db.user_secret_upsert(uid, sk, secret)
+        if scope == "workspace":
+            if wid is None:
+                return json.dumps(
+                    {
+                        "ok": False,
+                        "error": (
+                            "scope=workspace requires a bound project workspace "
+                            "(or pass workspace_id)"
+                        ),
+                    },
+                    ensure_ascii=False,
+                )
+            db.user_workspace_secret_upsert(uid, wid, sk, secret)
+        else:
+            db.user_secret_upsert(uid, sk, secret)
     except RuntimeError as e:
         return json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False)
     except ValueError as e:
         return json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False)
-    return json.dumps(
-        {
-            "ok": True,
-            "stored": True,
-            "service_key": sk,
-            "for_assistant_must_say_de": (
-                "Secret wurde gespeichert. Den Klartext **nicht** wiederholen oder zitieren."
-            ),
-        },
-        ensure_ascii=False,
-    )
+
+    payload: dict[str, Any] = {
+        "ok": True,
+        "stored": True,
+        "service_key": sk,
+        "scope": scope,
+        "for_assistant_must_say_de": (
+            "Secret wurde gespeichert. Den Klartext **nicht** wiederholen oder zitieren."
+        ),
+    }
+    if scope == "workspace" and wid is not None:
+        payload["workspace_id"] = str(wid)
+
+    # Auto-bind so Coding/bash injects without a separate env_bindings step.
+    bind_wid = wid if scope == "workspace" else bound_wid
+    catalog = set(_catalog_service_keys())
+    should_bind = bind_wid is not None and (sk not in catalog or explicit_env)
+    if should_bind:
+        from plugins.tools.workspace.lib.env_secret_bridge import ensure_env_binding_for_secret
+
+        bind_info = ensure_env_binding_for_secret(
+            user_id=uid,
+            workspace_id=bind_wid,
+            service_key=sk,
+            env_name=explicit_env,
+        )
+        payload["env_binding"] = bind_info
+        if bind_info.get("bound"):
+            payload["for_assistant_must_say_de"] = (
+                "Secret gespeichert und für bash gebunden "
+                f"({bind_info.get('env')} ← {sk}). Klartext nicht wiederholen — "
+                "direkt Coding/bash fortsetzen."
+            )
+    return json.dumps(payload, ensure_ascii=False)
 
 
-HANDLERS: dict[str, Callable[[dict[str, Any]], str]] = {
+HANDLERS: dict[str, Callable[..., str]] = {
     "save_user_secret": save_user_secret,
 }
 
@@ -136,10 +214,10 @@ TOOLS: list[dict[str, Any]] = [
             "name": "save_user_secret",
             "chat_full_parameters": True,
             "TOOL_DESCRIPTION": (
-                "Store a user secret immediately (no OTP curl). Use when the user pasted a credential "
-                "in chat and asked to save it. Required: service_key (lowercase [a-z0-9._-] — catalog "
-                "key if declared, else derive from the user's env/var name: FOO_BAR → foo_bar) and "
-                "secret. Available to the signed-in chat user. Never echo the secret."
+                "Store a user secret immediately (no OTP curl). "
+                "scope=workspace (default for non-catalog keys when a workspace is bound) "
+                "or scope=global. Auto-creates env_bindings for bash when a workspace is bound. "
+                "Required: service_key + secret. Never echo the secret."
             ),
             "parameters": {
                 "type": "object",
@@ -149,13 +227,35 @@ TOOLS: list[dict[str, Any]] = [
                         "TOOL_DESCRIPTION": (
                             "Secret slot name (lowercase [a-z0-9._-]). Prefer catalog keys "
                             "(e.g. ssc_api_key). For project env vars, lowercase the env name "
-                            "(FOO_BAR → foo_bar). Do not invent fixed product-specific names."
+                            "(FOO_BAR → foo_bar)."
                         ),
                     },
                     "secret": {
                         "type": "string",
                         "TOOL_DESCRIPTION": (
                             "Credential to store (plain string or JSON object as string)."
+                        ),
+                    },
+                    "scope": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": (
+                            "global = account-wide; workspace = this project only "
+                            "(avoids env-name clashes across projects). Default: workspace "
+                            "when bound and key is not a catalog integration key."
+                        ),
+                    },
+                    "workspace_id": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": (
+                            "Optional workspace UUID for scope=workspace "
+                            "(defaults to the currently bound workspace)."
+                        ),
+                    },
+                    "env_name": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": (
+                            "Optional process env name for auto-binding (default: uppercased "
+                            "service_key, e.g. foo_bar → FOO_BAR)."
                         ),
                     },
                 },

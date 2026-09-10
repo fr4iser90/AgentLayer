@@ -1,9 +1,11 @@
 # Agent layer + PostgreSQL. Netzwerk ai-net (wie examples/ollama/docker/compose.yaml).
 #
-# Variablen: docker/.env (von .env_example kopieren). Compose lädt .env automatisch.
+# Variablen: .env (von .env.example kopieren). Compose lädt .env automatisch.
 #
 # Start:
 #   docker compose up -d
+# agent-layer entrypoint drops to the host user that owns the repo bind-mount
+# (/workspace/AgentLayer) so ./workspace is not written as root — no wrapper, no hardcoded UID.
 #
 # Open WebUI: OpenAI API URL → http://agent-layer:8080/v1 (im gleichen Docker-Netz)
 #   oder vom Host: http://HOST_IP:8088/v1

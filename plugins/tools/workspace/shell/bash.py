@@ -11,6 +11,7 @@ from typing import Any, Callable
 from plugins.tools.workspace.lib.bash_policy import (
     coding_bash_strict_enabled,
     is_blocked,
+    prepare_coding_bash_command,
     resolve_path_under_workspace,
     strict_mode_reject_reason,
     subprocess_env_for_coding,
@@ -52,7 +53,8 @@ TOOL_DESCRIPTION = (
     "Workspace env_bindings inject user_secrets as process env (no .env file). "
     "Prefer coding_read_file, coding_search, and coding_glob for reads and search; "
     "prefer coding_git_sync for git pull/fetch. Output is truncated; use workdir instead of cd. "
-    "Do not chain with &&/||/; — run one simple command per call (shell=False)."
+    "One simple command per call (shell=False): no && / || / ; / | . "
+    "Redirects to /dev/null are ignored (stdout/stderr already captured)."
 )
 
 DEFAULT_TIMEOUT = 120
@@ -108,6 +110,31 @@ def bash(arguments: dict[str, Any], context: dict | None = None) -> str:
     policy_err = is_blocked(command)
     if policy_err:
         return json.dumps({"ok": False, "error": policy_err}, ensure_ascii=False)
+
+    cleaned, prep_err, redirects_stripped = prepare_coding_bash_command(command)
+    if prep_err:
+        return json.dumps(
+            {
+                "ok": False,
+                "error": prep_err,
+                "shell_meta": True,
+                "hint": (
+                    "Run one simple program per bash call. No && / || / ; / | . "
+                    "Do not use redirects — stderr is already captured. "
+                    "Example: {\"command\": \"ls -la ./pdfs\"}."
+                ),
+                "for_assistant_must_say_de": (
+                    "Bash akzeptiert nur einen Befehl ohne Verkettung. "
+                    "Erneut mit einem einfachen Kommando aufrufen (ohne &&/||/;/|)."
+                ),
+                "for_assistant_must_say_en": (
+                    "Bash accepts one simple command only. Retry without &&/||/;/|."
+                ),
+            },
+            ensure_ascii=False,
+        )
+    command = cleaned or command
+
     builtin_err = unsupported_shell_builtin_reason(command)
     if builtin_err:
         return json.dumps(
@@ -156,7 +183,10 @@ def bash(arguments: dict[str, Any], context: dict | None = None) -> str:
     from apps.backend.domain.shared.identity import get_identity
 
     _tid, uid = get_identity()
-    secret_env, missing_secrets, bound_names = resolve_bound_secrets(root, user_id=uid)
+    wid = ws.get("id")
+    secret_env, missing_secrets, bound_names = resolve_bound_secrets(
+        root, user_id=uid, workspace_id=wid
+    )
     if missing_secrets:
         return json.dumps(
             {
@@ -235,6 +265,8 @@ def bash(arguments: dict[str, Any], context: dict | None = None) -> str:
         "output": preview,
         "command": command,
     }
+    if redirects_stripped:
+        payload["redirects_stripped"] = True
     if secret_env:
         payload["env_secrets_injected"] = sorted(secret_env.keys())
     if needs_pat:

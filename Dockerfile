@@ -10,10 +10,11 @@ RUN npm run build
 FROM python:3.11-slim-bookworm
 
 # Pin for reproducible Chromium deps + seed (coding workspaces share PLAYWRIGHT_BROWSERS_PATH).
-ARG PLAYWRIGHT_VERSION=1.49.1
+# Keep in sync with common project Playwright majors (e.g. LOGA3 → chromium-1208 / Playwright 1.58).
+ARG PLAYWRIGHT_VERSION=1.58.2
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends tzdata git ffmpeg ca-certificates \
+    && apt-get install -y --no-install-recommends tzdata git ffmpeg ca-certificates gosu \
     && rm -rf /var/lib/apt/lists/*
 
 # Node/npm/npx for coding-agent workspace shells (same major as UI builder).

@@ -367,26 +367,22 @@ async def run_chat_tool_loop(
             if follow_hint:
                 messages.append({"role": "system", "content": follow_hint[:2500]})
             if ok_sum:
-                from apps.backend.domain.delegation.enforcement import (
-                    extract_artifact_ids_from_tool_result,
-                    extract_handoff_artifact_ids,
-                    record_orchestrator_delegate_success,
-                )
+                from apps.backend.domain.delegation import artifact_handoff, enforcement
 
                 coll = tool_context.get("handoff_artifact_collector")
                 if isinstance(coll, list):
-                    for aid in extract_artifact_ids_from_tool_result(result or ""):
+                    for aid in artifact_handoff.extract_artifact_ids_from_tool_result(result or ""):
                         if aid and aid not in coll:
                             coll.append(aid)
                 if str(tool_context.get("agent_id") or "") == "general":
                     if name == "delegate" and ok_sum:
-                        record_orchestrator_delegate_success(tool_context, args, result or "")
+                        enforcement.record_orchestrator_delegate_success(tool_context, args, result or "")
                         sub_aid = str(args.get("agent_id") or "").strip()
                         refs = args.get("artifact_refs")
                         if sub_aid == "coding" and isinstance(refs, list) and refs:
                             tool_context.pop("orchestrator_pending_artifact_refs", None)
                     else:
-                        pending = extract_handoff_artifact_ids(result or "")
+                        pending = artifact_handoff.extract_handoff_artifact_ids(result or "")
                         if pending:
                             tool_context["orchestrator_pending_artifact_refs"] = pending
             record_schedule_tool_event(

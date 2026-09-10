@@ -2392,6 +2392,7 @@ export function ChatPage() {
         }
         if (typ === "agent.llm_slot_wait") {
           const live = agentLiveTurnRef.current;
+          if (!live.isActive()) return;
           const text = llmSlotWaitMessage(msg);
           live.setWaitHint(text);
           const waited = msg.waited_sec != null ? Number(msg.waited_sec) : 0;
@@ -2405,6 +2406,7 @@ export function ChatPage() {
         }
         if (typ === "agent.deferred_wait") {
           const live = agentLiveTurnRef.current;
+          if (!live.isActive()) return;
           const text = deferredWaitMessage(msg);
           const phase = msg.phase != null ? String(msg.phase) : "";
           if (phase === "started" || phase === "waiting") {
@@ -2509,6 +2511,14 @@ export function ChatPage() {
               promptId,
               serviceKey,
               mode: "authenticated",
+              scope:
+                String(msg.scope ?? "").trim().toLowerCase() === "workspace"
+                  ? "workspace"
+                  : "global",
+              workspaceId:
+                msg.workspace_id != null && String(msg.workspace_id).trim()
+                  ? String(msg.workspace_id).trim()
+                  : undefined,
               title: msg.title != null ? String(msg.title) : undefined,
               help: msg.help != null ? String(msg.help) : undefined,
               reason: msg.reason != null ? String(msg.reason) : undefined,
@@ -2645,11 +2655,13 @@ export function ChatPage() {
           return;
         }
         if (typ === "agent.step_wait") {
+          if (!agentLiveTurnRef.current.isActive()) return;
           appendAgentLine("wait", t("chat:pausedStepMode"));
           setStepPaused(true);
           return;
         }
         if (typ === "agent.permission_ask") {
+          if (!agentLiveTurnRef.current.isActive()) return;
           const requestId = String(msg.request_id ?? "").trim();
           const toolName = String(msg.tool_name ?? "tool").trim() || "tool";
           if (!requestId) return;

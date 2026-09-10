@@ -172,6 +172,32 @@ export function createLiveTurnStore(): LiveTurnStore {
       scheduleStreamFlush();
     },
     appendLogLine: (kind: string, text: string, extras?: LiveLogAppend) => {
+      // Coalesce streamed specialist tokens into one timeline row per run+kind
+      // (avoid thousands of agent_log rows from llm_delta forwarding).
+      if (
+        (kind === "subagent_delta" || kind === "subagent_reasoning") &&
+        text &&
+        typeof extras?.subagentRunId === "string" &&
+        extras.subagentRunId
+      ) {
+        const sid = extras.subagentRunId;
+        const EXCERPT_MAX = 12_000;
+        for (let i = agentLog.length - 1; i >= 0; i--) {
+          const e = agentLog[i];
+          if (e.kind === kind && e.subagentRunId === sid) {
+            const next = (e.text + text).slice(0, EXCERPT_MAX);
+            agentLog = [
+              ...agentLog.slice(0, i),
+              { ...e, text: next },
+              ...agentLog.slice(i + 1),
+            ];
+            scheduleLogFlush();
+            return;
+          }
+          // Stop at prior run boundary so we don't merge across runs.
+          if (e.kind === "subagent_start" || e.kind === "subagent_done") break;
+        }
+      }
       agentLog = appendTimelineEntry(agentLog, { kind, text, ...extras });
       scheduleLogFlush();
     },

@@ -55,39 +55,65 @@ function collapsedStepPreview(card: RunCard): string[] {
   return cur ? [cur] : [];
 }
 
-type SubagentStepRow = { label: string; failed: boolean };
+type SubagentStepRow = { label: string; failed: boolean; resultDisplay?: string };
 
 function allSubagentStepRows(card: RunCard): SubagentStepRow[] {
   const steps = card.details.filter((d) => d.kind === "subagent_step");
   const rows: SubagentStepRow[] = [];
+  const usedDoneIds = new Set<string>();
   for (const d of steps) {
     if (d.stepPhase !== "start") continue;
     const label = d.text.trim();
     if (!label) continue;
     const tool = d.toolName;
     const failedDone = steps.find(
-      (x) => x.stepPhase === "done" && x.toolOk === false && tool && x.toolName === tool
+      (x) =>
+        x.stepPhase === "done" &&
+        x.toolOk === false &&
+        tool &&
+        x.toolName === tool &&
+        !usedDoneIds.has(x.id)
     );
     if (failedDone) {
-      rows.push({ label: failedDone.text.trim() || label, failed: true });
+      usedDoneIds.add(failedDone.id);
+      rows.push({
+        label: failedDone.text.trim() || label,
+        failed: true,
+        resultDisplay: failedDone.resultDisplay?.trim() || undefined,
+      });
       continue;
     }
     const done = steps.find(
-      (x) => x.stepPhase === "done" && tool && x.toolName === tool
+      (x) =>
+        x.stepPhase === "done" &&
+        tool &&
+        x.toolName === tool &&
+        !usedDoneIds.has(x.id)
     );
     if (!done || done.toolOk !== false) {
-      rows.push({ label, failed: false });
+      if (done) usedDoneIds.add(done.id);
+      rows.push({
+        label,
+        failed: false,
+        resultDisplay: done?.resultDisplay?.trim() || undefined,
+      });
     }
   }
   for (const d of steps) {
-    if (d.stepPhase !== "done" || d.toolOk !== false) continue;
+    if (d.stepPhase !== "done" || d.toolOk !== false || usedDoneIds.has(d.id)) continue;
     const tool = d.toolName;
     const hasStart = steps.some(
       (x) => x.stepPhase === "start" && tool && x.toolName === tool
     );
     if (!hasStart) {
       const label = d.text.trim();
-      if (label) rows.push({ label, failed: true });
+      if (label) {
+        rows.push({
+          label,
+          failed: true,
+          resultDisplay: d.resultDisplay?.trim() || undefined,
+        });
+      }
     }
   }
   return rows;
@@ -201,6 +227,18 @@ export function RunCardBlock({
   }
 
   const allSteps = card.kind === "subagent" ? allSubagentStepLabels(card) : [];
+  const stepRows = card.kind === "subagent" ? allSubagentStepRows(card) : [];
+  const lastOutputRow = !expanded
+    ? [...stepRows].reverse().find((r) => r.resultDisplay?.trim())
+    : undefined;
+  const toolCardOutput =
+    !expanded && card.kind === "tool"
+      ? card.details
+          .slice()
+          .reverse()
+          .find((d) => d.kind === "tool_done" && d.resultDisplay?.trim())
+          ?.resultDisplay?.trim()
+      : undefined;
   const compactionDetailLines =
     card.kind === "compaction"
       ? [
@@ -254,15 +292,45 @@ export function RunCardBlock({
               </Link>
             </p>
           ) : null}
+          {card.kind === "subagent" &&
+          (card.reasoningExcerpt?.trim() || card.assistantExcerpt?.trim()) ? (
+            <div className="mt-2 space-y-1.5">
+              {card.reasoningExcerpt?.trim() ? (
+                <details className="group/r">
+                  <summary className="cursor-pointer list-none text-[10px] font-medium text-sky-200/80 marker:content-none [&::-webkit-details-marker]:hidden">
+                    {t("chat:runCardThinking", { defaultValue: "Thinking" })}
+                    <span className="ml-1 font-normal text-sky-200/50 group-open/r:hidden">
+                      {t("chat:contextInjectExpandHint")}
+                    </span>
+                  </summary>
+                  <pre className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap break-words rounded border border-sky-500/20 bg-black/25 px-2 py-1.5 font-sans text-[11px] leading-relaxed text-neutral-400">
+                    {card.reasoningExcerpt.trim()}
+                  </pre>
+                </details>
+              ) : null}
+              {card.assistantExcerpt?.trim() ? (
+                <details className="group/a" open={card.status === "running"}>
+                  <summary className="cursor-pointer list-none text-[10px] font-medium text-indigo-200/85 marker:content-none [&::-webkit-details-marker]:hidden">
+                    {t("chat:runCardOutput", { defaultValue: "Output" })}
+                    <span className="ml-1 font-normal text-indigo-200/50 group-open/a:hidden">
+                      {t("chat:contextInjectExpandHint")}
+                    </span>
+                  </summary>
+                  <pre className="mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap break-words rounded border border-indigo-500/20 bg-black/25 px-2 py-1.5 font-sans text-[11px] leading-relaxed text-neutral-300">
+                    {card.assistantExcerpt.trim()}
+                  </pre>
+                </details>
+              ) : null}
+            </div>
+          ) : null}
           {!expanded && previewSteps.length > 0 ? (
             <ul className="mt-1 space-y-0.5" aria-live="polite">
               {previewSteps.map((step, i) => {
                 const isLatest = i === previewSteps.length - 1;
                 const running = card.status === "running";
-                const stepRows = allSubagentStepRows(card);
                 const failed =
                   card.kind === "subagent" &&
-                  stepRows[i]?.failed === true;
+                  stepRows[stepRows.length - previewSteps.length + i]?.failed === true;
                 return (
                   <li
                     key={`preview-${i}-${step}`}
@@ -295,6 +363,22 @@ export function RunCardBlock({
               })}
             </ul>
           ) : null}
+          {!expanded && (lastOutputRow?.resultDisplay || toolCardOutput) ? (
+            <details
+              className="group/out mt-1.5"
+              open={lastOutputRow?.failed === true || card.status === "failed"}
+            >
+              <summary className="cursor-pointer list-none text-[10px] font-medium text-emerald-200/80 marker:content-none [&::-webkit-details-marker]:hidden">
+                {t("chat:runCardCommandOutput")}
+                <span className="ml-1 font-normal text-emerald-200/45 group-open/out:hidden">
+                  {t("chat:contextInjectExpandHint")}
+                </span>
+              </summary>
+              <pre className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded border border-emerald-500/20 bg-black/30 px-2 py-1.5 font-mono text-[10px] leading-relaxed text-neutral-300">
+                {lastOutputRow?.resultDisplay || toolCardOutput}
+              </pre>
+            </details>
+          ) : null}
           {expandableDetails ? (
             <button
               type="button"
@@ -318,28 +402,58 @@ export function RunCardBlock({
                 : allSubagentStepRows(card).length > 0
                 ? allSubagentStepRows(card).map((row, i) => (
                     <li key={`step-${i}`} className="text-[10px] leading-snug text-neutral-500">
-                      {card.status === "running" ? (
-                        <span className="text-sky-400/70">→</span>
-                      ) : row.failed ? (
-                        <span className="text-rose-400/90" title={t("chat:runCardStepFailed")}>
-                          ✗
+                      <div>
+                        {card.status === "running" ? (
+                          <span className="text-sky-400/70">→</span>
+                        ) : row.failed ? (
+                          <span className="text-rose-400/90" title={t("chat:runCardStepFailed")}>
+                            ✗
+                          </span>
+                        ) : (
+                          <span className="text-emerald-400/70">✓</span>
+                        )}
+                        <span className={row.failed ? "text-rose-200/85" : "text-neutral-400"}>
+                          {" "}
+                          {row.label}
                         </span>
-                      ) : (
-                        <span className="text-emerald-400/70">✓</span>
-                      )}
-                      <span className={row.failed ? "text-rose-200/85" : "text-neutral-400"}>
-                        {" "}
-                        {row.label}
-                      </span>
+                      </div>
+                      {row.resultDisplay ? (
+                        <details className="group/out mt-1" open={row.failed}>
+                          <summary className="cursor-pointer list-none text-[10px] font-medium text-emerald-200/80 marker:content-none [&::-webkit-details-marker]:hidden">
+                            {t("chat:runCardCommandOutput")}
+                            <span className="ml-1 font-normal text-emerald-200/45 group-open/out:hidden">
+                              {t("chat:contextInjectExpandHint")}
+                            </span>
+                          </summary>
+                          <pre className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded border border-emerald-500/20 bg-black/30 px-2 py-1.5 font-mono text-[10px] leading-relaxed text-neutral-300">
+                            {row.resultDisplay}
+                          </pre>
+                        </details>
+                      ) : null}
                     </li>
                   ))
                 : card.details.map((d) => (
                     <li key={d.id} className="text-[10px] leading-snug text-neutral-500">
-                      <span className="font-medium uppercase tracking-wide text-surface-muted">
-                        {d.kind}
-                      </span>
-                      {d.toolName ? <span className="text-indigo-300/80"> {d.toolName}</span> : null}
-                      {d.text ? <span className="text-neutral-400"> — {d.text}</span> : null}
+                      <div>
+                        <span className="font-medium uppercase tracking-wide text-surface-muted">
+                          {d.kind}
+                        </span>
+                        {d.toolName ? <span className="text-indigo-300/80"> {d.toolName}</span> : null}
+                        {d.text ? <span className="text-neutral-400"> — {d.text}</span> : null}
+                      </div>
+                      {d.resultDisplay?.trim() ? (
+                        <details className="group/out mt-1" open={d.toolOk === false}>
+                          <summary className="cursor-pointer list-none text-[10px] font-medium text-emerald-200/80 marker:content-none [&::-webkit-details-marker]:hidden">
+                            {t("chat:runCardCommandOutput")}
+                            <span className="ml-1 font-normal text-emerald-200/45 group-open/out:hidden">
+                              {t("chat:contextInjectExpandHint")}
+                            </span>
+                          </summary>
+                          <pre className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded border border-emerald-500/20 bg-black/30 px-2 py-1.5 font-mono text-[10px] leading-relaxed text-neutral-300">
+                            {d.resultDisplay.trim()}
+                          </pre>
+                        </details>
+                      ) : null}
                     </li>
                   ))}
             </ul>

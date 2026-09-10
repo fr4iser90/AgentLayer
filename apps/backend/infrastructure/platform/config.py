@@ -2,27 +2,13 @@ import logging
 import os
 from pathlib import Path
 
+from apps.backend.infrastructure.platform.config_env import env_bool as _env_bool
+from apps.backend.infrastructure.platform.config_env import env_int as _env_int
+from apps.backend.infrastructure.platform.config_model_rounds import *  # noqa: F403
+from apps.backend.infrastructure.platform.config_paths import *  # noqa: F403
+from apps.backend.infrastructure.platform.config_workspace_tools import *  # noqa: F403
+
 logger = logging.getLogger(__name__)
-
-_PLUGINS_DIR_RAW = os.environ.get("AGENT_PLUGINS_DIR", "").strip()
-if _PLUGINS_DIR_RAW:
-    PLUGINS_DIR = Path(_PLUGINS_DIR_RAW)
-else:
-    PLUGINS_DIR = Path(__file__).resolve().parents[4] / "plugins"
-
-
-def tools_backup_directory() -> Path:
-    raw = (os.environ.get("AGENT_TOOLS_BACKUP_DIR") or "").strip()
-    if raw:
-        return Path(raw).expanduser()
-    return Path(DATA_DIR) / "tool_backups"
-
-
-def _env_bool(key: str, default: bool) -> bool:
-    v = os.environ.get(key, "").strip().lower()
-    if not v:
-        return default
-    return v in ("1", "true", "yes", "on")
 
 
 def _agent_mode_from_env() -> str:
@@ -37,126 +23,6 @@ def _agent_mode_from_env() -> str:
 
 AGENT_MODE = _agent_mode_from_env()
 
-
-def _env_int(key: str, default: int) -> int:
-    """Parse integer env; empty or whitespace uses ``default`` (Compose often passes ``VAR=``)."""
-    raw = (os.environ.get(key) or "").strip()
-    if not raw:
-        return default
-    return int(raw)
-
-
-# --- Unified LLM providers (OpenAI-compatible) ---
-# Numbered env rows: LLM_PROVIDER_1_BASE_URL, LLM_PROVIDER_1_LABEL, LLM_PROVIDER_1_API_KEY,
-# LLM_PROVIDER_1_API_HEADER_NAME (default Authorization), optional _MODEL_DEFAULT/_VLM/_AGENT/_CODING,
-# optional LLM_PROVIDER_N_MAX_PARALLEL (1–64, default 1).
-# Parsed by :mod:`llm_env_providers`; registered as provider_1, provider_2, … in the catalog.
-LLM_HTTP_MAX_PARALLEL_DEFAULT = max(1, min(64, _env_int("LLM_HTTP_MAX_PARALLEL_DEFAULT", 4)))
-LLM_AUX_PROVIDER_ID = (os.environ.get("LLM_AUX_PROVIDER_ID") or "").strip() or None
-LLM_ROUTER_PROVIDER_ID = (os.environ.get("LLM_ROUTER_PROVIDER_ID") or "").strip() or None
-LLM_AUX_MODEL = (os.environ.get("LLM_AUX_MODEL") or "").strip() or None
-
-# Hybrid model routing: per-profile defaults (empty = endpoint catalog model_default / UI picker).
-AGENT_MODEL_PROFILE_DEFAULT = (os.environ.get("AGENT_MODEL_PROFILE_DEFAULT") or "").strip() or None
-AGENT_MODEL_PROFILE_VLM = (os.environ.get("AGENT_MODEL_PROFILE_VLM") or "").strip() or None
-AGENT_MODEL_PROFILE_AGENT = (os.environ.get("AGENT_MODEL_PROFILE_AGENT") or "").strip() or None
-AGENT_MODEL_PROFILE_CODING = (os.environ.get("AGENT_MODEL_PROFILE_CODING") or "").strip() or None
-# If false, client ``model`` and X-Agent-Model-Override are ignored (profiles / auto-VLM only).
-AGENT_ALLOW_MODEL_OVERRIDE = _env_bool("AGENT_ALLOW_MODEL_OVERRIDE", True)
-# Comma-separated roles (e.g. admin) allowed to override; empty = any authenticated user (Bearer → DB user).
-AGENT_MODEL_OVERRIDE_ROLES = frozenset(
-    x.strip().lower()
-    for x in (os.environ.get("AGENT_MODEL_OVERRIDE_ROLES") or "").split(",")
-    if x.strip()
-)
-# If true, unauthenticated optional-route callers may still set model / override header.
-AGENT_MODEL_OVERRIDE_ANONYMOUS = _env_bool("AGENT_MODEL_OVERRIDE_ANONYMOUS", False)
-
-MAX_TOOL_ROUNDS_CAP = max(256, _env_int("AGENT_MAX_TOOL_ROUNDS_CAP", 16384))
-
-
-def _parse_tool_rounds_env(raw: str, *, env_name: str) -> int | None:
-    """Parse ``AGENT_MAX_TOOL_ROUNDS`` / ``SUBAGENT_MAX_TOOL_ROUNDS``: empty → None; <=0 → cap; else clamped."""
-    if not raw.strip():
-        return None
-    try:
-        v = int(raw.strip())
-    except ValueError:
-        logger.warning("invalid %s %r — ignored", env_name, raw)
-        return None
-    if v <= 0:
-        logger.info(
-            "%s=%s → using high cap %s tool rounds (override with AGENT_MAX_TOOL_ROUNDS_CAP)",
-            env_name,
-            raw.strip(),
-            MAX_TOOL_ROUNDS_CAP,
-        )
-        return MAX_TOOL_ROUNDS_CAP
-    return max(1, min(v, MAX_TOOL_ROUNDS_CAP))
-
-
-def _resolve_max_tool_rounds() -> int:
-    """``AGENT_MAX_TOOL_ROUNDS``: positive = limit (capped); 0 or negative = cap; unset = 8."""
-    raw = (os.environ.get("AGENT_MAX_TOOL_ROUNDS") or "").strip()
-    if not raw:
-        return 8
-    parsed = _parse_tool_rounds_env(raw, env_name="AGENT_MAX_TOOL_ROUNDS")
-    return parsed if parsed is not None else 8
-
-
-MAX_TOOL_ROUNDS = _resolve_max_tool_rounds()
-
-
-def _resolve_subagent_max_tool_rounds() -> int:
-    """``SUBAGENT_MAX_TOOL_ROUNDS`` overrides ``AGENT_MAX_TOOL_ROUNDS`` for ``delegate`` sub-agents only."""
-    raw = (os.environ.get("SUBAGENT_MAX_TOOL_ROUNDS") or "").strip()
-    if raw:
-        parsed = _parse_tool_rounds_env(raw, env_name="SUBAGENT_MAX_TOOL_ROUNDS")
-        if parsed is not None:
-            return parsed
-    return MAX_TOOL_ROUNDS
-
-
-SUBAGENT_MAX_TOOL_ROUNDS = _resolve_subagent_max_tool_rounds()
-
-
-def _resolve_subagent_timeout_sec() -> float | None:
-    """``SUBAGENT_TIMEOUT_SEC``: positive = wall-clock cap for ``delegate`` runs; unset or <=0 = no limit."""
-    raw = (os.environ.get("SUBAGENT_TIMEOUT_SEC") or "").strip()
-    if not raw:
-        return None
-    try:
-        v = float(raw)
-    except ValueError:
-        logger.warning(
-            "invalid SUBAGENT_TIMEOUT_SEC %r — no sub-agent wall-clock timeout",
-            raw,
-        )
-        return None
-    if v <= 0:
-        return None
-    return v
-
-
-SUBAGENT_TIMEOUT_SEC = _resolve_subagent_timeout_sec()
-
-
-def _resolve_llm_chat_timeout_sec() -> float | None:
-    """``AGENT_LLM_CHAT_TIMEOUT_SEC``: unset or <=0 = no HTTP read timeout; positive = seconds."""
-    raw = (os.environ.get("AGENT_LLM_CHAT_TIMEOUT_SEC") or "").strip()
-    if not raw:
-        return None
-    try:
-        v = float(raw)
-    except ValueError:
-        logger.warning("invalid AGENT_LLM_CHAT_TIMEOUT_SEC %r — no LLM HTTP timeout", raw)
-        return None
-    if v <= 0:
-        return None
-    return v
-
-
-LLM_CHAT_TIMEOUT_SEC: float | None = _resolve_llm_chat_timeout_sec()
 from apps.backend.infrastructure.platform.loop_guard_env import *  # noqa: E402,F403
 # Doom-loop exclusions (idempotent reads). ``-`` disables; empty env = defaults below.
 _DOOM_EXCL_ENV = os.environ.get("AGENT_TOOL_DOOM_LOOP_EXCLUDE")
@@ -175,9 +41,6 @@ AGENT_SESSION_TOOL_RECAP_ENABLED = _env_bool("AGENT_SESSION_TOOL_RECAP_ENABLED",
 AGENT_SESSION_TOOL_RECAP_MAX = max(1, _env_int("AGENT_SESSION_TOOL_RECAP_MAX", 12))
 # Max wall time for ``workspace_verify`` (runs ``verify_command`` from ``.agentlayer.json`` only).
 AGENT_WORKSPACE_VERIFY_TIMEOUT_SEC = max(30, min(_env_int("AGENT_WORKSPACE_VERIFY_TIMEOUT_SEC", 600), 3600))
-DATA_DIR = os.environ.get("AGENT_DATA_DIR", "/data")
-# Before replace_tool / update_tool / create_tool overwrite, copy prior .py here (UTC timestamp prefix).
-TOOLS_BACKUP_ENABLED = _env_bool("AGENT_TOOLS_BACKUP_ENABLED", True)
 SYSTEM_PROMPT_EXTRA = os.environ.get("AGENT_SYSTEM_PROMPT", "").strip()
 
 # If the local catalog provider returns no tool_calls but JSON tool intent in message content, parse and run.
@@ -266,6 +129,13 @@ CHAT_CONTEXT_TOOL_RESULT_MAX_RATIO = max(
 )
 CHAT_CONTEXT_KEEP_RECENT_TOOL_ROUNDS = max(2, _env_int("CHAT_CONTEXT_KEEP_RECENT_TOOL_ROUNDS", 6))
 
+# DSH-style once+on-change: omit unchanged file/tool-recoverable injects from the LLM.
+CHAT_CONTEXT_INJECT_OMIT = _env_bool("CHAT_CONTEXT_INJECT_OMIT", True)
+# Re-send omitable injects in full at least every N user turns (0 = only on change/compaction).
+CHAT_CONTEXT_INJECT_REFRESH_EVERY_N_TURNS = max(
+    0, _env_int("CHAT_CONTEXT_INJECT_REFRESH_EVERY_N_TURNS", 8)
+)
+
 AGENT_TOOLS_RANKING_ENABLED = _env_bool("AGENT_TOOLS_RANKING_ENABLED", True)
 # Dynamic tool forward budget — ratios of provider context window only (context_budget.py).
 # 0.25 fits our largest agent (coding: 49 tools ≈ 7.5k tokens with real schemas) from a 32k window
@@ -333,172 +203,6 @@ OTP_REGISTER_RATE_LIMIT_MAX = max(5, min(_env_int("AGENT_OTP_REGISTER_RATE_LIMIT
 OTP_REGISTER_RATE_LIMIT_WINDOW_SEC = max(
     15, min(_env_int("AGENT_OTP_REGISTER_RATE_LIMIT_WINDOW_SEC", 60), 3600)
 )
-
-# Local files tools (local_files / fs_*): size/list limits; path scope is admin/OS (no AGENT_WORKSPACE_ROOT).
-WORKSPACE_MAX_FILE_BYTES = _env_int("AGENT_WORKSPACE_MAX_FILE_BYTES", 1_200_000)
-WORKSPACE_MAX_LIST_ENTRIES = _env_int("AGENT_WORKSPACE_MAX_LIST_ENTRIES", 500)
-WORKSPACE_MAX_SEARCH_FILES = _env_int("AGENT_WORKSPACE_MAX_SEARCH_FILES", 2000)
-WORKSPACE_MAX_SEARCH_MATCHES = _env_int("AGENT_WORKSPACE_MAX_SEARCH_MATCHES", 100)
-WORKSPACE_SEARCH_MAX_FILE_BYTES = _env_int("AGENT_WORKSPACE_SEARCH_MAX_FILE_BYTES", 400_000)
-WORKSPACE_MAX_GLOB_FILES = _env_int("AGENT_WORKSPACE_MAX_GLOB_FILES", 2000)
-WORKSPACE_MAX_READ_LINES = _env_int("AGENT_WORKSPACE_MAX_READ_LINES", 8000)
-# coding_search literal mode: prefer ``rg`` when installed (override path with AGENT_RIPGREP_PATH).
-AGENT_CODING_SEARCH_USE_RIPGREP = _env_bool("AGENT_CODING_SEARCH_USE_RIPGREP", True)
-AGENT_RIPGREP_PATH = (os.environ.get("AGENT_RIPGREP_PATH") or "").strip() or None
-AGENT_RIPGREP_TIMEOUT_SEC = max(15, min(_env_int("AGENT_RIPGREP_TIMEOUT_SEC", 120), 600))
-
-# Dashboard UI: binary uploads (e.g. gallery). Operator may override max MB / MIME in DB.
-WORKSPACE_UPLOAD_MAX_FILE_MB = max(1, min(_env_int("AGENT_WORKSPACE_UPLOAD_MAX_MB", 10), 512))
-
-# --- Coding tools (dashboard-scoped, container-isolated) ---
-# Root directory for all coding tool file operations; agent cannot escape this tree.
-_CODING_ROOT_RAW = (os.environ.get("AGENT_CODING_ROOT") or "").strip()
-CODING_ROOT: Path | None = Path(_CODING_ROOT_RAW).expanduser() if _CODING_ROOT_RAW else None
-# When true, coding tools are enabled; false → all coding_* tools return disabled error.
-CODING_ENABLED = _env_bool("AGENT_CODING_ENABLED", True)
-# Optional background semantic index when a stale/empty workspace is bound to a coding chat.
-AGENT_WORKSPACE_INDEX_ON_ATTACH = _env_bool("AGENT_WORKSPACE_INDEX_ON_ATTACH", False)
-# Post-write incremental index: off | debounced (default) | immediate — touched files only (Qdrant + Neo4j).
-_AGENT_INDEX_ON_WRITE_RAW = (os.environ.get("AGENT_WORKSPACE_INDEX_ON_WRITE") or "debounced").strip().lower()
-AGENT_WORKSPACE_INDEX_ON_WRITE = (
-    _AGENT_INDEX_ON_WRITE_RAW
-    if _AGENT_INDEX_ON_WRITE_RAW in ("off", "debounced", "immediate")
-    else "debounced"
-)
-AGENT_WORKSPACE_INDEX_DEBOUNCE_SEC = max(
-    0, min(_env_int("AGENT_WORKSPACE_INDEX_DEBOUNCE_SEC", 3), 120)
-)
-# Max file size for coding read/write operations.
-CODING_MAX_FILE_BYTES = _env_int("AGENT_CODING_MAX_FILE_BYTES", 2_000_000)
-# Comma-separated path prefixes that coding tools must NEVER access (resolved, lowercase).
-CODING_PATH_BLOCKLIST = frozenset(
-    x.strip().lower()
-    for x in (
-        os.environ.get("AGENT_CODING_PATH_BLOCKLIST")
-        or "/app,/data/tools,/data/tool_backups,/etc,/usr,/var,/proc,/sys,/root"
-    ).split(",")
-    if x.strip()
-)
-# coding_bash: strip operator secrets from subprocess env (PATH/toolchain vars kept).
-CODING_BASH_ENV_SCRUB = _env_bool("AGENT_CODING_BASH_ENV_SCRUB", True)
-# Opt-in strict prefix allowlist for coding_bash (default off — normal agent keeps broad shell).
-CODING_BASH_STRICT = _env_bool("AGENT_CODING_BASH_STRICT", False)
-# Inject AGENTS.md / CLAUDE.md into selected agent prompts (DSH-style; labeled untrusted).
-WORKSPACE_AGENT_INSTRUCTIONS_ENABLED = _env_bool("AGENT_WORKSPACE_AGENT_INSTRUCTIONS", True)
-WORKSPACE_AGENT_INSTRUCTIONS_MAX_BYTES = max(
-    1024, min(_env_int("AGENT_WORKSPACE_AGENT_INSTRUCTIONS_MAX_BYTES", 65_536), 262_144)
-)
-# Comma-separated agent ids that receive workspace instruction injection.
-# Default: general,coding,coding_plan
-_WORKSPACE_AGENT_INSTRUCTIONS_AGENTS_RAW = (
-    os.environ.get("AGENT_WORKSPACE_AGENT_INSTRUCTIONS_AGENTS") or ""
-).strip()
-WORKSPACE_AGENT_INSTRUCTIONS_AGENTS: str | None = (
-    _WORKSPACE_AGENT_INSTRUCTIONS_AGENTS_RAW or None
-)
-
-# LSP tool: cap diagnostics returned to the model; timeout waiting for publishDiagnostics.
-AGENT_LSP_DIAGNOSTICS_MAX = max(1, min(_env_int("AGENT_LSP_DIAGNOSTICS_MAX", 40), 200))
-AGENT_LSP_DIAGNOSTICS_TIMEOUT_SEC = max(1, min(_env_int("AGENT_LSP_DIAGNOSTICS_TIMEOUT_SEC", 10), 120))
-
-
-def lsp_server_cmd_override(language: str) -> list[str] | None:
-    """Optional per-language LSP argv from env, e.g. AGENT_LSP_PYTHON_CMD='pyright-langserver --stdio'."""
-    import shlex
-
-    lang = (language or "").strip().lower()
-    if not lang:
-        return None
-    raw = (os.environ.get(f"AGENT_LSP_{lang.upper()}_CMD") or "").strip()
-    if not raw:
-        return None
-    try:
-        parts = shlex.split(raw)
-    except ValueError:
-        parts = raw.split()
-    return parts or None
-
-# Package admission for coding_bash pip/npm installs (off | monitor | enforce).
-PACKAGE_ADMISSION_MODE = (os.environ.get("AGENT_PACKAGE_ADMISSION") or "monitor").strip().lower()
-if PACKAGE_ADMISSION_MODE not in ("off", "monitor", "enforce"):
-    logger.warning("unknown AGENT_PACKAGE_ADMISSION %r — using monitor", PACKAGE_ADMISSION_MODE)
-    PACKAGE_ADMISSION_MODE = "monitor"
-PACKAGE_MIN_VERSION_AGE_DAYS = max(0, _env_int("AGENT_PACKAGE_MIN_AGE_DAYS", 0))
-PACKAGE_UNATTENDED_MIN_AGE_DAYS = max(0, _env_int("AGENT_PACKAGE_UNATTENDED_MIN_AGE_DAYS", 7))
-PACKAGE_BLOCK_SEVERITY_RAW = (os.environ.get("AGENT_PACKAGE_BLOCK_SEVERITY") or "CRITICAL,HIGH").strip()
-PACKAGE_ASK_SEVERITY_RAW = (os.environ.get("AGENT_PACKAGE_ASK_SEVERITY") or "MEDIUM").strip()
-PACKAGE_NPM_IGNORE_SCRIPTS = _env_bool("AGENT_PACKAGE_NPM_IGNORE_SCRIPTS", True)
-PACKAGE_BLOCK_GLOBAL_INSTALL = _env_bool("AGENT_PACKAGE_BLOCK_GLOBAL_INSTALL", True)
-PACKAGE_BLOCK_CUSTOM_INDEX = _env_bool("AGENT_PACKAGE_BLOCK_CUSTOM_INDEX", True)
-PACKAGE_BLOCK_BULK_REQUIREMENTS = _env_bool("AGENT_PACKAGE_BLOCK_BULK_REQUIREMENTS", True)
-PACKAGE_UNATTENDED_STRICT = _env_bool("AGENT_PACKAGE_UNATTENDED_STRICT", True)
-PACKAGE_OSV_TIMEOUT_SEC = max(1, min(_env_int("AGENT_PACKAGE_OSV_TIMEOUT_SEC", 8), 60))
-PACKAGE_LOOKUP_FAILURE_ACTION_RAW = (os.environ.get("AGENT_PACKAGE_LOOKUP_FAILURE") or "").strip()
-PACKAGE_BLOCKLIST_RAW = (os.environ.get("AGENT_PACKAGE_BLOCKLIST") or "").strip()
-PACKAGE_ALLOWLIST_RAW = (os.environ.get("AGENT_PACKAGE_ALLOWLIST") or "").strip()
-
-
-def WORKSPACE_upload_dir() -> Path:
-    raw = (os.environ.get("AGENT_WORKSPACE_UPLOAD_DIR") or "").strip()
-    if raw:
-        return Path(raw).expanduser()
-    return Path(DATA_DIR) / "WORKSPACE_uploads"
-
-
-def WORKSPACE_upload_env_allowed_mime() -> frozenset[str]:
-    from apps.backend.infrastructure.dashboards.dashboard_upload_bytes import DEFAULT_BOARD_UPLOAD_MIME
-
-    raw = (
-        os.environ.get("AGENT_WORKSPACE_UPLOAD_ALLOWED_MIME")
-        or DEFAULT_BOARD_UPLOAD_MIME
-    ).strip()
-    return frozenset(x.strip().lower() for x in raw.split(",") if x.strip())
-
-
-def dashboard_upload_dir() -> Path:
-    """Gallery uploads (alias for ``WORKSPACE_upload_dir``)."""
-    return WORKSPACE_upload_dir()
-
-
-# --- Media library (user uploads + embed refs; bytes on disk under media_uploads/) ---
-MEDIA_DEFAULT_USER_QUOTA_MB = max(1, min(_env_int("AGENT_MEDIA_DEFAULT_USER_QUOTA_MB", 500), 50_000))
-MEDIA_UPLOAD_MAX_FILE_MB = max(1, min(_env_int("AGENT_MEDIA_UPLOAD_MAX_FILE_MB", 50), 512))
-
-
-def media_upload_dir() -> Path:
-    raw = (os.environ.get("AGENT_MEDIA_UPLOAD_DIR") or "").strip()
-    if raw:
-        return Path(raw).expanduser()
-    return Path(DATA_DIR) / "media_uploads"
-
-
-def media_upload_env_allowed_mime() -> frozenset[str]:
-    raw = (
-        os.environ.get("AGENT_MEDIA_UPLOAD_ALLOWED_MIME")
-        or "audio/mpeg,audio/mp4,audio/flac,audio/ogg,audio/wav,video/mp4"
-    ).strip()
-    return frozenset(x.strip().lower() for x in raw.split(",") if x.strip())
-
-
-def media_embed_env_allowed_hosts() -> frozenset[str]:
-    raw = (
-        os.environ.get("AGENT_MEDIA_EMBED_ALLOWED_HOSTS")
-        or "www.youtube.com,youtube.com,www.youtube-nocookie.com,player.vimeo.com"
-    ).strip()
-    return frozenset(x.strip().lower() for x in raw.split(",") if x.strip())
-
-
-def media_stream_env_allowed_hosts() -> frozenset[str]:
-    raw = (
-        os.environ.get("AGENT_MEDIA_STREAM_ALLOWED_HOSTS")
-        or (
-            "mdr.de,www.mdr.de,cast.addradio.de,listen.streamtheworld.com,"
-            "playerservices.streamtheworld.com,icecast.mdradio.de,stream.radio.co,"
-            "akamaized.net,mdr-radio-hls.akamaized.net"
-        )
-    ).strip()
-    return frozenset(x.strip().lower() for x in raw.split(",") if x.strip())
-
 
 # create_tool limits / codegen (CREATE_TOOL_ENABLED is set above with TOOLS_EXTRA_DIR).
 CREATE_TOOL_MAX_BYTES = _env_int("AGENT_CREATE_TOOL_MAX_BYTES", 120_000)

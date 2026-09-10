@@ -160,21 +160,23 @@ def json_blocked_credential_path_error(rel: str) -> str:
             ),
             "hint": (
                 "Do this instead (no .env file):\n"
-                "1) save_user_secret(service_key=…, secret=…) if the user pasted the value, "
+                "1) save_user_secret(service_key=…, secret=…, scope=workspace) if the user pasted the value, "
                 "or request_user_secret(service_key=…) for an in-chat card;\n"
-                "2) env_bindings action=set with bindings like "
-                '{"FOO_BAR":"foo_bar"} (env name → lowercased service_key, names only);\n'
-                "3) re-run bash — secrets are injected into the process env at runtime.\n"
+                "2) env_bindings are created automatically (FOO_BAR ← foo_bar) — "
+                "optional env_bindings action=set only to override;\n"
+                "3) re-run bash — secrets are injected at runtime "
+                "(workspace secret first, then global).\n"
                 "Operator-only deploy secrets stay in docker/.env (human/ops, not the agent)."
             ),
             "for_assistant_must_say_de": (
-                "`.env` wird nicht geschrieben. Secrets landen in user_secrets "
-                "(save_user_secret / request_user_secret), Mapping über env_bindings; "
-                "bash injiziert sie zur Laufzeit."
+                "`.env` wird nicht geschrieben. Secrets in Postgres "
+                "(save_user_secret / request_user_secret, scope=workspace für Projekt-Env); "
+                "env_bindings entstehen automatisch; bash injiziert zur Laufzeit."
             ),
             "for_assistant_must_say_en": (
-                "Won't write `.env`. Store secrets with save_user_secret / request_user_secret, "
-                "map env names via env_bindings; bash injects them at runtime."
+                "Won't write `.env`. Store secrets with save_user_secret / request_user_secret "
+                "(scope=workspace for project env vars); env_bindings are automatic; "
+                "bash injects them at runtime."
             ),
         },
         ensure_ascii=False,

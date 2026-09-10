@@ -96,7 +96,7 @@ async def emit_tool_done_events(
         ev_done["result_ok"] = ok_sum
     if err_sum:
         ev_done["result_error"] = err_sum[:500]
-    from apps.backend.domain.delegation.enforcement import tool_result_display_line
+    from apps.backend.domain.delegation.result_preview import tool_result_display_line
 
     display = tool_result_display_line(name, result or "")
     if display:

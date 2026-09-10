@@ -26,27 +26,34 @@ docker compose build agent-layer
 docker compose up -d agent-layer
 ```
 
-First start seeds the volume (log: `seeding Playwright browsers`). Later app rebuilds reuse the volume unless you delete it.
+Entrypoint **merges** `/opt/ms-playwright-seed` → volume on every start (`cp -an`, no overwrite). Image upgrades therefore add new `chromium-<rev>` trees without wiping older ones. Log: `merging Playwright browser seed`.
+
+Current image pin: `PLAYWRIGHT_VERSION=1.58.2` → **chromium-1208** (Chrome for Testing 145.x).
 
 ## Project uses a different Playwright major
 
-From the workspace root (coding bash):
+Symptom: `Executable doesn't exist at …/chromium-1208/…` while an older `chromium-*` exists under `/data/ms-playwright`.
+
+Each Playwright npm version needs its own revision directory. Fixes (pick one):
+
+1. **Rebuild agent-layer** so the seed includes that revision (preferred when the pin matches the project).
+2. From the **workspace root** (coding `bash`, with `PLAYWRIGHT_BROWSERS_PATH` set by compose):
 
 ```bash
 npx playwright install chromium
 ```
 
-Browsers are versioned under `PLAYWRIGHT_BROWSERS_PATH` (`chromium-<revision>/…`), so multiple Playwright versions can coexist.
+Browsers coexist under `PLAYWRIGHT_BROWSERS_PATH` (`chromium-<revision>/…`).
 
 ## Missing browser / OS libs
 
 | Symptom | Fix |
 |---------|-----|
-| `Executable doesn't exist at …/chrome` | `npx playwright install chromium` in the workspace, or recreate volume + restart so seed copies again |
+| `Executable doesn't exist at …/chromium-NNNN/…` | Version mismatch — rebuild image (newer seed) or `npx playwright install chromium` in the project |
 | Shared libs missing | Rebuild image (Dockerfile runs `playwright install-deps chromium`) |
 | Empty / wrong path | Ensure compose sets `PLAYWRIGHT_BROWSERS_PATH` and mounts `agent_ms_playwright` |
 
-Reset cache (forces re-seed on next start):
+Reset cache (forces full re-merge from seed on next start):
 
 ```bash
 docker compose stop agent-layer
