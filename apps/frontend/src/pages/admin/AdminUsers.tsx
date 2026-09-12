@@ -67,6 +67,13 @@ export function AdminUsers() {
   const [tenantCreateBusy, setTenantCreateBusy] = useState(false);
   const [tenantCreateMsg, setTenantCreateMsg] = useState<string | null>(null);
 
+  // P3: per-user agent access. Specialist agents that can be granted beyond the
+  // built-in defaults (general / knowledge_companion); admins already see all.
+  const [specialistAgents, setSpecialistAgents] = useState<{ id: string; name: string }[]>([]);
+  const [agentListLoaded, setAgentListLoaded] = useState(false);
+  const [userAllowedAgents, setUserAllowedAgents] = useState<Record<string, Set<string>>>({});
+  const [agentBusy, setAgentBusy] = useState<Record<string, boolean>>({});
+
   const loadTenantTemplates = useCallback(async () => {
     try {
       const res = await apiFetch("/v1/admin/tenant-templates", auth);
@@ -276,6 +283,102 @@ export function AdminUsers() {
   }
 
 
+  // Load the specialist agents once (the admin overview lists every agent).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiFetch("/v1/admin/agents", auth);
+        const data = (await res.json()) as {
+          agents?: { id: string; name?: string; min_role?: string }[];
+        };
+        if (res.ok && Array.isArray(data.agents)) {
+          const excluded = new Set(["general", "knowledge_companion", "dashboard"]);
+          const specialists = data.agents
+            .filter(
+              (a) => !excluded.has(a.id) && (a.min_role ?? "user").toLowerCase() !== "admin"
+            )
+            .map((a) => ({ id: a.id, name: a.name ?? a.id }));
+          if (!cancelled) setSpecialistAgents(specialists);
+        }
+      } catch {
+        /* specialist list is best-effort */
+      } finally {
+        if (!cancelled) setAgentListLoaded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [auth]);
+
+  // Load each listed user's granted specialist agents so the checkboxes reflect
+  // existing grants. One pass over ``rows`` (no hooks inside the loop).
+  useEffect(() => {
+    const pending = new Map<string, { cancelled: boolean }>();
+    rows.forEach((r) => {
+      const ctrl = { cancelled: false };
+      pending.set(r.id, ctrl);
+      void (async () => {
+        try {
+          const res = await apiFetch(`/v1/admin/agents/policies?user_id=${r.id}`, auth);
+          const data = (await res.json()) as {
+            policies?: { agent_id: string; direct_state: string; scope: string }[];
+          };
+          if (res.ok && Array.isArray(data.policies)) {
+            const allowed = new Set(
+              data.policies
+                .filter((p) => p.scope === "user" && p.direct_state === "allow")
+                .map((p) => p.agent_id)
+            );
+            if (!ctrl.cancelled) {
+              setUserAllowedAgents((prev) => ({ ...prev, [r.id]: allowed }));
+            }
+          }
+        } catch {
+          /* best-effort */
+        }
+      })();
+    });
+    return () => {
+      pending.forEach((c) => (c.cancelled = true));
+    };
+  }, [rows, auth]);
+
+  // Grant/deny a single agent for one person (P3 batch endpoint, scope='user').
+  async function toggleUserAgent(userId: string, agentId: string, allowed: boolean) {
+    setAgentBusy((prev) => ({ ...prev, [userId]: true }));
+    try {
+      const res = await apiFetch("/v1/admin/agents/access-policy/batch", auth, {
+        method: "POST",
+        body: JSON.stringify({
+          user_id: userId,
+          agent_ids: [agentId],
+          direct_state: allowed ? "allow" : "inherit",
+          delegate_state: "inherit",
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { detail?: unknown };
+      if (!res.ok) {
+        setListErr(
+          typeof data.detail === "string" ? data.detail : t("admin:agentAccessUpdateFailed")
+        );
+        return;
+      }
+      setUserAllowedAgents((prev) => {
+        const next = new Set(prev[userId] ?? []);
+        if (allowed) next.add(agentId);
+        else next.delete(agentId);
+        return { ...prev, [userId]: next };
+      });
+    } catch (e) {
+      setListErr(e instanceof Error ? e.message : t("admin:agentAccessUpdateFailed"));
+    } finally {
+      setAgentBusy((prev) => ({ ...prev, [userId]: false }));
+    }
+  }
+
+
   async function createUser() {
     const email = newEmail.trim();
     const password = newPassword;
@@ -408,6 +511,7 @@ export function AdminUsers() {
                 <th className="px-4 py-3 font-medium">{t("admin:usersColMedia")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColSelfEdit")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColSchedules")}</th>
+                <th className="px-4 py-3 font-medium">{t("admin:usersColAgents")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColDiscord")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColTelegram")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColCreated")}</th>
@@ -416,19 +520,19 @@ export function AdminUsers() {
             <tbody>
               {listLoading ? (
                 <tr>
-                  <td colSpan={12} className="px-4 py-6 text-center text-surface-muted">
+                  <td colSpan={13} className="px-4 py-6 text-center text-surface-muted">
                     {t("admin:loading")}
                   </td>
                 </tr>
               ) : listErr ? (
                 <tr>
-                  <td colSpan={12} className="px-4 py-6 text-center text-red-400">
+                  <td colSpan={13} className="px-4 py-6 text-center text-red-400">
                     {listErr}
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="px-4 py-6 text-center text-surface-muted">
+                  <td colSpan={13} className="px-4 py-6 text-center text-surface-muted">
                     {t("admin:usersNoUsers")}
                   </td>
                 </tr>
@@ -568,6 +672,37 @@ export function AdminUsers() {
                           title={t("admin:usersSchedulesHint")}
                           onChange={(e) => void patchSchedulesAllowed(r.id, e.target.checked)}
                         />
+                      </td>
+                      <td className="px-4 py-3">
+                        {!agentListLoaded || specialistAgents.length === 0 ? (
+                          <span className="text-[10px] text-surface-muted">
+                            {t("admin:usersAgentsNone")}
+                          </span>
+                        ) : (
+                          <div className="flex flex-col gap-1">
+                            {specialistAgents.map((a) => (
+                              <label
+                                key={a.id}
+                                className="flex items-center gap-1.5 text-xs text-neutral-300"
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="rounded border-surface-border"
+                                  checked={userAllowedAgents[r.id]?.has(a.id) ?? false}
+                                  disabled={
+                                    saving ||
+                                    r.role?.toLowerCase() === "admin" ||
+                                    agentBusy[r.id]
+                                  }
+                                  onChange={(e) =>
+                                    void toggleUserAgent(r.id, a.id, e.target.checked)
+                                  }
+                                />
+                                <span>{a.name}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3 font-mono text-xs text-neutral-400">
                         {r.discord_user_id?.trim() ? r.discord_user_id.trim() : "—"}
