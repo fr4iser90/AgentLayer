@@ -250,6 +250,7 @@
   "runCardHideDetails": "Details ausblenden",
   "runCardAgent_coding": "Coding-Agent",
   "runCardAgent_coding_plan": "Plan-Agent",
+  "runCardAgent_coding_qwen": "Coding-Agent (Qwen Code)",
   "runCardAgent_security_auditor": "Security-Auditor",
   "runCardIndex_full": "Vollständiger Reindex",
   "runCardIndex_code": "Code-Index",

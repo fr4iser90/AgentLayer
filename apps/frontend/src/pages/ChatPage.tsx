@@ -60,6 +60,7 @@ import { indexActivityToTimeline, type IndexActivityEvent } from "../features/ch
 import { compactionEventToTimeline } from "../features/chat/compactionActivity";
 import { appendContextInjectionsFromSession } from "../features/chat/contextInjectionTimeline";
 import { buildInterleavedTurnSegments } from "../features/chat/interleavedTurnSegments";
+import { resolveComposerAgentId } from "../features/chat/chatAgentSelection";
 import { timelineForTurn, userTurnIdBeforeAssistant } from "../features/chat/turnRunCards";
 import {
   formatOptionSelection,
@@ -455,13 +456,12 @@ export function ChatPage() {
     (voiceStatus.prefs.mode_web === "hands_free" || voiceStatus.prefs.mode_web === "realtime");
 
   const isAdminUser = (user?.role ?? "").toLowerCase() === "admin";
-  /** Single Chat UI: General by default; Dashboard when ?dashboard=; ?agent= for specialists. */
+  /** Single Chat UI: General by default; Dashboard when ?dashboard=; ?agent= for deep-linked agents. */
   const agentParam = (searchParams.get("agent") ?? "").trim().toLowerCase();
-  const composerAgentId = dashboardChatId
-    ? "dashboard"
-    : agentParam === "knowledge_companion"
-      ? "knowledge_companion"
-      : "general";
+  const composerAgentId = resolveComposerAgentId({
+    dashboardChatId,
+    agentParam,
+  });
 
   const [workspaces, setWorkspaces] = useState<WorkspaceApiRecord[]>([]);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
