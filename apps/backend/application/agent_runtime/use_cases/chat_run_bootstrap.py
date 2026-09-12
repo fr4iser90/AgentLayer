@@ -147,6 +147,15 @@ async def bootstrap_chat_run(
             _role_for_agent = bearer_user_role
     if _role_for_agent is None:
         _role_for_agent = bearer_user_role
+    # Resolve agent-elevation from the canonical site_role so a legacy
+    # users.role='admin' with site_role='site_user' does not elevate.
+    if user_id:
+        try:
+            site_flag = db.user_site_admin(user_id)
+        except Exception:
+            site_flag = None
+        if site_flag is not None:
+            _role_for_agent = "admin" if site_flag else "user"
 
     if agent_id and not embedded_subagent:
         from apps.backend.domain.agent_runtime.access import user_may_invoke_agent

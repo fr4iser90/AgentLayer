@@ -381,6 +381,22 @@ def user_site_role(user_id: uuid.UUID | None) -> str:
     return "site_admin" if legacy == "admin" else "site_user"
 
 
+def user_site_admin(user_id: uuid.UUID | None) -> bool | None:
+    """
+    Canonical site-admin flag derived from ``users.site_role``.
+
+    Returns a definitive ``True``/``False`` for any user whose ``site_role``
+    is known (legacy ``users.role='admin'`` is honoured only when
+    ``site_role`` is NULL/unknown, matching :func:`user_site_role`).
+    Returns ``None`` when ``user_id`` is unknown so callers can fall back to
+    the raw role signal. Used by agent-elevation and workspace/admin gates so
+    that ``role='admin'`` with ``site_role='site_user'`` never elevates.
+    """
+    if user_id is None:
+        return None
+    return user_site_role(user_id) == "site_admin"
+
+
 def user_membership_role(user_id: uuid.UUID, tenant_id: int | None = None) -> str | None:
     tid = tenant_id if tenant_id is not None else user_tenant_id(user_id)
     with pool().connection() as conn:

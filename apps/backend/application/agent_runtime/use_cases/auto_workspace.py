@@ -64,6 +64,21 @@ def is_elevated_admin(
     bearer_user_role: str | None,
     user_id: Any,
 ) -> bool:
+    """
+    Site-admin resolution.
+
+    Canonical signal is ``users.site_role`` (see :func:`db.user_site_admin`);
+    a legacy ``users.role='admin'`` is honoured only when ``site_role`` is
+    unknown, so ``role='admin'`` with ``site_role='site_user'`` does NOT
+    elevate.
+    """
+    try:
+        site_flag = db.user_site_admin(user_id)
+    except Exception:
+        site_flag = None
+    if site_flag is not None:
+        return bool(site_flag)
+    # Legacy fallback (site_role unknown): raw role signal.
     if (bearer_user_role or "").strip().lower() == "admin":
         return True
     if user_obj is not None and getattr(user_obj, "role", None) == "admin":

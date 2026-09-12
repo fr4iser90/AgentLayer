@@ -206,13 +206,26 @@ def bridge_chat_completion_extras(
 
 def _bridge_user_like(user_id: uuid.UUID):
     role = (db.user_role(user_id) or "user").strip().lower()
+    try:
+        site_flag = db.user_site_admin(user_id)
+    except Exception:
+        site_flag = None
+    if site_flag is not None:
+        role = "admin" if site_flag else "user"
     return SimpleNamespace(id=user_id, role=role if role in ("admin", "user", "guest") else "user")
 
 
 def _user_may_use_agent(user_id: uuid.UUID, agent_id: str) -> tuple[bool, str]:
     from apps.backend.domain.agent_runtime.access import user_may_invoke_agent
 
-    role = db.user_role(user_id) or "user"
+    try:
+        site_flag = db.user_site_admin(user_id)
+    except Exception:
+        site_flag = None
+    role = (
+        "admin" if site_flag
+        else ("user" if site_flag is not None else (db.user_role(user_id) or "user"))
+    )
     return user_may_invoke_agent(role, agent_id.strip())
 
 

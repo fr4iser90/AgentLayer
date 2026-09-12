@@ -83,6 +83,7 @@ from apps.backend.infrastructure.db.identity_tenants import (
     user_telegram_user_id_set,
     user_tenant_id,
     user_site_role,
+    user_site_admin,
     user_membership_role,
     tenant_membership_upsert,
     tenant_get,
