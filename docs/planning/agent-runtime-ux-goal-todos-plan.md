@@ -19,7 +19,7 @@ haben die vollen 7 Harness-Tools, `security_auditor` Goal + Todos (kein Plan-Mod
 | **Ongoing Goal** (dsh) | Session-State + Tools `create_goal` / `get_goal` / `update_goal` + UI-Bar (Pause/Edit/Delete). Driver kann Rounds autonom weitertreiben. | **Nicht** der System-Prompt. Der Prompt sagt dem Modell nur *wann/wie* Goal-Tools zu nutzen; die Bar zeigt den **gefalteten Goal-State**. |
 | **To-dos** (dsh) | Session-Tool `todo_write` (ganze Liste ersetzen) → Projection in der Activity-UI | Nicht dasselbe wie Produkt-`agent_tasks` (persistenter Backlog) |
 | **Plan-Mode** (dsh) | Soft „denk/plane zuerst“ + `exit_plan_mode` | Optional; weniger kritisch als Goal+Todos für die UX im Screenshot |
-| **Activity-Stream** | Think / Tool-Zeilen mit Labels | Bei uns: `AgentActivityPanel` + WS `agent.tool_*` / `agent.llm_*` — roh vorhanden, Optik/Lesbarkeit ≠ dsh |
+| **Activity-Stream** | Think / Tool-Zeilen mit Labels | Bei uns: `AgentActivityPanel` (Header-Einzeiler) + RunCards mit Detail-Zweig (`RunCardBlock`) auf WS `agent.tool_*` / `agent.llm_*`. Ist-Stand belegt in [`dsh-agentlayer-chat-ui-comparison.md`](./dsh-agentlayer-chat-ui-comparison.md) §1 — Lücken sind das notable-Tool-Tor und fehlende Argument-Anzeige, nicht „nur rohe Zeilen". |
 
 ---
 
@@ -127,4 +127,5 @@ haben die vollen 7 Harness-Tools, `security_auditor` Goal + Todos (kein Plan-Mod
 - AL Activity: `apps/frontend/src/features/chat/AgentActivityPanel.tsx`, `agentChatWsCore.ts`
 - AL Tasks (Produkt): `plugins/tools/platform/tasks/agent_tasks.py`
 - Vergleich: `docs/planning/dsh-agentlayer-capability-comparison.md`
+- Chat-UI Ist-Stand (belegt, Web + TUI): `docs/planning/dsh-agentlayer-chat-ui-comparison.md`
 - Alter dsh-Plan (unverändert): `docs/planning/dsh-integration-plan.md`
