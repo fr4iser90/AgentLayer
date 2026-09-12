@@ -69,6 +69,20 @@ async def get_chat_runtime(
 
     vision = vision_availability(model_catalog_owned_by=owned)
 
+    # Runtime catalog for coding agents that run outside AgentLayer's planner loop
+    # (agent.yaml ``external_runtime:``). Reasons are operator-facing, not secrets.
+    try:
+        from apps.backend.domain.agent_runtime.external_runtime import available_external_runtimes
+
+        external_runtimes: dict[str, Any] = {
+            "enabled": bool(config.EXTERNAL_RUNTIME_ENABLED),
+            "fallback_internal": bool(config.EXTERNAL_RUNTIME_FALLBACK_INTERNAL),
+            "runtimes": available_external_runtimes(),
+        }
+    except Exception:
+        logger.exception("chat runtime: external runtime status failed")
+        external_runtimes = {"enabled": False, "fallback_internal": False, "runtimes": [], "error": "status_failed"}
+
     conversation_goal: dict[str, Any] | None = None
     cid = (conversation_id or "").strip()
     if cid:
@@ -106,5 +120,6 @@ async def get_chat_runtime(
         },
         "context_budget": context_budget,
         "vision": vision,
+        "external_runtimes": external_runtimes,
         "conversation_goal": conversation_goal,
     }

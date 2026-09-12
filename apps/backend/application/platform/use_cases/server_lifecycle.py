@@ -16,6 +16,7 @@ from apps.backend.infrastructure.agent_runtime import agent_task_prompt_service 
 from apps.backend.infrastructure.agent_runtime import assistant_display_sanitize_service as _assistant_display_sanitize_service  # noqa: F401
 from apps.backend.infrastructure.agent_runtime import chat_audio_attachment_service as _chat_audio_attachment_service  # noqa: F401
 from apps.backend.infrastructure.agent_runtime import current_time_context_service as _current_time_context_service  # noqa: F401
+from apps.backend.infrastructure.agent_runtime import external_runtimes as _external_runtimes  # noqa: F401
 from apps.backend.infrastructure.agent_runtime import media_chat_prompt_service as _media_chat_prompt_service  # noqa: F401
 from apps.backend.infrastructure.agent_runtime import smart_route_service as _smart_route_service  # noqa: F401
 from apps.backend.infrastructure.agent_runtime import speech_prep_service as _speech_prep_service  # noqa: F401

@@ -4,6 +4,7 @@ from pathlib import Path
 
 from apps.backend.infrastructure.platform.config_env import env_bool as _env_bool
 from apps.backend.infrastructure.platform.config_env import env_int as _env_int
+from apps.backend.infrastructure.platform.config_external_runtimes import *  # noqa: F403
 from apps.backend.infrastructure.platform.config_model_rounds import *  # noqa: F403
 from apps.backend.infrastructure.platform.config_paths import *  # noqa: F403
 from apps.backend.infrastructure.platform.config_workspace_tools import *  # noqa: F403
