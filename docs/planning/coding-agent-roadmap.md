@@ -126,6 +126,26 @@ Ideas such as: idle time → model drafts **several** plans → user picks one �
 
 **Goal:** explore/search/plan in isolated context without polluting the main planner transcript; merge results back with citations. **Design options and milestones:** same anchor section under *Subagents*.
 
+### I — Replaceable coding loop (external agent runtimes)
+
+**Goal:** the build loop itself becomes swappable behind one port, so a vendor's coding agent can
+run a turn without AgentLayer giving up identity, workspace authorization, credentials,
+streaming, cancellation or audit.
+
+**Done (code):** `external_runtime:` in `agent.yaml` selects an adapter; one branch in
+`chat_completion` before `run_chat_tool_loop`; Qwen Code adapter (`qwen-code-sdk`) plus session
+resume on `chat_conversations`; provider pass-through; workspace jail, `permission_mode` ceiling,
+Git before/after summary, `external_runtime.run` audit row; `coding_qwen` reachable from chat and
+from `delegate`. Decision: **ADR 0010**, operation of it: `docs/features/external-agent-runtimes.md`.
+
+**Next:** live end-to-end run against a deployed instance (start read-only with
+`AGENT_QWEN_PERMISSION_MODE=plan`, then `auto-edit`) via
+`scripts/verify_external_runtime_live.py`; goal/todo visibility for external turns; a per-tool
+approval path if `agent.permission_ask` should reach the vendor loop; vendor MCP servers from the
+workspace config.
+
+**Not planned:** unattended scheduled external builds (`schedulable: false` on purpose).
+
 ## ADRs: iterative, not a catalog upfront
 
 During a **“big rebuild + many ideas”** phase, **do not** try to write or “fix” a complete set of ADRs for every module before shipping. You risk spending weeks on documents that go stale or encode guesses.
@@ -260,6 +280,7 @@ Each phase should end with **manual smoke** + **one paragraph** in this doc or A
 | Memory inject | `apps/backend/domain/agent.py::_inject_user_memory_context`, `apps/backend/api/memory.py` |
 | Agent registry | `apps/backend/domain/agent_registry.py`, `plugins/agents/*.py` |
 | Subagent / plan delegation | `plugins/tools/capabilities/coding/coding_task.py` (`run_plan_subagent`) |
+| Exchangebarer Build-Loop (Epic I) | Port `apps/backend/domain/agent_runtime/external_runtime.py` · Adapter `apps/backend/infrastructure/agent_runtime/external_runtimes/qwen_code.py` · Abzweig `application/agent_runtime/use_cases/chat_completion.py` |
 
 ---
 
