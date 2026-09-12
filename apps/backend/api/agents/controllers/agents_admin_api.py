@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from apps.backend.application.agent_runtime.use_cases.agent_governance_services import (
+    batch_upsert_user_agent_policies,
     create_agent_prompt_draft,
     delete_agent_access_policy,
     list_agent_prompt_versions,
@@ -35,6 +36,16 @@ class AgentAccessPolicyBody(BaseModel):
 
 class AgentPromptDraftBody(BaseModel):
     prompt_text: str = Field(min_length=1, max_length=12000)
+    notes: str | None = Field(default=None, max_length=2000)
+
+
+class AgentAccessBatchBody(BaseModel):
+    """Grant/deny several agents to one person at once (P3, ``scope='user'``)."""
+
+    user_id: uuid.UUID
+    agent_ids: list[str] = Field(min_length=1)
+    direct_state: str = Field(default="allow", pattern="^(inherit|allow|deny)$")
+    delegate_state: str = Field(default="inherit", pattern="^(inherit|allow|deny)$")
     notes: str | None = Field(default=None, max_length=2000)
 
 
@@ -235,3 +246,24 @@ async def admin_delete_agent_access_policy(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"ok": True, "deleted": deleted}
+
+
+@router.post("/v1/admin/agents/access-policy/batch")
+async def admin_batch_agent_access_policy(
+    request: Request,
+    body: AgentAccessBatchBody,
+) -> dict[str, Any]:
+    """Grant/deny several agents to one person at once (P3, ``scope='user'``)."""
+    user = await require_admin(request)
+    try:
+        policies = batch_upsert_user_agent_policies(
+            user_id=body.user_id,
+            agent_ids=body.agent_ids,
+            direct_state=body.direct_state,
+            delegate_state=body.delegate_state,
+            notes=body.notes,
+            updated_by=user.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"ok": True, "policies": policies}
