@@ -189,6 +189,8 @@ def list_all_users() -> list[dict[str, Any]]:
                        COALESCE(u.workspace_quota, 10) AS workspace_quota,
                        COALESCE(u.workspace_self_allowed, false) AS workspace_self_allowed,
                        COALESCE(u.schedules_allowed, false) AS schedules_allowed,
+                       COALESCE(u.dashboards_allowed, true) AS dashboards_allowed,
+                       COALESCE(u.dashboard_quota, 1) AS dashboard_quota,
                        u.media_storage_quota_mb,
                        u.media_enabled,
                        u.media_upload_enabled,
@@ -215,6 +217,8 @@ def list_all_users() -> list[dict[str, Any]]:
             workspace_quota,
             workspace_self_allowed,
             schedules_allowed,
+            dashboards_allowed,
+            dashboard_quota,
             media_storage_quota_mb,
             media_enabled,
             media_upload_enabled,
@@ -238,6 +242,8 @@ def list_all_users() -> list[dict[str, Any]]:
                 "workspace_quota": workspace_quota if workspace_quota is not None else 10,
                 "workspace_self_allowed": bool(workspace_self_allowed) if workspace_self_allowed is not None else False,
                 "schedules_allowed": bool(schedules_allowed) if schedules_allowed is not None else False,
+                "dashboards_allowed": bool(dashboards_allowed) if dashboards_allowed is not None else True,
+                "dashboard_quota": int(dashboard_quota) if dashboard_quota is not None else 1,
                 "media_storage_quota_mb": int(media_storage_quota_mb)
                 if media_storage_quota_mb is not None
                 else None,

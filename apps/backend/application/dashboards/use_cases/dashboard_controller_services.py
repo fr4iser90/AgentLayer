@@ -58,3 +58,39 @@ from apps.backend.infrastructure.settings.operator_settings import (
     effective_dashboard_upload_max_bytes,
     effective_dashboard_upload_mime,
 )
+from apps.backend.infrastructure.dashboard.dashboard_access import (
+    current_dashboards_count as _current_dashboards_count,
+    dashboards_feature_permission_error as _dashboards_feature_permission_error,
+    delete_user_dashboards as _delete_user_dashboards,
+    dashboards_quota_for as _dashboards_quota_for,
+    user_may_use_dashboards as _user_may_use_dashboards,
+)
+
+
+def user_may_use_dashboards(
+    *,
+    user_id: uuid.UUID | None = None,
+    user: Any | None = None,
+) -> bool:
+    return _user_may_use_dashboards(user_id=user_id, user=user)
+
+
+def dashboards_quota_for(user_id: uuid.UUID | None) -> int:
+    return _dashboards_quota_for(user_id)
+
+
+def current_dashboards_count(user_id: uuid.UUID, tenant_id: int) -> int:
+    return _current_dashboards_count(user_id, tenant_id)
+
+
+def delete_user_dashboards(user_id: uuid.UUID) -> int:
+    return _delete_user_dashboards(user_id)
+
+
+def dashboards_feature_permission_error(
+    user: Any | None,
+    *,
+    current_count: int = 0,
+    quota: int = 1,
+) -> str | None:
+    return _dashboards_feature_permission_error(user, current_count=current_count, quota=quota)
