@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import { fetchTask, setConversationActiveTask } from "../lib/tasksApi";
 import { ConfirmModal } from "../components/ConfirmModal";
-import { apiFetch, addUsageTotals, emptyTokenUsage, fetchChatRuntime, type ChatContextMeta, type ConversationGoal, type ChatRuntimePayload, type ConversationTodo, type TokenUsageTotals, type WorkspaceApiRecord } from "../lib/api";
+import { apiFetch, addUsageTotals, emptyTokenUsage, fetchAgents, fetchChatRuntime, type ChatContextMeta, type ConversationGoal, type ChatRuntimePayload, type ConversationTodo, type TokenUsageTotals, type WorkspaceApiRecord } from "../lib/api";
 import { PlanModeBanner, SessionGoalTodosStrip } from "../features/chat/ConversationGoalPanels";
 import {
   PermissionAskCard,
@@ -60,7 +60,7 @@ import { indexActivityToTimeline, type IndexActivityEvent } from "../features/ch
 import { compactionEventToTimeline } from "../features/chat/compactionActivity";
 import { appendContextInjectionsFromSession } from "../features/chat/contextInjectionTimeline";
 import { buildInterleavedTurnSegments } from "../features/chat/interleavedTurnSegments";
-import { resolveComposerAgentId } from "../features/chat/chatAgentSelection";
+import { resolveComposerAgentId, type DeepLinkableAgent } from "../features/chat/chatAgentSelection";
 import { timelineForTurn, userTurnIdBeforeAssistant } from "../features/chat/turnRunCards";
 import {
   formatOptionSelection,
@@ -398,8 +398,26 @@ export function ChatPage() {
   const auth = useAuth();
   const authRef = useRef(auth);
   authRef.current = auth;
-  const { accessToken, user } = auth;
+  const { accessToken, refresh, user } = auth;
   const userId = user?.id ?? "";
+  // Authoritative, access-filtered agent catalog from ``/v1/agents`` (P2). Until it
+  // resolves, deep links fall back to the built-in set — the server still re-checks
+  // access before a turn runs, so this only decides whether a ``?agent=`` link is honoured.
+  const [invokableAgents, setInvokableAgents] = useState<readonly DeepLinkableAgent[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!accessToken) return;
+    fetchAgents({ accessToken, refresh })
+      .then((agents) => {
+        if (!cancelled) setInvokableAgents(agents);
+      })
+      .catch(() => {
+        // Leave the legacy default in place on a failed registry read.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, refresh]);
   const agentChatSession = getAgentChatSession();
   const globalMedia = useOptionalGlobalMedia();
   const globalMediaRef = useRef(globalMedia);
@@ -461,6 +479,7 @@ export function ChatPage() {
   const composerAgentId = resolveComposerAgentId({
     dashboardChatId,
     agentParam,
+    invokableAgents,
   });
 
   const [workspaces, setWorkspaces] = useState<WorkspaceApiRecord[]>([]);
