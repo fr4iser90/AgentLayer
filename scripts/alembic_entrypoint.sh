@@ -34,7 +34,7 @@ resolve_host_ids() {
 fix_data_owner() {
   _uid=$1
   _gid=$2
-  for d in /data/project_workspaces /data/tools "$BROWSERS_PATH"; do
+  for d in /data/project_workspaces /data/tools /data/external_runtimes "$BROWSERS_PATH"; do
     [ -d "$d" ] || continue
     cur=$(stat -c '%u' "$d")
     if [ "$cur" = "0" ] && [ "$_uid" != "0" ]; then

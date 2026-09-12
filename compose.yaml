@@ -122,12 +122,16 @@ services:
       # Shared Chromium cache for all coding workspaces (Playwright) — docs/runbooks/playwright.md
       PLAYWRIGHT_BROWSERS_PATH: /data/ms-playwright
       AGENTLAYER_WORKSPACE_PATH: /data/project_workspaces
+      # Writable HOME for external agent runtimes (Qwen Code sessions). Enable with
+      # AGENT_EXTERNAL_RUNTIME_ENABLED=true in .env — docs/features/external-agent-runtimes.md
+      AGENT_EXTERNAL_RUNTIME_HOME: /data/external_runtimes
     volumes:
       - ./plugins/tools/agent_created:/data/tools:rw
       - .:/code:ro
       - .:/workspace/AgentLayer:ro
       - ./workspace:/data/project_workspaces:rw
       - agent_ms_playwright:/data/ms-playwright:rw
+      - agent_external_runtimes:/data/external_runtimes:rw
     # Chromium needs shared memory; Docker default 64MB → flaky Playwright. Override via AGENT_SHM_SIZE.
     shm_size: ${AGENT_SHM_SIZE:-512mb}
     # Budget for API + coding bash + 1× Playwright + 1–3 small apps/scripts (tune via .env).
@@ -149,6 +153,7 @@ volumes:
   agent_qdrant_data:
   agent_neo4j_data:
   agent_ms_playwright:
+  agent_external_runtimes:
 networks:
   ai-net:
     external: true
