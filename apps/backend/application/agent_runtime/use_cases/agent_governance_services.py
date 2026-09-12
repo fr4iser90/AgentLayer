@@ -125,6 +125,42 @@ def upsert_agent_access_policy(
     )
 
 
+def batch_upsert_user_agent_policies(
+    *,
+    user_id: uuid.UUID,
+    agent_ids: list[str],
+    direct_state: str,
+    delegate_state: str,
+    notes: str | None,
+    updated_by: uuid.UUID | None,
+) -> list[dict[str, Any]]:
+    """Set ``scope='user'`` access policies for several agents at once (P3).
+
+    Validates every id against the registry first (400 listing the unknown ids)
+    so a partial typo never leaves a person half-granted.
+    """
+    reg = get_agent_registry()
+    resolved = {str(aid).strip() for aid in agent_ids if str(aid or "").strip()}
+    unknown = [aid for aid in resolved if not reg.get_agent(aid)]
+    if unknown:
+        raise ValueError(f"unknown agent id(s): {', '.join(sorted(unknown))}")
+    rows: list[dict[str, Any]] = []
+    for agent_id in resolved:
+        rows.append(
+            agent_access_policy_store.upsert_agent_policy(
+                scope="user",
+                tenant_id=None,
+                user_id=user_id,
+                agent_id=agent_id,
+                direct_state=direct_state,
+                delegate_state=delegate_state,
+                notes=notes,
+                updated_by=updated_by,
+            )
+        )
+    return rows
+
+
 def delete_agent_access_policy(
     *,
     scope: str,
