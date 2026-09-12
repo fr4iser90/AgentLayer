@@ -55,6 +55,12 @@ from apps.backend.application.agent_runtime.dependencies import (
 )
 from apps.backend.application.agent_runtime.use_cases.chat_context_budget import ChatContextBudgetEnforcer
 from apps.backend.application.agent_runtime.use_cases.chat_control import ChatControlQueue
+from apps.backend.application.agent_runtime.use_cases.chat_external_runtime import (
+    agent_system_prompt_for,
+    external_runtime_id_for_agent,
+    external_runtime_will_run,
+    maybe_run_external_runtime_turn,
+)
 from apps.backend.application.agent_runtime.use_cases.chat_client_dispatch import (
     advertised_workspace_tools,
     filter_tools_for_client_workspace,
@@ -95,7 +101,6 @@ from apps.backend.domain.tools.invocation_context import (
     set_tool_invocation_messages,
 )
 from apps.backend.domain.model_routing.resolution import (
-    ModelRoutingSettings,
     profile_default_model_id,
     resolve_effective_model,
 )
@@ -105,16 +110,12 @@ from apps.backend.domain.agent_runtime.persona import _append_system_block, appl
 logger = logging.getLogger(__name__)
 
 
-def _model_routing_settings() -> ModelRoutingSettings:
-    return ModelRoutingSettings(
-        profile_default=config.AGENT_MODEL_PROFILE_DEFAULT,
-        profile_vlm=config.AGENT_MODEL_PROFILE_VLM,
-        profile_agent=config.AGENT_MODEL_PROFILE_AGENT,
-        profile_coding=config.AGENT_MODEL_PROFILE_CODING,
-        allow_model_override=config.AGENT_ALLOW_MODEL_OVERRIDE,
-        override_roles=config.AGENT_MODEL_OVERRIDE_ROLES,
-        override_anonymous=config.AGENT_MODEL_OVERRIDE_ANONYMOUS,
-    )
+from apps.backend.application.agent_runtime.use_cases.chat_completion_support import (
+    _as_type_or_none,
+    _model_routing_settings,
+    _passthrough_llm_options,
+    _sse_chat_stream,
+)
 
 from apps.backend.application.agent_runtime.runtime.io import *  # noqa: F403, E402
 from apps.backend.application.agent_runtime.runtime.prompts import *  # noqa: F403, E402
@@ -139,8 +140,6 @@ async def chat_completion(
     embedded_subagent: bool = False,
     client_workspace_tools: frozenset[str] | set[str] | list[str] | None = None,
 ) -> dict[str, Any] | AsyncIterator[bytes]:
-    # Without ``stream_requested`` + plain completion, the tool loop uses blocking HTTP; HTTP callers may
-    # wrap the final JSON as SSE. True streaming is returned as an async byte iterator (upstream SSE passthrough).
     body.pop("agent_tool_mode", None)
     body.pop("agent_mode", None)
     plain_completion = _coerce_body_bool(body.pop("agent_plain_completion", None), False)
@@ -149,11 +148,7 @@ async def chat_completion(
     extra_cats_hdr = _parse_router_category_tokens(router_categories_header)
     cap_hints = _parse_capability_hints(body.pop("agent_capability_hints", None))
     raw_tool_dom = body.pop("TOOL_DOMAIN", None)
-    body_tool_dom = (
-        str(raw_tool_dom).strip().lower()
-        if isinstance(raw_tool_dom, str) and raw_tool_dom.strip()
-        else ""
-    )
+    body_tool_dom = str(raw_tool_dom).strip().lower() if isinstance(raw_tool_dom, str) and raw_tool_dom.strip() else ""
     hdr_tool_dom = (tool_domain_header or "").strip().lower()
     tool_domain = hdr_tool_dom or body_tool_dom or None
     logger.debug("tool_domain_header=%r, body_tool_domain=%r, final tool_domain=%r", tool_domain_header, body_tool_dom, tool_domain)
@@ -179,11 +174,7 @@ async def chat_completion(
     if isinstance(agent_id, str):
         agent_id = agent_id.strip() or None
     if not embedded_subagent:
-        dash_id = (
-            str(dashboard_ctx.get("dashboard_id") or "").strip()
-            if isinstance(dashboard_ctx, dict)
-            else ""
-        )
+        dash_id = str(dashboard_ctx.get("dashboard_id") or "").strip() if isinstance(dashboard_ctx, dict) else ""
         if not agent_id and dash_id:
             agent_id = "dashboard"
         elif not agent_id:
@@ -192,7 +183,10 @@ async def chat_completion(
         if agent_id == "dashboard" and not dash_id and not _agent_storage_images:
             logger.info("chat_completion: dashboard agent requires agent_dashboard_context — using general")
             agent_id = "general"
-        elif agent_id not in _chat_surface_agents:
+        elif agent_id not in _chat_surface_agents and external_runtime_id_for_agent(agent_id) is None:
+            # Internal specialists stay delegate-only; an agent that declares an
+            # ``external_runtime`` is invocable at the chat surface (role/tenant access is
+            # still enforced in bootstrap via user_may_invoke_agent).
             logger.info(
                 "chat_completion: forcing agent_id %r -> general (use delegate for specialists)",
                 agent_id,
@@ -208,15 +202,10 @@ async def chat_completion(
     permission_ask = _coerce_body_bool(body.pop("agent_permission_ask", None), False)
     agent_unattended = _coerce_body_bool(body.pop("agent_unattended", None), False)
     _raw_tools_full_schema = body.pop("agent_tools_full_schema", None)
-    tools_full_schema = _coerce_body_bool(
-        _raw_tools_full_schema,
-        config.AGENT_TOOLS_FULL_SCHEMA,
-    )
+    tools_full_schema = _coerce_body_bool(_raw_tools_full_schema, config.AGENT_TOOLS_FULL_SCHEMA)
     if agent_unattended:
         permission_ask = False
-    agent_require_workspace_verify = _coerce_body_bool(
-        body.pop("agent_require_workspace_verify", None), False
-    )
+    agent_require_workspace_verify = _coerce_body_bool(body.pop("agent_require_workspace_verify", None), False)
     _raw_plan_delegate_mode = body.pop("agent_plan_delegate_mode", None)
     _raw_delegate_mode = body.pop("agent_delegate_mode", None)
     agent_delegate_mode: str | None = None
@@ -358,11 +347,7 @@ async def chat_completion(
         llm_backend = turn_prep.llm_backend
         _harness_prof_tok = turn_prep.harness_profile_token
 
-        _ctx_win = (
-            int(_context_budget.context_window_tokens or 0)
-            if _context_budget is not None
-            else 0
-        )
+        _ctx_win = int(_context_budget.context_window_tokens or 0) if _context_budget is not None else 0
         tool_selection = await select_tools_for_chat_turn(
             body=body,
             plain_completion=plain_completion,
@@ -400,32 +385,29 @@ async def chat_completion(
         if pause_between_rounds and control_queue is None:
             pause_between_rounds = False
 
-        options = {
-            k: v
-            for k, v in body.items()
-            if k not in ("messages", "model", "tools", "stream", *_BODY_KEYS_STRIP_FROM_LLM)
-        }
+        options = _passthrough_llm_options(body)
+
+        # An external runtime cannot use the upstream SSE passthrough (there is no upstream
+        # LLM call); its deltas come from the runtime process via ``event_emit``.
+        _external_runtime_active = external_runtime_will_run(agent_id if isinstance(agent_id, str) else None)
 
         if (
             stream_requested
             and plain_completion
             and not pause_between_rounds
             and control_queue is None
+            and not _external_runtime_active
         ):
             payload_stream_base: dict[str, Any] = {"messages": messages, **options}
 
-            async def _sse_stream() -> AsyncIterator[bytes]:
-                async for chunk in _async_iter_chat_completion_sse(
-                    attempts,
-                    payload_stream_base,
-                    llm_backend=llm_backend,
-                    profile_key=profile_key,
-                    timeout=config.LLM_CHAT_TIMEOUT_SEC,
-                    model_routing_settings=_model_routing_settings(),
-                ):
-                    yield chunk
-
-            return _sse_stream()
+            return await _sse_chat_stream(
+                attempts,
+                payload_stream_base,
+                llm_backend,
+                profile_key,
+                config.LLM_CHAT_TIMEOUT_SEC,
+                _model_routing_settings(),
+            )
 
         control = ChatControlQueue(
             messages=messages,
@@ -473,6 +455,22 @@ async def chat_completion(
                     "context": tool_context.get("chat_context_meta") or None,
                     "context_injections": list(getattr(turn_prep, "context_injections", None) or []),
                 }
+            )
+
+        if _external_runtime_active:
+            return await maybe_run_external_runtime_turn(
+                agent_id=_as_type_or_none(agent_id, str),
+                messages=messages,
+                workspace=_as_type_or_none(workspace, dict),
+                model=_as_type_or_none(model, str),
+                profile_key=_as_type_or_none(profile_key, str),
+                catalog_owned_by=_as_type_or_none(catalog_owned_by, str),
+                agent_run_id=agent_run_id,
+                conversation_id=conversation_uuid,
+                user_id=user_id,
+                event_emit=event_emit,
+                cancel_event=cancel_event,
+                agent_prompt=agent_system_prompt_for(_as_type_or_none(agent_id, str)),
             )
 
         return await run_chat_tool_loop(
