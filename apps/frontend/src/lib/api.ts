@@ -14,6 +14,8 @@ export type AgentDefinition = {
   execution_context: string;
   min_role: string;
   model_profile: string | null;
+  /** Set when the agent runs outside AgentLayer's planner loop (e.g. ``qwen_code``). */
+  external_runtime?: string | null;
 };
 
 export async function fetchAgents(auth: Pick<AuthContextValue, "accessToken" | "refresh">): Promise<AgentDefinition[]> {
@@ -87,6 +89,20 @@ export type ChatRuntimePayload = {
     model?: string | null;
     catalog_owned_by?: string | null;
     reason?: string;
+  };
+  external_runtimes?: {
+    enabled: boolean;
+    fallback_internal?: boolean;
+    runtimes: Array<{
+      id: string;
+      available: boolean;
+      /** Why the runtime cannot run right now (missing binary, flag off). */
+      reason: string;
+      supports_resume: boolean;
+      supports_write: boolean;
+      default_permission_mode: string;
+    }>;
+    error?: string;
   };
   conversation_goal?: {
     goal: ConversationGoal | null;

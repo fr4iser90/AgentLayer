@@ -11,7 +11,7 @@ export type BuildSidebarGroup = {
 };
 
 /** Registry ids for the Build / Coding Agent UI (not shown in general Chat sidebar). */
-export const BUILD_AGENT_IDS = new Set(["coding", "coding_plan"]);
+export const BUILD_AGENT_IDS = new Set(["coding", "coding_plan", "coding_qwen"]);
 
 const byUpdated = (a: ChatThread, b: ChatThread) => b.updatedAt - a.updatedAt;
 

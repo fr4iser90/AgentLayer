@@ -46,6 +46,7 @@ const DELEGATE_TOOL = "delegate";
 const AGENT_TITLES: Record<string, string> = {
   coding: "Coding agent",
   coding_plan: "Plan agent",
+  coding_qwen: "Coding agent (Qwen Code)",
   security_auditor: "Security auditor",
 };
 
