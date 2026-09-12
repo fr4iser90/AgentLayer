@@ -235,6 +235,11 @@ def dashboard_get(user_id: uuid.UUID, tenant_id: int, dashboard_id: uuid.UUID) -
 
 def ensure_default_dashboard_for_new_user(user_id: uuid.UUID, tenant_id: int) -> None:
     try:
+        from apps.backend.infrastructure.dashboard.dashboard_access import user_may_use_dashboards
+
+        # P4: no auto dashboard for users without dashboard access (global flag + per-user grant).
+        if not user_may_use_dashboards(user_id=user_id):
+            return
         with db.pool().connection() as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT to_regclass('public.user_dashboards')")

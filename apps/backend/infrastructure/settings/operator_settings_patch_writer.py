@@ -384,6 +384,8 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
     if "legal_terms_md" in patch:
         v = patch["legal_terms_md"]
         r["legal_terms_md"] = None if v is None else (str(v).strip() or None)
+    if "dashboards_allowed" in patch:
+        r["dashboards_allowed"] = bool(patch["dashboards_allowed"])
 
     media_patch = {
         k: patch[k]

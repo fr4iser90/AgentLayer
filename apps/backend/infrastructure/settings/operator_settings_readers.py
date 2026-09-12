@@ -478,6 +478,7 @@ def public_dict() -> dict[str, Any]:
         "legal_impressum_md": (str(r.get("legal_impressum_md") or "").strip()),
         "legal_privacy_md": (str(r.get("legal_privacy_md") or "").strip()),
         "legal_terms_md": (str(r.get("legal_terms_md") or "").strip()),
+        "dashboards_allowed": bool(r.get("dashboards_allowed", True)),
         **media_settings_public_fields(),
         **chat_quota_settings_public_fields(),
         **voice_settings_public_fields(),

@@ -226,6 +226,7 @@ def _fetch_row() -> dict[str, Any]:
         "legal_impressum_md": None,
         "legal_privacy_md": None,
         "legal_terms_md": None,
+        "dashboards_allowed": True,
     }
     try:
         with db.pool().connection() as conn:
@@ -286,7 +287,8 @@ def _fetch_row() -> dict[str, Any]:
                            legal_entity_name, legal_entity_address,
                            legal_entity_email, legal_entity_phone,
                            legal_terms_enabled,
-                           legal_impressum_md, legal_privacy_md, legal_terms_md
+                           legal_impressum_md, legal_privacy_md, legal_terms_md,
+                           dashboards_allowed
                     FROM operator_settings WHERE id = 1
                     """
                 )
@@ -437,6 +439,7 @@ def _fetch_row() -> dict[str, Any]:
         "legal_impressum_md": row[88] if len(row) > 88 else None,
         "legal_privacy_md": row[89] if len(row) > 89 else None,
         "legal_terms_md": row[90] if len(row) > 90 else None,
+        "dashboards_allowed": bool(row[91]) if len(row) > 91 and row[91] is not None else True,
     }
 
 

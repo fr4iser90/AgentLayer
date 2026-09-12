@@ -131,6 +131,7 @@ class OperatorSettingsPatch(BaseModel):
     legal_impressum_md: str | None = Field(default=None, max_length=200_000)
     legal_privacy_md: str | None = Field(default=None, max_length=200_000)
     legal_terms_md: str | None = Field(default=None, max_length=200_000)
+    dashboards_allowed: bool | None = None
 
 
 def operator_settings_patch_field_names() -> tuple[str, ...]:

@@ -274,6 +274,9 @@ def persist_operator_settings_patch(
             if "legal_terms_md" in patch:
                 extra_sets.append("legal_terms_md = %s")
                 extra_params.append(r.get("legal_terms_md"))
+            if "dashboards_allowed" in patch:
+                extra_sets.append("dashboards_allowed = %s")
+                extra_params.append(bool(r.get("dashboards_allowed", True)))
             if extra_sets:
                 # SECURITY: Column names in `extra_sets` come from the known
                 # _SETTING_KEYS mapping (see _OPERATOR_SETTINGS_KEYS).

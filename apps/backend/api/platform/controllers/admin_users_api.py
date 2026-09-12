@@ -62,6 +62,8 @@ class AdminPatchUserBody(BaseModel):
     workspace_quota: int | None = Field(default=None, ge=1, le=1000)
     workspace_self_allowed: bool | None = None
     schedules_allowed: bool | None = None
+    dashboards_allowed: bool | None = None
+    dashboard_quota: int | None = Field(default=None, ge=1, le=1000)
     media_storage_quota_mb: int | None = Field(default=None, ge=1, le=50_000)
     media_enabled: bool | None = None
     media_upload_enabled: bool | None = None
@@ -114,13 +116,16 @@ async def admin_list_users(request: Request):
 
 @router.patch("/v1/admin/users/{user_id}")
 async def admin_patch_user(request: Request, user_id: uuid.UUID, body: AdminPatchUserBody):
-    """Update ``tenant_id``, ``workspace_quota``, ``workspace_self_allowed``, ``schedules_allowed``. Admin only."""
+    """Update ``tenant_id``, ``workspace_quota``, ``workspace_self_allowed``, ``schedules_allowed``,
+    ``dashboards_allowed``, ``dashboard_quota``. Admin only."""
     await require_admin(request)
     if (
         body.tenant_id is None
         and body.workspace_quota is None
         and body.workspace_self_allowed is None
         and body.schedules_allowed is None
+        and body.dashboards_allowed is None
+        and body.dashboard_quota is None
         and body.media_storage_quota_mb is None
         and body.media_enabled is None
         and body.media_upload_enabled is None
@@ -154,6 +159,30 @@ async def admin_patch_user(request: Request, user_id: uuid.UUID, body: AdminPatc
         db.query(
             "UPDATE users SET schedules_allowed = %s WHERE id = %s",
             (body.schedules_allowed, user_id),
+        )
+
+    if body.dashboards_allowed is not None:
+        db.query(
+            "UPDATE users SET dashboards_allowed = %s WHERE id = %s",
+            (body.dashboards_allowed, user_id),
+        )
+        if body.dashboards_allowed is False:
+            # P4: revoke dashboard access — remove the user's dashboards so none are retained.
+            try:
+                from apps.backend.application.dashboards.use_cases.dashboard_controller_services import (
+                    delete_user_dashboards,
+                )
+
+                delete_user_dashboards(user_id)
+            except Exception:
+                logger.warning(
+                    "dashboards revoke: delete failed for user %s", user_id, exc_info=True
+                )
+
+    if body.dashboard_quota is not None:
+        db.query(
+            "UPDATE users SET dashboard_quota = %s WHERE id = %s",
+            (body.dashboard_quota, user_id),
         )
 
     if body.media_storage_quota_mb is not None:
