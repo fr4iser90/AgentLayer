@@ -23,6 +23,10 @@ This folder is written for **humans** and for **RAG ingestion**.
 - **Coding agent roadmap & backlog** (guardrails, epics, Git phases): [`docs/planning/coding-agent-roadmap.md`](./planning/coding-agent-roadmap.md)
 - **Coding agent vs. external reference (gap analysis):** [`docs/planning/coding-agent-external-gap-analysis.md`](./planning/coding-agent-external-gap-analysis.md)
 - **Chat secret ingress — where to hook in code:** [`docs/planning/chat-secret-ingress-integration-analysis.md`](./planning/chat-secret-ingress-integration-analysis.md)
+- **Agent runtime UX — goal, todos, activity (workplan):** [`docs/planning/agent-runtime-ux-goal-todos-plan.md`](./planning/agent-runtime-ux-goal-todos-plan.md)
+- **DeepSeek Harness — capability comparison (current state vs. dsh):** [`docs/planning/dsh-agentlayer-capability-comparison.md`](./planning/dsh-agentlayer-capability-comparison.md)
+- **DeepSeek Harness — integration plan (historical phases + status):** [`docs/planning/dsh-integration-plan.md`](./planning/dsh-integration-plan.md)
+- **DeepSeek Harness — chat UI comparison (verified AgentLayer chat state):** [`docs/planning/dsh-agentlayer-chat-ui-comparison.md`](./planning/dsh-agentlayer-chat-ui-comparison.md)
 - **Knowledge companion plan** (all industries / professions): [`docs/planning/knowledge-companion-plan.md`](./planning/knowledge-companion-plan.md)
 - **Knowledge companion tasks** (platform backlog 01–06): [`docs/planning/knowledge-companion/README.md`](./planning/knowledge-companion/README.md)
 - **Tenant onboarding checklist:** [`docs/planning/knowledge-companion/tenant-onboarding-checklist.md`](./planning/knowledge-companion/tenant-onboarding-checklist.md)
@@ -32,6 +36,7 @@ This folder is written for **humans** and for **RAG ingestion**.
 
 - **Operator agent (admin-only, current tools, planned tools):** [`docs/features/operator-agent.md`](./features/operator-agent.md)
 - **Agent plugins + tool allowlists (`TOOL_DOMAIN`, capabilities, patterns):** [`docs/features/agent-registry-and-allowlists.md`](./features/agent-registry-and-allowlists.md)
+- **External agent runtimes (coding agent behind an interface, e.g. Qwen Code):** [`docs/features/external-agent-runtimes.md`](./features/external-agent-runtimes.md)
 
 ### Start here
 
@@ -39,7 +44,8 @@ This folder is written for **humans** and for **RAG ingestion**.
 - **DDD architecture map**: [`docs/architecture/ddd-architecture-map.md`](./architecture/ddd-architecture-map.md)
 - **DDD checklist and checks**: [`docs/architecture/ddd-checklist.md`](./architecture/ddd-checklist.md)
 - **Tool system**: [`docs/architecture/tools.md`](./architecture/tools.md)
-- **Dashboards**: [`docs/features/dashboards.md`](./features/dashboards.md)
+- **Dashboards (UI, blocks, layout):** [`docs/features/agent-ui.md`](./features/agent-ui.md)
+- **Dashboard sharing & aggregation:** [`docs/features/dashboard-sharing.md`](./features/dashboard-sharing.md)
 - **Memory**: [`docs/features/memory.md`](./features/memory.md)
 - **RAG**: [`docs/features/rag.md`](./features/rag.md)
 - **Retrieval layer** (RAG + code + memory orchestration): [`docs/features/retrieval-layer.md`](./features/retrieval-layer.md)
@@ -73,4 +79,8 @@ You already have ADRs under [`docs/adr/`](./adr/):
 - [`0004-scheduler-data-model.md`](./adr/0004-scheduler-data-model.md)
 - [`0005-agentlayer-self-workspace-contract.md`](./adr/0005-agentlayer-self-workspace-contract.md)
 - [`0006-chat-secret-ingress-pipeline.md`](./adr/0006-chat-secret-ingress-pipeline.md) — chat → vault → placeholders → operator apply (proposed)
+- [`0007-user-delegate.md`](./adr/0007-user-delegate.md) — decision authority, not persona
+- [`0008-tui-client-contract.md`](./adr/0008-tui-client-contract.md) — AgentLayer without the WebUI
+- [`0009-client-side-execution.md`](./adr/0009-client-side-execution.md) — tools that run on the client, tiered indexing consent
+- [`0010-external-agent-runtime-port.md`](./adr/0010-external-agent-runtime-port.md) — coding agent behind an interface, Qwen Code as first adapter
 

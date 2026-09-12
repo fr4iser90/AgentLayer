@@ -48,6 +48,7 @@ Resolution is the **union** of (1)+(2), filtered against the **live** tool regis
 | `AGENT_STRICT_WORKSPACE` | `False` | If true, chat fails when no **resolved** project workspace is available (even when `AGENT_REQUIRES_WORKSPACE` is also true on other agents that allow auto-create). |
 | `AGENT_CODING_TOOLS_PERMISSION_ASK` | `False` | If true and the client sets `agent_permission_ask`, gated `coding_*` write/bash/patch tools may require a WebSocket `permission_reply` before running. |
 | `AGENT_TOOL_DISCIPLINE_PRESET` | unset | If set to a known preset string, appends the matching discipline block: `coding_plan`, `coding_build`, `security_auditor`. Otherwise the generic tool-usage discipline applies. |
+| `external_runtime` (agent.yaml key) | unset | If set to a registered runtime id (e.g. `qwen_code`), the turn runs in that **external process** instead of AgentLayer's planner loop. The tool policy below is still resolved and stored, but the vendor's own tools do the work — the allowlist no longer bounds what runs. Refusing to run degrades to AgentLayer's loop only with `AGENT_EXTERNAL_RUNTIME_FALLBACK_INTERNAL=true`. See `docs/features/external-agent-runtimes.md` and `docs/adr/0010-external-agent-runtime-port.md`. |
 
 Preset strings map to snippets in `agent.py` (`_TOOL_DISCIPLINE_BY_PRESET`). Add a new preset there **only** when you introduce a new discipline text; new agents otherwise reuse an existing preset key.
 
@@ -74,3 +75,4 @@ So: **declare domain + capabilities on the tool once**; agents and future orches
 - `docs/adr/0006-chat-secret-ingress-pipeline.md` — optional chat → vault → placeholders for operator apply (proposed).
 - `apps/backend/domain/plugin_system/tool_routing.py` — `filter_merged_tools_by_domain`, router categories.
 - `docs/features/operator-agent.md` — operator persona and admin tools.
+- `docs/features/external-agent-runtimes.md` — agents whose turn runs outside the planner loop (`external_runtime`).

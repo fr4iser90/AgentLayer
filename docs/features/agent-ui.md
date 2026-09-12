@@ -64,5 +64,5 @@ Types live in `features/dashboard/types.ts`. Supported `BlockType` values includ
 
 ## Related docs
 
-- Dashboard API and packs: `docs/features/dashboards.md`
+- Dashboard API and packs: `docs/api/http.md` (§ Dashboards)
 - RAG (including `agentlayer_docs` ingest): `docs/features/rag.md`
