@@ -2,7 +2,8 @@
 
 > **Status-Update (Sep 2026):** Dieser Doc behält die **historischen Phasen-Skizzen** (DDD-Greenfield).  
 > **Ist-Stand** und Drift-Bewertung: [`dsh-agentlayer-capability-comparison.md`](./dsh-agentlayer-capability-comparison.md).  
-> **Goal / Todos / Plan / Round-Driver Workplan:** [`agent-runtime-ux-goal-todos-plan.md`](./agent-runtime-ux-goal-todos-plan.md).  
+> **Goal / Todos / Plan / Round-Driver Workplan:** [`agent-runtime-ux-goal-todos-plan.md`](./agent-runtime-ux-goal-todos-plan.md).
+> **Chat-UI (Nachrichtenmodell, Tool-Aktivität, Expandierbarkeit):** [`dsh-agentlayer-chat-ui-comparison.md`](./dsh-agentlayer-chat-ui-comparison.md) — code-belegt, keine Phasen-Skizze.  
 > Kurz: Compaction + Context-Budget, Session Plan/Todo/Goal, MCP (stdio + HTTP) sind **AL-Style erledigt** — nicht 1:1 wie die Skizzen unten. Externe dsh-Schnittstelle: **won't do**.
 
 ## Architektur-Muster

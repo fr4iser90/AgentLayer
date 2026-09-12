@@ -1,9 +1,9 @@
 # AgentLayer ↔ DeepSeek Harness — Capability Comparison (Stand Sep 2026)
 
-**Zweck:** Gegencheck gegen DeepSeek Harness; Status der selektiven AL-Adaptation.  
-**Companion:** [`dsh-integration-plan.md`](./dsh-integration-plan.md) (historische Phasen + Status-Update), [`agent-runtime-ux-goal-todos-plan.md`](./agent-runtime-ux-goal-todos-plan.md) (Goal/Todos Workplan).
+**Zweck:** Gegencheck gegen DeepSeek Harness; Status der selektiven AL-Adaptation.
+**Companion:** [`dsh-integration-plan.md`](./dsh-integration-plan.md) (historische Phasen + Status-Update), [`agent-runtime-ux-goal-todos-plan.md`](./agent-runtime-ux-goal-todos-plan.md) (Goal/Todos Workplan), [`dsh-agentlayer-chat-ui-comparison.md`](./dsh-agentlayer-chat-ui-comparison.md) (Chat-UI: Nachrichtenmodell, Tool-Aktivität, Expandierbarkeit).
 
-**Scope:** Token-Meter, Compaction, Plan+Todo+Goal, MCP (+ kurz Sandbox).  
+**Scope:** Token-Meter, Compaction, Plan+Todo+Goal, MCP (+ kurz Sandbox). **Chat-UI ist ausgespart** — dafür siehe `dsh-agentlayer-chat-ui-comparison.md`.
 **Strategie:** AgentLayer ist kein Coding-Produkt; dsh-Ideen nur wo Everyday/Knowledge/Agent-Runtime helfen. Externe dsh-Control-Plane: **won't do**.
 
 ---
