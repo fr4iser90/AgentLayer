@@ -858,6 +858,8 @@ CREATE TABLE chat_conversations (
   session_todos JSONB NOT NULL DEFAULT '[]'::jsonb,
   session_plan_mode BOOLEAN NOT NULL DEFAULT false,
   context_inject_digests JSONB NULL,
+  external_runtime TEXT,
+  external_session_id TEXT,
   shared BOOLEAN NOT NULL DEFAULT false,
   pref_agent_id TEXT,
   pref_workspace_id UUID REFERENCES project_workspaces(id) ON DELETE SET NULL,
