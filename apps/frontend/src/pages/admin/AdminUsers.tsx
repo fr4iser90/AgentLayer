@@ -51,6 +51,9 @@ export function AdminUsers() {
   const { t } = useTranslation(["admin", "settings"]);
   const auth = useAuth();
   const { user } = auth;
+  // P5: hide all tenant UI in single-tenant (`agent_system`) mode; keep it in `multi_tenant`.
+  const isAgentSystem = user?.deployment_mode === "agent_system";
+  const tenantColSpan = isAgentSystem ? 14 : 15;
   const [rows, setRows] = useState<UserRow[]>([]);
   const [tenants, setTenants] = useState<TenantRow[]>([]);
   const [listLoading, setListLoading] = useState(true);
@@ -457,11 +460,16 @@ export function AdminUsers() {
         return;
       }
       setCreateMsg(
-        t("admin:usersCreated", {
-          email: data.email ?? email,
-          role: data.role ?? newRole,
-          tenantId: data.tenant_id ?? tid,
-        })
+        isAgentSystem
+          ? t("admin:usersCreatedNoTenant", {
+              email: data.email ?? email,
+              role: data.role ?? newRole,
+            })
+          : t("admin:usersCreated", {
+              email: data.email ?? email,
+              role: data.role ?? newRole,
+              tenantId: data.tenant_id ?? tid,
+            })
       );
       setNewEmail("");
       setNewPassword("");
@@ -551,7 +559,9 @@ export function AdminUsers() {
             <thead className="border-b border-surface-border bg-black/20 text-surface-muted">
               <tr>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColEmail")}</th>
-                <th className="px-4 py-3 font-medium">{t("admin:usersColTenant")}</th>
+                {!isAgentSystem && (
+                  <th className="px-4 py-3 font-medium">{t("admin:usersColTenant")}</th>
+                )}
                 <th className="px-4 py-3 font-medium">{t("admin:usersColRole")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColQuota")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColMediaQuota")}</th>
@@ -570,19 +580,19 @@ export function AdminUsers() {
             <tbody>
               {listLoading ? (
                 <tr>
-                  <td colSpan={15} className="px-4 py-6 text-center text-surface-muted">
+                  <td colSpan={tenantColSpan} className="px-4 py-6 text-center text-surface-muted">
                     {t("admin:loading")}
                   </td>
                 </tr>
               ) : listErr ? (
                 <tr>
-                  <td colSpan={15} className="px-4 py-6 text-center text-red-400">
+                  <td colSpan={tenantColSpan} className="px-4 py-6 text-center text-red-400">
                     {listErr}
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={15} className="px-4 py-6 text-center text-surface-muted">
+                  <td colSpan={tenantColSpan} className="px-4 py-6 text-center text-surface-muted">
                     {t("admin:usersNoUsers")}
                   </td>
                 </tr>
@@ -600,27 +610,31 @@ export function AdminUsers() {
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
-                        <select
-                          className="max-w-[14rem] rounded-md border border-surface-border bg-black/20 px-2 py-1.5 text-xs text-white"
-                          value={tid}
-                          disabled={saving}
-                          onChange={(e) => {
-                            const next = parseInt(e.target.value, 10);
-                            if (!Number.isFinite(next) || next === tid) return;
-                            void patchUserTenant(r.id, next);
-                          }}
-                        >
-                          {tenantOptions.map((row) => (
-                            <option key={row.id} value={row.id}>
-                              {tenantLabel(row, (key, opts) => t(key, opts))}
-                            </option>
-                          ))}
-                        </select>
-                        {saving ? (
-                          <span className="ml-2 text-[10px] text-surface-muted">{t("settings:saving", { ns: "settings" })}</span>
-                        ) : null}
-                      </td>
+                      {!isAgentSystem && (
+                        <td className="px-4 py-3">
+                          <select
+                            className="max-w-[14rem] rounded-md border border-surface-border bg-black/20 px-2 py-1.5 text-xs text-white"
+                            value={tid}
+                            disabled={saving}
+                            onChange={(e) => {
+                              const next = parseInt(e.target.value, 10);
+                              if (!Number.isFinite(next) || next === tid) return;
+                              void patchUserTenant(r.id, next);
+                            }}
+                          >
+                            {tenantOptions.map((row) => (
+                              <option key={row.id} value={row.id}>
+                                {tenantLabel(row, (key, opts) => t(key, opts))}
+                              </option>
+                            ))}
+                          </select>
+                          {saving ? (
+                            <span className="ml-2 text-[10px] text-surface-muted">
+                              {t("settings:saving", { ns: "settings" })}
+                            </span>
+                          ) : null}
+                        </td>
+                      )}
                       <td className="px-4 py-3">
                         <span
                           className={
@@ -814,8 +828,9 @@ export function AdminUsers() {
         </button>
       </section>
 
-      <section className="mt-10 rounded-xl border border-surface-border bg-surface-raised p-5">
-        <h2 className="text-sm font-medium text-white">{t("admin:usersCreateTenant")}</h2>
+      {!isAgentSystem && (
+        <section className="mt-10 rounded-xl border border-surface-border bg-surface-raised p-5">
+          <h2 className="text-sm font-medium text-white">{t("admin:usersCreateTenant")}</h2>
         <p className="mt-1 text-xs text-surface-muted">{t("admin:usersCreateTenantApi")}</p>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
           <label className="block text-xs text-surface-muted">
@@ -871,6 +886,7 @@ export function AdminUsers() {
           </p>
         ) : null}
       </section>
+      )}
 
       <section className="mt-10 rounded-xl border border-surface-border bg-surface-raised p-5">
         <h2 className="text-sm font-medium text-white">{t("admin:usersCreateUser")}</h2>
@@ -896,20 +912,22 @@ export function AdminUsers() {
               autoComplete="new-password"
             />
           </label>
-          <label className="block text-xs text-surface-muted">
-            {t("admin:usersTenantLabel")}
-            <select
-              className="mt-1 block rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
-              value={newTenantId}
-              onChange={(e) => setNewTenantId(e.target.value)}
-            >
-              {tenantOptions.map((row) => (
-                <option key={row.id} value={row.id}>
-                  {tenantLabel(row, (key, opts) => t(key, opts))}
-                </option>
-              ))}
-            </select>
-          </label>
+          {!isAgentSystem && (
+            <label className="block text-xs text-surface-muted">
+              {t("admin:usersTenantLabel")}
+              <select
+                className="mt-1 block rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+                value={newTenantId}
+                onChange={(e) => setNewTenantId(e.target.value)}
+              >
+                {tenantOptions.map((row) => (
+                  <option key={row.id} value={row.id}>
+                    {tenantLabel(row, (key, opts) => t(key, opts))}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className="block text-xs text-surface-muted">
             {t("admin:usersRoleLabel")}
             <select

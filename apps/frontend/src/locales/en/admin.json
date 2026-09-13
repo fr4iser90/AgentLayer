@@ -1199,6 +1199,7 @@
   "usersCreatePickTenant": "Pick a valid tenant.",
   "usersCreateFailed": "Create failed",
   "usersCreated": "Created login for {{email}} (role: {{role}}, tenant_id: {{tenantId}}). They can sign in at /login.",
+  "usersCreatedNoTenant": "Created login for {{email}} (role: {{role}}). They can sign in at /login.",
   "usersCreatedPrefix": "Created login",
   "usersTenantNameRequired": "Name required (e.g. work, friends).",
   "usersTenantCreated": "Created tenant \"{{name}}\"{{idSuffix}}{{templateSuffix}}{{seedSuffix}}.",
