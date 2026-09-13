@@ -27,6 +27,8 @@ type UserRow = {
   workspace_quota?: number;
   workspace_self_allowed?: boolean;
   schedules_allowed?: boolean;
+  dashboards_allowed?: boolean;
+  dashboard_quota?: number;
   media_storage_quota_mb?: number | null;
   media_enabled?: boolean | null;
   media_upload_enabled?: boolean | null;
@@ -282,6 +284,52 @@ export function AdminUsers() {
     }
   }
 
+  async function patchDashboardsAllowed(userId: string, allowed: boolean) {
+    setSavingUserId(userId);
+    setListErr(null);
+    try {
+      const res = await apiFetch(`/v1/admin/users/${userId}`, auth, {
+        method: "PATCH",
+        body: JSON.stringify({ dashboards_allowed: allowed }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { detail?: unknown };
+      if (!res.ok) {
+        setListErr(
+          typeof data.detail === "string" ? data.detail : t("admin:dashboardsPermissionUpdateFailed")
+        );
+        return;
+      }
+      await loadUsers();
+    } catch (e) {
+      setListErr(e instanceof Error ? e.message : t("admin:dashboardsPermissionUpdateFailed"));
+    } finally {
+      setSavingUserId(null);
+    }
+  }
+
+  async function patchDashboardQuota(userId: string, quota: number) {
+    setSavingUserId(userId);
+    setListErr(null);
+    try {
+      const res = await apiFetch(`/v1/admin/users/${userId}`, auth, {
+        method: "PATCH",
+        body: JSON.stringify({ dashboard_quota: quota }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { detail?: unknown };
+      if (!res.ok) {
+        setListErr(
+          typeof data.detail === "string" ? data.detail : t("admin:dashboardsQuotaUpdateFailed")
+        );
+        return;
+      }
+      await loadUsers();
+    } catch (e) {
+      setListErr(e instanceof Error ? e.message : t("admin:dashboardsQuotaUpdateFailed"));
+    } finally {
+      setSavingUserId(null);
+    }
+  }
+
 
   // Load the specialist agents once (the admin overview lists every agent).
   useEffect(() => {
@@ -511,6 +559,8 @@ export function AdminUsers() {
                 <th className="px-4 py-3 font-medium">{t("admin:usersColMedia")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColSelfEdit")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColSchedules")}</th>
+                <th className="px-4 py-3 font-medium">{t("admin:usersColDashboards")}</th>
+                <th className="px-4 py-3 font-medium">{t("admin:usersColDashboardsQuota")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColAgents")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColDiscord")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColTelegram")}</th>
@@ -520,19 +570,19 @@ export function AdminUsers() {
             <tbody>
               {listLoading ? (
                 <tr>
-                  <td colSpan={13} className="px-4 py-6 text-center text-surface-muted">
+                  <td colSpan={15} className="px-4 py-6 text-center text-surface-muted">
                     {t("admin:loading")}
                   </td>
                 </tr>
               ) : listErr ? (
                 <tr>
-                  <td colSpan={13} className="px-4 py-6 text-center text-red-400">
+                  <td colSpan={15} className="px-4 py-6 text-center text-red-400">
                     {listErr}
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={13} className="px-4 py-6 text-center text-surface-muted">
+                  <td colSpan={15} className="px-4 py-6 text-center text-surface-muted">
                     {t("admin:usersNoUsers")}
                   </td>
                 </tr>
@@ -671,6 +721,33 @@ export function AdminUsers() {
                           disabled={saving || r.role?.toLowerCase() === "admin"}
                           title={t("admin:usersSchedulesHint")}
                           onChange={(e) => void patchSchedulesAllowed(r.id, e.target.checked)}
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <input
+                          type="checkbox"
+                          className="rounded border-surface-border"
+                          checked={r.dashboards_allowed ?? false}
+                          disabled={saving || r.role?.toLowerCase() === "admin"}
+                          title={t("admin:usersDashboardsHint")}
+                          onChange={(e) => void patchDashboardsAllowed(r.id, e.target.checked)}
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <input
+                          type="number"
+                          min={1}
+                          max={1000}
+                          className="w-16 rounded-md border border-surface-border bg-black/20 px-2 py-1 text-xs text-white"
+                          value={r.dashboard_quota ?? 1}
+                          placeholder={t("admin:usersDashboardsQuotaPlaceholder")}
+                          title={t("admin:usersDashboardsQuotaPlaceholder")}
+                          disabled={saving}
+                          onChange={(e) => {
+                            const next = parseInt(e.target.value, 10);
+                            if (!Number.isFinite(next) || next < 1 || next > 1000) return;
+                            void patchDashboardQuota(r.id, next);
+                          }}
                         />
                       </td>
                       <td className="px-4 py-3">
