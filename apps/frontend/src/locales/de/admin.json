@@ -1199,6 +1199,7 @@
   "usersCreatePickTenant": "Gültigen Mandanten wählen.",
   "usersCreateFailed": "Erstellen fehlgeschlagen",
   "usersCreated": "Login für {{email}} erstellt (Rolle: {{role}}, tenant_id: {{tenantId}}). Anmeldung unter /login.",
+  "usersCreatedNoTenant": "Login für {{email}} erstellt (Rolle: {{role}}). Anmeldung unter /login.",
   "usersCreatedPrefix": "Login für",
   "usersTenantNameRequired": "Name erforderlich (z. B. work, friends).",
   "usersTenantCreated": "Mandant \"{{name}}\" erstellt{{idSuffix}}{{templateSuffix}}{{seedSuffix}}.",
