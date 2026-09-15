@@ -340,6 +340,17 @@ class AgentRegistry:
                 self._load_agents()
                 self._loaded = True
 
+    def reload(self) -> None:
+        """Re-scan plugin dirs and replace the loaded agents.
+
+        Promotes an approved submission from ``plugins/agents`` into the live
+        registry without a restart. Thread-safe.
+        """
+        with self._lock:
+            self._loaded = False
+            self._agents.clear()
+            self._load_agents()
+
     def get_agent(self, agent_id: str) -> dict[str, Any] | None:
         """Get agent definition by ID with ``tool_names`` resolved against the live tool registry."""
         self.ensure_loaded()

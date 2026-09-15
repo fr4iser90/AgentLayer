@@ -30,6 +30,7 @@ from apps.backend.api.agents.controllers.agent_config_admin_api import router as
 from apps.backend.api.agents.controllers.agents_admin_api import router as agents_admin_router
 from apps.backend.api.agents.controllers.agents_api import router as agents_router
 from apps.backend.api.agents.controllers.agents_import_admin_api import router as agents_import_admin_router
+from apps.backend.api.agents.controllers.agent_submissions_api import router as agent_submissions_router
 from apps.backend.api.agents.controllers.chat_runtime_api import router as chat_runtime_router
 from apps.backend.api.agents.controllers.conversation_goal_api import router as conversation_goal_router
 from apps.backend.api.benchmarks.controllers.benchmark_harness_admin_api import router as benchmark_harness_admin_router
@@ -129,6 +130,7 @@ for router in (
     agents_router,
     agents_admin_router,
     agents_import_admin_router,
+    agent_submissions_router,
     tools_admin_router,
     tools_import_admin_router,
     chat_runtime_router,
