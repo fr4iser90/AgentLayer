@@ -88,6 +88,7 @@ def register_web_routes(app: FastAPI) -> None:
         @app.get("/app/admin/interfaces/{rest:path}")
         @app.get("/app/admin/tools")
         @app.get("/app/admin/agents")
+        @app.get("/app/admin/agent-submissions")
         @app.get("/app/admin/benchmarks")
         @app.get("/app/admin/agent-config")
         @app.get("/app/admin/run-traces")

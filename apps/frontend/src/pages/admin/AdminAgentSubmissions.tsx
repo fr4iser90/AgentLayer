@@ -1,0 +1,386 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { useAuth } from "../../auth/AuthContext";
+import { apiFetch } from "../../lib/api";
+import { formatDateTimeLocal } from "../../lib/formatDateTime";
+import { ConfirmModal } from "../../components/ConfirmModal";
+
+type SubmissionStatus = "pending" | "approved" | "rejected";
+type StatusFilter = SubmissionStatus | "all";
+
+type SubmissionRow = {
+  id: string;
+  agent_id: string;
+  title: string | null;
+  description: string | null;
+  system_prompt: string | null;
+  agent_yaml: Record<string, unknown>;
+  target_dir: string;
+  risk_level: "low" | "medium" | "high";
+  status: SubmissionStatus;
+  author_id: string;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  review_notes: string | null;
+  materialize_error: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type SubmissionPreview = SubmissionRow & {
+  yaml_text: string;
+  tool_warnings: string[];
+};
+
+const RISK_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 };
+
+function riskClassName(risk: string): string {
+  if (risk === "high") return "bg-red-900/60 text-red-100";
+  if (risk === "medium") return "bg-amber-900/60 text-amber-100";
+  return "bg-emerald-900/60 text-emerald-100";
+}
+
+function statusClassName(status: string): string {
+  if (status === "approved") return "bg-emerald-900/60 text-emerald-100";
+  if (status === "rejected") return "bg-red-900/60 text-red-100";
+  return "bg-sky-900/60 text-sky-100";
+}
+
+function Author({ id }: { id: string }) {
+  const short = id.length > 8 ? `${id.slice(0, 6)}…` : id;
+  return <span className="font-mono text-[11px] text-surface-muted" title={id}>{short}</span>;
+}
+
+export function AdminAgentSubmissions() {
+  // Review risk/status keys are built dynamically, so widen `t` beyond the
+  // literal-key autocomplete the hook would otherwise enforce.
+  const { t } = useTranslation(["admin"]) as unknown as { t: (key: string) => string };
+  const auth = useAuth();
+  const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [preview, setPreview] = useState<SubmissionPreview | null>(null);
+  const [reviewNotes, setReviewNotes] = useState("");
+  const [confirm, setConfirm] = useState<{ decision: "approve" | "reject" } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const loadList = useCallback(async () => {
+    setLoading(true);
+    setMsg(null);
+    try {
+      const params = new URLSearchParams({ limit: "200" });
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      const res = await apiFetch(`/v1/admin/agents/submissions?${params}`, auth);
+      if (!res.ok) {
+        setMsg(t("admin:agentSubmissionsLoadFailed"));
+        return;
+      }
+      const data = (await res.json()) as { submissions?: SubmissionRow[] };
+      const list = data.submissions ?? [];
+      setSubmissions(list);
+      if (!selectedId && list.length) setSelectedId(list[0].id);
+    } catch {
+      setMsg(t("admin:agentSubmissionsLoadFailed"));
+    } finally {
+      setLoading(false);
+    }
+  }, [auth, t, statusFilter, selectedId]);
+
+  const loadPreview = useCallback(
+    async (id: string) => {
+      try {
+        const res = await apiFetch(`/v1/agents/submissions/${encodeURIComponent(id)}`, auth);
+        if (!res.ok) {
+          setPreview(null);
+          return;
+        }
+        setPreview((await res.json()) as SubmissionPreview);
+      } catch {
+        setPreview(null);
+      }
+    },
+    [auth],
+  );
+
+  useEffect(() => {
+    void loadList();
+  }, [loadList]);
+
+  useEffect(() => {
+    setPreview(null);
+    setReviewNotes("");
+    if (!selectedId) return;
+    void loadPreview(selectedId);
+  }, [selectedId, loadPreview]);
+
+  const selected = useMemo(
+    () => submissions.find((s) => s.id === selectedId) ?? null,
+    [submissions, selectedId],
+  );
+
+  const sorted = useMemo(
+    () => [...submissions].sort((a, b) => {
+      const ra = RISK_ORDER[a.risk_level] ?? 9;
+      const rb = RISK_ORDER[b.risk_level] ?? 9;
+      return ra - rb;
+    }),
+    [submissions],
+  );
+
+  async function submitReview() {
+    if (!selectedId || !confirm) return;
+    setBusy(true);
+    setConfirm(null);
+    setMsg(null);
+    try {
+      const res = await apiFetch(
+        `/v1/admin/agents/submissions/${encodeURIComponent(selectedId)}/review`,
+        auth,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ decision: confirm.decision, review_notes: reviewNotes.trim() || undefined }),
+        },
+      );
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { detail?: unknown };
+        setMsg(typeof data.detail === "string" ? data.detail : `HTTP ${res.status}`);
+        return;
+      }
+      setReviewNotes("");
+      await loadList();
+      setSelectedId(selectedId);
+      setMsg(t("admin:agentSubmissionsReviewRecorded"));
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <h1 className="text-2xl font-semibold text-white">{t("admin:agentSubmissionsTitle")}</h1>
+      <p className="mt-2 max-w-3xl text-sm text-surface-muted">{t("admin:agentSubmissionsIntro")}</p>
+
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <label className="flex items-center gap-2 text-xs text-surface-muted">
+          <span className="sr-only">
+            {t("admin:agentSubmissionsFilterLabel")}
+          </span>
+          <select
+            id="agents-submissions-filter"
+            className="rounded-md border border-surface-border bg-black/30 px-2 py-1.5 text-xs text-white"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+          >
+            <option value="pending">{t("admin:agentSubmissionsFilterPending")}</option>
+            <option value="approved">{t("admin:agentSubmissionsFilterApproved")}</option>
+            <option value="rejected">{t("admin:agentSubmissionsFilterRejected")}</option>
+            <option value="all">{t("admin:agentSubmissionsFilterAll")}</option>
+          </select>
+        </label>
+        <button
+          type="button"
+          className="rounded-md bg-white/10 px-4 py-1.5 text-xs font-medium text-white hover:bg-white/15 disabled:opacity-50"
+          disabled={loading}
+          onClick={() => void loadList()}
+        >
+          {t("admin:agentSubmissionsRefresh")}
+        </button>
+      </div>
+
+      {msg ? <p className="mt-4 text-sm text-amber-300">{msg}</p> : null}
+      {loading ? <p className="mt-6 text-sm text-surface-muted">{t("admin:agentSubmissionsLoading")}</p> : null}
+      {!loading && submissions.length === 0 ? (
+        <p className="mt-6 text-sm text-surface-muted">{t("admin:agentSubmissionsNone")}</p>
+      ) : null}
+
+      {!loading && submissions.length > 0 ? (
+        <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]">
+          <ul className="space-y-2">
+            {sorted.map((s) => (
+              <li key={s.id}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedId(s.id)}
+                  className={`w-full rounded-xl border px-3 py-3 text-left transition-colors ${
+                    selectedId === s.id
+                      ? "border-sky-500/40 bg-sky-950/20"
+                      : "border-surface-border bg-surface-raised/60 hover:border-white/15"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-white">{s.title || s.agent_id}</span>
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] ${riskClassName(s.risk_level)}`}>
+                      {t(`admin:agentSubmissionsRisk${s.risk_level.charAt(0).toUpperCase()}${s.risk_level.slice(1)}`)}
+                    </span>
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] ${statusClassName(s.status)}`}>
+                      {t(`admin:agentSubmissionsStatus${s.status.charAt(0).toUpperCase()}${s.status.slice(1)}`)}
+                    </span>
+                  </div>
+                  <p className="mt-1 font-mono text-[11px] text-surface-muted">({s.agent_id})</p>
+                  <div className="mt-1 flex items-center gap-2 text-[11px] text-surface-muted">
+                    <Author id={s.author_id} />
+                    {s.reviewed_by ? (
+                      <span>· {t("admin:agentSubmissionsReviewedBy")}: {s.reviewed_by}</span>
+                    ) : null}
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          {selected ? (
+            <div className="rounded-xl border border-surface-border bg-surface-raised/50 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-white">
+                    {selected.title || selected.agent_id}
+                    <span className="ml-2 font-mono text-sm text-surface-muted">({selected.agent_id})</span>
+                  </h2>
+                  <p className="mt-1 text-xs text-surface-muted">{selected.description || "—"}</p>
+                </div>
+                <span className={`rounded px-2 py-1 text-xs ${statusClassName(selected.status)}`}>
+                  {t(`admin:agentSubmissionsStatus${selected.status.charAt(0).toUpperCase()}${selected.status.slice(1)}`)}
+                </span>
+              </div>
+
+              <dl className="mt-4 grid gap-2 text-xs sm:grid-cols-2">
+                <div>
+                  <dt className="text-surface-muted">{t("admin:agentSubmissionsRisk")}</dt>
+                  <dd className="mt-1">
+                    <span className={`rounded px-2 py-0.5 text-xs ${riskClassName(selected.risk_level)}`}>
+                      {t(`admin:agentSubmissionsRisk${selected.risk_level.charAt(0).toUpperCase()}${selected.risk_level.slice(1)}`)}
+                    </span>
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-surface-muted">{t("admin:agentSubmissionsAuthor")}</dt>
+                  <dd className="mt-1"><Author id={selected.author_id} /></dd>
+                </div>
+                <div>
+                  <dt className="text-surface-muted">{t("admin:agentSubmissionsCreatedAt")}</dt>
+                  <dd className="mt-1 text-neutral-200">{formatDateTimeLocal(selected.created_at)}</dd>
+                </div>
+                <div>
+                  <dt className="text-surface-muted">{t("admin:agentSubmissionsTargetDir")}</dt>
+                  <dd className="mt-1 font-mono text-neutral-200">{selected.target_dir}</dd>
+                </div>
+                {selected.review_notes ? (
+                  <div className="sm:col-span-2">
+                    <dt className="text-surface-muted">{t("admin:agentSubmissionsReviewNotes")}</dt>
+                    <dd className="mt-1 text-neutral-200">{selected.review_notes}</dd>
+                  </div>
+                ) : null}
+              </dl>
+
+              <div className="mt-4">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
+                  {t("admin:agentSubmissionsSystemPrompt")}
+                </p>
+                <pre className="mt-1 max-h-40 overflow-auto rounded bg-black/40 p-2 text-[11px] text-neutral-300 whitespace-pre-wrap">
+                  {selected.system_prompt || "—"}
+                </pre>
+              </div>
+
+              <div className="mt-3">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
+                  {t("admin:agentSubmissionsYaml")}
+                </p>
+                {preview ? (
+                  <pre className="mt-1 max-h-56 overflow-auto rounded bg-black/40 p-2 text-[11px] text-neutral-300">
+                    {preview.yaml_text}
+                  </pre>
+                ) : (
+                  <p className="mt-1 text-[11px] text-surface-muted">{t("admin:agentSubmissionsYamlLoading")}</p>
+                )}
+              </div>
+
+              {preview?.tool_warnings.length ? (
+                <div className="mt-3">
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
+                    {t("admin:agentSubmissionsToolWarnings")}
+                  </p>
+                  <ul className="mt-1 list-disc space-y-0.5 pl-4 text-[11px] text-amber-200">
+                    {preview.tool_warnings.map((w) => (
+                      <li key={w} className="font-mono">{w}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              {selected.materialize_error ? (
+                <div className="mt-3">
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-red-300/80">
+                    {t("admin:agentSubmissionsMaterializeError")}
+                  </p>
+                  <p className="mt-1 font-mono text-[11px] text-red-200">{selected.materialize_error}</p>
+                </div>
+              ) : null}
+
+              {selected.status === "pending" ? (
+                <div className="mt-4 border-t border-surface-border pt-4">
+                  <label className="block text-xs text-surface-muted" htmlFor="agents-submissions-notes">
+                    {t("admin:agentSubmissionsReviewNotes")}
+                  </label>
+                  <textarea
+                    id="agents-submissions-notes"
+                    className="mt-1 min-h-20 w-full rounded-md border border-surface-border bg-black/30 px-3 py-2 text-xs text-white placeholder:text-neutral-500"
+                    value={reviewNotes}
+                    onChange={(e) => setReviewNotes(e.target.value)}
+                    placeholder={t("admin:agentSubmissionsReviewNotesPlaceholder")}
+                  />
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
+                      onClick={() => setConfirm({ decision: "approve" })}
+                    >
+                      {t("admin:agentSubmissionsApprove")}
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-50"
+                      onClick={() => setConfirm({ decision: "reject" })}
+                    >
+                      {t("admin:agentSubmissionsReject")}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      <ConfirmModal
+        open={confirm !== null}
+        title={
+          confirm?.decision === "approve"
+            ? t("admin:agentSubmissionsConfirmApproveTitle")
+            : t("admin:agentSubmissionsConfirmRejectTitle")
+        }
+        description={
+          confirm?.decision === "approve"
+            ? t("admin:agentSubmissionsConfirmApproveDesc")
+            : t("admin:agentSubmissionsConfirmRejectDesc")
+        }
+        confirmLabel={
+          confirm?.decision === "approve"
+            ? t("admin:agentSubmissionsApprove")
+            : t("admin:agentSubmissionsReject")
+        }
+        cancelLabel={t("admin:agentSubmissionsCancel")}
+        variant={confirm?.decision === "reject" ? "danger" : "default"}
+        busy={busy}
+        onConfirm={() => void submitReview()}
+        onCancel={() => {
+          if (!busy) setConfirm(null);
+        }}
+      />
+    </div>
+  );
+}
