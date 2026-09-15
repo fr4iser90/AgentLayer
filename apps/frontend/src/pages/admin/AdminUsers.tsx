@@ -3,6 +3,11 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
+import {
+  canAssignAgents as actorCanAssignAgents,
+  isTargetEditable as canEditTargetRow,
+  visibleColSpan as computeVisibleColSpan,
+} from "./accessGating";
 
 type TenantTemplateRow = {
   id: string;
@@ -58,16 +63,12 @@ export function AdminUsers() {
   // the agent-assign column is visible. A site admin holds every capability; a delegated
   // holder only what was granted onto ``users.capabilities``.
   const actorSiteAdmin = user?.site_role === "site_admin";
-  const actorAdminCaps = new Set(
-    (user?.capabilities ?? []).map((c) => String(c).trim().toLowerCase())
-  );
-  const canAssignAgents = actorSiteAdmin || actorAdminCaps.has("agent.assign");
+  const canAssignAgents = actorCanAssignAgents(user);
   // The ``user.manage`` columns are always visible: the admin users list endpoint itself
   // already requires ``user.manage``, so every viewer is a holder. Only the agents column
   // (``agent.assign``) varies. Base column count plus Tenant in multi-tenant mode; shrink by
   // the agents column this actor may not see.
-  const baseColSpan = isAgentSystem ? 14 : 15;
-  const visibleColSpan = baseColSpan - (canAssignAgents ? 0 : 1);
+  const visibleColSpan = computeVisibleColSpan(user, isAgentSystem);
   const [rows, setRows] = useState<UserRow[]>([]);
   const [tenants, setTenants] = useState<TenantRow[]>([]);
   const [listLoading, setListLoading] = useState(true);
@@ -619,8 +620,9 @@ export function AdminUsers() {
                   // P6: a delegated ``user.manage`` holder may edit any non-site-admin user but
                   // never a site admin (mirrors the backend PATCH boundary). Site admins may edit
                   // everyone. ``site_role`` is authoritative over the legacy ``role``.
-                  const targetSiteAdmin = r.site_role === "site_admin";
-                  const targetEditable = actorSiteAdmin || !targetSiteAdmin;
+                  const targetEditable = canEditTargetRow(user, {
+                    site_role: r.site_role,
+                  });
                   return (
                     <tr key={r.id} className="border-b border-surface-border/80 hover:bg-white/[0.03]">
                       <td className="px-4 py-3 text-white">
