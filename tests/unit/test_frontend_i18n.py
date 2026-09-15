@@ -77,7 +77,7 @@ def _app_route_paths_from_tsx(content: str) -> set[str]:
                         stack.append(seg.strip("/"))
                         route_pushed_seg = True
                 if re.search(
-                    r"<\w+(?:Page|Settings|Tools|Users|Schedules|ScheduledJobs|AgentTraces|Agents|Benchmarks|Dashboard)\s*/?>",
+                    r"<\w+(?:Page|Settings|Tools|Users|Schedules|ScheduledJobs|AgentTraces|Agents|Submissions|Benchmarks|Dashboard)\s*/?>",
                     line,
                 ):
                     paths.add(full_path())
@@ -124,7 +124,7 @@ def _app_route_paths_from_tsx(content: str) -> set[str]:
             route_pushed_seg = True
 
         if re.search(r"<Route\s+index\b", line) or re.search(
-            r"element=\{<[A-Z][A-Za-z]+(?:Page|Settings|Tools|Users|Schedules|ScheduledJobs|AgentTraces|Agents|Benchmarks|Dashboard)",
+            r"element=\{<[A-Z][A-Za-z]+(?:Page|Settings|Tools|Users|Schedules|ScheduledJobs|AgentTraces|Agents|Submissions|Benchmarks|Dashboard)",
             line,
         ) or re.search(
             r"<\w+(?:Page|Settings|Tools|Users|Schedules|ScheduledJobs|AgentTraces|Agents|Benchmarks|Dashboard)\s*/?>",
