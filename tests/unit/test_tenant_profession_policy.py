@@ -173,13 +173,20 @@ def test_content_reviewer_capability() -> None:
         patch("apps.backend.application.tenant_profession.use_cases.profession_policy_service.db.user_site_role", return_value="site_user"),
         patch("apps.backend.application.tenant_profession.use_cases.profession_policy_service.db.profession_roles_count", return_value=1),
         patch(
-            "apps.backend.application.tenant_profession.use_cases.profession_policy_service.db.profession_assignment_get",
-            return_value={
-                "profession_role_slug": "content_reviewer",
-                "profession_role_name": "Reviewer",
-                "role_kind": "content_reviewer",
-                "content_categories": [],
-            },
+            "apps.backend.application.tenant_profession.use_cases.profession_policy_service.db.profession_assignments_list_user",
+            return_value=[
+                {
+                    "profession_role_slug": "content_reviewer",
+                    "profession_role_name": "Reviewer",
+                    "role_kind": "content_reviewer",
+                    "content_categories": [],
+                    "capabilities": [
+                        "knowledge.search",
+                        "content.editor",
+                        "content.review",
+                    ],
+                },
+            ],
         ),
         patch("apps.backend.application.tenant_profession.use_cases.profession_policy_service.db.qualifications_list", return_value=[]),
     ):
@@ -195,13 +202,19 @@ def test_content_editor_capability() -> None:
         patch("apps.backend.application.tenant_profession.use_cases.profession_policy_service.db.user_site_role", return_value="site_user"),
         patch("apps.backend.application.tenant_profession.use_cases.profession_policy_service.db.profession_roles_count", return_value=1),
         patch(
-            "apps.backend.application.tenant_profession.use_cases.profession_policy_service.db.profession_assignment_get",
-            return_value={
-                "profession_role_slug": "content_editor",
-                "profession_role_name": "Editor",
-                "role_kind": "content_editor",
-                "content_categories": [],
-            },
+            "apps.backend.application.tenant_profession.use_cases.profession_policy_service.db.profession_assignments_list_user",
+            return_value=[
+                {
+                    "profession_role_slug": "content_editor",
+                    "profession_role_name": "Editor",
+                    "role_kind": "content_editor",
+                    "content_categories": [],
+                    "capabilities": [
+                        "knowledge.search",
+                        "content.editor",
+                    ],
+                },
+            ],
         ),
         patch("apps.backend.application.tenant_profession.use_cases.profession_policy_service.db.qualifications_list", return_value=[]),
     ):

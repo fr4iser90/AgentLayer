@@ -62,6 +62,22 @@ def close_pool() -> None:
         _pool = None
 
 
+def query(sql: str, params: tuple[Any, ...] = ()) -> int:
+    """Run a single write/DDL statement and commit.
+
+    Thin wrapper over the pool for ad-hoc statements (e.g. admin PATCH handlers)
+    that do not warrant a dedicated persistence helper. Returns the cursor rowcount.
+    """
+    if _pool is None:
+        raise RuntimeError("database pool not initialized")
+    with _pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, params)
+            count = cur.rowcount or 0
+        conn.commit()
+    return count
+
+
 from apps.backend.infrastructure.db.identity_tenants import (
     discord_user_id_normalize,
     scheduler_outbound_count_today_utc,
@@ -84,6 +100,7 @@ from apps.backend.infrastructure.db.identity_tenants import (
     user_tenant_id,
     user_site_role,
     user_site_admin,
+    user_capabilities,
     user_membership_role,
     tenant_membership_upsert,
     tenant_get,
@@ -471,6 +488,7 @@ from apps.backend.infrastructure.db.tenant_profession_persistence import (
     profession_assignment_get,
     profession_assignment_upsert,
     profession_assignments_list,
+    profession_assignments_list_user,
     profession_role_get,
     profession_role_get_by_slug,
     profession_role_insert,

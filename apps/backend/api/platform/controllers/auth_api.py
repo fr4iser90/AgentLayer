@@ -303,6 +303,7 @@ async def get_current_user_info(request: Request):
         "email": user.email,
         "role": user.role,
         "site_role": site_role,
+        "capabilities": db.user_capabilities(user.id),
         "tenant_id": tid,
         "membership_role": membership,
         "deployment_mode": deployment,

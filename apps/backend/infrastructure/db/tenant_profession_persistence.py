@@ -8,6 +8,7 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Json
 
 from apps.backend.infrastructure.db.db import pool
+from apps.backend.domain.tenant_profession.policy import capabilities_for_role_kind
 
 
 def _serialize(row: dict[str, Any]) -> dict[str, Any]:
@@ -92,7 +93,7 @@ def profession_roles_list(tenant_id: int) -> list[dict[str, Any]]:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
                 """
-                SELECT id, tenant_id, slug, name, role_kind, content_categories, created_at
+                SELECT id, tenant_id, slug, name, role_kind, content_categories, capabilities, created_at
                 FROM tenant_profession_roles WHERE tenant_id = %s ORDER BY name ASC
                 """,
                 (tenant_id,),
@@ -108,16 +109,18 @@ def profession_role_insert(
     name: str,
     role_kind: str,
     content_categories: list[str] | None = None,
+    capabilities: list[str] | None = None,
 ) -> dict[str, Any]:
     role_id = uuid.uuid4()
+    caps = list(capabilities or []) or capabilities_for_role_kind(role_kind)
     with pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
                 """
                 INSERT INTO tenant_profession_roles
-                  (id, tenant_id, slug, name, role_kind, content_categories)
-                VALUES (%s, %s, %s, %s, %s, %s)
-                RETURNING id, tenant_id, slug, name, role_kind, content_categories, created_at
+                  (id, tenant_id, slug, name, role_kind, content_categories, capabilities)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                RETURNING id, tenant_id, slug, name, role_kind, content_categories, capabilities, created_at
                 """,
                 (
                     role_id,
@@ -126,6 +129,7 @@ def profession_role_insert(
                     name.strip(),
                     role_kind.strip().lower(),
                     Json(content_categories or []),
+                    Json(caps),
                 ),
             )
             row = cur.fetchone()
@@ -138,7 +142,7 @@ def profession_role_get(role_id: uuid.UUID, tenant_id: int) -> dict[str, Any] | 
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
                 """
-                SELECT id, tenant_id, slug, name, role_kind, content_categories, created_at
+                SELECT id, tenant_id, slug, name, role_kind, content_categories, capabilities, created_at
                 FROM tenant_profession_roles WHERE id = %s AND tenant_id = %s
                 """,
                 (role_id, tenant_id),
@@ -153,7 +157,7 @@ def profession_role_get_by_slug(tenant_id: int, slug: str) -> dict[str, Any] | N
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
                 """
-                SELECT id, tenant_id, slug, name, role_kind, content_categories, created_at
+                SELECT id, tenant_id, slug, name, role_kind, content_categories, capabilities, created_at
                 FROM tenant_profession_roles WHERE tenant_id = %s AND slug = %s
                 """,
                 (tenant_id, slug.strip().lower()),
@@ -183,7 +187,7 @@ def profession_assignment_get(user_id: uuid.UUID, tenant_id: int) -> dict[str, A
                 SELECT a.user_id, a.tenant_id, a.profession_role_id, a.department_id,
                        a.created_at, a.updated_at,
                        r.slug AS profession_role_slug, r.name AS profession_role_name,
-                       r.role_kind, r.content_categories,
+                       r.role_kind, r.content_categories, r.capabilities,
                        d.slug AS department_slug, d.name AS department_name
                 FROM user_profession_assignments a
                 JOIN tenant_profession_roles r ON r.id = a.profession_role_id
@@ -234,7 +238,7 @@ def profession_assignments_list(tenant_id: int) -> list[dict[str, Any]]:
                 SELECT a.user_id, a.tenant_id, a.profession_role_id, a.department_id,
                        a.created_at, a.updated_at,
                        r.slug AS profession_role_slug, r.name AS profession_role_name,
-                       r.role_kind, r.content_categories,
+                       r.role_kind, r.content_categories, r.capabilities,
                        d.slug AS department_slug, d.name AS department_name,
                        u.email AS user_email
                 FROM user_profession_assignments a
@@ -245,6 +249,35 @@ def profession_assignments_list(tenant_id: int) -> list[dict[str, Any]]:
                 ORDER BY u.email ASC
                 """,
                 (tenant_id,),
+            )
+            rows = cur.fetchall()
+        conn.commit()
+    return [_serialize(dict(r)) for r in rows]
+
+
+def profession_assignments_list_user(user_id: uuid.UUID, tenant_id: int) -> list[dict[str, Any]]:
+    """All profession roles assigned to one user within one tenant (cumulative).
+
+    ``user_profession_assignments`` allows multiple roles per (user, tenant) once
+    PK ``id`` is present (see schema_130). Order is stable so callers get a
+    deterministic union.
+    """
+    with pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                """
+                SELECT a.user_id, a.tenant_id, a.id, a.profession_role_id, a.department_id,
+                       a.created_at, a.updated_at,
+                       r.slug AS profession_role_slug, r.name AS profession_role_name,
+                       r.role_kind, r.content_categories, r.capabilities,
+                       d.slug AS department_slug, d.name AS department_name
+                FROM user_profession_assignments a
+                JOIN tenant_profession_roles r ON r.id = a.profession_role_id
+                LEFT JOIN tenant_departments d ON d.id = a.department_id
+                WHERE a.user_id = %s AND a.tenant_id = %s
+                ORDER BY a.id ASC
+                """,
+                (user_id, tenant_id),
             )
             rows = cur.fetchall()
         conn.commit()

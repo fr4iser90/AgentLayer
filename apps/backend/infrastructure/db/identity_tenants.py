@@ -397,6 +397,30 @@ def user_site_admin(user_id: uuid.UUID | None) -> bool | None:
     return user_site_role(user_id) == "site_admin"
 
 
+def user_capabilities(user_id: uuid.UUID | None) -> list[str]:
+    """Per-user platform/admin capabilities (P6, Weg B). Always returns a list.
+
+    ``users.capabilities`` is a JSONB array of slugs. Empty/unknown users yield
+    ``[]`` so callers never have to guard for NULL.
+    """
+    if user_id is None:
+        return []
+    with pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT COALESCE(capabilities, '[]'::jsonb) FROM users WHERE id = %s",
+                (user_id,),
+            )
+            row = cur.fetchone()
+        conn.commit()
+    if not row or row[0] is None:
+        return []
+    raw = row[0]
+    if isinstance(raw, (list, tuple)):
+        return [str(x).strip().lower() for x in raw if str(x).strip()]
+    return []
+
+
 def user_membership_role(user_id: uuid.UUID, tenant_id: int | None = None) -> str | None:
     tid = tenant_id if tenant_id is not None else user_tenant_id(user_id)
     with pool().connection() as conn:

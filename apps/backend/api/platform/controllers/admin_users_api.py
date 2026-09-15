@@ -14,6 +14,7 @@ import httpx
 from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from psycopg.types.json import Json
 from pydantic import BaseModel, ConfigDict, Field
 
 from apps.backend.application.platform.use_cases.platform_controller_services import db
@@ -29,11 +30,13 @@ from apps.backend.application.identity.use_cases.request_auth import (
     get_user_for_bearer_token,
     list_all_users,
     require_admin,
+    require_admin_capability,
     revoke_refresh_token,
     update_user_tenant,
     validate_refresh_token,
     verify_password,
 )
+from apps.backend.domain.access.capabilities import CAP_USER_MANAGE
 from apps.backend.domain.shared.identity import reset_identity, set_identity
 from apps.backend.domain.shared.http_identity import resolve_chat_identity
 from apps.backend.application.platform.use_cases.platform_controller_services import http_500_detail
@@ -69,6 +72,7 @@ class AdminPatchUserBody(BaseModel):
     media_upload_enabled: bool | None = None
     media_sharing_enabled: bool | None = None
     llm_queue_priority: int | None = Field(default=None, ge=0, le=1000)
+    capabilities: list[str] | None = None
 
 
 @router.get("/v1/admin/tenant-templates")
@@ -110,15 +114,18 @@ async def admin_create_tenant(request: Request, body: AdminCreateTenantBody):
 @router.get("/v1/admin/users")
 async def admin_list_users(request: Request):
     """List all users (admin UI); ``email`` may be empty when the row has no mailbox."""
-    await require_admin(request)
+    await require_admin_capability(request, CAP_USER_MANAGE)
     return {"users": list_all_users()}
 
 
 @router.patch("/v1/admin/users/{user_id}")
 async def admin_patch_user(request: Request, user_id: uuid.UUID, body: AdminPatchUserBody):
-    """Update ``tenant_id``, ``workspace_quota``, ``workspace_self_allowed``, ``schedules_allowed``,
-    ``dashboards_allowed``, ``dashboard_quota``. Admin only."""
-    await require_admin(request)
+    """Update ``tenant_id``, quotas, media flags, ``capabilities`` and (for site admins) more.
+
+    A delegated ``user.manage`` holder may edit any non-site-admin user but never
+    a site admin. Only a site admin may grant capabilities onto a site admin.
+    """
+    actor = await require_admin_capability(request, CAP_USER_MANAGE)
     if (
         body.tenant_id is None
         and body.workspace_quota is None
@@ -131,11 +138,16 @@ async def admin_patch_user(request: Request, user_id: uuid.UUID, body: AdminPatc
         and body.media_upload_enabled is None
         and body.media_sharing_enabled is None
         and body.llm_queue_priority is None
+        and body.capabilities is None
     ):
         raise HTTPException(status_code=400, detail="no fields to patch")
     u = get_user_by_id(user_id)
     if not u:
         raise HTTPException(status_code=404, detail="user not found")
+
+    # P6 (Weg B): a delegated ``user.manage`` holder must never touch a site admin.
+    if db.user_site_role(u.id) == "site_admin" and db.user_site_role(actor.id) != "site_admin":
+        raise HTTPException(status_code=403, detail="only a site admin can modify a site admin")
 
     if body.tenant_id is not None:
         if not db.tenant_exists(body.tenant_id):
@@ -221,6 +233,18 @@ async def admin_patch_user(request: Request, user_id: uuid.UUID, body: AdminPatc
         except Exception:
             pass
 
+    if body.capabilities is not None:
+        from apps.backend.domain.access.capabilities import ALL_ADMIN_CAPABILITIES
+
+        norm = sorted({str(c).strip().lower() for c in body.capabilities if str(c).strip()})
+        unknown = [c for c in norm if c not in ALL_ADMIN_CAPABILITIES]
+        if unknown:
+            raise HTTPException(status_code=400, detail=f"unknown capabilities: {unknown}")
+        db.query(
+            "UPDATE users SET capabilities = %s WHERE id = %s",
+            (Json(norm), user_id),
+        )
+
     return {
         "ok": True,
         "id": str(user_id),
@@ -230,8 +254,14 @@ async def admin_patch_user(request: Request, user_id: uuid.UUID, body: AdminPatc
 
 @router.post("/v1/admin/users")
 async def admin_create_user(request: Request, body: AdminCreateUserBody):
-    """Create a password user (e.g. role ``user``). Admin only."""
-    await require_admin(request)
+    """Create a password user (e.g. role ``user``). Admin only.
+
+    A delegated ``user.manage`` holder may create regular users but not a site
+    admin (``role=admin`` maps to ``site_role=site_admin``).
+    """
+    actor = await require_admin_capability(request, CAP_USER_MANAGE)
+    if body.role == "admin" and db.user_site_role(actor.id) != "site_admin":
+        raise HTTPException(status_code=403, detail="only a site admin can create a site admin")
     if not db.tenant_exists(body.tenant_id):
         raise HTTPException(status_code=400, detail="unknown tenant_id")
     if get_user_by_email(body.email):

@@ -17,6 +17,7 @@ type UserRow = {
   id: string;
   email: string;
   role: string;
+  site_role?: string | null;
   created_at: string;
   external_sub?: string | null;
   display_name?: string | null;
@@ -53,7 +54,20 @@ export function AdminUsers() {
   const { user } = auth;
   // P5: hide all tenant UI in single-tenant (`agent_system`) mode; keep it in `multi_tenant`.
   const isAgentSystem = user?.deployment_mode === "agent_system";
-  const tenantColSpan = isAgentSystem ? 14 : 15;
+  // P6 (Weg B): platform/admin capabilities decide which rows an actor may edit and whether
+  // the agent-assign column is visible. A site admin holds every capability; a delegated
+  // holder only what was granted onto ``users.capabilities``.
+  const actorSiteAdmin = user?.site_role === "site_admin";
+  const actorAdminCaps = new Set(
+    (user?.capabilities ?? []).map((c) => String(c).trim().toLowerCase())
+  );
+  const canAssignAgents = actorSiteAdmin || actorAdminCaps.has("agent.assign");
+  // The ``user.manage`` columns are always visible: the admin users list endpoint itself
+  // already requires ``user.manage``, so every viewer is a holder. Only the agents column
+  // (``agent.assign``) varies. Base column count plus Tenant in multi-tenant mode; shrink by
+  // the agents column this actor may not see.
+  const baseColSpan = isAgentSystem ? 14 : 15;
+  const visibleColSpan = baseColSpan - (canAssignAgents ? 0 : 1);
   const [rows, setRows] = useState<UserRow[]>([]);
   const [tenants, setTenants] = useState<TenantRow[]>([]);
   const [listLoading, setListLoading] = useState(true);
@@ -571,7 +585,9 @@ export function AdminUsers() {
                 <th className="px-4 py-3 font-medium">{t("admin:usersColSchedules")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColDashboards")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColDashboardsQuota")}</th>
-                <th className="px-4 py-3 font-medium">{t("admin:usersColAgents")}</th>
+                {canAssignAgents && (
+                  <th className="px-4 py-3 font-medium">{t("admin:usersColAgents")}</th>
+                )}
                 <th className="px-4 py-3 font-medium">{t("admin:usersColDiscord")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColTelegram")}</th>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColCreated")}</th>
@@ -580,19 +596,19 @@ export function AdminUsers() {
             <tbody>
               {listLoading ? (
                 <tr>
-                  <td colSpan={tenantColSpan} className="px-4 py-6 text-center text-surface-muted">
+                  <td colSpan={visibleColSpan} className="px-4 py-6 text-center text-surface-muted">
                     {t("admin:loading")}
                   </td>
                 </tr>
               ) : listErr ? (
                 <tr>
-                  <td colSpan={tenantColSpan} className="px-4 py-6 text-center text-red-400">
+                  <td colSpan={visibleColSpan} className="px-4 py-6 text-center text-red-400">
                     {listErr}
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={tenantColSpan} className="px-4 py-6 text-center text-surface-muted">
+                  <td colSpan={visibleColSpan} className="px-4 py-6 text-center text-surface-muted">
                     {t("admin:usersNoUsers")}
                   </td>
                 </tr>
@@ -600,6 +616,11 @@ export function AdminUsers() {
                 rows.map((r) => {
                   const tid = r.tenant_id ?? 1;
                   const saving = savingUserId === r.id;
+                  // P6: a delegated ``user.manage`` holder may edit any non-site-admin user but
+                  // never a site admin (mirrors the backend PATCH boundary). Site admins may edit
+                  // everyone. ``site_role`` is authoritative over the legacy ``role``.
+                  const targetSiteAdmin = r.site_role === "site_admin";
+                  const targetEditable = actorSiteAdmin || !targetSiteAdmin;
                   return (
                     <tr key={r.id} className="border-b border-surface-border/80 hover:bg-white/[0.03]">
                       <td className="px-4 py-3 text-white">
@@ -615,7 +636,7 @@ export function AdminUsers() {
                           <select
                             className="max-w-[14rem] rounded-md border border-surface-border bg-black/20 px-2 py-1.5 text-xs text-white"
                             value={tid}
-                            disabled={saving}
+                            disabled={saving || !targetEditable}
                             onChange={(e) => {
                               const next = parseInt(e.target.value, 10);
                               if (!Number.isFinite(next) || next === tid) return;
@@ -645,6 +666,14 @@ export function AdminUsers() {
                         >
                           {r.role}
                         </span>
+                        {!targetEditable ? (
+                          <span
+                            className="mt-0.5 block text-xs font-normal text-amber-400"
+                            title={t("admin:usersSiteAdminLocked")}
+                          >
+                            {t("admin:usersSiteAdminLocked")}
+                          </span>
+                        ) : null}
                       </td>
                       <td className="px-4 py-3">
                         <input
@@ -653,7 +682,7 @@ export function AdminUsers() {
                           max={1000}
                           className="w-16 rounded-md border border-surface-border bg-black/20 px-2 py-1 text-xs text-white"
                           value={r.workspace_quota ?? 10}
-                          disabled={saving}
+                          disabled={saving || !targetEditable}
                           onChange={(e) => {
                             const next = parseInt(e.target.value, 10);
                             if (!Number.isFinite(next) || next < 1 || next > 1000) return;
@@ -669,7 +698,7 @@ export function AdminUsers() {
                           className="w-20 rounded-md border border-surface-border bg-black/20 px-2 py-1 text-xs text-white"
                           value={r.media_storage_quota_mb ?? ""}
                           placeholder={t("admin:usersMediaQuotaPlaceholder")}
-                          disabled={saving}
+                          disabled={saving || !targetEditable}
                           title={t("admin:usersMediaQuotaPlaceholder")}
                           onChange={(e) => {
                             const next = parseInt(e.target.value, 10);
@@ -686,7 +715,7 @@ export function AdminUsers() {
                           className="w-16 rounded-md border border-surface-border bg-black/20 px-2 py-1 text-xs text-white"
                           value={r.llm_queue_priority ?? ""}
                           placeholder={t("admin:usersLlmPrioDefault")}
-                          disabled={saving}
+                          disabled={saving || !targetEditable}
                           title={t("admin:usersLlmPrioHint")}
                           onChange={(e) => {
                             const raw = e.target.value.trim();
@@ -706,7 +735,7 @@ export function AdminUsers() {
                           value={
                             r.media_enabled === true ? "on" : r.media_enabled === false ? "off" : "inherit"
                           }
-                          disabled={saving}
+                          disabled={saving || !targetEditable}
                           onChange={(e) => {
                             const v = e.target.value;
                             if (v === "inherit") return;
@@ -723,7 +752,7 @@ export function AdminUsers() {
                           type="checkbox"
                           className="rounded border-surface-border"
                           checked={r.workspace_self_allowed ?? false}
-                          disabled={saving || r.role?.toLowerCase() === "admin"}
+                          disabled={saving || !targetEditable}
                           onChange={(e) => void patchWorkspaceSelfAllowed(r.id, e.target.checked)}
                         />
                       </td>
@@ -732,7 +761,7 @@ export function AdminUsers() {
                           type="checkbox"
                           className="rounded border-surface-border"
                           checked={r.schedules_allowed ?? false}
-                          disabled={saving || r.role?.toLowerCase() === "admin"}
+                          disabled={saving || !targetEditable}
                           title={t("admin:usersSchedulesHint")}
                           onChange={(e) => void patchSchedulesAllowed(r.id, e.target.checked)}
                         />
@@ -742,7 +771,7 @@ export function AdminUsers() {
                           type="checkbox"
                           className="rounded border-surface-border"
                           checked={r.dashboards_allowed ?? false}
-                          disabled={saving || r.role?.toLowerCase() === "admin"}
+                          disabled={saving || !targetEditable}
                           title={t("admin:usersDashboardsHint")}
                           onChange={(e) => void patchDashboardsAllowed(r.id, e.target.checked)}
                         />
@@ -756,7 +785,7 @@ export function AdminUsers() {
                           value={r.dashboard_quota ?? 1}
                           placeholder={t("admin:usersDashboardsQuotaPlaceholder")}
                           title={t("admin:usersDashboardsQuotaPlaceholder")}
-                          disabled={saving}
+                          disabled={saving || !targetEditable}
                           onChange={(e) => {
                             const next = parseInt(e.target.value, 10);
                             if (!Number.isFinite(next) || next < 1 || next > 1000) return;
@@ -764,6 +793,7 @@ export function AdminUsers() {
                           }}
                         />
                       </td>
+                      {canAssignAgents && (
                       <td className="px-4 py-3">
                         {!agentListLoaded || specialistAgents.length === 0 ? (
                           <span className="text-[10px] text-surface-muted">
@@ -782,7 +812,7 @@ export function AdminUsers() {
                                   checked={userAllowedAgents[r.id]?.has(a.id) ?? false}
                                   disabled={
                                     saving ||
-                                    r.role?.toLowerCase() === "admin" ||
+                                    !targetEditable ||
                                     agentBusy[r.id]
                                   }
                                   onChange={(e) =>
@@ -795,6 +825,7 @@ export function AdminUsers() {
                           </div>
                         )}
                       </td>
+                      )}
                       <td className="px-4 py-3 font-mono text-xs text-neutral-400">
                         {r.discord_user_id?.trim() ? r.discord_user_id.trim() : "—"}
                       </td>
@@ -936,7 +967,7 @@ export function AdminUsers() {
               onChange={(e) => setNewRole(e.target.value as "user" | "admin")}
             >
               <option value="user">user</option>
-              <option value="admin">admin</option>
+              {actorSiteAdmin && <option value="admin">admin</option>}
             </select>
           </label>
           <button

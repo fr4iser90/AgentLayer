@@ -804,6 +804,7 @@
   "usersPasswordLabel": "Password (≥ 8)",
   "usersTenantLabel": "Tenant",
   "usersRoleLabel": "Role",
+  "usersSiteAdminLocked": "Site admin — locked",
   "usersTenantDefault": "Tenant {{id}}",
   "pluginCronTitle": "Plugin cron",
   "pluginCronIntro": "This section is for plugin background cron jobs, not for user Schedules (scheduler_jobs), not ComfyUI image graphs and not for future user-defined step workflows (n8n-style). Those jobs are discovered from the same scan paths as tools: any .py file that defines HANDLERS and RUN_EVERY_MINUTES is registered by scheduled_job_registry and run by the in-process cron thread (src/infrastructure/cron.py).",

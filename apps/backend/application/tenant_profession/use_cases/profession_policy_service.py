@@ -10,12 +10,32 @@ from apps.backend.domain.tenant_profession.policy import (
     DEFAULT_DEPARTMENTS,
     DEFAULT_PROFESSION_ROLES,
     EffectiveProfessionPolicy,
-    _KIND_CAPABILITIES,
+    capabilities_for_role_kind,
     _TENANT_ADMIN_CAPS,
     content_visible_to_policy,
 )
 from apps.backend.infrastructure.db import db
 from apps.backend.infrastructure.db.tenant_profession_persistence import tenant_content_get_by_source_uri
+
+
+def _union_role_capabilities(assignments: list[dict[str, Any]]) -> frozenset[str]:
+    """Cumulative content capabilities across every assigned role (Weg B).
+
+    Reads the authoritative ``capabilities`` JSONB per role. Roles without stored
+    capabilities (legacy / pre-seed rows) fall back to the ``role_kind`` seed map
+    so the effective set never silently shrinks.
+    """
+    out: set[str] = set()
+    for a in assignments:
+        stored = a.get("capabilities") or []
+        if stored:
+            for cap in stored:
+                out.add(str(cap).strip().lower())
+        else:
+            out |= capabilities_for_role_kind(str(a.get("role_kind") or "end_user"))
+    if not out:
+        out = {CAP_KNOWLEDGE_SEARCH}
+    return frozenset(out)
 
 
 def ensure_tenant_profession_defaults(tenant_id: int) -> None:
@@ -35,16 +55,17 @@ def effective_policy(user_id: uuid.UUID, tenant_id: int) -> EffectiveProfessionP
     site_admin = db.user_site_role(user_id) == "site_admin"
     if site_admin:
         is_admin = True
-    assignment = db.profession_assignment_get(user_id, tenant_id)
+    assignments = db.profession_assignments_list_user(user_id, tenant_id)
+    first = assignments[0] if assignments else None
     qualifications = tuple(db.qualifications_list(user_id, tenant_id))
 
     if is_admin:
-        dept_slug = assignment.get("department_slug") if assignment else None
-        dept_name = assignment.get("department_name") if assignment else None
-        role_slug = assignment.get("profession_role_slug") if assignment else None
-        role_name = assignment.get("profession_role_name") if assignment else None
-        role_kind = str(assignment.get("role_kind") if assignment else "domain_admin")
-        cats = assignment.get("content_categories") if assignment else []
+        role_slug = first.get("profession_role_slug") if first else None
+        role_name = first.get("profession_role_name") if first else None
+        role_kind = str(first.get("role_kind") if first else "domain_admin")
+        dept_slug = first.get("department_slug") if first else None
+        dept_name = first.get("department_name") if first else None
+        cats = first.get("content_categories") if first else []
         return EffectiveProfessionPolicy(
             tenant_id=tenant_id,
             user_id=user_id,
@@ -59,7 +80,7 @@ def effective_policy(user_id: uuid.UUID, tenant_id: int) -> EffectiveProfessionP
             qualifications=qualifications,
         )
 
-    if not assignment:
+    if not first:
         return EffectiveProfessionPolicy(
             tenant_id=tenant_id,
             user_id=user_id,
@@ -74,19 +95,17 @@ def effective_policy(user_id: uuid.UUID, tenant_id: int) -> EffectiveProfessionP
             qualifications=qualifications,
         )
 
-    kind = str(assignment.get("role_kind") or "end_user")
-    caps = _KIND_CAPABILITIES.get(kind, frozenset({CAP_KNOWLEDGE_SEARCH}))
-    cats = assignment.get("content_categories") or []
+    caps = _union_role_capabilities(assignments)
     return EffectiveProfessionPolicy(
         tenant_id=tenant_id,
         user_id=user_id,
         is_tenant_admin=False,
-        profession_role_slug=str(assignment.get("profession_role_slug") or ""),
-        profession_role_name=str(assignment.get("profession_role_name") or ""),
-        role_kind=kind,
-        department_slug=assignment.get("department_slug"),
-        department_name=assignment.get("department_name"),
-        content_categories=tuple(str(c) for c in cats),
+        profession_role_slug=str(first.get("profession_role_slug") or ""),
+        profession_role_name=str(first.get("profession_role_name") or ""),
+        role_kind=str(first.get("role_kind") or "end_user"),
+        department_slug=first.get("department_slug"),
+        department_name=first.get("department_name"),
+        content_categories=tuple(str(c) for c in (first.get("content_categories") or [])),
         capabilities=caps,
         qualifications=qualifications,
     )
