@@ -90,7 +90,7 @@ def test_batch_endpoint_requires_admin_and_maps_errors() -> None:
 
     async def run_ok() -> None:
         with (
-            patch.object(api_mod, "require_admin", new=AsyncMock(return_value=user)),
+            patch.object(api_mod, "require_admin_capability", new=AsyncMock(return_value=user)),
             patch.object(api_mod, "batch_upsert_user_agent_policies", new=MagicMock(side_effect=_ok)),
         ):
             resp = await api_mod.admin_batch_agent_access_policy(
@@ -104,7 +104,7 @@ def test_batch_endpoint_requires_admin_and_maps_errors() -> None:
 
     async def run_bad() -> None:
         with (
-            patch.object(api_mod, "require_admin", new=AsyncMock(return_value=user)),
+            patch.object(api_mod, "require_admin_capability", new=AsyncMock(return_value=user)),
             patch.object(api_mod, "batch_upsert_user_agent_policies", new=MagicMock(side_effect=_boom)),
         ):
             with pytest.raises(HTTPException) as exc:

@@ -32,6 +32,8 @@ export type AuthUser = {
   email: string;
   role: string;
   site_role?: string;
+  /** P6 (Weg B): granted platform/admin capabilities (cumulative JSONB). Empty when unknown. */
+  capabilities?: string[];
   tenant_id?: number;
   membership_role?: string | null;
   deployment_mode?: string;

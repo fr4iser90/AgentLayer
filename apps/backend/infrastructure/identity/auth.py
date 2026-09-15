@@ -175,6 +175,16 @@ def get_user_by_email(email: str) -> Optional[User]:
             )
 
 
+def _normalize_capabilities(raw: Any) -> list[str]:
+    """Normalize a JSONB capabilities value to a sorted list of lowercase slugs."""
+    if not raw:
+        return []
+    if isinstance(raw, (list, tuple)):
+        items = [str(x).strip().lower() for x in raw if str(x).strip()]
+        return sorted(set(items))
+    return []
+
+
 def list_all_users() -> list[dict[str, Any]]:
     """
     All ``users`` rows for admin UI. ``email`` is nullable in the schema; do not build ``User``
@@ -184,7 +194,7 @@ def list_all_users() -> list[dict[str, Any]]:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT u.id, u.email, u.role, u.created_at, u.external_sub, u.display_name,
+                SELECT u.id, u.email, u.role, u.site_role, u.created_at, u.external_sub, u.display_name,
                        u.tenant_id, t.name AS tenant_name, u.discord_user_id, u.telegram_user_id,
                        COALESCE(u.workspace_quota, 10) AS workspace_quota,
                        COALESCE(u.workspace_self_allowed, false) AS workspace_self_allowed,
@@ -194,7 +204,8 @@ def list_all_users() -> list[dict[str, Any]]:
                        u.media_storage_quota_mb,
                        u.media_enabled,
                        u.media_upload_enabled,
-                       u.llm_queue_priority
+                       u.llm_queue_priority,
+                       COALESCE(u.capabilities, '[]'::jsonb) AS capabilities
                 FROM users u
                 LEFT JOIN tenants t ON t.id = u.tenant_id
                 ORDER BY u.created_at ASC NULLS LAST, u.email ASC NULLS LAST, u.external_sub ASC
@@ -207,6 +218,7 @@ def list_all_users() -> list[dict[str, Any]]:
             uid,
             email,
             role,
+            site_role,
             created_at,
             external_sub,
             display_name,
@@ -223,6 +235,7 @@ def list_all_users() -> list[dict[str, Any]]:
             media_enabled,
             media_upload_enabled,
             llm_queue_priority,
+            capabilities,
         ) = row
         tid = int(tenant_id) if tenant_id is not None else 1
         du = str(discord_uid).strip() if discord_uid is not None else ""
@@ -232,6 +245,7 @@ def list_all_users() -> list[dict[str, Any]]:
                 "id": str(uid),
                 "email": email or "",
                 "role": role,
+                "site_role": site_role,
                 "created_at": created_at.isoformat() if created_at else "",
                 "external_sub": external_sub,
                 "display_name": display_name,
@@ -252,6 +266,7 @@ def list_all_users() -> list[dict[str, Any]]:
                 "llm_queue_priority": int(llm_queue_priority)
                 if llm_queue_priority is not None
                 else None,
+                "capabilities": _normalize_capabilities(capabilities),
             }
         )
     return out
@@ -462,6 +477,30 @@ async def require_site_admin(request: Request) -> User:
     user = await get_current_user(request)
     if db.user_site_role(user.id) != "site_admin":
         raise HTTPException(status_code=403, detail="site admin required")
+    return user
+
+
+async def require_admin_capability(request: Request, capability: str) -> User:
+    """Require a platform/admin capability (P6, Weg B). Site admin holds all.
+
+    Fails closed for unknown capability slugs. The capability set is read from
+    ``users.capabilities`` (cumulative JSONB). Non-site-admins without the
+    granted capability are denied.
+    """
+    from apps.backend.domain.access.capabilities import (
+        ALL_ADMIN_CAPABILITIES,
+        evaluate_access,
+    )
+
+    if capability not in ALL_ADMIN_CAPABILITIES:
+        raise HTTPException(status_code=403, detail=f"unknown capability: {capability}")
+    user = await get_current_user(request)
+    if not evaluate_access(
+        site_role=db.user_site_role(user.id),
+        capabilities=db.user_capabilities(user.id),
+        capability=capability,
+    ):
+        raise HTTPException(status_code=403, detail="capability required")
     return user
 
 

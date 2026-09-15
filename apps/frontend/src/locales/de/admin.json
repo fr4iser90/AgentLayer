@@ -804,6 +804,7 @@
   "usersPasswordLabel": "Passwort (≥ 8)",
   "usersTenantLabel": "Tenant",
   "usersRoleLabel": "Rolle",
+  "usersSiteAdminLocked": "Site-Admin — gesperrt",
   "usersTenantDefault": "Tenant {{id}}",
   "pluginCronTitle": "Plugin cron",
   "pluginCronIntro": "Dieser Bereich ist für Plugin-Hintergrund-Cron-Jobs, nicht für User-Schedules (scheduler_jobs), nicht für ComfyUI-Bildgraphen und nicht für zukünftige User-Workflows (n8n-Style). Jobs werden wie Tools gefunden: jede .py mit HANDLERS und RUN_EVERY_MINUTES wird von scheduled_job_registry registriert und vom In-Process-Cron-Thread ausgeführt (src/infrastructure/cron.py).",

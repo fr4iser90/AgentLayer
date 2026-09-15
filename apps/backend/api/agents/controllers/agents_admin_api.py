@@ -18,8 +18,9 @@ from apps.backend.application.agent_runtime.use_cases.agent_governance_services 
     resolve_agent_governance,
     upsert_agent_access_policy,
 )
-from apps.backend.application.identity.use_cases.request_auth import require_admin
+from apps.backend.application.identity.use_cases.request_auth import require_admin, require_admin_capability
 from apps.backend.application.platform.use_cases.platform_controller_services import db
+from apps.backend.domain.access.capabilities import CAP_AGENT_ASSIGN
 from apps.backend.domain.agent_runtime.registry import get_agent_registry
 
 router = APIRouter(tags=["admin-agents"])
@@ -72,7 +73,7 @@ def _agent_admin_row(agent: dict[str, Any]) -> dict[str, Any]:
 @router.get("/v1/admin/agents")
 async def admin_list_agents(request: Request) -> dict[str, Any]:
     """List agents with resolved tool counts (admin read-only)."""
-    await require_admin(request)
+    await require_admin_capability(request, CAP_AGENT_ASSIGN)
     reg = get_agent_registry()
     rows = [_agent_admin_row(reg.get_agent(aid) or {}) for aid in reg.agent_ids()]
     return {"agents": rows}
@@ -85,7 +86,7 @@ async def admin_list_agent_policies(
     user_id: uuid.UUID | None = Query(None),
     agent_id: str | None = Query(None),
 ) -> dict[str, Any]:
-    user = await require_admin(request)
+    user = await require_admin_capability(request, CAP_AGENT_ASSIGN)
     tid = int(tenant_id) if tenant_id is not None else int(db.user_tenant_id(user.id) or 1)
     return {
         "policies": list_agent_policy_rows(
@@ -206,7 +207,7 @@ async def admin_put_agent_access_policy(
     agent_id: str,
     body: AgentAccessPolicyBody,
 ) -> dict[str, Any]:
-    user = await require_admin(request)
+    user = await require_admin_capability(request, CAP_AGENT_ASSIGN)
     tid = int(body.tenant_id) if body.tenant_id is not None else int(db.user_tenant_id(user.id) or 1)
     try:
         row = upsert_agent_access_policy(
@@ -234,7 +235,7 @@ async def admin_delete_agent_access_policy(
     tenant_id: int | None = Query(None, ge=1),
     user_id: uuid.UUID | None = Query(None),
 ) -> dict[str, Any]:
-    user = await require_admin(request)
+    user = await require_admin_capability(request, CAP_AGENT_ASSIGN)
     tid = int(tenant_id) if tenant_id is not None else int(db.user_tenant_id(user.id) or 1)
     try:
         deleted = delete_agent_access_policy(
@@ -254,7 +255,7 @@ async def admin_batch_agent_access_policy(
     body: AgentAccessBatchBody,
 ) -> dict[str, Any]:
     """Grant/deny several agents to one person at once (P3, ``scope='user'``)."""
-    user = await require_admin(request)
+    user = await require_admin_capability(request, CAP_AGENT_ASSIGN)
     try:
         policies = batch_upsert_user_agent_policies(
             user_id=body.user_id,

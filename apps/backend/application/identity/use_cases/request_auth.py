@@ -21,6 +21,7 @@ from apps.backend.infrastructure.identity.auth import (
     list_api_keys as _list_api_keys,
     require_admin as _require_admin,
     require_site_admin as _require_site_admin,
+    require_admin_capability as _require_admin_capability,
     require_tenant_admin as _require_tenant_admin,
     require_tenant_member as _require_tenant_member,
     require_permission as _require_permission,
@@ -43,6 +44,10 @@ async def require_admin(request: Request) -> Any:
 
 async def require_site_admin(request: Request) -> Any:
     return await _require_site_admin(request)
+
+
+async def require_admin_capability(request: Request, capability: str) -> Any:
+    return await _require_admin_capability(request, capability)
 
 
 async def require_tenant_admin(request: Request) -> Any:
