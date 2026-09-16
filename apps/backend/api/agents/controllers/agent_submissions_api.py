@@ -14,6 +14,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from apps.backend.application.agent_runtime.use_cases.agent_submission_services import (
+    assess_submission,
     preview_submission,
     list_submissions,
     review_submission as review_submission_use,
@@ -53,6 +54,34 @@ async def create_submission(request: Request, body: AgentSubmissionBody) -> dict
         raise HTTPException(status_code=400, detail="agent_id (or agent.id/agent.name) is required")
     try:
         return submit_agent_submission(
+            author_id=str(user.id),
+            agent_id=agent_id,
+            agent_yaml=agent,
+            title=body.title,
+            description=body.description or agent.get("description"),
+            system_prompt=body.system_prompt,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/agents/submissions/assess")
+async def assess_submission_endpoint(request: Request, body: AgentSubmissionBody) -> dict[str, Any]:
+    """Heuristic pre-filter for a proposed draft (any authenticated user).
+
+    No submission is written — submitters can sanity-check risk and unknown
+    tools before the draft enters the review queue.
+    """
+    user = await get_current_user(request)
+    agent = body.agent
+    if not isinstance(agent, dict) or not agent:
+        raise HTTPException(status_code=400, detail="agent must be a non-empty object")
+    agent_id = (body.agent_id or str(agent.get("id") or "").strip()
+                or str(agent.get("name") or "").strip())
+    if not agent_id:
+        raise HTTPException(status_code=400, detail="agent_id (or agent.id/agent.name) is required")
+    try:
+        return assess_submission(
             author_id=str(user.id),
             agent_id=agent_id,
             agent_yaml=agent,

@@ -87,6 +87,30 @@ def _ser(row: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+def assess_submission(
+    *,
+    agent_id: str,
+    agent_yaml: dict[str, Any],
+    system_prompt: str | None = None,
+    risk_level: str | None = None,
+) -> dict[str, Any]:
+    """Assess a draft for storage without writing anything (KI pre-filter backing).
+
+    Reuses the same validation/slug/risk logic as ``create_submission`` so the
+    pre-filter and the persisted row agree on the resulting slug, agent_id and
+    risk level.
+    """
+    validated = _validate_payload(
+        agent_id=agent_id, agent_yaml=agent_yaml, system_prompt=system_prompt, risk_level=risk_level
+    )
+    return {
+        "slug": validated["slug"],
+        "agent_yaml": validated["agent_yaml"],
+        "risk_level": validated["risk_level"],
+        "target_dir": f"plugins/agents/{validated['slug']}",
+    }
+
+
 def create_submission(
     *,
     agent_id: str,
