@@ -659,6 +659,19 @@ knobs:
     benchmark_sensitive: true
     doc: "true = ask user before destructive coding tools; false = unattended benchmark/chat parity."
 
+  # --- agent access / visibility ---
+  - id: chat.allowed_agent_ids
+    layer: runtime_config
+    type: string_list
+    writable: true
+    apply_via: agent-config/apply
+    value_schema: agent-yaml-fields.json#/$defs/chatAllowedAgentIds
+    ui_group: agents
+    affects_agents: [general, knowledge_companion]
+    affects_clusters: [S4, C, W, SEC]
+    benchmark_sensitive: false
+    doc: "Tenant allowlist for direct chat. Enforced only for non-elevated callers (site admins bypass it); unset = no tenant-level restriction. Written by tenant templates. Per-user agent_access_policies still resolve on top (global -> tenant -> user, last non-inherit wins). Not consulted by the scheduler."
+
   # --- delegate ---
   - id: delegate.allowed_agent_ids
     layer: runtime_config

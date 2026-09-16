@@ -148,7 +148,7 @@ Names are **indicative**; align with `TOOL_ID` / plugin layout when implementing
 
 ## Tools today (allowlist)
 
-The operator’s tool surface is resolved from `plugins/agents/operator.py` (`AGENT_TOOL_CAPABILITY_ANY`, …) and `apps/backend/domain/agent_registry.py` (`get_agent`); admin handlers live in `plugins/tools/capabilities/platform/operator_admin.py`:
+The operator’s tool surface is resolved from `plugins/agents/operator/agent.yaml` (`tool_capability_any`, …) by `apps/backend/domain/agent_runtime/registry.py` (`get_agent`); admin handlers live in `plugins/tools/platform/operator/admin.py`:
 
 | Tool | Role |
 |------|------|
@@ -227,10 +227,10 @@ Optional later: per-integration narrow tools (`discord_bridge_set_enabled`, `tel
 
 ## Related files
 
-- Agent plugin: `plugins/agents/operator.py`
-- Registry allowlist: `plugins/agents/operator.py` + `apps/backend/domain/agent_registry.py` (`AGENT_TOOL_CAPABILITY_ANY` / domain resolution)
-- Admin gate: `apps/backend/infrastructure/auth.py` (`require_admin`)
-- Operator settings service: `apps/backend/infrastructure/operator_settings.py`
+- Agent plugin: `plugins/agents/operator/agent.yaml`
+- Registry allowlist: `plugins/agents/operator/agent.yaml` (`tool_capability_any`) resolved by `apps/backend/domain/agent_runtime/registry.py`
+- Admin gate: `apps/backend/infrastructure/identity/auth.py` (`require_admin`, an alias of the site-admin check; delegated admin scopes use `require_admin_capability`)
+- Operator settings service: `apps/backend/infrastructure/settings/operator_settings.py`
 - Settings HTTP API: `apps/backend/api/main.py` (`/v1/admin/operator-settings`)
 
 ## Changelog (doc maintenance)

@@ -83,4 +83,5 @@ You already have ADRs under [`docs/adr/`](./adr/):
 - [`0008-tui-client-contract.md`](./adr/0008-tui-client-contract.md) — AgentLayer without the WebUI
 - [`0009-client-side-execution.md`](./adr/0009-client-side-execution.md) — tools that run on the client, tiered indexing consent
 - [`0010-external-agent-runtime-port.md`](./adr/0010-external-agent-runtime-port.md) — coding agent behind an interface, Qwen Code as first adapter
+- [`0011-roles-and-agent-access-without-tenancy.md`](./adr/0011-roles-and-agent-access-without-tenancy.md) — `site_role` owns elevation, capabilities for delegated admin, agent access without tenancy
 
