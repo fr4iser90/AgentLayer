@@ -80,13 +80,16 @@ export function AdminAgentSubmissions() {
       const data = (await res.json()) as { submissions?: SubmissionRow[] };
       const list = data.submissions ?? [];
       setSubmissions(list);
-      if (!selectedId && list.length) setSelectedId(list[0].id);
+      // Functional updater so `selectedId` stays out of this callback's deps —
+      // otherwise every selection recreates loadList, the mount effect refires,
+      // and the reload's `loading` state blanks the list + detail panel.
+      setSelectedId((current) => current ?? (list.length ? list[0].id : null));
     } catch {
       setMsg(t("admin:agentSubmissionsLoadFailed"));
     } finally {
       setLoading(false);
     }
-  }, [auth, t, statusFilter, selectedId]);
+  }, [auth, t, statusFilter]);
 
   const loadPreview = useCallback(
     async (id: string) => {
