@@ -21,6 +21,7 @@ import { AdminInterfacesAutomationPage } from "./pages/admin/interfaces/AdminInt
 import { AdminInterfacesPlatformPage } from "./pages/admin/interfaces/AdminInterfacesPlatformPage";
 import { AdminTools } from "./pages/admin/AdminTools";
 import { AdminAgents } from "./pages/admin/AdminAgents";
+import { AdminAgentSubmissions } from "./pages/admin/AdminAgentSubmissions";
 import { AdminUsers } from "./pages/admin/AdminUsers";
 import { AdminScheduledJobs } from "./pages/admin/AdminScheduledJobs";
 import { AdminSchedules } from "./pages/admin/AdminSchedules";
@@ -151,6 +152,7 @@ export function App() {
                   <Route path="telegram" element={<Navigate to="../interfaces/bridges" replace />} />
                   <Route path="tools" element={<AdminTools />} />
                   <Route path="agents" element={<AdminAgents />} />
+                  <Route path="agent-submissions" element={<AdminAgentSubmissions />} />
                   <Route path="users" element={<AdminUsers />} />
                   <Route path="scheduled-jobs" element={<AdminScheduledJobs />} />
                   <Route path="schedules" element={<AdminSchedules />} />

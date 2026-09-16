@@ -294,3 +294,47 @@ def test_preview_submission_enriches_with_yaml_and_warnings():
 def test_preview_submission_missing_returns_none():
     with patch.object(services.store, "get_submission", return_value=None):
         assert services.preview_submission(_UUID) is None
+
+
+# --------------------------------------------------------------------------- #
+# Pre-filter (P7b): assess_submission — no DB write, heuristic risk/tools
+# --------------------------------------------------------------------------- #
+
+def test_store_assess_submission_slug_and_risk():
+    assessed = store.assess_submission(
+        agent_id="My Agent!",
+        agent_yaml={"id": "research", "name": "Research", "description": "web search"},
+    )
+    assert assessed["slug"] == "my_agent"
+    assert assessed["target_dir"] == "plugins/agents/my_agent"
+    assert assessed["risk_level"] == "low"
+    # A privileged/executing draft is assessed high, mirroring create_submission.
+    assert store.assess_submission(agent_id="x", agent_yaml={"id": "x", "description": "sudo rm -rf /"})["risk_level"] == "high"
+
+
+def test_assess_submission_flags_unknown_tools_and_risk():
+    registry = MagicMock()
+    registry.tools_meta = [{"tools": ["web_search", "read_file"]}]
+    with patch("apps.backend.domain.plugin_system.registry.get_registry", return_value=registry):
+        result = services.assess_submission(
+            author_id="user-1",
+            agent_id="research",
+            agent_yaml={"id": "research", "name": "Research", "tool_allowlist": ["web_search", "ghost_tool"]},
+        )
+    assert result["agent_id"] == "research"
+    assert result["risk_level"] in ("low", "medium", "high")
+    assert result["tool_warnings"] == ["ghost_tool"]
+    assert any("ghost_tool" in note for note in result["notes"])
+
+
+def test_assess_submission_does_not_write_to_db():
+    registry = MagicMock()
+    registry.tools_meta = []
+    with patch.object(services.store, "assess_submission", return_value={
+        "slug": "research", "agent_yaml": {"id": "research", "name": "R"}, "risk_level": "low",
+        "target_dir": "plugins/agents/research",
+    }), patch("apps.backend.domain.plugin_system.registry.get_registry", return_value=registry), \
+         patch.object(store.db, "pool") as pool:
+        result = services.assess_submission(author_id="user-1", agent_id="research", agent_yaml={"id": "research", "name": "R"})
+    pool.assert_not_called()  # pre-filter must never touch the database
+    assert result["tool_warnings"] == []

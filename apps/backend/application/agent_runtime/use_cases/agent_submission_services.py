@@ -68,6 +68,46 @@ def _tool_warnings(agent_yaml: dict[str, Any]) -> list[str]:
     return warned
 
 
+def assess_submission(
+    *,
+    author_id: str,
+    agent_id: str,
+    agent_yaml: dict[str, Any],
+    system_prompt: str | None = None,
+    title: str | None = None,
+    description: str | None = None,
+) -> dict[str, Any]:
+    """Heuristic pre-filter for a proposed draft: risk, unknown tools and notes.
+
+    No row is written — the controller exposes this as
+    ``POST /agents/submissions/assess`` so submitters can sanity-check a draft
+    before it enters the review queue.
+    """
+    assessed = store.assess_submission(
+        agent_id=agent_id, agent_yaml=agent_yaml, system_prompt=system_prompt
+    )
+    payload = assessed["agent_yaml"]
+    warnings = _tool_warnings(payload)
+    notes: list[str] = []
+    if assessed["risk_level"] == "high":
+        notes.append("High-risk agent: it mentions privileged, exec, shell or credential actions.")
+    if warnings:
+        notes.append("Unknown tools: " + ", ".join(warnings))
+    if not str(payload.get("description") or "").strip():
+        notes.append("No description provided.")
+    return {
+        "agent_id": assessed["slug"],
+        "author_id": author_id,
+        "title": title or str(payload.get("name") or ""),
+        "description": description or str(payload.get("description") or ""),
+        "system_prompt": system_prompt if system_prompt else str(payload.get("system_prompt") or ""),
+        "risk_level": assessed["risk_level"],
+        "tool_warnings": warnings,
+        "target_dir": assessed["target_dir"],
+        "notes": notes,
+    }
+
+
 def preview_submission(submission_id: str) -> dict[str, Any] | None:
     row = store.get_submission(submission_id)
     if not row:
