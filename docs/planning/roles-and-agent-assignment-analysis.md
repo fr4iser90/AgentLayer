@@ -2,12 +2,22 @@
 doc_id: roles-and-agent-assignment-analysis
 domain: agentlayer_docs
 tags: [planning, rbac, tenant, identity, site-admin, agent-access, people-ui]
-status: analysis
+status: done
 ---
 
 # Rollen, Tenants und Agent-Freigaben — Analyse & zerlegte Arbeitspakete
 
-**Stand:** 12.09.2026 — reine Analyse, **nichts davon ist implementiert**.
+**Stand:** 12.09.2026 (Analyse) · **Umsetzung:** P1–P8 komplett erledigt am 16.09.2026 (`5284f0e` … `5ef7efc`).
+
+**Maßgeblich heute ist nicht dieses Dokument**, sondern
+[`ADR 0011`](../adr/0011-roles-and-agent-access-without-tenancy.md) (die Entscheidung und ihre
+Restrisiken) und
+[`features/agent-registry-and-allowlists.md`](../features/agent-registry-and-allowlists.md)
+(die aktuellen Ankerpunkte in Code). Die Pfad- und Feldnamen im Text unten sind der Stand vom
+12.09. und teils überholt — **B10** (Doku-Irrtum `agent_registry.py` / Legacy-Feldnamen) ist mit
+`5ef7efc` behoben. Der Analyse-Text selbst bleibt ungeändert: er hält fest, wie das Problem am
+12.09. gesehen wurde, nicht wie der Code heute aussieht.
+
 **Bezug:** [`knowledge-companion/00-roles-and-scopes.md`](./knowledge-companion/00-roles-and-scopes.md) (kanonisches 3-Ebenen-Rollenmodell),
 [`knowledge-companion/03b-identity-roles-and-surfaces.md`](./knowledge-companion/03b-identity-roles-and-surfaces.md),
 [`knowledge-companion/05-profession-rbac.md`](./knowledge-companion/05-profession-rbac.md),
