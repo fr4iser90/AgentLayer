@@ -836,13 +836,13 @@ See §2.2–2.3 for full tables.
 |------|------|
 | Harness | `tests/benchmarks/agent/harness.py` |
 | Rubrics | `tests/benchmarks/agent/rubrics.py` |
-| Stats | `apps/backend/infrastructure/benchmark_stats.py` |
-| Benchmark API | `apps/backend/api/benchmarks_admin_api.py` |
+| Stats | `apps/backend/infrastructure/benchmarks/benchmark_stats.py` |
+| Benchmark API | `apps/backend/api/benchmarks/controllers/benchmarks_admin_api.py` |
 | Tool routing | `apps/backend/domain/plugin_system/tool_routing.py` |
-| Tool forward | `apps/backend/domain/tool_forward_policy.py` |
-| Planner | `apps/backend/domain/agent_planner.py` |
+| Tool forward | `apps/backend/infrastructure/tools/tool_forward_policy_service.py` |
+| Planner | `apps/backend/application/agent_runtime/use_cases/chat_completion.py` → `chat_tool_loop.py` |
 | Model routing | `apps/backend/domain/model_routing/resolution.py` |
 | Smart route | `apps/backend/domain/model_routing/smart_route.py` |
-| Agent registry | `apps/backend/domain/agent_registry.py`, `plugins/agents/` |
+| Agent registry | `apps/backend/domain/agent_runtime/registry.py`, `plugins/agents/` |
 | Delegate router | `plugins/tools/platform/agents/delegate.router.yaml` |
 | RAG fingerprint | `apps/backend/domain/rag/ingest_common.py` |
