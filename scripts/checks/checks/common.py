@@ -64,6 +64,46 @@ def run_command(
     return CheckResult(name=name, ok=False, message=f"exit code {completed.returncode}")
 
 
+def candidate_python_files(root: Path, config: Mapping[str, object]) -> list[Path]:
+    """Resolve the .py files a check should look at, per its ``scope``/``include``/``ignore``.
+
+    ``scope: "all"`` walks the include roots; anything else uses staged+working-tree
+    changes, which is what a pre-commit hook wants.
+    """
+    import fnmatch  # noqa: PLC0415  (kept local so the module import stays cheap)
+
+    scope = str(config.get("scope") or "staged")
+    include_roots = [root / str(path) for path in _as_sequence(config.get("include"))] or [root]
+    if scope == "all":
+        files = [path for include in include_roots for path in include.rglob("*.py")]
+    else:
+        files = [root / path for path in staged_or_changed_files(root) if path.suffix == ".py"]
+
+    ignore_globs = [str(pattern) for pattern in _as_sequence(config.get("ignore"))]
+    out: list[Path] = []
+    for file_path in files:
+        try:
+            rel = file_path.relative_to(root)
+        except ValueError:
+            continue
+        if not file_path.is_file():
+            continue
+        if not any(file_path.is_relative_to(include) for include in include_roots):
+            continue
+        if any(fnmatch.fnmatch(str(rel), pattern) for pattern in ignore_globs):
+            continue
+        out.append(file_path)
+    return sorted(set(out))
+
+
+def _as_sequence(value: object) -> list[object]:
+    if value is None:
+        return []
+    if isinstance(value, (list, tuple)):
+        return list(value)
+    return [value]
+
+
 def staged_or_changed_files(root: Path) -> list[Path]:
     commands = [
         ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"],

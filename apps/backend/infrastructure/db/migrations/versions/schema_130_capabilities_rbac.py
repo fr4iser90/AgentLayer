@@ -49,7 +49,7 @@ def upgrade() -> None:
     # Seed capabilities from the legacy role_kind value (deterministic, idempotent).
     for kind, caps in _KIND_TO_CAPS.items():
         op.execute(
-            f"UPDATE tenant_profession_roles SET capabilities = {caps}::jsonb WHERE role_kind = '{kind}'"
+            f"UPDATE tenant_profession_roles SET capabilities = '{caps}'::jsonb WHERE role_kind = '{kind}'"
         )
 
     # Dissolve the role_kind CHECK; role_kind becomes a free-form label.
