@@ -8,7 +8,10 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from apps.backend.application.identity.use_cases.request_auth import get_current_user
+from apps.backend.application.identity.use_cases.request_auth import (
+    agent_effective_role,
+    get_current_user,
+)
 from apps.backend.application.scheduling.use_cases.scheduling_controller_services import normalize_coding_workflow
 from apps.backend.application.platform.use_cases.platform_controller_services import db
 from apps.backend.application.scheduling.use_cases.scheduling_controller_services import scheduler_jobs_store
@@ -60,7 +63,14 @@ async def scheduler_execution_targets_catalog(request: Request) -> dict[str, Any
         raise HTTPException(status_code=403, detail=feat_err)
     from apps.backend.domain.scheduling.targets import execution_target_catalog
 
-    return {"ok": True, "targets": execution_target_catalog()}
+    return {
+        "ok": True,
+        "targets": execution_target_catalog(
+            user_role=agent_effective_role(user.id, user.role),
+            user_id=user.id,
+            tenant_id=db.user_tenant_id(user.id),
+        ),
+    }
 
 
 @router.get("")
@@ -94,12 +104,15 @@ async def scheduler_job_create(request: Request, body: SchedulerJobCreateBody) -
     if feat_err:
         raise HTTPException(status_code=403, detail=feat_err)
     perm_err = schedule_permission_error(
-        user_role=user.role, execution_target=tgt or "", user_id=user.id
+        user_role=agent_effective_role(user.id, user.role),
+        execution_target=tgt or "",
+        user_id=user.id,
+        tenant_id=tenant_id,
     )
     if perm_err:
-        if "requires admin" in perm_err:
-            raise HTTPException(status_code=403, detail=perm_err)
-        raise HTTPException(status_code=400, detail=perm_err)
+        # Both the min_role denial and the access-policy denial are authorization
+        # failures; an unknown/unschedulable target was already rejected above.
+        raise HTTPException(status_code=403, detail=perm_err)
 
     ws_id: uuid.UUID | None = None
     if body.dashboard_id is not None and str(body.dashboard_id).strip():

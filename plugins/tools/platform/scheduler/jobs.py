@@ -9,6 +9,7 @@ from typing import Any, Callable
 
 from apps.backend.domain.shared.identity import get_identity
 from apps.backend.infrastructure.db import db
+from apps.backend.application.identity.use_cases.request_auth import agent_effective_role
 from apps.backend.application.scheduling.use_cases.scheduling_controller_services import (
     schedule_feature_permission_error,
 )
@@ -89,7 +90,7 @@ def create(arguments: dict[str, Any]) -> str:
     if not idt:
         return _err("missing identity — not authenticated")
     tenant_id, caller_uid = idt
-    role = db.user_role(caller_uid)
+    role = agent_effective_role(caller_uid, db.user_role(caller_uid))
     is_admin = role == "admin"
 
     raw_target = normalize_execution_target(arguments.get("execution_target"))
@@ -104,6 +105,7 @@ def create(arguments: dict[str, Any]) -> str:
         user_role=role or "user",
         execution_target=raw_target or "",
         user_id=caller_uid,
+        tenant_id=tenant_id,
     )
     if perm_err:
         return _err(perm_err)
@@ -183,7 +185,7 @@ def list(arguments: dict[str, Any]) -> str:
     if not idt:
         return _err("missing identity — not authenticated")
     tenant_id, caller_uid = idt
-    is_admin = db.user_role(caller_uid) == "admin"
+    is_admin = agent_effective_role(caller_uid, db.user_role(caller_uid)) == "admin"
 
     ws = _parse_uuid(arguments.get("dashboard_id"), field="dashboard_id")
     if arguments.get("dashboard_id") is not None and str(arguments.get("dashboard_id")).strip() and ws is None:
@@ -214,7 +216,7 @@ def set_enabled(arguments: dict[str, Any]) -> str:
     if not idt:
         return _err("missing identity — not authenticated")
     tenant_id, caller_uid = idt
-    role = db.user_role(caller_uid)
+    role = agent_effective_role(caller_uid, db.user_role(caller_uid))
     is_admin = role == "admin"
     feat_err = schedule_feature_permission_error(user_id=caller_uid, user_role=role or "user")
     if feat_err:

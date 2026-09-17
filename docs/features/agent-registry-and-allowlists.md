@@ -123,10 +123,15 @@ Four layers, evaluated in this order:
 [`docs/adr/0011-roles-and-agent-access-without-tenancy.md`](../adr/0011-roles-and-agent-access-without-tenancy.md)
 for why, and for the delegated-admin capability model (`users.capabilities`).
 
-**Known gap (not closed).** Scheduled jobs do **not** consult layers 3 and 4.
-`domain/scheduling/targets.py` checks only `schedulable` and `min_role`, so a user with the
-schedules entitlement can reach an agent through a job that is blocked for them in chat.
-Treat that as an open hardening item, not as an accepted design.
+**Scheduled jobs.** Schedules consult the same layers as chat. `schedule_permission_error`
+checks the registry `min_role` and then `user_may_invoke_agent`, so layers 3 and 4 apply to a
+job just as they do to a chat send. `execution_target_catalog` takes the caller and returns only
+the targets that caller may invoke, so the picker cannot offer what the create path would reject;
+called without a caller it stays the unfiltered registry view for admin surfaces. Both create
+paths — the user API (`api/scheduling/controllers/scheduler_jobs_user_api.py`) and the
+`scheduler_jobs` agent tool (`plugins/tools/platform/scheduler/jobs.py`) — resolve the role
+through `request_auth.agent_effective_role` rather than `db.user_role()`, so a legacy
+`role='admin'` cannot elevate there.
 
 ## See also
 
