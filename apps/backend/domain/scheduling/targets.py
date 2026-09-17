@@ -41,13 +41,32 @@ def schedulable_agent_ids() -> list[str]:
     return sorted(out)
 
 
-def execution_target_catalog() -> list[dict[str, Any]]:
-    """Agents that may be stored in ``scheduler_jobs.execution_target``."""
+def execution_target_catalog(
+    *,
+    user_role: str | None = None,
+    user_id: Any | None = None,
+    tenant_id: int | None = None,
+) -> list[dict[str, Any]]:
+    """Agents that may be stored in ``scheduler_jobs.execution_target``.
+
+    Pass a caller (``user_id``) to get the targets that caller may actually invoke —
+    the same ``user_may_invoke_agent`` check the create path and chat use — so the
+    picker cannot offer a target that ``schedule_permission_error`` would reject.
+    Without ``user_id`` this is the unfiltered registry view (admin surfaces).
+    """
+    from apps.backend.domain.agent_runtime.access import user_may_invoke_agent
+
     out: list[dict[str, Any]] = []
     for agent_id in schedulable_agent_ids():
         agent = _agent_row(agent_id)
         if not agent:
             continue
+        if user_id is not None:
+            allowed, _reason = user_may_invoke_agent(
+                user_role, agent_id, tenant_id=tenant_id, user_id=user_id
+            )
+            if not allowed:
+                continue
         name = str(agent.get("name") or agent_id)
         out.append(
             {
@@ -84,15 +103,25 @@ def schedule_permission_error(
     user_role: str,
     execution_target: str,
     user_id: Any | None = None,
+    tenant_id: int | None = None,
 ) -> str | None:
     """
     Return an HTTP/tool error message if the user may not create this schedule, else None.
 
     Feature access (``schedules_allowed``) is checked by callers via
-    ``infrastructure.scheduling.schedules_access``; this covers agent ``min_role`` only.
-    ``user_id`` is accepted for call-site compatibility and ignored here.
+    ``infrastructure.scheduling.schedules_access``; this covers the agent itself.
+
+    Two layers, because ``min_role`` alone is not the whole answer:
+
+    1. registry ``min_role`` — the hard admin gate;
+    2. ``user_may_invoke_agent`` — the tenant allowlist (``chat.allowed_agent_ids``)
+       and the ``agent_access_policies`` rows (global → tenant → user). Without this
+       a schedule could reach an agent the caller is denied in chat.
+
+    ``user_role`` must already reflect ``users.site_role`` — pass
+    ``request_auth.agent_effective_role()``, not ``db.user_role()``, or the legacy
+    ``role='admin'`` escalation reopens here.
     """
-    _ = user_id
     t = normalize_execution_target(execution_target)
     if not t or not is_agent_schedulable(t):
         return execution_target_error(execution_target)
@@ -103,4 +132,11 @@ def schedule_permission_error(
     role = str(user_role or "user").strip().lower()
     if min_role == "admin" and role != "admin":
         return f"execution_target {t} requires admin role"
+
+    from apps.backend.domain.agent_runtime.access import user_may_invoke_agent
+
+    allowed, reason = user_may_invoke_agent(role, t, tenant_id=tenant_id, user_id=user_id)
+    if not allowed:
+        detail = f": {reason}" if reason else ""
+        return f"execution_target {t} is not available for your account{detail}"
     return None

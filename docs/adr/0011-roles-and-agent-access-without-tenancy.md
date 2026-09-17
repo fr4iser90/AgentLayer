@@ -151,6 +151,12 @@ human review is the control; the pre-check only reduces what the reviewer has to
   nobody may be given `role='admin'` no longer applies.
 - Multi-role users are representable; capabilities are cumulative and fail closed.
 - Agent proposals are possible without filesystem access, and every decision is recorded.
+- Scheduled jobs go through the same access layers as chat. `schedule_permission_error` checks the
+  registry `min_role` and then `user_may_invoke_agent` (tenant allowlist + `agent_access_policies`),
+  and `execution_target_catalog` is filtered to what the caller may invoke, so the picker cannot
+  offer a target the create path would reject. Both create paths — the user API and the
+  `scheduler_jobs` agent tool — resolve the role from `site_role` via
+  `request_auth.agent_effective_role`, so the legacy `role='admin'` escalation cannot reopen there.
 
 **Negative / residual risk**
 
@@ -159,9 +165,6 @@ human review is the control; the pre-check only reduces what the reviewer has to
   `require_admin_capability`, not `require_admin`.
 - `require_permission(action, resource_type)` still validates nothing — it only resolves identity
   and lets site admins through. It must not be treated as an enforcement point.
-- **Scheduled jobs bypass the agent access layers.** `domain/scheduling/targets.py` checks only
-  `schedulable` and `min_role`, so a user with the schedules entitlement can reach an agent
-  through a job that chat denies them. Open hardening item, not accepted design.
 - The submission queue materialises into the plugin directory. A reviewer approving a draft is
   writing files the running instance loads; the review is the only thing standing between a
   proposed prompt and production.
@@ -176,6 +179,10 @@ human review is the control; the pre-check only reduces what the reviewer has to
   delegated holder attempting to PATCH a `site_admin` fails.
 - `pytest tests/unit/test_agent_submission.py` — a draft is inert until approved; rejection
   stays auditable; `assess_submission` writes nothing.
-- `pytest tests/unit` — 1303 passed, 2 skipped.
+- `pytest tests/unit/test_scheduler_targets.py tests/unit/test_org_identity_roles.py` — the target
+  catalog is filtered by the caller's access and forwards `tenant_id`/`user_id` to the access layer;
+  a denied policy rejects the schedule; `agent_effective_role` does not elevate
+  `role='admin'` + `site_role='site_user'`.
+- `pytest tests/unit` — 1312 passed, 2 skipped.
 - Ad hoc: a second non-admin account is the fastest check. Walk picker, chat send and
   `/v1/admin/*` together rather than trusting any one of them.

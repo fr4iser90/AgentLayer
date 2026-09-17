@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import HTTPException
 
+from apps.backend.application.identity.use_cases.request_auth import agent_effective_role
 from apps.backend.domain.setup import instance as setup_mod
 from apps.backend.infrastructure.identity import auth as auth_mod
 
@@ -111,3 +112,28 @@ def test_require_tenant_admin_accepts_owner() -> None:
             assert out is user
 
     asyncio.run(run())
+
+
+def test_agent_effective_role_ignores_legacy_admin_when_site_user() -> None:
+    """The P1 escalation class: role='admin' + site_role='site_user' must not elevate."""
+    uid = uuid.uuid4()
+    with patch.object(auth_mod.db, "user_site_admin", return_value=False):
+        assert agent_effective_role(uid, "admin") == "user"
+
+
+def test_agent_effective_role_follows_site_admin() -> None:
+    uid = uuid.uuid4()
+    with patch.object(auth_mod.db, "user_site_admin", return_value=True):
+        assert agent_effective_role(uid, "user") == "admin"
+
+
+def test_agent_effective_role_falls_back_when_lookup_fails() -> None:
+    uid = uuid.uuid4()
+    with patch.object(auth_mod.db, "user_site_admin", side_effect=RuntimeError("db down")):
+        assert agent_effective_role(uid, "admin") == "admin"
+        assert agent_effective_role(uid, None) == "user"
+
+
+def test_agent_effective_role_without_user_id_uses_fallback() -> None:
+    assert agent_effective_role(None, "admin") == "admin"
+    assert agent_effective_role(None, None) == "user"
