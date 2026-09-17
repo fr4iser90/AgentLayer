@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import UTC, datetime, timedelta
+from typing import Any
 from unittest.mock import patch
 
 from apps.backend.application.tenant_profession.use_cases import profession_policy_service as prof_svc
 from apps.backend.application.tenant_profession.use_cases.profession_policy_service import effective_policy
+from apps.backend.infrastructure.db.tenant_profession_persistence import profession_role_insert
 from apps.backend.domain.tenant_profession.policy import (
     EffectiveProfessionPolicy,
     content_in_write_scope,
@@ -221,3 +224,66 @@ def test_content_editor_capability() -> None:
         pol = effective_policy(uid, 1)
     assert pol.has("content.editor")
     assert not pol.has("content.publish")
+
+
+def test_profession_role_insert_caps_are_json_serializable() -> None:
+    """``capabilities_for_role_kind`` returns a frozenset; the JSONB column needs a list.
+
+    A frozenset reaching the driver raised
+    ``TypeError: Object of type frozenset is not JSON serializable`` inside
+    ``ensure_tenant_profession_defaults``, which ``/auth/me`` calls — so the first
+    non-admin user on a tenant with no profession roles crashed the endpoint.
+    """
+    captured: dict[str, Any] = {}
+
+    class _Cur:
+        def execute(self, _sql, params=None):
+            captured["params"] = params
+            return None
+
+        def fetchone(self):
+            return {
+                "id": uuid.uuid4(),
+                "tenant_id": 1,
+                "slug": "nurse",
+                "name": "Nurse",
+                "role_kind": "end_user",
+                "content_categories": [],
+                "capabilities": [],
+                "created_at": None,
+            }
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_a):
+            return False
+
+    class _Conn:
+        def cursor(self, **_kw):
+            return _Cur()
+
+        def commit(self):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_a):
+            return False
+
+    class _Pool:
+        def connection(self):
+            return _Conn()
+
+    with patch(
+        "apps.backend.infrastructure.db.tenant_profession_persistence.pool",
+        return_value=_Pool(),
+    ):
+        profession_role_insert(1, "nurse", "Nurse", "end_user")
+
+    caps = captured["params"][-1]
+    assert isinstance(getattr(caps, "obj", caps), list), (
+        f"capabilities must reach the driver as a list, got {type(caps).__name__}"
+    )
+    json.dumps(getattr(caps, "obj", caps))

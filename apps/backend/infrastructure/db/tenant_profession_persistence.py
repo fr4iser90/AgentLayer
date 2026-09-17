@@ -112,7 +112,7 @@ def profession_role_insert(
     capabilities: list[str] | None = None,
 ) -> dict[str, Any]:
     role_id = uuid.uuid4()
-    caps = list(capabilities or []) or capabilities_for_role_kind(role_kind)
+    caps = list(capabilities or []) or list(capabilities_for_role_kind(role_kind))
     with pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
