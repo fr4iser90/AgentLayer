@@ -6,6 +6,7 @@ import uuid
 from typing import Any
 
 from psycopg.rows import dict_row
+from psycopg.types.json import Json
 
 from apps.backend.infrastructure.db import db
 
@@ -52,6 +53,25 @@ def get_published_prompt(*, tenant_id: int, agent_id: str) -> dict[str, Any] | N
                 WHERE tenant_id = %s AND agent_id = %s AND status = 'published'
                 """,
                 (tenant_id, agent_id),
+            )
+            row = cur.fetchone()
+    return _ser(dict(row)) if row else None
+
+
+def get_prompt_version(
+    *, tenant_id: int, agent_id: str, version_id: uuid.UUID
+) -> dict[str, Any] | None:
+    """One version by id, whatever its status — the gate needs the draft text."""
+    with db.pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                """
+                SELECT id, tenant_id, agent_id, version, status, prompt_text, notes,
+                       created_at, created_by, published_at, published_by, archived_at
+                FROM agent_prompt_versions
+                WHERE id = %s AND tenant_id = %s AND agent_id = %s
+                """,
+                (version_id, tenant_id, str(agent_id or "").strip()),
             )
             row = cur.fetchone()
     return _ser(dict(row)) if row else None
@@ -105,6 +125,10 @@ def publish_prompt_version(
     agent_id: str,
     version_id: uuid.UUID,
     published_by: uuid.UUID | None,
+    risk_level: str = "unassessed",
+    risk_reasons: list[str] | None = None,
+    override_by: uuid.UUID | None = None,
+    override_reason: str | None = None,
 ) -> dict[str, Any]:
     aid = str(agent_id or "").strip()
     with db.pool().connection() as conn:
@@ -132,12 +156,27 @@ def publish_prompt_version(
                 SET status = 'published',
                     published_at = now(),
                     published_by = %s,
-                    archived_at = NULL
+                    archived_at = NULL,
+                    risk_level = %s,
+                    risk_reasons = %s,
+                    assessed_at = now(),
+                    override_by = %s,
+                    override_reason = %s
                 WHERE id = %s AND tenant_id = %s AND agent_id = %s
                 RETURNING id, tenant_id, agent_id, version, status, prompt_text, notes,
-                          created_at, created_by, published_at, published_by, archived_at
+                          created_at, created_by, published_at, published_by, archived_at,
+                          risk_level, risk_reasons, assessed_at, override_by, override_reason
                 """,
-                (published_by, version_id, tenant_id, aid),
+                (
+                    published_by,
+                    risk_level,
+                    Json(list(risk_reasons or [])),
+                    override_by,
+                    override_reason,
+                    version_id,
+                    tenant_id,
+                    aid,
+                ),
             )
             row = cur.fetchone()
         conn.commit()
