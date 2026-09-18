@@ -14,6 +14,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from apps.backend.domain.setup.instance import DEPLOYMENT_MODES
 from apps.backend.infrastructure.platform import config as app_config
 from apps.backend.infrastructure.platform.config import config
 from apps.backend.infrastructure.db import db
@@ -414,7 +415,9 @@ def _fetch_row() -> dict[str, Any]:
         "telegram_chat_model_catalog_owned_by": normalize_model_catalog_owned_by(row[79] if len(row) > 79 else None),
         "deployment_mode": (
             str(row[80]).strip().lower()
-            if len(row) > 80 and row[80] is not None and str(row[80]).strip().lower() in ("agent_system", "multi_tenant")
+            if len(row) > 80
+            and row[80] is not None
+            and str(row[80]).strip().lower() in DEPLOYMENT_MODES
             else "multi_tenant"
         ),
         "legal_enabled": bool(row[81]) if len(row) > 81 and row[81] is not None else False,
