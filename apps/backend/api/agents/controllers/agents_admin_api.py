@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from typing import Any
 
@@ -9,19 +10,53 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from apps.backend.application.agent_runtime.use_cases.agent_governance_services import (
+    assess_agent_prompt_risk,
     batch_upsert_user_agent_policies,
     create_agent_prompt_draft,
     delete_agent_access_policy,
+    get_agent_prompt_version,
     list_agent_prompt_versions,
     list_agent_policy_rows,
     publish_agent_prompt_version,
     resolve_agent_governance,
     upsert_agent_access_policy,
 )
-from apps.backend.application.identity.use_cases.request_auth import require_admin, require_admin_capability
+from apps.backend.application.identity.use_cases.request_auth import (
+    get_current_user,
+    require_admin_capability,
+    require_admin_scope,
+)
 from apps.backend.application.platform.use_cases.platform_controller_services import db
-from apps.backend.domain.access.capabilities import CAP_AGENT_ASSIGN
+from apps.backend.domain.access.capabilities import AdminScope, AdminScopeError, CAP_AGENT_ASSIGN
+from apps.backend.domain.agent_runtime.prompt_risk import (
+    PromptRiskUnavailable,
+    gate_enabled,
+)
 from apps.backend.domain.agent_runtime.registry import get_agent_registry
+
+
+async def _scoped_tenant(request: Request, requested: int | None) -> tuple[AdminScope, int]:
+    """Resolve which tenant an agent-policy action targets.
+
+    Omitted means the caller's own tenant. An explicit value is only accepted
+    inside the caller's scope — without that, a delegated ``agent.assign`` holder
+    of company A could read and rewrite company B's agent policies.
+    """
+    scope = await require_admin_scope(request, CAP_AGENT_ASSIGN)
+    tid = int(requested) if requested is not None else int(db.user_tenant_id(scope.actor_id) or 1)
+    try:
+        return scope, scope.require_tenant(tid, what="target tenant")
+    except AdminScopeError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+
+async def _scoped_target_user_tenant(scope: AdminScope, user_id: uuid.UUID | None) -> None:
+    """A policy written against a person must land in that person's tenant."""
+    if user_id is None or scope.site_wide:
+        return
+    target_tenant = int(db.user_tenant_id(user_id) or 1)
+    if not scope.allows_tenant(target_tenant):
+        raise HTTPException(status_code=403, detail="user is outside your admin scope")
 
 router = APIRouter(tags=["admin-agents"])
 
@@ -86,8 +121,10 @@ async def admin_list_agent_policies(
     user_id: uuid.UUID | None = Query(None),
     agent_id: str | None = Query(None),
 ) -> dict[str, Any]:
-    user = await require_admin_capability(request, CAP_AGENT_ASSIGN)
-    tid = int(tenant_id) if tenant_id is not None else int(db.user_tenant_id(user.id) or 1)
+    # The store OR-joins its filters, so ``user_id`` is not bounded by the tenant
+    # filter — the user behind it has to be checked separately.
+    scope, tid = await _scoped_tenant(request, tenant_id)
+    await _scoped_target_user_tenant(scope, user_id)
     return {
         "policies": list_agent_policy_rows(
             tenant_id=tid,
@@ -106,7 +143,9 @@ async def admin_get_agent(
     user_id: uuid.UUID | None = Query(None),
 ) -> dict[str, Any]:
     """Agent detail with resolved and effective tool names."""
-    user = await require_admin(request)
+    scope, tid = await _scoped_tenant(request, tenant_id)
+    await _scoped_target_user_tenant(scope, user_id)
+    user = await get_current_user(request)
     reg = get_agent_registry()
     agent = reg.get_agent(agent_id)
     if not agent:
@@ -115,7 +154,6 @@ async def admin_get_agent(
     sim_role = (role or user.role or "admin").strip().lower()
     if sim_role not in ("admin", "user", "guest"):
         sim_role = "admin"
-    tid = int(tenant_id) if tenant_id is not None else int(db.user_tenant_id(user.id) or 1)
 
     payload = dict(agent)
     governance = resolve_agent_governance(
@@ -140,11 +178,10 @@ async def admin_list_agent_prompt_versions(
     tenant_id: int | None = Query(None, ge=1),
     limit: int = Query(20, ge=1, le=100),
 ) -> dict[str, Any]:
-    user = await require_admin(request)
+    _scope, tid = await _scoped_tenant(request, tenant_id)
     reg = get_agent_registry()
     if not reg.get_agent(agent_id):
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
-    tid = int(tenant_id) if tenant_id is not None else int(db.user_tenant_id(user.id) or 1)
     return {
         "versions": list_agent_prompt_versions(
             tenant_id=tid,
@@ -161,15 +198,14 @@ async def admin_create_agent_prompt_draft(
     body: AgentPromptDraftBody,
     tenant_id: int | None = Query(None, ge=1),
 ) -> dict[str, Any]:
-    user = await require_admin(request)
-    tid = int(tenant_id) if tenant_id is not None else int(db.user_tenant_id(user.id) or 1)
+    scope, tid = await _scoped_tenant(request, tenant_id)
     try:
         draft = create_agent_prompt_draft(
             tenant_id=tid,
             agent_id=agent_id,
             prompt_text=body.prompt_text,
             notes=body.notes,
-            created_by=user.id,
+            created_by=scope.actor_id,
         )
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found") from None
@@ -184,15 +220,72 @@ async def admin_publish_agent_prompt_version(
     agent_id: str,
     version_id: uuid.UUID,
     tenant_id: int | None = Query(None, ge=1),
+    override_reason: str | None = Query(None, max_length=500),
 ) -> dict[str, Any]:
-    user = await require_admin(request)
-    tid = int(tenant_id) if tenant_id is not None else int(db.user_tenant_id(user.id) or 1)
+    """Publish a prompt version, gated by an LLM risk assessment.
+
+    A ``high`` verdict blocks publish outright. Only a site admin may pass it,
+    and only by supplying ``override_reason``, which is stored on the version
+    alongside the verdict. If the assessment cannot be produced the publish is
+    refused rather than waved through.
+    """
+    scope, tid = await _scoped_tenant(request, tenant_id)
+
+    draft = await asyncio.to_thread(
+        get_agent_prompt_version, tenant_id=tid, agent_id=agent_id, version_id=version_id
+    )
+    if not draft:
+        raise HTTPException(status_code=404, detail="prompt version not found")
+
+    risk_level = "unassessed"
+    risk_reasons: list[str] = []
+    override_by: uuid.UUID | None = None
+
+    if gate_enabled():
+        try:
+            risk = await asyncio.to_thread(
+                assess_agent_prompt_risk, draft.get("prompt_text") or "", agent_id=agent_id
+            )
+        except PromptRiskUnavailable as exc:
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "prompt risk assessment unavailable — publish refused. "
+                    f"({exc})"
+                ),
+            ) from exc
+        risk_level = risk.level
+        risk_reasons = list(risk.reasons)
+        if risk.blocking:
+            if not scope.site_wide:
+                raise HTTPException(
+                    status_code=403,
+                    detail=(
+                        "risk assessment rated this prompt high — publishing is "
+                        "blocked. A site admin may override with override_reason."
+                    ),
+                    headers={"X-Prompt-Risk": "high"},
+                )
+            if not (override_reason or "").strip():
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "high-risk prompt: site admin override requires a "
+                        "non-empty override_reason."
+                    ),
+                )
+            override_by = scope.actor_id
+
     try:
         published = publish_agent_prompt_version(
             tenant_id=tid,
             agent_id=agent_id,
             version_id=version_id,
-            published_by=user.id,
+            published_by=scope.actor_id,
+            risk_level=risk_level,
+            risk_reasons=risk_reasons,
+            override_by=override_by,
+            override_reason=(override_reason or "").strip() or None,
         )
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found") from None
@@ -207,8 +300,13 @@ async def admin_put_agent_access_policy(
     agent_id: str,
     body: AgentAccessPolicyBody,
 ) -> dict[str, Any]:
-    user = await require_admin_capability(request, CAP_AGENT_ASSIGN)
-    tid = int(body.tenant_id) if body.tenant_id is not None else int(db.user_tenant_id(user.id) or 1)
+    scope, tid = await _scoped_tenant(request, body.tenant_id)
+    if body.scope == "global":
+        try:
+            scope.require_site_wide("global agent access policies")
+        except AdminScopeError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+    await _scoped_target_user_tenant(scope, body.user_id)
     try:
         row = upsert_agent_access_policy(
             scope=body.scope,
@@ -218,7 +316,7 @@ async def admin_put_agent_access_policy(
             direct_state=body.direct_state,
             delegate_state=body.delegate_state,
             notes=body.notes,
-            updated_by=user.id,
+            updated_by=scope.actor_id,
         )
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found") from None
@@ -235,8 +333,15 @@ async def admin_delete_agent_access_policy(
     tenant_id: int | None = Query(None, ge=1),
     user_id: uuid.UUID | None = Query(None),
 ) -> dict[str, Any]:
-    user = await require_admin_capability(request, CAP_AGENT_ASSIGN)
-    tid = int(tenant_id) if tenant_id is not None else int(db.user_tenant_id(user.id) or 1)
+    # ``scope`` is the policy scope from the query string, so the admin scope
+    # keeps its own name here.
+    admin, tid = await _scoped_tenant(request, tenant_id)
+    if scope == "global":
+        try:
+            admin.require_site_wide("global agent access policies")
+        except AdminScopeError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+    await _scoped_target_user_tenant(admin, user_id)
     try:
         deleted = delete_agent_access_policy(
             scope=scope,
@@ -255,7 +360,8 @@ async def admin_batch_agent_access_policy(
     body: AgentAccessBatchBody,
 ) -> dict[str, Any]:
     """Grant/deny several agents to one person at once (P3, ``scope='user'``)."""
-    user = await require_admin_capability(request, CAP_AGENT_ASSIGN)
+    scope = await require_admin_scope(request, CAP_AGENT_ASSIGN)
+    await _scoped_target_user_tenant(scope, body.user_id)
     try:
         policies = batch_upsert_user_agent_policies(
             user_id=body.user_id,
@@ -263,7 +369,7 @@ async def admin_batch_agent_access_policy(
             direct_state=body.direct_state,
             delegate_state=body.delegate_state,
             notes=body.notes,
-            updated_by=user.id,
+            updated_by=scope.actor_id,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

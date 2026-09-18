@@ -11,6 +11,7 @@ from fastapi import HTTPException
 
 from apps.backend.api.agents.controllers import agents_admin_api as api_mod
 from apps.backend.application.agent_runtime.use_cases import agent_governance_services as svc_mod
+from apps.backend.domain.access.capabilities import AdminScope
 
 
 def _registry_with(*ids: str) -> MagicMock:
@@ -80,7 +81,8 @@ def test_batch_upsert_rejects_unknown_agent() -> None:
 
 
 def test_batch_endpoint_requires_admin_and_maps_errors() -> None:
-    user = MagicMock(id=uuid.uuid4())
+    actor = uuid.uuid4()
+    scope = AdminScope(actor_id=actor, site_wide=True, tenant_ids=frozenset())
 
     def _ok(**_kwargs: object) -> list[dict]:
         return [{"id": 1, "scope": "user", "agent_id": "general"}]
@@ -90,7 +92,7 @@ def test_batch_endpoint_requires_admin_and_maps_errors() -> None:
 
     async def run_ok() -> None:
         with (
-            patch.object(api_mod, "require_admin_capability", new=AsyncMock(return_value=user)),
+            patch.object(api_mod, "require_admin_scope", new=AsyncMock(return_value=scope)),
             patch.object(api_mod, "batch_upsert_user_agent_policies", new=MagicMock(side_effect=_ok)),
         ):
             resp = await api_mod.admin_batch_agent_access_policy(
@@ -104,7 +106,7 @@ def test_batch_endpoint_requires_admin_and_maps_errors() -> None:
 
     async def run_bad() -> None:
         with (
-            patch.object(api_mod, "require_admin_capability", new=AsyncMock(return_value=user)),
+            patch.object(api_mod, "require_admin_scope", new=AsyncMock(return_value=scope)),
             patch.object(api_mod, "batch_upsert_user_agent_policies", new=MagicMock(side_effect=_boom)),
         ):
             with pytest.raises(HTTPException) as exc:
