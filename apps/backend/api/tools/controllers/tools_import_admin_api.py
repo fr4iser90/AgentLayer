@@ -9,7 +9,7 @@ from typing import Any
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 
-from apps.backend.application.identity.use_cases.request_auth import require_admin
+from apps.backend.application.identity.use_cases.request_auth import require_site_admin
 
 router = APIRouter(prefix="/v1/admin/tools/import", tags=["tools-import-admin"])
 
@@ -169,7 +169,7 @@ async def analyze_import(
     markdown: str = Form(""),
     files: list[UploadFile] | None = File(default=None),
 ):
-    await require_admin(request)
+    await require_site_admin(request)
     sources: list[dict[str, str]] = []
     if markdown.strip():
         sources.append({"path": "pasted.md", "content": markdown})

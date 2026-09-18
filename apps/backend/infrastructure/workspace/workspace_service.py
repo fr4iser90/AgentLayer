@@ -54,7 +54,7 @@ def self_editing_allowed(user) -> bool:
     try:
         with db.pool().connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(
+                cur.execute(  # tenant-scope: guarded by user_id pk — caller supplied an already-resolved user
                     "SELECT COALESCE(workspace_self_allowed, false) FROM users WHERE id = %s",
                     (user.id,),
                 )
@@ -158,11 +158,11 @@ def materialize_agentlayer_self_workspace(user) -> dict[str, Any] | None:
                     cur.execute(
                         """
                         INSERT INTO project_workspaces
-                        (owner_user_id, name, path, source, git_url, git_branch, access_role)
-                        VALUES (%s, %s, %s, 'manual', NULL, 'main', 'owner')
+                        (owner_user_id, name, path, source, git_url, git_branch, access_role, tenant_id)
+                        VALUES (%s, %s, %s, 'manual', NULL, 'main', 'owner', %s)
                         RETURNING id
                         """,
-                        (user.id, AGENTLAYER_SELF_NAME, str(target)),
+                        (user.id, AGENTLAYER_SELF_NAME, str(target), db.user_tenant_id(user.id)),
                     )
                     row = cur.fetchone()
             conn.commit()
@@ -210,11 +210,11 @@ def reset_agentlayer_self_workspace(
                     cur.execute(
                         """
                         INSERT INTO project_workspaces
-                        (owner_user_id, name, path, source, git_url, git_branch, access_role)
-                        VALUES (%s, %s, %s, 'manual', NULL, 'main', 'owner')
+                        (owner_user_id, name, path, source, git_url, git_branch, access_role, tenant_id)
+                        VALUES (%s, %s, %s, 'manual', NULL, 'main', 'owner', %s)
                         RETURNING id
                         """,
-                        (user.id, AGENTLAYER_SELF_NAME, expected),
+                        (user.id, AGENTLAYER_SELF_NAME, expected, db.user_tenant_id(user.id)),
                     )
                     row = cur.fetchone()
                 else:

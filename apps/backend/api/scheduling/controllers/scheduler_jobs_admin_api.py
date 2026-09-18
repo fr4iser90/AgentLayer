@@ -8,7 +8,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from apps.backend.application.identity.use_cases.request_auth import require_admin
+from apps.backend.application.identity.use_cases.request_auth import require_admin_scope
+from apps.backend.domain.access.capabilities import CAP_SCHEDULE_MANAGE
 from apps.backend.application.scheduling.use_cases.scheduling_controller_services import normalize_coding_workflow
 from apps.backend.application.platform.use_cases.platform_controller_services import db
 from apps.backend.domain.scheduling.targets import (
@@ -78,8 +79,8 @@ async def scheduler_job_list(
     enabled: bool | None = None,
     limit: int = 200,
 ) -> dict[str, Any]:
-    user = await require_admin(request)
-    tenant_id = db.user_tenant_id(user.id)
+    user = await require_admin_scope(request, CAP_SCHEDULE_MANAGE)
+    tenant_id = db.user_tenant_id(user.actor_id)
     ws_id: uuid.UUID | None = None
     if dashboard_id is not None and str(dashboard_id).strip():
         try:
@@ -103,8 +104,8 @@ async def scheduler_job_list(
 
 @router.post("")
 async def scheduler_job_create(request: Request, body: SchedulerJobCreateBody) -> dict[str, Any]:
-    user = await require_admin(request)
-    tenant_id = db.user_tenant_id(user.id)
+    user = await require_admin_scope(request, CAP_SCHEDULE_MANAGE)
+    tenant_id = db.user_tenant_id(user.actor_id)
     tgt = normalize_execution_target(body.execution_target)
     if not tgt or not is_valid_execution_target(tgt):
         raise HTTPException(status_code=400, detail=execution_target_error(body.execution_target))
@@ -120,8 +121,8 @@ async def scheduler_job_create(request: Request, body: SchedulerJobCreateBody) -
         )
         row = scheduler_jobs_store.insert_job(
             tenant_id=tenant_id,
-            created_by_user_id=user.id,
-            execution_user_id=user.id,
+            created_by_user_id=user.actor_id,
+            execution_user_id=user.actor_id,
             dashboard_id=ws_id,
             execution_target=tgt,
             title=(body.title or "").strip() or None,
@@ -139,8 +140,8 @@ async def scheduler_job_create(request: Request, body: SchedulerJobCreateBody) -
 
 @router.patch("/{job_id}")
 async def scheduler_job_patch(request: Request, job_id: str, body: SchedulerJobPatchBody) -> dict[str, Any]:
-    user = await require_admin(request)
-    tenant_id = db.user_tenant_id(user.id)
+    user = await require_admin_scope(request, CAP_SCHEDULE_MANAGE)
+    tenant_id = db.user_tenant_id(user.actor_id)
     try:
         jid = uuid.UUID(job_id.strip())
     except (ValueError, AttributeError) as e:
@@ -164,7 +165,7 @@ async def scheduler_job_patch(request: Request, job_id: str, body: SchedulerJobP
         row = scheduler_jobs_store.update_job(
             job_id=jid,
             tenant_id=tenant_id,
-            actor_user_id=user.id,
+            actor_user_id=user.actor_id,
             actor_is_admin=True,
             title=body.title.strip() if isinstance(body.title, str) else None,
             instructions=body.instructions.strip() if isinstance(body.instructions, str) else None,
@@ -182,19 +183,19 @@ async def scheduler_job_patch(request: Request, job_id: str, body: SchedulerJobP
 async def scheduler_job_set_archived(
     request: Request, job_id: str, body: SchedulerJobArchiveBody
 ) -> dict[str, Any]:
-    user = await require_admin(request)
-    tenant_id = db.user_tenant_id(user.id)
+    user = await require_admin_scope(request, CAP_SCHEDULE_MANAGE)
+    tenant_id = db.user_tenant_id(user.actor_id)
     try:
         jid = uuid.UUID(job_id.strip())
     except (ValueError, AttributeError) as e:
         raise HTTPException(status_code=400, detail="invalid job_id") from e
     if body.archived:
         ok = scheduler_jobs_store.archive_job(
-            job_id=jid, tenant_id=tenant_id, actor_user_id=user.id, actor_is_admin=True
+            job_id=jid, tenant_id=tenant_id, actor_user_id=user.actor_id, actor_is_admin=True
         )
     else:
         ok = scheduler_jobs_store.unarchive_job(
-            job_id=jid, tenant_id=tenant_id, actor_user_id=user.id, actor_is_admin=True
+            job_id=jid, tenant_id=tenant_id, actor_user_id=user.actor_id, actor_is_admin=True
         )
     if not ok:
         raise HTTPException(status_code=404, detail="job not found")
@@ -204,14 +205,14 @@ async def scheduler_job_set_archived(
 
 @router.delete("/{job_id}")
 async def scheduler_job_hard_delete(request: Request, job_id: str) -> dict[str, Any]:
-    user = await require_admin(request)
-    tenant_id = db.user_tenant_id(user.id)
+    user = await require_admin_scope(request, CAP_SCHEDULE_MANAGE)
+    tenant_id = db.user_tenant_id(user.actor_id)
     try:
         jid = uuid.UUID(job_id.strip())
     except (ValueError, AttributeError) as e:
         raise HTTPException(status_code=400, detail="invalid job_id") from e
     ok = scheduler_jobs_store.hard_delete_job(
-        job_id=jid, tenant_id=tenant_id, actor_user_id=user.id, actor_is_admin=True
+        job_id=jid, tenant_id=tenant_id, actor_user_id=user.actor_id, actor_is_admin=True
     )
     if not ok:
         raise HTTPException(status_code=404, detail="job not found")
@@ -220,8 +221,8 @@ async def scheduler_job_hard_delete(request: Request, job_id: str) -> dict[str, 
 
 @router.patch("/{job_id}/enabled")
 async def scheduler_job_set_enabled(request: Request, job_id: str, body: SchedulerJobSetEnabledBody) -> dict:
-    user = await require_admin(request)
-    tenant_id = db.user_tenant_id(user.id)
+    user = await require_admin_scope(request, CAP_SCHEDULE_MANAGE)
+    tenant_id = db.user_tenant_id(user.actor_id)
     try:
         jid = uuid.UUID(job_id.strip())
     except (ValueError, AttributeError) as e:
@@ -230,7 +231,7 @@ async def scheduler_job_set_enabled(request: Request, job_id: str, body: Schedul
         job_id=jid,
         tenant_id=tenant_id,
         enabled=bool(body.enabled),
-        actor_user_id=user.id,
+        actor_user_id=user.actor_id,
         actor_is_admin=True,
     )
     if not row:

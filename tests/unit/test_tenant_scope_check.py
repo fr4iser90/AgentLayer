@@ -120,3 +120,51 @@ def test_multiple_statements_report_each_once() -> None:
     )
     assert len(out.violations) == 2
     assert {v.table for v in out.violations} == {"users", "chat_conversations"}
+
+
+def test_guarded_marker_suppresses() -> None:
+    """Tenancy enforced in Python rather than in the WHERE clause."""
+    out = _scan(
+        "# tenant-scope: guarded by require_admin_scope\n"
+        'cur.execute("UPDATE users SET quota = %s WHERE id = %s", (q, uid))'
+    )
+    assert out.violations == []
+    assert out.unresolved == []
+
+
+def test_marker_at_top_of_function_covers_whole_body() -> None:
+    """One marker per handler, not one per statement."""
+    out = _scan(
+        "async def admin_patch_user(request, user_id, body):\n"
+        "    # tenant-scope: guarded by require_admin_scope below\n"
+        "    actor = await require_admin_scope(request, 'user.manage')\n"
+        '    db.query("UPDATE users SET workspace_quota = %s WHERE id = %s", (1, user_id))\n'
+        '    db.query("UPDATE users SET schedules_allowed = %s WHERE id = %s", (True, user_id))\n'
+        '    db.query("UPDATE users SET capabilities = %s WHERE id = %s", ([], user_id))\n'
+    )
+    assert out.violations == []
+    assert out.unresolved == []
+
+
+def test_marker_does_not_leak_to_a_sibling_function() -> None:
+    out = _scan(
+        "def a():\n"
+        "    # tenant-scope: site-wide\n"
+        '    return "SELECT * FROM users"\n'
+        "\n"
+        "def b():\n"
+        '    return "SELECT * FROM chat_conversations WHERE id = %s"\n'
+    )
+    assert len(out.violations) == 1
+    assert out.violations[0].table == "chat_conversations"
+
+
+def test_marker_in_module_level_code_does_not_cover_other_functions() -> None:
+    out = _scan(
+        "# tenant-scope: site-wide — module note\n"
+        "SETTING = 1\n"
+        "\n"
+        "def b():\n"
+        '    return "SELECT * FROM chat_conversations WHERE id = %s"\n'
+    )
+    assert len(out.violations) == 1

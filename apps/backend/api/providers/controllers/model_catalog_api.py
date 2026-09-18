@@ -16,6 +16,8 @@ from apps.backend.application.providers.use_cases.provider_admin_acl import (
     user_exists,
 )
 from apps.backend.api.providers.controllers.operator_common import *
+from apps.backend.application.identity.use_cases.request_auth import require_admin_scope
+from apps.backend.domain.access.capabilities import CAP_USER_MANAGE, AdminScopeError
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -84,18 +86,27 @@ async def admin_put_tenant_model_access(request: Request, tenant_id: int, body: 
 
 @router.get("/v1/admin/model-access/users/{user_id}")
 async def admin_get_user_model_access(request: Request, user_id: uuid.UUID):
-    await require_provider_admin(request)
+    scope = await require_admin_scope(request, CAP_USER_MANAGE)
     if not user_exists(user_id):
         raise HTTPException(status_code=404, detail="user not found")
-    return _model_access_payload_for_scope("user", tenant_id=tenant_id_for_user(user_id), user_id=user_id)
+    target_tenant = tenant_id_for_user(user_id)
+    try:
+        scope.require_tenant(target_tenant, what="user")
+    except AdminScopeError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    return _model_access_payload_for_scope("user", tenant_id=target_tenant, user_id=user_id)
 
 
 @router.put("/v1/admin/model-access/users/{user_id}")
 async def admin_put_user_model_access(request: Request, user_id: uuid.UUID, body: ModelAccessPoliciesPutBody):
-    await require_admin(request)
+    scope = await require_admin_scope(request, CAP_USER_MANAGE)
     if not user_exists(user_id):
         raise HTTPException(status_code=404, detail="user not found")
     tenant_id = tenant_id_for_user(user_id)
+    try:
+        scope.require_tenant(tenant_id, what="user")
+    except AdminScopeError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
     try:
         await asyncio.to_thread(_sync_model_access_payload, "user", body, tenant_id=tenant_id, user_id=user_id)
     except ValueError as e:

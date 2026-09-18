@@ -102,6 +102,7 @@ def create_project_workspace_for_user(
                         "Clean benchmark sandboxes in Admin → Benchmarks."
                     )
             else:
+                # tenant-scope: guarded by user_id pk — the caller resolved the user inside its tenant
                 cur.execute(
                     "SELECT COALESCE(workspace_quota, 10) FROM users WHERE id = %s",
                     (user.id,),
@@ -163,12 +164,24 @@ def create_project_workspace_for_user(
                     """
                     INSERT INTO project_workspaces (
                       owner_user_id, name, path, source, git_url, git_branch,
-                      access_role, benchmark_run_id, execution_mode, index_consent
+                      access_role, benchmark_run_id, execution_mode, index_consent,
+                      tenant_id
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, 'owner', %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, 'owner', %s, %s, %s, %s)
                     RETURNING id
                     """,
-                    (user.id, nm, stored_path, src, gu_ins, br_ins, bench_run_id, mode, index_consent),
+                    (
+                        user.id,
+                        nm,
+                        stored_path,
+                        src,
+                        gu_ins,
+                        br_ins,
+                        bench_run_id,
+                        mode,
+                        index_consent,
+                        db.user_tenant_id(user.id),
+                    ),
                 )
                 created = cur.fetchone()
                 if not created:
@@ -204,7 +217,9 @@ def _delete_workspace_db_dependencies(cur: Any, workspace_id: str) -> None:
     ``agent_tasks`` with ``scope='workspace'`` cannot have ``workspace_id`` set to NULL
     (check constraint) when the FK fires — delete them explicitly first.
     """
-    cur.execute("DELETE FROM agent_tasks WHERE workspace_id = %s", (workspace_id,))
+    cur.execute(  # tenant-scope: guarded by workspace_id — workspace ownership checked by the caller
+        "DELETE FROM agent_tasks WHERE workspace_id = %s", (workspace_id,)
+    )
 
 
 def _delete_workspace_files(ws_path: Path) -> None:

@@ -11,8 +11,10 @@ WORKSPACE_SELECT_SQL = """
     semantic_index_enabled, retrieval_enabled, last_index_at, last_index_stats, last_index_error,
     docs_rag_enabled, last_docs_rag_at, last_docs_rag_stats, last_docs_rag_error,
     index_on_write, graph_index_enabled, retrieve_context_sources, execution_mode,
-    index_consent
+    index_consent, tenant_id
 """
+
+TENANT_ID_INDEX = 27
 
 SERVER_EXECUTION = "server"
 CLIENT_EXECUTION = "client"
@@ -59,6 +61,7 @@ def workspace_row_to_api(row: tuple) -> dict[str, Any]:
         ),
         "execution_mode": normalize_execution_mode(row[25] if len(row) > 25 else None),
         "index_consent": _index_consent_from_row(row),
+        "tenant_id": row[TENANT_ID_INDEX] if len(row) > TENANT_ID_INDEX else None,
     }
 
 

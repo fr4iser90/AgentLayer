@@ -8,7 +8,7 @@ from typing import Any
 
 from fastapi import APIRouter, Request
 
-from apps.backend.application.identity.use_cases.request_auth import require_admin
+from apps.backend.application.identity.use_cases.request_auth import require_site_admin
 
 router = APIRouter(prefix="/v1/admin/scheduler-job-presets", tags=["scheduler-job-presets"])
 
@@ -19,8 +19,9 @@ def _presets_dir() -> Path:
 
 
 @router.get("")
+# tenant-scope: site-wide lists preset files from the server plugin directory
 async def list_scheduler_job_presets(request: Request) -> dict[str, Any]:
-    await require_admin(request)
+    await require_site_admin(request)
     root = _presets_dir()
     rows: list[dict[str, Any]] = []
     if root.is_dir():

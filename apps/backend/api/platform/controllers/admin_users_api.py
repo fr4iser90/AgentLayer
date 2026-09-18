@@ -29,14 +29,15 @@ from apps.backend.application.identity.use_cases.request_auth import (
     get_user_by_id,
     get_user_for_bearer_token,
     list_all_users,
-    require_admin,
+    require_site_admin,
     require_admin_capability,
+    require_admin_scope,
     revoke_refresh_token,
     update_user_tenant,
     validate_refresh_token,
     verify_password,
 )
-from apps.backend.domain.access.capabilities import CAP_USER_MANAGE
+from apps.backend.domain.access.capabilities import AdminScopeError, CAP_USER_MANAGE
 from apps.backend.domain.shared.identity import reset_identity, set_identity
 from apps.backend.domain.shared.http_identity import resolve_chat_identity
 from apps.backend.application.platform.use_cases.platform_controller_services import http_500_detail
@@ -78,21 +79,21 @@ class AdminPatchUserBody(BaseModel):
 @router.get("/v1/admin/tenant-templates")
 async def admin_list_tenant_templates(request: Request):
     """List tenant blueprint templates (Task 07)."""
-    await require_admin(request)
+    await require_site_admin(request)
     return {"items": tenant_prov.list_templates_public()}
 
 
 @router.get("/v1/admin/tenants")
 async def admin_list_tenants(request: Request):
     """List tenants (``tenants.id`` = value for tool allowlists and ``users.tenant_id``)."""
-    await require_admin(request)
+    await require_site_admin(request)
     return {"tenants": db.tenants_list()}
 
 
 @router.post("/v1/admin/tenants")
 async def admin_create_tenant(request: Request, body: AdminCreateTenantBody):
     """Create a tenant; optional ``template_id`` clones org config (Task 07)."""
-    await require_admin(request)
+    await require_site_admin(request)
     if body.seed_demo_content and not body.template_id:
         raise HTTPException(status_code=400, detail="seed_demo_content requires template_id")
     user = await get_current_user(request)
@@ -113,19 +114,28 @@ async def admin_create_tenant(request: Request, body: AdminCreateTenantBody):
 
 @router.get("/v1/admin/users")
 async def admin_list_users(request: Request):
-    """List all users (admin UI); ``email`` may be empty when the row has no mailbox."""
-    await require_admin_capability(request, CAP_USER_MANAGE)
-    return {"users": list_all_users()}
+    """List users the caller may administer.
+
+    A delegated ``user.manage`` holder sees only their own tenant; a site admin
+    sees all. Before this the endpoint returned every mailbox on the instance to
+    any capability holder.
+    """
+    scope = await require_admin_scope(request, CAP_USER_MANAGE)
+    return {"users": list_all_users(tenant_ids=scope.tenant_filter())}
 
 
 @router.patch("/v1/admin/users/{user_id}")
 async def admin_patch_user(request: Request, user_id: uuid.UUID, body: AdminPatchUserBody):
-    """Update ``tenant_id``, quotas, media flags, ``capabilities`` and (for site admins) more.
+    """Update quotas, media flags, ``capabilities`` and (for site admins) more.
 
-    A delegated ``user.manage`` holder may edit any non-site-admin user but never
-    a site admin. Only a site admin may grant capabilities onto a site admin.
+    A delegated ``user.manage`` holder may edit a non-site-admin user inside
+    their own tenant only. Moving a user to a different tenant is site-admin
+    only; sending the caller's own ``tenant_id`` unchanged is allowed so the
+    admin UI can post the row back verbatim.
     """
-    actor = await require_admin_capability(request, CAP_USER_MANAGE)
+    # tenant-scope: guarded by require_admin_scope plus the site-admin and
+    # target-tenant checks below, not by tenant_id in each UPDATE.
+    actor = await require_admin_scope(request, CAP_USER_MANAGE)
     if (
         body.tenant_id is None
         and body.workspace_quota is None
@@ -146,14 +156,24 @@ async def admin_patch_user(request: Request, user_id: uuid.UUID, body: AdminPatc
         raise HTTPException(status_code=404, detail="user not found")
 
     # P6 (Weg B): a delegated ``user.manage`` holder must never touch a site admin.
-    if db.user_site_role(u.id) == "site_admin" and db.user_site_role(actor.id) != "site_admin":
+    if db.user_site_role(u.id) == "site_admin" and not actor.site_wide:
         raise HTTPException(status_code=403, detail="only a site admin can modify a site admin")
 
-    if body.tenant_id is not None:
-        if not db.tenant_exists(body.tenant_id):
-            raise HTTPException(status_code=400, detail="unknown tenant_id")
-        if not update_user_tenant(user_id, body.tenant_id):
-            raise HTTPException(status_code=404, detail="user not found")
+    # The target must live inside the caller's tenant scope.
+    target_tenant = int(db.user_tenant_id(u.id) or 1)
+    if not actor.allows_tenant(target_tenant):
+        raise HTTPException(status_code=403, detail="user is outside your admin scope")
+
+    try:
+        if body.tenant_id is not None and int(body.tenant_id) != target_tenant:
+            # Moving a person between companies is never a delegated action.
+            actor.require_site_wide("moving a user between tenants")
+            if not db.tenant_exists(body.tenant_id):
+                raise HTTPException(status_code=400, detail="unknown tenant_id")
+            if not update_user_tenant(user_id, body.tenant_id):
+                raise HTTPException(status_code=404, detail="user not found")
+    except AdminScopeError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
 
     if body.workspace_quota is not None:
         db.query(
@@ -254,20 +274,25 @@ async def admin_patch_user(request: Request, user_id: uuid.UUID, body: AdminPatc
 
 @router.post("/v1/admin/users")
 async def admin_create_user(request: Request, body: AdminCreateUserBody):
-    """Create a password user (e.g. role ``user``). Admin only.
+    """Create a password user (e.g. role ``user``).
 
-    A delegated ``user.manage`` holder may create regular users but not a site
-    admin (``role=admin`` maps to ``site_role=site_admin``).
+    A delegated ``user.manage`` holder may create regular users only inside their
+    own tenant, and never a site admin (``role=admin`` maps to
+    ``site_role=site_admin``).
     """
-    actor = await require_admin_capability(request, CAP_USER_MANAGE)
-    if body.role == "admin" and db.user_site_role(actor.id) != "site_admin":
+    actor = await require_admin_scope(request, CAP_USER_MANAGE)
+    if body.role == "admin" and not actor.site_wide:
         raise HTTPException(status_code=403, detail="only a site admin can create a site admin")
-    if not db.tenant_exists(body.tenant_id):
+    try:
+        tenant_id = actor.require_tenant(body.tenant_id, what="target tenant")
+    except AdminScopeError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    if not db.tenant_exists(tenant_id):
         raise HTTPException(status_code=400, detail="unknown tenant_id")
     if get_user_by_email(body.email):
         raise HTTPException(status_code=409, detail="email already registered")
-    u = create_user(body.email, body.password, body.role, tenant_id=body.tenant_id)
-    return {"ok": True, "id": str(u.id), "email": u.email, "role": u.role, "tenant_id": body.tenant_id}
+    u = create_user(body.email, body.password, body.role, tenant_id=tenant_id)
+    return {"ok": True, "id": str(u.id), "email": u.email, "role": u.role, "tenant_id": tenant_id}
 
 
 @router.get("/auth/policy")

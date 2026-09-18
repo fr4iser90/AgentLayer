@@ -21,7 +21,7 @@ from apps.backend.domain.plugin_system.tool_policy import (
     filter_chat_tool_specs,
     filter_tools_meta,
 )
-from apps.backend.application.identity.use_cases.request_auth import require_admin
+from apps.backend.application.identity.use_cases.request_auth import require_site_admin
 from apps.backend.application.platform.use_cases.platform_controller_services import db
 from apps.backend.application.platform.use_cases.platform_controller_services import http_500_detail
 
@@ -92,7 +92,7 @@ async def list_router_categories():
 @router.get("/v1/admin/tools")
 async def admin_list_tools(request: Request):
     """Tool metadata plus operator policy rows (effective flags for admin UI)."""
-    await require_admin(request)
+    await require_site_admin(request)
     reg = get_registry()
     pmap = _policies_map_safe()
     try:
@@ -115,7 +115,7 @@ async def admin_reload_tools(request: Request, scope: Literal["all", "extra"] = 
     Broken or conflicting tools are skipped with logs. ``scope`` is accepted for API
     compatibility; both values perform the same full rescan.
     """
-    await require_admin(request)
+    await require_site_admin(request)
     try:
         reg = reload_registry(scope=scope)
     except ValueError as e:
@@ -151,7 +151,7 @@ class ToolPoliciesPutBody(BaseModel):
 @router.put("/v1/admin/tool-policies")
 async def admin_put_tool_policies(request: Request, body: ToolPoliciesPutBody):
     """Replace operator tool policy table (admin)."""
-    await require_admin(request)
+    await require_site_admin(request)
     try:
         from apps.backend.application.tools.use_cases.tools_controller_services import replace_all_policies
 
@@ -167,7 +167,7 @@ async def admin_create_tool(request: Request):
     """
     Same JSON body as the chat tool ``create`` (codegen without ``source``, or full module in ``source``).
     """
-    await require_admin(request)
+    await require_site_admin(request)
     try:
         body = await request.json()
     except Exception:

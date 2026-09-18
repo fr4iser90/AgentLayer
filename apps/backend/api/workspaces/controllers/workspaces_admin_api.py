@@ -6,8 +6,14 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 
-from apps.backend.application.identity.use_cases.request_auth import get_current_user, require_admin
+from apps.backend.application.identity.use_cases.request_auth import (
+    require_admin_scope,
+)
 from apps.backend.application.workspace.use_cases import workspace_controller_services as ws_services
+from apps.backend.domain.access.capabilities import (
+    CAP_WORKSPACE_MANAGE,
+    AdminScopeError,
+)
 
 from apps.backend.api.workspaces.controllers.workspaces_api import WorkspaceIndexBody
 
@@ -18,14 +24,18 @@ router = APIRouter(prefix="/v1/admin/workspaces", tags=["workspaces-admin"])
 async def admin_reindex_workspace(
     request: Request, workspace_id: str, body: WorkspaceIndexBody | None = None
 ) -> dict[str, Any]:
-    """Start full/code/docs reindex for any workspace (admin)."""
-    await require_admin(request)
-    await get_current_user(request)
+    """Start full/code/docs reindex for a workspace in the actor's tenant."""
+    scope = await require_admin_scope(request, CAP_WORKSPACE_MANAGE)
 
     row = ws_services.fetch_workspace_row_any_owner(workspace_id)
 
     if not row:
         raise HTTPException(status_code=404, detail="Workspace not found")
+
+    try:
+        scope.require_tenant(ws_services.workspace_tenant_id(row), what="workspace")
+    except AdminScopeError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
 
     mode = (body.mode if body else "full").strip().lower()
     if mode not in ("full", "code", "docs"):
