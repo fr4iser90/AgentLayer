@@ -101,3 +101,74 @@ def test_patch_writer_would_admit_single_user() -> None:
 
     v = "single_user"
     assert (v if v in W else "multi_tenant") == "single_user"
+
+
+# --- the row -> dict mapper, which the reader reads its value from ---
+
+# The reader tests above monkeypatch ``_cached_row`` and so never touch the
+# mapper that produces it. That mapper had its own hardcoded
+# ("agent_system", "multi_tenant") whitelist, so a ``single_user`` row was
+# rewritten to ``multi_tenant`` one step before the (correct) reader looked at
+# it — every reader-level assertion stayed green while the mode was dead. These
+# go through the real mapper.
+
+
+class _FakeCursor:
+    def __init__(self, row):
+        self._row = row
+
+    def execute(self, *_a, **_k):
+        return None
+
+    def fetchone(self):
+        return self._row
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_exc):
+        return False
+
+
+class _FakeConn:
+    def __init__(self, row):
+        self._row = row
+
+    def cursor(self):
+        return _FakeCursor(self._row)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_exc):
+        return False
+
+
+class _FakePool:
+    def __init__(self, row):
+        self._row = row
+
+    def connection(self):
+        return _FakeConn(self._row)
+
+
+def _mapped_mode(raw, monkeypatch):
+    row = [None] * 90
+    row[80] = raw
+    monkeypatch.setattr(operator_settings.db, "pool", lambda: _FakePool(tuple(row)))
+    return operator_settings._fetch_row()["deployment_mode"]
+
+
+@pytest.mark.parametrize("mode", DEPLOYMENT_MODES)
+def test_mapper_preserves_every_declared_mode(mode, monkeypatch) -> None:
+    assert _mapped_mode(mode, monkeypatch) == mode
+
+
+def test_mapper_still_rejects_undeclared_modes(monkeypatch) -> None:
+    assert _mapped_mode("solo", monkeypatch) == "multi_tenant"
+
+
+def test_mapper_whitelist_is_the_canonical_list_not_a_copy(monkeypatch) -> None:
+    """Nothing may accept a narrower set than the domain declares."""
+    for mode in DEPLOYMENT_MODES:
+        assert _mapped_mode(mode, monkeypatch) == mode, f"{mode} dropped by the mapper"
