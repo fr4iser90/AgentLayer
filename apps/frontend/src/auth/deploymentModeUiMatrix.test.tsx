@@ -12,13 +12,16 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, fireEvent, screen } from "@testing-library/react";
+import { render, fireEvent, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import type { AuthUser } from "./AuthContext";
 import { RequireOrgAdmin } from "./RequireOrgAdmin";
 import { RequireUserAdmin } from "./RequireUserAdmin";
 import { AdminLayout } from "../layout/AdminLayout";
 import { UserMenu } from "../components/UserMenu";
+import { AdminAgents } from "../pages/admin/AdminAgents";
+import { AdminInterfacesLlmSection } from "../pages/admin/interfaces/AdminInterfacesLlmSection";
+import { OperatorSettingsProvider } from "../features/admin/operatorSettings/OperatorSettingsProvider";
 
 type MockAuthState = { user: AuthUser | null; loading: boolean; accessToken: string | null };
 const authState = vi.hoisted<MockAuthState>(() => ({
@@ -31,23 +34,78 @@ vi.mock("./AuthContext", () => ({
   useAuth: () => authState,
 }));
 
+// i18n: return the key so assertions are stable against locale changes.
+// The returned object must be a stable identity. `AdminAgents.loadList` is a
+// useCallback keyed on `[auth, t]`; a fresh `t` per render makes that effect
+// re-fire forever, so the list flips back to `loading` as fast as it resolves
+// and the policy grid never settles.
+const i18nStub = vi.hoisted(() => ({
+  t: (key: string) => key,
+  i18n: {
+    language: "en",
+    resolvedLanguage: "en",
+    changeLanguage: () => Promise.resolve(),
+  },
+}));
+
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-    i18n: {
-      language: "en",
-      resolvedLanguage: "en",
-      changeLanguage: () => Promise.resolve(),
-    },
-  }),
+  useTranslation: () => i18nStub,
 }));
 
 // UserMenu imports SUPPORTED from the i18n config module, which runs the real
 // i18next bootstrap at import time. Mock the module, not the bootstrap.
 vi.mock("../i18n/config", () => ({ SUPPORTED: ["en", "de"] }));
 
+// One agent in the list so AdminAgents auto-selects it and renders the policy
+// grid; two tenants so a tenant <select> has something to show when it is
+// offered. Everything else stays empty — no handler fires in these mount-only
+// assertions.
 vi.mock("../lib/api", () => ({
-  apiFetch: vi.fn(async () => ({ ok: true, json: async () => ({}) })),
+  apiFetch: vi.fn(async (url: string) => ({
+    ok: true,
+    json: async () => {
+      if (url === "/v1/admin/agents") {
+        return {
+          agents: [
+            {
+              id: "todo_agent",
+              name: "Todo",
+              icon: "check",
+              description: "",
+              min_role: "user",
+              requires_workspace: false,
+              tool_domains: [],
+              tool_capability_any: [],
+              tool_names_count: 0,
+            },
+          ],
+        };
+      }
+      if (url.startsWith("/v1/admin/agents/todo_agent")) {
+        return {
+          id: "todo_agent",
+          name: "Todo",
+          system_prompt: "do the thing",
+          governance: {
+            access: {
+              direct_allowed: true,
+              delegate_allowed: false,
+              direct_source: "role",
+              delegate_source: "role",
+            },
+            prompt: { chars: 12, approx_tokens: 3, note: "" },
+          },
+        };
+      }
+      if (url === "/v1/admin/tenants") {
+        return { tenants: [{ id: 1, name: "Alpha" }, { id: 2, name: "Beta" }] };
+      }
+      if (url === "/v1/admin/users") {
+        return { users: [{ id: "u1", email: "admin@example.com" }] };
+      }
+      return {};
+    },
+  })),
 }));
 
 /** A site admin who is also a tenant owner, so only the mode can block anything. */
@@ -197,6 +255,113 @@ describe("user dropdown organization link", () => {
   });
 });
 
+/**
+ * The two tenant pickers that had no deployment-mode check of any kind before
+ * this change. They were invisible to an inventory of literal `deployment_mode`
+ * comparisons — nothing in them compared against anything — so the only way to
+ * prove the guard is wired is to render them.
+ */
+function optionValues(el: HTMLElement): string[] {
+  return Array.from((el as HTMLSelectElement).options).map((o) => o.value);
+}
+
+async function renderAgentPolicy() {
+  render(
+    <MemoryRouter initialEntries={["/admin/agents"]}>
+      <AdminAgents />
+    </MemoryRouter>
+  );
+  return waitFor(() => screen.getByLabelText("admin:agentsPolicyScope"));
+}
+
+async function renderModelAccessScope() {
+  render(
+    <MemoryRouter initialEntries={["/admin/interfaces"]}>
+      <OperatorSettingsProvider>
+        <AdminInterfacesLlmSection mode="policies" />
+      </OperatorSettingsProvider>
+    </MemoryRouter>
+  );
+  return waitFor(() => screen.getByLabelText("admin:modelAccessScope"));
+}
+
+const ORG_MODES = MODES.filter((m) => m === "multi_tenant");
+const NO_ORG_MODES = MODES.filter((m) => m !== "multi_tenant");
+
+describe("agent access-policy scope picker", () => {
+  it.each(NO_ORG_MODES)("%s: no tenant option offered", async (mode) => {
+    authState.user = userIn(mode);
+    expect(optionValues(await renderAgentPolicy())).not.toContain("tenant");
+  });
+
+  it.each(ORG_MODES)("%s: tenant option offered", async (mode) => {
+    authState.user = userIn(mode);
+    expect(optionValues(await renderAgentPolicy())).toContain("tenant");
+  });
+
+  /**
+   * The one that actually bites. `policyScope` defaults to `"tenant"`, so
+   * hiding the option without retiring the value would leave a select showing
+   * nothing while still submitting `tenant`.
+   */
+  it.each(NO_ORG_MODES)(
+    "%s: the tenant default is coerced to global, not left dangling",
+    async (mode) => {
+      authState.user = userIn(mode);
+      const select = (await renderAgentPolicy()) as HTMLSelectElement;
+      expect(select.value).toBe("global");
+    }
+  );
+
+  it("multi_tenant: the tenant default is kept", async () => {
+    authState.user = userIn("multi_tenant");
+    const select = (await renderAgentPolicy()) as HTMLSelectElement;
+    expect(select.value).toBe("tenant");
+  });
+
+  it.each(NO_ORG_MODES)("%s: the free-text tenant id field is gone too", async (mode) => {
+    authState.user = userIn(mode);
+    await renderAgentPolicy();
+    expect(screen.queryByLabelText("admin:agentsTenantId")).toBeNull();
+  });
+
+  it("multi_tenant: the free-text tenant id field is present", async () => {
+    authState.user = userIn("multi_tenant");
+    await renderAgentPolicy();
+    expect(screen.getByLabelText("admin:agentsTenantId")).toBeInTheDocument();
+  });
+});
+
+describe("model-access scope picker", () => {
+  it.each(NO_ORG_MODES)("%s: no tenant option offered", async (mode) => {
+    authState.user = userIn(mode);
+    expect(optionValues(await renderModelAccessScope())).not.toContain("tenant");
+  });
+
+  it.each(ORG_MODES)("%s: tenant option offered", async (mode) => {
+    authState.user = userIn(mode);
+    expect(optionValues(await renderModelAccessScope())).toContain("tenant");
+  });
+
+  it("multi_tenant: choosing tenant reveals the tenant select", async () => {
+    authState.user = userIn("multi_tenant");
+    const select = await renderModelAccessScope();
+    fireEvent.change(select, { target: { value: "tenant" } });
+    expect(screen.getByLabelText("admin:modelAccessTenant")).toBeInTheDocument();
+  });
+
+  it("no org surface: the tenant select can never appear", async () => {
+    for (const mode of NO_ORG_MODES) {
+      authState.user = userIn(mode);
+      const select = await renderModelAccessScope();
+      // Not offered, so it cannot be selected — and the dependent select stays away.
+      expect(optionValues(select)).not.toContain("tenant");
+      expect(screen.queryByLabelText("admin:modelAccessTenant")).toBeNull();
+    }
+  });
+});
+
+/** no mode is half-blocked **/
 describe("no mode is half-blocked", () => {
   /**
    * The three surfaces must agree with each other. A mode that hides the nav
