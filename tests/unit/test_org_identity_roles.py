@@ -62,8 +62,8 @@ def test_require_tenant_admin_unavailable_in_agent_system() -> None:
         with (
             patch.object(auth_mod, "get_current_user", new=AsyncMock(return_value=user)),
             patch(
-                "apps.backend.infrastructure.settings.operator_settings.deployment_mode",
-                return_value="agent_system",
+                "apps.backend.infrastructure.settings.operator_settings.has_org_surface",
+                return_value=False,
             ),
         ):
             with pytest.raises(HTTPException) as exc:
@@ -81,8 +81,8 @@ def test_require_tenant_admin_rejects_member() -> None:
         with (
             patch.object(auth_mod, "get_current_user", new=AsyncMock(return_value=user)),
             patch(
-                "apps.backend.infrastructure.settings.operator_settings.deployment_mode",
-                return_value="multi_tenant",
+                "apps.backend.infrastructure.settings.operator_settings.has_org_surface",
+                return_value=True,
             ),
             patch.object(auth_mod.db, "user_tenant_id", return_value=1),
             patch.object(auth_mod.db, "user_is_tenant_admin", return_value=False),
@@ -102,8 +102,8 @@ def test_require_tenant_admin_accepts_owner() -> None:
         with (
             patch.object(auth_mod, "get_current_user", new=AsyncMock(return_value=user)),
             patch(
-                "apps.backend.infrastructure.settings.operator_settings.deployment_mode",
-                return_value="multi_tenant",
+                "apps.backend.infrastructure.settings.operator_settings.has_org_surface",
+                return_value=True,
             ),
             patch.object(auth_mod.db, "user_tenant_id", return_value=1),
             patch.object(auth_mod.db, "user_is_tenant_admin", return_value=True),

@@ -19,6 +19,18 @@ logger = logging.getLogger(__name__)
 
 _SETUP_LOCK_ID = 872814001
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+# Canonical deployment modes. The domain owns this list; the settings forms and
+# the operator_settings reader import it from here rather than each keeping
+# their own copy. Keep in sync with the operator_settings_deployment_mode_check
+# CHECK constraint (schema_134).
+#
+#   single_user   one person — no user admin, tenant picker or /org UI.
+#                 Login is still required; this is a UI reduction, not a
+#                 security boundary.
+#   agent_system  single team — no /org UI.
+#   multi_tenant  organizations product.
+DEPLOYMENT_MODES: tuple[str, ...] = ("single_user", "agent_system", "multi_tenant")
 _NO_AUTH_API_KEY_PLACEHOLDER = "-"
 
 _rate_lock = threading.Lock()
@@ -290,6 +302,8 @@ def create_first_admin(*, email: str, password: str) -> User:
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT pg_advisory_xact_lock(%s)", (_SETUP_LOCK_ID,))
+            # tenant-scope: site-wide first-start bootstrap — no tenant exists yet,
+            # so "has any admin been created" is necessarily an instance question.
             cur.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'")
             if cur.fetchone()[0] > 0:
                 conn.rollback()
@@ -361,8 +375,11 @@ def apply_setup_deployment_mode(*, deployment_mode: str) -> dict[str, Any]:
             detail="Deployment mode can only be set during initial setup.",
         )
     mode = (deployment_mode or "").strip().lower()
-    if mode not in ("agent_system", "multi_tenant"):
-        raise HTTPException(status_code=400, detail="deployment_mode must be agent_system or multi_tenant")
+    if mode not in DEPLOYMENT_MODES:
+        raise HTTPException(
+            status_code=400,
+            detail="deployment_mode must be one of: " + ", ".join(DEPLOYMENT_MODES),
+        )
     apply_deployment_mode_patch(mode)
     return {"ok": True, "deployment_mode": mode}
 

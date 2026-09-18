@@ -11,7 +11,7 @@ _TENANT_KNOWLEDGE_DOMAINS = frozenset({"tenant_knowledge", "tenant_knowledge_dra
 
 def reject_admin_tenant_content_in_multi_tenant() -> None:
     """Team CMS belongs on ``/v1/org/*`` when the product runs in multi_tenant mode."""
-    if operator_settings.deployment_mode() != "multi_tenant":
+    if not operator_settings.has_org_surface():
         return
     raise HTTPException(
         status_code=403,
@@ -24,7 +24,7 @@ def reject_admin_tenant_content_in_multi_tenant() -> None:
 
 def reject_admin_tenant_knowledge_rag_ingest(domain: str | None) -> None:
     """Block legacy admin ingest for tenant team domains in multi_tenant mode."""
-    if operator_settings.deployment_mode() != "multi_tenant":
+    if not operator_settings.has_org_surface():
         return
     dom = (domain or "").strip().lower()
     if dom in _TENANT_KNOWLEDGE_DOMAINS:

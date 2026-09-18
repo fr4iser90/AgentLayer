@@ -16,6 +16,8 @@
   "stepOf": "Step {{step}} of {{total}}",
   "step0Title": "How will you use AgentLayer?",
   "step0Intro": "Choose whether this installation is a personal agent platform or a multi-organization knowledge product.",
+  "modeSingleTitle": "Single user",
+  "modeSingleDesc": "Just you — no user admin, tenant selection or organizations.",
   "modeAgentTitle": "Agent system",
   "modeAgentDesc": "Admin + users, one team — no separate organizations.",
   "modeTenantTitle": "Multi-tenant system",

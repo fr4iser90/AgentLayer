@@ -2,6 +2,7 @@ import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { SETUP_WIZARD_ACTIVE_KEY, useAuth } from "../auth/AuthContext";
+import type { DeploymentMode } from "../auth/deploymentMode";
 import {
   DEFAULT_LLM_PRESET,
   getLlmPreset,
@@ -60,7 +61,7 @@ export function SetupWizardPage() {
   const { accessToken, loading, setupStatus, refreshSetupStatus, completeSetup } = useAuth();
 
   const [step, setStep] = useState(0);
-  const [deploymentMode, setDeploymentMode] = useState<"agent_system" | "multi_tenant">("multi_tenant");
+  const [deploymentMode, setDeploymentMode] = useState<DeploymentMode>("multi_tenant");
   const [deploymentPending, setDeploymentPending] = useState(false);
   const [deploymentError, setDeploymentError] = useState<string | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
@@ -482,6 +483,20 @@ export function SetupWizardPage() {
                 </label>
               ) : null}
               <fieldset className="space-y-3">
+                <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-surface-border p-4">
+                  <input
+                    type="radio"
+                    name="deployment_mode"
+                    value="single_user"
+                    checked={deploymentMode === "single_user"}
+                    onChange={() => setDeploymentMode("single_user")}
+                    className="mt-1"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium text-white">{t("setup:modeSingleTitle")}</span>
+                    <span className="mt-1 block text-xs text-surface-muted">{t("setup:modeSingleDesc")}</span>
+                  </span>
+                </label>
                 <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-surface-border p-4">
                   <input
                     type="radio"

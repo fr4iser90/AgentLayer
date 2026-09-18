@@ -1,6 +1,8 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
+import type { AuthUser } from "../../auth/AuthContext";
+import { hasOrgSurface } from "../../auth/deploymentMode";
 import { apiFetch } from "../../lib/api";
 
 type ContentStatus =
@@ -45,8 +47,9 @@ type VersionsResponse = {
   items?: VersionRow[];
 };
 
-function apiBase(deploymentMode: string): string {
-  return deploymentMode === "agent_system" ? "/v1/admin/tenant-content" : "/v1/org/tenant-content";
+/** Without an org surface the platform-admin CMS is the only content store. */
+function apiBase(user: AuthUser | null | undefined): string {
+  return hasOrgSurface(user) ? "/v1/org/tenant-content" : "/v1/admin/tenant-content";
 }
 
 function statusBadge(status: string, t: (k: string) => string): string {
@@ -61,7 +64,6 @@ function statusBadge(status: string, t: (k: string) => string): string {
 export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
   const { t } = useTranslation(["org"]);
   const auth = useAuth();
-  const deploymentMode = auth.user?.deployment_mode ?? "multi_tenant";
   const canPublish =
     (auth.user?.profession_policy?.can_publish_content ??
       auth.user?.site_role === "site_admin") ||
@@ -74,7 +76,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
     auth.user?.role?.toLowerCase() === "admin" ||
     auth.user?.membership_role === "tenant_owner" ||
     auth.user?.membership_role === "tenant_admin";
-  const base = apiBase(deploymentMode);
+  const base = apiBase(auth.user);
 
   const [items, setItems] = useState<ContentRow[]>([]);
   const [reviewQueue, setReviewQueue] = useState<ContentRow[]>([]);

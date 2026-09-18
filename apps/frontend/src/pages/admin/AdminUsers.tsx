@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
+import { hasOrgSurface } from "../../auth/deploymentMode";
 import { apiFetch } from "../../lib/api";
 import {
   canAssignAgents as actorCanAssignAgents,
@@ -57,8 +58,9 @@ export function AdminUsers() {
   const { t } = useTranslation(["admin", "settings"]);
   const auth = useAuth();
   const { user } = auth;
-  // P5: hide all tenant UI in single-tenant (`agent_system`) mode; keep it in `multi_tenant`.
-  const isAgentSystem = user?.deployment_mode === "agent_system";
+  // The tenant dimension only exists where there is an org surface. In
+  // `single_user` and `agent_system` there is one tenant and nothing to pick.
+  const showTenantUi = hasOrgSurface(user);
   // P6 (Weg B): platform/admin capabilities decide which rows an actor may edit and whether
   // the agent-assign column is visible. A site admin holds every capability; a delegated
   // holder only what was granted onto ``users.capabilities``.
@@ -68,7 +70,7 @@ export function AdminUsers() {
   // already requires ``user.manage``, so every viewer is a holder. Only the agents column
   // (``agent.assign``) varies. Base column count plus Tenant in multi-tenant mode; shrink by
   // the agents column this actor may not see.
-  const visibleColSpan = computeVisibleColSpan(user, isAgentSystem);
+  const visibleColSpan = computeVisibleColSpan(user, !showTenantUi);
   const [rows, setRows] = useState<UserRow[]>([]);
   const [tenants, setTenants] = useState<TenantRow[]>([]);
   const [listLoading, setListLoading] = useState(true);
@@ -475,7 +477,7 @@ export function AdminUsers() {
         return;
       }
       setCreateMsg(
-        isAgentSystem
+        !showTenantUi
           ? t("admin:usersCreatedNoTenant", {
               email: data.email ?? email,
               role: data.role ?? newRole,
@@ -574,7 +576,7 @@ export function AdminUsers() {
             <thead className="border-b border-surface-border bg-black/20 text-surface-muted">
               <tr>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColEmail")}</th>
-                {!isAgentSystem && (
+                {showTenantUi && (
                   <th className="px-4 py-3 font-medium">{t("admin:usersColTenant")}</th>
                 )}
                 <th className="px-4 py-3 font-medium">{t("admin:usersColRole")}</th>
@@ -633,7 +635,7 @@ export function AdminUsers() {
                           </span>
                         )}
                       </td>
-                      {!isAgentSystem && (
+                      {showTenantUi && (
                         <td className="px-4 py-3">
                           <select
                             className="max-w-[14rem] rounded-md border border-surface-border bg-black/20 px-2 py-1.5 text-xs text-white"
@@ -861,7 +863,7 @@ export function AdminUsers() {
         </button>
       </section>
 
-      {!isAgentSystem && (
+      {showTenantUi && (
         <section className="mt-10 rounded-xl border border-surface-border bg-surface-raised p-5">
           <h2 className="text-sm font-medium text-white">{t("admin:usersCreateTenant")}</h2>
         <p className="mt-1 text-xs text-surface-muted">{t("admin:usersCreateTenantApi")}</p>
@@ -945,7 +947,7 @@ export function AdminUsers() {
               autoComplete="new-password"
             />
           </label>
-          {!isAgentSystem && (
+          {showTenantUi && (
             <label className="block text-xs text-surface-muted">
               {t("admin:usersTenantLabel")}
               <select

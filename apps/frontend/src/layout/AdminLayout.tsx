@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "../auth/AuthContext";
+import { isSingleUser } from "../auth/deploymentMode";
 
 /** Single canonical admin sidebar — do not nest extra IDE submenus here. */
 const item =
@@ -21,6 +23,8 @@ function NavGroup({ label, children }: { label: string; children: React.ReactNod
 
 export function AdminLayout() {
   const { t } = useTranslation(["admin"]);
+  const { user } = useAuth();
+  const showPeople = !isSingleUser(user);
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface md:flex-row">
       <aside className="shrink-0 border-b border-surface-border bg-[#111] px-3 py-4 md:w-56 md:border-b-0 md:border-r">
@@ -78,14 +82,16 @@ export function AdminLayout() {
             </NavLink>
           </NavGroup>
 
-          <NavGroup label={t("admin:navPeople")}>
-            <NavLink
-              to="/admin/users"
-              className={({ isActive }) => `${item} ${isActive ? itemActive : itemIdle}`}
-            >
-              {t("admin:usersTitle")}
-            </NavLink>
-          </NavGroup>
+          {showPeople ? (
+            <NavGroup label={t("admin:navPeople")}>
+              <NavLink
+                to="/admin/users"
+                className={({ isActive }) => `${item} ${isActive ? itemActive : itemIdle}`}
+              >
+                {t("admin:usersTitle")}
+              </NavLink>
+            </NavGroup>
+          ) : null}
 
           <NavGroup label={t("admin:navObservability")}>
             <NavLink

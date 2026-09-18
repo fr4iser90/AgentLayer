@@ -12,6 +12,7 @@ import {
 } from "../../../lib/modelCatalog";
 import { apiFetch } from "../../../lib/api";
 import { useAuth } from "../../../auth/AuthContext";
+import { hasOrgSurface } from "../../../auth/deploymentMode";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type AdminModelCatalogPref = {
@@ -274,6 +275,9 @@ export function AdminInterfacesLlmSection({
   const [users, setUsers] = useState<UserRow[]>([]);
   const [accessScope, setAccessScope] = useState<AccessScope>("global");
   const [accessTenantId, setAccessTenantId] = useState("1");
+  // Tenant-scoped model access is a tenant-selection surface: with no org surface
+  // there is one tenant and nothing to scope against, so the option is not offered.
+  const showTenantScope = hasOrgSurface(auth.user);
   const [accessUserId, setAccessUserId] = useState("");
   const [modelAccess, setModelAccess] = useState<Record<string, AccessState>>({});
   const [modelDefaults, setModelDefaults] = useState<Record<ModelProfile, string>>({
@@ -1042,11 +1046,13 @@ export function AdminInterfacesLlmSection({
                     onChange={(e) => setAccessScope(e.target.value as AccessScope)}
                   >
                     <option value="global">{t("admin:modelAccessScopeGlobal")}</option>
-                    <option value="tenant">{t("admin:modelAccessScopeTenant")}</option>
+                    {showTenantScope ? (
+                      <option value="tenant">{t("admin:modelAccessScopeTenant")}</option>
+                    ) : null}
                     <option value="user">{t("admin:modelAccessScopeUser")}</option>
                   </select>
                 </div>
-                {accessScope === "tenant" ? (
+                {showTenantScope && accessScope === "tenant" ? (
                   <div>
                     <label className="block text-xs text-surface-muted" htmlFor="model-access-tenant">
                       {t("admin:modelAccessTenant")}

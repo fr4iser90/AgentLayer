@@ -4,6 +4,7 @@ import { AuthProvider } from "./auth/AuthContext";
 import { FriendsSettings } from "./pages/settings/FriendsSettings";
 import { RequireSiteAdmin } from "./auth/RequireSiteAdmin";
 import { RequireOrgAdmin } from "./auth/RequireOrgAdmin";
+import { RequireUserAdmin } from "./auth/RequireUserAdmin";
 import { OrgSetupPage } from "./pages/org/OrgSetupPage";
 import { RequireSession } from "./auth/RequireSession";
 import { AppLayout } from "./layout/AppLayout";
@@ -153,7 +154,7 @@ export function App() {
                   <Route path="tools" element={<AdminTools />} />
                   <Route path="agents" element={<AdminAgents />} />
                   <Route path="agent-submissions" element={<AdminAgentSubmissions />} />
-                  <Route path="users" element={<AdminUsers />} />
+                  <Route path="users" element={<RequireUserAdmin><AdminUsers /></RequireUserAdmin>} />
                   <Route path="scheduled-jobs" element={<AdminScheduledJobs />} />
                   <Route path="schedules" element={<AdminSchedules />} />
                   <Route path="run-traces" element={<AdminAgentTraces />} />

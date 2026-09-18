@@ -11,7 +11,7 @@ import jwt
 import uuid
 from datetime import datetime, timedelta, timezone
 from functools import wraps
-from typing import Optional, Callable, Any
+from typing import TYPE_CHECKING, Optional, Callable, Any
 
 from fastapi import Request, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
@@ -27,6 +27,9 @@ from apps.backend.infrastructure.identity.api_keys import (
 )
 from apps.backend.domain.shared.identity import set_identity, reset_identity
 from apps.backend.infrastructure.dashboards.dashboard_persistence import ensure_default_dashboard_for_new_user
+
+if TYPE_CHECKING:
+    from apps.backend.domain.access.capabilities import AdminScope
 
 
 # JWT Configuration
@@ -163,6 +166,8 @@ def decode_access_token(token: str) -> Optional[dict]:
 
 def get_user_by_email(email: str) -> Optional[User]:
     """Get user by email"""
+    # tenant-scope: site-wide — login happens before a tenant is known, and
+    # users_email_key is unique across the instance.
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
@@ -192,15 +197,28 @@ def _normalize_capabilities(raw: Any) -> list[str]:
     return []
 
 
-def list_all_users() -> list[dict[str, Any]]:
+def list_all_users(tenant_ids: frozenset[int] | None = None) -> list[dict[str, Any]]:
     """
     All ``users`` rows for admin UI. ``email`` is nullable in the schema; do not build ``User``
     here or Pydantic rejects NULL emails.
+
+    ``tenant_ids=None`` means every tenant — pass it only for a site admin. A
+    delegated ``user.manage`` holder must pass their :meth:`AdminScope.tenant_filter`
+    result so the People list cannot read mailboxes across companies.
     """
+    where = ""
+    params: tuple[Any, ...] = ()
+    if tenant_ids is not None:
+        if not tenant_ids:
+            return []
+        placeholders = ", ".join(["%s"] * len(tenant_ids))
+        where = f"WHERE u.tenant_id IN ({placeholders}) "
+        params = tuple(sorted(tenant_ids))
+
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """
+                f"""
                 SELECT u.id, u.email, u.role, u.site_role, u.created_at, u.external_sub, u.display_name,
                        u.tenant_id, t.name AS tenant_name, u.discord_user_id, u.telegram_user_id,
                        COALESCE(u.workspace_quota, 10) AS workspace_quota,
@@ -215,8 +233,9 @@ def list_all_users() -> list[dict[str, Any]]:
                        COALESCE(u.capabilities, '[]'::jsonb) AS capabilities
                 FROM users u
                 LEFT JOIN tenants t ON t.id = u.tenant_id
-                ORDER BY u.created_at ASC NULLS LAST, u.email ASC NULLS LAST, u.external_sub ASC
-                """
+                {where}ORDER BY u.created_at ASC NULLS LAST, u.email ASC NULLS LAST, u.external_sub ASC
+                """,
+                params,
             )
             rows = cur.fetchall()
     out: list[dict[str, Any]] = []
@@ -281,6 +300,8 @@ def list_all_users() -> list[dict[str, Any]]:
 
 def get_user_by_id(user_id: uuid.UUID) -> Optional[User]:
     """Get user by id"""
+    # tenant-scope: site-wide — canonical identity lookup; callers decide what
+    # the user's tenant permits.
     with db.pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
@@ -428,13 +449,36 @@ async def require_admin_capability(request: Request, capability: str) -> User:
     return user
 
 
+async def require_admin_scope(request: Request, capability: str) -> AdminScope:
+    """Require ``capability`` and return the tenant range it may act within.
+
+    Same gate as :func:`require_admin_capability`, plus the confinement. The
+    capability alone only says *what* kind of admin action is allowed, never
+    *where* — a handler that creates, moves or grants against a target must check
+    that target against the returned scope.
+    """
+    from apps.backend.domain.access.capabilities import AdminScope
+
+    user = await require_admin_capability(request, capability)
+    site_wide = (db.user_site_role(user.id) or "").strip().lower() == "site_admin"
+    if site_wide:
+        return AdminScope(actor_id=user.id, site_wide=True, tenant_ids=frozenset())
+    return AdminScope(
+        actor_id=user.id,
+        site_wide=False,
+        tenant_ids=frozenset({int(db.user_tenant_id(user.id) or 1)}),
+    )
+
+
 async def require_tenant_admin(request: Request) -> User:
     from apps.backend.infrastructure.settings import operator_settings
 
     user = await get_current_user(request)
-    mode = operator_settings.deployment_mode()
-    if mode != "multi_tenant":
-        raise HTTPException(status_code=404, detail="organization admin not available in agent_system mode")
+    if not operator_settings.has_org_surface():
+        raise HTTPException(
+            status_code=404,
+            detail="organization admin not available in this deployment mode",
+        )
     tid = db.user_tenant_id(user.id)
     if db.user_is_tenant_admin(user.id, tid):
         return user
@@ -446,9 +490,11 @@ async def require_tenant_member(request: Request) -> User:
     from apps.backend.infrastructure.settings import operator_settings
 
     user = await get_current_user(request)
-    mode = operator_settings.deployment_mode()
-    if mode != "multi_tenant":
-        raise HTTPException(status_code=404, detail="organization not available in agent_system mode")
+    if not operator_settings.has_org_surface():
+        raise HTTPException(
+            status_code=404,
+            detail="organization not available in this deployment mode",
+        )
     tid = db.user_tenant_id(user.id)
     if db.user_membership_role(user.id, tid) is None:
         raise HTTPException(status_code=403, detail="tenant membership required")
@@ -524,20 +570,18 @@ def create_user(email: str, password: str, role: str = "user", tenant_id: int = 
 
 
 def update_user_tenant(user_id: uuid.UUID, tenant_id: int) -> bool:
-    """Set ``users.tenant_id``. Returns True if a row was updated."""
-    with db.pool().connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "UPDATE users SET tenant_id = %s WHERE id = %s",
-                (tenant_id, user_id),
-            )
-            n = cur.rowcount or 0
-            conn.commit()
-    return n > 0
+    """Move a user to another tenant, keeping ``tenant_memberships`` in step.
+
+    The membership row has to follow ``users.tenant_id`` — the two are read by
+    different code paths and must not disagree. See ``move_user_tenant``.
+    """
+    return db.move_user_tenant(user_id, tenant_id)
 
 
 def update_user_password(user_id: uuid.UUID, password: str) -> None:
     """Update existing user password"""
+    # tenant-scope: site-wide — the caller holds the user id; password changes
+    # are not tenant-partitioned.
     password_hash = hash_password(password)
 
     with db.pool().connection() as conn:

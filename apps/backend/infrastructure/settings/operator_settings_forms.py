@@ -4,6 +4,11 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+# Re-exported from the domain, which owns the list. Kept here so existing
+# imports of DEPLOYMENT_MODES from this module keep working.
+from apps.backend.domain.setup.instance import DEPLOYMENT_MODES  # noqa: F401
+
+
 class OperatorSettingsPayload(BaseModel):
     """Full replace on PUT (empty strings clear optional fields where applicable)."""
 

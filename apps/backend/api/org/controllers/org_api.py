@@ -92,8 +92,11 @@ async def org_setup_complete(request: Request, body: OrgSetupCompleteBody = Body
 @router.post("/v1/org/rag/ingest")
 async def org_rag_ingest(request: Request, body: OrgRagIngestBody):
     user = await require_tenant_admin(request)
-    if op_settings.deployment_mode() != "multi_tenant":
-        raise HTTPException(status_code=404, detail="not available in agent_system mode")
+    if not op_settings.has_org_surface():
+        raise HTTPException(
+            status_code=404,
+            detail="the organization surface is not available in this deployment mode",
+        )
     if not rag_ctrl.operator_settings.rag_settings()["enabled"]:
         raise HTTPException(status_code=503, detail="RAG disabled (operator settings)")
     tid = _tenant_id_for(user)

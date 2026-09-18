@@ -17,6 +17,7 @@ from apps.backend.infrastructure.settings.operator_settings import (
     normalize_scheduler_tools_mode,
 )
 from apps.backend.infrastructure.settings.operator_settings_llm_transport import normalize_model_catalog_owned_by
+from apps.backend.infrastructure.settings.operator_settings_forms import DEPLOYMENT_MODES
 from apps.backend.infrastructure.db import db
 
 logger = logging.getLogger(__name__)
@@ -28,7 +29,23 @@ def delegate_enabled() -> bool:
 
 def deployment_mode() -> str:
     v = str(_cached_row().get("deployment_mode") or "multi_tenant").strip().lower()
-    return v if v in ("agent_system", "multi_tenant") else "multi_tenant"
+    return v if v in DEPLOYMENT_MODES else "multi_tenant"
+
+
+def has_org_surface() -> bool:
+    """Whether the organization (/org) product surface exists.
+
+    Prefer this over ``deployment_mode() != "multi_tenant"``. The bare
+    comparison answers "is this not multi_tenant", which silently answers for
+    every mode that gets added later; this one answers the question that was
+    actually meant, so a new mode has to be considered here on purpose.
+    """
+    return deployment_mode() == "multi_tenant"
+
+
+def is_single_user() -> bool:
+    """One person: no user administration, tenant picker or /org surface."""
+    return deployment_mode() == "single_user"
 
 
 def rag_docs_ingest_fingerprint() -> str:

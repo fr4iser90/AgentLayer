@@ -519,6 +519,8 @@ from apps.backend.infrastructure.settings.operator_settings_readers import (
     effective_rag_tenant_shared_domains,
     embedding_api_public_fields,
     expose_internal_errors_in_responses,
+    has_org_surface,
+    is_single_user,
     memory_graph_prompt_settings,
     memory_service_enabled,
     public_dict,

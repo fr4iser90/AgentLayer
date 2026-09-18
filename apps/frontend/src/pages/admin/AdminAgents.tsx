@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
+import { hasOrgSurface } from "../../auth/deploymentMode";
 import { apiFetch } from "../../lib/api";
 
 type AgentRow = {
@@ -128,6 +129,14 @@ export function AdminAgents() {
   const [policyScope, setPolicyScope] = useState<"global" | "tenant" | "user">("tenant");
   const [policyTenantId, setPolicyTenantId] = useState("");
   const [policyUserId, setPolicyUserId] = useState("");
+  // Tenant-scoped access policy is a tenant-selection surface: with no org surface
+  // there is one tenant and nothing to scope against. The default scope is
+  // "tenant", so it has to be coerced rather than just hidden — a select left on
+  // an option it no longer offers renders blank and would still save that value.
+  const showTenantScope = hasOrgSurface(auth.user);
+  useEffect(() => {
+    if (!showTenantScope && policyScope === "tenant") setPolicyScope("global");
+  }, [showTenantScope, policyScope]);
   const [directState, setDirectState] = useState<"inherit" | "allow" | "deny">("inherit");
   const [delegateState, setDelegateState] = useState<"inherit" | "allow" | "deny">("inherit");
   const [policyBusy, setPolicyBusy] = useState(false);
@@ -667,19 +676,23 @@ export function AdminAgents() {
                           onChange={(e) => setPolicyScope(e.target.value as "global" | "tenant" | "user")}
                         >
                           <option value="global">{t("admin:agentsScopeGlobal")}</option>
-                          <option value="tenant">{t("admin:agentsScopeTenant")}</option>
+                          {showTenantScope ? (
+                            <option value="tenant">{t("admin:agentsScopeTenant")}</option>
+                          ) : null}
                           <option value="user">{t("admin:agentsScopeUser")}</option>
                         </select>
                       </label>
-                      <label className="text-xs text-surface-muted">
-                        {t("admin:agentsTenantId")}
-                        <input
-                          className="mt-1 w-full rounded border border-surface-border bg-black/30 px-2 py-1 text-xs text-white placeholder:text-neutral-500"
-                          value={policyTenantId}
-                          onChange={(e) => setPolicyTenantId(e.target.value)}
-                          placeholder={t("admin:agentsTenantIdPlaceholder")}
-                        />
-                      </label>
+                      {showTenantScope ? (
+                        <label className="text-xs text-surface-muted">
+                          {t("admin:agentsTenantId")}
+                          <input
+                            className="mt-1 w-full rounded border border-surface-border bg-black/30 px-2 py-1 text-xs text-white placeholder:text-neutral-500"
+                            value={policyTenantId}
+                            onChange={(e) => setPolicyTenantId(e.target.value)}
+                            placeholder={t("admin:agentsTenantIdPlaceholder")}
+                          />
+                        </label>
+                      ) : null}
                       <label className="text-xs text-surface-muted">
                         {t("admin:agentsUserId")}
                         <input
