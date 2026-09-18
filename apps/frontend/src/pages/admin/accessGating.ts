@@ -55,13 +55,13 @@ export function isTargetEditable(
 }
 
 /**
- * Visible column span for the list: base count (14 in agent_system mode, else 15
- * with the Tenant column) minus the agents column this actor may not see.
+ * Visible column span for the list: base count (14 with the Tenant column
+ * hidden, else 15) minus the agents column this actor may not see.
  */
 export function visibleColSpan(
   actor?: AccessActor | null,
-  isAgentSystem = false
+  hideTenantColumn = false
 ): number {
-  const base = isAgentSystem ? 14 : 15;
+  const base = hideTenantColumn ? 14 : 15;
   return base - (canAssignAgents(actor) ? 0 : 1);
 }

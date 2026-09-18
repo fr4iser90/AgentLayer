@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
+import { hasOrgSurface } from "../../auth/deploymentMode";
 import { apiFetch } from "../../lib/api";
 
 type ContentResponse = {
@@ -18,9 +19,9 @@ function titleFromFilename(name: string): string {
 export function OrgKnowledgePublishSection({ onPublished }: { onPublished?: () => void }) {
   const { t } = useTranslation(["org"]);
   const auth = useAuth();
-  const deploymentMode = auth.user?.deployment_mode ?? "multi_tenant";
-  const base =
-    deploymentMode === "agent_system" ? "/v1/admin/tenant-content" : "/v1/org/tenant-content";
+  const base = hasOrgSurface(auth.user)
+    ? "/v1/org/tenant-content"
+    : "/v1/admin/tenant-content";
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");

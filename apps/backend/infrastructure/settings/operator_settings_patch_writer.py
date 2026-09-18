@@ -22,7 +22,10 @@ from apps.backend.infrastructure.settings.operator_settings import (
     normalize_scheduler_llm_backend,
     normalize_scheduler_tools_mode,
 )
-from apps.backend.infrastructure.settings.operator_settings_forms import OperatorSettingsPatch
+from apps.backend.infrastructure.settings.operator_settings_forms import (
+    DEPLOYMENT_MODES,
+    OperatorSettingsPatch,
+)
 
 def _maybe_align_pgvector_embedding_dim(r: dict[str, Any], patch: dict[str, Any]) -> None:
     """Migrate pgvector columns when embedding model/dim changes in operator settings."""
@@ -168,7 +171,7 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
         r["delegate_enabled"] = bool(patch["delegate_enabled"])
     if "deployment_mode" in patch:
         v = str(patch["deployment_mode"] or "multi_tenant").strip().lower()
-        r["deployment_mode"] = v if v in ("agent_system", "multi_tenant") else "multi_tenant"
+        r["deployment_mode"] = v if v in DEPLOYMENT_MODES else "multi_tenant"
     if "memory_graph_enabled" in patch:
         r["memory_graph_enabled"] = bool(patch["memory_graph_enabled"])
     if "memory_graph_max_hops" in patch:

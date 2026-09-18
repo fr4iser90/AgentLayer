@@ -1,6 +1,7 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "./AuthContext";
+import { hasOrgSurface } from "./deploymentMode";
 import { defaultLandingPath } from "./tenantSurface";
 
 /** Tenant org surface — `/app/org` (multi_tenant only). */
@@ -22,7 +23,7 @@ export function RequireOrgAdmin() {
     return null;
   }
 
-  if (user?.deployment_mode === "agent_system") {
+  if (!hasOrgSurface(user)) {
     return <Navigate to={defaultLandingPath(user)} replace />;
   }
 

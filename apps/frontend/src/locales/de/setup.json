@@ -16,6 +16,8 @@
   "stepOf": "Schritt {{step}} von {{total}}",
   "step0Title": "Wie nutzen Sie AgentLayer?",
   "step0Intro": "Agent-Plattform für ein Team oder Multi-Organisation-Produkt mit Firmen und Wissensbasis.",
+  "modeSingleTitle": "Einzelperson",
+  "modeSingleDesc": "Nur Sie — keine Benutzerverwaltung, Tenant-Auswahl oder Organisationen.",
   "modeAgentTitle": "Agent-System",
   "modeAgentDesc": "Admin + User, ein Team — ohne separate Organisationen.",
   "modeTenantTitle": "Multi-Tenant-System",

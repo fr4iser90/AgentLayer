@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
+import { hasOrgSurface } from "../auth/deploymentMode";
 import { SUPPORTED } from "../i18n/config";
 
 export function UserMenu() {
@@ -15,7 +16,7 @@ export function UserMenu() {
   const siteAdmin =
     user?.site_role === "site_admin" || user?.role?.toLowerCase() === "admin";
   const showOrg =
-    user?.deployment_mode === "multi_tenant" &&
+    hasOrgSurface(user) &&
     (user?.membership_role === "tenant_owner" || user?.membership_role === "tenant_admin");
 
   useEffect(() => {
