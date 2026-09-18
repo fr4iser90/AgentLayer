@@ -8,7 +8,7 @@ from typing import Any
 from fastapi import APIRouter, Query, Request
 
 from apps.backend.domain.plugin_system.registry import get_registry
-from apps.backend.application.identity.use_cases.request_auth import require_admin
+from apps.backend.application.identity.use_cases.request_auth import require_site_admin
 
 router = APIRouter(tags=["admin-tools"])
 
@@ -19,7 +19,7 @@ async def admin_tools_domains(
     domain: str | None = Query(None, description="Filter by TOOL_DOMAIN"),
 ) -> dict[str, Any]:
     """Grouped tool inventory with optional provider metadata."""
-    await require_admin(request)
+    await require_site_admin(request)
     reg = get_registry()
     want = (domain or "").strip().lower()
 

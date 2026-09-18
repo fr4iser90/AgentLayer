@@ -60,12 +60,19 @@ def public_agent_task(row: dict[str, Any] | None) -> dict[str, Any] | None:
 
 def list_tool_invocations(
     *,
+    tenant_id: int,
     run_id: uuid.UUID | None = None,
     limit: int = 100,
 ) -> list[dict[str, Any]]:
+    """Tool invocations within one tenant.
+
+    ``tenant_id`` is required rather than optional: the table carries the column
+    and the only caller is an admin surface, so an unfiltered read would return
+    every tenant's tool arguments and result excerpts.
+    """
     lim = max(1, min(500, int(limit)))
-    where = "WHERE 1=1"
-    params: list[Any] = []
+    where = "WHERE tenant_id = %s"
+    params: list[Any] = [int(tenant_id)]
     if run_id is not None:
         where += " AND agent_run_id = %s"
         params.append(run_id)
@@ -91,6 +98,7 @@ def list_tool_invocations(
 
 
 def tool_invocations_for_run(run_id: uuid.UUID) -> list[dict[str, Any]]:
+    # tenant-scope: guarded by agent_run_id — caller resolves the run within a tenant first
     with db.pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(

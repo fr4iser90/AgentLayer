@@ -64,7 +64,7 @@ def tenant_insert(name: str) -> dict[str, Any]:
     return d
 
 
-def user_external_sub(user_id: uuid.UUID) -> str | None:
+def user_external_sub(user_id: uuid.UUID) -> str | None:  # tenant-scope: site-wide (pk lookup)
     with pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -96,7 +96,7 @@ def user_tenant_id(user_id: uuid.UUID) -> int:
 
 def user_first_admin_id() -> uuid.UUID | None:
     """Oldest user with ``role = 'admin'`` (for bootstrap jobs that need an owning user id)."""
-    with pool().connection() as conn:
+    with pool().connection() as conn:  # tenant-scope: site-wide — bootstrap has no tenant context
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT id FROM users WHERE role = 'admin' ORDER BY created_at ASC LIMIT 1"
@@ -119,7 +119,7 @@ def discord_user_id_normalize(raw: str) -> str:
     return s
 
 
-def user_discord_user_id_get(user_id: uuid.UUID) -> str | None:
+def user_discord_user_id_get(user_id: uuid.UUID) -> str | None:  # tenant-scope: site-wide (pk lookup)
     with pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT discord_user_id FROM users WHERE id = %s", (user_id,))
@@ -215,7 +215,7 @@ def telegram_user_id_normalize(raw: str) -> str:
     return s
 
 
-def user_telegram_user_id_get(user_id: uuid.UUID) -> str | None:
+def user_telegram_user_id_get(user_id: uuid.UUID) -> str | None:  # tenant-scope: site-wide (pk lookup)
     with pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT telegram_user_id FROM users WHERE id = %s", (user_id,))
@@ -301,7 +301,7 @@ def user_id_tenant_for_telegram_global(telegram_user_id: str) -> tuple[uuid.UUID
 
 def user_role(user_id: uuid.UUID | None) -> str:
     """Return ``users.role`` (``user`` or ``admin``) for tool access checks."""
-    if user_id is None:
+    if user_id is None:  # tenant-scope: site-wide (pk lookup)
         return "user"
     with pool().connection() as conn:
         with conn.cursor() as cur:
@@ -361,7 +361,7 @@ def scheduler_outbound_increment_utc(user_id: uuid.UUID) -> int:
 _TENANT_ADMIN_ROLES = frozenset({"tenant_owner", "tenant_admin"})
 
 
-def user_site_role(user_id: uuid.UUID | None) -> str:
+def user_site_role(user_id: uuid.UUID | None) -> str:  # tenant-scope: site-wide (pk lookup)
     if user_id is None:
         return "site_user"
     with pool().connection() as conn:
@@ -403,7 +403,7 @@ def user_capabilities(user_id: uuid.UUID | None) -> list[str]:
     ``users.capabilities`` is a JSONB array of slugs. Empty/unknown users yield
     ``[]`` so callers never have to guard for NULL.
     """
-    if user_id is None:
+    if user_id is None:  # tenant-scope: site-wide (pk lookup)
         return []
     with pool().connection() as conn:
         with conn.cursor() as cur:
@@ -444,11 +444,31 @@ def tenant_membership_upsert(
     tenant_id: int,
     membership_role: str,
 ) -> None:
+    """Insert or replace a membership; it must match the user's home tenant.
+
+    ``tenant_memberships`` and ``users.tenant_id`` are read by different code
+    paths: ``require_tenant_member`` consults the membership row, while
+    ``resolve_chat_identity`` reads ``users.tenant_id``. A row that disagrees
+    with the home tenant lets a user pass the entry check while every write
+    still lands in their home tenant — a ghost membership that silently mixes
+    up who may be where. Moves go through ``update_user_tenant``, which keeps
+    the two in step.
+    """
     role = (membership_role or "tenant_member").strip().lower()
     if role not in ("tenant_owner", "tenant_admin", "tenant_member"):
         role = "tenant_member"
     with pool().connection() as conn:
         with conn.cursor() as cur:
+            cur.execute("SELECT tenant_id FROM users WHERE id = %s", (user_id,))
+            row = cur.fetchone()
+            if row is None:
+                raise ValueError(f"unknown user {user_id}")
+            home = int(row[0])
+            if home != int(tenant_id):
+                raise ValueError(
+                    f"tenant {tenant_id} is not the home tenant of user {user_id} "
+                    f"(home is {home}); move the user instead of adding a membership"
+                )
             cur.execute(
                 """
                 INSERT INTO tenant_memberships (user_id, tenant_id, membership_role)
@@ -459,6 +479,38 @@ def tenant_membership_upsert(
                 (user_id, tenant_id, role),
             )
         conn.commit()
+
+
+def move_user_tenant(user_id: uuid.UUID, tenant_id: int) -> bool:
+    """Move a user to another tenant and keep ``tenant_memberships`` in step.
+
+    The membership row has to follow ``users.tenant_id`` — the two are read by
+    different code paths and must not disagree. The old role never carries over:
+    the moved person arrives as ``tenant_member``; grant a new role explicitly.
+    """
+    with pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT tenant_id FROM users WHERE id = %s", (user_id,))
+            row = cur.fetchone()
+            if row is None:
+                return False
+            previous = int(row[0])
+            cur.execute("UPDATE users SET tenant_id = %s WHERE id = %s", (tenant_id, user_id))
+            n = cur.rowcount or 0
+            if n and previous != int(tenant_id):
+                cur.execute(
+                    "DELETE FROM tenant_memberships WHERE user_id = %s AND tenant_id <> %s",
+                    (user_id, tenant_id),
+                )
+                cur.execute(
+                    "INSERT INTO tenant_memberships (user_id, tenant_id, membership_role) "
+                    "VALUES (%s, %s, %s) ON CONFLICT (user_id, tenant_id) "
+                    "DO UPDATE SET membership_role = EXCLUDED.membership_role",
+                    (user_id, tenant_id, "tenant_member"),
+                )
+                cur.execute("UPDATE project_workspaces SET tenant_id = %s WHERE owner_user_id = %s", (tenant_id, user_id))
+            conn.commit()
+    return n > 0
 
 
 def tenant_get(tenant_id: int) -> dict[str, Any] | None:

@@ -19,6 +19,14 @@ advisory and the human gate is not).
 Analysis this is derived from: [`docs/planning/roles-and-agent-assignment-analysis.md`](../planning/roles-and-agent-assignment-analysis.md).
 Feature doc with the concrete anchors: [`docs/features/agent-registry-and-allowlists.md`](../features/agent-registry-and-allowlists.md).
 
+> **Amended by [ADR 0012](0012-admin-tenant-scope.md) (2026-09-17).** Two things below are no
+> longer accurate as written. §4 assumes `deployment_mode = agent_system`; the shipped default is
+> `multi_tenant` at all three levels (column default, reader fallback, no `.env` key), so the
+> instance runs multi-tenant unless someone sets it otherwise. And the delegated-admin boundary
+> this ADR drew — "never touch a `site_admin`" — was the only boundary: a delegated holder could
+> still reach every tenant. ADR 0012 adds the tenant range (`AdminScope`) and records when the
+> identity/membership split should be taken up. The decisions in §1–§3 and §5 stand unchanged.
+
 ## Context
 
 The instance is self-hosted for roughly ten people split into informal friend groups with

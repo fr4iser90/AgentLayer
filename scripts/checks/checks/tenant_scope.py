@@ -1,8 +1,14 @@
 """Static tenant-scope check: no unscoped SQL against a tenant-scoped table.
 
 A statement that names a tenant-scoped table must either filter on ``tenant_id``
-or be marked ``# tenant-scope: site-wide`` on the line above or on its own line.
-Anything else is reported.
+or carry one of two markers, on its own line, the line above, or anywhere inside
+the enclosing function:
+
+* ``# tenant-scope: site-wide`` — the surface genuinely spans tenants (login
+  lookup, cross-tenant admin catalog).
+* ``# tenant-scope: guarded <where>`` — tenancy is enforced in Python rather
+  than in the WHERE clause, for example by an ``AdminScope`` check earlier in
+  the handler. Name the guard so the exemption is auditable.
 
 Detection is verb-anchored (``FROM t`` / ``UPDATE t SET`` / ``DELETE FROM t``)
 rather than "the word appears somewhere", so prose that merely mentions a table
@@ -32,6 +38,8 @@ from .common import (
 )
 
 SITE_WIDE_MARKER = "tenant-scope: site-wide"
+GUARDED_MARKER = "tenant-scope: guarded"
+MARKERS = (SITE_WIDE_MARKER, GUARDED_MARKER)
 TENANT_COLUMN = "tenant_id"
 
 
@@ -126,10 +134,29 @@ def _mentions_table_as_relation(text: str, table: str) -> bool:
     return False
 
 
-def _marker_near(lines: list[str], lineno: int) -> bool:
+def _has_marker(line: str) -> bool:
+    return any(marker in line for marker in MARKERS)
+
+
+def _function_line_ranges(tree: ast.AST) -> list[tuple[int, int]]:
+    """``(first, last)`` line of every function — a marker there covers its body."""
+    ranges: list[tuple[int, int]] = []
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            end = getattr(node, "end_lineno", None) or node.lineno
+            ranges.append((node.lineno, end))
+    return ranges
+
+
+def _marker_near(lines: list[str], lineno: int, function_ranges: list[tuple[int, int]]) -> bool:
     for candidate in (lineno, lineno - 1):
-        if 1 <= candidate <= len(lines) and SITE_WIDE_MARKER in lines[candidate - 1]:
+        if 1 <= candidate <= len(lines) and _has_marker(lines[candidate - 1]):
             return True
+    for start, end in function_ranges:
+        if start <= lineno <= end:
+            for candidate in range(start, min(end, len(lines)) + 1):
+                if _has_marker(lines[candidate - 1]):
+                    return True
     return False
 
 
@@ -140,12 +167,13 @@ def scan_text(rel: Path, source: str, tables: list[str]) -> ScanOutput:
         return ScanOutput()
 
     lines = source.splitlines()
+    function_ranges = _function_line_ranges(tree)
     out = ScanOutput()
 
     for lineno, text, interpolated in _string_literals(tree):
         if TENANT_COLUMN in text:
             continue
-        if _marker_near(lines, lineno):
+        if _marker_near(lines, lineno, function_ranges):
             continue
         for table in tables:
             if _mentions_table_as_relation(text, table):
@@ -226,7 +254,8 @@ def run(name: str, config: dict[str, Any]) -> CheckResult:
     _print_summary("unscoped statements", out.violations, limit)
     _print_summary("unresolved (informational, not blocking)", out.unresolved, limit)
     print(
-        f"  fix: add `{TENANT_COLUMN} = %s` to the statement, or mark the line "
-        f"`# {SITE_WIDE_MARKER}` if the surface really spans tenants"
+        f"  fix: add `{TENANT_COLUMN} = %s` to the statement, or mark the enclosing "
+        f"scope `# {SITE_WIDE_MARKER}` if it really spans tenants, or "
+        f"`# {GUARDED_MARKER} <guard>` if tenancy is enforced in Python"
     )
     return CheckResult(name=name, ok=False, message=f"{len(out.violations)} unscoped statement(s)")

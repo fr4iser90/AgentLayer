@@ -10,7 +10,7 @@ from fastapi import APIRouter, Body, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from apps.backend.application.platform.use_cases.platform_controller_services import config
-from apps.backend.application.identity.use_cases.request_auth import get_current_user, require_admin
+from apps.backend.application.identity.use_cases.request_auth import get_current_user
 from apps.backend.application.workspace.use_cases.codebase_controller_services import get_code_index
 from plugins.tools.workspace.lib.index_lib import (
     _HAS_TS,

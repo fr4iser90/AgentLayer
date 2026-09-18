@@ -14,7 +14,8 @@ from apps.backend.domain.agent_runtime.config_registry import (
     load_knob_registry,
 )
 from apps.backend.application.agent_runtime.use_cases.agent_controller_services import agent_config_effective, agent_config_fingerprint, agent_config_service, agent_config_store
-from apps.backend.application.identity.use_cases.request_auth import require_admin
+from apps.backend.application.identity.use_cases.request_auth import require_admin_scope
+from apps.backend.domain.access.capabilities import CAP_AGENT_ASSIGN, AdminScopeError
 from apps.backend.application.agent_runtime.use_cases.agent_controller_services import start_benchmark_run
 from apps.backend.application.platform.use_cases.platform_controller_services import db
 
@@ -129,8 +130,8 @@ async def get_agent_config_knobs(
     catalog_owned_by: str | None = None,
     model: str | None = None,
 ) -> dict:
-    admin = await require_admin(request)
-    tid = db.user_tenant_id(admin.id)
+    admin = await require_admin_scope(request, CAP_AGENT_ASSIGN)
+    tid = db.user_tenant_id(admin.actor_id)
     reg = load_knob_registry()
     knobs: list[dict[str, Any]] = []
     for raw in reg.get("knobs") or []:
@@ -168,8 +169,8 @@ async def get_agent_config_knobs(
 
 @router.get("/knobs/{knob_id}")
 async def get_agent_config_knob(request: Request, knob_id: str) -> dict:
-    admin = await require_admin(request)
-    tid = db.user_tenant_id(admin.id)
+    admin = await require_admin_scope(request, CAP_AGENT_ASSIGN)
+    tid = db.user_tenant_id(admin.actor_id)
     knob = knob_by_id(knob_id)
     if not knob:
         raise HTTPException(status_code=404, detail="knob not found")
@@ -185,15 +186,15 @@ async def get_agent_config_knob(request: Request, knob_id: str) -> dict:
 
 @router.get("/fingerprint")
 async def get_agent_config_fingerprint(request: Request) -> dict:
-    admin = await require_admin(request)
-    tid = db.user_tenant_id(admin.id)
+    admin = await require_admin_scope(request, CAP_AGENT_ASSIGN)
+    tid = db.user_tenant_id(admin.actor_id)
     return {"ok": True, **agent_config_fingerprint.fingerprint_response(tenant_id=tid)}
 
 
 @router.get("/snapshot")
 async def get_agent_config_snapshot(request: Request) -> dict:
-    admin = await require_admin(request)
-    tid = db.user_tenant_id(admin.id)
+    admin = await require_admin_scope(request, CAP_AGENT_ASSIGN)
+    tid = db.user_tenant_id(admin.actor_id)
     return {"ok": True, **agent_config_fingerprint.snapshot(tenant_id=tid)}
 
 
@@ -204,8 +205,8 @@ async def get_agent_config_changelog(
     session_id: uuid.UUID | None = None,
     actor_type: str | None = None,
 ) -> dict:
-    admin = await require_admin(request)
-    tid = db.user_tenant_id(admin.id)
+    admin = await require_admin_scope(request, CAP_AGENT_ASSIGN)
+    tid = db.user_tenant_id(admin.actor_id)
     rows = agent_config_store.list_changelog(
         tid, limit=limit, session_id=session_id, actor_type=actor_type
     )
@@ -215,11 +216,11 @@ async def get_agent_config_changelog(
 @router.post("/initialize-defaults")
 async def post_initialize_agent_config_defaults(request: Request, overwrite: bool = False) -> dict:
     """Write registry/file defaults into DB overrides (WebUI-owned, not .env)."""
-    admin = await require_admin(request)
-    tid = db.user_tenant_id(admin.id)
+    admin = await require_admin_scope(request, CAP_AGENT_ASSIGN)
+    tid = db.user_tenant_id(admin.actor_id)
     result = agent_config_service.initialize_defaults_to_db(
         tenant_id=tid,
-        actor_user_id=admin.id,
+        actor_user_id=admin.actor_id,
         overwrite=overwrite,
     )
     if not result.get("ok"):
@@ -229,8 +230,8 @@ async def post_initialize_agent_config_defaults(request: Request, overwrite: boo
 
 @router.post("/draft")
 async def post_agent_config_draft(request: Request, body: DraftConfigBody) -> dict:
-    admin = await require_admin(request)
-    tid = db.user_tenant_id(admin.id)
+    admin = await require_admin_scope(request, CAP_AGENT_ASSIGN)
+    tid = db.user_tenant_id(admin.actor_id)
     patches = [p.model_dump() for p in body.patches]
     result = agent_config_service.draft_patches(tenant_id=tid, patches=patches, hypothesis=body.hypothesis)
     return {"ok": result.get("ok", False), **result}
@@ -238,14 +239,41 @@ async def post_agent_config_draft(request: Request, body: DraftConfigBody) -> di
 
 @router.post("/apply")
 async def post_agent_config_apply(request: Request, body: ApplyConfigBody) -> dict:
-    admin = await require_admin(request)
-    tid = db.user_tenant_id(admin.id)
+    admin = await require_admin_scope(request, CAP_AGENT_ASSIGN)
+    tid = db.user_tenant_id(admin.actor_id)
     patches = [p.model_dump() for p in body.patches]
+
+    # A knob on the "operator" layer writes the single global ``operator_settings``
+    # row, which carries no tenant column — the tenant guard above does not reach
+    # it. Reject those patches unless the caller is site-wide.
+    if not admin.site_wide:
+        operator_knobs = sorted(
+            str(p.get("knob_id") or "")
+            for p in patches
+            if str((knob_by_id(str(p.get("knob_id") or "")) or {}).get("layer") or "") == "operator"
+        )
+        if operator_knobs:
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "operator-layer knobs write instance-wide settings and require "
+                    f"site admin: {', '.join(operator_knobs)}"
+                ),
+            )
+
+    # Triggering a benchmark consumes shared provider compute and runs against
+    # the live server; benchmark execution is site-admin only.
+    if body.trigger_benchmark:
+        try:
+            admin.require_site_wide("triggering a benchmark run")
+        except AdminScopeError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+
     result = agent_config_service.apply_patches(
         tenant_id=tid,
         patches=patches,
         actor_type="user",
-        actor_user_id=admin.id,
+        actor_user_id=admin.actor_id,
         session_id=body.session_id,
         experiment_id=body.experiment_id,
         hypothesis=body.hypothesis,
@@ -271,13 +299,13 @@ async def post_agent_config_apply(request: Request, body: ApplyConfigBody) -> di
         try:
             row = await start_benchmark_run(
                 tenant_id=tid,
-                user_id=admin.id,
+                user_id=admin.actor_id,
                 suite=suite,
                 profiles=profiles,
                 scenarios=bench.get("scenarios"),
                 fixtures=bench.get("fixtures"),
                 tier_max=bench.get("tier_max"),
-                admin_user_id=admin.id,
+                admin_user_id=admin.actor_id,
                 cohort_json=cohort,
             )
             benchmark_run_id = str(row.get("id"))
@@ -297,16 +325,16 @@ async def post_agent_config_apply(request: Request, body: ApplyConfigBody) -> di
 
 @router.get("/model-overrides")
 async def list_agent_config_model_overrides(request: Request) -> dict:
-    admin = await require_admin(request)
-    tid = db.user_tenant_id(admin.id)
+    admin = await require_admin_scope(request, CAP_AGENT_ASSIGN)
+    tid = db.user_tenant_id(admin.actor_id)
     rows = agent_config_store.list_model_overrides(tid)
     return {"ok": True, "overrides": rows}
 
 
 @router.post("/model-overrides/apply")
 async def post_agent_config_model_apply(request: Request, body: ApplyModelConfigBody) -> dict:
-    admin = await require_admin(request)
-    tid = db.user_tenant_id(admin.id)
+    admin = await require_admin_scope(request, CAP_AGENT_ASSIGN)
+    tid = db.user_tenant_id(admin.actor_id)
     patches = [p.model_dump() for p in body.patches]
     result = agent_config_service.apply_model_patches(
         tenant_id=tid,
@@ -315,7 +343,7 @@ async def post_agent_config_model_apply(request: Request, body: ApplyModelConfig
         label=body.label.strip() if body.label else None,
         patches=patches,
         actor_type="user",
-        actor_user_id=admin.id,
+        actor_user_id=admin.actor_id,
         hypothesis=body.hypothesis,
         override_id=body.override_id,
     )
@@ -326,8 +354,8 @@ async def post_agent_config_model_apply(request: Request, body: ApplyModelConfig
 
 @router.delete("/model-overrides/{override_id}")
 async def delete_agent_config_model_override(request: Request, override_id: uuid.UUID) -> dict:
-    admin = await require_admin(request)
-    tid = db.user_tenant_id(admin.id)
+    admin = await require_admin_scope(request, CAP_AGENT_ASSIGN)
+    tid = db.user_tenant_id(admin.actor_id)
     deleted = agent_config_store.delete_model_override(override_id, tenant_id=tid)
     if not deleted:
         raise HTTPException(status_code=404, detail="model override not found")
@@ -337,8 +365,8 @@ async def delete_agent_config_model_override(request: Request, override_id: uuid
 
 @router.post("/sessions")
 async def post_agent_config_session(request: Request, body: CreateSessionBody) -> dict:
-    admin = await require_admin(request)
-    tid = db.user_tenant_id(admin.id)
+    admin = await require_admin_scope(request, CAP_AGENT_ASSIGN)
+    tid = db.user_tenant_id(admin.actor_id)
     fp = agent_config_fingerprint.compute_fingerprint(tenant_id=tid)
     session = agent_config_store.create_session(
         tenant_id=tid,
@@ -352,15 +380,15 @@ async def post_agent_config_session(request: Request, body: CreateSessionBody) -
 
 @router.get("/sessions")
 async def list_agent_config_sessions(request: Request, limit: int = 50) -> dict:
-    admin = await require_admin(request)
-    tid = db.user_tenant_id(admin.id)
+    admin = await require_admin_scope(request, CAP_AGENT_ASSIGN)
+    tid = db.user_tenant_id(admin.actor_id)
     return {"ok": True, "sessions": agent_config_store.list_sessions(tid, limit=limit)}
 
 
 @router.get("/sessions/{session_id}")
 async def get_agent_config_session(request: Request, session_id: uuid.UUID) -> dict:
-    admin = await require_admin(request)
-    tid = db.user_tenant_id(admin.id)
+    admin = await require_admin_scope(request, CAP_AGENT_ASSIGN)
+    tid = db.user_tenant_id(admin.actor_id)
     session = agent_config_store.get_session(session_id, tenant_id=tid)
     if not session:
         raise HTTPException(status_code=404, detail="session not found")
@@ -369,8 +397,8 @@ async def get_agent_config_session(request: Request, session_id: uuid.UUID) -> d
 
 @router.patch("/sessions/{session_id}")
 async def patch_agent_config_session(request: Request, session_id: uuid.UUID, body: PatchSessionBody) -> dict:
-    admin = await require_admin(request)
-    tid = db.user_tenant_id(admin.id)
+    admin = await require_admin_scope(request, CAP_AGENT_ASSIGN)
+    tid = db.user_tenant_id(admin.actor_id)
     session = agent_config_store.patch_session_metadata(
         session_id,
         tenant_id=tid,
@@ -384,8 +412,8 @@ async def patch_agent_config_session(request: Request, session_id: uuid.UUID, bo
 
 @router.post("/sessions/{session_id}/validate")
 async def validate_agent_config_session(request: Request, session_id: uuid.UUID) -> dict:
-    admin = await require_admin(request)
-    tid = db.user_tenant_id(admin.id)
+    admin = await require_admin_scope(request, CAP_AGENT_ASSIGN)
+    tid = db.user_tenant_id(admin.actor_id)
     session = agent_config_store.get_session(session_id, tenant_id=tid)
     if not session:
         raise HTTPException(status_code=404, detail="session not found")
@@ -402,8 +430,8 @@ async def validate_agent_config_session(request: Request, session_id: uuid.UUID)
 
 @router.post("/sessions/{session_id}/close")
 async def close_agent_config_session(request: Request, session_id: uuid.UUID) -> dict:
-    admin = await require_admin(request)
-    tid = db.user_tenant_id(admin.id)
+    admin = await require_admin_scope(request, CAP_AGENT_ASSIGN)
+    tid = db.user_tenant_id(admin.actor_id)
     fp = agent_config_fingerprint.compute_fingerprint(tenant_id=tid)
     session = agent_config_store.close_session(session_id, tenant_id=tid, current_fingerprint=fp)
     if not session:

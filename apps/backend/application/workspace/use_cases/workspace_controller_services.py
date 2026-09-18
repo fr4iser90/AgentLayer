@@ -48,6 +48,13 @@ def row_to_workspace(row: tuple) -> dict[str, Any]:
     return api
 
 
+def workspace_tenant_id(row: tuple) -> int | None:
+    """Owning tenant of a workspace row, for admin scope checks."""
+    from apps.backend.infrastructure.workspace.workspace_columns import TENANT_ID_INDEX
+
+    return row[TENANT_ID_INDEX] if len(row) > TENANT_ID_INDEX else None
+
+
 def client_workspace_refusal(row: tuple | None, *, kind: str) -> str | None:
     """HTTP 400 detail when ``row`` is a client workspace; ``None`` otherwise."""
     if not row:

@@ -17,7 +17,8 @@ from apps.backend.application.agent_runtime.use_cases.run_traces import (
     tenant_id_for_user,
     tool_invocations_for_run,
 )
-from apps.backend.application.identity.use_cases.request_auth import require_admin
+from apps.backend.application.identity.use_cases.request_auth import require_admin_scope
+from apps.backend.domain.access.capabilities import CAP_OBSERVABILITY_READ
 
 router = APIRouter(prefix="/v1/admin/run-traces", tags=["run-traces-admin"])
 
@@ -33,8 +34,8 @@ async def list_runs(
     conversation_id: str | None = None,
     limit: int = 50,
 ) -> dict:
-    admin = await require_admin(request)
-    tid = tenant_id_for_user(admin.id)
+    admin = await require_admin_scope(request, CAP_OBSERVABILITY_READ)
+    tid = tenant_id_for_user(admin.actor_id)
     runs = list_agent_runs(
         tenant_id=tid,
         task_id=uuid.UUID(task_id) if task_id else None,
@@ -46,8 +47,8 @@ async def list_runs(
 
 @router.get("/runs/{run_id}")
 async def get_run_trace(request: Request, run_id: uuid.UUID) -> dict:
-    admin = await require_admin(request)
-    tenant_id = tenant_id_for_user(admin.id)
+    admin = await require_admin_scope(request, CAP_OBSERVABILITY_READ)
+    tenant_id = tenant_id_for_user(admin.actor_id)
     run = get_agent_run(run_id=run_id, tenant_id=tenant_id)
     if not run:
         raise HTTPException(status_code=404, detail="run not found")
@@ -75,12 +76,13 @@ async def list_tool_invocations_admin(
     run_id: str | None = None,
     limit: int = 100,
 ) -> dict:
-    await require_admin(request)
+    scope = await require_admin_scope(request, CAP_OBSERVABILITY_READ)
+    tid = tenant_id_for_user(scope.actor_id)
     rid = None
     if run_id:
         try:
             rid = uuid.UUID(run_id.strip())
         except (ValueError, TypeError) as e:
             raise HTTPException(status_code=400, detail="invalid run_id") from e
-    rows = list_tool_invocations(run_id=rid, limit=limit)
+    rows = list_tool_invocations(tenant_id=tid, run_id=rid, limit=limit)
     return {"ok": True, "invocations": [_row_public(r) for r in rows]}

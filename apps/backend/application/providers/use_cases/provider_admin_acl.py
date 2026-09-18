@@ -10,7 +10,7 @@ from fastapi import HTTPException
 
 from apps.backend.infrastructure.agent_runtime.llm_env_providers import parse_llm_env_providers
 from apps.backend.infrastructure.db import db
-from apps.backend.infrastructure.identity.auth import get_user_by_id, require_admin
+from apps.backend.infrastructure.identity.auth import get_user_by_id, require_site_admin
 from apps.backend.infrastructure.providers.embedding_env_providers import parse_embedding_env_providers
 from apps.backend.infrastructure.providers.extractor_env_providers import parse_extractor_env_providers
 from apps.backend.infrastructure.providers.openai_compat_http import http_get_json
@@ -37,7 +37,17 @@ from apps.backend.infrastructure.voice.voice_env_providers import (
 
 
 async def require_provider_admin(request: Any) -> None:
-    await require_admin(request)
+    """Provider/catalog admin is site admin.
+
+    The LLM provider catalog, the model catalog and the ``global`` model-access
+    policy are instance-wide: one change moves the model every tenant gets and
+    spends the instance's provider budget. There is deliberately no capability
+    slug for this surface, for the same reason benchmarks have none.
+
+    Tenant- and user-scoped model access is *not* gated here — those endpoints
+    name a target and go through ``require_admin_scope`` instead.
+    """
+    await require_site_admin(request)
 
 
 def invalidate_provider_caches(kind: str) -> None:

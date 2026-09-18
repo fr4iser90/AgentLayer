@@ -14,7 +14,7 @@ from apps.backend.application.agent_runtime.use_cases.message_feedback import (
     list_feedback_for_conversation,
     upsert_feedback_for_message,
 )
-from apps.backend.application.identity.use_cases.request_auth import get_current_user, require_admin
+from apps.backend.application.identity.use_cases.request_auth import get_current_user
 
 router = APIRouter(prefix="/v1/user/conversations", tags=["message-feedback"])
 
@@ -77,6 +77,6 @@ admin_router = APIRouter(prefix="/v1/admin/message-feedback", tags=["message-fee
 
 @admin_router.get("")
 async def admin_list_feedback(request: Request, limit: int = 100) -> dict:
-    admin = await require_admin(request)
-    items = list_feedback_for_admin(admin_user_id=admin.id, limit=limit)
+    admin = await require_admin_scope(request, CAP_FEEDBACK_READ)
+    items = list_feedback_for_admin(admin_user_id=admin.actor_id, limit=limit)
     return {"ok": True, "feedback": items}

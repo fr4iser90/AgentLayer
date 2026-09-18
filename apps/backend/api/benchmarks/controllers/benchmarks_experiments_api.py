@@ -10,13 +10,18 @@ from apps.backend.api.benchmarks.controllers.benchmarks_admin_api import (
     ExperimentCreateBody,
     ExperimentPatchBody,
     ExperimentRunBody,
+    _public_run,
     _public_run_detail,
 )
+from apps.backend.application.benchmarks.use_cases.benchmark_controller_services import agent_config_service
+from apps.backend.application.benchmarks.use_cases.benchmark_controller_services import agent_config_store
 from apps.backend.application.benchmarks.use_cases.benchmark_controller_services import benchmark_runs_store
 from apps.backend.application.benchmarks.use_cases.benchmark_controller_services import analyze_runs
+from apps.backend.application.benchmarks.use_cases.benchmark_controller_services import compute_fingerprint
 from apps.backend.application.benchmarks.use_cases.benchmark_controller_services import run_review
-from apps.backend.application.identity.use_cases.request_auth import require_admin
+from apps.backend.application.identity.use_cases.request_auth import require_site_admin
 from apps.backend.application.benchmarks.use_cases.benchmark_controller_services import start_benchmark_run
+from apps.backend.application.benchmarks.use_cases.benchmark_controller_services import _fingerprint_from_run
 from apps.backend.application.benchmarks.use_cases.benchmark_controller_services import db
 
 router = APIRouter()
@@ -27,14 +32,14 @@ async def list_benchmark_experiments(
     limit: int = 50,
     session_id: uuid.UUID | None = None,
 ) -> dict:
-    admin = await require_admin(request)
+    admin = await require_site_admin(request)
     tid = db.user_tenant_id(admin.id)
     return {"ok": True, "experiments": agent_config_store.list_experiments(tid, limit=limit, session_id=session_id)}
 
 
 @router.post("/experiments")
 async def create_benchmark_experiment(request: Request, body: ExperimentCreateBody) -> dict:
-    admin = await require_admin(request)
+    admin = await require_site_admin(request)
     tid = db.user_tenant_id(admin.id)
     fp = compute_fingerprint(tenant_id=tid)
     exp = agent_config_store.create_experiment(
@@ -52,7 +57,7 @@ async def create_benchmark_experiment(request: Request, body: ExperimentCreateBo
 
 @router.get("/experiments/{experiment_id}")
 async def get_benchmark_experiment(request: Request, experiment_id: uuid.UUID) -> dict:
-    admin = await require_admin(request)
+    admin = await require_site_admin(request)
     tid = db.user_tenant_id(admin.id)
     exp = agent_config_store.get_experiment(experiment_id, tenant_id=tid)
     if not exp:
@@ -66,7 +71,7 @@ async def patch_benchmark_experiment(
     experiment_id: uuid.UUID,
     body: ExperimentPatchBody,
 ) -> dict:
-    admin = await require_admin(request)
+    admin = await require_site_admin(request)
     tid = db.user_tenant_id(admin.id)
     exp = agent_config_store.patch_experiment(
         experiment_id,
@@ -83,7 +88,7 @@ async def patch_benchmark_experiment(
 
 @router.post("/review")
 async def post_benchmark_review(request: Request, body: BenchmarkReviewBody) -> dict:
-    admin = await require_admin(request)
+    admin = await require_site_admin(request)
     tid = db.user_tenant_id(admin.id)
     review = run_review(
         tenant_id=tid,
@@ -100,7 +105,7 @@ async def post_benchmark_review(request: Request, body: BenchmarkReviewBody) -> 
 
 @router.get("/reviews/{review_id}")
 async def get_benchmark_review(request: Request, review_id: uuid.UUID) -> dict:
-    admin = await require_admin(request)
+    admin = await require_site_admin(request)
     tid = db.user_tenant_id(admin.id)
     review = agent_config_store.get_review(review_id, tenant_id=tid)
     if not review:
@@ -110,7 +115,7 @@ async def get_benchmark_review(request: Request, review_id: uuid.UUID) -> dict:
 
 @router.get("/runs/{run_id}/analysis")
 async def get_benchmark_run_analysis(request: Request, run_id: uuid.UUID) -> dict:
-    admin = await require_admin(request)
+    admin = await require_site_admin(request)
     tid = db.user_tenant_id(admin.id)
     row = benchmark_runs_store.get_run(run_id)
     if not row or int(row.get("tenant_id") or 0) != tid:
@@ -131,7 +136,7 @@ async def get_benchmark_run_analysis(request: Request, run_id: uuid.UUID) -> dic
 
 @router.get("/runs/{run_id}/export")
 async def export_benchmark_run(request: Request, run_id: uuid.UUID, format: str = "json") -> dict:
-    admin = await require_admin(request)
+    admin = await require_site_admin(request)
     tid = db.user_tenant_id(admin.id)
     row = benchmark_runs_store.get_run(run_id)
     if not row or int(row.get("tenant_id") or 0) != tid:
@@ -148,7 +153,7 @@ async def run_benchmark_experiment(
     experiment_id: uuid.UUID,
     body: ExperimentRunBody,
 ) -> dict:
-    admin = await require_admin(request)
+    admin = await require_site_admin(request)
     tid = db.user_tenant_id(admin.id)
     exp = agent_config_store.get_experiment(experiment_id, tenant_id=tid)
     if not exp:
@@ -201,7 +206,7 @@ async def run_benchmark_experiment(
 
 @router.get("/experiments/{experiment_id}/report")
 async def get_benchmark_experiment_report(request: Request, experiment_id: uuid.UUID) -> dict:
-    admin = await require_admin(request)
+    admin = await require_site_admin(request)
     tid = db.user_tenant_id(admin.id)
     report = agent_config_store.experiment_report(experiment_id, tenant_id=tid)
     if not report:

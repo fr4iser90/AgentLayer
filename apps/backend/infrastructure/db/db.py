@@ -103,6 +103,7 @@ from apps.backend.infrastructure.db.identity_tenants import (
     user_capabilities,
     user_membership_role,
     tenant_membership_upsert,
+    move_user_tenant,
     tenant_get,
     tenant_update_org_profile,
     tenant_mark_setup_completed,
@@ -261,6 +262,8 @@ def list_tool_invocations_for_agent_run(
     *,
     limit: int = 100,
 ) -> list[dict[str, Any]]:
+    # tenant-scope: guarded by agent_run_id — the caller resolves the run within
+    # their own tenant first.
     lim = max(1, min(500, int(limit)))
     with pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
