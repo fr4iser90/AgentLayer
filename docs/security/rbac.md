@@ -366,6 +366,37 @@ flowchart LR
     M -->|settings unreadable| D["Falls back to multi_tenant<br/>= widest surface, not narrowest"]
 ```
 
+### 6.1 Which reductions are enforced and which are only hidden
+
+This is the part that matters most about deployment mode, and the answer is not
+uniform. The frontend mirrors the mode via `hasOrgSurface()` /
+`isSingleUser()` (`apps/frontend/src/auth/deploymentMode.ts:35-45`, which
+also falls back to `multi_tenant` on a missing value).
+
+| Reduction | Frontend | Backend | Net |
+|---|---|---|---|
+| `/org` routes and nav | `RequireOrgAdmin.tsx:26` redirects | `require_tenant_admin` / `require_tenant_member` raise **404** when `!has_org_surface()` (`auth.py:478-482`, `:494-498`) | **Enforced** |
+| User management in `single_user` | `RequireUserAdmin.tsx:32` redirect, `AdminLayout.tsx:27` hides the nav group | **Nothing.** `is_single_user()` is defined at `operator_settings_readers.py:46` and has **zero callers** in `apps/` and `plugins/` — only the definition and a re-export at `operator_settings.py:526` | **UI-only.** `/v1/admin/users` GET/PATCH/POST stay fully functional for any `user.manage` holder in any mode (`admin_users_api.py:124,139,289`) |
+| Tenant create/list in `single_user` / `agent_system` | Hidden behind `hasOrgSurface` | `/v1/admin/tenants` GET/POST still work for `site_admin` in any mode (`admin_users_api.py:87-94`) | **UI-only** |
+| Tenant-scope option in agent/model policy | Hidden **and coerced** client-side (`AdminAgents.tsx:136-139`, `AdminInterfacesLlmSection.tsx:280`) | Accepts `tenant_id` params regardless of mode; only `require_admin_scope` limits reach (`model_catalog_api.py:67-102`) | **UI-only** |
+| `allowed_nav` chrome filtering | `RestrictedNavRedirect` / `tenantSurface.ts` | Backend only *serves* `allowed_nav` (`auth_api.py:350-356`); no per-route nav check | **UI-only.** Deep-linked routes under `RequireSession` still work |
+| Agent-assign column, row editability | `accessGating.ts:38-55` | `CAP_AGENT_ASSIGN` at `agents_admin_api.py:45,111,363`; `admin_users_api.py:158-159` | **Dual-enforced** |
+
+The asymmetry to remember: **`agent_system` is the only mode the backend acts
+on.** `single_user` is a rendering rule. That is stated as intentional in
+`instance.py:26-28` — the mode is not a security boundary — but it means a
+`single_user` instance is *not* a hardened instance. If the goal is "one
+person, nobody else can administer", the mechanism is capabilities, not the
+mode.
+
+**The frontend site-admin check is looser than the backend's.**
+`RequireSiteAdmin.tsx:24-25` accepts `site_role === "site_admin"` **or**
+`role?.toLowerCase() === "admin"` (legacy field), while the backend requires
+`db.user_site_role == "site_admin"` and 403s otherwise
+(`auth.py:422-426`). The backend is authoritative, so this is a UX
+discrepancy rather than a hole — but a user who passes the frontend gate and
+fails the backend one sees a screen that 403s on every action.
+
 ---
 
 ## 7. Feature toggles
@@ -502,6 +533,7 @@ Collected in one place, because this is the part that bites.
 | **No OS-level isolation** | No `USER`, one `gosu` drop, one bind mount | File permissions separate nothing between tenants |
 | **Credential reads** | Blocklist is basename-only and write-only | `.env` inside a workspace is readable |
 | **`single_user` is UI-only** | API unchanged | Hiding a screen is not access control |
+| **`is_single_user()` has zero callers** | Defined at `operator_settings_readers.py:46`, re-exported at `operator_settings.py:526`, never used | The mode cannot reduce any server behaviour today; `/v1/admin/users*` works in every mode |
 | **Fail-open settings** | `dashboards_allowed` and `users.dashboards_allowed` return `true` on exception; unreadable `operator_settings` ⇒ `multi_tenant` | A settings failure **widens** access |
 | **MCP workspace bypass** | Workspace-supplied MCP servers work with `AGENT_MCP_ENABLED=false` | Global kill switch is not global |
 | **No friendship/share toggle** | `/v1/friends*`, `/v1/shares*` served in all modes with login only | Cannot be turned off without a code change |
