@@ -309,6 +309,7 @@ async def get_current_user_info(request: Request):
         "tenant_id": tid,
         "membership_role": membership,
         "deployment_mode": deployment,
+        "friend_system_enabled": operator_settings.friend_system_enabled(),
         "org_setup_required": setup_required,
         "vertical_profile": (tenant_row or {}).get("vertical_profile"),
         "created_at": user.created_at.isoformat(),

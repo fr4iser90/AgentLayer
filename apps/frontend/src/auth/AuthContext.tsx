@@ -47,6 +47,8 @@ export type AuthUser = {
   may_use_schedules?: boolean;
   /** Hosted server workspaces (ADR 0009). */
   may_use_server_workspaces?: boolean;
+  /** Operator kill-switch for friendship + peer sharing (operator_settings). Absent = on. */
+  friend_system_enabled?: boolean;
   profession_policy?: ProfessionPolicy;
 };
 
