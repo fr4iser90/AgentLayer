@@ -15,6 +15,7 @@ from apps.backend.infrastructure.platform.config import config
 
 from plugins.tools.workspace.lib.common import (
     json_workspace_missing_error,
+    resolve_in_workspace,
     workspace_binding_from_context,
 )
 from plugins.tools.workspace.lib.lsp_client import (
@@ -79,7 +80,7 @@ def lsp(arguments: dict[str, Any], context: dict | None = None) -> str:
     resolved: Path | None = None
     root_hint: Path | None = None
     if rel:
-        resolved = (root / rel).resolve()
+        resolved = resolve_in_workspace(root, rel)
         root_hint = root
         if root_hint:
             root_hint = root_hint.resolve()

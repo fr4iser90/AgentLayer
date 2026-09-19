@@ -11,6 +11,7 @@ from apps.backend.infrastructure.platform.config import config
 
 from plugins.tools.workspace.lib.common import (
     json_workspace_missing_error,
+    resolve_in_workspace,
     workspace_binding_from_context,
 )
 
@@ -55,7 +56,7 @@ def read_file(arguments: dict[str, Any], context: dict | None = None) -> str:
             },
             ensure_ascii=False,
         )
-    resolved = (root / rel).resolve()
+    resolved = resolve_in_workspace(root, rel)
     if not resolved.is_file():
         return json.dumps(
             {"ok": False, "error": "not a regular file", "path": rel},

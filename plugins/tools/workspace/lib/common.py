@@ -183,6 +183,40 @@ def json_blocked_credential_path_error(rel: str) -> str:
     )
 
 
+class WorkspacePathEscape(ValueError):
+    """A tool was asked to touch a path outside the bound workspace root.
+
+    Raised rather than returned so a missing check fails loudly instead of
+    quietly operating on the wrong tree, and so ``run_tool`` renders it as the
+    usual ``{"ok": false, "error": …}`` payload — one message, no per-tool
+    plumbing. Same shape as :class:`ClientWorkspaceExecutionError`.
+    """
+
+
+def resolve_in_workspace(root: Path | str, rel: str | None) -> Path:
+    """Resolve ``rel`` inside ``root``, refusing absolute paths and ``..`` escapes.
+
+    ``Path.__truediv__`` discards its left operand when the right one is
+    absolute, so ``root / rel`` is **not** a boundary — the caller has to ask
+    for one explicitly. This wraps the resolver the bash jail already uses
+    (:func:`resolve_path_under_workspace`), so the file tools and the shell
+    agree on a single definition of "inside the workspace" rather than each
+    re-deriving it. Symlinks are resolved before the containment test, so a
+    link pointing out of the tree fails here too.
+    """
+    from plugins.tools.workspace.lib.bash_policy import resolve_path_under_workspace
+
+    try:
+        return Path(resolve_path_under_workspace(Path(root), rel))
+    except ValueError:
+        # The inner resolver's message is worded for the bash workdir argument;
+        # restate it for whichever tool is asking.
+        raise WorkspacePathEscape(
+            f"path {str(rel)!r} is outside the bound workspace. "
+            "Use a path relative to the workspace root; absolute paths and .. are refused."
+        ) from None
+
+
 def require_workspace(context: dict | None = None) -> Path:
     """Get workspace path or raise clear error - NO FALLBACKS!"""
     if not context:

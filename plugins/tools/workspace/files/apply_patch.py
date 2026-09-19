@@ -13,6 +13,7 @@ from apps.backend.infrastructure.platform.config import config
 from plugins.tools.workspace.lib.common import (
     json_workspace_missing_error,
     maybe_enqueue_incremental_index,
+    resolve_in_workspace,
     workspace_binding_from_context,
 )
 
@@ -39,8 +40,45 @@ TOOL_DESCRIPTION = (
 MAX_BYTES = config.CODING_MAX_FILE_BYTES
 
 
+def _path_from_diff_token(token: str, prefix: str) -> str:
+    """Strip a ``a/`` or ``b/`` diff prefix from *token*, as a prefix only.
+
+    ``lstrip("b/")`` strips a *character set*, so it also ate leading slashes
+    (turning ``/etc/x`` into a relative ``etc/x``) and ate real directory names
+    that start with ``b`` (``b/b/data.csv`` became ``data.csv``). The containment
+    check has to see the path the patch actually names, so strip the prefix
+    explicitly and let the resolver judge the rest.
+    """
+    t = (token or "").strip()
+    lead = prefix + "/"
+    if t.startswith(lead):
+        t = t[len(lead):]
+    return t
+
+
+def _target_path_from_diff_header(line: str) -> str | None:
+    """Destination path named by a ``diff --git a/<old> b/<new>`` header.
+
+    The ``b/`` side is the destination and is what a patch should be applied to.
+    The old code read ``parts[2]``, which is the ``a/`` side, and never stripped
+    its prefix — so a standard git patch targeted ``<root>/a/src/app.py`` and
+    missed the real file entirely.
+    """
+    parts = line.split()
+    if len(parts) >= 4:
+        return _path_from_diff_token(parts[3], "b")
+    if len(parts) >= 3:
+        return _path_from_diff_token(parts[2], "a")
+    return None
+
+
 def _parse_patch(patch_text: str) -> list[dict[str, Any]]:
-    """Parse unified diff into hunks. Returns list of {path, hunks}."""
+    """Parse unified diff into hunks. Returns list of {path, hunks}.
+
+    A file section is opened only by a ``diff --git`` line — ``--- ``/``+++ ``
+    headers are skipped — so the path comes from that line, not from the
+    ``--- ``/``+++ `` pair.
+    """
     lines = patch_text.splitlines()
     files: list[dict[str, Any]] = []
     current_file: str | None = None
@@ -51,11 +89,7 @@ def _parse_patch(patch_text: str) -> list[dict[str, Any]]:
         if line.startswith("diff --git"):
             if current_file is not None and current_hunks:
                 files.append({"path": current_file, "hunks": current_hunks})
-            parts = line.split()
-            if len(parts) >= 3:
-                current_file = parts[2].lstrip("b/")
-            else:
-                current_file = None
+            current_file = _target_path_from_diff_header(line)
             current_hunks = []
         elif line.startswith("--- ") or line.startswith("+++ "):
             pass
@@ -125,6 +159,12 @@ def _apply_hunks(old_content: str, hunks: list[str]) -> tuple[str, list[str]]:
                 else:
                     errors.append(f"line {current_line + 1} out of range")
             elif hline.startswith(" ") or hline == "":
+                # A context line has to be carried into the output. Advancing the
+                # cursor without appending deleted every unchanged line the patch
+                # touched, so a patch that added one line also removed its
+                # neighbours.
+                if current_line < len(old_lines):
+                    new_lines.append(old_lines[current_line])
                 current_line += 1
             elif hline.startswith("\\"):
                 pass
@@ -161,7 +201,7 @@ def apply_patch(arguments: dict[str, Any], context: dict | None = None) -> str:
     all_ok = True
     for file_info in files:
         fpath = file_info["path"]
-        resolved = (root / fpath).resolve()
+        resolved = resolve_in_workspace(root, fpath)
         is_new = not resolved.exists()
         if not is_new:
             if not resolved.is_file():
