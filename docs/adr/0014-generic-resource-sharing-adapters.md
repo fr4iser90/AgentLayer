@@ -9,9 +9,11 @@ tags: [adr, sharing, friends, grants, adapters, projection, credentials, ssrf]
 ## Status
 
 **Proposed.** Raised 2026-09-20 as a design question, not a change request.
-Nothing in this ADR has been implemented. It records what was verified in the
-current code, names the problem the current shape cannot solve, and costs the
-options.
+The architecture proposed in §5 has **not** been implemented. What *has*
+changed is one defect this analysis surfaced and that was fixed on its own
+merits — the always-deny collection grant (§1.3.1). Everything else here
+records what was verified in the current code, names the problem the current
+shape cannot solve, and costs the options.
 
 Companion reading: [ADR 0013](0013-os-level-workspace-isolation.md) covers
 the *filesystem* boundary; this one covers the *peer-to-peer data* boundary.
@@ -53,17 +55,18 @@ counts" — revocation, expiry, all in one place.
 
 **This half needs no work.** Do not replace it. Every option below keeps it.
 
-### 1.3 The read side is missing for most types
+### 1.3 The read side is missing or broken for most types
 
 Seven resource types are declared as constants
 (`infrastructure/db/share_permissions_db.py:19-25`). Verified by searching
-every consumer in `apps/backend` and `plugins`:
+every consumer in `apps/backend` and `plugins`, then **confirmed by running
+the real code against a seeded database** (§7.1):
 
 | Resource type | Reader that enforces the grant | Status |
 |---|---|---|
-| `dashboard` | `domain/shares/dashboard_grant.py:92` → `friend_dashboard_access_detail`, consumed at `dashboard_db.py:91`, `dashboard_persistence.py:74` | **Enforced** |
-| `google_calendar` | `plugins/tools/integrations/friends/calendar.py` + `shares_api.py:174,181` | **Enforced** (see §1.6 — the read then fails) |
-| `collection` | enforced, but **not through its adapter** — see below | **Duplicated** |
+| `dashboard` | `domain/shares/dashboard_grant.py:92` → `friend_dashboard_access_detail`, consumed at `dashboard_db.py:91`, `dashboard_persistence.py:74` | **Works** |
+| `google_calendar` | grant check works; the read after it does not | **Broken** (§1.6, §1.7) |
+| `collection` | enforced, but the enforcement always denied | **Was broken, fixed** (§1.3.1) |
 | `github_activity` | none | **Grant does nothing** |
 | `todoist` | none | **Grant does nothing** |
 | `notes` | none | **Grant does nothing** |
@@ -81,14 +84,71 @@ and read by nothing.
 (`collection_grant.py:63` → `friend_collection_permission`, re-exported at
 `collection_share_service.py:35`) — and that adapter has **no caller**. The
 actual enforcement is a second, inline copy of the same logic in
-`domain/collections/access.py:81-93`: same `share_permission_get`, same
-`is_allowed` check, same `grant_is_active` call, written out again.
+`domain/collections/access.py`. Two implementations of the same grant check
+for one resource, one of them dead.
 
-So the codebase has, for one resource, two implementations of the same grant
-check — one of which is dead. This is not a bug in either. It is what happens
-when "remember to check the grant wherever this data is returned" is an
-unenforced step in a checklist. Four out of seven types forgot it, and the
-fifth remembered it twice.
+#### 1.3.1 The collection grant always denied (found by live validation, fixed)
+
+Both copies gated on a field the getter never returns:
+
+```python
+grant = share_permission_get(...)
+if not grant or not grant.get("is_allowed"):
+    return None
+```
+
+`share_permission_get` returns a **projection**, not the raw row. Its keys
+are `owner_user_id`, `grantee_user_id`, `resource_type`,
+`resource_identifier`, `policy`, `created_at`, `updated_at`. There is **no
+`is_allowed`** and **no `revoked_at`**. So `grant.get("is_allowed")` was
+always `None`, `not None` is always `True`, and **every friend collection
+grant denied regardless of what was stored.**
+
+Observed against the seeded database:
+
+```
+grant returned      : YES
+keys in grant dict  : [created_at, grantee_user_id, owner_user_id, policy,
+                      resource_identifier, resource_type, updated_at]
+has is_allowed      : False
+has revoked_at      : False
+-> access_for_slug  : None
+```
+
+Why the dashboard path works and this one did not: the dashboard adapter reads
+**raw DB rows** (`friend_dashboard_grant_rows` → keys include `is_allowed`
+and `revoked_at`), while the collection paths read the getter's projection
+and assumed the row's field names.
+
+**Fixed** by dropping the phantom-field gate. `share_permission_get` already
+filters `revoked_at IS NULL AND is_allowed = TRUE` in SQL and already applies
+`grant_is_active` to the stored row before returning — so a returned grant is
+active by contract and needs no re-check:
+
+```python
+if grant is None:
+    return None
+```
+
+Applied at both sites (`access.py`, `collection_grant.py`); the now-unused
+`grant_is_active` imports were removed.
+
+**The second trap in the same line.** The removed block also read
+`revoked_at=grant.get("revoked_at")` — also never present. Had the
+`is_allowed` line been "fixed" by hardcoding `True`, the revocation check
+would have silently become a no-op. It was harmless only because the SQL
+already filters revoked rows; the trap itself was live for anyone editing
+that line.
+
+This is the same bug class as §1.7: **a field assumed from the getter's
+contract that the getter does not provide.** Two of the seven resource types
+hit it. That is the argument for Principle 2 (§5) in its most concrete form —
+where per-type code hand-rolls its check against a shared getter, the drift is
+invisible and the failure is silent.
+
+Tests pinning this are in `tests/unit/test_friend_shares.py`
+(`TestSharePermissionGetterShape`, `TestCollectionFriendGrantResolves`).
+Four of them fail against the pre-fix code.
 
 ### 1.4 The write side is open on purpose — this ADR keeps it that way
 
@@ -501,6 +561,18 @@ live? Options are to leave the type unregistered (grant stays inert, which is
 now at least *visible* as unregistered in the registry listing), clear the
 rows, or notify affected owners before activating.
 
+**Audit result, 2026-09-20 (this instance):** `share_permissions` held **zero
+rows** — not just on the four inert types, on all seven. No friends, no
+friend requests. Step 0 was a complete no-op here, which means the
+architecture can be built **before any real sharing starts**. That is the
+cheapest possible moment for it. Once real grants exist, every adapter
+activation becomes a migration event with an audit obligation, and the
+credential question in §1.6 stops being designable and becomes only
+repairable.
+
+This is a snapshot of one deployment at one time, not a permanent property.
+Re-run the audit before acting on §6.1 again.
+
 ### 6.2 Becomes possible
 
 * A new shareable resource is one adapter file plus one registration.
@@ -584,6 +656,47 @@ and cannot obtain the owner's credential"*. Not "the code looks structured".
    and not enforced by the line that was just deleted.
 10. **Step 0 audit re-check.** After implementation, re-run the grant audit
     and confirm no type became live without a recorded decision.
+
+### 7.1 The fixture and the run that produced §1.3.1
+
+Two scripts exist so the above is reproducible rather than re-argued:
+
+* `scripts/seed_friend_sharing_fixture.sql` — idempotent, deterministic
+  UUIDs. Three tenants (one same-tenant pair, one cross-tenant pair), six
+  users, the full request-status spread including the shape that §1.3's
+  precedence fix needed (bob→anna **declined** while anna→bob is **pending**),
+  and 13 grants covering all seven types plus a legacy alias row and an
+  unregistered type.
+* `scripts/validate_friend_sharing_fixture.py` — drives the real
+  `friends_db`, `share_permissions_db`, `dashboard_grant`,
+  `collection_grant` and `collections.access` functions against those rows
+  and prints a PASS/FAIL matrix.
+
+Run:
+
+```bash
+docker exec -i agent-layer-postgres psql -U agent -d agent \
+    < scripts/seed_friend_sharing_fixture.sql
+
+docker compose run --rm -e PYTHONPATH=/code agent-layer \
+    python /code/scripts/validate_friend_sharing_fixture.py
+```
+
+Current result: **25/25**. The run is what turned §1.3 from a static grep
+into an observed behaviour — and what surfaced the always-deny bug that the
+grep had mis-scored as "enforced".
+
+Two things worth carrying forward from how that happened:
+
+* A grep that finds a grant check does not tell you whether the check
+  **passes**. It found the collection check and recorded it as enforced.
+  Only executing it showed it denied everything.
+* The domain modules take their DB access through injected module-globals
+  (`register_*_dependencies`). Running them outside the app needs the
+  infrastructure services imported first, or they silently see zero rows —
+  which looks identical to "no grant exists". The validation script imports
+  `collection_share_service`, `collections_db_service` and
+  `dashboard_grant_service` for exactly this reason.
 
 ---
 
