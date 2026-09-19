@@ -8,17 +8,22 @@ tags: [adr, sharing, friends, grants, adapters, projection, credentials, ssrf]
 
 ## Status
 
-**Proposed.** Raised 2026-09-20 as a design question, not a change request.
-The architecture proposed in §5 has **not** been implemented. What *has*
-changed are three defects this analysis surfaced, each fixed on its own merits:
+**Proposed, partially implemented.** Raised 2026-09-20 as a design question,
+not a change request.
+
+Implemented so far:
 
 - the always-deny collection grant (§1.3.1) — `15c2e58`
 - the redirect bypass of the ICS SSRF guard (§1.6) — `b2bca1c`
 - the calendar secret crossing, i.e. Principle 1 applied to the one path
-  where it was violated (§1.7.1) — this change
+  where it was violated (§1.7.1) — `ac6d4fa`
+- **step 0**, the repeatable grant audit — `c9ced41`, see §7.1
+- **steps 1–2**, the adapter protocol and registry wrapping the two
+  working adapters without behaviour change — see §5.3
 
-Everything else here records what was verified in the current code, names the
-problem the current shape cannot solve, and costs the options.
+Not implemented: steps 3–8. The generic `friend_share` tool, the
+registry-driven UI, the projection layer, and the calendar redone as a
+`publish_projection` adapter all remain open.
 
 Companion reading: [ADR 0013](0013-os-level-workspace-isolation.md) covers
 the *filesystem* boundary; this one covers the *peer-to-peer data* boundary.
@@ -614,6 +619,65 @@ than as a design problem under time pressure.
   design; Principle 1 removes the need for it by never accepting a URL.
 * **Not** per-resource friend tools. That is the "1000 tools" problem this
   ADR exists to close.
+
+### 5.3 Steps 1–2 as implemented
+
+Four new modules, no existing behaviour touched.
+
+**`domain/shares/adapter.py`** — the `ShareAdapter` protocol, derived from
+what `dashboard_grant` and `collection_grant` already do rather than
+invented: `resource_types`, `policy_fields`, `normalize_identifier`,
+`resolve`, `list_shared`. Same file holds `find_credential_keys`, the
+Principle 1 predicate.
+
+**`domain/shares/registry.py`** — `register_share_adapter`,
+`get_share_adapter`, `registered_resource_types`, `describe_registered`,
+and the guarded entry point `resolve_projection`. Two guarantees live here
+that no individual adapter can provide for the others:
+
+* **Unknown type is not readable.** A type with no adapter returns the
+  refusal `no_adapter_registered`, even though it remains grantable. This
+  closes the pre-registry failure mode where a stored grant looked like
+  access.
+* **A leaking adapter cannot serve.** Every projection is checked before it
+  is handed back; a credential-shaped key raises `ShareRegistryError`
+  rather than being logged and passed through. Principle 1 becomes
+  structural on this path instead of per-adapter discipline.
+
+`resolve_projection` returns a `ResolveOutcome` with a distinct `refusal`
+reason (`no_adapter_registered` / `malformed_identifier` / `not_granted`).
+Overloading `None` for all three would force the generic tool to guess, and
+only one of those is the grantee's fault.
+
+**`domain/shares/adapters/{dashboard,collection}_adapter.py`** — thin
+wrappers delegating to the existing functions. `policy_fields` is declared
+from what each reader *actually acts on*, read out of `policy.py` rather
+than assumed: dashboard honours `permission`, `block_ids`, `expires_at`;
+collection honours `permission`, `expires_at`. Neither honours
+`days_ahead` or `list_keys`, which the global validator accepts for every
+type — that gap is §1.9, and declaring the honoured set is what lets step 3
+reject the rest at write time.
+
+**Wiring** follows the existing import-for-side-effect pattern:
+`infrastructure/shares/share_registry_service.py` calls
+`register_default_share_adapters()`, imported by `server_lifecycle`. A
+type not registered there is not readable through the generic path, which
+fails closed.
+
+**Verified** — `tests/unit/test_share_registry.py` (21 tests) plus seven
+registry checks in the fixture run (**39/39**). The step-2 claim is proved
+by comparison rather than assertion: the registry's dashboard and
+collection resolutions are checked equal to the direct adapter calls on the
+same fixture rows. Mutation-checked both ways — disabling the credential
+gate fails three tests, and switching the gate to value-based matching
+fails the `source_hint` false-positive test specifically.
+
+**One honest caveat.** `google_calendar` has a working bespoke reader but
+is deliberately **not** in the registry — step 7 redoes it as a
+`publish_projection` adapter. Until then `registered_resource_types()`
+*under-reports* what is actually readable, and the generic tool must not
+treat it as the complete set. The fixture run asserts this explicitly so
+the gap cannot be forgotten.
 
 ---
 
