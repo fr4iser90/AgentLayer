@@ -42,6 +42,12 @@ class WorkspaceCreateBody(BaseModel):
         max_length=4096,
         description="Required when execution_mode=client: absolute path on the client machine",
     )
+    visibility: str = Field(
+        default="private",
+        max_length=16,
+        description="private (default) or tenant — visible to the owning tenant. "
+        "Anything unrecognised is treated as private.",
+    )
 
 
 class WorkspaceUpdateBody(BaseModel):
@@ -167,6 +173,7 @@ async def create_workspace(request: Request, body: WorkspaceCreateBody):
             git_branch=body.git_branch or "main",
             execution_mode=body.execution_mode,
             path=body.path,
+            visibility=body.visibility,
         )
     except ws_services.WorkspaceCreateError as e:
         raise HTTPException(status_code=400, detail=e.message)
