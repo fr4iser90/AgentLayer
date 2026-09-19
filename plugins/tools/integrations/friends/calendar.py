@@ -14,10 +14,8 @@ from apps.backend.infrastructure.db.share_permissions_db import (
     share_permission_get,
 )
 
-from plugins.tools.integrations.friends.lib.common import (
-    friend_calendar_ics_url,
-    resolve_friend_by_name,
-)
+from plugins.tools.integrations.friends.lib.common import resolve_friend_by_name
+from plugins.tools.personal.calendar.ics import fetch_shared_calendar
 
 __version__ = "1.0.0"
 TOOL_ID = "calendar"
@@ -85,48 +83,35 @@ def calendar(arguments: dict[str, Any]) -> Any:
             logger.info("get_friend_calendar RESULT: %s", res)
             return json.dumps(res, ensure_ascii=False)
 
-        # Step 3: Get friend's ICS calendar URL (google_calendar or calendar_ics secret)
-        ics_url = friend_calendar_ics_url(friend_user_id)
-        
-        if not ics_url:
+        # Step 3: Read the friend's calendar through the projection. The ICS
+        # address is a bearer credential, so it is resolved and fetched inside
+        # the adapter and never handed back — the grantee only ever sees events.
+        # (ADR 0014 Principle 1.)
+        requested_days = arguments.get("days", 7)
+        effective_days = effective_days_ahead(
+            grant.get("policy"),
+            requested_days if requested_days is not None else None,
+        )
+        calendar_result = fetch_shared_calendar(
+            friend_user_id, days_ahead=effective_days
+        )
+
+        if calendar_result.get("error") == "owner_has_no_calendar_configured":
             res = {
                 "result": f"{friend_display_name} has a calendar connected but no sharing is configured."
             }
             logger.info("get_friend_calendar RESULT: %s", res)
             return json.dumps(res, ensure_ascii=False)
 
-        # Step 4: Delegate to existing calendar parser
-        # Import dynamically to avoid circular dependencies
-        try:
-            from plugins.tools.personal.calendar.ics import calendar_ics
-            
-            requested_days = arguments.get("days", 7)
-            effective_days = effective_days_ahead(
-                grant.get("policy"),
-                requested_days if requested_days is not None else None,
-            )
-            calendar_result = calendar_ics({
-                "ics_url": ics_url,
-                "days": effective_days,
-            })
-
-            res = {
-                "friend_name": friend_display_name,
-                "days_requested": requested_days,
-                "days_effective": effective_days,
-                "share_policy": grant.get("policy") or {},
-                "calendar": calendar_result,
-            }
-            logger.info("get_friend_calendar RESULT: %s", res)
-            return json.dumps(res, ensure_ascii=False)
-            
-        except ImportError:
-            res = {
-                "friend_name": friend_display_name,
-                "result": "Calendar access granted but calendar parser is not available."
-            }
-            logger.info("get_friend_calendar RESULT: %s", res)
-            return json.dumps(res, ensure_ascii=False)
+        res = {
+            "friend_name": friend_display_name,
+            "days_requested": requested_days,
+            "days_effective": effective_days,
+            "share_policy": grant.get("policy") or {},
+            "calendar": calendar_result,
+        }
+        logger.info("get_friend_calendar RESULT: %s", res)
+        return json.dumps(res, ensure_ascii=False)
 
     except Exception as e:
         res = {"error": str(e)}

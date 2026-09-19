@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import sqlite3
-import sys
-import types
 import unittest
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -163,23 +161,6 @@ class TestFriendSharesTool(unittest.TestCase):
         self.assertEqual(kwargs["policy"], {"days_ahead": 7})
 
 
-class TestFriendCalendarSecretLookup(unittest.TestCase):
-    def test_friend_calendar_ics_url_prefers_google_calendar(self) -> None:
-        from plugins.tools.integrations.friends.lib.common import friend_calendar_ics_url
-
-        uid = uuid.uuid4()
-        with mock.patch(
-            "plugins.tools.integrations.friends.lib.common.db.user_secret_get_plaintext",
-            side_effect=[
-                '{"ics_url":"https://calendar.google.com/calendar/ical/a/basic.ics"}',
-                None,
-            ],
-        ) as get_secret:
-            url = friend_calendar_ics_url(uid)
-        self.assertEqual(url, "https://calendar.google.com/calendar/ical/a/basic.ics")
-        get_secret.assert_any_call(uid, "google_calendar")
-
-
 class _SqliteFriendRequests:
     """Runs the module's real SQL against in-memory sqlite.
 
@@ -282,9 +263,14 @@ class TestFriendCalendarTool(unittest.TestCase):
 
     It used to call a name that was never imported and then read a variable that
     was never assigned, so every call landed in the outer ``except`` handler.
+
+    The adapter is patched as the real ``fetch_shared_calendar`` name rather
+    than by injecting a stand-in module: the previous version injected a
+    ``calendar_ics`` function the real module never had, so the test passed
+    against a fiction while every real call failed.
     """
 
-    def _run(self, grant, requested_days=30):
+    def _run(self, grant, requested_days=30, *, shared=None):
         from plugins.tools.integrations.friends import calendar as cal
 
         uid = uuid.uuid4()
@@ -294,41 +280,62 @@ class TestFriendCalendarTool(unittest.TestCase):
             "display_name": "Max",
             "email": "max@example.com",
         }
-        # The parser is imported inside the function, so it is injected rather
-        # than patched at the call site.
-        fake_mod = types.ModuleType("plugins.tools.personal.calendar.ics")
-        seen = {}
+        if shared is None:
+            shared = {
+                "ok": True,
+                "source_hint": "google_ical",
+                "count": 1,
+                "events": [{"summary": "Zahnarzt", "start": "2026-01-01T09:00:00+00:00"}],
+            }
+        seen: dict[str, object] = {}
 
-        def fake_calendar_ics(args):
-            seen.update(args)
-            return {"events": []}
+        def fake_fetch(owner_user_id, *, days_ahead):
+            seen["owner_user_id"] = owner_user_id
+            seen["days_ahead"] = days_ahead
+            return dict(shared)
 
-        fake_mod.calendar_ics = fake_calendar_ics
-        with mock.patch.dict(sys.modules, {"plugins.tools.personal.calendar.ics": fake_mod}):
-            with mock.patch.object(cal, "get_identity", return_value=(1, uid)):
-                with mock.patch.object(cal, "resolve_friend_by_name", return_value=friend):
-                    with mock.patch.object(cal, "share_permission_get", return_value=grant):
-                        with mock.patch.object(
-                            cal,
-                            "friend_calendar_ics_url",
-                            return_value="https://calendar.example.com/basic.ics",
-                        ):
-                            out = cal.calendar({"name": "Max", "days": requested_days})
-        return out, seen
+        with mock.patch.object(cal, "get_identity", return_value=(1, uid)):
+            with mock.patch.object(cal, "resolve_friend_by_name", return_value=friend):
+                with mock.patch.object(cal, "share_permission_get", return_value=grant):
+                    with mock.patch.object(
+                        cal, "fetch_shared_calendar", side_effect=fake_fetch
+                    ):
+                        out = cal.calendar({"name": "Max", "days": requested_days})
+        return out, seen, uid
 
     def test_granted_calendar_reads_the_policy_cap(self) -> None:
-        out, seen = self._run({"policy": {"days_ahead": 3}}, requested_days=30)
-        self.assertEqual(seen.get("days"), 3)
+        out, seen, _ = self._run({"policy": {"days_ahead": 3}}, requested_days=30)
+        self.assertEqual(seen.get("days_ahead"), 3)
         self.assertNotIn("is not defined", out)
 
     def test_grant_without_policy_uses_the_requested_horizon(self) -> None:
-        out, seen = self._run({"policy": {}}, requested_days=14)
-        self.assertEqual(seen.get("days"), 14)
+        out, seen, _ = self._run({"policy": {}}, requested_days=14)
+        self.assertEqual(seen.get("days_ahead"), 14)
         self.assertNotIn("is not defined", out)
 
+    def test_the_calendar_read_targets_the_friend_not_the_caller(self) -> None:
+        # Reading the caller's own calendar would look like a successful share
+        # while showing the wrong person's appointments.
+        out, seen, caller = self._run({"policy": {}})
+        self.assertIsNotNone(seen.get("owner_user_id"))
+        self.assertNotEqual(seen["owner_user_id"], caller)
+
     def test_no_grant_reports_not_shared(self) -> None:
-        out, _ = self._run(None)
+        out, _, _ = self._run(None)
         self.assertIn("has not shared their calendar", out)
+
+    def test_owner_without_a_calendar_secret_is_reported_not_empty(self) -> None:
+        out, _, _ = self._run(
+            {"policy": {}}, shared={"ok": False, "error": "owner_has_no_calendar_configured"}
+        )
+        self.assertIn("no sharing is configured", out)
+
+    def test_the_tool_result_never_mentions_the_ics_url(self) -> None:
+        # Principle 1: the bearer credential must not appear in what the
+        # grantee's agent receives, so it cannot be echoed into chat or memory.
+        out, _, _ = self._run({"policy": {}})
+        self.assertNotIn("ics_url", out)
+        self.assertNotIn("http", out)
 
     def test_the_grant_row_is_fetched_with_the_calendar_resource_type(self) -> None:
         from plugins.tools.integrations.friends import calendar as cal

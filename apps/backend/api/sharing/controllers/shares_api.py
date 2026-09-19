@@ -181,29 +181,25 @@ async def preview_friend_calendar(
         resource_type=SHARE_RESOURCE_GOOGLE_CALENDAR,
     )
     from apps.backend.domain.shares.policy import effective_days_ahead
-    from plugins.tools.integrations.friends.lib.common import friend_calendar_ics_url
+    from plugins.tools.personal.calendar.ics import fetch_shared_calendar
 
     effective = effective_days_ahead(
         grant.get("policy") if grant else None,
         days,
     )
 
-    ics_url = friend_calendar_ics_url(owner_uuid)
-    if not ics_url:
+    # The ICS address is a bearer credential: it is resolved and fetched
+    # inside the adapter and never returned to the grantee. (ADR 0014 P1)
+    parsed = fetch_shared_calendar(owner_uuid, days_ahead=effective)
+
+    if parsed.get("error") == "owner_has_no_calendar_configured":
         return {"ok": True, "events": [], "hint": "friend has no calendar configured"}
 
-    try:
-        from plugins.tools.personal.calendar.ics import calendar_ics
-
-        raw = calendar_ics({"ics_url": ics_url, "days": effective})
-        if isinstance(raw, str):
-            import json as _json
-
-            parsed = _json.loads(raw)
-        else:
-            parsed = raw
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    if not parsed.get("ok"):
+        raise HTTPException(
+            status_code=502,
+            detail=str(parsed.get("error") or "calendar fetch failed"),
+        )
 
     return {
         "ok": True,

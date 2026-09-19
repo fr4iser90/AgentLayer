@@ -6,6 +6,7 @@ import ipaddress
 import json
 import logging
 import re
+import uuid
 from collections import defaultdict
 from datetime import UTC, date, datetime, time, timedelta
 from dateutil.relativedelta import relativedelta
@@ -152,6 +153,19 @@ def _parse_secret(raw: str | None) -> str | None:
     return u or None
 
 
+def _resolve_ics_url(uid: uuid.UUID) -> str | None:
+    """Read the ICS URL stored as ``uid``'s own secret. No guard applied.
+
+    Callers must run ``_url_host_safe`` on the result before fetching.
+    """
+    for sk in SECRET_KEYS_TRY_ORDER:
+        raw = db.user_secret_get_plaintext(uid, sk)
+        u = _parse_secret(raw)
+        if u:
+            return u
+    return None
+
+
 def _ics_url_for_user() -> str | dict[str, Any]:
     _tid, uid = get_identity()
     if uid is None:
@@ -159,13 +173,7 @@ def _ics_url_for_user() -> str | dict[str, Any]:
             "ok": False,
             "error": "No user identity in this request (need chat/user headers for per-user calendar secrets).",
         }
-    url: str | None = None
-    for sk in SECRET_KEYS_TRY_ORDER:
-        raw = db.user_secret_get_plaintext(uid, sk)
-        u = _parse_secret(raw)
-        if u:
-            url = u
-            break
+    url = _resolve_ics_url(uid)
     if not url:
         return {
             "ok": False,
@@ -278,6 +286,140 @@ def _normalize_calendar_arguments(arguments: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+def _events_for_window(
+    url: str,
+    win_start: datetime,
+    win_end: datetime,
+    *,
+    include_by_month: bool,
+    window_meta: dict[str, Any],
+) -> dict[str, Any]:
+    """Fetch ``url`` and shape the VEVENTs inside the window into a payload.
+
+    The URL is never part of the result — only a ``source_hint`` derived from
+    it. Callers that must not learn the URL (the friend-share path) rely on
+    that; see ``fetch_shared_calendar``.
+    """
+    try:
+        with httpx.Client(timeout=HTTP_TIMEOUT, follow_redirects=False) as client:
+            r, refusal = _fetch_ics(client, url)
+    except httpx.HTTPError as e:
+        return {"ok": False, "error": f"fetch failed: {e}"}
+
+    if r is None:
+        return {"ok": False, "error": f"ics_url not allowed ({refusal})"}
+
+    if r.status_code >= 400:
+        return {"ok": False, "error": f"http {r.status_code}", "detail": r.text[:300]}
+
+    raw_bytes = r.content
+    if len(raw_bytes) > MAX_ICS_BYTES:
+        return {"ok": False, "error": f"ics larger than {MAX_ICS_BYTES} bytes"}
+
+    try:
+        text = raw_bytes.decode("utf-8", errors="replace")
+        cal = Calendar.from_ical(text)
+    except Exception as e:
+        return {"ok": False, "error": f"parse ics failed: {e}"}
+
+    events_out: list[dict[str, Any]] = []
+    for comp in cal.walk():
+        if comp.name != "VEVENT":
+            continue
+        summary = str(comp.get("summary") or "").strip() or "(no title)"
+        uid = str(comp.get("uid") or "")[:200]
+        loc = str(comp.get("location") or "").strip()
+        ev_start, ev_end = _event_bounds(comp)
+        if not _overlaps(ev_start, ev_end, win_start, win_end):
+            continue
+        events_out.append(
+            {
+                "summary": summary[:500],
+                "uid": uid,
+                "location": loc[:300] if loc else None,
+                "start": ev_start.isoformat() if ev_start else None,
+                "end": ev_end.isoformat() if ev_end else None,
+            }
+        )
+
+    events_out.sort(key=lambda x: (x.get("start") or "", x.get("summary") or ""))
+    if len(events_out) > MAX_EVENTS_RETURN:
+        events_out = events_out[:MAX_EVENTS_RETURN]
+        truncated = True
+    else:
+        truncated = False
+
+    out: dict[str, Any] = {
+        "ok": True,
+        "source_hint": (
+            "google_ical" if "calendar.google.com" in url.lower() else "ics_url"
+        ),
+        "window": window_meta,
+        "count": len(events_out),
+        "truncated": truncated,
+        "events": events_out,
+    }
+
+    if include_by_month and events_out:
+        titles_by_month: dict[str, list[str]] = defaultdict(list)
+        for e in events_out:
+            st = e.get("start") or ""
+            ym = st[:7] if len(st) >= 7 and st[4:5] == "-" else "undated"
+            titles_by_month[ym].append(str(e.get("summary") or "")[:200])
+        by_month: dict[str, Any] = {}
+        for ym in sorted(titles_by_month.keys()):
+            titles = titles_by_month[ym][:MAX_TITLES_PER_MONTH]
+            by_month[ym] = {
+                "count": len(titles_by_month[ym]),
+                "titles": titles,
+                "truncated": len(titles_by_month[ym]) > MAX_TITLES_PER_MONTH,
+            }
+        out["by_month"] = by_month
+
+    return out
+
+
+def fetch_shared_calendar(owner_user_id: uuid.UUID, *, days_ahead: int) -> dict[str, Any]:
+    """Read the calendar owned by ``owner_user_id`` on behalf of a share grant.
+
+    The ICS address is a **bearer credential** — anyone holding it can read
+    that calendar until it is rotated. This function resolves the owner's own
+    secret, guards the host, fetches and parses, and returns events only. The
+    URL is never part of the result and never becomes a value the requesting
+    side holds, so it cannot reach a tool result, chat transcript, log line
+    or memory write. (ADR 0014 Principle 1.)
+
+    The caller must have verified the share grant before calling.
+    """
+    url = _resolve_ics_url(owner_user_id)
+    if not url:
+        return {"ok": False, "error": "owner_has_no_calendar_configured"}
+
+    ok, reason = _url_host_safe(url)
+    if not ok:
+        return {"ok": False, "error": f"ics_url not allowed ({reason})"}
+
+    try:
+        days = int(days_ahead)
+    except (TypeError, ValueError):
+        days = 7
+    days = max(1, min(days, MAX_EFFECTIVE_DAYS_AHEAD))
+
+    now = datetime.now(UTC)
+    win_start = now - timedelta(days=1)
+    win_end = now + timedelta(days=days)
+    window_meta: dict[str, Any] = {
+        "from": win_start.isoformat(),
+        "to": win_end.isoformat(),
+        "days_ahead": days,
+        "effective_days_back": (now - win_start).days,
+        "effective_days_ahead": (win_end - now).days,
+    }
+    return _events_for_window(
+        url, win_start, win_end, include_by_month=False, window_meta=window_meta
+    )
+
+
 def list_events(arguments: dict[str, Any]) -> str:
     arguments = _normalize_calendar_arguments(arguments)
 
@@ -338,104 +480,23 @@ def list_events(arguments: dict[str, Any]) -> str:
     if win_start < max_win_start:
         win_start = max_win_start
 
-    try:
-        with httpx.Client(timeout=HTTP_TIMEOUT, follow_redirects=False) as client:
-            r, refusal = _fetch_ics(client, url)
-    except httpx.HTTPError as e:
-        return json.dumps(
-            {"ok": False, "error": f"fetch failed: {e}"}, ensure_ascii=False
-        )
-
-    if r is None:
-        return json.dumps(
-            {"ok": False, "error": f"ics_url not allowed ({refusal})"},
-            ensure_ascii=False,
-        )
-
-    if r.status_code >= 400:
-        return json.dumps(
-            {"ok": False, "error": f"http {r.status_code}", "detail": r.text[:300]},
-            ensure_ascii=False,
-        )
-    raw_bytes = r.content
-    if len(raw_bytes) > MAX_ICS_BYTES:
-        return json.dumps(
-            {"ok": False, "error": f"ics larger than {MAX_ICS_BYTES} bytes"},
-            ensure_ascii=False,
-        )
-    try:
-        text = raw_bytes.decode("utf-8", errors="replace")
-        cal = Calendar.from_ical(text)
-    except Exception as e:
-        return json.dumps(
-            {"ok": False, "error": f"parse ics failed: {e}"}, ensure_ascii=False
-        )
-
-    events_out: list[dict[str, Any]] = []
-    for comp in cal.walk():
-        if comp.name != "VEVENT":
-            continue
-        summary = str(comp.get("summary") or "").strip() or "(no title)"
-        uid = str(comp.get("uid") or "")[:200]
-        loc = str(comp.get("location") or "").strip()
-        ev_start, ev_end = _event_bounds(comp)
-        if not _overlaps(ev_start, ev_end, win_start, win_end):
-            continue
-        events_out.append(
-            {
-                "summary": summary[:500],
-                "uid": uid,
-                "location": loc[:300] if loc else None,
-                "start": ev_start.isoformat() if ev_start else None,
-                "end": ev_end.isoformat() if ev_end else None,
-            }
-        )
-
-    events_out.sort(key=lambda x: (x.get("start") or "", x.get("summary") or ""))
-    if len(events_out) > MAX_EVENTS_RETURN:
-        events_out = events_out[:MAX_EVENTS_RETURN]
-        truncated = True
-    else:
-        truncated = False
-
-    by_month_payload: dict[str, Any] | None = None
-    if by_month_default and events_out:
-        titles_by_month: dict[str, list[str]] = defaultdict(list)
-        for e in events_out:
-            st = e.get("start") or ""
-            ym = st[:7] if len(st) >= 7 and st[4:5] == "-" else "undated"
-            titles_by_month[ym].append(str(e.get("summary") or "")[:200])
-        by_month_payload = {}
-        for ym in sorted(titles_by_month.keys()):
-            titles = titles_by_month[ym][:MAX_TITLES_PER_MONTH]
-            by_month_payload[ym] = {
-                "count": len(titles_by_month[ym]),
-                "titles": titles,
-                "truncated": len(titles_by_month[ym]) > MAX_TITLES_PER_MONTH,
-            }
-
-    out: dict[str, Any] = {
-        "ok": True,
-        "source_hint": (
-            "google_ical" if "calendar.google.com" in url.lower() else "ics_url"
-        ),
-        "window": {
-            "from": win_start.isoformat(),
-            "to": win_end.isoformat(),
-            "days_back": days_back,
-            "days_ahead": days_ahead,
-            "months_back": months_back,
-            "months_ahead": months_ahead,
-            "effective_days_back": (now - win_start).days,
-            "effective_days_ahead": (win_end - now).days,
-        },
-        "count": len(events_out),
-        "truncated": truncated,
-        "events": events_out,
+    window_meta: dict[str, Any] = {
+        "from": win_start.isoformat(),
+        "to": win_end.isoformat(),
+        "days_back": days_back,
+        "days_ahead": days_ahead,
+        "months_back": months_back,
+        "months_ahead": months_ahead,
+        "effective_days_back": (now - win_start).days,
+        "effective_days_ahead": (win_end - now).days,
     }
-    if by_month_payload is not None:
-        out["by_month"] = by_month_payload
-
+    out = _events_for_window(
+        url,
+        win_start,
+        win_end,
+        include_by_month=by_month_default,
+        window_meta=window_meta,
+    )
     return json.dumps(out, ensure_ascii=False)
 
 
