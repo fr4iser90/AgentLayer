@@ -33,6 +33,14 @@ VISIBILITY_VALUES = (PRIVATE, TENANT_VISIBLE)
 
 TENANT_ADMIN_ROLE = "tenant_admin"
 TENANT_MEMBER_ROLE = "tenant_member"
+TENANT_OWNER_ROLE = "tenant_owner"
+
+# What a grant row may say. Mirrors the CHECK constraints on tenant_entity_grants
+# so a bad value is refused in Python with a readable message rather than by a
+# database error surfacing through a 500. ``owned`` is absent on purpose: it is
+# pure ownership and cannot be handed out.
+GRANT_MIN_ROLES = (TENANT_MEMBER_ROLE, TENANT_ADMIN_ROLE, TENANT_OWNER_ROLE)
+GRANT_ACCESS_LEVELS = (VIEW, EDIT, MANAGE)
 
 _DASHBOARD_ROLE_RANK = {
     "viewer": 1,

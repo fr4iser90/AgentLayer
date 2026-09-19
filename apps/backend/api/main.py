@@ -45,6 +45,7 @@ from apps.backend.api.conversations.controllers.conversations_api import router 
 from apps.backend.api.dashboards.controllers.dashboard_api import router as dashboard_router
 from apps.backend.api.media.controllers.media_api import router as media_router
 from apps.backend.api.notifications.controllers.notifications_api import router as notifications_router
+from apps.backend.api.platform.controllers.admin_grants_api import router as admin_grants_router
 from apps.backend.api.platform.controllers.admin_users_api import router as admin_users_router
 from apps.backend.api.platform.controllers.auth_api import router as auth_router
 from apps.backend.api.platform.controllers.health_api import merge_model_catalog_rows
@@ -143,6 +144,7 @@ for router in (
     auth_router,
     operator_admin_router,
     admin_users_router,
+    admin_grants_router,
     health_router,
     legal_router,
     openapi_tools_router,
