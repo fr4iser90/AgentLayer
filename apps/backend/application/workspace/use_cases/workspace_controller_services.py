@@ -95,6 +95,27 @@ def fetch_owned_workspace_rows(user_id: uuid.UUID) -> list[tuple]:
             return list(cur.fetchall())
 
 
+def fetch_company_workspace_rows(tenant_id: int) -> list[tuple]:
+    """Tenant-visible workspaces of one tenant, whoever owns them.
+
+    ``fetch_owned_workspace_rows`` answers "mine"; this answers "the company's".
+    The tenant comes from the caller's resolved membership rather than the
+    request, and the visibility filter is what keeps everyone else's private
+    workspaces out of the result.
+    """
+    with db.pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT " + WORKSPACE_SELECT_SQL + """
+                FROM project_workspaces
+                WHERE tenant_id = %s AND visibility = 'tenant'
+                ORDER BY name ASC
+                """,
+                (int(tenant_id),),
+            )
+            return list(cur.fetchall())
+
+
 def fetch_workspace_row_any_owner(workspace_id: str) -> tuple | None:
     with db.pool().connection() as conn:
         with conn.cursor() as cur:

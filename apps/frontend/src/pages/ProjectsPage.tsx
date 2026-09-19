@@ -2,8 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
-import { apiFetch, type WorkspaceApiRecord } from "../lib/api";
-import { deleteWorkspaceApi, isAgentlayerSelfWorkspace } from "../lib/workspacesApi";
+import { hasOrgSurface } from "../auth/deploymentMode";
+import { apiFetch, type WorkspaceApiRecord, type WorkspaceListScope } from "../lib/api";
+import { deleteWorkspaceApi, fetchWorkspacesApi, isAgentlayerSelfWorkspace } from "../lib/workspacesApi";
 
 type FsEntry = {
   name: string;
@@ -11,6 +12,11 @@ type FsEntry = {
   is_dir: boolean;
   is_symlink?: boolean;
 };
+
+const SCOPE_TABS = [
+  { id: "mine", labelKey: "workspace:projectsScopeMine" },
+  { id: "company", labelKey: "workspace:projectsScopeCompany" },
+] as const;
 
 function parentPath(p: string): string {
   const parts = p.replace(/\\/g, "/").split("/").filter(Boolean);
@@ -24,6 +30,8 @@ export function ProjectsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedId = searchParams.get("id")?.trim() || null;
 
+  const [scope, setScope] = useState<WorkspaceListScope>("mine");
+  const [companyTenantId, setCompanyTenantId] = useState<number | null>(null);
   const [workspaces, setWorkspaces] = useState<WorkspaceApiRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,30 +52,30 @@ export function ProjectsPage() {
     setLoading(true);
     setError(null);
     try {
-      const r = await apiFetch("/v1/workspaces", auth);
-      const j = (await r.json().catch(() => ({}))) as {
-        workspaces?: WorkspaceApiRecord[];
-        detail?: string;
-      };
-      if (!r.ok) {
-        setError(
-          typeof j.detail === "string" ? j.detail : t("workspace:projectsLoadFailed", { status: r.status })
-        );
-        setWorkspaces([]);
-        return;
-      }
+      const j = await fetchWorkspacesApi(auth, scope);
       setWorkspaces(Array.isArray(j.workspaces) ? j.workspaces : []);
+      setCompanyTenantId(j.tenant_id ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : t("workspace:projectsLoadFailed", { status: "?" }));
       setWorkspaces([]);
+      setCompanyTenantId(null);
     } finally {
       setLoading(false);
     }
-  }, [auth, t]);
+  }, [auth, scope, t]);
 
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  const switchScope = (next: WorkspaceListScope) => {
+    if (next === scope) return;
+    setScope(next);
+    // Dropping the old list here keeps the auto-select effect from re-picking a
+    // workspace from the previous scope before the new one has loaded.
+    setWorkspaces([]);
+    setSearchParams({});
+  };
 
   useEffect(() => {
     if (!selectedId && workspaces.length > 0) {
@@ -148,7 +156,11 @@ export function ProjectsPage() {
       <header className="shrink-0">
         <h1 className="text-lg font-semibold text-white">{t("workspace:projectsTitle")}</h1>
         <p className="mt-1 max-w-2xl text-sm text-surface-muted">{t("workspace:projectsIntro")}</p>
-        <p className="mt-1 text-xs text-surface-muted">{t("workspace:projectsOwnerScopeNote")}</p>
+        <p className="mt-1 text-xs text-surface-muted">
+          {scope === "company"
+            ? t("workspace:projectsCompanyScopeNote")
+            : t("workspace:projectsOwnerScopeNote")}
+        </p>
       </header>
 
       {error ? (
@@ -160,9 +172,38 @@ export function ProjectsPage() {
       <div className="grid min-h-0 flex-1 gap-4 md:grid-cols-[minmax(14rem,20rem)_1fr]">
         <section className="flex min-h-0 flex-col rounded-xl border border-surface-border bg-surface-raised/40">
           <div className="flex items-center justify-between gap-2 border-b border-surface-border px-3 py-2">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-surface-muted">
-              {t("workspace:projectsListTitle")}
-            </h2>
+            {hasOrgSurface(auth.user) ? (
+              <div
+                role="tablist"
+                aria-label={t("workspace:projectsScopeAria")}
+                className="flex items-center gap-1"
+              >
+                {SCOPE_TABS.map((tab) => {
+                  const active = scope === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => switchScope(tab.id)}
+                      className={[
+                        "rounded-md px-2 py-1 text-xs font-semibold uppercase tracking-wide transition-colors",
+                        active
+                          ? "border-b-2 border-sky-500 text-sky-300"
+                          : "border-b-2 border-transparent text-surface-muted hover:text-neutral-200",
+                      ].join(" ")}
+                    >
+                      {t(tab.labelKey)}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-surface-muted">
+                {t("workspace:projectsListTitle")}
+              </h2>
+            )}
             <button
               type="button"
               className="rounded-md border border-white/10 px-2 py-1 text-[10px] text-neutral-300 hover:bg-white/5 disabled:opacity-40"
@@ -176,7 +217,11 @@ export function ProjectsPage() {
             {loading ? (
               <p className="px-2 py-2 text-xs text-surface-muted">{t("common:nav.loading")}</p>
             ) : workspaces.length === 0 ? (
-              <p className="px-2 py-2 text-xs text-surface-muted">{t("workspace:projectsEmpty")}</p>
+              <p className="px-2 py-2 text-xs text-surface-muted">
+                {scope === "company" && companyTenantId === null
+                  ? t("workspace:projectsCompanyNoTenant")
+                  : t("workspace:projectsEmpty")}
+              </p>
             ) : (
               <ul className="space-y-1">
                 {workspaces.map((w) => {
@@ -193,7 +238,14 @@ export function ProjectsPage() {
                         ].join(" ")}
                         onClick={() => selectWorkspace(w.id)}
                       >
-                        <span className="block truncate text-sm text-neutral-100">{w.name}</span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="min-w-0 flex-1 truncate text-sm text-neutral-100">{w.name}</span>
+                          {scope === "mine" && w.visibility === "tenant" ? (
+                            <span className="shrink-0 rounded bg-sky-950/60 px-1 py-0.5 text-[9px] uppercase tracking-wide text-sky-300">
+                              {t("workspace:visibilityCompanyTag")}
+                            </span>
+                          ) : null}
+                        </span>
                         <span className="mt-0.5 block truncate text-[10px] text-surface-muted">
                           {w.source}
                           {w.git_url ? ` · ${w.git_url}` : ""}

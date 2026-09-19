@@ -11,10 +11,11 @@ WORKSPACE_SELECT_SQL = """
     semantic_index_enabled, retrieval_enabled, last_index_at, last_index_stats, last_index_error,
     docs_rag_enabled, last_docs_rag_at, last_docs_rag_stats, last_docs_rag_error,
     index_on_write, graph_index_enabled, retrieve_context_sources, execution_mode,
-    index_consent, tenant_id
+    index_consent, tenant_id, visibility
 """
 
 TENANT_ID_INDEX = 27
+VISIBILITY_INDEX = 28
 
 SERVER_EXECUTION = "server"
 CLIENT_EXECUTION = "client"
@@ -62,7 +63,21 @@ def workspace_row_to_api(row: tuple) -> dict[str, Any]:
         "execution_mode": normalize_execution_mode(row[25] if len(row) > 25 else None),
         "index_consent": _index_consent_from_row(row),
         "tenant_id": row[TENANT_ID_INDEX] if len(row) > TENANT_ID_INDEX else None,
+        "visibility": _visibility_from_row(row),
     }
+
+
+def _visibility_from_row(row: tuple) -> str:
+    """Anything missing or unrecognised means ``private``.
+
+    A row read before the column existed, or a value that is not ``tenant``, must
+    not be shown as company-visible. Same fail-closed direction as
+    ``normalize_execution_mode``.
+    """
+    if len(row) <= VISIBILITY_INDEX:
+        return "private"
+    v = str(row[VISIBILITY_INDEX] or "").strip().lower()
+    return "tenant" if v == "tenant" else "private"
 
 
 def _index_consent_from_row(row: tuple) -> str:
