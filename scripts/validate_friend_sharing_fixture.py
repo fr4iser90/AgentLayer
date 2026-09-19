@@ -455,6 +455,49 @@ check("registry refuses a conflicting adapter rather than silently overriding",
       "binding 'dashboard' to a second adapter raises")
 
 
+# ── per-type policy field enforcement (ADR 0014 step 3, §1.9) ────────────────
+from apps.backend.domain.shares.policy import normalize_policy  # noqa: E402
+
+col_rej = normalize_policy("collection", {"block_ids": ["x"]})
+check("step 3: block_ids now REJECTED on a collection grant",
+      col_rej[0] == {} and col_rej[1] is not None,
+      f"err={col_rej[1]}")
+
+dash_ok = normalize_policy("dashboard", {"block_ids": ["block-shifts"]})
+check("step 3: block_ids still ACCEPTED on a dashboard (it reads them)",
+      dash_ok[1] is None and dash_ok[0].get("block_ids") == ["block-shifts"],
+      f"clean={dash_ok[0]}")
+
+dash_rej = normalize_policy("dashboard", {"list_keys": ["x"]})
+check("step 3: list_keys REJECTED on a dashboard (nothing reads it)",
+      dash_rej[1] is not None, f"err={dash_rej[1]}")
+
+lk_rej = normalize_policy("collection", {"permission": "edit", "list_keys": ["pets"]})
+check("step 3: list_keys REJECTED on a collection — the §1.9 case this found",
+      lk_rej[0] == {} and lk_rej[1] is not None,
+      f"err={lk_rej[1]}")
+
+cal_gap = normalize_policy("google_calendar", {"block_ids": ["x"]})
+check("KNOWN GAP: google_calendar still accepts block_ids (no adapter until step 7)",
+      cal_gap[1] is None,
+      "the §1.9 shape survives for unregistered types; closes at step 7")
+
+notes_open = normalize_policy("notes", {"block_ids": ["x"]})
+check("unregistered type keeps the open write side (§1.4)",
+      notes_open[1] is None and notes_open[0] == {"block_ids": ["x"]},
+      f"clean={notes_open[0]}")
+
+truly_bad = normalize_policy("notes", {"bogus_key": 1})
+check("a field nobody knows is still refused on an unregistered type",
+      truly_bad[1] is not None and "unknown policy field" in truly_bad[1],
+      f"err={truly_bad[1]}")
+
+check("app wiring is live in this container (registry populated)",
+      reg.registered_resource_types() == ("collection", "dashboard")
+      and reg.policy_fields_for("collection") is not None,
+      f"fields(collection)={reg.policy_fields_for('collection')}")
+
+
 # ── report ────────────────────────────────────────────────────────────────────
 
 width = max(len(n) for n, _, _ in results)

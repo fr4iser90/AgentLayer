@@ -92,6 +92,25 @@ def registered_resource_types() -> tuple[str, ...]:
     return tuple(sorted(_adapters))
 
 
+def policy_fields_for(resource_type: str) -> frozenset[str] | None:
+    """The policy keys this resource type may carry, or None if nobody knows.
+
+    A registered adapter declares what its reader actually acts on, so its
+    set is authoritative and narrower than the global validator's. ``None``
+    means there is no adapter and therefore nobody who can say a field is
+    meaningless — the caller must fall back to the global set, because the
+    write side stays open on purpose (ADR 0014 §1.4).
+
+    The distinction matters: ``frozenset()`` (adapter exists, honours
+    nothing) and ``None`` (no adapter) are different answers and must not be
+    collapsed.
+    """
+    adapter = get_share_adapter(resource_type)
+    if adapter is None:
+        return None
+    return frozenset(getattr(adapter, "policy_fields", ()) or ())
+
+
 def reset_share_registry() -> None:
     """Drop all bindings. Test-only; production wiring is import-time."""
     _adapters.clear()

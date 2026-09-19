@@ -150,14 +150,50 @@ class TestMessageSendTool(unittest.TestCase):
 
 
 class TestCollectionSharePolicy(unittest.TestCase):
-    def test_edit_permission_on_collection_share(self) -> None:
+    """``permission`` is honoured by the collection reader; ``list_keys`` is
+    read by nothing on that path.
+
+    This test used to assert that ``{"permission": "edit", "list_keys":
+    ["pets"]}`` normalised cleanly. That was the ADR 0014 §1.9 defect: the
+    owner believes they scoped the share to one list, while the reader
+    grants the whole collection by slug and never looks at ``list_keys``.
+    A restriction that is stored but never read is worse than a refusal,
+    because it is trusted. Step 3 makes it a write-time refusal.
+    """
+
+    def setUp(self) -> None:
+        # The per-type narrowing comes from the adapter registry, which is
+        # populated at app startup. A test that does not establish that
+        # state would silently fall back to the lax global set and pass
+        # without the enforcement being active.
+        from apps.backend.domain.shares.adapters import (
+            register_default_share_adapters,
+        )
+        from apps.backend.domain.shares.registry import reset_share_registry
+
+        reset_share_registry()
+        register_default_share_adapters()
+
+    def tearDown(self) -> None:
+        from apps.backend.domain.shares.registry import reset_share_registry
+
+        reset_share_registry()
+
+    def test_edit_permission_on_collection_share_is_accepted(self) -> None:
         clean, err = share_policy.normalize_policy(
-            "collection",
-            {"permission": "edit", "list_keys": ["pets"]},
+            "collection", {"permission": "edit"}
         )
         self.assertIsNone(err)
         self.assertEqual(clean.get("permission"), "edit")
-        self.assertEqual(clean.get("list_keys"), ["pets"])
+
+    def test_list_keys_on_a_collection_share_is_refused(self) -> None:
+        clean, err = share_policy.normalize_policy(
+            "collection", {"permission": "edit", "list_keys": ["pets"]}
+        )
+        self.assertEqual(clean, {})
+        self.assertIsNotNone(err)
+        self.assertIn("list_keys", err)
+        self.assertIn("does not honour it", err)
 
 
 if __name__ == "__main__":
