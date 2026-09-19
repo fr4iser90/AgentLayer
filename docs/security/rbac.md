@@ -306,8 +306,8 @@ It is not fixable by inspecting arguments. `cat $(...)`, environment
 variables, `env` expansion, interpreter one-liners (`python -c`, `node -e`)
 and dozens of other shapes defeat any argv denylist, and a denylist you can
 walk around is not a boundary — it is a warning label. **Real containment for
-bash requires OS-level isolation**, not more pattern matching. Treat this as an
-architecture decision (§8), not a patch.
+bash requires OS-level isolation**, not more pattern matching. The options and
+their costs are in [ADR 0013](../adr/0013-os-level-workspace-isolation.md).
 
 ### 5.4 Absent: OS-level isolation
 
