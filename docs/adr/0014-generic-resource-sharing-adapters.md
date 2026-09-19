@@ -648,8 +648,37 @@ activation becomes a migration event with an audit obligation, and the
 credential question in §1.6 stops being designable and becomes only
 repairable.
 
+**Re-audit after the fixture was seeded (same day).** The first audit
+predated `scripts/seed_friend_sharing_fixture.sql`, so it was re-run with
+`scripts/audit_share_grants.py`, which classifies every row's participants
+as fixture or real rather than just counting rows:
+
+| type | status | rows | origin |
+|---|---|---|---|
+| `collection` | live | 1 | fixture |
+| `dashboard` | live | 2 | fixture |
+| `google_calendar` | live | 4 (1 revoked) | fixture |
+| `haustiere` | legacy alias | 1 | fixture |
+| `github_activity` | inert | 1 | fixture |
+| `notes` | inert | 1 | fixture |
+| `roadmap` | inert | 1 | fixture |
+| `todoist` | inert | 1 | fixture |
+| `payroll_export` | unclassified | 1 | fixture |
+
+**13 rows, none of them real.** The deployment has two real accounts
+(`pa.boe90@gmail.com`, `qwen-validate-b@example.com`) and neither grants
+anything nor receives anything. So the §6.1 hazard — "adapters activate
+grants people forgot about" — has **no real instances to clear**. Step 0
+remains a no-op on real data, and the cheap window is still open.
+
+The one flagged hazard is `payroll_export`, and it is the fixture's own
+probe: a type deliberately granted to show that nothing refuses an
+unregistered type at write time and nothing refuses reading it. The audit
+script labels any type absent from §1.3 `unknown` precisely so that a type
+appearing after this ADR is written cannot pass unnoticed.
+
 This is a snapshot of one deployment at one time, not a permanent property.
-Re-run the audit before acting on §6.1 again.
+Re-run `scripts/audit_share_grants.py` before acting on §6.1 again.
 
 ### 6.2 Becomes possible
 
@@ -749,6 +778,16 @@ Two scripts exist so the above is reproducible rather than re-argued:
   `friends_db`, `share_permissions_db`, `dashboard_grant`,
   `collection_grant` and `collections.access` functions against those rows
   and prints a PASS/FAIL matrix.
+* `scripts/audit_share_grants.py` — the step 0 audit itself. Reads the live
+  `share_permissions` table, classifies each row's participants as fixture
+  or real, labels each type live / alias / inert / unknown, and prints a
+  keep-vs-clear decision table plus hazards. Run this before any adapter
+  registration, not just once.
+
+  ```bash
+  docker compose run --rm -e PYTHONPATH=/code agent-layer \
+      python /code/scripts/audit_share_grants.py
+  ```
 
 Run:
 
