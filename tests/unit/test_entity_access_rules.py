@@ -14,6 +14,7 @@ from apps.backend.domain.access.entity_access import (
     OWNED,
     VIEW,
     evaluate_dashboard_access,
+    evaluate_tenant_branch,
     evaluate_tenant_grant,
     evaluate_workspace_access,
     tenant_role_rank,
@@ -178,3 +179,112 @@ def test_tenant_role_hierarchy_is_member_below_admin_below_owner():
         < tenant_role_rank("tenant_owner")
     )
     assert tenant_role_rank("site_admin") == 0  # not a tenant role
+
+
+# --------------------------------------------------------------------------
+# Tenant branch — the decided floor
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("needed", [VIEW, EDIT, MANAGE])
+@pytest.mark.parametrize("role", ["tenant_admin", "tenant_owner"])
+def test_tenant_admin_holds_manage_implicitly(role, needed):
+    """No grant row is needed for the delegated admin to work."""
+    assert evaluate_tenant_branch(tenant_role=role, grants=None, needed=needed) is True
+
+
+@pytest.mark.parametrize("needed", [VIEW, EDIT, MANAGE])
+def test_tenant_member_gets_nothing_without_a_grant(needed):
+    assert (
+        evaluate_tenant_branch(tenant_role="tenant_member", grants=[], needed=needed)
+        is False
+    )
+
+
+@pytest.mark.parametrize(
+    "grant_access, needed, expected",
+    [
+        ("view", VIEW, True),
+        ("view", EDIT, False),
+        ("view", MANAGE, False),
+        ("edit", VIEW, True),
+        ("edit", EDIT, True),
+        ("edit", MANAGE, False),
+        ("manage", VIEW, True),
+        ("manage", EDIT, True),
+        ("manage", MANAGE, True),
+    ],
+)
+def test_member_grant_covers_exactly_its_level_and_below(grant_access, needed, expected):
+    assert (
+        evaluate_tenant_branch(
+            tenant_role="tenant_member",
+            grants=[("tenant_member", grant_access)],
+            needed=needed,
+        )
+        is expected
+    )
+
+
+def test_grant_above_the_actor_does_not_reach_down():
+    """A grant aimed at tenant_admin does not help a plain member."""
+    assert (
+        evaluate_tenant_branch(
+            tenant_role="tenant_member",
+            grants=[("tenant_admin", "manage")],
+            needed=VIEW,
+        )
+        is False
+    )
+
+
+def test_any_one_grant_in_the_set_is_enough():
+    assert (
+        evaluate_tenant_branch(
+            tenant_role="tenant_member",
+            grants=[("tenant_admin", "view"), ("tenant_member", "edit")],
+            needed=EDIT,
+        )
+        is True
+    )
+
+
+@pytest.mark.parametrize("role", [None, "", "guest", "site_admin"])
+def test_no_or_unknown_tenant_role_denies(role):
+    """A grant row cannot pull in someone with no standing in the tenant."""
+    assert (
+        evaluate_tenant_branch(
+            tenant_role=role, grants=[("tenant_member", "manage")], needed=VIEW
+        )
+        is False
+    )
+
+
+@pytest.mark.parametrize("role", ["tenant_admin", "tenant_owner", "tenant_member"])
+def test_tenant_branch_never_satisfies_owned(role):
+    """owned is identity, not delegated authority — the schema refuses to grant
+    it too, so the rule must not hand it out either."""
+    assert (
+        evaluate_tenant_branch(
+            tenant_role=role, grants=[("tenant_member", "manage")], needed=OWNED
+        )
+        is False
+    )
+
+
+@pytest.mark.parametrize("role", ["tenant_admin", "tenant_owner"])
+@pytest.mark.parametrize("needed", ["delete", "", "view ", "admin"])
+def test_unrecognised_needed_level_denies_even_for_admin(role, needed):
+    """A typo in `needed` must not fall through to the implicit-admin pass."""
+    assert evaluate_tenant_branch(tenant_role=role, grants=None, needed=needed) is False
+
+
+def test_grant_access_is_matched_case_and_whitespace_insensitively():
+    assert (
+        evaluate_tenant_branch(
+            tenant_role="tenant_member",
+            grants=[("TENANT_MEMBER", "  Edit  ")],
+            needed=EDIT,
+        )
+        is True
+    )

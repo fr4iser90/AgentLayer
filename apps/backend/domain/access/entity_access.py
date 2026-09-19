@@ -12,6 +12,9 @@ match the actor, so a row shared with ``access_role='editor'`` can only be
 
 Dashboard (``dashboard_members.role`` in viewer|editor|co_owner, plus
 ``owner_user_id``) is a genuine rank ladder and maps cleanly.
+
+On top of both sits the tenant layer, which only ever *adds* access and only for
+an entity whose ``visibility`` is ``tenant``. See ``evaluate_tenant_branch``.
 """
 
 from __future__ import annotations
@@ -22,6 +25,12 @@ MANAGE = "manage"
 OWNED = "owned"
 
 NEEDED_LEVELS = (OWNED, VIEW, EDIT, MANAGE)
+
+PRIVATE = "private"
+TENANT_VISIBLE = "tenant"
+
+TENANT_ADMIN_ROLE = "tenant_admin"
+TENANT_MEMBER_ROLE = "tenant_member"
 
 _DASHBOARD_ROLE_RANK = {
     "viewer": 1,
@@ -107,3 +116,50 @@ def evaluate_tenant_grant(
     return _NEEDED_RANK.get(needed, 99) <= _NEEDED_RANK.get(
         str(grant_access or "").strip().lower(), 0
     )
+
+
+def evaluate_tenant_branch(
+    *,
+    tenant_role: str | None,
+    grants: list[tuple[str, str]] | None = None,
+    needed: str = VIEW,
+) -> bool:
+    """Tenant-layer access to an entity whose visibility is ``tenant``.
+
+    ``tenant_admin`` and ``tenant_owner`` hold ``manage`` implicitly — the
+    delegated company admin stays able to work without any grant rows.
+    ``tenant_member`` gets nothing unless a grant row clears them.
+
+    Two things this deliberately cannot do:
+
+    * satisfy ``owned``. ``owned`` is pure ownership, not delegated authority,
+      and the schema refuses to grant it too. A tenant admin who can ``manage``
+      a company workspace is still not the person it belongs to.
+    * reach an actor with no membership. An absent or unknown tenant role ranks
+      below ``tenant_member`` and denies, so a user outside the tenant gets
+      nothing from a grant row that names them.
+
+    ``grants`` is the (min_role, access) rows for this entity and tenant. The
+    caller must key that lookup on the entity's own tenant, not the actor's.
+    """
+    needed_rank = _NEEDED_RANK.get(needed)
+    if needed_rank is None:
+        # Only view/edit/manage are ranked. owned is deliberately unranked, so
+        # it lands here and denies: delegated tenant authority never satisfies
+        # pure ownership. An unrecognised level denies for the same reason,
+        # rather than falling through to the implicit-admin pass below.
+        return False
+    rank = tenant_role_rank(tenant_role)
+    if rank < tenant_role_rank(TENANT_MEMBER_ROLE):
+        return False
+    if rank >= tenant_role_rank(TENANT_ADMIN_ROLE):
+        return True
+    for min_role, access in grants or ():
+        if evaluate_tenant_grant(
+            tenant_role=tenant_role,
+            min_role=min_role,
+            grant_access=access,
+            needed=needed,
+        ):
+            return True
+    return False
