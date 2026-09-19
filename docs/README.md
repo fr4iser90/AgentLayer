@@ -84,4 +84,7 @@ You already have ADRs under [`docs/adr/`](./adr/):
 - [`0009-client-side-execution.md`](./adr/0009-client-side-execution.md) — tools that run on the client, tiered indexing consent
 - [`0010-external-agent-runtime-port.md`](./adr/0010-external-agent-runtime-port.md) — coding agent behind an interface, Qwen Code as first adapter
 - [`0011-roles-and-agent-access-without-tenancy.md`](./adr/0011-roles-and-agent-access-without-tenancy.md) — `site_role` owns elevation, capabilities for delegated admin, agent access without tenancy
+- [`0012-admin-tenant-scope.md`](./adr/0012-admin-tenant-scope.md) — tenant-scoped admin surface, owning tenant per workspace
+- [`0013-os-level-workspace-isolation.md`](./adr/0013-os-level-workspace-isolation.md) — per-tenant uid vs container vs userns for workspace execution (proposed)
+- [`0014-generic-resource-sharing-adapters.md`](./adr/0014-generic-resource-sharing-adapters.md) — one adapter per resource, one friend tool; projections instead of crossing credentials (proposed)
 
