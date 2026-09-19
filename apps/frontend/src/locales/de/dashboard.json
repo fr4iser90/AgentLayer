@@ -113,6 +113,7 @@
   "importing": "Importiere…",
   "importRun": "Importieren",
   "importResult": "{{added}} hinzugefügt, {{skipped}} übersprungen (Duplikate).",
+  "importVisibilityNotApplied": "Firmen-Sichtbarkeit wurde nicht angewendet auf: {{names}} — diese Workspaces existierten bereits und behalten ihre aktuelle Sichtbarkeit.",
   "onboardingTitle": "Einrichtung",
   "onboardingDismiss": "Ausblenden",
   "onboardingStartChat": "Im Chat einrichten",

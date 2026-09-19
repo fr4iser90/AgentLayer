@@ -113,6 +113,7 @@
   "importing": "Importing…",
   "importRun": "Import",
   "importResult": "Added {{added}}, skipped {{skipped}} (duplicates).",
+  "importVisibilityNotApplied": "Company visibility was not applied to: {{names}} — these workspaces already existed and keep their current visibility.",
   "onboardingTitle": "Get started",
   "onboardingDismiss": "Dismiss",
   "onboardingStartChat": "Set up in chat",

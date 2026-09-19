@@ -107,6 +107,15 @@ def create(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> 
     else:
         bind_after = bool(bind_after)
 
+    # Deliberately absent from the TOOLS spec below: this is for the first-party
+    # bulk-import UI, not for the agent surface. The runtime does no schema
+    # validation, so an undeclared argument is accepted here without being
+    # advertised to the model.
+    from apps.backend.domain.access.entity_access import TENANT_VISIBLE, normalize_visibility
+
+    visibility = normalize_visibility(arguments.get("visibility"))
+    wants_company = visibility == TENANT_VISIBLE
+
     from apps.backend.infrastructure.workspace.workspace_service import (
         WorkspaceCreateError,
         create_project_workspace_for_user,
@@ -172,6 +181,11 @@ def create(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> 
             {
                 "ok": True,
                 "reused": True,
+                # Reuse never rewrites an existing workspace's visibility, so a
+                # caller that asked for company visibility did not get it here.
+                # Without this the bulk-import UI would report a ticked "company"
+                # checkbox as satisfied for rows that stayed private.
+                "company_visibility_applied": False,
                 "workspace": {
                     "id": materialized.get("id"),
                     "name": materialized.get("name"),
@@ -193,6 +207,7 @@ def create(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> 
             git_url=git_url,
             git_branch=git_branch,
             benchmark_run_id=benchmark_run_id,
+            visibility=visibility,
         )
     except WorkspaceCreateError as e:
         return dump({"ok": False, "error": e.message})
@@ -219,6 +234,7 @@ def create(arguments: dict[str, Any], context: dict[str, Any] | None = None) -> 
     return dump(
         {
             "ok": True,
+            "company_visibility_applied": wants_company,
             "workspace": {
                 "id": materialized.get("id"),
                 "name": materialized.get("name"),
