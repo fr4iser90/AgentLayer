@@ -174,11 +174,16 @@ def test_same_tenant_move_touches_no_workspaces() -> None:
     assert _sql_containing(log, "UPDATE project_workspaces") == []
 
 
-def test_auth_update_user_tenant_delegates_to_the_move() -> None:
-    """``auth.update_user_tenant`` must not grow its own SQL again."""
+def test_auth_update_user_tenant_goes_through_the_guarded_move() -> None:
+    """``auth.update_user_tenant`` must not call the bare primitive again — that
+    is the one that would drag tenant-visible entities into the new tenant."""
     calls: list[tuple] = []
     with (
-        patch.object(auth_mod.db, "move_user_tenant", side_effect=lambda u, t: calls.append((u, t)) or True),
+        patch.object(
+            auth_mod,
+            "guarded_move_user_tenant",
+            side_effect=lambda u, t: calls.append((u, t)) or True,
+        ),
     ):
         assert auth_mod.update_user_tenant(USER, 5) is True
     assert calls == [(USER, 5)]
