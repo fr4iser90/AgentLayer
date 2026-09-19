@@ -12,6 +12,7 @@ import type tasks from "../locales/en/tasks.json";
 import type dashboard from "../locales/en/dashboard.json";
 import type notifications from "../locales/en/notifications.json";
 import type workspace from "../locales/en/workspace.json";
+import type org from "../locales/en/org.json";
 
 declare module "i18next" {
   interface CustomTypeOptions {
@@ -29,6 +30,7 @@ declare module "i18next" {
       dashboard: typeof dashboard;
       notifications: typeof notifications;
       workspace: typeof workspace;
+      org: typeof org;
     };
   }
 }
