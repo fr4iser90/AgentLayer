@@ -30,6 +30,7 @@ import { AdminAgentTraces } from "./pages/admin/AdminAgentTraces";
 import { AdminBenchmarks } from "./pages/admin/AdminBenchmarks";
 import { AdminAgentConfig } from "./pages/admin/AdminAgentConfig";
 import { OrgAdminLayout } from "./layout/OrgAdminLayout";
+import { OrgGrantsPage } from "./pages/org/OrgGrantsPage";
 import { OrgKnowledgePage } from "./pages/org/OrgKnowledgePage";
 import { OrgTeamPage } from "./pages/org/OrgTeamPage";
 import { ChatPage } from "./pages/ChatPage";
@@ -132,6 +133,7 @@ export function App() {
                   <Route path="setup" element={<OrgSetupPage />} />
                   <Route path="knowledge" element={<OrgKnowledgePage />} />
                   <Route path="team" element={<OrgTeamPage />} />
+                  <Route path="grants" element={<OrgGrantsPage />} />
                 </Route>
               </Route>
               <Route path="admin" element={<RequireSiteAdmin />}>

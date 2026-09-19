@@ -24,6 +24,7 @@ export const APP_ROUTES = [
   { path: "/app/settings/agent", page: "AgentSettings", file: "pages/settings/AgentSettings.tsx", auth: "session" },
   { path: "/app/settings/delegate", page: "DelegateSettings", file: "pages/settings/DelegateSettings.tsx", auth: "session" },
   { path: "/app/settings/shares", page: "SharesSettings", file: "pages/settings/SharesSettings.tsx", auth: "session" },
+  { path: "/app/org/grants", page: "OrgGrantsPage", file: "pages/org/OrgGrantsPage.tsx", auth: "admin" },
   { path: "/app/org/knowledge", page: "OrgKnowledgePage", file: "pages/org/OrgKnowledgePage.tsx", auth: "admin" },
   { path: "/app/org/setup", page: "OrgSetupPage", file: "pages/org/OrgSetupPage.tsx", auth: "admin" },
   { path: "/app/org/team", page: "OrgTeamPage", file: "pages/org/OrgTeamPage.tsx", auth: "admin" },

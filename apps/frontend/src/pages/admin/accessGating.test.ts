@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canAssignAgents,
+  canManageWorkspaceGrants,
   isTargetEditable,
   normalizeCapabilities,
   visibleColSpan,
@@ -63,6 +64,30 @@ describe("canAssignAgents", () => {
       })
     ).toBe(false);
     expect(canAssignAgents(undefined)).toBe(false);
+  });
+});
+
+describe("canManageWorkspaceGrants", () => {
+  it("true for a site admin regardless of capabilities", () => {
+    expect(canManageWorkspaceGrants(siteAdmin)).toBe(true);
+    expect(canManageWorkspaceGrants({ site_role: "site_admin", capabilities: [] })).toBe(true);
+  });
+
+  it("true for a delegated holder of workspace.manage, case-insensitive", () => {
+    expect(
+      canManageWorkspaceGrants({ site_role: "site_user", capabilities: ["workspace.manage"] })
+    ).toBe(true);
+    expect(
+      canManageWorkspaceGrants({ site_role: "site_user", capabilities: ["WORKSPACE.MANAGE"] })
+    ).toBe(true);
+  });
+
+  it("false without workspace.manage — a tenant role alone is not a capability", () => {
+    expect(canManageWorkspaceGrants(delegated)).toBe(false);
+    expect(
+      canManageWorkspaceGrants({ site_role: "site_user", capabilities: ["dashboard.manage"] })
+    ).toBe(false);
+    expect(canManageWorkspaceGrants(undefined)).toBe(false);
   });
 });
 
