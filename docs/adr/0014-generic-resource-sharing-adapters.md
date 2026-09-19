@@ -20,8 +20,9 @@ Implemented so far:
 - **step 0**, the repeatable grant audit — `c9ced41`, see §7.1
 - **steps 1–2**, the adapter protocol and registry wrapping the two
   working adapters without behaviour change — see §5.3
+- **step 3**, per-type `policy_fields` enforced at write time — see §1.9.1
 
-Not implemented: steps 3–8. The generic `friend_share` tool, the
+Not implemented: steps 4–8. The generic `friend_share` tool, the
 registry-driven UI, the projection layer, and the calendar redone as a
 `publish_projection` adapter all remain open.
 
@@ -368,6 +369,51 @@ restriction, nothing enforces it, and the owner's belief is wrong. That is a
 so a grant cannot express "you may add to my list but not delete my items" —
 which is a thing users ask for.
 
+#### 1.9.1 Resolved for registered types (step 3)
+
+`normalize_policy` used to discard its `resource_type` argument
+(`_ = resource_type`) and validate every type against the one global set.
+It now asks the registry: a registered adapter's declared `policy_fields`
+is authoritative and narrower, and a field outside it is a write-time
+refusal naming the adapter as the authority —
+`"policy field 'list_keys' is not allowed: the collection adapter does not
+honour it"`.
+
+**`list_keys` turned out to be worse than §1.9 described.** The section
+above assumed `list_keys` "belongs to collections". It does not — nothing
+anywhere reads it. Grepping the whole repo finds it only in the policy
+validator that normalises it, the tool help text that advertises it to
+agents, and tests that asserted it was accepted. The collection access path
+(`collections/access.py`) reads `permission` and nothing else. So an owner
+setting `list_keys: ["pets"]` believed they scoped a share to one list
+while the reader granted the whole collection by slug and never looked at
+the key.
+
+The test that pinned that behaviour —
+`test_agent_social_tools.py::TestCollectionSharePolicy` — was asserting
+the defect, not the feature. It is rewritten to assert the refusal.
+
+**What is now enforced.** `dashboard` accepts `permission`, `block_ids`,
+`expires_at` and rejects `days_ahead`, `list_keys`. `collection` accepts
+`permission`, `expires_at` and rejects `block_ids`, `days_ahead`,
+`list_keys`. Both sets were read out of the reader code, not assumed.
+
+**What is not.** A type with no adapter has nobody who can say a field is
+meaningless, so it falls back to the global set — the write side stays
+open on purpose (§1.4). That means `google_calendar` still accepts
+`block_ids`, and both the fixture row and the live check record that as a
+**known gap that closes at step 7**, when the calendar becomes a
+`publish_projection` adapter. `TestKnownGapIsVisible` asserts the gap so
+that closing it is a deliberate act that updates a test, not a quiet drift.
+
+**Still open, deliberately out of step 3's scope.**
+`plugins/tools/integrations/friends/shares.py:423` advertises
+`{permission, block_ids, list_keys, days_ahead, expires_at}` to agents for
+every type. Now that the accepted set is per-type, that help text is wrong
+for registered types — the agent gets a refusal it did not expect. Deriving
+the advertised fields from `describe_registered()` is the same mechanism
+step 5 needs for the UI and should be done with it.
+
 ---
 
 ## 2. Decision drivers
@@ -588,18 +634,19 @@ when a resource is added either.
 
 | Step | What | Days | Why here |
 |---|---|---|---|
-| 0 | **Audit existing grant rows** for the four inert types; decide keep vs clear per type | 0.5 | See §6.1 — this must be a deliberate act, not a side effect |
-| 1 | Extract the adapter protocol from `dashboard_grant.py` + `collection_grant.py`; build the registry | 2–3 | Both adapters already have the shape — this is extraction, not invention |
-| 2 | Wrap those two adapters in the registry **without changing their behaviour** | 1 | Proves the contract against working code before anything new is built |
-| 3 | Per-type `policy_fields`; reject unknown fields at write time | 1–2 | Fixes §1.9; forces each adapter to state what it honours |
+| 0 ✅ | **Audit existing grant rows** for the four inert types; decide keep vs clear per type | 0.5 | See §6.1 — this must be a deliberate act, not a side effect |
+| 1 ✅ | Extract the adapter protocol from `dashboard_grant.py` + `collection_grant.py`; build the registry | 2–3 | Both adapters already have the shape — this is extraction, not invention |
+| 2 ✅ | Wrap those two adapters in the registry **without changing their behaviour** | 1 | Proves the contract against working code before anything new is built |
+| 3 ✅ | Per-type `policy_fields`; reject unknown fields at write time | 1–2 | Fixes §1.9; forces each adapter to state what it honours |
 | 4 | Generic `friend_share` tool; old tool names become thin aliases | 1–2 | Removes the per-tool growth |
 | 5 | Share UI driven from the registry | 1–2 | Types, identifiers, policy fields — all derived |
 | 6 | Add the projection contract (table, refresh, revoke cascade, freshness) | 2–4 | Enables B |
 | 7 | Re-do the calendar as a **`publish_projection` adapter** ("share my availability") | 2–3 | Not a patched delegation. Makes the §1.6/§1.7 class of bug *impossible*, not merely gone |
 | 8 | Option C for one resource, **only if** a real requirement appears | 10–16 | Do not pre-build |
 
-**Total to a coherent state (steps 0–5): 7–11 working days.** Adding the
-projection layer and the calendar redone (steps 6–7): **+4–7 days**.
+**Total to a coherent state (steps 0–5): 7–11 working days.** Steps 0–3 are
+done. Adding the projection layer and the calendar redone (steps 6–7):
+**+4–7 days**.
 
 **Do not** start with the calendar. Start with steps 1–2: wrapping the two
 adapters that already work derives the contract from reality. The third
@@ -863,13 +910,21 @@ docker compose run --rm -e PYTHONPATH=/code agent-layer \
     python /code/scripts/validate_friend_sharing_fixture.py
 ```
 
-Current result: **32/32** — the original 25 grant checks plus the seven
-calendar-adapter checks added with §1.7.1, which cover items 1, 4 and 9 of
-the plan above for the calendar specifically: the projection is served, the
-credential is absent from every nested key, the read targets the owner's
-encrypted secret rather than the caller's, and the host guard still refuses
-an internal owner URL before any request leaves the process. The network is
-the only stubbed layer.
+Current result: **47/47**. Progression of the fixture run:
+
+| added with | checks | total |
+|---|---|---|
+| the original grant audit | 25 | 25 |
+| §1.7.1 calendar adapter | +7 | 32 |
+| steps 1–2 registry | +7 | 39 |
+| step 3 policy enforcement | +8 | 47 |
+
+The step-3 checks cover: `block_ids` rejected on a collection and still
+accepted on a dashboard; `list_keys` rejected on both; the `list_keys`-on-
+collection case §1.9.1 describes; the known `google_calendar` gap asserted
+rather than glossed; unregistered types keeping the open write side; a
+genuinely unknown field still refused; and the app wiring being live in the
+container, which is what the enforcement silently depends on.
 
 The run is what turned §1.3 from a static grep into an observed behaviour —
 and what surfaced the always-deny bug that the grep had mis-scored as

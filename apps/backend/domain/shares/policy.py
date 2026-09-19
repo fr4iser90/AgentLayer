@@ -31,22 +31,44 @@ def _parse_expires_at(raw: Any) -> datetime | None:
     return dt.astimezone(UTC)
 
 
+def _allowed_fields_for(resource_type: str) -> tuple[frozenset[str], str]:
+    """Which policy keys this type may carry, and who says so.
+
+    A registered adapter declares the fields its reader actually acts on,
+    so its set is authoritative and narrower than the global one — storing
+    a restriction nothing reads is worse than refusing it, because the owner
+    believes they applied it (ADR 0014 §1.9).
+
+    A type with no adapter has nobody who can say a field is meaningless,
+    so it falls back to the global set: the write side stays open on
+    purpose (§1.4). ``None`` from the registry is therefore not "no fields
+    allowed", it is "no authority to narrow".
+    """
+    from apps.backend.domain.shares.registry import policy_fields_for
+
+    per_type = policy_fields_for(resource_type)
+    if per_type is not None:
+        return per_type, f"the {resource_type} adapter does not honour it"
+    return _ALLOWED_POLICY_FIELDS, "unknown policy field"
+
+
 def normalize_policy(
     resource_type: str,
     policy: dict[str, Any] | None,
 ) -> tuple[dict[str, Any], str | None]:
     """Return (clean_policy, error_message). Empty dict is valid."""
-    _ = resource_type
     if policy is None:
         return {}, None
     if not isinstance(policy, dict):
         return {}, "policy must be an object"
 
+    allowed, why = _allowed_fields_for(resource_type)
+
     clean: dict[str, Any] = {}
     for key, value in policy.items():
         k = str(key).strip()
-        if k not in _ALLOWED_POLICY_FIELDS:
-            return {}, f"policy field '{k}' is not allowed"
+        if k not in allowed:
+            return {}, f"policy field '{k}' is not allowed: {why}"
 
         if k == "days_ahead":
             if value is None or value == "":
