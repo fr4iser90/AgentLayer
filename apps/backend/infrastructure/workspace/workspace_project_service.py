@@ -7,6 +7,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from apps.backend.domain.access.entity_access import MANAGE, evaluate_workspace_access
 from apps.backend.infrastructure.workspace.workspace_columns import (
     CLIENT_EXECUTION,
     SERVER_EXECUTION,
@@ -257,13 +258,20 @@ def delete_owned_workspace(*, workspace_id: str, owner_user_id: Any) -> bool:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT path, name, execution_mode FROM project_workspaces
-                    WHERE id = %s AND owner_user_id = %s AND access_role = 'owner'
+                    SELECT path, name, execution_mode, owner_user_id, access_role
+                    FROM project_workspaces
+                    WHERE id = %s
                     """,
-                    (wid, owner_user_id),
+                    (wid,),
                 )
                 row = cur.fetchone()
-                if not row:
+                if row is None:
+                    return False
+                if not evaluate_workspace_access(
+                    is_owner=str(row[3] or "") == str(owner_user_id),
+                    access_role=str(row[4] or "").strip().lower() or None,
+                    needed=MANAGE,
+                ):
                     return False
 
                 ws_path = Path(row[0])
