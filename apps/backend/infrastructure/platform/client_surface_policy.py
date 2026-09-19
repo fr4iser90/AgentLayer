@@ -126,6 +126,8 @@ def user_may_use_server_workspaces(user: Any) -> bool:
                 return True
             if db.user_site_role(uid) == "site_admin":
                 return True
+            if db.user_is_tenant_admin(uid):
+                return True
         except Exception:
             pass
     return False
