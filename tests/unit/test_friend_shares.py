@@ -346,5 +346,155 @@ class TestFriendCalendarTool(unittest.TestCase):
         self.assertEqual(kwargs["owner_user_id"], friend_id)
 
 
+class TestSharePermissionGetterShape(unittest.TestCase):
+    """``share_permission_get`` returns a projection, not the raw row.
+
+    The collection paths read ``grant["is_allowed"]`` and ``grant["revoked_at"]``
+    off this dict. Neither key is ever present, so every friend collection grant
+    denied regardless of what was stored. These tests pin the returned shape so a
+    future change to the getter is noticed rather than silently breaking callers.
+    """
+
+    def _raw_row(self, **over: object) -> dict:
+        row = {
+            "owner_user_id": uuid.uuid4(),
+            "grantee_user_id": uuid.uuid4(),
+            "resource_type": "collection",
+            "resource_identifier": "haustiere",
+            "is_allowed": True,
+            "policy": {"permission": "view"},
+            "revoked_at": None,
+            "created_at": None,
+            "updated_at": None,
+        }
+        row.update(over)
+        return row
+
+    def _patch_pool(self, row: object):
+        cur = mock.MagicMock()
+        cur.fetchone.return_value = row
+        conn = mock.MagicMock()
+        conn.cursor.return_value.__enter__ = mock.Mock(return_value=cur)
+        conn.cursor.return_value.__exit__ = mock.Mock(return_value=False)
+        pool = mock.MagicMock()
+        pool.connection.return_value.__enter__ = mock.Mock(return_value=conn)
+        pool.connection.return_value.__exit__ = mock.Mock(return_value=False)
+        return mock.patch.object(sp, "pool", return_value=pool)
+
+    def test_returned_dict_carries_no_is_allowed_or_revoked_at(self) -> None:
+        owner, grantee = uuid.uuid4(), uuid.uuid4()
+        with self._patch_pool(self._raw_row(owner_user_id=owner, grantee_user_id=grantee)):
+            got = sp.share_permission_get(
+                owner_user_id=owner,
+                grantee_user_id=grantee,
+                resource_type="collection",
+                resource_identifier="haustiere",
+            )
+        self.assertIsNotNone(got)
+        self.assertNotIn("is_allowed", got)
+        self.assertNotIn("revoked_at", got)
+        self.assertEqual(got["policy"], {"permission": "view"})
+
+    def test_revoked_row_is_absent_rather_than_flagged(self) -> None:
+        owner, grantee = uuid.uuid4(), uuid.uuid4()
+        revoked = self._raw_row(
+            owner_user_id=owner, grantee_user_id=grantee, revoked_at=datetime.now(UTC)
+        )
+        with self._patch_pool(revoked):
+            self.assertIsNone(
+                sp.share_permission_get(
+                    owner_user_id=owner,
+                    grantee_user_id=grantee,
+                    resource_type="collection",
+                    resource_identifier="haustiere",
+                )
+            )
+
+
+class TestCollectionFriendGrantResolves(unittest.TestCase):
+    """A friend collection grant must actually grant.
+
+    Regression for the always-deny bug: both collection paths gated on
+    ``grant.get("is_allowed")``, a key the getter never returns.
+    """
+
+    def setUp(self) -> None:
+        self.owner = uuid.uuid4()
+        self.grantee = uuid.uuid4()
+
+    def _grant(self, permission: str = "view") -> dict:
+        # Exactly what share_permission_get returns — no is_allowed, no revoked_at.
+        return {
+            "owner_user_id": self.owner,
+            "grantee_user_id": self.grantee,
+            "resource_type": "collection",
+            "resource_identifier": "haustiere",
+            "policy": {"permission": permission},
+            "created_at": None,
+            "updated_at": None,
+        }
+
+    def test_access_for_slug_grants_view(self) -> None:
+        from apps.backend.domain.collections import access as ca
+
+        with mock.patch.object(ca, "share_permission_get", return_value=self._grant("view")):
+            with mock.patch.object(ca.col_db, "normalize_slug", return_value="haustiere"):
+                with mock.patch.object(ca.col_db, "collection_get", return_value={"id": uuid.uuid4()}):
+                    acc = ca.access_for_slug(self.grantee, "haustiere", owner_user_id=self.owner)
+        self.assertIsNotNone(acc)
+        self.assertEqual(acc.role, "viewer")
+        self.assertFalse(acc.can_write)
+
+    def test_access_for_slug_grants_edit(self) -> None:
+        from apps.backend.domain.collections import access as ca
+
+        with mock.patch.object(ca, "share_permission_get", return_value=self._grant("edit")):
+            with mock.patch.object(ca.col_db, "normalize_slug", return_value="haustiere"):
+                with mock.patch.object(ca.col_db, "collection_get", return_value={"id": uuid.uuid4()}):
+                    acc = ca.access_for_slug(self.grantee, "haustiere", owner_user_id=self.owner)
+        self.assertIsNotNone(acc)
+        self.assertEqual(acc.role, "editor")
+        self.assertTrue(acc.can_write)
+
+    def test_no_grant_denies(self) -> None:
+        from apps.backend.domain.collections import access as ca
+
+        with mock.patch.object(ca, "share_permission_get", return_value=None):
+            with mock.patch.object(ca.col_db, "normalize_slug", return_value="haustiere"):
+                self.assertIsNone(
+                    ca.access_for_slug(self.grantee, "haustiere", owner_user_id=self.owner)
+                )
+
+    def test_friend_collection_permission_grants(self) -> None:
+        from apps.backend.domain.shares import collection_grant as cg
+
+        with mock.patch.object(cg, "share_permission_get", return_value=self._grant("view")):
+            with mock.patch.object(cg.col_db, "normalize_slug", return_value="haustiere"):
+                got = cg.friend_collection_permission(self.grantee, self.owner, "haustiere")
+        self.assertIsNotNone(got)
+        self.assertEqual(got["policy"], {"permission": "view"})
+
+    def test_friend_collection_permission_denies_without_grant(self) -> None:
+        from apps.backend.domain.shares import collection_grant as cg
+
+        with mock.patch.object(cg, "share_permission_get", return_value=None):
+            with mock.patch.object(cg.col_db, "normalize_slug", return_value="haustiere"):
+                self.assertIsNone(
+                    cg.friend_collection_permission(self.grantee, self.owner, "haustiere")
+                )
+
+    def test_resolve_collection_reports_read_only(self) -> None:
+        from apps.backend.domain.collections import access as ca
+
+        with mock.patch.object(ca, "share_permission_get", return_value=self._grant("view")):
+            with mock.patch.object(ca.col_db, "normalize_slug", return_value="haustiere"):
+                with mock.patch.object(ca.col_db, "collection_get", return_value={"id": uuid.uuid4()}):
+                    acc, col = ca.resolve_collection(
+                        self.grantee, "haustiere", owner_user_id=self.owner, need_write=True
+                    )
+        self.assertIsNone(acc)
+        self.assertEqual(col, "read-only access")
+
+
 if __name__ == "__main__":
     unittest.main()
