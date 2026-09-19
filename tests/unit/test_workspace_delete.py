@@ -37,7 +37,7 @@ def test_delete_owned_workspace_calls_task_cleanup_before_row_delete() -> None:
             calls.append("project_workspaces")
 
     cur.execute.side_effect = _track
-    cur.fetchone.return_value = ("/tmp/ws", "e2e-test", "server")
+    cur.fetchone.return_value = ("/tmp/ws", "e2e-test", "server", uid, "owner")
 
     conn = MagicMock()
     conn.cursor.return_value.__enter__ = lambda s: cur
@@ -65,7 +65,7 @@ def test_delete_owned_client_workspace_does_not_touch_the_stored_path() -> None:
     uid = uuid.uuid4()
     wid = uuid.uuid4()
     cur = MagicMock()
-    cur.fetchone.return_value = ("/home/me/secret-repo", "laptop", "client")
+    cur.fetchone.return_value = ("/home/me/secret-repo", "laptop", "client", uid, "owner")
     conn = MagicMock()
     conn.cursor.return_value.__enter__ = lambda s: cur
     conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
@@ -82,4 +82,38 @@ def test_delete_owned_client_workspace_does_not_touch_the_stored_path() -> None:
                 ok = delete_owned_workspace(workspace_id=str(wid), owner_user_id=uid)
 
     assert ok is True
+    rm.assert_not_called()
+
+
+def test_delete_denied_for_non_owner_and_leaves_rows_alone() -> None:
+    """The MANAGE guard must short-circuit before any DELETE is issued."""
+    uid = uuid.uuid4()
+    other = uuid.uuid4()
+    wid = uuid.uuid4()
+    deleted: list[str] = []
+
+    cur = MagicMock()
+    # Row belongs to someone else; access_role is irrelevant for a non-owner.
+    cur.fetchone.return_value = ("/tmp/ws", "theirs", "server", other, "owner")
+    cur.execute.side_effect = lambda sql, params=(): (
+        deleted.append(sql) if "DELETE" in sql.upper() else None
+    )
+
+    conn = MagicMock()
+    conn.cursor.return_value.__enter__ = lambda s: cur
+    conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+
+    with patch("apps.backend.infrastructure.db.db.pool") as pool:
+        pool.return_value.connection.return_value.__enter__ = lambda s: conn
+        pool.return_value.connection.return_value.__exit__ = MagicMock(return_value=False)
+        with patch(
+            "apps.backend.infrastructure.workspace.workspace_project_service._delete_workspace_files"
+        ) as rm:
+            with patch(
+                "apps.backend.infrastructure.workspace.workspace_project_service._delete_workspace_index_sidecars"
+            ):
+                ok = delete_owned_workspace(workspace_id=str(wid), owner_user_id=uid)
+
+    assert ok is False
+    assert deleted == []
     rm.assert_not_called()

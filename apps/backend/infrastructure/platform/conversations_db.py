@@ -243,14 +243,6 @@ def conversations_list(
     return [_row_to_list_item(r) for r in rows]
 
 
-def _pref_workspace_allowed(cur: Any, user_id: uuid.UUID, wid: uuid.UUID) -> bool:
-    cur.execute(
-        "SELECT 1 FROM project_workspaces WHERE id = %s AND owner_user_id = %s",
-        (wid, user_id),
-    )
-    return cur.fetchone() is not None
-
-
 def _pref_active_task_allowed(
     cur: Any, user_id: uuid.UUID, tenant_id: int, tid: uuid.UUID
 ) -> bool:

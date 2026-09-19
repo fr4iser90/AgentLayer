@@ -6,6 +6,10 @@ import logging
 from typing import Any
 
 from apps.backend.domain.workspace import resolver as domain
+from apps.backend.infrastructure.access.entity_access_service import (
+    VIEW,
+    can_access_workspace_row,
+)
 from apps.backend.infrastructure.db import db
 from apps.backend.infrastructure.workspace.workspace_columns import WORKSPACE_SELECT_SQL, workspace_row_to_api
 
@@ -22,12 +26,12 @@ class _WorkspaceResolverDeps:
                         f"""
                         SELECT {WORKSPACE_SELECT_SQL}
                         FROM project_workspaces
-                        WHERE id = %s AND (owner_user_id = %s OR access_role IN ('editor', 'viewer'))
+                        WHERE id = %s
                         """,
-                        (str(workspace_id), user.id),
+                        (str(workspace_id),),
                     )
                     row = cur.fetchone()
-            if not row:
+            if not can_access_workspace_row(row, user, VIEW):
                 logger.debug("workspace not found or not accessible: %s", workspace_id)
                 return None
             api = workspace_row_to_api(row)

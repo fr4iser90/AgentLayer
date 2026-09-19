@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from apps.backend.domain.access.entity_access import OWNED, evaluate_workspace_access
 from apps.backend.domain.agent_runtime.task_access import user_may_access_task_row
 from apps.backend.infrastructure.dashboards import dashboard_persistence as dashboard_db
 from apps.backend.infrastructure.db import db
@@ -161,10 +162,15 @@ def shared_chat_can_write(user_id: uuid.UUID, tenant_id: int, dashboard_id: uuid
 
 def pref_workspace_allowed(cur: Any, user_id: uuid.UUID, workspace_id: uuid.UUID) -> bool:
     cur.execute(
-        "SELECT 1 FROM project_workspaces WHERE id = %s AND owner_user_id = %s",
-        (workspace_id, user_id),
+        "SELECT owner_user_id FROM project_workspaces WHERE id = %s",
+        (workspace_id,),
     )
-    return cur.fetchone() is not None
+    row = cur.fetchone()
+    if row is None:
+        return False
+    return evaluate_workspace_access(
+        is_owner=str(row[0] or "") == str(user_id), needed=OWNED
+    )
 
 
 def pref_active_task_allowed(
