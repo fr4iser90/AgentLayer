@@ -27,6 +27,16 @@ def delegate_enabled() -> bool:
     return bool(_cached_row().get("delegate_enabled", True))
 
 
+def friend_system_enabled() -> bool:
+    """Operator kill-switch for friendship and peer sharing (default true).
+
+    Coarse on purpose. There is no per-user or per-tenant granularity here: the
+    subsystem has no per-user entitlement column, and friendship is deliberately
+    cross-tenant, so neither level would have anything to key on.
+    """
+    return bool(_cached_row().get("friend_system_enabled", True))
+
+
 def deployment_mode() -> str:
     v = str(_cached_row().get("deployment_mode") or "multi_tenant").strip().lower()
     return v if v in DEPLOYMENT_MODES else "multi_tenant"
@@ -496,6 +506,7 @@ def public_dict() -> dict[str, Any]:
         "legal_privacy_md": (str(r.get("legal_privacy_md") or "").strip()),
         "legal_terms_md": (str(r.get("legal_terms_md") or "").strip()),
         "dashboards_allowed": bool(r.get("dashboards_allowed", True)),
+        "friend_system_enabled": bool(r.get("friend_system_enabled", True)),
         **media_settings_public_fields(),
         **chat_quota_settings_public_fields(),
         **voice_settings_public_fields(),
