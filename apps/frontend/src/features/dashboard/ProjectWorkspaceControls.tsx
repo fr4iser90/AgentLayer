@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "../../auth/AuthContext";
+import { hasOrgSurface } from "../../auth/deploymentMode";
 import type { AuthContextValue } from "../../auth/AuthContext";
 import { apiFetch, type WorkspaceApiRecord } from "../../lib/api";
 
@@ -20,10 +22,12 @@ export function ProjectWorkspaceControls({
   readOnly = false,
   onWorkspaceChange,
 }: Props) {
-  const { t } = useTranslation(["dashboard", "errors"]);
+  const { t } = useTranslation(["dashboard", "errors", "workspace"]);
+  const { user } = useAuth();
   const [workspaces, setWorkspaces] = useState<WorkspaceApiRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [shareWithCompany, setShareWithCompany] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
   const loadWorkspaces = useCallback(async () => {
@@ -70,6 +74,7 @@ export function ProjectWorkspaceControls({
           source: "git",
           git_url: remote,
           git_branch: defaultBranch || "main",
+          visibility: shareWithCompany ? "tenant" : "private",
         }),
       });
       const j = (await r.json().catch(() => null)) as {
@@ -128,14 +133,27 @@ export function ProjectWorkspaceControls({
             <p className="mb-2 text-[10px] text-amber-300/90">{t("dashboard:workspaceNotFound")}</p>
           ) : null}
           {!readOnly && remote ? (
-            <button
-              type="button"
-              disabled={creating}
-              onClick={() => void createFromRemote()}
-              className="rounded-md border border-violet-500/40 bg-violet-950/30 px-3 py-1.5 text-xs text-violet-100 hover:bg-violet-900/40 disabled:opacity-60"
-            >
-              {creating ? t("dashboard:workspaceCreating") : t("dashboard:workspaceCreateFromRemote")}
-            </button>
+            <>
+              {hasOrgSurface(user) ? (
+                <label className="mb-2 flex items-start gap-2 text-[11px] text-surface-muted">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={shareWithCompany}
+                    onChange={(e) => setShareWithCompany(e.target.checked)}
+                  />
+                  <span>{t("workspace:createShareWithCompany")}</span>
+                </label>
+              ) : null}
+              <button
+                type="button"
+                disabled={creating}
+                onClick={() => void createFromRemote()}
+                className="rounded-md border border-violet-500/40 bg-violet-950/30 px-3 py-1.5 text-xs text-violet-100 hover:bg-violet-900/40 disabled:opacity-60"
+              >
+                {creating ? t("dashboard:workspaceCreating") : t("dashboard:workspaceCreateFromRemote")}
+              </button>
+            </>
           ) : null}
         </>
       )}

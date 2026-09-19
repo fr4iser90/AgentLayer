@@ -225,6 +225,17 @@ export type WorkspaceApiRecord = {
   index_on_write?: string | null;
   graph_index_enabled?: boolean;
   retrieve_context_sources?: string[] | null;
+  tenant_id?: number | null;
+  /** ``tenant`` rows are listed under "company"; anything else is private. */
+  visibility?: "private" | "tenant";
+};
+
+export type WorkspaceListScope = "mine" | "company";
+
+export type WorkspaceListResponse = {
+  workspaces?: WorkspaceApiRecord[];
+  scope?: WorkspaceListScope;
+  tenant_id?: number | null;
 };
 
 export type WorkspaceIndexJob = {

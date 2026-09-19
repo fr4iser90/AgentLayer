@@ -141,9 +141,31 @@ def _get_self_workspace(user) -> dict[str, Any] | None:
 
 
 @router.get("")
-async def list_workspaces(request: Request):
-    """List all workspaces for the current user, including built-in AgentLayer workspace if enabled."""
+async def list_workspaces(request: Request, scope: str = "mine"):
+    """List workspaces for the current user.
+
+    ``scope=mine`` (default) is what there always been: the user's own
+    workspaces, plus the built-in AgentLayer one when self-editing is on.
+
+    ``scope=company`` lists the tenant-visible workspaces of the caller's own
+    tenant, whoever created them. The tenant is resolved from the caller, never
+    from the request, so this cannot be pointed at another company. Anything
+    private stays out of it by construction.
+    """
     user = await get_current_user(request)
+    wanted = (scope or "mine").strip().lower()
+
+    if wanted == "company":
+        tenant_id = ws_services.db.user_tenant_id(user.id)
+        if tenant_id is None:
+            return {"workspaces": [], "scope": "company", "tenant_id": None}
+        rows = ws_services.fetch_company_workspace_rows(int(tenant_id))
+        return {
+            "workspaces": [_row_to_workspace(r) for r in rows],
+            "scope": "company",
+            "tenant_id": int(tenant_id),
+        }
+
     rows = ws_services.fetch_owned_workspace_rows(user.id)
 
     workspaces = [_row_to_workspace(r) for r in rows]
@@ -158,7 +180,7 @@ async def list_workspaces(request: Request):
         if self_ws.get("id") not in existing_ids:
             workspaces.insert(0, self_ws)
 
-    return {"workspaces": workspaces}
+    return {"workspaces": workspaces, "scope": "mine"}
 
 @router.post("")
 async def create_workspace(request: Request, body: WorkspaceCreateBody):
