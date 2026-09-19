@@ -187,6 +187,176 @@ check("unregistered type 'payroll_export' is grantable and readable",
                           resource_identifier="primary") is not None,
       "a registry (ADR 0014 option A) must refuse this; today nothing does")
 
+# ── the shared-calendar adapter (ADR 0014 Principle 1) ────────────────────────
+# Everything below runs for real except the network: the secret is written with
+# the real encrypting upsert, read back through the real decrypting getter,
+# resolved by the adapter and guarded. Only httpx.Client is stood in for, so the
+# check does not depend on outbound internet.
+
+import json  # noqa: E402
+
+import httpx  # noqa: E402
+
+from plugins.tools.personal.calendar import ics  # noqa: E402
+
+LENA_ICS = "https://calendar.example.org/ical/lena/basic.ics"
+
+
+def _ics_doc(*summaries: str) -> bytes:
+    from datetime import datetime, timedelta, timezone
+
+    base = datetime.now(timezone.utc) + timedelta(hours=2)
+    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//agentlayer//fixture//EN"]
+    for i, s in enumerate(summaries):
+        st = base + timedelta(days=i)
+        lines += [
+            "BEGIN:VEVENT",
+            f"UID:fixture-{i}@agentlayer.test",
+            f"SUMMARY:{s}",
+            "DTSTART:" + st.strftime("%Y%m%dT%H%M%SZ"),
+            "DTEND:" + (st + timedelta(hours=1)).strftime("%Y%m%dT%H%M%SZ"),
+            "END:VEVENT",
+        ]
+    lines.append("END:VCALENDAR")
+    return ("\r\n".join(lines) + "\r\n").encode()
+
+
+class _Resp:
+    def __init__(self, status_code=200, location=None, content=b"BEGIN:VCALENDAR\r\nEND:VCALENDAR"):
+        self.status_code = status_code
+        self.content = content
+        self.text = content.decode("utf-8", "replace")
+        self.headers = {} if location is None else {"location": location}
+
+
+class _NoNetClient:
+    def __init__(self):
+        self.requested: list[str] = []
+
+    def get(self, url, headers=None):
+        self.requested.append(url)
+        return _Resp(200, content=_ics_doc("Schicht 12:00", "Zahnarzt"))
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+def _with_stubbed_network(fn):
+    client = _NoNetClient()
+    real = httpx.Client
+    httpx.Client = lambda *a, **k: client  # type: ignore[assignment]
+    try:
+        out = fn()
+    finally:
+        httpx.Client = real  # type: ignore[misc]
+    return out, client
+
+
+# Write a real, encrypted calendar secret for Lena and read her calendar the way
+# a grantee's tool call does.
+appdb.user_secret_upsert(LENA, "google_calendar", json.dumps({"ics_url": LENA_ICS}))
+
+seen_reads: list[tuple[str, str]] = []
+_real_get = appdb.user_secret_get_plaintext
+
+
+def _spy_get(uid, service_key):
+    seen_reads.append((str(uid), service_key))
+    return _real_get(uid, service_key)
+
+
+appdb.user_secret_get_plaintext = _spy_get
+try:
+    res, client = _with_stubbed_network(
+        lambda: ics.fetch_shared_calendar(LENA, days_ahead=7)
+    )
+finally:
+    appdb.user_secret_get_plaintext = _real_get
+
+check("shared calendar resolves the owner's ENCRYPTED secret and parses events",
+      res.get("ok") is True and res.get("count") == 2,
+      f"count={res.get('count')} events={[e['summary'] for e in res.get('events', [])]}")
+
+def _all_keys(obj):
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            yield k
+            yield from _all_keys(v)
+    elif isinstance(obj, list):
+        for v in obj:
+            yield from _all_keys(v)
+
+
+_CREDENTIAL_KEYS = {"ics_url", "url", "secret", "token", "ciphertext", "api_key"}
+
+check("the bearer URL is nowhere in what the grantee receives",
+      LENA_ICS not in json.dumps(res)
+      and not [k for k in _all_keys(res) if k.lower() in _CREDENTIAL_KEYS],
+      f"keys={sorted(set(_all_keys(res)))}")
+
+check("the secret was read for the OWNER (Lena), never the caller",
+      bool(seen_reads) and all(u == str(LENA) for u, _ in seen_reads),
+      f"reads={seen_reads}")
+
+appdb.user_secret_upsert(
+    LENA, "google_calendar",
+    json.dumps({"ics_url": "http://169.254.169.254/latest/meta-data/"}),
+)
+blocked, client2 = _with_stubbed_network(
+    lambda: ics.fetch_shared_calendar(LENA, days_ahead=7)
+)
+check("the guard still runs on the shared path (internal owner URL refused)",
+      blocked.get("ok") is False and "blocked_ssrf" in str(blocked.get("error")),
+      f"error={blocked.get('error')} requested={client2.requested}")
+
+check("an owner with no calendar secret is reported, not silently empty",
+      ics.fetch_shared_calendar(BOB, days_ahead=7).get("error")
+      == "owner_has_no_calendar_configured",
+      "bob has no secret stored")
+
+# The grant layer and the adapter are separate: Tim's grant on Anna's calendar
+# must resolve the secret of ANNA, the owner.
+tim_grant = share_permission_get(owner_user_id=ANNA, grantee_user_id=TIM,
+                                resource_type="google_calendar",
+                                resource_identifier="primary")
+appdb.user_secret_upsert(ANNA, "google_calendar", json.dumps({"ics_url": LENA_ICS}))
+seen_owner_reads: list[str] = []
+
+
+def _spy_owner(uid, service_key):
+    seen_owner_reads.append(str(uid))
+    return _real_get(uid, service_key)
+
+
+appdb.user_secret_get_plaintext = _spy_owner
+try:
+    _owner_res, _ = _with_stubbed_network(
+        lambda: ics.fetch_shared_calendar(ANNA, days_ahead=7)
+    )
+finally:
+    appdb.user_secret_get_plaintext = _real_get
+
+check("reading via Tim's grant touches ANNA's secret (owner, not grantee)",
+      tim_grant is not None and seen_owner_reads
+      and all(u == str(ANNA) for u in seen_owner_reads),
+      f"reads={seen_owner_reads}")
+
+# Leave the fixture as the seed SQL wrote it.
+with appdb.pool().connection() as conn:
+    with conn.cursor() as cur:
+        cur.execute(
+            "DELETE FROM user_secrets WHERE user_id IN (%s, %s)", (LENA, ANNA)
+        )
+    conn.commit()
+check("fixture secrets cleaned up",
+      appdb.user_secret_get_plaintext(LENA, "google_calendar") is None
+      and appdb.user_secret_get_plaintext(ANNA, "google_calendar") is None,
+      "user_secrets rows for Lena/Anna removed")
+
+
 # ── report ────────────────────────────────────────────────────────────────────
 
 width = max(len(n) for n, _, _ in results)

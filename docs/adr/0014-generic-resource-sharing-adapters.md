@@ -10,10 +10,15 @@ tags: [adr, sharing, friends, grants, adapters, projection, credentials, ssrf]
 
 **Proposed.** Raised 2026-09-20 as a design question, not a change request.
 The architecture proposed in §5 has **not** been implemented. What *has*
-changed is one defect this analysis surfaced and that was fixed on its own
-merits — the always-deny collection grant (§1.3.1). Everything else here
-records what was verified in the current code, names the problem the current
-shape cannot solve, and costs the options.
+changed are three defects this analysis surfaced, each fixed on its own merits:
+
+- the always-deny collection grant (§1.3.1) — `15c2e58`
+- the redirect bypass of the ICS SSRF guard (§1.6) — `b2bca1c`
+- the calendar secret crossing, i.e. Principle 1 applied to the one path
+  where it was violated (§1.7.1) — this change
+
+Everything else here records what was verified in the current code, names the
+problem the current shape cannot solve, and costs the options.
 
 Companion reading: [ADR 0013](0013-os-level-workspace-isolation.md) covers
 the *filesystem* boundary; this one covers the *peer-to-peer data* boundary.
@@ -246,6 +251,79 @@ calendar** labelled as the friend's.
 That is the whole argument for this ADR in one line: a system with no
 resource abstraction does not fail loudly when wired up wrong, it returns
 **someone else's data with the right name on it**.
+
+### 1.7.1 Resolved: the calendar secret no longer crosses
+
+Principle 1 (§5) says an adapter returns a projection, not raw access. The
+calendar path was the one place that violated it, and it is now the reference
+implementation of the principle.
+
+**What the boundary is.** Before writing anything the product intent was
+checked rather than assumed: `ShareWidgetBlock.tsx` renders
+`• {summary} — {start}` from the preview endpoint, so a friend's *event
+titles are intended output*. Principle 1's prohibition is on
+"a URL, a secret, a token, or a handle" — the credential, not the event
+data. Stripping titles would have broken the widget while leaving the actual
+exposure untouched. The fix therefore narrows to: **the ICS address must
+never be a value the requesting side holds.**
+
+**The change.** `plugins/tools/personal/calendar/ics.py` gained
+`fetch_shared_calendar(owner_user_id, *, days_ahead)`. It resolves the
+*owner's* own secret, applies `_url_host_safe`, fetches through the
+per-hop redirect guard, and returns the event projection. The URL appears
+nowhere in the result; only `source_hint` survives, a two-valued label
+(`google_ical` / `ics_url`) that is not reversible into an address. The
+fetch/parse/shape body was extracted into `_events_for_window()` and is
+shared with `list_events`, so there is one fetch path, not two that can
+drift.
+
+`_resolve_ics_url(uid)` is the only function that reads a stored secret by
+uid and deliberately applies **no** guard — its docstring says the caller
+must guard. Both callers do.
+
+**Dead code removed.** `friend_calendar_ics_url` and
+`_parse_calendar_secret` are gone from
+`plugins/tools/integrations/friends/lib/common.py`, along with their
+re-exports from `lib/__init__.py` and the now-unused `CALENDAR_SECRET_KEYS`
+and `json` imports. The module docstring records *why* there is no calendar
+helper here, so nobody helpfully reintroduces one. Both call sites
+(`friends/calendar.py`, `shares_api.py`) now import
+`fetch_shared_calendar`; the `ImportError` branch that produced *"calendar
+parser is not available"* is gone because the name resolves.
+
+**The misleading test, and what it hid.** `tests/unit/test_friend_shares.py`
+injected a fake `plugins.tools.personal.calendar.ics` module *providing*
+`calendar_ics`. It asserted the policy-cap behaviour against a function the
+real module never had, so it stayed green while every real call failed. It
+now patches the real `fetch_shared_calendar` name. This is worth
+generalising: **a test that stubs a symbol by name verifies the stub, not the
+module.** Injecting a whole replacement module is the worst form of it,
+because the replacement can be whatever the author assumed.
+
+**Two gaps the live run caught that the unit tests missed.** Both are worth
+recording because they are the reason §7 insists on running rather than
+reading:
+
+1. `source_hint` legitimately takes the literal string `"ics_url"` as its
+   *value* for non-Google hosts. The unit assertion
+   `assertNotIn("ics_url", blob)` passed only because its fixture URL
+   pointed at `calendar.google.com` and produced `google_ical`. The check
+   is now a recursive key scan against a credential-name set, plus a
+   non-Google-host case so both label values are covered.
+2. The unit tests never proved the adapter reads the *owner's encrypted*
+   secret through the real decrypting getter. The fixture run does: it
+   writes a real secret with the real encrypting upsert, spies on which uid
+   the getter receives, and asserts the read targeted the owner and never
+   the caller — the exact confusion §1.7 warns would produce "the
+   requester's own calendar labelled as the friend's".
+
+**Verified.** `tests/unit/test_shared_calendar_projection.py` (13 tests)
+plus the seven new live checks in
+`scripts/validate_friend_sharing_fixture.py` (32/32). Mutation-checked:
+adding `| {"ics_url": url}` to the adapter's return fails the projection
+test with the full secret visible in the failure text; replacing the owner
+uid with `get_identity()` fails ten tests. Positive controls pass either
+way by design.
 
 ### 1.8 The adapter shape already exists — twice
 
@@ -682,9 +760,17 @@ docker compose run --rm -e PYTHONPATH=/code agent-layer \
     python /code/scripts/validate_friend_sharing_fixture.py
 ```
 
-Current result: **25/25**. The run is what turned §1.3 from a static grep
-into an observed behaviour — and what surfaced the always-deny bug that the
-grep had mis-scored as "enforced".
+Current result: **32/32** — the original 25 grant checks plus the seven
+calendar-adapter checks added with §1.7.1, which cover items 1, 4 and 9 of
+the plan above for the calendar specifically: the projection is served, the
+credential is absent from every nested key, the read targets the owner's
+encrypted secret rather than the caller's, and the host guard still refuses
+an internal owner URL before any request leaves the process. The network is
+the only stubbed layer.
+
+The run is what turned §1.3 from a static grep into an observed behaviour —
+and what surfaced the always-deny bug that the grep had mis-scored as
+"enforced".
 
 Two things worth carrying forward from how that happened:
 
