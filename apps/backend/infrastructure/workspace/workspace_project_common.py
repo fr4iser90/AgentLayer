@@ -6,6 +6,12 @@ import re
 from pathlib import Path
 from typing import Any
 
+from apps.backend.domain.workspace.location import (
+    tenant_workspace_root,
+    user_workspace_root,
+    workspace_root_for,
+)
+
 AGENTLAYER_SELF_NAME = "agentlayer-self"
 _WORKSPACE_NAME_MAX_LEN = 255
 _CLIENT_PATH_MAX_LEN = 4096
@@ -62,15 +68,46 @@ def validate_client_workspace_path(raw: str | None) -> str:
     return p
 
 
-def resolve_user_workspace_dir(base: Path, user_id: Any, name: str) -> Path:
+def _contained_under(root: Path, name: str) -> Path:
+    """Resolve ``name`` under ``root``, refusing anything that escapes it.
+
+    The root is a parameter because there are two of them now. Hardcoding the
+    user root here is what would put a tenant workspace outside its guard.
+    """
     nm = validate_workspace_name(name)
-    user_root = (base / str(user_id)).resolve()
-    target = (user_root / nm).resolve()
+    root_r = root.resolve()
+    target = (root_r / nm).resolve()
     try:
-        target.relative_to(user_root)
+        target.relative_to(root_r)
     except ValueError:
         raise WorkspaceCreateError("invalid workspace name") from None
     return target
+
+
+def resolve_user_workspace_dir(base: Path, user_id: Any, name: str) -> Path:
+    return _contained_under(user_workspace_root(base, user_id), name)
+
+
+def resolve_tenant_workspace_dir(base: Path, tenant_id: int, name: str) -> Path:
+    return _contained_under(tenant_workspace_root(base, tenant_id), name)
+
+
+def resolve_workspace_dir(
+    base: Path,
+    name: str,
+    *,
+    visibility: str,
+    owner_user_id: Any,
+    tenant_id: int | None,
+) -> Path:
+    """The create-time directory for a workspace, from the domain's placement rule."""
+    root = workspace_root_for(
+        base=base,
+        visibility=visibility,
+        owner_user_id=owner_user_id,
+        tenant_id=tenant_id,
+    )
+    return _contained_under(root, name)
 
 
 def workspace_base_path() -> Path:

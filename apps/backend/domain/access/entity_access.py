@@ -29,6 +29,8 @@ NEEDED_LEVELS = (OWNED, VIEW, EDIT, MANAGE)
 PRIVATE = "private"
 TENANT_VISIBLE = "tenant"
 
+VISIBILITY_VALUES = (PRIVATE, TENANT_VISIBLE)
+
 TENANT_ADMIN_ROLE = "tenant_admin"
 TENANT_MEMBER_ROLE = "tenant_member"
 
@@ -53,6 +55,17 @@ def dashboard_role_rank(role: str | None) -> int:
 
 def tenant_role_rank(role: str | None) -> int:
     return _TENANT_ROLE_RANK.get(str(role or "").strip().lower(), 0)
+
+
+def normalize_visibility(raw: object) -> str:
+    """Anything unrecognised means ``private``.
+
+    A typo in a create request must not turn somebody's workspace into
+    company-visible content, so the fallback is the narrower value — the same
+    direction ``normalize_execution_mode`` takes for the same reason.
+    """
+    v = str(raw or "").strip().lower()
+    return TENANT_VISIBLE if v == TENANT_VISIBLE else PRIVATE
 
 
 def evaluate_workspace_access(
