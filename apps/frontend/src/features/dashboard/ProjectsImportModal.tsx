@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "../../auth/AuthContext";
+import { hasOrgSurface } from "../../auth/deploymentMode";
 import type { AuthContextValue } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 
@@ -55,13 +57,15 @@ export function ProjectsImportModal({
   listPath,
   onImported,
 }: Props) {
-  const { t } = useTranslation(["dashboard", "errors", "admin"]);
+  const { t } = useTranslation(["dashboard", "errors", "admin", "workspace"]);
+  const { user } = useAuth();
   const [repos, setRepos] = useState<GithubRepoRow[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [createWorkspaces, setCreateWorkspaces] = useState(false);
+  const [shareWithCompany, setShareWithCompany] = useState(false);
   const [skipExisting, setSkipExisting] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
@@ -129,6 +133,7 @@ export function ProjectsImportModal({
     setError(null);
     setResultMsg(null);
     const workspaceErrors: string[] = [];
+    const visibilityNotApplied: string[] = [];
     try {
       const rows: Array<Record<string, unknown>> = [];
       for (const r of picked) {
@@ -141,10 +146,14 @@ export function ProjectsImportModal({
             git_url: r.clone_url,
             git_branch: r.default_branch || "main",
             bind: false,
+            visibility: shareWithCompany ? "tenant" : "private",
           });
           if (!ws.ok) {
             workspaceErrors.push(`${r.full_name}: ${ws.error ?? "workspace failed"}`);
           } else {
+            if (shareWithCompany && ws.company_visibility_applied !== true) {
+              visibilityNotApplied.push(r.full_name);
+            }
             const w = ws.workspace as { id?: string; path?: string } | undefined;
             workspaceId = String(w?.id ?? "");
             projectPath = String(w?.path ?? "");
@@ -185,8 +194,15 @@ export function ProjectsImportModal({
       if (dashRes.ok && dashBody?.dashboard?.data && typeof dashBody.dashboard.data === "object") {
         onImported(dashBody.dashboard.data);
       }
-      if (workspaceErrors.length > 0) {
-        setError(workspaceErrors.join("; "));
+      const problems: string[] = [];
+      if (workspaceErrors.length > 0) problems.push(workspaceErrors.join("; "));
+      if (visibilityNotApplied.length > 0) {
+        problems.push(
+          t("dashboard:importVisibilityNotApplied", { names: visibilityNotApplied.join(", ") })
+        );
+      }
+      if (problems.length > 0) {
+        setError(problems.join(" | "));
       }
     } catch (e) {
       setError(String(e));
@@ -245,6 +261,16 @@ export function ProjectsImportModal({
             />
             {t("dashboard:importCreateWorkspaces")}
           </label>
+          {createWorkspaces && hasOrgSurface(user) ? (
+            <label className="flex items-center gap-2 text-xs text-neutral-200">
+              <input
+                type="checkbox"
+                checked={shareWithCompany}
+                onChange={(e) => setShareWithCompany(e.target.checked)}
+              />
+              {t("workspace:createShareWithCompany")}
+            </label>
+          ) : null}
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-3">
