@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "./AuthContext";
 import { hasOrgSurface } from "./deploymentMode";
 import { defaultLandingPath } from "./tenantSurface";
+import { canManageWorkspaceGrants } from "../pages/admin/accessGating";
 
 /** Tenant org surface — `/app/org` (multi_tenant only). */
 export function RequireOrgAdmin() {
@@ -35,12 +36,24 @@ export function RequireOrgAdmin() {
   const onSetup = location.pathname.includes("/org/setup");
   const onKnowledge = location.pathname.includes("/org/knowledge");
   const onTeam = location.pathname.includes("/org/team");
+  const onGrants = location.pathname.includes("/org/grants");
+
+  // Company sharing is delegated work: a tenant admin, or anyone granted
+  // `workspace.manage`, reaches it without being a site admin. The API
+  // applies the same capability plus a tenant range; this only decides
+  // whether the screen is reachable at all.
+  const canManageGrants = tenantAdmin || canManageWorkspaceGrants(user);
 
   if (onTeam && !canManageTeam) {
     return <Navigate to="/org/knowledge" replace />;
   }
 
-  const orgAllowed = tenantAdmin || canEditContent || (onTeam && canManageTeam);
+  if (onGrants && !canManageGrants) {
+    return <Navigate to="/org/knowledge" replace />;
+  }
+
+  const orgAllowed =
+    tenantAdmin || canEditContent || canManageGrants || (onTeam && canManageTeam);
   if (!orgAllowed) {
     return <Navigate to={defaultLandingPath(user)} replace />;
   }

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "../auth/AuthContext";
+import { canManageWorkspaceGrants } from "../pages/admin/accessGating";
 
 const item =
   "block rounded-lg border border-transparent px-3 py-2 text-sm transition-colors";
@@ -21,6 +23,7 @@ function NavGroup({ label, children }: { label: string; children: ReactNode }) {
 /** Tenant-scoped day-2 admin — separate from platform operator `/admin`. */
 export function OrgAdminLayout() {
   const { t } = useTranslation(["org"]);
+  const { user } = useAuth();
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface md:flex-row">
       <aside className="shrink-0 border-b border-surface-border bg-[#111] px-3 py-4 md:w-56 md:border-b-0 md:border-r">
@@ -44,6 +47,16 @@ export function OrgAdminLayout() {
               {t("org:navTeam")}
             </NavLink>
           </NavGroup>
+          {canManageWorkspaceGrants(user) ? (
+            <NavGroup label={t("org:navSharing")}>
+              <NavLink
+                to="/org/grants"
+                className={({ isActive }) => `${item} ${isActive ? itemActive : itemIdle}`}
+              >
+                {t("org:navGrants")}
+              </NavLink>
+            </NavGroup>
+          ) : null}
         </nav>
         <NavLink
           to="/"

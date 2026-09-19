@@ -19,6 +19,21 @@ export interface AccessTarget {
 }
 
 const AGENT_ASSIGN_CAP = "agent.assign";
+const WORKSPACE_MANAGE_CAP = "workspace.manage";
+
+/**
+ * Whether the actor may manage company sharing grants on workspaces.
+ *
+ * Mirrors the backend gate: `require_admin_scope(request, "workspace.manage")`,
+ * which is the capability plus a tenant range. A site admin holds every
+ * capability; a delegated holder needs the slug granted. The tenant range is
+ * not expressible client-side and is deliberately not guessed here — the API
+ * enforces it, this only decides whether the screen is reachable.
+ */
+export function canManageWorkspaceGrants(actor?: AccessActor | null): boolean {
+  if (actor?.site_role === "site_admin") return true;
+  return normalizeCapabilities(actor).has(WORKSPACE_MANAGE_CAP);
+}
 
 /** Lowercase + trim each granted capability slug; drop blanks and duplicates. */
 export function normalizeCapabilities(
