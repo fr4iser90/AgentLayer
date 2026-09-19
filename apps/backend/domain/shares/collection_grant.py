@@ -6,7 +6,6 @@ import uuid
 from typing import Any, Protocol
 
 from apps.backend.domain.collections import db as col_db
-from apps.backend.domain.shares.policy import grant_is_active
 
 COLLECTION_RESOURCE_TYPE = "collection"
 
@@ -74,13 +73,10 @@ def friend_collection_permission(
         resource_type=COLLECTION_RESOURCE_TYPE,
         resource_identifier=norm,
     )
-    if not grant or not grant.get("is_allowed"):
-        return None
-    policy_raw = grant.get("policy") if isinstance(grant.get("policy"), dict) else {}
-    if not grant_is_active(
-        is_allowed=True,
-        revoked_at=grant.get("revoked_at"),
-        policy=policy_raw,
-    ):
+    # share_permission_get filters revoked/inactive rows in SQL and applies
+    # grant_is_active to the stored row before returning, so a returned grant is
+    # active by contract. Its dict carries no is_allowed / revoked_at key —
+    # reading them here made every friend grant deny.
+    if grant is None:
         return None
     return grant
