@@ -53,7 +53,7 @@ def friend_request_get_between(user_id_1: uuid.UUID, user_id_2: uuid.UUID) -> di
                 """
                 SELECT id, tenant_id, from_user_id, to_user_id, status, message, created_at, responded_at
                 FROM friend_requests
-                WHERE (from_user_id = %s AND to_user_id = %s) OR (from_user_id = %s AND to_user_id = %s)
+                WHERE ((from_user_id = %s AND to_user_id = %s) OR (from_user_id = %s AND to_user_id = %s))
                 AND status = 'pending'
                 LIMIT 1
                 """,
@@ -66,6 +66,8 @@ def friend_request_get_between(user_id_1: uuid.UUID, user_id_2: uuid.UUID) -> di
 
 def friend_requests_incoming(user_id: uuid.UUID) -> list[dict[str, Any]]:
     """Get all incoming pending friend requests for a user"""
+    # tenant-scope: guarded — fr.to_user_id is the authenticated caller, so the
+    # listing only ever contains requests addressed to them.
     with pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
@@ -85,6 +87,8 @@ def friend_requests_incoming(user_id: uuid.UUID) -> list[dict[str, Any]]:
 
 def friend_requests_outgoing(user_id: uuid.UUID) -> list[dict[str, Any]]:
     """Get all outgoing pending friend requests for a user"""
+    # tenant-scope: guarded — fr.from_user_id is the authenticated caller, so
+    # the listing only ever contains requests they sent.
     with pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
@@ -107,6 +111,8 @@ def friend_request_accept(request_id: int, tenant_id: int, from_user_id: uuid.UU
     with pool().connection() as conn:
         with conn.cursor() as cur:
             # Update request status
+            # tenant-scope: guarded — the accept handler 404s unless
+            # req.to_user_id == the authenticated caller.
             cur.execute(
                 """
                 UPDATE friend_requests
@@ -130,6 +136,8 @@ def friend_request_accept(request_id: int, tenant_id: int, from_user_id: uuid.UU
             )
 
             # Automatically add each other to known_people
+            # tenant-scope: guarded — row keyed to one party's own user_id, so
+            # the statement cannot reach a third user's profile.
             cur.execute(
                 """
                 UPDATE user_agent_profile
@@ -143,6 +151,8 @@ def friend_request_accept(request_id: int, tenant_id: int, from_user_id: uuid.UU
                 (from_user_id, to_user_id),
             )
 
+            # tenant-scope: guarded — mirror of the above, keyed to the other
+            # party's own user_id.
             cur.execute(
                 """
                 UPDATE user_agent_profile
@@ -162,6 +172,9 @@ def friend_request_accept(request_id: int, tenant_id: int, from_user_id: uuid.UU
 
 def friend_request_decline(request_id: int) -> bool:
     """Decline a friend request"""
+    # tenant-scope: guarded — the decline handler 404s unless
+    # req.to_user_id == the authenticated caller, so a bare request id here is
+    # already confined to the caller's own incoming requests.
     with pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -196,6 +209,9 @@ def friend_get(user_id: uuid.UUID, friend_user_id: uuid.UUID) -> dict[str, Any] 
 
 def friends_list(user_id: uuid.UUID) -> list[dict[str, Any]]:
     """List all confirmed friends for a user"""
+    # tenant-scope: guarded — f.user_id is the authenticated caller. Friendship
+    # is deliberately cross-tenant, so friends.tenant_id is not the boundary
+    # here; the actor scoping is (see docs/security/rbac.md §8).
     with pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
@@ -216,6 +232,8 @@ def friends_list(user_id: uuid.UUID) -> list[dict[str, Any]]:
 
 def friend_remove(user_id: uuid.UUID, friend_user_id: uuid.UUID) -> bool:
     """Remove a friend (removes both sides)"""
+    # tenant-scope: guarded — the caller passes its own id as one side; the OR
+    # only reaches the mirror row of that same pair, never a third pair.
     with pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -232,6 +250,8 @@ def friend_remove(user_id: uuid.UUID, friend_user_id: uuid.UUID) -> bool:
 
 def friend_update(user_id: uuid.UUID, friend_user_id: uuid.UUID, relation: str | None = None, note: str | None = None) -> bool:
     """Update friend metadata fields for your side of the friendship"""
+    # tenant-scope: guarded — confined to the caller's own side of the pair
+    # (user_id = caller), so only the caller's own metadata row is written.
     with pool().connection() as conn:
         with conn.cursor() as cur:
             update_fields = []

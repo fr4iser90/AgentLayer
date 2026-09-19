@@ -68,15 +68,17 @@ def calendar(arguments: dict[str, Any]) -> Any:
         friend_user_id = uuid.UUID(friend_user["friend_user_id"])
         friend_display_name = friend_user.get("display_name") or friend_user.get("email")
 
-        # Step 2: Check share permission (google_calendar + legacy calendar alias)
-        has_access = share_permission_check_resolved(
+        # Step 2: Load the grant row (google_calendar + legacy calendar alias).
+        # The policy carried on the row caps the horizon below, so the row itself
+        # is needed downstream — a boolean would leave nothing to read it from.
+        grant = share_permission_get(
             owner_user_id=friend_user_id,
             grantee_user_id=requesting_user_id,
             resource_type=SHARE_RESOURCE_GOOGLE_CALENDAR,
             resource_identifier="primary",
         )
-        
-        if not has_access:
+
+        if grant is None:
             res = {
                 "result": f"{friend_display_name} has not shared their calendar with you."
             }
