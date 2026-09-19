@@ -357,6 +357,104 @@ check("fixture secrets cleaned up",
       "user_secrets rows for Lena/Anna removed")
 
 
+# ── the adapter registry (ADR 0014 steps 1–2) ────────────────────────────────
+# Step 2 says "wrap the two working adapters without changing their
+# behaviour". The only proof of that is comparing the registry's answer to
+# the direct call on the same rows.
+
+from apps.backend.domain.shares import collection_grant as _cg  # noqa: E402
+from apps.backend.domain.shares import dashboard_grant as _dg  # noqa: E402
+from apps.backend.domain.shares import registry as reg  # noqa: E402
+from apps.backend.domain.shares.adapter import find_credential_keys  # noqa: E402
+from apps.backend.infrastructure.shares import share_registry_service  # noqa: F401,E402
+
+
+def _conflict_refused() -> bool:
+    """Binding 'dashboard' to a second adapter must raise, not override."""
+
+    class _Usurper:
+        resource_types = ("dashboard",)
+        policy_fields = frozenset()
+
+        def normalize_identifier(self, raw):
+            return raw
+
+        def resolve(self, **kw):
+            return {"role": "editor"}
+
+        def list_shared(self, g):
+            return []
+
+    try:
+        reg.register_share_adapter(_Usurper())
+    except reg.ShareRegistryError:
+        return True
+    return False
+
+check("registry has the shipped types bound",
+      reg.registered_resource_types() == ("collection", "dashboard"),
+      f"registered={reg.registered_resource_types()}")
+
+direct_dash = _dg.friend_dashboard_access_detail(LENA, ANNA_DASHBOARD)
+via_reg = reg.resolve_projection(
+    resource_type="dashboard",
+    owner_user_id=ANNA,
+    grantee_user_id=LENA,
+    identifier=str(ANNA_DASHBOARD),
+)
+check("registry dashboard resolve == direct adapter call (behaviour preserved)",
+      via_reg.served and via_reg.projection == direct_dash,
+      f"direct={direct_dash} via_registry={via_reg.projection}")
+
+direct_col = _cg.friend_collection_permission(LENA, ANNA, "haustiere")
+via_reg_col = reg.resolve_projection(
+    resource_type="collection",
+    owner_user_id=ANNA,
+    grantee_user_id=LENA,
+    identifier="haustiere",
+)
+check("registry collection resolve == direct adapter call (behaviour preserved)",
+      via_reg_col.served and via_reg_col.projection == direct_col,
+      f"direct={direct_col} via_registry={via_reg_col.projection}")
+
+# The inert types are grantable and readable-as-granted, but the registry
+# refuses them: no adapter means no read. This is the pre-registry "a grant
+# looked like access" failure mode, closed.
+inert_refusals = {}
+for t in ("github_activity", "todoist", "notes", "roadmap"):
+    out = reg.resolve_projection(
+        resource_type=t, owner_user_id=ANNA, grantee_user_id=LENA, identifier="primary"
+    )
+    inert_refusals[t] = (out.served, out.refusal)
+check("all four inert types are refused by the registry (grantable, not readable)",
+      all(served is False and r == "no_adapter_registered"
+          for served, r in inert_refusals.values()),
+      f"{inert_refusals}")
+
+# Honest surfacing of the two parallel truths: google_calendar has a working
+# bespoke reader but is NOT in the registry yet (that is step 7). Until it
+# migrates, registered_resource_types() under-reports what is readable.
+cal_out = reg.resolve_projection(
+    resource_type="google_calendar",
+    owner_user_id=ANNA,
+    grantee_user_id=TIM,
+    identifier="primary",
+)
+check("google_calendar is NOT yet registry-backed (step 7 pending), though its "
+      "bespoke reader works",
+      cal_out.refusal == "no_adapter_registered",
+      "the generic tool must not treat registered_resource_types() as the full "
+      "readable set until step 7 lands")
+
+check("real fixture projections pass the Principle 1 gate",
+      find_credential_keys(direct_dash) == [] and find_credential_keys(direct_col) == [],
+      f"dash_leaks={find_credential_keys(direct_dash)} col_leaks={find_credential_keys(direct_col)}")
+
+check("registry refuses a conflicting adapter rather than silently overriding",
+      _conflict_refused(),
+      "binding 'dashboard' to a second adapter raises")
+
+
 # ── report ────────────────────────────────────────────────────────────────────
 
 width = max(len(n) for n, _, _ in results)

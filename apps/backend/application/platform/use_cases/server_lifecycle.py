@@ -58,6 +58,7 @@ from apps.backend.infrastructure.scheduling.scheduler_jobs_runner import (
     stop_scheduler_jobs_worker,
 )
 from apps.backend.infrastructure.settings import operator_voice_settings_service as _operator_voice_settings_service  # noqa: F401
+from apps.backend.infrastructure.shares import share_registry_service as _share_registry_service  # noqa: F401
 from apps.backend.infrastructure.tools import tool_forward_policy_service as _tool_forward_policy_service  # noqa: F401
 from apps.backend.infrastructure.tools import tool_policy_service as _tool_policy_service  # noqa: F401
 from apps.backend.infrastructure.tools import tool_routing_service as _tool_routing_service  # noqa: F401
