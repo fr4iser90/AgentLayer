@@ -38,6 +38,7 @@ from apps.backend.application.identity.use_cases.request_auth import (
     verify_password,
 )
 from apps.backend.domain.access.capabilities import AdminScopeError, CAP_USER_MANAGE
+from apps.backend.domain.access.tenant_ownership import TenantOwnedEntitiesConflict
 from apps.backend.domain.shared.identity import reset_identity, set_identity
 from apps.backend.domain.shared.http_identity import resolve_chat_identity
 from apps.backend.application.platform.use_cases.platform_controller_services import http_500_detail
@@ -172,6 +173,11 @@ async def admin_patch_user(request: Request, user_id: uuid.UUID, body: AdminPatc
                 raise HTTPException(status_code=400, detail="unknown tenant_id")
             if not update_user_tenant(user_id, body.tenant_id):
                 raise HTTPException(status_code=404, detail="user not found")
+    except TenantOwnedEntitiesConflict as exc:
+        # Not a permission failure — the actor may be entitled to move this
+        # person and still be blocked until the company's entities are handed
+        # over. 404 would be a lie here, so the counts go out verbatim.
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except AdminScopeError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 

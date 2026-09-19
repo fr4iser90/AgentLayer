@@ -27,6 +27,7 @@ from apps.backend.infrastructure.identity.api_keys import (
 )
 from apps.backend.domain.shared.identity import set_identity, reset_identity
 from apps.backend.infrastructure.dashboards.dashboard_persistence import ensure_default_dashboard_for_new_user
+from apps.backend.infrastructure.access.tenant_entity_transfer import guarded_move_user_tenant
 
 if TYPE_CHECKING:
     from apps.backend.domain.access.capabilities import AdminScope
@@ -573,9 +574,11 @@ def update_user_tenant(user_id: uuid.UUID, tenant_id: int) -> bool:
     """Move a user to another tenant, keeping ``tenant_memberships`` in step.
 
     The membership row has to follow ``users.tenant_id`` — the two are read by
-    different code paths and must not disagree. See ``move_user_tenant``.
+    different code paths and must not disagree. Goes through the guarded move,
+    so a person still owning tenant-visible entities is refused rather than
+    dragging company data into the new tenant.
     """
-    return db.move_user_tenant(user_id, tenant_id)
+    return guarded_move_user_tenant(user_id, tenant_id)
 
 
 def update_user_password(user_id: uuid.UUID, password: str) -> None:
