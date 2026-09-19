@@ -109,7 +109,14 @@ export function App() {
               <Route path="docs" element={<DocsPage />} />
               <Route path="settings" element={<SettingsLayout />}>
                 <Route index element={<Navigate to="/settings/profile" replace />} />
-                <Route path="friends" element={<FriendsSettings />} />
+                <Route
+                  path="friends"
+                  element={
+                    <RestrictedNavRedirect nav="friends">
+                      <FriendsSettings />
+                    </RestrictedNavRedirect>
+                  }
+                />
                 <Route path="profile" element={<ProfileSettings />} />
                 <Route path="voice" element={<VoiceSettings />} />
                 <Route path="connections" element={<ConnectionsSettings />} />

@@ -4,7 +4,7 @@ Friendship System API
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from apps.backend.application.identity.use_cases.request_auth import get_current_user, get_user_by_email
@@ -20,10 +20,15 @@ from apps.backend.application.sharing.use_cases.sharing_controller_services impo
     friends_list,
     friend_remove,
     friend_update,
+    require_friend_system,
 )
 from apps.backend.application.sharing.use_cases.sharing_controller_services import user_tenant_id
 
-router = APIRouter(prefix="/v1/friends", tags=["friends"])
+router = APIRouter(
+    prefix="/v1/friends",
+    tags=["friends"],
+    dependencies=[Depends(require_friend_system)],
+)
 
 
 class FriendRequestSendBody(BaseModel):

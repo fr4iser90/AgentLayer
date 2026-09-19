@@ -5,8 +5,10 @@ from __future__ import annotations
 from typing import Protocol
 
 # Well-known first-party nav ids (UI filters when ``ui.allowed_nav`` is set).
+# ``friends`` was absent until the friend system got a gate: a tenant that listed
+# it was silently dropped, so the item could not be turned off per tenant at all.
 KNOWN_NAV_ITEMS: frozenset[str] = frozenset(
-    {"home", "chat", "studio", "dashboard", "projects", "schedules", "tasks", "shares"}
+    {"home", "chat", "studio", "dashboard", "projects", "schedules", "tasks", "shares", "friends"}
 )
 
 

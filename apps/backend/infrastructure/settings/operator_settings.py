@@ -228,6 +228,7 @@ def _fetch_row() -> dict[str, Any]:
         "legal_privacy_md": None,
         "legal_terms_md": None,
         "dashboards_allowed": True,
+        "friend_system_enabled": True,
     }
     try:
         with db.pool().connection() as conn:
@@ -289,7 +290,8 @@ def _fetch_row() -> dict[str, Any]:
                            legal_entity_email, legal_entity_phone,
                            legal_terms_enabled,
                            legal_impressum_md, legal_privacy_md, legal_terms_md,
-                           dashboards_allowed
+                           dashboards_allowed,
+                           friend_system_enabled
                     FROM operator_settings WHERE id = 1
                     """
                 )
@@ -443,6 +445,7 @@ def _fetch_row() -> dict[str, Any]:
         "legal_privacy_md": row[89] if len(row) > 89 else None,
         "legal_terms_md": row[90] if len(row) > 90 else None,
         "dashboards_allowed": bool(row[91]) if len(row) > 91 and row[91] is not None else True,
+        "friend_system_enabled": bool(row[92]) if len(row) > 92 and row[92] is not None else True,
     }
 
 
@@ -522,6 +525,7 @@ from apps.backend.infrastructure.settings.operator_settings_readers import (
     effective_rag_tenant_shared_domains,
     embedding_api_public_fields,
     expose_internal_errors_in_responses,
+    friend_system_enabled,
     has_org_surface,
     is_single_user,
     memory_graph_prompt_settings,

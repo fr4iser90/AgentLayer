@@ -389,6 +389,8 @@ def apply_operator_settings_patch(body: OperatorSettingsPatch) -> None:
         r["legal_terms_md"] = None if v is None else (str(v).strip() or None)
     if "dashboards_allowed" in patch:
         r["dashboards_allowed"] = bool(patch["dashboards_allowed"])
+    if "friend_system_enabled" in patch:
+        r["friend_system_enabled"] = bool(patch["friend_system_enabled"])
 
     media_patch = {
         k: patch[k]

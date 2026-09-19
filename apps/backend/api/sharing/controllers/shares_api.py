@@ -9,7 +9,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from apps.backend.domain.shares.catalog import catalog_for_api, canonical_resource_type
@@ -21,12 +21,17 @@ from apps.backend.application.sharing.use_cases.sharing_controller_services impo
     list_shares_between,
     list_shares_by_grantee,
     list_shares_by_owner,
+    require_friend_system,
     share_permission_check,
     share_permission_get,
     share_permission_set,
 )
 
-router = APIRouter(prefix="/v1/shares", tags=["shares"])
+router = APIRouter(
+    prefix="/v1/shares",
+    tags=["shares"],
+    dependencies=[Depends(require_friend_system)],
+)
 
 
 class ShareSetBody(BaseModel):

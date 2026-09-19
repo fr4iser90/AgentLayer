@@ -277,6 +277,9 @@ def persist_operator_settings_patch(
             if "dashboards_allowed" in patch:
                 extra_sets.append("dashboards_allowed = %s")
                 extra_params.append(bool(r.get("dashboards_allowed", True)))
+            if "friend_system_enabled" in patch:
+                extra_sets.append("friend_system_enabled = %s")
+                extra_params.append(bool(r.get("friend_system_enabled", True)))
             if extra_sets:
                 # SECURITY: Column names in `extra_sets` come from the known
                 # _SETTING_KEYS mapping (see _OPERATOR_SETTINGS_KEYS).
