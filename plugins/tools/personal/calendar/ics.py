@@ -78,6 +78,9 @@ HTTP_TIMEOUT = 45.0
 MAX_ICS_BYTES = 2_000_000
 MAX_EVENTS_RETURN = 120
 MAX_TITLES_PER_MONTH = 30
+MAX_REDIRECTS = 3
+_REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
+FETCH_HEADERS = {"User-Agent": "jetpack-agent-layer-calendar/1.0"}
 # ~24 months forward + margin
 MAX_EFFECTIVE_DAYS_AHEAD = 800
 MAX_EFFECTIVE_DAYS_BACK = 400
@@ -107,6 +110,33 @@ def _url_host_safe(url: str) -> tuple[bool, str]:
     if re.match(r"^(127\.|169\.254\.)", host):
         return False, "blocked_ssrf"
     return True, ""
+
+
+def _fetch_ics(client: httpx.Client, url: str) -> tuple[Any, str | None]:
+    """GET an ICS URL, re-applying the host guard to every redirect hop.
+
+    Redirects are followed by hand rather than with ``follow_redirects=True``:
+    the guard used to run once on the initial URL, so an allowed public host
+    that answered 302 with ``http://169.254.169.254/...`` was followed
+    straight to the cloud metadata endpoint.
+
+    Returns ``(response, None)`` on success, ``(None, reason)`` when a hop is
+    refused. The caller must treat a refusal as a failed fetch.
+    """
+    current = url
+    for _ in range(MAX_REDIRECTS + 1):
+        ok, reason = _url_host_safe(current)
+        if not ok:
+            return None, reason
+        response = client.get(current, headers=FETCH_HEADERS)
+        if response.status_code not in _REDIRECT_STATUSES:
+            return response, None
+        location = response.headers.get("location")
+        if not location:
+            return response, None
+        # Relative Location headers resolve against the hop we just made.
+        current = str(httpx.URL(current).join(location))
+    return None, "too_many_redirects"
 
 
 def _parse_secret(raw: str | None) -> str | None:
@@ -309,13 +339,17 @@ def list_events(arguments: dict[str, Any]) -> str:
         win_start = max_win_start
 
     try:
-        with httpx.Client(timeout=HTTP_TIMEOUT, follow_redirects=True) as client:
-            r = client.get(
-                url, headers={"User-Agent": "jetpack-agent-layer-calendar/1.0"}
-            )
+        with httpx.Client(timeout=HTTP_TIMEOUT, follow_redirects=False) as client:
+            r, refusal = _fetch_ics(client, url)
     except httpx.HTTPError as e:
         return json.dumps(
             {"ok": False, "error": f"fetch failed: {e}"}, ensure_ascii=False
+        )
+
+    if r is None:
+        return json.dumps(
+            {"ok": False, "error": f"ics_url not allowed ({refusal})"},
+            ensure_ascii=False,
         )
 
     if r.status_code >= 400:
