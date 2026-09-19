@@ -1,5 +1,7 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "../auth/AuthContext";
+import { friendSystemEnabled } from "../auth/tenantSurface";
 
 const subLink =
   "block rounded-lg px-3 py-2 text-sm transition-colors border border-transparent";
@@ -9,6 +11,8 @@ const subLinkIdle = "text-surface-muted hover:bg-white/5 hover:text-neutral-200"
 
 export function SettingsLayout() {
   const { t } = useTranslation(["settings", "common"]);
+  const { user } = useAuth();
+  const friendsOn = friendSystemEnabled(user);
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden md:flex-row">
       <aside className="shrink-0 border-b border-surface-border bg-[#111] px-3 py-4 md:w-52 md:border-b-0 md:border-r">
@@ -61,12 +65,14 @@ export function SettingsLayout() {
           >
             {t("settings:delegateNav")}
           </NavLink>
-          <NavLink
-            to="/settings/friends"
-            className={({ isActive }) => `${subLink} ${isActive ? subLinkActive : subLinkIdle}`}
-          >
-            👥 {t("settings:friendsTitle")}
-          </NavLink>
+          {friendsOn ? (
+            <NavLink
+              to="/settings/friends"
+              className={({ isActive }) => `${subLink} ${isActive ? subLinkActive : subLinkIdle}`}
+            >
+              👥 {t("settings:friendsTitle")}
+            </NavLink>
+          ) : null}
           <NavLink
             to="/settings/shares"
             className={({ isActive }) => `${subLink} ${isActive ? subLinkActive : subLinkIdle}`}
