@@ -14,6 +14,7 @@ from plugins.tools.workspace.lib.common import (
     json_blocked_credential_path_error,
     json_workspace_missing_error,
     maybe_enqueue_incremental_index,
+    resolve_in_workspace,
     workspace_binding_from_context,
 )
 
@@ -54,7 +55,7 @@ def write_file(arguments: dict[str, Any], context: dict | None = None) -> str:
         return json.dumps({"ok": False, "error": "path is required"}, ensure_ascii=False)
     if is_blocked_credential_path(rel):
         return json_blocked_credential_path_error(rel)
-    resolved = (root / rel).resolve()
+    resolved = resolve_in_workspace(root, rel)
     content, cerr = coalesce_content(arguments)
     if cerr:
         return json.dumps({"ok": False, "error": cerr}, ensure_ascii=False)

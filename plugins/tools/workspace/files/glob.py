@@ -11,6 +11,7 @@ from apps.backend.infrastructure.platform.config import config as _global_config
 
 from plugins.tools.workspace.lib.common import (
     json_workspace_missing_error,
+    resolve_in_workspace,
     workspace_binding_from_context,
 )
 
@@ -50,7 +51,7 @@ def glob(arguments: dict[str, Any], context: dict | None = None) -> str:
     if path_rel == ".":
         resolved = root
     else:
-        resolved = (root / path_rel).resolve()
+        resolved = resolve_in_workspace(root, path_rel)
     if not resolved.is_dir():
         return json.dumps(
             {"ok": False, "error": "path must be a directory"},
