@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+import uuid
 from unittest.mock import patch
 
 from apps.backend.infrastructure.platform.client_surface_policy import (
@@ -95,6 +96,35 @@ class ClientSurfacePolicyTests(unittest.TestCase):
             return_value=False,
         ):
             self.assertIsNone(refuse_server_workspace_for_user(U("user"), "server"))
+
+    def _server_ws_flags(self, *, tenant_admin: bool):
+        class U:
+            def __init__(self, role: str) -> None:
+                self.role = role
+                self.id = uuid.uuid4()
+
+        from apps.backend.infrastructure.platform.client_surface_policy import (
+            user_may_use_server_workspaces,
+        )
+
+        with patch(
+            "apps.backend.infrastructure.platform.client_surface_policy.server_workspaces_admin_only",
+            return_value=True,
+        ), patch(
+            "apps.backend.infrastructure.db.db.user_role", return_value="user"
+        ), patch(
+            "apps.backend.infrastructure.db.db.user_site_role", return_value="member"
+        ), patch(
+            "apps.backend.infrastructure.db.db.user_is_tenant_admin",
+            return_value=tenant_admin,
+        ):
+            return user_may_use_server_workspaces(U("user"))
+
+    def test_tenant_admin_may_use_server_workspaces(self) -> None:
+        self.assertTrue(self._server_ws_flags(tenant_admin=True))
+
+    def test_plain_member_may_not_use_server_workspaces(self) -> None:
+        self.assertFalse(self._server_ws_flags(tenant_admin=False))
 
 
 if __name__ == "__main__":
