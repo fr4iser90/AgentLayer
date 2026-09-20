@@ -8,8 +8,8 @@ tags: [adr, sharing, friends, grants, adapters, projection, credentials, ssrf]
 
 ## Status
 
-**Proposed, partially implemented.** Raised 2026-09-20 as a design question,
-not a change request.
+**Proposed, implemented through step 7.** Raised 2026-09-20 as a design
+question, not a change request.
 
 Implemented so far:
 
@@ -30,22 +30,22 @@ Implemented so far:
 - **step 6**, the projection contract: table, owner-chosen shape,
   freshness bound, revoke cascade — see §5.6. The calendar is the first
   real projection, so part of step 7 landed with this.
-- **step 7 (partial)**, the scheduled refresh worker, so the first reader
-  after the TTL no longer pays for the owner's fetch, and the stale
-  retention grace that makes it safe to run the sweeper — see §5.7.
-- **step 7 (partial)**, the ungranted-projection skip, which exposed and
-  fixed a revoke-cascade defect shipped in step 6 — see §5.7.
-- **step 7 (partial)**, the generic `/v1/shares/preview/{type}` endpoint,
-  which brings the dashboard widget inside the projection contract and
-  closes the hardcoded-type gate §5.5 had left in place — see §5.8.
-- **step 7 (partial)**, the owner-facing projection picker, so a human
-  owner can see and change the shape of their own resource rather than
-  only an agent being able to publish it — see §5.9.
-- **step 7 (partial)**, the widget's own target picker, which removes the
-  last reason the share widget was excluded from block configuration —
-  see §5.10.
+- **step 7**, the calendar redone as a `publish_projection` adapter. Five
+  pieces, each in its own section: the scheduled refresh worker and the
+  stale retention grace that makes it safe to run (§5.7); the
+  ungranted-projection skip, which exposed and fixed a revoke-cascade
+  defect shipped in step 6 (§5.7); the generic
+  `/v1/shares/preview/{type}` endpoint, which brought the dashboard
+  widget inside the projection contract and closed the hardcoded-type gate
+  §5.5 had left in place (§5.8); the owner-facing shape picker, so a
+  human owner can change the shape of their own resource rather than only
+  an agent being able to publish it (§5.9); and the widget's own target
+  picker, which removed the last reason the type was excluded from block
+  configuration (§5.10). `fetch_shared_calendar` now has exactly one call
+  site — the owner-side publish — so no grantee-facing read touches the
+  live source.
 
-Not implemented: step 8.
+Not implemented: step 8, deliberately.
 
 Companion reading: [ADR 0013](0013-os-level-workspace-isolation.md) covers
 the *filesystem* boundary; this one covers the *peer-to-peer data* boundary.
@@ -675,12 +675,12 @@ when a resource is added either.
 | 4 ✅ | Generic `friend_share` tool; old tool names become thin aliases | 1–2 | Removes the per-tool growth |
 | 5 ✅ | Share UI driven from the registry | 1–2 | Types, identifiers, policy fields — all derived |
 | 6 ✅ | Add the projection contract (table, refresh, revoke cascade, freshness) | 2–4 | Enables B |
-| 7 ◐ | Re-do the calendar as a **`publish_projection` adapter** ("share my availability") | 2–3 | Not a patched delegation. Makes the §1.6/§1.7 class of bug *impossible*, not merely gone. The adapter, the scheduled refresh and the generic preview are in (§5.6–§5.8); no read path touches the live source, and the dashboard widget is inside the contract rather than beside it. |
+| 7 ✅ | Re-do the calendar as a **`publish_projection` adapter** ("share my availability") | 2–3 | Not a patched delegation. Makes the §1.6/§1.7 class of bug *impossible*, not merely gone. The adapter (§5.6), the scheduled refresh (§5.7), the generic preview (§5.8), the owner's shape picker (§5.9) and the widget's target picker (§5.10) are all in. `fetch_shared_calendar` has exactly one call site — `publish_projection`, running on the owner's behalf — and `resolve()` reaches only the stored row, so no grantee-facing read touches the live source. |
 | 8 | Option C for one resource, **only if** a real requirement appears | 10–16 | Do not pre-build |
 
-**Total to a coherent state (steps 0–5): 7–11 working days.** Steps 0–3 are
-done. Adding the projection layer and the calendar redone (steps 6–7):
-**+4–7 days**.
+**Total to a coherent state (steps 0–5): 7–11 working days.** Steps 0–7 are
+done. The projection layer and the calendar redone (steps 6–7) landed as
+described above; only step 8 remains, deliberately unstarted.
 
 **Do not** start with the calendar. Start with steps 1–2: wrapping the two
 adapters that already work derives the contract from reality. The third
@@ -782,9 +782,11 @@ already drifted. With the adapter registered:
   a friend's calendar without passing it (driver 4);
 * the §1.9 consent gap closes early — `block_ids` and `list_keys` are
   refused on calendar grants today, not at step 7;
-* step 7 shrinks to swapping `CalendarShareDependencies.read_shared_calendar`
-  from the live ICS fetch to a published availability projection. The
-  adapter surface, the tool surface and the grant semantics do not move.
+* step 7 shrank, exactly as predicted here, to swapping
+  `CalendarShareDependencies.read_shared_calendar` from a live ICS fetch
+  onto a published availability projection — and that swap is what §5.6
+  and §5.7 turned out to be. The adapter surface, the tool surface and the
+  grant semantics did not move.
 
 **Dependencies are injected, not imported.** The reader lives in
 `plugins`, and the domain layer must not reach into `plugins`. The adapter
@@ -873,8 +875,9 @@ than the shape of the mock.
 hardcode `google_calendar` and gate anything else as unsupported. That
 gate was honest while `/v1/shares/preview/*` existed only for the
 calendar: making the widget registry-driven would have advertised
-previewable types the backend could not serve. Step 7 closes it with the
-generic endpoint in §5.8.
+previewable types the backend could not serve. Step 7 closed it with the
+generic endpoint in §5.8, and §5.10 made the widget's target pickable
+rather than hand-edited.
 
 ### 5.6 Step 6 as implemented: the projection contract
 
@@ -974,12 +977,12 @@ credential-shaped reaches the grantee. Making the cascade always delete
 fails `another_live_grant_keeps_the_projection`. The claims are covered,
 not merely accompanied.
 
-**Left for step 7.** Republish is read-triggered: a stale projection is
-refreshed when someone asks. That is sufficient for correctness — nothing
-expired is ever served — but it leaves the first reader after the TTL
-paying for the owner's fetch. §5.7 removes that.
+**Was left for step 7, and step 7 took it.** Republish was read-triggered:
+a stale projection is refreshed when someone asks. That is sufficient for
+correctness — nothing expired is ever served — but it leaves the first
+reader after the TTL paying for the owner's fetch. §5.7 removed that.
 
-### 5.7 Step 7 (partial) as implemented: the scheduled refresh
+### 5.7 Step 7 as implemented: the scheduled refresh
 
 `apps/backend/infrastructure/shares/projection_refresh_runner.py` plus
 `domain/shares/projection_refresh.py` and the store's
