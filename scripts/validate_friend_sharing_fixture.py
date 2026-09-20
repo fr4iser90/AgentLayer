@@ -565,8 +565,10 @@ check("step 5: every advertised per-type field set equals the enforced set",
 from datetime import datetime, timedelta, timezone  # noqa: E402
 
 from apps.backend.domain.shares import projections as proj  # noqa: E402
+from apps.backend.domain.shares import projection_refresh as pref  # noqa: E402
 from apps.backend.domain.shares.registry import publish_projection  # noqa: E402
 from apps.backend.infrastructure.db import share_projections_db as prdb  # noqa: E402
+from apps.backend.infrastructure.db import share_permissions_db as spdb  # noqa: E402
 from apps.backend.infrastructure.db.share_permissions_db import (  # noqa: E402
     share_permission_set,
 )
@@ -671,7 +673,7 @@ check("step 7: a row 10min past its bound is still inside the grace",
       _stale is not None and _stale.is_retained(),
       f"grace={proj.STALE_GRACE_SECONDS}s")
 check("step 7: the sweeper leaves a row inside the grace alone",
-      proj.sweep_expired() == 0
+      pref.sweep_expired() == 0
       and prdb.projection_get(
           owner_user_id=LENA, resource_type="google_calendar",
           resource_identifier="primary") is not None,
@@ -725,7 +727,7 @@ appdb.query(
     (proj.STALE_GRACE_SECONDS + 600, ANNA),
 )
 check("step 7: the sweeper collects an out-of-retention row",
-      proj.sweep_expired() >= 1
+      pref.sweep_expired() >= 1
       and prdb.projection_get(
           owner_user_id=ANNA, resource_type="google_calendar",
           resource_identifier="primary") is None,
@@ -746,17 +748,17 @@ check("step 6: the agent help names the publishable shapes",
 # The due-list query is real SQL over a real table. Nothing in the unit suite
 # can reach it, because the unit store is a dict.
 
-def _set_expiry(user_id, seconds):
+def _set_expiry(user_id, seconds, ident="primary"):
     appdb.query(
         "UPDATE share_projections SET expires_at = now() + make_interval(secs => %s) "
-        "WHERE owner_user_id = %s",
-        (seconds, user_id),
+        "WHERE owner_user_id = %s AND resource_identifier = %s",
+        (seconds, user_id, ident),
     )
 
 
-def _row_for(user_id):
+def _row_for(user_id, ident="primary"):
     return prdb.projection_get(
-        owner_user_id=user_id, resource_type="google_calendar", resource_identifier="primary"
+        owner_user_id=user_id, resource_type="google_calendar", resource_identifier=ident
     )
 
 
@@ -768,6 +770,9 @@ _with_stubbed_network(lambda: publish_projection(
 _with_stubbed_network(lambda: publish_projection(
     resource_type="google_calendar", owner_user_id=LENA,
     identifier="primary", kind="events"))
+# A refresh only makes sense for something somebody can read, so Lena
+# grants Tim her calendar before the pass runs.
+share_permission_set(LENA, TIM, "google_calendar", "primary", True, policy={"days_ahead": 7})
 # Lena is about to expire; Anna is nowhere near it.
 _set_expiry(LENA, 120)
 _set_expiry(ANNA, 900)
@@ -782,7 +787,7 @@ check("step 7: the due query does not drag every payload along",
       bool(_due) and "payload" not in _due[0],
       f"columns={sorted(_due[0]) if _due else []}")
 
-_rep, _ = _with_stubbed_network(lambda: proj.refresh_due(limit=50, within_seconds=240))
+_rep, _ = _with_stubbed_network(lambda: pref.refresh_due(limit=50, within_seconds=240))
 check("step 7: the refresh pass republished what was about to expire",
       _rep.refreshed >= 1 and _rep.failed == 0,
       f"refreshed={_rep.refreshed} failed={_rep.failed} skipped={_rep.skipped}")
@@ -797,7 +802,7 @@ check("step 7: a row nowhere near its bound was left alone",
 # turn into a one-hour poll of the owner's upstream.
 _set_expiry(LENA, 500)
 _lena_gen = _row_for(LENA)["generated_at"]
-_with_stubbed_network(lambda: proj.refresh_due(limit=50, within_seconds=3600))
+_with_stubbed_network(lambda: pref.refresh_due(limit=50, within_seconds=3600))
 check("step 7: a window wider than the TTL does not refresh a row early again",
       _row_for(LENA)["generated_at"] == _lena_gen,
       "500s left of a 900s life is past the half-life")
@@ -807,7 +812,7 @@ _with_stubbed_network(lambda: publish_projection(
     resource_type="google_calendar", owner_user_id=LENA,
     identifier="primary", kind="availability"))
 _set_expiry(LENA, 60)
-_rep2, _ = _with_stubbed_network(lambda: proj.refresh_due(limit=50, within_seconds=120))
+_rep2, _ = _with_stubbed_network(lambda: pref.refresh_due(limit=50, within_seconds=120))
 check("step 7: a scheduled refresh keeps the shape the owner chose",
       _rep2.refreshed >= 1 and _row_for(LENA)["projection_kind"] == "availability",
       f"kind={_row_for(LENA)['projection_kind']} refreshed={_rep2.refreshed}")
@@ -816,6 +821,50 @@ check("step 7: a refreshed projection still holds no credential",
       and find_credential_keys(_row_for(LENA)["payload"]) == [],
       "the gate runs on every write, not only the first")
 
+
+# ── ungranted projections (ADR 0014 step 7) ────────────────────────────────
+# The gap the revoke cascade does not cover: a projection published with no
+# grant ever behind it. Skipping its refresh lets the freshness bound and
+# the retention grace drain it through machinery that already exists,
+# rather than a second delete path with its own idea of when owner data is
+# expendable.
+
+_with_stubbed_network(lambda: publish_projection(
+    resource_type="google_calendar", owner_user_id=ANNA,
+    identifier="work", kind="events"))
+_set_expiry(ANNA, 120, "work")
+_work_gen = _row_for(ANNA, "work")["generated_at"]
+_rep_ungranted, _ = _with_stubbed_network(
+    lambda: pref.refresh_due(limit=50, within_seconds=240)
+)
+check("step 7: a projection with no live grant is skipped, not refreshed",
+      _rep_ungranted.skipped >= 1
+      and _row_for(ANNA, "work")["generated_at"] == _work_gen,
+      f"skipped={_rep_ungranted.skipped} refreshed={_rep_ungranted.refreshed}")
+
+# The count spans the legacy alias. A grant written as ``calendar`` must
+# keep the ``google_calendar``-keyed projection refreshing: counting only
+# the canonical id would report zero and stop refreshing something Bob can
+# still read -- the same alias trap the revoke cascade had to avoid.
+share_permission_set(ANNA, BOB, "calendar", "work", True, policy={"days_ahead": 7})
+_rep_aliased, _ = _with_stubbed_network(
+    lambda: pref.refresh_due(limit=50, within_seconds=240)
+)
+check("step 7: a grant under the legacy 'calendar' alias keeps the canonical projection refreshing",
+      _rep_aliased.refreshed >= 1
+      and _row_for(ANNA, "work")["generated_at"] != _work_gen,
+      f"refreshed={_rep_aliased.refreshed}")
+
+# Revoking that grant takes the projection with it, so nothing is left
+# standing that nobody can read.
+share_permission_set(ANNA, BOB, "calendar", "work", False)
+_after_revoke = _row_for(ANNA, "work")
+check("step 7: revoking the alias grant cascades to the canonical projection",
+      _after_revoke is None,
+      f"row={'present' if _after_revoke else 'gone'} "
+      f"live={spdb.count_active_grants(ANNA, 'google_calendar', 'work')}")
+
+share_permission_set(LENA, TIM, "google_calendar", "primary", False)
 appdb.query(
     "DELETE FROM user_secrets WHERE user_id = ANY(%s::uuid[]) "
     "AND service_key IN ('google_calendar', 'calendar_ics')",

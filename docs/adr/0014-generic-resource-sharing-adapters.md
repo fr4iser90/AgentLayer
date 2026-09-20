@@ -973,12 +973,24 @@ paying for the owner's fetch. §5.7 removes that.
 ### 5.7 Step 7 (partial) as implemented: the scheduled refresh
 
 `apps/backend/infrastructure/shares/projection_refresh_runner.py` plus
-`projections.refresh_due()` and the store's `projection_list_due()`. A
-daemon thread on the `scheduler_jobs_runner` pattern, started and stopped
-from the FastAPI lifespan in its own `try/except ... (optional)` block,
-gated on `operator_settings.friend_system_enabled` rather than a new
-operator setting — the subsystem it serves is already switchable, and a
-second switch for one worker inside it is a setting nobody will find.
+`domain/shares/projection_refresh.py` and the store's
+`projection_list_due()`. A daemon thread on the `scheduler_jobs_runner`
+pattern, started and stopped from the FastAPI lifespan in its own
+`try/except ... (optional)` block, gated on
+`operator_settings.friend_system_enabled` rather than a new operator
+setting — the subsystem it serves is already switchable, and a second
+switch for one worker inside it is a setting nobody will find.
+
+**The background half lives in its own module.** `projections.py` holds
+the contract — what may be stored, how fresh a row is, what a reader
+gets. `projection_refresh.py` holds the part that runs when nobody is
+reading: `refresh_due`, `sweep_expired`, and the injected grant lookup.
+The split is not cosmetic and not only a file-size gate. The contract
+module must not know a worker exists: batch sizing, upstream poll rates,
+and which grants are still live are all questions about *when to spend a
+fetch*, and on the read path that answer is always "now, someone is
+waiting", so those questions do not exist there. Keeping them together
+meant a reader had to hold both models at once.
 
 **It refreshes ahead of the bound, not after.** The due predicate is
 `expires_at <= now() + window`, so a row with two minutes left is
@@ -1067,12 +1079,47 @@ codebase (`scheduler_worker`, `scheduler_jobs_worker`, `project_runs_worker`,
 claim to only this one would be inconsistent; making them all safe is a
 different change with a different scope.
 
-**Known waste, deliberately not closed.** A projection the owner published
-and never granted stays published and keeps getting refreshed. It is
-unreadable by anyone, the owner can delete it, and the cost is one fetch
-per half-life. Closing it means the refresh path consulting
-`share_permissions`, which is a real coupling decision rather than an
-oversight, so it is named here instead of bolted on.
+**A projection nobody can read no longer costs a fetch.** `refresh_due`
+consults a live-grant count before republishing and skips a row with zero
+grants. Skipping rather than deleting is deliberate: the freshness bound
+and the retention grace then drain the row through machinery that already
+exists, instead of a second delete path with its own idea of when owner
+data is expendable.
+
+The lookup is injected — `register_live_grant_counter` — because the
+projection domain has no business reading `share_permissions` itself, but
+it does need to know whether anything it is about to spend a fetch on can
+be read by anyone. It returns `None` when unwired or failing, and **only a
+counted zero skips**. Treating "the lookup is not wired" as "nobody has a
+grant" would turn a missing registration into a mass stop of refreshing —
+or worse, if the skip ever became a delete, a mass drop of
+owner-published data.
+
+**A defect this step's own fixture run caught, in code shipped at step 6.**
+`canonical_resource_type` normalises *syntax*: it lowercases, trims and
+maps spaces. It does **not** map a legacy alias to the id it aliases, so
+`canonical_resource_type("calendar")` is `"calendar"`, not
+`"google_calendar"`. The revoke cascade used it to pick which projection
+row to delete. So revoking a grant written as `calendar` computed
+`DELETE ... WHERE resource_type = 'calendar'` — matching nothing, because
+the projection is keyed `google_calendar` — and left the owner's published
+view standing with zero live grants behind it. That is precisely the state
+§5.6 claims the cascade makes impossible.
+
+The same gap made `_resource_type_variants("calendar")` return only
+`("calendar",)`, since the alias map is keyed by canonical id: a revoke
+issued under the alias also failed to see a live `google_calendar` grant
+on the same resource. Both are fixed by resolving through a `_canonical`
+that walks the alias map, so a call made under any name in the family
+sees the whole family.
+
+The unit suite could not see this. Its revoke-cascade fake recorded only
+*that* a delete happened, not *which id* it named — so the wrong-key
+delete looked like a correct one. The fake was fixed to record the
+resource_type parameter, and the fixture now drives the real sequence:
+publish under the canonical key, grant under the alias, refresh (works,
+because the count spans the alias), revoke the alias grant, assert the
+canonical row is gone.
 
 ---
 
@@ -1258,7 +1305,7 @@ docker compose run --rm -e PYTHONPATH=/code agent-layer \
     python /code/scripts/validate_friend_sharing_fixture.py
 ```
 
-Current result: **84/84**. Progression of the fixture run:
+Current result: **87/87**. Progression of the fixture run:
 
 | added with | checks | total |
 |---|---|---|
@@ -1271,6 +1318,7 @@ Current result: **84/84**. Progression of the fixture run:
 | step 6 projection contract | +14 | 71 |
 | step 7 scheduled refresh | +8 | 79 |
 | step 7 stale retention | +5 | 84 |
+| step 7 ungranted projections + alias fix | +3 | 87 |
 
 The step-3 checks cover: `block_ids` rejected on a collection and still
 accepted on a dashboard; `list_keys` rejected on both; the `list_keys`-on-
