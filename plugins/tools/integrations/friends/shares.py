@@ -19,8 +19,15 @@ from apps.backend.domain.shares.catalog import (
 from apps.backend.domain.shares.policy import normalize_policy
 from apps.backend.domain.shares.registry import (
     ShareRegistryError,
+    describe_shareable_types,
     resolve_projection,
 )
+# Imported for its side effect: it registers the adapters this deployment
+# ships. The tool description below is derived from the registry at import
+# time, so an unwired registry would make the help text claim nothing is
+# shareable. Importing here rather than relying on the app having wired it
+# first keeps the advertised surface honest regardless of load order.
+import apps.backend.infrastructure.shares.share_registry_service  # noqa: F401,E402
 from apps.backend.infrastructure.db.share_permissions_db import (
     SHARE_RESOURCE_GOOGLE_CALENDAR,
     list_shares_between,
@@ -511,6 +518,46 @@ def shares(arguments: dict[str, Any]) -> str:
         return json.dumps({"error": str(e)}, ensure_ascii=False)
 
 
+_SHAREABLE = describe_shareable_types()
+
+
+def _derived_policy_help() -> str:
+    """Per-type policy fields, straight from the registry (ADR 0014 step 5).
+
+    This tool used to advertise one flat field set — ``{permission, block_ids,
+    list_keys, days_ahead, expires_at}`` — for *every* type. That told an
+    agent it could put ``block_ids`` on a calendar grant, a field the
+    calendar adapter does not read and step 3 rejects, so the agent got a
+    refusal it had been told could not happen. Deriving the text means the
+    advertised surface cannot drift from the enforced one: adding an adapter
+    changes both at once.
+    """
+    if not _SHAREABLE:
+        return (
+            "Accepted policy fields depend on the resource type, and no type "
+            "is currently readable through the share path."
+        )
+    parts = "; ".join(
+        f"{t['resource_type']} accepts "
+        f"{{{', '.join(t['policy_fields']) if t['policy_fields'] else 'nothing'}}}"
+        for t in _SHAREABLE
+    )
+    return (
+        f"Policy fields are per type and enforced at grant time — {parts}. "
+        "A field outside its type's set is rejected, not silently ignored."
+    )
+
+
+def _derived_readable_help() -> str:
+    if not _SHAREABLE:
+        return "No resource type is readable through the share path right now."
+    names = ", ".join(t["resource_type"] for t in _SHAREABLE)
+    return (
+        f"Readable here: {names}. Any well-formed id can be *granted*, but a "
+        "type with no adapter behind it does nothing yet and cannot be read."
+    )
+
+
 HANDLERS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "shares": shares,
 }
@@ -523,9 +570,10 @@ TOOLS: list[dict[str, Any]] = [
             "TOOL_DESCRIPTION": (
                 "Manage friend share permissions: grant, revoke, list, check, or read access to any "
                 "resource (resource_type is a free id, e.g. google_calendar, my_notes, dashboard). "
+                + _derived_readable_help() + " "
                 "For dashboard: resource_identifier = dashboard UUID. "
-                "For collection: resource_identifier = slug. Optional policy: "
-                "{permission: edit|view, block_ids: [...], list_keys: [...], days_ahead, expires_at}. "
+                "For collection: resource_identifier = slug. "
+                + _derived_policy_help() + " "
                 "Use action=grant to share e.g. calendar with days_ahead:7. "
                 "Use action=read to actually read a friend's shared resource (only types with a "
                 "registered adapter; a grant alone is not access). "
@@ -550,7 +598,8 @@ TOOLS: list[dict[str, Any]] = [
                     "resource_type": {
                         "type": "string",
                         "TOOL_DESCRIPTION": (
-                            "Resource id to share (any lowercase id: google_calendar, notes, my_widget, …)."
+                            "Resource id to share (any lowercase id: google_calendar, notes, my_widget, …). "
+                            + _derived_readable_help()
                         ),
                     },
                     "resource_identifier": {

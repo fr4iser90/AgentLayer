@@ -17,6 +17,8 @@ type ShareItem = {
 type SharePolicy = {
   days_ahead?: number;
   expires_at?: string;
+  permission?: string;
+  block_ids?: string[];
 };
 
 type ShareGrant = {
@@ -32,12 +34,22 @@ type FriendShares = {
   incoming_grants?: ShareGrant[];
 };
 
+/**
+ * One shareable resource type, as described by the backend adapter registry.
+ *
+ * The shape is the registry's, not a hand-maintained list: `policy_fields` is
+ * what that type's adapter actually reads, so the editor below renders exactly
+ * those inputs and never offers a value the grant path would reject.
+ * `default_identifier` is null when the type needs an explicit identifier
+ * (a collection slug, a dashboard uuid) rather than a usable default.
+ */
 type CatalogResource = {
   id: string;
   name: string;
-  icon: string;
-  default_identifier: string;
+  default_identifier: string | null;
   policy_fields: string[];
+  listable: boolean;
+  aliases: string[];
 };
 
 function grantForResource(
@@ -45,6 +57,20 @@ function grantForResource(
   resourceId: string,
 ): ShareGrant | undefined {
   return grants?.find((g) => g.resource_type === resourceId);
+}
+
+/**
+ * Find the catalog entry for a resource id, following legacy aliases.
+ *
+ * A grant stored years ago under "calendar" must still find the
+ * google_calendar entry, or it would render with no policy fields and the
+ * user could not edit a share that is really a calendar share.
+ */
+function catalogEntry(
+  resourceId: string,
+  catalog: CatalogResource[],
+): CatalogResource | undefined {
+  return catalog.find((r) => r.id === resourceId || (r.aliases || []).includes(resourceId));
 }
 
 function resourceTypesForFriend(friendShares: FriendShares): string[] {
@@ -65,7 +91,7 @@ function resourceTypesForFriend(friendShares: FriendShares): string[] {
 }
 
 function displayResourceName(resourceId: string, catalog: CatalogResource[]): string {
-  return catalog.find((r) => r.id === resourceId)?.name || resourceId.replace(/_/g, " ");
+  return catalogEntry(resourceId, catalog)?.name || resourceId.replace(/_/g, " ");
 }
 
 export default function SharesSettings() {
@@ -83,6 +109,7 @@ export default function SharesSettings() {
   const [friendShares, setFriendShares] = useState<FriendShares | null>(null);
   const [policyDraft, setPolicyDraft] = useState<Record<string, SharePolicy>>({});
   const [newResourceType, setNewResourceType] = useState("");
+  const [newResourceIdentifier, setNewResourceIdentifier] = useState("");
 
   const lang = (i18n.language || "en").slice(0, 2);
 
@@ -163,6 +190,7 @@ export default function SharesSettings() {
     resourceType: string,
     isAllowed: boolean,
     policy?: SharePolicy,
+    identifier?: string,
   ) {
     if (!selectedFriend || saving) return;
 
@@ -175,7 +203,14 @@ export default function SharesSettings() {
         body: JSON.stringify({
           grantee_user_id: selectedFriend.grantee_user_id,
           resource_type: resourceType,
-          resource_identifier: "primary",
+          // Derived from the adapter rather than hardcoded: a calendar share is
+          // one-per-user and defaults to "primary", a collection needs its
+          // slug and a dashboard its uuid. The caller supplies those when the
+          // type has no usable default.
+          resource_identifier:
+            identifier ??
+            catalogEntry(resourceType, catalog)?.default_identifier ??
+            "primary",
           is_allowed: isAllowed,
           policy: isAllowed ? policy || {} : undefined,
         }),
@@ -208,6 +243,100 @@ export default function SharesSettings() {
     return displayResourceName(resourceId, catalog);
   }
 
+  function updateDraft(resourceId: string, patch: SharePolicy) {
+    setPolicyDraft((prev) => ({
+      ...prev,
+      [resourceId]: { ...prev[resourceId], ...patch },
+    }));
+  }
+
+  /**
+   * Editor for a single policy field, chosen by the adapter's declared
+   * `policy_fields` rather than rendered unconditionally.
+   *
+   * Before this the editor showed days_ahead and expires_at for every type,
+   * so a user could set days_ahead on a dashboard share — a field the
+   * dashboard adapter does not read and the backend rejects at grant time.
+   * Rendering only what the adapter honours removes that class of dead input.
+   */
+  function renderPolicyField(field: string, resourceId: string, draft: SharePolicy) {
+    const cls =
+      "mt-1 w-full rounded-md border border-surface-border bg-surface px-2 py-1.5 text-white text-sm";
+    switch (field) {
+      case "days_ahead":
+        return (
+          <label className="block text-sm">
+            <span className="text-surface-muted">{t("settings:sharesDaysAhead")}</span>
+            <input
+              type="number"
+              min={1}
+              max={366}
+              value={draft.days_ahead ?? ""}
+              placeholder={t("settings:sharesDaysAheadPlaceholder")}
+              onChange={(e) => {
+                const val = e.target.value;
+                updateDraft(resourceId, { days_ahead: val ? Number(val) : undefined });
+              }}
+              className={cls}
+            />
+          </label>
+        );
+      case "expires_at":
+        return (
+          <label className="block text-sm">
+            <span className="text-surface-muted">{t("settings:sharesExpiresAt")}</span>
+            <input
+              type="datetime-local"
+              value={draft.expires_at ? draft.expires_at.slice(0, 16) : ""}
+              onChange={(e) => {
+                const val = e.target.value;
+                updateDraft(resourceId, {
+                  expires_at: val ? new Date(val).toISOString() : undefined,
+                });
+              }}
+              className={cls}
+            />
+          </label>
+        );
+      case "permission":
+        return (
+          <label className="block text-sm">
+            <span className="text-surface-muted">{t("settings:sharesPermission")}</span>
+            <select
+              value={draft.permission ?? "view"}
+              onChange={(e) => updateDraft(resourceId, { permission: e.target.value })}
+              className={cls}
+            >
+              <option value="view">{t("settings:sharesPermissionView")}</option>
+              <option value="edit">{t("settings:sharesPermissionEdit")}</option>
+            </select>
+          </label>
+        );
+      case "block_ids":
+        return (
+          <label className="block text-sm">
+            <span className="text-surface-muted">{t("settings:sharesBlockIds")}</span>
+            <input
+              type="text"
+              value={(draft.block_ids || []).join(", ")}
+              placeholder={t("settings:sharesBlockIdsPlaceholder")}
+              onChange={(e) =>
+                updateDraft(resourceId, {
+                  block_ids: e.target.value
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean),
+                })
+              }
+              className={cls}
+            />
+          </label>
+        );
+      default:
+        return null;
+    }
+  }
+
   function groupByUser(shares: ShareItem[]) {
     const groups: Record<string, ShareItem[]> = {};
     for (const share of shares) {
@@ -221,6 +350,15 @@ export default function SharesSettings() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // A type whose adapter has no usable default identifier (a collection needs
+  // a slug, a dashboard a uuid) must be given one explicitly before it can
+  // be shared.
+  const selectedNewType = catalogEntry(newResourceType, catalog);
+  const needsIdentifier =
+    !!selectedNewType && selectedNewType.default_identifier === null;
+  const canAddResource =
+    !!newResourceType && (!needsIdentifier || !!newResourceIdentifier.trim());
 
   return (
     <div className="mx-auto max-w-4xl space-y-8">
@@ -373,49 +511,16 @@ export default function SharesSettings() {
 
                       {enabled && (
                         <div className="grid gap-3 sm:grid-cols-2 pl-1">
-                          <label className="block text-sm">
-                            <span className="text-surface-muted">{t("settings:sharesDaysAhead")}</span>
-                            <input
-                              type="number"
-                              min={1}
-                              max={366}
-                              value={draft.days_ahead ?? ""}
-                              placeholder={t("settings:sharesDaysAheadPlaceholder")}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setPolicyDraft((prev) => ({
-                                  ...prev,
-                                  [resourceId]: {
-                                    ...prev[resourceId],
-                                    days_ahead: val ? Number(val) : undefined,
-                                  },
-                                }));
-                              }}
-                              className="mt-1 w-full rounded-md border border-surface-border bg-surface px-2 py-1.5 text-white text-sm"
-                            />
-                          </label>
-                          <label className="block text-sm">
-                            <span className="text-surface-muted">{t("settings:sharesExpiresAt")}</span>
-                            <input
-                              type="datetime-local"
-                              value={
-                                draft.expires_at
-                                  ? draft.expires_at.slice(0, 16)
-                                  : ""
-                              }
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setPolicyDraft((prev) => ({
-                                  ...prev,
-                                  [resourceId]: {
-                                    ...prev[resourceId],
-                                    expires_at: val ? new Date(val).toISOString() : undefined,
-                                  },
-                                }));
-                              }}
-                              className="mt-1 w-full rounded-md border border-surface-border bg-surface px-2 py-1.5 text-white text-sm"
-                            />
-                          </label>
+                          {(catalogEntry(resourceId, catalog)?.policy_fields || []).map(
+                            (field) => (
+                              <div
+                                key={field}
+                                className={field === "block_ids" ? "sm:col-span-2" : ""}
+                              >
+                                {renderPolicyField(field, resourceId, draft)}
+                              </div>
+                            ),
+                          )}
                           <div className="sm:col-span-2">
                             <button
                               type="button"
@@ -433,27 +538,60 @@ export default function SharesSettings() {
                 })}
                 <div className="flex flex-wrap items-end gap-2 pt-2 border-t border-surface-border/60">
                   <label className="block text-sm flex-1 min-w-[12rem]">
-                    <span className="text-surface-muted">{t("settings:sharesResourceType")}</span>
-                    <input
-                      type="text"
+                    <span className="text-surface-muted">
+                      {t("settings:sharesSelectResourceType")}
+                    </span>
+                    <select
                       value={newResourceType}
-                      placeholder="google_calendar, my_notes, …"
                       onChange={(e) => setNewResourceType(e.target.value)}
                       className="mt-1 w-full rounded-md border border-surface-border bg-surface px-2 py-1.5 text-white text-sm"
-                    />
+                    >
+                      <option value="" disabled>
+                        {t("settings:sharesSelectTypePlaceholder")}
+                      </option>
+                      {catalog.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      ))}
+                    </select>
                   </label>
+                  {needsIdentifier && (
+                    <label className="block text-sm flex-1 min-w-[12rem]">
+                      <span className="text-surface-muted">
+                        {t("settings:sharesIdentifier")}
+                      </span>
+                      <input
+                        type="text"
+                        value={newResourceIdentifier}
+                        placeholder={t("settings:sharesIdentifierPlaceholder")}
+                        onChange={(e) => setNewResourceIdentifier(e.target.value)}
+                        className="mt-1 w-full rounded-md border border-surface-border bg-surface px-2 py-1.5 text-white text-sm"
+                      />
+                    </label>
+                  )}
                   <button
                     type="button"
-                    disabled={saving || !newResourceType.trim()}
+                    disabled={saving || !canAddResource}
                     onClick={() => {
-                      const id = newResourceType.trim().toLowerCase().replace(/\s+/g, "_");
-                      void toggleShare(id, true);
+                      void setShare(
+                        newResourceType,
+                        true,
+                        policyDraft[newResourceType] || {},
+                        needsIdentifier ? newResourceIdentifier.trim() : undefined,
+                      );
                       setNewResourceType("");
+                      setNewResourceIdentifier("");
                     }}
                     className="rounded-md bg-emerald-700 px-3 py-1.5 text-sm text-white disabled:opacity-50"
                   >
                     {t("settings:sharesAddResource")}
                   </button>
+                  {catalog.length === 0 && (
+                    <p className="w-full text-sm text-surface-muted">
+                      {t("settings:sharesNoTypesRegistered")}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

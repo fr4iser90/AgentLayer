@@ -22,6 +22,7 @@ from apps.backend.domain.shares.adapter import find_credential_keys
 from apps.backend.domain.shares.registry import (
     ShareRegistryError,
     describe_registered,
+    describe_shareable_types,
     get_share_adapter,
     register_share_adapter,
     registered_resource_types,
@@ -301,6 +302,79 @@ class TestDescribe(RegistryTestCase):
         for entry in describe_registered():
             for field in entry["policy_fields"]:
                 self.assertIn(field, _ALLOWED_POLICY_FIELDS)
+
+
+class TestShareableView(RegistryTestCase):
+    """The picker-facing view: one entry per distinct thing, not per key."""
+
+    def test_aliases_are_collapsed_into_the_canonical_entry(self) -> None:
+        described = describe_shareable_types()
+        by_type = {e["resource_type"]: e for e in described}
+        # ``calendar`` is a legacy alias of google_calendar. Rendering the
+        # registry keys directly would offer the user both as separate things
+        # to share.
+        self.assertIn("google_calendar", by_type)
+        self.assertNotIn("calendar", by_type)
+        self.assertEqual(by_type["google_calendar"]["aliases"], ["calendar"])
+
+    def test_one_entry_per_adapter_not_per_registry_key(self) -> None:
+        # Four keys are bound (calendar, collection, dashboard,
+        # google_calendar) but only three things are shareable.
+        self.assertEqual(len(registered_resource_types()), 4)
+        self.assertEqual(len(describe_shareable_types()), 3)
+
+    def test_canonical_is_the_first_declared_type_not_the_first_sorted_key(self) -> None:
+        # Sorting puts "calendar" before "google_calendar". The canonical
+        # name must still come from the adapter's declaration order.
+        self.assertEqual(
+            sorted(e["resource_type"] for e in describe_shareable_types()),
+            ["collection", "dashboard", "google_calendar"],
+        )
+
+    def test_policy_fields_survive_the_grouping(self) -> None:
+        by_type = {e["resource_type"]: e for e in describe_shareable_types()}
+        self.assertEqual(
+            by_type["google_calendar"]["policy_fields"], ["days_ahead", "expires_at"]
+        )
+        self.assertEqual(
+            by_type["dashboard"]["policy_fields"],
+            ["block_ids", "expires_at", "permission"],
+        )
+
+    def test_catalog_for_api_is_the_registry_not_an_empty_stub(self) -> None:
+        # catalog_for_api() returned [] under the old "no fixed catalog"
+        # rule, which left the UI with nothing true to render.
+        from apps.backend.domain.shares.catalog import catalog_for_api
+
+        catalog = catalog_for_api()
+        self.assertEqual(
+            [c["id"] for c in catalog],
+            ["collection", "dashboard", "google_calendar"],
+        )
+        for c in catalog:
+            self.assertIn("name", c)
+            self.assertIn("policy_fields", c)
+            self.assertIn("listable", c)
+            self.assertIn("aliases", c)
+            self.assertIn("default_identifier", c)
+
+    def test_catalog_names_are_human_readable(self) -> None:
+        from apps.backend.domain.shares.catalog import catalog_for_api
+
+        names = {c["id"]: c["name"] for c in catalog_for_api()}
+        self.assertEqual(names["google_calendar"], "google calendar")
+        self.assertEqual(names["collection"], "collection")
+
+    def test_default_identifier_comes_from_the_adapter_not_an_assumption(self) -> None:
+        # A calendar share is one-per-user and defaults to "primary". A
+        # collection needs a slug and a dashboard a UUID, so claiming a
+        # default for those would prefill a value that cannot work.
+        from apps.backend.domain.shares.catalog import catalog_for_api
+
+        defaults = {c["id"]: c["default_identifier"] for c in catalog_for_api()}
+        self.assertEqual(defaults["google_calendar"], "primary")
+        self.assertIsNone(defaults["collection"])
+        self.assertIsNone(defaults["dashboard"])
 
 
 if __name__ == "__main__":
