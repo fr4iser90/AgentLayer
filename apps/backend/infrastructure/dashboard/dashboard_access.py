@@ -61,6 +61,8 @@ def _load_user_dashboards_allowed(uid: uuid.UUID) -> bool:
 
         with db.pool().connection() as conn:
             with conn.cursor() as cur:
+                # tenant-scope: guarded by uid — the row is keyed to one user's
+                # own id, so the read cannot cross a tenant boundary.
                 cur.execute(
                     "SELECT COALESCE(dashboards_allowed, true) FROM users WHERE id = %s",
                     (uid,),
@@ -81,13 +83,20 @@ def dashboards_quota_for(user_id: uuid.UUID | None) -> int:
 
         with db.pool().connection() as conn:
             with conn.cursor() as cur:
+                # tenant-scope: guarded by uid — one user's own quota row.
                 cur.execute(
-                    "SELECT COALESCE(dashboards_quota, 1) FROM users WHERE id = %s",
+                    "SELECT COALESCE(dashboard_quota, 1) FROM users WHERE id = %s",
                     (uid,),
                 )
                 row = cur.fetchone()
         n = int(row[0]) if row and row[0] is not None else 1
     except Exception:
+        # Logged, not silent. This reader previously named the column
+        # `dashboards_quota`, which does not exist, so every call raised
+        # UndefinedColumn and fell through to 1 — leaving the real
+        # `dashboard_quota` column (written by the admin API) unread and
+        # every user capped at one dashboard with nothing to show for it.
+        logger.warning("dashboards_quota_for: could not read quota for %s", uid, exc_info=True)
         n = 1
     return max(1, n)
 
@@ -122,6 +131,8 @@ def delete_user_dashboards(user_id: uuid.UUID) -> int:
 
         with db.pool().connection() as conn:
             with conn.cursor() as cur:
+                # tenant-scope: guarded by owner_user_id — deletes only the
+                # caller's own dashboards, never another owner's.
                 cur.execute("DELETE FROM user_dashboards WHERE owner_user_id = %s", (uid,))
                 n = cur.rowcount or 0
     except Exception:

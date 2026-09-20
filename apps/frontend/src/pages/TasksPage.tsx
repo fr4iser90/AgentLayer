@@ -38,12 +38,12 @@ function TaskList({
   }
   return (
     <ul className="space-y-2">
-      {tasks.map((t) => (
+      {tasks.map((task) => (
         <li
-          key={t.id}
+          key={task.id}
           className={[
             "rounded-lg border px-3 py-2.5",
-            activeTaskId === t.id
+            activeTaskId === task.id
               ? "border-indigo-500/50 bg-indigo-950/30"
               : "border-surface-border bg-surface-raised/50",
           ].join(" ")}
@@ -51,23 +51,23 @@ function TaskList({
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <span className="text-[10px] font-semibold uppercase tracking-wide text-surface-muted">
-                {t.status}
+                {task.status}
               </span>
-              <p className="mt-0.5 text-sm text-neutral-200">{t.goal}</p>
+              <p className="mt-0.5 text-sm text-neutral-200">{task.goal}</p>
             </div>
             <div className="flex shrink-0 flex-col gap-1">
               <button
                 type="button"
                 className="rounded border border-white/10 px-2 py-1 text-[11px] text-neutral-300 hover:bg-white/5"
-                onClick={() => onBind(t.id)}
+                onClick={() => onBind(task.id)}
               >
-                {activeTaskId === t.id ? t("tasks:boundToChat") : t("tasks:bindToChat")}
+                {activeTaskId === task.id ? t("tasks:boundToChat") : t("tasks:bindToChat")}
               </button>
-              {t.status !== "done" ? (
+              {task.status !== "done" ? (
                 <button
                   type="button"
                   className="rounded border border-emerald-500/30 px-2 py-1 text-[11px] text-emerald-300/90 hover:bg-emerald-950/40"
-                  onClick={() => onDone(t.id)}
+                  onClick={() => onDone(task.id)}
                 >
                   {t("tasks:markDone")}
                 </button>

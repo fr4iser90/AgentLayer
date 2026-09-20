@@ -183,6 +183,52 @@ def test_quota_for_floors_at_one() -> None:
         assert mod.dashboards_quota_for(uid) == 1
 
 
+def test_quota_reader_names_the_real_column() -> None:
+    """The quota column is ``users.dashboard_quota`` (singular).
+
+    ``_FakeCur`` above discards the SQL it is handed, so every existing
+    quota test passed while the reader queried ``dashboards_quota`` — a
+    column that does not exist. Against a real database that raises
+    UndefinedColumn, the broad ``except`` swallowed it, and every user was
+    silently capped at one dashboard no matter what the admin API wrote.
+    A stub that ignores the query cannot catch a wrong column, so this
+    asserts the SQL text itself.
+    """
+    seen: list[str] = []
+
+    class _RecordingCur(_FakeCur):
+        def execute(self, *args):
+            if args:
+                seen.append(str(args[0]))
+            return None
+
+    class _RecordingConn:
+        def cursor(self):
+            return _RecordingCur(1)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    class _RecordingPool:
+        def connection(self):
+            return _RecordingConn()
+
+    uid = uuid.uuid4()
+    with (
+        patch.object(mod, "_resolve_uid", return_value=uid),
+        patch.object(db, "pool", lambda: _RecordingPool()),
+    ):
+        mod.dashboards_quota_for(uid)
+
+    assert seen, "quota reader issued no SQL"
+    sql = " ".join(seen)
+    assert "dashboard_quota" in sql, f"reader does not query dashboard_quota: {sql}"
+    assert "dashboards_quota" not in sql, f"reader queries the non-existent plural column: {sql}"
+
+
 # --- current_dashboards_count / delete_user_dashboards ---
 
 

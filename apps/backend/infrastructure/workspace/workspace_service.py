@@ -30,6 +30,71 @@ from apps.backend.infrastructure.workspace.workspace_project_common import (
 
 logger = logging.getLogger(__name__)
 
+# Never dragged into a per-user copy of the seed repo.
+#
+# ``.git`` is deliberately NOT here: the self-workspace is expected to be a
+# git checkout (see the ``no .git`` guards in ``workspace_git.py`` and
+# below), so dropping it would break git for the feature it belongs to.
+_SEED_IGNORE_NAMES = frozenset(
+    {
+        "node_modules",
+        ".venv",
+        "venv",
+        "__pycache__",
+        ".pytest_cache",
+        ".mypy_cache",
+        ".ruff_cache",
+        "output",
+        ".scanning",
+    }
+)
+
+
+def _seed_copy_ignore(seed: Path, target: Path):
+    """``shutil.copytree`` ignore filter for the seed -> user-workspace copy.
+
+    Two hazards, both observed live on this deployment:
+
+    * The workspace base (``AGENTLAYER_WORKSPACE_PATH``) is a bind mount
+      whose host location sits *inside* the repo the seed points at. A
+      plain ``copytree`` then copies the destination into itself and
+      recurses until ``ENAMETOOLONG`` — which wedged the request thread
+      for tens of minutes and took the whole instance down with it.
+      Inside the container the two paths look unrelated
+      (``/workspace/AgentLayer`` vs ``/data/project_workspaces``), so a
+      path-string containment check cannot see the nesting. The check is
+      done on ``(st_dev, st_ino)``, which a bind mount shares with its
+      host directory, so it catches the nesting regardless of names.
+    * ``.git`` / ``node_modules`` / caches are hundreds of MB and were
+      copied into every workspace, making materialization slow even
+      without the recursion.
+    """
+    try:
+        base_st = os.stat(workspace_base_path())
+    except OSError:
+        base_st = None
+
+    def ignore(dirpath: str, names: list[str]) -> set[str]:
+        skip = {n for n in names if n in _SEED_IGNORE_NAMES}
+        if base_st is not None:
+            for name in names:
+                try:
+                    st = os.stat(os.path.join(dirpath, name))
+                except OSError:
+                    continue
+                if (st.st_dev, st.st_ino) == (base_st.st_dev, base_st.st_ino):
+                    skip.add(name)
+                    logger.warning(
+                        "agentlayer-self: refusing to copy %s — it is the workspace "
+                        "base (%s) bind-mounted inside the seed tree",
+                        os.path.join(dirpath, name),
+                        workspace_base_path(),
+                    )
+        return skip
+
+    return ignore
+
+
 def _agentlayer_self_seed_dir() -> Path | None:
     """ADR 0005: first directory that is a git checkout — ``/workspace/AgentLayer``, else ``/app``."""
     for p in (Path("/workspace/AgentLayer"), Path("/app")):
@@ -130,7 +195,7 @@ def materialize_agentlayer_self_workspace(user) -> dict[str, Any] | None:
         if not target.exists():
             target.parent.mkdir(parents=True, exist_ok=True)
             logger.info("agentlayer-self: copying seed %s -> %s", seed, target)
-            shutil.copytree(seed, target)
+            shutil.copytree(seed, target, ignore=_seed_copy_ignore(seed, target))
         else:
             logger.debug("agentlayer-self: target already exists %s", target)
 
@@ -251,7 +316,7 @@ def reset_agentlayer_self_workspace(
 
         target.parent.mkdir(parents=True, exist_ok=True)
         logger.warning("agentlayer-self reset: copying seed %s -> %s", seed, target)
-        shutil.copytree(seed, target)
+        shutil.copytree(seed, target, ignore=_seed_copy_ignore(seed, target))
 
         return resolve_db_workspace(wid, user)
     except Exception as e:
