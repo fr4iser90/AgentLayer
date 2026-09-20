@@ -16,19 +16,23 @@ from apps.backend.domain.shares.catalog import catalog_for_api, canonical_resour
 from apps.backend.domain.shares.policy import normalize_policy
 from apps.backend.domain.shares.projections import (
     default_projection_kind,
+    projection_backed,
     projection_kinds_for,
 )
-from apps.backend.domain.shares.registry import get_share_adapter, publish_projection
+from apps.backend.domain.shares.registry import (
+    canonical_type_for,
+    get_share_adapter,
+    publish_projection,
+    resolve_projection,
+)
 from apps.backend.application.identity.use_cases.request_auth import get_current_user
 from apps.backend.application.sharing.use_cases.sharing_controller_services import friend_get
 from apps.backend.application.sharing.use_cases.sharing_controller_services import (
-    SHARE_RESOURCE_GOOGLE_CALENDAR,
     list_shares_between,
     list_shares_by_grantee,
     list_shares_by_owner,
     require_friend_system,
     share_permission_check,
-    share_permission_get,
     share_permission_set,
 )
 
@@ -220,55 +224,78 @@ async def get_shares_between_friends(request: Request, friend_user_id: str):
     return {"ok": True, **shares}
 
 
-@router.get("/preview/calendar")
-async def preview_friend_calendar(
+# A registry refusal is a fact about why nothing was served, and the three
+# a grantee can act on are different: ask for the grant, fix the
+# identifier, or stop — so they cannot share one status code.
+_PREVIEW_REFUSAL_STATUS = {
+    "no_adapter_registered": 404,
+    "malformed_identifier": 400,
+    "not_granted": 403,
+}
+
+
+@router.get("/preview/{resource_type}")
+async def preview_shared_resource(
     request: Request,
+    resource_type: str,
     owner_user_id: str,
-    days: int = 7,
+    identifier: str = "",
+    days: int | None = None,
 ):
-    """Compact calendar preview for share_widget blocks (requires active grant)."""
+    """Generic preview of a friend's shared resource, for dashboard widgets.
+
+    Resolved through the registry rather than reimplemented here. That is
+    the whole point of this endpoint: the grant is enforced by the adapter
+    that owns the type, and what comes back is the projection the owner
+    published.
+
+    The calendar-only preview this replaces checked the grant again in the
+    controller and then fetched the live feed. Two consequences, both
+    wrong: the owner's chosen shape was ignored, so a friend who had been
+    given ``availability`` — busy windows, no titles — still had event
+    titles rendered from a live ICS read; and every widget load was a
+    round-trip to the owner's source, leaving the projection machinery
+    doing nothing for the one surface that reads most often.
+
+    Previewable means projection-backed. A type with an adapter but no
+    projection reads live and returns a permission decision rather than
+    content, so there is nothing for a widget to draw.
+    """
     user = await get_current_user(request)
     try:
         owner_uuid = uuid.UUID(owner_user_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="invalid owner_user_id")
 
-    if not share_permission_check(
+    adapter = get_share_adapter(resource_type)
+    if adapter is None:
+        raise HTTPException(status_code=404, detail="unknown resource type")
+    if not projection_backed(adapter):
+        raise HTTPException(status_code=404, detail="resource type is not previewable")
+
+    resolved_identifier = identifier or (adapter.normalize_identifier("") or "")
+    if not resolved_identifier:
+        raise HTTPException(status_code=400, detail="identifier required")
+
+    outcome = resolve_projection(
+        resource_type=resource_type,
         owner_user_id=owner_uuid,
         grantee_user_id=user.id,
-        resource_type=SHARE_RESOURCE_GOOGLE_CALENDAR,
-    ):
-        raise HTTPException(status_code=403, detail="calendar not shared with you")
-
-    grant = share_permission_get(
-        owner_user_id=owner_uuid,
-        grantee_user_id=user.id,
-        resource_type=SHARE_RESOURCE_GOOGLE_CALENDAR,
+        identifier=resolved_identifier,
+        request={} if days is None else {"days": days},
     )
-    from apps.backend.domain.shares.policy import effective_days_ahead
-    from plugins.tools.personal.calendar.ics import fetch_shared_calendar
-
-    effective = effective_days_ahead(
-        grant.get("policy") if grant else None,
-        days,
-    )
-
-    # The ICS address is a bearer credential: it is resolved and fetched
-    # inside the adapter and never returned to the grantee. (ADR 0014 P1)
-    parsed = fetch_shared_calendar(owner_uuid, days_ahead=effective)
-
-    if parsed.get("error") == "owner_has_no_calendar_configured":
-        return {"ok": True, "events": [], "hint": "friend has no calendar configured"}
-
-    if not parsed.get("ok"):
+    if not outcome.served:
         raise HTTPException(
-            status_code=502,
-            detail=str(parsed.get("error") or "calendar fetch failed"),
+            status_code=_PREVIEW_REFUSAL_STATUS.get(outcome.refusal or "", 400),
+            detail=outcome.refusal,
         )
 
     return {
         "ok": True,
+        # The adapter's canonical id, not the string that arrived: a
+        # request made under the legacy ``calendar`` alias should not come
+        # back looking like a second, different resource type.
+        "resource_type": canonical_type_for(adapter, resource_type),
         "owner_user_id": owner_user_id,
-        "days_effective": effective,
-        "calendar": parsed,
+        "preview": outcome.projection,
     }

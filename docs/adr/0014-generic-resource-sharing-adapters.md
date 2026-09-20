@@ -33,10 +33,13 @@ Implemented so far:
 - **step 7 (partial)**, the scheduled refresh worker, so the first reader
   after the TTL no longer pays for the owner's fetch, and the stale
   retention grace that makes it safe to run the sweeper — see §5.7.
+- **step 7 (partial)**, the ungranted-projection skip, which exposed and
+  fixed a revoke-cascade defect shipped in step 6 — see §5.7.
+- **step 7 (partial)**, the generic `/v1/shares/preview/{type}` endpoint,
+  which brings the dashboard widget inside the projection contract and
+  closes the hardcoded-type gate §5.5 had left in place — see §5.8.
 
-Not implemented: the rest of step 7 (nothing further is required for the
-calendar to be projection-backed; what remains is whatever the operator
-wants beyond it) and step 8.
+Not implemented: step 8.
 
 Companion reading: [ADR 0013](0013-os-level-workspace-isolation.md) covers
 the *filesystem* boundary; this one covers the *peer-to-peer data* boundary.
@@ -666,7 +669,7 @@ when a resource is added either.
 | 4 ✅ | Generic `friend_share` tool; old tool names become thin aliases | 1–2 | Removes the per-tool growth |
 | 5 ✅ | Share UI driven from the registry | 1–2 | Types, identifiers, policy fields — all derived |
 | 6 ✅ | Add the projection contract (table, refresh, revoke cascade, freshness) | 2–4 | Enables B |
-| 7 ◐ | Re-do the calendar as a **`publish_projection` adapter** ("share my availability") | 2–3 | Not a patched delegation. Makes the §1.6/§1.7 class of bug *impossible*, not merely gone. The adapter and the scheduled refresh are in (§5.6, §5.7); the read path no longer touches the live source. |
+| 7 ◐ | Re-do the calendar as a **`publish_projection` adapter** ("share my availability") | 2–3 | Not a patched delegation. Makes the §1.6/§1.7 class of bug *impossible*, not merely gone. The adapter, the scheduled refresh and the generic preview are in (§5.6–§5.8); no read path touches the live source, and the dashboard widget is inside the contract rather than beside it. |
 | 8 | Option C for one resource, **only if** a real requirement appears | 10–16 | Do not pre-build |
 
 **Total to a coherent state (steps 0–5): 7–11 working days.** Steps 0–3 are
@@ -860,12 +863,12 @@ loop to the old fixed pair makes the frontend test fail with
 card as well as the calendar card. The test covers the actual claim rather
 than the shape of the mock.
 
-**Deliberately left alone.** `ShareWidgetBlock.tsx` still hardcodes
-`google_calendar` and gates anything else as unsupported. That gate is
-honest today: `/v1/shares/preview/*` exists only for the calendar. Making
-the widget registry-driven would advertise previewable types the backend
-cannot serve, which is worse than the hardcode. It belongs with step 6, when
-a generic preview exists.
+**Deliberately left alone — until step 7.** `ShareWidgetBlock.tsx` used to
+hardcode `google_calendar` and gate anything else as unsupported. That
+gate was honest while `/v1/shares/preview/*` existed only for the
+calendar: making the widget registry-driven would have advertised
+previewable types the backend could not serve. Step 7 closes it with the
+generic endpoint in §5.8.
 
 ### 5.6 Step 6 as implemented: the projection contract
 
@@ -1121,6 +1124,63 @@ publish under the canonical key, grant under the alias, refresh (works,
 because the count spans the alias), revoke the alias grant, assert the
 canonical row is gone.
 
+### 5.8 Step 7: the generic preview, and the widget comes inside the contract
+
+`GET /v1/shares/preview/{resource_type}` replaces `/preview/calendar`.
+It resolves through `registry.resolve_projection`, so the grant is
+enforced by the adapter that owns the type and what comes back is the
+projection the owner published.
+
+**What the endpoint it replaced was actually doing wrong.** The old
+calendar preview re-checked the grant in the controller and then called
+`fetch_shared_calendar` directly. Three consequences, none of them
+visible from the widget:
+
+* **The owner's chosen shape never reached the screen.** An owner who had
+  published `availability` — busy windows, titles deliberately dropped
+  per §1.7.1 — still had `Zahnarzt` rendered in their friend's
+  dashboard, because the widget read the live feed rather than the
+  narrowed row. The narrowing existed and applied to nothing the human
+  interface showed.
+* **Every widget load was a live round-trip** to the owner's ICS host,
+  so the freshness machinery from steps 6 and 7 did nothing for the
+  most-read surface in the subsystem.
+* **The grant check was duplicated in the controller** — the exact
+  pattern this ADR exists to remove. A second implementation of an
+  authorization check is one refactor away from disagreeing with the
+  first.
+
+**Previewable means projection-backed.** A type with an adapter but no
+projection (`collection`, `dashboard`) returns a permission decision
+from `resolve()`, not content, so a widget pointed at it would draw an
+empty box and imply the share was broken. The endpoint 404s for those,
+and `/v1/shares/catalog` carries `previewable` so the UI does not have
+to re-derive the rule and get to disagree with it later.
+
+**A refusal keeps its reason.** `not_granted` is 403, `malformed_identifier`
+400, `no_adapter_registered` 404 — three different things a grantee can
+act on, and one status code would collapse them. An owner with nothing
+configured is *not* a refusal: it is served with the reason in the body,
+because telling a friend "not shared with you" when they hold a live
+grant sends them to ask for something they already have.
+
+**`canonical_type_for(adapter)` is now the only way to ask.** The response
+echoes the adapter's canonical id, not the string that arrived, so a
+request made under the legacy `calendar` alias does not come back looking
+like a second resource type. This is the same `canonical_resource_type`
+confusion that caused the step-6 defect in §5.7 — the first attempt at
+this endpoint used `canonical_resource_type(resource_type)` and echoed
+`"calendar"`. The helper is now shared with `describe_shareable_types`,
+which had been computing the same rule inline.
+
+**The widget is driven by the catalog, not by a string.** The hardcoded
+`resourceType !== "google_calendar"` gate is gone; the widget calls the
+generic endpoint with whatever type it was given, renders the projection
+it gets, and shows the `projection_kind` and a stale marker in its meta
+line so the reader can see which narrowing they are looking at and
+whether it is current.
+
+
 ---
 
 ## 6. Consequences
@@ -1305,7 +1365,7 @@ docker compose run --rm -e PYTHONPATH=/code agent-layer \
     python /code/scripts/validate_friend_sharing_fixture.py
 ```
 
-Current result: **87/87**. Progression of the fixture run:
+Current result: **93/93**. Progression of the fixture run:
 
 | added with | checks | total |
 |---|---|---|
@@ -1319,6 +1379,7 @@ Current result: **87/87**. Progression of the fixture run:
 | step 7 scheduled refresh | +8 | 79 |
 | step 7 stale retention | +5 | 84 |
 | step 7 ungranted projections + alias fix | +3 | 87 |
+| step 7 generic preview endpoint | +6 | 93 |
 
 The step-3 checks cover: `block_ids` rejected on a collection and still
 accepted on a dashboard; `list_keys` rejected on both; the `list_keys`-on-

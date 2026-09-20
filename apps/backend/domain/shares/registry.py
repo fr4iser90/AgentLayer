@@ -89,6 +89,23 @@ def get_share_adapter(resource_type: str) -> ShareAdapter | None:
     return _adapters.get(key) if key else None
 
 
+def canonical_type_for(adapter: ShareAdapter, fallback: str = "") -> str:
+    """The canonical id of an adapter, as the adapter itself declares it.
+
+    ``canonical_resource_type`` normalises *syntax* only — it does not map
+    a legacy alias to the type it aliases, so ``canonical_resource_type(
+    "calendar")`` is ``"calendar"``, not ``"google_calendar"``. The
+    canonical id is the adapter's **first declared** ``resource_types``;
+    everything after it is an alias. Anything that reports or keys on the
+    canonical id has to ask the adapter, not the string.
+
+    This is the same distinction that let a revoke issued under the
+    ``calendar`` alias miss the ``google_calendar`` row in step 6.
+    """
+    declared = tuple(getattr(adapter, "resource_types", ()) or ())
+    return declared[0] if declared else fallback
+
+
 def registered_resource_types() -> tuple[str, ...]:
     return tuple(sorted(_adapters))
 
@@ -270,7 +287,7 @@ def describe_shareable_types() -> list[dict[str, Any]]:
             continue
         seen.add(id(adapter))
         declared = tuple(getattr(adapter, "resource_types", ()) or ())
-        canonical = declared[0] if declared else key
+        canonical = canonical_type_for(adapter, key)
         # The identifier this type takes when none is given. Asking the adapter
         # rather than assuming "primary": a calendar share is one-per-user and
         # defaults cleanly, but a collection needs a slug and a dashboard a

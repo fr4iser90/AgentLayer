@@ -64,6 +64,13 @@ def catalog_for_api(*, lang: str = "en") -> list[dict[str, Any]]:
             # type has one.
             "projection_kinds": entry["projection_kinds"],
             "default_projection_kind": entry["default_projection_kind"],
+            # Stated rather than left for the UI to infer. A widget needs to
+            # know whether a preview exists before offering a type, and
+            # "has projection kinds" is a backend rule about what the read
+            # actually returns — re-deriving it in the caller is how the
+            # two drift the next time a type gains a projection without
+            # gaining content worth drawing.
+            "previewable": bool(entry["projection_kinds"]),
         }
         for entry in describe_shareable_types()
     ]
