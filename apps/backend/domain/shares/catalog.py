@@ -58,6 +58,12 @@ def catalog_for_api(*, lang: str = "en") -> list[dict[str, Any]]:
             "policy_fields": entry["policy_fields"],
             "listable": entry["listable"],
             "aliases": entry["aliases"],
+            # Empty means the type is read live and has no shape to choose.
+            # A UI that offers a projection picker should offer it only
+            # where this is non-empty, rather than assuming every shareable
+            # type has one.
+            "projection_kinds": entry["projection_kinds"],
+            "default_projection_kind": entry["default_projection_kind"],
         }
         for entry in describe_shareable_types()
     ]

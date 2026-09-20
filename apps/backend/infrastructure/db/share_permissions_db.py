@@ -77,6 +77,56 @@ def _serialize_grant(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _canonical(resource_type: str) -> str:
+    from apps.backend.domain.shares.catalog import canonical_resource_type
+
+    return (
+        canonical_resource_type(resource_type)
+        or (resource_type or "").strip().lower()
+    )
+
+
+def count_active_grants(
+    owner_user_id: uuid.UUID,
+    resource_type: str,
+    resource_identifier: str = "primary",
+) -> int:
+    """How many live grants still name this owner's resource.
+
+    Counted across the canonical id *and* its legacy aliases, because a
+    projection is keyed canonically while grants are stored under whatever
+    name was written. Counting only the canonical id would report zero
+    while a ``calendar`` grant is still live, and the cascade would delete
+    a projection somebody can still read.
+    """
+    variants = _resource_type_variants(resource_type)
+    if not variants:
+        return 0
+    identifier = (resource_identifier or "primary").strip().lower()
+    with pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                """
+                SELECT is_allowed, revoked_at, policy
+                FROM share_permissions
+                WHERE owner_user_id = %s
+                  AND resource_type = ANY(%s)
+                  AND resource_identifier = %s
+                  AND revoked_at IS NULL
+                  AND is_allowed = TRUE
+                """,
+                (owner_user_id, list(variants), identifier),
+            )
+            rows = cur.fetchall()
+    return sum(
+        1
+        for r in rows
+        if grant_is_active(
+            is_allowed=True, revoked_at=r.get("revoked_at"), policy=_row_policy(r.get("policy"))
+        )
+    )
+
+
 def share_permission_set(
     owner_user_id: uuid.UUID,
     grantee_user_id: uuid.UUID,
@@ -135,6 +185,47 @@ def share_permission_set(
                     (owner_user_id, grantee_user_id, rt, ident),
                 )
                 ok = True
+                # The cascade runs in the same transaction as the revoke,
+                # not afterwards. A delete that happens later leaves a
+                # window where the grant is gone and the owner's published
+                # view is still standing, and "it gets cleaned up soon" is
+                # exactly the kind of guarantee this ADR was written
+                # because it kept not holding.
+                cur.execute(
+                    """
+                    SELECT policy
+                    FROM share_permissions
+                    WHERE owner_user_id = %s
+                      AND resource_type = ANY(%s)
+                      AND resource_identifier = %s
+                      AND revoked_at IS NULL
+                      AND is_allowed = TRUE
+                    """,
+                    (owner_user_id, list(_resource_type_variants(rt)), ident),
+                )
+                still_live = 0
+                for r in cur.fetchall():
+                    # This cursor is a plain tuple cursor, not dict_row, so
+                    # the single selected column comes back positionally.
+                    # Handle both rather than assume which factory is set.
+                    raw = r["policy"] if isinstance(r, dict) else r[0]
+                    if grant_is_active(
+                        is_allowed=True,
+                        revoked_at=None,
+                        policy=_row_policy(raw),
+                    ):
+                        still_live += 1
+                if still_live == 0:
+                    from apps.backend.infrastructure.db.share_projections_db import (
+                        projection_delete_cursor,
+                    )
+
+                    projection_delete_cursor(
+                        cur,
+                        owner_user_id=owner_user_id,
+                        resource_type=_canonical(rt),
+                        resource_identifier=ident,
+                    )
         conn.commit()
 
     return ok
@@ -222,6 +313,10 @@ def share_permission_check_resolved(
 
 def list_shares_by_owner(owner_user_id: uuid.UUID) -> list[dict[str, Any]]:
     """List all outgoing shares from this user."""
+    # tenant-scope: guarded owner_user_id — a friend share is a pair of
+    # users, not a pair of tenants, and this enumerates one party's own
+    # outgoing grants. Same boundary friends_db uses; tenancy is not what
+    # confines these rows, the caller's own identity is.
     with pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
@@ -246,6 +341,8 @@ def list_shares_by_owner(owner_user_id: uuid.UUID) -> list[dict[str, Any]]:
 
 def list_shares_by_grantee(grantee_user_id: uuid.UUID) -> list[dict[str, Any]]:
     """List all incoming shares this user has access to."""
+    # tenant-scope: guarded grantee_user_id — mirror of the above, keyed to
+    # the other side of the pair.
     with pool().connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(

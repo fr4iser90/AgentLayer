@@ -17,9 +17,15 @@ from apps.backend.domain.shares.catalog import (
     resource_type_label,
 )
 from apps.backend.domain.shares.policy import normalize_policy
+from apps.backend.domain.shares.projections import (
+    default_projection_kind,
+    projection_kinds_for,
+)
 from apps.backend.domain.shares.registry import (
     ShareRegistryError,
     describe_shareable_types,
+    get_share_adapter,
+    publish_projection,
     resolve_projection,
 )
 # Imported for its side effect: it registers the adapters this deployment
@@ -402,6 +408,88 @@ def _action_read(requesting_user_id: uuid.UUID, arguments: dict[str, Any]) -> di
     }
 
 
+def _action_publish(requesting_user_id: uuid.UUID, arguments: dict[str, Any]) -> dict[str, Any]:
+    """The caller publishes a narrowed projection of their *own* resource.
+
+    Owner-side, so there is no friend to resolve and no grant to check: a
+    person publishing their own data needs neither. What they do need is a
+    say in the shape, which is the whole point of a projection — the owner
+    decides once what a friend can ever see, rather than trusting each read
+    to strip the right fields.
+
+    Publishing grants nothing. A projection with no grant behind it is
+    unreadable, exactly as before.
+    """
+    resource_type = arguments.get("resource_type")
+    if not resource_type:
+        return {"ok": False, "result": "resource_type is required for publish"}
+
+    canonical = canonical_resource_type(str(resource_type))
+    if not canonical:
+        return {
+            "ok": False,
+            "result": "resource_type must be a non-empty id (letters, digits, _, ., -)",
+        }
+
+    identifier = str(arguments.get("resource_identifier") or "primary").strip().lower()
+    label = resource_type_label(canonical)
+    adapter = get_share_adapter(canonical)
+    if adapter is None:
+        return {
+            "ok": False,
+            "result": f"{label} has no adapter registered, so there is nothing to publish.",
+        }
+
+    kinds = projection_kinds_for(adapter)
+    if not kinds:
+        return {
+            "ok": False,
+            "result": (
+                f"{label} is read live and publishes no projections. Sharing it is "
+                "controlled by the grant's policy fields, not by a published shape."
+            ),
+        }
+
+    requested_kind = arguments.get("projection_kind")
+    kind = str(requested_kind).strip().lower() if requested_kind else default_projection_kind(adapter)
+    if kind not in kinds:
+        return {
+            "ok": False,
+            "result": (
+                f"{label} can be published as {', '.join(kinds)} — not '{kind}'."
+            ),
+        }
+
+    try:
+        outcome = publish_projection(
+            resource_type=canonical,
+            owner_user_id=requesting_user_id,
+            identifier=identifier,
+            kind=kind,
+        )
+    except ShareRegistryError as exc:
+        return {"ok": False, "result": f"Could not publish {label}: {exc}"}
+
+    if not outcome.served:
+        return {"ok": False, "result": f"Could not publish {label}: {outcome.refusal}"}
+
+    stored = outcome.projection
+    return {
+        "ok": True,
+        "result": (
+            f"Published your {label} as '{kind}'. Everyone you have granted "
+            f"{label} to now sees that shape."
+        ),
+        "data": {
+            "resource_type": canonical,
+            "resource_identifier": identifier,
+            "projection_kind": stored.kind,
+            "expires_at": stored.expires_at.isoformat() if stored.expires_at else None,
+            "available_kinds": list(kinds),
+        },
+    }
+
+
 def _shares_for_friend(requesting_user_id: uuid.UUID, friend_user_id: uuid.UUID) -> dict[str, Any]:
     between = list_shares_between(requesting_user_id, friend_user_id)
     outgoing = between.get("outgoing_grants") or []
@@ -500,13 +588,16 @@ def shares(arguments: dict[str, Any]) -> str:
         "revoke": _action_revoke,
         "check": _action_check,
         "read": _action_read,
+        "publish": _action_publish,
     }
     handler = handlers.get(action)
     if not handler:
         return json.dumps(
             {
                 "ok": False,
-                "error": f"unknown action '{action}'; use list, grant, revoke, check, or read",
+                "error": (
+                    f"unknown action '{action}'; use list, grant, revoke, check, read, or publish"
+                ),
             },
             ensure_ascii=False,
         )
@@ -558,6 +649,19 @@ def _derived_readable_help() -> str:
     )
 
 
+def _derived_kinds_help() -> str:
+    """Which publishable shapes exist per type, from the registry."""
+    publishable = [t for t in _SHAREABLE if t.get("projection_kinds")]
+    if not publishable:
+        return "No registered type publishes projections yet."
+    parts = "; ".join(
+        f"{t['resource_type']}: {', '.join(t['projection_kinds'])} "
+        f"(default {t['default_projection_kind']})"
+        for t in publishable
+    )
+    return f"Publishable shapes — {parts}."
+
+
 HANDLERS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "shares": shares,
 }
@@ -577,6 +681,9 @@ TOOLS: list[dict[str, Any]] = [
                 "Use action=grant to share e.g. calendar with days_ahead:7. "
                 "Use action=read to actually read a friend's shared resource (only types with a "
                 "registered adapter; a grant alone is not access). "
+                "Use action=publish to choose what shape of your OWN resource a friend can ever "
+                "see. "
+                + _derived_kinds_help() + " "
                 "Use action=list without name for full summary; with friend name for one person."
             ),
             "parameters": {
@@ -584,8 +691,12 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "action": {
                         "type": "string",
-                        "enum": ["list", "grant", "revoke", "check", "read"],
-                        "TOOL_DESCRIPTION": "list (default), grant, revoke, check, or read.",
+                        "enum": ["list", "grant", "revoke", "check", "read", "publish"],
+                        "TOOL_DESCRIPTION": (
+                            "list (default), grant, revoke, check, read, or publish. "
+                            "publish is owner-side: it sets the shape of your own resource "
+                            "that friends then see."
+                        ),
                     },
                     "name": {
                         "type": "string",
@@ -630,6 +741,13 @@ TOOLS: list[dict[str, Any]] = [
                         "TOOL_DESCRIPTION": (
                             "For read: how far ahead to read. The grant caps it — asking for more "
                             "than the grant allows returns the granted horizon, not more."
+                        ),
+                    },
+                    "projection_kind": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": (
+                            "For publish: which narrowing to store for your own resource. "
+                            + _derived_kinds_help()
                         ),
                     },
                 },

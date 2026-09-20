@@ -27,6 +27,7 @@ from typing import Any
 
 from apps.backend.domain.shares.adapter import ShareAdapter, find_credential_keys
 from apps.backend.domain.shares.catalog import canonical_resource_type
+from apps.backend.domain.shares import projections as _projections
 
 
 class ShareRegistryError(RuntimeError):
@@ -158,6 +159,73 @@ def resolve_projection(
     return ResolveOutcome(adapter, projection, None)
 
 
+@dataclass(frozen=True)
+class PublishOutcome:
+    """Result of an owner publishing a projection of their own resource."""
+
+    projection: Any | None
+    refusal: str | None
+
+    @property
+    def served(self) -> bool:
+        return self.refusal is None
+
+
+def publish_projection(
+    *,
+    resource_type: str,
+    owner_user_id: uuid.UUID,
+    identifier: str,
+    kind: str | None = None,
+) -> PublishOutcome:
+    """Publish the owner's narrowed view of their own resource (step 6).
+
+    Reached through the registry rather than called on the adapter directly,
+    so Principle 2 has one meaning here too: nothing gets between the caller
+    and the stored row except this function and the store's own credential
+    gate. A caller that could hand a payload straight to the store would be
+    a caller that could store a credential.
+
+    This is an owner-side operation. It reads the owner's own source with
+    the owner's own credential and writes a narrowed projection; it does
+    not grant anything, and granting is still what makes it readable.
+    """
+    adapter = get_share_adapter(resource_type)
+    if adapter is None:
+        return PublishOutcome(None, "no_adapter_registered")
+    if not _projections.projection_backed(adapter):
+        return PublishOutcome(None, "not_projection_backed")
+
+    norm = adapter.normalize_identifier(identifier)
+    if not norm:
+        return PublishOutcome(None, "malformed_identifier")
+
+    kinds = _projections.projection_kinds_for(adapter)
+    chosen = kind or _projections.default_projection_kind(adapter)
+    if kinds and chosen not in kinds:
+        return PublishOutcome(None, "unknown_projection_kind")
+
+    try:
+        payload = adapter.publish_projection(
+            owner_user_id=owner_user_id, identifier=norm, kind=chosen
+        )
+    except _projections.ShareProjectionPublishError as exc:
+        return PublishOutcome(None, str(exc) or "publish_failed")
+
+    if payload is None:
+        return PublishOutcome(None, "publish_returned_nothing")
+
+    stored = _projections.store_projection(
+        adapter,
+        owner_user_id=owner_user_id,
+        resource_type=resource_type,
+        resource_identifier=norm,
+        kind=chosen,
+        payload=payload,
+    )
+    return PublishOutcome(stored, None)
+
+
 def describe_registered() -> list[dict[str, Any]]:
     """One entry per registry key, including legacy aliases.
 
@@ -218,6 +286,11 @@ def describe_shareable_types() -> list[dict[str, Any]]:
                 "listable": bool(getattr(adapter, "supports_list", False)),
                 "aliases": list(declared[1:]),
                 "default_identifier": default_identifier,
+                # Empty for a type that reads live. Non-empty means the owner
+                # can choose a shape, and the UI can offer that choice
+                # instead of guessing whether one exists.
+                "projection_kinds": list(_projections.projection_kinds_for(adapter)),
+                "default_projection_kind": _projections.default_projection_kind(adapter),
             }
         )
     # Sorted, not registry-insertion order: this feeds a picker and an agent

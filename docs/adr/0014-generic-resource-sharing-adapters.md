@@ -27,9 +27,12 @@ Implemented so far:
 - **step 5**, the catalog and the share UI driven from the registry —
   see §5.5. This also retired the flat policy-field list the agent tool
   advertised, the open item §1.9.1 left behind.
+- **step 6**, the projection contract: table, owner-chosen shape,
+  freshness bound, revoke cascade — see §5.6. The calendar is the first
+  real projection, so part of step 7 landed with this.
 
-Not implemented: steps 6–8. The projection layer and the calendar redone
-as a `publish_projection` adapter remain open.
+Not implemented: the rest of step 7 (the calendar's `publish_projection`
+growing a refresh trigger beyond read-time) and step 8.
 
 Companion reading: [ADR 0013](0013-os-level-workspace-isolation.md) covers
 the *filesystem* boundary; this one covers the *peer-to-peer data* boundary.
@@ -658,7 +661,7 @@ when a resource is added either.
 | 3 ✅ | Per-type `policy_fields`; reject unknown fields at write time | 1–2 | Fixes §1.9; forces each adapter to state what it honours |
 | 4 ✅ | Generic `friend_share` tool; old tool names become thin aliases | 1–2 | Removes the per-tool growth |
 | 5 ✅ | Share UI driven from the registry | 1–2 | Types, identifiers, policy fields — all derived |
-| 6 | Add the projection contract (table, refresh, revoke cascade, freshness) | 2–4 | Enables B |
+| 6 ✅ | Add the projection contract (table, refresh, revoke cascade, freshness) | 2–4 | Enables B |
 | 7 | Re-do the calendar as a **`publish_projection` adapter** ("share my availability") | 2–3 | Not a patched delegation. Makes the §1.6/§1.7 class of bug *impossible*, not merely gone |
 | 8 | Option C for one resource, **only if** a real requirement appears | 10–16 | Do not pre-build |
 
@@ -860,6 +863,111 @@ the widget registry-driven would advertise previewable types the backend
 cannot serve, which is worse than the hardcode. It belongs with step 6, when
 a generic preview exists.
 
+### 5.6 Step 6 as implemented: the projection contract
+
+`share_projections` (schema_138) plus `domain/shares/projections.py`, with
+the calendar as the first adapter behind it. Option B is now the shape a
+new adapter can default to rather than a proposal.
+
+**The store is where Principle 1 bites hardest.** The registry already
+gates a projection on the way out. Step 6 gates it on the way *in*:
+`store_projection` runs `find_credential_keys` and refuses the write.
+The asymmetry is the reason. A leak on a live read is one bad response
+that is gone when the request ends; a leak here is a row sitting in the
+database holding a bearer credential, discoverable by the next bug that
+reads the table. `load_fresh` keeps the publish *and* the store inside the
+same guarded region for that reason — a payload the store rejects must not
+escape as an unhandled exception.
+
+**Owner-owned, not grantee-keyed.** One row per
+`(owner_user_id, resource_type, resource_identifier)`. The projection
+answers *what shape exists*; the grant answers *who may read it*, and the
+grant is checked on every read. Keying per grantee would multiply one
+owner's data by their friend count for no benefit and would turn a revoke
+into a delete that can be missed. There is also no by-grantee lookup at all
+in the store port: a lookup path that accepts a grantee id is a path where
+someone can eventually be talked into passing the wrong one.
+
+**The owner chooses the shape, once, for everyone.**
+`projection_kind` records what was published — for the calendar,
+`events` (titles included) or `availability` (busy windows only). A
+grantee cannot ask for a kind: `load_fresh` reads the kind that is
+stored, so the shape stays the owner's decision. Only a resource never
+published falls back to the adapter default.
+
+The calendar's default is `events`, which is what a friend saw before
+projections existed. That is a deliberate compatibility choice, not an
+oversight: shipping the machinery should not silently change what a
+friend sees. The narrower shape is the direction, and the owner opts into
+it. `availability` drops `summary`, `location`, `uid`, `description`,
+`attendees` and `organizer` by name rather than whitelisting what
+survives, so adding a field to the live read cannot widen the disclosure
+by omission.
+
+**Freshness is bounded, never assumed.** `expires_at` is `NOT NULL`, and
+the TTL is clamped to 60 seconds–24 hours: a one-second TTL turns every
+read into a live fetch, a year-long one is a copy that never gets
+corrected. A row with no bound reads as expired rather than as permanently
+valid. When a republish fails the stale row is served with `stale=True`
+rather than dropped — a five-minute-old free/busy view beats failing a
+friend's question — but it is labelled, because an answer quietly out of
+date is worse than one that says so.
+
+**The cascade runs in the revoke's own transaction.** Deleting the
+projection when the last live grant goes is done on the same cursor as
+the revoke, not in a follow-up call. A delete on its own connection
+commits *ahead* of the revoke it is cascading from, so a rollback would
+leave the projection gone and the grant alive — worse than no cascade at
+all. Hence `projection_delete_cursor(cur, …)`. And revoking one grantee
+must not blind the others: the count is taken across the canonical id
+**and its legacy aliases**, because grants are stored under whatever name
+was written while the projection is keyed canonically. Counting only the
+canonical id would report zero while a `calendar` grant is still live.
+
+**Publishing goes through the registry.** `registry.publish_projection`
+does the adapter lookup, the kind validation and the gated store. The
+plugin never touches the adapter directly, so Principle 2 has one meaning
+here too: nothing stands between a caller and the stored row except this
+function and the store's own gate.
+
+**Two defects this step's own tests caught, both in code that looked fine.**
+
+*The store call sat outside the guard.* `load_fresh` wrapped
+`publish_projection` in try/except and called `store_projection` after
+it. A credential-shaped payload therefore escaped as an unhandled
+exception instead of falling back to the last known-clean row. The
+credential never reached the grantee, but the failure mode was a crash
+rather than a refusal — and the test that asserted "no row is written"
+caught it precisely because it asserted the row, not the exception.
+
+*A cursor assumed the wrong row factory.* The cascade counted remaining
+grants with `dict(r).get("policy")` on a plain tuple cursor, raising
+`dictionary update sequence element #0 has length 1`. It surfaced only
+against the live database, not the unit fakes — the same class of gap
+§5.4 recorded, where the fake's shape differs from the driver's.
+
+**A regression worth naming, because it was the tempting wrong answer.**
+With projections in place, an owner who granted a calendar but never
+configured one started reading as *"has not shared with you"* — the grant
+was live, the projection was empty, and collapsing the two told the
+grantee the opposite of the truth and sent them to ask for access they
+already had. `ProjectionOutcome` now carries the publish error
+separately, so `owner_has_no_calendar_configured` survives to the tool
+and the "no grant" refusal stays distinct.
+
+**Verified by mutation.** Removing the store's credential check fails
+four tests, including the end-to-end alias test that asserts nothing
+credential-shaped reaches the grantee. Making the cascade always delete
+fails `another_live_grant_keeps_the_projection`. The claims are covered,
+not merely accompanied.
+
+**Left for step 7.** Republish is read-triggered: a stale projection is
+refreshed when someone asks. There is no owner-side or scheduled refresh,
+so the first reader after the TTL pays for the fetch. A scheduled worker
+has a clear home (`scheduler_jobs_runner` is the pattern) and is a clean
+addition; it is not needed for correctness, because nothing expired is
+ever served.
+
 ---
 
 ## 6. Consequences
@@ -1044,7 +1152,7 @@ docker compose run --rm -e PYTHONPATH=/code agent-layer \
     python /code/scripts/validate_friend_sharing_fixture.py
 ```
 
-Current result: **57/57**. Progression of the fixture run:
+Current result: **71/71**. Progression of the fixture run:
 
 | added with | checks | total |
 |---|---|---|
@@ -1054,6 +1162,7 @@ Current result: **57/57**. Progression of the fixture run:
 | step 3 policy enforcement | +8 | 47 |
 | step 4 generic read + calendar alias | +3 | 50 |
 | step 5 registry-driven catalog + UI | +7 | 57 |
+| step 6 projection contract | +14 | 71 |
 
 The step-3 checks cover: `block_ids` rejected on a collection and still
 accepted on a dashboard; `list_keys` rejected on both; the `list_keys`-on-
@@ -1078,6 +1187,19 @@ text no longer mentions `list_keys` and names exactly the three readable
 types; and for every advertised type the advertised field set equals
 `policy_fields_for(type)` — the check that makes drift a failure instead
 of a diff.
+
+The step-6 checks run against the real `share_projections` table, because
+the claims are about what lands in it. Concretely: the owner can publish
+and the row is keyed on the owner rather than the reader; **no credential
+is at rest** in the table, asserted by scanning the stored payload with
+the same predicate that guards the read path; the freshness bound is a
+future timestamp rather than null; the `availability` shape stores no
+event titles; an unknown kind, a live-read type and an unregistered type
+are each refused for their own reason; revoking one of two grantees keeps
+the projection the other can still read while the last revoke takes the
+row with it; an aged row reads as not fresh and the sweeper collects it;
+and the catalog tells the UI which types actually have a shape to choose
+rather than assuming every shareable type does.
 
 The run is what turned §1.3 from a static grep into an observed behaviour —
 and what surfaced the always-deny bug that the grep had mis-scored as
@@ -1104,14 +1226,16 @@ Two things worth carrying forward from how that happened:
    it can be registered, because registering it activates existing grants.
 2. **How many live grants exist today** for those four types, and between
    whom? This decides whether step 0 is a no-op or a cleanup.
-3. **Is staleness acceptable?** If "is Anna free at 15:00" must be exact, B
-   is not enough for calendars and C moves up — at 10–16 days and a real
-   OAuth dependency. If "as of the last refresh" is acceptable, B is the
-   right and much cheaper answer.
+3. **Is staleness acceptable?** *Answered 2026-09-20: a TTL is acceptable.*
+   Step 6 therefore ships with a bounded-TTL projection and Option C stays
+   unbuilt. If a future requirement makes "is Anna free at 15:00" have to
+   be exact, that is when C moves up — at 10–16 days and a real OAuth
+   dependency.
 4. **Is the `data` alias for `collection` kept?** It is generic enough to
    collide with a future type. Cheap to remove now, expensive later.
 5. **Do projections live in Postgres, or in the resource's own store?**
-   Postgres is simpler and keeps the revoke cascade in one place.
+   *Answered by step 6: Postgres* (`share_projections`), which is what
+   keeps the revoke cascade in one place and in one transaction.
 6. **Is per-type operator control wanted?** Trivial on a registry, and a
    natural follow-up to the coarse `friend_system_enabled` gate.
 7. **How many cross-tenant friendships does this instance actually carry?**

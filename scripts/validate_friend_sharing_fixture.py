@@ -561,6 +561,132 @@ check("step 5: every advertised per-type field set equals the enforced set",
       "the text an agent reads must match normalize_policy")
 
 
+# ── projections: publish, shape, cascade (ADR 0014 step 6) ───────────────────
+from datetime import datetime, timedelta, timezone  # noqa: E402
+
+from apps.backend.domain.shares import projections as proj  # noqa: E402
+from apps.backend.domain.shares.registry import publish_projection  # noqa: E402
+from apps.backend.infrastructure.db import share_projections_db as prdb  # noqa: E402
+from apps.backend.infrastructure.db.share_permissions_db import (  # noqa: E402
+    share_permission_set,
+)
+
+appdb.query("DELETE FROM share_projections")
+appdb.user_secret_upsert(LENA, "google_calendar", json.dumps({"ics_url": LENA_ICS}))
+
+pub_events, _ = _with_stubbed_network(lambda: publish_projection(
+    resource_type="google_calendar", owner_user_id=LENA,
+    identifier="primary", kind="events"))
+
+check("step 6: the owner can publish a projection of their own resource",
+      pub_events.served and pub_events.projection.kind == "events",
+      f"refusal={pub_events.refusal}")
+
+_row = prdb.projection_get(
+    owner_user_id=LENA, resource_type="google_calendar", resource_identifier="primary"
+)
+check("step 6: the published row is keyed on the OWNER, not the reader",
+      _row is not None and str(_row["owner_user_id"]) == str(LENA)
+      and _row["projection_kind"] == "events",
+      f"kind={_row and _row['projection_kind']}")
+check("step 6: no credential is at rest in the projection table",
+      _row is not None and LENA_ICS not in json.dumps(_row["payload"])
+      and find_credential_keys(_row["payload"]) == [],
+      f"leaks={find_credential_keys(_row['payload']) if _row else 'no row'}")
+check("step 6: the freshness bound is in the future, not null",
+      _row is not None and _row["expires_at"] is not None
+      and _row["expires_at"] > datetime.now(timezone.utc),
+      f"expires={_row and _row['expires_at']}")
+
+pub_avail, _ = _with_stubbed_network(lambda: publish_projection(
+    resource_type="google_calendar", owner_user_id=LENA,
+    identifier="primary", kind="availability"))
+_avail_row = prdb.projection_get(
+    owner_user_id=LENA, resource_type="google_calendar", resource_identifier="primary"
+)
+_avail_events = (_avail_row or {}).get("payload", {}).get("events", [])
+check("step 6: the availability shape stores no event titles",
+      pub_avail.served and _avail_row["projection_kind"] == "availability"
+      and all("summary" not in e for e in _avail_events) and len(_avail_events) == 2,
+      f"events={_avail_events}")
+
+bad = publish_projection(
+    resource_type="google_calendar", owner_user_id=LENA,
+    identifier="primary", kind="everything")
+check("step 6: an unknown projection shape is refused",
+      not bad.served and bad.refusal == "unknown_projection_kind",
+      f"refusal={bad.refusal}")
+
+live = publish_projection(
+    resource_type="dashboard", owner_user_id=LENA, identifier="dash-1")
+check("step 6: a live-read type refuses to publish rather than pretend",
+      not live.served and live.refusal == "not_projection_backed",
+      f"refusal={live.refusal}")
+
+none = publish_projection(
+    resource_type="payroll_export", owner_user_id=LENA, identifier="primary")
+check("step 6: an unregistered type cannot publish",
+      not none.served and none.refusal == "no_adapter_registered",
+      f"refusal={none.refusal}")
+
+# Revoke cascade: the projection is shared by shape, so one revoke must not
+# blind the other grantee; only the last one may take the row with it.
+share_permission_set(LENA, TIM, "google_calendar", "primary", True, policy={"days_ahead": 7})
+share_permission_set(LENA, BOB, "google_calendar", "primary", True, policy={"days_ahead": 3})
+_with_stubbed_network(lambda: publish_projection(
+        resource_type="google_calendar", owner_user_id=LENA,
+    identifier="primary", kind="events"))
+share_permission_set(LENA, TIM, "google_calendar", "primary", False)
+check("step 6: revoking one grantee keeps the projection the other can still read",
+      prdb.projection_get(
+          owner_user_id=LENA, resource_type="google_calendar",
+          resource_identifier="primary") is not None,
+      "BOB still holds a grant")
+share_permission_set(LENA, BOB, "google_calendar", "primary", False)
+check("step 6: the last revoke takes the projection with it",
+      prdb.projection_get(
+          owner_user_id=LENA, resource_type="google_calendar",
+          resource_identifier="primary") is None,
+      "no live grant remains for that resource")
+
+# A row past its bound must be collectable, and must not read as fresh.
+_with_stubbed_network(lambda: publish_projection(
+        resource_type="google_calendar", owner_user_id=LENA,
+    identifier="primary", kind="events"))
+appdb.query(
+    "UPDATE share_projections SET expires_at = %s WHERE owner_user_id = %s",
+    (datetime.now(timezone.utc) - timedelta(hours=1), LENA),
+)
+_stale = proj.load_projection(
+    owner_user_id=LENA, resource_type="google_calendar", resource_identifier="primary"
+)
+check("step 6: an aged row reads as not fresh",
+      _stale is not None and not _stale.is_fresh(),
+      f"expires={_stale and _stale.expires_at}")
+check("step 6: the sweeper collects expired rows",
+      proj.sweep_expired() >= 1
+      and prdb.projection_get(
+          owner_user_id=LENA, resource_type="google_calendar",
+          resource_identifier="primary") is None,
+      "expired row removed")
+
+cal_entry = next(c for c in catalog_for_api() if c["id"] == "google_calendar")
+dash_entry = next(c for c in catalog_for_api() if c["id"] == "dashboard")
+check("step 6: the catalog tells the UI which types have a shape to choose",
+      cal_entry["projection_kinds"] == ["events", "availability"]
+      and dash_entry["projection_kinds"] == [],
+      f"calendar={cal_entry['projection_kinds']} dashboard={dash_entry['projection_kinds']}")
+check("step 6: the agent help names the publishable shapes",
+      "Publishable shapes" in _help and "availability" in _help,
+      f"excerpt={_help[_help.find('Publishable shapes'):][:90]!r}")
+
+appdb.query(
+    "DELETE FROM user_secrets WHERE user_id = %s AND service_key IN ('google_calendar', 'calendar_ics')",
+    (LENA,),
+)
+appdb.query("DELETE FROM share_projections")
+
+
 # ── report ────────────────────────────────────────────────────────────────────
 
 width = max(len(n) for n, _, _ in results)
