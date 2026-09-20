@@ -14,6 +14,11 @@ from pydantic import BaseModel, Field
 
 from apps.backend.domain.shares.catalog import catalog_for_api, canonical_resource_type
 from apps.backend.domain.shares.policy import normalize_policy
+from apps.backend.domain.shares.projections import (
+    default_projection_kind,
+    projection_kinds_for,
+)
+from apps.backend.domain.shares.registry import get_share_adapter, publish_projection
 from apps.backend.application.identity.use_cases.request_auth import get_current_user
 from apps.backend.application.sharing.use_cases.sharing_controller_services import friend_get
 from apps.backend.application.sharing.use_cases.sharing_controller_services import (
@@ -90,6 +95,66 @@ async def set_share_permission(request: Request, body: ShareSetBody):
         raise HTTPException(status_code=500, detail="could not update share permission")
 
     return {"ok": True, "policy": clean_policy if body.is_allowed else {}}
+
+
+class ProjectionPublishBody(BaseModel):
+    resource_type: str = Field(..., min_length=2, max_length=50)
+    resource_identifier: str = Field(default="primary", min_length=1, max_length=100)
+    projection_kind: str | None = Field(default=None, min_length=1, max_length=50)
+
+
+@router.post("/projection")
+async def publish_share_projection(request: Request, body: ProjectionPublishBody):
+    """Publish the caller's own narrowed view of a resource (ADR 0014 step 6).
+
+    Owner-side and deliberately separate from ``/set``: this chooses *what
+    shape exists*, not *who may read it*. Publishing grants nothing, and a
+    projection nobody has been granted is still unreadable.
+    """
+    user = await get_current_user(request)
+
+    canonical = canonical_resource_type(body.resource_type)
+    if not canonical:
+        raise HTTPException(status_code=400, detail="invalid resource_type")
+
+    adapter = get_share_adapter(canonical)
+    if adapter is None:
+        raise HTTPException(
+            status_code=404, detail="no adapter registered for this resource_type"
+        )
+
+    kinds = projection_kinds_for(adapter)
+    if not kinds:
+        raise HTTPException(
+            status_code=400,
+            detail="this resource is read live and publishes no projections",
+        )
+
+    kind = (body.projection_kind or default_projection_kind(adapter) or "").strip().lower()
+    if kind not in kinds:
+        raise HTTPException(
+            status_code=400,
+            detail=f"unknown projection_kind '{kind}'; available: {', '.join(kinds)}",
+        )
+
+    outcome = publish_projection(
+        resource_type=canonical,
+        owner_user_id=user.id,
+        identifier=body.resource_identifier,
+        kind=kind,
+    )
+    if not outcome.served:
+        raise HTTPException(status_code=422, detail=outcome.refusal or "publish_failed")
+
+    stored = outcome.projection
+    return {
+        "ok": True,
+        "resource_type": canonical,
+        "resource_identifier": body.resource_identifier,
+        "projection_kind": stored.kind,
+        "expires_at": stored.expires_at.isoformat() if stored.expires_at else None,
+        "available_kinds": list(kinds),
+    }
 
 
 @router.get("/check")

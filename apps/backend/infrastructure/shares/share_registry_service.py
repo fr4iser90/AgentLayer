@@ -25,6 +25,10 @@ from apps.backend.domain.shares.adapters import register_default_share_adapters
 from apps.backend.domain.shares.adapters.calendar_adapter import (
     register_calendar_adapter_dependencies,
 )
+from apps.backend.domain.shares.projections import (
+    register_share_projection_store,
+)
+from apps.backend.infrastructure.db import share_projections_db
 
 
 class _CalendarShareDeps:
@@ -55,4 +59,9 @@ class _CalendarShareDeps:
 
 
 register_calendar_adapter_dependencies(_CalendarShareDeps())
+# The projection store is the module itself: its function names are the
+# port's method names, so there is no adapter class adding a layer of pure
+# forwarding. Registering the module also keeps one obvious place to look
+# for what backs a published projection.
+register_share_projection_store(share_projections_db)
 register_default_share_adapters()

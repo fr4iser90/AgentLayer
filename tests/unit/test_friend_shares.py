@@ -260,12 +260,18 @@ class TestFriendRequestGetBetweenPrecedence(unittest.TestCase):
 
 
 class _FakeCalendarDeps:
-    """Stands in for the injected DB + ICS reader behind CalendarShareAdapter."""
+    """Stands in for the injected DB + ICS reader behind CalendarShareAdapter,
+    and for the projection store the adapter now reads through.
+
+    One object plays both parts so a test can see the whole loop — publish
+    writes here, read reads from here — without a database.
+    """
 
     def __init__(self, grant: object, shared: dict) -> None:
         self._grant = grant
         self._shared = shared
         self.seen: dict[str, object] = {}
+        self.rows: dict[tuple, dict] = {}
 
     def share_permission_get(self, *, owner_user_id, grantee_user_id, resource_type, resource_identifier):
         self.seen["grant_query"] = (
@@ -277,19 +283,61 @@ class _FakeCalendarDeps:
         return self._grant
 
     def read_shared_calendar(self, owner_user_id, *, days_ahead):
-        self.seen["owner_user_id"] = owner_user_id
-        self.seen["days_ahead"] = days_ahead
+        self.seen.setdefault("publishes", []).append((owner_user_id, days_ahead))
         return dict(self._shared)
+
+    # --- ShareProjectionStore ---
+    def projection_get(self, *, owner_user_id, resource_type, resource_identifier):
+        return self.rows.get((str(owner_user_id), resource_type, resource_identifier))
+
+    def projection_upsert(
+        self, *, owner_user_id, resource_type, resource_identifier, kind, payload, expires_at
+    ):
+        self.rows[(str(owner_user_id), resource_type, resource_identifier)] = {
+            "owner_user_id": owner_user_id,
+            "resource_type": resource_type,
+            "resource_identifier": resource_identifier,
+            "projection_kind": kind,
+            "payload": payload,
+            "generated_at": datetime.now(UTC),
+            "expires_at": expires_at,
+        }
+
+    def projection_delete(self, *, owner_user_id, resource_type, resource_identifier):
+        return self.rows.pop(
+            (str(owner_user_id), resource_type, resource_identifier), None
+        ) and 1 or 0
+
+    def projection_delete_expired(self, *, limit=200):
+        return 0
+
+    @property
+    def published_kind(self):
+        for row in self.rows.values():
+            return row["projection_kind"]
+        return None
+
+
+def _iso(days_from_now: float) -> str:
+    """Event time relative to now, so a day-cap is actually observable.
+
+    A hard-coded 2026 date sits in the past by the time this runs and so
+    survives every window, which would let a broken cap pass.
+    """
+    return (datetime.now(UTC) + timedelta(days=days_from_now)).isoformat()
 
 
 class TestFriendCalendarTool(unittest.TestCase):
-    """``calendar`` is a thin alias over ``shares(action="read")`` (step 4).
+    """``calendar`` is a thin alias over ``shares(action="read")`` (step 4),
+    and that read is served from a published projection (step 6).
 
-    The seam is the calendar adapter's *injected dependencies*, so each test
-    drives the real chain — alias, generic read action, registry, adapter —
-    and stubs only the database and the ICS fetch. Patching the tool's own
-    internals, as this class used to, asserts against a shape the module no
-    longer has; it also would not notice the alias bypassing the registry.
+    The seam is the calendar adapter's *injected dependencies* plus the
+    projection store, so each test drives the real chain — alias, generic
+    read action, registry, adapter, projection — and stubs only the
+    database, the ICS fetch and the projection table. Patching the tool's
+    own internals, as this class used to, asserts against a shape the
+    module no longer has; it also would not notice the alias bypassing the
+    registry.
     """
 
     def setUp(self) -> None:
@@ -305,9 +353,10 @@ class TestFriendCalendarTool(unittest.TestCase):
         reset_share_registry()
 
     def _run(self, grant, requested_days=30, *, shared=None):
+        from apps.backend.domain.shares import projections
+        from apps.backend.domain.shares.adapters import calendar_adapter
         from plugins.tools.integrations.friends import calendar as cal
         from plugins.tools.integrations.friends import shares as shares_mod
-        from apps.backend.domain.shares.adapters import calendar_adapter
 
         uid = uuid.uuid4()
         friend_id = uuid.uuid4()
@@ -320,55 +369,79 @@ class TestFriendCalendarTool(unittest.TestCase):
             shared = {
                 "ok": True,
                 "source_hint": "google_ical",
-                "count": 1,
-                "events": [{"summary": "Zahnarzt", "start": "2026-01-01T09:00:00+00:00"}],
+                "count": 2,
+                "events": [
+                    {"summary": "Zahnarzt", "start": _iso(2)},
+                    {"summary": "Ferien", "start": _iso(40)},
+                ],
             }
         deps = _FakeCalendarDeps(grant, shared)
 
         with mock.patch.object(shares_mod, "get_identity", return_value=(1, uid)):
             with mock.patch.object(shares_mod, "resolve_friend_by_name", return_value=friend):
                 with mock.patch.object(calendar_adapter, "_deps", deps):
-                    out = cal.calendar({"name": "Max", "days": requested_days})
-        return out, deps.seen, uid, friend_id
+                    with mock.patch.object(projections, "_store", deps):
+                        out = cal.calendar({"name": "Max", "days": requested_days})
+        return out, deps.seen, uid, friend_id, deps
+
+    @staticmethod
+    def _summaries(out: str) -> list[str]:
+        try:
+            parsed = json.loads(out)
+        except (ValueError, TypeError):
+            return []
+        calendar = parsed.get("calendar") or {}
+        return [e.get("summary") for e in calendar.get("events") or []]
 
     def test_granted_calendar_reads_the_policy_cap(self) -> None:
-        out, seen, _, _ = self._run({"policy": {"days_ahead": 3}}, requested_days=30)
-        self.assertEqual(seen.get("days_ahead"), 3)
+        out, seen, _, _, _ = self._run({"policy": {"days_ahead": 3}}, requested_days=30)
+        self.assertIn('"days_effective": 3', out)
+        # The 40-day event is outside the three days the owner granted.
+        self.assertEqual(self._summaries(out), ["Zahnarzt"])
 
     def test_grant_without_policy_uses_the_requested_horizon(self) -> None:
-        out, seen, _, _ = self._run({"policy": {}}, requested_days=14)
-        self.assertEqual(seen.get("days_ahead"), 14)
+        out, seen, _, _, _ = self._run({"policy": {}}, requested_days=14)
+        self.assertIn('"days_effective": 14', out)
+        self.assertEqual(self._summaries(out), ["Zahnarzt"])
 
     def test_the_calendar_read_targets_the_friend_not_the_caller(self) -> None:
         # Reading the caller's own calendar would look like a successful share
         # while showing the wrong person's appointments.
-        out, seen, caller, friend_id = self._run({"policy": {}})
-        self.assertEqual(seen.get("owner_user_id"), friend_id)
-        self.assertNotEqual(seen["owner_user_id"], caller)
+        out, seen, caller, friend_id, _ = self._run({"policy": {}})
+        published = seen.get("publishes") or []
+        self.assertTrue(published, "the owner's calendar was never read")
+        for owner, _days in published:
+            self.assertEqual(owner, friend_id)
+            self.assertNotEqual(owner, caller)
 
     def test_no_grant_reports_not_shared(self) -> None:
-        out, seen, _, _ = self._run(None)
+        out, seen, _, _, deps = self._run(None)
         self.assertIn("has not shared their google calendar with you", out)
-        self.assertNotIn("days_ahead", seen)  # never reached the reader
+        self.assertNotIn("publishes", seen)  # never reached the reader
+        self.assertEqual(deps.rows, {})  # and nothing was published
 
     def test_owner_without_a_calendar_secret_is_reported_not_empty(self) -> None:
-        out, _, _, _ = self._run(
+        out, _, _, _, _ = self._run(
             {"policy": {}}, shared={"ok": False, "error": "owner_has_no_calendar_configured"}
         )
         self.assertIn("owner_has_no_calendar_configured", out)
         self.assertNotIn('"ok": true', out)
 
     def test_the_alias_output_shape_is_preserved(self) -> None:
-        out, _, _, _ = self._run({"policy": {"days_ahead": 5}}, requested_days=30)
+        out, _, _, _, _ = self._run({"policy": {"days_ahead": 5}}, requested_days=30)
         parsed = json.loads(out)
         self.assertEqual(parsed["friend_name"], "Max")
         self.assertEqual(parsed["days_requested"], 30)
         self.assertEqual(parsed["days_effective"], 5)
         self.assertEqual(parsed["share_policy"], {"days_ahead": 5})
         self.assertEqual(parsed["calendar"]["count"], 1)
+        # The projection envelope is visible to the grantee: which narrowing
+        # they are looking at, and whether it is stale.
+        self.assertEqual(parsed["calendar"]["projection_kind"], "events")
+        self.assertFalse(parsed["calendar"]["projection_stale"])
 
     def test_the_grant_row_is_fetched_with_the_calendar_resource_type(self) -> None:
-        _, seen, caller, friend_id = self._run({"policy": {}})
+        _, seen, caller, friend_id, _ = self._run({"policy": {}})
         owner, grantee, rtype, ident = seen["grant_query"]
         self.assertEqual(owner, friend_id)
         self.assertEqual(grantee, caller)
@@ -412,6 +485,8 @@ class TestCalendarAliasStaysThin(unittest.TestCase):
             {"ok": True, "ics_url": url, "events": []},
         )
         uid, friend_id = uuid.uuid4(), uuid.uuid4()
+        from apps.backend.domain.shares import projections
+
         with mock.patch.object(shares_mod, "get_identity", return_value=(1, uid)):
             with mock.patch.object(
                 shares_mod,
@@ -419,11 +494,15 @@ class TestCalendarAliasStaysThin(unittest.TestCase):
                 return_value={"friend_user_id": friend_id, "display_name": "Max"},
             ):
                 with mock.patch.object(calendar_adapter, "_deps", deps):
-                    out = cal.calendar({"name": "Max"})
+                    with mock.patch.object(projections, "_store", deps):
+                        out = cal.calendar({"name": "Max"})
 
         self.assertNotIn("private-supersecret", out)
         self.assertNotIn("basic.ics", out)
         self.assertIn("Could not read", out)
+        # The gate stopped it at the door of the store, not merely on the
+        # way out — a credential must never become a row that sits there.
+        self.assertEqual(deps.rows, {})
 
 
 class TestSharePermissionGetterShape(unittest.TestCase):
