@@ -12,12 +12,13 @@ worker never running. What it buys is latency, which is why it starts as
 optional, is gated on the friend system being enabled at all, and logs
 rather than raises.
 
-It deliberately does *not* run the expired-row sweeper. A row whose
-republish failed is kept on purpose: that stale row, labelled stale, is
-what lets a friend still get an answer while the owner's upstream is
-down. A timer that deleted ``expires_at <= now()`` would quietly remove
-that fallback, so the retention question has to be answered before the
-janitor gets a heartbeat.
+It also sweeps, and only became safe to once the retention grace existed.
+Sweeping on ``expires_at <= now()`` deletes exactly the rows a failed
+refresh produces — the stale fallback a grantee is answered from while
+the owner's upstream is down — so a janitor wired to this heartbeat
+would have removed a guarantee and looked like it worked. With the grace
+in the predicate, the rows it collects are ones the read path has
+already refused on its own.
 """
 
 from __future__ import annotations
@@ -43,6 +44,11 @@ _WINDOW_SEC = 240
 
 _MAX_BATCH = 20
 
+# The sweep is housekeeping rather than freshness, so it rides every Nth
+# pass instead of every one. Nothing waits on it, and rows it removes have
+# already been refused at the read.
+_SWEEP_EVERY = 8
+
 
 def start_projection_refresh_worker() -> None:
     global _thread
@@ -63,6 +69,7 @@ def stop_projection_refresh_worker() -> None:
 
 def _worker_loop() -> None:
     logger.info("share projection refresh worker started")
+    passes = 0
     while not _stop.is_set():
         if _stop.wait(timeout=_POLL_SEC):
             break
@@ -71,6 +78,7 @@ def _worker_loop() -> None:
                 continue
             if not projections.projection_store_ready():
                 continue
+            passes += 1
             report = projections.refresh_due(
                 limit=_MAX_BATCH, within_seconds=_WINDOW_SEC
             )
@@ -81,6 +89,12 @@ def _worker_loop() -> None:
                     report.failed,
                     report.skipped,
                 )
+            if passes % _SWEEP_EVERY == 0:
+                swept = projections.sweep_expired()
+                if swept:
+                    logger.info(
+                        "share projections swept out of retention=%s", swept
+                    )
         except Exception:
             logger.exception("share projection refresh worker iteration failed")
     logger.info("share projection refresh worker stopped")

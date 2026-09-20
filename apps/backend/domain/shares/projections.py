@@ -61,6 +61,30 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _aware(value: datetime) -> datetime:
+    """Timestamps arrive tz-aware from Postgres and naive from fakes."""
+    return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
+
+
+# How long a projection may outlive its freshness bound.
+#
+# The bound says how stale a view may be served as if it were current.
+# This says how long the copy may exist at all once it is past that. The
+# two together answer a tension inside this ADR: the stale row is what
+# lets a friend still be answered during an upstream outage, and an
+# indefinitely lingering copy of someone's data is the outcome the
+# NOT NULL bound was written to prevent. A grace period keeps the first
+# without silently surrendering the second.
+#
+# One flat value rather than a per-adapter declaration like the TTL. The
+# sweeper runs across every adapter at once and cannot ask each row's
+# adapter for its own number; a per-adapter grace would mean the sweeper
+# has to take the maximum across the registry to avoid deleting a row
+# another adapter may still serve. Not worth the coupling for a knob
+# nobody has asked to turn per type.
+STALE_GRACE_SECONDS = 3600
+
+
 @dataclass(frozen=True)
 class StoredProjection:
     """One published projection row, as read back from storage.
@@ -87,11 +111,23 @@ class StoredProjection:
             # "never expires": an unbounded copy of someone's data is the
             # outcome this whole module exists to prevent.
             return False
-        ref = now or _utcnow()
-        expires = self.expires_at
-        if expires.tzinfo is None:
-            expires = expires.replace(tzinfo=timezone.utc)
-        return expires > ref
+        return _aware(self.expires_at) > (now or _utcnow())
+
+    def is_retained(
+        self, *, now: datetime | None = None, grace_seconds: int = STALE_GRACE_SECONDS
+    ) -> bool:
+        """Whether this row may still be held, let alone served.
+
+        Past the bound plus the grace the row is not merely old, it is out
+        of its retention. Checked on the read path on purpose: a bound
+        that only a janitor enforces is a bound that depends on the
+        janitor running, and "it gets cleaned up soon" is the exact
+        guarantee this ADR was written because it kept not holding.
+        """
+        if self.expires_at is None:
+            return False
+        deadline = _aware(self.expires_at) + timedelta(seconds=max(0, grace_seconds))
+        return deadline > (now or _utcnow())
 
     def as_dict(self) -> dict[str, Any]:
         """The projection envelope a grantee receives.
@@ -156,7 +192,9 @@ class ShareProjectionStore(Protocol):
         self, *, owner_user_id: uuid.UUID, resource_type: str, resource_identifier: str
     ) -> int: ...
 
-    def projection_delete_expired(self, *, limit: int = 200) -> int: ...
+    def projection_delete_expired(
+        self, *, limit: int = 200, grace_seconds: int = 0
+    ) -> int: ...
 
     def projection_list_due(
         self, *, limit: int, within_seconds: int
@@ -319,7 +357,9 @@ def load_fresh(
     On a failed republish the stale row is returned with ``stale=True``
     rather than dropped. Serving a five-minute-old free/busy view beats
     failing a friend's question, but it is labelled — an answer that is
-    quietly out of date is worse than one that says so.
+    quietly out of date is worse than one that says so. That fallback
+    lasts only as long as the retention grace: past it the row stops
+    being a very old answer and stops being an answer at all.
 
     Returns a ``ProjectionOutcome`` rather than a bare row so that a
     publish that failed for a reason worth telling the grantee — the owner
@@ -334,6 +374,19 @@ def load_fresh(
         resource_type=resource_type,
         resource_identifier=resource_identifier,
     )
+    if stored is not None and not stored.is_retained():
+        # Out of retention, so this row is not available as a fallback and
+        # is deleted on the way past. Enforced here rather than left to
+        # the sweeper because the sweeper is a janitor: it makes the table
+        # tidy eventually, and "eventually" is the kind of guarantee this
+        # ADR exists because it kept not holding. A publish from here can
+        # still succeed and put a fresh row back.
+        drop_projection(
+            owner_user_id=owner_user_id,
+            resource_type=resource_type,
+            resource_identifier=resource_identifier,
+        )
+        stored = None
     if stored is not None and stored.is_fresh():
         return ProjectionOutcome(stored)
 
@@ -403,15 +456,27 @@ def drop_projection(
     )
 
 
-def sweep_expired(*, limit: int = 200) -> int:
-    """Delete projections past their bound. Returns rows removed.
+def sweep_expired(
+    *, limit: int = 200, grace_seconds: int = STALE_GRACE_SECONDS
+) -> int:
+    """Delete projections past their bound plus the retention grace.
 
-    A garbage collector, not a correctness mechanism: ``load_fresh`` never
-    serves an expired row, so sweeping only stops dead rows accumulating.
+    A garbage collector, not a correctness mechanism: ``load_fresh``
+    refuses an out-of-retention row itself, so sweeping only stops rows
+    that nobody read from accumulating.
+
+    The grace is part of the predicate rather than zero. Sweeping on
+    ``expires_at <= now()`` would delete exactly the rows a failed
+    refresh has just produced — the stale fallback that lets a friend
+    still be answered while the owner's upstream is down — and a janitor
+    that quietly removes a guarantee looks a lot like a janitor that
+    worked.
     """
     if _store is None:
         return 0
-    return _store.projection_delete_expired(limit=limit)
+    return _store.projection_delete_expired(
+        limit=limit, grace_seconds=max(0, int(grace_seconds))
+    )
 
 
 @dataclass(frozen=True)

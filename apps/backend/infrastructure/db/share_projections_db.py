@@ -190,17 +190,28 @@ def projection_list_due(*, limit: int = 20, within_seconds: int = 300) -> list[d
     return [dict(r) for r in rows]
 
 
-def projection_delete_expired(*, limit: int = 200) -> int:
-    """Bulk-remove projections past their freshness bound.
+def projection_delete_expired(*, limit: int = 200, grace_seconds: int = 0) -> int:
+    """Bulk-remove projections past their bound plus a retention grace.
 
     Bounded by ``limit`` because this runs on a timer: an unbounded delete
     on a table that happens to be large would hold a write lock for as long
     as it takes, and this is a janitor, not a migration.
+
+    ``grace_seconds`` shifts the cut off the freshness bound. Deleting at
+    ``expires_at <= now()`` would remove the rows a failed refresh just
+    produced, which are the stale fallback a grantee is answered from
+    during an upstream outage. The read path enforces the same bound in
+    ``StoredProjection.is_retained``; this only stops rows nobody read
+    from piling up.
     """
     try:
         capped = max(1, min(int(limit), 5000))
     except (TypeError, ValueError):
         capped = 200
+    try:
+        grace = max(0, min(int(grace_seconds), 30 * 24 * 60 * 60))
+    except (TypeError, ValueError):
+        grace = 0
     with pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -209,10 +220,11 @@ def projection_delete_expired(*, limit: int = 200) -> int:
                 WHERE (owner_user_id, resource_type, resource_identifier) IN (
                     SELECT owner_user_id, resource_type, resource_identifier
                     FROM {_TABLE}
-                    WHERE expires_at <= now()
+                    WHERE expires_at <= now() - make_interval(secs => %s)
                     LIMIT {capped}
                 )
-                """
+                """,
+                (grace,),
             )
             deleted = cur.rowcount
         conn.commit()
