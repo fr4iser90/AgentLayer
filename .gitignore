@@ -31,3 +31,10 @@ apps/tui/*.egg-info/
 
 # Traefik
 compose.traefik.yaml
+
+# Runtime project workspaces (AGENTLAYER_WORKSPACE_PATH bind mount target on the
+# host). Materialized per-user trees like agentlayer-self/ and e2e-agentlayer-git/
+# — runtime data, never source. Anchored to the repo root on purpose: an
+# unanchored `workspace/` also swallows apps/backend/infrastructure/workspace/,
+# which is real source.
+/workspace/

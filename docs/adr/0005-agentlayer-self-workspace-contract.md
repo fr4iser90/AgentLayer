@@ -78,6 +78,57 @@ Survival across container restarts requires a **Docker volume** (or host bind) c
 
 **Ops:** see `compose.yaml` (`agent_project_workspaces`, `AGENTLAYER_WORKSPACE_PATH`) and `docs/runbooks/workspace-persistence.md`.
 
+## Amendment (2026-09-20): the seed copy must not swallow its own destination
+
+Found live on a self-hosted deployment. The v1 rule above — *"copy is still
+allowed from ro into rw target"* — was written without considering that the
+rw target can live **inside** the ro seed. With the shipped compose layout
+(`.:/workspace/AgentLayer:ro` and `./workspace:/data/project_workspaces:rw`),
+`AGENTLAYER_WORKSPACE_PATH` is bind-mounted from a host directory that sits
+inside the repo used as the seed. A plain `shutil.copytree(seed, target)`
+therefore copies the destination into itself and recurses until
+`ENAMETOOLONG`. Because the copy runs in the request path, the instance
+stopped answering entirely and did not recover on its own.
+
+Two further problems in the same copy: it dragged `output/` (1.8 GB on that
+box), `node_modules` and caches into every user workspace, and it copied
+`.env` where the coding agent could read it.
+
+Fixed in `workspace_service._seed_copy_ignore`, applied at both copy sites:
+
+* The workspace base is detected by **`(st_dev, st_ino)`**, not by path
+  string. A bind mount shares identity with its host directory, so this
+  catches the nesting regardless of directory names — and a textual
+  containment check cannot, because inside the container
+  `/workspace/AgentLayer` and `/data/project_workspaces` look unrelated.
+* Regenerable artifacts are excluded: `node_modules`, `venv`/`.venv`,
+  `__pycache__`, `.pytest_cache`, `.mypy_cache`, `.ruff_cache`, `output`,
+  `.scanning`.
+* **`.git` is deliberately kept.** The self-workspace must remain a git
+  checkout — `workspace_git.py` and the repo-status path refuse a tree with
+  no `.git`, so excluding it would break the feature it belongs to.
+
+Verified live: materialization returns promptly and the tree is 73 MB with
+no self-nesting and no leaked artifacts. Guarded by
+`tests/unit/test_self_workspace_seed_copy.py`, whose negative control
+reproduces the recursion when the ignore filter is absent.
+
+## Open point: explicit git seed (not implemented)
+
+The v1 text already anticipated a git-based seed ("*git checkout preferred
+when we add explicit git seed*"). It is still open, and the deliberate
+position is that **a remote clone is not automatically the better default
+source**: the initial workspace should represent the code that is
+**actually running**, including uncommitted local changes. A clone from the
+remote can diverge from the deployed version and from the operator's local
+work, which is exactly what self-editing is meant to operate on.
+
+If added, it should be a **configurable alternative**, not a replacement —
+an explicit self-repo URL + branch + credential, reusing the existing
+shallow-clone-with-retries path in `workspace_git_clone.py`, with the local
+seed remaining the default. `agentlayer-self` rows are created
+`source='manual', git_url=NULL` today, which reflects that choice.
+
 ## Related
 
 - `docs/planning/coding-agent-roadmap.md` — epic F, professionalization section
