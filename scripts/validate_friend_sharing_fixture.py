@@ -392,7 +392,8 @@ def _conflict_refused() -> bool:
     return False
 
 check("registry has the shipped types bound",
-      reg.registered_resource_types() == ("collection", "dashboard"),
+      reg.registered_resource_types()
+      == ("calendar", "collection", "dashboard", "google_calendar"),
       f"registered={reg.registered_resource_types()}")
 
 direct_dash = _dg.friend_dashboard_access_detail(LENA, ANNA_DASHBOARD)
@@ -431,20 +432,26 @@ check("all four inert types are refused by the registry (grantable, not readable
           for served, r in inert_refusals.values()),
       f"{inert_refusals}")
 
-# Honest surfacing of the two parallel truths: google_calendar has a working
-# bespoke reader but is NOT in the registry yet (that is step 7). Until it
-# migrates, registered_resource_types() under-reports what is readable.
+# Step 4 replaced the "two parallel truths" with one: google_calendar is now
+# registry-backed, so the generic read path enforces the same grant the
+# bespoke tool did. The secrets are cleared by the time we get here, so the
+# adapter serves its not-configured result rather than the credential-less
+# empty read it would return against a connected owner.
 cal_out = reg.resolve_projection(
     resource_type="google_calendar",
     owner_user_id=ANNA,
     grantee_user_id=TIM,
     identifier="primary",
 )
-check("google_calendar is NOT yet registry-backed (step 7 pending), though its "
-      "bespoke reader works",
-      cal_out.refusal == "no_adapter_registered",
-      "the generic tool must not treat registered_resource_types() as the full "
-      "readable set until step 7 lands")
+check("google_calendar IS registry-backed now (step 4) — no longer refused as unknown",
+      cal_out.refusal != "no_adapter_registered",
+      f"refusal={cal_out.refusal} adapter={type(cal_out.adapter).__name__ if cal_out.adapter else None}")
+check("the legacy 'calendar' alias binds the same adapter instance as google_calendar",
+      reg.get_share_adapter("calendar") is reg.get_share_adapter("google_calendar"),
+      "a grant under either name must be enforced by one adapter, not two")
+check("the calendar adapter declares only the fields its read acts on",
+      reg.policy_fields_for("google_calendar") == frozenset({"days_ahead", "expires_at"}),
+      f"fields={reg.policy_fields_for('google_calendar')}")
 
 check("real fixture projections pass the Principle 1 gate",
       find_credential_keys(direct_dash) == [] and find_credential_keys(direct_col) == [],
@@ -478,9 +485,14 @@ check("step 3: list_keys REJECTED on a collection — the §1.9 case this found"
       f"err={lk_rej[1]}")
 
 cal_gap = normalize_policy("google_calendar", {"block_ids": ["x"]})
-check("KNOWN GAP: google_calendar still accepts block_ids (no adapter until step 7)",
-      cal_gap[1] is None,
-      "the §1.9 shape survives for unregistered types; closes at step 7")
+check("step 4 CLOSED the §1.9 consent bug: block_ids now REJECTED on a calendar grant",
+      cal_gap[1] is not None,
+      f"err={cal_gap[1]}")
+
+cal_alias_gap = normalize_policy("calendar", {"list_keys": ["x"]})
+check("the legacy 'calendar' alias is held to the same set (no way around it)",
+      cal_alias_gap[1] is not None,
+      f"err={cal_alias_gap[1]}")
 
 notes_open = normalize_policy("notes", {"block_ids": ["x"]})
 check("unregistered type keeps the open write side (§1.4)",
@@ -493,7 +505,8 @@ check("a field nobody knows is still refused on an unregistered type",
       f"err={truly_bad[1]}")
 
 check("app wiring is live in this container (registry populated)",
-      reg.registered_resource_types() == ("collection", "dashboard")
+      reg.registered_resource_types()
+      == ("calendar", "collection", "dashboard", "google_calendar")
       and reg.policy_fields_for("collection") is not None,
       f"fields(collection)={reg.policy_fields_for('collection')}")
 

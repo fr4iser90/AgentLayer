@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import unittest
 import uuid
@@ -257,26 +258,60 @@ class TestFriendRequestGetBetweenPrecedence(unittest.TestCase):
         self.assertEqual(row["id"], 2)
 
 
+class _FakeCalendarDeps:
+    """Stands in for the injected DB + ICS reader behind CalendarShareAdapter."""
+
+    def __init__(self, grant: object, shared: dict) -> None:
+        self._grant = grant
+        self._shared = shared
+        self.seen: dict[str, object] = {}
+
+    def share_permission_get(self, *, owner_user_id, grantee_user_id, resource_type, resource_identifier):
+        self.seen["grant_query"] = (
+            owner_user_id,
+            grantee_user_id,
+            resource_type,
+            resource_identifier,
+        )
+        return self._grant
+
+    def read_shared_calendar(self, owner_user_id, *, days_ahead):
+        self.seen["owner_user_id"] = owner_user_id
+        self.seen["days_ahead"] = days_ahead
+        return dict(self._shared)
+
+
 class TestFriendCalendarTool(unittest.TestCase):
-    """The tool needs the grant *row*, not a yes/no — the policy on it caps the
-    horizon it may read.
+    """``calendar`` is a thin alias over ``shares(action="read")`` (step 4).
 
-    It used to call a name that was never imported and then read a variable that
-    was never assigned, so every call landed in the outer ``except`` handler.
-
-    The adapter is patched as the real ``fetch_shared_calendar`` name rather
-    than by injecting a stand-in module: the previous version injected a
-    ``calendar_ics`` function the real module never had, so the test passed
-    against a fiction while every real call failed.
+    The seam is the calendar adapter's *injected dependencies*, so each test
+    drives the real chain — alias, generic read action, registry, adapter —
+    and stubs only the database and the ICS fetch. Patching the tool's own
+    internals, as this class used to, asserts against a shape the module no
+    longer has; it also would not notice the alias bypassing the registry.
     """
+
+    def setUp(self) -> None:
+        from apps.backend.domain.shares.adapters import register_default_share_adapters
+        from apps.backend.domain.shares.registry import reset_share_registry
+
+        reset_share_registry()
+        register_default_share_adapters()
+
+    def tearDown(self) -> None:
+        from apps.backend.domain.shares.registry import reset_share_registry
+
+        reset_share_registry()
 
     def _run(self, grant, requested_days=30, *, shared=None):
         from plugins.tools.integrations.friends import calendar as cal
+        from plugins.tools.integrations.friends import shares as shares_mod
+        from apps.backend.domain.shares.adapters import calendar_adapter
 
         uid = uuid.uuid4()
         friend_id = uuid.uuid4()
         friend = {
-            "friend_user_id": str(friend_id),
+            "friend_user_id": friend_id,  # a real UUID, as friends_list returns
             "display_name": "Max",
             "email": "max@example.com",
         }
@@ -287,70 +322,107 @@ class TestFriendCalendarTool(unittest.TestCase):
                 "count": 1,
                 "events": [{"summary": "Zahnarzt", "start": "2026-01-01T09:00:00+00:00"}],
             }
-        seen: dict[str, object] = {}
+        deps = _FakeCalendarDeps(grant, shared)
 
-        def fake_fetch(owner_user_id, *, days_ahead):
-            seen["owner_user_id"] = owner_user_id
-            seen["days_ahead"] = days_ahead
-            return dict(shared)
-
-        with mock.patch.object(cal, "get_identity", return_value=(1, uid)):
-            with mock.patch.object(cal, "resolve_friend_by_name", return_value=friend):
-                with mock.patch.object(cal, "share_permission_get", return_value=grant):
-                    with mock.patch.object(
-                        cal, "fetch_shared_calendar", side_effect=fake_fetch
-                    ):
-                        out = cal.calendar({"name": "Max", "days": requested_days})
-        return out, seen, uid
+        with mock.patch.object(shares_mod, "get_identity", return_value=(1, uid)):
+            with mock.patch.object(shares_mod, "resolve_friend_by_name", return_value=friend):
+                with mock.patch.object(calendar_adapter, "_deps", deps):
+                    out = cal.calendar({"name": "Max", "days": requested_days})
+        return out, deps.seen, uid, friend_id
 
     def test_granted_calendar_reads_the_policy_cap(self) -> None:
-        out, seen, _ = self._run({"policy": {"days_ahead": 3}}, requested_days=30)
+        out, seen, _, _ = self._run({"policy": {"days_ahead": 3}}, requested_days=30)
         self.assertEqual(seen.get("days_ahead"), 3)
-        self.assertNotIn("is not defined", out)
 
     def test_grant_without_policy_uses_the_requested_horizon(self) -> None:
-        out, seen, _ = self._run({"policy": {}}, requested_days=14)
+        out, seen, _, _ = self._run({"policy": {}}, requested_days=14)
         self.assertEqual(seen.get("days_ahead"), 14)
-        self.assertNotIn("is not defined", out)
 
     def test_the_calendar_read_targets_the_friend_not_the_caller(self) -> None:
         # Reading the caller's own calendar would look like a successful share
         # while showing the wrong person's appointments.
-        out, seen, caller = self._run({"policy": {}})
-        self.assertIsNotNone(seen.get("owner_user_id"))
+        out, seen, caller, friend_id = self._run({"policy": {}})
+        self.assertEqual(seen.get("owner_user_id"), friend_id)
         self.assertNotEqual(seen["owner_user_id"], caller)
 
     def test_no_grant_reports_not_shared(self) -> None:
-        out, _, _ = self._run(None)
-        self.assertIn("has not shared their calendar", out)
+        out, seen, _, _ = self._run(None)
+        self.assertIn("has not shared their google calendar with you", out)
+        self.assertNotIn("days_ahead", seen)  # never reached the reader
 
     def test_owner_without_a_calendar_secret_is_reported_not_empty(self) -> None:
-        out, _, _ = self._run(
+        out, _, _, _ = self._run(
             {"policy": {}}, shared={"ok": False, "error": "owner_has_no_calendar_configured"}
         )
-        self.assertIn("no sharing is configured", out)
+        self.assertIn("owner_has_no_calendar_configured", out)
+        self.assertNotIn('"ok": true', out)
 
-    def test_the_tool_result_never_mentions_the_ics_url(self) -> None:
-        # Principle 1: the bearer credential must not appear in what the
-        # grantee's agent receives, so it cannot be echoed into chat or memory.
-        out, _, _ = self._run({"policy": {}})
-        self.assertNotIn("ics_url", out)
-        self.assertNotIn("http", out)
+    def test_the_alias_output_shape_is_preserved(self) -> None:
+        out, _, _, _ = self._run({"policy": {"days_ahead": 5}}, requested_days=30)
+        parsed = json.loads(out)
+        self.assertEqual(parsed["friend_name"], "Max")
+        self.assertEqual(parsed["days_requested"], 30)
+        self.assertEqual(parsed["days_effective"], 5)
+        self.assertEqual(parsed["share_policy"], {"days_ahead": 5})
+        self.assertEqual(parsed["calendar"]["count"], 1)
 
     def test_the_grant_row_is_fetched_with_the_calendar_resource_type(self) -> None:
+        _, seen, caller, friend_id = self._run({"policy": {}})
+        owner, grantee, rtype, ident = seen["grant_query"]
+        self.assertEqual(owner, friend_id)
+        self.assertEqual(grantee, caller)
+        self.assertEqual(rtype, sp.SHARE_RESOURCE_GOOGLE_CALENDAR)
+        self.assertEqual(ident, "primary")
+
+
+class TestCalendarAliasStaysThin(unittest.TestCase):
+    """The alias must not re-acquire the things step 4 moved out of it."""
+
+    def test_the_alias_does_not_own_the_credential_path(self) -> None:
         from plugins.tools.integrations.friends import calendar as cal
 
-        uid = uuid.uuid4()
-        friend_id = uuid.uuid4()
-        friend = {"friend_user_id": str(friend_id), "display_name": "Max"}
-        with mock.patch.object(cal, "get_identity", return_value=(1, uid)):
-            with mock.patch.object(cal, "resolve_friend_by_name", return_value=friend):
-                with mock.patch.object(cal, "share_permission_get", return_value=None) as get_mock:
-                    cal.calendar({"name": "Max"})
-        kwargs = get_mock.call_args.kwargs
-        self.assertEqual(kwargs["resource_type"], sp.SHARE_RESOURCE_GOOGLE_CALENDAR)
-        self.assertEqual(kwargs["grantee_user_id"], uid)
-        self.assertEqual(kwargs["owner_user_id"], friend_id)
+        for name in (
+            "fetch_shared_calendar",
+            "share_permission_get",
+            "effective_days_ahead",
+            "friend_calendar_ics_url",
+        ):
+            self.assertFalse(
+                hasattr(cal, name),
+                f"calendar.py still carries {name!r}; the read belongs to the adapter",
+            )
+
+    def test_a_leaking_reader_cannot_reach_the_grantee_through_the_alias(self) -> None:
+        # Principle 1 end to end: even if the underlying reader regressed and
+        # returned the bearer URL, the registry gate refuses to serve it and
+        # the alias surfaces a refusal instead of the credential.
+        from apps.backend.domain.shares.adapters import register_default_share_adapters
+        from apps.backend.domain.shares.adapters import calendar_adapter
+        from apps.backend.domain.shares.registry import reset_share_registry
+        from plugins.tools.integrations.friends import calendar as cal
+        from plugins.tools.integrations.friends import shares as shares_mod
+
+        reset_share_registry()
+        register_default_share_adapters()
+
+        url = "https://calendar.google.com/calendar/ical/max/private-supersecret/basic.ics"
+        deps = _FakeCalendarDeps(
+            {"policy": {}},
+            {"ok": True, "ics_url": url, "events": []},
+        )
+        uid, friend_id = uuid.uuid4(), uuid.uuid4()
+        with mock.patch.object(shares_mod, "get_identity", return_value=(1, uid)):
+            with mock.patch.object(
+                shares_mod,
+                "resolve_friend_by_name",
+                return_value={"friend_user_id": friend_id, "display_name": "Max"},
+            ):
+                with mock.patch.object(calendar_adapter, "_deps", deps):
+                    out = cal.calendar({"name": "Max"})
+
+        self.assertNotIn("private-supersecret", out)
+        self.assertNotIn("basic.ics", out)
+        self.assertIn("Could not read", out)
 
 
 class TestSharePermissionGetterShape(unittest.TestCase):

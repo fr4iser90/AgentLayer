@@ -34,6 +34,11 @@ import psycopg.rows
 
 from apps.backend.infrastructure.db import db as appdb
 
+# Populates the adapter registry as a side effect. Without this the registry
+# is empty and every type reports "not backed" — the same silent-empty-
+# dependency failure mode that makes an unwired domain module read zero rows.
+import apps.backend.infrastructure.shares.share_registry_service  # noqa: F401,E402
+
 appdb.init_pool()
 
 # The deterministic identities written by scripts/seed_friend_sharing_fixture.sql.
@@ -128,7 +133,15 @@ def main() -> int:
     print(f"{len(rows)} grant row(s) across {len(by_type)} resource type(s)\n")
 
     hazards: list[str] = []
-    decisions: list[tuple[str, str, str]] = []
+    decisions: list[tuple[str, str, str, str]] = []
+
+    # Read the registry rather than restating it. TYPE_STATUS is a hand-written
+    # claim about code that drifts; whether an adapter is actually bound is
+    # something the running code can answer.
+    from apps.backend.domain.shares.registry import get_share_adapter
+
+    def backed(t: str) -> bool:
+        return get_share_adapter(t) is not None
 
     for rtype in sorted(by_type):
         group = by_type[rtype]
@@ -136,9 +149,13 @@ def main() -> int:
         revoked = [r for r in group if r["revoked_at"] is not None]
         origins = {origin_of(r["owner_id"], r["grantee_id"]) for r in group}
         status = TYPE_STATUS.get(rtype, "unknown")
+        is_backed = backed(rtype)
 
-        print(f"── {rtype}  [{status}]")
+        print(f"── {rtype}  [{status}]{'  [registry-backed]' if is_backed else ''}")
         print(f"   {STATUS_NOTE[status]}")
+        if is_backed:
+            print(f"   adapter={type(get_share_adapter(rtype)).__name__}"
+                  f"  policy_fields={sorted(get_share_adapter(rtype).policy_fields)}")
         print(f"   rows={len(group)}  active={len(active)}  revoked={len(revoked)}"
               f"  origin={', '.join(sorted(origins))}")
         for r in group:
@@ -170,13 +187,20 @@ def main() -> int:
                 f"leaked into a real relationship, or a real user took a fixture id."
             )
 
-        decisions.append((rtype, status, "fixture-only" if not real_rows else "HAS REAL ROWS"))
+        decisions.append(
+            (
+                rtype,
+                status,
+                "backed" if is_backed else "not backed",
+                "fixture-only" if not real_rows else "HAS REAL ROWS",
+            )
+        )
         print()
 
     print("── decision table ─────────────────────────────────────────────────")
     w = max(len(d[0]) for d in decisions)
-    for rtype, status, reality in decisions:
-        print(f"  {rtype.ljust(w)}  {status.ljust(8)}  {reality}")
+    for rtype, status, backing, reality in decisions:
+        print(f"  {rtype.ljust(w)}  {status.ljust(8)}  {backing.ljust(10)}  {reality}")
 
     print("\n── hazards ────────────────────────────────────────────────────────")
     if hazards:
@@ -185,7 +209,7 @@ def main() -> int:
     else:
         print("  none — no real user data is exposed by any type above")
 
-    fixture_only = all(d[2] == "fixture-only" for d in decisions)
+    fixture_only = all(d[3] == "fixture-only" for d in decisions)
     print("\n── reading ────────────────────────────────────────────────────────")
     if fixture_only:
         print("  Every grant row belongs to the sharing fixture. No real user")

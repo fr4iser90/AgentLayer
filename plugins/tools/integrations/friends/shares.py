@@ -17,6 +17,10 @@ from apps.backend.domain.shares.catalog import (
     resource_type_label,
 )
 from apps.backend.domain.shares.policy import normalize_policy
+from apps.backend.domain.shares.registry import (
+    ShareRegistryError,
+    resolve_projection,
+)
 from apps.backend.infrastructure.db.share_permissions_db import (
     SHARE_RESOURCE_GOOGLE_CALENDAR,
     list_shares_between,
@@ -141,6 +145,17 @@ def _validate_dashboard_grant(
     return None
 
 
+def _friend_uuid(friend: dict[str, Any]) -> uuid.UUID:
+    """Coerce a resolved friend's id, which is not always a string.
+
+    ``friends_list`` hands back a real ``uuid.UUID``, while the other
+    resolvers in ``lib.common`` stringify theirs. ``uuid.UUID(uuid_obj)``
+    raises (it calls ``.replace`` on its argument), so every call site that
+    assumed a string died on live rows even though the stubbed tests passed.
+    """
+    return uuid.UUID(str(friend["friend_user_id"]))
+
+
 def _resolve_friend_or_error(
     requesting_user_id: uuid.UUID,
     arguments: dict[str, Any],
@@ -183,7 +198,7 @@ def _action_grant(requesting_user_id: uuid.UUID, arguments: dict[str, Any]) -> d
         return {"ok": False, "result": policy_err}
 
     identifier = str(arguments.get("resource_identifier") or "primary").strip().lower()
-    friend_user_id = uuid.UUID(friend["friend_user_id"])
+    friend_user_id = _friend_uuid(friend)
 
     if canonical == "collection":
         col_err = _validate_collection_grant(
@@ -237,7 +252,7 @@ def _action_revoke(requesting_user_id: uuid.UUID, arguments: dict[str, Any]) -> 
         return {"ok": False, "result": "resource_type must be a non-empty id (letters, digits, _, ., -)"}
 
     identifier = str(arguments.get("resource_identifier") or "primary").strip().lower()
-    friend_user_id = uuid.UUID(friend["friend_user_id"])
+    friend_user_id = _friend_uuid(friend)
 
     share_permission_set(
         owner_user_id=requesting_user_id,
@@ -267,7 +282,7 @@ def _action_check(requesting_user_id: uuid.UUID, arguments: dict[str, Any]) -> d
         return {"ok": False, "result": "resource_type must be a non-empty id (letters, digits, _, ., -)"}
 
     identifier = str(arguments.get("resource_identifier") or "primary").strip().lower()
-    friend_user_id = uuid.UUID(friend["friend_user_id"])
+    friend_user_id = _friend_uuid(friend)
 
     direction = str(arguments.get("direction") or "incoming").strip().lower()
     if direction == "outgoing":
@@ -291,6 +306,92 @@ def _action_check(requesting_user_id: uuid.UUID, arguments: dict[str, Any]) -> d
             "user_id": str(friend_user_id),
             "display_name": friend.get("display_name") or friend.get("email"),
         },
+    }
+
+
+def _action_read(requesting_user_id: uuid.UUID, arguments: dict[str, Any]) -> dict[str, Any]:
+    """Read a friend's resource through the registry (ADR 0014 step 4).
+
+    The only generic read entry point. It knows no resource type by hand: the
+    registry decides whether the type is readable at all, the adapter checks
+    the grant, and the projection is credential-gated before it gets here.
+    A type with no adapter is refused rather than read unchecked, so adding a
+    shareable type means writing an adapter instead of another tool.
+    """
+    friend, err = _resolve_friend_or_error(requesting_user_id, arguments)
+    if err or not friend:
+        return {"ok": False, "result": err}
+
+    resource_type = arguments.get("resource_type")
+    if not resource_type:
+        return {"ok": False, "result": "resource_type is required for read"}
+
+    canonical = canonical_resource_type(str(resource_type))
+    if not canonical:
+        return {"ok": False, "result": "resource_type must be a non-empty id (letters, digits, _, ., -)"}
+
+    identifier = str(arguments.get("resource_identifier") or "primary").strip().lower()
+    friend_user_id = _friend_uuid(friend)
+    friend_display_name = friend.get("display_name") or friend.get("email")
+    label = resource_type_label(canonical)
+
+    request: dict[str, Any] = {}
+    if arguments.get("days") is not None:
+        request["days"] = arguments.get("days")
+
+    try:
+        outcome = resolve_projection(
+            resource_type=canonical,
+            owner_user_id=friend_user_id,
+            grantee_user_id=requesting_user_id,
+            identifier=identifier,
+            request=request,
+        )
+    except ShareRegistryError as exc:
+        # A projection that failed the Principle 1 gate. The refusal is the
+        # safe answer; the underlying resource stays unread.
+        return {"ok": False, "result": f"Could not read {label}: {exc}"}
+
+    if not outcome.served:
+        if outcome.refusal == "no_adapter_registered":
+            return {
+                "ok": False,
+                "result": (
+                    f"{label} cannot be read through the share path — no adapter is "
+                    "registered for it. A grant alone is not access."
+                ),
+            }
+        if outcome.refusal == "malformed_identifier":
+            return {
+                "ok": False,
+                "result": f"resource_identifier '{identifier}' is not valid for {label}.",
+            }
+        return {
+            "ok": False,
+            "result": f"{friend_display_name} has not shared their {label} with you.",
+        }
+
+    projection = outcome.projection
+    if isinstance(projection, dict) and projection.get("error"):
+        # The grant was valid and the adapter served; the read itself failed
+        # for a reason only the adapter knows (owner has no source connected,
+        # upstream unreachable). Reporting that as ok:true would tell the
+        # grantee they hold working access that merely produced nothing.
+        return {
+            "ok": False,
+            "result": f"Could not read {friend_display_name}'s {label}: {projection['error']}",
+            "data": projection,
+        }
+
+    return {
+        "ok": True,
+        "friend": {
+            "user_id": str(friend_user_id),
+            "display_name": friend_display_name,
+        },
+        "resource_type": canonical,
+        "resource_identifier": identifier,
+        "data": projection,
     }
 
 
@@ -349,7 +450,7 @@ def _action_list(requesting_user_id: uuid.UUID, arguments: dict[str, Any]) -> di
                 "ok": False,
                 "result": f"Could not find {name_query} in your friends list.",
             }
-        friend_user_id = uuid.UUID(friend["friend_user_id"])
+        friend_user_id = _friend_uuid(friend)
         return {
             "ok": True,
             "friend": {
@@ -391,11 +492,15 @@ def shares(arguments: dict[str, Any]) -> str:
         "grant": _action_grant,
         "revoke": _action_revoke,
         "check": _action_check,
+        "read": _action_read,
     }
     handler = handlers.get(action)
     if not handler:
         return json.dumps(
-            {"ok": False, "error": f"unknown action '{action}'; use list, grant, revoke, or check"},
+            {
+                "ok": False,
+                "error": f"unknown action '{action}'; use list, grant, revoke, check, or read",
+            },
             ensure_ascii=False,
         )
 
@@ -416,12 +521,14 @@ TOOLS: list[dict[str, Any]] = [
         "function": {
             "name": "shares",
             "TOOL_DESCRIPTION": (
-                "Manage friend share permissions: grant, revoke, list, or check access to any resource "
-                "(resource_type is a free id, e.g. google_calendar, my_notes, dashboard). "
+                "Manage friend share permissions: grant, revoke, list, check, or read access to any "
+                "resource (resource_type is a free id, e.g. google_calendar, my_notes, dashboard). "
                 "For dashboard: resource_identifier = dashboard UUID. "
                 "For collection: resource_identifier = slug. Optional policy: "
                 "{permission: edit|view, block_ids: [...], list_keys: [...], days_ahead, expires_at}. "
                 "Use action=grant to share e.g. calendar with days_ahead:7. "
+                "Use action=read to actually read a friend's shared resource (only types with a "
+                "registered adapter; a grant alone is not access). "
                 "Use action=list without name for full summary; with friend name for one person."
             ),
             "parameters": {
@@ -429,8 +536,8 @@ TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "action": {
                         "type": "string",
-                        "enum": ["list", "grant", "revoke", "check"],
-                        "TOOL_DESCRIPTION": "list (default), grant, revoke, or check permission.",
+                        "enum": ["list", "grant", "revoke", "check", "read"],
+                        "TOOL_DESCRIPTION": "list (default), grant, revoke, check, or read.",
                     },
                     "name": {
                         "type": "string",
@@ -468,6 +575,13 @@ TOOLS: list[dict[str, Any]] = [
                         "type": "string",
                         "enum": ["incoming", "outgoing"],
                         "TOOL_DESCRIPTION": "For check: incoming = they share with you; outgoing = you share with them.",
+                    },
+                    "days": {
+                        "type": "integer",
+                        "TOOL_DESCRIPTION": (
+                            "For read: how far ahead to read. The grant caps it — asking for more "
+                            "than the grant allows returns the granted horizon, not more."
+                        ),
                     },
                 },
             },
