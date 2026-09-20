@@ -864,6 +864,94 @@ check("step 7: revoking the alias grant cascades to the canonical projection",
       f"row={'present' if _after_revoke else 'gone'} "
       f"live={spdb.count_active_grants(ANNA, 'google_calendar', 'work')}")
 
+# ── the generic preview endpoint (ADR 0014 step 7) ───────────────────────────
+# The dashboard widget used to call a calendar-specific endpoint that
+# re-checked the grant in the controller and then fetched the live ICS
+# feed. The owner's published shape never reached it, so a friend granted
+# "availability" -- busy windows, titles deliberately dropped -- still
+# saw "Zahnarzt" on their dashboard. These run the real handler against
+# the real table, which is the only way to catch that the widget is
+# actually inside the projection contract rather than beside it.
+
+import asyncio  # noqa: E402
+from unittest import mock  # noqa: E402
+
+from apps.backend.api.sharing.controllers import shares_api  # noqa: E402
+
+
+def _preview_as(viewer, resource_type, **kw):
+    async def _go():
+        async def _current_user(_request):
+            class _V:
+                id = viewer
+
+            return _V()
+
+        with mock.patch.object(shares_api, "get_current_user", _current_user):
+            return await shares_api.preview_shared_resource(
+                None, resource_type=resource_type, **kw
+            )
+
+    return asyncio.run(_go())
+
+
+def _preview_status(viewer, resource_type, **kw):
+    try:
+        _preview_as(viewer, resource_type, **kw)
+        return "served"
+    except Exception as exc:  # noqa: BLE001 - the status is the assertion
+        return getattr(exc, "status_code", f"raised {type(exc).__name__}")
+
+
+_with_stubbed_network(lambda: publish_projection(
+    resource_type="google_calendar", owner_user_id=LENA,
+    identifier="primary", kind="availability"))
+_prev, _cli = _with_stubbed_network(
+    lambda: _preview_as(TIM, "google_calendar", owner_user_id=str(LENA))
+)
+check(
+    "step 7: the preview serves the owner's availability shape with no titles",
+    _prev["preview"].get("projection_kind") == "availability"
+    and "Zahnarzt" not in json.dumps(_prev)
+    and "Schicht" not in json.dumps(_prev),
+    f"kind={_prev['preview'].get('projection_kind')} "
+    f"events={len(_prev['preview'].get('events', []))}",
+)
+check(
+    "step 7: the preview is served from the projection, not a live fetch",
+    _cli.requested == [],
+    f"live upstream requests during the preview: {len(_cli.requested)}",
+)
+check(
+    "step 7: the preview response carries no credential",
+    LENA_ICS not in json.dumps(_prev) and find_credential_keys(_prev) == [],
+    "the widget response is clean",
+)
+
+_alias_prev, _ = _with_stubbed_network(
+    lambda: _preview_as(TIM, "calendar", owner_user_id=str(LENA))
+)
+check(
+    "step 7: the legacy alias previews the canonical type",
+    _alias_prev["resource_type"] == "google_calendar",
+    f"resource_type={_alias_prev['resource_type']}",
+)
+
+_coll_status = _preview_status(TIM, "collection", owner_user_id=str(ANNA), identifier="whatever")
+check(
+    "step 7: a live-read type refuses the preview rather than serving an empty box",
+    _coll_status == 404,
+    f"status={_coll_status}",
+)
+_cat_previewable = {e["id"]: e["previewable"] for e in catalog_for_api()}
+check(
+    "step 7: the catalog tells the widget which types it can actually preview",
+    _cat_previewable.get("google_calendar") is True
+    and _cat_previewable.get("collection") is False
+    and _cat_previewable.get("dashboard") is False,
+    f"previewable={_cat_previewable}",
+)
+
 share_permission_set(LENA, TIM, "google_calendar", "primary", False)
 appdb.query(
     "DELETE FROM user_secrets WHERE user_id = ANY(%s::uuid[]) "
