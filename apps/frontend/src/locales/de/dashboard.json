@@ -550,6 +550,7 @@
   "publicShareScopeFull": "Ganzes Dashboard",
   "publicShareScopeBlocks": "{{count}} Block(e)",
   "publicShareBadge": "Geteiltes Dashboard",
+  "publicShareAuthOnlyBlock": "Dieser Block liest Live-Daten eines angemeldeten Kontos und kann in einer öffentlichen Freigabe nicht angezeigt werden.",
   "publicShareMissingToken": "Kein Freigabe-Token in der URL (?t=…).",
   "publicShareNotFound": "Link ungültig, abgelaufen oder widerrufen.",
   "publicShareExpiresLabel": "Ablauf (optional)",

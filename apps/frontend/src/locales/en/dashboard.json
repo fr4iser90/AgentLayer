@@ -550,6 +550,7 @@
   "publicShareScopeFull": "Full dashboard",
   "publicShareScopeBlocks": "{{count}} block(s)",
   "publicShareBadge": "Shared dashboard",
+  "publicShareAuthOnlyBlock": "This block reads live data from a signed-in account and cannot be shown in a public share.",
   "publicShareMissingToken": "No share token in the URL (?t=…).",
   "publicShareNotFound": "Link invalid, expired, or revoked.",
   "publicShareExpiresLabel": "Expires (optional)",
