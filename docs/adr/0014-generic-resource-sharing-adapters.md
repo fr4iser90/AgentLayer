@@ -38,6 +38,9 @@ Implemented so far:
 - **step 7 (partial)**, the generic `/v1/shares/preview/{type}` endpoint,
   which brings the dashboard widget inside the projection contract and
   closes the hardcoded-type gate §5.5 had left in place — see §5.8.
+- **step 7 (partial)**, the owner-facing projection picker, so a human
+  owner can see and change the shape of their own resource rather than
+  only an agent being able to publish it — see §5.9.
 
 Not implemented: step 8.
 
@@ -1181,6 +1184,41 @@ line so the reader can see which narrowing they are looking at and
 whether it is current.
 
 
+### 5.9 Step 7: the owner can actually choose the shape
+
+`GET /v1/shares/projections` plus a "What you publish" section in
+`SharesSettings.tsx`. `POST /v1/shares/projection` already existed from
+step 6; what was missing was that a human owner could see what shape their
+resource currently has, and therefore could not decide to change it. The
+only way to publish a narrower view was through the agent tool.
+
+**The picker is owner-level, not per-friend, and the UI says so.** The
+projection is one row per `(owner, type, identifier)` and every grantee
+of that resource sees the same shape. Putting the control inside the
+per-friend share editor would have implied Lena can give Bob
+`availability` and Alice `events` — a capability the model does not have
+and a promise the code would silently break. The section sits outside the
+friend panel and its hint states the rule in the owner's terms.
+
+**The by-owner listing is the only one that exists.** The store port still
+has no by-grantee lookup. Adding `projection_list_for_owner` is safe in a
+way a by-grantee method would not be: the owner is asking about their own
+rows, and the query is confined by the caller's own identity rather than
+by a parameter someone else supplies. Its payload is not selected — the
+screen shows the shape's name and whether it is current, not the calendar
+inside it, which the fixture checks directly.
+
+**The offered kinds come from the adapter, per row.** The picker cannot
+present a shape this adapter does not publish, and a row whose type has no
+adapter renders as a label rather than a control.
+
+**Verified against the real database, not just the fake.** Removing the
+owner filter from the by-owner query was caught by the live fixture's
+"another owner's list does not contain Lena's rows" check — the guard is
+tested where it is actually written, in SQL, rather than only against an
+in-memory stub that enforces it by construction.
+
+
 ---
 
 ## 6. Consequences
@@ -1365,7 +1403,7 @@ docker compose run --rm -e PYTHONPATH=/code agent-layer \
     python /code/scripts/validate_friend_sharing_fixture.py
 ```
 
-Current result: **93/93**. Progression of the fixture run:
+Current result: **97/97**. Progression of the fixture run:
 
 | added with | checks | total |
 |---|---|---|
@@ -1380,6 +1418,7 @@ Current result: **93/93**. Progression of the fixture run:
 | step 7 stale retention | +5 | 84 |
 | step 7 ungranted projections + alias fix | +3 | 87 |
 | step 7 generic preview endpoint | +6 | 93 |
+| step 7 owner projection picker | +4 | 97 |
 
 The step-3 checks cover: `block_ids` rejected on a collection and still
 accepted on a dashboard; `list_keys` rejected on both; the `list_keys`-on-

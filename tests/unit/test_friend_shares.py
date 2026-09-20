@@ -314,6 +314,9 @@ class _FakeCalendarDeps:
     def projection_list_due(self, *, limit, within_seconds):
         return []
 
+    def projection_list_for_owner(self, *, owner_user_id):
+        return []
+
     @property
     def published_kind(self):
         for row in self.rows.values():

@@ -200,6 +200,10 @@ class ShareProjectionStore(Protocol):
         self, *, limit: int, within_seconds: int
     ) -> list[dict[str, Any]]: ...
 
+    def projection_list_for_owner(
+        self, *, owner_user_id: uuid.UUID
+    ) -> list[dict[str, Any]]: ...
+
 
 _store: ShareProjectionStore | None = None
 
