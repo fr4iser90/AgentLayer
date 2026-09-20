@@ -311,6 +311,9 @@ class _FakeCalendarDeps:
     def projection_delete_expired(self, *, limit=200):
         return 0
 
+    def projection_list_due(self, *, limit, within_seconds):
+        return []
+
     @property
     def published_kind(self):
         for row in self.rows.values():

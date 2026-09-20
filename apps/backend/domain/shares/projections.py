@@ -158,6 +158,10 @@ class ShareProjectionStore(Protocol):
 
     def projection_delete_expired(self, *, limit: int = 200) -> int: ...
 
+    def projection_list_due(
+        self, *, limit: int, within_seconds: int
+    ) -> list[dict[str, Any]]: ...
+
 
 _store: ShareProjectionStore | None = None
 
@@ -305,7 +309,7 @@ def load_fresh(
     owner_user_id: uuid.UUID,
     resource_identifier: str,
     resource_type: str,
-) -> StoredProjection | None:
+) -> ProjectionOutcome:
     """A usable projection, republishing through the adapter when needed.
 
     The grantee never names a kind. The kind comes from the stored row, so
@@ -408,3 +412,120 @@ def sweep_expired(*, limit: int = 200) -> int:
     if _store is None:
         return 0
     return _store.projection_delete_expired(limit=limit)
+
+
+@dataclass(frozen=True)
+class RefreshReport:
+    """What one refresh pass did, so the log can say so usefully.
+
+    ``failed`` counts rows that are still stale after trying. That is not
+    an error state to escalate on — the owner's upstream may be down for
+    an hour — but a pass that refreshed nothing and failed on everything
+    is the shape that tells you something is wrong.
+    """
+
+    refreshed: int = 0
+    failed: int = 0
+    skipped: int = 0
+
+    @property
+    def touched(self) -> int:
+        return self.refreshed + self.failed + self.skipped
+
+
+def refresh_due(*, limit: int = 20, within_seconds: int = 300) -> RefreshReport:
+    """Republish projections that are expired, or close enough to matter.
+
+    The window is the whole point. A row that expires in two minutes is
+    worth refreshing *now*, because the alternative is that the next
+    friend who asks sits through the owner's source round-trip before
+    getting an answer. Refreshing only after expiry leaves exactly that
+    reader paying, which is the cost this pass exists to remove.
+
+    That is also why this publishes through the registry rather than
+    calling ``load_fresh``: ``load_fresh`` short-circuits on a row that
+    is still fresh, which is right for a reader and exactly wrong for a
+    worker whose entire job is to act before the bound arrives.
+
+    A row is republished at most once per half of its own freshness life,
+    however wide the caller's window. Without that bound, a window wider
+    than the TTL would leave every row due on every pass and turn a
+    refresh into a continuous poll of the owner's upstream — the opposite
+    of what a background worker should be.
+
+    Rows whose adapter is gone are skipped, never deleted. Such a
+    projection is already unservable, since nothing resolves its type, and
+    wiping owner data because a registration step went missing turns a
+    wiring bug into data loss. The freshness bound takes care of it.
+    """
+    if _store is None:
+        return RefreshReport()
+
+    # Imported here rather than at module scope: the registry imports this
+    # module to reach the projection helpers, so the reverse edge has to be
+    # lazy or the two cannot be loaded in either order.
+    from apps.backend.domain.shares.registry import get_share_adapter, publish_projection
+
+    try:
+        window = max(60, min(int(within_seconds), 24 * 60 * 60))
+    except (TypeError, ValueError):
+        window = 300
+    try:
+        capped = max(1, min(int(limit), 200))
+    except (TypeError, ValueError):
+        capped = 20
+
+    now = _utcnow()
+    refreshed = failed = skipped = 0
+    for row in _store.projection_list_due(limit=capped, within_seconds=window):
+        stored = _row_to_stored(row)
+        adapter = get_share_adapter(stored.resource_type)
+        if adapter is None or not projection_backed(adapter):
+            skipped += 1
+            continue
+
+        expires = stored.expires_at
+        if expires is not None and expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        if expires is not None:
+            remaining = (expires - now).total_seconds()
+            if remaining > min(window, projection_ttl_seconds(adapter) / 2):
+                skipped += 1
+                continue
+
+        try:
+            # The stored kind is passed through explicitly. A worker that
+            # fell back to the adapter default would silently widen a
+            # free/busy projection to a titled-event list on a schedule,
+            # with nobody having chosen it.
+            outcome = publish_projection(
+                resource_type=stored.resource_type,
+                owner_user_id=stored.owner_user_id,
+                identifier=stored.resource_identifier,
+                kind=stored.kind or None,
+            )
+        except Exception:
+            # Includes the store refusing a credential-shaped payload.
+            # The previous row is untouched either way, which is the whole
+            # reason the credential gate runs at the door of the store.
+            logger.exception(
+                "share projection refresh raised for %s/%s",
+                stored.resource_type,
+                stored.resource_identifier,
+            )
+            failed += 1
+            continue
+
+        if outcome.served:
+            refreshed += 1
+            continue
+
+        failed += 1
+        logger.info(
+            "share projection still stale after refresh: %s/%s (%s)",
+            stored.resource_type,
+            stored.resource_identifier,
+            outcome.refusal or "unknown",
+        )
+
+    return RefreshReport(refreshed=refreshed, failed=failed, skipped=skipped)

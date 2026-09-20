@@ -7,6 +7,9 @@ last grant goes away. The calendar appears only as the adapter under test.
 
 from __future__ import annotations
 
+import json
+import threading
+import time
 import unittest
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -15,10 +18,12 @@ from unittest import mock
 from apps.backend.domain.shares import projections
 from apps.backend.domain.shares.adapters import register_default_share_adapters
 from apps.backend.domain.shares.adapters.calendar_adapter import CalendarShareAdapter
+from apps.backend.domain.shares.projections import RefreshReport
 from apps.backend.domain.shares.registry import (
     publish_projection,
     reset_share_registry,
 )
+from apps.backend.infrastructure.shares import projection_refresh_runner as runner
 
 
 class InMemoryStore:
@@ -59,6 +64,14 @@ class InMemoryStore:
             del self.rows[k]
         self.deletes += len(expired)
         return len(expired)
+
+    def projection_list_due(self, *, limit, within_seconds):
+        horizon = datetime.now(UTC) + timedelta(seconds=within_seconds)
+        due = sorted(
+            (v for v in self.rows.values() if v["expires_at"] <= horizon),
+            key=lambda v: v["expires_at"],
+        )
+        return [dict(v) for v in due[:limit]]
 
     def age(self, owner, rtype, ident, *, seconds=3600):
         """Push a row's expiry into the past."""
@@ -419,6 +432,212 @@ class TestSweep(StoreTestCase):
         )
         self.assertEqual(projections.sweep_expired(), 1)
         self.assertEqual(self.store.rows, {})
+
+
+class TestScheduledRefresh(unittest.TestCase):
+    """The pass that keeps a reader from paying for the owner's fetch.
+
+    Correctness does not depend on any of this -- nothing expired is ever
+    served -- so what is worth pinning down is the *scheduling*: that a
+    row is caught before its bound rather than after, that a wide window
+    cannot turn the pass into a poll of the upstream, and that a failed
+    refresh leaves the labelled-stale fallback intact instead of deleting
+    the only thing a friend could still be answered from.
+    """
+
+    def setUp(self) -> None:
+        reset_share_registry()
+        register_default_share_adapters()
+        self.store = InMemoryStore()
+        p = mock.patch.object(projections, "_store", self.store)
+        p.start()
+        self.addCleanup(p.stop)
+        self.addCleanup(reset_share_registry)
+        self.owner = uuid.uuid4()
+
+    def _seed(self, *, kind="events", expires_in=120, payload=None) -> None:
+        self.store.projection_upsert(
+            owner_user_id=self.owner,
+            resource_type="google_calendar",
+            resource_identifier="primary",
+            kind=kind,
+            payload=payload if payload is not None else {"events": [{"start": "old"}]},
+            expires_at=datetime.now(UTC) + timedelta(seconds=expires_in),
+        )
+
+    def _refresh(self, **kw):
+        return projections.refresh_due(**kw)
+
+    def test_a_row_about_to_expire_is_refreshed_before_it_does(self) -> None:
+        self._seed(expires_in=120)
+        with mock.patch.object(
+            CalendarShareAdapter,
+            "publish_projection",
+            return_value={"events": [{"start": "new"}]},
+        ) as pub:
+            report = self._refresh(limit=10, within_seconds=240)
+        pub.assert_called_once()
+        self.assertEqual(report.refreshed, 1)
+        self.assertEqual(report.failed, 0)
+        row = self.store.rows[(str(self.owner), "google_calendar", "primary")]
+        self.assertEqual(row["payload"]["events"][0]["start"], "new")
+
+    def test_a_row_nowhere_near_its_bound_is_left_alone(self) -> None:
+        self._seed(expires_in=900)
+        with mock.patch.object(
+            CalendarShareAdapter, "publish_projection"
+        ) as pub:
+            report = self._refresh(limit=10, within_seconds=240)
+        pub.assert_not_called()
+        self.assertEqual(report.touched, 0)
+
+    def test_a_wide_window_cannot_make_every_row_due_on_every_pass(self) -> None:
+        # The adapter's TTL is 900s, so the worker may republish at most
+        # once per 450s of a row's life. A caller asking for a one-hour
+        # window must not be able to turn that into a continuous poll.
+        self._seed(expires_in=500)
+        with mock.patch.object(
+            CalendarShareAdapter, "publish_projection"
+        ) as pub:
+            report = self._refresh(limit=10, within_seconds=3600)
+        pub.assert_not_called()
+        self.assertEqual(report.skipped, 1)
+
+        self.store.rows[(str(self.owner), "google_calendar", "primary")]["expires_at"] = (
+            datetime.now(UTC) + timedelta(seconds=400)
+        )
+        with mock.patch.object(
+            CalendarShareAdapter,
+            "publish_projection",
+            return_value={"events": []},
+        ) as pub2:
+            report = self._refresh(limit=10, within_seconds=3600)
+        pub2.assert_called_once()
+        self.assertEqual(report.refreshed, 1)
+
+    def test_a_row_whose_adapter_is_gone_is_skipped_not_deleted(self) -> None:
+        self._seed(expires_in=10)
+        reset_share_registry()
+        report = self._refresh(limit=10, within_seconds=60)
+        self.assertEqual(report.skipped, 1)
+        self.assertEqual(len(self.store.rows), 1, "a missing adapter is not a reason to lose data")
+
+    def test_a_failed_refresh_keeps_the_stale_fallback_the_only_answer(self) -> None:
+        # While the owner's upstream is down, the stale row is what a
+        # friend can still be answered from. Deleting it on a failed
+        # refresh would turn an outage into a silent "nothing shared".
+        self._seed(expires_in=10)
+        before = dict(self.store.rows[(str(self.owner), "google_calendar", "primary")])
+        with mock.patch.object(
+            CalendarShareAdapter,
+            "publish_projection",
+            side_effect=projections.ShareProjectionPublishError("upstream_down"),
+        ):
+            report = self._refresh(limit=10, within_seconds=60)
+        self.assertEqual(report.failed, 1)
+        self.assertEqual(report.refreshed, 0)
+        self.assertEqual(len(self.store.rows), 1)
+        self.assertEqual(
+            self.store.rows[(str(self.owner), "google_calendar", "primary")]["payload"],
+            before["payload"],
+        )
+
+    def test_refreshing_does_not_widen_the_shape_the_owner_chose(self) -> None:
+        self._seed(kind="availability", expires_in=60)
+        with mock.patch.object(
+            CalendarShareAdapter, "publish_projection", return_value={"events": []}
+        ) as pub:
+            self._refresh(limit=10, within_seconds=120)
+        self.assertEqual(pub.call_args.kwargs["kind"], "availability")
+
+    def test_a_credential_in_a_refreshed_payload_is_still_refused(self) -> None:
+        self._seed(expires_in=60, payload={"events": [{"start": "clean"}]})
+        with mock.patch.object(
+            CalendarShareAdapter,
+            "publish_projection",
+            return_value={"events": [], "ics_url": "https://x/private.ics"},
+        ):
+            report = self._refresh(limit=10, within_seconds=120)
+        self.assertEqual(report.refreshed, 0)
+        self.assertEqual(report.failed, 1)
+        row = self.store.rows[(str(self.owner), "google_calendar", "primary")]
+        self.assertNotIn("ics_url", json.dumps(row["payload"]))
+
+    def test_an_unwired_store_makes_the_pass_a_no_op(self) -> None:
+        with mock.patch.object(projections, "_store", None):
+            report = projections.refresh_due(limit=10, within_seconds=60)
+        self.assertEqual(report.touched, 0)
+
+
+class TestRefreshWorker(unittest.TestCase):
+    """The thread around the pass: one of them, and only while the friend
+    system is on."""
+
+    WORKER_NAME = "share-projection-refresh-worker"
+
+    def _live(self):
+        return [
+            t for t in threading.enumerate() if t.name == self.WORKER_NAME and t.is_alive()
+        ]
+
+    def tearDown(self) -> None:
+        runner.stop_projection_refresh_worker()
+
+    def test_starting_twice_does_not_stack_workers(self) -> None:
+        with mock.patch.object(
+            runner.operator_settings, "friend_system_enabled", return_value=False
+        ):
+            runner.start_projection_refresh_worker()
+            first = self._live()
+            self.assertEqual(len(first), 1)
+            runner.start_projection_refresh_worker()
+            self.assertEqual(len(self._live()), 1)
+            self.assertEqual(self._live()[0] is first[0], True)
+
+    def test_stop_leaves_no_thread_behind(self) -> None:
+        with mock.patch.object(
+            runner.operator_settings, "friend_system_enabled", return_value=False
+        ):
+            runner.start_projection_refresh_worker()
+            runner.stop_projection_refresh_worker()
+        self.assertEqual(self._live(), [])
+
+    def test_the_worker_refreshes_while_the_friend_system_is_on(self) -> None:
+        called = threading.Event()
+        with mock.patch.object(runner, "_POLL_SEC", 0.05), mock.patch.object(
+            runner.operator_settings, "friend_system_enabled", return_value=True
+        ), mock.patch.object(
+            projections,
+            "projection_store_ready",
+            return_value=True,
+        ), mock.patch.object(
+            projections, "refresh_due", side_effect=lambda **kw: called.set() or RefreshReport()
+        ):
+            runner.start_projection_refresh_worker()
+            self.assertTrue(called.wait(timeout=3), "worker never ran a refresh pass")
+
+    def test_the_worker_stays_quiet_while_the_friend_system_is_off(self) -> None:
+        # The store is wired here on purpose. Left unwired, the store-ready
+        # guard would keep the worker quiet by itself and this test would
+        # pass whether the friend-system gate existed or not.
+        with mock.patch.object(runner, "_POLL_SEC", 0.05), mock.patch.object(
+            runner.operator_settings, "friend_system_enabled", return_value=False
+        ), mock.patch.object(
+            projections, "projection_store_ready", return_value=True
+        ), mock.patch.object(projections, "refresh_due") as due:
+            runner.start_projection_refresh_worker()
+            time.sleep(0.4)
+        due.assert_not_called()
+
+    def test_the_worker_does_not_touch_an_unwired_store(self) -> None:
+        with mock.patch.object(runner, "_POLL_SEC", 0.05), mock.patch.object(
+            runner.operator_settings, "friend_system_enabled", return_value=True
+        ), mock.patch.object(
+            projections, "projection_store_ready", return_value=False
+        ), mock.patch.object(projections, "refresh_due") as due:
+            runner.start_projection_refresh_worker()
+            time.sleep(0.4)
+        due.assert_not_called()
 
 
 class TestRevokeCascade(unittest.TestCase):
