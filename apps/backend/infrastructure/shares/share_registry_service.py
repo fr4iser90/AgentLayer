@@ -25,9 +25,9 @@ from apps.backend.domain.shares.adapters import register_default_share_adapters
 from apps.backend.domain.shares.adapters.calendar_adapter import (
     register_calendar_adapter_dependencies,
 )
-from apps.backend.domain.shares.projections import (
-    register_share_projection_store,
-)
+from apps.backend.domain.shares.projection_refresh import register_live_grant_counter
+from apps.backend.domain.shares.projections import register_share_projection_store
+from apps.backend.infrastructure.db import share_permissions_db
 from apps.backend.infrastructure.db import share_projections_db
 
 
@@ -64,4 +64,13 @@ register_calendar_adapter_dependencies(_CalendarShareDeps())
 # forwarding. Registering the module also keeps one obvious place to look
 # for what backs a published projection.
 register_share_projection_store(share_projections_db)
+# The refresh pass asks how many live grants still name a projection
+# before spending a fetch on it. count_active_grants already spans the
+# canonical id and its legacy aliases, which matters here for the same
+# reason it matters to the revoke cascade: grants are stored under
+# whatever name was written while projections are keyed canonically, so
+# counting only the canonical id would report zero while a ``calendar``
+# grant is still live -- and a false zero stops refreshing a row somebody
+# can still read.
+register_live_grant_counter(share_permissions_db.count_active_grants)
 register_default_share_adapters()

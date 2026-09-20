@@ -15,10 +15,12 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from unittest import mock
 
+from apps.backend.domain.shares import projection_refresh
 from apps.backend.domain.shares import projections
 from apps.backend.domain.shares.adapters import register_default_share_adapters
 from apps.backend.domain.shares.adapters.calendar_adapter import CalendarShareAdapter
-from apps.backend.domain.shares.projections import RefreshReport, StoredProjection
+from apps.backend.domain.shares.projection_refresh import RefreshReport
+from apps.backend.domain.shares.projections import StoredProjection
 from apps.backend.domain.shares.registry import (
     publish_projection,
     reset_share_registry,
@@ -449,13 +451,13 @@ class TestSweep(StoreTestCase):
     def test_a_row_just_past_its_bound_is_swept_once_the_grace_is_spent(self) -> None:
         owner = uuid.uuid4()
         self._seed_aged(owner, seconds_past_bound=7200)
-        self.assertEqual(projections.sweep_expired(grace_seconds=3600), 1)
+        self.assertEqual(projection_refresh.sweep_expired(grace_seconds=3600), 1)
         self.assertEqual(self.store.rows, {})
 
     def test_a_row_still_inside_the_grace_survives_the_sweep(self) -> None:
         owner = uuid.uuid4()
         self._seed_aged(owner, seconds_past_bound=600)
-        self.assertEqual(projections.sweep_expired(grace_seconds=3600), 0)
+        self.assertEqual(projection_refresh.sweep_expired(grace_seconds=3600), 0)
         self.assertEqual(len(self.store.rows), 1, "the stale fallback must survive")
 
     def test_the_default_grace_is_the_module_constant(self) -> None:
@@ -463,7 +465,7 @@ class TestSweep(StoreTestCase):
         outside = uuid.uuid4()
         self._seed_aged(inside, seconds_past_bound=projections.STALE_GRACE_SECONDS - 300)
         self._seed_aged(outside, seconds_past_bound=projections.STALE_GRACE_SECONDS + 300)
-        self.assertEqual(projections.sweep_expired(), 1)
+        self.assertEqual(projection_refresh.sweep_expired(), 1)
         self.assertEqual(len(self.store.rows), 1)
 
 
@@ -606,6 +608,11 @@ class TestScheduledRefresh(unittest.TestCase):
         p = mock.patch.object(projections, "_store", self.store)
         p.start()
         self.addCleanup(p.stop)
+        # Pinned granted so the pass never reaches for the real grant
+        # lookup, which would go looking for a database pool.
+        g = mock.patch.object(projection_refresh, "_grant_counter", lambda o, t, i: 1)
+        g.start()
+        self.addCleanup(g.stop)
         self.addCleanup(reset_share_registry)
         self.owner = uuid.uuid4()
 
@@ -620,7 +627,7 @@ class TestScheduledRefresh(unittest.TestCase):
         )
 
     def _refresh(self, **kw):
-        return projections.refresh_due(**kw)
+        return projection_refresh.refresh_due(**kw)
 
     def test_a_row_about_to_expire_is_refreshed_before_it_does(self) -> None:
         self._seed(expires_in=120)
@@ -719,8 +726,122 @@ class TestScheduledRefresh(unittest.TestCase):
 
     def test_an_unwired_store_makes_the_pass_a_no_op(self) -> None:
         with mock.patch.object(projections, "_store", None):
-            report = projections.refresh_due(limit=10, within_seconds=60)
+            report = projection_refresh.refresh_due(limit=10, within_seconds=60)
         self.assertEqual(report.touched, 0)
+
+
+class TestUngrantedProjections(unittest.TestCase):
+    """A projection nobody can read should not cost a fetch.
+
+    The interesting half is not the skip, it is what does *not* skip. A
+    counted zero stops the refresh; an unknown count never does, because
+    treating "the lookup is not wired" as "nobody has a grant" would turn
+    a missing registration into a mass drop of owner-published data.
+    """
+
+    def setUp(self) -> None:
+        reset_share_registry()
+        register_default_share_adapters()
+        self.store = InMemoryStore()
+        for module, name, target in (
+            (projections, "_store", self.store),
+            (projection_refresh, "_grant_counter", None),
+        ):
+            p = mock.patch.object(module, name, target)
+            p.start()
+            self.addCleanup(p.stop)
+        self.addCleanup(reset_share_registry)
+        self.owner = uuid.uuid4()
+
+    def _seed(self, *, expires_in=120) -> None:
+        self.store.projection_upsert(
+            owner_user_id=self.owner,
+            resource_type="google_calendar",
+            resource_identifier="primary",
+            kind="events",
+            payload={"events": [{"start": "x"}]},
+            expires_at=datetime.now(UTC) + timedelta(seconds=expires_in),
+        )
+
+    def test_an_unwired_lookup_still_refreshes(self) -> None:
+        self._seed()
+        with mock.patch.object(
+            CalendarShareAdapter, "publish_projection", return_value={"events": []}
+        ) as pub:
+            report = projection_refresh.refresh_due(limit=10, within_seconds=240)
+        pub.assert_called_once()
+        self.assertEqual(report.refreshed, 1)
+
+    def test_a_counted_zero_skips_the_refresh(self) -> None:
+        self._seed()
+        with mock.patch.object(
+            projection_refresh, "_grant_counter", lambda o, t, i: 0
+        ), mock.patch.object(
+            CalendarShareAdapter, "publish_projection"
+        ) as pub:
+            report = projection_refresh.refresh_due(limit=10, within_seconds=240)
+        pub.assert_not_called()
+        self.assertEqual(report.skipped, 1)
+        self.assertEqual(report.refreshed, 0)
+
+    def test_a_live_grant_keeps_refreshing(self) -> None:
+        self._seed()
+        with mock.patch.object(
+            projection_refresh, "_grant_counter", lambda o, t, i: 3
+        ), mock.patch.object(
+            CalendarShareAdapter, "publish_projection", return_value={"events": []}
+        ) as pub:
+            report = projection_refresh.refresh_due(limit=10, within_seconds=240)
+        pub.assert_called_once()
+        self.assertEqual(report.refreshed, 1)
+
+    def test_an_unknown_count_is_not_treated_as_zero(self) -> None:
+        self._seed()
+        with mock.patch.object(
+            projection_refresh, "_grant_counter", lambda o, t, i: None
+        ), mock.patch.object(
+            CalendarShareAdapter, "publish_projection", return_value={"events": []}
+        ) as pub:
+            report = projection_refresh.refresh_due(limit=10, within_seconds=240)
+        pub.assert_called_once()
+        self.assertEqual(report.refreshed, 1)
+
+    def test_a_failing_lookup_is_not_treated_as_zero(self) -> None:
+        self._seed()
+
+        def boom(*_a):
+            raise RuntimeError("db down")
+
+        with mock.patch.object(
+            projection_refresh, "_grant_counter", boom
+        ), mock.patch.object(
+            CalendarShareAdapter, "publish_projection", return_value={"events": []}
+        ) as pub:
+            report = projection_refresh.refresh_due(limit=10, within_seconds=240)
+        pub.assert_called_once()
+        self.assertEqual(report.refreshed, 1)
+
+    def test_live_grant_count_reports_none_when_unwired(self) -> None:
+        self.assertIsNone(
+            projection_refresh.live_grant_count(uuid.uuid4(), "google_calendar", "primary")
+        )
+
+    def test_an_ungranted_row_drains_through_the_existing_machinery(self) -> None:
+        # Skip the refresh, the row goes stale on its own, and the
+        # retention grace removes it. No second delete path.
+        self._seed(expires_in=120)
+        with mock.patch.object(
+            projection_refresh, "_grant_counter", lambda o, t, i: 0
+        ), mock.patch.object(
+            CalendarShareAdapter, "publish_projection"
+        ) as pub:
+            projection_refresh.refresh_due(limit=10, within_seconds=240)
+        pub.assert_not_called()
+        self.assertEqual(len(self.store.rows), 1, "still retained for now")
+
+        self.store.age(self.owner, "google_calendar", "primary", seconds=7200)
+        self.assertEqual(projection_refresh.sweep_expired(), 1)
+        self.assertEqual(self.store.rows, {})
 
 
 class TestRefreshWorker(unittest.TestCase):
@@ -765,7 +886,7 @@ class TestRefreshWorker(unittest.TestCase):
             "projection_store_ready",
             return_value=True,
         ), mock.patch.object(
-            projections, "refresh_due", side_effect=lambda **kw: called.set() or RefreshReport()
+            projection_refresh, "refresh_due", side_effect=lambda **kw: called.set() or RefreshReport()
         ):
             runner.start_projection_refresh_worker()
             self.assertTrue(called.wait(timeout=3), "worker never ran a refresh pass")
@@ -778,7 +899,7 @@ class TestRefreshWorker(unittest.TestCase):
             runner.operator_settings, "friend_system_enabled", return_value=False
         ), mock.patch.object(
             projections, "projection_store_ready", return_value=True
-        ), mock.patch.object(projections, "refresh_due") as due:
+        ), mock.patch.object(projection_refresh, "refresh_due") as due:
             runner.start_projection_refresh_worker()
             time.sleep(0.4)
         due.assert_not_called()
@@ -788,7 +909,7 @@ class TestRefreshWorker(unittest.TestCase):
             runner.operator_settings, "friend_system_enabled", return_value=True
         ), mock.patch.object(
             projections, "projection_store_ready", return_value=False
-        ), mock.patch.object(projections, "refresh_due") as due:
+        ), mock.patch.object(projection_refresh, "refresh_due") as due:
             runner.start_projection_refresh_worker()
             time.sleep(0.4)
         due.assert_not_called()
@@ -815,9 +936,9 @@ class TestRefreshWorker(unittest.TestCase):
         ), mock.patch.object(
             projections, "projection_store_ready", return_value=True
         ), mock.patch.object(
-            projections, "refresh_due", side_effect=fake_refresh
+            projection_refresh, "refresh_due", side_effect=fake_refresh
         ), mock.patch.object(
-            projections, "sweep_expired", side_effect=fake_sweep
+            projection_refresh, "sweep_expired", side_effect=fake_sweep
         ):
             runner.start_projection_refresh_worker()
             self.assertTrue(swept.wait(timeout=3), "the sweep never ran")
@@ -831,7 +952,7 @@ class TestRevokeCascade(unittest.TestCase):
     nothing can read it any more -- and must not knock it over while
     somebody else still can."""
 
-    def _run_revoke(self, *, remaining_rows):
+    def _run_revoke(self, *, remaining_rows, revoke_type="google_calendar"):
         from apps.backend.infrastructure.db import share_permissions_db as spdb
 
         calls: list[str] = []
@@ -857,7 +978,10 @@ class TestRevokeCascade(unittest.TestCase):
                     self._rows = list(remaining_rows)
                     self.rowcount = len(self._rows)
                 elif norm.startswith("DELETE FROM share_projections"):
-                    calls.append("delete_projection")
+                    # Record which id the cascade actually deletes. The
+                    # bug this exposes was deleting the name the revoke was
+                    # issued under rather than the id the row is keyed on.
+                    calls.append(f"delete_projection:{(params or [None])[1]}")
                     self.rowcount = 1
                 else:
                     raise AssertionError(f"unexpected SQL: {norm}")
@@ -892,7 +1016,7 @@ class TestRevokeCascade(unittest.TestCase):
             spdb.share_permission_set(
                 owner_user_id=uuid.uuid4(),
                 grantee_user_id=uuid.uuid4(),
-                resource_type="google_calendar",
+                resource_type=revoke_type,
                 resource_identifier="primary",
                 allowed=False,
             )
@@ -901,7 +1025,7 @@ class TestRevokeCascade(unittest.TestCase):
     def test_the_last_revoke_deletes_the_projection(self) -> None:
         calls = self._run_revoke(remaining_rows=[])
         self.assertIn("revoke", calls)
-        self.assertIn("delete_projection", calls)
+        self.assertIn("delete_projection:google_calendar", calls)
 
     def test_another_live_grant_keeps_the_projection(self) -> None:
         # The projection is owner-owned and shared by shape. Revoking one
@@ -910,12 +1034,71 @@ class TestRevokeCascade(unittest.TestCase):
             remaining_rows=[{"policy": {"days_ahead": 7}}]
         )
         self.assertIn("revoke", calls)
-        self.assertNotIn("delete_projection", calls)
+        self.assertFalse(
+            any(c.startswith("delete_projection") for c in calls),
+            f"nothing should have been deleted: {calls}",
+        )
 
     def test_an_expired_remaining_grant_does_not_keep_it(self) -> None:
         past = (datetime.now(UTC) - timedelta(days=1)).isoformat()
         calls = self._run_revoke(remaining_rows=[{"policy": {"expires_at": past}}])
-        self.assertIn("delete_projection", calls)
+        self.assertIn("delete_projection:google_calendar", calls)
+
+    def test_a_revoke_issued_under_the_alias_deletes_the_canonical_row(self) -> None:
+        # The cascade must delete the id the projection is actually keyed
+        # on. Revoking a grant written as ``calendar`` used to compute
+        # resource_type='calendar' and delete that, matching nothing and
+        # leaving the google_calendar projection standing with no live
+        # grant behind it.
+        calls = self._run_revoke(remaining_rows=[], revoke_type="calendar")
+        self.assertIn("revoke", calls)
+        self.assertIn("delete_projection:google_calendar", calls)
+
+
+class TestAliasResolution(unittest.TestCase):
+    """``canonical_resource_type`` normalises syntax, not aliases.
+
+    Assuming otherwise was a live bug: it returns "calendar" for
+    "calendar", while projections are keyed "google_calendar". Every
+    delete or grouping built on the un-mapped name silently matched
+    nothing.
+    """
+
+    def _db(self):
+        from apps.backend.infrastructure.db import share_permissions_db as spdb
+
+        return spdb
+
+    def test_a_legacy_alias_resolves_to_its_canonical_id(self) -> None:
+        spdb = self._db()
+        self.assertEqual(spdb._canonical("calendar"), "google_calendar")
+        self.assertEqual(spdb._canonical("board"), "dashboard")
+        self.assertEqual(spdb._canonical("haustiere"), "collection")
+
+    def test_a_canonical_id_is_left_alone(self) -> None:
+        spdb = self._db()
+        self.assertEqual(spdb._canonical("google_calendar"), "google_calendar")
+        self.assertEqual(spdb._canonical("dashboard"), "dashboard")
+
+    def test_an_unknown_type_is_normalised_but_not_mapped(self) -> None:
+        spdb = self._db()
+        self.assertEqual(spdb._canonical("Payroll Export"), "payroll_export")
+
+    def test_variants_span_the_family_whichever_name_is_used(self) -> None:
+        spdb = self._db()
+        from_canonical = set(spdb._resource_type_variants("google_calendar"))
+        from_alias = set(spdb._resource_type_variants("calendar"))
+        self.assertEqual(from_canonical, {"google_calendar", "calendar"})
+        self.assertEqual(from_alias, from_canonical,
+                        "a call made under the alias must span the same set")
+
+    def test_the_syntax_normaliser_does_not_do_this_job(self) -> None:
+        # Pinned so nobody re-introduces the assumption by reading
+        # canonical_resource_type's name rather than its body.
+        from apps.backend.domain.shares.catalog import canonical_resource_type
+
+        self.assertEqual(canonical_resource_type("calendar"), "calendar")
+        self.assertNotEqual(canonical_resource_type("calendar"), "google_calendar")
 
 
 if __name__ == "__main__":

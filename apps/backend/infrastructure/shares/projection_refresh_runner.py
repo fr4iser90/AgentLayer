@@ -26,6 +26,7 @@ from __future__ import annotations
 import logging
 import threading
 
+from apps.backend.domain.shares import projection_refresh
 from apps.backend.domain.shares import projections
 from apps.backend.infrastructure.settings import operator_settings
 
@@ -79,7 +80,7 @@ def _worker_loop() -> None:
             if not projections.projection_store_ready():
                 continue
             passes += 1
-            report = projections.refresh_due(
+            report = projection_refresh.refresh_due(
                 limit=_MAX_BATCH, within_seconds=_WINDOW_SEC
             )
             if report.touched:
@@ -90,7 +91,7 @@ def _worker_loop() -> None:
                     report.skipped,
                 )
             if passes % _SWEEP_EVERY == 0:
-                swept = projections.sweep_expired()
+                swept = projection_refresh.sweep_expired()
                 if swept:
                     logger.info(
                         "share projections swept out of retention=%s", swept

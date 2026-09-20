@@ -31,11 +31,41 @@ SHARE_RESOURCE_ALIASES: dict[str, tuple[str, ...]] = {
 }
 
 
-def _resource_type_variants(resource_type: str) -> tuple[str, ...]:
-    """Canonical id plus legacy DB aliases (backward compat for old grant rows)."""
+def _canonical(resource_type: str) -> str:
+    """The canonical id a resource-type name belongs to.
+
+    ``canonical_resource_type`` normalises *syntax* only — it does not map
+    a legacy alias to the id it aliases, so ``canonical_resource_type(
+    "calendar")`` is ``"calendar"``, not ``"google_calendar"``.
+    Projections are keyed on the real canonical id, so anything that
+    deletes or groups by the un-mapped name matches nothing.
+
+    That gap was live, not theoretical: revoking a grant written as
+    ``calendar`` computed its cascade against ``resource_type='calendar'``
+    and left the owner's ``google_calendar`` projection standing with zero
+    live grants behind it — the exact state this subsystem exists to make
+    impossible.
+    """
     from apps.backend.domain.shares.catalog import canonical_resource_type
 
-    canonical = canonical_resource_type(resource_type) or (resource_type or "").strip().lower()
+    key = canonical_resource_type(resource_type) or (resource_type or "").strip().lower()
+    if not key or key in SHARE_RESOURCE_ALIASES:
+        return key
+    for canonical, aliases in SHARE_RESOURCE_ALIASES.items():
+        if key in aliases:
+            return canonical
+    return key
+
+
+def _resource_type_variants(resource_type: str) -> tuple[str, ...]:
+    """Canonical id plus legacy DB aliases (backward compat for old grant rows).
+
+    Resolved through ``_canonical`` rather than the syntax normaliser
+    directly, so a call made under a legacy alias still spans the whole
+    family. Without that, revoking ``calendar`` counted only ``calendar``
+    rows and missed a live ``google_calendar`` grant on the same resource.
+    """
+    canonical = _canonical(resource_type)
     if not canonical:
         return ()
     aliases = SHARE_RESOURCE_ALIASES.get(canonical, ())
@@ -75,15 +105,6 @@ def _serialize_grant(row: dict[str, Any]) -> dict[str, Any]:
             policy=policy,
         ),
     }
-
-
-def _canonical(resource_type: str) -> str:
-    from apps.backend.domain.shares.catalog import canonical_resource_type
-
-    return (
-        canonical_resource_type(resource_type)
-        or (resource_type or "").strip().lower()
-    )
 
 
 def count_active_grants(
