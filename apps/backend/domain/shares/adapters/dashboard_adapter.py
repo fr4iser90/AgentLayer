@@ -41,7 +41,10 @@ class DashboardShareAdapter:
         owner_user_id: uuid.UUID,
         grantee_user_id: uuid.UUID,
         identifier: str,
+        request: dict[str, Any] | None = None,
     ) -> Any | None:
+        # The dashboard projection is not horizon-scoped; ``request`` is
+        # accepted for protocol conformance and deliberately unused.
         dashboard_id = self.normalize_identifier(identifier)
         if dashboard_id is None:
             return None

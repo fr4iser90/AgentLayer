@@ -122,6 +122,7 @@ def resolve_projection(
     owner_user_id: uuid.UUID,
     grantee_user_id: uuid.UUID,
     identifier: str,
+    request: dict[str, Any] | None = None,
 ) -> ResolveOutcome:
     """Resolve a grant through its adapter and gate the projection.
 
@@ -139,6 +140,7 @@ def resolve_projection(
         owner_user_id=owner_user_id,
         grantee_user_id=grantee_user_id,
         identifier=norm,
+        request=request,
     )
     if projection is None:
         return ResolveOutcome(adapter, None, "not_granted")

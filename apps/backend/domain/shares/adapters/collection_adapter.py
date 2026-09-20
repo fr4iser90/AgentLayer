@@ -33,7 +33,10 @@ class CollectionShareAdapter:
         owner_user_id: uuid.UUID,
         grantee_user_id: uuid.UUID,
         identifier: str,
+        request: dict[str, Any] | None = None,
     ) -> Any | None:
+        # Collections are granted whole; ``request`` is accepted for
+        # protocol conformance and deliberately unused.
         slug = self.normalize_identifier(identifier)
         if not slug:
             return None

@@ -6,6 +6,9 @@ already do through the registry contract, so the contract is derived from
 code that is known to work rather than from a design sketch.
 """
 
+from apps.backend.domain.shares.adapters.calendar_adapter import (
+    CalendarShareAdapter,
+)
 from apps.backend.domain.shares.adapters.collection_adapter import (
     CollectionShareAdapter,
 )
@@ -20,8 +23,10 @@ from apps.backend.domain.shares.adapters.dashboard_adapter import (
 # DashboardShareAdapter".
 _DEFAULT_DASHBOARD = DashboardShareAdapter()
 _DEFAULT_COLLECTION = CollectionShareAdapter()
+_DEFAULT_CALENDAR = CalendarShareAdapter()
 
 __all__ = [
+    "CalendarShareAdapter",
     "CollectionShareAdapter",
     "DashboardShareAdapter",
     "register_default_share_adapters",
@@ -42,3 +47,4 @@ def register_default_share_adapters() -> None:
 
     register_share_adapter(_DEFAULT_DASHBOARD)
     register_share_adapter(_DEFAULT_COLLECTION)
+    register_share_adapter(_DEFAULT_CALENDAR)

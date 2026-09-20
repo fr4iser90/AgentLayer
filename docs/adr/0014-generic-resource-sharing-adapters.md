@@ -21,10 +21,12 @@ Implemented so far:
 - **steps 1–2**, the adapter protocol and registry wrapping the two
   working adapters without behaviour change — see §5.3
 - **step 3**, per-type `policy_fields` enforced at write time — see §1.9.1
+- **step 4**, the generic read action and the calendar as a thin alias —
+  see §5.4. This also closed the `block_ids`-on-calendar gap early, which
+  §1.9.1 had scheduled for step 7.
 
-Not implemented: steps 4–8. The generic `friend_share` tool, the
-registry-driven UI, the projection layer, and the calendar redone as a
-`publish_projection` adapter all remain open.
+Not implemented: steps 5–8. The registry-driven UI, the projection layer,
+and the calendar redone as a `publish_projection` adapter all remain open.
 
 Companion reading: [ADR 0013](0013-os-level-workspace-isolation.md) covers
 the *filesystem* boundary; this one covers the *peer-to-peer data* boundary.
@@ -400,11 +402,23 @@ the defect, not the feature. It is rewritten to assert the refusal.
 
 **What is not.** A type with no adapter has nobody who can say a field is
 meaningless, so it falls back to the global set — the write side stays
-open on purpose (§1.4). That means `google_calendar` still accepts
-`block_ids`, and both the fixture row and the live check record that as a
-**known gap that closes at step 7**, when the calendar becomes a
-`publish_projection` adapter. `TestKnownGapIsVisible` asserts the gap so
-that closing it is a deliberate act that updates a test, not a quiet drift.
+open on purpose (§1.4). At the time of writing that covered `notes`,
+`todoist`, `roadmap`, `github_activity` and the unclassified
+`payroll_export`: each still accepts `block_ids`.
+
+**Update (step 4).** `google_calendar` no longer belongs on that list.
+Registering `CalendarShareAdapter` gave the calendar a component that can
+say "I read `days_ahead` and `expires_at`, nothing else", so `block_ids`
+and `list_keys` are now refused on a calendar grant. The gap this section
+scheduled for step 7 closed three steps early, as a side effect of the
+adapter rather than as a separate fix. `TestCalendarGapIsClosed` replaced
+`TestKnownGapIsVisible` and asserts the refusal on both the canonical id
+and the legacy `calendar` alias, so the alias is not a way around it.
+
+The pre-existing fixture row carrying
+`block_ids: ['this-means-nothing-on-a-calendar']` is still in the table.
+It is fixture data and the audit reports it as such; new grants cannot be
+written that way.
 
 **Still open, deliberately out of step 3's scope.**
 `plugins/tools/integrations/friends/shares.py:423` advertises
@@ -638,7 +652,7 @@ when a resource is added either.
 | 1 ✅ | Extract the adapter protocol from `dashboard_grant.py` + `collection_grant.py`; build the registry | 2–3 | Both adapters already have the shape — this is extraction, not invention |
 | 2 ✅ | Wrap those two adapters in the registry **without changing their behaviour** | 1 | Proves the contract against working code before anything new is built |
 | 3 ✅ | Per-type `policy_fields`; reject unknown fields at write time | 1–2 | Fixes §1.9; forces each adapter to state what it honours |
-| 4 | Generic `friend_share` tool; old tool names become thin aliases | 1–2 | Removes the per-tool growth |
+| 4 ✅ | Generic `friend_share` tool; old tool names become thin aliases | 1–2 | Removes the per-tool growth |
 | 5 | Share UI driven from the registry | 1–2 | Types, identifiers, policy fields — all derived |
 | 6 | Add the projection contract (table, refresh, revoke cascade, freshness) | 2–4 | Enables B |
 | 7 | Re-do the calendar as a **`publish_projection` adapter** ("share my availability") | 2–3 | Not a patched delegation. Makes the §1.6/§1.7 class of bug *impossible*, not merely gone |
@@ -719,12 +733,70 @@ same fixture rows. Mutation-checked both ways — disabling the credential
 gate fails three tests, and switching the gate to value-based matching
 fails the `source_hint` false-positive test specifically.
 
-**One honest caveat.** `google_calendar` has a working bespoke reader but
-is deliberately **not** in the registry — step 7 redoes it as a
-`publish_projection` adapter. Until then `registered_resource_types()`
-*under-reports* what is actually readable, and the generic tool must not
-treat it as the complete set. The fixture run asserts this explicitly so
-the gap cannot be forgotten.
+**One caveat that no longer applies.** At step 2 `google_calendar` was
+deliberately left out of the registry, so `registered_resource_types()`
+*under-reported* what was readable and the generic tool had to treat the
+list as incomplete. Step 4 registered the calendar and the caveat went
+away: the registry is now the complete answer for the types it ships.
+See §5.4.
+
+### 5.4 Step 4 as implemented: the generic read, and the calendar as an alias
+
+**What changed.** `shares(action="read")` is the single generic read entry
+point. It resolves a friend, canonicalises the type, and hands the call to
+`registry.resolve_projection` with the caller's parameters passed through
+a new `request` argument. `plugins/tools/integrations/friends/calendar.py`
+went from 163 lines that did a grant check, a horizon calculation and a
+credential-bearing fetch, to an alias that sets
+`action=read, resource_type=google_calendar` and reshapes the answer into
+the JSON keys the tool already returned.
+
+**Why the calendar was registered rather than left bespoke.** The ADR had
+deferred the calendar to step 7. Registering it now was chosen because the
+alternative keeps two read paths alive: the generic one and a per-type tool
+that enforces its own grant. Every additional per-type read tool is another
+place the enforcement can drift, and §1.3 counted four of seven types that
+already drifted. With the adapter registered:
+
+* the grant check lives inside `resolve`, so the generic path cannot reach
+  a friend's calendar without passing it (driver 4);
+* the §1.9 consent gap closes early — `block_ids` and `list_keys` are
+  refused on calendar grants today, not at step 7;
+* step 7 shrinks to swapping `CalendarShareDependencies.read_shared_calendar`
+  from the live ICS fetch to a published availability projection. The
+  adapter surface, the tool surface and the grant semantics do not move.
+
+**Dependencies are injected, not imported.** The reader lives in
+`plugins`, and the domain layer must not reach into `plugins`. The adapter
+declares a `CalendarShareDependencies` protocol (`share_permission_get`,
+`read_shared_calendar`) satisfied by an object built in
+`infrastructure/shares/share_registry_service.py`. With no dependencies
+registered the adapter returns `None` — fail closed, so a missing wiring
+cannot become an unchecked read.
+
+**Verified live, not only in unit tests.** Against the running fixture: a
+grant of `days_ahead: 14` capped a request for 30 down to
+`days_effective: 14`; an event two days out was returned and one forty
+days out was not; the bearer URL appeared nowhere in the output. Reading
+`notes` — grantable, no adapter — returned the refusal
+`no_adapter_registered` rather than data. The legacy `calendar` alias
+resolved through the same adapter instance, and `policy_fields_for`
+returned the identical set for both names.
+
+**A live-only bug this surfaced.** `resolve_friend_by_name` returns the raw
+`friends_list` row, whose `friend_user_id` is a real `uuid.UUID`, while
+`resolve_message_recipient` stringifies its own. Every call site doing
+`uuid.UUID(friend["friend_user_id"])` raised
+`'UUID' object has no attribute 'replace'` — including `check`, `grant`
+and `revoke`, which had shipped in v2.0.0 and passed their tests because
+those tests stubbed the id as a string. All five sites now go through one
+`_friend_uuid` coercion. The unit tests could not have caught this: the
+stub was the difference between green and broken, and the stub was wrong.
+
+**Still open from step 4.** The agent-facing help text at
+`friends/shares.py` still advertises one flat policy field list for every
+type; deriving it from `describe_registered()` is step 5's job, as noted
+in §1.9.1.
 
 ---
 
@@ -910,7 +982,7 @@ docker compose run --rm -e PYTHONPATH=/code agent-layer \
     python /code/scripts/validate_friend_sharing_fixture.py
 ```
 
-Current result: **47/47**. Progression of the fixture run:
+Current result: **50/50**. Progression of the fixture run:
 
 | added with | checks | total |
 |---|---|---|
@@ -918,13 +990,19 @@ Current result: **47/47**. Progression of the fixture run:
 | §1.7.1 calendar adapter | +7 | 32 |
 | steps 1–2 registry | +7 | 39 |
 | step 3 policy enforcement | +8 | 47 |
+| step 4 generic read + calendar alias | +3 | 50 |
 
 The step-3 checks cover: `block_ids` rejected on a collection and still
 accepted on a dashboard; `list_keys` rejected on both; the `list_keys`-on-
-collection case §1.9.1 describes; the known `google_calendar` gap asserted
-rather than glossed; unregistered types keeping the open write side; a
-genuinely unknown field still refused; and the app wiring being live in the
-container, which is what the enforcement silently depends on.
+collection case §1.9.1 describes; unregistered types keeping the open
+write side; a genuinely unknown field still refused; and the app wiring
+being live in the container, which is what the enforcement silently
+depends on.
+
+Step 4 replaced the one check that asserted the `google_calendar` gap with
+three that assert it is closed: the type is registry-backed, the legacy
+`calendar` alias binds the same adapter instance, and the adapter declares
+only `{days_ahead, expires_at}`.
 
 The run is what turned §1.3 from a static grep into an observed behaviour —
 and what surfaced the always-deny bug that the grep had mis-scored as

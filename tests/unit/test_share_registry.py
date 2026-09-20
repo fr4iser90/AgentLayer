@@ -79,12 +79,24 @@ class RegistryTestCase(unittest.TestCase):
 
 class TestRegistration(RegistryTestCase):
     def test_shipped_types_are_registered(self) -> None:
-        self.assertEqual(registered_resource_types(), ("collection", "dashboard"))
+        self.assertEqual(
+            registered_resource_types(),
+            ("calendar", "collection", "dashboard", "google_calendar"),
+        )
 
     def test_registering_the_same_instance_twice_is_idempotent(self) -> None:
         adapter = get_share_adapter("dashboard")
         register_share_adapter(adapter)  # must not raise
-        self.assertEqual(registered_resource_types(), ("collection", "dashboard"))
+        self.assertEqual(
+            registered_resource_types(),
+            ("calendar", "collection", "dashboard", "google_calendar"),
+        )
+
+    def test_the_calendar_alias_shares_one_adapter(self) -> None:
+        # ``calendar`` is the legacy name for the same grant. Both must land on
+        # the same instance, or a grant written under one name would be read by
+        # a different adapter than the one that enforces the other.
+        self.assertIs(get_share_adapter("calendar"), get_share_adapter("google_calendar"))
 
     def test_conflicting_registration_is_refused(self) -> None:
         # A silent override would move which adapter enforces a live grant.

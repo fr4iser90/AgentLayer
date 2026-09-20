@@ -114,12 +114,18 @@ class ShareAdapter(Protocol):
         owner_user_id: uuid.UUID,
         grantee_user_id: uuid.UUID,
         identifier: str,
+        request: dict[str, Any] | None = None,
     ) -> Any | None:
         """The projection this grant allows, or None when nothing is granted.
 
         ``None`` means "no active grant". It must not be conflated with an
         empty projection, which means "granted, and there is nothing to
         show" — the two read very differently to a grantee.
+
+        ``request`` carries per-call parameters the generic tool received
+        (for example a requested horizon). Adapters must treat it as
+        untrusted input and clamp it against their own policy — the grant,
+        not the caller, decides how much is visible.
         """
         ...
 

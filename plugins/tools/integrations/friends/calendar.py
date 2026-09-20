@@ -1,23 +1,24 @@
-"""
-Get calendar entries from a friend who has shared his calendar with you.
-Call this tool automatically when the user asks about availability, appointments or schedule of another person.
+"""Read a friend's shared calendar (ADR 0014 step 4).
+
+A thin alias over the generic share read path. It exists only so the
+existing tool name keeps working while the read itself lives in one place:
+``shares(action="read")`` → registry → ``CalendarShareAdapter``.
+
+Nothing here checks a grant, resolves a secret or decides a horizon. The
+adapter does the grant check, ``fetch_shared_calendar`` resolves and guards
+the ICS bearer credential, and the grant caps the horizon. Duplicating any
+of that in this module is what step 4 removes — a per-type read tool is a
+second place to get the enforcement wrong, and four of seven types already
+did (§1.3).
 """
 from __future__ import annotations
 
-import uuid
+import json
 from typing import Any, Callable
 
-from apps.backend.domain.shared.identity import get_identity
-from apps.backend.domain.shares.policy import effective_days_ahead
-from apps.backend.infrastructure.db.share_permissions_db import (
-    SHARE_RESOURCE_GOOGLE_CALENDAR,
-    share_permission_get,
-)
+from plugins.tools.integrations.friends.shares import shares
 
-from plugins.tools.integrations.friends.lib.common import resolve_friend_by_name
-from plugins.tools.personal.calendar.ics import fetch_shared_calendar
-
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 TOOL_ID = "calendar"
 TOOL_BUCKET = "comms"
 TOOL_DOMAIN = "friends"
@@ -26,97 +27,30 @@ TOOL_TRIGGERS: tuple[str, ...] = ()
 TOOL_CAPABILITIES = ("friends.calendar", "default")
 
 
-def calendar(arguments: dict[str, Any]) -> Any:
-    """
-    Get calendar entries from a friend who has shared his calendar with you.
-    Call this tool automatically when the user asks about availability, appointments or schedule of another person.
-    
-    This tool will:
-    1. Resolve the person by name from your friends list
-    2. Check if that friend has shared his calendar with you
-    3. If allowed, retrieve upcoming appointments
-    """
-    _tid, requesting_user_id = get_identity()
-    if not requesting_user_id:
-        return {"error": "no user identity available"}
+def calendar(arguments: dict[str, Any]) -> str:
+    """Get calendar entries from a friend who has shared their calendar."""
+    args = dict(arguments or {})
+    args["action"] = "read"
+    args["resource_type"] = "google_calendar"
 
-    try:
-        import logging
-        import json
-        logger = logging.getLogger(__name__)
-        
-        # First check for auto filled entity parameter from trigger system, then fall back to name
-        name_query = arguments.get("entity") or arguments.get("name") or arguments.get("friend") or arguments.get("friend_name")
-        logger.info("get_friend_calendar CALLED with arguments: %s | name_query=%s", arguments, name_query)
-        
-        if not name_query:
-            logger.warning("get_friend_calendar: NO NAME PARAMETER")
-            return json.dumps({"error": "name or entity parameter is required"}, ensure_ascii=False)
+    raw = json.loads(shares(args))
 
-        # Step 1: Find friend by name
-        friend_user = resolve_friend_by_name(requesting_user_id, str(name_query))
-        
-        if not friend_user:
-            res = {
-                "result": f"Could not find {name_query} in your friends list. Only confirmed friends can share calendars."
-            }
-            logger.info("get_friend_calendar RESULT: %s", res)
-            return json.dumps(res, ensure_ascii=False)
-        
-        friend_user_id = uuid.UUID(friend_user["friend_user_id"])
-        friend_display_name = friend_user.get("display_name") or friend_user.get("email")
+    if not raw.get("ok"):
+        return json.dumps({"result": raw.get("result", "Could not read the calendar.")}, ensure_ascii=False)
 
-        # Step 2: Load the grant row (google_calendar + legacy calendar alias).
-        # The policy carried on the row caps the horizon below, so the row itself
-        # is needed downstream — a boolean would leave nothing to read it from.
-        grant = share_permission_get(
-            owner_user_id=friend_user_id,
-            grantee_user_id=requesting_user_id,
-            resource_type=SHARE_RESOURCE_GOOGLE_CALENDAR,
-            resource_identifier="primary",
-        )
-
-        if grant is None:
-            res = {
-                "result": f"{friend_display_name} has not shared their calendar with you."
-            }
-            logger.info("get_friend_calendar RESULT: %s", res)
-            return json.dumps(res, ensure_ascii=False)
-
-        # Step 3: Read the friend's calendar through the projection. The ICS
-        # address is a bearer credential, so it is resolved and fetched inside
-        # the adapter and never handed back — the grantee only ever sees events.
-        # (ADR 0014 Principle 1.)
-        requested_days = arguments.get("days", 7)
-        effective_days = effective_days_ahead(
-            grant.get("policy"),
-            requested_days if requested_days is not None else None,
-        )
-        calendar_result = fetch_shared_calendar(
-            friend_user_id, days_ahead=effective_days
-        )
-
-        if calendar_result.get("error") == "owner_has_no_calendar_configured":
-            res = {
-                "result": f"{friend_display_name} has a calendar connected but no sharing is configured."
-            }
-            logger.info("get_friend_calendar RESULT: %s", res)
-            return json.dumps(res, ensure_ascii=False)
-
-        res = {
-            "friend_name": friend_display_name,
-            "days_requested": requested_days,
-            "days_effective": effective_days,
-            "share_policy": grant.get("policy") or {},
-            "calendar": calendar_result,
-        }
-        logger.info("get_friend_calendar RESULT: %s", res)
-        return json.dumps(res, ensure_ascii=False)
-
-    except Exception as e:
-        res = {"error": str(e)}
-        logger.warning("get_friend_calendar EXCEPTION: %s", str(e))
-        return json.dumps(res, ensure_ascii=False)
+    projection = raw.get("data") or {}
+    friend = raw.get("friend") or {}
+    return json.dumps(
+        {
+            "friend_name": friend.get("display_name"),
+            "days_requested": args.get("days", 7),
+            "days_effective": projection.get("days_effective"),
+            "share_policy": projection.get("share_policy") or {},
+            "calendar": projection,
+        },
+        ensure_ascii=False,
+        default=str,
+    )
 
 
 HANDLERS: dict[str, Callable[[dict[str, Any]], Any]] = {
@@ -128,36 +62,44 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "calendar",
-        "TOOL_DESCRIPTION": (
-            "Get calendar entries from a friend who has shared his calendar with you. "
-            "CALL THIS TOOL WITH NAME OR EMAIL OF THE FRIEND. "
-        ),
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string",
-                            "TOOL_DESCRIPTION": (
-                                "Name OR EMAIL of the friend whose calendar you want to see. "
-                                "This will be matched against your friends list. Required parameter. "
-                                "Prefer the email address when available; it is unique and more reliable."
-                            ),
-                        },
-                        "entity": {
-                            "type": "string",
-                            "TOOL_DESCRIPTION": (
-                                "Get friend work schedule and calendar. "
-                                "Call this tool directly first. Do not call get_friend_info before. "
-                                "Do not call get_tool_help. "
-                                "This tool resolves the friend name automatically, checks permissions and returns calendar entries. "
-                                "Use this when user asks: 'when is NAME working', 'when must NAME go to work', 'work schedule', 'shifts'. "
-                                "You do not need any other tools before this."
-                            ),
-                            "default": 7
-                        }
+            "TOOL_DESCRIPTION": (
+                "Get calendar entries from a friend who has shared his calendar with you. "
+                "CALL THIS TOOL WITH NAME OR EMAIL OF THE FRIEND. "
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": (
+                            "Name OR EMAIL of the friend whose calendar you want to see. "
+                            "This will be matched against your friends list. Required parameter. "
+                            "Prefer the email address when available; it is unique and more reliable."
+                        ),
                     },
-                    "required": ["name"]
+                    "days": {
+                        "type": "integer",
+                        "TOOL_DESCRIPTION": (
+                            "How many days ahead to read. The friend's grant caps it — asking "
+                            "for more returns the granted horizon, not more. "
+                            "The answer reports days_effective."
+                        ),
+                        "default": 7,
+                    },
+                    "entity": {
+                        "type": "string",
+                        "TOOL_DESCRIPTION": (
+                            "Get friend work schedule and calendar. "
+                            "Call this tool directly first. Do not call get_friend_info before. "
+                            "Do not call get_tool_help. "
+                            "This tool resolves the friend name automatically, checks permissions and returns calendar entries. "
+                            "Use when user asks: 'when is NAME working', 'when must NAME go to work', 'work schedule', 'shifts'. "
+                            "You do not need any other tools before this."
+                        ),
+                    },
                 },
+                "required": ["name"],
+            },
         },
     },
 ]

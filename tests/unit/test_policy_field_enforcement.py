@@ -78,6 +78,10 @@ class TestAppWiringIsPinned(EnforcementTestCase):
             policy_fields_for("dashboard"),
             frozenset({"permission", "block_ids", "expires_at"}),
         )
+        self.assertEqual(
+            policy_fields_for("google_calendar"),
+            frozenset({"days_ahead", "expires_at"}),
+        )
 
 
 class TestCollectionRejectsWhatItDoesNotRead(EnforcementTestCase):
@@ -163,21 +167,50 @@ class TestNoneIsNotEmptySet(EnforcementTestCase):
         self.assertIsNone(err)
 
 
-class TestKnownGapIsVisible(EnforcementTestCase):
-    """google_calendar is not registry-backed until step 7.
+class TestCalendarGapIsClosed(EnforcementTestCase):
+    """Registering the calendar adapter closed the §1.9 gap early.
 
-    Asserted rather than left implicit: when step 7 lands and the calendar
-    gets a publish_projection adapter, this test starts failing and the
-    gap is closed deliberately instead of quietly.
+    This class used to assert the *opposite* — that google_calendar had no
+    narrowing authority and so accepted ``block_ids``, a dashboard concept
+    nothing on the calendar read acts on. Step 4 registered
+    ``CalendarShareAdapter``, which declares ``{days_ahead, expires_at}``,
+    so the refusal now happens at grant-write time.
+
+    Kept as a test rather than deleted: it pins that the narrowing is real
+    and that the alias ``calendar`` narrows identically.
     """
 
-    def test_google_calendar_still_accepts_block_ids(self) -> None:
-        clean, err = normalize_policy("google_calendar", {"block_ids": ["x"]})
-        self.assertIsNone(err, "calendar is now registry-backed; update this test")
-        self.assertEqual(clean, {"block_ids": ["x"]})
+    def test_google_calendar_rejects_block_ids(self) -> None:
+        _, err = normalize_policy("google_calendar", {"block_ids": ["x"]})
+        self.assertIsNotNone(err)
+        self.assertIn("does not honour it", err)
 
-    def test_google_calendar_has_no_narrowing_authority_yet(self) -> None:
-        self.assertIsNone(policy_fields_for("google_calendar"))
+    def test_google_calendar_rejects_list_keys(self) -> None:
+        _, err = normalize_policy("google_calendar", {"list_keys": ["x"]})
+        self.assertIsNotNone(err)
+
+    def test_google_calendar_keeps_what_it_reads(self) -> None:
+        clean, err = normalize_policy(
+            "google_calendar", {"days_ahead": 7, "expires_at": "2026-12-31T00:00:00Z"}
+        )
+        self.assertIsNone(err)
+        self.assertEqual(clean["days_ahead"], 7)
+
+    def test_google_calendar_has_narrowing_authority(self) -> None:
+        self.assertEqual(
+            policy_fields_for("google_calendar"),
+            frozenset({"days_ahead", "expires_at"}),
+        )
+
+    def test_the_legacy_alias_narrows_the_same_way(self) -> None:
+        # A grant written under the old name must be held to the same set,
+        # otherwise the alias is a way around the narrowing.
+        self.assertEqual(
+            policy_fields_for("calendar"),
+            policy_fields_for("google_calendar"),
+        )
+        _, err = normalize_policy("calendar", {"block_ids": ["x"]})
+        self.assertIsNotNone(err)
 
 
 if __name__ == "__main__":
