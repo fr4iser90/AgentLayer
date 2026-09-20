@@ -30,9 +30,12 @@ Implemented so far:
 - **step 6**, the projection contract: table, owner-chosen shape,
   freshness bound, revoke cascade — see §5.6. The calendar is the first
   real projection, so part of step 7 landed with this.
+- **step 7 (partial)**, the scheduled refresh worker, so the first reader
+  after the TTL no longer pays for the owner's fetch — see §5.7.
 
-Not implemented: the rest of step 7 (the calendar's `publish_projection`
-growing a refresh trigger beyond read-time) and step 8.
+Not implemented: the rest of step 7 (nothing further is required for the
+calendar to be projection-backed; what remains is whatever the operator
+wants beyond it) and step 8.
 
 Companion reading: [ADR 0013](0013-os-level-workspace-isolation.md) covers
 the *filesystem* boundary; this one covers the *peer-to-peer data* boundary.
@@ -662,7 +665,7 @@ when a resource is added either.
 | 4 ✅ | Generic `friend_share` tool; old tool names become thin aliases | 1–2 | Removes the per-tool growth |
 | 5 ✅ | Share UI driven from the registry | 1–2 | Types, identifiers, policy fields — all derived |
 | 6 ✅ | Add the projection contract (table, refresh, revoke cascade, freshness) | 2–4 | Enables B |
-| 7 | Re-do the calendar as a **`publish_projection` adapter** ("share my availability") | 2–3 | Not a patched delegation. Makes the §1.6/§1.7 class of bug *impossible*, not merely gone |
+| 7 ◐ | Re-do the calendar as a **`publish_projection` adapter** ("share my availability") | 2–3 | Not a patched delegation. Makes the §1.6/§1.7 class of bug *impossible*, not merely gone. The adapter and the scheduled refresh are in (§5.6, §5.7); the read path no longer touches the live source. |
 | 8 | Option C for one resource, **only if** a real requirement appears | 10–16 | Do not pre-build |
 
 **Total to a coherent state (steps 0–5): 7–11 working days.** Steps 0–3 are
@@ -962,11 +965,83 @@ fails `another_live_grant_keeps_the_projection`. The claims are covered,
 not merely accompanied.
 
 **Left for step 7.** Republish is read-triggered: a stale projection is
-refreshed when someone asks. There is no owner-side or scheduled refresh,
-so the first reader after the TTL pays for the fetch. A scheduled worker
-has a clear home (`scheduler_jobs_runner` is the pattern) and is a clean
-addition; it is not needed for correctness, because nothing expired is
-ever served.
+refreshed when someone asks. That is sufficient for correctness — nothing
+expired is ever served — but it leaves the first reader after the TTL
+paying for the owner's fetch. §5.7 removes that.
+
+### 5.7 Step 7 (partial) as implemented: the scheduled refresh
+
+`apps/backend/infrastructure/shares/projection_refresh_runner.py` plus
+`projections.refresh_due()` and the store's `projection_list_due()`. A
+daemon thread on the `scheduler_jobs_runner` pattern, started and stopped
+from the FastAPI lifespan in its own `try/except ... (optional)` block,
+gated on `operator_settings.friend_system_enabled` rather than a new
+operator setting — the subsystem it serves is already switchable, and a
+second switch for one worker inside it is a setting nobody will find.
+
+**It refreshes ahead of the bound, not after.** The due predicate is
+`expires_at <= now() + window`, so a row with two minutes left is
+republished while nobody is waiting, and the reader who arrives at the
+bound finds a fresh row instead of triggering the fetch themselves.
+Polling for already-expired rows would have left exactly the reader this
+exists to protect still paying.
+
+**A row is republished at most once per half of its own freshness life.**
+The pass takes a window and clamps the effective threshold to
+`min(window, ttl / 2)`. Without that, a window wider than the adapter's
+TTL makes every row due on every pass, and a background refresh turns
+into a continuous poll of the owner's upstream. The bound is per row and
+comes from the adapter, so a future adapter with a 60-second TTL is
+protected by its own number rather than by this worker's constant.
+
+**The worker publishes through the registry, not through `load_fresh`.**
+This was found by the first draft of its own tests: `load_fresh`
+short-circuits on a row that is still fresh, which is exactly right for a
+reader and exactly wrong for a worker whose whole job is to act *before*
+the bound. Calling it made the pass a silent no-op on live rows. Going
+through `registry.publish_projection` keeps Principle 2 true on this path
+too — nothing reaches the stored row except the registry's checks and the
+store's credential gate — and the stored `projection_kind` is passed
+through explicitly, so a scheduled pass cannot quietly widen a free/busy
+projection into a titled-event list because the adapter default differs
+from what the owner chose.
+
+**A failed refresh leaves the stale row standing.** While the owner's
+upstream is down, that labelled-stale row is the only thing a friend can
+still be answered from. This is why the worker deliberately does **not**
+run `sweep_expired()`: the sweeper deletes `expires_at <= now()`, which
+is precisely the set of rows a failed refresh has just produced. Wiring
+the existing janitor to this heartbeat would have quietly removed the
+stale-fallback capability and looked like a cleanup. How long a stale row
+should outlive its bound is a separate decision with its own trade-off, and
+it is not made here.
+
+**Rows whose adapter is gone are skipped, never deleted.** Such a
+projection is already unservable, since nothing resolves its type; wiping
+owner data because a registration step went missing converts a wiring bug
+into data loss.
+
+**What this is not, stated plainly.** Nothing in the share model's
+guarantees depends on this worker. Every one of them holds with it never
+running: nothing credential-shaped at rest, nothing served past the
+bound, a revoked grant unreadable immediately. It buys latency, so it is
+optional, its failures are logged rather than raised, and it is expected
+to be invisible when working.
+
+**Single-process, like every other worker here.** Each server process runs
+its own thread, so N processes mean up to N refreshes per half-life. The
+half-life bound keeps that bounded and linear, and no worker in this
+codebase (`scheduler_worker`, `scheduler_jobs_worker`, `project_runs_worker`,
+`agent_tasks_worker`) is multi-replica-safe either. Adding a distributed
+claim to only this one would be inconsistent; making them all safe is a
+different change with a different scope.
+
+**Known waste, deliberately not closed.** A projection the owner published
+and never granted stays published and keeps getting refreshed. It is
+unreadable by anyone, the owner can delete it, and the cost is one fetch
+per half-life. Closing it means the refresh path consulting
+`share_permissions`, which is a real coupling decision rather than an
+oversight, so it is named here instead of bolted on.
 
 ---
 
@@ -1152,7 +1227,7 @@ docker compose run --rm -e PYTHONPATH=/code agent-layer \
     python /code/scripts/validate_friend_sharing_fixture.py
 ```
 
-Current result: **71/71**. Progression of the fixture run:
+Current result: **79/79**. Progression of the fixture run:
 
 | added with | checks | total |
 |---|---|---|
@@ -1163,6 +1238,7 @@ Current result: **71/71**. Progression of the fixture run:
 | step 4 generic read + calendar alias | +3 | 50 |
 | step 5 registry-driven catalog + UI | +7 | 57 |
 | step 6 projection contract | +14 | 71 |
+| step 7 scheduled refresh | +8 | 79 |
 
 The step-3 checks cover: `block_ids` rejected on a collection and still
 accepted on a dashboard; `list_keys` rejected on both; the `list_keys`-on-
@@ -1200,6 +1276,26 @@ the projection the other can still read while the last revoke takes the
 row with it; an aged row reads as not fresh and the sweeper collects it;
 and the catalog tells the UI which types actually have a shape to choose
 rather than assuming every shareable type does.
+
+The step-7 checks exist because `projection_list_due` is real SQL over a
+real table and the unit store is a dict — nothing short of a container run
+can reach `expires_at <= now() + make_interval(secs => %s)`. They assert
+that a row expiring inside the window is picked up and one outside it is
+not; that the due query returns no `payload` column, since a timed scan
+over every projection should not drag each owner's full narrowed view
+along with it; that the pass republishes what was due and moves its bound
+forward without any reader involved; that a row nowhere near its bound is
+left untouched; that a one-hour window does not refresh a row with 500
+seconds left of a 900-second life, which is the half-life bound observed
+rather than claimed; that a scheduled pass keeps the `availability` shape
+the owner chose instead of falling back to the adapter default; and that
+a refreshed projection still carries no credential, so the gate is known
+to run on every write and not only the first.
+
+This run also caught a defect the unit tests could not: the `execute()`
+call was written without its parameter tuple, and psycopg sends a query
+with a literal `%s` through untouched when no params are supplied. Every
+in-memory fake in the suite was happy.
 
 The run is what turned §1.3 from a static grep into an observed behaviour —
 and what surfaced the always-deny bug that the grep had mis-scored as

@@ -680,9 +680,84 @@ check("step 6: the agent help names the publishable shapes",
       "Publishable shapes" in _help and "availability" in _help,
       f"excerpt={_help[_help.find('Publishable shapes'):][:90]!r}")
 
+
+# ── scheduled refresh (ADR 0014 step 7) ──────────────────────────────────────
+# The due-list query is real SQL over a real table. Nothing in the unit suite
+# can reach it, because the unit store is a dict.
+
+def _set_expiry(user_id, seconds):
+    appdb.query(
+        "UPDATE share_projections SET expires_at = now() + make_interval(secs => %s) "
+        "WHERE owner_user_id = %s",
+        (seconds, user_id),
+    )
+
+
+def _row_for(user_id):
+    return prdb.projection_get(
+        owner_user_id=user_id, resource_type="google_calendar", resource_identifier="primary"
+    )
+
+
+appdb.user_secret_upsert(ANNA, "google_calendar", json.dumps({"ics_url": LENA_ICS}))
+_with_stubbed_network(lambda: publish_projection(
+    resource_type="google_calendar", owner_user_id=ANNA,
+    identifier="primary", kind="events"))
+_with_stubbed_network(lambda: publish_projection(
+    resource_type="google_calendar", owner_user_id=LENA,
+    identifier="primary", kind="events"))
+# Lena is about to expire; Anna is nowhere near it.
+_set_expiry(LENA, 120)
+_set_expiry(ANNA, 900)
+_annna_gen = _row_for(ANNA)["generated_at"]
+
+_due = prdb.projection_list_due(limit=50, within_seconds=240)
+_due_owners = {str(r["owner_user_id"]) for r in _due}
+check("step 7: the due query catches a row expiring inside the window and not one outside it",
+      str(LENA) in _due_owners and str(ANNA) not in _due_owners,
+      f"due={sorted(_due_owners)}")
+check("step 7: the due query does not drag every payload along",
+      bool(_due) and "payload" not in _due[0],
+      f"columns={sorted(_due[0]) if _due else []}")
+
+_rep, _ = _with_stubbed_network(lambda: proj.refresh_due(limit=50, within_seconds=240))
+check("step 7: the refresh pass republished what was about to expire",
+      _rep.refreshed >= 1 and _rep.failed == 0,
+      f"refreshed={_rep.refreshed} failed={_rep.failed} skipped={_rep.skipped}")
+check("step 7: the refreshed row's bound moved forward off the read path",
+      _row_for(LENA)["expires_at"] > datetime.now(timezone.utc),
+      f"expires={_row_for(LENA)['expires_at']}")
+check("step 7: a row nowhere near its bound was left alone",
+      _row_for(ANNA)["generated_at"] == _annna_gen,
+      "generated_at unchanged")
+
+# The half-life bound, against the real table: a one-hour window must not
+# turn into a one-hour poll of the owner's upstream.
+_set_expiry(LENA, 500)
+_lena_gen = _row_for(LENA)["generated_at"]
+_with_stubbed_network(lambda: proj.refresh_due(limit=50, within_seconds=3600))
+check("step 7: a window wider than the TTL does not refresh a row early again",
+      _row_for(LENA)["generated_at"] == _lena_gen,
+      "500s left of a 900s life is past the half-life")
+
+# A scheduled refresh must not quietly widen the shape the owner picked.
+_with_stubbed_network(lambda: publish_projection(
+    resource_type="google_calendar", owner_user_id=LENA,
+    identifier="primary", kind="availability"))
+_set_expiry(LENA, 60)
+_rep2, _ = _with_stubbed_network(lambda: proj.refresh_due(limit=50, within_seconds=120))
+check("step 7: a scheduled refresh keeps the shape the owner chose",
+      _rep2.refreshed >= 1 and _row_for(LENA)["projection_kind"] == "availability",
+      f"kind={_row_for(LENA)['projection_kind']} refreshed={_rep2.refreshed}")
+check("step 7: a refreshed projection still holds no credential",
+      LENA_ICS not in json.dumps(_row_for(LENA)["payload"])
+      and find_credential_keys(_row_for(LENA)["payload"]) == [],
+      "the gate runs on every write, not only the first")
+
 appdb.query(
-    "DELETE FROM user_secrets WHERE user_id = %s AND service_key IN ('google_calendar', 'calendar_ics')",
-    (LENA,),
+    "DELETE FROM user_secrets WHERE user_id = ANY(%s::uuid[]) "
+    "AND service_key IN ('google_calendar', 'calendar_ics')",
+    ([LENA, ANNA],),
 )
 appdb.query("DELETE FROM share_projections")
 

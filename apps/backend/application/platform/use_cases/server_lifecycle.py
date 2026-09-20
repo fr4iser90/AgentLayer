@@ -59,6 +59,10 @@ from apps.backend.infrastructure.scheduling.scheduler_jobs_runner import (
 )
 from apps.backend.infrastructure.settings import operator_voice_settings_service as _operator_voice_settings_service  # noqa: F401
 from apps.backend.infrastructure.shares import share_registry_service as _share_registry_service  # noqa: F401
+from apps.backend.infrastructure.shares.projection_refresh_runner import (
+    start_projection_refresh_worker,
+    stop_projection_refresh_worker,
+)
 from apps.backend.infrastructure.tools import tool_forward_policy_service as _tool_forward_policy_service  # noqa: F401
 from apps.backend.infrastructure.tools import tool_policy_service as _tool_policy_service  # noqa: F401
 from apps.backend.infrastructure.tools import tool_routing_service as _tool_routing_service  # noqa: F401
@@ -169,6 +173,10 @@ async def server_lifespan(_app: FastAPI) -> AsyncIterator[None]:
     except Exception:
         logger.exception("Agent tasks worker failed to start (optional)")
     try:
+        start_projection_refresh_worker()
+    except Exception:
+        logger.exception("Share projection refresh worker failed to start (optional)")
+    try:
         start_discord_bridge()
     except Exception:
         logger.exception("Discord bridge failed to start (optional)")
@@ -223,6 +231,10 @@ async def server_lifespan(_app: FastAPI) -> AsyncIterator[None]:
         pass
     try:
         stop_agent_tasks_worker()
+    except Exception:
+        pass
+    try:
+        stop_projection_refresh_worker()
     except Exception:
         pass
     db.close_pool()

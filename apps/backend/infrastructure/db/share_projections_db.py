@@ -151,6 +151,45 @@ def projection_delete(
     return deleted
 
 
+def projection_list_due(*, limit: int = 20, within_seconds: int = 300) -> list[dict[str, Any]]:
+    """Rows whose freshness bound falls inside the refresh window.
+
+    Already-expired rows are included: the predicate is "expires by
+    ``now() + W``" and a row past ``now()`` satisfies it. Oldest-first so
+    a pass with a small limit clears the most overdue work before the
+    merely upcoming, which is the order a backlog should drain in.
+
+    The payload is deliberately not selected. This runs on a timer over
+    every projection in the database, and pulling each row's full narrowed
+    view to decide whether it needs republishing is the kind of query that
+    is fine at ten rows and expensive at ten thousand.
+    """
+    try:
+        capped = max(1, min(int(limit), 500))
+    except (TypeError, ValueError):
+        capped = 20
+    try:
+        window = max(0, min(int(within_seconds), 24 * 60 * 60))
+    except (TypeError, ValueError):
+        window = 300
+
+    with pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                f"""
+                SELECT owner_user_id, resource_type, resource_identifier,
+                       projection_kind, expires_at
+                FROM {_TABLE}
+                WHERE expires_at <= now() + make_interval(secs => %s)
+                ORDER BY expires_at ASC
+                LIMIT {capped}
+                """,
+                (window,),
+            )
+            rows = cur.fetchall()
+    return [dict(r) for r in rows]
+
+
 def projection_delete_expired(*, limit: int = 200) -> int:
     """Bulk-remove projections past their freshness bound.
 
