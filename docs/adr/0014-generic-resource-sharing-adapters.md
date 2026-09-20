@@ -24,9 +24,12 @@ Implemented so far:
 - **step 4**, the generic read action and the calendar as a thin alias —
   see §5.4. This also closed the `block_ids`-on-calendar gap early, which
   §1.9.1 had scheduled for step 7.
+- **step 5**, the catalog and the share UI driven from the registry —
+  see §5.5. This also retired the flat policy-field list the agent tool
+  advertised, the open item §1.9.1 left behind.
 
-Not implemented: steps 5–8. The registry-driven UI, the projection layer,
-and the calendar redone as a `publish_projection` adapter all remain open.
+Not implemented: steps 6–8. The projection layer and the calendar redone
+as a `publish_projection` adapter remain open.
 
 Companion reading: [ADR 0013](0013-os-level-workspace-isolation.md) covers
 the *filesystem* boundary; this one covers the *peer-to-peer data* boundary.
@@ -420,13 +423,14 @@ The pre-existing fixture row carrying
 It is fixture data and the audit reports it as such; new grants cannot be
 written that way.
 
-**Still open, deliberately out of step 3's scope.**
-`plugins/tools/integrations/friends/shares.py:423` advertises
-`{permission, block_ids, list_keys, days_ahead, expires_at}` to agents for
-every type. Now that the accepted set is per-type, that help text is wrong
-for registered types — the agent gets a refusal it did not expect. Deriving
-the advertised fields from `describe_registered()` is the same mechanism
-step 5 needs for the UI and should be done with it.
+**Was still open after step 3, and is now closed.** Step 3 left the
+agent-facing help text advertising one flat set —
+`{permission, block_ids, list_keys, days_ahead, expires_at}` — for every
+type, which told an agent it could put `block_ids` on a calendar grant and
+then refused it: a refusal the help had implied was impossible. Step 5
+derives that text from the registry, so the advertised surface and the
+enforced surface come from the same declaration and cannot drift.
+See §5.5.
 
 ---
 
@@ -653,7 +657,7 @@ when a resource is added either.
 | 2 ✅ | Wrap those two adapters in the registry **without changing their behaviour** | 1 | Proves the contract against working code before anything new is built |
 | 3 ✅ | Per-type `policy_fields`; reject unknown fields at write time | 1–2 | Fixes §1.9; forces each adapter to state what it honours |
 | 4 ✅ | Generic `friend_share` tool; old tool names become thin aliases | 1–2 | Removes the per-tool growth |
-| 5 | Share UI driven from the registry | 1–2 | Types, identifiers, policy fields — all derived |
+| 5 ✅ | Share UI driven from the registry | 1–2 | Types, identifiers, policy fields — all derived |
 | 6 | Add the projection contract (table, refresh, revoke cascade, freshness) | 2–4 | Enables B |
 | 7 | Re-do the calendar as a **`publish_projection` adapter** ("share my availability") | 2–3 | Not a patched delegation. Makes the §1.6/§1.7 class of bug *impossible*, not merely gone |
 | 8 | Option C for one resource, **only if** a real requirement appears | 10–16 | Do not pre-build |
@@ -793,10 +797,68 @@ those tests stubbed the id as a string. All five sites now go through one
 `_friend_uuid` coercion. The unit tests could not have caught this: the
 stub was the difference between green and broken, and the stub was wrong.
 
-**Still open from step 4.** The agent-facing help text at
-`friends/shares.py` still advertises one flat policy field list for every
-type; deriving it from `describe_registered()` is step 5's job, as noted
-in §1.9.1.
+**Closed by step 5.** The agent-facing help text step 4 left advertising a
+flat policy field list is now derived from the registry. See §5.5.
+
+### 5.5 Step 5 as implemented: the catalog and the UI read the registry
+
+**The gap this filled was already half-built.** `SharesSettings.tsx` had a
+`CatalogResource` type and fetched `GET /v1/shares/catalog?lang=` from the
+first day — but `catalog_for_api()` returned `[]` unconditionally under the
+old "no fixed catalog" rule. So the frontend always fell through to
+`id.replace(/_/g, " ")` and rendered whatever hand-coded assumptions it
+had. The wiring existed; there was nothing true on the other end.
+
+**`catalog_for_api()` now returns the registry.** `describe_shareable_types()`
+groups the registry by adapter and reports the canonical id, the policy
+fields that adapter declares, whether it lists, its aliases, and the
+identifier it defaults to. Key names (`id`, `name`, `policy_fields`) match
+what the frontend already coded against, so no rename was needed.
+
+**Canonical-first matters more than it sounds.** The registry binds four
+keys — `calendar`, `collection`, `dashboard`, `google_calendar` — because
+`calendar` is a legacy alias with its own key. Rendering those keys directly
+would offer the user *"calendar"* and *"google calendar"* as two separate
+things to share. The adapter's **first declared type is canonical** and the
+rest are reported as `aliases`, so the picker shows three types and a grant
+written under either name still resolves to the same entry.
+
+**Identifiers are derived, not assumed.** `default_identifier` comes from
+`adapter.normalize_identifier("")`: `primary` for a calendar share, which
+is genuinely one-per-user, and `null` for collection and dashboard, which
+need a slug and a uuid. The UI shows an identifier field only when the type
+has no usable default, and blocks the Share button until it is filled.
+Hardcoding `"primary"`, as the component did, silently produced
+unusable grants for those two types.
+
+**The policy editor stopped lying.** It rendered `days_ahead` and
+`expires_at` for *every* type, unconditionally. After step 3 the backend
+rejects `days_ahead` on a dashboard grant — so the UI was offering an input
+that produced an error, and offering no way to set `permission` or
+`block_ids`, which the dashboard adapter does read. It now renders exactly
+the type's `policy_fields`: calendar → `days_ahead`/`expires_at`,
+collection → `permission`/`expires_at`, dashboard →
+`permission`/`block_ids`/`expires_at`.
+
+**The agent help is derived from the same source.** `_derived_policy_help()`
+and `_derived_readable_help()` build the tool description from
+`describe_shareable_types()`, so adding an adapter changes the enforced
+behaviour and the advertised surface in one move. The plugin imports the
+registry wiring itself rather than trusting load order, because a help text
+built against an empty registry would claim nothing is shareable.
+
+**Verified by mutation, not just by passing.** Reverting the driven policy
+loop to the old fixed pair makes the frontend test fail with
+`expected length 1 but got 2` — `days_ahead` appearing on the dashboard
+card as well as the calendar card. The test covers the actual claim rather
+than the shape of the mock.
+
+**Deliberately left alone.** `ShareWidgetBlock.tsx` still hardcodes
+`google_calendar` and gates anything else as unsupported. That gate is
+honest today: `/v1/shares/preview/*` exists only for the calendar. Making
+the widget registry-driven would advertise previewable types the backend
+cannot serve, which is worse than the hardcode. It belongs with step 6, when
+a generic preview exists.
 
 ---
 
@@ -982,7 +1044,7 @@ docker compose run --rm -e PYTHONPATH=/code agent-layer \
     python /code/scripts/validate_friend_sharing_fixture.py
 ```
 
-Current result: **50/50**. Progression of the fixture run:
+Current result: **57/57**. Progression of the fixture run:
 
 | added with | checks | total |
 |---|---|---|
@@ -991,6 +1053,7 @@ Current result: **50/50**. Progression of the fixture run:
 | steps 1–2 registry | +7 | 39 |
 | step 3 policy enforcement | +8 | 47 |
 | step 4 generic read + calendar alias | +3 | 50 |
+| step 5 registry-driven catalog + UI | +7 | 57 |
 
 The step-3 checks cover: `block_ids` rejected on a collection and still
 accepted on a dashboard; `list_keys` rejected on both; the `list_keys`-on-
@@ -1003,6 +1066,18 @@ Step 4 replaced the one check that asserted the `google_calendar` gap with
 three that assert it is closed: the type is registry-backed, the legacy
 `calendar` alias binds the same adapter instance, and the adapter declares
 only `{days_ahead, expires_at}`.
+
+The step-5 checks assert that what the catalog *advertises* is the same set
+the backend *enforces*, rather than a third hand-maintained list that can
+drift from both. Concretely: `catalog_for_api()` no longer returns `[]`;
+each entry carries its own `policy_fields`; `default_identifier` is
+`primary` for the calendar and `null` for collection and dashboard; the
+catalog lists canonical ids only, with `calendar` reported as an alias of
+`google_calendar` rather than as a second shareable thing; the agent help
+text no longer mentions `list_keys` and names exactly the three readable
+types; and for every advertised type the advertised field set equals
+`policy_fields_for(type)` — the check that makes drift a failure instead
+of a diff.
 
 The run is what turned §1.3 from a static grep into an observed behaviour —
 and what surfaced the always-deny bug that the grep had mis-scored as

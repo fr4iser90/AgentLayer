@@ -511,6 +511,56 @@ check("app wiring is live in this container (registry populated)",
       f"fields(collection)={reg.policy_fields_for('collection')}")
 
 
+# ── registry-driven catalog + agent help (ADR 0014 step 5) ────────────────────
+from apps.backend.domain.shares.catalog import catalog_for_api  # noqa: E402
+
+cat = catalog_for_api()
+check("step 5: catalog_for_api() returns the registry, not the old [] stub",
+      [c["id"] for c in cat] == ["collection", "dashboard", "google_calendar"],
+      f"ids={[c['id'] for c in cat]}")
+check("step 5: catalog carries the per-type policy fields the UI renders",
+      {c["id"]: c["policy_fields"] for c in cat} == {
+          "collection": ["expires_at", "permission"],
+          "dashboard": ["block_ids", "expires_at", "permission"],
+          "google_calendar": ["days_ahead", "expires_at"],
+      },
+      "policy_fields per type as declared by the adapters")
+check("step 5: default_identifier comes from the adapter (calendar only)",
+      {c["id"]: c["default_identifier"] for c in cat} == {
+          "collection": None,
+          "dashboard": None,
+          "google_calendar": "primary",
+      },
+      f"defaults={ {c['id']: c['default_identifier'] for c in cat} }")
+check("step 5: catalog lists canonical ids only, aliases are metadata",
+      all(c["id"] != "calendar" for c in cat)
+      and next(c for c in cat if c["id"] == "google_calendar")["aliases"] == ["calendar"],
+      f"aliases(google_calendar)="
+      f"{next(c for c in cat if c['id'] == 'google_calendar')['aliases']}")
+
+# The agent-facing help must match what the grant path enforces, live.
+from plugins.tools.integrations.friends.shares import TOOLS as SHARES_TOOLS  # noqa: E402
+
+_help = SHARES_TOOLS[0]["function"]["TOOL_DESCRIPTION"]
+check("step 5: the agent help no longer advertises the flat field list",
+      "list_keys" not in _help,
+      "list_keys is read by nothing and must not be offered")
+check("step 5: the agent help names the readable types canonically",
+      "Readable here: collection, dashboard, google_calendar." in _help,
+      f"help excerpt={_help[_help.find('Readable here'):][:80]!r}")
+_advert_ok = True
+for _c in cat:
+    _start = _help.find(f"{_c['id']} accepts {{")
+    _advert_ok = _advert_ok and _start != -1
+    if _start != -1:
+        _inner = _help[_start + len(_c["id"]) + len(" accepts {"):_help.index("}", _start)]
+        _advertised = sorted(x.strip() for x in _inner.split(",") if x.strip())
+        _advert_ok = _advert_ok and _advertised == _c["policy_fields"]
+check("step 5: every advertised per-type field set equals the enforced set",
+      _advert_ok,
+      "the text an agent reads must match normalize_policy")
+
+
 # ── report ────────────────────────────────────────────────────────────────────
 
 width = max(len(n) for n, _, _ in results)

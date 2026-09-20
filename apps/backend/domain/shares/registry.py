@@ -159,7 +159,12 @@ def resolve_projection(
 
 
 def describe_registered() -> list[dict[str, Any]]:
-    """What the share UI can render without knowing any type by hand (step 5)."""
+    """One entry per registry key, including legacy aliases.
+
+    Introspection-level: useful for seeing exactly what is bound, including
+    the fact that an alias has its own key. Not what a picker should render —
+    see ``describe_shareable_types`` for that.
+    """
     out: list[dict[str, Any]] = []
     for key in registered_resource_types():
         adapter = _adapters[key]
@@ -171,4 +176,51 @@ def describe_registered() -> list[dict[str, Any]]:
                 "listable": bool(getattr(adapter, "supports_list", False)),
             }
         )
+    return out
+
+
+def describe_shareable_types() -> list[dict[str, Any]]:
+    """One entry per adapter, keyed on its canonical type (ADR 0014 step 5).
+
+    ``describe_registered()`` lists a legacy alias next to the id it aliases,
+    so a UI rendering it would offer "calendar" and "google calendar" as two
+    separate things to share. Here the adapter's **first declared type is
+    canonical** and the rest are reported as aliases of it, so the shareable
+    set is the set of things that are actually distinct.
+
+    This is the *readable* set, not the grantable one. Any well-formed type
+    id can still be stored as a grant (§1.4); an entry here means an adapter
+    enforces the grant before anything is served. A type absent from this list
+    can be granted but does nothing yet — which is the difference this ADR
+    exists to make visible.
+    """
+    out: list[dict[str, Any]] = []
+    seen: set[int] = set()
+    for key in registered_resource_types():
+        adapter = _adapters[key]
+        if id(adapter) in seen:
+            continue
+        seen.add(id(adapter))
+        declared = tuple(getattr(adapter, "resource_types", ()) or ())
+        canonical = declared[0] if declared else key
+        # The identifier this type takes when none is given. Asking the adapter
+        # rather than assuming "primary": a calendar share is one-per-user and
+        # defaults cleanly, but a collection needs a slug and a dashboard a
+        # UUID, so for those the honest answer is "none — supply one".
+        try:
+            default_identifier = adapter.normalize_identifier("") or None
+        except Exception:
+            default_identifier = None
+        out.append(
+            {
+                "resource_type": canonical,
+                "policy_fields": sorted(getattr(adapter, "policy_fields", ()) or ()),
+                "listable": bool(getattr(adapter, "supports_list", False)),
+                "aliases": list(declared[1:]),
+                "default_identifier": default_identifier,
+            }
+        )
+    # Sorted, not registry-insertion order: this feeds a picker and an agent
+    # help string, both of which should read the same way every time.
+    out.sort(key=lambda e: e["resource_type"])
     return out

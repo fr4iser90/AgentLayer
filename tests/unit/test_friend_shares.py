@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 import unittest
 import uuid
@@ -573,6 +574,128 @@ class TestCollectionFriendGrantResolves(unittest.TestCase):
                     )
         self.assertIsNone(acc)
         self.assertEqual(col, "read-only access")
+
+
+class TestAdvertisedSurfaceMatchesEnforcement(unittest.TestCase):
+    """What the agent is *told* it may send must match what the grant path accepts.
+
+    Before step 5 the tool advertised one flat set — ``{permission, block_ids,
+    list_keys, days_ahead, expires_at}`` — for every type. An agent following
+    that help put ``block_ids`` on a calendar grant and got a refusal the help
+    had implied was impossible. The text is now derived from the registry, so
+    these tests compare the advertised set against ``normalize_policy``
+    directly: if the derivation is dropped, or an adapter's declared set and
+    the validator disagree, this fails rather than the agent finding out.
+    """
+
+    def setUp(self) -> None:
+        from apps.backend.domain.shares.adapters import register_default_share_adapters
+        from apps.backend.domain.shares.registry import reset_share_registry
+
+        reset_share_registry()
+        register_default_share_adapters()
+
+    def tearDown(self) -> None:
+        from apps.backend.domain.shares.registry import reset_share_registry
+
+        reset_share_registry()
+
+    def _help_text(self) -> str:
+        from plugins.tools.integrations.friends.shares import TOOLS
+
+        return TOOLS[0]["function"]["TOOL_DESCRIPTION"]
+
+    def _advertised_fields(self, rtype: str) -> frozenset | None:
+        pattern = re.escape(rtype) + r" accepts \{([^}]*)\}"
+        m = re.search(pattern, self._help_text())
+        if not m:
+            return None
+        raw = m.group(1).strip()
+        if raw == "nothing":
+            return frozenset()
+        return frozenset(x.strip() for x in raw.split(",") if x.strip())
+
+    def test_every_type_advertises_exactly_its_enforced_field_set(self) -> None:
+        from apps.backend.domain.shares.registry import describe_shareable_types
+
+        for entry in describe_shareable_types():
+            advertised = self._advertised_fields(entry["resource_type"])
+            self.assertIsNotNone(
+                advertised, f"{entry['resource_type']} is not advertised in the help text"
+            )
+            self.assertEqual(
+                advertised,
+                frozenset(entry["policy_fields"]),
+                f"advertised fields for {entry['resource_type']} diverged from the adapter",
+            )
+
+    #: A value the validator will accept for each policy field, so the test
+    #: checks "is this field allowed for this type" rather than tripping over
+    #: a type mismatch of its own making.
+    _SAMPLE = {
+        "days_ahead": 7,
+        "expires_at": "2026-12-31T00:00:00Z",
+        "permission": "view",
+        "block_ids": ["block-shifts"],
+        "list_keys": ["pets"],
+    }
+
+    def test_every_advertised_field_is_actually_accepted_for_its_type(self) -> None:
+        from apps.backend.domain.shares.registry import describe_shareable_types
+
+        for entry in describe_shareable_types():
+            for field in entry["policy_fields"]:
+                self.assertIn(
+                    field,
+                    self._SAMPLE,
+                    f"{field} is declared by an adapter but has no sample value here; "
+                    "add one so this test keeps covering it",
+                )
+                _, err = share_policy.normalize_policy(
+                    entry["resource_type"], {field: self._SAMPLE[field]}
+                )
+                self.assertIsNone(
+                    err,
+                    f"help advertises {field} on {entry['resource_type']} "
+                    f"but the validator rejects it: {err}",
+                )
+
+    def test_list_keys_is_advertised_nowhere(self) -> None:
+        # Nothing in the repo reads list_keys. Advertising it invites an owner
+        # to believe they scoped a share to one list while the reader granted
+        # the whole thing — the §1.9.1 defect. It must not appear at all.
+        self.assertNotIn("list_keys", self._help_text())
+
+    def test_block_ids_is_advertised_only_where_it_is_honoured(self) -> None:
+        from apps.backend.domain.shares.registry import describe_shareable_types
+
+        honouring = {
+            e["resource_type"]
+            for e in describe_shareable_types()
+            if "block_ids" in e["policy_fields"]
+        }
+        self.assertEqual(honouring, {"dashboard"})
+        for entry in describe_shareable_types():
+            advertised = self._advertised_fields(entry["resource_type"]) or frozenset()
+            if entry["resource_type"] in honouring:
+                self.assertIn("block_ids", advertised)
+            else:
+                self.assertNotIn(
+                    "block_ids",
+                    advertised,
+                    f"{entry['resource_type']} does not read block_ids but advertises it",
+                )
+
+    def test_readable_types_are_named_in_the_resource_type_param(self) -> None:
+        from plugins.tools.integrations.friends.shares import TOOLS
+
+        param = TOOLS[0]["function"]["parameters"]["properties"]["resource_type"]
+        m = re.search(r"Readable here: ([^.]*)\.", param["TOOL_DESCRIPTION"])
+        self.assertIsNotNone(m, "the resource_type help does not name the readable types")
+        named = sorted(x.strip() for x in m.group(1).split(",") if x.strip())
+        # Canonical ids only. Listing the legacy "calendar" alias alongside
+        # "google_calendar" would read as two different things to share.
+        self.assertEqual(named, ["collection", "dashboard", "google_calendar"])
 
 
 if __name__ == "__main__":
