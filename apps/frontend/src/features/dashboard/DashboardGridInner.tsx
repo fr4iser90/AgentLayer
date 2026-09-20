@@ -302,7 +302,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
           {layout.blocks.map((b) => {
             const canExpand = blockSupportsExpand(b.type);
             const canConfigureBlock =
-              Boolean(onBlockPropsSave) && b.type !== "dashboard_ref" && b.type !== "share_widget";
+              Boolean(onBlockPropsSave) && b.type !== "dashboard_ref";
             const showBlockToolbar =
               editMode ||
               canExpand ||

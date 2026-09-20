@@ -41,6 +41,9 @@ Implemented so far:
 - **step 7 (partial)**, the owner-facing projection picker, so a human
   owner can see and change the shape of their own resource rather than
   only an agent being able to publish it — see §5.9.
+- **step 7 (partial)**, the widget's own target picker, which removes the
+  last reason the share widget was excluded from block configuration —
+  see §5.10.
 
 Not implemented: step 8.
 
@@ -1218,6 +1221,56 @@ owner filter from the by-owner query was caught by the live fixture's
 tested where it is actually written, in SQL, rather than only against an
 in-memory stub that enforces it by construction.
 
+### 5.10 Step 7: the widget gets a target it can actually pick
+
+Everything above made the projection readable and shapeable. None of it
+made the widget configurable. `friendUserId` could only be set by editing
+layout JSON by hand: `BlockSettingsModal.supportsDataTab()` returned false
+for `share_widget`, and both surfaces gated their configure affordance with
+`b.type !== "share_widget"`. The widget had no control of any kind.
+
+**The fix removes a special case rather than adding a mechanism.** The
+props-save path already existed and already worked — `onBlockPropsSave` →
+`BlockSettingsModal.onSave` → `updateBlockById`, with autoSave/draft
+semantics and `readOnly` already respected. The exclusion existed only
+because the modal had nothing to show for this type. Admitting a `share`
+tab and dropping the two `b.type !== "share_widget"` clauses is the whole
+integration. The alternative — an inline picker inside the widget body —
+would have needed a new save callback threaded through
+`DashboardBlockTile → BlockView → ShareWidgetBlockBody`, because the modal's
+callback is not visible there, and would have put editing UI into a display
+block in every render context.
+
+**The picker offers only targets that would render.** A candidate is a
+`(owner, resource type)` pair taken from `/v1/shares/incoming` whose type
+the catalog marks `previewable`. A dashboard grant is real and is not
+offered: the widget has nothing to draw for it. This is the same rule
+§5.8 states for the endpoint, applied one screen earlier where it can be
+cheaper — the user cannot pick their way to an empty box.
+
+**Both directions of the alias trap are pinned.** A grant written under the
+legacy `calendar` spelling must resolve to the catalog's `google_calendar`
+so it is recognised as previewable and reported with the canonical id.
+And a *block* stored under `calendar` must resolve the same way when the
+picker works out what is currently selected — comparing the raw strings
+there would tell a user their working widget was broken. The stored type is
+resolved through the catalog index on both sides rather than trusted.
+
+**Saving with nothing selected is inert.** The empty option must not blank
+`friendUserId`. A stray click on an empty select should not be able to
+destroy a working configuration, and a widget cleared to an empty owner
+shows nothing at all with no clue what it used to show.
+
+**A target that went away is named, not hidden.** If the block still names
+an owner that is no longer among the candidates — the revoke case — the
+tab says so. An empty picker alone would leave the user guessing whether
+they had never configured the widget or whether something was taken.
+
+**`dataPath` is deliberately not written for this type.** The widget reads
+a friend's projection through the preview endpoint. An empty `dataPath`
+left behind would look configurable and do nothing, which is the kind of
+key this ADR has been spending its existence removing.
+
 
 ---
 
@@ -1419,6 +1472,12 @@ Current result: **97/97**. Progression of the fixture run:
 | step 7 ungranted projections + alias fix | +3 | 87 |
 | step 7 generic preview endpoint | +6 | 93 |
 | step 7 owner projection picker | +4 | 97 |
+
+§5.10 added no fixture checks: it is a frontend-only change and the
+backend contract it consumes — `/v1/shares/incoming`, the catalog's
+`previewable` flag, the preview endpoint — was already covered by the rows
+above. Its coverage is the 29 frontend tests (17 on the candidate rules,
+12 on the tab), with the picker's two load-bearing rules mutation-checked.
 
 The step-3 checks cover: `block_ids` rejected on a collection and still
 accepted on a dashboard; `list_keys` rejected on both; the `list_keys`-on-

@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "../../auth/AuthContext";
+import { apiFetch } from "../../lib/api";
 import { blockTypeLabel } from "./layoutTree";
+import {
+  buildShareCandidates,
+  blockTargetIsGone,
+  candidateKeyForBlock,
+  type ShareCandidate,
+} from "./shareWidgetCandidates";
 import {
   applyDisplayPreset,
   previewDataAtPath,
@@ -8,7 +16,7 @@ import {
 } from "./blockSettingsPreview";
 import type { UiBlock } from "./types";
 
-type TabId = "general" | "data" | "display";
+type TabId = "general" | "data" | "share" | "display";
 
 type Props = {
   block: UiBlock;
@@ -20,6 +28,20 @@ type Props = {
   onSave: (nextProps: UiBlock["props"]) => void | Promise<void>;
 };
 
+type CatalogEntry = {
+  id?: unknown;
+  name?: unknown;
+  aliases?: unknown;
+  previewable?: unknown;
+};
+
+type IncomingGrant = {
+  owner_user_id?: unknown;
+  resource_type?: unknown;
+  display_name?: unknown;
+  email?: unknown;
+};
+
 function strList(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
   return raw.map((x) => String(x).trim()).filter(Boolean);
@@ -27,6 +49,16 @@ function strList(raw: unknown): string[] {
 
 function supportsDataTab(type: string): boolean {
   return type !== "dashboard_ref" && type !== "share_widget" && type !== "section";
+}
+
+/**
+ * The share widget's target is a friend's projection rather than a data
+ * path, so it gets its own tab rather than a data tab it would not use.
+ * Admitting the type here is also what lets the grid stop excluding it
+ * from configuration altogether.
+ */
+function supportsShareTab(type: string): boolean {
+  return type === "share_widget";
 }
 
 function supportsDisplayPreset(type: string): boolean {
@@ -42,6 +74,7 @@ export function BlockSettingsModal({
   onSave,
 }: Props) {
   const { t } = useTranslation(["dashboard"]);
+  const auth = useAuth();
   const [tab, setTab] = useState<TabId>("general");
   const [title, setTitle] = useState("");
   const [dataPath, setDataPath] = useState("");
@@ -51,6 +84,11 @@ export function BlockSettingsModal({
   const [enableRowDetail, setEnableRowDetail] = useState(false);
   const [cardFields, setCardFields] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [shareCandidates, setShareCandidates] = useState<ShareCandidate[]>([]);
+  const [shareCatalog, setShareCatalog] = useState<CatalogEntry[]>([]);
+  const [shareKey, setShareKey] = useState("");
+  const [shareLoading, setShareLoading] = useState(false);
+  const [daysAhead, setDaysAhead] = useState(7);
 
   const columnFields = useMemo(
     () =>
@@ -72,8 +110,48 @@ export function BlockSettingsModal({
     setEnableSearch(block.props.enableSearch === true);
     setEnableRowDetail(block.props.enableRowDetail === true);
     setCardFields(strList(block.props.cardFields));
+    setDaysAhead(Math.min(90, Math.max(1, Number(block.props.daysAhead) || 7)));
+    // Cleared here rather than carried over: the key is only meaningful
+    // against the candidate list this block's fetch produces, and leaving a
+    // previous block's key in place would silently re-point a newly opened
+    // widget at the resource it was not showing.
+    setShareKey("");
     setTab("general");
   }, [block]);
+
+  useEffect(() => {
+    if (block.type !== "share_widget") return;
+    let cancelled = false;
+    setShareLoading(true);
+    void (async () => {
+      try {
+        const [incomingRes, catalogRes] = await Promise.all([
+          apiFetch("/v1/shares/incoming", auth),
+          apiFetch("/v1/shares/catalog", auth),
+        ]);
+        const incoming = (await incomingRes.json()) as { shares?: IncomingGrant[] };
+        const catalog = (await catalogRes.json()) as { resources?: CatalogEntry[] };
+        if (cancelled) return;
+        const resources = Array.isArray(catalog.resources) ? catalog.resources : [];
+        const grants = Array.isArray(incoming.shares) ? incoming.shares : [];
+        const next = buildShareCandidates(grants, resources);
+        setShareCatalog(resources);
+        setShareCandidates(next);
+        setShareKey(candidateKeyForBlock(block.props, resources, next));
+      } catch {
+        if (!cancelled) {
+          setShareCatalog([]);
+          setShareCandidates([]);
+          setShareKey("");
+        }
+      } finally {
+        if (!cancelled) setShareLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [auth, block]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -93,9 +171,25 @@ export function BlockSettingsModal({
     const next: UiBlock["props"] = {
       ...block.props,
       title: title.trim(),
-      dataPath: dataPath.trim(),
       fillGrid,
     };
+    if (block.type === "share_widget") {
+      // No dataPath: the widget reads a friend's projection through the
+      // preview endpoint, so an empty one here would leave a key that looks
+      // configurable and does nothing.
+      next.daysAhead = daysAhead;
+      const chosen = shareCandidates.find((c) => c.key === shareKey);
+      // Only written when a real target was picked. Saving with nothing
+      // selected must not blank the widget's owner — that would turn a
+      // mis-click into a widget that shows nothing at all.
+      if (chosen) {
+        next.friendUserId = chosen.ownerUserId;
+        next.friendDisplayName = chosen.displayName;
+        next.resourceType = chosen.resourceType;
+      }
+      return next;
+    }
+    next.dataPath = dataPath.trim();
     if (block.type === "card_grid") {
       next.gridColumns = gridColumns;
       next.enableSearch = enableSearch;
@@ -131,6 +225,9 @@ export function BlockSettingsModal({
     { id: "general", label: t("dashboard:blockSettingsTabGeneral") },
     ...(supportsDataTab(block.type)
       ? [{ id: "data" as TabId, label: t("dashboard:blockSettingsTabData") }]
+      : []),
+    ...(supportsShareTab(block.type)
+      ? [{ id: "share" as TabId, label: t("dashboard:blockSettingsTabShare") }]
       : []),
     { id: "display", label: t("dashboard:blockSettingsTabDisplay") },
   ];
@@ -270,6 +367,73 @@ export function BlockSettingsModal({
                   </ul>
                 </div>
               ) : null}
+            </div>
+          ) : null}
+
+          {tab === "share" && supportsShareTab(block.type) ? (
+            <div className="space-y-4">
+              <p className="text-xs leading-snug text-surface-muted">
+                {t("dashboard:blockSettingsShareIntro")}
+              </p>
+              {shareLoading ? (
+                <p className="text-xs text-surface-muted">{t("dashboard:blockSettingsShareLoading")}</p>
+              ) : shareCandidates.length === 0 ? (
+                <p className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-surface-muted">
+                  {t("dashboard:blockSettingsShareNone")}
+                </p>
+              ) : (
+                <div className="space-y-1">
+                  <label
+                    className="block text-[11px] text-surface-muted"
+                    htmlFor="block-settings-share-target"
+                  >
+                    {t("dashboard:blockSettingsShareTarget")}
+                  </label>
+                  <select
+                    id="block-settings-share-target"
+                    className="w-full rounded-lg border border-surface-border bg-black/40 px-3 py-2 text-white outline-none focus:border-sky-500/50"
+                    value={shareKey}
+                    onChange={(e) => setShareKey(e.target.value)}
+                  >
+                    <option value="">{t("dashboard:blockSettingsShareChoose")}</option>
+                    {shareCandidates.map((c) => (
+                      <option key={c.key} value={c.key}>
+                        {c.displayName} · {c.resourceName}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="block text-[10px] text-surface-muted">
+                    {t("dashboard:blockSettingsShareTargetHint")}
+                  </span>
+                </div>
+              )}
+              {blockTargetIsGone(block.props, shareCatalog, shareCandidates) ? (
+                <p className="rounded-lg border border-amber-500/25 bg-amber-950/20 px-3 py-2 text-xs text-amber-200/90">
+                  {t("dashboard:blockSettingsShareTargetGone")}
+                </p>
+              ) : null}
+              <div className="space-y-1">
+                <label
+                  className="block text-[11px] text-surface-muted"
+                  htmlFor="block-settings-share-days"
+                >
+                  {t("dashboard:blockSettingsShareDays")}
+                </label>
+                <input
+                  id="block-settings-share-days"
+                  type="number"
+                  min={1}
+                  max={90}
+                  className="w-24 rounded-lg border border-surface-border bg-black/40 px-3 py-2 text-white"
+                  value={daysAhead}
+                  onChange={(e) =>
+                    setDaysAhead(Math.min(90, Math.max(1, Number(e.target.value) || 7)))
+                  }
+                />
+                <span className="block text-[10px] text-surface-muted">
+                  {t("dashboard:blockSettingsShareDaysHint")}
+                </span>
+              </div>
             </div>
           ) : null}
 
