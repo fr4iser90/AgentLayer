@@ -151,6 +151,33 @@ def projection_delete(
     return deleted
 
 
+def projection_list_for_owner(*, owner_user_id: uuid.UUID) -> list[dict[str, Any]]:
+    """Everything this owner has published, for their own settings screen.
+
+    By-owner, never by-grantee. The owner is choosing what shape their own
+    resource has, and that question has one answer per resource rather
+    than one per friend — which is exactly why the picker cannot live in
+    the per-friend share editor without implying something that is not true.
+
+    The payload is not selected. The screen shows the shape's name and
+    whether it is current, not its contents.
+    """
+    with pool().connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                f"""
+                SELECT resource_type, resource_identifier, projection_kind,
+                       generated_at, expires_at
+                FROM {_TABLE}
+                WHERE owner_user_id = %s
+                ORDER BY resource_type, resource_identifier
+                """,
+                (owner_user_id,),
+            )
+            rows = cur.fetchall()
+    return [dict(r) for r in rows]
+
+
 def projection_list_due(*, limit: int = 20, within_seconds: int = 300) -> list[dict[str, Any]]:
     """Rows whose freshness bound falls inside the refresh window.
 

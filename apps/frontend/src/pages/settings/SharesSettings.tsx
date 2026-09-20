@@ -50,7 +50,29 @@ type CatalogResource = {
   policy_fields: string[];
   listable: boolean;
   aliases: string[];
+  previewable?: boolean;
 };
+
+/**
+ * One view the caller has published of their own resource.
+ *
+ * Keyed on (resource_type, resource_identifier) and never on a friend.
+ * That is the model, not a simplification: there is one row per resource,
+ * so the shape chosen here is what every grantee of that resource sees.
+ */
+type PublishedProjection = {
+  resource_type: string;
+  resource_identifier: string;
+  projection_kind: string | null;
+  available_kinds: string[];
+  default_kind: string | null;
+  generated_at: string | null;
+  expires_at: string | null;
+  fresh: boolean;
+};
+
+const projectionKey = (resourceType: string, identifier: string) =>
+  `${resourceType}:${identifier}`;
 
 function grantForResource(
   grants: ShareGrant[] | undefined,
@@ -110,6 +132,9 @@ export default function SharesSettings() {
   const [policyDraft, setPolicyDraft] = useState<Record<string, SharePolicy>>({});
   const [newResourceType, setNewResourceType] = useState("");
   const [newResourceIdentifier, setNewResourceIdentifier] = useState("");
+  const [myProjections, setMyProjections] = useState<PublishedProjection[]>([]);
+  const [kindDraft, setKindDraft] = useState<Record<string, string>>({});
+  const [publishing, setPublishing] = useState(false);
 
   const lang = (i18n.language || "en").slice(0, 2);
 
@@ -117,16 +142,30 @@ export default function SharesSettings() {
     setLoading(true);
     setErr(null);
     try {
-      const [catalogRes, outgoingRes, incomingRes, friendsRes] = await Promise.all([
-        apiFetch(`/v1/shares/catalog?lang=${lang}`, auth),
-        apiFetch("/v1/shares/outgoing", auth),
-        apiFetch("/v1/shares/incoming", auth),
-        apiFetch("/v1/friends", auth),
-      ]);
+      const [catalogRes, outgoingRes, incomingRes, friendsRes, projectionRes] =
+        await Promise.all([
+          apiFetch(`/v1/shares/catalog?lang=${lang}`, auth),
+          apiFetch("/v1/shares/outgoing", auth),
+          apiFetch("/v1/shares/incoming", auth),
+          apiFetch("/v1/friends", auth),
+          apiFetch("/v1/shares/projections", auth),
+        ]);
 
       if (catalogRes.ok) {
         const data = await catalogRes.json();
         setCatalog(data.resources || []);
+      }
+
+      if (projectionRes.ok) {
+        const data = await projectionRes.json();
+        const rows: PublishedProjection[] = data.projections || [];
+        setMyProjections(rows);
+        const drafts: Record<string, string> = {};
+        for (const row of rows) {
+          drafts[projectionKey(row.resource_type, row.resource_identifier)] =
+            row.projection_kind || row.default_kind || "";
+        }
+        setKindDraft(drafts);
       }
 
       let outgoingRows: ShareItem[] = [];
@@ -237,6 +276,42 @@ export default function SharesSettings() {
   async function savePolicy(resourceType: string) {
     if (!friendShares?.outgoing.includes(resourceType)) return;
     await setShare(resourceType, true, policyDraft[resourceType] || {});
+  }
+
+  /**
+   * Republish one of the caller's own resources in a different shape.
+   *
+   * Separate from setShare on purpose: this changes what the view *is*,
+   * not who may read it. Publishing grants nothing, and a view nobody has
+   * been granted stays unreadable.
+   */
+  async function publishKind(row: PublishedProjection) {
+    const key = projectionKey(row.resource_type, row.resource_identifier);
+    const kind = kindDraft[key];
+    if (!kind || publishing) return;
+
+    setPublishing(true);
+    setErr(null);
+    try {
+      const res = await apiFetch("/v1/shares/projection", auth, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          resource_type: row.resource_type,
+          resource_identifier: row.resource_identifier,
+          projection_kind: kind,
+        }),
+      });
+      if (!res.ok) {
+        setErr(await res.text());
+        return;
+      }
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : t("settings:sharesPublishFailed"));
+    } finally {
+      setPublishing(false);
+    }
   }
 
   function catalogName(resourceId: string): string {
@@ -467,6 +542,87 @@ export default function SharesSettings() {
           {Object.keys(groupByUser(incoming)).length === 0 && (
             <div className="p-8 text-center text-surface-muted rounded-xl border border-surface-border bg-surface-raised">
               {t("settings:sharesNoneIncoming")}
+            </div>
+          )}
+        </div>
+      )}
+
+      {!loading && (
+        <div className="rounded-xl border border-surface-border bg-surface-raised p-4">
+          <h3 className="font-medium text-white">
+            {t("settings:sharesPublishedTitle")}
+          </h3>
+          <p className="mt-1 text-sm text-surface-muted">
+            {t("settings:sharesPublishedHint")}
+          </p>
+
+          {myProjections.length === 0 ? (
+            <p className="mt-4 text-sm text-surface-muted">
+              {t("settings:sharesPublishedNone")}
+            </p>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {myProjections.map((row) => {
+                const key = projectionKey(row.resource_type, row.resource_identifier);
+                const draft = kindDraft[key] ?? row.projection_kind ?? "";
+                const unchanged = draft === row.projection_kind;
+                return (
+                  <div
+                    key={key}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-surface-border/60 p-3"
+                  >
+                    <div className="min-w-[10rem]">
+                      <div className="text-white">
+                        {displayResourceName(row.resource_type, catalog)}
+                      </div>
+                      <div className="mt-0.5 text-xs text-surface-muted">
+                        {t("settings:sharesPublishedIdentifier", {
+                          value: row.resource_identifier,
+                        })}{" "}
+                        ·{" "}
+                        <span className={row.fresh ? "text-emerald-400" : "text-amber-400"}>
+                          {row.fresh
+                            ? t("settings:sharesPublishedFresh")
+                            : t("settings:sharesPublishedStale")}
+                        </span>
+                      </div>
+                    </div>
+                    {row.available_kinds.length > 0 ? (
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={draft}
+                          disabled={publishing}
+                          aria-label={t("settings:sharesPublishedKind", {
+                            value: displayResourceName(row.resource_type, catalog),
+                          })}
+                          onChange={(e) =>
+                            setKindDraft((prev) => ({ ...prev, [key]: e.target.value }))
+                          }
+                          className="rounded-md border border-surface-border bg-surface px-2 py-1.5 text-sm text-white"
+                        >
+                          {row.available_kinds.map((kind) => (
+                            <option key={kind} value={kind}>
+                              {kind}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          disabled={publishing || unchanged || !draft}
+                          onClick={() => void publishKind(row)}
+                          className="rounded-md bg-emerald-700 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+                        >
+                          {t("settings:sharesPublishButton")}
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-surface-muted">
+                        {row.projection_kind}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

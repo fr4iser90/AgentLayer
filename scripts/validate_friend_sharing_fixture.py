@@ -903,6 +903,20 @@ def _preview_status(viewer, resource_type, **kw):
         return getattr(exc, "status_code", f"raised {type(exc).__name__}")
 
 
+def _my_projections(viewer):
+    async def _go():
+        async def _current_user(_request):
+            class _V:
+                id = viewer
+
+            return _V()
+
+        with mock.patch.object(shares_api, "get_current_user", _current_user):
+            return await shares_api.list_my_share_projections(None)
+
+    return asyncio.run(_go())
+
+
 _with_stubbed_network(lambda: publish_projection(
     resource_type="google_calendar", owner_user_id=LENA,
     identifier="primary", kind="availability"))
@@ -950,6 +964,40 @@ check(
     and _cat_previewable.get("collection") is False
     and _cat_previewable.get("dashboard") is False,
     f"previewable={_cat_previewable}",
+)
+
+# The owner has to be able to see the shape they chose, and only their own.
+# This is the one place a by-owner listing exists in the store, and the
+# worst possible version of it would leak another owner's rows.
+_own = _my_projections(LENA)["projections"]
+check(
+    "step 7: the owner sees the shape they published",
+    any(
+        r["resource_type"] == "google_calendar"
+        and r["resource_identifier"] == "primary"
+        and r["projection_kind"] == "availability"
+        for r in _own
+    ),
+    f"rows={[(r['resource_identifier'], r['projection_kind']) for r in _own]}",
+)
+check(
+    "step 7: the owner's list carries the kinds the adapter offers",
+    all(
+        sorted(r["available_kinds"]) == ["availability", "events"]
+        for r in _own
+        if r["resource_type"] == "google_calendar"
+    ),
+    f"kinds={[_own[0]['available_kinds'] if _own else None]}",
+)
+check(
+    "step 7: another owner's list does not contain Lena's rows",
+    all(r["resource_type"] != "google_calendar" for r in _my_projections(BOB)["projections"]),
+    f"bob_rows={_my_projections(BOB)['projections']}",
+)
+check(
+    "step 7: the owner's list does not carry the narrowed content",
+    "payload" not in str(_own) and "Zahnarzt" not in str(_own),
+    "the screen shows the shape's name, not the calendar inside it",
 )
 
 share_permission_set(LENA, TIM, "google_calendar", "primary", False)

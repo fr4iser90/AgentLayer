@@ -76,6 +76,13 @@ class InMemoryStore:
         )
         return [dict(v) for v in due[:limit]]
 
+    def projection_list_for_owner(self, *, owner_user_id):
+        return [
+            dict(v)
+            for v in self.rows.values()
+            if str(v.get("owner_user_id")) == str(owner_user_id)
+        ]
+
     def age(self, owner, rtype, ident, *, seconds=600):
         """Push a row's expiry into the past.
 

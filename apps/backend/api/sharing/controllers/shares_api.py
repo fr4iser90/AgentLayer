@@ -7,6 +7,7 @@ Completely generic for all resource types - calendar, github, notes, agents etc.
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -18,6 +19,7 @@ from apps.backend.domain.shares.projections import (
     default_projection_kind,
     projection_backed,
     projection_kinds_for,
+    projection_store,
 )
 from apps.backend.domain.shares.registry import (
     canonical_type_for,
@@ -159,6 +161,47 @@ async def publish_share_projection(request: Request, body: ProjectionPublishBody
         "expires_at": stored.expires_at.isoformat() if stored.expires_at else None,
         "available_kinds": list(kinds),
     }
+
+
+@router.get("/projections")
+async def list_my_share_projections(request: Request):
+    """What the caller has published about their own resources.
+
+    Owner-scoped, and deliberately not part of the per-friend grant list.
+    The projection shape is a property of the resource, not of the share:
+    one row per (owner, type, identifier), and every grantee of that
+    resource sees the same shape. Putting the picker next to a particular
+    friend would imply Lena can give Bob the narrow view and Alice the
+    wide one, which is neither what the model does nor what she would
+    have agreed to.
+    """
+    user = await get_current_user(request)
+    store = projection_store()
+    if store is None:
+        return {"ok": True, "projections": []}
+
+    now = datetime.now(timezone.utc)
+    items: list[dict[str, Any]] = []
+    for row in store.projection_list_for_owner(owner_user_id=user.id):
+        adapter = get_share_adapter(str(row.get("resource_type") or ""))
+        expires = row.get("expires_at")
+        generated = row.get("generated_at")
+        items.append(
+            {
+                "resource_type": row.get("resource_type"),
+                "resource_identifier": row.get("resource_identifier"),
+                "projection_kind": row.get("projection_kind"),
+                # Sent with each row rather than only in the catalog, so the
+                # picker can offer a change without a second round-trip and
+                # cannot offer a kind this adapter never publishes.
+                "available_kinds": list(projection_kinds_for(adapter)) if adapter else [],
+                "default_kind": default_projection_kind(adapter) if adapter else None,
+                "generated_at": generated.isoformat() if generated else None,
+                "expires_at": expires.isoformat() if expires else None,
+                "fresh": bool(expires) and expires > now,
+            }
+        )
+    return {"ok": True, "projections": items}
 
 
 @router.get("/check")

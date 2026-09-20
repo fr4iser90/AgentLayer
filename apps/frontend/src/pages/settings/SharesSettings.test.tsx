@@ -217,6 +217,119 @@ it("sends the adapter's default identifier rather than a hardcoded one", async (
   expect(body.resource_identifier).toBe("haustiere");
 });
 
+const PUBLISHED_CALENDAR = {
+  resource_type: "google_calendar",
+  resource_identifier: "primary",
+  projection_kind: "events",
+  available_kinds: ["events", "availability"],
+  default_kind: "events",
+  generated_at: "2026-01-01T00:00:00Z",
+  expires_at: "2099-01-01T00:00:00Z",
+  fresh: true,
+};
+
+function installPublished(projections: unknown[]) {
+  api.mockImplementation(async (url: unknown) => {
+    const u = String(url);
+    if (u.startsWith("/v1/shares/catalog")) return json({ ok: true, resources: CATALOG });
+    if (u.startsWith("/v1/shares/projections")) return json({ ok: true, projections });
+    if (u.startsWith("/v1/shares/outgoing")) return json({ ok: true, shares: OUTGOING });
+    if (u.startsWith("/v1/shares/incoming")) return json({ ok: true, shares: [] });
+    if (u.startsWith("/v1/shares/friend/")) return json(FRIEND_SHARES);
+    if (u.startsWith("/v1/friends")) return json({ ok: true, friends: [] });
+    return json({ ok: true });
+  });
+}
+
+it("shows the owner's published views without opening a friend panel", async () => {
+  // The shape belongs to the resource, not to a friendship. If this only
+  // appeared inside the per-friend editor it would imply the owner can
+  // give one friend the narrow view and another the wide one, which the
+  // model does not allow.
+  installPublished([PUBLISHED_CALENDAR]);
+  render(
+    <MemoryRouter>
+      <SharesSettings />
+    </MemoryRouter>,
+  );
+
+  await screen.findByText("settings:sharesPublishedTitle");
+  const picker = await screen.findByLabelText("settings:sharesPublishedKind");
+  expect((picker as HTMLSelectElement).value).toBe("events");
+});
+
+it("offers only the kinds this adapter actually publishes", async () => {
+  installPublished([PUBLISHED_CALENDAR]);
+  render(
+    <MemoryRouter>
+      <SharesSettings />
+    </MemoryRouter>,
+  );
+
+  const picker = (await screen.findByLabelText("settings:sharesPublishedKind")) as HTMLSelectElement;
+  expect(Array.from(picker.options).map((o) => o.value).sort()).toEqual([
+    "availability",
+    "events",
+  ]);
+});
+
+it("publishes the chosen kind to the projection endpoint", async () => {
+  installPublished([PUBLISHED_CALENDAR]);
+  render(
+    <MemoryRouter>
+      <SharesSettings />
+    </MemoryRouter>,
+  );
+
+  const picker = (await screen.findByLabelText("settings:sharesPublishedKind")) as HTMLSelectElement;
+  const button = screen.getByText("settings:sharesPublishButton").closest("button") as HTMLButtonElement;
+  // Nothing chosen yet, so nothing to publish.
+  expect(button.disabled).toBe(true);
+
+  fireEvent.change(picker, { target: { value: "availability" } });
+  await waitFor(() => expect(button.disabled).toBe(false));
+  fireEvent.click(button);
+
+  await waitFor(() =>
+    expect(api).toHaveBeenCalledWith(
+      "/v1/shares/projection",
+      expect.anything(),
+      expect.objectContaining({ method: "POST" }),
+    ),
+  );
+  const call = api.mock.calls.find((c) => String(c[0]) === "/v1/shares/projection");
+  const body = JSON.parse((call?.[2] as { body: string }).body);
+  expect(body).toEqual({
+    resource_type: "google_calendar",
+    resource_identifier: "primary",
+    projection_kind: "availability",
+  });
+});
+
+it("marks a view past its bound as not current", async () => {
+  installPublished([{ ...PUBLISHED_CALENDAR, fresh: false }]);
+  render(
+    <MemoryRouter>
+      <SharesSettings />
+    </MemoryRouter>,
+  );
+
+  await screen.findByText("settings:sharesPublishedStale");
+  expect(screen.queryByText("settings:sharesPublishedFresh")).toBeNull();
+});
+
+it("says so when the owner has published nothing", async () => {
+  installPublished([]);
+  render(
+    <MemoryRouter>
+      <SharesSettings />
+    </MemoryRouter>,
+  );
+
+  await screen.findByText("settings:sharesPublishedNone");
+  expect(screen.queryByLabelText("settings:sharesPublishedKind")).toBeNull();
+});
+
 it("resolves a legacy alias grant to its canonical catalog entry", async () => {
   // A grant written years ago under "calendar" must still render as the
   // google_calendar type with its policy fields, not as an unknown type.

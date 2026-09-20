@@ -86,6 +86,13 @@ class _PreviewDeps:
     def projection_list_due(self, *, limit, within_seconds):
         return []
 
+    def projection_list_for_owner(self, *, owner_user_id):
+        return [
+            dict(v)
+            for v in self.rows.values()
+            if str(v.get("owner_user_id")) == str(owner_user_id)
+        ]
+
 
 class _Caller:
     def __init__(self, user_id: uuid.UUID) -> None:
@@ -302,6 +309,109 @@ class TestCatalogAdvertisesPreviewability(PreviewApiTestCase):
             with self.assertRaises(Exception) as ctx:
                 self._call(resource_type=entry["id"], owner_user_id=str(self.owner))
             self.assertEqual(getattr(ctx.exception, "status_code", None), 404)
+
+
+class TestOwnerSeesOwnPublishedShape(PreviewApiTestCase):
+    """The owner picks the shape, so the owner has to be able to see it.
+
+    The shape belongs to the resource, not to a friendship: one row per
+    (owner, type, identifier), every grantee of that resource sees the
+    same thing. An endpoint that leaked another owner's rows here would be
+    the worst possible version of this feature, so that is the first
+    thing pinned.
+    """
+
+    def _list_as(self, viewer: uuid.UUID):
+        async def _go():
+            async def _current_user(_request):
+                return _Caller(viewer)
+
+            with mock.patch.object(shares_api, "get_current_user", _current_user):
+                return await shares_api.list_my_share_projections(None)
+
+        return asyncio.run(_go())
+
+    def _publish(self, kind: str, *, owner=None, ident="primary") -> None:
+        publish_projection(
+            resource_type="google_calendar",
+            owner_user_id=owner or self.owner,
+            identifier=ident,
+            kind=kind,
+        )
+
+    def test_the_owner_sees_the_shape_they_published(self) -> None:
+        deps = _PreviewDeps(
+            grant={"policy": {}}, events=[{"summary": "Standup", "start": _iso(1)}]
+        )
+        self._wire(deps)
+        self._publish("availability")
+
+        out = self._list_as(self.owner)
+        self.assertEqual(len(out["projections"]), 1)
+        row = out["projections"][0]
+        self.assertEqual(row["projection_kind"], "availability")
+        self.assertEqual(row["resource_identifier"], "primary")
+        self.assertTrue(row["fresh"])
+
+    def test_the_offered_kinds_come_from_the_adapter(self) -> None:
+        """The picker can only offer what this adapter actually publishes."""
+        deps = _PreviewDeps(
+            grant={"policy": {}}, events=[{"summary": "Standup", "start": _iso(1)}]
+        )
+        self._wire(deps)
+        self._publish("events")
+
+        row = self._list_as(self.owner)["projections"][0]
+        self.assertEqual(sorted(row["available_kinds"]), ["availability", "events"])
+        self.assertEqual(row["default_kind"], "events")
+
+    def test_another_owner_sees_nothing(self) -> None:
+        deps = _PreviewDeps(
+            grant={"policy": {}}, events=[{"summary": "Standup", "start": _iso(1)}]
+        )
+        self._wire(deps)
+        self._publish("events")
+
+        self.assertEqual(self._list_as(uuid.uuid4())["projections"], [])
+
+    def test_the_narrowed_content_is_not_returned(self) -> None:
+        """The screen shows the shape's name, not the calendar inside it."""
+        deps = _PreviewDeps(
+            grant={"policy": {}}, events=[{"summary": "Geheim", "start": _iso(1)}]
+        )
+        self._wire(deps)
+        self._publish("events")
+
+        out = self._list_as(self.owner)
+        self.assertNotIn("payload", str(out))
+        self.assertNotIn("Geheim", str(out))
+
+    def test_a_row_past_its_bound_is_reported_as_not_fresh(self) -> None:
+        deps = _PreviewDeps(
+            grant={"policy": {}}, events=[{"summary": "Standup", "start": _iso(1)}]
+        )
+        self._wire(deps)
+        self._publish("events")
+        for row in deps.rows.values():
+            row["expires_at"] = datetime.now(UTC) - timedelta(seconds=30)
+
+        row = self._list_as(self.owner)["projections"][0]
+        self.assertFalse(row["fresh"])
+
+    def test_every_identifier_the_owner_published_is_listed(self) -> None:
+        """Not just the default one — "work" and "primary" are separate rows."""
+        deps = _PreviewDeps(
+            grant={"policy": {}}, events=[{"summary": "Standup", "start": _iso(1)}]
+        )
+        self._wire(deps)
+        self._publish("events", ident="primary")
+        self._publish("availability", ident="work")
+
+        listed = {
+            (r["resource_identifier"], r["projection_kind"])
+            for r in self._list_as(self.owner)["projections"]
+        }
+        self.assertEqual(listed, {("primary", "events"), ("work", "availability")})
 
 
 if __name__ == "__main__":
