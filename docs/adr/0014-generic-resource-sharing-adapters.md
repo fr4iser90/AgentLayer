@@ -31,7 +31,8 @@ Implemented so far:
   freshness bound, revoke cascade — see §5.6. The calendar is the first
   real projection, so part of step 7 landed with this.
 - **step 7 (partial)**, the scheduled refresh worker, so the first reader
-  after the TTL no longer pays for the owner's fetch — see §5.7.
+  after the TTL no longer pays for the owner's fetch, and the stale
+  retention grace that makes it safe to run the sweeper — see §5.7.
 
 Not implemented: the rest of step 7 (nothing further is required for the
 calendar to be projection-backed; what remains is whatever the operator
@@ -1006,15 +1007,45 @@ through explicitly, so a scheduled pass cannot quietly widen a free/busy
 projection into a titled-event list because the adapter default differs
 from what the owner chose.
 
-**A failed refresh leaves the stale row standing.** While the owner's
-upstream is down, that labelled-stale row is the only thing a friend can
-still be answered from. This is why the worker deliberately does **not**
-run `sweep_expired()`: the sweeper deletes `expires_at <= now()`, which
-is precisely the set of rows a failed refresh has just produced. Wiring
-the existing janitor to this heartbeat would have quietly removed the
-stale-fallback capability and looked like a cleanup. How long a stale row
-should outlive its bound is a separate decision with its own trade-off, and
-it is not made here.
+**A failed refresh leaves the stale row standing — for a while.** While the
+owner's upstream is down, that labelled-stale row is the only thing a
+friend can still be answered from. How long it stands is the retention
+grace, `STALE_GRACE_SECONDS`, set at one hour.
+
+That number answers a tension inside this ADR rather than a question from
+outside it. `expires_at NOT NULL` was introduced because *an unbounded
+copy of someone's data is the outcome this module exists to prevent* —
+and a stale fallback with no end to it is exactly that. But cutting the
+fallback at the bound would mean any upstream outage longer than the TTL
+turns "here is your answer, fifteen minutes old" into "nothing shared".
+A grace keeps the first without silently surrendering the second: fifteen
+minutes of freshness, then up to an hour of labelled fallback, then the
+row is gone.
+
+**The grace is enforced at the read, not at the delete.**
+`StoredProjection.is_retained` is checked in `load_fresh` before the row
+can be used as a fallback, and an out-of-retention row is deleted on the
+way past. This is the part that matters: a bound that only a janitor
+applies is a bound that depends on the janitor running, and "it gets
+cleaned up soon" is the exact guarantee this ADR was written because it
+kept not holding. The sweeper makes the table tidy; the read makes the
+promise. A publish from a past-retention read can still succeed and put a
+fresh row back, so the grace ends the fallback, not the resource.
+
+**One flat grace rather than a per-adapter declaration like the TTL.**
+The sweeper runs across every adapter at once and cannot ask each row's
+adapter for its own number; a per-adapter grace would mean the sweeper
+has to take the maximum across the registry to avoid deleting a row
+another adapter may still serve. Not worth the coupling for a knob nobody
+has asked to turn per type.
+
+**The worker now does run the sweeper**, every eighth pass, which it
+could not safely do before the grace existed. Sweeping on
+`expires_at <= now()` deletes precisely the set a failed refresh
+produces, so wiring the old janitor to this heartbeat would have removed
+the stale-fallback capability and looked like a cleanup. With the grace
+in the predicate, the rows it collects are ones the read path has
+already refused on its own.
 
 **Rows whose adapter is gone are skipped, never deleted.** Such a
 projection is already unservable, since nothing resolves its type; wiping
@@ -1227,7 +1258,7 @@ docker compose run --rm -e PYTHONPATH=/code agent-layer \
     python /code/scripts/validate_friend_sharing_fixture.py
 ```
 
-Current result: **79/79**. Progression of the fixture run:
+Current result: **84/84**. Progression of the fixture run:
 
 | added with | checks | total |
 |---|---|---|
@@ -1239,6 +1270,7 @@ Current result: **79/79**. Progression of the fixture run:
 | step 5 registry-driven catalog + UI | +7 | 57 |
 | step 6 projection contract | +14 | 71 |
 | step 7 scheduled refresh | +8 | 79 |
+| step 7 stale retention | +5 | 84 |
 
 The step-3 checks cover: `block_ids` rejected on a collection and still
 accepted on a dashboard; `list_keys` rejected on both; the `list_keys`-on-
@@ -1296,6 +1328,18 @@ This run also caught a defect the unit tests could not: the `execute()`
 call was written without its parameter tuple, and psycopg sends a query
 with a literal `%s` through untouched when no params are supplied. Every
 in-memory fake in the suite was happy.
+
+The retention checks age rows in SQL, against the database clock that
+wrote the column, and walk the whole boundary: a row ten minutes past its
+bound is still retained and the sweeper leaves it alone; a row past the
+grace is out of retention; and the decisive one deletes the owner's
+secret so the republish fails for a real reason, which leaves the
+out-of-retention row as the only thing the read could fall back to. It
+does not fall back — it returns `owner_has_no_calendar_configured` and
+takes the row with it. That is the scenario the grace was written for,
+observed rather than asserted: nobody gets answered from a two-hour-old
+copy of Lena's calendar, and nobody gets answered from it *quietly*
+either.
 
 The run is what turned §1.3 from a static grep into an observed behaviour —
 and what surfaced the always-deny bug that the grep had mis-scored as

@@ -308,7 +308,7 @@ class _FakeCalendarDeps:
             (str(owner_user_id), resource_type, resource_identifier), None
         ) and 1 or 0
 
-    def projection_delete_expired(self, *, limit=200):
+    def projection_delete_expired(self, *, limit=200, grace_seconds=0):
         return 0
 
     def projection_list_due(self, *, limit, within_seconds):

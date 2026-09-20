@@ -649,13 +649,17 @@ check("step 6: the last revoke takes the projection with it",
           resource_identifier="primary") is None,
       "no live grant remains for that resource")
 
-# A row past its bound must be collectable, and must not read as fresh.
+# A row past its bound but inside the grace is still the stale fallback a
+# grantee is answered from. Past the grace it is out of retention, and the
+# read refuses it. Ageing is done in SQL so the comparison runs against
+# the database clock, which is the one that wrote the column.
 _with_stubbed_network(lambda: publish_projection(
         resource_type="google_calendar", owner_user_id=LENA,
     identifier="primary", kind="events"))
 appdb.query(
-    "UPDATE share_projections SET expires_at = %s WHERE owner_user_id = %s",
-    (datetime.now(timezone.utc) - timedelta(hours=1), LENA),
+    "UPDATE share_projections SET expires_at = now() - make_interval(secs => %s) "
+    "WHERE owner_user_id = %s",
+    (600, LENA),
 )
 _stale = proj.load_projection(
     owner_user_id=LENA, resource_type="google_calendar", resource_identifier="primary"
@@ -663,12 +667,69 @@ _stale = proj.load_projection(
 check("step 6: an aged row reads as not fresh",
       _stale is not None and not _stale.is_fresh(),
       f"expires={_stale and _stale.expires_at}")
-check("step 6: the sweeper collects expired rows",
-      proj.sweep_expired() >= 1
+check("step 7: a row 10min past its bound is still inside the grace",
+      _stale is not None and _stale.is_retained(),
+      f"grace={proj.STALE_GRACE_SECONDS}s")
+check("step 7: the sweeper leaves a row inside the grace alone",
+      proj.sweep_expired() == 0
       and prdb.projection_get(
           owner_user_id=LENA, resource_type="google_calendar",
+          resource_identifier="primary") is not None,
+      "the stale fallback survives the janitor")
+
+appdb.query(
+    "UPDATE share_projections SET expires_at = now() - make_interval(secs => %s) "
+    "WHERE owner_user_id = %s",
+    (proj.STALE_GRACE_SECONDS + 600, LENA),
+)
+check("step 7: a row past the grace is out of retention",
+      not proj.load_projection(
+          owner_user_id=LENA, resource_type="google_calendar",
+          resource_identifier="primary").is_retained(),
+      f"aged {proj.STALE_GRACE_SECONDS + 600}s past the bound")
+
+# Make the republish fail for a real reason -- the owner's secret is gone
+# -- so the only thing the read could fall back to is the out-of-retention
+# row. Serving it would answer a friend from a two-hour-old copy of Lena's
+# calendar; the read has to refuse instead.
+appdb.query(
+    "DELETE FROM user_secrets WHERE user_id = %s AND service_key = 'google_calendar'",
+    (LENA,),
+)
+from apps.backend.domain.shares.adapters.calendar_adapter import (  # noqa: E402
+    CalendarShareAdapter,
+)
+
+_refused = proj.load_fresh(
+    CalendarShareAdapter(),
+    owner_user_id=LENA,
+    resource_type="google_calendar",
+    resource_identifier="primary",
+)
+check("step 7: the read refuses an out-of-retention row instead of serving it",
+      not _refused.ok and _refused.projection is None,
+      f"error={_refused.error}")
+check("step 7: the read takes the out-of-retention row with it",
+      prdb.projection_get(
+          owner_user_id=LENA, resource_type="google_calendar",
           resource_identifier="primary") is None,
-      "expired row removed")
+      "deleted at the read, not left for the janitor")
+
+appdb.user_secret_upsert(ANNA, "google_calendar", json.dumps({"ics_url": LENA_ICS}))
+_with_stubbed_network(lambda: publish_projection(
+        resource_type="google_calendar", owner_user_id=ANNA,
+    identifier="primary", kind="events"))
+appdb.query(
+    "UPDATE share_projections SET expires_at = now() - make_interval(secs => %s) "
+    "WHERE owner_user_id = %s",
+    (proj.STALE_GRACE_SECONDS + 600, ANNA),
+)
+check("step 7: the sweeper collects an out-of-retention row",
+      proj.sweep_expired() >= 1
+      and prdb.projection_get(
+          owner_user_id=ANNA, resource_type="google_calendar",
+          resource_identifier="primary") is None,
+      "out-of-retention row removed")
 
 cal_entry = next(c for c in catalog_for_api() if c["id"] == "google_calendar")
 dash_entry = next(c for c in catalog_for_api() if c["id"] == "dashboard")
@@ -700,6 +761,7 @@ def _row_for(user_id):
 
 
 appdb.user_secret_upsert(ANNA, "google_calendar", json.dumps({"ics_url": LENA_ICS}))
+appdb.user_secret_upsert(LENA, "google_calendar", json.dumps({"ics_url": LENA_ICS}))
 _with_stubbed_network(lambda: publish_projection(
     resource_type="google_calendar", owner_user_id=ANNA,
     identifier="primary", kind="events"))

@@ -18,7 +18,7 @@ from unittest import mock
 from apps.backend.domain.shares import projections
 from apps.backend.domain.shares.adapters import register_default_share_adapters
 from apps.backend.domain.shares.adapters.calendar_adapter import CalendarShareAdapter
-from apps.backend.domain.shares.projections import RefreshReport
+from apps.backend.domain.shares.projections import RefreshReport, StoredProjection
 from apps.backend.domain.shares.registry import (
     publish_projection,
     reset_share_registry,
@@ -58,8 +58,9 @@ class InMemoryStore:
         self.deletes += 1
         return 1 if self.rows.pop(self._key(owner_user_id, resource_type, resource_identifier), None) else 0
 
-    def projection_delete_expired(self, *, limit=200):
-        expired = [k for k, v in self.rows.items() if v["expires_at"] <= datetime.now(UTC)]
+    def projection_delete_expired(self, *, limit=200, grace_seconds=0):
+        cutoff = datetime.now(UTC) - timedelta(seconds=grace_seconds)
+        expired = [k for k, v in self.rows.items() if v["expires_at"] <= cutoff]
         for k in expired[:limit]:
             del self.rows[k]
         self.deletes += len(expired)
@@ -73,8 +74,14 @@ class InMemoryStore:
         )
         return [dict(v) for v in due[:limit]]
 
-    def age(self, owner, rtype, ident, *, seconds=3600):
-        """Push a row's expiry into the past."""
+    def age(self, owner, rtype, ident, *, seconds=600):
+        """Push a row's expiry into the past.
+
+        Defaults to ten minutes, comfortably inside the stale grace, so a
+        test that wants the stale fallback gets it without having to know
+        where the retention line sits. Tests that want the line pass it
+        explicitly.
+        """
         row = self.rows[self._key(owner, rtype, ident)]
         row["expires_at"] = datetime.now(UTC) - timedelta(seconds=seconds)
 
@@ -420,18 +427,165 @@ class TestAvailabilityNarrowing(unittest.TestCase):
 
 
 class TestSweep(StoreTestCase):
-    def test_expired_rows_are_collected(self) -> None:
-        owner = uuid.uuid4()
+    """The janitor collects out-of-retention rows and nothing else.
+
+    The old form of this test asserted that anything past ``expires_at``
+    gets deleted. That is now the wrong rule, and the wrongness is the
+    point: those rows are the stale fallback a grantee is answered from
+    during an upstream outage, and a sweeper that took them would have
+    removed a guarantee while looking like it worked.
+    """
+
+    def _seed_aged(self, owner, *, seconds_past_bound):
         self.store.projection_upsert(
             owner_user_id=owner,
             resource_type="google_calendar",
             resource_identifier="primary",
             kind="events",
             payload={"events": []},
-            expires_at=datetime.now(UTC) - timedelta(seconds=1),
+            expires_at=datetime.now(UTC) - timedelta(seconds=seconds_past_bound),
         )
-        self.assertEqual(projections.sweep_expired(), 1)
+
+    def test_a_row_just_past_its_bound_is_swept_once_the_grace_is_spent(self) -> None:
+        owner = uuid.uuid4()
+        self._seed_aged(owner, seconds_past_bound=7200)
+        self.assertEqual(projections.sweep_expired(grace_seconds=3600), 1)
         self.assertEqual(self.store.rows, {})
+
+    def test_a_row_still_inside_the_grace_survives_the_sweep(self) -> None:
+        owner = uuid.uuid4()
+        self._seed_aged(owner, seconds_past_bound=600)
+        self.assertEqual(projections.sweep_expired(grace_seconds=3600), 0)
+        self.assertEqual(len(self.store.rows), 1, "the stale fallback must survive")
+
+    def test_the_default_grace_is_the_module_constant(self) -> None:
+        inside = uuid.uuid4()
+        outside = uuid.uuid4()
+        self._seed_aged(inside, seconds_past_bound=projections.STALE_GRACE_SECONDS - 300)
+        self._seed_aged(outside, seconds_past_bound=projections.STALE_GRACE_SECONDS + 300)
+        self.assertEqual(projections.sweep_expired(), 1)
+        self.assertEqual(len(self.store.rows), 1)
+
+
+class TestRetention(unittest.TestCase):
+    """Where the grace is actually enforced: at the read, not at the delete.
+
+    A bound that only a janitor applies is a bound that depends on the
+    janitor running. These assert the read path itself refuses a row that
+    has spent its grace, whether or not anything has ever swept.
+    """
+
+    def setUp(self) -> None:
+        reset_share_registry()
+        register_default_share_adapters()
+        self.store = InMemoryStore()
+        p = mock.patch.object(projections, "_store", self.store)
+        p.start()
+        self.addCleanup(p.stop)
+        self.addCleanup(reset_share_registry)
+        self.owner = uuid.uuid4()
+
+    def _seed_aged(self, *, seconds_past_bound, kind="availability"):
+        self.store.projection_upsert(
+            owner_user_id=self.owner,
+            resource_type="google_calendar",
+            resource_identifier="primary",
+            kind=kind,
+            payload={"events": [{"start": "old", "busy": True}]},
+            expires_at=datetime.now(UTC) - timedelta(seconds=seconds_past_bound),
+        )
+
+    def test_a_row_inside_the_grace_is_still_served_stale(self) -> None:
+        self._seed_aged(seconds_past_bound=600)
+        with mock.patch.object(
+            CalendarShareAdapter,
+            "publish_projection",
+            side_effect=projections.ShareProjectionPublishError("upstream_down"),
+        ):
+            out = projections.load_fresh(
+                CalendarShareAdapter(),
+                owner_user_id=self.owner,
+                resource_type="google_calendar",
+                resource_identifier="primary",
+            )
+        self.assertTrue(out.ok)
+        self.assertTrue(out.projection.stale)
+
+    def test_a_row_past_the_grace_is_not_served_even_though_it_is_still_there(self) -> None:
+        self._seed_aged(seconds_past_bound=projections.STALE_GRACE_SECONDS + 600)
+        with mock.patch.object(
+            CalendarShareAdapter,
+            "publish_projection",
+            side_effect=projections.ShareProjectionPublishError("upstream_down"),
+        ):
+            out = projections.load_fresh(
+                CalendarShareAdapter(),
+                owner_user_id=self.owner,
+                resource_type="google_calendar",
+                resource_identifier="primary",
+            )
+        self.assertFalse(out.ok)
+        self.assertIsNone(out.projection)
+        self.assertEqual(out.error, "upstream_down")
+
+    def test_reading_past_retention_takes_the_row_with_it(self) -> None:
+        self._seed_aged(seconds_past_bound=projections.STALE_GRACE_SECONDS + 600)
+        with mock.patch.object(
+            CalendarShareAdapter,
+            "publish_projection",
+            side_effect=projections.ShareProjectionPublishError("upstream_down"),
+        ):
+            projections.load_fresh(
+                CalendarShareAdapter(),
+                owner_user_id=self.owner,
+                resource_type="google_calendar",
+                resource_identifier="primary",
+            )
+        self.assertEqual(self.store.rows, {}, "out of retention means out of the table")
+
+    def test_a_republish_after_the_grace_still_works(self) -> None:
+        # The grace ends the fallback, not the resource. If the owner's
+        # upstream recovers, the next read puts a fresh row back.
+        self._seed_aged(seconds_past_bound=projections.STALE_GRACE_SECONDS + 600)
+        with mock.patch.object(
+            CalendarShareAdapter,
+            "publish_projection",
+            return_value={"events": [{"start": "new", "busy": True}]},
+        ):
+            out = projections.load_fresh(
+                CalendarShareAdapter(),
+                owner_user_id=self.owner,
+                resource_type="google_calendar",
+                resource_identifier="primary",
+            )
+        self.assertTrue(out.ok)
+        self.assertFalse(out.projection.stale)
+        self.assertEqual(len(self.store.rows), 1)
+
+    def test_a_row_with_no_expiry_is_never_retained(self) -> None:
+        row = StoredProjection(
+            owner_user_id=self.owner,
+            resource_type="google_calendar",
+            resource_identifier="primary",
+            kind="events",
+            payload={},
+            generated_at=datetime.now(UTC),
+            expires_at=None,
+        )
+        self.assertFalse(row.is_retained())
+
+    def test_retention_is_measured_from_the_bound_not_from_generation(self) -> None:
+        row = StoredProjection(
+            owner_user_id=self.owner,
+            resource_type="google_calendar",
+            resource_identifier="primary",
+            kind="events",
+            payload={},
+            generated_at=datetime.now(UTC) - timedelta(hours=30),
+            expires_at=datetime.now(UTC) - timedelta(seconds=60),
+        )
+        self.assertTrue(row.is_retained(grace_seconds=3600))
+        self.assertFalse(row.is_retained(grace_seconds=0))
 
 
 class TestScheduledRefresh(unittest.TestCase):
@@ -638,6 +792,38 @@ class TestRefreshWorker(unittest.TestCase):
             runner.start_projection_refresh_worker()
             time.sleep(0.4)
         due.assert_not_called()
+
+    def test_the_sweep_rides_every_nth_pass_not_every_one(self) -> None:
+        # Housekeeping, not freshness: the sweep must not cost a delete
+        # scan on the same cadence as the refresh.
+        swept = threading.Event()
+        counts = {"passes": 0, "sweeps": 0}
+
+        def fake_refresh(**_kw):
+            counts["passes"] += 1
+            return RefreshReport()
+
+        def fake_sweep(**_kw):
+            counts["sweeps"] += 1
+            swept.set()
+            return 0
+
+        with mock.patch.object(runner, "_POLL_SEC", 0.02), mock.patch.object(
+            runner, "_SWEEP_EVERY", 2
+        ), mock.patch.object(
+            runner.operator_settings, "friend_system_enabled", return_value=True
+        ), mock.patch.object(
+            projections, "projection_store_ready", return_value=True
+        ), mock.patch.object(
+            projections, "refresh_due", side_effect=fake_refresh
+        ), mock.patch.object(
+            projections, "sweep_expired", side_effect=fake_sweep
+        ):
+            runner.start_projection_refresh_worker()
+            self.assertTrue(swept.wait(timeout=3), "the sweep never ran")
+            runner.stop_projection_refresh_worker()
+        self.assertGreaterEqual(counts["passes"], 2)
+        self.assertLessEqual(counts["sweeps"] * 2, counts["passes"])
 
 
 class TestRevokeCascade(unittest.TestCase):
