@@ -4,6 +4,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import type { UiBlock } from "./types";
 import { DashboardBlockTile } from "./DashboardBlocks";
+import { useDashboardPublicShare } from "./DashboardPublicShareContext";
 
 type RenderPayload = {
   block: UiBlock;
@@ -18,6 +19,7 @@ export function DashboardRefBlockBody(props: {
 }) {
   const { t } = useTranslation(["dashboard"]);
   const auth = useAuth();
+  const { token: publicShareToken } = useDashboardPublicShare();
   const p = props.block.props;
   const sourceId = String(p.sourceDashboardId || "").trim();
   const sourceBlockId = String(p.sourceBlockId || "").trim();
@@ -26,6 +28,13 @@ export function DashboardRefBlockBody(props: {
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
+    // A public share token covers one dashboard. The referenced source
+    // dashboard is a different resource that the token does not grant, so
+    // this call is guaranteed to 401 for an anonymous reader.
+    if (publicShareToken) {
+      setErr(t("dashboard:publicShareAuthOnlyBlock"));
+      return;
+    }
     if (!sourceId || !sourceBlockId) {
       setErr(t("dashboard:refMissingSource"));
       return;
@@ -38,8 +47,14 @@ export function DashboardRefBlockBody(props: {
         auth,
       );
       const raw = await res.text();
+      if (res.status === 401) {
+        setErr(t("dashboard:publicShareAuthOnlyBlock"));
+        setPayload(null);
+        return;
+      }
       if (!res.ok) {
-        setErr(raw || t("dashboard:refLoadFailed"));
+        console.warn("dashboard ref load failed", res.status, raw);
+        setErr(t("dashboard:refLoadFailed"));
         setPayload(null);
         return;
       }
@@ -55,7 +70,7 @@ export function DashboardRefBlockBody(props: {
     } finally {
       setLoading(false);
     }
-  }, [auth, sourceBlockId, sourceId, t]);
+  }, [auth, publicShareToken, sourceBlockId, sourceId, t]);
 
   useEffect(() => {
     void load();
@@ -68,9 +83,11 @@ export function DashboardRefBlockBody(props: {
     return (
       <div className="space-y-2 text-sm">
         <p className="text-amber-300">{err}</p>
-        <button type="button" className="text-sky-400 hover:underline" onClick={() => void load()}>
-          {t("dashboard:refRetry")}
-        </button>
+        {publicShareToken ? null : (
+          <button type="button" className="text-sky-400 hover:underline" onClick={() => void load()}>
+            {t("dashboard:refRetry")}
+          </button>
+        )}
       </div>
     );
   }

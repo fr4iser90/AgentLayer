@@ -601,6 +601,7 @@
   "schedulesRefresh": "Refresh",
   "schedulesNoDataYet": "No data yet.",
   "schedulesNone": "No schedules.",
+  "schedulesLoadFailed": "Could not load schedules.",
   "schedulesEnabledLabel": "enabled",
   "schedulesDisabledLabel": "disabled",
   "schedulesArchivedLabel": "archived",

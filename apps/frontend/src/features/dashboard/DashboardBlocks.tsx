@@ -15,6 +15,7 @@ import { CardGridBlockBody } from "./CardGridBlock";
 import { ProjectRowDetailDrawer } from "./ProjectRowDetailDrawer";
 import { DashboardRefBlockBody } from "./DashboardRefBlock";
 import { ShareWidgetBlockBody } from "./ShareWidgetBlock";
+import { useDashboardPublicShare } from "./DashboardPublicShareContext";
 import { SectionBlockBody } from "./SectionBlock";
 import { FormulaCalcBlockBody } from "./FormulaCalcBlock";
 import { getPath, setPath } from "./dashboardDataPaths";
@@ -1031,6 +1032,7 @@ function BlockView(props: {
 
   if (block.type === "schedules") {
     const auth = useAuth();
+    const { token: publicShareToken } = useDashboardPublicShare();
     const scopeRaw = String(block.props.scope ?? "dashboard").trim().toLowerCase();
     const scope = scopeRaw === "both" || scopeRaw === "global" || scopeRaw === "dashboard" ? scopeRaw : "dashboard";
     const [targetCatalog, setTargetCatalog] = useState<readonly ExecutionTargetCatalogRow[]>(
@@ -1050,6 +1052,14 @@ function BlockView(props: {
     const includeArchived = block.props.includeArchived === true;
 
     const refresh = async () => {
+      // Scheduler jobs belong to a signed-in user. An anonymous public-share
+      // reader has none, so the list can only 401 — say so instead of
+      // surfacing the response body.
+      if (publicShareToken) {
+        setErr(t("dashboard:publicShareAuthOnlyBlock"));
+        setJobs(null);
+        return;
+      }
       setLoading(true);
       setErr(null);
       try {
@@ -1060,8 +1070,12 @@ function BlockView(props: {
         }
         const res = await apiFetch(`/v1/user/scheduler-jobs?${q.toString()}`, auth);
         const j = (await res.json().catch(() => null)) as any;
-        if (!res.ok || !j?.ok) {
-          setErr(String(j?.detail ?? j?.error ?? res.status));
+        if (res.status === 401) {
+          setErr(t("dashboard:publicShareAuthOnlyBlock"));
+          setJobs(null);
+        } else if (!res.ok || !j?.ok) {
+          console.warn("schedules block load failed", res.status, j);
+          setErr(t("admin:schedulesLoadFailed"));
           setJobs(null);
         } else {
           const dashKey = dashboardId ? String(dashboardId) : "";
@@ -1097,6 +1111,7 @@ function BlockView(props: {
     };
 
     useEffect(() => {
+      if (publicShareToken) return;
       void (async () => {
         const res = await apiFetch("/v1/user/scheduler-jobs/execution-targets", auth);
         const j = (await res.json().catch(() => null)) as {
@@ -1107,7 +1122,7 @@ function BlockView(props: {
           setTargetCatalog(j.targets);
         }
       })();
-    }, [auth, auth.accessToken]);
+    }, [auth, auth.accessToken, publicShareToken]);
 
     useEffect(() => {
       void refresh();
@@ -1133,20 +1148,24 @@ function BlockView(props: {
           <span className="text-xs font-medium uppercase tracking-wide text-surface-muted">
             {t("admin:schedulesTitle")}
           </span>
-          <button
-            type="button"
-            className="rounded-md border border-surface-border px-2 py-1 text-[11px] text-neutral-100 hover:bg-white/5"
-            onClick={() => void refresh()}
-            disabled={loading}
-          >
-            {loading ? t("admin:loading") : t("admin:schedulesRefresh")}
-          </button>
+          {publicShareToken ? null : (
+            <button
+              type="button"
+              className="rounded-md border border-surface-border px-2 py-1 text-[11px] text-neutral-100 hover:bg-white/5"
+              onClick={() => void refresh()}
+              disabled={loading}
+            >
+              {loading ? t("admin:loading") : t("admin:schedulesRefresh")}
+            </button>
+          )}
         </div>
         {err ? <div className="mb-3 text-xs text-red-200/90">{err}</div> : null}
         {!jobs ? (
-          <div className="text-sm text-surface-muted">
-            {loading ? t("admin:loading") : t("admin:schedulesNoDataYet")}
-          </div>
+          err ? null : (
+            <div className="text-sm text-surface-muted">
+              {loading ? t("admin:loading") : t("admin:schedulesNoDataYet")}
+            </div>
+          )
         ) : jobs.length === 0 ? (
           <div className="text-sm text-surface-muted">{t("admin:schedulesNone")}</div>
         ) : (

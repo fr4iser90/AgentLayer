@@ -601,6 +601,7 @@
   "schedulesRefresh": "Aktualisieren",
   "schedulesNoDataYet": "Noch keine Daten.",
   "schedulesNone": "Keine Zeitpläne.",
+  "schedulesLoadFailed": "Zeitpläne konnten nicht geladen werden.",
   "schedulesEnabledLabel": "aktiviert",
   "schedulesDisabledLabel": "deaktiviert",
   "schedulesArchivedLabel": "archiviert",

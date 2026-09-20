@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import type { UiBlock } from "./types";
+import { useDashboardPublicShare } from "./DashboardPublicShareContext";
 
 type PreviewEvent = {
   summary?: string;
@@ -30,6 +31,7 @@ const OWNER_EMPTY_ERRORS = new Set(["owner_has_no_calendar_configured"]);
 export function ShareWidgetBlockBody(props: { block: UiBlock }) {
   const { t } = useTranslation(["dashboard"]);
   const auth = useAuth();
+  const { token: publicShareToken } = useDashboardPublicShare();
   const p = props.block.props;
   const friendUserId = String(p.friendUserId || "").trim();
   const resourceType = String(p.resourceType || "google_calendar").trim();
@@ -40,6 +42,13 @@ export function ShareWidgetBlockBody(props: { block: UiBlock }) {
   const [err, setErr] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    // The preview endpoint is auth-only: it reads the *viewer's* share of the
+    // friend's calendar. An anonymous reader has no such share, so the call
+    // can only 401. Skip it instead of firing it and rendering the answer.
+    if (publicShareToken) {
+      setErr(t("dashboard:publicShareAuthOnlyBlock"));
+      return;
+    }
     if (!friendUserId) {
       setErr(t("dashboard:shareWidgetNoFriend"));
       return;
@@ -61,8 +70,13 @@ export function ShareWidgetBlockBody(props: { block: UiBlock }) {
         setErr(t("dashboard:shareWidgetNotPreviewable", { type: resourceType }));
         return;
       }
+      if (res.status === 401) {
+        setErr(t("dashboard:publicShareAuthOnlyBlock"));
+        return;
+      }
       if (!res.ok) {
-        setErr(raw || t("dashboard:shareWidgetLoadFailed"));
+        console.warn("share preview load failed", res.status, raw);
+        setErr(t("dashboard:shareWidgetLoadFailed"));
         return;
       }
       const j = JSON.parse(raw) as { preview?: Preview };
@@ -91,7 +105,7 @@ export function ShareWidgetBlockBody(props: { block: UiBlock }) {
     } catch (e) {
       setErr(e instanceof Error ? e.message : t("dashboard:shareWidgetLoadFailed"));
     }
-  }, [auth, daysAhead, friendUserId, resourceType, t]);
+  }, [auth, daysAhead, friendUserId, publicShareToken, resourceType, t]);
 
   useEffect(() => {
     void load();
@@ -115,9 +129,11 @@ export function ShareWidgetBlockBody(props: { block: UiBlock }) {
       ) : (
         <pre className="mt-3 whitespace-pre-wrap text-sm text-neutral-200 font-sans">{summary}</pre>
       )}
-      <button type="button" className="mt-2 text-xs text-sky-400 hover:underline" onClick={() => void load()}>
-        {t("dashboard:shareWidgetRefresh")}
-      </button>
+      {publicShareToken ? null : (
+        <button type="button" className="mt-2 text-xs text-sky-400 hover:underline" onClick={() => void load()}>
+          {t("dashboard:shareWidgetRefresh")}
+        </button>
+      )}
     </section>
   );
 }
