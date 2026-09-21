@@ -149,7 +149,7 @@ export function DashboardPublicSharePage() {
             value={passwordInput}
             onChange={(e) => setPasswordInput(e.target.value)}
             placeholder={t("dashboard:publicSharePasswordPlaceholder")}
-            className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-sm text-white outline-none focus:border-violet-500/50"
+            className="w-full rounded-lg border border-white/15 bg-field px-3 py-2 text-sm text-white outline-none focus:border-violet-500/50"
             autoComplete="current-password"
           />
           {passwordError ? <p className="text-xs text-red-300">{passwordError}</p> : null}
@@ -188,7 +188,7 @@ export function DashboardPublicSharePage() {
         />
       ) : (
         <div className="flex min-h-dvh flex-1 flex-col overflow-hidden bg-neutral-950">
-          <header className="shrink-0 border-b border-surface-border bg-surface-raised/80 px-4 py-4 sm:px-6">
+          <header className="shrink-0 border-b border-surface-border bg-panel px-4 py-4 sm:px-6">
             <p className="text-meta font-semibold uppercase tracking-wide text-sky-300/90">
               {t("dashboard:publicShareBadge")}
             </p>

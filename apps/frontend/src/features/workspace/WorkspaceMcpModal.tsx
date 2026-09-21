@@ -192,7 +192,7 @@ export function WorkspaceMcpModal({
               <label className="block sm:col-span-2">
                 <span className="text-meta text-surface-muted">{t("workspace:presetLabel")}</span>
                 <select
-                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-[#1a1a1a] px-2 py-1.5 text-xs text-neutral-100"
+                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-field px-2 py-1.5 text-xs text-neutral-100"
                   value={presetId}
                   onChange={(e) => applyPreset(e.target.value)}
                 >

@@ -69,7 +69,7 @@ export function LoginPage() {
               value={email}
               onChange={(ev) => setEmail(ev.target.value)}
               required
-              className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white placeholder:text-white/30 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+              className="rounded-lg border border-surface-border bg-field px-3 py-2 text-white placeholder:text-field-placeholder focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
             />
           </label>
           <label className="flex flex-col gap-1.5 text-sm">
@@ -81,7 +81,7 @@ export function LoginPage() {
               value={password}
               onChange={(ev) => setPassword(ev.target.value)}
               required
-              className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white placeholder:text-white/30 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+              className="rounded-lg border border-surface-border bg-field px-3 py-2 text-white placeholder:text-field-placeholder focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
             />
           </label>
           {error ? (

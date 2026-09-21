@@ -598,7 +598,7 @@ export default function SharesSettings() {
                           onChange={(e) =>
                             setKindDraft((prev) => ({ ...prev, [key]: e.target.value }))
                           }
-                          className="rounded-md border border-surface-border bg-surface px-2 py-1.5 text-sm text-white"
+                          className="rounded-md border border-surface-border bg-field px-2 py-1.5 text-sm text-white"
                         >
                           {row.available_kinds.map((kind) => (
                             <option key={kind} value={kind}>
@@ -700,7 +700,7 @@ export default function SharesSettings() {
                     <select
                       value={newResourceType}
                       onChange={(e) => setNewResourceType(e.target.value)}
-                      className="mt-1 w-full rounded-md border border-surface-border bg-surface px-2 py-1.5 text-white text-sm"
+                      className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-white text-sm"
                     >
                       <option value="" disabled>
                         {t("settings:sharesSelectTypePlaceholder")}
@@ -722,7 +722,7 @@ export default function SharesSettings() {
                         value={newResourceIdentifier}
                         placeholder={t("settings:sharesIdentifierPlaceholder")}
                         onChange={(e) => setNewResourceIdentifier(e.target.value)}
-                        className="mt-1 w-full rounded-md border border-surface-border bg-surface px-2 py-1.5 text-white text-sm"
+                        className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-white text-sm"
                       />
                     </label>
                   )}

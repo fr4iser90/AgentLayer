@@ -243,7 +243,7 @@ export function ProjectsImportModal({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t("dashboard:importSearchRepos")}
-            className="min-w-[200px] flex-1 rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-sky-500/50"
+            className="min-w-[200px] flex-1 rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-neutral-100 outline-none focus:border-sky-500/50"
           />
           <label className="flex items-center gap-2 text-xs text-neutral-200">
             <input

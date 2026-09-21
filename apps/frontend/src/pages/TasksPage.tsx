@@ -214,7 +214,7 @@ export function TasksPage() {
               value={globalGoal}
               onChange={(e) => setGlobalGoal(e.target.value)}
               placeholder={t_0("tasks:newGlobalGoalPlaceholder")}
-              className="min-w-0 flex-1 rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-neutral-200"
+              className="min-w-0 flex-1 rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-neutral-200"
             />
             <button
               type="button"
@@ -281,7 +281,7 @@ export function TasksPage() {
                       ? t_0("tasks:newProjectTaskFor", { name: selectedWorkspace.name })
                       : t_0("tasks:newProjectTask")
                   }
-                  className="min-w-0 flex-1 rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-neutral-200"
+                  className="min-w-0 flex-1 rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-neutral-200"
                 />
                 <button
                   type="button"

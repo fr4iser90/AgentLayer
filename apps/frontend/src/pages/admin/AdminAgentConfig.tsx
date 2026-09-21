@@ -416,7 +416,7 @@ export function AdminAgentConfig() {
                         setModelScopeOverrideId(null);
                         setModelScopeCatalog(e.target.value);
                       }}
-                      className="mt-1 w-full rounded border border-surface-border bg-black/30 px-2 py-1.5 text-sm text-white"
+                      className="mt-1 w-full rounded border border-surface-border bg-field px-2 py-1.5 text-sm text-white"
                     >
                       <option value="">—</option>
                       {benchProviders.map((p) => (
@@ -435,7 +435,7 @@ export function AdminAgentConfig() {
                         setModelScopeModel(e.target.value);
                       }}
                       placeholder={t("admin:agentConfigModelsModelHint")}
-                      className="mt-1 w-full rounded border border-surface-border bg-black/30 px-2 py-1.5 font-mono text-sm text-white"
+                      className="mt-1 w-full rounded border border-surface-border bg-field px-2 py-1.5 font-mono text-sm text-white"
                     />
                   </label>
                   <label className="block text-sm">
@@ -443,7 +443,7 @@ export function AdminAgentConfig() {
                     <input
                       value={modelScopeLabel}
                       onChange={(e) => setModelScopeLabel(e.target.value)}
-                      className="mt-1 w-full rounded border border-surface-border bg-black/30 px-2 py-1.5 text-sm text-white"
+                      className="mt-1 w-full rounded border border-surface-border bg-field px-2 py-1.5 text-sm text-white"
                     />
                   </label>
                 </div>

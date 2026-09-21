@@ -478,7 +478,7 @@ export function SetupWizardPage() {
                     value={setupToken}
                     onChange={(ev) => setSetupToken(ev.target.value)}
                     required
-                    className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                    className="rounded-lg border border-surface-border bg-field px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                   />
                 </label>
               ) : null}
@@ -557,7 +557,7 @@ export function SetupWizardPage() {
                     value={setupToken}
                     onChange={(ev) => setSetupToken(ev.target.value)}
                     required
-                    className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                    className="rounded-lg border border-surface-border bg-field px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                   />
                   <p className="text-xs text-surface-muted">
                     {setupStatus.setup_token_source === "env"
@@ -575,7 +575,7 @@ export function SetupWizardPage() {
                   value={email}
                   onChange={(ev) => setEmail(ev.target.value)}
                   required
-                  className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                  className="rounded-lg border border-surface-border bg-field px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                 />
               </label>
               <label className="flex flex-col gap-1.5 text-sm">
@@ -588,7 +588,7 @@ export function SetupWizardPage() {
                   onChange={(ev) => setPassword(ev.target.value)}
                   required
                   minLength={8}
-                  className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                  className="rounded-lg border border-surface-border bg-field px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                 />
               </label>
               <label className="flex flex-col gap-1.5 text-sm">
@@ -601,7 +601,7 @@ export function SetupWizardPage() {
                   onChange={(ev) => setPasswordConfirm(ev.target.value)}
                   required
                   minLength={8}
-                  className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                  className="rounded-lg border border-surface-border bg-field px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                 />
               </label>
               <p className="text-xs text-surface-muted">
@@ -732,7 +732,7 @@ export function SetupWizardPage() {
                           setModelCoding(prov.chat_models[1] ?? prov.chat_models[0]);
                         }
                       }}
-                      className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                      className="rounded-lg border border-surface-border bg-field px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                     >
                       <option value="">{t("setup:selectProvider")}</option>
                       {catalog.providers.map((p) => (
@@ -754,7 +754,7 @@ export function SetupWizardPage() {
                       value={modelAgent}
                       onChange={(ev) => setModelAgent(ev.target.value)}
                       disabled={!chatModels.length}
-                      className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50"
+                      className="rounded-lg border border-surface-border bg-field px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50"
                     >
                       {chatModels.length === 0 ? (
                         <option value="">{t("setup:noChatModels")}</option>
@@ -774,7 +774,7 @@ export function SetupWizardPage() {
                       value={modelCoding}
                       onChange={(ev) => setModelCoding(ev.target.value)}
                       disabled={!chatModels.length}
-                      className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50"
+                      className="rounded-lg border border-surface-border bg-field px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50"
                     >
                       {chatModels.map((m) => (
                         <option key={`c-${m}`} value={m}>
@@ -790,7 +790,7 @@ export function SetupWizardPage() {
                       value={modelDefault}
                       onChange={(ev) => setModelDefault(ev.target.value)}
                       disabled={!chatModels.length}
-                      className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50"
+                      className="rounded-lg border border-surface-border bg-field px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50"
                     >
                       {chatModels.map((m) => (
                         <option key={`d-${m}`} value={m}>
@@ -810,7 +810,7 @@ export function SetupWizardPage() {
                         <select
                           value={ragEmbedding}
                           onChange={(ev) => setRagEmbedding(ev.target.value)}
-                          className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                          className="rounded-lg border border-surface-border bg-field px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                         >
                           <option value="">{t("setup:optionalDash")}</option>
                           {embedOptions.map((m) => (
@@ -887,7 +887,7 @@ export function SetupWizardPage() {
                     <select
                       value={preset}
                       onChange={(ev) => onPresetChange(ev.target.value as LlmPresetId)}
-                      className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                      className="rounded-lg border border-surface-border bg-field px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                     >
                       {LLM_PRESETS.map((p) => (
                         <option key={p.id} value={p.id}>
@@ -908,7 +908,7 @@ export function SetupWizardPage() {
                         setLlmTestOk(null);
                       }}
                       required
-                      className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                      className="rounded-lg border border-surface-border bg-field px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                     />
                   </label>
                   <label className="flex flex-col gap-1.5 text-sm">
@@ -925,7 +925,7 @@ export function SetupWizardPage() {
                       }}
                       autoComplete="off"
                       required={presetConfig.apiKeyRequired}
-                      className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                      className="rounded-lg border border-surface-border bg-field px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                     />
                     <p className="text-xs text-surface-muted">{t(`setup:${presetConfig.apiKeyHintKey}`)}</p>
                   </label>
@@ -936,7 +936,7 @@ export function SetupWizardPage() {
                       value={modelDefaultManual}
                       onChange={(ev) => setModelDefaultManual(ev.target.value)}
                       placeholder={t(`setup:${presetConfig.modelPlaceholderKey}`)}
-                      className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                      className="rounded-lg border border-surface-border bg-field px-3 py-2 text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                     />
                   </label>
                   {llmError ? (

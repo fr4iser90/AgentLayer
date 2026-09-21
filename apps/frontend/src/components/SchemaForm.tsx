@@ -74,7 +74,7 @@ export function SchemaForm({ properties, required = [], values, onChange }: Prop
                 <span className="text-xs text-surface-muted">{prop.description}</span>
               ) : null}
               <select
-                className="rounded-lg border border-surface-border bg-[#1a1a1a] px-3 py-2 text-sm text-neutral-100"
+                className="rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-neutral-100"
                 value={(values[key] as string) ?? ""}
                 onChange={(e) => onChange(key, e.target.value === "" ? undefined : e.target.value)}
               >
@@ -107,7 +107,7 @@ export function SchemaForm({ properties, required = [], values, onChange }: Prop
               ) : null}
               <input
                 type="number"
-                className="rounded-lg border border-surface-border bg-[#1a1a1a] px-3 py-2 text-sm text-neutral-100"
+                className="rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-neutral-100"
                 min={prop.minimum}
                 max={prop.maximum}
                 value={numVal === "" ? "" : numVal}
@@ -139,7 +139,7 @@ export function SchemaForm({ properties, required = [], values, onChange }: Prop
             ) : null}
             {multiline ? (
               <textarea
-                className="min-h-[88px] rounded-lg border border-surface-border bg-[#1a1a1a] px-3 py-2 text-sm text-neutral-100"
+                className="min-h-[88px] rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-neutral-100"
                 value={strVal}
                 placeholder={prop.default !== undefined ? String(prop.default) : undefined}
                 onChange={(e) => onChange(key, e.target.value)}
@@ -147,7 +147,7 @@ export function SchemaForm({ properties, required = [], values, onChange }: Prop
             ) : (
               <input
                 type="text"
-                className="rounded-lg border border-surface-border bg-[#1a1a1a] px-3 py-2 text-sm text-neutral-100"
+                className="rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-neutral-100"
                 value={strVal}
                 onChange={(e) => onChange(key, e.target.value)}
               />

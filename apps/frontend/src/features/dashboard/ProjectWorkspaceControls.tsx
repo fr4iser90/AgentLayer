@@ -116,7 +116,7 @@ export function ProjectWorkspaceControls({
               value={workspaceId}
               disabled={readOnly}
               onChange={(e) => linkExisting(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-surface-border bg-black/30 px-3 py-1.5 text-xs text-neutral-100 outline-none focus:border-violet-400/60 disabled:opacity-70"
+              className="mt-1 w-full rounded-lg border border-surface-border bg-field px-3 py-1.5 text-xs text-neutral-100 outline-none focus:border-violet-400/60 disabled:opacity-70"
             >
               <option value="">{t("dashboard:workspacePickerNone")}</option>
               {workspaces.map((w) => (

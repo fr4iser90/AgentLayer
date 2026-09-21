@@ -915,7 +915,7 @@ function BlockView(props: {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={searchPlaceholder}
-                className="w-56 rounded-md border border-surface-border bg-black/30 px-3 py-1.5 text-xs text-neutral-100 outline-none focus:border-sky-500/50"
+                className="w-56 rounded-md border border-surface-border bg-field px-3 py-1.5 text-xs text-neutral-100 outline-none focus:border-sky-500/50"
               />
             ) : null}
             {!structureLocked ? (

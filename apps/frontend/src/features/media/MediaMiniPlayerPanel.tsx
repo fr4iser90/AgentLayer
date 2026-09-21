@@ -223,14 +223,14 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
                   value={streamUrl}
                   onChange={(e) => setStreamUrl(e.target.value)}
                   placeholder={t("dashboard:mediaFooterStreamPlaceholder")}
-                  className="min-w-[10rem] flex-1 rounded border border-white/10 bg-black/40 px-2 py-1 font-mono text-meta text-neutral-100"
+                  className="min-w-[10rem] flex-1 rounded border border-white/10 bg-field px-2 py-1 font-mono text-meta text-neutral-100"
                 />
                 <input
                   type="text"
                   value={addTitle}
                   onChange={(e) => setAddTitle(e.target.value)}
                   placeholder={t("dashboard:mediaFooterTitlePlaceholder")}
-                  className="w-28 rounded border border-white/10 bg-black/40 px-2 py-1 text-meta text-neutral-100"
+                  className="w-28 rounded border border-white/10 bg-field px-2 py-1 text-meta text-neutral-100"
                 />
                 <button
                   type="button"
@@ -247,7 +247,7 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
                   value={embedUrl}
                   onChange={(e) => setEmbedUrl(e.target.value)}
                   placeholder={t("dashboard:embedUrlPlaceholder")}
-                  className="min-w-[10rem] flex-1 rounded border border-white/10 bg-black/40 px-2 py-1 font-mono text-meta text-neutral-100"
+                  className="min-w-[10rem] flex-1 rounded border border-white/10 bg-field px-2 py-1 font-mono text-meta text-neutral-100"
                 />
                 <button
                   type="button"

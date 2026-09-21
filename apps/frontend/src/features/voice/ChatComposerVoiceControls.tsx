@@ -79,7 +79,7 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
       >
         <input
           type="checkbox"
-          className="rounded border-surface-border bg-[#1a1a1a] text-sky-500"
+          className="rounded border-surface-border bg-field text-sky-500"
           checked={voiceStatus.prefs.output_enabled}
           disabled={!ttsOk || saving}
           onChange={(e) => void patchPrefs({ output_enabled: e.target.checked })}
@@ -97,7 +97,7 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
       >
         <input
           type="checkbox"
-          className="rounded border-surface-border bg-[#1a1a1a] text-sky-500"
+          className="rounded border-surface-border bg-field text-sky-500"
           checked={voiceStatus.prefs.input_enabled}
           disabled={!sttOk || saving}
           onChange={(e) => void patchPrefs({ input_enabled: e.target.checked })}
@@ -114,7 +114,7 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
         <label className="block text-meta text-surface-muted">
           {t("chat:voiceComposerMicMode")}
           <select
-            className="mt-1 w-full rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100"
+            className="mt-1 w-full rounded-lg border border-surface-border bg-field px-2.5 py-1.5 text-sm text-neutral-100"
             value={
               voiceStatus.prefs.mode_web === "toggle" ? "toggle" : "push_to_talk"
             }

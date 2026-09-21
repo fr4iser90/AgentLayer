@@ -176,7 +176,7 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
           <select
             value={cohortFilter}
             onChange={(e) => setCohortFilter(e.target.value)}
-            className="mt-1 block min-w-[160px] rounded border border-white/10 bg-black/40 px-2 py-1.5 text-sm text-white"
+            className="mt-1 block min-w-[160px] rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-white"
           >
             <option value="">{t("admin:agentConfigAnalysisAllCohorts")}</option>
             {cohorts.map((c) => (
@@ -202,7 +202,7 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
           <select
             value={compareA}
             onChange={(e) => setCompareA(e.target.value)}
-            className="rounded border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white"
+            className="rounded border border-white/10 bg-field px-2 py-1.5 text-xs text-white"
           >
             <option value="">{t("admin:agentConfigAnalysisCohortA")}</option>
             {cohorts.map((c) => (
@@ -215,7 +215,7 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
           <select
             value={compareB}
             onChange={(e) => setCompareB(e.target.value)}
-            className="rounded border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white"
+            className="rounded border border-white/10 bg-field px-2 py-1.5 text-xs text-white"
           >
             <option value="">{t("admin:agentConfigAnalysisCohortB")}</option>
             {cohorts.map((c) => (

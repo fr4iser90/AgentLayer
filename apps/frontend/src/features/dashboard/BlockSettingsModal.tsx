@@ -261,7 +261,7 @@ export function BlockSettingsModal({
       onClick={onClose}
     >
       <aside
-        className="flex h-full w-full max-w-md flex-col border-l border-surface-border bg-[#111] shadow-2xl sm:max-w-lg"
+        className="flex h-full w-full max-w-md flex-col border-l border-surface-border bg-panel shadow-2xl sm:max-w-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="shrink-0 border-b border-surface-border px-4 py-3">

@@ -345,7 +345,7 @@ export function ToolsSettings() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("settings:toolsSearchPlaceholder")}
-              className="mt-1 w-full rounded-lg border border-surface-border bg-black/40 px-3 py-2 text-sm text-white placeholder:text-neutral-600"
+              className="mt-1 w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-white placeholder:text-neutral-600"
             />
           </label>
           <div
