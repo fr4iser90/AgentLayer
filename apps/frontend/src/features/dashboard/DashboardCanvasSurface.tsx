@@ -534,7 +534,7 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
                 key={b.id}
                 data-block-id={b.id}
                 className={[
-                  "absolute cursor-auto overflow-hidden rounded-xl border bg-surface-raised/95 shadow-sm",
+                  "absolute cursor-auto overflow-hidden rounded-xl border bg-card shadow-sm",
                   dragging ? "select-none" : "",
                   isSelected && editMode
                     ? "border-sky-500/60 ring-1 ring-sky-500/30"
@@ -561,7 +561,7 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
                   {showBlockToolbar || editMode ? (
                     <div
                       className={[
-                        "flex shrink-0 select-none items-center gap-2 border-b border-white/5 bg-surface-raised/95 px-2 py-1",
+                        "flex shrink-0 select-none items-center gap-2 border-b border-white/5 bg-card px-2 py-1",
                         editMode
                           ? "cursor-grab active:cursor-grabbing"
                           : "",

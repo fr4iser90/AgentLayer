@@ -864,7 +864,7 @@ export function AdminUsers() {
       </section>
 
       {showTenantUi && (
-        <section className="mt-10 rounded-xl border border-surface-border bg-surface-raised p-5">
+        <section className="mt-10 rounded-xl border border-surface-border bg-card p-5">
           <h2 className="text-sm font-medium text-white">{t("admin:usersCreateTenant")}</h2>
         <p className="mt-1 text-xs text-surface-muted">{t("admin:usersCreateTenantApi")}</p>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
@@ -923,7 +923,7 @@ export function AdminUsers() {
       </section>
       )}
 
-      <section className="mt-10 rounded-xl border border-surface-border bg-surface-raised p-5">
+      <section className="mt-10 rounded-xl border border-surface-border bg-card p-5">
         <h2 className="text-sm font-medium text-white">{t("admin:usersCreateUser")}</h2>
         <p className="mt-1 text-xs text-surface-muted">{t("admin:usersCreateUserApi")}</p>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">

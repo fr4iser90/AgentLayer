@@ -170,7 +170,7 @@ export function ProjectsPage() {
       ) : null}
 
       <div className="grid min-h-0 flex-1 gap-4 md:grid-cols-[minmax(14rem,20rem)_1fr]">
-        <section className="flex min-h-0 flex-col rounded-xl border border-surface-border bg-surface-raised/40">
+        <section className="flex min-h-0 flex-col rounded-xl border border-surface-border bg-card">
           <div className="flex items-center justify-between gap-2 border-b border-surface-border px-3 py-2">
             {hasOrgSurface(auth.user) ? (
               <div
@@ -259,7 +259,7 @@ export function ProjectsPage() {
           </div>
         </section>
 
-        <section className="flex min-h-0 flex-col rounded-xl border border-surface-border bg-surface-raised/40">
+        <section className="flex min-h-0 flex-col rounded-xl border border-surface-border bg-card">
           {!selected ? (
             <p className="p-4 text-sm text-surface-muted">{t("workspace:selectProjectBrowseFiles")}</p>
           ) : (

@@ -473,7 +473,7 @@ export function MySchedulesPage() {
 
       {createOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-2xl rounded-xl border border-surface-border bg-surface-raised p-4">
+          <div className="w-full max-w-2xl rounded-xl border border-surface-border bg-card p-4">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
                 <div className="text-lg font-semibold text-white">{t("admin:createScheduleTitle")}</div>
@@ -639,7 +639,7 @@ export function MySchedulesPage() {
 
       {editJob ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-2xl rounded-xl border border-surface-border bg-surface-raised p-4">
+          <div className="w-full max-w-2xl rounded-xl border border-surface-border bg-card p-4">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
                 <div className="text-lg font-semibold text-white">{t("settings:schedulesEditTitle")}</div>
@@ -705,7 +705,7 @@ export function MySchedulesPage() {
 
       {runsJob ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-xl border border-surface-border bg-surface-raised p-4">
+          <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-xl border border-surface-border bg-card p-4">
             <div className="mb-3 flex shrink-0 items-start justify-between gap-3">
               <div>
                 <div className="text-lg font-semibold text-white">{t("settings:schedulesRunHistoryTitle")}</div>
@@ -731,7 +731,7 @@ export function MySchedulesPage() {
             <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-2">
               <div className="min-h-0 overflow-auto rounded-lg border border-surface-border">
                 <table className="min-w-full text-left text-xs">
-                  <thead className="sticky top-0 bg-surface-raised text-surface-muted">
+                  <thead className="sticky top-0 bg-raised text-surface-muted">
                     <tr>
                       <th className="px-2 py-2">{t("settings:schedulesRunColStatus")}</th>
                       <th className="px-2 py-2">{t("settings:schedulesRunColStarted")}</th>

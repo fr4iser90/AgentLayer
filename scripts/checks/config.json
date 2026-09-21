@@ -1,11 +1,11 @@
 {
   "profiles": {
-    "fast": ["ddd_layers", "ddd_quality", "agent_governance", "tenant_scope", "frontend_i18n", "frontend_type_scale", "frontend_field_surface"],
-    "precommit": ["ddd_layers", "ddd_quality", "agent_governance", "tenant_scope", "backend_unit", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "node_cve_full", "python_cve"],
+    "fast": ["ddd_layers", "ddd_quality", "agent_governance", "tenant_scope", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "frontend_surface_ladder"],
+    "precommit": ["ddd_layers", "ddd_quality", "agent_governance", "tenant_scope", "backend_unit", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "frontend_surface_ladder", "node_cve_full", "python_cve"],
     "security": ["node_cve_full", "python_cve", "tenant_scope_all"],
     "architecture": ["ddd_layers_report", "ddd_quality", "agent_governance", "tenant_scope_all"],
-    "quality": ["agent_governance", "backend_unit", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "bandit"],
-    "ci": ["ddd_layers_all", "ddd_quality", "agent_governance", "tenant_scope", "backend_unit", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "node_cve_full", "python_cve", "bandit"]
+    "quality": ["agent_governance", "backend_unit", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "frontend_surface_ladder", "bandit"],
+    "ci": ["ddd_layers_all", "ddd_quality", "agent_governance", "tenant_scope", "backend_unit", "frontend_i18n", "frontend_type_scale", "frontend_field_surface", "frontend_surface_ladder", "node_cve_full", "python_cve", "bandit"]
   },
   "checks": {
     "tenant_scope": {
@@ -497,6 +497,13 @@
       "cwd": "apps/frontend",
       "required_tool": "node",
       "nix_shell_command": "cd apps/frontend && node scripts/check-field-surface.mjs"
+    },
+    "frontend_surface_ladder": {
+      "module": "command_check",
+      "command": ["node", "scripts/check-surface-ladder.mjs"],
+      "cwd": "apps/frontend",
+      "required_tool": "node",
+      "nix_shell_command": "cd apps/frontend && node scripts/check-surface-ladder.mjs"
     },
     "node_cve": {
       "module": "command_check",

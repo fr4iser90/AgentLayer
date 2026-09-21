@@ -77,7 +77,7 @@ export function EmbedBlockBody(props: {
   const title = st.title.trim() || sectionTitle;
 
   return (
-    <section className="rounded-xl border border-surface-border bg-surface-raised/60 p-3 md:p-4">
+    <section className="rounded-xl border border-surface-border bg-card p-3 md:p-4">
       <h3 className="mb-2 text-sm font-medium text-white">{title}</h3>
       {!readOnly ? (
         <div className="dashboard-grid-no-drag mb-3 space-y-2">

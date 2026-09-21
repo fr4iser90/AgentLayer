@@ -80,7 +80,7 @@ export function OrgTeamPage() {
       <h1 className="text-xl font-semibold text-white">{t("org:teamPageTitle")}</h1>
       <p className="mt-2 text-sm text-surface-muted">{t("org:teamPageIntro")}</p>
 
-      <section className="mt-8 rounded-xl border border-surface-border bg-surface-raised p-5">
+      <section className="mt-8 rounded-xl border border-surface-border bg-card p-5">
         <h2 className="text-sm font-medium text-white">{t("org:teamDepartments")}</h2>
         <ul className="mt-3 space-y-1 text-sm text-neutral-300">
           {departments.map((d) => (
@@ -91,7 +91,7 @@ export function OrgTeamPage() {
         </ul>
       </section>
 
-      <section className="mt-6 rounded-xl border border-surface-border bg-surface-raised p-5">
+      <section className="mt-6 rounded-xl border border-surface-border bg-card p-5">
         <h2 className="text-sm font-medium text-white">{t("org:teamProfessionRoles")}</h2>
         <ul className="mt-3 space-y-1 text-sm text-neutral-300">
           {roles.map((r) => (
@@ -103,7 +103,7 @@ export function OrgTeamPage() {
         </ul>
       </section>
 
-      <section className="mt-6 rounded-xl border border-surface-border bg-surface-raised p-5">
+      <section className="mt-6 rounded-xl border border-surface-border bg-card p-5">
         <h2 className="text-sm font-medium text-white">{t("org:teamAssignments")}</h2>
         <ul className="mt-3 space-y-2 text-sm text-neutral-300">
           {assignments.map((a) => (
@@ -155,7 +155,7 @@ export function OrgTeamPage() {
         </button>
       </section>
 
-      <section className="mt-6 rounded-xl border border-surface-border bg-surface-raised p-5">
+      <section className="mt-6 rounded-xl border border-surface-border bg-card p-5">
         <h2 className="text-sm font-medium text-white">{t("org:teamPolicyPreview")}</h2>
         <pre className="mt-3 overflow-x-auto rounded bg-black/30 p-3 text-xs text-neutral-300">
           {policyPreview}

@@ -169,7 +169,7 @@ export function ChartBlockBody(props: {
     );
 
   return (
-    <section className="rounded-xl border border-surface-border bg-surface-raised/60 p-4">
+    <section className="rounded-xl border border-surface-border bg-card p-4">
       {displayMode === "grid" ? (
         <h3 className="mb-3 text-sm font-medium text-white">{sectionTitle}</h3>
       ) : null}
@@ -367,7 +367,7 @@ export function SparklineBlockBody(props: {
   };
 
   return (
-    <section className="rounded-xl border border-surface-border bg-surface-raised/60 p-3">
+    <section className="rounded-xl border border-surface-border bg-card p-3">
       <p className="text-meta font-medium uppercase tracking-wide text-surface-muted">{sectionTitle}</p>
       <div className="mt-2 h-16 w-full">
         <Line data={chartData} options={options} />

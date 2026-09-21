@@ -310,7 +310,7 @@ export function ConnectionsSettings() {
 
       {loading ? <p className="text-sm text-surface-muted">{t("settings:agentLoading")}</p> : null}
 
-      <section className="rounded-xl border border-surface-border bg-surface-raised p-5">
+      <section className="rounded-xl border border-surface-border bg-card p-5">
         <h2 className="text-sm font-medium text-white">{t("admin:discord")}</h2>
         <p className="mt-2 text-xs text-surface-muted">{t("settings:connectionsDiscordIntro")}</p>
         <label className="mt-4 block text-xs text-surface-muted" htmlFor="discord-user-id">
@@ -369,7 +369,7 @@ export function ConnectionsSettings() {
         </div>
       </section>
 
-      <section className="rounded-xl border border-surface-border bg-surface-raised p-5">
+      <section className="rounded-xl border border-surface-border bg-card p-5">
         <h2 className="text-sm font-medium text-white">{t("admin:telegram")}</h2>
         <p className="mt-2 text-xs text-surface-muted">{t("settings:connectionsTelegramIntro")}</p>
         <label className="mt-4 block text-xs text-surface-muted" htmlFor="telegram-user-id">
@@ -445,7 +445,7 @@ export function ConnectionsSettings() {
         </p>
       ) : null}
 
-      <section className="rounded-xl border border-surface-border bg-surface-raised">
+      <section className="rounded-xl border border-surface-border bg-card">
         <div className="border-b border-surface-border px-4 py-3">
           <h2 className="text-sm font-medium text-white">{t("settings:connectionsCatalogTitle")}</h2>
           <p className="mt-0.5 text-xs text-surface-muted">{t("settings:connectionsCatalogHint")}</p>

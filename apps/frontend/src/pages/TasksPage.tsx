@@ -45,7 +45,7 @@ function TaskList({
             "rounded-lg border px-3 py-2.5",
             activeTaskId === task.id
               ? "border-indigo-500/50 bg-indigo-950/30"
-              : "border-surface-border bg-surface-raised/50",
+              : "border-surface-border bg-card",
           ].join(" ")}
         >
           <div className="flex flex-wrap items-start justify-between gap-2">

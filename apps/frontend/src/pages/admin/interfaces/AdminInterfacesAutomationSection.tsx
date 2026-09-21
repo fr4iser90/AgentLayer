@@ -9,7 +9,7 @@ export function AdminInterfacesAutomationSection() {
   }
   return (
     <>
-      <section className="mt-8 rounded-xl border border-surface-border bg-surface-raised p-5">
+      <section className="mt-8 rounded-xl border border-surface-border bg-card p-5">
         <h2 className="text-sm font-medium text-white">{t("admin:ifAutoSchedulerTitle")}</h2>
         <p className="mt-2 text-xs text-surface-muted">{t("admin:ifAutoSchedulerIntro")}</p>
         <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-white">

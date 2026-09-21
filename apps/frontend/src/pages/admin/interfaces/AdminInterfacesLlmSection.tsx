@@ -736,7 +736,7 @@ export function AdminInterfacesLlmSection({
   return (
     <>
           {showProviders ? (
-          <section className="rounded-xl border border-surface-border bg-surface-raised p-5">
+          <section className="rounded-xl border border-surface-border bg-card p-5">
             <h2 className="text-sm font-medium text-white">{t("admin:ifLlmEndpointsTitle")}</h2>
             <p className="mt-2 text-xs text-surface-muted">{t("admin:ifLlmEndpointsIntro")}</p>
             <div className="mt-4 rounded-lg border border-sky-400/25 bg-sky-500/10 p-4">
@@ -1030,7 +1030,7 @@ export function AdminInterfacesLlmSection({
           ) : null}
 
           {showPolicies ? (
-          <section className="mt-6 rounded-xl border border-surface-border bg-surface-raised p-5">
+          <section className="mt-6 rounded-xl border border-surface-border bg-card p-5">
             <h2 className="text-sm font-medium text-white">{t("admin:ifLlmChatVisibilityTitle")}</h2>
             <p className="mt-2 text-xs text-surface-muted">{t("admin:ifLlmChatVisibilityIntro")}</p>
             <div className="mt-4 rounded-lg border border-white/10 bg-black/15 p-3">
@@ -1315,7 +1315,7 @@ export function AdminInterfacesLlmSection({
 
           {showRouting ? (
           <>
-          <section className="mt-6 rounded-xl border border-surface-border bg-surface-raised p-5">
+          <section className="mt-6 rounded-xl border border-surface-border bg-card p-5">
             <h2 className="text-sm font-medium text-white">{t("admin:ifLlmSmartRoutingTitle")}</h2>
             <p className="mt-2 text-xs text-surface-muted">{t("admin:ifLlmSmartRoutingIntro")}</p>
             <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-white">
@@ -1447,7 +1447,7 @@ export function AdminInterfacesLlmSection({
             </div>
           </section>
 
-          <section className="rounded-xl border border-surface-border bg-surface-raised p-5">
+          <section className="rounded-xl border border-surface-border bg-card p-5">
             <h2 className="text-sm font-medium text-white">{t("admin:ifLlmQueueTitle")}</h2>
             <p className="mt-2 text-xs text-surface-muted">{t("admin:ifLlmQueueIntro")}</p>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">

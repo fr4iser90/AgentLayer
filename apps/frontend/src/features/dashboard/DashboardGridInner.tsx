@@ -320,7 +320,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                 key={b.id}
                 data-block-id={b.id}
                 className={[
-                  "relative overflow-hidden rounded-xl border bg-surface-raised/90 shadow-sm transition-colors",
+                  "relative overflow-hidden rounded-xl border bg-card shadow-sm transition-colors",
                   isSelected && editMode
                     ? "border-sky-500/60 ring-1 ring-sky-500/30"
                     : isHighlighted
@@ -337,7 +337,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                 {hasUnread ? <AgentUpdateBadge title={badgeTitle} pulse={isHighlighted} /> : null}
                 <div className={blockShellClassForBlock(b)}>
                   {showBlockToolbar || editMode ? (
-                    <div className="dashboard-grid-drag-handle sticky top-0 z-10 flex cursor-grab items-center gap-2 border-b border-white/5 bg-surface-raised/95 px-2 py-1 active:cursor-grabbing">
+                    <div className="dashboard-grid-drag-handle sticky top-0 z-10 flex cursor-grab items-center gap-2 border-b border-white/5 bg-card px-2 py-1 active:cursor-grabbing">
                       <span className="min-w-0 flex-1 truncate text-meta font-medium uppercase tracking-wide text-surface-muted">
                         {blockTitle(b)}
                       </span>

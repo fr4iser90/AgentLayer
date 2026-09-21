@@ -76,7 +76,7 @@ export function AdminInterfacesMemorySection() {
 
   return (
     <>
-      <section className="rounded-xl border border-surface-border bg-surface-raised p-5">
+      <section className="rounded-xl border border-surface-border bg-card p-5">
         <h2 className="text-sm font-medium text-white">{t("admin:ifMemEmbedTitle")}</h2>
         <p className="mt-2 text-xs text-surface-muted">{t("admin:ifMemEmbedIntro")}</p>
         {pendingEmbeddingEnvProviders.length > 0 ? (
@@ -481,7 +481,7 @@ export function AdminInterfacesMemorySection() {
         ) : null}
       </section>
 
-      <section className="mt-6 rounded-xl border border-surface-border bg-surface-raised p-5">
+      <section className="mt-6 rounded-xl border border-surface-border bg-card p-5">
         <h2 className="text-sm font-medium text-white">{t("admin:memoryRagTitle")}</h2>
         <p className="mt-2 text-xs text-surface-muted">{t("admin:ifMemMemoryRagIntro")}</p>
         <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-white">
@@ -599,7 +599,7 @@ export function AdminInterfacesMemorySection() {
         />
       </section>
 
-      <section className="mt-6 rounded-xl border border-surface-border bg-surface-raised p-5">
+      <section className="mt-6 rounded-xl border border-surface-border bg-card p-5">
         <h2 className="text-sm font-medium text-white">{t("admin:ifMemGraphTitle")}</h2>
         <p className="mt-2 text-xs text-surface-muted">{t("admin:ifMemGraphIntro")}</p>
         <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-white">

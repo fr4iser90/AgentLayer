@@ -212,7 +212,7 @@ export function AdminAgentSubmissions() {
                   className={`w-full rounded-xl border px-3 py-3 text-left transition-colors ${
                     selectedId === s.id
                       ? "border-sky-500/40 bg-sky-950/20"
-                      : "border-surface-border bg-surface-raised/60 hover:border-white/15"
+                      : "border-surface-border bg-card hover:border-white/15"
                   }`}
                 >
                   <div className="flex items-center gap-2">
@@ -237,7 +237,7 @@ export function AdminAgentSubmissions() {
           </ul>
 
           {selected ? (
-            <div className="rounded-xl border border-surface-border bg-surface-raised/50 p-4">
+            <div className="rounded-xl border border-surface-border bg-card p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-semibold text-white">

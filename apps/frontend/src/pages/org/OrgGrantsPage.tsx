@@ -146,7 +146,7 @@ export function OrgGrantsPage() {
       <h1 className="text-2xl font-semibold text-white">{t("org:grantsTitle")}</h1>
       <p className="mt-2 max-w-3xl text-sm text-surface-muted">{t("org:grantsIntro")}</p>
 
-      <div className="mt-4 rounded-lg border border-surface-border bg-surface-raised/50 px-4 py-3 text-xs text-surface-muted">
+      <div className="mt-4 rounded-lg border border-surface-border bg-card px-4 py-3 text-xs text-surface-muted">
         {t("org:grantsImplicitAdmins")}
       </div>
 

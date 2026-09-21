@@ -369,7 +369,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,14rem)_1fr]">
-      <aside className="rounded-xl border border-surface-border bg-surface-raised p-3">
+      <aside className="rounded-xl border border-surface-border bg-card p-3">
         <div className="flex items-center justify-between gap-2">
           <p className="text-xs font-medium uppercase tracking-wide text-surface-muted">
             {t("org:cmsNotes")}
@@ -432,7 +432,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
         </ul>
       </aside>
 
-      <form onSubmit={(e) => void saveDraft(e)} className="rounded-xl border border-surface-border bg-surface-raised p-5">
+      <form onSubmit={(e) => void saveDraft(e)} className="rounded-xl border border-surface-border bg-card p-5">
         <h2 className="text-sm font-medium text-white">
           {selectedId ? t("org:cmsEditNote") : t("org:cmsNewNote")}
         </h2>

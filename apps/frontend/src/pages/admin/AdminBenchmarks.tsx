@@ -1814,7 +1814,7 @@ export function AdminBenchmarks() {
 
       {tab === "run" && !loading ? (
         <div className="min-h-0 flex-1 overflow-y-auto space-y-4">
-          <section className="rounded-xl border border-surface-border bg-surface-raised/40 p-4">
+          <section className="rounded-xl border border-surface-border bg-card p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="text-sm font-medium text-white">{t("admin:benchRunModeTitle")}</h2>
@@ -1847,7 +1847,7 @@ export function AdminBenchmarks() {
             </div>
           </section>
 
-          <section className="rounded-xl border border-surface-border bg-surface-raised/40 p-4">
+          <section className="rounded-xl border border-surface-border bg-card p-4">
             <h2 className="text-sm font-medium text-white">{t("admin:benchRunIdentity")}</h2>
             <p className="mt-1 text-xs text-surface-muted">{t("admin:benchRunIdentityDesc")}</p>
             <label className="mt-3 block text-xs text-surface-muted">{t("admin:benchRunAs")}</label>
@@ -1990,7 +1990,7 @@ export function AdminBenchmarks() {
             </div>
           </section>
 
-          <section className="rounded-xl border border-surface-border bg-surface-raised/40 p-4">
+          <section className="rounded-xl border border-surface-border bg-card p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h2 className="text-sm font-medium text-white">{t("admin:benchProfiles")}</h2>
@@ -2506,7 +2506,7 @@ export function AdminBenchmarks() {
 
           {runMode === "manual" ? (
           <>
-          <section className="rounded-xl border border-surface-border bg-surface-raised/40 p-4">
+          <section className="rounded-xl border border-surface-border bg-card p-4">
             <label className="block text-xs text-surface-muted">{t("admin:benchSuite")}</label>
             <select
               value={suite}
@@ -2524,7 +2524,7 @@ export function AdminBenchmarks() {
             ) : null}
           </section>
 
-          <section className="rounded-xl border border-surface-border bg-surface-raised/40 p-4">
+          <section className="rounded-xl border border-surface-border bg-card p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h2 className="text-sm font-medium text-white">{t("admin:benchScenarios")}</h2>
@@ -2634,7 +2634,7 @@ export function AdminBenchmarks() {
             </div>
           </section>
 
-          <details className="rounded-xl border border-surface-border bg-surface-raised/40 p-4">
+          <details className="rounded-xl border border-surface-border bg-card p-4">
             <summary className="cursor-pointer text-sm font-medium text-white">
               {t("admin:benchAdvancedOptions")}
               <span className="ml-2 text-xs font-normal text-surface-muted">
@@ -2650,7 +2650,7 @@ export function AdminBenchmarks() {
             onChange={setRunOverrides}
           />
 
-          <section className="rounded-xl border border-surface-border bg-surface-raised/40 p-4 space-y-3">
+          <section className="rounded-xl border border-surface-border bg-raised p-4 space-y-3">
             <div>
               <h3 className="text-xs font-medium uppercase text-surface-muted">
                 {t("admin:benchRunOptionsTitle")}
@@ -2820,7 +2820,7 @@ export function AdminBenchmarks() {
 
       {tab === "history" ? (
         <div className="flex min-h-0 flex-1 gap-4 overflow-hidden">
-          <div className="flex w-80 shrink-0 flex-col overflow-hidden rounded-xl border border-surface-border bg-surface-raised/40">
+          <div className="flex w-80 shrink-0 flex-col overflow-hidden rounded-xl border border-surface-border bg-card">
             <div className="flex items-center justify-between gap-2 border-b border-white/5 px-3 py-2">
               <span className="text-xs font-medium uppercase text-surface-muted">
                 {t("admin:benchHistory")}
@@ -2921,7 +2921,7 @@ export function AdminBenchmarks() {
               )}
             </div>
           </div>
-          <div className="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-xl border border-surface-border bg-surface-raised/40 p-4">
+          <div className="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-xl border border-surface-border bg-card p-4">
             {!detail ? (
               <p className="text-sm text-surface-muted">{t("admin:benchSelectRun")}</p>
             ) : (

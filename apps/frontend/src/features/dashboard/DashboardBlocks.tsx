@@ -218,7 +218,7 @@ function HeroBlockBody(props: {
 
   if (readOnly) {
     return (
-      <section className="rounded-xl border border-surface-border bg-surface-raised/60 p-3 md:p-4">
+      <section className="rounded-xl border border-surface-border bg-card p-3 md:p-4">
         <h3 className="mb-3 text-xs font-medium uppercase tracking-wide text-surface-muted">
           {sectionTitle}
         </h3>
@@ -231,7 +231,7 @@ function HeroBlockBody(props: {
   }
 
   return (
-    <section className="rounded-xl border border-surface-border bg-surface-raised/60 p-3 md:p-4">
+    <section className="rounded-xl border border-surface-border bg-card p-3 md:p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-medium text-white">{sectionTitle}</h3>
         <label className="dashboard-grid-no-drag cursor-pointer rounded-md bg-violet-600/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-500">
@@ -480,7 +480,7 @@ function TimelineBlockBody(props: {
   };
 
   return (
-    <section className="rounded-xl border border-surface-border bg-surface-raised/60 p-4">
+    <section className="rounded-xl border border-surface-border bg-card p-4">
       <div className="mb-4 flex items-center justify-between gap-2">
         <h3 className="text-sm font-medium text-white">{sectionTitle}</h3>
         {!readOnly ? (
@@ -741,7 +741,7 @@ function BlockView(props: {
     const raw = getPath(data, dp);
     const text = typeof raw === "string" ? raw : "";
     return (
-      <section className="rounded-xl border border-surface-border bg-surface-raised/60 p-4">
+      <section className="rounded-xl border border-surface-border bg-card p-4">
         <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-surface-muted">
           {block.props.placeholder || dp || "Text"}
         </label>
@@ -904,7 +904,7 @@ function BlockView(props: {
     };
 
     return (
-      <section className="rounded-xl border border-surface-border bg-surface-raised/60 p-4">
+      <section className="rounded-xl border border-surface-border bg-card p-4">
         <div className="mb-3 flex items-center justify-between gap-2">
           <span className="text-xs font-medium uppercase tracking-wide text-surface-muted">
             {t("dashboard:tableTitle", { path: dp })}
@@ -1143,7 +1143,7 @@ function BlockView(props: {
     };
 
     return (
-      <section className="rounded-xl border border-surface-border bg-surface-raised/60 p-4">
+      <section className="rounded-xl border border-surface-border bg-card p-4">
         <div className="mb-3 flex items-center justify-between gap-2">
           <span className="text-xs font-medium uppercase tracking-wide text-surface-muted">
             {t("admin:schedulesTitle")}

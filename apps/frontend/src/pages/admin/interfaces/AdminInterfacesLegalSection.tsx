@@ -12,7 +12,7 @@ export function AdminInterfacesLegalSection() {
     s.legalEnabled && s.legalJurisdiction !== "none";
 
   return (
-    <section className="mt-8 rounded-xl border border-surface-border bg-surface-raised p-5">
+    <section className="mt-8 rounded-xl border border-surface-border bg-card p-5">
       <h2 className="text-sm font-medium text-white">{t("admin:ifPlatformLegalTitle")}</h2>
       <p className="mt-2 text-xs text-surface-muted">{t("admin:ifPlatformLegalIntro")}</p>
       <p className="mt-2 text-xs text-surface-muted">{t("admin:ifPlatformLegalAvvHint")}</p>

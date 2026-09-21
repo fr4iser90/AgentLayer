@@ -259,7 +259,7 @@ export function BenchmarkStatsPanel({
 
   return (
     <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
-      <section className="rounded-xl border border-surface-border bg-surface-raised/40 p-4">
+      <section className="rounded-xl border border-surface-border bg-card p-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-sm font-medium text-white">{t("admin:benchStatsTitle")}</h2>
@@ -378,7 +378,7 @@ export function BenchmarkStatsPanel({
         {error ? <p className="mt-2 text-sm text-red-400">{error}</p> : null}
       </section>
 
-      <section className="rounded-xl border border-surface-border bg-surface-raised/40 p-4">
+      <section className="rounded-xl border border-surface-border bg-card p-4">
         <h2 className="text-sm font-medium text-white">{t("admin:benchStatsInsightsTitle")}</h2>
         <p className="mt-1 text-xs text-surface-muted">{t("admin:benchStatsInsightsHint")}</p>
         <div className="mt-4">
@@ -390,7 +390,7 @@ export function BenchmarkStatsPanel({
         </div>
       </section>
 
-      <section className="rounded-xl border border-surface-border bg-surface-raised/40 p-4">
+      <section className="rounded-xl border border-surface-border bg-card p-4">
         <h2 className="text-sm font-medium text-white">{t("admin:benchStatsLeaderboard")}</h2>
         <p className="mt-1 text-xs text-surface-muted">{t("admin:benchStatsLeaderboardHint")}</p>
         <div className="mt-3">
@@ -402,7 +402,7 @@ export function BenchmarkStatsPanel({
         </div>
       </section>
 
-      <section className="rounded-xl border border-surface-border bg-surface-raised/40 p-4">
+      <section className="rounded-xl border border-surface-border bg-card p-4">
         <h2 className="text-sm font-medium text-white">{t("admin:benchStatsByScenario")}</h2>
         <p className="mt-1 text-xs text-surface-muted">{t("admin:benchStatsByScenarioHint")}</p>
         <div className="mt-3 space-y-3">

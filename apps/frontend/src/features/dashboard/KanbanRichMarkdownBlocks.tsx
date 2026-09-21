@@ -123,7 +123,7 @@ export function KanbanBlockBody(props: {
   };
 
   return (
-    <section className="rounded-xl border border-surface-border bg-surface-raised/60 p-3 md:p-4">
+    <section className="rounded-xl border border-surface-border bg-card p-3 md:p-4">
       {displayMode === "grid" ? (
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-medium text-white">{sectionTitle}</h3>
@@ -187,7 +187,7 @@ export function KanbanBlockBody(props: {
               {col.cards.map((card) => (
                 <div
                   key={card.id}
-                  className="rounded-md border border-white/5 bg-surface-raised/80 p-2 shadow-sm"
+                  className="rounded-md border border-white/5 bg-raised p-2 shadow-sm"
                 >
                   {readOnly ? (
                     <p className="text-sm text-neutral-200">{card.title || t("dashboard:kanbanCardTitleEmpty")}</p>
@@ -323,7 +323,7 @@ export function RichMarkdownBlockBody(props: {
 
   if (readOnly) {
     return (
-      <section className="rounded-xl border border-surface-border bg-surface-raised/60 p-4">
+      <section className="rounded-xl border border-surface-border bg-card p-4">
         <h3 className="mb-3 text-sm font-medium text-white">{sectionTitle}</h3>
         {preview}
       </section>
@@ -331,7 +331,7 @@ export function RichMarkdownBlockBody(props: {
   }
 
   return (
-    <section className="rounded-xl border border-surface-border bg-surface-raised/60 p-4">
+    <section className="rounded-xl border border-surface-border bg-card p-4">
       <h3 className="mb-3 text-sm font-medium text-white">{sectionTitle}</h3>
       <div className="grid gap-3 lg:grid-cols-2">
         <div>

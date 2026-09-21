@@ -273,7 +273,7 @@ export function FriendsSettings() {
         <div className="space-y-6">
           {/* Incoming Requests */}
           {incomingRequests.length > 0 && (
-            <div className="rounded-xl border border-surface-border bg-surface-raised overflow-hidden">
+            <div className="rounded-xl border border-surface-border bg-card overflow-hidden">
               <div className="p-4 border-b border-surface-border">
                 <h3 className="font-medium text-amber-300">{t("settings:friendsIncomingTitle")}</h3>
               </div>
@@ -308,7 +308,7 @@ export function FriendsSettings() {
 
           {/* Outgoing Requests */}
           {outgoingRequests.length > 0 && (
-            <div className="rounded-xl border border-surface-border bg-surface-raised overflow-hidden">
+            <div className="rounded-xl border border-surface-border bg-card overflow-hidden">
               <div className="p-4 border-b border-surface-border">
                 <h3 className="font-medium text-sky-300">{t("settings:friendsOutgoingTitle")}</h3>
               </div>
@@ -325,7 +325,7 @@ export function FriendsSettings() {
 
           {/* Send Request Button */}
           {showSendRequestForm ? (
-            <div className="rounded-xl border border-surface-border bg-surface-raised p-5 space-y-4">
+            <div className="rounded-xl border border-surface-border bg-card p-5 space-y-4">
               <h3 className="font-medium text-white">{t("settings:friendsSendRequestTitle")}</h3>
               <div className="space-y-3">
                 <input
@@ -373,7 +373,7 @@ export function FriendsSettings() {
 
           {/* Confirmed Friends */}
           {confirmedFriends.length > 0 && (
-            <div className="rounded-xl border border-surface-border bg-surface-raised overflow-hidden">
+            <div className="rounded-xl border border-surface-border bg-card overflow-hidden">
               <div className="p-4 border-b border-surface-border">
                 <h3 className="font-medium text-emerald-300">✅ {t("settings:friendsConfirmedTitle")}</h3>
               </div>
@@ -414,7 +414,7 @@ export function FriendsSettings() {
           )}
 
           {confirmedFriends.length === 0 && incomingRequests.length === 0 && outgoingRequests.length === 0 && (
-            <div className="p-8 text-center text-surface-muted rounded-xl border border-surface-border bg-surface-raised">
+            <div className="p-8 text-center text-surface-muted rounded-xl border border-surface-border bg-card">
               {t("settings:friendsEmptyStart")}
             </div>
           )}
@@ -426,7 +426,7 @@ export function FriendsSettings() {
             Diese Personen werden in jeden Chat mitgeschickt.
           </p>
 
-          <div className="rounded-xl border border-surface-border bg-surface-raised overflow-hidden">
+          <div className="rounded-xl border border-surface-border bg-card overflow-hidden">
             {knownPeople.length === 0 ? (
               <div className="p-8 text-center text-surface-muted">
                 {t("settings:friendsNoPeopleYet")}
@@ -464,7 +464,7 @@ export function FriendsSettings() {
           </div>
 
           {showAddForm ? (
-            <div className="rounded-xl border border-surface-border bg-surface-raised p-5 space-y-4">
+            <div className="rounded-xl border border-surface-border bg-card p-5 space-y-4">
               <h3 className="font-medium text-white">{t("settings:friendsNewPersonTitle")}</h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

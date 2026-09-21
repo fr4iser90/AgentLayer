@@ -46,7 +46,7 @@ export function HomePage() {
             <li key={c.nav}>
               <Link
                 to={c.to}
-                className="block rounded-xl border border-surface-border bg-surface-raised px-5 py-4 text-white hover:bg-white/5"
+                className="block rounded-xl border border-surface-border bg-card px-5 py-4 text-white hover:bg-white/5"
               >
                 <span className="font-medium">{c.title}</span>
                 <span className="mt-1 block text-sm text-surface-muted">{c.desc}</span>

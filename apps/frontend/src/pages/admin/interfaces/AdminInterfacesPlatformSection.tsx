@@ -96,7 +96,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
     <>
           {showPlatform ? (
           <>
-          <section className="mt-8 rounded-xl border border-surface-border bg-surface-raised p-5">
+          <section className="mt-8 rounded-xl border border-surface-border bg-card p-5">
             <h2 className="text-sm font-medium text-white">{t("admin:ifPlatformAgentModeTitle")}</h2>
             <p className="mt-2 text-xs text-surface-muted">{t("admin:ifPlatformAgentModeIntro")}</p>
             <p className="mt-2 text-xs text-surface-muted">
@@ -119,7 +119,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               <option value="host">{t("admin:ifPlatformAgentModeHost")}</option>
             </select>
           </section>
-          <section className="mt-8 rounded-xl border border-surface-border bg-surface-raised p-5">
+          <section className="mt-8 rounded-xl border border-surface-border bg-card p-5">
             <h2 className="text-sm font-medium text-white">{t("admin:ifPlatformDashboardUploadsTitle")}</h2>
             <p className="mt-2 text-xs text-surface-muted">{t("admin:ifPlatformUploadIntro")}</p>
             {s.uploadEffBytes != null ? (
@@ -155,7 +155,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             />
           </section>
 
-          <section className="mt-8 rounded-xl border border-surface-border bg-surface-raised p-5">
+          <section className="mt-8 rounded-xl border border-surface-border bg-card p-5">
             <h2 className="text-sm font-medium text-white">{t("admin:ifPlatformMediaTitle")}</h2>
             <p className="mt-2 text-xs text-surface-muted">{t("admin:ifPlatformMediaIntro")}</p>
             {s.mediaEffUploadBytes != null ? (
@@ -242,7 +242,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             />
           </section>
 
-          <section className="mt-8 rounded-xl border border-surface-border bg-surface-raised p-5">
+          <section className="mt-8 rounded-xl border border-surface-border bg-card p-5">
             <h2 className="text-sm font-medium text-white">{t("admin:ifPlatformChatQuotaTitle")}</h2>
             <p className="mt-2 text-xs text-surface-muted">{t("admin:ifPlatformChatQuotaIntro")}</p>
             <label className="mt-4 block text-xs text-surface-muted" htmlFor="chat-max-mb">
@@ -290,7 +290,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
           ) : null}
 
           {showVoice ? (
-          <section className="mt-8 rounded-xl border border-surface-border bg-surface-raised p-5">
+          <section className="mt-8 rounded-xl border border-surface-border bg-card p-5">
             <h2 className="text-sm font-medium text-white">{t("admin:ifPlatformVoiceTitle")}</h2>
             <p className="mt-2 text-xs text-surface-muted">{t("admin:ifPlatformVoiceIntro")}</p>
             {pendingVoiceEnvGroups.length > 0 ? (

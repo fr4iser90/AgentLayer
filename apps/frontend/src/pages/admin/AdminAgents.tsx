@@ -366,7 +366,7 @@ export function AdminAgents() {
       <h1 className="text-2xl font-semibold text-white">{t("admin:agentsTitle")}</h1>
       <p className="mt-2 max-w-3xl text-sm text-surface-muted">{t("admin:agentsIntro")}</p>
 
-      <section className="mt-6 rounded-xl border border-surface-border bg-surface-raised/80 p-4">
+      <section className="mt-6 rounded-xl border border-surface-border bg-card p-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-sm font-semibold text-white">{t("admin:agentsImportTitle")}</h2>
@@ -546,7 +546,7 @@ export function AdminAgents() {
                   className={`w-full rounded-xl border px-3 py-3 text-left transition-colors ${
                     selectedId === a.id
                       ? "border-sky-500/40 bg-sky-950/20"
-                      : "border-surface-border bg-surface-raised/60 hover:border-white/15"
+                      : "border-surface-border bg-card hover:border-white/15"
                   }`}
                 >
                   <div className="flex items-start gap-2">
@@ -568,7 +568,7 @@ export function AdminAgents() {
           </ul>
 
           {selected ? (
-            <div className="rounded-xl border border-surface-border bg-surface-raised/50 p-4">
+            <div className="rounded-xl border border-surface-border bg-card p-4">
               <h2 className="flex items-center gap-2 text-lg font-semibold text-white">
                 <AgentIcon icon={selected.icon} name={selected.name} />
                 {selected.name}

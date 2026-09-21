@@ -209,7 +209,7 @@ export function AgentSettings() {
         </label>
       </section>
 
-      <section className="rounded-xl border border-surface-border bg-surface-raised p-5">
+      <section className="rounded-xl border border-surface-border bg-card p-5">
         <h2 className="text-sm font-medium text-white">{t("settings:personaTitle")}</h2>
         <p className="mt-1 text-xs text-surface-muted">
           {t("settings:personaHelp")}
