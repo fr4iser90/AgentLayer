@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
+import { Button } from "../../ui/Button";
 
 type SecretField = {
   name: string;
@@ -500,16 +501,17 @@ export function ConnectionsSettings() {
                     <div className="space-y-4 border-t border-white/5 bg-black/20 px-4 py-4">
                       {saved && !secretsUnavailable ? (
                         <div className="flex justify-end">
-                          <button
+                          <Button
                             type="button"
-                            className="text-xs text-red-400/90 hover:text-red-300 hover:underline"
+                            variant="danger"
+                            size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
                               void deleteSecret(key);
                             }}
                           >
                             {t("settings:connectionsRemoveStoredSecret")}
-                          </button>
+                          </Button>
                         </div>
                       ) : null}
 
@@ -615,13 +617,14 @@ export function ConnectionsSettings() {
                         >
                           {saving ? t("settings:saving") : t("admin:save")}
                         </button>
-                        <button
+                        <Button
                           type="button"
-                          className="text-xs text-red-400/90 hover:text-red-300 hover:underline"
+                          variant="danger"
+                          size="sm"
                           onClick={() => void deleteSecret(k)}
                         >
                           {t("settings:connectionsRemove")}
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   ) : null}

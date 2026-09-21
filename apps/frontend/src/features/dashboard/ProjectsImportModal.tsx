@@ -4,6 +4,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { hasOrgSurface } from "../../auth/deploymentMode";
 import type { AuthContextValue } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
+import { Button } from "../../ui/Button";
 
 export type GithubRepoRow = {
   full_name: string;
@@ -340,13 +341,14 @@ export function ProjectsImportModal({
             {error && repos.length > 0 ? (
               <span className="self-center text-xs text-amber-300">{error}</span>
             ) : null}
-            <button
+            <Button
               type="button"
-              className="rounded-lg border border-surface-border px-4 py-2 text-sm text-neutral-200 hover:bg-white/5"
+              variant="secondary"
+              size="lg"
               onClick={onClose}
             >
               {t("admin:cancel")}
-            </button>
+            </Button>
             <button
               type="button"
               disabled={importing || selectedCount === 0}

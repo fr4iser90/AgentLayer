@@ -14,6 +14,7 @@ import {
   isHarnessKnob,
 } from "../../features/admin/agentConfig/agentConfigApi";
 import { fetchBenchmarkLlmProviders, type BenchmarkLlmProvider } from "../../features/admin/benchmarks/benchmarksApi";
+import { Button } from "../../ui/Button";
 
 type Tab = "knobs" | "models";
 
@@ -448,14 +449,16 @@ export function AdminAgentConfig() {
                   </label>
                 </div>
                 {modelScopeOverrideId ? (
-                  <button
+                  <Button
                     type="button"
+                    variant="danger"
+                    size="sm"
+                    className="mt-3"
                     disabled={applyBusy}
                     onClick={() => void onDeleteModelOverride()}
-                    className="mt-3 rounded border border-red-500/40 px-3 py-1 text-xs text-red-200 hover:bg-red-500/10 disabled:opacity-50"
                   >
                     {t("admin:agentConfigModelsDelete")}
-                  </button>
+                  </Button>
                 ) : null}
               </section>
 

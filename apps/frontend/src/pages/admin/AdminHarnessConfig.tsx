@@ -13,6 +13,7 @@ import {
   type HarnessModelOverride,
   type HarnessPreset,
 } from "../../features/admin/harness/harnessApi";
+import { Button } from "../../ui/Button";
 
 const emptyOverrideForm = (): HarnessConfigFields & {
   catalog_owned_by: string;
@@ -304,13 +305,15 @@ export function AdminHarnessConfig() {
                             >
                               {t("admin:harnessEdit")}
                             </button>
-                            <button
+                            <Button
                               type="button"
-                              className="ml-3 text-red-400 hover:underline"
+                              variant="danger"
+                              size="sm"
+                              className="ml-3"
                               onClick={() => void onDeleteOverride(row.id)}
                             >
                               {t("admin:harnessDelete")}
-                            </button>
+                            </Button>
                           </td>
                         </tr>
                       ))}
@@ -437,14 +440,15 @@ export function AdminHarnessConfig() {
                     {editingId ? t("admin:harnessUpdateOverride") : t("admin:harnessAddOverrideBtn")}
                   </button>
                   {editingId ? (
-                    <button
+                    <Button
                       type="button"
+                      variant="secondary"
+                      size="md"
                       disabled={busy}
                       onClick={resetOverrideForm}
-                      className="rounded border border-white/10 px-3 py-1.5 text-sm text-surface-muted hover:text-white"
                     >
                       {t("admin:cancel")}
-                    </button>
+                    </Button>
                   ) : null}
                 </div>
               </div>

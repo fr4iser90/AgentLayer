@@ -1227,14 +1227,15 @@ export function DashboardPage() {
                 {t("dashboard:installPackConfirmBody")}
               </p>
               <div className="mt-6 flex justify-end gap-2">
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
+                  size="lg"
                   disabled={installBusy}
-                  className="rounded-lg border border-surface-border px-4 py-2 text-sm text-neutral-200 hover:bg-white/5 disabled:opacity-50"
                   onClick={() => setInstallModalRow(null)}
                 >
                   {t("admin:cancel")}
-                </button>
+                </Button>
                 <button
                   type="button"
                   disabled={installBusy || !installModalRow.has_schema}
@@ -1607,13 +1608,14 @@ export function DashboardPage() {
                               {t("dashboard:layoutModeCanvas")}
                             </button>
                           </div>
-                          <button
+                          <Button
                             type="button"
-                            className="rounded-lg border border-surface-border px-4 py-2 text-sm text-neutral-200 hover:bg-white/5"
+                            variant="secondary"
+                            size="lg"
                             onClick={() => cancelLayoutEdit()}
                           >
                             {t("admin:cancel")}
-                          </button>
+                          </Button>
                         </>
                       )
                     ) : null}
@@ -1646,13 +1648,14 @@ export function DashboardPage() {
                       </button>
                     ) : null}
                     {isPrimaryOwner && canEditStructure ? (
-                      <button
+                      <Button
                         type="button"
-                        className="rounded-lg border border-white/10 px-4 py-2 text-sm text-red-300 hover:bg-red-950/40"
+                        variant="danger"
+                        size="lg"
                         onClick={() => void removeWs()}
                       >
-                        Delete
-                      </button>
+                        {t("dashboard:delete")}
+                      </Button>
                     ) : null}
                   </div>
                 </div>
@@ -2376,14 +2379,15 @@ export function DashboardPage() {
                             </span>
                           </span>
                           {!revoked ? (
-                            <button
+                            <Button
                               type="button"
+                              variant="danger"
+                              size="sm"
                               disabled={publicSharesBusy}
-                              className="text-xs text-red-300 hover:underline disabled:opacity-50"
                               onClick={() => void revokePublicShare(s.id)}
                             >
                               {t("dashboard:publicShareRevoke")}
-                            </button>
+                            </Button>
                           ) : null}
                         </li>
                       );
@@ -2407,13 +2411,15 @@ export function DashboardPage() {
                   {t("dashboard:dangerZone")}
                 </p>
                 <p className="mt-2 text-xs text-red-200/80">{t("dashboard:deletePermanent")}</p>
-                <button
+                <Button
                   type="button"
-                  className="mt-3 rounded-lg border border-red-500/30 px-3 py-2 text-sm text-red-200 hover:bg-red-950/40"
+                  variant="danger"
+                  size="md"
+                  className="mt-3"
                   onClick={() => void removeWs()}
                 >
                   {t("dashboard:deleteDashboard")}
-                </button>
+                </Button>
               </div>
             ) : null}
           </div>
@@ -2478,13 +2484,14 @@ export function DashboardPage() {
               )}
             </ul>
             <div className="mt-6 flex justify-end">
-              <button
+              <Button
                 type="button"
-                className="rounded-lg border border-surface-border px-4 py-2 text-sm text-neutral-200 hover:bg-white/5"
+                variant="secondary"
+                size="lg"
                 onClick={() => setNewWsModalOpen(false)}
               >
                 {t("admin:cancel")}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -2520,14 +2527,15 @@ export function DashboardPage() {
               <p className="mt-2 text-sm text-surface-muted">{installModalRow.description}</p>
             ) : null}
             <div className="mt-6 flex justify-end gap-2">
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                size="lg"
                 disabled={installBusy}
-                className="rounded-lg border border-surface-border px-4 py-2 text-sm text-neutral-200 hover:bg-white/5 disabled:opacity-50"
                 onClick={() => setInstallModalRow(null)}
               >
                 {t("admin:cancel")}
-              </button>
+              </Button>
               <button
                 type="button"
                 disabled={installBusy || !installModalRow.has_schema}
@@ -2564,13 +2572,14 @@ export function DashboardPage() {
               </select>
             </label>
             <div className="mt-6 flex justify-end gap-2">
-              <button
+              <Button
                 type="button"
-                className="rounded-lg border border-surface-border px-4 py-2 text-sm text-neutral-200"
+                variant="secondary"
+                size="lg"
                 onClick={() => setPinModalOpen(false)}
               >
                 {t("admin:cancel")}
-              </button>
+              </Button>
               <button
                 type="button"
                 disabled={pinBusy || !pinTargetId}

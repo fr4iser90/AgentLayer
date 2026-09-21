@@ -41,6 +41,7 @@ import {
   sectionHasUnreadNested,
   updateBlockById,
 } from "./layoutTree";
+import { Button } from "../../ui/Button";
 
 function usedDataPaths(blocks: UiBlock[]): Set<string> {
   const s = new Set<string>();
@@ -396,13 +397,15 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                           </button>
                         ) : null}
                         {editMode ? (
-                          <button
+                          <Button
                             type="button"
-                            className="dashboard-grid-no-drag rounded px-2 py-0.5 text-xs text-red-300 hover:bg-red-950/50"
+                            variant="danger"
+                            size="sm"
+                            className="dashboard-grid-no-drag"
                             onClick={() => removeBlock(b.id)}
                           >
                             {t("dashboard:gridRemoveBlock")}
-                          </button>
+                          </Button>
                         ) : null}
                       </div>
                     </div>
