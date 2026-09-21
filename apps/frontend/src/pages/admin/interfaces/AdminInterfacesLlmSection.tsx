@@ -748,9 +748,9 @@ export function AdminInterfacesLlmSection({
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <h4 className="text-xs font-semibold text-white">{group.title}</h4>
-                        <p className="mt-1 text-[11px] text-sky-100/70">{group.intro}</p>
+                        <p className="mt-1 text-meta text-sky-100/70">{group.intro}</p>
                       </div>
-                      <span className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[10px] text-neutral-300">
+                      <span className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-meta text-neutral-300">
                         {group.providers.length}
                       </span>
                     </div>
@@ -766,23 +766,23 @@ export function AdminInterfacesLlmSection({
                                 <span className="text-xs font-semibold text-white">{provider.label}</span>
                                 <span className="font-mono text-xs text-surface-muted">{provider.providerId}</span>
                                 {provider.source ? (
-                                  <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-neutral-300">
+                                  <span className="rounded bg-white/10 px-1.5 py-0.5 text-meta uppercase tracking-wide text-neutral-300">
                                     {provider.source}
                                   </span>
                                 ) : null}
                                 {provider.meta ? (
-                                  <span className="text-[10px] text-neutral-300">{provider.meta}</span>
+                                  <span className="text-meta text-neutral-300">{provider.meta}</span>
                                 ) : null}
                               </div>
                               {provider.baseUrl ? (
-                                <p className="mt-1 break-all font-mono text-[11px] text-surface-muted">{provider.baseUrl}</p>
+                                <p className="mt-1 break-all font-mono text-meta text-surface-muted">{provider.baseUrl}</p>
                               ) : null}
                               {visibleModels.length > 0 ? (
                                 <div className="mt-2 flex flex-wrap gap-1">
                                   {visibleModels.map((model) => (
                                     <span
                                       key={model}
-                                      className="rounded border border-white/10 bg-black/30 px-1.5 py-0.5 font-mono text-[10px] text-neutral-200"
+                                      className="rounded border border-white/10 bg-black/30 px-1.5 py-0.5 font-mono text-meta text-neutral-200"
                                     >
                                       {model}
                                     </span>
@@ -825,8 +825,8 @@ export function AdminInterfacesLlmSection({
                         <span className="font-mono">{p.provider_id}</span> · {p.label}
                         {p.already_in_db ? ` · ${t("admin:envLlmAlreadyInDb")}` : ""}
                       </summary>
-                      <p className="mt-2 break-all font-mono text-[11px] text-surface-muted">{p.base_url}</p>
-                      <div className="mt-2 grid gap-2 text-[11px] text-neutral-300 sm:grid-cols-2">
+                      <p className="mt-2 break-all font-mono text-meta text-surface-muted">{p.base_url}</p>
+                      <div className="mt-2 grid gap-2 text-meta text-neutral-300 sm:grid-cols-2">
                         <p>
                           {t("admin:envLlmModels")}: <span className="font-mono">{p.model_default || "—"}</span>
                         </p>
@@ -841,12 +841,12 @@ export function AdminInterfacesLlmSection({
                         </p>
                       </div>
                       <details className="mt-2">
-                        <summary className="cursor-pointer text-[11px] text-amber-100/80">
+                        <summary className="cursor-pointer text-meta text-amber-100/80">
                           {t("admin:envLlmCleanupChecklist")}
                         </summary>
                         <ul className="mt-1 grid gap-1 sm:grid-cols-2">
                           {p.cleanup_keys.map((key) => (
-                            <li key={key} className="font-mono text-[10px] text-amber-100/70">
+                            <li key={key} className="font-mono text-meta text-amber-100/70">
                               {key}
                             </li>
                           ))}
@@ -869,7 +869,7 @@ export function AdminInterfacesLlmSection({
                         <h4 className="text-sm font-medium text-white">{group.title}</h4>
                         <p className="mt-1 text-xs text-surface-muted">{group.intro}</p>
                       </div>
-                      <span className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[10px] text-neutral-300">
+                      <span className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-meta text-neutral-300">
                         {group.endpoints.length}
                       </span>
                     </div>
@@ -903,15 +903,15 @@ export function AdminInterfacesLlmSection({
                               {endpoint.label || endpoint.baseUrl || t("admin:ifMemEndpointN", { n: endpointIdx + 1 })}
                             </span>
                             {endpoint.id != null ? (
-                              <span className="font-mono text-[10px] text-surface-muted">
+                              <span className="font-mono text-meta text-surface-muted">
                                 {t("admin:dbEndpointBadge", { id: endpoint.id })}
                               </span>
                             ) : null}
-                            <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-neutral-300">
+                            <span className="rounded bg-white/10 px-1.5 py-0.5 text-meta uppercase tracking-wide text-neutral-300">
                               db
                             </span>
                             {endpoint.enabled ? null : (
-                              <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-100">
+                              <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-meta text-amber-100">
                                 {t("admin:off")}
                               </span>
                             )}
@@ -1161,7 +1161,7 @@ export function AdminInterfacesLlmSection({
                       <h3 className="text-sm font-medium text-white">{group.title}</h3>
                       <p className="mt-1 text-xs text-surface-muted">{group.intro}</p>
                     </div>
-                    <span className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[10px] text-neutral-300">
+                    <span className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-meta text-neutral-300">
                       {group.providers.length}
                     </span>
                   </div>
@@ -1182,20 +1182,20 @@ export function AdminInterfacesLlmSection({
                             <span className="min-w-0 flex-1">
                               <span className="flex flex-wrap items-center gap-2 text-xs font-medium text-white">
                                 <span>{provider.label}</span>
-                                <span className="font-mono text-[10px] text-surface-muted">{provider.providerId}</span>
+                                <span className="font-mono text-meta text-surface-muted">{provider.providerId}</span>
                                 {provider.source ? (
-                                  <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-neutral-300">
+                                  <span className="rounded bg-white/10 px-1.5 py-0.5 text-meta uppercase tracking-wide text-neutral-300">
                                     {provider.source}
                                   </span>
                                 ) : null}
                               </span>
                               {provider.baseUrl ? (
-                                <span className="mt-1 block truncate font-mono text-[10px] text-surface-muted">
+                                <span className="mt-1 block truncate font-mono text-meta text-surface-muted">
                                   {provider.baseUrl}
                                 </span>
                               ) : null}
                               {provider.meta ? (
-                                <span className="mt-1 block truncate text-[10px] text-neutral-300">{provider.meta}</span>
+                                <span className="mt-1 block truncate text-meta text-neutral-300">{provider.meta}</span>
                               ) : null}
                             </span>
                             <AccessStateControl
@@ -1229,12 +1229,12 @@ export function AdminInterfacesLlmSection({
                     <div key={provider.providerId} className="rounded-lg border border-white/10 bg-black/20 p-3">
                       <div className="mb-2 flex flex-wrap items-center gap-2">
                         <span className="text-xs font-semibold text-white">{provider.label}</span>
-                        <span className="font-mono text-[11px] text-surface-muted">{provider.providerId}</span>
-                        <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-neutral-300">
+                        <span className="font-mono text-meta text-surface-muted">{provider.providerId}</span>
+                        <span className="rounded bg-white/10 px-1.5 py-0.5 text-meta uppercase tracking-wide text-neutral-300">
                           {provider.source}
                         </span>
                         {provider.endpointId != null ? (
-                          <span className="font-mono text-[10px] text-surface-muted">
+                          <span className="font-mono text-meta text-surface-muted">
                             {t("admin:dbEndpointBadge", { id: provider.endpointId })}
                           </span>
                         ) : null}
@@ -1257,7 +1257,7 @@ export function AdminInterfacesLlmSection({
                             >
                               <span className="min-w-0 flex-1">
                                 <span className="block truncate font-mono text-xs text-neutral-100">{modelId}</span>
-                                <span className="block truncate text-[10px] text-surface-muted">{provider.label}</span>
+                                <span className="block truncate text-meta text-surface-muted">{provider.label}</span>
                               </span>
                               <AccessStateControl
                                 value={accessState}
@@ -1277,7 +1277,7 @@ export function AdminInterfacesLlmSection({
                                 {profileBadges.map((badge) => (
                                   <span
                                     key={badge}
-                                    className="inline-flex rounded-full border border-sky-400/30 bg-sky-500/10 px-1.5 py-0.5 text-[9px] font-medium text-sky-100"
+                                    className="inline-flex rounded-full border border-sky-400/30 bg-sky-500/10 px-1.5 py-0.5 text-meta font-medium text-sky-100"
                                   >
                                     {badge}
                                   </span>
@@ -1285,13 +1285,13 @@ export function AdminInterfacesLlmSection({
                                 {modelCapabilityBadges(row).map((badge) => (
                                   <span
                                     key={badge.key}
-                                    className="inline-flex rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 text-[9px] font-medium text-neutral-200"
+                                    className="inline-flex rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 text-meta font-medium text-neutral-200"
                                   >
                                     {badge.label}
                                   </span>
                                 ))}
                                 <span
-                                  className={`inline-flex rounded-full border px-1.5 py-0.5 text-[9px] font-medium ${
+                                  className={`inline-flex rounded-full border px-1.5 py-0.5 text-meta font-medium ${
                                     visible
                                       ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
                                       : "border-rose-400/30 bg-rose-500/10 text-rose-100"

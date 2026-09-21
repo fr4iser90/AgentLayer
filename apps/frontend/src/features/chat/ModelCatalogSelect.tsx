@@ -36,7 +36,7 @@ const CHIP_TONES: Record<ModelCapabilityBadge["tone"], string> = {
 function ModelBadge({ badge, compact = false }: { badge: ModelCapabilityBadge; compact?: boolean }) {
   return (
     <span
-      className={`inline-flex shrink-0 items-center rounded-full border px-1.5 py-0.5 font-medium ${compact ? "text-[9px]" : "text-[10px]"} ${CHIP_TONES[badge.tone]}`}
+      className={`inline-flex shrink-0 items-center rounded-full border px-1.5 py-0.5 font-medium ${compact ? "text-meta" : "text-meta"} ${CHIP_TONES[badge.tone]}`}
     >
       {badge.label}
     </span>
@@ -103,7 +103,7 @@ export function ModelCatalogSelect({
             {loading ? loadingLabel : rows.length === 0 ? emptyLabel : selectedLabel(selected, value)}
           </span>
           {selectedProvider ? (
-            <span className="block truncate text-[10px] text-surface-muted">{selectedProvider}</span>
+            <span className="block truncate text-meta text-surface-muted">{selectedProvider}</span>
           ) : null}
         </span>
         {selectedBadges.length > 0 ? (
@@ -145,7 +145,7 @@ export function ModelCatalogSelect({
                 >
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium text-neutral-100">{row.id}</span>
-                    <span className="block truncate text-[10px] text-surface-muted">{provider}</span>
+                    <span className="block truncate text-meta text-surface-muted">{provider}</span>
                   </span>
                   <span className="flex max-w-[48%] shrink-0 flex-wrap justify-end gap-1 pt-0.5">
                     {modelCapabilityBadges(row).map((badge) => (

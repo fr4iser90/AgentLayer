@@ -26,7 +26,7 @@ function accessHint(role: string | undefined, t: (key: string) => string): strin
 function StatCard(props: { label: string; value: string; sub?: string }) {
   return (
     <div className="rounded-xl border border-surface-border bg-surface-raised px-4 py-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-surface-muted">{props.label}</p>
+      <p className="text-meta font-semibold uppercase tracking-wide text-surface-muted">{props.label}</p>
       <p className="mt-1 text-2xl font-semibold tabular-nums text-white">{props.value}</p>
       {props.sub ? <p className="mt-0.5 text-xs text-surface-muted">{props.sub}</p> : null}
     </div>
@@ -130,7 +130,7 @@ export function DashboardOverviewPanel(props: {
                     <span className="font-medium text-white">
                       {w.title || w.kind}
                       {(dashboardUnreadCount?.(w.id) ?? 0) > 0 ? (
-                        <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[9px] font-bold text-black align-middle">
+                        <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-meta font-bold text-black align-middle">
                           !
                         </span>
                       ) : null}
@@ -138,7 +138,7 @@ export function DashboardOverviewPanel(props: {
                     <span className="mt-1 text-xs text-surface-muted">
                       {kindLabelFor(w.kind, w.template_id)}
                     </span>
-                    <span className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-white/45">
+                    <span className="mt-2 flex flex-wrap items-center gap-2 text-meta text-white/45">
                       <span className="rounded border border-white/10 px-1.5 py-0.5">{accessHint(w.access_role, t)}</span>
                       <span>{t("dashboard:updatedPrefix")} {relativeActivity(w.updated_at, t)}</span>
                     </span>

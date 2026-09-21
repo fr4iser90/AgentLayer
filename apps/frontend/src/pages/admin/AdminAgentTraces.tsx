@@ -96,7 +96,7 @@ export function AdminAgentTraces() {
                       selectedId === r.id ? "bg-indigo-500/20 text-white" : "text-neutral-300 hover:bg-white/5",
                     ].join(" ")}
                   >
-                    <span className="font-mono text-[10px] text-surface-muted">{r.id.slice(0, 8)}…</span>
+                    <span className="font-mono text-meta text-surface-muted">{r.id.slice(0, 8)}…</span>
                     <span className="ml-1">{r.agent_id ?? "—"}</span>
                     <span className="ml-1 text-xs text-surface-muted">{r.status}</span>
                   </button>
@@ -141,7 +141,7 @@ export function AdminAgentTraces() {
                       <span className={inv.ok ? " text-emerald-400" : " text-red-400"}>
                         {inv.ok ? ` ${t("admin:agentTracesOk")}` : ` ${t("admin:agentTracesErr")}`}
                       </span>
-                      <pre className="mt-1 max-h-24 overflow-auto text-[10px] text-neutral-500">
+                      <pre className="mt-1 max-h-24 overflow-auto text-meta text-neutral-500">
                         {JSON.stringify(inv.args_json, null, 2)}
                       </pre>
                     </li>

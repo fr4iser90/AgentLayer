@@ -20,7 +20,7 @@ function StatusCard({
       to={to}
       className="block rounded-xl border border-surface-border bg-surface-raised/80 p-4 transition-colors hover:border-white/20 hover:bg-white/5"
     >
-      <p className="text-[10px] font-medium uppercase tracking-wide text-surface-muted">{title}</p>
+      <p className="text-meta font-medium uppercase tracking-wide text-surface-muted">{title}</p>
       <p className="mt-2 text-sm font-medium text-white">{status}</p>
       {detail ? <p className="mt-1 text-xs text-surface-muted">{detail}</p> : null}
       <p className="mt-3 text-xs text-sky-400/90">{t("admin:configureCta")}</p>

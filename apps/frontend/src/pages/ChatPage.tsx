@@ -88,7 +88,7 @@ function DashboardChatVisibilityBadge({ thread }: { thread: Pick<ChatThread, "da
   if (shared) {
     return (
       <span
-        className="inline-flex shrink-0 items-center rounded-full border border-amber-400/40 bg-amber-950/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-100/95"
+        className="inline-flex shrink-0 items-center rounded-full border border-amber-400/40 bg-amber-950/60 px-2 py-0.5 text-meta font-semibold uppercase tracking-wide text-amber-100/95"
         title={t("chat:visibilitySharedTitle")}
       >
         {t("chat:visibilitySharedLabel")}
@@ -97,7 +97,7 @@ function DashboardChatVisibilityBadge({ thread }: { thread: Pick<ChatThread, "da
   }
   return (
     <span
-      className="inline-flex shrink-0 items-center rounded-full border border-emerald-500/35 bg-emerald-950/45 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-100/90"
+      className="inline-flex shrink-0 items-center rounded-full border border-emerald-500/35 bg-emerald-950/45 px-2 py-0.5 text-meta font-semibold uppercase tracking-wide text-emerald-100/90"
       title={t("chat:visibilityPersonalTitle")}
     >
       {t("chat:visibilityPersonalLabel")}
@@ -377,7 +377,7 @@ function composerModEnterLabel(): string {
 
 function ComposerKbd({ children }: { children: string }) {
   return (
-    <kbd className="ml-1.5 inline-flex items-center rounded border border-white/15 bg-black/35 px-1 py-px font-mono text-[10px] font-normal leading-none text-white/65">
+    <kbd className="ml-1.5 inline-flex items-center rounded border border-white/15 bg-black/35 px-1 py-px font-mono text-meta font-normal leading-none text-white/65">
       {children}
     </kbd>
   );
@@ -833,7 +833,7 @@ export function ChatPage() {
     return (
       <button
         type="button"
-        className="ml-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded border border-white/15 px-1 text-[11px] font-medium text-sky-300/95 hover:bg-white/10"
+        className="ml-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded border border-white/15 px-1 text-meta font-medium text-sky-300/95 hover:bg-white/10"
         title={t("workspace:editMcpServersWorkspaceOnlyTitle")}
         onClick={() => setShowWorkspaceMcpModal(true)}
       >
@@ -3270,7 +3270,7 @@ export function ChatPage() {
             <p className="px-2 pb-1 text-xs font-medium uppercase tracking-wide text-surface-muted">
               {t("chat:sidebarTitle")}
             </p>
-            <p className="mb-2 px-2 text-[10px] leading-snug text-surface-muted/80">
+            <p className="mb-2 px-2 text-meta leading-snug text-surface-muted/80">
               {t("chat:sidebarHint")}{" "}
               <span className="text-amber-200/90">{t("chat:sharedBadge")}</span>
             </p>
@@ -3280,7 +3280,7 @@ export function ChatPage() {
                   key={g.kind === "dashboard" ? `ws-${g.dashboardId}` : `src-${g.source}`}
                   className="min-w-0"
                 >
-                  <p className="px-2 pb-1 text-[10px] font-medium uppercase tracking-wide text-surface-muted/90">
+                  <p className="px-2 pb-1 text-meta font-medium uppercase tracking-wide text-surface-muted/90">
                     {g.label}
                   </p>
                   <ul className="flex flex-col gap-1">
@@ -3300,7 +3300,7 @@ export function ChatPage() {
                               <span className="line-clamp-2 min-w-0 flex-1 text-left">{thread.title}</span>
                               <DashboardChatVisibilityBadge thread={thread} />
                             </span>
-                            <span className="mt-0.5 block text-[10px] text-surface-muted">
+                            <span className="mt-0.5 block text-meta text-surface-muted">
                               {new Date(thread.updatedAt).toLocaleString(undefined, {
                                 month: "short",
                                 day: "numeric",
@@ -3312,7 +3312,7 @@ export function ChatPage() {
                           <div className="flex shrink-0 flex-col gap-0.5 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
                             <button
                               type="button"
-                              className="rounded px-1 text-[10px] text-surface-muted hover:text-white"
+                              className="rounded px-1 text-meta text-surface-muted hover:text-white"
                               title={t("chat:rename")}
                               onClick={() => renameThread(thread.id)}
                             >
@@ -3320,7 +3320,7 @@ export function ChatPage() {
                             </button>
                             <button
                               type="button"
-                              className="rounded px-1 text-[10px] text-surface-muted hover:text-white"
+                              className="rounded px-1 text-meta text-surface-muted hover:text-white"
                               title={t("chat:copyLinkJson")}
                               onClick={() => void shareThread(thread)}
                             >
@@ -3328,7 +3328,7 @@ export function ChatPage() {
                             </button>
                             <button
                               type="button"
-                              className="rounded px-1 text-[10px] text-red-400/90 hover:text-red-300"
+                              className="rounded px-1 text-meta text-red-400/90 hover:text-red-300"
                               title={t("chat:delete")}
                               onClick={() => void deleteThread(thread.id)}
                             >
@@ -3352,7 +3352,7 @@ export function ChatPage() {
             <div className="flex shrink-0 items-center gap-2 border-b border-surface-border px-4 py-2 md:hidden">
               <button
                 type="button"
-                className="rounded-lg border border-surface-border bg-black/30 px-2.5 py-1.5 text-[11px] font-medium text-neutral-300 hover:bg-white/10"
+                className="rounded-lg border border-surface-border bg-black/30 px-2.5 py-1.5 text-meta font-medium text-neutral-300 hover:bg-white/10"
                 aria-expanded={threadSidebarOpen}
                 onClick={() => setThreadSidebarOpen(true)}
               >
@@ -3392,7 +3392,7 @@ export function ChatPage() {
           >
             <button
               type="button"
-              className="shrink-0 rounded-lg border border-surface-border bg-black/30 px-2.5 py-1.5 text-[11px] font-medium text-neutral-300 hover:bg-white/10 md:hidden"
+              className="shrink-0 rounded-lg border border-surface-border bg-black/30 px-2.5 py-1.5 text-meta font-medium text-neutral-300 hover:bg-white/10 md:hidden"
               aria-expanded={threadSidebarOpen}
               aria-label={t("chat:openChatsSidebar")}
               onClick={() => setThreadSidebarOpen(true)}
@@ -3405,7 +3405,7 @@ export function ChatPage() {
             {activeThread ? <DashboardChatVisibilityBadge thread={activeThread} /> : null}
             <button
               type="button"
-              className="shrink-0 rounded-lg border border-surface-border bg-black/30 px-2 py-1 text-[10px] font-medium text-neutral-300 hover:bg-white/10"
+              className="shrink-0 rounded-lg border border-surface-border bg-black/30 px-2 py-1 text-meta font-medium text-neutral-300 hover:bg-white/10"
               aria-expanded={!composerHeaderCollapsed}
               aria-controls="chat-composer-header-panel"
               title={
@@ -3419,16 +3419,16 @@ export function ChatPage() {
             </button>
           </div>
           {composerHeaderCollapsed ? (
-            <p className="mt-1 truncate text-[10px] leading-snug text-surface-muted" title={composerHeaderSummary}>
+            <p className="mt-1 truncate text-meta leading-snug text-surface-muted" title={composerHeaderSummary}>
               {composerHeaderSummary}
             </p>
           ) : null}
           {composerHeaderCollapsed && workspaceScopeHint && selectedWorkspaceId ? (
             <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-amber-600/40 bg-amber-950/30 px-3 py-2">
-              <p className="min-w-0 flex-1 text-[11px] leading-snug text-amber-100/95">{workspaceScopeHint}</p>
+              <p className="min-w-0 flex-1 text-meta leading-snug text-amber-100/95">{workspaceScopeHint}</p>
               <button
                 type="button"
-                className="shrink-0 text-[11px] text-surface-muted hover:text-neutral-200"
+                className="shrink-0 text-meta text-surface-muted hover:text-neutral-200"
                 onClick={() => setWorkspaceScopeHint(null)}
               >
                 {t("chat:dismiss")}
@@ -3454,19 +3454,19 @@ export function ChatPage() {
             <div className="min-w-0 space-y-2">
               <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
                 <div className="min-w-0 flex-1 sm:min-w-[10rem] sm:max-w-[20rem]">
-                  <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+                  <label className="block text-meta font-medium uppercase tracking-wide text-surface-muted">
                     {t("chat:assistantLabel")}
                   </label>
                   <p className="mt-0.5 rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-300">
                     {t("chat:generalAssistant")}
                   </p>
-                  <p className="mt-1 text-[10px] leading-snug text-surface-muted">
+                  <p className="mt-1 text-meta leading-snug text-surface-muted">
                     {t("chat:generalAssistantHint")}
                   </p>
                 </div>
                 {workspaces.length > 0 ? (
                   <div className="min-w-0 flex-1 sm:min-w-[10rem] sm:max-w-[24rem]">
-                    <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+                    <label className="block text-meta font-medium uppercase tracking-wide text-surface-muted">
                       {t("chat:projectLabel")}
                     </label>
                     <div className="mt-0.5 flex flex-wrap gap-1.5">
@@ -3486,7 +3486,7 @@ export function ChatPage() {
                       <button
                         type="button"
                         className={[
-                          "shrink-0 rounded-lg border px-2.5 py-1.5 text-[11px] font-medium",
+                          "shrink-0 rounded-lg border px-2.5 py-1.5 text-meta font-medium",
                           projectPanelOpen
                             ? "border-sky-500/60 bg-sky-950/50 text-sky-100"
                             : "border-surface-border bg-black/30 text-neutral-300 hover:bg-white/10",
@@ -3506,7 +3506,7 @@ export function ChatPage() {
                       !isAgentlayerSelfWorkspace(selectedWorkspace) ? (
                         <button
                           type="button"
-                          className="shrink-0 rounded-lg border border-red-900/40 bg-red-950/20 px-2.5 py-1.5 text-[11px] font-medium text-red-300/90 hover:bg-red-950/40"
+                          className="shrink-0 rounded-lg border border-red-900/40 bg-red-950/20 px-2.5 py-1.5 text-meta font-medium text-red-300/90 hover:bg-red-950/40"
                           title={t("chat:deleteProject")}
                           onClick={() => requestDeleteProject(selectedWorkspace)}
                         >
@@ -3538,17 +3538,17 @@ export function ChatPage() {
               ) : null}
               {workspaceScopeHint && selectedWorkspaceId ? (
                 <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-600/40 bg-amber-950/30 px-3 py-2">
-                  <p className="min-w-0 flex-1 text-[11px] leading-snug text-amber-100/95">{workspaceScopeHint}</p>
+                  <p className="min-w-0 flex-1 text-meta leading-snug text-amber-100/95">{workspaceScopeHint}</p>
                   <button
                     type="button"
-                    className="shrink-0 text-[11px] text-surface-muted hover:text-neutral-200"
+                    className="shrink-0 text-meta text-surface-muted hover:text-neutral-200"
                     onClick={() => setWorkspaceScopeHint(null)}
                   >
                     {t("chat:dismiss")}
                   </button>
                 </div>
               ) : null}
-              <p className="text-[10px] leading-snug text-surface-muted">{t("chat:titlesHint")}</p>
+              <p className="text-meta leading-snug text-surface-muted">{t("chat:titlesHint")}</p>
               {!activeThread?.shared && activeThreadId ? (
                 <div className="mt-2 rounded-lg border border-violet-500/25 bg-violet-950/15 px-3 py-2">
                   <label className="flex cursor-pointer items-center gap-2 text-sm text-neutral-200">
@@ -3567,9 +3567,9 @@ export function ChatPage() {
                     />
                     {t("chat:delegateAutoRespond")}
                   </label>
-                  <p className="mt-1 text-[10px] text-surface-muted">{t("chat:delegateAutoRespondHint")}</p>
+                  <p className="mt-1 text-meta text-surface-muted">{t("chat:delegateAutoRespondHint")}</p>
                   {activeThread?.delegateAutoRespondEnabled ? (
-                    <label className="mt-2 block text-[10px] text-surface-muted">
+                    <label className="mt-2 block text-meta text-surface-muted">
                       {t("chat:delegateAutoRespondDelay")}
                       <input
                         type="number"
@@ -3609,12 +3609,12 @@ export function ChatPage() {
                           }`
                         : "/tasks"
                     }
-                    className="text-[11px] text-sky-400/90 hover:text-sky-300 hover:underline"
+                    className="text-meta text-sky-400/90 hover:text-sky-300 hover:underline"
                   >
                     {t("chat:tasksLink")}
                     {activeTaskId ? t("chat:tasksBoundHint") : ""}
                   </Link>
-                  <span className="text-[10px] text-surface-muted">{t("chat:tasksBacklogHint")}</span>
+                  <span className="text-meta text-surface-muted">{t("chat:tasksBacklogHint")}</span>
                 </div>
                 <ChatLiveActivityPanel
                   store={agentLiveTurn}
@@ -3632,7 +3632,7 @@ export function ChatPage() {
               </div>
             ) : (
               <div className="flex min-h-0 items-center rounded-lg border border-white/10 bg-black/30 px-2.5 py-2">
-                <p className="text-[10px] leading-snug text-surface-muted">
+                <p className="text-meta leading-snug text-surface-muted">
                   {t("chat:switchToAgentModeHint")}
                 </p>
               </div>
@@ -3650,7 +3650,7 @@ export function ChatPage() {
                 />
               ) : null}
               <div className="w-full">
-                <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+                <label className="block text-meta font-medium uppercase tracking-wide text-surface-muted">
                   {t("chat:replyModeLabel")}
                 </label>
                 <select
@@ -3662,10 +3662,10 @@ export function ChatPage() {
                   <option value="agent">{t("chat:replyModeAgent")}</option>
                   <option value="chat">{t("chat:replyModeChat")}</option>
                 </select>
-                <p className="mt-1 text-[10px] leading-snug text-surface-muted">{t("chat:replyModeChatHint")}</p>
+                <p className="mt-1 text-meta leading-snug text-surface-muted">{t("chat:replyModeChatHint")}</p>
               </div>
               <div className="w-full">
-                <label className="flex cursor-pointer items-center gap-2 text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+                <label className="flex cursor-pointer items-center gap-2 text-meta font-medium uppercase tracking-wide text-surface-muted">
                   <input
                     type="checkbox"
                     className="rounded border-surface-border bg-[#1a1a1a] text-sky-500"
@@ -3684,7 +3684,7 @@ export function ChatPage() {
                   />
                   <span>{t("chat:agentLlmStreamLabel")}</span>
                 </label>
-                <p className="mt-1 pl-6 text-[10px] leading-snug text-surface-muted">
+                <p className="mt-1 pl-6 text-meta leading-snug text-surface-muted">
                   {t("chat:agentLlmStreamHint")}
                 </p>
               </div>
@@ -3694,7 +3694,7 @@ export function ChatPage() {
                 onVoiceStatusChange={setVoiceStatus}
               />
               <div className="w-full">
-                <label className="block text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+                <label className="block text-meta font-medium uppercase tracking-wide text-surface-muted">
                   {t("chat:modelLabel")}
                 </label>
                 <ModelCatalogSelect
@@ -3921,7 +3921,7 @@ export function ChatPage() {
                 ) ? (
                   <li className="flex w-full justify-end">
                     <div className="max-w-[min(100%,42rem)] rounded-2xl border border-sky-900/50 bg-sky-950/25 px-4 py-3 text-sm text-sky-100/90 shadow-sm">
-                      <span className="mb-1 flex items-center gap-2 text-[10px] font-medium uppercase tracking-wide text-sky-300/80">
+                      <span className="mb-1 flex items-center gap-2 text-meta font-medium uppercase tracking-wide text-sky-300/80">
                         <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-sky-400" />
                         {t("chat:roleAssistant")}
                       </span>
@@ -4136,13 +4136,13 @@ export function ChatPage() {
               ) : null}
               {activeComposerQueue.length > 0 ? (
                 <ul className="mb-2 space-y-1 rounded-lg border border-violet-500/25 bg-violet-950/20 px-2 py-1.5">
-                  <li className="text-[9px] font-medium uppercase tracking-wide text-violet-200/80">
+                  <li className="text-meta font-medium uppercase tracking-wide text-violet-200/80">
                     {t("chat:composerQueueTitle", { count: activeComposerQueue.length })}
                   </li>
                   {activeComposerQueue.map((item, idx) => (
                     <li
                       key={item.id}
-                      className="flex items-start gap-2 text-[11px] text-neutral-300"
+                      className="flex items-start gap-2 text-meta text-neutral-300"
                     >
                       <span className="shrink-0 tabular-nums text-violet-300/70">{idx + 1}.</span>
                       <span className="min-w-0 flex-1 truncate" title={queueItemPreview(item)}>
@@ -4151,7 +4151,7 @@ export function ChatPage() {
                       {loading ? (
                         <button
                           type="button"
-                          className="shrink-0 rounded px-1.5 text-[10px] font-medium uppercase tracking-wide text-sky-300/90 hover:bg-sky-500/15 hover:text-sky-100"
+                          className="shrink-0 rounded px-1.5 text-meta font-medium uppercase tracking-wide text-sky-300/90 hover:bg-sky-500/15 hover:text-sky-100"
                           title={t("chat:composerQueueSendNow")}
                           aria-label={t("chat:composerQueueSendNow")}
                           onClick={() => onForceSendQueuedItem(item.id)}
@@ -4212,7 +4212,7 @@ export function ChatPage() {
                 }}
               />
               {loading ? (
-                <p className="mt-1.5 text-[10px] leading-snug text-surface-muted">
+                <p className="mt-1.5 text-meta leading-snug text-surface-muted">
                   {t("chat:composerBusyHint", {
                     enter: "↵",
                     modEnter: composerModEnter,

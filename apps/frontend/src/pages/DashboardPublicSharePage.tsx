@@ -189,7 +189,7 @@ export function DashboardPublicSharePage() {
       ) : (
         <div className="flex min-h-dvh flex-1 flex-col overflow-hidden bg-neutral-950">
           <header className="shrink-0 border-b border-surface-border bg-surface-raised/80 px-4 py-4 sm:px-6">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-sky-300/90">
+            <p className="text-meta font-semibold uppercase tracking-wide text-sky-300/90">
               {t("dashboard:publicShareBadge")}
             </p>
             <h1 className="mt-1 text-xl font-semibold text-white">{pageTitle}</h1>

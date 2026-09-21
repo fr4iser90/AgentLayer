@@ -202,7 +202,7 @@ export function KanbanBlockBody(props: {
                       />
                       <div className="flex flex-wrap items-center gap-2">
                         <select
-                          className="dashboard-grid-no-drag max-w-full flex-1 rounded border border-surface-border bg-black/40 px-1 py-0.5 text-[10px] text-neutral-200"
+                          className="dashboard-grid-no-drag max-w-full flex-1 rounded border border-surface-border bg-black/40 px-1 py-0.5 text-meta text-neutral-200"
                           value={ci}
                           onChange={(e) => moveCard(ci, card.id, Number(e.target.value))}
                           title={t("dashboard:kanbanMoveColumn")}
@@ -215,7 +215,7 @@ export function KanbanBlockBody(props: {
                         </select>
                         <button
                           type="button"
-                          className="text-[10px] text-red-400 hover:underline"
+                          className="text-meta text-red-400 hover:underline"
                           onClick={() => removeCard(ci, card.id)}
                         >
                           {t("dashboard:delete")}
@@ -254,7 +254,7 @@ const mdClass = {
   ol: "my-2 list-decimal pl-5 text-neutral-200",
   li: "my-0.5",
   a: "text-sky-400 underline hover:text-sky-300",
-  code: "rounded bg-white/10 px-1 py-0.5 font-mono text-[13px] text-sky-200",
+  code: "rounded bg-white/10 px-1 py-0.5 font-mono text-body text-sky-200",
   pre: "my-2 overflow-x-auto rounded-lg border border-white/10 bg-black/50 p-3 text-sm",
   blockquote: "border-l-2 border-sky-500/50 pl-3 italic text-surface-muted",
   table: "my-2 w-full border-collapse text-sm",
@@ -335,7 +335,7 @@ export function RichMarkdownBlockBody(props: {
       <h3 className="mb-3 text-sm font-medium text-white">{sectionTitle}</h3>
       <div className="grid gap-3 lg:grid-cols-2">
         <div>
-          <label className="mb-1 block text-[10px] uppercase text-surface-muted">{t("dashboard:markdownLabel")}</label>
+          <label className="mb-1 block text-meta uppercase text-surface-muted">{t("dashboard:markdownLabel")}</label>
           <textarea
             className="dashboard-grid-no-drag min-h-[220px] w-full resize-y rounded-lg border border-surface-border bg-black/35 px-3 py-2 font-mono text-sm text-neutral-100 outline-none focus:border-sky-500/50"
             placeholder={placeholder}
@@ -344,7 +344,7 @@ export function RichMarkdownBlockBody(props: {
           />
         </div>
         <div>
-          <label className="mb-1 block text-[10px] uppercase text-surface-muted">{t("dashboard:markdownPreview")}</label>
+          <label className="mb-1 block text-meta uppercase text-surface-muted">{t("dashboard:markdownPreview")}</label>
           {preview}
         </div>
       </div>

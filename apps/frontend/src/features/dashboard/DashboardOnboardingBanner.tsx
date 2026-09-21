@@ -50,7 +50,7 @@ export function DashboardOnboardingBanner({
         </div>
         <button
           type="button"
-          className="shrink-0 rounded-md border border-white/10 px-2 py-1 text-[10px] text-surface-muted hover:bg-white/5"
+          className="shrink-0 rounded-md border border-white/10 px-2 py-1 text-meta text-surface-muted hover:bg-white/5"
           onClick={() => {
             dismissOnboarding(dashboardId);
             onDismiss();
@@ -65,7 +65,7 @@ export function DashboardOnboardingBanner({
           {steps.map((step) => (
             <li
               key={step.id}
-              className="rounded-full border border-emerald-500/25 bg-black/20 px-2.5 py-1 text-[11px] text-emerald-100/90"
+              className="rounded-full border border-emerald-500/25 bg-black/20 px-2.5 py-1 text-meta text-emerald-100/90"
             >
               {step.label}
             </li>

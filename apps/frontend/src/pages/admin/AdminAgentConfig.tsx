@@ -241,7 +241,7 @@ export function AdminAgentConfig() {
               >
                 <span className="font-mono text-xs">{k.id}</span>
                 {k.writable === false ? (
-                  <span className="ml-2 text-[10px] uppercase text-amber-400/80">
+                  <span className="ml-2 text-meta uppercase text-amber-400/80">
                     {t("admin:agentConfigKnobsReadOnly")}
                   </span>
                 ) : null}
@@ -293,7 +293,7 @@ export function AdminAgentConfig() {
               disabled={selected.writable === false}
             />
             <label className="text-xs text-surface-muted">{t("admin:agentConfigHypothesis")}</label>
-            <p className="text-[11px] text-surface-muted/80">{t("admin:agentConfigHypothesisHint")}</p>
+            <p className="text-meta text-surface-muted/80">{t("admin:agentConfigHypothesisHint")}</p>
             <input
               className="w-full rounded border border-surface-border bg-black/30 p-2 text-sm text-white disabled:opacity-50"
               value={hypothesis}
@@ -395,9 +395,9 @@ export function AdminAgentConfig() {
                           active ? "bg-white/10 text-white" : "text-surface-muted hover:bg-white/5"
                         }`}
                       >
-                        <div className="font-mono text-[11px]">{row.catalog_owned_by}</div>
+                        <div className="font-mono text-meta">{row.catalog_owned_by}</div>
                         <div className="truncate text-xs opacity-80">{modelLabel}</div>
-                        {row.label ? <div className="text-[10px] opacity-60">{row.label}</div> : null}
+                        {row.label ? <div className="text-meta opacity-60">{row.label}</div> : null}
                       </button>
                     </li>
                   );

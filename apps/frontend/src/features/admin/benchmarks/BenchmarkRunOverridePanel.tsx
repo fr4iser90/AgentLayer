@@ -148,18 +148,18 @@ export function BenchmarkRunOverridePanel({ auth, overrides, onChange }: Props) 
           <h3 className="text-xs font-medium uppercase text-amber-200/90">
             {t("admin:benchRunOverridesTitle")}
             {overrides.length > 0 ? (
-              <span className="ml-2 rounded bg-amber-600/40 px-1.5 py-0.5 text-[10px] text-amber-100">
+              <span className="ml-2 rounded bg-amber-600/40 px-1.5 py-0.5 text-meta text-amber-100">
                 {overrides.length}
               </span>
             ) : null}
           </h3>
-          <p className="mt-1 max-w-prose text-[11px] text-surface-muted">
+          <p className="mt-1 max-w-prose text-meta text-surface-muted">
             {t("admin:benchRunOverridesHint")}
           </p>
         </div>
         <Link
           to="/admin/agent-config"
-          className="shrink-0 text-[11px] text-sky-400 hover:underline"
+          className="shrink-0 text-meta text-sky-400 hover:underline"
         >
           {t("admin:benchHarnessContextEdit")} →
         </Link>
@@ -193,7 +193,7 @@ export function BenchmarkRunOverridePanel({ auth, overrides, onChange }: Props) 
                     >
                       <span className="font-mono text-xs">{k.id}</span>
                       {overridden ? (
-                        <span className="ml-2 text-[10px] uppercase text-amber-400/90">
+                        <span className="ml-2 text-meta uppercase text-amber-400/90">
                           {t("admin:benchRunOverrideActive")}
                         </span>
                       ) : null}

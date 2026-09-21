@@ -30,7 +30,7 @@ function ReviewCard({ review }: { review: BenchmarkReview }) {
       </div>
       {review.summary ? <p className="mt-2 text-sm whitespace-pre-wrap">{review.summary}</p> : null}
       {review.patterns_json && Object.keys(review.patterns_json).length > 0 ? (
-        <p className="mt-2 font-mono text-[10px] opacity-80">
+        <p className="mt-2 font-mono text-meta opacity-80">
           {Object.entries(review.patterns_json)
             .map(([k, v]) => `${k}:${v}`)
             .join(" · ")}
@@ -165,7 +165,7 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
                 <p className="mt-2 text-sm text-surface-muted">{selected.hypothesis}</p>
               ) : null}
               {selected.fingerprint_at_start ? (
-                <p className="mt-2 font-mono text-[10px] text-surface-muted break-all">
+                <p className="mt-2 font-mono text-meta text-surface-muted break-all">
                   {t("admin:agentConfigExperimentFingerprint")}: {selected.fingerprint_at_start}
                 </p>
               ) : null}
@@ -186,7 +186,7 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
                     <h3 className="mb-2 text-xs font-medium uppercase text-surface-muted">
                       {t("admin:agentConfigExperimentPendingPatches")}
                     </h3>
-                    <pre className="max-h-40 overflow-auto rounded border border-white/10 bg-black/30 p-2 text-[10px] text-surface-muted">
+                    <pre className="max-h-40 overflow-auto rounded border border-white/10 bg-black/30 p-2 text-meta text-surface-muted">
                       {JSON.stringify(report.experiment.pending_patches_json, null, 2)}
                     </pre>
                   </section>
@@ -202,7 +202,7 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
                         <li key={rid}>
                           <Link
                             to={`/admin/benchmarks?run=${encodeURIComponent(rid)}`}
-                            className="rounded border border-white/10 bg-black/30 px-2 py-1 font-mono text-[10px] text-indigo-300 hover:bg-white/5"
+                            className="rounded border border-white/10 bg-black/30 px-2 py-1 font-mono text-meta text-indigo-300 hover:bg-white/5"
                             title={rid}
                           >
                             {rid.slice(0, 8)}…
@@ -210,7 +210,7 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
                         </li>
                       ))}
                     </ul>
-                    <p className="mt-1 text-[10px] text-surface-muted">
+                    <p className="mt-1 text-meta text-surface-muted">
                       {t("admin:agentConfigExperimentRunsHint")}
                     </p>
                   </section>
@@ -249,7 +249,7 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
                       {reviewBusy ? t("admin:agentConfigReviewSubmitting") : t("admin:agentConfigReviewSubmit")}
                     </button>
                     {runIds.length === 0 ? (
-                      <p className="mt-2 text-[10px] text-surface-muted">{t("admin:agentConfigReviewNeedsRuns")}</p>
+                      <p className="mt-2 text-meta text-surface-muted">{t("admin:agentConfigReviewNeedsRuns")}</p>
                     ) : null}
                   </div>
                   {report.reviews.length === 0 ? (

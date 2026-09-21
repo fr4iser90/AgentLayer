@@ -144,7 +144,7 @@ export function FormulaCalcBlockBody({
             <label key={inp.key} className="block text-xs text-surface-muted">
               {inp.label}
               {control === "percent" ? (
-                <span className="ml-1 text-[10px] opacity-70">{t("dashboard:formulaPercentHint")}</span>
+                <span className="ml-1 text-meta opacity-70">{t("dashboard:formulaPercentHint")}</span>
               ) : null}
               <div className="relative mt-1">
                 <input
@@ -175,7 +175,7 @@ export function FormulaCalcBlockBody({
           </button>
         ) : null}
       </form>
-      {formulaNote ? <p className="font-mono text-[11px] text-surface-muted">{formulaNote}</p> : null}
+      {formulaNote ? <p className="font-mono text-meta text-surface-muted">{formulaNote}</p> : null}
       {error ? <p className="text-xs text-red-300">{error}</p> : null}
       {results ? (
         <ul className="space-y-1 text-neutral-200">
@@ -183,7 +183,7 @@ export function FormulaCalcBlockBody({
             <li key={o.key}>
               <span className="text-surface-muted">{o.label}: </span>
               {Number.isFinite(results[o.key]) ? results[o.key].toFixed(4).replace(/\.?0+$/, "") : "—"}
-              <span className="ml-2 font-mono text-[10px] text-surface-muted">{o.expr}</span>
+              <span className="ml-2 font-mono text-meta text-surface-muted">{o.expr}</span>
             </li>
           ))}
         </ul>

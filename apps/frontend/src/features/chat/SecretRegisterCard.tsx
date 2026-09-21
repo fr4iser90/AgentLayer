@@ -96,10 +96,10 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
             {prompt.title || prompt.serviceKey}
           </p>
           {prompt.reason ? (
-            <p className="mt-0.5 text-[11px] text-amber-200/70">{prompt.reason}</p>
+            <p className="mt-0.5 text-meta text-amber-200/70">{prompt.reason}</p>
           ) : null}
           {prompt.help ? (
-            <p className="mt-1 text-[11px] leading-snug text-neutral-400">{prompt.help}</p>
+            <p className="mt-1 text-meta leading-snug text-neutral-400">{prompt.help}</p>
           ) : null}
 
           {prompt.status === "saved" ? (
@@ -109,7 +109,7 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
               {hasFields ? (
                 fields.map((f) => (
                   <label key={f.name} className="block">
-                    <span className="text-[11px] text-neutral-400">
+                    <span className="text-meta text-neutral-400">
                       {f.label || f.name}
                       {f.required ? " *" : ""}
                     </span>
@@ -127,7 +127,7 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
                 ))
               ) : (
                 <label className="block">
-                  <span className="text-[11px] text-neutral-400">{t("chat:secretCardValueLabel")}</span>
+                  <span className="text-meta text-neutral-400">{t("chat:secretCardValueLabel")}</span>
                   <input
                     type="password"
                     autoComplete="off"
@@ -152,7 +152,7 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
                 </button>
                 <Link
                   to="/settings/connections"
-                  className="text-[11px] text-neutral-400 underline-offset-2 hover:text-neutral-300 hover:underline"
+                  className="text-meta text-neutral-400 underline-offset-2 hover:text-neutral-300 hover:underline"
                 >
                   {t("chat:secretCardOpenConnections")}
                 </Link>

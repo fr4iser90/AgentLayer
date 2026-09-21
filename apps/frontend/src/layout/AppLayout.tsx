@@ -248,7 +248,7 @@ export function AppLayout() {
                       key={lng}
                       type="button"
                       className={[
-                        "rounded px-2 py-1 text-[11px] font-medium",
+                        "rounded px-2 py-1 text-meta font-medium",
                         active
                           ? "bg-white/15 text-white"
                           : "text-surface-muted hover:bg-white/5 hover:text-neutral-200",
@@ -278,7 +278,7 @@ export function AppLayout() {
       </div>
       <MediaMiniPlayer />
       <footer className="shrink-0 border-t border-surface-border bg-surface-raised/80 px-4 py-2">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-surface-muted">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-4 gap-y-1 text-meta text-surface-muted">
           <LegalFooterLinks />
           {showDocsFooter && !signedIn ? (
             <>

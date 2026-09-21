@@ -74,12 +74,12 @@ function DashboardNavRow(props: {
         <span className="block truncate font-medium leading-snug">
           {w.title || w.kind}
           {unread > 0 ? (
-            <span className="ml-1 inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-orange-500 px-0.5 text-[8px] font-bold text-black align-middle">
+            <span className="ml-1 inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-orange-500 px-0.5 text-meta font-bold text-black align-middle">
               {unread > 9 ? "9+" : unread}
             </span>
           ) : null}
         </span>
-        <span className="block truncate text-[10px] leading-snug text-white/35">
+        <span className="block truncate text-meta leading-snug text-white/35">
           {kindLabel}
           {note ? ` · ${note}` : ""}
         </span>
@@ -297,7 +297,7 @@ export function DashboardSidebarNav(props: {
       <div className="min-h-0 flex-1 overflow-y-auto px-1.5 py-2">
         {favorites.length > 0 && !query.trim() ? (
           <section className="mb-3">
-            <p className="mb-1 px-1.5 text-[10px] font-semibold uppercase tracking-wide text-white/40">
+            <p className="mb-1 px-1.5 text-meta font-semibold uppercase tracking-wide text-white/40">
               {t("dashboard:favorites")}
             </p>
             <ul className="space-y-0.5">
@@ -308,7 +308,7 @@ export function DashboardSidebarNav(props: {
 
         {showRecent ? (
           <section className="mb-3">
-            <p className="mb-1 px-1.5 text-[10px] font-semibold uppercase tracking-wide text-white/40">
+            <p className="mb-1 px-1.5 text-meta font-semibold uppercase tracking-wide text-white/40">
               {t("dashboard:recent")}
             </p>
             <ul className="space-y-0.5">
@@ -319,7 +319,7 @@ export function DashboardSidebarNav(props: {
 
         {searchResults ? (
           <section>
-            <p className="mb-1 px-1.5 text-[10px] font-semibold uppercase tracking-wide text-white/40">
+            <p className="mb-1 px-1.5 text-meta font-semibold uppercase tracking-wide text-white/40">
               {t("dashboard:matches", { count: searchResults.length })}
             </p>
             {searchResults.length === 0 ? (
@@ -333,7 +333,7 @@ export function DashboardSidebarNav(props: {
         ) : flatItems ? (
           <section>
             {!useFlatList || list.length > 1 ? (
-              <p className="mb-1 px-1.5 text-[10px] font-semibold uppercase tracking-wide text-white/40">
+              <p className="mb-1 px-1.5 text-meta font-semibold uppercase tracking-wide text-white/40">
                 {t("dashboard:allDashboards", { count: flatItems.length })}
               </p>
             ) : null}
@@ -350,7 +350,7 @@ export function DashboardSidebarNav(props: {
                 <section key={h.id}>
                   <button
                     type="button"
-                    className="flex w-full items-center gap-1 rounded-md px-1.5 py-1 text-left text-[10px] font-semibold uppercase tracking-wide text-white/45 hover:bg-white/5 hover:text-white/70"
+                    className="flex w-full items-center gap-1 rounded-md px-1.5 py-1 text-left text-meta font-semibold uppercase tracking-wide text-white/45 hover:bg-white/5 hover:text-white/70"
                     onClick={() => toggleHub(h.id)}
                     aria-expanded={!collapsed}
                   >

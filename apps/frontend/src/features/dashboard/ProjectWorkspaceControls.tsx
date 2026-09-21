@@ -110,7 +110,7 @@ export function ProjectWorkspaceControls({
         <p className="text-xs text-surface-muted">{t("dashboard:loading")}</p>
       ) : (
         <>
-          <label className="mb-2 block text-[11px] text-surface-muted">
+          <label className="mb-2 block text-meta text-surface-muted">
             {t("dashboard:workspacePickerLabel")}
             <select
               value={workspaceId}
@@ -128,14 +128,14 @@ export function ProjectWorkspaceControls({
             </select>
           </label>
           {matched ? (
-            <p className="mb-2 truncate font-mono text-[10px] text-surface-muted">{matched.path}</p>
+            <p className="mb-2 truncate font-mono text-meta text-surface-muted">{matched.path}</p>
           ) : workspaceId ? (
-            <p className="mb-2 text-[10px] text-amber-300/90">{t("dashboard:workspaceNotFound")}</p>
+            <p className="mb-2 text-meta text-amber-300/90">{t("dashboard:workspaceNotFound")}</p>
           ) : null}
           {!readOnly && remote ? (
             <>
               {hasOrgSurface(user) ? (
-                <label className="mb-2 flex items-start gap-2 text-[11px] text-surface-muted">
+                <label className="mb-2 flex items-start gap-2 text-meta text-surface-muted">
                   <input
                     type="checkbox"
                     className="mt-0.5"

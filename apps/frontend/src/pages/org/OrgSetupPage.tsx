@@ -133,7 +133,7 @@ export function OrgSetupPage() {
             onChange={(e) => setVerticalProfile(e.target.value)}
             required
           />
-          <p className="text-[11px] text-surface-muted">{t("org:setupVerticalProfileHint")}</p>
+          <p className="text-meta text-surface-muted">{t("org:setupVerticalProfileHint")}</p>
           {err ? <p className="text-sm text-red-400">{err}</p> : null}
           <button
             type="submit"

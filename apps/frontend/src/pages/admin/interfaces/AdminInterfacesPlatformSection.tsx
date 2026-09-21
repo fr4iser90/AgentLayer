@@ -323,13 +323,13 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
                               <span className="font-mono">{p.provider_id}</span> · {p.label}
                               {p.already_in_db ? ` · ${t("admin:envLlmAlreadyInDb")}` : ""}
                             </summary>
-                            <p className="mt-2 break-all font-mono text-[11px] text-surface-muted">{p.base_url}</p>
-                            <p className="mt-1 text-[11px] text-neutral-300">
+                            <p className="mt-2 break-all font-mono text-meta text-surface-muted">{p.base_url}</p>
+                            <p className="mt-1 text-meta text-neutral-300">
                               {t("admin:envLlmModels")}: <span className="font-mono">{p.model_default || "—"}</span>
                             </p>
                             <ul className="mt-2 grid gap-1 sm:grid-cols-2">
                               {p.cleanup_keys.map((key) => (
-                                <li key={key} className="font-mono text-[10px] text-amber-100/70">{key}</li>
+                                <li key={key} className="font-mono text-meta text-amber-100/70">{key}</li>
                               ))}
                             </ul>
                           </details>
@@ -381,7 +381,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
                     ))}
                   </select>
                   {s.voiceSttApiBaseEffective ? (
-                    <p className="mt-1 font-mono text-[10px] text-neutral-400">{s.voiceSttApiBaseEffective}</p>
+                    <p className="mt-1 font-mono text-meta text-neutral-400">{s.voiceSttApiBaseEffective}</p>
                   ) : null}
                 </div>
                 <div>
@@ -403,7 +403,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
                     ))}
                   </select>
                   {s.voiceTtsApiBaseEffective ? (
-                    <p className="mt-1 font-mono text-[10px] text-neutral-400">{s.voiceTtsApiBaseEffective}</p>
+                    <p className="mt-1 font-mono text-meta text-neutral-400">{s.voiceTtsApiBaseEffective}</p>
                   ) : null}
                 </div>
               </div>

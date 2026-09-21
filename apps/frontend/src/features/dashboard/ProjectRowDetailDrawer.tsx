@@ -20,7 +20,7 @@ function StatusPill(props: { status: string }) {
           ? "bg-violet-600/30 text-violet-200 border-violet-500/40"
           : "bg-white/10 text-surface-muted border-white/10";
   return (
-    <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase ${cls}`}>
+    <span className={`shrink-0 rounded-full border px-2 py-0.5 text-meta font-medium uppercase ${cls}`}>
       {props.status || "—"}
     </span>
   );
@@ -211,7 +211,7 @@ export function ProjectRowDetailDrawer(props: {
               </button>
             </div>
             {!enableWorkspaceLink ? (
-              <label className="mb-2 block text-[11px] text-surface-muted">
+              <label className="mb-2 block text-meta text-surface-muted">
                 {t("dashboard:workspaceIdUuid")}
                 <input
                   value={runNowWorkspaceId}
@@ -221,7 +221,7 @@ export function ProjectRowDetailDrawer(props: {
                 />
               </label>
             ) : runNowWorkspaceId ? (
-              <p className="mb-2 truncate font-mono text-[10px] text-surface-muted">{runNowWorkspaceId}</p>
+              <p className="mb-2 truncate font-mono text-meta text-surface-muted">{runNowWorkspaceId}</p>
             ) : (
               <p className="mb-2 text-xs text-amber-300/90">{t("dashboard:workspaceRequiredForRun")}</p>
             )}
@@ -243,7 +243,7 @@ export function ProjectRowDetailDrawer(props: {
               </div>
               <button
                 type="button"
-                className="rounded-md border border-surface-border px-2 py-1 text-[11px] text-neutral-100 hover:bg-white/5 disabled:opacity-60"
+                className="rounded-md border border-surface-border px-2 py-1 text-meta text-neutral-100 hover:bg-white/5 disabled:opacity-60"
                 disabled={recentRunsBusy}
                 onClick={() => void refreshRecentRuns()}
               >
@@ -264,9 +264,9 @@ export function ProjectRowDetailDrawer(props: {
                       </div>
                       <StatusPill status={String(r.status ?? "")} />
                     </div>
-                    <div className="mt-1 text-[11px] text-surface-muted">{String(r.created_at ?? "")}</div>
+                    <div className="mt-1 text-meta text-surface-muted">{String(r.created_at ?? "")}</div>
                     {r.error ? (
-                      <div className="mt-1 text-[11px] text-red-200/90">{String(r.error)}</div>
+                      <div className="mt-1 text-meta text-red-200/90">{String(r.error)}</div>
                     ) : null}
                   </div>
                 ))}

@@ -206,7 +206,7 @@ export function ProjectsPage() {
             )}
             <button
               type="button"
-              className="rounded-md border border-white/10 px-2 py-1 text-[10px] text-neutral-300 hover:bg-white/5 disabled:opacity-40"
+              className="rounded-md border border-white/10 px-2 py-1 text-meta text-neutral-300 hover:bg-white/5 disabled:opacity-40"
               disabled={loading}
               onClick={() => void reload()}
             >
@@ -241,12 +241,12 @@ export function ProjectsPage() {
                         <span className="flex items-center gap-1.5">
                           <span className="min-w-0 flex-1 truncate text-sm text-neutral-100">{w.name}</span>
                           {scope === "mine" && w.visibility === "tenant" ? (
-                            <span className="shrink-0 rounded bg-sky-950/60 px-1 py-0.5 text-[9px] uppercase tracking-wide text-sky-300">
+                            <span className="shrink-0 rounded bg-sky-950/60 px-1 py-0.5 text-meta uppercase tracking-wide text-sky-300">
                               {t("workspace:visibilityCompanyTag")}
                             </span>
                           ) : null}
                         </span>
-                        <span className="mt-0.5 block truncate text-[10px] text-surface-muted">
+                        <span className="mt-0.5 block truncate text-meta text-surface-muted">
                           {w.source}
                           {w.git_url ? ` · ${w.git_url}` : ""}
                         </span>
@@ -268,7 +268,7 @@ export function ProjectsPage() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <h2 className="truncate text-base font-medium text-white">{selected.name}</h2>
-                    <p className="mt-1 break-all font-mono text-[11px] text-surface-muted">
+                    <p className="mt-1 break-all font-mono text-meta text-surface-muted">
                       {selected.path || "—"}
                     </p>
                   </div>
@@ -320,7 +320,7 @@ export function ProjectsPage() {
                     {browsePath ? (
                       <button
                         type="button"
-                        className="rounded border border-white/10 px-2 py-0.5 text-[10px] text-neutral-300 hover:bg-white/5"
+                        className="rounded border border-white/10 px-2 py-0.5 text-meta text-neutral-300 hover:bg-white/5"
                         onClick={() => setBrowsePath(parentPath(browsePath))}
                       >
                         {t("workspace:projectsTreeUp")}
@@ -328,7 +328,7 @@ export function ProjectsPage() {
                     ) : null}
                     <button
                       type="button"
-                      className="rounded border border-white/10 px-2 py-0.5 text-[10px] text-neutral-300 hover:bg-white/5"
+                      className="rounded border border-white/10 px-2 py-0.5 text-meta text-neutral-300 hover:bg-white/5"
                       disabled={treeLoading}
                       onClick={() => void loadTree()}
                     >
@@ -336,7 +336,7 @@ export function ProjectsPage() {
                     </button>
                   </div>
                 </div>
-                <p className="shrink-0 truncate border-b border-white/5 px-3 py-1 font-mono text-[10px] text-surface-muted">
+                <p className="shrink-0 truncate border-b border-white/5 px-3 py-1 font-mono text-meta text-surface-muted">
                   {browsePath || "."}
                 </p>
                 <div className="min-h-0 flex-1 overflow-y-auto p-2">
@@ -359,7 +359,7 @@ export function ProjectsPage() {
                               <span className="text-surface-muted">/</span>
                               <span className="truncate">{e.name}</span>
                               {e.is_symlink ? (
-                                <span className="text-[9px] text-surface-muted">
+                                <span className="text-meta text-surface-muted">
                                   {t("workspace:treeEntrySymlink")}
                                 </span>
                               ) : null}
@@ -369,7 +369,7 @@ export function ProjectsPage() {
                               <span className="text-surface-muted">·</span>
                               <span className="truncate">{e.name}</span>
                               {e.is_symlink ? (
-                                <span className="text-[9px] text-surface-muted">
+                                <span className="text-meta text-surface-muted">
                                   {t("workspace:treeEntrySymlink")}
                                 </span>
                               ) : null}
@@ -380,7 +380,7 @@ export function ProjectsPage() {
                     </ul>
                   )}
                   {treeTruncated ? (
-                    <p className="mt-2 px-2 text-[10px] text-amber-300/90">
+                    <p className="mt-2 px-2 text-meta text-amber-300/90">
                       {t("workspace:projectsTreeTruncated")}
                     </p>
                   ) : null}

@@ -34,20 +34,20 @@ export function HarnessRunContextBar({ auth }: Props) {
   return (
     <section className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/20 px-3 py-2">
       <div className="min-w-0">
-        <p className="text-[11px] text-surface-muted">{t("admin:benchHarnessContextHint")}</p>
+        <p className="text-meta text-surface-muted">{t("admin:benchHarnessContextHint")}</p>
         {loading ? (
-          <p className="mt-0.5 text-[10px] text-surface-muted">{t("admin:loading")}</p>
+          <p className="mt-0.5 text-meta text-surface-muted">{t("admin:loading")}</p>
         ) : fingerprint ? (
-          <p className="mt-0.5 truncate font-mono text-[10px] text-white/70" title={fingerprint}>
+          <p className="mt-0.5 truncate font-mono text-meta text-white/70" title={fingerprint}>
             {fingerprint.slice(0, 40)}…
           </p>
         ) : (
-          <p className="mt-0.5 text-[10px] text-surface-muted">—</p>
+          <p className="mt-0.5 text-meta text-surface-muted">—</p>
         )}
       </div>
       <Link
         to="/admin/agent-config"
-        className="shrink-0 rounded border border-sky-500/40 bg-sky-950/30 px-2.5 py-1 text-[11px] text-sky-200 hover:bg-sky-950/50"
+        className="shrink-0 rounded border border-sky-500/40 bg-sky-950/30 px-2.5 py-1 text-meta text-sky-200 hover:bg-sky-950/50"
       >
         {t("admin:benchHarnessContextEdit")}
       </Link>

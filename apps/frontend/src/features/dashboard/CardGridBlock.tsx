@@ -164,13 +164,13 @@ export function CardGridBlockBody(props: {
                 <div className="mb-2 flex items-start justify-between gap-2">
                   <h4 className="line-clamp-2 text-sm font-semibold text-white">{title}</h4>
                   {pinned ? (
-                    <span className="shrink-0 text-[10px] text-amber-300" title={t("dashboard:pinned")}>
+                    <span className="shrink-0 text-meta text-amber-300" title={t("dashboard:pinned")}>
                       ★
                     </span>
                   ) : null}
                 </div>
                 {cardFields.includes("remote_url") && remote ? (
-                  <p className="mb-2 truncate font-mono text-[10px] text-sky-300/90">{remote}</p>
+                  <p className="mb-2 truncate font-mono text-meta text-sky-300/90">{remote}</p>
                 ) : null}
                 {cardFields.includes("tags") && tags ? (
                   <p className="mb-2 line-clamp-2 text-xs text-surface-muted">{tags}</p>
@@ -178,20 +178,20 @@ export function CardGridBlockBody(props: {
                 <div className="mt-auto flex flex-wrap gap-1.5 pt-2">
                   {cardFields.includes("status") && status ? (
                     <span
-                      className={`rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase ${badgeClass(status)}`}
+                      className={`rounded-full border px-2 py-0.5 text-meta font-medium uppercase ${badgeClass(status)}`}
                     >
                       {status}
                     </span>
                   ) : null}
                   {cardFields.includes("security") && security ? (
                     <span
-                      className={`rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase ${badgeClass(security)}`}
+                      className={`rounded-full border px-2 py-0.5 text-meta font-medium uppercase ${badgeClass(security)}`}
                     >
                       {security}
                     </span>
                   ) : null}
                   {enableRunNow && String((row as any)?.workspace_id ?? "").trim() ? (
-                    <span className="rounded-full border border-violet-500/30 bg-violet-600/20 px-2 py-0.5 text-[10px] text-violet-200">
+                    <span className="rounded-full border border-violet-500/30 bg-violet-600/20 px-2 py-0.5 text-meta text-violet-200">
                       {t("dashboard:workspaceLinked")}
                     </span>
                   ) : null}

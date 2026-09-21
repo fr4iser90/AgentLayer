@@ -68,11 +68,11 @@ function AnalysisSummary({
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <div className="rounded-lg border border-surface-border bg-black/20 p-3">
-        <p className="text-[10px] uppercase text-surface-muted">{t("admin:agentConfigAnalysisRuns")}</p>
+        <p className="text-meta uppercase text-surface-muted">{t("admin:agentConfigAnalysisRuns")}</p>
         <p className="mt-1 text-xl font-semibold text-white">{analysis.run_count}</p>
       </div>
       <div className="rounded-lg border border-surface-border bg-black/20 p-3">
-        <p className="text-[10px] uppercase text-surface-muted">{t("admin:agentConfigAnalysisTopModel")}</p>
+        <p className="text-meta uppercase text-surface-muted">{t("admin:agentConfigAnalysisTopModel")}</p>
         <p className="mt-1 truncate text-sm font-mono text-white">
           {topModel ? formatBenchmarkProviderModel(topModel) : "—"}
         </p>
@@ -83,11 +83,11 @@ function AnalysisSummary({
         ) : null}
       </div>
       <div className="rounded-lg border border-surface-border bg-black/20 p-3">
-        <p className="text-[10px] uppercase text-surface-muted">{t("admin:agentConfigAnalysisScenarios")}</p>
+        <p className="text-meta uppercase text-surface-muted">{t("admin:agentConfigAnalysisScenarios")}</p>
         <p className="mt-1 text-xl font-semibold text-white">{scenarios.length}</p>
       </div>
       <div className="rounded-lg border border-surface-border bg-black/20 p-3">
-        <p className="text-[10px] uppercase text-surface-muted">{t("admin:agentConfigAnalysisWeakScenarios")}</p>
+        <p className="text-meta uppercase text-surface-muted">{t("admin:agentConfigAnalysisWeakScenarios")}</p>
         <p className="mt-1 text-xl font-semibold text-rose-300">{weak}</p>
       </div>
     </div>
@@ -291,7 +291,7 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
                           <td className={`py-1.5 pr-3 ${passRateTone(row.pass_rate)}`}>
                             {formatPassRate(row.pass_rate)}
                           </td>
-                          <td className="py-1.5 pr-3 font-mono text-[10px] text-surface-muted">
+                          <td className="py-1.5 pr-3 font-mono text-meta text-surface-muted">
                             {row.patterns.length ? row.patterns.join(", ") : "—"}
                           </td>
                         </tr>

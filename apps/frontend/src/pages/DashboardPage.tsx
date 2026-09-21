@@ -1261,7 +1261,7 @@ export function DashboardPage() {
   const dashboardSidebar = (
     <div className="flex h-full min-h-0 flex-col">
       <div className="shrink-0 border-b border-surface-border p-2">
-        <p className="px-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wide text-surface-muted">
+        <p className="px-1.5 pb-1 text-meta font-semibold uppercase tracking-wide text-surface-muted">
           {t("dashboard:actions")}
         </p>
         <div className="flex flex-col gap-0.5">
@@ -1854,7 +1854,7 @@ export function DashboardPage() {
           <div className="flex shrink-0 items-center gap-2 border-b border-surface-border px-4 py-2 md:hidden">
             <button
               type="button"
-              className="rounded-lg border border-surface-border bg-black/30 px-2.5 py-1.5 text-[11px] font-medium text-neutral-300 hover:bg-white/10"
+              className="rounded-lg border border-surface-border bg-black/30 px-2.5 py-1.5 text-meta font-medium text-neutral-300 hover:bg-white/10"
               aria-expanded={actionsSidebarOpen}
               aria-label={t("dashboard:openActionsSidebar")}
               onClick={() => setActionsSidebarOpen(true)}
@@ -1932,7 +1932,7 @@ export function DashboardPage() {
               <p className="mt-2 text-xs text-surface-muted">
                 {t("dashboard:dashboardAgentIntro")} {t("dashboard:saveInMainToolbarHint")}
               </p>
-              <label className="mt-3 block text-[10px] text-surface-muted" htmlFor="ws-agent-prompt">
+              <label className="mt-3 block text-meta text-surface-muted" htmlFor="ws-agent-prompt">
                 {t("dashboard:dashboardAgentPromptLabel")}
               </label>
               <textarea
@@ -1957,8 +1957,8 @@ export function DashboardPage() {
                 placeholder={t("dashboard:agentPromptExtraPlaceholder")}
                 className="mt-1 w-full resize-y rounded-lg border border-surface-border bg-black/30 px-3 py-2 font-mono text-sm leading-relaxed text-white outline-none placeholder:text-white/25 focus:border-sky-500/50 read-only:cursor-default read-only:opacity-90"
               />
-              <p className="mt-2 text-[10px] text-surface-muted">{t("dashboard:agentPromptExtraSavedHint")}</p>
-              <p className="mt-3 text-[11px] text-surface-muted">{t("dashboard:agentPromptScrollHint")}</p>
+              <p className="mt-2 text-meta text-surface-muted">{t("dashboard:agentPromptExtraSavedHint")}</p>
+              <p className="mt-3 text-meta text-surface-muted">{t("dashboard:agentPromptScrollHint")}</p>
             </div>
 
             <div className="rounded-xl border border-surface-border bg-black/20 p-4">
@@ -2000,7 +2000,7 @@ export function DashboardPage() {
               {canEditContent ? (
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
                   <div className="min-w-[min(100%,220px)] flex-1">
-                    <label className="mb-1 block text-[10px] text-surface-muted" htmlFor="ws-tool-pick">
+                    <label className="mb-1 block text-meta text-surface-muted" htmlFor="ws-tool-pick">
                       {t("dashboard:dashboardToolFromCatalog")}
                     </label>
                     <select
@@ -2025,7 +2025,7 @@ export function DashboardPage() {
                     </select>
                   </div>
                   <div className="min-w-[min(100%,200px)] flex-1">
-                    <label className="mb-1 block text-[10px] text-surface-muted" htmlFor="ws-tool-manual">
+                    <label className="mb-1 block text-meta text-surface-muted" htmlFor="ws-tool-manual">
                       {t("dashboard:dashboardToolManualLabel")}
                     </label>
                     <div className="flex gap-2">
@@ -2059,7 +2059,7 @@ export function DashboardPage() {
               ) : (
                 <p className="mt-3 text-xs text-surface-muted">{t("dashboard:dashboardToolEditorOnly")}</p>
               )}
-              <p className="mt-2 text-[10px] text-surface-muted">{t("dashboard:dashboardToolAllowlistMeta")}</p>
+              <p className="mt-2 text-meta text-surface-muted">{t("dashboard:dashboardToolAllowlistMeta")}</p>
             </div>
 
             {canManageMembers ? (
@@ -2072,7 +2072,7 @@ export function DashboardPage() {
                 {membersErr ? <p className="mt-2 text-xs text-red-300">{membersErr}</p> : null}
                 <div className="mt-3 flex flex-wrap items-end gap-2">
                   <div className="min-w-[220px] flex-1">
-                    <label className="mb-1 block text-[10px] text-surface-muted">
+                    <label className="mb-1 block text-meta text-surface-muted">
                       {t("dashboard:membersEmailLabel")}
                     </label>
                     <input
@@ -2084,7 +2084,7 @@ export function DashboardPage() {
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-[10px] text-surface-muted">
+                    <label className="mb-1 block text-meta text-surface-muted">
                       {t("dashboard:membersRoleLabel")}
                     </label>
                     <select
@@ -2144,7 +2144,7 @@ export function DashboardPage() {
                 {blockSharesErr ? <p className="mt-2 text-xs text-red-300">{blockSharesErr}</p> : null}
                 <div className="mt-3 flex flex-wrap items-end gap-2">
                   <div className="min-w-[200px] flex-1">
-                    <label className="mb-1 block text-[10px] text-surface-muted">
+                    <label className="mb-1 block text-meta text-surface-muted">
                       {t("dashboard:blockShareUserEmailLabel")}
                     </label>
                     <input
@@ -2156,7 +2156,7 @@ export function DashboardPage() {
                     />
                   </div>
                   <div className="min-w-[140px]">
-                    <label className="mb-1 block text-[10px] text-surface-muted">
+                    <label className="mb-1 block text-meta text-surface-muted">
                       {t("dashboard:blockShareAccessLabel")}
                     </label>
                     <select
@@ -2179,7 +2179,7 @@ export function DashboardPage() {
                     {blockSharesBusy ? "…" : t("dashboard:shareSelectedBlocks")}
                   </button>
                 </div>
-                <p className="mt-3 text-[10px] uppercase tracking-wide text-surface-muted">
+                <p className="mt-3 text-meta uppercase tracking-wide text-surface-muted">
                   {t("dashboard:blocksToInclude")}
                 </p>
                 {gridLayout.blocks.length === 0 ? (
@@ -2204,7 +2204,7 @@ export function DashboardPage() {
                           />
                           <label htmlFor={`bshare-${id}`} className="cursor-pointer text-neutral-200">
                             <span className="text-surface-muted">{b.type}</span> · {label}
-                            <span className="ml-2 font-mono text-[10px] text-surface-muted">{id.slice(0, 8)}…</span>
+                            <span className="ml-2 font-mono text-meta text-surface-muted">{id.slice(0, 8)}…</span>
                           </label>
                         </li>
                       );
@@ -2250,7 +2250,7 @@ export function DashboardPage() {
                 {createdPublicLink ? (
                   <div className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-950/20 p-3 text-xs text-emerald-100">
                     <p className="font-medium">{t("dashboard:publicShareCreatedOnce")}</p>
-                    <p className="mt-2 break-all font-mono text-[11px] text-emerald-50/90">
+                    <p className="mt-2 break-all font-mono text-meta text-emerald-50/90">
                       {window.location.origin}
                       {createdPublicLink}
                     </p>
@@ -2265,7 +2265,7 @@ export function DashboardPage() {
                 ) : null}
                 <div className="mt-3 flex flex-wrap items-end gap-2">
                   <div className="min-w-[200px] flex-1">
-                    <label className="mb-1 block text-[10px] text-surface-muted">
+                    <label className="mb-1 block text-meta text-surface-muted">
                       {t("dashboard:publicShareLabelField")}
                     </label>
                     <input
@@ -2277,7 +2277,7 @@ export function DashboardPage() {
                     />
                   </div>
                   <div className="min-w-[180px]">
-                    <label className="mb-1 block text-[10px] text-surface-muted">
+                    <label className="mb-1 block text-meta text-surface-muted">
                       {t("dashboard:publicShareExpiresLabel")}
                     </label>
                     <input
@@ -2288,7 +2288,7 @@ export function DashboardPage() {
                     />
                   </div>
                   <div className="min-w-[160px]">
-                    <label className="mb-1 block text-[10px] text-surface-muted">
+                    <label className="mb-1 block text-meta text-surface-muted">
                       {t("dashboard:publicSharePasswordField")}
                     </label>
                     <input
@@ -2309,7 +2309,7 @@ export function DashboardPage() {
                     {publicSharesBusy ? "…" : t("dashboard:publicShareCreate")}
                   </button>
                 </div>
-                <p className="mt-3 text-[10px] uppercase tracking-wide text-surface-muted">
+                <p className="mt-3 text-meta uppercase tracking-wide text-surface-muted">
                   {t("dashboard:publicShareBlocksHint")}
                 </p>
                 {gridLayout.blocks.length === 0 ? (

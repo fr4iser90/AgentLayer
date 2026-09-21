@@ -402,19 +402,19 @@ export function AdminTools() {
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <span className="font-mono text-sm font-semibold text-white">{pid}</span>
-              {p.version ? <span className="text-[11px] text-surface-muted">v{p.version}</span> : null}
+              {p.version ? <span className="text-meta text-surface-muted">v{p.version}</span> : null}
               {p.admin_bucket ? (
-                <span className="rounded bg-emerald-950/60 px-1.5 py-0.5 text-[10px] text-emerald-200/90">
+                <span className="rounded bg-emerald-950/60 px-1.5 py-0.5 text-meta text-emerald-200/90">
                   {t("admin:toolsBadgeBucket", { name: p.admin_bucket })}
                 </span>
               ) : null}
               {p.domain ? (
-                <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-neutral-300">
+                <span className="rounded bg-white/10 px-1.5 py-0.5 text-meta text-neutral-300">
                   {t("admin:toolsBadgeDomain", { name: p.domain })}
                 </span>
               ) : null}
               <span
-                className="rounded bg-violet-900/50 px-1.5 py-0.5 text-[10px] text-violet-100"
+                className="rounded bg-violet-900/50 px-1.5 py-0.5 text-meta text-violet-100"
                 title={t("admin:effectiveRunContextTitle")}
               >
                 {t("admin:toolsBadgeRun", { ctx: effCtx })}
@@ -426,37 +426,37 @@ export function AdminTools() {
               </span>
               {effMr ? (
                 <span
-                  className="rounded bg-amber-950/50 px-1.5 py-0.5 text-[10px] text-amber-100"
+                  className="rounded bg-amber-950/50 px-1.5 py-0.5 text-meta text-amber-100"
                   title={t("admin:effectiveMinRoleTitle")}
                 >
                   {t("admin:toolsBadgeAccess", { role: effMr })}
                 </span>
               ) : null}
               {effTenants?.length ? (
-                <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-200">
+                <span className="rounded bg-slate-800 px-1.5 py-0.5 text-meta text-slate-200">
                   {t("admin:toolsBadgeTenants", { ids: effTenants.join(",") })}
                 </span>
               ) : null}
               {p.os_support?.length ? (
-                <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-neutral-300">
+                <span className="rounded bg-white/10 px-1.5 py-0.5 text-meta text-neutral-300">
                   {t("admin:toolsBadgeOs", { list: p.os_support.join(",") })}
                 </span>
               ) : null}
               {p.risk_level ? (
                 <span
-                  className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${riskBadgeClass(p.risk_level)}`}
+                  className={`rounded px-1.5 py-0.5 text-meta font-medium ${riskBadgeClass(p.risk_level)}`}
                 >
                   {t("admin:toolsBadgeRisk", { level: p.risk_level })}
                 </span>
               ) : null}
             </div>
-            <p className="truncate font-mono text-[11px] text-surface-muted" title={p.source}>
+            <p className="truncate font-mono text-meta text-surface-muted" title={p.source}>
               {p.source}
             </p>
             <div className="grid gap-1.5 sm:grid-cols-2">
               <div>
                 <span className="text-surface-muted">{t("admin:toolsColTools")}</span>{" "}
-                <span className="break-all font-mono text-[11px] text-neutral-300">
+                <span className="break-all font-mono text-meta text-neutral-300">
                   {(p.tools ?? []).join(", ")}
                 </span>
               </div>
@@ -507,7 +507,7 @@ export function AdminTools() {
               </div>
             </div>
           </div>
-          <label className="flex shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap text-[11px] text-neutral-200">
+          <label className="flex shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap text-meta text-neutral-200">
             <input
               type="checkbox"
               checked={pol.enabled}
@@ -517,7 +517,7 @@ export function AdminTools() {
           </label>
         </div>
         <div className="mt-3 grid grid-cols-1 gap-3 border-t border-white/10 pt-3 sm:grid-cols-2">
-          <label className="flex min-w-0 flex-col gap-1 text-[11px] text-surface-muted">
+          <label className="flex min-w-0 flex-col gap-1 text-meta text-surface-muted">
             <span className="text-neutral-400">{t("admin:toolsPolicyMinRole")}</span>
             <select
               className="w-full rounded-md border border-surface-border bg-black/30 px-2 py-1.5 text-xs text-white"
@@ -530,7 +530,7 @@ export function AdminTools() {
               <option value="admin">{t("admin:toolsMinRoleAdmin")}</option>
             </select>
           </label>
-          <label className="flex min-w-0 flex-col gap-1 text-[11px] text-surface-muted">
+          <label className="flex min-w-0 flex-col gap-1 text-meta text-surface-muted">
             <span className="text-neutral-400">
               {t("admin:toolsPolicyTenantIds")} (<span className="font-mono">tenants.id</span>)
             </span>
@@ -603,7 +603,7 @@ export function AdminTools() {
                 onChange={(e) => setImportFiles(e.target.files)}
               />
             </label>
-            <ul className="mt-3 list-disc space-y-1 pl-4 text-[11px]">
+            <ul className="mt-3 list-disc space-y-1 pl-4 text-meta">
               <li>{t("admin:toolsImportAllowed")}</li>
               <li>{t("admin:toolsImportLimits")}</li>
               <li>{t("admin:toolsImportZipSafety")}</li>
@@ -629,7 +629,7 @@ export function AdminTools() {
               </span>
               <div className="mt-2 flex flex-wrap gap-2">
                 {importResult.sources.map((s) => (
-                  <span key={s.path} className="rounded bg-white/5 px-2 py-1 font-mono text-[11px]">
+                  <span key={s.path} className="rounded bg-white/5 px-2 py-1 font-mono text-meta">
                     {s.path} · {t("admin:toolsImportChars", { count: s.chars })}
                   </span>
                 ))}
@@ -640,21 +640,21 @@ export function AdminTools() {
                 <article key={`${c.kind}:${c.name}`} className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-neutral-200">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-sm font-semibold text-white">{c.name}</span>
-                    <span className="rounded bg-sky-900/60 px-1.5 py-0.5 text-[10px] text-sky-100">{c.kind}</span>
-                    <span className="rounded bg-amber-900/60 px-1.5 py-0.5 text-[10px] text-amber-100">
+                    <span className="rounded bg-sky-900/60 px-1.5 py-0.5 text-meta text-sky-100">{c.kind}</span>
+                    <span className="rounded bg-amber-900/60 px-1.5 py-0.5 text-meta text-amber-100">
                       {t("admin:toolsImportRisk", { risk: c.risk ?? t("admin:toolsImportUnknown") })}
                     </span>
                     {typeof c.confidence === "number" ? (
-                      <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px]">
+                      <span className="rounded bg-white/10 px-1.5 py-0.5 text-meta">
                         {Math.round(c.confidence * 100)}%
                       </span>
                     ) : null}
                   </div>
                   <p className="mt-2 text-neutral-300">{c.title}</p>
                   {c.summary ? <p className="mt-1 text-surface-muted">{c.summary}</p> : null}
-                  <p className="mt-2 font-mono text-[11px] text-surface-muted">{c.target_dir}</p>
+                  <p className="mt-2 font-mono text-meta text-surface-muted">{c.target_dir}</p>
                   {c.determinism_notes?.length ? (
-                    <ul className="mt-2 list-disc space-y-1 pl-4 text-[11px] text-neutral-400">
+                    <ul className="mt-2 list-disc space-y-1 pl-4 text-meta text-neutral-400">
                       {c.determinism_notes.map((n) => <li key={n}>{n}</li>)}
                     </ul>
                   ) : null}
@@ -725,7 +725,7 @@ export function AdminTools() {
                     {blocks.map((block) => (
                       <div key={block.domain || "_"}>
                         {subdiv ? (
-                          <h3 className="mb-2 border-l-2 border-sky-600/60 pl-2 text-[11px] font-semibold uppercase tracking-wide text-sky-200/90">
+                          <h3 className="mb-2 border-l-2 border-sky-600/60 pl-2 text-meta font-semibold uppercase tracking-wide text-sky-200/90">
                             {t("admin:toolsDomainHeader", {
                               domain: block.domain,
                               count: block.items.length,

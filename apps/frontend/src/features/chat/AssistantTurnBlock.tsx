@@ -29,7 +29,7 @@ const ReasoningPanel = memo(function ReasoningPanel({
   const defaultOpen = getAgentShowReasoning();
   return (
     <details className="mb-3 group" defaultOpen={defaultOpen}>
-      <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-md border border-sky-500/35 bg-sky-950/40 px-2 py-1 text-[11px] font-medium text-sky-100/90 marker:content-none [&::-webkit-details-marker]:hidden hover:bg-sky-950/55">
+      <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-md border border-sky-500/35 bg-sky-950/40 px-2 py-1 text-meta font-medium text-sky-100/90 marker:content-none [&::-webkit-details-marker]:hidden hover:bg-sky-950/55">
         <span
           className={`relative flex h-1.5 w-1.5 shrink-0 ${running ? "animate-pulse" : ""}`}
           aria-hidden
@@ -38,10 +38,10 @@ const ReasoningPanel = memo(function ReasoningPanel({
           <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-sky-300" />
         </span>
         {t("chat:thinkingBadge")}
-        <span className="text-[10px] font-normal text-sky-200/60 group-open:hidden">
+        <span className="text-meta font-normal text-sky-200/60 group-open:hidden">
           {t("chat:thinkingBadgeExpandHint")}
         </span>
-        <span className="hidden text-[10px] font-normal text-sky-200/60 group-open:inline">
+        <span className="hidden text-meta font-normal text-sky-200/60 group-open:inline">
           {t("chat:thinkingBadgeCollapseHint")}
         </span>
       </summary>
@@ -181,13 +181,13 @@ export const AssistantTurnBlock = memo(function AssistantTurnBlock({
   return (
     <li className="flex w-full justify-end scroll-mt-4">
       <div className="max-w-[min(100%,42rem)] rounded-2xl border border-white/10 bg-[#1e1e1e] px-4 py-3 text-sm text-neutral-200 shadow-sm">
-        <span className="mb-1 flex items-center gap-2 text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+        <span className="mb-1 flex items-center gap-2 text-meta font-medium uppercase tracking-wide text-surface-muted">
           {running && !hasStreamBody ? (
             <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-sky-400" />
           ) : null}
           {t("chat:roleAssistant")}
           {standInAuto ? (
-            <span className="rounded bg-violet-900/40 px-1.5 py-0.5 text-[9px] font-normal normal-case text-violet-200">
+            <span className="rounded bg-violet-900/40 px-1.5 py-0.5 text-meta font-normal normal-case text-violet-200">
               {t("chat:standInAutoBadge")}
             </span>
           ) : null}
@@ -214,7 +214,7 @@ export const AssistantTurnBlock = memo(function AssistantTurnBlock({
         ) : null}
         {turnCancelled && !running ? (
           <div className="mt-3 flex justify-start">
-            <span className="inline-flex items-center rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-100/95">
+            <span className="inline-flex items-center rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-meta font-medium uppercase tracking-wide text-amber-100/95">
               {t("chat:turnCancelledBadge")}
             </span>
           </div>

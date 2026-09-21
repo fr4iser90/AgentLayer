@@ -34,8 +34,8 @@ function fmtIndexTime(iso: string | null | undefined, t: (key: string) => string
 
 function pill(on: boolean) {
   return on
-    ? `rounded border border-emerald-500/40 bg-emerald-950/50 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-emerald-200/95`
-    : `rounded border border-white/15 bg-white/5 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-neutral-500`;
+    ? `rounded border border-emerald-500/40 bg-emerald-950/50 px-1.5 py-0.5 text-meta font-medium uppercase tracking-wide text-emerald-200/95`
+    : `rounded border border-white/15 bg-white/5 px-1.5 py-0.5 text-meta font-medium uppercase tracking-wide text-neutral-500`;
 }
 
 function indexJobRunning(job: WorkspaceIndexJob | null | undefined): boolean {
@@ -73,7 +73,7 @@ function indexProgressLabel(job: WorkspaceIndexJob | null | undefined, t: (key: 
 }
 
 const INDEX_BTN =
-  "rounded border px-1.5 py-0.5 text-[9px] font-medium disabled:opacity-50";
+  "rounded border px-1.5 py-0.5 text-meta font-medium disabled:opacity-50";
 
 export function WorkspaceRetrievalBar({
   auth,
@@ -259,7 +259,7 @@ export function WorkspaceRetrievalBar({
 
   return (
     <div
-      className={`rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-[10px] leading-snug text-neutral-300 ${className}`}
+      className={`rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-meta leading-snug text-neutral-300 ${className}`}
     >
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className="font-semibold uppercase tracking-wide text-surface-muted">{t("workspace:codeIndex")}</span>
@@ -321,12 +321,12 @@ export function WorkspaceRetrievalBar({
 
       {canEdit ? (
         <div className="mt-1.5 flex flex-wrap items-center gap-2">
-          <label className="text-[9px] text-surface-muted" htmlFor={`idx-write-${workspace.id}`}>
+          <label className="text-meta text-surface-muted" htmlFor={`idx-write-${workspace.id}`}>
             Index on write
           </label>
           <select
             id={`idx-write-${workspace.id}`}
-            className="rounded border border-white/15 bg-black/40 px-1.5 py-0.5 text-[9px] text-neutral-200"
+            className="rounded border border-white/15 bg-black/40 px-1.5 py-0.5 text-meta text-neutral-200"
             disabled={busy !== null}
             value={workspace.index_on_write ?? ""}
             title={`Effective: ${indexOnWriteEffective}`}
@@ -345,7 +345,7 @@ export function WorkspaceRetrievalBar({
 
       {canEdit ? (
         <div className="mt-1.5 flex flex-wrap items-center gap-1">
-          <span className="mr-0.5 text-[9px] uppercase tracking-wide text-surface-muted">{t("workspace:reindex")}</span>
+          <span className="mr-0.5 text-meta uppercase tracking-wide text-surface-muted">{t("workspace:reindex")}</span>
           <button
             type="button"
             disabled={!indexOn || indexBusy || showProgress}
@@ -378,7 +378,7 @@ export function WorkspaceRetrievalBar({
 
       {showProgress ? (
         <div className="mt-1.5 space-y-1" title={progressLabel || t("workspace:indexingInProgress")}>
-          <div className="flex items-center justify-between gap-2 text-[9px] text-violet-200/90">
+          <div className="flex items-center justify-between gap-2 text-meta text-violet-200/90">
             <span className="truncate">{progressLabel || t("workspace:indexingEllipsis")}</span>
             {progressPct != null ? <span className="shrink-0 tabular-nums">{progressPct}%</span> : null}
           </div>
@@ -390,12 +390,12 @@ export function WorkspaceRetrievalBar({
           </div>
         </div>
       ) : indexFailed && activeJob?.error ? (
-        <p className="mt-1 text-[9px] text-amber-300/90" title={activeJob.error}>
+        <p className="mt-1 text-meta text-amber-300/90" title={activeJob.error}>
           {t("workspace:indexFailed", { err: activeJob.error.slice(0, 120) })}
         </p>
       ) : null}
 
-      <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] text-neutral-500">
+      <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-meta text-neutral-500">
         <span title={t("workspace:lastCodeIndexRun")}>
           {t("workspace:code")}: {fmtIndexTime(status?.last_index_at ?? workspace.last_index_at, t)}
         </span>
