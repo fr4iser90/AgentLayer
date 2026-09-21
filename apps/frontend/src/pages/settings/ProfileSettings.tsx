@@ -85,7 +85,7 @@ export function ProfileSettings() {
       ) : err ? (
         <p className="text-sm text-amber-400">{err}</p>
       ) : (
-        <div className="rounded-xl border border-surface-border bg-surface-raised p-5">
+        <div className="rounded-xl border border-surface-border bg-card p-5">
           <dl className="space-y-4 text-sm">
             <div>
               <dt className="text-xs font-medium uppercase tracking-wide text-surface-muted">{t("settings:profileEmail")}</dt>

@@ -57,7 +57,7 @@ export function AdminInterfacesBridgesSection() {
   }
   return (
     <>
-      <section className="mt-6 rounded-xl border border-surface-border bg-surface-raised p-5">
+      <section className="mt-6 rounded-xl border border-surface-border bg-card p-5">
         <h2 className="text-sm font-medium text-white">{t("admin:discord")}</h2>
         <p className="mt-2 text-xs text-surface-muted">{t("admin:ifBridgeDiscordIntro")}</p>
         <label className="mt-4 block text-xs text-surface-muted" htmlFor="discord-id">
@@ -140,7 +140,7 @@ export function AdminInterfacesBridgesSection() {
         </button>
       </section>
 
-      <section className="mt-6 rounded-xl border border-surface-border bg-surface-raised p-5">
+      <section className="mt-6 rounded-xl border border-surface-border bg-card p-5">
         <h2 className="text-sm font-medium text-white">{t("admin:telegram")}</h2>
         <p className="mt-2 text-xs text-surface-muted">{t("admin:ifBridgeTelegramIntro")}</p>
         <label className="mt-4 block text-xs text-surface-muted" htmlFor="telegram-app-hint">

@@ -115,7 +115,7 @@ export function ShareWidgetBlockBody(props: { block: UiBlock }) {
   const kind = preview?.projection_kind;
 
   return (
-    <section className="rounded-xl border border-surface-border bg-surface-raised/60 p-4">
+    <section className="rounded-xl border border-surface-border bg-card p-4">
       <h3 className="text-sm font-medium text-white">
         {label || t("dashboard:shareWidgetTitle")}
       </h3>

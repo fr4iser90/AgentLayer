@@ -170,7 +170,7 @@ export function MediaPlayerBlockBody(props: {
   };
 
   return (
-    <section className="rounded-xl border border-surface-border bg-surface-raised/60 p-3 md:p-4">
+    <section className="rounded-xl border border-surface-border bg-card p-3 md:p-4">
       <h3 className="mb-3 text-sm font-medium text-white">{sectionTitle}</h3>
 
       <div className="mb-4 min-h-[4rem] rounded-lg border border-white/10 bg-black/40 p-3">

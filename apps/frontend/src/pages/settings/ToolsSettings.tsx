@@ -383,7 +383,7 @@ export function ToolsSettings() {
           const open = openCats[g.cat] !== false;
           const stats = categoryAnalytics(g.items, services);
           return (
-            <section key={g.cat} className="overflow-hidden rounded-2xl border border-surface-border bg-surface-raised/40">
+            <section key={g.cat} className="overflow-hidden rounded-2xl border border-surface-border bg-card">
               <button
                 type="button"
                 onClick={() => toggleCat(g.cat)}

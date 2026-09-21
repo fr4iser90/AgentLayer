@@ -919,7 +919,7 @@ export function DashboardEmbeddedChat({
     !!(modelSelectValue || defaultSelectValue).trim();
 
   return (
-    <div className="flex h-full min-h-0 flex-col rounded-xl border border-surface-border bg-surface-raised/40">
+    <div className="flex h-full min-h-0 flex-col rounded-xl border border-surface-border bg-card">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -1148,7 +1148,7 @@ export function DashboardEmbeddedChat({
                         {boardFiles.length > 0 ? ` (${boardFiles.length})` : ""}
                       </button>
                       {boardLibraryOpen ? (
-                        <div className="absolute bottom-full left-0 z-20 mb-1 max-h-48 w-64 overflow-y-auto rounded-md border border-surface-border bg-surface-raised p-1 shadow-lg">
+                        <div className="absolute bottom-full left-0 z-20 mb-1 max-h-48 w-64 overflow-y-auto rounded-md border border-surface-border bg-raised p-1 shadow-lg">
                           {boardFilesBusy ? (
                             <p className="px-2 py-1 text-meta text-surface-muted">{t("dashboard:loading")}</p>
                           ) : boardFiles.length === 0 ? (

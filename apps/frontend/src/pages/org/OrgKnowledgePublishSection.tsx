@@ -97,7 +97,7 @@ export function OrgKnowledgePublishSection({ onPublished }: { onPublished?: () =
   }, [auth, base, onPublished, t, text, title]);
 
   return (
-    <section className="rounded-xl border border-surface-border bg-surface-raised p-5">
+    <section className="rounded-xl border border-surface-border bg-card p-5">
       <h2 className="text-sm font-medium text-white">{t("org:knowledgePublishTitle")}</h2>
       <p className="mt-2 text-xs text-surface-muted">{t("org:cmsSetupHint")}</p>
 

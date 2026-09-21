@@ -25,7 +25,7 @@ function accessHint(role: string | undefined, t: (key: string) => string): strin
 
 function StatCard(props: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-xl border border-surface-border bg-surface-raised px-4 py-3">
+    <div className="rounded-xl border border-surface-border bg-card px-4 py-3">
       <p className="text-meta font-semibold uppercase tracking-wide text-surface-muted">{props.label}</p>
       <p className="mt-1 text-2xl font-semibold tabular-nums text-white">{props.value}</p>
       {props.sub ? <p className="mt-0.5 text-xs text-surface-muted">{props.sub}</p> : null}
@@ -125,7 +125,7 @@ export function DashboardOverviewPanel(props: {
                   <button
                     type="button"
                     onClick={() => onOpenDashboard(w.id)}
-                    className="flex w-full flex-col rounded-xl border border-surface-border bg-surface-raised p-4 text-left transition hover:border-sky-500/35 hover:bg-white/[0.03]"
+                    className="flex w-full flex-col rounded-xl border border-surface-border bg-card p-4 text-left transition hover:border-sky-500/35 hover:bg-white/[0.03]"
                   >
                     <span className="font-medium text-white">
                       {w.title || w.kind}

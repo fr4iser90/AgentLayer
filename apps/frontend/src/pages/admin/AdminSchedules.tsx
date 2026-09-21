@@ -328,7 +328,7 @@ export function AdminSchedules() {
         </button>
       </div>
 
-      <div className="mt-6 rounded-xl border border-surface-border bg-surface-raised/50 p-4">
+      <div className="mt-6 rounded-xl border border-surface-border bg-card p-4">
         <div className="grid gap-3 md:grid-cols-5">
           <label className="text-xs text-surface-muted">
             {t("admin:schedulesScope")}
@@ -508,7 +508,7 @@ export function AdminSchedules() {
 
       {createOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-2xl rounded-xl border border-surface-border bg-surface-raised p-4">
+          <div className="w-full max-w-2xl rounded-xl border border-surface-border bg-card p-4">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
                 <div className="text-lg font-semibold text-white">{t("admin:createScheduleTitle")}</div>
@@ -671,7 +671,7 @@ export function AdminSchedules() {
 
       {editJob ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-2xl rounded-xl border border-surface-border bg-surface-raised p-4">
+          <div className="w-full max-w-2xl rounded-xl border border-surface-border bg-card p-4">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
                 <div className="text-lg font-semibold text-white">{t("admin:editScheduleTitle")}</div>

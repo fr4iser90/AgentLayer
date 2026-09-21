@@ -117,9 +117,11 @@ export default {
         },
 
         // --- compatibility aliases (do not use in new code) ---
+        // surface.DEFAULT and surface.raised were dropped once every fill moved
+        // onto the ladder. surface.raised pointed at PANEL, so its name promised
+        // a raised level while it painted the chrome colour — check-surface-
+        // ladder.mjs keeps the fill aliases from coming back.
         surface: {
-          DEFAULT: CANVAS,
-          raised: PANEL,
           border: LINE_DEFAULT,
           // Kept at roughly today's brightness: this token has ~1.2k call sites,
           // and the spec's 5.09:1 `muted` would dim all of them from 7.7:1.

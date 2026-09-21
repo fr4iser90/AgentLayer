@@ -645,7 +645,7 @@ export function SetupWizardPage() {
                     {catalog.providers.map((p) => (
                       <li
                         key={p.provider_id}
-                        className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-sm"
+                        className="rounded-lg border border-surface-border bg-card px-3 py-2 text-sm"
                       >
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-medium text-white">{p.label}</span>
@@ -674,7 +674,7 @@ export function SetupWizardPage() {
                   </ul>
                 </section>
 
-                <section className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-sm">
+                <section className="rounded-lg border border-surface-border bg-card px-3 py-2 text-sm">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium text-white">{t("setup:embeddingsTitle")}</span>
                     <span

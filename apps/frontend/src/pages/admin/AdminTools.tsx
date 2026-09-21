@@ -396,7 +396,7 @@ export function AdminTools() {
     return (
       <li
         key={pid}
-        className="rounded-lg border border-surface-border bg-surface-raised/80 p-3 text-xs text-neutral-200"
+        className="rounded-lg border border-surface-border bg-card p-3 text-xs text-neutral-200"
       >
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1 space-y-2">
@@ -558,7 +558,7 @@ export function AdminTools() {
         <span className="text-neutral-500">{t("admin:toolsRegistryAssignUsers")}</span>
       </p>
 
-      <section className="mt-6 rounded-xl border border-surface-border bg-surface-raised/80 p-4">
+      <section className="mt-6 rounded-xl border border-surface-border bg-card p-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-sm font-semibold text-white">{t("admin:toolsImportTitle")}</h2>

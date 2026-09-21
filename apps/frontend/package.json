@@ -8,6 +8,7 @@
     "i18n:scan": "node scripts/scan-i18n-ui.mjs",
     "lint:type-scale": "node scripts/check-type-scale.mjs",
     "lint:field-surface": "node scripts/check-field-surface.mjs",
+    "lint:surface-ladder": "node scripts/check-surface-ladder.mjs",
     "test": "node scripts/test-frontend-i18n.mjs",
     "test:chat-perf": "node --experimental-strip-types scripts/test-chat-perf-metrics.mts",
     "test:chat-agent-selection": "node --experimental-strip-types scripts/test-chat-agent-selection.mts",
@@ -16,7 +17,7 @@
     "test:unit:watch": "vitest",
     "e2e:i18n": "node scripts/e2e-playwright-i18n.mjs",
     "probe:overflow": "node scripts/probe-overflow.mjs",
-    "build": "npm run test && npm run test:unit && npm run lint:type-scale && npm run lint:field-surface && vite build",
+    "build": "npm run test && npm run test:unit && npm run lint:type-scale && npm run lint:field-surface && npm run lint:surface-ladder && vite build",
     "preview": "vite preview"
   },
   "dependencies": {

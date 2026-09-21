@@ -517,7 +517,7 @@ export function DelegateSettings() {
 
       {msg ? <p className="mt-4 text-sm text-neutral-300">{msg}</p> : null}
 
-      <section className="mt-8 rounded-lg border border-surface-border bg-surface-raised/40 p-4">
+      <section className="mt-8 rounded-lg border border-surface-border bg-card p-4">
         <h2 className="text-sm font-medium text-white">{t("settings:delegateGlobalTitle")}</h2>
         <ConfigEditor config={globalConfig} onChange={setGlobalConfig} idPrefix="global" />
         <label className="mt-4 block text-sm text-white" htmlFor="delegate-notes">
@@ -540,7 +540,7 @@ export function DelegateSettings() {
         </button>
       </section>
 
-      <section className="mt-8 rounded-lg border border-surface-border bg-surface-raised/40 p-4">
+      <section className="mt-8 rounded-lg border border-surface-border bg-card p-4">
         <h2 className="text-sm font-medium text-white">{t("settings:delegateWorkspaceTitle")}</h2>
         <p className="mt-1 text-xs text-surface-muted">{t("settings:delegateWorkspaceHelp")}</p>
         {workspaces.length === 0 ? (

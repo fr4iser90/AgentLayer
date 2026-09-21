@@ -76,7 +76,7 @@ export function AdminAgentTraces() {
       </div>
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
       <div className="flex min-h-0 flex-1 gap-4 overflow-hidden">
-        <div className="flex w-72 shrink-0 flex-col overflow-hidden rounded-xl border border-surface-border bg-surface-raised/40">
+        <div className="flex w-72 shrink-0 flex-col overflow-hidden rounded-xl border border-surface-border bg-card">
           <div className="border-b border-white/5 px-3 py-2 text-xs font-medium uppercase tracking-wide text-surface-muted">
             {t("admin:agentTracesRecentRuns")}
           </div>

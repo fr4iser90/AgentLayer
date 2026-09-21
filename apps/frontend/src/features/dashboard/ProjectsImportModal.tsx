@@ -231,7 +231,7 @@ export function ProjectsImportModal({
       <div
         role="dialog"
         aria-modal="true"
-        className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-surface-border bg-surface-raised shadow-2xl"
+        className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-surface-border bg-card shadow-2xl"
       >
         <div className="border-b border-surface-border px-5 py-4">
           <h2 className="text-lg font-semibold text-white">{t("dashboard:importFromGithub")}</h2>

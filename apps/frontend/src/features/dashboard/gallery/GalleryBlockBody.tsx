@@ -132,7 +132,7 @@ export function GalleryBlockBody(props: {
   };
 
   return (
-    <section className="rounded-xl border border-surface-border bg-surface-raised/60 p-4">
+    <section className="rounded-xl border border-surface-border bg-card p-4">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-medium text-white">{sectionTitle}</h3>
         {!readOnly ? (

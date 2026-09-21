@@ -120,7 +120,7 @@ export function CardGridBlockBody(props: {
   const sectionTitle = block.props.title?.trim() || t("dashboard:cardGridFallback");
 
   return (
-    <section className="rounded-xl border border-surface-border bg-surface-raised/60 p-4">
+    <section className="rounded-xl border border-surface-border bg-card p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <span className="text-xs font-medium uppercase tracking-wide text-surface-muted">
           {sectionTitle}

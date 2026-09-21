@@ -74,7 +74,7 @@ export function VoiceSettings() {
       ) : null}
       {msg ? <p className="mt-3 text-sm text-neutral-300">{msg}</p> : null}
 
-      <div className="mt-6 space-y-4 rounded-xl border border-surface-border bg-surface-raised/80 p-5">
+      <div className="mt-6 space-y-4 rounded-xl border border-surface-border bg-card p-5">
         <label className="flex items-center gap-2 text-sm text-white">
           <input
             type="checkbox"

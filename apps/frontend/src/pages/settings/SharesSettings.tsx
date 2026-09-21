@@ -336,7 +336,7 @@ export default function SharesSettings() {
    */
   function renderPolicyField(field: string, resourceId: string, draft: SharePolicy) {
     const cls =
-      "mt-1 w-full rounded-md border border-surface-border bg-surface px-2 py-1.5 text-white text-sm";
+      "mt-1 w-full rounded-md border border-surface-border bg-canvas px-2 py-1.5 text-white text-sm";
     switch (field) {
       case "days_ahead":
         return (
@@ -487,7 +487,7 @@ export default function SharesSettings() {
             return (
               <div
                 key={userId}
-                className="rounded-xl border border-surface-border bg-surface-raised p-4 cursor-pointer hover:bg-white/[0.02] transition-colors"
+                className="rounded-xl border border-surface-border bg-card p-4 cursor-pointer hover:bg-white/[0.02] transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
                   void loadFriendShares(friend);
@@ -509,7 +509,7 @@ export default function SharesSettings() {
           })}
 
           {Object.keys(groupByUser(outgoing)).length === 0 && (
-            <div className="p-8 text-center text-surface-muted rounded-xl border border-surface-border bg-surface-raised">
+            <div className="p-8 text-center text-surface-muted rounded-xl border border-surface-border bg-card">
               {t("settings:sharesNoneOutgoing")}
             </div>
           )}
@@ -524,7 +524,7 @@ export default function SharesSettings() {
             return (
               <div
                 key={userId}
-                className="rounded-xl border border-surface-border bg-surface-raised p-4"
+                className="rounded-xl border border-surface-border bg-card p-4"
               >
                 <div className="flex items-center justify-between">
                   <div>
@@ -540,7 +540,7 @@ export default function SharesSettings() {
           })}
 
           {Object.keys(groupByUser(incoming)).length === 0 && (
-            <div className="p-8 text-center text-surface-muted rounded-xl border border-surface-border bg-surface-raised">
+            <div className="p-8 text-center text-surface-muted rounded-xl border border-surface-border bg-card">
               {t("settings:sharesNoneIncoming")}
             </div>
           )}
@@ -548,7 +548,7 @@ export default function SharesSettings() {
       )}
 
       {!loading && (
-        <div className="rounded-xl border border-surface-border bg-surface-raised p-4">
+        <div className="rounded-xl border border-surface-border bg-card p-4">
           <h3 className="font-medium text-white">
             {t("settings:sharesPublishedTitle")}
           </h3>
@@ -629,7 +629,7 @@ export default function SharesSettings() {
       )}
 
       {selectedFriend && friendShares && (
-        <div className="rounded-xl border border-surface-border bg-surface-raised overflow-hidden mt-8">
+        <div className="rounded-xl border border-surface-border bg-card overflow-hidden mt-8">
           <div className="p-4 border-b border-surface-border">
             <h3 className="font-medium text-white">
               {selectedFriend.display_name || selectedFriend.email}

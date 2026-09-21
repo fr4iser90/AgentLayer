@@ -3246,7 +3246,7 @@ export function ChatPage() {
 
   return (
     <CollapsibleSidebarShell
-      className="bg-surface"
+      className="bg-canvas"
       mobileOpen={threadSidebarOpen}
       onMobileOpenChange={setThreadSidebarOpen}
       sidebarAriaLabel={t("chat:sidebarTitle")}

@@ -131,7 +131,7 @@ export function ProjectRowDetailDrawer(props: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-stretch justify-end bg-black/60 p-4">
-      <div className="h-full w-full max-w-lg overflow-auto rounded-xl border border-surface-border bg-surface-raised p-4 shadow-2xl">
+      <div className="h-full w-full max-w-lg overflow-auto rounded-xl border border-surface-border bg-card p-4 shadow-2xl">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <div className="text-xs uppercase tracking-wide text-surface-muted">{t("dashboard:project")}</div>

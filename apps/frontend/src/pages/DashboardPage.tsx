@@ -1173,7 +1173,7 @@ export function DashboardPage() {
                   <button
                     type="button"
                     onClick={() => confirmInstallCatalogRow(row)}
-                    className="flex h-full min-h-[148px] w-full flex-col rounded-xl border border-surface-border bg-surface-raised p-5 text-left transition hover:border-sky-500/35 hover:bg-white/[0.03]"
+                    className="flex h-full min-h-[148px] w-full flex-col rounded-xl border border-surface-border bg-card p-5 text-left transition hover:border-sky-500/35 hover:bg-white/[0.03]"
                   >
                     <span className="text-base font-medium text-white">{row.label}</span>
                     {row.description ? (
@@ -1214,7 +1214,7 @@ export function DashboardPage() {
               role="dialog"
               aria-modal="true"
               aria-labelledby="ws-install-title"
-              className="relative w-full max-w-md rounded-xl border border-surface-border bg-surface-raised p-6 shadow-xl"
+              className="relative w-full max-w-md rounded-xl border border-surface-border bg-card p-6 shadow-xl"
             >
               <h2 id="ws-install-title" className="text-lg font-semibold text-white">
                 {t("dashboard:installPackConfirmTitle", { label: installModalRow.label })}
@@ -1350,7 +1350,7 @@ export function DashboardPage() {
         <button
           type="button"
           onClick={() => setNewWsModalOpen(true)}
-          className="flex flex-col rounded-xl border border-surface-border bg-surface-raised p-6 text-left transition hover:border-sky-500/35 hover:bg-white/[0.03]"
+          className="flex flex-col rounded-xl border border-surface-border bg-card p-6 text-left transition hover:border-sky-500/35 hover:bg-white/[0.03]"
         >
           <span className="text-base font-semibold text-white">{t("dashboard:newDashboardTitle")}</span>
           <span className="mt-2 text-sm text-surface-muted">{t("dashboard:newDashboardSubtitle")}</span>
@@ -1358,7 +1358,7 @@ export function DashboardPage() {
         <button
           type="button"
           onClick={() => openCatalog()}
-          className="flex flex-col rounded-xl border border-surface-border bg-surface-raised p-6 text-left transition hover:border-sky-500/35 hover:bg-white/[0.03]"
+          className="flex flex-col rounded-xl border border-surface-border bg-card p-6 text-left transition hover:border-sky-500/35 hover:bg-white/[0.03]"
         >
           <span className="text-base font-semibold text-white">{t("dashboard:catalogTitle")}</span>
           <span className="mt-2 text-sm text-surface-muted">{t("dashboard:catalogIntro")}</span>
@@ -1431,7 +1431,7 @@ export function DashboardPage() {
             return (
               <li
                 key={row.kind}
-                className="flex flex-col rounded-xl border border-surface-border bg-surface-raised p-5"
+                className="flex flex-col rounded-xl border border-surface-border bg-card p-5"
               >
                 <span className="text-base font-medium text-white">{row.label}</span>
                 {row.description ? (
@@ -1841,7 +1841,7 @@ export function DashboardPage() {
   return (
     <>
       <CollapsibleSidebarShell
-        className="bg-surface"
+        className="bg-canvas"
         mobileOpen={actionsSidebarOpen}
         onMobileOpenChange={setActionsSidebarOpen}
         sidebarAriaLabel={t("dashboard:sidebarNavAria")}
@@ -2451,7 +2451,7 @@ export function DashboardPage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="ws-new-title"
-            className="relative max-h-[85vh] w-full max-w-md overflow-y-auto rounded-xl border border-surface-border bg-surface-raised p-6 shadow-xl"
+            className="relative max-h-[85vh] w-full max-w-md overflow-y-auto rounded-xl border border-surface-border bg-card p-6 shadow-xl"
           >
             <h2 id="ws-new-title" className="text-lg font-semibold text-white">
               {t("dashboard:newDashboardModalTitle")}
@@ -2508,7 +2508,7 @@ export function DashboardPage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="ws-tpl-install-title"
-            className="relative w-full max-w-md rounded-xl border border-surface-border bg-surface-raised p-6 shadow-xl"
+            className="relative w-full max-w-md rounded-xl border border-surface-border bg-card p-6 shadow-xl"
           >
             <h2 id="ws-tpl-install-title" className="text-lg font-semibold text-white">
               {t("dashboard:installPackConfirmTitle", { label: installModalRow.label })}
@@ -2543,7 +2543,7 @@ export function DashboardPage() {
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-md rounded-xl border border-surface-border bg-surface-raised p-6 shadow-xl"
+            className="w-full max-w-md rounded-xl border border-surface-border bg-card p-6 shadow-xl"
           >
             <h2 className="text-lg font-semibold text-white">{t("dashboard:pinBlockTitle")}</h2>
             <label className="mt-4 block text-sm text-surface-muted">

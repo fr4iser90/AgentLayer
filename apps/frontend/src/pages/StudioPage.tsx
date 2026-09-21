@@ -158,7 +158,7 @@ export function StudioPage() {
 
   return (
     <CollapsibleSidebarShell
-      className="bg-surface"
+      className="bg-canvas"
       mobileOpen={presetSidebarOpen}
       onMobileOpenChange={setPresetSidebarOpen}
       sidebarAriaLabel={t("common:studio.presetsSidebarAria")}

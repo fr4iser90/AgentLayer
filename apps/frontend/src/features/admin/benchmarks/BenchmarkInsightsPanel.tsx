@@ -196,7 +196,7 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
         </button>
       </div>
 
-      <section className="rounded-xl border border-surface-border bg-surface-raised/40 p-4">
+      <section className="rounded-xl border border-surface-border bg-card p-4">
         <h2 className="text-sm font-medium text-white">{t("admin:agentConfigAnalysisCompare")}</h2>
         <div className="mt-3 flex flex-wrap items-end gap-2">
           <select
@@ -261,7 +261,7 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
           <AnalysisSummary analysis={analysis} t={t} />
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <section className="rounded-xl border border-surface-border bg-surface-raised/40 p-4">
+            <section className="rounded-xl border border-surface-border bg-card p-4">
               <h2 className="text-sm font-medium text-white">
                 {t("admin:agentConfigAnalysisFailurePatterns")}
               </h2>
@@ -271,7 +271,7 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
             </section>
 
             {(analysis.by_scenario?.length ?? 0) > 0 ? (
-              <section className="rounded-xl border border-surface-border bg-surface-raised/40 p-4">
+              <section className="rounded-xl border border-surface-border bg-card p-4">
                 <h2 className="text-sm font-medium text-white">
                   {t("admin:agentConfigAnalysisByScenario")}
                 </h2>
