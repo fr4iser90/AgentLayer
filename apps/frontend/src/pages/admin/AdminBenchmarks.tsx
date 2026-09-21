@@ -1855,7 +1855,7 @@ export function AdminBenchmarks() {
               <select
                 value={runAsUserId}
                 onChange={(e) => setRunAsUserId(e.target.value)}
-                className="min-w-[16rem] flex-1 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
+                className="min-w-[16rem] flex-1 rounded-lg border border-white/10 bg-field px-3 py-2 text-sm text-white"
               >
                 {tenantUsers.map((u) => (
                   <option key={u.id} value={u.id}>
@@ -1878,7 +1878,7 @@ export function AdminBenchmarks() {
                 <select
                   value={friendUserId}
                   onChange={(e) => setFriendUserId(e.target.value)}
-                  className="mt-1 w-full max-w-md rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
+                  className="mt-1 w-full max-w-md rounded-lg border border-white/10 bg-field px-3 py-2 text-sm text-white"
                 >
                   {friendCandidates.length === 0 ? (
                     <option value="">{t("admin:benchFriendUserEmpty")}</option>
@@ -2128,7 +2128,7 @@ export function AdminBenchmarks() {
                                         e.target.value
                                       )
                                     }
-                                    className="min-w-0 flex-1 rounded border border-white/10 bg-black/40 px-2 py-1.5 text-sm font-mono"
+                                    className="min-w-0 flex-1 rounded border border-white/10 bg-field px-2 py-1.5 text-sm font-mono"
                                     placeholder={
                                       defaultProviderModel(p) || t("admin:benchModelMissing")
                                     }
@@ -2200,7 +2200,7 @@ export function AdminBenchmarks() {
                                   value={reviewerValue}
                                   disabled={!isReviewerProvider || reviewerOptions.length === 0}
                                   onChange={(e) => setReviewerModel(e.target.value)}
-                                  className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white disabled:opacity-50"
+                                  className="mt-1 w-full rounded-lg border border-white/10 bg-field px-3 py-2 text-xs text-white disabled:opacity-50"
                                 >
                                   {reviewerValue && !reviewerOptions.includes(reviewerValue) ? (
                                     <option value={reviewerValue}>{reviewerValue}</option>
@@ -2254,7 +2254,7 @@ export function AdminBenchmarks() {
                 <select
                   value={tuningMode}
                   onChange={(e) => setTuningMode(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white"
+                  className="mt-1 w-full rounded-lg border border-white/10 bg-field px-3 py-2 text-xs text-white"
                 >
                   <option value="fast">{t("admin:benchTuneModeFast")}</option>
                   <option value="standard">{t("admin:benchTuneModeStandard")}</option>
@@ -2266,7 +2266,7 @@ export function AdminBenchmarks() {
                 <select
                   value={reviewerMode}
                   onChange={(e) => setReviewerMode(e.target.value as "off" | "patch_and_test")}
-                  className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white"
+                  className="mt-1 w-full rounded-lg border border-white/10 bg-field px-3 py-2 text-xs text-white"
                 >
                   <option value="off">{tLoose("admin:benchTuneReviewerOff")}</option>
                   <option value="patch_and_test">{tLoose("admin:benchTuneReviewerPatchAndTest")}</option>
@@ -2281,7 +2281,7 @@ export function AdminBenchmarks() {
                   disabled={reviewerMode !== "patch_and_test"}
                   value={maxPatchRounds}
                   onChange={(e) => setMaxPatchRounds(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white disabled:opacity-50"
+                  className="mt-1 w-full rounded-lg border border-white/10 bg-field px-3 py-2 text-xs text-white disabled:opacity-50"
                 />
               </label>
             </div>
@@ -2511,7 +2511,7 @@ export function AdminBenchmarks() {
             <select
               value={suite}
               onChange={(e) => onSuiteChange(e.target.value)}
-              className="mt-1 w-full max-w-md rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
+              className="mt-1 w-full max-w-md rounded-lg border border-white/10 bg-field px-3 py-2 text-sm text-white"
             >
               {suites.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -2666,7 +2666,7 @@ export function AdminBenchmarks() {
                   value={cohortLabel}
                   onChange={(e) => setCohortLabel(e.target.value)}
                   placeholder={t("admin:benchCohortLabelPlaceholder")}
-                  className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                  className="mt-1 w-full rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-white"
                 />
                 <span className="mt-1 block text-meta text-surface-muted">
                   {t("admin:benchCohortLabelHint")}
@@ -2677,7 +2677,7 @@ export function AdminBenchmarks() {
                 <select
                   value={promptVariant}
                   onChange={(e) => setPromptVariant(e.target.value)}
-                  className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                  className="mt-1 w-full rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-white"
                 >
                   {availablePromptVariants.map((variant) => (
                     <option key={variant} value={variant}>
@@ -2694,7 +2694,7 @@ export function AdminBenchmarks() {
                 <select
                   value={promptLocale}
                   onChange={(e) => setPromptLocale(e.target.value)}
-                  className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                  className="mt-1 w-full rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-white"
                 >
                   {availablePromptLocales.map((loc) => (
                     <option key={loc} value={loc}>
@@ -2715,7 +2715,7 @@ export function AdminBenchmarks() {
                   value={scenarioTimeoutSec}
                   onChange={(e) => setScenarioTimeoutSec(e.target.value)}
                   placeholder={t("admin:benchScenarioTimeoutPlaceholder")}
-                  className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                  className="mt-1 w-full rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-white"
                 />
                 <span className="mt-1 block text-meta text-surface-muted">
                   {t("admin:benchScenarioTimeoutHint")}
@@ -2730,7 +2730,7 @@ export function AdminBenchmarks() {
                   value={maxToolRoundsOverride}
                   onChange={(e) => setMaxToolRoundsOverride(e.target.value)}
                   placeholder={t("admin:benchMaxToolRoundsPlaceholder")}
-                  className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                  className="mt-1 w-full rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-white"
                 />
                 <span className="mt-1 block text-meta text-surface-muted">
                   {t("admin:benchMaxToolRoundsHint")}
@@ -2745,7 +2745,7 @@ export function AdminBenchmarks() {
                   value={scenarioFailureRetries}
                   onChange={(e) => setScenarioFailureRetries(e.target.value)}
                   placeholder={t("admin:benchScenarioFailureRetriesPlaceholder")}
-                  className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                  className="mt-1 w-full rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-white"
                 />
                 <span className="mt-1 block text-meta text-surface-muted">
                   {t("admin:benchScenarioFailureRetriesHint")}
@@ -3299,7 +3299,7 @@ export function AdminBenchmarks() {
               <select
                 value={bulkDeleteSuite}
                 onChange={(e) => setBulkDeleteSuite(e.target.value)}
-                className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                className="mt-1 w-full rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-white"
               >
                 <option value="">{t("admin:benchStatsAllSuites")}</option>
                 {historySuiteOptions.map((s) => (
@@ -3314,7 +3314,7 @@ export function AdminBenchmarks() {
               <select
                 value={bulkDeleteOlderThanDays}
                 onChange={(e) => setBulkDeleteOlderThanDays(e.target.value)}
-                className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                className="mt-1 w-full rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-white"
               >
                 <option value="">{t("admin:benchBulkDeleteAnyAge")}</option>
                 <option value="30">{t("admin:benchBulkDeleteOlder30d")}</option>

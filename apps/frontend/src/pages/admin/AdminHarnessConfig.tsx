@@ -220,7 +220,7 @@ export function AdminHarnessConfig() {
                   <select
                     value={globalPreset}
                     onChange={(e) => setGlobalPreset(e.target.value as HarnessPreset)}
-                    className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                    className="mt-1 w-full rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-white"
                   >
                     <option value="observability">{t("admin:benchHarnessObservability")}</option>
                     <option value="chat_parity">{t("admin:benchHarnessChatParity")}</option>
@@ -234,7 +234,7 @@ export function AdminHarnessConfig() {
                     value={globalMaxRounds}
                     onChange={(e) => setGlobalMaxRounds(e.target.value)}
                     placeholder={t("admin:harnessInheritPlaceholder")}
-                    className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                    className="mt-1 w-full rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-white"
                   />
                 </label>
                 <label className="block text-sm md:col-span-2">
@@ -246,7 +246,7 @@ export function AdminHarnessConfig() {
                     value={globalTimeout}
                     onChange={(e) => setGlobalTimeout(e.target.value)}
                     placeholder={t("admin:harnessInheritPlaceholder")}
-                    className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                    className="mt-1 w-full rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-white"
                   />
                 </label>
                 <label className="block text-sm md:col-span-2">
@@ -255,7 +255,7 @@ export function AdminHarnessConfig() {
                     value={globalNotes}
                     onChange={(e) => setGlobalNotes(e.target.value)}
                     rows={2}
-                    className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                    className="mt-1 w-full rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-white"
                   />
                 </label>
               </div>
@@ -333,7 +333,7 @@ export function AdminHarnessConfig() {
                       onChange={(e) =>
                         setOverrideForm((f) => ({ ...f, catalog_owned_by: e.target.value }))
                       }
-                      className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                      className="mt-1 w-full rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-white"
                     >
                       <option value="">{t("admin:harnessSelectProvider")}</option>
                       {benchProviders.map((p) => (
@@ -349,7 +349,7 @@ export function AdminHarnessConfig() {
                       value={overrideForm.model}
                       onChange={(e) => setOverrideForm((f) => ({ ...f, model: e.target.value }))}
                       placeholder={t("admin:harnessModelWildcardHint")}
-                      className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                      className="mt-1 w-full rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-white"
                     />
                   </label>
                   <label className="block text-sm">
@@ -357,7 +357,7 @@ export function AdminHarnessConfig() {
                     <input
                       value={overrideForm.label}
                       onChange={(e) => setOverrideForm((f) => ({ ...f, label: e.target.value }))}
-                      className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                      className="mt-1 w-full rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-white"
                     />
                   </label>
                   <label className="block text-sm">
@@ -370,7 +370,7 @@ export function AdminHarnessConfig() {
                           harness_preset: e.target.value as HarnessPreset,
                         }))
                       }
-                      className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                      className="mt-1 w-full rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-white"
                     >
                       <option value="observability">{t("admin:benchHarnessObservability")}</option>
                       <option value="chat_parity">{t("admin:benchHarnessChatParity")}</option>
@@ -393,7 +393,7 @@ export function AdminHarnessConfig() {
                         }))
                       }
                       placeholder={t("admin:harnessInheritPlaceholder")}
-                      className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                      className="mt-1 w-full rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-white"
                     />
                   </label>
                   <label className="block text-sm">
@@ -414,7 +414,7 @@ export function AdminHarnessConfig() {
                         }))
                       }
                       placeholder={t("admin:harnessInheritPlaceholder")}
-                      className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                      className="mt-1 w-full rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-white"
                     />
                   </label>
                   <label className="block text-sm md:col-span-2">
@@ -423,7 +423,7 @@ export function AdminHarnessConfig() {
                       value={overrideForm.notes || ""}
                       onChange={(e) => setOverrideForm((f) => ({ ...f, notes: e.target.value }))}
                       rows={2}
-                      className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                      className="mt-1 w-full rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-white"
                     />
                   </label>
                 </div>

@@ -130,7 +130,7 @@ export function CardGridBlockBody(props: {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={searchPlaceholder}
-            className="w-full min-w-[12rem] max-w-xs rounded-md border border-surface-border bg-black/30 px-3 py-1.5 text-xs text-neutral-100 outline-none focus:border-sky-500/50 sm:w-56"
+            className="w-full min-w-[12rem] max-w-xs rounded-md border border-surface-border bg-field px-3 py-1.5 text-xs text-neutral-100 outline-none focus:border-sky-500/50 sm:w-56"
           />
         ) : null}
       </div>

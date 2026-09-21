@@ -1407,7 +1407,7 @@ export function DashboardPage() {
             value={catalogQuery}
             onChange={(e) => setCatalogQuery(e.target.value)}
             placeholder={t("dashboard:filterByNamePlaceholder")}
-            className="w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-500/50"
+            className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-white outline-none focus:border-sky-500/50"
           />
         </div>
         <div>
@@ -1771,7 +1771,7 @@ export function DashboardPage() {
           {dashboardReady && chatDock !== "hidden" ? (
             <aside
               className={[
-                "flex w-full shrink-0 flex-col border-t border-surface-border bg-[#0d0d0d]/80 lg:min-h-0 lg:border-t-0 lg:border-l lg:border-surface-border",
+                "flex w-full shrink-0 flex-col border-t border-surface-border bg-panel lg:min-h-0 lg:border-t-0 lg:border-l lg:border-surface-border",
                 chatDock === "mini"
                   ? "lg:w-[min(220px,28vw)] lg:max-w-[220px]"
                   : "lg:w-[min(400px,36vw)] lg:max-w-md",
@@ -1847,7 +1847,6 @@ export function DashboardPage() {
         sidebarAriaLabel={t("dashboard:sidebarNavAria")}
         closeSidebarAriaLabel={t("dashboard:closeActionsSidebar")}
         desktopWidthClass="md:w-64"
-        sidebarSurfaceClass="bg-surface-raised/40"
         sidebar={dashboardSidebar}
       >
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
@@ -1955,7 +1954,7 @@ export function DashboardPage() {
                   });
                 }}
                 placeholder={t("dashboard:agentPromptExtraPlaceholder")}
-                className="mt-1 w-full resize-y rounded-lg border border-surface-border bg-black/30 px-3 py-2 font-mono text-sm leading-relaxed text-white outline-none placeholder:text-white/25 focus:border-sky-500/50 read-only:cursor-default read-only:opacity-90"
+                className="mt-1 w-full resize-y rounded-lg border border-surface-border bg-field px-3 py-2 font-mono text-sm leading-relaxed text-white outline-none placeholder:text-white/25 focus:border-sky-500/50 read-only:cursor-default read-only:opacity-90"
               />
               <p className="mt-2 text-meta text-surface-muted">{t("dashboard:agentPromptExtraSavedHint")}</p>
               <p className="mt-3 text-meta text-surface-muted">{t("dashboard:agentPromptScrollHint")}</p>
@@ -2041,7 +2040,7 @@ export function DashboardPage() {
                           }
                         }}
                         placeholder={t("dashboard:shareToolNamePlaceholder")}
-                        className="min-w-0 flex-1 rounded-lg border border-surface-border bg-black/30 px-3 py-2 font-mono text-sm text-white outline-none focus:border-sky-500/50"
+                        className="min-w-0 flex-1 rounded-lg border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white outline-none focus:border-sky-500/50"
                       />
                       <button
                         type="button"
@@ -2080,7 +2079,7 @@ export function DashboardPage() {
                       value={memberEmail}
                       onChange={(e) => setMemberEmail(e.target.value)}
                       placeholder={t("dashboard:shareEmailPlaceholder")}
-                      className="w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-500/50"
+                      className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-white outline-none focus:border-sky-500/50"
                     />
                   </div>
                   <div>
@@ -2090,7 +2089,7 @@ export function DashboardPage() {
                     <select
                       value={memberRole}
                       onChange={(e) => setMemberRole(e.target.value as "viewer" | "editor" | "co_owner")}
-                      className="rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white"
+                      className="rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-white"
                     >
                       <option value="viewer">{t("dashboard:membersRoleViewer")}</option>
                       <option value="editor">{t("dashboard:membersRoleEditor")}</option>
@@ -2152,7 +2151,7 @@ export function DashboardPage() {
                       value={blockShareEmail}
                       onChange={(e) => setBlockShareEmail(e.target.value)}
                       placeholder={t("dashboard:shareEmailPlaceholder")}
-                      className="w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-500/50"
+                      className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-white outline-none focus:border-sky-500/50"
                     />
                   </div>
                   <div className="min-w-[140px]">
@@ -2164,7 +2163,7 @@ export function DashboardPage() {
                       onChange={(e) =>
                         setBlockSharePermission(e.target.value === "edit" ? "edit" : "view")
                       }
-                      className="w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-500/50"
+                      className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-white outline-none focus:border-sky-500/50"
                     >
                       <option value="view">{t("dashboard:blockShareViewOnly")}</option>
                       <option value="edit">{t("dashboard:blockShareEdit")}</option>
@@ -2273,7 +2272,7 @@ export function DashboardPage() {
                       value={publicShareLabel}
                       onChange={(e) => setPublicShareLabel(e.target.value)}
                       placeholder={t("dashboard:publicShareLabelPlaceholder")}
-                      className="w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-violet-500/50"
+                      className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-white outline-none focus:border-violet-500/50"
                     />
                   </div>
                   <div className="min-w-[180px]">
@@ -2284,7 +2283,7 @@ export function DashboardPage() {
                       type="datetime-local"
                       value={publicShareExpiresAt}
                       onChange={(e) => setPublicShareExpiresAt(e.target.value)}
-                      className="w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-violet-500/50"
+                      className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-white outline-none focus:border-violet-500/50"
                     />
                   </div>
                   <div className="min-w-[160px]">
@@ -2296,7 +2295,7 @@ export function DashboardPage() {
                       value={publicSharePassword}
                       onChange={(e) => setPublicSharePassword(e.target.value)}
                       placeholder={t("dashboard:publicSharePasswordOptional")}
-                      className="w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-violet-500/50"
+                      className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-white outline-none focus:border-violet-500/50"
                       autoComplete="new-password"
                     />
                   </div>
@@ -2552,7 +2551,7 @@ export function DashboardPage() {
               <select
                 value={pinTargetId}
                 onChange={(e) => setPinTargetId(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white"
+                className="mt-1 w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-white"
               >
                 {pinTargetOptions.map((w) => (
                   <option key={w.id} value={w.id}>

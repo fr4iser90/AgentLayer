@@ -23,7 +23,7 @@ export function CollapsibleSidebarShell({
   sidebarAriaLabel,
   closeSidebarAriaLabel,
   desktopWidthClass = "md:w-[280px]",
-  sidebarSurfaceClass = "bg-[#111]",
+  sidebarSurfaceClass = "bg-panel",
   sidebarClassName = "",
   className = "",
 }: Props) {
@@ -55,7 +55,7 @@ export function CollapsibleSidebarShell({
         <div className="fixed inset-0 z-40 flex md:hidden" role="presentation">
           <button
             type="button"
-            className="absolute inset-0 bg-black/60"
+            className="absolute inset-0 bg-overlay"
             aria-label={closeSidebarAriaLabel}
             onClick={() => onMobileOpenChange(false)}
           />

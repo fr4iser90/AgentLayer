@@ -93,7 +93,7 @@ export function AgentActivityPanel({
           <label className="flex cursor-pointer items-center gap-1.5 text-meta text-surface-muted">
             <input
               type="checkbox"
-              className="rounded border-surface-border bg-[#1a1a1a] text-indigo-500"
+              className="rounded border-surface-border bg-field text-indigo-500"
               checked={showSubagents}
               onChange={(e) => onShowSubagentsChange?.(e.target.checked)}
             />

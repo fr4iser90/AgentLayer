@@ -282,7 +282,7 @@ export function BenchmarkStatsPanel({
               <select
                 value={suiteFilter}
                 onChange={(e) => setSuiteFilter(e.target.value)}
-                className="mt-1 block rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                className="mt-1 block rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-white"
               >
                 <option value="">{t("admin:benchStatsAllSuites")}</option>
                 {suiteOptions
@@ -299,7 +299,7 @@ export function BenchmarkStatsPanel({
               <select
                 value={sinceDays}
                 onChange={(e) => setSinceDays(e.target.value)}
-                className="mt-1 block rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                className="mt-1 block rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-white"
               >
                 {SINCE_DAY_OPTIONS.map((opt) => (
                   <option key={opt.value || "all"} value={opt.value}>
@@ -313,7 +313,7 @@ export function BenchmarkStatsPanel({
               <select
                 value={minSamples}
                 onChange={(e) => setMinSamples(e.target.value)}
-                className="mt-1 block rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                className="mt-1 block rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-white"
               >
                 {MIN_SAMPLE_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -327,7 +327,7 @@ export function BenchmarkStatsPanel({
               <select
                 value={badgeMinSamples}
                 onChange={(e) => setBadgeMinSamples(e.target.value)}
-                className="mt-1 block rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                className="mt-1 block rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-white"
               >
                 {BADGE_MIN_SAMPLE_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -341,7 +341,7 @@ export function BenchmarkStatsPanel({
               <select
                 value={fastestMinPassRate}
                 onChange={(e) => setFastestMinPassRate(e.target.value)}
-                className="mt-1 block max-w-[11rem] rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
+                className="mt-1 block max-w-[11rem] rounded border border-white/10 bg-field px-2 py-1.5 text-sm text-white"
               >
                 {FASTEST_PASS_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>

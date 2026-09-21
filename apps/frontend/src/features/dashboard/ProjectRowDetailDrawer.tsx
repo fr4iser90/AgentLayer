@@ -216,7 +216,7 @@ export function ProjectRowDetailDrawer(props: {
                 <input
                   value={runNowWorkspaceId}
                   onChange={(e) => setRunNowWorkspaceId(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-surface-border bg-black/30 px-3 py-1.5 font-mono text-xs text-neutral-100 outline-none focus:border-violet-400/60"
+                  className="mt-1 w-full rounded-lg border border-surface-border bg-field px-3 py-1.5 font-mono text-xs text-neutral-100 outline-none focus:border-violet-400/60"
                   placeholder={t("dashboard:workspaceUuidPlaceholder")}
                 />
               </label>
@@ -228,7 +228,7 @@ export function ProjectRowDetailDrawer(props: {
             <textarea
               value={runNowInstructions}
               onChange={(e) => setRunNowInstructions(e.target.value)}
-              className="min-h-[110px] w-full resize-y rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-xs text-neutral-100 outline-none focus:border-violet-400/60"
+              className="min-h-[110px] w-full resize-y rounded-lg border border-surface-border bg-field px-3 py-2 text-xs text-neutral-100 outline-none focus:border-violet-400/60"
               placeholder={t("dashboard:describeWhatToDo")}
             />
             {runNowMsg ? <div className="mt-2 text-xs text-surface-muted">{runNowMsg}</div> : null}

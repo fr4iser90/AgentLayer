@@ -333,14 +333,14 @@ export function FriendsSettings() {
                   placeholder={t("settings:friendRequestEmailPlaceholder")}
                   value={newRequestEmail}
                   onChange={(e) => setNewRequestEmail(e.target.value)}
-                  className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white text-sm"
+                  className="w-full px-3 py-2 rounded bg-field border border-white/10 text-white text-sm"
                 />
                 <input
                   type="text"
                   placeholder={t("settings:friendRequestMessagePlaceholder")}
                   value={newRequestMessage}
                   onChange={(e) => setNewRequestMessage(e.target.value)}
-                  className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white text-sm"
+                  className="w-full px-3 py-2 rounded bg-field border border-white/10 text-white text-sm"
                 />
                 <div className="flex justify-end gap-3 pt-2">
                   <button
@@ -474,7 +474,7 @@ export function FriendsSettings() {
                     type="text"
                     value={newPerson.name}
                     onChange={(e) => setNewPerson({ ...newPerson, name: e.target.value })}
-                    className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white text-sm"
+                    className="w-full px-3 py-2 rounded bg-field border border-white/10 text-white text-sm"
                     placeholder={t("settings:friendNamePlaceholder")}
                   />
                 </div>
@@ -484,7 +484,7 @@ export function FriendsSettings() {
                     type="text"
                     value={newPerson.nickname}
                     onChange={(e) => setNewPerson({ ...newPerson, nickname: e.target.value })}
-                    className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white text-sm"
+                    className="w-full px-3 py-2 rounded bg-field border border-white/10 text-white text-sm"
                     placeholder={t("settings:friendNicknamePlaceholder")}
                   />
                 </div>
@@ -497,7 +497,7 @@ export function FriendsSettings() {
                     type="email"
                     value={newPerson.email}
                     onChange={(e) => setNewPerson({ ...newPerson, email: e.target.value })}
-                    className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white text-sm"
+                    className="w-full px-3 py-2 rounded bg-field border border-white/10 text-white text-sm"
                     placeholder={t("settings:friendEmailPlaceholder")}
                   />
                 </div>
@@ -507,7 +507,7 @@ export function FriendsSettings() {
                     type="text"
                     value={newPerson.discord_user_id}
                     onChange={(e) => setNewPerson({ ...newPerson, discord_user_id: e.target.value })}
-                    className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white text-sm font-mono"
+                    className="w-full px-3 py-2 rounded bg-field border border-white/10 text-white text-sm font-mono"
                     placeholder={t("settings:friendPhonePlaceholder")}
                   />
                 </div>
@@ -520,7 +520,7 @@ export function FriendsSettings() {
                     type="text"
                     value={newPerson.relation}
                     onChange={(e) => setNewPerson({ ...newPerson, relation: e.target.value })}
-                    className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white text-sm"
+                    className="w-full px-3 py-2 rounded bg-field border border-white/10 text-white text-sm"
                     placeholder={t("settings:friendRelationPlaceholder")}
                   />
                 </div>
@@ -530,7 +530,7 @@ export function FriendsSettings() {
                     type="date"
                     value={newPerson.birthday}
                     onChange={(e) => setNewPerson({ ...newPerson, birthday: e.target.value })}
-                    className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white text-sm"
+                    className="w-full px-3 py-2 rounded bg-field border border-white/10 text-white text-sm"
                   />
                 </div>
               </div>
@@ -540,7 +540,7 @@ export function FriendsSettings() {
                 <textarea
                   value={newPerson.description}
                   onChange={(e) => setNewPerson({ ...newPerson, description: e.target.value })}
-                  className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white text-sm min-h-[80px]"
+                  className="w-full px-3 py-2 rounded bg-field border border-white/10 text-white text-sm min-h-[80px]"
                   placeholder={t("settings:friendDescriptionPlaceholder")}
                 />
               </div>
@@ -551,7 +551,7 @@ export function FriendsSettings() {
                   type="text"
                   value={newPerson.tone}
                   onChange={(e) => setNewPerson({ ...newPerson, tone: e.target.value })}
-                  className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white text-sm"
+                  className="w-full px-3 py-2 rounded bg-field border border-white/10 text-white text-sm"
                   placeholder={t("settings:friendTonePlaceholder")}
                 />
               </div>

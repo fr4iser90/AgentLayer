@@ -3471,7 +3471,7 @@ export function ChatPage() {
                     </label>
                     <div className="mt-0.5 flex flex-wrap gap-1.5">
                       <select
-                        className="min-w-0 flex-1 rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100"
+                        className="min-w-0 flex-1 rounded-lg border border-surface-border bg-field px-2.5 py-1.5 text-sm text-neutral-100"
                         value={selectedWorkspaceId ?? ""}
                         onChange={(e) => setComposerWorkspace(e.target.value || null)}
                       >
@@ -3654,7 +3654,7 @@ export function ChatPage() {
                   {t("chat:replyModeLabel")}
                 </label>
                 <select
-                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100"
+                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-field px-2.5 py-1.5 text-sm text-neutral-100"
                   value={mode}
                   onChange={(e) => setMode(e.target.value as ChatMode)}
                   title={t("chat:replyModeTitle")}
@@ -3668,7 +3668,7 @@ export function ChatPage() {
                 <label className="flex cursor-pointer items-center gap-2 text-meta font-medium uppercase tracking-wide text-surface-muted">
                   <input
                     type="checkbox"
-                    className="rounded border-surface-border bg-[#1a1a1a] text-sky-500"
+                    className="rounded border-surface-border bg-field text-sky-500"
                     checked={agentStreamLlmUi}
                     disabled={mode === "chat"}
                     onChange={(e) => {

@@ -26,8 +26,8 @@ export function AdminLayout() {
   const { user } = useAuth();
   const showPeople = !isSingleUser(user);
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface md:flex-row">
-      <aside className="shrink-0 border-b border-surface-border bg-[#111] px-3 py-4 md:w-56 md:border-b-0 md:border-r">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-canvas md:flex-row">
+      <aside className="shrink-0 border-b border-surface-border bg-panel px-3 py-4 md:w-56 md:border-b-0 md:border-r">
         <p className="mb-1 px-2 text-meta font-medium uppercase tracking-wide text-surface-muted">
           {t("admin:operatorAdmin")}
         </p>

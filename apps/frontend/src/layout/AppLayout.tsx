@@ -81,7 +81,7 @@ function MoreNavMenu({
       {open ? (
         <div
           role="menu"
-          className="absolute left-0 z-50 mt-1 min-w-[11rem] rounded-lg border border-surface-border bg-[#1a1a1a] py-1 shadow-xl"
+          className="absolute left-0 z-50 mt-1 min-w-[11rem] rounded-lg border border-surface-border bg-raised py-1 shadow-xl"
         >
           {hasMobileExtras ? (
             <div className="md:hidden">
@@ -184,7 +184,7 @@ export function AppLayout() {
 
   if (isPublicDashboardShare) {
     return (
-      <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-neutral-950">
+      <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-canvas">
         <Outlet />
       </div>
     );
@@ -192,7 +192,7 @@ export function AppLayout() {
 
   const shell = (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden">
-      <header className="flex shrink-0 items-center gap-3 border-b border-surface-border bg-surface-raised px-4 py-2">
+      <header className="flex shrink-0 items-center gap-3 border-b border-surface-border bg-panel px-4 py-2">
         <span className="shrink-0 text-sm font-semibold tracking-tight text-white">
           {t("app.title")}
         </span>
@@ -277,7 +277,7 @@ export function AppLayout() {
         <Outlet />
       </div>
       <MediaMiniPlayer />
-      <footer className="shrink-0 border-t border-surface-border bg-surface-raised/80 px-4 py-2">
+      <footer className="shrink-0 border-t border-surface-border bg-panel px-4 py-2">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-4 gap-y-1 text-meta text-surface-muted">
           <LegalFooterLinks />
           {showDocsFooter && !signedIn ? (
