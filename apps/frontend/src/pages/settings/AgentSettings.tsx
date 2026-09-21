@@ -197,7 +197,7 @@ export function AgentSettings() {
         <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-neutral-200">
           <input
             type="checkbox"
-            className="h-4 w-4 rounded border-surface-border bg-black/40"
+            className="h-4 w-4 rounded border-surface-border bg-field"
             checked={showReasoning}
             onChange={(e) => {
               const on = e.target.checked;
@@ -232,7 +232,7 @@ export function AgentSettings() {
             <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-neutral-200">
               <input
                 type="checkbox"
-                className="h-4 w-4 rounded border-surface-border bg-black/40"
+                className="h-4 w-4 rounded border-surface-border bg-field"
                 checked={injectPersona}
                 onChange={(e) => setInjectPersona(e.target.checked)}
               />
@@ -330,7 +330,7 @@ export function AgentSettings() {
             <label className="flex cursor-pointer items-center gap-2 text-sm text-neutral-200 sm:col-span-2">
               <input
                 type="checkbox"
-                className="h-4 w-4 rounded border-surface-border bg-black/40"
+                className="h-4 w-4 rounded border-surface-border bg-field"
                 checked={injectStructured}
                 onChange={(e) => setInjectStructured(e.target.checked)}
               />
@@ -339,7 +339,7 @@ export function AgentSettings() {
             <label className="flex cursor-pointer items-center gap-2 text-sm text-neutral-200 sm:col-span-2">
               <input
                 type="checkbox"
-                className="h-4 w-4 rounded border-surface-border bg-black/40"
+                className="h-4 w-4 rounded border-surface-border bg-field"
                 checked={proactiveMode}
                 onChange={(e) => setProactiveMode(e.target.checked)}
               />

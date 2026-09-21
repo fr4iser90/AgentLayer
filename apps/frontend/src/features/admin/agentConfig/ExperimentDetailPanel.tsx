@@ -232,7 +232,7 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
                   <div className="mb-4 rounded-lg border border-surface-border bg-black/20 p-3">
                     <p className="mb-2 text-xs text-surface-muted">{t("admin:agentConfigReviewSubmitHint")}</p>
                     <textarea
-                      className="mb-2 min-h-[72px] w-full rounded border border-white/10 bg-black/30 p-2 text-sm text-white"
+                      className="mb-2 min-h-[72px] w-full rounded border border-white/10 bg-field p-2 text-sm text-white"
                       placeholder={t("admin:agentConfigReviewSummaryPlaceholder")}
                       value={reviewSummary}
                       onChange={(e) => setReviewSummary(e.target.value)}

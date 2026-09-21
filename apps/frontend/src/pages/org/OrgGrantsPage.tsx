@@ -198,7 +198,7 @@ export function OrgGrantsPage() {
                   </label>
                   <select
                     id={`grant-${row.id}`}
-                    className="rounded-md border border-surface-border bg-black/30 px-2 py-1.5 text-xs text-white disabled:opacity-50"
+                    className="rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-white disabled:opacity-50"
                     value={row.level === null ? "" : row.level}
                     disabled={row.saving || row.visibility !== "tenant"}
                     onChange={(e) => {

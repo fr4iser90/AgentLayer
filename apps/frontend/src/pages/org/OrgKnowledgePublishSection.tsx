@@ -107,7 +107,7 @@ export function OrgKnowledgePublishSection({ onPublished }: { onPublished?: () =
         </label>
         <input
           id="org-knowledge-title"
-          className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+          className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder={t("org:knowledgeTitlePlaceholder")}
@@ -120,7 +120,7 @@ export function OrgKnowledgePublishSection({ onPublished }: { onPublished?: () =
       </label>
       <textarea
         id="org-knowledge-text"
-        className="mt-1 min-h-48 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+        className="mt-1 min-h-48 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={t("org:knowledgeTextPlaceholder")}

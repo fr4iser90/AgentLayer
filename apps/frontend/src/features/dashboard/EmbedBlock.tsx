@@ -87,7 +87,7 @@ export function EmbedBlockBody(props: {
             </label>
             <input
               type="text"
-              className="w-full rounded-lg border border-surface-border bg-black/40 px-3 py-2 text-sm text-white"
+              className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-white"
               placeholder={sectionTitle}
               value={st.title}
               onChange={(e) => patch({ title: e.target.value })}
@@ -99,7 +99,7 @@ export function EmbedBlockBody(props: {
             </label>
             <input
               type="url"
-              className="w-full rounded-lg border border-surface-border bg-black/40 px-3 py-2 font-mono text-xs text-neutral-100"
+              className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 font-mono text-xs text-neutral-100"
               placeholder={t("dashboard:embedUrlPlaceholder")}
               value={st.url}
               onChange={(e) => patch({ url: e.target.value })}
@@ -115,7 +115,7 @@ export function EmbedBlockBody(props: {
                 min={120}
                 max={2000}
                 step={20}
-                className="w-28 rounded-lg border border-surface-border bg-black/40 px-2 py-1.5 text-sm text-white"
+                className="w-28 rounded-lg border border-surface-border bg-field px-2 py-1.5 text-sm text-white"
                 value={st.height}
                 onChange={(e) => patch({ height: Number(e.target.value) || 480 })}
               />

@@ -207,7 +207,7 @@ function ProviderModelSelect({
   return (
     <select
       id={id}
-      className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white disabled:opacity-50"
+      className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white disabled:opacity-50"
       value={current}
       disabled={options.length === 0}
       onChange={(e) => onChange(e.target.value)}
@@ -938,7 +938,7 @@ export function AdminInterfacesLlmSection({
                           </label>
                           <input
                             id={`provider-label-${group.kind}-${endpointIdx}`}
-                            className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+                            className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
                             value={endpoint.label}
                             onChange={(e) => updateOperatorEndpoint(group.kind, endpointIdx, { label: e.target.value })}
                             placeholder={group.title}
@@ -948,7 +948,7 @@ export function AdminInterfacesLlmSection({
                           </label>
                           <input
                             id={`provider-url-${group.kind}-${endpointIdx}`}
-                            className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                            className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
                             value={endpoint.baseUrl}
                             onChange={(e) => updateOperatorEndpoint(group.kind, endpointIdx, { baseUrl: e.target.value })}
                             placeholder={t("admin:ifLlmBaseUrlPlaceholder")}
@@ -961,7 +961,7 @@ export function AdminInterfacesLlmSection({
                               </label>
                               <input
                                 id={`provider-header-${group.kind}-${endpointIdx}`}
-                                className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                                className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
                                 value={endpoint.apiHeaderName}
                                 onChange={(e) => updateOperatorEndpoint(group.kind, endpointIdx, { apiHeaderName: e.target.value })}
                                 placeholder={endpoint.apiHeaderName || "Authorization"}
@@ -989,7 +989,7 @@ export function AdminInterfacesLlmSection({
                             min={1}
                             max={64}
                             step={1}
-                            className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                            className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
                             value={endpoint.maxParallel}
                             onChange={(e) =>
                               updateOperatorEndpoint(group.kind, endpointIdx, {
@@ -1013,7 +1013,7 @@ export function AdminInterfacesLlmSection({
                             id={`provider-key-${group.kind}-${endpointIdx}`}
                             type="password"
                             autoComplete="off"
-                            className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                            className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
                             value={endpoint.apiKey ?? ""}
                             onChange={(e) => updateOperatorEndpoint(group.kind, endpointIdx, { apiKey: e.target.value })}
                             placeholder={endpoint.apiKeyConfigured ? t("admin:tokenReplacePlaceholder") : t("admin:ifMemPasteKey")}
@@ -1041,7 +1041,7 @@ export function AdminInterfacesLlmSection({
                   </label>
                   <select
                     id="model-access-scope"
-                    className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+                    className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
                     value={accessScope}
                     onChange={(e) => setAccessScope(e.target.value as AccessScope)}
                   >
@@ -1059,7 +1059,7 @@ export function AdminInterfacesLlmSection({
                     </label>
                     <select
                       id="model-access-tenant"
-                      className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+                      className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
                       value={accessTenantId}
                       onChange={(e) => setAccessTenantId(e.target.value)}
                     >
@@ -1078,7 +1078,7 @@ export function AdminInterfacesLlmSection({
                     </label>
                     <select
                       id="model-access-user"
-                      className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+                      className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
                       value={accessUserId}
                       onChange={(e) => setAccessUserId(e.target.value)}
                     >
@@ -1099,7 +1099,7 @@ export function AdminInterfacesLlmSection({
                     </label>
                     <select
                       id={`model-default-${profile}`}
-                      className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-xs text-white"
+                      className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-xs text-white"
                       value={modelDefaults[profile]}
                       onChange={(e) => setModelDefaults((prev) => ({ ...prev, [profile]: e.target.value }))}
                     >
@@ -1122,7 +1122,7 @@ export function AdminInterfacesLlmSection({
                       </label>
                       <select
                         id={`runtime-default-${metadata.kind}`}
-                        className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-xs text-white"
+                        className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-xs text-white"
                         value={modelDefaults[profile] ?? ""}
                         onChange={(e) => setModelDefaults((prev) => ({ ...prev, [profile]: e.target.value }))}
                       >
@@ -1332,7 +1332,7 @@ export function AdminInterfacesLlmSection({
             </label>
             <select
               id="llm-router-model"
-              className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white disabled:opacity-50"
+              className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white disabled:opacity-50"
               value={
                 s.llmRouterModelProvider && s.llmRouterModel
                   ? `${s.llmRouterModelProvider}:${s.llmRouterModel}`
@@ -1368,7 +1368,7 @@ export function AdminInterfacesLlmSection({
                   step="0.05"
                   min={0}
                   max={1}
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
                   value={s.llmRouterConfMin}
                   onChange={(e) => s.setLlmRouterConfMin(e.target.value)}
                 />
@@ -1383,7 +1383,7 @@ export function AdminInterfacesLlmSection({
                   min={1}
                   max={120}
                   step="1"
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
                   value={s.llmRouterTimeoutSec}
                   onChange={(e) => s.setLlmRouterTimeoutSec(e.target.value)}
                 />
@@ -1397,7 +1397,7 @@ export function AdminInterfacesLlmSection({
                   type="number"
                   min={100}
                   max={500000}
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
                   value={s.llmRouteLongChars}
                   onChange={(e) => s.setLlmRouteLongChars(e.target.value)}
                 />
@@ -1411,7 +1411,7 @@ export function AdminInterfacesLlmSection({
                   type="number"
                   min={1}
                   max={50000}
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
                   value={s.llmRouteShortChars}
                   onChange={(e) => s.setLlmRouteShortChars(e.target.value)}
                 />
@@ -1425,7 +1425,7 @@ export function AdminInterfacesLlmSection({
                   type="number"
                   min={1}
                   max={100}
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
                   value={s.llmRouteManyFences}
                   onChange={(e) => s.setLlmRouteManyFences(e.target.value)}
                 />
@@ -1439,7 +1439,7 @@ export function AdminInterfacesLlmSection({
                   type="number"
                   min={1}
                   max={500}
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
                   value={s.llmRouteManyMsgs}
                   onChange={(e) => s.setLlmRouteManyMsgs(e.target.value)}
                 />
@@ -1457,7 +1457,7 @@ export function AdminInterfacesLlmSection({
                 </label>
                 <select
                   id="llm-queue-policy"
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
                   value={s.llmQueuePolicy}
                   onChange={(e) =>
                     s.setLlmQueuePolicy(
@@ -1480,7 +1480,7 @@ export function AdminInterfacesLlmSection({
                   type="number"
                   min={0}
                   max={1000}
-                  className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
                   value={s.llmQueueUserPriority}
                   onChange={(e) => s.setLlmQueueUserPriority(e.target.value)}
                 />
@@ -1494,7 +1494,7 @@ export function AdminInterfacesLlmSection({
                   type="number"
                   min={0}
                   max={1000}
-                  className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
                   value={s.llmQueueBenchmarkPriority}
                   onChange={(e) => s.setLlmQueueBenchmarkPriority(e.target.value)}
                 />
@@ -1509,7 +1509,7 @@ export function AdminInterfacesLlmSection({
                   type="number"
                   min={0}
                   max={1000}
-                  className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
                   value={s.llmQueueSchedulerPriority}
                   onChange={(e) => s.setLlmQueueSchedulerPriority(e.target.value)}
                 />

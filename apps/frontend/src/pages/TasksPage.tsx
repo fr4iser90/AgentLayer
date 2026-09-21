@@ -257,7 +257,7 @@ export function TasksPage() {
           <label className="mt-3 block text-xs text-surface-muted">
             {t_0("tasks:workspaceLabel")}
             <select
-              className="mt-1 block w-full max-w-md rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-neutral-200"
+              className="mt-1 block w-full max-w-md rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-neutral-200"
               value={selectedWorkspaceId ?? ""}
               onChange={(e) => onWorkspaceChange(e.target.value)}
             >

@@ -187,7 +187,7 @@ export function ChartBlockBody(props: {
           <div>
             <label className="mb-1 block text-meta uppercase text-surface-muted">{t("dashboard:chartTypeLabel")}</label>
             <select
-              className="w-full rounded-md border border-surface-border bg-black/40 px-2 py-1.5 text-xs text-neutral-100"
+              className="w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-neutral-100"
               value={chart.chartType}
               onChange={(e) =>
                 patchChart(dp, setData, {
@@ -206,7 +206,7 @@ export function ChartBlockBody(props: {
               {t("dashboard:chartCategoriesLabel")}
             </label>
             <textarea
-              className="min-h-[72px] w-full rounded-md border border-surface-border bg-black/40 px-2 py-1.5 text-xs text-neutral-100"
+              className="min-h-[72px] w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-neutral-100"
               value={chart.labels.join("\n")}
               onChange={(e) => {
                 const labels = e.target.value.split("\n").map((s) => s.trimEnd());
@@ -249,7 +249,7 @@ export function ChartBlockBody(props: {
               </div>
               <input
                 type="text"
-                className="mb-2 w-full rounded border border-surface-border bg-black/40 px-2 py-1 text-xs text-white"
+                className="mb-2 w-full rounded border border-surface-border bg-field px-2 py-1 text-xs text-white"
                 placeholder={t("dashboard:chartSeriesLabelPlaceholder")}
                 value={s.label}
                 onChange={(e) =>
@@ -265,7 +265,7 @@ export function ChartBlockBody(props: {
               </label>
               <input
                 type="text"
-                className="w-full rounded border border-surface-border bg-black/40 px-2 py-1 text-xs text-neutral-100"
+                className="w-full rounded border border-surface-border bg-field px-2 py-1 text-xs text-neutral-100"
                 value={s.data.join(", ")}
                 onChange={(e) => {
                   const parts = e.target.value.split(",").map((x) => Number(x.trim()) || 0);
@@ -377,7 +377,7 @@ export function SparklineBlockBody(props: {
           <label className="mb-1 block text-meta text-surface-muted">{t("dashboard:sparklineValuesLabel")}</label>
           <input
             type="text"
-            className="w-full rounded-md border border-surface-border bg-black/40 px-2 py-1.5 text-xs text-neutral-100"
+            className="w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-neutral-100"
             value={values.join(", ")}
             onChange={(e) => {
               const nums = e.target.value

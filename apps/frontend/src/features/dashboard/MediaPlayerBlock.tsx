@@ -241,7 +241,7 @@ export function MediaPlayerBlockBody(props: {
           <div className="flex flex-wrap gap-2">
             <input
               type="url"
-              className="min-w-[12rem] flex-1 rounded-lg border border-surface-border bg-black/40 px-3 py-2 font-mono text-xs text-neutral-100"
+              className="min-w-[12rem] flex-1 rounded-lg border border-surface-border bg-field px-3 py-2 font-mono text-xs text-neutral-100"
               placeholder={t("dashboard:embedUrlPlaceholder")}
               value={embedUrl}
               onChange={(e) => setEmbedUrl(e.target.value)}

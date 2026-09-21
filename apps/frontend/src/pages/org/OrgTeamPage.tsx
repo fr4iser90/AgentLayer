@@ -116,13 +116,13 @@ export function OrgTeamPage() {
 
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <input
-            className="rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+            className="rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
             placeholder={t("org:teamUserIdPlaceholder")}
             value={assignUserId}
             onChange={(e) => setAssignUserId(e.target.value)}
           />
           <select
-            className="rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+            className="rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
             value={assignRoleId}
             onChange={(e) => setAssignRoleId(e.target.value)}
           >
@@ -134,7 +134,7 @@ export function OrgTeamPage() {
             ))}
           </select>
           <select
-            className="rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+            className="rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
             value={assignDeptId}
             onChange={(e) => setAssignDeptId(e.target.value)}
           >

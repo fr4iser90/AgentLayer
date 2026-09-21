@@ -175,7 +175,7 @@ export function AdminAgentSubmissions() {
           </span>
           <select
             id="agents-submissions-filter"
-            className="rounded-md border border-surface-border bg-black/30 px-2 py-1.5 text-xs text-white"
+            className="rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-white"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
           >
@@ -331,7 +331,7 @@ export function AdminAgentSubmissions() {
                   </label>
                   <textarea
                     id="agents-submissions-notes"
-                    className="mt-1 min-h-20 w-full rounded-md border border-surface-border bg-black/30 px-3 py-2 text-xs text-white placeholder:text-neutral-500"
+                    className="mt-1 min-h-20 w-full rounded-md border border-surface-border bg-field px-3 py-2 text-xs text-white placeholder:text-neutral-500"
                     value={reviewNotes}
                     onChange={(e) => setReviewNotes(e.target.value)}
                     placeholder={t("admin:agentSubmissionsReviewNotesPlaceholder")}

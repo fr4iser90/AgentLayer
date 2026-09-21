@@ -316,7 +316,7 @@ export function BlockSettingsModal({
                   {t("dashboard:blockSettingsTitleLabel")}
                 </span>
                 <input
-                  className="w-full rounded-lg border border-surface-border bg-black/40 px-3 py-2 text-white outline-none focus:border-sky-500/50"
+                  className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-white outline-none focus:border-sky-500/50"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                 />
@@ -335,7 +335,7 @@ export function BlockSettingsModal({
               <label className="block space-y-1">
                 <span className="text-meta text-surface-muted">{t("dashboard:blockSettingsDataPath")}</span>
                 <input
-                  className="w-full rounded-lg border border-surface-border bg-black/40 px-3 py-2 font-mono text-xs text-white outline-none focus:border-sky-500/50"
+                  className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 font-mono text-xs text-white outline-none focus:border-sky-500/50"
                   value={dataPath}
                   onChange={(e) => setDataPath(e.target.value)}
                   placeholder={t("dashboard:blockSettingsDataPathPlaceholder")}
@@ -391,7 +391,7 @@ export function BlockSettingsModal({
                   </label>
                   <select
                     id="block-settings-share-target"
-                    className="w-full rounded-lg border border-surface-border bg-black/40 px-3 py-2 text-white outline-none focus:border-sky-500/50"
+                    className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-white outline-none focus:border-sky-500/50"
                     value={shareKey}
                     onChange={(e) => setShareKey(e.target.value)}
                   >
@@ -424,7 +424,7 @@ export function BlockSettingsModal({
                   type="number"
                   min={1}
                   max={90}
-                  className="w-24 rounded-lg border border-surface-border bg-black/40 px-3 py-2 text-white"
+                  className="w-24 rounded-lg border border-surface-border bg-field px-3 py-2 text-white"
                   value={daysAhead}
                   onChange={(e) =>
                     setDaysAhead(Math.min(90, Math.max(1, Number(e.target.value) || 7)))
@@ -480,7 +480,7 @@ export function BlockSettingsModal({
                       type="number"
                       min={1}
                       max={5}
-                      className="w-24 rounded-lg border border-surface-border bg-black/40 px-3 py-2 text-white"
+                      className="w-24 rounded-lg border border-surface-border bg-field px-3 py-2 text-white"
                       value={gridColumns}
                       onChange={(e) => setGridColumns(Number(e.target.value) || 3)}
                     />

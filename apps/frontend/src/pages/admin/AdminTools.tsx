@@ -520,7 +520,7 @@ export function AdminTools() {
           <label className="flex min-w-0 flex-col gap-1 text-meta text-surface-muted">
             <span className="text-neutral-400">{t("admin:toolsPolicyMinRole")}</span>
             <select
-              className="w-full rounded-md border border-surface-border bg-black/30 px-2 py-1.5 text-xs text-white"
+              className="w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-white"
               value={pol.min_role}
               onChange={(e) =>
                 updatePolicy(pid, { min_role: e.target.value === "admin" ? "admin" : "user" })
@@ -536,7 +536,7 @@ export function AdminTools() {
             </span>
             <input
               type="text"
-              className="w-full rounded-md border border-surface-border bg-black/30 px-2 py-1.5 font-mono text-xs text-white placeholder:text-neutral-500"
+              className="w-full rounded-md border border-surface-border bg-field px-2 py-1.5 font-mono text-xs text-white placeholder:text-neutral-500"
               placeholder={t("admin:toolsPolicyTenantIdsPlaceholder")}
               value={tenantInputByPkg[pid] ?? ""}
               onChange={(e) => {
@@ -571,7 +571,7 @@ export function AdminTools() {
           </label>
           <select
             id="tools-import-source-type"
-            className="w-full rounded-md border border-surface-border bg-black/30 px-2 py-1.5 text-xs text-white sm:w-56"
+            className="w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-white sm:w-56"
             value={importSourceType}
             onChange={(e) => setImportSourceType(e.target.value)}
           >
@@ -586,7 +586,7 @@ export function AdminTools() {
           <label className="flex flex-col gap-1 text-xs text-surface-muted">
             <span>{t("admin:toolsImportPaste")}</span>
             <textarea
-              className="min-h-40 rounded-md border border-surface-border bg-black/30 px-3 py-2 font-mono text-xs text-white placeholder:text-neutral-500"
+              className="min-h-40 rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-xs text-white placeholder:text-neutral-500"
               value={importMarkdown}
               onChange={(e) => setImportMarkdown(e.target.value)}
               placeholder={t("admin:toolsImportPastePlaceholder")}

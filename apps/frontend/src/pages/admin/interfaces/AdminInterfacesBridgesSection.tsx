@@ -65,7 +65,7 @@ export function AdminInterfacesBridgesSection() {
         </label>
         <input
           id="discord-id"
-          className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
           value={s.discordAppId}
           onChange={(e) => s.setDiscordAppId(e.target.value)}
           autoComplete="off"
@@ -94,7 +94,7 @@ export function AdminInterfacesBridgesSection() {
           id="d-token"
           type="password"
           autoComplete="off"
-          className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
           value={s.discordToken}
           onChange={(e) => s.setDiscordToken(e.target.value)}
           placeholder={s.tokenConfigured ? t("admin:tokenReplacePlaceholder") : t("admin:pasteTokenPlaceholder")}
@@ -105,7 +105,7 @@ export function AdminInterfacesBridgesSection() {
         </label>
         <input
           id="prefix"
-          className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
           value={s.triggerPrefix}
           onChange={(e) => s.setTriggerPrefix(e.target.value)}
           placeholder={t("admin:messagePrefixPlaceholder")}
@@ -148,7 +148,7 @@ export function AdminInterfacesBridgesSection() {
         </label>
         <input
           id="telegram-app-hint"
-          className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
           value={s.telegramAppId}
           onChange={(e) => s.setTelegramAppId(e.target.value)}
           autoComplete="off"
@@ -177,7 +177,7 @@ export function AdminInterfacesBridgesSection() {
           id="tg-token"
           type="password"
           autoComplete="off"
-          className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
           value={s.telegramToken}
           onChange={(e) => s.setTelegramToken(e.target.value)}
           placeholder={s.tgTokenConfigured ? t("admin:tokenReplacePlaceholder") : t("admin:pasteTokenPlaceholder")}
@@ -188,7 +188,7 @@ export function AdminInterfacesBridgesSection() {
         </label>
         <input
           id="tg-prefix"
-          className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
           value={s.tgTriggerPrefix}
           onChange={(e) => s.setTgTriggerPrefix(e.target.value)}
           placeholder={t("admin:messagePrefixPlaceholder")}
@@ -226,7 +226,7 @@ export function AdminInterfacesBridgesSection() {
         </label>
         <select
           id="http-client-log-level"
-          className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
           value={s.httpClientLogLevel}
           onChange={(e) => s.setHttpClientLogLevel(e.target.value)}
         >

@@ -258,7 +258,7 @@ function HeroBlockBody(props: {
           <input
             type="url"
             placeholder={t("dashboard:fileUrlPlaceholder")}
-            className="dashboard-grid-no-drag w-full rounded-lg border border-surface-border bg-black/40 px-3 py-2 text-sm text-neutral-100 placeholder:text-white/25"
+            className="dashboard-grid-no-drag w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-neutral-100 placeholder:text-white/25"
             value={hero.url}
             onChange={(e) => patchHero({ url: e.target.value })}
           />
@@ -270,7 +270,7 @@ function HeroBlockBody(props: {
           <input
             type="text"
             placeholder={t("dashboard:heroHeadlinePlaceholder")}
-            className="dashboard-grid-no-drag w-full rounded-lg border border-surface-border bg-black/40 px-3 py-2 text-sm text-neutral-100"
+            className="dashboard-grid-no-drag w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-neutral-100"
             value={hero.headline}
             onChange={(e) => patchHero({ headline: e.target.value })}
           />
@@ -280,7 +280,7 @@ function HeroBlockBody(props: {
             {t("dashboard:heroCaptionLabel")}
           </label>
           <textarea
-            className="dashboard-grid-no-drag min-h-[72px] w-full resize-y rounded-lg border border-surface-border bg-black/40 px-3 py-2 text-sm text-neutral-100"
+            className="dashboard-grid-no-drag min-h-[72px] w-full resize-y rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-neutral-100"
             placeholder={t("dashboard:heroCaptionPlaceholder")}
             value={hero.caption}
             onChange={(e) => patchHero({ caption: e.target.value })}
@@ -364,7 +364,7 @@ function StatBlockBody(props: {
           <input
             type="text"
             placeholder={t("dashboard:kpiLabelOptional")}
-            className="dashboard-grid-no-drag w-full rounded-md border border-surface-border bg-black/40 px-2 py-1.5 text-xs text-neutral-100"
+            className="dashboard-grid-no-drag w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-neutral-100"
             value={stat.label}
             onChange={(e) => patchStat({ label: e.target.value })}
           />
@@ -372,20 +372,20 @@ function StatBlockBody(props: {
             <input
               type="text"
               placeholder={t("dashboard:kpiValuePlaceholder")}
-              className="dashboard-grid-no-drag min-w-0 flex-1 rounded-md border border-surface-border bg-black/40 px-2 py-1.5 text-xs text-neutral-100"
+              className="dashboard-grid-no-drag min-w-0 flex-1 rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-neutral-100"
               value={stat.value}
               onChange={(e) => patchStat({ value: e.target.value })}
             />
             <input
               type="text"
               placeholder={t("dashboard:kpiSuffixPlaceholder")}
-              className="dashboard-grid-no-drag w-20 shrink-0 rounded-md border border-surface-border bg-black/40 px-2 py-1.5 text-xs text-neutral-100"
+              className="dashboard-grid-no-drag w-20 shrink-0 rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-neutral-100"
               value={stat.suffix}
               onChange={(e) => patchStat({ suffix: e.target.value })}
             />
           </div>
           <select
-            className="dashboard-grid-no-drag w-full rounded-md border border-surface-border bg-black/40 px-2 py-1.5 text-xs text-neutral-100"
+            className="dashboard-grid-no-drag w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-neutral-100"
             value={stat.trend}
             onChange={(e) => patchStat({ trend: e.target.value as StatTrend })}
           >
@@ -525,14 +525,14 @@ function TimelineBlockBody(props: {
                     <input
                       type="text"
                       placeholder={t("dashboard:timelineTitlePlaceholder")}
-                      className="dashboard-grid-no-drag w-full rounded-md border border-surface-border bg-black/40 px-2 py-1.5 text-sm text-white"
+                      className="dashboard-grid-no-drag w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-sm text-white"
                       value={String(row.title ?? "")}
                       onChange={(e) => updateRow(si, "title", e.target.value)}
                     />
                     <div className="flex flex-wrap gap-2">
                       <input
                         type="date"
-                        className="dashboard-grid-no-drag rounded-md border border-surface-border bg-black/40 px-2 py-1.5 text-xs text-neutral-100"
+                        className="dashboard-grid-no-drag rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-neutral-100"
                         value={String(row.date ?? "").slice(0, 10)}
                         onChange={(e) => updateRow(si, "date", e.target.value)}
                       />
@@ -546,7 +546,7 @@ function TimelineBlockBody(props: {
                     </div>
                     <textarea
                       placeholder={t("dashboard:timelineNoteOptional")}
-                      className="dashboard-grid-no-drag min-h-[56px] w-full resize-y rounded-md border border-surface-border bg-black/40 px-2 py-1.5 text-xs text-neutral-200"
+                      className="dashboard-grid-no-drag min-h-[56px] w-full resize-y rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-neutral-200"
                       value={String(row.note ?? "")}
                       onChange={(e) => updateRow(si, "note", e.target.value)}
                     />
@@ -747,7 +747,7 @@ function BlockView(props: {
         </label>
         <textarea
           readOnly={readOnly}
-          className="min-h-[120px] w-full resize-y rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-sky-500/50 read-only:cursor-default read-only:opacity-90"
+          className="min-h-[120px] w-full resize-y rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-neutral-100 outline-none focus:border-sky-500/50 read-only:cursor-default read-only:opacity-90"
           value={text}
           placeholder={block.props.placeholder || ""}
           onChange={(e) =>
@@ -1257,7 +1257,7 @@ function CellInput(props: {
       <input
         type="number"
         readOnly={readOnly}
-        className="w-full min-w-[4rem] rounded border border-surface-border bg-black/30 px-2 py-1 text-neutral-100 read-only:cursor-default read-only:border-transparent read-only:bg-transparent"
+        className="w-full min-w-[4rem] rounded border border-surface-border bg-field px-2 py-1 text-neutral-100 read-only:cursor-default read-only:border-transparent read-only:bg-transparent"
         value={typeof value === "number" ? value : Number(value) || 0}
         onChange={(e) => onChange(Number(e.target.value))}
       />
@@ -1267,7 +1267,7 @@ function CellInput(props: {
     return (
       <select
         disabled={readOnly}
-        className="w-full rounded border border-surface-border bg-black/30 px-2 py-1 text-neutral-100 disabled:cursor-not-allowed disabled:opacity-60"
+        className="w-full rounded border border-surface-border bg-field px-2 py-1 text-neutral-100 disabled:cursor-not-allowed disabled:opacity-60"
         value={String(value ?? "")}
         onChange={(e) => onChange(e.target.value)}
       >
@@ -1283,7 +1283,7 @@ function CellInput(props: {
     <input
       type="text"
       readOnly={readOnly}
-      className="w-full rounded border border-surface-border bg-black/30 px-2 py-1 text-neutral-100 read-only:cursor-default read-only:border-transparent read-only:bg-transparent"
+      className="w-full rounded border border-surface-border bg-field px-2 py-1 text-neutral-100 read-only:cursor-default read-only:border-transparent read-only:bg-transparent"
       value={value == null ? "" : String(value)}
       onChange={(e) => onChange(e.target.value)}
     />

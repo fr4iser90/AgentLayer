@@ -318,7 +318,7 @@ export function ConnectionsSettings() {
         </label>
         <input
           id="discord-user-id"
-          className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
           value={discordUserId}
           onChange={(e) => setDiscordUserId(e.target.value.replace(/\D/g, ""))}
           autoComplete="off"
@@ -377,7 +377,7 @@ export function ConnectionsSettings() {
         </label>
         <input
           id="telegram-user-id"
-          className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
           value={telegramUserId}
           onChange={(e) => setTelegramUserId(e.target.value.replace(/\D/g, ""))}
           autoComplete="off"
@@ -537,7 +537,7 @@ export function ConnectionsSettings() {
                                   id={id}
                                   type={inputType}
                                   autoComplete="off"
-                                  className="mt-1 block w-full rounded-md border border-surface-border bg-black/30 px-3 py-2 text-sm text-white placeholder:text-neutral-600"
+                                  className="mt-1 block w-full rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white placeholder:text-neutral-600"
                                   value={fieldValues[f.name] ?? ""}
                                   onChange={(e) => setFieldValues((prev) => ({ ...prev, [f.name]: e.target.value }))}
                                   disabled={secretsUnavailable}
@@ -550,7 +550,7 @@ export function ConnectionsSettings() {
                         <label className="block text-xs text-surface-muted">
                           {t("settings:connectionsSecretLabel")}
                           <textarea
-                            className="mt-1 min-h-[7rem] w-full rounded-md border border-surface-border bg-black/30 px-3 py-2 font-mono text-xs text-white placeholder:text-neutral-600"
+                            className="mt-1 min-h-[7rem] w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-xs text-white placeholder:text-neutral-600"
                             placeholder={t("settings:connectionsSecretJsonPlaceholder")}
                             value={rawJson}
                             onChange={(e) => setRawJson(e.target.value)}
@@ -599,7 +599,7 @@ export function ConnectionsSettings() {
                       <label className="block text-xs text-surface-muted">
                         {t("settings:connectionsSecretLabel")}
                         <textarea
-                          className="mt-1 min-h-[6rem] w-full rounded-md border border-surface-border bg-black/30 px-3 py-2 font-mono text-xs text-white"
+                          className="mt-1 min-h-[6rem] w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-xs text-white"
                           value={rawJson}
                           onChange={(e) => setRawJson(e.target.value)}
                           disabled={secretsUnavailable}

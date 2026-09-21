@@ -512,7 +512,7 @@ export function ToolsSettings() {
                             <label className="flex cursor-pointer items-center gap-2 text-xs text-neutral-200">
                               <input
                                 type="checkbox"
-                                className="h-4 w-4 rounded border-surface-border bg-black/40"
+                                className="h-4 w-4 rounded border-surface-border bg-field"
                                 checked={enabled}
                                 disabled={!names.length}
                                 onChange={(e) => {
