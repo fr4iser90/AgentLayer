@@ -5,6 +5,16 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+# Prevent concurrent runs. Two journeys against one instance interleave live LLM
+# rounds and DB writes and surface ~25 httpx.ReadTimeout ghost failures that read
+# like a security regression. Hold an exclusive lock for the whole run.
+LOCK_FILE="${TMPDIR:-/tmp}/agentlayer-e2e-journeys.lock"
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
+  echo "[e2e] another run-e2e-journeys.sh holds ${LOCK_FILE} — refusing to start a concurrent run" >&2
+  exit 1
+fi
+
 if [[ -f .env ]]; then set -a; # shellcheck disable=SC1091
   source .env; set +a; fi
 if [[ -f .env.e2e ]]; then set -a; # shellcheck disable=SC1091

@@ -6,6 +6,13 @@ plugins/tools/capabilities/browser/output/
 __pycache__/
 output/
 
+# Dashboard UX-audit artifacts: regenerated per run against a live instance and
+# carrying that instance's dashboard ids, seed-account email and tenant names.
+# They used to be tracked, which meant every audit run produced unmergeable binary
+# diffs and published live instance data into the repo. Now written to
+# output/ux-audit/; this rule keeps a stale example/ tree from creeping back.
+example/dashboard-ux-audit/
+
 # secrets
 .qwen/
 .env

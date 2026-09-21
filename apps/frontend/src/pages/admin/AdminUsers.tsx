@@ -798,13 +798,13 @@ export function AdminUsers() {
                         />
                       </td>
                       {canAssignAgents && (
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 align-top">
                         {!agentListLoaded || specialistAgents.length === 0 ? (
                           <span className="text-[10px] text-surface-muted">
                             {t("admin:usersAgentsNone")}
                           </span>
                         ) : (
-                          <div className="flex flex-col gap-1">
+                          <div className="flex max-h-28 flex-col gap-1 overflow-y-auto pr-1">
                             {specialistAgents.map((a) => (
                               <label
                                 key={a.id}

@@ -4,3 +4,8 @@ __pycache__
 *.pyc
 .env
 logs
+# The image builds its own frontend bundle. A stale host dist/ left over from an
+# earlier `npm run build` otherwise gets copied into the build context, and when
+# the builder layer is a cache hit the app ships that old bundle silently — a
+# `docker compose build` then "succeeds" while serving days-old UI.
+apps/frontend/dist

@@ -1657,8 +1657,7 @@ export function DashboardPage() {
                 </div>
                 {canManageMembers && canEditStructure ? (
                   <p className="mb-4 text-xs text-surface-muted">
-                    {t("dashboard:membersMovedHint")}{" "}
-                    <span className="text-white/80">{t("dashboard:settingsLabel")}</span>.
+                    {t("dashboard:membersMovedHint")}
                   </p>
                 ) : null}
                 {useMode ? (

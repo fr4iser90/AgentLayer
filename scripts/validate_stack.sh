@@ -40,7 +40,7 @@ FROM=0
 ONLY=""
 SKIP=""
 MODEL="chat"
-STAGES=(preflight up bootstrap seed backend journeys modematrix blocks report)
+VISION=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -48,12 +48,21 @@ while [[ $# -gt 0 ]]; do
     --from)  FROM="$2"; shift 2 ;;
     --skip)  SKIP="$SKIP,${2}"; shift 2 ;;
     --model) MODEL="$2"; shift 2 ;;
+    --vision) VISION=1; shift ;;
     -h|--help)
-      sed -n '2,32p' "${BASH_SOURCE[0]}"
+      sed -n '2,36p' "${BASH_SOURCE[0]}"
       exit 0 ;;
     *) echo "unknown arg: $1" >&2; exit 2 ;;
   esac
 done
+
+# The vision stage is opt-in: it costs one live model round per screenshot and
+# its findings are advisory, so it never runs unless --vision is passed. When it
+# does, it sits after the browser stages (so the PNGs exist) and before report
+# (so its findings land in the summary).
+STAGES=(preflight up bootstrap seed backend journeys modematrix blocks)
+[[ "$VISION" == "1" ]] && STAGES+=(vision)
+STAGES+=(report)
 
 STAMP="$(date +%Y%m%d-%H%M%S)"
 OUT="$REPO/output/stack-validation/$STAMP"
@@ -250,6 +259,22 @@ stage_blocks() {
   bash scripts/run-e2e-playwright-dashboard-ux-audit.sh
 }
 
+# ---------------------------------------------------------------- vision (opt-in)
+stage_vision() {
+  # Freshness-bound: read ONLY the screenshots this run produced, never a glob
+  # over older output/stack-validation/* dirs. A vision pass over stale PNGs
+  # grades a dead state.
+  local shots="$OUT/screenshots"
+  local n
+  n="$(find "$shots" -maxdepth 1 -name '*.png' 2>/dev/null | wc -l | tr -d ' ')"
+  if [[ "$n" == "0" ]]; then
+    echo "no PNGs in ${shots} — run modematrix/blocks in this same window first"
+    return 1
+  fi
+  echo "auditing ${n} screenshot(s) from ${shots}"
+  python3 scripts/vision_audit.py --screenshots "$shots" --out "$OUT/vision.md"
+}
+
 # ---------------------------------------------------------------- 8 report
 stage_report() {
   local md="$OUT/report.md"
@@ -261,6 +286,12 @@ stage_report() {
     for s in "${STAGES[@]}"; do
       printf '| %s | %s | %s |\n' "$s" "${STATUS[$s]:-not-run}" "${DETAIL[$s]:-}"
     done
+    if [[ -f "$OUT/vision.md" ]]; then
+      echo ""
+      echo "## Vision audit"
+      echo ""
+      echo "Advisory visual findings over this run's screenshots: \`vision.md\`."
+    fi
     echo ""
     echo "## Residue this run leaves behind"
     echo ""
@@ -297,6 +328,7 @@ run_stage backend     stage_backend
 run_stage journeys    stage_journeys
 run_stage modematrix  stage_modematrix
 run_stage blocks      stage_blocks
+run_stage vision      stage_vision
 run_stage report      stage_report
 
 exit $RC_GLOBAL

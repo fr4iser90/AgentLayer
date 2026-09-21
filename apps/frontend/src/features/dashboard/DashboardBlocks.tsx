@@ -1257,7 +1257,7 @@ function CellInput(props: {
       <input
         type="number"
         readOnly={readOnly}
-        className="w-full min-w-[4rem] rounded border border-surface-border bg-black/30 px-2 py-1 text-neutral-100 read-only:cursor-default read-only:opacity-90"
+        className="w-full min-w-[4rem] rounded border border-surface-border bg-black/30 px-2 py-1 text-neutral-100 read-only:cursor-default read-only:border-transparent read-only:bg-transparent"
         value={typeof value === "number" ? value : Number(value) || 0}
         onChange={(e) => onChange(Number(e.target.value))}
       />
@@ -1283,7 +1283,7 @@ function CellInput(props: {
     <input
       type="text"
       readOnly={readOnly}
-      className="w-full rounded border border-surface-border bg-black/30 px-2 py-1 text-neutral-100 read-only:cursor-default read-only:opacity-90"
+      className="w-full rounded border border-surface-border bg-black/30 px-2 py-1 text-neutral-100 read-only:cursor-default read-only:border-transparent read-only:bg-transparent"
       value={value == null ? "" : String(value)}
       onChange={(e) => onChange(e.target.value)}
     />
