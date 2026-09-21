@@ -1,6 +1,7 @@
 import type { ChangeEvent, Dispatch, SetStateAction } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { X } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { GalleryImage } from "./GalleryImage";
@@ -1000,7 +1001,7 @@ function BlockView(props: {
                           }}
                           title={t("dashboard:deleteRow")}
                         >
-                          ✕
+                          <X aria-hidden className="h-3.5 w-3.5" />
                         </button>
                       </td>
                     ) : null}

@@ -1,5 +1,7 @@
+import type { ReactNode } from "react";
 import type { ConversationGoal, ConversationTodo } from "../../lib/api";
 import { useTranslation } from "react-i18next";
+import { Check, Circle, Pause, Pencil, Play, X } from "lucide-react";
 
 type GoalActions = {
   goal: ConversationGoal | null;
@@ -12,10 +14,10 @@ type GoalActions = {
 
 const TODO_INLINE_MAX = 6;
 
-function todoGlyph(status: ConversationTodo["status"]): string {
-  if (status === "completed") return "✓";
-  if (status === "in_progress") return "▶";
-  return "○";
+function todoGlyph(status: ConversationTodo["status"]): ReactNode {
+  if (status === "completed") return <Check className="h-3.5 w-3.5" />;
+  if (status === "in_progress") return <Play className="h-3.5 w-3.5" />;
+  return <Circle className="h-3.5 w-3.5" />;
 }
 
 function GoalActionButtons({
@@ -40,7 +42,7 @@ function GoalActionButtons({
           onClick={onResume}
           title={t("chat:goalResume")}
         >
-          ▶
+          <Play aria-hidden className="h-3.5 w-3.5" />
         </button>
       ) : (
         <button
@@ -50,7 +52,7 @@ function GoalActionButtons({
           onClick={onPause}
           title={t("chat:goalPause")}
         >
-          ❚❚
+          <Pause aria-hidden className="h-3.5 w-3.5" />
         </button>
       )}
       <button
@@ -60,7 +62,7 @@ function GoalActionButtons({
         onClick={onEdit}
         title={t("chat:goalEdit")}
       >
-        ✎
+        <Pencil aria-hidden className="h-3.5 w-3.5" />
       </button>
       <button
         type="button"
@@ -69,7 +71,7 @@ function GoalActionButtons({
         onClick={onClear}
         title={t("chat:goalClear")}
       >
-        ⌫
+        <X aria-hidden className="h-3.5 w-3.5" />
       </button>
     </div>
   );

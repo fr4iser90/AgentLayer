@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { KeyRound } from "lucide-react";
 import type { AuthContextValue } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { buildUserSecretPostBody } from "./buildSecretPayload";
@@ -88,9 +89,7 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
   return (
     <div className="w-full max-w-[min(100%,42rem)] rounded-xl border border-amber-900/45 bg-amber-950/20 px-3 py-3 text-sm shadow-sm">
       <div className="flex items-start gap-2">
-        <span className="mt-0.5 shrink-0 text-base leading-none" aria-hidden>
-          🔑
-        </span>
+        <KeyRound aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
         <div className="min-w-0 flex-1">
           <p className="font-medium text-amber-100/95">
             {prompt.title || prompt.serviceKey}

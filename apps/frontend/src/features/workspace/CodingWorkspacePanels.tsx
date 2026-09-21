@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { File, Folder } from "lucide-react";
 import type { AuthContextValue } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 
@@ -451,7 +452,11 @@ export function CodingWorkspacePanels({
                         }
                       }}
                     >
-                      <span className="text-surface-muted">{e.is_dir ? "📁" : "📄"}</span>
+                      {e.is_dir ? (
+                        <Folder aria-hidden className="h-3.5 w-3.5 shrink-0 text-surface-muted" />
+                      ) : (
+                        <File aria-hidden className="h-3.5 w-3.5 shrink-0 text-surface-muted" />
+                      )}
                       <span className="min-w-0 flex-1 truncate text-neutral-200">{e.name}</span>
                       {e.is_symlink ? (
                         <span className="text-meta text-amber-400/80">{t("workspace:treeEntrySymlink")}</span>

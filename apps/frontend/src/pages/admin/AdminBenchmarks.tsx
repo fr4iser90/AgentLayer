@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { Check, X } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
 import {
   autoFixtureIds,
@@ -459,7 +460,12 @@ function BenchmarkScenarioDetailWithAttempts({
                     : String(snap.failure_reason || snap.rubric_failure_reason || "FAIL")
                 }
               >
-                {label} {snap.passed ? "✓" : "✗"}
+                {label}{" "}
+                {snap.passed ? (
+                  <Check aria-hidden className="inline h-3 w-3 align-[-1px]" />
+                ) : (
+                  <X aria-hidden className="inline h-3 w-3 align-[-1px]" />
+                )}
               </button>
             );
           })}
