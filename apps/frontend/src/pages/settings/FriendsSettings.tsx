@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { CircleCheck } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 
@@ -375,7 +376,10 @@ export function FriendsSettings() {
           {confirmedFriends.length > 0 && (
             <div className="rounded-xl border border-surface-border bg-card overflow-hidden">
               <div className="p-4 border-b border-surface-border">
-                <h3 className="font-medium text-emerald-300">✅ {t("settings:friendsConfirmedTitle")}</h3>
+                <h3 className="flex items-center gap-1.5 font-medium text-emerald-300">
+                  <CircleCheck aria-hidden className="h-4 w-4" />
+                  {t("settings:friendsConfirmedTitle")}
+                </h3>
               </div>
               <div className="divide-y divide-surface-border">
                 {confirmedFriends.map((friend) => (

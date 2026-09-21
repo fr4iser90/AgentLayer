@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { Volume2 } from "lucide-react";
 import { itemLabel } from "./mediaTypes";
 import { useOptionalGlobalMedia } from "./GlobalMediaProvider";
 import { MediaMiniPlayerPanel } from "./MediaMiniPlayerPanel";
@@ -113,7 +114,7 @@ export function MediaMiniPlayer() {
 
           <label className="flex shrink-0 items-center gap-2 text-meta text-surface-muted">
             <span className="hidden sm:inline">{t("dashboard:mediaMiniPlayerVolume")}</span>
-            <span aria-hidden>🔊</span>
+            <Volume2 aria-hidden className="h-3.5 w-3.5" />
             <input
               type="range"
               min={0}

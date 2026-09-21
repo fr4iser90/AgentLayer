@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { Check } from "lucide-react";
 import {
   hasProposal,
   parseProposalContent,
@@ -67,7 +68,11 @@ export function ProposalCard({
                             : "border-surface-border text-surface-muted"
                         }`}
                       >
-                        {isSelected ? "✓" : proposal.options.indexOf(opt) + 1}
+                        {isSelected ? (
+                          <Check aria-hidden className="h-3 w-3" />
+                        ) : (
+                          proposal.options.indexOf(opt) + 1
+                        )}
                       </span>
                       <span className="text-sm font-medium text-neutral-200">{opt.label}</span>
                     </div>

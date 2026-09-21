@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ThumbsDown, ThumbsUp } from "lucide-react";
 import type { AuthContextValue } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 
@@ -71,7 +72,7 @@ export function MessageFeedbackButtons({
         ].join(" ")}
         onClick={() => void submit("up")}
       >
-        👍
+        <ThumbsUp aria-hidden className="h-4 w-4" />
       </button>
       <button
         type="button"
@@ -86,7 +87,7 @@ export function MessageFeedbackButtons({
         ].join(" ")}
         onClick={() => void submit("down")}
       >
-        👎
+        <ThumbsDown aria-hidden className="h-4 w-4" />
       </button>
     </div>
   );

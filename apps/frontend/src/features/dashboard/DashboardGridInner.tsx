@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState, type RefObject } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
+import { Settings } from "lucide-react";
 import ReactGridLayout, {
   useContainerWidth,
   verticalCompactor,
@@ -381,7 +382,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                             aria-label={t("dashboard:blockSettingsTitle")}
                             onClick={() => setSettingsBlockId(b.id)}
                           >
-                            ⚙
+                            <Settings aria-hidden className="h-3.5 w-3.5" />
                           </button>
                         ) : null}
                         {onPinBlock && b.type !== "dashboard_ref" ? (

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
+import { Star } from "lucide-react";
 import { getPath } from "./dashboardDataPaths";
 import { ProjectRowDetailDrawer } from "./ProjectRowDetailDrawer";
 import type { ColumnDef, UiBlock } from "./types";
@@ -164,8 +165,12 @@ export function CardGridBlockBody(props: {
                 <div className="mb-2 flex items-start justify-between gap-2">
                   <h4 className="line-clamp-2 text-sm font-semibold text-white">{title}</h4>
                   {pinned ? (
-                    <span className="shrink-0 text-meta text-amber-300" title={t("dashboard:pinned")}>
-                      ★
+                    <span className="shrink-0" title={t("dashboard:pinned")}>
+                      <Star
+                        aria-hidden
+                        fill="currentColor"
+                        className="inline h-3.5 w-3.5 text-amber-300"
+                      />
                     </span>
                   ) : null}
                 </div>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link as LinkIcon } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { useTranslation } from "react-i18next";
@@ -438,7 +439,10 @@ export default function SharesSettings() {
   return (
     <div className="mx-auto max-w-4xl space-y-8">
       <div>
-        <h1 className="text-lg font-semibold text-white">🔗 {t("settings:sharesTitle")}</h1>
+        <h1 className="flex items-center gap-2 text-lg font-semibold text-white">
+          <LinkIcon aria-hidden className="h-5 w-5" />
+          {t("settings:sharesTitle")}
+        </h1>
         <p className="mt-2 text-sm text-surface-muted">{t("settings:sharesSubtitle")}</p>
       </div>
 

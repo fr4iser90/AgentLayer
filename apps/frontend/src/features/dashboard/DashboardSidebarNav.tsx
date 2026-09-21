@@ -1,6 +1,7 @@
 import type { KeyboardEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Star } from "lucide-react";
 
 import type { DashboardSummary } from "./types";
 import {
@@ -93,7 +94,11 @@ function DashboardNavRow(props: {
         ].join(" ")}
         onClick={onToggleFav}
       >
-        {fav ? "★" : "☆"}
+        {fav ? (
+          <Star aria-hidden fill="currentColor" className="h-3.5 w-3.5" />
+        ) : (
+          <Star aria-hidden className="h-3.5 w-3.5" />
+        )}
       </button>
     </li>
   );

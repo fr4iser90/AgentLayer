@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { X } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { isPackageEnabledForChat, setPackageEnabledForChat } from "../../features/settings/toolPrefs";
@@ -599,7 +600,7 @@ function PackageDrawer({
             className="rounded-lg px-2 py-1 text-sm text-surface-muted hover:bg-white/10 hover:text-white"
             onClick={onClose}
           >
-            ✕
+            <X aria-hidden className="h-4 w-4" />
           </button>
         </div>
         <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-4">

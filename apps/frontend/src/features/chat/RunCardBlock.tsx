@@ -1,6 +1,8 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { Bot, Check, FileText, Package, Wrench, X } from "lucide-react";
 import type { RunCard } from "./buildRunCards";
 
 type Props = {
@@ -27,11 +29,11 @@ function bgForKind(kind: RunCard["kind"]): string {
   return "bg-sky-950/15";
 }
 
-function iconForKind(kind: RunCard["kind"]): string {
-  if (kind === "subagent") return "🤖";
-  if (kind === "index") return "📇";
-  if (kind === "compaction") return "📦";
-  return "🔧";
+function iconForKind(kind: RunCard["kind"]): ReactNode {
+  if (kind === "subagent") return <Bot className="h-4 w-4" />;
+  if (kind === "index") return <FileText className="h-4 w-4" />;
+  if (kind === "compaction") return <Package className="h-4 w-4" />;
+  return <Wrench className="h-4 w-4" />;
 }
 
 const COLLAPSED_PREVIEW_RUNNING = 2;
@@ -343,11 +345,11 @@ export function RunCardBlock({
                         <span className="shrink-0 text-neutral-600">·</span>
                       )
                     ) : failed ? (
-                      <span className="shrink-0 text-rose-400/90" title={t("chat:runCardStepFailed")}>
-                        ✗
+                      <span className="shrink-0" title={t("chat:runCardStepFailed")}>
+                        <X aria-hidden className="h-3.5 w-3.5 text-rose-400/90" />
                       </span>
                     ) : (
-                      <span className="shrink-0 text-emerald-400/70">✓</span>
+                      <Check aria-hidden className="h-3.5 w-3.5 shrink-0 text-emerald-400/70" />
                     )}
                     <span
                       className={
@@ -406,11 +408,11 @@ export function RunCardBlock({
                         {card.status === "running" ? (
                           <span className="text-sky-400/70">→</span>
                         ) : row.failed ? (
-                          <span className="text-rose-400/90" title={t("chat:runCardStepFailed")}>
-                            ✗
+                          <span className="inline" title={t("chat:runCardStepFailed")}>
+                            <X aria-hidden className="inline h-3.5 w-3.5 text-rose-400/90" />
                           </span>
                         ) : (
-                          <span className="text-emerald-400/70">✓</span>
+                          <Check aria-hidden className="inline h-3.5 w-3.5 text-emerald-400/70" />
                         )}
                         <span className={row.failed ? "text-rose-200/85" : "text-neutral-400"}>
                           {" "}

@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Check, Copy } from "lucide-react";
 import type { BenchmarkScenarioResult } from "./benchmarksApi";
 import { copyScenarioDetailsToClipboard } from "./benchCopyDetails";
 
@@ -52,7 +53,15 @@ export function CopyScenarioDetailsButton({
       aria-label={label}
       onClick={(e) => void onClick(e)}
     >
-      {copied ? "✓" : failed ? "!" : compact ? "⎘" : label}
+      {copied ? (
+        <Check aria-hidden className="inline h-3.5 w-3.5 align-[-2px]" />
+      ) : failed ? (
+        "!"
+      ) : compact ? (
+        <Copy aria-hidden className="inline h-3.5 w-3.5 align-[-2px]" />
+      ) : (
+        label
+      )}
     </button>
   );
 }

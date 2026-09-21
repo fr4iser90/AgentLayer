@@ -1,10 +1,13 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { Link, Users } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { friendSystemEnabled } from "../auth/tenantSurface";
 
-const subLink =
-  "block rounded-lg px-3 py-2 text-sm transition-colors border border-transparent";
+const subLinkBase =
+  "rounded-lg px-3 py-2 text-sm transition-colors border border-transparent";
+const subLink = `${subLinkBase} block`;
+const subLinkIcon = `${subLinkBase} flex items-center gap-1.5`;
 
 const subLinkActive = "bg-white/10 text-white border-white/10";
 const subLinkIdle = "text-surface-muted hover:bg-white/5 hover:text-neutral-200";
@@ -68,16 +71,18 @@ export function SettingsLayout() {
           {friendsOn ? (
             <NavLink
               to="/settings/friends"
-              className={({ isActive }) => `${subLink} ${isActive ? subLinkActive : subLinkIdle}`}
+              className={({ isActive }) => `${subLinkIcon} ${isActive ? subLinkActive : subLinkIdle}`}
             >
-              👥 {t("settings:friendsTitle")}
+              <Users aria-hidden className="h-4 w-4 shrink-0" />
+              {t("settings:friendsTitle")}
             </NavLink>
           ) : null}
           <NavLink
             to="/settings/shares"
-            className={({ isActive }) => `${subLink} ${isActive ? subLinkActive : subLinkIdle}`}
+            className={({ isActive }) => `${subLinkIcon} ${isActive ? subLinkActive : subLinkIdle}`}
           >
-            🔗 {t("settings:sharesTitle")}
+            <Link aria-hidden className="h-4 w-4 shrink-0" />
+            {t("settings:sharesTitle")}
           </NavLink>
         </nav>
       </aside>

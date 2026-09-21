@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { Bell } from "lucide-react";
 import { useNotificationContext } from "../features/notifications/NotificationProvider";
 
 function severityDot(severity: string): string {
@@ -64,9 +65,7 @@ export function NotificationBell() {
         title={t("notifications:bellTitle")}
         onClick={() => setOpen((v) => !v)}
       >
-        <span aria-hidden className="text-base leading-none">
-          🔔
-        </span>
+        <Bell aria-hidden className="h-[18px] w-[18px]" />
         {unread > 0 ? (
           <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-meta font-semibold text-black">
             {unread > 99 ? "99+" : unread}
@@ -76,7 +75,7 @@ export function NotificationBell() {
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 z-50 mt-1 flex w-[min(22rem,calc(100vw-2rem))] flex-col rounded-lg border border-surface-border bg-[#1a1a1a] shadow-xl"
+          className="absolute right-0 z-50 mt-1 flex w-[min(22rem,calc(100vw-2rem))] flex-col rounded-lg border border-surface-border bg-raised shadow-xl"
         >
           <div className="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
             <p className="text-sm font-medium text-white">{t("notifications:inboxTitle")}</p>
