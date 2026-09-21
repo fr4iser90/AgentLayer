@@ -118,7 +118,7 @@ export function OrgSetupPage() {
           </label>
           <input
             id="org-name"
-            className="w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+            className="w-full rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
@@ -128,7 +128,7 @@ export function OrgSetupPage() {
           </label>
           <input
             id="org-vertical"
-            className="w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+            className="w-full rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
             value={verticalProfile}
             onChange={(e) => setVerticalProfile(e.target.value)}
             required

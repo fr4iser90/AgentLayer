@@ -1414,7 +1414,7 @@ export function DashboardPage() {
           <label className="mb-1 block text-xs text-surface-muted">{t("dashboard:catalogCategoryLabel")}</label>
           <select
             disabled
-            className="rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white/50"
+            className="rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-white/50"
             value="all"
             onChange={() => {}}
           >
@@ -1559,7 +1559,7 @@ export function DashboardPage() {
                     <label className="mb-1 block text-xs text-surface-muted">{t("dashboard:dashboardTitleLabel")}</label>
                     <input
                       readOnly={!canEditStructure}
-                      className="w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-500/50 read-only:cursor-default read-only:opacity-90"
+                      className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-white outline-none focus:border-sky-500/50 read-only:cursor-default read-only:opacity-90"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                     />
@@ -2006,7 +2006,7 @@ export function DashboardPage() {
                     <select
                       id="ws-tool-pick"
                       disabled={pickableCatalogTools.length === 0}
-                      className="w-full rounded-lg border border-surface-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-500/50 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-white outline-none focus:border-sky-500/50 disabled:cursor-not-allowed disabled:opacity-50"
                       defaultValue=""
                       onChange={(e) => {
                         const v = e.currentTarget.value;

@@ -377,7 +377,7 @@ export function AdminAgents() {
           </label>
           <select
             id="agents-import-source-type"
-            className="w-full rounded-md border border-surface-border bg-black/30 px-2 py-1.5 text-xs text-white sm:w-56"
+            className="w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-white sm:w-56"
             value={importSourceType}
             onChange={(e) => setImportSourceType(e.target.value)}
           >
@@ -395,7 +395,7 @@ export function AdminAgents() {
           <label className="flex flex-col gap-1 text-xs text-surface-muted">
             <span>{t("admin:agentsImportPaste")}</span>
             <textarea
-              className="min-h-40 rounded-md border border-surface-border bg-black/30 px-3 py-2 font-mono text-xs text-white placeholder:text-neutral-500"
+              className="min-h-40 rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-xs text-white placeholder:text-neutral-500"
               value={importText}
               onChange={(e) => setImportText(e.target.value)}
               placeholder={t("admin:agentsImportPastePlaceholder")}
@@ -609,7 +609,7 @@ export function AdminAgents() {
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 <label className="text-xs text-surface-muted">{t("admin:agentsEffectivePreview")}</label>
                 <select
-                  className="rounded border border-surface-border bg-black/30 px-2 py-1 text-xs text-white"
+                  className="rounded border border-surface-border bg-field px-2 py-1 text-xs text-white"
                   value={previewRole}
                   onChange={(e) => setPreviewRole(e.target.value as "admin" | "user")}
                 >
@@ -617,7 +617,7 @@ export function AdminAgents() {
                   <option value="user">{t("admin:toolsMinRoleUser")}</option>
                 </select>
                 <input
-                  className="w-72 rounded border border-surface-border bg-black/30 px-2 py-1 text-xs text-white placeholder:text-neutral-500"
+                  className="w-72 rounded border border-surface-border bg-field px-2 py-1 text-xs text-white placeholder:text-neutral-500"
                   value={previewUserId}
                   onChange={(e) => setPreviewUserId(e.target.value)}
                   placeholder={t("admin:agentsPreviewUserIdPlaceholder")}
@@ -671,7 +671,7 @@ export function AdminAgents() {
                       <label className="text-xs text-surface-muted">
                         {t("admin:agentsPolicyScope")}
                         <select
-                          className="mt-1 w-full rounded border border-surface-border bg-black/30 px-2 py-1 text-xs text-white"
+                          className="mt-1 w-full rounded border border-surface-border bg-field px-2 py-1 text-xs text-white"
                           value={policyScope}
                           onChange={(e) => setPolicyScope(e.target.value as "global" | "tenant" | "user")}
                         >
@@ -686,7 +686,7 @@ export function AdminAgents() {
                         <label className="text-xs text-surface-muted">
                           {t("admin:agentsTenantId")}
                           <input
-                            className="mt-1 w-full rounded border border-surface-border bg-black/30 px-2 py-1 text-xs text-white placeholder:text-neutral-500"
+                            className="mt-1 w-full rounded border border-surface-border bg-field px-2 py-1 text-xs text-white placeholder:text-neutral-500"
                             value={policyTenantId}
                             onChange={(e) => setPolicyTenantId(e.target.value)}
                             placeholder={t("admin:agentsTenantIdPlaceholder")}
@@ -696,7 +696,7 @@ export function AdminAgents() {
                       <label className="text-xs text-surface-muted">
                         {t("admin:agentsUserId")}
                         <input
-                          className="mt-1 w-full rounded border border-surface-border bg-black/30 px-2 py-1 text-xs text-white placeholder:text-neutral-500"
+                          className="mt-1 w-full rounded border border-surface-border bg-field px-2 py-1 text-xs text-white placeholder:text-neutral-500"
                           value={policyUserId}
                           onChange={(e) => setPolicyUserId(e.target.value)}
                           placeholder={t("admin:agentsUserIdPlaceholder")}
@@ -705,7 +705,7 @@ export function AdminAgents() {
                       <label className="text-xs text-surface-muted">
                         {t("admin:agentsDirectAccess")}
                         <select
-                          className="mt-1 w-full rounded border border-surface-border bg-black/30 px-2 py-1 text-xs text-white"
+                          className="mt-1 w-full rounded border border-surface-border bg-field px-2 py-1 text-xs text-white"
                           value={directState}
                           onChange={(e) => setDirectState(e.target.value as "inherit" | "allow" | "deny")}
                         >
@@ -717,7 +717,7 @@ export function AdminAgents() {
                       <label className="text-xs text-surface-muted">
                         {t("admin:agentsDelegateAccess")}
                         <select
-                          className="mt-1 w-full rounded border border-surface-border bg-black/30 px-2 py-1 text-xs text-white"
+                          className="mt-1 w-full rounded border border-surface-border bg-field px-2 py-1 text-xs text-white"
                           value={delegateState}
                           onChange={(e) => setDelegateState(e.target.value as "inherit" | "allow" | "deny")}
                         >
@@ -783,7 +783,7 @@ export function AdminAgents() {
                       </p>
                     </div>
                     <textarea
-                      className="mt-3 min-h-52 w-full rounded-md border border-surface-border bg-black/30 px-3 py-2 font-mono text-xs text-white placeholder:text-neutral-500"
+                      className="mt-3 min-h-52 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-xs text-white placeholder:text-neutral-500"
                       value={promptText}
                       onChange={(e) => setPromptText(e.target.value)}
                       maxLength={12000}

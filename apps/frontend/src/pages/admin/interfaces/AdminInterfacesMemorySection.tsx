@@ -25,7 +25,7 @@ function ProviderModelSelect({
   return (
     <select
       id={id}
-      className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white disabled:opacity-50"
+      className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white disabled:opacity-50"
       value={current}
       disabled={loading || options.length === 0}
       onChange={(e) => onChange(e.target.value)}
@@ -171,7 +171,7 @@ export function AdminInterfacesMemorySection() {
                   </label>
                   <select
                     id="embedding-provider-id"
-                    className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white disabled:opacity-50"
+                    className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white disabled:opacity-50"
                     value={s.ragEmbeddingProviderId || s.ragEmbeddingProviderIdEffective || ""}
                     onChange={(e) => s.setRagEmbeddingProviderId(e.target.value)}
                   >
@@ -198,7 +198,7 @@ export function AdminInterfacesMemorySection() {
             </label>
             <input
               id="embedding-base-url"
-              className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white disabled:opacity-50"
+              className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white disabled:opacity-50"
               value={
                 s.embeddingApiBaseSource === "env"
                   ? (s.embeddingApiBaseEffective ?? "")
@@ -235,7 +235,7 @@ export function AdminInterfacesMemorySection() {
               id="embedding-api-key"
               type="password"
               autoComplete="off"
-              className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white disabled:opacity-50"
+              className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white disabled:opacity-50"
               value={s.embeddingApiKey}
               onChange={(e) => s.setEmbeddingApiKey(e.target.value)}
               placeholder={
@@ -255,7 +255,7 @@ export function AdminInterfacesMemorySection() {
             </label>
             <input
               id="embedding-header-name"
-              className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white disabled:opacity-50"
+              className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white disabled:opacity-50"
               value={s.embeddingApiHeaderName}
               onChange={(e) => s.setEmbeddingApiHeaderName(e.target.value)}
               placeholder={t("admin:ifMemoryApiKeyPlaceholder")}
@@ -295,7 +295,7 @@ export function AdminInterfacesMemorySection() {
                   type="number"
                   min={32}
                   max={4096}
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
                   value={s.ragEmbeddingDim}
                   onChange={(e) => s.setRagEmbeddingDim(e.target.value)}
                 />
@@ -361,7 +361,7 @@ export function AdminInterfacesMemorySection() {
                 </label>
                 <select
                   id="extractor-provider-id"
-                  className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
                   value={s.extractorProviderId || s.extractorProviderIdEffective || ""}
                   onChange={(e) => s.setExtractorProviderId(e.target.value)}
                 >
@@ -391,7 +391,7 @@ export function AdminInterfacesMemorySection() {
             </label>
             <input
               id="extractor-base-url"
-              className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+              className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
               value={s.extractorApiBaseUrl}
               onChange={(e) => s.setExtractorApiBaseUrl(e.target.value)}
               placeholder={t("admin:ifMemExtractorUrlPlaceholder")}
@@ -419,7 +419,7 @@ export function AdminInterfacesMemorySection() {
               id="extractor-api-key"
               type="password"
               autoComplete="off"
-              className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+              className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
               value={s.extractorApiKey}
               onChange={(e) => s.setExtractorApiKey(e.target.value)}
               placeholder={s.extractorApiKeyConfigured ? t("admin:tokenReplacePlaceholder") : t("admin:ifMemPasteKey")}
@@ -431,7 +431,7 @@ export function AdminInterfacesMemorySection() {
                 </label>
                 <input
                   id="extractor-header-name"
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
                   value={s.extractorApiHeaderName}
                   onChange={(e) => s.setExtractorApiHeaderName(e.target.value)}
                   placeholder={t("admin:ifMemoryApiKeyPlaceholder")}
@@ -465,7 +465,7 @@ export function AdminInterfacesMemorySection() {
                   type="number"
                   min={1}
                   max={1800}
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
                   value={s.extractorTimeoutSec}
                   onChange={(e) => s.setExtractorTimeoutSec(e.target.value)}
                 />
@@ -521,7 +521,7 @@ export function AdminInterfacesMemorySection() {
               type="number"
               min={200}
               max={8000}
-              className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+              className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
               value={s.ragChunkSize}
               onChange={(e) => s.setRagChunkSize(e.target.value)}
             />
@@ -535,7 +535,7 @@ export function AdminInterfacesMemorySection() {
               type="number"
               min={0}
               max={2000}
-              className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+              className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
               value={s.ragChunkOverlap}
               onChange={(e) => s.setRagChunkOverlap(e.target.value)}
             />
@@ -549,7 +549,7 @@ export function AdminInterfacesMemorySection() {
               type="number"
               min={1}
               max={50}
-              className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+              className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
               value={s.ragTopK}
               onChange={(e) => s.setRagTopK(e.target.value)}
             />
@@ -564,7 +564,7 @@ export function AdminInterfacesMemorySection() {
               min={5}
               max={600}
               step="1"
-              className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+              className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
               value={s.ragEmbedTimeout}
               onChange={(e) => s.setRagEmbedTimeout(e.target.value)}
             />
@@ -575,7 +575,7 @@ export function AdminInterfacesMemorySection() {
         </label>
         <input
           id="rag-domains"
-          className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
           value={s.ragTenantDomains}
           onChange={(e) => s.setRagTenantDomains(e.target.value)}
           placeholder={t("admin:ifMemoryCollectionPlaceholder")}
@@ -591,7 +591,7 @@ export function AdminInterfacesMemorySection() {
         </label>
         <input
           id="docs-root"
-          className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
           value={s.docsRoot}
           onChange={(e) => s.setDocsRoot(e.target.value)}
           placeholder={t("admin:ifMemoryDocsPathPlaceholder")}
@@ -630,7 +630,7 @@ export function AdminInterfacesMemorySection() {
               type="number"
               min={0}
               max={4}
-              className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+              className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
               value={s.memGraphMaxHops}
               onChange={(e) => s.setMemGraphMaxHops(e.target.value)}
             />
@@ -645,7 +645,7 @@ export function AdminInterfacesMemorySection() {
               step="0.01"
               min={0}
               max={1}
-              className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+              className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
               value={s.memGraphMinScore}
               onChange={(e) => s.setMemGraphMinScore(e.target.value)}
             />
@@ -659,7 +659,7 @@ export function AdminInterfacesMemorySection() {
               type="number"
               min={1}
               max={50}
-              className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+              className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
               value={s.memGraphMaxBullets}
               onChange={(e) => s.setMemGraphMaxBullets(e.target.value)}
             />
@@ -673,7 +673,7 @@ export function AdminInterfacesMemorySection() {
               type="number"
               min={200}
               max={50000}
-              className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+              className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
               value={s.memGraphMaxPromptChars}
               onChange={(e) => s.setMemGraphMaxPromptChars(e.target.value)}
             />

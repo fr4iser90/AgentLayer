@@ -176,7 +176,7 @@ export function MediaSharePanel() {
                     <label className="block text-meta uppercase text-surface-muted">
                       {t("dashboard:mediaLicenseLabel")}
                       <select
-                        className="mt-1 block w-full rounded border border-surface-border bg-black/40 px-2 py-1 text-xs text-white"
+                        className="mt-1 block w-full rounded border border-surface-border bg-field px-2 py-1 text-xs text-white"
                         value={license}
                         onChange={(e) => setLicense(e.target.value)}
                       >
@@ -189,7 +189,7 @@ export function MediaSharePanel() {
                     </label>
                     <input
                       type="text"
-                      className="w-full rounded border border-surface-border bg-black/40 px-2 py-1 text-xs text-white"
+                      className="w-full rounded border border-surface-border bg-field px-2 py-1 text-xs text-white"
                       placeholder={t("dashboard:mediaLicenseNotePlaceholder")}
                       value={licenseNote}
                       onChange={(e) => setLicenseNote(e.target.value)}
@@ -207,13 +207,13 @@ export function MediaSharePanel() {
                         <div className="flex flex-wrap gap-2 pt-2">
                           <input
                             type="email"
-                            className="min-w-[10rem] flex-1 rounded border border-surface-border bg-black/40 px-2 py-1 text-xs text-white"
+                            className="min-w-[10rem] flex-1 rounded border border-surface-border bg-field px-2 py-1 text-xs text-white"
                             placeholder={t("dashboard:mediaShareEmailPlaceholder")}
                             value={shareEmail}
                             onChange={(e) => setShareEmail(e.target.value)}
                           />
                           <select
-                            className="rounded border border-surface-border bg-black/40 px-2 py-1 text-xs text-white"
+                            className="rounded border border-surface-border bg-field px-2 py-1 text-xs text-white"
                             value={sharePerm}
                             onChange={(e) =>
                               setSharePerm(e.target.value as "play" | "play_and_download")

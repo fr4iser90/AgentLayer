@@ -167,7 +167,7 @@ export function KanbanBlockBody(props: {
               ) : (
                 <input
                   type="text"
-                  className="dashboard-grid-no-drag min-w-0 flex-1 rounded border border-surface-border bg-black/40 px-2 py-1 text-sm text-white"
+                  className="dashboard-grid-no-drag min-w-0 flex-1 rounded border border-surface-border bg-field px-2 py-1 text-sm text-white"
                   value={col.title}
                   onChange={(e) => updateColTitle(ci, e.target.value)}
                 />
@@ -196,13 +196,13 @@ export function KanbanBlockBody(props: {
                       <input
                         type="text"
                         placeholder={t("dashboard:kanbanCardPlaceholder")}
-                        className="dashboard-grid-no-drag mb-2 w-full rounded border border-surface-border bg-black/40 px-2 py-1 text-sm text-white"
+                        className="dashboard-grid-no-drag mb-2 w-full rounded border border-surface-border bg-field px-2 py-1 text-sm text-white"
                         value={card.title}
                         onChange={(e) => updateCardTitle(ci, card.id, e.target.value)}
                       />
                       <div className="flex flex-wrap items-center gap-2">
                         <select
-                          className="dashboard-grid-no-drag max-w-full flex-1 rounded border border-surface-border bg-black/40 px-1 py-0.5 text-meta text-neutral-200"
+                          className="dashboard-grid-no-drag max-w-full flex-1 rounded border border-surface-border bg-field px-1 py-0.5 text-meta text-neutral-200"
                           value={ci}
                           onChange={(e) => moveCard(ci, card.id, Number(e.target.value))}
                           title={t("dashboard:kanbanMoveColumn")}
@@ -337,7 +337,7 @@ export function RichMarkdownBlockBody(props: {
         <div>
           <label className="mb-1 block text-meta uppercase text-surface-muted">{t("dashboard:markdownLabel")}</label>
           <textarea
-            className="dashboard-grid-no-drag min-h-[220px] w-full resize-y rounded-lg border border-surface-border bg-black/35 px-3 py-2 font-mono text-sm text-neutral-100 outline-none focus:border-sky-500/50"
+            className="dashboard-grid-no-drag min-h-[220px] w-full resize-y rounded-lg border border-surface-border bg-field px-3 py-2 font-mono text-sm text-neutral-100 outline-none focus:border-sky-500/50"
             placeholder={placeholder}
             value={text}
             onChange={(e) => setData((d) => setPath(d, dp, e.target.value))}

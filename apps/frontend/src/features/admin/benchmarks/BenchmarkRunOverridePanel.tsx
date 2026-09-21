@@ -241,7 +241,7 @@ export function BenchmarkRunOverridePanel({ auth, overrides, onChange }: Props) 
 
                 <label className="text-xs text-surface-muted">{t("admin:benchRunOverrideValueLabel")}</label>
                 <textarea
-                  className="min-h-[80px] w-full rounded border border-surface-border bg-black/30 p-2 font-mono text-sm text-white"
+                  className="min-h-[80px] w-full rounded border border-surface-border bg-field p-2 font-mono text-sm text-white"
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
                 />

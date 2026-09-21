@@ -32,7 +32,7 @@ export function AdminInterfacesLegalSection() {
       </label>
       <select
         id="legal-jurisdiction"
-        className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+        className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
         value={s.legalJurisdiction}
         onChange={(e) => s.setLegalJurisdiction(e.target.value)}
       >
@@ -60,7 +60,7 @@ export function AdminInterfacesLegalSection() {
           {t("admin:ifPlatformLegalEntityName")}
           <input
             id="legal-entity-name"
-            className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+            className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
             value={s.legalEntityName}
             onChange={(e) => s.setLegalEntityName(e.target.value)}
             placeholder={t("admin:ifPlatformLegalEntityNamePlaceholder")}
@@ -71,7 +71,7 @@ export function AdminInterfacesLegalSection() {
           <input
             id="legal-entity-email"
             type="email"
-            className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+            className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
             value={s.legalEntityEmail}
             onChange={(e) => s.setLegalEntityEmail(e.target.value)}
             placeholder={t("admin:ifPlatformLegalEntityEmailPlaceholder")}
@@ -84,7 +84,7 @@ export function AdminInterfacesLegalSection() {
         <textarea
           id="legal-entity-address"
           rows={2}
-          className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+          className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
           value={s.legalEntityAddress}
           onChange={(e) => s.setLegalEntityAddress(e.target.value)}
           placeholder={t("admin:ifPlatformLegalEntityAddressPlaceholder")}
@@ -95,7 +95,7 @@ export function AdminInterfacesLegalSection() {
         {t("admin:ifPlatformLegalEntityPhone")}
         <input
           id="legal-entity-phone"
-          className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+          className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
           value={s.legalEntityPhone}
           onChange={(e) => s.setLegalEntityPhone(e.target.value)}
         />
@@ -111,7 +111,7 @@ export function AdminInterfacesLegalSection() {
           <textarea
             id="legal-impressum-md"
             rows={6}
-            className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-xs text-white"
+            className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-xs text-white"
             value={s.legalImpressumMd}
             onChange={(e) => s.setLegalImpressumMd(e.target.value)}
             placeholder={t("admin:ifPlatformLegalOverridePlaceholder")}
@@ -122,7 +122,7 @@ export function AdminInterfacesLegalSection() {
           <textarea
             id="legal-privacy-md"
             rows={8}
-            className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-xs text-white"
+            className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-xs text-white"
             value={s.legalPrivacyMd}
             onChange={(e) => s.setLegalPrivacyMd(e.target.value)}
             placeholder={t("admin:ifPlatformLegalOverridePlaceholder")}
@@ -133,7 +133,7 @@ export function AdminInterfacesLegalSection() {
           <textarea
             id="legal-terms-md"
             rows={8}
-            className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-xs text-white"
+            className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-xs text-white"
             value={s.legalTermsMd}
             onChange={(e) => s.setLegalTermsMd(e.target.value)}
             placeholder={t("admin:ifPlatformLegalOverridePlaceholder")}

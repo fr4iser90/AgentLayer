@@ -206,7 +206,7 @@ export function WorkspaceMcpModal({
               <label className="block">
                 <span className="text-meta text-surface-muted">{t("workspace:serverIdLabel")}</span>
                 <input
-                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-black/40 px-2 py-1.5 font-mono text-xs text-neutral-100"
+                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-field px-2 py-1.5 font-mono text-xs text-neutral-100"
                   value={serverId}
                   onChange={(e) => {
                     setServerId(e.target.value);
@@ -218,7 +218,7 @@ export function WorkspaceMcpModal({
               <label className="block">
                 <span className="text-meta text-surface-muted">{t("workspace:packageLabel")}</span>
                 <input
-                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-black/40 px-2 py-1.5 font-mono text-xs text-neutral-100"
+                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-field px-2 py-1.5 font-mono text-xs text-neutral-100"
                   value={packageSpec}
                   onChange={(e) => handlePackageSpecChange(e.target.value)}
                   placeholder={t("workspace:packagePlaceholder")}
@@ -262,7 +262,7 @@ export function WorkspaceMcpModal({
                   {launchMode === "uvx" ? t("workspace:binaryAfterFromLabel") : t("workspace:binaryOnPathLabel")}
                 </span>
                 <input
-                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-black/40 px-2 py-1.5 font-mono text-xs text-neutral-100"
+                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-field px-2 py-1.5 font-mono text-xs text-neutral-100"
                   value={binary}
                   onChange={(e) => {
                     setBinary(e.target.value);
@@ -274,7 +274,7 @@ export function WorkspaceMcpModal({
               <label className="block">
                 <span className="text-meta text-surface-muted">{t("workspace:argsLabel")}</span>
                 <input
-                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-black/40 px-2 py-1.5 font-mono text-xs text-neutral-100"
+                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-field px-2 py-1.5 font-mono text-xs text-neutral-100"
                   value={mcpArgsText}
                   onChange={(e) => {
                     setMcpArgsText(e.target.value);
@@ -324,7 +324,7 @@ export function WorkspaceMcpModal({
 
           <p className="mt-3 text-meta font-semibold uppercase tracking-wide text-surface-muted">{t("workspace:serversJsonTitle")}</p>
           <textarea
-            className="mt-1 h-48 w-full resize-y rounded-lg border border-surface-border bg-black/40 px-3 py-2 font-mono text-xs text-neutral-100"
+            className="mt-1 h-48 w-full resize-y rounded-lg border border-surface-border bg-field px-3 py-2 font-mono text-xs text-neutral-100"
             spellCheck={false}
             value={text}
             onChange={(e) => setText(e.target.value)}

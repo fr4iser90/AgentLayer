@@ -638,7 +638,7 @@ export function AdminUsers() {
                       {showTenantUi && (
                         <td className="px-4 py-3">
                           <select
-                            className="max-w-[14rem] rounded-md border border-surface-border bg-black/20 px-2 py-1.5 text-xs text-white"
+                            className="max-w-[14rem] rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-white"
                             value={tid}
                             disabled={saving || !targetEditable}
                             onChange={(e) => {
@@ -684,7 +684,7 @@ export function AdminUsers() {
                           type="number"
                           min={1}
                           max={1000}
-                          className="w-16 rounded-md border border-surface-border bg-black/20 px-2 py-1 text-xs text-white"
+                          className="w-16 rounded-md border border-surface-border bg-field px-2 py-1 text-xs text-white"
                           value={r.workspace_quota ?? 10}
                           disabled={saving || !targetEditable}
                           onChange={(e) => {
@@ -699,7 +699,7 @@ export function AdminUsers() {
                           type="number"
                           min={1}
                           max={50000}
-                          className="w-20 rounded-md border border-surface-border bg-black/20 px-2 py-1 text-xs text-white"
+                          className="w-20 rounded-md border border-surface-border bg-field px-2 py-1 text-xs text-white"
                           value={r.media_storage_quota_mb ?? ""}
                           placeholder={t("admin:usersMediaQuotaPlaceholder")}
                           disabled={saving || !targetEditable}
@@ -716,7 +716,7 @@ export function AdminUsers() {
                           type="number"
                           min={0}
                           max={1000}
-                          className="w-16 rounded-md border border-surface-border bg-black/20 px-2 py-1 text-xs text-white"
+                          className="w-16 rounded-md border border-surface-border bg-field px-2 py-1 text-xs text-white"
                           value={r.llm_queue_priority ?? ""}
                           placeholder={t("admin:usersLlmPrioDefault")}
                           disabled={saving || !targetEditable}
@@ -735,7 +735,7 @@ export function AdminUsers() {
                       </td>
                       <td className="px-4 py-3">
                         <select
-                          className="rounded-md border border-surface-border bg-black/20 px-2 py-1 text-xs text-white"
+                          className="rounded-md border border-surface-border bg-field px-2 py-1 text-xs text-white"
                           value={
                             r.media_enabled === true ? "on" : r.media_enabled === false ? "off" : "inherit"
                           }
@@ -785,7 +785,7 @@ export function AdminUsers() {
                           type="number"
                           min={1}
                           max={1000}
-                          className="w-16 rounded-md border border-surface-border bg-black/20 px-2 py-1 text-xs text-white"
+                          className="w-16 rounded-md border border-surface-border bg-field px-2 py-1 text-xs text-white"
                           value={r.dashboard_quota ?? 1}
                           placeholder={t("admin:usersDashboardsQuotaPlaceholder")}
                           title={t("admin:usersDashboardsQuotaPlaceholder")}
@@ -872,7 +872,7 @@ export function AdminUsers() {
             {t("settings:displayName", { ns: "settings" })}
             <input
               type="text"
-              className="mt-1 block w-full min-w-[12rem] rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+              className="mt-1 block w-full min-w-[12rem] rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
               value={newTenantName}
               onChange={(e) => setNewTenantName(e.target.value)}
               placeholder={t("admin:tenantDisplayNamePlaceholder")}
@@ -882,7 +882,7 @@ export function AdminUsers() {
           <label className="block text-xs text-surface-muted">
             {t("admin:usersTenantTemplate")}
             <select
-              className="mt-1 block w-full min-w-[14rem] rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+              className="mt-1 block w-full min-w-[14rem] rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
               value={newTenantTemplateId}
               onChange={(e) => setNewTenantTemplateId(e.target.value)}
             >
@@ -931,7 +931,7 @@ export function AdminUsers() {
             {t("admin:usersEmailLabel")}
             <input
               type="email"
-              className="mt-1 block w-full min-w-[12rem] rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+              className="mt-1 block w-full min-w-[12rem] rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
               autoComplete="off"
@@ -941,7 +941,7 @@ export function AdminUsers() {
             {t("admin:usersPasswordLabel")}
             <input
               type="password"
-              className="mt-1 block w-full min-w-[12rem] rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+              className="mt-1 block w-full min-w-[12rem] rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               autoComplete="new-password"
@@ -951,7 +951,7 @@ export function AdminUsers() {
             <label className="block text-xs text-surface-muted">
               {t("admin:usersTenantLabel")}
               <select
-                className="mt-1 block rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+                className="mt-1 block rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
                 value={newTenantId}
                 onChange={(e) => setNewTenantId(e.target.value)}
               >
@@ -966,7 +966,7 @@ export function AdminUsers() {
           <label className="block text-xs text-surface-muted">
             {t("admin:usersRoleLabel")}
             <select
-              className="mt-1 block rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+              className="mt-1 block rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
               value={newRole}
               onChange={(e) => setNewRole(e.target.value as "user" | "admin")}
             >

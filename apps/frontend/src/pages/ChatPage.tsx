@@ -3575,7 +3575,7 @@ export function ChatPage() {
                         type="number"
                         min={15}
                         max={600}
-                        className="ml-2 w-16 rounded border border-surface-border bg-black/30 px-1.5 py-0.5 text-sm text-white"
+                        className="ml-2 w-16 rounded border border-surface-border bg-field px-1.5 py-0.5 text-sm text-white"
                         value={activeThread.delegateAutoRespondAfterSec ?? 60}
                         onChange={(e) => {
                           const sec = Number(e.target.value);

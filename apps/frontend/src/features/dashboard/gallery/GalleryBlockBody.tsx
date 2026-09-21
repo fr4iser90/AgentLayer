@@ -360,14 +360,14 @@ function GalleryPhotoCard(props: {
         <input
           type="url"
           placeholder={t("dashboard:fileUrlPlaceholder")}
-          className="dashboard-grid-no-drag w-full rounded-md border border-surface-border bg-black/40 px-2 py-1.5 text-xs text-neutral-100 placeholder:text-white/25"
+          className="dashboard-grid-no-drag w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-neutral-100 placeholder:text-white/25"
           value={url}
           onChange={(e) => updatePhoto(ri, "url", e.target.value)}
         />
         <input
           type="text"
           placeholder={t("dashboard:captionPlaceholder")}
-          className="dashboard-grid-no-drag w-full rounded-md border border-surface-border bg-black/40 px-2 py-1.5 text-xs text-neutral-100"
+          className="dashboard-grid-no-drag w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-neutral-100"
           value={caption}
           onChange={(e) => updatePhoto(ri, "caption", e.target.value)}
         />

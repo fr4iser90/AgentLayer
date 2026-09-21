@@ -42,6 +42,13 @@ const DANGER = "#F85149";
 // (2.52–3.35:1); this passes at 5.94–7.89:1.
 const ON_FILL = "#08090B";
 
+// Form-field fill. Chosen to read as inset against every level a field can sit
+// on: lighter than canvas (1.044:1), darker than panel (1.054:1) and card
+// (1.176:1). A single alpha like the old bg-black/20 could not do that — it
+// went invisible on canvas and muddy on card.
+const FIELD = "#0F1218";
+const FIELD_PLACEHOLDER = "#7B8390";
+
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
@@ -52,6 +59,11 @@ export default {
         card: CARD,
         raised: RAISED,
         overlay: OVERLAY,
+
+        field: {
+          DEFAULT: FIELD,
+          placeholder: FIELD_PLACEHOLDER,
+        },
 
         // Hairlines: `border-line`, `border-line-subtle`, `divide-line`
         line: {
@@ -92,6 +104,16 @@ export default {
           DEFAULT: DANGER,
           hover: "#FF6B63",
           subtle: "rgba(248, 81, 73, 0.16)",
+        },
+
+        // Badge label tones. The raw semantic colours fail on their own 15-16%
+        // tint (accent 4.03:1, danger 3.98:1), so badge text is lifted to
+        // 6.63-8.19:1 against the composited chip.
+        badge: {
+          accent: "#9DC3FF",
+          success: "#7EE78F",
+          warning: "#F5C86E",
+          danger: "#FF9C95",
         },
 
         // --- compatibility aliases (do not use in new code) ---

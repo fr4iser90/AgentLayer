@@ -492,7 +492,7 @@ export function MySchedulesPage() {
               <label className="text-xs text-surface-muted md:col-span-2">
                 {t("admin:schedulesPresetOptional")}
                 <select
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
+                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-neutral-100"
                   value={createPresetId}
                   onChange={(e) => {
                     const pid = e.target.value;
@@ -517,7 +517,7 @@ export function MySchedulesPage() {
               <label className="text-xs text-surface-muted">
                 {t("admin:schedulesTarget")}
                 <select
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
+                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-neutral-100"
                   value={createTarget}
                   onChange={(e) =>
                     setCreateTarget(normalizeExecutionTargetInput(e.target.value, targetCatalog))
@@ -534,7 +534,7 @@ export function MySchedulesPage() {
                 <label className="text-xs text-surface-muted md:col-span-2">
                   {t("settings:schedulesWorkspaceRequired")}
                   <select
-                    className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100 disabled:opacity-60"
+                    className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-neutral-100 disabled:opacity-60"
                     value={createWorkspaceId}
                     onChange={(e) => setCreateWorkspaceId(e.target.value)}
                     disabled={workspacesLoading}
@@ -568,7 +568,7 @@ export function MySchedulesPage() {
                 {t("settings:schedulesIntervalHeader")} (minutes)
                 <input
                   type="number"
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
+                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-neutral-100"
                   value={createInterval}
                   onChange={(e) => setCreateInterval(Number(e.target.value))}
                   min={5}
@@ -578,7 +578,7 @@ export function MySchedulesPage() {
               <label className="text-xs text-surface-muted md:col-span-2">
                 Title
                 <input
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
+                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-neutral-100"
                   value={createTitle}
                   onChange={(e) => setCreateTitle(e.target.value)}
                   placeholder={t("admin:optional")}
@@ -587,7 +587,7 @@ export function MySchedulesPage() {
               <label className="text-xs text-surface-muted md:col-span-2">
                 {t("admin:schedulesDashboardIdOptional")}
                 <input
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
+                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-neutral-100"
                   value={createDashboardId}
                   onChange={(e) => setCreateDashboardId(e.target.value)}
                   placeholder={t("admin:optional")}
@@ -596,7 +596,7 @@ export function MySchedulesPage() {
               <label className="text-xs text-surface-muted md:col-span-2">
                 <span>{t("admin:instructionsPlaceholder")}</span>
                 <textarea
-                  className="mt-1 min-h-[120px] w-full resize-y rounded-md border border-surface-border bg-black/30 px-2 py-2 text-sm text-neutral-100"
+                  className="mt-1 min-h-[120px] w-full resize-y rounded-md border border-surface-border bg-field px-2 py-2 text-sm text-neutral-100"
                   value={createInstructions}
                   onChange={(e) => setCreateInstructions(e.target.value)}
                   placeholder={t("admin:instructionsPlaceholder")}
@@ -657,7 +657,7 @@ export function MySchedulesPage() {
               <label className="text-xs text-surface-muted">
                 Title
                 <input
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
+                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-neutral-100"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
                 />
@@ -666,7 +666,7 @@ export function MySchedulesPage() {
                 {t("settings:schedulesIntervalHeader")} (minutes)
                 <input
                   type="number"
-                  className="mt-1 w-full rounded-md border border-surface-border bg-black/30 px-2 py-1 text-sm text-neutral-100"
+                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-neutral-100"
                   value={editInterval}
                   onChange={(e) => setEditInterval(Number(e.target.value))}
                   min={5}
@@ -676,7 +676,7 @@ export function MySchedulesPage() {
               <label className="text-xs text-surface-muted">
                 Instructions
                 <textarea
-                  className="mt-1 min-h-[140px] w-full resize-y rounded-md border border-surface-border bg-black/30 px-2 py-2 text-sm text-neutral-100"
+                  className="mt-1 min-h-[140px] w-full resize-y rounded-md border border-surface-border bg-field px-2 py-2 text-sm text-neutral-100"
                   value={editInstructions}
                   onChange={(e) => setEditInstructions(e.target.value)}
                 />

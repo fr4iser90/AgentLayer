@@ -88,7 +88,7 @@ export function SectionBlockBody(props: {
         {editMode && !contentReadOnly ? (
           <input
             type="text"
-            className="min-w-0 flex-1 rounded-md border border-surface-border bg-black/40 px-2 py-1 text-sm text-white outline-none focus:border-sky-500/50"
+            className="min-w-0 flex-1 rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-white outline-none focus:border-sky-500/50"
             value={block.props.title ?? ""}
             placeholder={t("dashboard:sectionTitlePlaceholder")}
             onChange={(e) => patchSectionProps({ title: e.target.value })}

@@ -287,7 +287,7 @@ export function AdminAgentConfig() {
             ) : null}
             <label className="text-xs text-surface-muted">{t("admin:agentConfigValue")}</label>
             <textarea
-              className="min-h-[80px] w-full rounded border border-surface-border bg-black/30 p-2 font-mono text-sm text-white disabled:opacity-50"
+              className="min-h-[80px] w-full rounded border border-surface-border bg-field p-2 font-mono text-sm text-white disabled:opacity-50"
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
               disabled={selected.writable === false}
@@ -295,7 +295,7 @@ export function AdminAgentConfig() {
             <label className="text-xs text-surface-muted">{t("admin:agentConfigHypothesis")}</label>
             <p className="text-meta text-surface-muted/80">{t("admin:agentConfigHypothesisHint")}</p>
             <input
-              className="w-full rounded border border-surface-border bg-black/30 p-2 text-sm text-white disabled:opacity-50"
+              className="w-full rounded border border-surface-border bg-field p-2 text-sm text-white disabled:opacity-50"
               value={hypothesis}
               onChange={(e) => setHypothesis(e.target.value)}
               disabled={selected.writable === false}

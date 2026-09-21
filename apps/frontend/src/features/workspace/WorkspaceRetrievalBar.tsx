@@ -326,7 +326,7 @@ export function WorkspaceRetrievalBar({
           </label>
           <select
             id={`idx-write-${workspace.id}`}
-            className="rounded border border-white/15 bg-black/40 px-1.5 py-0.5 text-meta text-neutral-200"
+            className="rounded border border-white/15 bg-field px-1.5 py-0.5 text-meta text-neutral-200"
             disabled={busy !== null}
             value={workspace.index_on_write ?? ""}
             title={`Effective: ${indexOnWriteEffective}`}

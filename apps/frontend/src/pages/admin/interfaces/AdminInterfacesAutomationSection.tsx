@@ -29,7 +29,7 @@ export function AdminInterfacesAutomationSection() {
           type="number"
           min={5}
           max={1440}
-          className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
           value={s.schedulerIntervalMin}
           onChange={(e) => s.setSchedulerIntervalMin(e.target.value)}
         />
@@ -38,7 +38,7 @@ export function AdminInterfacesAutomationSection() {
         </label>
         <select
           id="hb-user"
-          className="mt-1 w-full max-w-xl rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-1 w-full max-w-xl rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
           value={s.schedulerUserId}
           onChange={(e) => s.setSchedulerUserId(e.target.value)}
         >
@@ -54,7 +54,7 @@ export function AdminInterfacesAutomationSection() {
         </label>
         <input
           id="hb-model"
-          className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
           value={s.schedulerModel}
           onChange={(e) => s.setSchedulerModel(e.target.value)}
           placeholder={t("admin:ifAutomationModelPlaceholder")}
@@ -67,7 +67,7 @@ export function AdminInterfacesAutomationSection() {
           type="number"
           min={1}
           max={64}
-          className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
           value={s.schedulerMaxRounds}
           onChange={(e) => s.setSchedulerMaxRounds(e.target.value)}
           placeholder={t("admin:ifAutomationConcurrencyPlaceholder")}
@@ -89,7 +89,7 @@ export function AdminInterfacesAutomationSection() {
           type="number"
           min={0}
           max={100000}
-          className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
           value={s.schedulerMaxOutbound}
           onChange={(e) => s.setSchedulerMaxOutbound(e.target.value)}
         />
@@ -98,7 +98,7 @@ export function AdminInterfacesAutomationSection() {
         </label>
         <input
           id="hb-pkg"
-          className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
           value={s.schedulerPackages}
           onChange={(e) => s.setSchedulerPackages(e.target.value)}
           placeholder={t("admin:ifAutomationPluginsPlaceholder")}
@@ -108,7 +108,7 @@ export function AdminInterfacesAutomationSection() {
         </label>
         <select
           id="hb-llm"
-          className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
           value={s.schedulerLlmBackend}
           onChange={(e) => s.setSchedulerLlmBackend(e.target.value)}
         >
@@ -121,7 +121,7 @@ export function AdminInterfacesAutomationSection() {
         </label>
         <select
           id="hb-tools"
-          className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
           value={s.schedulerToolsMode}
           onChange={(e) => s.setSchedulerToolsMode(e.target.value)}
         >
@@ -138,7 +138,7 @@ export function AdminInterfacesAutomationSection() {
         <textarea
           id="hb-instr"
           rows={4}
-          className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white"
+          className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
           value={s.schedulerInstructions}
           onChange={(e) => s.setSchedulerInstructions(e.target.value)}
           placeholder={t("admin:ifAutomationHeartbeatPlaceholder")}

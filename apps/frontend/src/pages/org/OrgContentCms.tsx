@@ -454,7 +454,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
         </label>
         <input
           id="cms-title"
-          className="mt-1 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white disabled:opacity-60"
+          className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white disabled:opacity-60"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           required
@@ -466,7 +466,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
         </label>
         <textarea
           id="cms-body"
-          className="mt-1 min-h-56 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 font-mono text-sm text-white disabled:opacity-60"
+          className="mt-1 min-h-56 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white disabled:opacity-60"
           value={bodyMd}
           onChange={(e) => setBodyMd(e.target.value)}
           required
@@ -481,7 +481,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
         {status === "in_review" && canReview ? (
           <textarea
             id="cms-reject-comment"
-            className="mt-1 min-h-20 w-full rounded-md border border-surface-border bg-black/20 px-3 py-2 text-sm text-white"
+            className="mt-1 min-h-20 w-full rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
             value={rejectComment}
             onChange={(e) => setRejectComment(e.target.value)}
             placeholder={t("org:cmsRejectCommentPlaceholder")}
