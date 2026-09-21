@@ -75,6 +75,7 @@ import {
   modelsByProviderFromRecord,
 } from "../../features/admin/benchmarks/benchProfileSelection";
 import { formatBenchmarkProviderModel } from "../../features/admin/benchmarks/benchDisplayUtils";
+import { Button } from "../../ui/Button";
 
 const benchCheckboxClass =
   "h-4 w-4 shrink-0 rounded border-2 border-sky-400/70 bg-black/60 text-sky-500 accent-sky-500 focus:ring-2 focus:ring-sky-400/70 focus:ring-offset-0";
@@ -2140,16 +2141,18 @@ export function AdminBenchmarks() {
                                     }
                                   />
                                   {selectedModels.length > 1 ? (
-                                    <button
+                                    <Button
                                       type="button"
+                                      variant="danger"
+                                      size="sm"
+                                      className="shrink-0"
                                       onClick={() =>
                                         removeProviderCustomModel(p.catalog_owned_by, idx)
                                       }
-                                      className="shrink-0 rounded border border-white/10 px-2 text-surface-muted hover:text-rose-300"
                                       aria-label={t("admin:benchRemoveModel")}
                                     >
                                       ×
-                                    </button>
+                                    </Button>
                                   ) : null}
                                 </div>
                               ))}
@@ -2832,14 +2835,15 @@ export function AdminBenchmarks() {
                 {t("admin:benchHistory")}
               </span>
               <div className="flex items-center gap-2">
-                <button
+                <Button
                   type="button"
+                  variant="danger"
+                  size="sm"
                   onClick={() => openBulkDeleteDialog()}
                   disabled={pollRunning || bulkDeleting}
-                  className="text-xs text-rose-300/90 hover:underline disabled:opacity-40"
                 >
                   {t("admin:benchBulkDeleteHistory")}
-                </button>
+                </Button>
                 <button
                   type="button"
                   onClick={() => void loadRuns()}
@@ -2888,8 +2892,11 @@ export function AdminBenchmarks() {
                         {cancellingRunId === r.id ? "…" : "■"}
                       </button>
                     ) : null}
-                    <button
+                    <Button
                       type="button"
+                      variant="danger"
+                      size="sm"
+                      className="shrink-0"
                       disabled={
                         deletingRunId === r.id ||
                         r.status === "queued" ||
@@ -2902,7 +2909,6 @@ export function AdminBenchmarks() {
                       }
                       aria-label={t("admin:benchDeleteRun")}
                       onClick={() => requestDeleteRun(r)}
-                      className="shrink-0 px-2 text-surface-muted hover:bg-rose-950/40 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-30"
                     >
                       {deletingRunId === r.id ? (
                         <span className="text-meta">…</span>
@@ -2921,7 +2927,7 @@ export function AdminBenchmarks() {
                           />
                         </svg>
                       )}
-                    </button>
+                    </Button>
                   </div>
                 ))
               )}
@@ -3335,14 +3341,15 @@ export function AdminBenchmarks() {
             </p>
             <p className="mt-1 text-meta text-surface-muted">{t("admin:benchBulkDeleteActiveSkipped")}</p>
             <div className="mt-5 flex flex-wrap justify-end gap-2">
-              <button
+              <Button
                 type="button"
-                className="rounded-lg border border-surface-border px-4 py-2 text-sm text-neutral-200 hover:bg-white/5 disabled:opacity-50"
+                variant="secondary"
+                size="lg"
                 disabled={bulkDeleting}
                 onClick={() => setBulkDeleteOpen(false)}
               >
                 {t("admin:cancel")}
-              </button>
+              </Button>
               <button
                 type="button"
                 className="rounded-lg border border-red-600/50 bg-red-950/60 px-4 py-2 text-sm font-medium text-red-100 hover:bg-red-900/50 disabled:opacity-50"

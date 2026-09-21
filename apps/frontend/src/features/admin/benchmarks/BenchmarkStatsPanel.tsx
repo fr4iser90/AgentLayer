@@ -9,6 +9,7 @@ import {
   type BenchmarkStatsScenarioGroup,
 } from "./benchmarksApi";
 import { BenchmarkInsightsPanel } from "./BenchmarkInsightsPanel";
+import { Button } from "../../../ui/Button";
 
 const SINCE_DAY_OPTIONS = [
   { value: "", labelKey: "admin:benchStatsSinceAll" },
@@ -268,14 +269,15 @@ export function BenchmarkStatsPanel({
           </div>
           <div className="flex flex-wrap items-end gap-2">
             {onClearHistory ? (
-              <button
+              <Button
                 type="button"
+                variant="danger"
+                size="sm"
                 onClick={() => onClearHistory({ suite: suiteFilter || undefined })}
                 disabled={clearHistoryDisabled}
-                className="rounded-lg border border-rose-500/30 bg-rose-950/20 px-3 py-1.5 text-xs text-rose-200 hover:bg-rose-950/40 disabled:opacity-40"
               >
                 {t("admin:benchBulkDeleteHistory")}
-              </button>
+              </Button>
             ) : null}
             <label className="text-xs text-surface-muted">
               {t("admin:benchSuite")}

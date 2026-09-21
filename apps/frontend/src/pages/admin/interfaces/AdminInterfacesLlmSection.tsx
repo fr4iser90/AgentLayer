@@ -14,6 +14,7 @@ import { apiFetch } from "../../../lib/api";
 import { useAuth } from "../../../auth/AuthContext";
 import { hasOrgSurface } from "../../../auth/deploymentMode";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "../../../ui/Button";
 
 type AdminModelCatalogPref = {
   provider_id?: string;
@@ -916,13 +917,14 @@ export function AdminInterfacesLlmSection({
                               </span>
                             )}
                             </div>
-                            <button
+                            <Button
                               type="button"
-                              className="text-xs text-rose-400 hover:text-rose-200"
+                              variant="danger"
+                              size="sm"
                               onClick={() => removeOperatorEndpoint(group.kind, endpointIdx)}
                             >
                               {t("admin:ifLlmRemove")}
-                            </button>
+                            </Button>
                           </div>
                           <label className="mt-3 flex cursor-pointer items-center gap-2 text-xs text-white">
                             <input

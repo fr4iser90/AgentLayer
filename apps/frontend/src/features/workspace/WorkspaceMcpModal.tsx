@@ -12,6 +12,7 @@ import {
   uvToolInstallCommand,
   type UvMcpLaunchMode,
 } from "./workspaceMcpBuilders";
+import { Button } from "../../ui/Button";
 
 type Props = {
   open: boolean;
@@ -343,14 +344,15 @@ export function WorkspaceMcpModal({
 
         {error ? <p className="shrink-0 px-4 pb-2 text-xs text-red-300/95">{error}</p> : null}
         <div className="flex shrink-0 justify-end gap-2 border-t border-white/10 px-4 py-3">
-          <button
+          <Button
             type="button"
-            className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-neutral-200 hover:bg-white/5"
+            variant="secondary"
+            size="sm"
             onClick={onClose}
             disabled={saving}
           >
             {t("workspace:cancel")}
-          </button>
+          </Button>
           <button
             type="button"
             className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500 disabled:opacity-50"

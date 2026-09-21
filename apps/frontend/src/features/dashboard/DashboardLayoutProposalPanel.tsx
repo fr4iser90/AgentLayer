@@ -4,6 +4,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { DashboardGridCanvas } from "./DashboardGridCanvas";
 import { applyLayoutProposal } from "./layoutProposalShared";
 import { useLayoutProposalSet } from "./useLayoutProposalSet";
+import { Button } from "../../ui/Button";
 
 type Props = {
   dashboardId: string;
@@ -156,14 +157,15 @@ export function DashboardLayoutProposalPanel({
                   <span className="mr-auto text-xs text-amber-200/90">
                     {t("dashboard:layoutProposalsConfirm", { title: selected.title })}
                   </span>
-                  <button
+                  <Button
                     type="button"
+                    variant="secondary"
+                    size="sm"
                     disabled={applyBusy}
                     onClick={() => setConfirmId(null)}
-                    className="rounded-lg border border-surface-border px-3 py-1.5 text-xs text-neutral-300 hover:bg-white/5"
                   >
                     {t("dashboard:layoutProposalsCancel")}
-                  </button>
+                  </Button>
                   <button
                     type="button"
                     disabled={applyBusy}

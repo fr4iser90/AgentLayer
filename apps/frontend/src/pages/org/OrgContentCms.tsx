@@ -4,6 +4,7 @@ import { useAuth } from "../../auth/AuthContext";
 import type { AuthUser } from "../../auth/AuthContext";
 import { hasOrgSurface } from "../../auth/deploymentMode";
 import { apiFetch } from "../../lib/api";
+import { Button } from "../../ui/Button";
 
 type ContentStatus =
   | "draft"
@@ -540,14 +541,15 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
             <p className="w-full text-xs text-surface-muted">{t("org:cmsPublishRequiresApprover")}</p>
           ) : null}
           {selected?.status === "published" && canPublish ? (
-            <button
+            <Button
               type="button"
+              variant="danger"
+              size="lg"
               disabled={busy}
-              className="rounded-md border border-red-500/40 px-4 py-1.5 text-sm text-red-300 hover:bg-red-500/10 disabled:opacity-50"
               onClick={() => void archiveSelected()}
             >
               {t("org:cmsArchive")}
-            </button>
+            </Button>
           ) : null}
         </div>
 

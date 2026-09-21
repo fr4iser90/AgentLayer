@@ -174,6 +174,7 @@ import { shouldIsolateWorkspaceThread } from "../features/workspace/chatWorkspac
 import { confirmNewChatForWorkspace } from "../features/workspace/confirmWorkspaceScope";
 import { streamOpenAiChatChunks } from "../features/chat/openaiSseStream";
 import { formatMessageTime, inferMissingMessageTimestamps } from "../features/chat/messageTimestamps";
+import { Button } from "../ui/Button";
 /** `?dashboard=<uuid>` — validated; server re-checks access. */
 function parseDashboardQueryParam(raw: string | null): string | null {
   if (!raw || !raw.trim()) return null;
@@ -3326,14 +3327,15 @@ export function ChatPage() {
                             >
                               Share
                             </button>
-                            <button
+                            <Button
                               type="button"
-                              className="rounded px-1 text-meta text-red-400/90 hover:text-red-300"
+                              variant="danger"
+                              size="sm"
                               title={t("chat:delete")}
                               onClick={() => void deleteThread(thread.id)}
                             >
                               Del
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       </li>
@@ -3504,14 +3506,16 @@ export function ChatPage() {
                       {selectedWorkspace &&
                       selectedWorkspace.access_role !== "viewer" &&
                       !isAgentlayerSelfWorkspace(selectedWorkspace) ? (
-                        <button
+                        <Button
                           type="button"
-                          className="shrink-0 rounded-lg border border-red-900/40 bg-red-950/20 px-2.5 py-1.5 text-meta font-medium text-red-300/90 hover:bg-red-950/40"
+                          variant="danger"
+                          size="sm"
+                          className="shrink-0"
                           title={t("chat:deleteProject")}
                           onClick={() => requestDeleteProject(selectedWorkspace)}
                         >
                           {t("chat:deleteProject")}
-                        </button>
+                        </Button>
                       ) : null}
                     </div>
                     {selectedWorkspace ? (

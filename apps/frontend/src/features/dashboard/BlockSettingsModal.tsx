@@ -15,6 +15,7 @@ import {
   type DisplayPresetId,
 } from "./blockSettingsPreview";
 import type { UiBlock } from "./types";
+import { Button } from "../../ui/Button";
 
 type TabId = "general" | "data" | "share" | "display";
 
@@ -528,14 +529,15 @@ export function BlockSettingsModal({
         </div>
 
         <footer className="flex shrink-0 justify-end gap-2 border-t border-surface-border px-4 py-3">
-          <button
+          <Button
             type="button"
-            className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-neutral-300 hover:bg-white/5"
+            variant="secondary"
+            size="sm"
             onClick={onClose}
             disabled={isSaving}
           >
             {t("dashboard:blockSettingsCancel")}
-          </button>
+          </Button>
           <button
             type="button"
             className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500 disabled:opacity-50"

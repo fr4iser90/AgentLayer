@@ -5,6 +5,7 @@ import { useAuth } from "../auth/AuthContext";
 import { hasOrgSurface } from "../auth/deploymentMode";
 import { apiFetch, type WorkspaceApiRecord, type WorkspaceListScope } from "../lib/api";
 import { deleteWorkspaceApi, fetchWorkspacesApi, isAgentlayerSelfWorkspace } from "../lib/workspacesApi";
+import { Button } from "../ui/Button";
 
 type FsEntry = {
   name: string;
@@ -279,16 +280,17 @@ export function ProjectsPage() {
                     >
                       {t("workspace:projectsOpenChat")}
                     </Link>
-                    <button
+                    <Button
                       type="button"
+                      variant="danger"
+                      size="sm"
                       disabled={busyId === selected.id}
-                      className="rounded-lg border border-rose-500/40 px-3 py-1.5 text-xs text-rose-200 hover:bg-rose-950/40 disabled:opacity-40"
                       onClick={() => void onDelete(selected)}
                     >
                       {busyId === selected.id
                         ? t("workspace:projectsDeleting")
                         : t("workspace:projectsDeleteClean")}
-                    </button>
+                    </Button>
                   </div>
                 </div>
                 <dl className="grid gap-2 text-xs sm:grid-cols-2">

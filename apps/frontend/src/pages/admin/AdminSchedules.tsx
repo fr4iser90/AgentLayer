@@ -10,6 +10,7 @@ import {
   labelForExecutionTarget,
   normalizeExecutionTargetInput,
 } from "../../lib/schedulerExecutionTarget";
+import { Button } from "../../ui/Button";
 
 type SchedulerJobRow = {
   id: string;
@@ -490,13 +491,14 @@ export function AdminSchedules() {
                       >
                         {j.deleted_at ? t("admin:schedulesUnarchive") : t("admin:schedulesArchive")}
                       </button>
-                      <button
+                      <Button
                         type="button"
-                        className="rounded-md border border-red-500/30 bg-red-500/10 px-2 py-1 text-xs text-red-100 hover:bg-red-500/20"
+                        variant="danger"
+                        size="sm"
                         onClick={() => void hardDelete(j.id)}
                       >
                         {t("admin:schedulesDelete")}
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -646,13 +648,14 @@ export function AdminSchedules() {
               </label>
             </div>
             <div className="mt-4 flex items-center justify-end gap-2">
-              <button
+              <Button
                 type="button"
-                className="rounded-md border border-surface-border px-3 py-2 text-sm text-neutral-100 hover:bg-white/5"
+                variant="secondary"
+                size="md"
                 onClick={() => setCreateOpen(false)}
               >
                 {t("admin:cancel")}
-              </button>
+              </Button>
               <button
                 type="button"
                 className="rounded-md bg-violet-600/80 px-3 py-2 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-60"

@@ -59,6 +59,7 @@ import {
   uploadDashboardBoardFile,
 } from "./gallery/galleryUpload";
 import { ModelCatalogSelect } from "../chat/ModelCatalogSelect";
+import { Button } from "../../ui/Button";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type GalleryTarget = { blockId: string; dataPath: string; title: string };
@@ -1249,13 +1250,15 @@ export function DashboardEmbeddedChat({
                     disabled={readOnly || sendLoading}
                   />
                   {sendLoading ? (
-                    <button
+                    <Button
                       type="button"
+                      variant="secondary"
+                      size="md"
+                      className="shrink-0"
                       onClick={() => agentWs.cancelTurn()}
-                      className="shrink-0 rounded-lg border border-white/15 px-3 py-2 text-sm text-neutral-200 hover:bg-white/5"
                     >
                       {t("admin:cancel")}
-                    </button>
+                    </Button>
                   ) : null}
                   <button
                     type="button"

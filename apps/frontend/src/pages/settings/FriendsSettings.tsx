@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { CircleCheck } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
+import { Button } from "../../ui/Button";
 
 type FriendRequest = {
   id: number;
@@ -344,13 +345,14 @@ export function FriendsSettings() {
                   className="w-full px-3 py-2 rounded bg-field border border-white/10 text-white text-sm"
                 />
                 <div className="flex justify-end gap-3 pt-2">
-                  <button
+                  <Button
                     type="button"
+                    variant="secondary"
+                    size="lg"
                     onClick={() => setShowSendRequestForm(false)}
-                    className="px-4 py-2 rounded border border-white/10 text-sm text-neutral-300 hover:bg-white/5"
                   >
                     {t("settings:friendsCancelRequest")}
-                  </button>
+                  </Button>
                   <button
                     type="button"
                     onClick={sendFriendRequest}
@@ -403,13 +405,14 @@ export function FriendsSettings() {
                       >
                         {t("settings:friendsEditWithIcon")}
                       </button>
-                      <button
+                      <Button
                         type="button"
+                        variant="danger"
+                        size="sm"
                         onClick={() => removeFriend(friend.friend_user_id)}
-                        className="text-xs text-red-400 hover:text-red-300"
                       >
                         {t("settings:friendsRemove")}
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -453,14 +456,15 @@ export function FriendsSettings() {
                         <div className="text-sm text-neutral-400">{person.relation}</div>
                       )}
                     </div>
-                    <button
+                    <Button
                       type="button"
+                      variant="danger"
+                      size="sm"
                       onClick={() => removeKnownPerson(index)}
-                      className="text-xs text-red-400 hover:text-red-300"
                       disabled={saving}
                     >
                       {t("settings:friendsRemove")}
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -561,13 +565,14 @@ export function FriendsSettings() {
               </div>
 
               <div className="flex justify-end gap-3 pt-2">
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
+                  size="lg"
                   onClick={() => setShowAddForm(false)}
-                  className="px-4 py-2 rounded border border-white/10 text-sm text-neutral-300 hover:bg-white/5"
                 >
                   {t("settings:friendsCancel")}
-                </button>
+                </Button>
                 <button
                   type="button"
                   onClick={addKnownPerson}

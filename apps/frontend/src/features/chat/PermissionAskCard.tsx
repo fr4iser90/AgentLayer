@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { Button } from "../../ui/Button";
 
 export type PermissionAskPayload = {
   requestId: string;
@@ -47,14 +48,15 @@ export function PermissionAskCard({ request, onReply, disabled }: Props) {
         >
           {t("chat:permissionAllowAlways")}
         </button>
-        <button
+        <Button
           type="button"
+          variant="danger"
+          size="sm"
           disabled={disabled}
-          className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs text-red-200 disabled:opacity-50"
           onClick={() => onReply("reject")}
         >
           {t("chat:permissionReject")}
-        </button>
+        </Button>
       </div>
     </div>
   );

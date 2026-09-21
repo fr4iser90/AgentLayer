@@ -174,14 +174,16 @@ export function KanbanBlockBody(props: {
                 />
               )}
               {!readOnly && columns.length > 1 ? (
-                <button
+                <Button
                   type="button"
-                  className="shrink-0 rounded px-1.5 text-xs text-red-400 hover:bg-white/5"
+                  variant="danger"
+                  size="sm"
+                  className="shrink-0"
                   title={t("dashboard:kanbanDeleteColumn")}
                   onClick={() => removeColumn(ci)}
                 >
                   ×
-                </button>
+                </Button>
               ) : null}
             </div>
             <div className="flex min-h-[80px] flex-col gap-2">
