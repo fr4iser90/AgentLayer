@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Button } from "../../../ui/Button";
 import { useAuth } from "../../../auth/AuthContext";
 import { apiFetch } from "../../../lib/api";
 
@@ -238,14 +239,15 @@ export function MediaSharePanel() {
                                 <span>
                                   {g.viewer_email || g.id.slice(0, 8)} · {g.permission}
                                 </span>
-                                <button
+                                <Button
                                   type="button"
-                                  className="text-red-300 hover:text-red-200"
+                                  variant="danger"
+                                  size="sm"
                                   disabled={busy}
                                   onClick={() => void revoke(g.id, u.id)}
                                 >
                                   {t("dashboard:delete")}
-                                </button>
+                                </Button>
                               </li>
                             ))}
                           </ul>

@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useTranslation } from "react-i18next";
+import { Button } from "../../ui/Button";
 
 import { getPath, setPath } from "./dashboardDataPaths";
 
@@ -213,13 +214,14 @@ export function KanbanBlockBody(props: {
                             </option>
                           ))}
                         </select>
-                        <button
+                        <Button
                           type="button"
-                          className="text-meta text-red-400 hover:underline"
+                          variant="danger"
+                          size="sm"
                           onClick={() => removeCard(ci, card.id)}
                         >
                           {t("dashboard:delete")}
-                        </button>
+                        </Button>
                       </div>
                     </>
                   )}

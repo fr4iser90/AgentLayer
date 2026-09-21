@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Button } from "../../ui/Button";
 import { useAuth } from "../../auth/AuthContext";
 import { embedUrlAllowed } from "../dashboard/EmbedBlock";
 import {
@@ -182,13 +183,15 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
                         <span className="ml-1 text-meta text-surface-muted">({t("dashboard:mediaFooterFilterEmbed")})</span>
                       ) : null}
                     </button>
-                    <button
+                    <Button
                       type="button"
-                      className="shrink-0 text-meta text-red-300/80 hover:text-red-200"
+                      variant="danger"
+                      size="sm"
+                      className="shrink-0"
                       onClick={() => media.removeFromQueue(idx)}
                     >
                       {t("dashboard:delete")}
-                    </button>
+                    </Button>
                   </li>
                 );
               })
@@ -311,10 +314,12 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
                               : item.source_kind}
                       </span>
                     </button>
-                    <button
+                    <Button
                       type="button"
+                      variant="danger"
+                      size="sm"
                       disabled={busy}
-                      className="shrink-0 text-meta text-red-300/80 hover:text-red-200 disabled:opacity-40"
+                      className="shrink-0"
                       onClick={(e) => {
                         e.stopPropagation();
                         void runAdd(async () => {
@@ -324,7 +329,7 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
                       }}
                     >
                       {t("dashboard:delete")}
-                    </button>
+                    </Button>
                   </li>
                 ))
               )}

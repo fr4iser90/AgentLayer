@@ -10,6 +10,7 @@ import {
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n/config";
+import { Button } from "../ui/Button";
 import { useAuth } from "../auth/AuthContext";
 import { apiFetch } from "../lib/api";
 import { DashboardEmbeddedChat } from "../features/dashboard/DashboardEmbeddedChat";
@@ -2117,14 +2118,15 @@ export function DashboardPage() {
                         <span className="text-neutral-200">
                           {m.email} <span className="text-surface-muted">({m.role})</span>
                         </span>
-                        <button
+                        <Button
                           type="button"
+                          variant="danger"
+                          size="sm"
                           disabled={membersBusy}
-                          className="text-xs text-red-300 hover:underline disabled:opacity-50"
                           onClick={() => void removeDashboardMember(m.user_id)}
                         >
                           {t("dashboard:remove")}
-                        </button>
+                        </Button>
                       </li>
                     ))}
                   </ul>
@@ -2226,14 +2228,15 @@ export function DashboardPage() {
                             {g.permission === "edit" ? "edit" : "view"})
                           </span>
                         </span>
-                        <button
+                        <Button
                           type="button"
+                          variant="danger"
+                          size="sm"
                           disabled={blockSharesBusy}
-                          className="text-xs text-red-300 hover:underline disabled:opacity-50"
                           onClick={() => void removeBlockGrant(g.user_id)}
                         >
                           {t("dashboard:remove")}
-                        </button>
+                        </Button>
                       </li>
                     ))}
                   </ul>

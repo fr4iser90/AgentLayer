@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Button } from "../../ui/Button";
 import { useAuth } from "../../auth/AuthContext";
 import { useOptionalGlobalMedia } from "../media/GlobalMediaProvider";
 import {
@@ -280,13 +281,15 @@ export function MediaPlayerBlockBody(props: {
                   {itemLabel(it, t("dashboard:mediaUntitledTrack"))}
                 </button>
                 {!readOnly ? (
-                  <button
+                  <Button
                     type="button"
-                    className="shrink-0 text-meta uppercase text-red-300 hover:text-red-200"
+                    variant="danger"
+                    size="sm"
+                    className="shrink-0"
                     onClick={() => removeAt(idx)}
                   >
                     {t("dashboard:delete")}
-                  </button>
+                  </Button>
                 ) : null}
               </li>
             );
