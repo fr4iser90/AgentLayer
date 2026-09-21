@@ -391,7 +391,7 @@ export function ToolsSettings() {
               >
                 <div>
                   <h2 className="text-sm font-semibold text-white">{g.label}</h2>
-                  <p className="text-[11px] text-surface-muted">
+                  <p className="text-meta text-surface-muted">
                     {t("settings:toolsCategoryStats", {
                       total: stats.total,
                       ready: stats.ready,
@@ -424,67 +424,67 @@ export function ToolsSettings() {
                           <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
                             <div className="min-w-0">
                               {m.domain ? (
-                                <p className="text-[10px] uppercase tracking-wide text-neutral-500">{m.domain}</p>
+                                <p className="text-meta uppercase tracking-wide text-neutral-500">{m.domain}</p>
                               ) : null}
                               <h3 className="font-semibold text-white">{title}</h3>
-                              <p className="font-mono text-[10px] text-neutral-500">{pid}</p>
+                              <p className="font-mono text-meta text-neutral-500">{pid}</p>
                             </div>
                             <div className="flex flex-wrap justify-end gap-1">
                               {enabled ? (
-                                <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] text-emerald-200">
+                                <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-meta text-emerald-200">
                                   {t("settings:toolsBadgeOn")}
                                 </span>
                               ) : (
-                                <span className="rounded bg-neutral-500/20 px-1.5 py-0.5 text-[10px] text-neutral-400">
+                                <span className="rounded bg-neutral-500/20 px-1.5 py-0.5 text-meta text-neutral-400">
                                   {t("settings:toolsBadgeOff")}
                                 </span>
                               )}
                               {missing.length ? (
-                                <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-200">
+                                <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-meta text-amber-200">
                                   {t("settings:toolsBadgeNeedsSecret")}
                                 </span>
                               ) : reqs.length ? (
-                                <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-200/90">
+                                <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-meta text-emerald-200/90">
                                   {t("settings:toolsBadgeReady")}
                                 </span>
                               ) : (
-                                <span className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-neutral-400">
+                                <span className="rounded bg-white/5 px-1.5 py-0.5 text-meta text-neutral-400">
                                   {t("settings:toolsBadgeNoSecrets")}
                                 </span>
                               )}
                               {high ? (
-                                <span className="rounded bg-orange-500/20 px-1.5 py-0.5 text-[10px] text-orange-200">
+                                <span className="rounded bg-orange-500/20 px-1.5 py-0.5 text-meta text-orange-200">
                                   {t("settings:toolsRiskHigh", { level: risk || "high" })}
                                 </span>
                               ) : risk ? (
-                                <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-neutral-400">
+                                <span className="rounded bg-white/10 px-1.5 py-0.5 text-meta text-neutral-400">
                                   {t("settings:toolsRiskLevel", { level: risk })}
                                 </span>
                               ) : null}
                             </div>
                           </div>
                           {tagline ? <p className="mb-3 text-xs leading-relaxed text-surface-muted">{tagline}</p> : null}
-                          <p className="mb-3 text-[11px] text-neutral-500">
+                          <p className="mb-3 text-meta text-neutral-500">
                             <span className="text-surface-muted">{t("settings:toolsToolsCount", { count: names.length })}</span>{" "}
-                            <span className="font-mono text-[10px] text-neutral-400">{names.join(", ")}</span>
+                            <span className="font-mono text-meta text-neutral-400">{names.join(", ")}</span>
                           </p>
                           <div className="mb-3 flex flex-wrap gap-2 border-t border-white/5 pt-3">
                             <Link
                               to={`/chat?try=${tryEnc}`}
-                              className="rounded-md bg-white/10 px-2.5 py-1 text-[11px] font-medium text-neutral-100 hover:bg-white/15"
+                              className="rounded-md bg-white/10 px-2.5 py-1 text-meta font-medium text-neutral-100 hover:bg-white/15"
                             >
                               {t("settings:toolsTest")}
                             </Link>
                             <Link
                               to="/docs"
-                              className="rounded-md bg-white/5 px-2.5 py-1 text-[11px] text-surface-muted hover:bg-white/10 hover:text-neutral-200"
+                              className="rounded-md bg-white/5 px-2.5 py-1 text-meta text-surface-muted hover:bg-white/10 hover:text-neutral-200"
                             >
                               {t("settings:toolsDocs")}
                             </Link>
                             {reqs.length ? (
                               <Link
                                 to="/settings/connections"
-                                className="rounded-md bg-white/5 px-2.5 py-1 text-[11px] text-sky-400 hover:bg-white/10"
+                                className="rounded-md bg-white/5 px-2.5 py-1 text-meta text-sky-400 hover:bg-white/10"
                               >
                                 {t("settings:toolsConfigure")}
                               </Link>
@@ -492,7 +492,7 @@ export function ToolsSettings() {
                             <button
                               type="button"
                               disabled={!names.length}
-                              className="rounded-md bg-white/5 px-2.5 py-1 text-[11px] text-amber-200/90 hover:bg-white/10 disabled:opacity-40"
+                              className="rounded-md bg-white/5 px-2.5 py-1 text-meta text-amber-200/90 hover:bg-white/10 disabled:opacity-40"
                               onClick={() => {
                                 setPackageEnabledForChat(names, false);
                                 refreshToggles();
@@ -502,7 +502,7 @@ export function ToolsSettings() {
                             </button>
                             <button
                               type="button"
-                              className="rounded-md border border-white/15 px-2.5 py-1 text-[11px] text-neutral-200 hover:bg-white/10"
+                              className="rounded-md border border-white/15 px-2.5 py-1 text-meta text-neutral-200 hover:bg-white/10"
                               onClick={() => setDrawerPkg(m)}
                             >
                               {t("settings:toolsDetails")}
@@ -588,7 +588,7 @@ function PackageDrawer({
       <div className="relative flex h-full w-full max-w-lg flex-col border-l border-white/10 bg-[#141414] shadow-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-xl">
         <div className="flex items-start justify-between gap-3 border-b border-white/10 px-5 py-4">
           <div>
-            <p className="text-[10px] uppercase text-neutral-500">{pid}</p>
+            <p className="text-meta uppercase text-neutral-500">{pid}</p>
             <h2 className="text-lg font-semibold text-white">{title}</h2>
             {(pkg.ui?.tagline || pkg.TOOL_DESCRIPTION) && (
               <p className="mt-1 text-sm text-surface-muted">{(pkg.ui?.tagline || pkg.TOOL_DESCRIPTION || "").slice(0, 400)}</p>
@@ -619,11 +619,11 @@ function PackageDrawer({
                     <p className="font-mono text-sm font-medium text-sky-200">{n}</p>
                     <p className="mt-1 text-xs text-surface-muted">{desc}</p>
                     {params ? (
-                      <pre className="mt-2 max-h-40 overflow-auto rounded border border-white/5 bg-black/40 p-2 text-[10px] text-neutral-400">
+                      <pre className="mt-2 max-h-40 overflow-auto rounded border border-white/5 bg-black/40 p-2 text-meta text-neutral-400">
                         {params}
                       </pre>
                     ) : (
-                      <p className="mt-1 text-[10px] text-neutral-600">{t("settings:toolsNoParamSchema")}</p>
+                      <p className="mt-1 text-meta text-neutral-600">{t("settings:toolsNoParamSchema")}</p>
                     )}
                   </li>
                 );

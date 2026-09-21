@@ -508,7 +508,7 @@ export function MySchedulesPage() {
                   ))}
                 </select>
                 {createPresetId && (presets || []).find((p) => p.id === createPresetId)?.description ? (
-                  <div className="mt-1 text-[11px] text-surface-muted">
+                  <div className="mt-1 text-meta text-surface-muted">
                     {(presets || []).find((p) => p.id === createPresetId)?.description}
                   </div>
                 ) : null}
@@ -553,12 +553,12 @@ export function MySchedulesPage() {
                     ))}
                   </select>
                   {createWorkspaceId ? (
-                    <div className="mt-1 break-all font-mono text-[11px] text-surface-muted">
+                    <div className="mt-1 break-all font-mono text-meta text-surface-muted">
                       {createWorkspaceId}
                     </div>
                   ) : null}
                   {createCodingWorkflow.agent_id ? (
-                    <div className="mt-1 font-mono text-[11px] text-surface-muted">
+                    <div className="mt-1 font-mono text-meta text-surface-muted">
                       Agent: {createCodingWorkflow.agent_id}
                     </div>
                   ) : null}
@@ -710,7 +710,7 @@ export function MySchedulesPage() {
               <div>
                 <div className="text-lg font-semibold text-white">{t("settings:schedulesRunHistoryTitle")}</div>
                 <div className="text-sm text-surface-muted">{runsJob.title || "—"}</div>
-                <div className="font-mono text-[11px] text-surface-muted">{runsJob.id}</div>
+                <div className="font-mono text-meta text-surface-muted">{runsJob.id}</div>
               </div>
               <button
                 type="button"
@@ -765,7 +765,7 @@ export function MySchedulesPage() {
                               {r.status}
                             </span>
                           </td>
-                          <td className="px-2 py-2 text-[10px] text-surface-muted">
+                          <td className="px-2 py-2 text-meta text-surface-muted">
                             {formatDateTimeLocal(r.started_at)}
                           </td>
                           <td className="px-2 py-2 text-surface-muted">
@@ -811,7 +811,7 @@ export function MySchedulesPage() {
                     {(selectedRun.summary_json?.files_changed?.length ?? 0) > 0 ? (
                       <div>
                         <div className="font-medium text-neutral-200">{t("settings:schedulesRunChangedFiles")}</div>
-                        <ul className="mt-1 space-y-0.5 font-mono text-[11px] text-surface-muted">
+                        <ul className="mt-1 space-y-0.5 font-mono text-meta text-surface-muted">
                           {selectedRun.summary_json.files_changed!.map((f) => (
                             <li key={f.path}>
                               {f.path} {f.stat ? `| ${f.stat}` : ""}
@@ -823,7 +823,7 @@ export function MySchedulesPage() {
                     {(selectedRun.summary_json?.tools?.length ?? 0) > 0 ? (
                       <div>
                         <div className="font-medium text-neutral-200">{t("settings:schedulesRunTools")}</div>
-                        <ul className="mt-1 max-h-48 space-y-1 overflow-auto font-mono text-[11px]">
+                        <ul className="mt-1 max-h-48 space-y-1 overflow-auto font-mono text-meta">
                           {selectedRun.summary_json.tools!.map((t, i) => (
                             <li
                               key={`${t.round}-${t.name}-${i}`}
@@ -840,7 +840,7 @@ export function MySchedulesPage() {
                     {selectedRun.summary_json?.final_reply_excerpt ? (
                       <div>
                         <div className="font-medium text-neutral-200">{t("settings:schedulesRunReplyExcerpt")}</div>
-                        <pre className="mt-1 whitespace-pre-wrap rounded bg-black/30 p-2 text-[11px] text-surface-muted">
+                        <pre className="mt-1 whitespace-pre-wrap rounded bg-black/30 p-2 text-meta text-surface-muted">
                           {selectedRun.summary_json.final_reply_excerpt}
                         </pre>
                       </div>

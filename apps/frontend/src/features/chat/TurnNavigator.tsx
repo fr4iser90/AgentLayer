@@ -36,7 +36,7 @@ export function TurnNavigator({ userTurns, activeId, onSelect, className = "" }:
       className={`flex flex-col gap-1 ${className}`}
       aria-label={t("chat:conversationPromptsAria")}
     >
-      <span className="px-1 text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+      <span className="px-1 text-meta font-medium uppercase tracking-wide text-surface-muted">
         {t("chat:prompts")}
       </span>
       <ul className="flex flex-col gap-0.5 lg:max-h-[min(60vh,28rem)] lg:overflow-y-auto">
@@ -48,13 +48,13 @@ export function TurnNavigator({ userTurns, activeId, onSelect, className = "" }:
                 type="button"
                 onClick={() => onSelect(turn.id)}
                 title={turn.label}
-                className={`w-full rounded-lg border px-2 py-1.5 text-left text-[11px] leading-snug transition-colors ${
+                className={`w-full rounded-lg border px-2 py-1.5 text-left text-meta leading-snug transition-colors ${
                   active
                     ? "border-sky-500/50 bg-sky-950/40 text-sky-100"
                     : "border-transparent text-neutral-400 hover:border-white/10 hover:bg-white/5 hover:text-neutral-200"
                 }`}
               >
-                <span className="mr-1.5 tabular-nums text-[10px] text-surface-muted">{turn.index}</span>
+                <span className="mr-1.5 tabular-nums text-meta text-surface-muted">{turn.index}</span>
                 <span className="line-clamp-2">{turn.label}</span>
               </button>
             </li>
@@ -79,13 +79,13 @@ export function TurnNavigatorHorizontal({ userTurns, activeId, onSelect, classNa
             type="button"
             onClick={() => onSelect(turn.id)}
             title={turn.label}
-            className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] transition-colors ${
+            className={`shrink-0 rounded-full border px-2.5 py-1 text-meta transition-colors ${
               active
                 ? "border-sky-500/50 bg-sky-950/40 text-sky-100"
                 : "border-white/10 text-neutral-400 hover:bg-white/5"
             }`}
           >
-            <span className="mr-1 tabular-nums text-[10px] opacity-70">{turn.index}</span>
+            <span className="mr-1 tabular-nums text-meta opacity-70">{turn.index}</span>
             <span className="max-w-[8rem] truncate">{turn.label}</span>
           </button>
         );

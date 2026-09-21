@@ -445,7 +445,7 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-2 text-[11px] text-surface-muted">
+      <div className="flex flex-wrap items-center gap-2 text-meta text-surface-muted">
         <span>{t("dashboard:canvasHint")}</span>
         <button
           type="button"
@@ -582,7 +582,7 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
                           ⋮⋮
                         </span>
                       ) : null}
-                      <span className="min-w-0 flex-1 truncate text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+                      <span className="min-w-0 flex-1 truncate text-meta font-medium uppercase tracking-wide text-surface-muted">
                         {blockTitle(b)}
                       </span>
                       <div className="flex shrink-0 gap-1">

@@ -383,7 +383,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
           </button>
         </div>
         {canReview ? (
-          <div className="mt-2 flex gap-1 text-[10px]">
+          <div className="mt-2 flex gap-1 text-meta">
             <button
               type="button"
               className={[
@@ -420,7 +420,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
                 onClick={() => setSelectedId(item.id)}
               >
                 <span className="block truncate font-medium">{item.title}</span>
-                <span className="text-[10px] text-surface-muted">
+                <span className="text-meta text-surface-muted">
                   {statusBadge(item.status, t)} · v{item.version}
                 </span>
               </button>

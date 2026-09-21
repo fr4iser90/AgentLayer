@@ -46,7 +46,7 @@ export const ContextInjectionGroup = memo(function ContextInjectionGroup({
 
   return (
     <details className="mb-3 group">
-      <summary className="inline-flex max-w-full cursor-pointer list-none flex-wrap items-center gap-1.5 rounded-md border border-amber-500/35 bg-amber-950/35 px-2.5 py-1.5 text-[11px] font-medium text-amber-100/90 marker:content-none [&::-webkit-details-marker]:hidden hover:bg-amber-950/50">
+      <summary className="inline-flex max-w-full cursor-pointer list-none flex-wrap items-center gap-1.5 rounded-md border border-amber-500/35 bg-amber-950/35 px-2.5 py-1.5 text-meta font-medium text-amber-100/90 marker:content-none [&::-webkit-details-marker]:hidden hover:bg-amber-950/50">
         <span className="relative flex h-1.5 w-1.5 shrink-0" aria-hidden>
           <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400/80 opacity-75" />
           <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-amber-300" />
@@ -54,7 +54,7 @@ export const ContextInjectionGroup = memo(function ContextInjectionGroup({
         <span>{t("chat:contextInjectGroupTitle", { count: items.length })}</span>
         {totalChars > 0 ? (
           <span
-            className="text-[10px] font-normal text-amber-200/55"
+            className="text-meta font-normal text-amber-200/55"
             title={t("chat:contextInjectTokensHint")}
           >
             {t("chat:contextInjectBudget", {
@@ -64,15 +64,15 @@ export const ContextInjectionGroup = memo(function ContextInjectionGroup({
           </span>
         ) : null}
         {highlight.length > 0 ? (
-          <span className="max-w-[18rem] truncate text-[10px] font-normal text-amber-200/65">
+          <span className="max-w-[18rem] truncate text-meta font-normal text-amber-200/65">
             {highlight.join(" · ")}
             {more > 0 ? ` · +${more}` : ""}
           </span>
         ) : null}
-        <span className="text-[10px] font-normal text-amber-200/55 group-open:hidden">
+        <span className="text-meta font-normal text-amber-200/55 group-open:hidden">
           {t("chat:contextInjectExpandHint")}
         </span>
-        <span className="hidden text-[10px] font-normal text-amber-200/55 group-open:inline">
+        <span className="hidden text-meta font-normal text-amber-200/55 group-open:inline">
           {t("chat:contextInjectCollapseHint")}
         </span>
       </summary>

@@ -103,7 +103,7 @@ export function MediaMiniPlayer() {
 
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-white">{label}</p>
-            <p className="truncate text-[11px] text-surface-muted">
+            <p className="truncate text-meta text-surface-muted">
               {statusHint}
               {media.binding?.dashboardTitle ? (
                 <span className="text-white/40"> · {media.binding.dashboardTitle}</span>
@@ -111,7 +111,7 @@ export function MediaMiniPlayer() {
             </p>
           </div>
 
-          <label className="flex shrink-0 items-center gap-2 text-[11px] text-surface-muted">
+          <label className="flex shrink-0 items-center gap-2 text-meta text-surface-muted">
             <span className="hidden sm:inline">{t("dashboard:mediaMiniPlayerVolume")}</span>
             <span aria-hidden>🔊</span>
             <input
@@ -181,14 +181,14 @@ export function MediaMiniPlayer() {
             {dashboardHref ? (
               <Link
                 to={dashboardHref}
-                className="rounded-md border border-white/10 px-2 py-1 text-[11px] text-sky-100 hover:bg-white/5"
+                className="rounded-md border border-white/10 px-2 py-1 text-meta text-sky-100 hover:bg-white/5"
               >
                 {t("dashboard:mediaMiniPlayerOpenDashboard")}
               </Link>
             ) : null}
             <button
               type="button"
-              className="rounded-md px-2 py-1 text-[11px] text-surface-muted hover:bg-white/5 hover:text-neutral-200 disabled:opacity-40"
+              className="rounded-md px-2 py-1 text-meta text-surface-muted hover:bg-white/5 hover:text-neutral-200 disabled:opacity-40"
               onClick={media.stop}
               disabled={!hasTrack}
               aria-label={t("dashboard:mediaMiniPlayerStop")}

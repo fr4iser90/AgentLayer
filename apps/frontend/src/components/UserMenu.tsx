@@ -79,7 +79,7 @@ export function UserMenu() {
             </Link>
           ) : null}
           <div className="border-t border-white/10 px-3 py-2">
-            <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+            <p className="mb-1.5 text-meta font-medium uppercase tracking-wide text-surface-muted">
               {t("language.label")}
             </p>
             <div className="flex flex-wrap gap-1">

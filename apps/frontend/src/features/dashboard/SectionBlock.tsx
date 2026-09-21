@@ -101,7 +101,7 @@ export function SectionBlockBody(props: {
         ) : null}
         <button
           type="button"
-          className="dashboard-grid-no-drag rounded-md border border-surface-border px-2 py-1 text-[11px] text-surface-muted hover:bg-white/5"
+          className="dashboard-grid-no-drag rounded-md border border-surface-border px-2 py-1 text-meta text-surface-muted hover:bg-white/5"
           onClick={() => {
             const next = !collapsed;
             setCollapsed(next);

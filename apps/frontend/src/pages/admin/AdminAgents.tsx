@@ -412,7 +412,7 @@ export function AdminAgents() {
                 onChange={(e) => setImportFiles(e.target.files)}
               />
             </label>
-            <ul className="mt-3 list-disc space-y-1 pl-4 text-[11px]">
+            <ul className="mt-3 list-disc space-y-1 pl-4 text-meta">
               <li>{t("admin:toolsImportAllowed")}</li>
               <li>{t("admin:toolsImportLimits")}</li>
               <li>{t("admin:toolsImportZipSafety")}</li>
@@ -440,7 +440,7 @@ export function AdminAgents() {
               </span>
               <div className="mt-2 flex flex-wrap gap-2">
                 {importResult.sources.map((s) => (
-                  <span key={s.path} className="rounded bg-white/5 px-2 py-1 font-mono text-[11px]">
+                  <span key={s.path} className="rounded bg-white/5 px-2 py-1 font-mono text-meta">
                     {s.path} · {t("admin:toolsImportChars", { count: s.chars })}
                   </span>
                 ))}
@@ -453,21 +453,21 @@ export function AdminAgents() {
                   <span className="font-mono text-sm font-semibold text-white">
                     {String(importResult.agent_draft.agent_yaml.id ?? "")}
                   </span>
-                  <span className="rounded bg-amber-900/60 px-1.5 py-0.5 text-[10px] text-amber-100">
+                  <span className="rounded bg-amber-900/60 px-1.5 py-0.5 text-meta text-amber-100">
                     {t("admin:toolsImportRisk", { risk: importResult.agent_draft.risk })}
                   </span>
                 </div>
-                <p className="mt-2 font-mono text-[11px] text-surface-muted">
+                <p className="mt-2 font-mono text-meta text-surface-muted">
                   {importResult.agent_draft.target_dir}
                 </p>
-                <pre className="mt-3 max-h-56 overflow-auto rounded bg-black/40 p-2 text-[11px] text-neutral-300">
+                <pre className="mt-3 max-h-56 overflow-auto rounded bg-black/40 p-2 text-meta text-neutral-300">
                   {JSON.stringify(importResult.agent_draft.agent_yaml, null, 2)}
                 </pre>
               </article>
 
               <article className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-neutral-200">
                 <h3 className="text-sm font-semibold text-white">{t("admin:agentsImportSystemPrompt")}</h3>
-                <pre className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap rounded bg-black/40 p-2 text-[11px] text-neutral-300">
+                <pre className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap rounded bg-black/40 p-2 text-meta text-neutral-300">
                   {importResult.agent_draft.system_prompt_preview || "—"}
                 </pre>
               </article>
@@ -478,13 +478,13 @@ export function AdminAgents() {
                 <h3 className="text-sm font-semibold text-white">{t("admin:agentsImportToolMapping")}</h3>
                 <ul className="mt-2 space-y-1">
                   {importResult.tool_mapping.matched_existing.map((m) => (
-                    <li key={`${m.package_id}:${m.domain}`} className="font-mono text-[11px] text-neutral-300">
+                    <li key={`${m.package_id}:${m.domain}`} className="font-mono text-meta text-neutral-300">
                       {m.package_id} · {m.domain} · {(m.tools ?? []).join(", ")}
                     </li>
                   ))}
                 </ul>
                 {importResult.tool_mapping.missing_or_ambiguous.length ? (
-                  <p className="mt-2 text-[11px] text-amber-200">
+                  <p className="mt-2 text-meta text-amber-200">
                     {t("admin:agentsImportMissingTools")}:{" "}
                     {importResult.tool_mapping.missing_or_ambiguous.join(", ")}
                   </p>
@@ -496,15 +496,15 @@ export function AdminAgents() {
                 <ul className="mt-2 space-y-2">
                   {importResult.config_patches.map((p) => (
                     <li key={p.knob_id} className="rounded bg-white/5 p-2">
-                      <p className="font-mono text-[11px] text-neutral-200">
+                      <p className="font-mono text-meta text-neutral-200">
                         {p.knob_id} = {JSON.stringify(p.value)}
                       </p>
-                      {p.reason ? <p className="mt-1 text-[11px] text-surface-muted">{p.reason}</p> : null}
+                      {p.reason ? <p className="mt-1 text-meta text-surface-muted">{p.reason}</p> : null}
                     </li>
                   ))}
                 </ul>
                 {importResult.config_patches.length === 0 ? (
-                  <p className="mt-2 text-[11px] text-surface-muted">{t("admin:agentsImportNoPatches")}</p>
+                  <p className="mt-2 text-meta text-surface-muted">{t("admin:agentsImportNoPatches")}</p>
                 ) : null}
               </article>
             </div>
@@ -589,7 +589,7 @@ export function AdminAgents() {
               </dl>
 
               <div className="mt-4">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
+                <p className="text-meta font-medium uppercase tracking-wide text-surface-muted">
                   {t("admin:agentsToolDomains")}
                 </p>
                 <p className="mt-1 font-mono text-xs text-neutral-300">
@@ -598,7 +598,7 @@ export function AdminAgents() {
               </div>
 
               <div className="mt-3">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
+                <p className="text-meta font-medium uppercase tracking-wide text-surface-muted">
                   {t("admin:agentsToolCapabilities")}
                 </p>
                 <p className="mt-1 font-mono text-xs text-neutral-300">
@@ -631,7 +631,7 @@ export function AdminAgents() {
                   <div className="mt-4 rounded-lg border border-white/10 bg-black/20 p-3">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
+                        <p className="text-meta font-medium uppercase tracking-wide text-surface-muted">
                           {t("admin:agentsAccessGovernance")}
                         </p>
                         <p className="mt-1 text-xs text-neutral-300">
@@ -654,14 +654,14 @@ export function AdminAgents() {
                         </p>
                       </div>
                       <div className="min-w-64 flex-1">
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
+                        <p className="text-meta font-medium uppercase tracking-wide text-surface-muted">
                           {t("admin:agentsPromptBudget")}
                         </p>
                         <p className="mt-1 text-xs text-neutral-300">
                           {detail?.governance?.prompt.chars ?? 0} {t("admin:agentsChars")} · ~
                           {detail?.governance?.prompt.approx_tokens ?? 0} {t("admin:agentsTokens")}
                         </p>
-                        <p className="mt-1 text-[11px] text-surface-muted">
+                        <p className="mt-1 text-meta text-surface-muted">
                           {detail?.governance?.prompt.note ?? "—"}
                         </p>
                       </div>
@@ -747,7 +747,7 @@ export function AdminAgents() {
                       {policyMsg ? <span className="text-xs text-surface-muted">{policyMsg}</span> : null}
                     </div>
                     <div className="mt-3">
-                      <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
+                      <p className="text-meta font-medium uppercase tracking-wide text-surface-muted">
                         {t("admin:agentsActivePolicies")}
                       </p>
                       <div className="mt-1 space-y-1">
@@ -755,7 +755,7 @@ export function AdminAgents() {
                           <p className="text-xs text-surface-muted">—</p>
                         ) : (
                           (detail?.governance?.policies ?? []).map((p) => (
-                            <p key={p.id} className="font-mono text-[11px] text-neutral-300">
+                            <p key={p.id} className="font-mono text-meta text-neutral-300">
                               {p.scope} {p.tenant_id ?? ""} {p.user_id ?? ""} · direct={p.direct_state} · delegate=
                               {p.delegate_state}
                             </p>
@@ -768,14 +768,14 @@ export function AdminAgents() {
                   <div className="mt-4 rounded-lg border border-white/10 bg-black/20 p-3">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
+                        <p className="text-meta font-medium uppercase tracking-wide text-surface-muted">
                           {t("admin:agentsPromptEditor")}
                         </p>
                         <p className="mt-1 text-xs text-surface-muted">
                           {t("admin:agentsPromptEditorHint")}
                         </p>
                       </div>
-                      <p className="font-mono text-[11px] text-neutral-400">
+                      <p className="font-mono text-meta text-neutral-400">
                         {t("admin:agentsPromptSource")}: {detail?.governance?.prompt.effective_source ?? "file_default"}
                         {detail?.governance?.prompt.published_version
                           ? ` · v${detail.governance.prompt.published_version}`
@@ -789,7 +789,7 @@ export function AdminAgents() {
                       maxLength={12000}
                     />
                     <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-[11px] text-surface-muted">
+                      <p className="text-meta text-surface-muted">
                         {promptText.length} / 12000 {t("admin:agentsChars")} · ~{Math.max(1, Math.floor(promptText.length / 4))}{" "}
                         {t("admin:agentsTokens")}
                       </p>
@@ -806,7 +806,7 @@ export function AdminAgents() {
                       </div>
                     </div>
                     <div className="mt-4">
-                      <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
+                      <p className="text-meta font-medium uppercase tracking-wide text-surface-muted">
                         {t("admin:agentsPromptVersions")}
                       </p>
                       <div className="mt-2 space-y-2">
@@ -822,7 +822,7 @@ export function AdminAgents() {
                                 <p className="font-mono text-xs text-neutral-200">
                                   v{v.version} · {v.status} · {v.prompt_text.length} {t("admin:agentsChars")}
                                 </p>
-                                <p className="mt-0.5 text-[11px] text-surface-muted">
+                                <p className="mt-0.5 text-meta text-surface-muted">
                                   {v.created_at ?? "—"}
                                   {v.published_at ? ` · ${t("admin:agentsPublishedAt")} ${v.published_at}` : ""}
                                 </p>
@@ -843,18 +843,18 @@ export function AdminAgents() {
                   </div>
 
                   <div className="mt-3">
-                    <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
+                    <p className="text-meta font-medium uppercase tracking-wide text-surface-muted">
                       {t("admin:agentsResolvedTools")} ({detail?.tool_names?.length ?? 0})
                     </p>
-                    <p className="mt-1 max-h-32 overflow-y-auto break-all font-mono text-[11px] text-neutral-400">
+                    <p className="mt-1 max-h-32 overflow-y-auto break-all font-mono text-meta text-neutral-400">
                       {(detail?.tool_names ?? []).join(", ") || "—"}
                     </p>
                   </div>
                   <div className="mt-3">
-                    <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
+                    <p className="text-meta font-medium uppercase tracking-wide text-surface-muted">
                       {t("admin:agentsEffectiveTools")} ({detail?.effective_tool_names?.length ?? 0})
                     </p>
-                    <p className="mt-1 max-h-32 overflow-y-auto break-all font-mono text-[11px] text-emerald-300/90">
+                    <p className="mt-1 max-h-32 overflow-y-auto break-all font-mono text-meta text-emerald-300/90">
                       {(detail?.effective_tool_names ?? []).join(", ") || "—"}
                     </p>
                   </div>

@@ -246,13 +246,13 @@ function HeroBlockBody(props: {
         </label>
       </div>
       {!dashboardId ? (
-        <p className="mb-2 text-[10px] text-amber-200/90">{t("dashboard:heroSaveBeforeUploadHint")}</p>
+        <p className="mb-2 text-meta text-amber-200/90">{t("dashboard:heroSaveBeforeUploadHint")}</p>
       ) : null}
       {uploadErr ? <p className="mb-2 text-xs text-red-400">{uploadErr}</p> : null}
       {imageArea}
       <div className="mt-4 space-y-3">
         <div>
-          <label className="mb-1 block text-[10px] uppercase tracking-wide text-surface-muted">
+          <label className="mb-1 block text-meta uppercase tracking-wide text-surface-muted">
             {t("dashboard:heroImageUrlLabel")}
           </label>
           <input
@@ -264,7 +264,7 @@ function HeroBlockBody(props: {
           />
         </div>
         <div>
-          <label className="mb-1 block text-[10px] uppercase tracking-wide text-surface-muted">
+          <label className="mb-1 block text-meta uppercase tracking-wide text-surface-muted">
             {t("dashboard:heroHeadlineLabel")}
           </label>
           <input
@@ -276,7 +276,7 @@ function HeroBlockBody(props: {
           />
         </div>
         <div>
-          <label className="mb-1 block text-[10px] uppercase tracking-wide text-surface-muted">
+          <label className="mb-1 block text-meta uppercase tracking-wide text-surface-muted">
             {t("dashboard:heroCaptionLabel")}
           </label>
           <textarea
@@ -342,7 +342,7 @@ function StatBlockBody(props: {
 
   return (
     <section className="flex h-full min-h-[140px] flex-col rounded-xl border border-surface-border bg-gradient-to-br from-slate-900/80 to-black/50 p-4">
-      <p className="text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+      <p className="text-meta font-medium uppercase tracking-wide text-surface-muted">
         {sectionTitle}
       </p>
       {stat.label ? (
@@ -508,7 +508,7 @@ function TimelineBlockBody(props: {
             <li key={String(row.id ?? si)} className="relative flex gap-3 pb-6 last:pb-0">
               <div className="relative z-[1] mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full border-2 border-sky-500/80 bg-black shadow-[0_0_12px_rgba(56,189,248,0.35)]" />
               <div className="min-w-0 flex-1 rounded-lg border border-white/5 bg-black/20 px-3 py-2">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-sky-400/90">
+                <p className="text-meta font-medium uppercase tracking-wide text-sky-400/90">
                   {formatEventDate(String(row.date ?? ""))}
                 </p>
                 {readOnly ? (
@@ -1151,7 +1151,7 @@ function BlockView(props: {
           {publicShareToken ? null : (
             <button
               type="button"
-              className="rounded-md border border-surface-border px-2 py-1 text-[11px] text-neutral-100 hover:bg-white/5"
+              className="rounded-md border border-surface-border px-2 py-1 text-meta text-neutral-100 hover:bg-white/5"
               onClick={() => void refresh()}
               disabled={loading}
             >
@@ -1192,7 +1192,7 @@ function BlockView(props: {
                     </td>
                     <td className="px-2 py-2 text-xs text-neutral-100">
                       <div>{labelForExecutionTarget(j.execution_target, targetCatalog)}</div>
-                      <div className="font-mono text-[10px] text-surface-muted">
+                      <div className="font-mono text-meta text-surface-muted">
                         {j.execution_target}
                       </div>
                     </td>

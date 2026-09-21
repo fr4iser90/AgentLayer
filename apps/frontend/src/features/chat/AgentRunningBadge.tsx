@@ -51,7 +51,7 @@ export function AgentRunningBadge() {
   return (
     <Link
       to={href}
-      className="ml-1 inline-flex max-w-[min(100%,18rem)] items-center gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[11px] font-medium text-amber-100/95 hover:bg-amber-500/20"
+      className="ml-1 inline-flex max-w-[min(100%,18rem)] items-center gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-meta font-medium text-amber-100/95 hover:bg-amber-500/20"
       title={label}
     >
       <span

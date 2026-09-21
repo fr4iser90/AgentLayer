@@ -462,7 +462,7 @@ export function AdminSchedules() {
                   </td>
                   <td className="px-3 py-2 text-neutral-100">{j.title || "—"}</td>
                   <td className="px-3 py-2 text-surface-muted">{j.interval_minutes} min</td>
-                  <td className="px-3 py-2 font-mono text-[11px] text-surface-muted">
+                  <td className="px-3 py-2 font-mono text-meta text-surface-muted">
                     {j.dashboard_id || "global"}
                   </td>
                   <td className="px-3 py-2 text-surface-muted">{formatDateTimeLocal(j.last_run_at)}</td>
@@ -542,7 +542,7 @@ export function AdminSchedules() {
                   ))}
                 </select>
                 {createPresetId && (presets || []).find((p) => p.id === createPresetId)?.description ? (
-                  <div className="mt-1 text-[11px] text-surface-muted">
+                  <div className="mt-1 text-meta text-surface-muted">
                     {(presets || []).find((p) => p.id === createPresetId)?.description}
                   </div>
                 ) : null}
@@ -586,12 +586,12 @@ export function AdminSchedules() {
                     ))}
                   </select>
                   {createWorkspaceId ? (
-                    <div className="mt-1 break-all font-mono text-[11px] text-surface-muted">
+                    <div className="mt-1 break-all font-mono text-meta text-surface-muted">
                       {createWorkspaceId}
                     </div>
                   ) : null}
                   {createCodingWorkflow.agent_id ? (
-                    <div className="mt-1 font-mono text-[11px] text-surface-muted">
+                    <div className="mt-1 font-mono text-meta text-surface-muted">
                       Agent: {createCodingWorkflow.agent_id}
                     </div>
                   ) : null}

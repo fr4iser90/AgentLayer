@@ -469,7 +469,7 @@ export function ConnectionsSettings() {
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-mono text-sm text-white">{key}</span>
                         {hasForm ? (
-                          <span className="rounded bg-sky-500/15 px-1.5 py-0.5 text-[10px] text-sky-200">
+                          <span className="rounded bg-sky-500/15 px-1.5 py-0.5 text-meta text-sky-200">
                             {t("settings:connectionsFormInUiBadge")}
                           </span>
                         ) : null}

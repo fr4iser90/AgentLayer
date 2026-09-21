@@ -187,7 +187,7 @@ export function OrgGrantsPage() {
                 <td className="py-3 pr-4">
                   <span className="font-medium text-white">{row.name}</span>
                   {row.visibility !== "tenant" ? (
-                    <span className="ml-2 rounded bg-amber-950/50 px-1.5 py-0.5 text-[10px] text-amber-300">
+                    <span className="ml-2 rounded bg-amber-950/50 px-1.5 py-0.5 text-meta text-amber-300">
                       {t("org:grantsPrivateTag")}
                     </span>
                   ) : null}

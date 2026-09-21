@@ -270,7 +270,7 @@ export function BlockSettingsModal({
               <h2 id="block-settings-title" className="text-sm font-semibold text-white">
                 {t("dashboard:blockSettingsTitle")}
               </h2>
-              <p className="mt-0.5 text-[11px] text-surface-muted">
+              <p className="mt-0.5 text-meta text-surface-muted">
                 {blockTypeLabel(block.type)} ·{" "}
                 <span className="font-mono text-white/70">{block.id}</span>
               </p>
@@ -312,7 +312,7 @@ export function BlockSettingsModal({
                   : t("dashboard:blockSettingsIntroDraft")}
               </p>
               <label className="block space-y-1">
-                <span className="text-[11px] text-surface-muted">
+                <span className="text-meta text-surface-muted">
                   {t("dashboard:blockSettingsTitleLabel")}
                 </span>
                 <input
@@ -322,8 +322,8 @@ export function BlockSettingsModal({
                 />
               </label>
               <div className="space-y-1">
-                <span className="text-[11px] text-surface-muted">{t("dashboard:blockSettingsBlockId")}</span>
-                <p className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 font-mono text-[11px] text-neutral-300">
+                <span className="text-meta text-surface-muted">{t("dashboard:blockSettingsBlockId")}</span>
+                <p className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 font-mono text-meta text-neutral-300">
                   {block.id}
                 </p>
               </div>
@@ -333,24 +333,24 @@ export function BlockSettingsModal({
           {tab === "data" && supportsDataTab(block.type) ? (
             <div className="space-y-4">
               <label className="block space-y-1">
-                <span className="text-[11px] text-surface-muted">{t("dashboard:blockSettingsDataPath")}</span>
+                <span className="text-meta text-surface-muted">{t("dashboard:blockSettingsDataPath")}</span>
                 <input
                   className="w-full rounded-lg border border-surface-border bg-black/40 px-3 py-2 font-mono text-xs text-white outline-none focus:border-sky-500/50"
                   value={dataPath}
                   onChange={(e) => setDataPath(e.target.value)}
                   placeholder={t("dashboard:blockSettingsDataPathPlaceholder")}
                 />
-                <span className="text-[10px] text-surface-muted">{t("dashboard:blockSettingsDataPathHint")}</span>
+                <span className="text-meta text-surface-muted">{t("dashboard:blockSettingsDataPathHint")}</span>
               </label>
               <div className="rounded-lg border border-sky-500/20 bg-sky-950/20 px-3 py-2 text-xs text-sky-100/90">
-                <span className="block text-[10px] font-medium uppercase tracking-wide text-sky-300/80">
+                <span className="block text-meta font-medium uppercase tracking-wide text-sky-300/80">
                   {t("dashboard:blockSettingsPreviewLabel")}
                 </span>
                 {previewText}
               </div>
               {block.type === "card_grid" && columnFields.length ? (
                 <div className="space-y-2">
-                  <span className="text-[11px] text-surface-muted">{t("dashboard:blockSettingsCardFields")}</span>
+                  <span className="text-meta text-surface-muted">{t("dashboard:blockSettingsCardFields")}</span>
                   <ul className="flex flex-wrap gap-2">
                     {columnFields.map((field) => (
                       <li key={field}>
@@ -384,7 +384,7 @@ export function BlockSettingsModal({
               ) : (
                 <div className="space-y-1">
                   <label
-                    className="block text-[11px] text-surface-muted"
+                    className="block text-meta text-surface-muted"
                     htmlFor="block-settings-share-target"
                   >
                     {t("dashboard:blockSettingsShareTarget")}
@@ -402,7 +402,7 @@ export function BlockSettingsModal({
                       </option>
                     ))}
                   </select>
-                  <span className="block text-[10px] text-surface-muted">
+                  <span className="block text-meta text-surface-muted">
                     {t("dashboard:blockSettingsShareTargetHint")}
                   </span>
                 </div>
@@ -414,7 +414,7 @@ export function BlockSettingsModal({
               ) : null}
               <div className="space-y-1">
                 <label
-                  className="block text-[11px] text-surface-muted"
+                  className="block text-meta text-surface-muted"
                   htmlFor="block-settings-share-days"
                 >
                   {t("dashboard:blockSettingsShareDays")}
@@ -430,7 +430,7 @@ export function BlockSettingsModal({
                     setDaysAhead(Math.min(90, Math.max(1, Number(e.target.value) || 7)))
                   }
                 />
-                <span className="block text-[10px] text-surface-muted">
+                <span className="block text-meta text-surface-muted">
                   {t("dashboard:blockSettingsShareDaysHint")}
                 </span>
               </div>
@@ -441,7 +441,7 @@ export function BlockSettingsModal({
             <div className="space-y-4">
               {supportsDisplayPreset(block.type) ? (
                 <div className="space-y-2">
-                  <span className="text-[11px] text-surface-muted">{t("dashboard:blockSettingsPreset")}</span>
+                  <span className="text-meta text-surface-muted">{t("dashboard:blockSettingsPreset")}</span>
                   <div className="flex flex-wrap gap-2">
                     {(["compact", "standard", "comfortable"] as DisplayPresetId[]).map((preset) => (
                       <button
@@ -465,7 +465,7 @@ export function BlockSettingsModal({
                 />
                 <span>
                   <span className="block text-white">{t("dashboard:blockSettingsFillGrid")}</span>
-                  <span className="text-[10px] text-surface-muted">
+                  <span className="text-meta text-surface-muted">
                     {t("dashboard:blockSettingsFillGridHint")}
                   </span>
                 </span>
@@ -473,7 +473,7 @@ export function BlockSettingsModal({
               {block.type === "card_grid" ? (
                 <>
                   <label className="block space-y-1">
-                    <span className="text-[11px] text-surface-muted">
+                    <span className="text-meta text-surface-muted">
                       {t("dashboard:blockSettingsGridColumns")}
                     </span>
                     <input

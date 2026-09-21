@@ -86,11 +86,11 @@ export function AgentActivityPanel({
       className={`flex min-h-0 flex-col overflow-hidden rounded-lg border border-white/10 bg-black/30 ${className}`}
     >
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/5 px-2.5 py-1.5">
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-surface-muted">
+        <span className="text-meta font-semibold uppercase tracking-wide text-surface-muted">
           {t("chat:agentActivity")}
         </span>
         {showSubagentToggle ? (
-          <label className="flex cursor-pointer items-center gap-1.5 text-[10px] text-surface-muted">
+          <label className="flex cursor-pointer items-center gap-1.5 text-meta text-surface-muted">
             <input
               type="checkbox"
               className="rounded border-surface-border bg-[#1a1a1a] text-indigo-500"
@@ -103,7 +103,7 @@ export function AgentActivityPanel({
       </div>
       <div className={scrollClass}>
         {visible.length === 0 && !loading ? (
-          <p className="text-[11px] leading-snug text-surface-muted">
+          <p className="text-meta leading-snug text-surface-muted">
             {emptyHint ?? t("chat:noActivityYet")}
           </p>
         ) : (
@@ -112,17 +112,17 @@ export function AgentActivityPanel({
               <li
                 key={e.id}
                 className={[
-                  "border-l-2 text-[11px] leading-snug",
+                  "border-l-2 text-meta leading-snug",
                   borderForKind(e.kind),
                   e.nested ? "ml-3 pl-2" : "pl-2",
                 ].join(" ")}
               >
                 <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0">
-                  <span className="text-[9px] font-medium uppercase tracking-wide text-surface-muted">
+                  <span className="text-meta font-medium uppercase tracking-wide text-surface-muted">
                     {labelForKind(e.kind, t)}
                   </span>
                   {e.subagentAgentId ? (
-                    <span className="text-[9px] text-indigo-300/90">{e.subagentAgentId}</span>
+                    <span className="text-meta text-indigo-300/90">{e.subagentAgentId}</span>
                   ) : null}
                   <span className="text-neutral-300">{e.text}</span>
                   {e.durationMs != null && e.durationMs >= 0 ? (
@@ -136,7 +136,7 @@ export function AgentActivityPanel({
               </li>
             ))}
             {loading ? (
-              <li className="flex items-center gap-1.5 border-l-2 border-violet-500/40 pl-2 text-[11px] text-violet-200/80">
+              <li className="flex items-center gap-1.5 border-l-2 border-violet-500/40 pl-2 text-meta text-violet-200/80">
                 <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400" />
                 {loadingHint?.trim() || t("chat:running")}
               </li>

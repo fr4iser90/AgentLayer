@@ -39,7 +39,7 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
   if (!voiceStatus) {
     return (
       <div className="w-full">
-        <p className="text-[10px] leading-snug text-surface-muted">{t("chat:voiceComposerLoading")}</p>
+        <p className="text-meta leading-snug text-surface-muted">{t("chat:voiceComposerLoading")}</p>
       </div>
     );
   }
@@ -47,10 +47,10 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
   if (!operatorOn || !anyConfigured) {
     return (
       <div className="w-full rounded-lg border border-amber-500/20 bg-amber-950/20 px-2.5 py-2">
-        <p className="text-[10px] leading-snug text-amber-100/90">{t("chat:voiceComposerDisabled")}</p>
+        <p className="text-meta leading-snug text-amber-100/90">{t("chat:voiceComposerDisabled")}</p>
         <Link
           to="/settings/voice"
-          className="mt-1 inline-block text-[10px] text-sky-400/90 hover:text-sky-300 hover:underline"
+          className="mt-1 inline-block text-meta text-sky-400/90 hover:text-sky-300 hover:underline"
         >
           {t("chat:voiceComposerSettingsLink")}
         </Link>
@@ -61,18 +61,18 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
   return (
     <div className="w-full space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+        <span className="text-meta font-medium uppercase tracking-wide text-surface-muted">
           {t("chat:voiceComposerTitle")}
         </span>
         <Link
           to="/settings/voice"
-          className="shrink-0 text-[10px] text-sky-400/80 hover:text-sky-300 hover:underline"
+          className="shrink-0 text-meta text-sky-400/80 hover:text-sky-300 hover:underline"
         >
           {t("chat:voiceComposerSettingsLink")}
         </Link>
       </div>
       <label
-        className={`flex cursor-pointer items-center gap-2 text-[10px] font-medium uppercase tracking-wide ${
+        className={`flex cursor-pointer items-center gap-2 text-meta font-medium uppercase tracking-wide ${
           ttsOk ? "text-surface-muted" : "text-neutral-500"
         }`}
         title={ttsOk ? t("chat:voiceComposerReadAloudHint") : t("chat:voiceComposerTtsOff")}
@@ -86,11 +86,11 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
         />
         <span>{t("chat:voiceComposerReadAloud")}</span>
       </label>
-      <p className="pl-6 text-[10px] leading-snug text-surface-muted">
+      <p className="pl-6 text-meta leading-snug text-surface-muted">
         {ttsOk ? t("chat:voiceComposerReadAloudHint") : t("chat:voiceComposerTtsOff")}
       </p>
       <label
-        className={`flex cursor-pointer items-center gap-2 text-[10px] font-medium uppercase tracking-wide ${
+        className={`flex cursor-pointer items-center gap-2 text-meta font-medium uppercase tracking-wide ${
           sttOk ? "text-surface-muted" : "text-neutral-500"
         }`}
         title={sttOk ? t("chat:voiceComposerInputHint") : t("chat:voiceComposerSttOff")}
@@ -104,14 +104,14 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
         />
         <span>{t("chat:voiceComposerInput")}</span>
       </label>
-      <p className="pl-6 text-[10px] leading-snug text-surface-muted">
+      <p className="pl-6 text-meta leading-snug text-surface-muted">
         {sttOk ? t("chat:voiceComposerInputHint") : t("chat:voiceComposerSttOff")}
       </p>
       {sttOk &&
       voiceStatus.prefs.input_enabled &&
       (voiceStatus.prefs.mode_web === "push_to_talk" ||
         voiceStatus.prefs.mode_web === "toggle") ? (
-        <label className="block text-[10px] text-surface-muted">
+        <label className="block text-meta text-surface-muted">
           {t("chat:voiceComposerMicMode")}
           <select
             className="mt-1 w-full rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-100"

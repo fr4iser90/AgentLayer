@@ -150,7 +150,7 @@ function CollapsibleMono({
   const long = text.length > 900 || text.split("\n").length > 14;
   if (!text.trim()) {
     return (
-      <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 font-mono text-[11px] text-white/90">
+      <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 font-mono text-meta text-white/90">
         {t("admin:benchDetailNone")}
       </pre>
     );
@@ -158,7 +158,7 @@ function CollapsibleMono({
   return (
     <div>
       <pre
-        className={`overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 font-mono text-[11px] text-white/90 ${
+        className={`overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 font-mono text-meta text-white/90 ${
           expanded || !long ? "max-h-[32rem]" : collapsedClass
         }`}
       >
@@ -373,7 +373,7 @@ function BenchmarkFailuresSummary({
         {t("admin:benchFailuresSummary")} ({rows.length})
       </div>
       <div className="max-h-64 overflow-auto">
-        <table className="w-full text-left text-[11px]">
+        <table className="w-full text-left text-meta">
           <thead className="sticky top-0 bg-rose-950/80 text-surface-muted">
             <tr>
               <th className="py-1 pr-2">{t("admin:benchFailuresSummaryColScenario")}</th>
@@ -387,7 +387,7 @@ function BenchmarkFailuresSummary({
             {rows.map((row, i) => (
               <tr key={`${row.scenario_id}-${row.profile_label}-${i}`} className="border-t border-white/5">
                 <td className="py-1 pr-2 font-mono align-top">{row.scenario_id}</td>
-                <td className="py-1 pr-2 font-mono align-top text-[10px]">
+                <td className="py-1 pr-2 font-mono align-top text-meta">
                   {formatBenchmarkProviderModel(row)}
                 </td>
                 <td className="py-1 pr-2 align-top text-amber-200/90 max-w-[10rem]">
@@ -439,7 +439,7 @@ function BenchmarkScenarioDetailWithAttempts({
     <div className="space-y-2">
       {hist.length > 1 ? (
         <div className="flex flex-wrap items-center gap-1">
-          <span className="mr-1 text-[11px] text-surface-muted">{t("admin:benchAttemptTabs")}:</span>
+          <span className="mr-1 text-meta text-surface-muted">{t("admin:benchAttemptTabs")}:</span>
           {hist.map((snap, idx) => {
             const active = idx === selectedAttemptIndex;
             const label = `${snap.attempt}/${res.run_metrics?.attempts_max ?? hist.length}`;
@@ -448,7 +448,7 @@ function BenchmarkScenarioDetailWithAttempts({
                 key={`${snap.attempt}-${idx}`}
                 type="button"
                 onClick={() => onSelectAttempt(idx)}
-                className={`rounded px-2 py-0.5 font-mono text-[11px] ${
+                className={`rounded px-2 py-0.5 font-mono text-meta ${
                   active
                     ? "bg-sky-600 text-white"
                     : "border border-white/15 bg-black/30 text-white/80 hover:bg-white/10"
@@ -466,7 +466,7 @@ function BenchmarkScenarioDetailWithAttempts({
         </div>
       ) : null}
       {Array.isArray(prior) && prior.length > 0 ? (
-        <div className="rounded border border-white/10 bg-black/25 p-2 text-[11px]">
+        <div className="rounded border border-white/10 bg-black/25 p-2 text-meta">
           <div className="mb-1 font-medium text-surface-muted">{t("admin:benchPriorAttempts")}</div>
           <ul className="list-inside list-disc space-y-0.5 text-white/75">
             {prior.map((reason, i) => (
@@ -517,7 +517,7 @@ function BenchmarkScenarioDetail({
   return (
     <div className="space-y-3 rounded-lg border border-white/10 bg-black/20 p-3 text-xs">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="font-mono text-[11px] text-white/70">{res.scenario_id}</span>
+        <span className="font-mono text-meta text-white/70">{res.scenario_id}</span>
         <CopyScenarioDetailsButton res={res} />
       </div>
       {noToolsForwarded ? (
@@ -532,7 +532,7 @@ function BenchmarkScenarioDetail({
       <div className="grid gap-3 md:grid-cols-2">
         <div>
           <div className="mb-1 font-medium text-surface-muted">{t("admin:benchDetailPrompt")}</div>
-          <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 font-mono text-[11px] text-white/90">
+          <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 font-mono text-meta text-white/90">
             {res.scenario_prompt?.trim() || t("admin:benchDetailNone")}
           </pre>
         </div>
@@ -597,7 +597,7 @@ function BenchmarkScenarioDetail({
       {sessionInfo?.forwarded_tools?.length ? (
         <div>
           <div className="mb-1 font-medium text-surface-muted">{t("admin:benchDetailToolCatalog")}</div>
-          <pre className="max-h-24 overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 font-mono text-[10px] text-white/80">
+          <pre className="max-h-24 overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 font-mono text-meta text-white/80">
             {sessionInfo.forwarded_tools.join(", ")}
           </pre>
         </div>
@@ -607,7 +607,7 @@ function BenchmarkScenarioDetail({
           <div className="font-medium text-surface-muted">{t("admin:benchDetailLlmStream")}</div>
           {llmStream.reasoning ? (
             <div>
-              <div className="mb-1 text-[10px] text-surface-muted">
+              <div className="mb-1 text-meta text-surface-muted">
                 {t("admin:benchDetailLlmReasoning")}
                 {typeof llmStream.reasoning_chars === "number"
                   ? ` · ${llmStream.reasoning_chars} chars`
@@ -619,7 +619,7 @@ function BenchmarkScenarioDetail({
           ) : null}
           {llmStream.text ? (
             <div>
-              <div className="mb-1 text-[10px] text-surface-muted">
+              <div className="mb-1 text-meta text-surface-muted">
                 {t("admin:benchDetailLlmText")}
                 {typeof llmStream.text_chars === "number" ? ` · ${llmStream.text_chars} chars` : ""}
                 {llmStream.text_truncated ? ` · ${t("admin:benchDetailTruncated")}` : ""}
@@ -632,7 +632,7 @@ function BenchmarkScenarioDetail({
       {(res.transport_error || res.error) ? (
         <div className="rounded border border-amber-500/25 bg-amber-950/20 p-2">
           <div className="font-medium text-amber-300">{t("admin:benchDetailTransportError")}</div>
-          <pre className="mt-1 whitespace-pre-wrap font-mono text-[11px] text-amber-100/90">
+          <pre className="mt-1 whitespace-pre-wrap font-mono text-meta text-amber-100/90">
             {res.transport_error || res.error}
           </pre>
           {res.run_metrics?.http_status != null ? (
@@ -645,7 +645,7 @@ function BenchmarkScenarioDetail({
       {res.rubric_failure_reason ? (
         <div className="rounded border border-red-500/30 bg-red-950/30 p-2">
           <div className="font-medium text-red-300">{t("admin:benchDetailRubricFailure")}</div>
-          <pre className="mt-1 whitespace-pre-wrap font-mono text-[11px] text-red-200/90">
+          <pre className="mt-1 whitespace-pre-wrap font-mono text-meta text-red-200/90">
             {res.rubric_failure_reason}
           </pre>
         </div>
@@ -653,7 +653,7 @@ function BenchmarkScenarioDetail({
       {!res.rubric_failure_reason && res.failure_reason && !(res.transport_error || res.error) ? (
         <div className="rounded border border-red-500/30 bg-red-950/30 p-2">
           <div className="font-medium text-red-300">{t("admin:benchDetailFailure")}</div>
-          <pre className="mt-1 whitespace-pre-wrap font-mono text-[11px] text-red-200/90">
+          <pre className="mt-1 whitespace-pre-wrap font-mono text-meta text-red-200/90">
             {res.failure_reason}
           </pre>
         </div>
@@ -661,7 +661,7 @@ function BenchmarkScenarioDetail({
       {(benchDiag?.insights?.length ?? 0) > 0 ? (
         <div className="rounded border border-sky-500/25 bg-sky-950/25 p-2">
           <div className="font-medium text-sky-300">{t("admin:benchDetailInsights")}</div>
-          <ul className="mt-1 list-inside list-disc text-[11px] text-sky-100/90">
+          <ul className="mt-1 list-inside list-disc text-meta text-sky-100/90">
             {benchDiag!.insights!.map((line, i) => (
               <li key={i}>{line}</li>
             ))}
@@ -672,7 +672,7 @@ function BenchmarkScenarioDetail({
         <div>
           <div className="mb-1 font-medium text-surface-muted">{t("admin:benchDetailToolRounds")}</div>
           <div className="max-h-56 overflow-auto rounded bg-black/30">
-            <table className="w-full font-mono text-[10px] text-white/85">
+            <table className="w-full font-mono text-meta text-white/85">
               <thead className="sticky top-0 bg-black/60 text-surface-muted">
                 <tr>
                   <th className="px-2 py-1 text-left">{t("admin:benchDetailToolRoundCol")}</th>
@@ -735,7 +735,7 @@ function BenchmarkScenarioDetail({
       {schemaRounds.length > 0 ? (
         <div>
           <div className="mb-1 font-medium text-surface-muted">{t("admin:benchDetailSchemaRounds")}</div>
-          <pre className="max-h-24 overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 font-mono text-[10px] text-white/80">
+          <pre className="max-h-24 overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 font-mono text-meta text-white/80">
             {schemaRounds
               .map((sr) => {
                 const tools = (sr.full_schema_tools ?? []).join(", ");
@@ -748,7 +748,7 @@ function BenchmarkScenarioDetail({
       {traceInvocations.length > 0 ? (
         <div>
           <div className="mb-1 font-medium text-surface-muted">{t("admin:benchDetailToolTrace")}</div>
-          <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 font-mono text-[10px] text-white/80">
+          <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 font-mono text-meta text-white/80">
             {traceInvocations
               .map((inv) => {
                 const name = String(inv.tool_name || "?");
@@ -765,7 +765,7 @@ function BenchmarkScenarioDetail({
       {res.run_metrics?.bench_diagnostics?.ws_errors?.length ? (
         <div className="rounded border border-amber-500/20 bg-amber-950/20 p-2">
           <div className="font-medium text-amber-300">{t("admin:benchDetailWsErrors")}</div>
-          <ul className="mt-1 list-inside list-disc font-mono text-[11px] text-amber-100/90">
+          <ul className="mt-1 list-inside list-disc font-mono text-meta text-amber-100/90">
             {res.run_metrics.bench_diagnostics.ws_errors.map((row, i) => (
               <li key={i}>
                 {row.type || "error"}
@@ -779,7 +779,7 @@ function BenchmarkScenarioDetail({
       {(res.run_metrics?.bench_diagnostics?.timeline_tail?.length ?? 0) > 0 ? (
         <div>
           <div className="mb-1 font-medium text-surface-muted">{t("admin:benchDetailTimeline")}</div>
-          <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 font-mono text-[10px] text-white/80">
+          <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 font-mono text-meta text-white/80">
             {res.run_metrics!.bench_diagnostics!.timeline_tail!
               .map((ev) => {
                 const typ = String(ev.type || "?");
@@ -1890,7 +1890,7 @@ export function AdminBenchmarks() {
                     ))
                   )}
                 </select>
-                <p className="mt-1 text-[11px] text-surface-muted">{t("admin:benchFriendUserHint")}</p>
+                <p className="mt-1 text-meta text-surface-muted">{t("admin:benchFriendUserHint")}</p>
               </>
             ) : null}
             <div className="mt-4 border-t border-white/5 pt-3">
@@ -1960,7 +1960,7 @@ export function AdminBenchmarks() {
                     : t("admin:benchCleanupResources")}
                 </button>
               ) : null}
-              <p className="mt-2 text-[11px] text-surface-muted">
+              <p className="mt-2 text-meta text-surface-muted">
                 {t("admin:benchCleanupWorkspacesHint")}
               </p>
               {cleanupFeedback ? (
@@ -1975,13 +1975,13 @@ export function AdminBenchmarks() {
                 />
                 <span>
                   <span className="font-medium text-white/90">{t("admin:benchRetainWorkspaces")}</span>
-                  <span className="mt-0.5 block text-[11px]">{t("admin:benchRetainWorkspacesHint")}</span>
+                  <span className="mt-0.5 block text-meta">{t("admin:benchRetainWorkspacesHint")}</span>
                 </span>
               </label>
-              <p className="mt-2 text-[11px] text-surface-muted">
+              <p className="mt-2 text-meta text-surface-muted">
                 {t("admin:benchSecretsAutoHint")}
               </p>
-              <p className="mt-2 text-[11px] text-surface-muted">
+              <p className="mt-2 text-meta text-surface-muted">
                 {t("admin:benchSecretsManageHint")}{" "}
                 <Link to="/settings/connections" className="text-sky-400/90 hover:underline">
                   {t("admin:benchSecretsSettingsLink")}
@@ -1996,7 +1996,7 @@ export function AdminBenchmarks() {
                 <h2 className="text-sm font-medium text-white">{t("admin:benchProfiles")}</h2>
                 <p className="text-xs text-surface-muted">{t("admin:benchDbProfilesSelectHint")}</p>
                 {benchProviders.length ? (
-                  <p className="mt-1 text-[11px] text-surface-muted">
+                  <p className="mt-1 text-meta text-surface-muted">
                     {t("admin:benchProfileCount", {
                       count: selectedProfileCount,
                     })}
@@ -2059,7 +2059,7 @@ export function AdminBenchmarks() {
                             </span>
                             <span className="font-mono text-surface-muted">{p.catalog_owned_by}</span>
                             {p.source === "env" ? (
-                              <span className="rounded bg-emerald-950/40 px-1.5 py-0.5 text-[10px] text-emerald-200">
+                              <span className="rounded bg-emerald-950/40 px-1.5 py-0.5 text-meta text-emerald-200">
                                 .env
                               </span>
                             ) : null}
@@ -2067,7 +2067,7 @@ export function AdminBenchmarks() {
                               <span className="font-mono text-surface-muted">db id={p.endpoint_id}</span>
                             ) : null}
                             {checked && selectedModels.length ? (
-                              <span className="rounded bg-sky-950/50 px-1.5 py-0.5 text-[10px] text-sky-200">
+                              <span className="rounded bg-sky-950/50 px-1.5 py-0.5 text-meta text-sky-200">
                                 {t("admin:benchModelsSelected", { count: selectedModels.length })}
                               </span>
                             ) : null}
@@ -2110,7 +2110,7 @@ export function AdminBenchmarks() {
                                       onChange={() => toggleProviderModel(p.catalog_owned_by, id)}
                                       className={benchCheckboxClass}
                                     />
-                                    <span className="font-mono text-[11px] text-white">{id}</span>
+                                    <span className="font-mono text-meta text-white">{id}</span>
                                   </label>
                                 );
                               })}
@@ -2190,11 +2190,11 @@ export function AdminBenchmarks() {
                                   />
                                   <span>{tLoose("admin:benchTuneReviewerUseProvider")}</span>
                                 </label>
-                                <span className="text-[10px] uppercase tracking-wide text-violet-200/70">
+                                <span className="text-meta uppercase tracking-wide text-violet-200/70">
                                   {tLoose("admin:benchTuneReviewerOptional")}
                                 </span>
                               </div>
-                              <label className="mt-2 block text-[11px] text-surface-muted">
+                              <label className="mt-2 block text-meta text-surface-muted">
                                 {tLoose("admin:benchTuneReviewerModel")}
                                 <select
                                   value={reviewerValue}
@@ -2213,7 +2213,7 @@ export function AdminBenchmarks() {
                                 </select>
                               </label>
                               {reviewerOptions.length === 0 ? (
-                                <p className="mt-2 text-[11px] text-amber-300">
+                                <p className="mt-2 text-meta text-amber-300">
                                   {tLoose("admin:benchTuneReviewerNoModels")}
                                 </p>
                               ) : null}
@@ -2241,7 +2241,7 @@ export function AdminBenchmarks() {
               <div>
                 <h2 className="text-sm font-medium text-white">{t("admin:benchTuneTitle")}</h2>
                 <p className="mt-1 text-xs text-surface-muted">{t("admin:benchTuneIntro")}</p>
-                <p className="mt-1 text-[11px] text-surface-muted">
+                <p className="mt-1 text-meta text-surface-muted">
                   {selectedProfileCount > 1
                     ? t("admin:benchTuneFirstProfileHint")
                     : t("admin:benchTuneSingleProfileHint")}
@@ -2285,12 +2285,12 @@ export function AdminBenchmarks() {
                 />
               </label>
             </div>
-            <p className="mt-2 text-[11px] text-surface-muted">
+            <p className="mt-2 text-meta text-surface-muted">
               {reviewerMode === "patch_and_test"
                 ? tLoose("admin:benchTuneReviewerSelectProviderHint")
                 : tLoose("admin:benchTuneReviewerPatchHint")}
             </p>
-            {reviewNotice ? <p className="mt-3 text-[11px] text-emerald-300">{reviewNotice}</p> : null}
+            {reviewNotice ? <p className="mt-3 text-meta text-emerald-300">{reviewNotice}</p> : null}
             {tuningSessions.length ? (
               <div className="mt-4 space-y-2">
                 {tuningSessions.slice(0, 5).map((session) => {
@@ -2358,7 +2358,7 @@ export function AdminBenchmarks() {
                             </span>
                           </div>
                           {bestAttempt ? (
-                            <p className="mt-1 text-[11px] text-surface-muted">
+                            <p className="mt-1 text-meta text-surface-muted">
                               {t("admin:benchTuneBestPreset", {
                                 preset: bestAttempt.label || bestAttempt.preset_id,
                               })}{" "}
@@ -2379,18 +2379,18 @@ export function AdminBenchmarks() {
                             </p>
                           ) : null}
                           {bestPatches.length > 0 ? (
-                            <p className="mt-1 text-[11px] text-violet-100/90">
+                            <p className="mt-1 text-meta text-violet-100/90">
                               {t("admin:benchTuneBestPatches", { count: bestPatches.length })}:{" "}
                               {bestPatches.map((p) => p.knob_id).join(", ")}
                             </p>
                           ) : (
-                            <p className="mt-1 text-[11px] text-surface-muted">
+                            <p className="mt-1 text-meta text-surface-muted">
                               {t("admin:benchTuneNoPatches")}
                             </p>
                           )}
                           {attempts.length ? (
                             <div className="mt-2 overflow-x-auto rounded border border-white/5 bg-black/20">
-                              <table className="w-full min-w-[560px] text-left text-[11px]">
+                              <table className="w-full min-w-[560px] text-left text-meta">
                                 <thead className="text-surface-muted">
                                   <tr>
                                     <th className="px-2 py-1">{t("admin:benchTunePreset")}</th>
@@ -2453,7 +2453,7 @@ export function AdminBenchmarks() {
                             </div>
                           ) : null}
                           {session.error_text ? (
-                            <p className="mt-1 text-[11px] text-rose-300">{session.error_text}</p>
+                            <p className="mt-1 text-meta text-rose-300">{session.error_text}</p>
                           ) : null}
                         </div>
                         <div className="flex shrink-0 flex-wrap gap-2">
@@ -2539,7 +2539,7 @@ export function AdminBenchmarks() {
               </button>
             </div>
             {activeFixtures.length > 0 ? (
-              <p className="mt-2 text-[11px] text-surface-muted">
+              <p className="mt-2 text-meta text-surface-muted">
                 {t("admin:benchAutoSetup")}:{" "}
                 {activeFixtures.map((fx) => fx.title).join(" · ")}
               </p>
@@ -2566,27 +2566,27 @@ export function AdminBenchmarks() {
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="font-mono text-xs text-sky-300/90">{sc.id}</span>
                           <span className="text-sm text-white">{sc.title}</span>
-                          <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-surface-muted">
+                          <span className="rounded bg-white/10 px-1.5 py-0.5 text-meta text-surface-muted">
                             {t("admin:benchTier", { n: sc.tier })}
                           </span>
-                          <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-surface-muted">
+                          <span className="rounded bg-white/10 px-1.5 py-0.5 text-meta text-surface-muted">
                             {sc.agent_id}
                           </span>
                           {sc.execution && sc.execution !== "chat" ? (
-                            <span className="rounded bg-violet-950/50 px-1.5 py-0.5 text-[10px] text-violet-200">
+                            <span className="rounded bg-violet-950/50 px-1.5 py-0.5 text-meta text-violet-200">
                               {sc.execution}
                             </span>
                           ) : null}
                         </div>
                         <p className="mt-1 text-xs text-surface-muted">{sc.summary}</p>
                         {sc.expected_tools.length ? (
-                          <p className="mt-1 text-[11px] text-surface-muted">
+                          <p className="mt-1 text-meta text-surface-muted">
                             {t("admin:benchExpectedTools")}:{" "}
                             {sc.expected_tools.join(", ")}
                           </p>
                         ) : null}
                         {sc.requires.length ? (
-                          <p className="mt-0.5 text-[11px] text-surface-muted">
+                          <p className="mt-0.5 text-meta text-surface-muted">
                             {t("admin:benchFixturesRequired")}: {sc.requires.join(", ")}
                           </p>
                         ) : null}
@@ -2594,14 +2594,14 @@ export function AdminBenchmarks() {
                           const secretWarn = scenarioSecretWarning(sc);
                           if (secretWarn) {
                             return (
-                              <p className="mt-0.5 text-[11px] text-amber-400/90">
+                              <p className="mt-0.5 text-meta text-amber-400/90">
                                 {t("admin:benchWillSkip")}: {secretWarn}
                               </p>
                             );
                           }
                           if (sc.skip_without_env) {
                             return (
-                              <p className="mt-0.5 text-[11px] text-amber-400/90">
+                              <p className="mt-0.5 text-meta text-amber-400/90">
                                 {t("admin:benchEnvSkip")}: {sc.skip_without_env}
                               </p>
                             );
@@ -2613,12 +2613,12 @@ export function AdminBenchmarks() {
                           onClick={() =>
                             setExpandedScenarioId(expanded ? null : sc.id)
                           }
-                          className="mt-1 text-[11px] text-sky-400 hover:underline"
+                          className="mt-1 text-meta text-sky-400 hover:underline"
                         >
                           {expanded ? t("admin:benchHidePrompt") : t("admin:benchShowPrompt")}
                         </button>
                         {expanded ? (
-                          <div className="mt-2 space-y-1 rounded border border-white/5 bg-black/30 p-2 text-[11px]">
+                          <div className="mt-2 space-y-1 rounded border border-white/5 bg-black/30 p-2 text-meta">
                             <p className="text-surface-muted">{t("admin:benchPrompt")}</p>
                             <p className="whitespace-pre-wrap text-white/90">
                               {benchmarkScenarioPrompt(sc, promptLocale, promptVariant)}
@@ -2655,7 +2655,7 @@ export function AdminBenchmarks() {
               <h3 className="text-xs font-medium uppercase text-surface-muted">
                 {t("admin:benchRunOptionsTitle")}
               </h3>
-              <p className="mt-1 text-[11px] text-surface-muted">{t("admin:benchRunOptionsHint")}</p>
+              <p className="mt-1 text-meta text-surface-muted">{t("admin:benchRunOptionsHint")}</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <label className="block text-sm sm:col-span-2 lg:col-span-3">
@@ -2668,7 +2668,7 @@ export function AdminBenchmarks() {
                   placeholder={t("admin:benchCohortLabelPlaceholder")}
                   className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
                 />
-                <span className="mt-1 block text-[11px] text-surface-muted">
+                <span className="mt-1 block text-meta text-surface-muted">
                   {t("admin:benchCohortLabelHint")}
                 </span>
               </label>
@@ -2685,7 +2685,7 @@ export function AdminBenchmarks() {
                     </option>
                   ))}
                 </select>
-                <span className="mt-1 block text-[11px] text-surface-muted">
+                <span className="mt-1 block text-meta text-surface-muted">
                   {t("admin:benchPromptVariantHint")}
                 </span>
               </label>
@@ -2702,7 +2702,7 @@ export function AdminBenchmarks() {
                     </option>
                   ))}
                 </select>
-                <span className="mt-1 block text-[11px] text-surface-muted">
+                <span className="mt-1 block text-meta text-surface-muted">
                   {t("admin:benchPromptLocaleHint")}
                 </span>
               </label>
@@ -2717,7 +2717,7 @@ export function AdminBenchmarks() {
                   placeholder={t("admin:benchScenarioTimeoutPlaceholder")}
                   className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
                 />
-                <span className="mt-1 block text-[11px] text-surface-muted">
+                <span className="mt-1 block text-meta text-surface-muted">
                   {t("admin:benchScenarioTimeoutHint")}
                 </span>
               </label>
@@ -2732,7 +2732,7 @@ export function AdminBenchmarks() {
                   placeholder={t("admin:benchMaxToolRoundsPlaceholder")}
                   className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
                 />
-                <span className="mt-1 block text-[11px] text-surface-muted">
+                <span className="mt-1 block text-meta text-surface-muted">
                   {t("admin:benchMaxToolRoundsHint")}
                 </span>
               </label>
@@ -2747,12 +2747,12 @@ export function AdminBenchmarks() {
                   placeholder={t("admin:benchScenarioFailureRetriesPlaceholder")}
                   className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-white"
                 />
-                <span className="mt-1 block text-[11px] text-surface-muted">
+                <span className="mt-1 block text-meta text-surface-muted">
                   {t("admin:benchScenarioFailureRetriesHint")}
                 </span>
               </label>
             </div>
-            <p className="text-[11px] text-surface-muted">{t("admin:benchPrefsPersistHint")}</p>
+            <p className="text-meta text-surface-muted">{t("admin:benchPrefsPersistHint")}</p>
           </section>
             </div>
           </details>
@@ -2787,7 +2787,7 @@ export function AdminBenchmarks() {
                     <span className="text-amber-300">{t("admin:benchWorkspaceQuotaFull")}</span>
                   ) : null}
                 </div>
-                <p className="mt-1 text-[11px] text-surface-muted">
+                <p className="mt-1 text-meta text-surface-muted">
                   {t("admin:benchRunNote", {
                     user: runAsUser ? userOptionLabel(runAsUser) : runAsUserId || "—",
                   })}
@@ -2899,7 +2899,7 @@ export function AdminBenchmarks() {
                       className="shrink-0 px-2 text-surface-muted hover:bg-rose-950/40 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-30"
                     >
                       {deletingRunId === r.id ? (
-                        <span className="text-[10px]">…</span>
+                        <span className="text-meta">…</span>
                       ) : (
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
@@ -2945,7 +2945,7 @@ export function AdminBenchmarks() {
                   ) : null}
                 </h2>
                 {detail.cohort_json?.fingerprint || detail.cohort_json?.cohort_label ? (
-                  <p className="mt-1 font-mono text-[11px] text-surface-muted break-all">
+                  <p className="mt-1 font-mono text-meta text-surface-muted break-all">
                     {detail.cohort_json?.cohort_label ? (
                       <span>{String(detail.cohort_json.cohort_label)} · </span>
                     ) : null}
@@ -2976,7 +2976,7 @@ export function AdminBenchmarks() {
                 ) : null}
                 {detail.report_json?.bench_cleanup ||
                 detail.report_json?.bench_cleanup_finish ? (
-                  <div className="mt-2 space-y-1 text-[11px] text-surface-muted">
+                  <div className="mt-2 space-y-1 text-meta text-surface-muted">
                     {detail.report_json.bench_cleanup ? (
                       <p>
                         {t("admin:benchCleanupStart")}:{" "}
@@ -3011,7 +3011,7 @@ export function AdminBenchmarks() {
                         : ""}
                     </p>
                     {detail.report_json?.in_flight ? (
-                      <p className="font-mono text-[11px] text-sky-300/95">
+                      <p className="font-mono text-meta text-sky-300/95">
                         {t("admin:benchInFlightNow")}: {detail.report_json.in_flight.scenario_id}{" "}
                         · {formatInFlightProviderModel(detail.report_json.in_flight)} ·{" "}
                         {formatInFlightActivity(detail.report_json.in_flight, t)}
@@ -3028,7 +3028,7 @@ export function AdminBenchmarks() {
                     {detail.report_json?.in_flight &&
                     formatInFlightPreview(detail.report_json.in_flight) ? (
                       <p
-                        className="font-mono text-[10px] leading-snug text-sky-200/70 truncate max-w-full"
+                        className="font-mono text-meta leading-snug text-sky-200/70 truncate max-w-full"
                         title={detail.report_json.in_flight.generation_preview}
                       >
                         {t("admin:benchInFlightPreview")}:{" "}
@@ -3041,28 +3041,28 @@ export function AdminBenchmarks() {
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
                       type="button"
-                      className="rounded border border-white/15 bg-black/30 px-2.5 py-1 text-[11px] text-white/90 hover:bg-white/10"
+                      className="rounded border border-white/15 bg-black/30 px-2.5 py-1 text-meta text-white/90 hover:bg-white/10"
                       onClick={() => downloadAttemptsCsv(detail)}
                     >
                       {t("admin:benchExportAttemptsCsv")}
                     </button>
                     <button
                       type="button"
-                      className="rounded border border-white/15 bg-black/30 px-2.5 py-1 text-[11px] text-white/90 hover:bg-white/10"
+                      className="rounded border border-white/15 bg-black/30 px-2.5 py-1 text-meta text-white/90 hover:bg-white/10"
                       onClick={() => downloadFailuresCsv(detail)}
                     >
                       {t("admin:benchExportFailuresCsv")}
                     </button>
                     <button
                       type="button"
-                      className="rounded border border-white/15 bg-black/30 px-2.5 py-1 text-[11px] text-white/90 hover:bg-white/10"
+                      className="rounded border border-white/15 bg-black/30 px-2.5 py-1 text-meta text-white/90 hover:bg-white/10"
                       onClick={() => downloadFailuresJson(detail)}
                     >
                       {t("admin:benchExportFailuresJson")}
                     </button>
                     <button
                       type="button"
-                      className="rounded border border-white/15 bg-black/30 px-2.5 py-1 text-[11px] text-white/90 hover:bg-white/10"
+                      className="rounded border border-white/15 bg-black/30 px-2.5 py-1 text-meta text-white/90 hover:bg-white/10"
                       onClick={() => downloadFullReportJson(detail)}
                     >
                       {t("admin:benchExportFullJson")}
@@ -3107,7 +3107,7 @@ export function AdminBenchmarks() {
                         <td className="py-1.5 pr-2 font-mono text-sky-300">
                           {detail.report_json.in_flight.scenario_id}
                         </td>
-                        <td className="py-1.5 pr-2 font-mono text-[11px] text-sky-300/90">
+                        <td className="py-1.5 pr-2 font-mono text-meta text-sky-300/90">
                           {formatInFlightProviderModel(detail.report_json.in_flight)}
                         </td>
                         <td className="py-1.5 pr-2 text-sky-300">
@@ -3124,7 +3124,7 @@ export function AdminBenchmarks() {
                           {typeof detail.report_json.in_flight.forwarded_tool_count ===
                             "number" &&
                           detail.report_json.in_flight.forwarded_tool_count > 0 ? (
-                            <span className="ml-1 block text-[10px] text-surface-muted">
+                            <span className="ml-1 block text-meta text-surface-muted">
                               → {detail.report_json.in_flight.forwarded_tool_count}{" "}
                               {t("admin:benchInFlightForwardedTools")}
                               {detail.report_json.in_flight.routed_category
@@ -3134,7 +3134,7 @@ export function AdminBenchmarks() {
                           ) : null}
                         </td>
                         <td className="py-1.5 pr-2 text-surface-muted">—</td>
-                        <td className="py-1.5 pr-2 font-mono text-[11px] text-sky-300/90">
+                        <td className="py-1.5 pr-2 font-mono text-meta text-sky-300/90">
                           {formatInFlightPromptTokens(detail.report_json.in_flight) ?? "—"}
                         </td>
                         <td className="py-1.5 pr-2 text-sky-300/90">
@@ -3175,7 +3175,7 @@ export function AdminBenchmarks() {
                               </div>
                             </td>
                             <td className="py-1.5 pr-2 font-mono">{res.scenario_id}</td>
-                            <td className="py-1.5 pr-2 font-mono text-[11px]">
+                            <td className="py-1.5 pr-2 font-mono text-meta">
                               {formatBenchmarkProviderModel(res)}
                             </td>
                             <td className="py-1.5 pr-2">
@@ -3327,7 +3327,7 @@ export function AdminBenchmarks() {
                 ? t("admin:benchBulkDeletePreviewLoading")
                 : t("admin:benchBulkDeletePreview", { count: bulkDeletePreviewCount })}
             </p>
-            <p className="mt-1 text-[11px] text-surface-muted">{t("admin:benchBulkDeleteActiveSkipped")}</p>
+            <p className="mt-1 text-meta text-surface-muted">{t("admin:benchBulkDeleteActiveSkipped")}</p>
             <div className="mt-5 flex flex-wrap justify-end gap-2">
               <button
                 type="button"

@@ -49,7 +49,7 @@ export function UserMessageBubble({ message, timeLabel, showRetry, onCopy, onRet
   return (
     <div className="group relative max-w-[min(100%,42rem)] rounded-2xl border border-sky-900/40 bg-[#1a2a3d] px-4 py-3 text-sm text-neutral-100 shadow-sm">
       <div className="mb-1 flex items-center justify-between gap-2">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+        <span className="text-meta font-medium uppercase tracking-wide text-surface-muted">
           {t("chat:roleYou")}
           {timeLabel ? (
             <span className="ml-2 font-normal normal-case">{timeLabel}</span>
@@ -59,7 +59,7 @@ export function UserMessageBubble({ message, timeLabel, showRetry, onCopy, onRet
           <button
             type="button"
             onClick={onCopy}
-            className="rounded-md px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-sky-200/80 hover:bg-white/10 hover:text-sky-100"
+            className="rounded-md px-2 py-0.5 text-meta font-medium uppercase tracking-wide text-sky-200/80 hover:bg-white/10 hover:text-sky-100"
             title={t("chat:messageCopyTitle")}
           >
             {t("chat:messageCopy")}
@@ -68,7 +68,7 @@ export function UserMessageBubble({ message, timeLabel, showRetry, onCopy, onRet
             <button
               type="button"
               onClick={onRetry}
-              className="rounded-md px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-violet-200/80 hover:bg-white/10 hover:text-violet-100"
+              className="rounded-md px-2 py-0.5 text-meta font-medium uppercase tracking-wide text-violet-200/80 hover:bg-white/10 hover:text-violet-100"
               title={t("chat:messageRetryTitle")}
             >
               {t("chat:messageRetry")}

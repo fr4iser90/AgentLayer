@@ -119,7 +119,7 @@ export function ShareWidgetBlockBody(props: { block: UiBlock }) {
       <h3 className="text-sm font-medium text-white">
         {label || t("dashboard:shareWidgetTitle")}
       </h3>
-      <p className="mt-1 text-[10px] uppercase tracking-wide text-surface-muted">
+      <p className="mt-1 text-meta uppercase tracking-wide text-surface-muted">
         {resourceType}
         {kind ? ` · ${kind}` : ""} · {t("dashboard:shareWidgetDays", { count: effectiveDays })}
         {preview?.projection_stale ? ` · ${t("dashboard:shareWidgetStale")}` : ""}

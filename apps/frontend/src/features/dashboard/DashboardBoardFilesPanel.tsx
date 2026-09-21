@@ -41,7 +41,7 @@ export function DashboardBoardFilesPanel(props: { dashboardId: string }) {
         <button
           type="button"
           disabled={busy}
-          className="rounded-md border border-white/10 px-2 py-1 text-[10px] text-neutral-300 hover:bg-white/5 disabled:opacity-40"
+          className="rounded-md border border-white/10 px-2 py-1 text-meta text-neutral-300 hover:bg-white/5 disabled:opacity-40"
           onClick={() => void reload()}
         >
           {t("dashboard:boardFilesRefresh")}
@@ -61,7 +61,7 @@ export function DashboardBoardFilesPanel(props: { dashboardId: string }) {
               className="rounded-md border border-white/5 bg-black/30 px-2 py-1.5 text-xs text-neutral-200"
             >
               <p className="truncate font-medium">{f.original_name || f.id}</p>
-              <p className="truncate text-[10px] text-surface-muted">
+              <p className="truncate text-meta text-surface-muted">
                 {f.content_type || "file"} · {f.file_ref || f.gallery_ref}
               </p>
             </li>

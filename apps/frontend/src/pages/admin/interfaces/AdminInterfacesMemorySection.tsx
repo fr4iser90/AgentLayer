@@ -106,11 +106,11 @@ export function AdminInterfacesMemorySection() {
                     <span className="font-mono">{p.provider_id}</span> · {p.label}
                     {p.already_in_db ? ` · ${t("admin:envLlmAlreadyInDb")}` : ""}
                   </summary>
-                  <p className="mt-2 break-all font-mono text-[11px] text-surface-muted">{p.base_url}</p>
-                  <p className="mt-1 text-[11px] text-neutral-300">
+                  <p className="mt-2 break-all font-mono text-meta text-surface-muted">{p.base_url}</p>
+                  <p className="mt-1 text-meta text-neutral-300">
                     {t("admin:envLlmModels")}: <span className="font-mono">{p.model_default || "—"}</span>
                   </p>
-                  <p className="mt-1 text-[11px] text-neutral-300">
+                  <p className="mt-1 text-meta text-neutral-300">
                     {t("admin:envLlmKey")}:{" "}
                     {p.api_key_configured
                       ? t("admin:envLlmKeyRedacted", { last4: p.api_key_last4 ?? t("admin:envLlmKeyLast4Unknown") })
@@ -118,7 +118,7 @@ export function AdminInterfacesMemorySection() {
                   </p>
                   <ul className="mt-2 grid gap-1 sm:grid-cols-2">
                     {p.cleanup_keys.map((key) => (
-                      <li key={key} className="font-mono text-[10px] text-amber-100/70">{key}</li>
+                      <li key={key} className="font-mono text-meta text-amber-100/70">{key}</li>
                     ))}
                   </ul>
                 </details>
@@ -340,13 +340,13 @@ export function AdminInterfacesMemorySection() {
                         <span className="font-mono">{p.provider_id}</span> · {p.label}
                         {p.already_in_db ? ` · ${t("admin:envLlmAlreadyInDb")}` : ""}
                       </summary>
-                      <p className="mt-2 break-all font-mono text-[11px] text-surface-muted">{p.base_url}</p>
-                      <p className="mt-1 text-[11px] text-neutral-300">
+                      <p className="mt-2 break-all font-mono text-meta text-surface-muted">{p.base_url}</p>
+                      <p className="mt-1 text-meta text-neutral-300">
                         {t("admin:envLlmModels")}: <span className="font-mono">{p.model_default || "—"}</span>
                       </p>
                       <ul className="mt-2 grid gap-1 sm:grid-cols-2">
                         {p.cleanup_keys.map((key) => (
-                          <li key={key} className="font-mono text-[10px] text-amber-100/70">{key}</li>
+                          <li key={key} className="font-mono text-meta text-amber-100/70">{key}</li>
                         ))}
                       </ul>
                     </details>

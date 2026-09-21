@@ -1,11 +1,11 @@
 {
   "profiles": {
-    "fast": ["ddd_layers", "ddd_quality", "agent_governance", "tenant_scope", "frontend_i18n"],
-    "precommit": ["ddd_layers", "ddd_quality", "agent_governance", "tenant_scope", "backend_unit", "frontend_i18n", "node_cve_full", "python_cve"],
+    "fast": ["ddd_layers", "ddd_quality", "agent_governance", "tenant_scope", "frontend_i18n", "frontend_type_scale"],
+    "precommit": ["ddd_layers", "ddd_quality", "agent_governance", "tenant_scope", "backend_unit", "frontend_i18n", "frontend_type_scale", "node_cve_full", "python_cve"],
     "security": ["node_cve_full", "python_cve", "tenant_scope_all"],
     "architecture": ["ddd_layers_report", "ddd_quality", "agent_governance", "tenant_scope_all"],
-    "quality": ["agent_governance", "backend_unit", "frontend_i18n", "bandit"],
-    "ci": ["ddd_layers_all", "ddd_quality", "agent_governance", "tenant_scope", "backend_unit", "frontend_i18n", "node_cve_full", "python_cve", "bandit"]
+    "quality": ["agent_governance", "backend_unit", "frontend_i18n", "frontend_type_scale", "bandit"],
+    "ci": ["ddd_layers_all", "ddd_quality", "agent_governance", "tenant_scope", "backend_unit", "frontend_i18n", "frontend_type_scale", "node_cve_full", "python_cve", "bandit"]
   },
   "checks": {
     "tenant_scope": {
@@ -483,6 +483,13 @@
       "module": "command_check",
       "kind": "frontend_i18n",
       "cwd": "apps/frontend"
+    },
+    "frontend_type_scale": {
+      "module": "command_check",
+      "command": ["node", "scripts/check-type-scale.mjs"],
+      "cwd": "apps/frontend",
+      "required_tool": "node",
+      "nix_shell_command": "cd apps/frontend && node scripts/check-type-scale.mjs"
     },
     "node_cve": {
       "module": "command_check",

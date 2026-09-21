@@ -119,7 +119,7 @@ export function VoiceMicButton({
               aria-hidden
             />
             <span
-              className="pointer-events-none absolute -right-1 -top-1 z-10 flex items-center gap-0.5 rounded border border-rose-400/60 bg-rose-950 px-1 py-px text-[8px] font-bold uppercase leading-none tracking-wide text-rose-100 shadow-sm"
+              className="pointer-events-none absolute -right-1 -top-1 z-10 flex items-center gap-0.5 rounded border border-rose-400/60 bg-rose-950 px-1 py-px text-meta font-bold uppercase leading-none tracking-wide text-rose-100 shadow-sm"
               aria-live="polite"
             >
               <span className="relative flex h-1.5 w-1.5 shrink-0">

@@ -160,10 +160,10 @@ export function GalleryBlockBody(props: {
       </div>
       {bulkUploadErr ? <p className="mb-2 text-xs text-red-400">{bulkUploadErr}</p> : null}
       {!readOnly && !dashboardId ? (
-        <p className="mb-2 text-[10px] text-amber-200/90">{t("dashboard:saveForUpload")}</p>
+        <p className="mb-2 text-meta text-amber-200/90">{t("dashboard:saveForUpload")}</p>
       ) : null}
       {!readOnly ? (
-        <p className="mb-3 text-[10px] text-surface-muted">{t("dashboard:photosDragHint")}</p>
+        <p className="mb-3 text-meta text-surface-muted">{t("dashboard:photosDragHint")}</p>
       ) : null}
 
       {photos.length === 0 ? (
@@ -340,7 +340,7 @@ function GalleryPhotoCard(props: {
         >
           ⋮⋮
         </span>
-        <span className="text-[10px] text-surface-muted">{t("dashboard:photosDragHandle")}</span>
+        <span className="text-meta text-surface-muted">{t("dashboard:photosDragHandle")}</span>
       </div>
       {imageArea}
       <div className="space-y-2 p-3">
@@ -356,7 +356,7 @@ function GalleryPhotoCard(props: {
             />
           </label>
         </div>
-        {uploadErr ? <p className="text-[10px] text-red-400">{uploadErr}</p> : null}
+        {uploadErr ? <p className="text-meta text-red-400">{uploadErr}</p> : null}
         <input
           type="url"
           placeholder={t("dashboard:fileUrlPlaceholder")}

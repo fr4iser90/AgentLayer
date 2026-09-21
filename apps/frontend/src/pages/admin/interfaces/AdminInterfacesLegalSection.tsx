@@ -42,7 +42,7 @@ export function AdminInterfacesLegalSection() {
           </option>
         ))}
       </select>
-      <p className="mt-1 text-[11px] text-surface-muted">{t("admin:ifPlatformLegalJurisdictionHint")}</p>
+      <p className="mt-1 text-meta text-surface-muted">{t("admin:ifPlatformLegalJurisdictionHint")}</p>
 
       <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-white">
         <input

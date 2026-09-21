@@ -305,7 +305,7 @@ export function ProjectsImportModal({
                     ) : null}
                   </div>
                   {r.private ? (
-                    <span className="shrink-0 rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-surface-muted">
+                    <span className="shrink-0 rounded bg-white/10 px-1.5 py-0.5 text-meta text-surface-muted">
                       private
                     </span>
                   ) : null}

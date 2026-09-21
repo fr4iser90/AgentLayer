@@ -68,7 +68,7 @@ export function NotificationBell() {
           🔔
         </span>
         {unread > 0 ? (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-semibold text-black">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-meta font-semibold text-black">
             {unread > 99 ? "99+" : unread}
           </span>
         ) : null}
@@ -115,7 +115,7 @@ export function NotificationBell() {
                       {n.body ? (
                         <p className="mt-0.5 line-clamp-2 text-xs text-surface-muted">{n.body}</p>
                       ) : null}
-                      <p className="mt-1 text-[10px] text-white/30">{relativeTime(n.created_at, t)}</p>
+                      <p className="mt-1 text-meta text-white/30">{relativeTime(n.created_at, t)}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {n.link_path ? (
                           <Link

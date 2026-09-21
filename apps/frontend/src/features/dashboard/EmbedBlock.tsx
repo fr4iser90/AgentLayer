@@ -82,7 +82,7 @@ export function EmbedBlockBody(props: {
       {!readOnly ? (
         <div className="dashboard-grid-no-drag mb-3 space-y-2">
           <div>
-            <label className="mb-1 block text-[10px] uppercase text-surface-muted">
+            <label className="mb-1 block text-meta uppercase text-surface-muted">
               {t("dashboard:embedTitleOptionalLabel")}
             </label>
             <input
@@ -94,7 +94,7 @@ export function EmbedBlockBody(props: {
             />
           </div>
           <div>
-            <label className="mb-1 block text-[10px] uppercase text-surface-muted">
+            <label className="mb-1 block text-meta uppercase text-surface-muted">
               {t("dashboard:embedUrlLabel")}
             </label>
             <input
@@ -107,7 +107,7 @@ export function EmbedBlockBody(props: {
           </div>
           <div className="flex flex-wrap items-end gap-2">
             <div>
-              <label className="mb-1 block text-[10px] uppercase text-surface-muted">
+              <label className="mb-1 block text-meta uppercase text-surface-muted">
                 {t("dashboard:embedHeightLabel")}
               </label>
               <input
@@ -127,7 +127,7 @@ export function EmbedBlockBody(props: {
               {EMBED_ALLOWED_HOSTNAMES.slice(0, 4).join(", ")} …
             </p>
           ) : null}
-          <p className="text-[10px] leading-snug text-surface-muted">
+          <p className="text-meta leading-snug text-surface-muted">
             {t("dashboard:embedGoogleCalendarHint")}
           </p>
         </div>

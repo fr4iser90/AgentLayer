@@ -99,7 +99,7 @@ function ModelLeaderboardTable({
           {rows.map((row, idx) => (
             <tr key={`${row.catalog_owned_by}:${row.model}`} className="border-t border-white/5">
               <td className="py-1.5 pr-3 text-surface-muted">{idx + 1}</td>
-              <td className="py-1.5 pr-3 font-mono text-[11px]">{formatBenchmarkProviderModel(row)}</td>
+              <td className="py-1.5 pr-3 font-mono text-meta">{formatBenchmarkProviderModel(row)}</td>
               <td className="py-1.5 pr-3">{row.runs}</td>
               <td className="py-1.5 pr-3">
                 {row.samples}
@@ -140,7 +140,7 @@ function ScenarioGroupCard({
     <div className="rounded-lg border border-white/10 bg-black/20 p-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="font-mono text-sm text-white">{title}</h3>
-        <div className="flex flex-wrap gap-3 text-[11px] text-surface-muted">
+        <div className="flex flex-wrap gap-3 text-meta text-surface-muted">
           {group.fastest ? (
             <span>
               {t("admin:benchStatsFastestPassing")}:{" "}
@@ -158,7 +158,7 @@ function ScenarioGroupCard({
         </div>
       </div>
       <div className="mt-2 overflow-x-auto">
-        <table className="w-full min-w-[520px] text-left text-[11px]">
+        <table className="w-full min-w-[520px] text-left text-meta">
           <thead>
             <tr className="text-surface-muted">
               <th className="py-1 pr-2">#</th>
@@ -264,7 +264,7 @@ export function BenchmarkStatsPanel({
           <div>
             <h2 className="text-sm font-medium text-white">{t("admin:benchStatsTitle")}</h2>
             <p className="mt-1 text-xs text-surface-muted">{t("admin:benchStatsHint")}</p>
-            <p className="mt-1 text-[11px] text-surface-muted">{t("admin:benchStatsClearHint")}</p>
+            <p className="mt-1 text-meta text-surface-muted">{t("admin:benchStatsClearHint")}</p>
           </div>
           <div className="flex flex-wrap items-end gap-2">
             {onClearHistory ? (
@@ -361,7 +361,7 @@ export function BenchmarkStatsPanel({
           </div>
         </div>
         {stats?.meta ? (
-          <p className="mt-2 text-[11px] text-surface-muted">
+          <p className="mt-2 text-meta text-surface-muted">
             {t("admin:benchStatsMeta", {
               runs: stats.meta.run_count,
               results: stats.meta.result_count,

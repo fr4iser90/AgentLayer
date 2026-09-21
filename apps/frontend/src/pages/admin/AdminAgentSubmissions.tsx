@@ -48,7 +48,7 @@ function statusClassName(status: string): string {
 
 function Author({ id }: { id: string }) {
   const short = id.length > 8 ? `${id.slice(0, 6)}…` : id;
-  return <span className="font-mono text-[11px] text-surface-muted" title={id}>{short}</span>;
+  return <span className="font-mono text-meta text-surface-muted" title={id}>{short}</span>;
 }
 
 export function AdminAgentSubmissions() {
@@ -217,15 +217,15 @@ export function AdminAgentSubmissions() {
                 >
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-white">{s.title || s.agent_id}</span>
-                    <span className={`rounded px-1.5 py-0.5 text-[10px] ${riskClassName(s.risk_level)}`}>
+                    <span className={`rounded px-1.5 py-0.5 text-meta ${riskClassName(s.risk_level)}`}>
                       {t(`admin:agentSubmissionsRisk${s.risk_level.charAt(0).toUpperCase()}${s.risk_level.slice(1)}`)}
                     </span>
-                    <span className={`rounded px-1.5 py-0.5 text-[10px] ${statusClassName(s.status)}`}>
+                    <span className={`rounded px-1.5 py-0.5 text-meta ${statusClassName(s.status)}`}>
                       {t(`admin:agentSubmissionsStatus${s.status.charAt(0).toUpperCase()}${s.status.slice(1)}`)}
                     </span>
                   </div>
-                  <p className="mt-1 font-mono text-[11px] text-surface-muted">({s.agent_id})</p>
-                  <div className="mt-1 flex items-center gap-2 text-[11px] text-surface-muted">
+                  <p className="mt-1 font-mono text-meta text-surface-muted">({s.agent_id})</p>
+                  <div className="mt-1 flex items-center gap-2 text-meta text-surface-muted">
                     <Author id={s.author_id} />
                     {s.reviewed_by ? (
                       <span>· {t("admin:agentSubmissionsReviewedBy")}: {s.reviewed_by}</span>
@@ -281,33 +281,33 @@ export function AdminAgentSubmissions() {
               </dl>
 
               <div className="mt-4">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
+                <p className="text-meta font-medium uppercase tracking-wide text-surface-muted">
                   {t("admin:agentSubmissionsSystemPrompt")}
                 </p>
-                <pre className="mt-1 max-h-40 overflow-auto rounded bg-black/40 p-2 text-[11px] text-neutral-300 whitespace-pre-wrap">
+                <pre className="mt-1 max-h-40 overflow-auto rounded bg-black/40 p-2 text-meta text-neutral-300 whitespace-pre-wrap">
                   {selected.system_prompt || "—"}
                 </pre>
               </div>
 
               <div className="mt-3">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
+                <p className="text-meta font-medium uppercase tracking-wide text-surface-muted">
                   {t("admin:agentSubmissionsYaml")}
                 </p>
                 {preview ? (
-                  <pre className="mt-1 max-h-56 overflow-auto rounded bg-black/40 p-2 text-[11px] text-neutral-300">
+                  <pre className="mt-1 max-h-56 overflow-auto rounded bg-black/40 p-2 text-meta text-neutral-300">
                     {preview.yaml_text}
                   </pre>
                 ) : (
-                  <p className="mt-1 text-[11px] text-surface-muted">{t("admin:agentSubmissionsYamlLoading")}</p>
+                  <p className="mt-1 text-meta text-surface-muted">{t("admin:agentSubmissionsYamlLoading")}</p>
                 )}
               </div>
 
               {preview?.tool_warnings.length ? (
                 <div className="mt-3">
-                  <p className="text-[11px] font-medium uppercase tracking-wide text-surface-muted">
+                  <p className="text-meta font-medium uppercase tracking-wide text-surface-muted">
                     {t("admin:agentSubmissionsToolWarnings")}
                   </p>
-                  <ul className="mt-1 list-disc space-y-0.5 pl-4 text-[11px] text-amber-200">
+                  <ul className="mt-1 list-disc space-y-0.5 pl-4 text-meta text-amber-200">
                     {preview.tool_warnings.map((w) => (
                       <li key={w} className="font-mono">{w}</li>
                     ))}
@@ -317,10 +317,10 @@ export function AdminAgentSubmissions() {
 
               {selected.materialize_error ? (
                 <div className="mt-3">
-                  <p className="text-[11px] font-medium uppercase tracking-wide text-red-300/80">
+                  <p className="text-meta font-medium uppercase tracking-wide text-red-300/80">
                     {t("admin:agentSubmissionsMaterializeError")}
                   </p>
-                  <p className="mt-1 font-mono text-[11px] text-red-200">{selected.materialize_error}</p>
+                  <p className="mt-1 font-mono text-meta text-red-200">{selected.materialize_error}</p>
                 </div>
               ) : null}
 

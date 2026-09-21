@@ -282,7 +282,7 @@ export function MediaPlayerBlockBody(props: {
                 {!readOnly ? (
                   <button
                     type="button"
-                    className="shrink-0 text-[10px] uppercase text-red-300 hover:text-red-200"
+                    className="shrink-0 text-meta uppercase text-red-300 hover:text-red-200"
                     onClick={() => removeAt(idx)}
                   >
                     {t("dashboard:delete")}

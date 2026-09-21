@@ -654,7 +654,7 @@ export function AdminUsers() {
                             ))}
                           </select>
                           {saving ? (
-                            <span className="ml-2 text-[10px] text-surface-muted">
+                            <span className="ml-2 text-meta text-surface-muted">
                               {t("settings:saving", { ns: "settings" })}
                             </span>
                           ) : null}
@@ -800,7 +800,7 @@ export function AdminUsers() {
                       {canAssignAgents && (
                       <td className="px-4 py-3 align-top">
                         {!agentListLoaded || specialistAgents.length === 0 ? (
-                          <span className="text-[10px] text-surface-muted">
+                          <span className="text-meta text-surface-muted">
                             {t("admin:usersAgentsNone")}
                           </span>
                         ) : (

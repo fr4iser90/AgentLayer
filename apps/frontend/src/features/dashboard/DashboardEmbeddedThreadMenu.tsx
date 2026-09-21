@@ -59,7 +59,7 @@ export function DashboardEmbeddedThreadMenu({
       <button
         type="button"
         disabled={!canPick}
-        className="flex max-w-full items-center gap-0.5 truncate text-left text-[10px] text-neutral-300 hover:text-white disabled:opacity-50"
+        className="flex max-w-full items-center gap-0.5 truncate text-left text-meta text-neutral-300 hover:text-white disabled:opacity-50"
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={menuId}

@@ -100,7 +100,7 @@ export function DashboardRefBlockBody(props: {
   return (
     <div className="space-y-2">
       {p.sourceLabel || payload.source_title ? (
-        <p className="text-[10px] uppercase tracking-wide text-surface-muted">
+        <p className="text-meta uppercase tracking-wide text-surface-muted">
           {t("dashboard:refFrom", {
             title: String(p.sourceLabel || payload.source_title),
           })}

@@ -79,7 +79,7 @@ function PanelTabs({
 }) {
   const { t } = useTranslation(["dashboard", "errors"]);
   const tabClass = (active: boolean) =>
-    `rounded-md px-2.5 py-1 text-[10px] font-medium transition-colors ${
+    `rounded-md px-2.5 py-1 text-meta font-medium transition-colors ${
       active ? "bg-white/15 text-white" : "text-surface-muted hover:bg-white/10 hover:text-neutral-200"
     }`;
 
@@ -92,7 +92,7 @@ function PanelTabs({
         <button type="button" className={tabClass(panelTab === "changes")} onClick={() => onTab("changes")}>
           Changes
           {changesBadge ? (
-            <span className="ml-1 rounded bg-amber-600/40 px-1 py-px text-[9px] text-amber-100">{changesBadge}</span>
+            <span className="ml-1 rounded bg-amber-600/40 px-1 py-px text-meta text-amber-100">{changesBadge}</span>
           ) : null}
         </button>
       ) : null}
@@ -105,7 +105,7 @@ function DiffView({ text, truncated }: { text: string; truncated: boolean }) {
   const lines = text.split("\n");
   return (
     <>
-      <div className="font-mono text-[10px] leading-relaxed">
+      <div className="font-mono text-meta leading-relaxed">
         {lines.map((line, i) => (
           <div key={`${i}-${line.slice(0, 24)}`} className={`whitespace-pre ${diffLineClass(line)}`}>
             {line || " "}
@@ -113,7 +113,7 @@ function DiffView({ text, truncated }: { text: string; truncated: boolean }) {
         ))}
       </div>
       {truncated ? (
-        <p className="mt-2 text-[9px] text-amber-300/80">{t("dashboard:diffTruncated")}</p>
+        <p className="mt-2 text-meta text-amber-300/80">{t("dashboard:diffTruncated")}</p>
       ) : null}
     </>
   );
@@ -342,10 +342,10 @@ export function CodingWorkspacePanels({
           />
           {panelTab === "files" ? (
             <>
-              <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+              <p className="mt-2 text-meta font-medium uppercase tracking-wide text-surface-muted">
                 Workspace files
               </p>
-              <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px] text-neutral-400">
+              <div className="mt-1 flex flex-wrap items-center gap-1 text-meta text-neutral-400">
                 <button
                   type="button"
                   className="rounded px-1.5 py-0.5 hover:bg-white/10 disabled:opacity-40"
@@ -386,7 +386,7 @@ export function CodingWorkspacePanels({
               <div className="mt-1 flex items-center gap-2">
                 <button
                   type="button"
-                  className="rounded border border-surface-border px-2 py-0.5 text-[10px] text-neutral-300 hover:bg-white/5 disabled:opacity-40"
+                  className="rounded border border-surface-border px-2 py-0.5 text-meta text-neutral-300 hover:bg-white/5 disabled:opacity-40"
                   onClick={goUp}
                   disabled={!browsePath}
                 >
@@ -394,7 +394,7 @@ export function CodingWorkspacePanels({
                 </button>
                 <button
                   type="button"
-                  className="rounded border border-surface-border px-2 py-0.5 text-[10px] text-neutral-300 hover:bg-white/5 disabled:opacity-40"
+                  className="rounded border border-surface-border px-2 py-0.5 text-meta text-neutral-300 hover:bg-white/5 disabled:opacity-40"
                   onClick={() => void loadList()}
                   disabled={listLoading}
                 >
@@ -404,16 +404,16 @@ export function CodingWorkspacePanels({
             </>
           ) : (
             <>
-              <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+              <p className="mt-2 text-meta font-medium uppercase tracking-wide text-surface-muted">
                 {t("dashboard:gitChanges")}
               </p>
-              <p className="mt-0.5 text-[10px] text-neutral-500">
+              <p className="mt-0.5 text-meta text-neutral-500">
                 {changesSummary?.branch ? `branch: ${changesSummary.branch}` : t("dashboard:workingTree")}
               </p>
               <div className="mt-1">
                 <button
                   type="button"
-                  className="rounded border border-surface-border px-2 py-0.5 text-[10px] text-neutral-300 hover:bg-white/5 disabled:opacity-40"
+                  className="rounded border border-surface-border px-2 py-0.5 text-meta text-neutral-300 hover:bg-white/5 disabled:opacity-40"
                   onClick={() => void loadChangesSummary()}
                   disabled={changesLoading}
                 >
@@ -454,7 +454,7 @@ export function CodingWorkspacePanels({
                       <span className="text-surface-muted">{e.is_dir ? "📁" : "📄"}</span>
                       <span className="min-w-0 flex-1 truncate text-neutral-200">{e.name}</span>
                       {e.is_symlink ? (
-                        <span className="text-[9px] text-amber-400/80">{t("workspace:treeEntrySymlink")}</span>
+                        <span className="text-meta text-amber-400/80">{t("workspace:treeEntrySymlink")}</span>
                       ) : null}
                     </button>
                   </li>
@@ -479,15 +479,15 @@ export function CodingWorkspacePanels({
                   }`}
                   onClick={() => void loadChangeDiff(f.path)}
                 >
-                  <span className="truncate font-mono text-[10px] text-neutral-200">{f.path}</span>
-                  <span className="text-[9px] text-neutral-500">{f.stat}</span>
+                  <span className="truncate font-mono text-meta text-neutral-200">{f.path}</span>
+                  <span className="text-meta text-neutral-500">{f.stat}</span>
                 </button>
               </li>
             ))
           )}
         </ul>
         {panelTab === "files" && listTruncated ? (
-          <p className="shrink-0 border-t border-surface-border px-2 py-1 text-[9px] text-amber-300/80">
+          <p className="shrink-0 border-t border-surface-border px-2 py-1 text-meta text-amber-300/80">
             {t("dashboard:listTruncated")}
           </p>
         ) : null}
@@ -495,14 +495,14 @@ export function CodingWorkspacePanels({
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col border-t border-surface-border lg:border-t-0">
         <div className="shrink-0 border-b border-surface-border px-3 py-2">
-          <p className="text-[10px] font-medium uppercase tracking-wide text-surface-muted">
+          <p className="text-meta font-medium uppercase tracking-wide text-surface-muted">
             {panelTab === "files" ? t("dashboard:preview") : t("dashboard:diff")}
           </p>
           {panelTab === "files" && fileMeta ? (
-            <p className="mt-0.5 truncate font-mono text-[10px] text-neutral-500">{fileMeta}</p>
+            <p className="mt-0.5 truncate font-mono text-meta text-neutral-500">{fileMeta}</p>
           ) : null}
           {panelTab === "changes" && selectedChangePath ? (
-            <p className="mt-0.5 truncate font-mono text-[10px] text-neutral-500">{selectedChangePath}</p>
+            <p className="mt-0.5 truncate font-mono text-meta text-neutral-500">{selectedChangePath}</p>
           ) : null}
         </div>
         <div className="min-h-0 flex-1 overflow-auto p-2">
@@ -513,7 +513,7 @@ export function CodingWorkspacePanels({
               ) : fileError ? (
                 <p className="text-xs text-red-300/90">{fileError}</p>
               ) : fileContent != null ? (
-                <pre className="whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-neutral-200">
+                <pre className="whitespace-pre-wrap break-words font-mono text-meta leading-relaxed text-neutral-200">
                   {fileContent}
                 </pre>
               ) : (
@@ -527,7 +527,7 @@ export function CodingWorkspacePanels({
           ) : changeDiff != null ? (
             <DiffView text={changeDiff} truncated={changeDiffTruncated} />
           ) : changesSummary?.stat && !selectedChangePath ? (
-            <pre className="whitespace-pre-wrap font-mono text-[10px] leading-relaxed text-neutral-400">
+            <pre className="whitespace-pre-wrap font-mono text-meta leading-relaxed text-neutral-400">
               {changesSummary.stat}
               {changesSummary.stat_truncated ? "\n…[truncated]" : ""}
             </pre>
@@ -539,7 +539,7 @@ export function CodingWorkspacePanels({
           {panelTab === "changes" && selectedChangePath ? (
             <button
               type="button"
-              className="mt-3 text-[10px] text-sky-400/90 hover:underline"
+              className="mt-3 text-meta text-sky-400/90 hover:underline"
               onClick={() => {
                 const parts = selectedChangePath.split("/").filter(Boolean);
                 parts.pop();

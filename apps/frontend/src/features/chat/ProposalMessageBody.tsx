@@ -11,7 +11,7 @@ function ConfidenceBadge({ value }: { value: number }) {
   const pct = Math.round(value * 100);
   const color =
     pct >= 80 ? "text-emerald-300" : pct >= 60 ? "text-amber-300" : "text-red-300";
-  return <span className={`text-[10px] font-medium ${color}`}>{pct}%</span>;
+  return <span className={`text-meta font-medium ${color}`}>{pct}%</span>;
 }
 
 export function ProposalCard({
@@ -61,7 +61,7 @@ export function ProposalCard({
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
                       <span
-                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold ${
+                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-meta font-bold ${
                           isSelected
                             ? "border-sky-400 bg-sky-500 text-white"
                             : "border-surface-border text-surface-muted"
@@ -83,7 +83,7 @@ export function ProposalCard({
                       {opt.actions.map((action, ai) => (
                         <li
                           key={ai}
-                          className="flex items-center gap-1.5 text-[11px] text-neutral-500"
+                          className="flex items-center gap-1.5 text-meta text-neutral-500"
                         >
                           <span className="text-surface-muted">→</span>
                           {action}

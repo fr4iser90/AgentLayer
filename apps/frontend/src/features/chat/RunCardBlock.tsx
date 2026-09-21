@@ -271,18 +271,18 @@ export function RunCardBlock({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
             <span className="font-medium text-neutral-100">{title}</span>
-            <span className="text-[10px] text-surface-muted">{meta.join(" · ")}</span>
+            <span className="text-meta text-surface-muted">{meta.join(" · ")}</span>
             {card.status === "running" ? (
               <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400" />
             ) : null}
           </div>
           {compactionSubtitle ?? card.subtitle ? (
-            <p className="mt-1 text-[11px] leading-snug text-neutral-400">
+            <p className="mt-1 text-meta leading-snug text-neutral-400">
               {compactionSubtitle ?? card.subtitle}
             </p>
           ) : null}
           {card.kind === "subagent" && card.subagentRunId ? (
-            <p className="mt-1 text-[10px]">
+            <p className="mt-1 text-meta">
               <Link
                 to={`/admin/run-traces?run=${encodeURIComponent(card.subagentRunId)}`}
                 className="font-mono text-sky-400/90 hover:text-sky-300 hover:underline"
@@ -297,26 +297,26 @@ export function RunCardBlock({
             <div className="mt-2 space-y-1.5">
               {card.reasoningExcerpt?.trim() ? (
                 <details className="group/r">
-                  <summary className="cursor-pointer list-none text-[10px] font-medium text-sky-200/80 marker:content-none [&::-webkit-details-marker]:hidden">
+                  <summary className="cursor-pointer list-none text-meta font-medium text-sky-200/80 marker:content-none [&::-webkit-details-marker]:hidden">
                     {t("chat:runCardThinking", { defaultValue: "Thinking" })}
                     <span className="ml-1 font-normal text-sky-200/50 group-open/r:hidden">
                       {t("chat:contextInjectExpandHint")}
                     </span>
                   </summary>
-                  <pre className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap break-words rounded border border-sky-500/20 bg-black/25 px-2 py-1.5 font-sans text-[11px] leading-relaxed text-neutral-400">
+                  <pre className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap break-words rounded border border-sky-500/20 bg-black/25 px-2 py-1.5 font-sans text-meta leading-relaxed text-neutral-400">
                     {card.reasoningExcerpt.trim()}
                   </pre>
                 </details>
               ) : null}
               {card.assistantExcerpt?.trim() ? (
                 <details className="group/a" open={card.status === "running"}>
-                  <summary className="cursor-pointer list-none text-[10px] font-medium text-indigo-200/85 marker:content-none [&::-webkit-details-marker]:hidden">
+                  <summary className="cursor-pointer list-none text-meta font-medium text-indigo-200/85 marker:content-none [&::-webkit-details-marker]:hidden">
                     {t("chat:runCardOutput", { defaultValue: "Output" })}
                     <span className="ml-1 font-normal text-indigo-200/50 group-open/a:hidden">
                       {t("chat:contextInjectExpandHint")}
                     </span>
                   </summary>
-                  <pre className="mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap break-words rounded border border-indigo-500/20 bg-black/25 px-2 py-1.5 font-sans text-[11px] leading-relaxed text-neutral-300">
+                  <pre className="mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap break-words rounded border border-indigo-500/20 bg-black/25 px-2 py-1.5 font-sans text-meta leading-relaxed text-neutral-300">
                     {card.assistantExcerpt.trim()}
                   </pre>
                 </details>
@@ -334,7 +334,7 @@ export function RunCardBlock({
                 return (
                   <li
                     key={`preview-${i}-${step}`}
-                    className="flex min-w-0 items-baseline gap-1 truncate text-[11px] leading-snug"
+                    className="flex min-w-0 items-baseline gap-1 truncate text-meta leading-snug"
                   >
                     {running ? (
                       isLatest ? (
@@ -368,13 +368,13 @@ export function RunCardBlock({
               className="group/out mt-1.5"
               open={lastOutputRow?.failed === true || card.status === "failed"}
             >
-              <summary className="cursor-pointer list-none text-[10px] font-medium text-emerald-200/80 marker:content-none [&::-webkit-details-marker]:hidden">
+              <summary className="cursor-pointer list-none text-meta font-medium text-emerald-200/80 marker:content-none [&::-webkit-details-marker]:hidden">
                 {t("chat:runCardCommandOutput")}
                 <span className="ml-1 font-normal text-emerald-200/45 group-open/out:hidden">
                   {t("chat:contextInjectExpandHint")}
                 </span>
               </summary>
-              <pre className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded border border-emerald-500/20 bg-black/30 px-2 py-1.5 font-mono text-[10px] leading-relaxed text-neutral-300">
+              <pre className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded border border-emerald-500/20 bg-black/30 px-2 py-1.5 font-mono text-meta leading-relaxed text-neutral-300">
                 {lastOutputRow?.resultDisplay || toolCardOutput}
               </pre>
             </details>
@@ -382,7 +382,7 @@ export function RunCardBlock({
           {expandableDetails ? (
             <button
               type="button"
-              className="mt-1.5 text-[10px] text-sky-400/90 hover:text-sky-300 hover:underline"
+              className="mt-1.5 text-meta text-sky-400/90 hover:text-sky-300 hover:underline"
               onClick={() => {
                 if (onToggleExpanded) onToggleExpanded();
                 else setExpanded(!expanded);
@@ -395,13 +395,13 @@ export function RunCardBlock({
             <ul className="mt-2 space-y-1 border-t border-white/5 pt-2">
               {card.kind === "compaction"
                 ? compactionDetailLines.map((line, i) => (
-                    <li key={`cmp-${i}`} className="text-[10px] leading-snug text-neutral-400">
+                    <li key={`cmp-${i}`} className="text-meta leading-snug text-neutral-400">
                       {line}
                     </li>
                   ))
                 : allSubagentStepRows(card).length > 0
                 ? allSubagentStepRows(card).map((row, i) => (
-                    <li key={`step-${i}`} className="text-[10px] leading-snug text-neutral-500">
+                    <li key={`step-${i}`} className="text-meta leading-snug text-neutral-500">
                       <div>
                         {card.status === "running" ? (
                           <span className="text-sky-400/70">→</span>
@@ -419,13 +419,13 @@ export function RunCardBlock({
                       </div>
                       {row.resultDisplay ? (
                         <details className="group/out mt-1" open={row.failed}>
-                          <summary className="cursor-pointer list-none text-[10px] font-medium text-emerald-200/80 marker:content-none [&::-webkit-details-marker]:hidden">
+                          <summary className="cursor-pointer list-none text-meta font-medium text-emerald-200/80 marker:content-none [&::-webkit-details-marker]:hidden">
                             {t("chat:runCardCommandOutput")}
                             <span className="ml-1 font-normal text-emerald-200/45 group-open/out:hidden">
                               {t("chat:contextInjectExpandHint")}
                             </span>
                           </summary>
-                          <pre className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded border border-emerald-500/20 bg-black/30 px-2 py-1.5 font-mono text-[10px] leading-relaxed text-neutral-300">
+                          <pre className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded border border-emerald-500/20 bg-black/30 px-2 py-1.5 font-mono text-meta leading-relaxed text-neutral-300">
                             {row.resultDisplay}
                           </pre>
                         </details>
@@ -433,7 +433,7 @@ export function RunCardBlock({
                     </li>
                   ))
                 : card.details.map((d) => (
-                    <li key={d.id} className="text-[10px] leading-snug text-neutral-500">
+                    <li key={d.id} className="text-meta leading-snug text-neutral-500">
                       <div>
                         <span className="font-medium uppercase tracking-wide text-surface-muted">
                           {d.kind}
@@ -443,13 +443,13 @@ export function RunCardBlock({
                       </div>
                       {d.resultDisplay?.trim() ? (
                         <details className="group/out mt-1" open={d.toolOk === false}>
-                          <summary className="cursor-pointer list-none text-[10px] font-medium text-emerald-200/80 marker:content-none [&::-webkit-details-marker]:hidden">
+                          <summary className="cursor-pointer list-none text-meta font-medium text-emerald-200/80 marker:content-none [&::-webkit-details-marker]:hidden">
                             {t("chat:runCardCommandOutput")}
                             <span className="ml-1 font-normal text-emerald-200/45 group-open/out:hidden">
                               {t("chat:contextInjectExpandHint")}
                             </span>
                           </summary>
-                          <pre className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded border border-emerald-500/20 bg-black/30 px-2 py-1.5 font-mono text-[10px] leading-relaxed text-neutral-300">
+                          <pre className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded border border-emerald-500/20 bg-black/30 px-2 py-1.5 font-mono text-meta leading-relaxed text-neutral-300">
                             {d.resultDisplay.trim()}
                           </pre>
                         </details>

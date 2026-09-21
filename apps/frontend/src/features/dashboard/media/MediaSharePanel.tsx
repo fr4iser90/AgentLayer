@@ -150,7 +150,7 @@ export function MediaSharePanel() {
       <h4 className="text-xs font-medium uppercase tracking-wide text-surface-muted">
         {t("dashboard:mediaSharePanelTitle")}
       </h4>
-      <p className="mt-1 text-[10px] leading-snug text-surface-muted">{t("dashboard:mediaSharePanelHint")}</p>
+      <p className="mt-1 text-meta leading-snug text-surface-muted">{t("dashboard:mediaSharePanelHint")}</p>
       {err ? <p className="mt-2 text-xs text-red-400">{err}</p> : null}
       {ownedUploads.length === 0 ? (
         <p className="mt-2 text-xs text-surface-muted">{t("dashboard:mediaShareNoUploads")}</p>
@@ -167,13 +167,13 @@ export function MediaSharePanel() {
                   onClick={() => (open ? setExpandedId(null) : openItem(u.id, u.license))}
                 >
                   <span className="truncate">{label}</span>
-                  <span className="ml-2 shrink-0 text-[10px] text-surface-muted">
+                  <span className="ml-2 shrink-0 text-meta text-surface-muted">
                     {u.shareable ? t("dashboard:mediaShareable") : t("dashboard:mediaNeedsLicense")}
                   </span>
                 </button>
                 {open ? (
                   <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
-                    <label className="block text-[10px] uppercase text-surface-muted">
+                    <label className="block text-meta uppercase text-surface-muted">
                       {t("dashboard:mediaLicenseLabel")}
                       <select
                         className="mt-1 block w-full rounded border border-surface-border bg-black/40 px-2 py-1 text-xs text-white"
@@ -197,7 +197,7 @@ export function MediaSharePanel() {
                     <button
                       type="button"
                       disabled={busy}
-                      className="rounded border border-surface-border px-2 py-1 text-[10px] text-white hover:bg-white/5"
+                      className="rounded border border-surface-border px-2 py-1 text-meta text-white hover:bg-white/5"
                       onClick={() => void saveLicense(u.id)}
                     >
                       {t("dashboard:mediaSaveLicense")}
@@ -225,14 +225,14 @@ export function MediaSharePanel() {
                           <button
                             type="button"
                             disabled={busy || !shareEmail.trim()}
-                            className="rounded border border-sky-500/40 bg-sky-950/40 px-2 py-1 text-[10px] text-sky-100"
+                            className="rounded border border-sky-500/40 bg-sky-950/40 px-2 py-1 text-meta text-sky-100"
                             onClick={() => void shareItem(u.id)}
                           >
                             {t("dashboard:mediaShareAction")}
                           </button>
                         </div>
                         {grants.length > 0 ? (
-                          <ul className="mt-2 space-y-1 text-[10px] text-surface-muted">
+                          <ul className="mt-2 space-y-1 text-meta text-surface-muted">
                             {grants.map((g) => (
                               <li key={g.id} className="flex items-center justify-between gap-2">
                                 <span>
