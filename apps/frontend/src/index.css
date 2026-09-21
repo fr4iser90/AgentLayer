@@ -12,5 +12,18 @@ body,
 }
 
 body {
-  @apply bg-surface text-neutral-100 antialiased;
+  @apply bg-canvas text-ink-primary text-body antialiased;
+}
+
+/* Motion tokens are an affordance, not content. Users who ask the OS to reduce
+   motion get the state change without the animation. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
