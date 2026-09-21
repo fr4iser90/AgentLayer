@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { Bar, Doughnut, Line, Pie } from "react-chartjs-2";
 import { useTranslation } from "react-i18next";
 import i18n from "../../../i18n/config";
+import { Button } from "../../../ui/Button";
 
 import "./chartRegister";
 
@@ -233,9 +234,10 @@ export function ChartBlockBody(props: {
               <div className="mb-1 flex items-center justify-between gap-2">
                 <span className="text-meta text-surface-muted">{t("dashboard:chartSeriesN", { n: si + 1 })}</span>
                 {chart.series.length > 1 ? (
-                  <button
+                  <Button
                     type="button"
-                    className="text-meta text-red-400 hover:underline"
+                    variant="danger"
+                    size="sm"
                     onClick={() =>
                       patchChart(dp, setData, (prev) => ({
                         ...prev,
@@ -244,7 +246,7 @@ export function ChartBlockBody(props: {
                     }
                   >
                     {t("dashboard:remove")}
-                  </button>
+                  </Button>
                 ) : null}
               </div>
               <input

@@ -2,6 +2,7 @@ import type { ChangeEvent, Dispatch, SetStateAction } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
+import { Button } from "../../ui/Button";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { GalleryImage } from "./GalleryImage";
@@ -537,13 +538,15 @@ function TimelineBlockBody(props: {
                         value={String(row.date ?? "").slice(0, 10)}
                         onChange={(e) => updateRow(si, "date", e.target.value)}
                       />
-                      <button
+                      <Button
                         type="button"
-                        className="ml-auto rounded px-2 py-1 text-xs text-red-400 hover:bg-white/5"
+                        variant="danger"
+                        size="sm"
+                        className="ml-auto"
                         onClick={() => removeRow(si)}
                       >
                         {t("dashboard:remove")}
-                      </button>
+                      </Button>
                     </div>
                     <textarea
                       placeholder={t("dashboard:timelineNoteOptional")}
@@ -989,9 +992,10 @@ function BlockView(props: {
                     ) : null}
                     {!structureLocked ? (
                       <td className="px-1">
-                        <button
+                        <Button
                           type="button"
-                          className="rounded p-1 text-xs text-red-400 hover:bg-white/5"
+                          variant="danger"
+                          size="sm"
                           onClick={() => {
                             const rowId = String(row.id ?? "");
                             const realIndex = rowId
@@ -1002,7 +1006,7 @@ function BlockView(props: {
                           title={t("dashboard:deleteRow")}
                         >
                           <X aria-hidden className="h-3.5 w-3.5" />
-                        </button>
+                        </Button>
                       </td>
                     ) : null}
                   </tr>

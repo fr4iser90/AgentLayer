@@ -1,6 +1,7 @@
 import type { ChangeEvent, Dispatch, DragEvent, SetStateAction } from "react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Button } from "../../../ui/Button";
 import { useAuth } from "../../../auth/AuthContext";
 import { GalleryImage } from "../GalleryImage";
 import { getPath, setPath } from "../dashboardDataPaths";
@@ -371,13 +372,15 @@ function GalleryPhotoCard(props: {
           value={caption}
           onChange={(e) => updatePhoto(ri, "caption", e.target.value)}
         />
-        <button
+        <Button
           type="button"
-          className="dashboard-grid-no-drag w-full rounded-md py-1 text-xs text-red-400 hover:bg-red-950/30"
+          variant="danger"
+          size="sm"
+          className="dashboard-grid-no-drag w-full"
           onClick={() => removePhoto(ri)}
         >
           {t("dashboard:remove")}
-        </button>
+        </Button>
       </div>
     </div>
   );
