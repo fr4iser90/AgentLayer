@@ -27,7 +27,11 @@ from tests.e2e.support.helpers import (  # noqa: E402
 
 
 TITLE = "UX Audit — All Blocks"
-OUT_META = REPO / "example" / "dashboard-ux-audit" / "dashboard.json"
+# Generated per run against a live instance, so it lands in the gitignored
+# output/ tree rather than example/: it encodes that instance's dashboard ids and
+# the seeding account's email, and would otherwise be a tracked artifact that
+# every audit run dirties.
+OUT_META = REPO / "output" / "ux-audit" / "dashboard.json"
 
 
 def _ensure_schema(client: httpx.Client, headers: dict) -> None:
