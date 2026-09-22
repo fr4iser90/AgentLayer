@@ -15,6 +15,7 @@ import {
 import type { AgentTimelineEntry } from "./chatThreadStorage";
 import type { Proposal, ProposalOption } from "../../lib/proposalParser";
 import { TurnElapsedRuntime } from "./TurnElapsedRuntime";
+import { Mascot, agentTurnState } from "../../ui/Mascot";
 
 const ReasoningPanel = memo(function ReasoningPanel({
   text,
@@ -170,6 +171,13 @@ export const AssistantTurnBlock = memo(function AssistantTurnBlock({
   );
   const turnCancelled = timelineTurnCancelled(timelineEntries);
 
+  const hasReasoning = Boolean(reasoningContent && reasoningContent.trim());
+  const mascotState = agentTurnState({
+    running: Boolean(running),
+    hasReasoning,
+    cancelled: turnCancelled,
+  });
+
   const timeLabel =
     createdAt != null
       ? new Date(createdAt).toLocaleTimeString(undefined, {
@@ -182,9 +190,7 @@ export const AssistantTurnBlock = memo(function AssistantTurnBlock({
     <li className="flex w-full justify-end scroll-mt-4">
       <div className="max-w-[min(100%,42rem)] rounded-2xl border border-white/10 bg-[#1e1e1e] px-4 py-3 text-sm text-neutral-200 shadow-sm">
         <span className="mb-1 flex items-center gap-2 text-meta font-medium uppercase tracking-wide text-surface-muted">
-          {running && !hasStreamBody ? (
-            <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-sky-400" />
-          ) : null}
+          <Mascot character="volt" state={mascotState} size={20} ariaLabel={null} />
           {t("chat:roleAssistant")}
           {standInAuto ? (
             <span className="rounded bg-violet-900/40 px-1.5 py-0.5 text-meta font-normal normal-case text-violet-200">
