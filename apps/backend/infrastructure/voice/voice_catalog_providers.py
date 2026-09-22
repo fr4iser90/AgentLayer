@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from apps.backend.infrastructure.voice.voice_env_providers import (
@@ -32,7 +32,8 @@ class VoiceProviderSpec:
     provider_id: str
     label: str
     base_url: str
-    api_key: str
+    # repr=False: a spec that reaches a log line or a traceback must not carry the key.
+    api_key: str = field(repr=False)
     api_header_name: str
     model_stt: str = "whisper-1"
     model_tts: str = "tts-1"

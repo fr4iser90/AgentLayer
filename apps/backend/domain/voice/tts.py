@@ -47,4 +47,26 @@ def synthesize_speech(
     if resp.status_code >= 400:
         logger.warning("voice TTS HTTP %s: %s", resp.status_code, resp.text[:500])
         raise ValueError(f"TTS failed ({resp.status_code})")
-    return resp.content, "audio/mpeg"
+    return resp.content, sniff_audio_mime(resp.content, fallback=resp.headers.get("content-type"))
+
+
+def sniff_audio_mime(data: bytes, *, fallback: str | None = None) -> str:
+    """Report what the bytes actually are.
+
+    We ask for ``response_format=mp3`` but the provider answers with whatever it
+    emits — Piper returns WAV. Declaring WAV as ``audio/mpeg`` breaks playback in
+    the browser and makes Telegram reject the clip, so the magic bytes win over the
+    requested format.
+    """
+    if data[:4] == b"RIFF" and data[8:12] == b"WAVE":
+        return "audio/wav"
+    if data[:3] == b"ID3" or (len(data) > 1 and data[0] == 0xFF and (data[1] & 0xE0) == 0xE0):
+        return "audio/mpeg"
+    if data[:4] == b"OggS":
+        return "audio/ogg"
+    if data[4:8] == b"ftyp":
+        return "audio/mp4"
+    if data[:4] == b"fLaC":
+        return "audio/flac"
+    base = (fallback or "").split(";")[0].strip().lower()
+    return base if base.startswith("audio/") else "audio/mpeg"

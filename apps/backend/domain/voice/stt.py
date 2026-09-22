@@ -37,6 +37,10 @@ def _guess_filename(mime: str) -> str:
         "audio/webm": ".webm",
         "audio/wav": ".wav",
         "audio/x-wav": ".wav",
+        "audio/aac": ".aac",
+        "audio/amr": ".amr",
+        "audio/aiff": ".aiff",
+        "audio/flac": ".flac",
     }.get(m, ".audio")
     return f"audio{ext}"
 
