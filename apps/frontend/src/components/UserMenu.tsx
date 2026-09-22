@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import { hasOrgSurface } from "../auth/deploymentMode";
 import { SUPPORTED } from "../i18n/config";
+import { Mascot, pickCharacter } from "../ui/Mascot";
 
 export function UserMenu() {
   const { t, i18n } = useTranslation();
@@ -12,7 +13,6 @@ export function UserMenu() {
   const rootRef = useRef<HTMLDivElement>(null);
 
   const email = user?.email ?? "";
-  const initial = (email.split("@")[0]?.[0] ?? user?.email?.[0] ?? "?").toUpperCase();
   const siteAdmin =
     user?.site_role === "site_admin" || user?.role?.toLowerCase() === "admin";
   const showOrg =
@@ -32,13 +32,13 @@ export function UserMenu() {
     <div className="relative" ref={rootRef}>
       <button
         type="button"
-        className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-500/90 text-sm font-medium text-black outline-none ring-sky-500/40 hover:bg-orange-400 focus-visible:ring-2"
+        className="flex h-9 w-9 items-center justify-center rounded-full outline-none ring-sky-500/40 transition-transform duration-fast ease-standard hover:scale-105 focus-visible:ring-2"
         aria-expanded={open}
         aria-haspopup="menu"
         title={email || t("userMenu.account")}
         onClick={() => setOpen((v) => !v)}
       >
-        {initial}
+        <Mascot character={pickCharacter(email)} state={open ? "happy" : "idle"} size={30} ariaLabel={null} />
       </button>
       {open ? (
         <div
