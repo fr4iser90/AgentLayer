@@ -1,16 +1,74 @@
 """Small pure helpers for the Telegram bridge adapter."""
 from __future__ import annotations
 
+import os
 from typing import Any
+
+from apps.backend.domain.shared.bridge_formatting import chunk_markdown
+
+_EXT_TO_MIME = {
+    ".mp3": "audio/mpeg",
+    ".m4a": "audio/mp4",
+    ".aac": "audio/aac",
+    ".wav": "audio/wav",
+    ".ogg": "audio/ogg",
+    ".opus": "audio/opus",
+    ".flac": "audio/flac",
+    ".webm": "audio/webm",
+    ".amr": "audio/amr",
+    ".aif": "audio/aiff",
+    ".aiff": "audio/aiff",
+}
+
+
+def audio_document(document: Any) -> str | None:
+    """Return the mime type when a Telegram *document* is really audio, else ``None``.
+
+    Telegram does not normalise this: the same mp3 arrives on ``message.audio`` when
+    sent from the media picker and on ``message.document`` when attached as a file.
+    Some clients also mislabel audio as ``application/octet-stream``, so the file
+    extension is the second source of truth.
+    """
+    if document is None:
+        return None
+    mime = (getattr(document, "mime_type", "") or "").split(";")[0].strip().lower()
+    if mime.startswith("audio/"):
+        return mime
+    ext = os.path.splitext((getattr(document, "file_name", "") or "").lower())[1]
+    return _EXT_TO_MIME.get(ext)
+
+
+def audio_mime(payload: Any, *, default: str = "audio/ogg") -> str:
+    """Best-effort mime for a Telegram audio-ish object, falling back to extension."""
+    mime = (getattr(payload, "mime_type", "") or "").split(";")[0].strip().lower()
+    if mime.startswith("audio/"):
+        return mime
+    ext = os.path.splitext((getattr(payload, "file_name", "") or "").lower())[1]
+    return _EXT_TO_MIME.get(ext, default)
+
+
+def select_audio_payload(message: Any) -> tuple[Any, str] | None:
+    """Return ``(payload, mime)`` for a message carrying audio, else ``None``.
+
+    Telegram splits the same user intent across three shapes: a recording lands on
+    ``message.voice``, a media-picker upload on ``message.audio``, and a file
+    attached from disk on ``message.document``. The payload object and its mime are
+    resolved together here so a caller never confuses the two.
+    """
+    if message is None:
+        return None
+    audio = getattr(message, "audio", None)
+    if audio is not None:
+        return audio, audio_mime(audio)
+    document = getattr(message, "document", None)
+    mime = audio_document(document)
+    if mime is None:
+        return None
+    return document, mime
 
 
 def chunk_text(text: str, limit: int = 4000) -> list[str]:
-    text = (text or "").strip() or "(empty reply)"
-    out: list[str] = []
-    while text:
-        out.append(text[:limit])
-        text = text[limit:]
-    return out
+    return chunk_markdown(text, limit=limit)
 
 
 def extract_reply(data: dict[str, Any]) -> str:

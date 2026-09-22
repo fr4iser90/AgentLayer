@@ -24,7 +24,9 @@ from typing import Any
 import discord
 
 from apps.backend.application.agent_runtime.use_cases.chat_completion import chat_completion
+from apps.backend.domain.shared.bridge_formatting import chunk_markdown
 from apps.backend.domain.shared.identity import reset_identity, set_identity
+from apps.backend.domain.voice.bridge_reply import send_discord_agent_reply
 from apps.backend.infrastructure.integrations.bridge_agent_session import (
     BRIDGE_DISCORD,
     MAX_CONTEXT_MESSAGES,
@@ -54,12 +56,7 @@ class _BridgeCfg:
 
 
 def _chunk_text(text: str, limit: int = 1900) -> list[str]:
-    t = (text or "").strip() or "(empty reply)"
-    out: list[str] = []
-    while t:
-        out.append(t[:limit])
-        t = t[limit:]
-    return out
+    return chunk_markdown(text, limit=limit)
 
 
 def _extract_reply(data: dict[str, Any]) -> str:
@@ -157,7 +154,6 @@ async def _handle_discord_voice_message(
     cfg: _BridgeCfg, message: discord.Message, attachment: discord.Attachment
 ) -> None:
     from apps.backend.domain.voice import stt, voice_policy
-    from apps.backend.domain.voice.bridge_reply import send_discord_agent_reply
     from apps.backend.infrastructure.integrations.bridge_agent_turn import run_bridge_agent_turn
 
     author_id = str(message.author.id)
@@ -221,7 +217,6 @@ async def _handle_discord_voice_message(
         message=message,
         user_id=user_id,
         reply_text=reply_text,
-        chunk_text_fn=_chunk_text,
     )
 
 
@@ -405,10 +400,13 @@ def _make_client(cfg: _BridgeCfg) -> discord.Client:
                     return
                 finally:
                     reset_identity(id_token)
-            parts = _chunk_text(text)
-            await message.reply(parts[0])
-            for part in parts[1:]:
-                await message.channel.send(part)
+            # Single send path: honours the user's text/voice reply mode the same way
+            # the voice-inbound turn does, and defangs guild-wide mentions.
+            await send_discord_agent_reply(
+                message=message,
+                user_id=user_id,
+                reply_text=text,
+            )
 
     return BridgeClient(intents=intents)
 
