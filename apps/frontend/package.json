@@ -17,6 +17,7 @@
     "test:unit:watch": "vitest",
     "e2e:i18n": "node scripts/e2e-playwright-i18n.mjs",
     "probe:overflow": "node scripts/probe-overflow.mjs",
+    "probe:tooltip": "node scripts/probe-tooltip.mjs",
     "build": "npm run test && npm run test:unit && npm run lint:type-scale && npm run lint:field-surface && npm run lint:surface-ladder && npm run lint:ink-color && npm run lint:border-token && npm run lint:radius && npm run lint:spacing && npm run lint:font-license && vite build",
     "preview": "vite preview",
     "lint:ink-color": "node scripts/check-ink-color.mjs",

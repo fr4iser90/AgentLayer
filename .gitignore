@@ -45,3 +45,4 @@ compose.traefik.yaml
 # unanchored `workspace/` also swallows apps/backend/infrastructure/workspace/,
 # which is real source.
 /workspace/
+apps/frontend/scripts/tooltip-probe/.probe-dist/
