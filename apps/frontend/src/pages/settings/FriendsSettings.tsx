@@ -235,8 +235,8 @@ export function FriendsSettings() {
   return (
     <div className="mx-auto max-w-4xl space-y-8">
       <div>
-        <h1 className="text-lg font-semibold text-white">{t("settings:friendsSystemTitle")}</h1>
-        <p className="mt-2 text-sm text-surface-muted">{t("settings:friendsSystemSubtitle")}</p>
+        <h1 className="text-lg font-semibold text-ink-primary">{t("settings:friendsSystemTitle")}</h1>
+        <p className="mt-2 text-sm text-ink-muted">{t("settings:friendsSystemSubtitle")}</p>
       </div>
 
       {/* Tabs */}
@@ -246,8 +246,8 @@ export function FriendsSettings() {
           onClick={() => setActiveTab("friends")}
           className={`px-3 py-2 text-sm font-medium transition-colors ${
             activeTab === "friends"
-              ? "text-white border-b-2 border-sky-500"
-              : "text-surface-muted hover:text-white"
+              ? "text-ink-primary border-b-2 border-sky-500"
+              : "text-ink-muted hover:text-white"
           }`}
         >
           {incomingRequests.length > 0
@@ -259,8 +259,8 @@ export function FriendsSettings() {
           onClick={() => setActiveTab("manual")}
           className={`px-3 py-2 text-sm font-medium transition-colors ${
             activeTab === "manual"
-              ? "text-white border-b-2 border-sky-500"
-              : "text-surface-muted hover:text-white"
+              ? "text-ink-primary border-b-2 border-sky-500"
+              : "text-ink-muted hover:text-white"
           }`}
         >
           {t("settings:friendsTabManual")}
@@ -268,7 +268,7 @@ export function FriendsSettings() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-surface-muted">{t("settings:agentLoading")}</p>
+        <p className="text-sm text-ink-muted">{t("settings:agentLoading")}</p>
       ) : err ? (
         <p className="text-sm text-amber-400">{err}</p>
       ) : activeTab === "friends" ? (
@@ -283,21 +283,21 @@ export function FriendsSettings() {
                 {incomingRequests.map((req) => (
                   <div key={req.id} className="p-4 flex items-center justify-between">
                     <div>
-                      <div className="font-medium text-white">{req.display_name || req.email}</div>
-                      {req.message && <div className="text-sm text-neutral-400 mt-1">{req.message}</div>}
+                      <div className="font-medium text-ink-primary">{req.display_name || req.email}</div>
+                      {req.message && <div className="text-sm text-ink-muted mt-1">{req.message}</div>}
                     </div>
                     <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => acceptRequest(req.id)}
-                        className="px-3 py-1.5 rounded bg-emerald-600 text-white text-sm hover:bg-emerald-500"
+                        className="px-3 py-1.5 rounded bg-emerald-600 text-ink-on-fill text-sm hover:bg-emerald-500"
                       >
                         {t("settings:friendsAcceptBtn")}
                       </button>
                       <button
                         type="button"
                         onClick={() => declineRequest(req.id)}
-                        className="px-3 py-1.5 rounded bg-neutral-700 text-white text-sm hover:bg-neutral-600"
+                        className="px-3 py-1.5 rounded bg-neutral-700 text-ink-primary text-sm hover:bg-neutral-600"
                       >
                         {t("settings:friendsDeclineBtn")}
                       </button>
@@ -317,8 +317,8 @@ export function FriendsSettings() {
               <div className="divide-y divide-surface-border">
                 {outgoingRequests.map((req) => (
                   <div key={req.id} className="p-4">
-                    <div className="font-medium text-white">{req.display_name || req.email}</div>
-                    <div className="text-sm text-neutral-400 mt-1">{t("settings:friendsWaitingConfirmation")}</div>
+                    <div className="font-medium text-ink-primary">{req.display_name || req.email}</div>
+                    <div className="text-sm text-ink-muted mt-1">{t("settings:friendsWaitingConfirmation")}</div>
                   </div>
                 ))}
               </div>
@@ -328,21 +328,21 @@ export function FriendsSettings() {
           {/* Send Request Button */}
           {showSendRequestForm ? (
             <div className="rounded-xl border border-surface-border bg-card p-5 space-y-4">
-              <h3 className="font-medium text-white">{t("settings:friendsSendRequestTitle")}</h3>
+              <h3 className="font-medium text-ink-primary">{t("settings:friendsSendRequestTitle")}</h3>
               <div className="space-y-3">
                 <input
                   type="email"
                   placeholder={t("settings:friendRequestEmailPlaceholder")}
                   value={newRequestEmail}
                   onChange={(e) => setNewRequestEmail(e.target.value)}
-                  className="w-full px-3 py-2 rounded bg-field border border-white/10 text-white text-sm"
+                  className="w-full px-3 py-2 rounded bg-field border border-white/10 text-ink-primary text-sm"
                 />
                 <input
                   type="text"
                   placeholder={t("settings:friendRequestMessagePlaceholder")}
                   value={newRequestMessage}
                   onChange={(e) => setNewRequestMessage(e.target.value)}
-                  className="w-full px-3 py-2 rounded bg-field border border-white/10 text-white text-sm"
+                  className="w-full px-3 py-2 rounded bg-field border border-white/10 text-ink-primary text-sm"
                 />
                 <div className="flex justify-end gap-3 pt-2">
                   <Button
@@ -357,7 +357,7 @@ export function FriendsSettings() {
                     type="button"
                     onClick={sendFriendRequest}
                     disabled={!newRequestEmail.trim() || saving}
-                    className="px-4 py-2 rounded bg-sky-600 text-white text-sm hover:bg-sky-500 disabled:opacity-50"
+                    className="px-4 py-2 rounded bg-sky-600 text-ink-on-fill text-sm hover:bg-sky-500 disabled:opacity-50"
                   >
                     {t("settings:friendsSendRequest")}
                   </button>
@@ -368,7 +368,7 @@ export function FriendsSettings() {
             <button
               type="button"
               onClick={() => setShowSendRequestForm(true)}
-              className="w-full py-3 rounded-xl border border-dashed border-white/20 text-surface-muted hover:border-white/40 hover:text-white text-sm"
+              className="w-full py-3 rounded-xl border border-dashed border-white/20 text-ink-muted hover:border-white/40 hover:text-white text-sm"
             >
               {t("settings:friendsSendRequestBtn")}
             </button>
@@ -387,14 +387,14 @@ export function FriendsSettings() {
                 {confirmedFriends.map((friend) => (
                   <div key={friend.id} className="p-4 flex items-start justify-between group">
                     <div className="space-y-1">
-                      <div className="font-medium text-white">
+                      <div className="font-medium text-ink-primary">
                         {friend.display_name || friend.email}
                       </div>
                       {friend.relation && (
-                        <div className="text-sm text-neutral-400">{friend.relation}</div>
+                        <div className="text-sm text-ink-muted">{friend.relation}</div>
                       )}
                       {friend.email && (
-                        <div className="text-xs text-neutral-500">{friend.email}</div>
+                        <div className="text-xs text-ink-muted">{friend.email}</div>
                       )}
                     </div>
                     <div className="flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -421,21 +421,21 @@ export function FriendsSettings() {
           )}
 
           {confirmedFriends.length === 0 && incomingRequests.length === 0 && outgoingRequests.length === 0 && (
-            <div className="p-8 text-center text-surface-muted rounded-xl border border-surface-border bg-card">
+            <div className="p-8 text-center text-ink-muted rounded-xl border border-surface-border bg-card">
               {t("settings:friendsEmptyStart")}
             </div>
           )}
         </div>
       ) : (
         <div className="space-y-6">
-          <p className="text-sm text-surface-muted">
+          <p className="text-sm text-ink-muted">
             Hier kannst du Personen manuell eintragen die nicht auf diesem System registriert sind.
             Diese Personen werden in jeden Chat mitgeschickt.
           </p>
 
           <div className="rounded-xl border border-surface-border bg-card overflow-hidden">
             {knownPeople.length === 0 ? (
-              <div className="p-8 text-center text-surface-muted">
+              <div className="p-8 text-center text-ink-muted">
                 {t("settings:friendsNoPeopleYet")}
               </div>
             ) : (
@@ -446,14 +446,14 @@ export function FriendsSettings() {
                     className="p-4 flex items-start justify-between group hover:bg-white/[0.02]"
                   >
                     <div className="space-y-1 cursor-pointer flex-1">
-                      <div className="font-medium text-white group-hover:text-sky-400">
+                      <div className="font-medium text-ink-primary group-hover:text-sky-400">
                         {person.name}
                       </div>
                       {person.nickname && (
-                        <div className="text-xs text-surface-muted">aka {person.nickname}</div>
+                        <div className="text-xs text-ink-muted">aka {person.nickname}</div>
                       )}
                       {person.relation && (
-                        <div className="text-sm text-neutral-400">{person.relation}</div>
+                        <div className="text-sm text-ink-muted">{person.relation}</div>
                       )}
                     </div>
                     <Button
@@ -473,26 +473,26 @@ export function FriendsSettings() {
 
           {showAddForm ? (
             <div className="rounded-xl border border-surface-border bg-card p-5 space-y-4">
-              <h3 className="font-medium text-white">{t("settings:friendsNewPersonTitle")}</h3>
+              <h3 className="font-medium text-ink-primary">{t("settings:friendsNewPersonTitle")}</h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs text-surface-muted">{t("settings:friendsNameRequired")}</label>
+                  <label className="text-xs text-ink-muted">{t("settings:friendsNameRequired")}</label>
                   <input
                     type="text"
                     value={newPerson.name}
                     onChange={(e) => setNewPerson({ ...newPerson, name: e.target.value })}
-                    className="w-full px-3 py-2 rounded bg-field border border-white/10 text-white text-sm"
+                    className="w-full px-3 py-2 rounded bg-field border border-white/10 text-ink-primary text-sm"
                     placeholder={t("settings:friendNamePlaceholder")}
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-surface-muted">{t("settings:friendsNicknameLabel")}</label>
+                  <label className="text-xs text-ink-muted">{t("settings:friendsNicknameLabel")}</label>
                   <input
                     type="text"
                     value={newPerson.nickname}
                     onChange={(e) => setNewPerson({ ...newPerson, nickname: e.target.value })}
-                    className="w-full px-3 py-2 rounded bg-field border border-white/10 text-white text-sm"
+                    className="w-full px-3 py-2 rounded bg-field border border-white/10 text-ink-primary text-sm"
                     placeholder={t("settings:friendNicknamePlaceholder")}
                   />
                 </div>
@@ -500,22 +500,22 @@ export function FriendsSettings() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs text-surface-muted">{t("settings:friendsEmailLabel")}</label>
+                  <label className="text-xs text-ink-muted">{t("settings:friendsEmailLabel")}</label>
                   <input
                     type="email"
                     value={newPerson.email}
                     onChange={(e) => setNewPerson({ ...newPerson, email: e.target.value })}
-                    className="w-full px-3 py-2 rounded bg-field border border-white/10 text-white text-sm"
+                    className="w-full px-3 py-2 rounded bg-field border border-white/10 text-ink-primary text-sm"
                     placeholder={t("settings:friendEmailPlaceholder")}
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-surface-muted">{t("settings:friendsDiscordIdLabel")}</label>
+                  <label className="text-xs text-ink-muted">{t("settings:friendsDiscordIdLabel")}</label>
                   <input
                     type="text"
                     value={newPerson.discord_user_id}
                     onChange={(e) => setNewPerson({ ...newPerson, discord_user_id: e.target.value })}
-                    className="w-full px-3 py-2 rounded bg-field border border-white/10 text-white text-sm font-mono"
+                    className="w-full px-3 py-2 rounded bg-field border border-white/10 text-ink-primary text-sm font-mono"
                     placeholder={t("settings:friendPhonePlaceholder")}
                   />
                 </div>
@@ -523,43 +523,43 @@ export function FriendsSettings() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs text-surface-muted">{t("settings:friendsRelationLabel")}</label>
+                  <label className="text-xs text-ink-muted">{t("settings:friendsRelationLabel")}</label>
                   <input
                     type="text"
                     value={newPerson.relation}
                     onChange={(e) => setNewPerson({ ...newPerson, relation: e.target.value })}
-                    className="w-full px-3 py-2 rounded bg-field border border-white/10 text-white text-sm"
+                    className="w-full px-3 py-2 rounded bg-field border border-white/10 text-ink-primary text-sm"
                     placeholder={t("settings:friendRelationPlaceholder")}
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-surface-muted">{t("settings:friendsBirthdayLabel")}</label>
+                  <label className="text-xs text-ink-muted">{t("settings:friendsBirthdayLabel")}</label>
                   <input
                     type="date"
                     value={newPerson.birthday}
                     onChange={(e) => setNewPerson({ ...newPerson, birthday: e.target.value })}
-                    className="w-full px-3 py-2 rounded bg-field border border-white/10 text-white text-sm"
+                    className="w-full px-3 py-2 rounded bg-field border border-white/10 text-ink-primary text-sm"
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs text-surface-muted">{t("settings:friendsDescriptionLabel")}</label>
+                <label className="text-xs text-ink-muted">{t("settings:friendsDescriptionLabel")}</label>
                 <textarea
                   value={newPerson.description}
                   onChange={(e) => setNewPerson({ ...newPerson, description: e.target.value })}
-                  className="w-full px-3 py-2 rounded bg-field border border-white/10 text-white text-sm min-h-[80px]"
+                  className="w-full px-3 py-2 rounded bg-field border border-white/10 text-ink-primary text-sm min-h-[80px]"
                   placeholder={t("settings:friendDescriptionPlaceholder")}
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs text-surface-muted">{t("settings:friendsToneFormLabel")}</label>
+                <label className="text-xs text-ink-muted">{t("settings:friendsToneFormLabel")}</label>
                 <input
                   type="text"
                   value={newPerson.tone}
                   onChange={(e) => setNewPerson({ ...newPerson, tone: e.target.value })}
-                  className="w-full px-3 py-2 rounded bg-field border border-white/10 text-white text-sm"
+                  className="w-full px-3 py-2 rounded bg-field border border-white/10 text-ink-primary text-sm"
                   placeholder={t("settings:friendTonePlaceholder")}
                 />
               </div>
@@ -577,7 +577,7 @@ export function FriendsSettings() {
                   type="button"
                   onClick={addKnownPerson}
                   disabled={!newPerson.name.trim() || saving}
-                  className="px-4 py-2 rounded bg-sky-600 text-white text-sm hover:bg-sky-500 disabled:opacity-50"
+                  className="px-4 py-2 rounded bg-sky-600 text-ink-on-fill text-sm hover:bg-sky-500 disabled:opacity-50"
                 >
                   {t("settings:friendsAdd")}
                 </button>
@@ -587,7 +587,7 @@ export function FriendsSettings() {
             <button
               type="button"
               onClick={() => setShowAddForm(true)}
-              className="w-full py-3 rounded-xl border border-dashed border-white/20 text-surface-muted hover:border-white/40 hover:text-white text-sm"
+              className="w-full py-3 rounded-xl border border-dashed border-white/20 text-ink-muted hover:border-white/40 hover:text-white text-sm"
             >
               {t("settings:friendsAddNewPerson")}
             </button>

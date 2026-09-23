@@ -5,8 +5,8 @@ import { OperatorSettingsStickySave } from "../features/admin/operatorSettings/O
 
 const subLink =
   "block rounded-lg border border-transparent px-3 py-2 text-sm transition-colors";
-const subActive = "border-white/10 bg-white/10 text-white";
-const subIdle = "text-surface-muted hover:bg-white/5 hover:text-neutral-200";
+const subActive = "border-white/10 bg-white/10 text-ink-primary";
+const subIdle = "text-ink-muted hover:bg-white/5 hover:text-neutral-200";
 
 export function InterfacesLayout() {
   const { t } = useTranslation(["admin"]);
@@ -25,7 +25,7 @@ export function InterfacesLayout() {
     <OperatorSettingsProvider>
       <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
         <aside className="shrink-0 border-b border-surface-border bg-panel px-3 py-4 md:w-48 md:border-b-0 md:border-r">
-          <p className="mb-2 px-2 text-meta font-medium uppercase tracking-wide text-surface-muted">
+          <p className="mb-2 px-2 text-meta font-medium uppercase tracking-wide text-ink-muted">
             {t("admin:interfacesTitle")}
           </p>
           <nav

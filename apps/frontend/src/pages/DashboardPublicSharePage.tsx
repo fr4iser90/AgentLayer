@@ -122,7 +122,7 @@ export function DashboardPublicSharePage() {
   if (!token) {
     return (
       <div className="mx-auto flex max-w-lg flex-1 flex-col justify-center bg-neutral-950 p-8 text-center">
-        <h1 className="text-lg font-medium text-white">{t("dashboard:publicShareTitle")}</h1>
+        <h1 className="text-lg font-medium text-ink-primary">{t("dashboard:publicShareTitle")}</h1>
         <p className="mt-3 text-sm text-red-300">{t("dashboard:publicShareMissingToken")}</p>
       </div>
     );
@@ -130,7 +130,7 @@ export function DashboardPublicSharePage() {
 
   if (loading) {
     return (
-      <div className="flex flex-1 items-center justify-center bg-neutral-950 p-8 text-sm text-surface-muted">
+      <div className="flex flex-1 items-center justify-center bg-neutral-950 p-8 text-sm text-ink-muted">
         {t("dashboard:loading")}
       </div>
     );
@@ -139,23 +139,23 @@ export function DashboardPublicSharePage() {
   if (passwordRequired && !detail) {
     return (
       <div className="mx-auto flex min-h-dvh max-w-md flex-1 flex-col justify-center bg-neutral-950 p-8">
-        <h1 className="text-lg font-medium text-white">
+        <h1 className="text-lg font-medium text-ink-primary">
           {shareLabel || t("dashboard:publicShareTitle")}
         </h1>
-        <p className="mt-3 text-sm text-neutral-400">{t("dashboard:publicSharePasswordPrompt")}</p>
+        <p className="mt-3 text-sm text-ink-muted">{t("dashboard:publicSharePasswordPrompt")}</p>
         <form className="mt-4 space-y-3" onSubmit={onSubmitPassword}>
           <input
             type="password"
             value={passwordInput}
             onChange={(e) => setPasswordInput(e.target.value)}
             placeholder={t("dashboard:publicSharePasswordPlaceholder")}
-            className="w-full rounded-lg border border-white/15 bg-field px-3 py-2 text-sm text-white outline-none focus:border-violet-500/50"
+            className="w-full rounded-lg border border-white/15 bg-field px-3 py-2 text-sm text-ink-primary outline-none focus:border-violet-500/50"
             autoComplete="current-password"
           />
           {passwordError ? <p className="text-xs text-red-300">{passwordError}</p> : null}
           <button
             type="submit"
-            className="w-full rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500"
+            className="w-full rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-violet-500"
           >
             {t("dashboard:publicShareUnlock")}
           </button>
@@ -167,7 +167,7 @@ export function DashboardPublicSharePage() {
   if (error || !detail || !uiLayout) {
     return (
       <div className="mx-auto flex max-w-lg flex-1 flex-col justify-center bg-neutral-950 p-8 text-center">
-        <h1 className="text-lg font-medium text-white">{t("dashboard:publicShareTitle")}</h1>
+        <h1 className="text-lg font-medium text-ink-primary">{t("dashboard:publicShareTitle")}</h1>
         <p className="mt-3 text-sm text-red-300">{error || t("dashboard:publicShareNotFound")}</p>
       </div>
     );
@@ -192,8 +192,8 @@ export function DashboardPublicSharePage() {
             <p className="text-meta font-semibold uppercase tracking-wide text-sky-300/90">
               {t("dashboard:publicShareBadge")}
             </p>
-            <h1 className="mt-1 text-xl font-semibold text-white">{pageTitle}</h1>
-            <p className="mt-1 text-xs text-surface-muted">
+            <h1 className="mt-1 text-xl font-semibold text-ink-primary">{pageTitle}</h1>
+            <p className="mt-1 text-xs text-ink-muted">
               {detail.allowed_block_ids && detail.allowed_block_ids.length > 0
                 ? t("dashboard:publicShareScopeBlocks", {
                     count: detail.allowed_block_ids.length,

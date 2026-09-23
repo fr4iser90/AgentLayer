@@ -50,7 +50,7 @@ export function DashboardOnboardingBanner({
         </div>
         <button
           type="button"
-          className="shrink-0 rounded-md border border-white/10 px-2 py-1 text-meta text-surface-muted hover:bg-white/5"
+          className="shrink-0 rounded-md border border-white/10 px-2 py-1 text-meta text-ink-muted hover:bg-white/5"
           onClick={() => {
             dismissOnboarding(dashboardId);
             onDismiss();
@@ -87,7 +87,7 @@ export function DashboardOnboardingBanner({
           ))}
           <button
             type="button"
-            className="rounded-lg bg-emerald-600/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-500"
+            className="rounded-lg bg-emerald-600/80 px-3 py-1.5 text-xs font-medium text-ink-primary hover:bg-emerald-500"
             onClick={() =>
               onStartChat(
                 t("dashboard:onboardingGenericStarter", {

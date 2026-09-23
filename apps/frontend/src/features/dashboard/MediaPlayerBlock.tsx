@@ -22,7 +22,7 @@ function LocalUploadPlayer(props: { mediaId: string }) {
   const { t } = useTranslation(["dashboard"]);
   const url = useMediaStreamUrl(props.mediaId);
   if (!url) {
-    return <p className="text-xs text-surface-muted">{t("dashboard:mediaStreamLoading")}</p>;
+    return <p className="text-xs text-ink-muted">{t("dashboard:mediaStreamLoading")}</p>;
   }
   return (
     <audio controls className="w-full" src={url}>
@@ -172,11 +172,11 @@ export function MediaPlayerBlockBody(props: {
 
   return (
     <section className="rounded-xl border border-surface-border bg-card p-3 md:p-4">
-      <h3 className="mb-3 text-sm font-medium text-white">{sectionTitle}</h3>
+      <h3 className="mb-3 text-sm font-medium text-ink-primary">{sectionTitle}</h3>
 
       <div className="mb-4 min-h-[4rem] rounded-lg border border-white/10 bg-black/40 p-3">
         {!nowItem ? (
-          <p className="text-sm text-surface-muted">{t("dashboard:mediaQueueEmpty")}</p>
+          <p className="text-sm text-ink-muted">{t("dashboard:mediaQueueEmpty")}</p>
         ) : nowEmbed ? (
           <div className="aspect-video max-h-48 overflow-hidden rounded-md">
             <iframe title={itemLabel(nowItem, sectionTitle)} src={nowEmbed} className="h-full w-full border-0" />
@@ -184,9 +184,9 @@ export function MediaPlayerBlockBody(props: {
         ) : nowMediaId || nowExternalStream ? (
           globalMedia ? (
             <div className="space-y-2">
-              <p className="text-sm text-white">{itemLabel(nowItem, t("dashboard:mediaUntitledTrack"))}</p>
+              <p className="text-sm text-ink-primary">{itemLabel(nowItem, t("dashboard:mediaUntitledTrack"))}</p>
               {nowExternalStream ? (
-                <p className="text-xs text-surface-muted">{t("dashboard:mediaMiniPlayerStreamHint")}</p>
+                <p className="text-xs text-ink-muted">{t("dashboard:mediaMiniPlayerStreamHint")}</p>
               ) : null}
               {globalPlayingNow ? (
                 <p className="text-xs text-sky-200/90">{t("dashboard:mediaPlayingInFooter")}</p>
@@ -212,7 +212,7 @@ export function MediaPlayerBlockBody(props: {
           <p className="text-sm text-amber-200">{t("dashboard:mediaPlaybackUnavailable")}</p>
         )}
         {nowItem && nowEmbed ? (
-          <p className="mt-2 text-xs text-surface-muted">{itemLabel(nowItem, sectionTitle)}</p>
+          <p className="mt-2 text-xs text-ink-muted">{itemLabel(nowItem, sectionTitle)}</p>
         ) : null}
       </div>
 
@@ -221,7 +221,7 @@ export function MediaPlayerBlockBody(props: {
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              className="rounded-lg border border-surface-border bg-black/30 px-3 py-1.5 text-xs text-white hover:bg-white/5 disabled:opacity-50"
+              className="rounded-lg border border-surface-border bg-black/30 px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5 disabled:opacity-50"
               disabled={uploading || !dashboardId}
               onClick={() => fileRef.current?.click()}
             >
@@ -242,7 +242,7 @@ export function MediaPlayerBlockBody(props: {
           <div className="flex flex-wrap gap-2">
             <input
               type="url"
-              className="min-w-[12rem] flex-1 rounded-lg border border-surface-border bg-field px-3 py-2 font-mono text-xs text-neutral-100"
+              className="min-w-[12rem] flex-1 rounded-lg border border-surface-border bg-field px-3 py-2 font-mono text-xs text-ink-primary"
               placeholder={t("dashboard:embedUrlPlaceholder")}
               value={embedUrl}
               onChange={(e) => setEmbedUrl(e.target.value)}
@@ -269,7 +269,7 @@ export function MediaPlayerBlockBody(props: {
               <li
                 key={`${id ?? idx}-${idx}`}
                 className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm ${
-                  active ? "bg-sky-950/40 text-sky-100" : "text-neutral-200 hover:bg-white/5"
+                  active ? "bg-sky-950/40 text-sky-100" : "text-ink-primary hover:bg-white/5"
                 }`}
               >
                 <button
@@ -296,7 +296,7 @@ export function MediaPlayerBlockBody(props: {
           })}
         </ol>
       ) : readOnly ? (
-        <p className="text-sm text-surface-muted">{t("dashboard:mediaQueueEmptyReadOnly")}</p>
+        <p className="text-sm text-ink-muted">{t("dashboard:mediaQueueEmptyReadOnly")}</p>
       ) : null}
 
       {!readOnly ? <MediaSharePanel /> : null}

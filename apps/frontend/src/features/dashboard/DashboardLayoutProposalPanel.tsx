@@ -81,20 +81,20 @@ export function DashboardLayoutProposalPanel({
       <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-t-2xl border border-surface-border bg-[#111] shadow-2xl sm:rounded-2xl">
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-surface-border px-4 py-3">
           <div>
-            <h2 className="text-sm font-semibold text-white">{t("dashboard:layoutProposalsTitle")}</h2>
-            <p className="text-xs text-neutral-400">{t("dashboard:layoutProposalsSubtitle")}</p>
+            <h2 className="text-sm font-semibold text-ink-primary">{t("dashboard:layoutProposalsTitle")}</h2>
+            <p className="text-xs text-ink-muted">{t("dashboard:layoutProposalsSubtitle")}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-surface-border px-2.5 py-1 text-xs text-neutral-300 hover:bg-white/5"
+            className="rounded-lg border border-surface-border px-2.5 py-1 text-xs text-ink-secondary hover:bg-white/5"
           >
             {t("dashboard:layoutProposalsClose")}
           </button>
         </header>
 
         {loading ? (
-          <div className="px-4 py-8 text-sm text-neutral-400">{t("dashboard:layoutProposalsLoading")}</div>
+          <div className="px-4 py-8 text-sm text-ink-muted">{t("dashboard:layoutProposalsLoading")}</div>
         ) : errText && !proposalSet ? (
           <div className="mx-4 my-4 rounded-lg border border-red-500/40 bg-red-950/30 px-3 py-2 text-sm text-red-200">
             {errText}
@@ -112,13 +112,13 @@ export function DashboardLayoutProposalPanel({
                   }}
                   className={`shrink-0 rounded-lg border px-3 py-2 text-left text-xs transition ${
                     selectedId === p.id
-                      ? "border-emerald-500/60 bg-emerald-950/30 text-white"
-                      : "border-surface-border bg-black/20 text-neutral-300 hover:bg-white/5"
+                      ? "border-emerald-500/60 bg-emerald-950/30 text-ink-primary"
+                      : "border-surface-border bg-black/20 text-ink-secondary hover:bg-white/5"
                   }`}
                 >
                   <div className="font-medium">{p.title}</div>
                   {p.summary ? (
-                    <div className="mt-0.5 max-w-[14rem] truncate text-neutral-500">{p.summary}</div>
+                    <div className="mt-0.5 max-w-[14rem] truncate text-ink-muted">{p.summary}</div>
                   ) : null}
                 </button>
               ))}
@@ -170,7 +170,7 @@ export function DashboardLayoutProposalPanel({
                     type="button"
                     disabled={applyBusy}
                     onClick={() => void applyProposal(selected.id)}
-                    className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
+                    className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-ink-on-fill hover:bg-emerald-500 disabled:opacity-50"
                   >
                     {applyBusy ? t("dashboard:saving") : t("dashboard:layoutProposalsApply")}
                   </button>
@@ -180,7 +180,7 @@ export function DashboardLayoutProposalPanel({
                   type="button"
                   disabled={!selected || applyBusy}
                   onClick={() => selected && setConfirmId(selected.id)}
-                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
+                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-emerald-500 disabled:opacity-50"
                 >
                   {t("dashboard:layoutProposalsApply")}
                 </button>

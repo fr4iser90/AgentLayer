@@ -23,7 +23,7 @@ function badgeClass(status: string): string {
   if (s === "fail" || s === "critical" || s === "vulnerable") {
     return "bg-red-600/25 text-red-200 border-red-500/30";
   }
-  return "bg-white/10 text-surface-muted border-white/10";
+  return "bg-white/10 text-ink-muted border-white/10";
 }
 
 function gridColsClass(n: number): string {
@@ -123,7 +123,7 @@ export function CardGridBlockBody(props: {
   return (
     <section className="rounded-xl border border-surface-border bg-card p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-surface-muted">
+        <span className="text-xs font-medium uppercase tracking-wide text-ink-muted">
           {sectionTitle}
         </span>
         {searchEnabled ? (
@@ -131,13 +131,13 @@ export function CardGridBlockBody(props: {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={searchPlaceholder}
-            className="w-full min-w-[12rem] max-w-xs rounded-md border border-surface-border bg-field px-3 py-1.5 text-xs text-neutral-100 outline-none focus:border-sky-500/50 sm:w-56"
+            className="w-full min-w-[12rem] max-w-xs rounded-md border border-surface-border bg-field px-3 py-1.5 text-xs text-ink-primary outline-none focus:border-sky-500/50 sm:w-56"
           />
         ) : null}
       </div>
 
       {filteredRows.length === 0 ? (
-        <p className="py-8 text-center text-sm text-surface-muted">{t("dashboard:cardGridEmpty")}</p>
+        <p className="py-8 text-center text-sm text-ink-muted">{t("dashboard:cardGridEmpty")}</p>
       ) : (
         <div className={`grid gap-3 ${gridColsClass(gridColumns)}`}>
           {filteredRows.map((row) => {
@@ -163,7 +163,7 @@ export function CardGridBlockBody(props: {
                 }}
               >
                 <div className="mb-2 flex items-start justify-between gap-2">
-                  <h4 className="line-clamp-2 text-sm font-semibold text-white">{title}</h4>
+                  <h4 className="line-clamp-2 text-sm font-semibold text-ink-primary">{title}</h4>
                   {pinned ? (
                     <span className="shrink-0" title={t("dashboard:pinned")}>
                       <Star
@@ -178,7 +178,7 @@ export function CardGridBlockBody(props: {
                   <p className="mb-2 truncate font-mono text-meta text-sky-300/90">{remote}</p>
                 ) : null}
                 {cardFields.includes("tags") && tags ? (
-                  <p className="mb-2 line-clamp-2 text-xs text-surface-muted">{tags}</p>
+                  <p className="mb-2 line-clamp-2 text-xs text-ink-muted">{tags}</p>
                 ) : null}
                 <div className="mt-auto flex flex-wrap gap-1.5 pt-2">
                   {cardFields.includes("status") && status ? (

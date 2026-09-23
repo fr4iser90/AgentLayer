@@ -108,37 +108,37 @@ export function OrgSetupPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
-      <h1 className="text-xl font-semibold text-white">{t("org:setupPageTitle")}</h1>
-      <p className="mt-2 text-sm text-surface-muted">{t("org:setupPageIntro")}</p>
+      <h1 className="text-xl font-semibold text-ink-primary">{t("org:setupPageTitle")}</h1>
+      <p className="mt-2 text-sm text-ink-muted">{t("org:setupPageIntro")}</p>
 
       {wizardStep === 1 ? (
         <form onSubmit={(e) => void saveProfile(e)} className="mt-8 space-y-4">
-          <label className="block text-xs text-surface-muted" htmlFor="org-name">
+          <label className="block text-xs text-ink-muted" htmlFor="org-name">
             {t("org:setupOrgName")}
           </label>
           <input
             id="org-name"
-            className="w-full rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
+            className="w-full rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
           />
-          <label className="block text-xs text-surface-muted" htmlFor="org-vertical">
+          <label className="block text-xs text-ink-muted" htmlFor="org-vertical">
             {t("org:setupVerticalProfile")}
           </label>
           <input
             id="org-vertical"
-            className="w-full rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
+            className="w-full rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
             value={verticalProfile}
             onChange={(e) => setVerticalProfile(e.target.value)}
             required
           />
-          <p className="text-meta text-surface-muted">{t("org:setupVerticalProfileHint")}</p>
+          <p className="text-meta text-ink-muted">{t("org:setupVerticalProfileHint")}</p>
           {err ? <p className="text-sm text-red-400">{err}</p> : null}
           <button
             type="submit"
             disabled={busy}
-            className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+            className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
           >
             {t("org:setupContinue")}
           </button>
@@ -147,7 +147,7 @@ export function OrgSetupPage() {
 
       {wizardStep === 2 ? (
         <div className="mt-8 space-y-6">
-          <label className="flex cursor-pointer items-start gap-2 text-sm text-white">
+          <label className="flex cursor-pointer items-start gap-2 text-sm text-ink-primary">
             <input
               type="checkbox"
               className="mt-1 rounded border-surface-border"
@@ -158,9 +158,9 @@ export function OrgSetupPage() {
           </label>
 
           <div className="rounded-lg border border-surface-border p-4">
-            <p className="text-sm font-medium text-white">{t("org:setupContentStep")}</p>
-            <p className="mt-1 text-xs text-surface-muted">{t("org:setupContentHint")}</p>
-            <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-white">
+            <p className="text-sm font-medium text-ink-primary">{t("org:setupContentStep")}</p>
+            <p className="mt-1 text-xs text-ink-muted">{t("org:setupContentHint")}</p>
+            <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
               <input
                 type="checkbox"
                 className="rounded border-surface-border"
@@ -183,7 +183,7 @@ export function OrgSetupPage() {
           <button
             type="button"
             disabled={busy}
-            className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+            className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
             onClick={() => void finishSetup()}
           >
             {busy ? t("org:setupFinishing") : t("org:setupFinish")}

@@ -103,20 +103,20 @@ export function ProjectWorkspaceControls({
 
   return (
     <div className="mb-4 rounded-xl border border-surface-border bg-black/15 p-3">
-      <div className="mb-2 text-xs font-medium uppercase tracking-wide text-surface-muted">
+      <div className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-muted">
         {t("dashboard:linkedWorkspace")}
       </div>
       {loading ? (
-        <p className="text-xs text-surface-muted">{t("dashboard:loading")}</p>
+        <p className="text-xs text-ink-muted">{t("dashboard:loading")}</p>
       ) : (
         <>
-          <label className="mb-2 block text-meta text-surface-muted">
+          <label className="mb-2 block text-meta text-ink-muted">
             {t("dashboard:workspacePickerLabel")}
             <select
               value={workspaceId}
               disabled={readOnly}
               onChange={(e) => linkExisting(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-surface-border bg-field px-3 py-1.5 text-xs text-neutral-100 outline-none focus:border-violet-400/60 disabled:opacity-70"
+              className="mt-1 w-full rounded-lg border border-surface-border bg-field px-3 py-1.5 text-xs text-ink-primary outline-none focus:border-violet-400/60 disabled:opacity-70"
             >
               <option value="">{t("dashboard:workspacePickerNone")}</option>
               {workspaces.map((w) => (
@@ -128,14 +128,14 @@ export function ProjectWorkspaceControls({
             </select>
           </label>
           {matched ? (
-            <p className="mb-2 truncate font-mono text-meta text-surface-muted">{matched.path}</p>
+            <p className="mb-2 truncate font-mono text-meta text-ink-muted">{matched.path}</p>
           ) : workspaceId ? (
             <p className="mb-2 text-meta text-amber-300/90">{t("dashboard:workspaceNotFound")}</p>
           ) : null}
           {!readOnly && remote ? (
             <>
               {hasOrgSurface(user) ? (
-                <label className="mb-2 flex items-start gap-2 text-meta text-surface-muted">
+                <label className="mb-2 flex items-start gap-2 text-meta text-ink-muted">
                   <input
                     type="checkbox"
                     className="mt-0.5"
@@ -157,7 +157,7 @@ export function ProjectWorkspaceControls({
           ) : null}
         </>
       )}
-      {msg ? <p className="mt-2 text-xs text-surface-muted">{msg}</p> : null}
+      {msg ? <p className="mt-2 text-xs text-ink-muted">{msg}</p> : null}
     </div>
   );
 }

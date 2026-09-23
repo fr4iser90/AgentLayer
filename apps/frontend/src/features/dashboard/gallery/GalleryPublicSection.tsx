@@ -44,7 +44,7 @@ function PublicPhotoTile(props: {
         />
       </button>
       {caption ? (
-        <figcaption className="border-t border-white/5 px-3 py-2 text-xs leading-relaxed text-neutral-300">
+        <figcaption className="border-t border-white/5 px-3 py-2 text-xs leading-relaxed text-ink-secondary">
           {caption}
         </figcaption>
       ) : null}
@@ -78,12 +78,12 @@ export function GalleryPublicSection(props: {
   return (
     <section className="mb-8 last:mb-4 sm:mb-12">
       {sectionTitle ? (
-        <h2 className="mb-3 text-sm font-medium uppercase tracking-wide text-neutral-400 sm:mb-4">
+        <h2 className="mb-3 text-sm font-medium uppercase tracking-wide text-ink-muted sm:mb-4">
           {sectionTitle}
         </h2>
       ) : null}
       {photos.length === 0 ? (
-        <p className="py-16 text-center text-sm text-neutral-500">
+        <p className="py-16 text-center text-sm text-ink-muted">
           {t("dashboard:photosEmptyReadOnly")}
         </p>
       ) : (

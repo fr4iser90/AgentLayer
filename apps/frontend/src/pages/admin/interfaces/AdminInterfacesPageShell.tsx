@@ -13,8 +13,8 @@ export function AdminInterfacesPageShell({
 }) {
   return (
     <div className={`mx-auto px-6 py-8 ${wide ? "max-w-4xl" : "max-w-2xl"}`}>
-      <h1 className="text-2xl font-semibold text-white">{title}</h1>
-      {description ? <div className="mt-2 text-sm text-surface-muted">{description}</div> : null}
+      <h1 className="text-2xl font-semibold text-ink-primary">{title}</h1>
+      {description ? <div className="mt-2 text-sm text-ink-muted">{description}</div> : null}
       <div className="mt-6 pb-24">{children}</div>
     </div>
   );

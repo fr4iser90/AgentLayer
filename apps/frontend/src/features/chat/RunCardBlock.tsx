@@ -272,14 +272,14 @@ export function RunCardBlock({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-            <span className="font-medium text-neutral-100">{title}</span>
-            <span className="text-meta text-surface-muted">{meta.join(" · ")}</span>
+            <span className="font-medium text-ink-primary">{title}</span>
+            <span className="text-meta text-ink-muted">{meta.join(" · ")}</span>
             {card.status === "running" ? (
               <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400" />
             ) : null}
           </div>
           {compactionSubtitle ?? card.subtitle ? (
-            <p className="mt-1 text-meta leading-snug text-neutral-400">
+            <p className="mt-1 text-meta leading-snug text-ink-muted">
               {compactionSubtitle ?? card.subtitle}
             </p>
           ) : null}
@@ -305,7 +305,7 @@ export function RunCardBlock({
                       {t("chat:contextInjectExpandHint")}
                     </span>
                   </summary>
-                  <pre className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap break-words rounded border border-sky-500/20 bg-black/25 px-2 py-1.5 font-sans text-meta leading-relaxed text-neutral-400">
+                  <pre className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap break-words rounded border border-sky-500/20 bg-black/25 px-2 py-1.5 font-sans text-meta leading-relaxed text-ink-muted">
                     {card.reasoningExcerpt.trim()}
                   </pre>
                 </details>
@@ -318,7 +318,7 @@ export function RunCardBlock({
                       {t("chat:contextInjectExpandHint")}
                     </span>
                   </summary>
-                  <pre className="mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap break-words rounded border border-indigo-500/20 bg-black/25 px-2 py-1.5 font-sans text-meta leading-relaxed text-neutral-300">
+                  <pre className="mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap break-words rounded border border-indigo-500/20 bg-black/25 px-2 py-1.5 font-sans text-meta leading-relaxed text-ink-secondary">
                     {card.assistantExcerpt.trim()}
                   </pre>
                 </details>
@@ -342,7 +342,7 @@ export function RunCardBlock({
                       isLatest ? (
                         <span className="shrink-0 text-sky-400/90">→</span>
                       ) : (
-                        <span className="shrink-0 text-neutral-600">·</span>
+                        <span className="shrink-0 text-ink-faint">·</span>
                       )
                     ) : failed ? (
                       <span className="shrink-0" title={t("chat:runCardStepFailed")}>
@@ -355,7 +355,7 @@ export function RunCardBlock({
                       className={
                         running && isLatest
                           ? "truncate text-sky-300/90"
-                          : "truncate text-neutral-500"
+                          : "truncate text-ink-muted"
                       }
                     >
                       {step}
@@ -376,7 +376,7 @@ export function RunCardBlock({
                   {t("chat:contextInjectExpandHint")}
                 </span>
               </summary>
-              <pre className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded border border-emerald-500/20 bg-black/30 px-2 py-1.5 font-mono text-meta leading-relaxed text-neutral-300">
+              <pre className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded border border-emerald-500/20 bg-black/30 px-2 py-1.5 font-mono text-meta leading-relaxed text-ink-secondary">
                 {lastOutputRow?.resultDisplay || toolCardOutput}
               </pre>
             </details>
@@ -397,13 +397,13 @@ export function RunCardBlock({
             <ul className="mt-2 space-y-1 border-t border-white/5 pt-2">
               {card.kind === "compaction"
                 ? compactionDetailLines.map((line, i) => (
-                    <li key={`cmp-${i}`} className="text-meta leading-snug text-neutral-400">
+                    <li key={`cmp-${i}`} className="text-meta leading-snug text-ink-muted">
                       {line}
                     </li>
                   ))
                 : allSubagentStepRows(card).length > 0
                 ? allSubagentStepRows(card).map((row, i) => (
-                    <li key={`step-${i}`} className="text-meta leading-snug text-neutral-500">
+                    <li key={`step-${i}`} className="text-meta leading-snug text-ink-muted">
                       <div>
                         {card.status === "running" ? (
                           <span className="text-sky-400/70">→</span>
@@ -414,7 +414,7 @@ export function RunCardBlock({
                         ) : (
                           <Check aria-hidden className="inline h-3.5 w-3.5 text-emerald-400/70" />
                         )}
-                        <span className={row.failed ? "text-rose-200/85" : "text-neutral-400"}>
+                        <span className={row.failed ? "text-rose-200/85" : "text-ink-muted"}>
                           {" "}
                           {row.label}
                         </span>
@@ -427,7 +427,7 @@ export function RunCardBlock({
                               {t("chat:contextInjectExpandHint")}
                             </span>
                           </summary>
-                          <pre className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded border border-emerald-500/20 bg-black/30 px-2 py-1.5 font-mono text-meta leading-relaxed text-neutral-300">
+                          <pre className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded border border-emerald-500/20 bg-black/30 px-2 py-1.5 font-mono text-meta leading-relaxed text-ink-secondary">
                             {row.resultDisplay}
                           </pre>
                         </details>
@@ -435,13 +435,13 @@ export function RunCardBlock({
                     </li>
                   ))
                 : card.details.map((d) => (
-                    <li key={d.id} className="text-meta leading-snug text-neutral-500">
+                    <li key={d.id} className="text-meta leading-snug text-ink-muted">
                       <div>
-                        <span className="font-medium uppercase tracking-wide text-surface-muted">
+                        <span className="font-medium uppercase tracking-wide text-ink-muted">
                           {d.kind}
                         </span>
                         {d.toolName ? <span className="text-indigo-300/80"> {d.toolName}</span> : null}
-                        {d.text ? <span className="text-neutral-400"> — {d.text}</span> : null}
+                        {d.text ? <span className="text-ink-muted"> — {d.text}</span> : null}
                       </div>
                       {d.resultDisplay?.trim() ? (
                         <details className="group/out mt-1" open={d.toolOk === false}>
@@ -451,7 +451,7 @@ export function RunCardBlock({
                               {t("chat:contextInjectExpandHint")}
                             </span>
                           </summary>
-                          <pre className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded border border-emerald-500/20 bg-black/30 px-2 py-1.5 font-mono text-meta leading-relaxed text-neutral-300">
+                          <pre className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded border border-emerald-500/20 bg-black/30 px-2 py-1.5 font-mono text-meta leading-relaxed text-ink-secondary">
                             {d.resultDisplay.trim()}
                           </pre>
                         </details>

@@ -19,15 +19,15 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
   [
     "rounded-md px-3 py-2 text-sm transition-colors",
     isActive
-      ? "bg-white/10 text-white"
-      : "text-surface-muted hover:bg-white/5 hover:text-neutral-200",
+      ? "bg-white/10 text-ink-primary"
+      : "text-ink-muted hover:bg-white/5 hover:text-neutral-200",
   ].join(" ");
 
 const menuItemClass =
-  "block w-full px-3 py-2 text-left text-sm text-neutral-200 hover:bg-white/10";
+  "block w-full px-3 py-2 text-left text-sm text-ink-primary hover:bg-white/10";
 
 const signInClass =
-  "rounded-md px-3 py-2 text-sm text-surface-muted hover:bg-white/5 hover:text-neutral-200";
+  "rounded-md px-3 py-2 text-sm text-ink-muted hover:bg-white/5 hover:text-neutral-200";
 
 function MoreNavMenu({
   showSchedulesMobile,
@@ -193,12 +193,12 @@ export function AppLayout() {
   const shell = (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden">
       <header className="flex shrink-0 items-center gap-3 border-b border-surface-border bg-panel px-4 py-2">
-        <span className="shrink-0 text-sm font-semibold tracking-tight text-white">
+        <span className="shrink-0 text-sm font-semibold tracking-tight text-ink-primary">
           {t("app.title")}
         </span>
         <nav className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
           {loading ? (
-            <span className="px-3 py-2 text-xs text-surface-muted">{t("nav.loading")}</span>
+            <span className="px-3 py-2 text-xs text-ink-muted">{t("nav.loading")}</span>
           ) : signedIn ? (
             <>
               {navItemAllowed(user, "chat") ? (
@@ -250,8 +250,8 @@ export function AppLayout() {
                       className={[
                         "rounded px-2 py-1 text-meta font-medium",
                         active
-                          ? "bg-white/15 text-white"
-                          : "text-surface-muted hover:bg-white/5 hover:text-neutral-200",
+                          ? "bg-white/15 text-ink-primary"
+                          : "text-ink-muted hover:bg-white/5 hover:text-neutral-200",
                       ].join(" ")}
                       onClick={() => void i18n.changeLanguage(lng)}
                     >
@@ -278,7 +278,7 @@ export function AppLayout() {
       </div>
       <MediaMiniPlayer />
       <footer className="shrink-0 border-t border-surface-border bg-panel px-4 py-2">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-4 gap-y-1 text-meta text-surface-muted">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-4 gap-y-1 text-meta text-ink-muted">
           <LegalFooterLinks />
           {showDocsFooter && !signedIn ? (
             <>

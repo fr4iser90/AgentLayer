@@ -59,7 +59,7 @@ export function NotificationBell() {
     <div className="relative" ref={rootRef}>
       <button
         type="button"
-        className="relative flex h-9 w-9 items-center justify-center rounded-full text-neutral-200 outline-none ring-sky-500/40 hover:bg-white/10 focus-visible:ring-2"
+        className="relative flex h-9 w-9 items-center justify-center rounded-full text-ink-primary outline-none ring-sky-500/40 hover:bg-white/10 focus-visible:ring-2"
         aria-expanded={open}
         aria-haspopup="menu"
         title={t("notifications:bellTitle")}
@@ -78,7 +78,7 @@ export function NotificationBell() {
           className="absolute right-0 z-50 mt-1 flex w-[min(22rem,calc(100vw-2rem))] flex-col rounded-lg border border-surface-border bg-raised shadow-xl"
         >
           <div className="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
-            <p className="text-sm font-medium text-white">{t("notifications:inboxTitle")}</p>
+            <p className="text-sm font-medium text-ink-primary">{t("notifications:inboxTitle")}</p>
             {unread > 0 ? (
               <button
                 type="button"
@@ -91,9 +91,9 @@ export function NotificationBell() {
           </div>
           <div className="max-h-[min(60vh,420px)] overflow-y-auto py-1">
             {loading && items.length === 0 ? (
-              <p className="px-3 py-6 text-center text-sm text-surface-muted">{t("common:nav.loading")}</p>
+              <p className="px-3 py-6 text-center text-sm text-ink-muted">{t("common:nav.loading")}</p>
             ) : items.length === 0 ? (
-              <p className="px-3 py-6 text-center text-sm text-surface-muted">{t("notifications:empty")}</p>
+              <p className="px-3 py-6 text-center text-sm text-ink-muted">{t("notifications:empty")}</p>
             ) : (
               items.map((n) => (
                 <div
@@ -110,9 +110,9 @@ export function NotificationBell() {
                       aria-hidden
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-white">{n.title}</p>
+                      <p className="text-sm font-medium text-ink-primary">{n.title}</p>
                       {n.body ? (
-                        <p className="mt-0.5 line-clamp-2 text-xs text-surface-muted">{n.body}</p>
+                        <p className="mt-0.5 line-clamp-2 text-xs text-ink-muted">{n.body}</p>
                       ) : null}
                       <p className="mt-1 text-meta text-white/30">{relativeTime(n.created_at, t)}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
@@ -131,7 +131,7 @@ export function NotificationBell() {
                         {!n.read ? (
                           <button
                             type="button"
-                            className="text-xs text-surface-muted hover:text-neutral-300"
+                            className="text-xs text-ink-muted hover:text-neutral-300"
                             onClick={() => void markRead(n.id)}
                           >
                             {t("notifications:dismiss")}

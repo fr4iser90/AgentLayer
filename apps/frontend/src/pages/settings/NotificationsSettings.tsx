@@ -46,8 +46,8 @@ function Toggle(props: {
         onChange={(e) => props.onChange(e.target.checked)}
       />
       <span className="min-w-0 flex-1">
-        <span className="block text-sm text-white">{props.label}</span>
-        {props.hint ? <span className="mt-0.5 block text-xs text-surface-muted">{props.hint}</span> : null}
+        <span className="block text-sm text-ink-primary">{props.label}</span>
+        {props.hint ? <span className="mt-0.5 block text-xs text-ink-muted">{props.hint}</span> : null}
       </span>
     </label>
   );
@@ -119,14 +119,14 @@ export function NotificationsSettings() {
   };
 
   if (loading) {
-    return <p className="text-sm text-surface-muted">{t("settings:notificationsLoading")}</p>;
+    return <p className="text-sm text-ink-muted">{t("settings:notificationsLoading")}</p>;
   }
 
   return (
     <div className="mx-auto max-w-xl space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-white">{t("settings:notificationsTitle")}</h1>
-        <p className="mt-1 text-sm text-surface-muted">{t("settings:notificationsIntro")}</p>
+        <h1 className="text-xl font-semibold text-ink-primary">{t("settings:notificationsTitle")}</h1>
+        <p className="mt-1 text-sm text-ink-muted">{t("settings:notificationsIntro")}</p>
       </div>
 
       {error ? (
@@ -141,16 +141,16 @@ export function NotificationsSettings() {
       ) : null}
 
       <section className="space-y-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-surface-muted">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
           {t("settings:notificationsWebTitle")}
         </h2>
-        <p className="text-sm text-surface-muted">{t("settings:notificationsWebHint")}</p>
+        <p className="text-sm text-ink-muted">{t("settings:notificationsWebHint")}</p>
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-surface-muted">Telegram</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Telegram</h2>
         {!telegramLinked ? (
-          <p className="text-sm text-surface-muted">
+          <p className="text-sm text-ink-muted">
             {t("settings:notificationsLinkTelegram")}{" "}
             <Link to="/settings/connections" className="text-sky-400 hover:text-sky-300">
               {t("settings:connectionsTitle")}
@@ -181,9 +181,9 @@ export function NotificationsSettings() {
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-surface-muted">Discord</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Discord</h2>
         {!discordLinked ? (
-          <p className="text-sm text-surface-muted">
+          <p className="text-sm text-ink-muted">
             {t("settings:notificationsLinkDiscord")}{" "}
             <Link to="/settings/connections" className="text-sky-400 hover:text-sky-300">
               {t("settings:connectionsTitle")}
@@ -226,14 +226,14 @@ export function NotificationsSettings() {
         <button
           type="button"
           disabled={saving}
-          className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+          className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
           onClick={() => void save()}
         >
           {saving ? t("settings:notificationsSaving") : t("settings:notificationsSave")}
         </button>
         <button
           type="button"
-          className="rounded-lg border border-surface-border px-4 py-2 text-sm text-neutral-200 hover:bg-white/5"
+          className="rounded-lg border border-surface-border px-4 py-2 text-sm text-ink-primary hover:bg-white/5"
           onClick={() => void load()}
         >
           {t("settings:reloadFromServer")}

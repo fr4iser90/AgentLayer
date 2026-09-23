@@ -163,17 +163,17 @@ export function AgentSettings() {
   }
 
   const input =
-    "mt-1 block w-full rounded-md border border-surface-border bg-black/25 px-3 py-2 text-sm text-white placeholder:text-neutral-600";
-  const label = "block text-xs text-surface-muted";
+    "mt-1 block w-full rounded-md border border-surface-border bg-black/25 px-3 py-2 text-sm text-ink-primary placeholder:text-neutral-600";
+  const label = "block text-xs text-ink-muted";
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
       <div>
-        <h1 className="text-lg font-semibold text-white">{t("settings:agentTitle")}</h1>
-        <p className="mt-2 text-sm text-surface-muted">
+        <h1 className="text-lg font-semibold text-ink-primary">{t("settings:agentTitle")}</h1>
+        <p className="mt-2 text-sm text-ink-muted">
           {t("settings:agentIntro")}
         </p>
-        <p className="mt-2 text-xs text-surface-muted">
+        <p className="mt-2 text-xs text-ink-muted">
           <Link to="/settings/delegate" className="text-indigo-300 hover:underline">
             {t("settings:delegateNav")}
           </Link>
@@ -182,7 +182,7 @@ export function AgentSettings() {
         </p>
       </div>
 
-      {loading ? <p className="text-sm text-surface-muted">{t("settings:agentLoading")}</p> : null}
+      {loading ? <p className="text-sm text-ink-muted">{t("settings:agentLoading")}</p> : null}
       {msg ? (
         <p
           className={`text-sm ${msg.includes("saved") ? "text-emerald-400" : "text-amber-400"}`}
@@ -192,9 +192,9 @@ export function AgentSettings() {
       ) : null}
 
       <section className="rounded-xl border border-surface-border bg-black/20 p-5">
-        <h2 className="text-sm font-medium text-white">{t("settings:showReasoningTitle")}</h2>
-        <p className="mt-1 text-xs text-surface-muted">{t("settings:showReasoningHelp")}</p>
-        <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-neutral-200">
+        <h2 className="text-sm font-medium text-ink-primary">{t("settings:showReasoningTitle")}</h2>
+        <p className="mt-1 text-xs text-ink-muted">{t("settings:showReasoningHelp")}</p>
+        <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
           <input
             type="checkbox"
             className="h-4 w-4 rounded border-surface-border bg-field"
@@ -210,8 +210,8 @@ export function AgentSettings() {
       </section>
 
       <section className="rounded-xl border border-surface-border bg-card p-5">
-        <h2 className="text-sm font-medium text-white">{t("settings:personaTitle")}</h2>
-        <p className="mt-1 text-xs text-surface-muted">
+        <h2 className="text-sm font-medium text-ink-primary">{t("settings:personaTitle")}</h2>
+        <p className="mt-1 text-xs text-ink-muted">
           {t("settings:personaHelp")}
         </p>
         {personaUnavailable ? (
@@ -229,7 +229,7 @@ export function AgentSettings() {
                 spellCheck
               />
             </label>
-            <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-neutral-200">
+            <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
               <input
                 type="checkbox"
                 className="h-4 w-4 rounded border-surface-border bg-field"
@@ -241,7 +241,7 @@ export function AgentSettings() {
             <button
               type="button"
               disabled={savingPersona}
-              className="mt-4 rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-50"
+              className="mt-4 rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-violet-500 disabled:opacity-50"
               onClick={() => void savePersona()}
             >
               {savingPersona ? t("settings:saving") : t("settings:savePersona")}
@@ -251,8 +251,8 @@ export function AgentSettings() {
       </section>
 
       <section className="rounded-xl border border-surface-border bg-black/20 p-5">
-        <h2 className="text-sm font-medium text-white">{t("settings:structuredProfileTitle")}</h2>
-        <p className="mt-1 text-xs text-surface-muted">
+        <h2 className="text-sm font-medium text-ink-primary">{t("settings:structuredProfileTitle")}</h2>
+        <p className="mt-1 text-xs text-ink-muted">
           {t("settings:structuredProfileSubtitle")}
         </p>
         {profileUnavailable ? (
@@ -327,7 +327,7 @@ export function AgentSettings() {
               {t("settings:organization")}
               <input className={input} value={organization} onChange={(e) => setOrganization(e.target.value)} />
             </label>
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-neutral-200 sm:col-span-2">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-primary sm:col-span-2">
               <input
                 type="checkbox"
                 className="h-4 w-4 rounded border-surface-border bg-field"
@@ -336,7 +336,7 @@ export function AgentSettings() {
               />
               {t("settings:injectStructuredProfile")}
             </label>
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-neutral-200 sm:col-span-2">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-primary sm:col-span-2">
               <input
                 type="checkbox"
                 className="h-4 w-4 rounded border-surface-border bg-field"
@@ -349,7 +349,7 @@ export function AgentSettings() {
               <button
                 type="button"
                 disabled={savingProfile}
-                className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+                className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
                 onClick={() => void saveProfile()}
               >
                 {savingProfile ? t("settings:saving") : t("settings:saveProfile")}

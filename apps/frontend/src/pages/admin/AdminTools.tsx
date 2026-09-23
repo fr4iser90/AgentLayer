@@ -157,9 +157,9 @@ function riskBadgeClass(rl: string | undefined): string {
     case "l1":
       return "bg-sky-900/60 text-sky-100";
     case "l0":
-      return "bg-white/10 text-neutral-200";
+      return "bg-white/10 text-ink-primary";
     default:
-      return "bg-white/5 text-neutral-400";
+      return "bg-white/5 text-ink-muted";
   }
 }
 
@@ -396,20 +396,20 @@ export function AdminTools() {
     return (
       <li
         key={pid}
-        className="rounded-lg border border-surface-border bg-card p-3 text-xs text-neutral-200"
+        className="rounded-lg border border-surface-border bg-card p-3 text-xs text-ink-primary"
       >
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="font-mono text-sm font-semibold text-white">{pid}</span>
-              {p.version ? <span className="text-meta text-surface-muted">v{p.version}</span> : null}
+              <span className="font-mono text-sm font-semibold text-ink-primary">{pid}</span>
+              {p.version ? <span className="text-meta text-ink-muted">v{p.version}</span> : null}
               {p.admin_bucket ? (
                 <span className="rounded bg-emerald-950/60 px-1.5 py-0.5 text-meta text-emerald-200/90">
                   {t("admin:toolsBadgeBucket", { name: p.admin_bucket })}
                 </span>
               ) : null}
               {p.domain ? (
-                <span className="rounded bg-white/10 px-1.5 py-0.5 text-meta text-neutral-300">
+                <span className="rounded bg-white/10 px-1.5 py-0.5 text-meta text-ink-secondary">
                   {t("admin:toolsBadgeDomain", { name: p.domain })}
                 </span>
               ) : null}
@@ -438,7 +438,7 @@ export function AdminTools() {
                 </span>
               ) : null}
               {p.os_support?.length ? (
-                <span className="rounded bg-white/10 px-1.5 py-0.5 text-meta text-neutral-300">
+                <span className="rounded bg-white/10 px-1.5 py-0.5 text-meta text-ink-secondary">
                   {t("admin:toolsBadgeOs", { list: p.os_support.join(",") })}
                 </span>
               ) : null}
@@ -450,55 +450,55 @@ export function AdminTools() {
                 </span>
               ) : null}
             </div>
-            <p className="truncate font-mono text-meta text-surface-muted" title={p.source}>
+            <p className="truncate font-mono text-meta text-ink-muted" title={p.source}>
               {p.source}
             </p>
             <div className="grid gap-1.5 sm:grid-cols-2">
               <div>
-                <span className="text-surface-muted">{t("admin:toolsColTools")}</span>{" "}
-                <span className="break-all font-mono text-meta text-neutral-300">
+                <span className="text-ink-muted">{t("admin:toolsColTools")}</span>{" "}
+                <span className="break-all font-mono text-meta text-ink-secondary">
                   {(p.tools ?? []).join(", ")}
                 </span>
               </div>
               {p.tags?.length ? (
                 <div>
-                  <span className="text-surface-muted">{t("admin:toolsColManifestTags")}</span>{" "}
-                  <span className="text-neutral-300">{p.tags.join(", ")}</span>
+                  <span className="text-ink-muted">{t("admin:toolsColManifestTags")}</span>{" "}
+                  <span className="text-ink-secondary">{p.tags.join(", ")}</span>
                 </div>
               ) : null}
               {p.admin_tags?.length ? (
                 <div>
-                  <span className="text-surface-muted">{t("admin:toolsColRegistryTags")}</span>{" "}
-                  <span className="text-neutral-300">{p.admin_tags.join(", ")}</span>
+                  <span className="text-ink-muted">{t("admin:toolsColRegistryTags")}</span>{" "}
+                  <span className="text-ink-secondary">{p.admin_tags.join(", ")}</span>
                 </div>
               ) : null}
               {p.capabilities?.length ? (
                 <div>
-                  <span className="text-surface-muted">{t("admin:toolsColCapabilities")}</span>{" "}
-                  <span className="text-neutral-300">{p.capabilities.join(", ")}</span>
+                  <span className="text-ink-muted">{t("admin:toolsColCapabilities")}</span>{" "}
+                  <span className="text-ink-secondary">{p.capabilities.join(", ")}</span>
                 </div>
               ) : null}
               {req?.length ? (
                 <div>
-                  <span className="text-surface-muted">{t("admin:toolsColToolRequires")}</span>{" "}
-                  <span className="text-neutral-300">{req.join(", ")}</span>
+                  <span className="text-ink-muted">{t("admin:toolsColToolRequires")}</span>{" "}
+                  <span className="text-ink-secondary">{req.join(", ")}</span>
                 </div>
               ) : null}
               {sec?.length ? (
                 <div>
-                  <span className="text-surface-muted">{t("admin:toolsColSecrets")}</span>{" "}
+                  <span className="text-ink-muted">{t("admin:toolsColSecrets")}</span>{" "}
                   <span className="text-amber-200/90">{sec.join(", ")}</span>
                 </div>
               ) : null}
               {p.families?.length ? (
                 <div>
-                  <span className="text-surface-muted">{t("admin:toolsColFamilies")}</span>{" "}
-                  <span className="text-neutral-300">{p.families.join(", ")}</span>
+                  <span className="text-ink-muted">{t("admin:toolsColFamilies")}</span>{" "}
+                  <span className="text-ink-secondary">{p.families.join(", ")}</span>
                 </div>
               ) : null}
               <div className="sm:col-span-2">
-                <span className="text-surface-muted">{t("admin:adminToolsManifestAccess")}</span>{" "}
-                <span className="font-mono text-neutral-300">
+                <span className="text-ink-muted">{t("admin:adminToolsManifestAccess")}</span>{" "}
+                <span className="font-mono text-ink-secondary">
                   TOOL_MIN_ROLE={p.min_role ?? "user"}
                   {p.allowed_tenant_ids?.length
                     ? ` · TOOL_ALLOWED_TENANT_IDS=[${p.allowed_tenant_ids.join(", ")}]`
@@ -507,7 +507,7 @@ export function AdminTools() {
               </div>
             </div>
           </div>
-          <label className="flex shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap text-meta text-neutral-200">
+          <label className="flex shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap text-meta text-ink-primary">
             <input
               type="checkbox"
               checked={pol.enabled}
@@ -517,10 +517,10 @@ export function AdminTools() {
           </label>
         </div>
         <div className="mt-3 grid grid-cols-1 gap-3 border-t border-white/10 pt-3 sm:grid-cols-2">
-          <label className="flex min-w-0 flex-col gap-1 text-meta text-surface-muted">
-            <span className="text-neutral-400">{t("admin:toolsPolicyMinRole")}</span>
+          <label className="flex min-w-0 flex-col gap-1 text-meta text-ink-muted">
+            <span className="text-ink-muted">{t("admin:toolsPolicyMinRole")}</span>
             <select
-              className="w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-white"
+              className="w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-ink-primary"
               value={pol.min_role}
               onChange={(e) =>
                 updatePolicy(pid, { min_role: e.target.value === "admin" ? "admin" : "user" })
@@ -530,13 +530,13 @@ export function AdminTools() {
               <option value="admin">{t("admin:toolsMinRoleAdmin")}</option>
             </select>
           </label>
-          <label className="flex min-w-0 flex-col gap-1 text-meta text-surface-muted">
-            <span className="text-neutral-400">
+          <label className="flex min-w-0 flex-col gap-1 text-meta text-ink-muted">
+            <span className="text-ink-muted">
               {t("admin:toolsPolicyTenantIds")} (<span className="font-mono">tenants.id</span>)
             </span>
             <input
               type="text"
-              className="w-full rounded-md border border-surface-border bg-field px-2 py-1.5 font-mono text-xs text-white placeholder:text-neutral-500"
+              className="w-full rounded-md border border-surface-border bg-field px-2 py-1.5 font-mono text-xs text-ink-primary placeholder:text-neutral-500"
               placeholder={t("admin:toolsPolicyTenantIdsPlaceholder")}
               value={tenantInputByPkg[pid] ?? ""}
               onChange={(e) => {
@@ -552,17 +552,17 @@ export function AdminTools() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-      <h1 className="text-2xl font-semibold text-white">{t("admin:toolsRegistryTitle")}</h1>
-      <p className="mt-2 max-w-2xl text-sm text-surface-muted">
+      <h1 className="text-2xl font-semibold text-ink-primary">{t("admin:toolsRegistryTitle")}</h1>
+      <p className="mt-2 max-w-2xl text-sm text-ink-muted">
         {t("admin:toolsRegistryIntro")}{" "}
-        <span className="text-neutral-500">{t("admin:toolsRegistryAssignUsers")}</span>
+        <span className="text-ink-muted">{t("admin:toolsRegistryAssignUsers")}</span>
       </p>
 
       <section className="mt-6 rounded-xl border border-surface-border bg-card p-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h2 className="text-sm font-semibold text-white">{t("admin:toolsImportTitle")}</h2>
-            <p className="mt-1 max-w-2xl text-xs text-surface-muted">
+            <h2 className="text-sm font-semibold text-ink-primary">{t("admin:toolsImportTitle")}</h2>
+            <p className="mt-1 max-w-2xl text-xs text-ink-muted">
               {t("admin:toolsImportIntro")}
             </p>
           </div>
@@ -571,7 +571,7 @@ export function AdminTools() {
           </label>
           <select
             id="tools-import-source-type"
-            className="w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-white sm:w-56"
+            className="w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-ink-primary sm:w-56"
             value={importSourceType}
             onChange={(e) => setImportSourceType(e.target.value)}
           >
@@ -583,20 +583,20 @@ export function AdminTools() {
           </select>
         </div>
         <div className="mt-4 grid gap-3 lg:grid-cols-2">
-          <label className="flex flex-col gap-1 text-xs text-surface-muted">
+          <label className="flex flex-col gap-1 text-xs text-ink-muted">
             <span>{t("admin:toolsImportPaste")}</span>
             <textarea
-              className="min-h-40 rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-xs text-white placeholder:text-neutral-500"
+              className="min-h-40 rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-xs text-ink-primary placeholder:text-neutral-500"
               value={importMarkdown}
               onChange={(e) => setImportMarkdown(e.target.value)}
               placeholder={t("admin:toolsImportPastePlaceholder")}
             />
           </label>
-          <div className="rounded-md border border-white/10 bg-black/20 p-3 text-xs text-surface-muted">
+          <div className="rounded-md border border-white/10 bg-black/20 p-3 text-xs text-ink-muted">
             <label className="block">
               <span>{t("admin:toolsImportUpload")}</span>
               <input
-                className="mt-2 block w-full text-xs text-neutral-200 file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-xs file:text-white hover:file:bg-white/15"
+                className="mt-2 block w-full text-xs text-ink-primary file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-xs file:text-white hover:file:bg-white/15"
                 type="file"
                 multiple
                 accept=".md,.markdown,.txt,.yaml,.yml,.json,.zip"
@@ -612,19 +612,19 @@ export function AdminTools() {
             <button
               type="button"
               disabled={importBusy || (!importMarkdown.trim() && !(importFiles?.length))}
-              className="mt-4 rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+              className="mt-4 rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
               onClick={() => void analyzeImport()}
             >
               {importBusy ? t("admin:toolsImportAnalyzing") : t("admin:toolsImportAnalyze")}
             </button>
           </div>
         </div>
-        {importMsg ? <p className="mt-3 text-sm text-surface-muted">{importMsg}</p> : null}
+        {importMsg ? <p className="mt-3 text-sm text-ink-muted">{importMsg}</p> : null}
         {importResult ? (
           <div className="mt-4 space-y-3">
-            <div className="rounded-md border border-white/10 bg-black/20 p-3 text-xs text-neutral-300">
-              {t("admin:toolsImportDetected")}: <span className="font-mono text-white">{importResult.source_type}</span>{" "}
-              <span className="text-surface-muted">
+            <div className="rounded-md border border-white/10 bg-black/20 p-3 text-xs text-ink-secondary">
+              {t("admin:toolsImportDetected")}: <span className="font-mono text-ink-primary">{importResult.source_type}</span>{" "}
+              <span className="text-ink-muted">
                 ({Math.round(importResult.source_type_confidence * 100)}%)
               </span>
               <div className="mt-2 flex flex-wrap gap-2">
@@ -637,9 +637,9 @@ export function AdminTools() {
             </div>
             <div className="grid gap-3 lg:grid-cols-2">
               {importResult.candidates.map((c) => (
-                <article key={`${c.kind}:${c.name}`} className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-neutral-200">
+                <article key={`${c.kind}:${c.name}`} className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-ink-primary">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-mono text-sm font-semibold text-white">{c.name}</span>
+                    <span className="font-mono text-sm font-semibold text-ink-primary">{c.name}</span>
                     <span className="rounded bg-sky-900/60 px-1.5 py-0.5 text-meta text-sky-100">{c.kind}</span>
                     <span className="rounded bg-amber-900/60 px-1.5 py-0.5 text-meta text-amber-100">
                       {t("admin:toolsImportRisk", { risk: c.risk ?? t("admin:toolsImportUnknown") })}
@@ -650,11 +650,11 @@ export function AdminTools() {
                       </span>
                     ) : null}
                   </div>
-                  <p className="mt-2 text-neutral-300">{c.title}</p>
-                  {c.summary ? <p className="mt-1 text-surface-muted">{c.summary}</p> : null}
-                  <p className="mt-2 font-mono text-meta text-surface-muted">{c.target_dir}</p>
+                  <p className="mt-2 text-ink-secondary">{c.title}</p>
+                  {c.summary ? <p className="mt-1 text-ink-muted">{c.summary}</p> : null}
+                  <p className="mt-2 font-mono text-meta text-ink-muted">{c.target_dir}</p>
                   {c.determinism_notes?.length ? (
-                    <ul className="mt-2 list-disc space-y-1 pl-4 text-meta text-neutral-400">
+                    <ul className="mt-2 list-disc space-y-1 pl-4 text-meta text-ink-muted">
                       {c.determinism_notes.map((n) => <li key={n}>{n}</li>)}
                     </ul>
                   ) : null}
@@ -669,7 +669,7 @@ export function AdminTools() {
         <button
           type="button"
           disabled={busy}
-          className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+          className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
           onClick={() => void loadAdmin()}
         >
           {t("admin:toolsRegistryRefresh")}
@@ -677,7 +677,7 @@ export function AdminTools() {
         <button
           type="button"
           disabled={busy}
-          className="rounded-md bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/15 disabled:opacity-50"
+          className="rounded-md bg-white/10 px-4 py-2 text-sm font-medium text-ink-primary hover:bg-white/15 disabled:opacity-50"
           onClick={() => void reloadRegistry()}
         >
           {t("admin:toolsRegistryReload")}
@@ -685,17 +685,17 @@ export function AdminTools() {
         <button
           type="button"
           disabled={busy || loading}
-          className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-50"
+          className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-emerald-600 disabled:opacity-50"
           onClick={() => void savePolicies()}
         >
           {t("admin:toolsRegistrySavePolicy")}
         </button>
       </div>
 
-      {msg ? <p className="mt-3 text-sm text-surface-muted">{msg}</p> : null}
+      {msg ? <p className="mt-3 text-sm text-ink-muted">{msg}</p> : null}
 
       {loading ? (
-        <p className="mt-8 text-sm text-surface-muted">{t("admin:toolsRegistryLoading")}</p>
+        <p className="mt-8 text-sm text-ink-muted">{t("admin:toolsRegistryLoading")}</p>
       ) : (
         <div className="mt-6 max-h-[min(72vh,calc(100dvh-11rem))] overflow-y-auto overscroll-contain rounded-lg border border-surface-border bg-black/20 pr-1">
           <div className="flex flex-col divide-y divide-white/10">
@@ -712,11 +712,11 @@ export function AdminTools() {
                 <details key={bucket} className="group px-2 py-0.5 open:bg-white/[0.03]">
                   <summary className="cursor-pointer list-none py-2.5 pl-1 [&::-webkit-details-marker]:hidden">
                     <div className="flex flex-wrap items-baseline justify-between gap-2 pr-1">
-                      <span className="text-sm font-medium text-neutral-200">
-                        <span className="font-mono text-neutral-500">{bucket}</span> ·{" "}
+                      <span className="text-sm font-medium text-ink-primary">
+                        <span className="font-mono text-ink-muted">{bucket}</span> ·{" "}
                         {t(ADMIN_BUCKET_LABEL_KEYS[bucket])}
                       </span>
-                      <span className="font-mono text-xs text-surface-muted">
+                      <span className="font-mono text-xs text-ink-muted">
                         {t("admin:toolsPackagesCount", { count: sectionPkgs.length })}
                       </span>
                     </div>
@@ -744,7 +744,7 @@ export function AdminTools() {
       )}
 
       {!loading && totalPackages === 0 ? (
-        <p className="mt-8 text-sm text-surface-muted">{t("admin:toolsRegistryNoneLoaded")}</p>
+        <p className="mt-8 text-sm text-ink-muted">{t("admin:toolsRegistryNoneLoaded")}</p>
       ) : null}
     </div>
   );

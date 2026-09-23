@@ -66,7 +66,7 @@ function DashboardNavRow(props: {
         type="button"
         className={[
           "min-w-0 flex-1 rounded-md px-2 py-1.5 text-left text-xs outline-none",
-          selected ? "bg-white/10 text-white" : "text-neutral-200",
+          selected ? "bg-white/10 text-ink-primary" : "text-ink-primary",
           active && !selected ? "bg-white/[0.06]" : "",
           !selected && !active ? "hover:bg-white/5" : "",
         ].join(" ")}
@@ -291,7 +291,7 @@ export function DashboardSidebarNav(props: {
       {showSearch ? (
         <div className="shrink-0 border-b border-surface-border px-2 py-2">
           <input
-            className="dashboard-grid-no-drag w-full rounded-md border border-surface-border bg-field px-2.5 py-1.5 text-xs text-white outline-none focus:border-sky-500/50"
+            className="dashboard-grid-no-drag w-full rounded-md border border-surface-border bg-field px-2.5 py-1.5 text-xs text-ink-primary outline-none focus:border-sky-500/50"
             placeholder={t("dashboard:searchPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -328,7 +328,7 @@ export function DashboardSidebarNav(props: {
               {t("dashboard:matches", { count: searchResults.length })}
             </p>
             {searchResults.length === 0 ? (
-              <p className="px-2 py-4 text-center text-xs text-surface-muted">{t("dashboard:noDashboardsInHub")}</p>
+              <p className="px-2 py-4 text-center text-xs text-ink-muted">{t("dashboard:noDashboardsInHub")}</p>
             ) : (
               <ul className="space-y-0.5">
                 {searchResults.map((w, idx) => renderPrimaryRow(w, idx))}

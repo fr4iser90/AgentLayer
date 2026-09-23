@@ -58,7 +58,7 @@ export function MessageFeedbackButtons({
 
   return (
     <div className="mt-2 flex items-center gap-1 border-t border-white/5 pt-2">
-      <span className="mr-1 text-meta text-surface-muted">{t("chat:feedbackPrompt")}</span>
+      <span className="mr-1 text-meta text-ink-muted">{t("chat:feedbackPrompt")}</span>
       <button
         type="button"
         disabled={busy}
@@ -68,7 +68,7 @@ export function MessageFeedbackButtons({
           "rounded px-1.5 py-0.5 text-sm transition-colors",
           rating === "up"
             ? "bg-emerald-900/50 text-emerald-300"
-            : "text-neutral-500 hover:bg-white/5 hover:text-neutral-300",
+            : "text-ink-muted hover:bg-white/5 hover:text-neutral-300",
         ].join(" ")}
         onClick={() => void submit("up")}
       >
@@ -83,7 +83,7 @@ export function MessageFeedbackButtons({
           "rounded px-1.5 py-0.5 text-sm transition-colors",
           rating === "down"
             ? "bg-red-900/40 text-red-300"
-            : "text-neutral-500 hover:bg-white/5 hover:text-neutral-300",
+            : "text-ink-muted hover:bg-white/5 hover:text-neutral-300",
         ].join(" ")}
         onClick={() => void submit("down")}
       >

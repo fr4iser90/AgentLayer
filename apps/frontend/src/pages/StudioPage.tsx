@@ -149,8 +149,8 @@ export function StudioPage() {
     [
       "w-full rounded-lg border px-3 py-2 text-left text-sm",
       selectedRunKey === runKey
-        ? "border-white/30 bg-white/10 text-white"
-        : "border-transparent text-neutral-400 hover:bg-white/5",
+        ? "border-white/30 bg-white/10 text-ink-primary"
+        : "border-transparent text-ink-muted hover:bg-white/5",
       extra,
     ]
       .filter(Boolean)
@@ -166,7 +166,7 @@ export function StudioPage() {
       desktopWidthClass="md:w-56"
       sidebar={
         <div className="flex h-full min-h-0 flex-col overflow-y-auto p-3">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-surface-muted">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
             {t("common:studio.title")}
           </p>
           {txt2img ? (
@@ -176,11 +176,11 @@ export function StudioPage() {
               className={presetButtonClass(txt2img.run_key, "mb-1")}
             >
               <div className="font-medium">{txt2img.title}</div>
-              <div className="text-xs text-surface-muted">{txt2img.engine ?? "comfyui"}</div>
+              <div className="text-xs text-ink-muted">{txt2img.engine ?? "comfyui"}</div>
             </button>
           ) : null}
 
-          <p className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wide text-surface-muted">
+          <p className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wide text-ink-muted">
             {t("common:studio.inpaint")}
           </p>
           {inpaint ? (
@@ -190,7 +190,7 @@ export function StudioPage() {
               className={presetButtonClass(inpaint.run_key)}
             >
               <div className="font-medium">{inpaint.title}</div>
-              <div className="text-xs text-surface-muted">{inpaint.engine ?? "comfyui"}</div>
+              <div className="text-xs text-ink-muted">{inpaint.engine ?? "comfyui"}</div>
             </button>
           ) : null}
         </div>
@@ -200,7 +200,7 @@ export function StudioPage() {
         <div className="flex flex-wrap items-start gap-2">
           <button
             type="button"
-            className="shrink-0 rounded-lg border border-surface-border bg-black/30 px-2.5 py-1.5 text-meta font-medium text-neutral-300 hover:bg-white/10 md:hidden"
+            className="shrink-0 rounded-lg border border-surface-border bg-black/30 px-2.5 py-1.5 text-meta font-medium text-ink-secondary hover:bg-white/10 md:hidden"
             aria-expanded={presetSidebarOpen}
             aria-label={t("common:studio.openPresetsSidebar")}
             onClick={() => setPresetSidebarOpen(true)}
@@ -208,8 +208,8 @@ export function StudioPage() {
             {t("common:studio.openPresetsSidebarShort")}
           </button>
           <div className="min-w-0 flex-1">
-            <h1 className="text-2xl font-semibold text-white">{t("common:studio.title")}</h1>
-            <p className="mt-1 max-w-2xl text-sm text-surface-muted">{t("common:studio.subtitle")}</p>
+            <h1 className="text-2xl font-semibold text-ink-primary">{t("common:studio.title")}</h1>
+            <p className="mt-1 max-w-2xl text-sm text-ink-muted">{t("common:studio.subtitle")}</p>
           </div>
         </div>
 
@@ -224,8 +224,8 @@ export function StudioPage() {
             <span className="rounded-full bg-emerald-950/80 px-2 py-0.5 text-emerald-300">
               {t("common:studio.catalogFromServer")}
             </span>
-            <span className="text-surface-muted">v{catalog.studio_version ?? "?"}</span>
-            <span className="text-surface-muted">
+            <span className="text-ink-muted">v{catalog.studio_version ?? "?"}</span>
+            <span className="text-ink-muted">
               Default engine: {catalog.engine_default ?? "—"}
             </span>
             <button
@@ -240,11 +240,11 @@ export function StudioPage() {
 
         {preset ? (
           <div className="mt-8 max-w-xl">
-            <h2 className="text-lg font-medium text-white">{preset.title}</h2>
-            <p className="mt-2 whitespace-pre-wrap text-sm text-surface-muted">
+            <h2 className="text-lg font-medium text-ink-primary">{preset.title}</h2>
+            <p className="mt-2 whitespace-pre-wrap text-sm text-ink-muted">
               {preset.description}
             </p>
-            <p className="mt-2 font-mono text-xs text-neutral-500">
+            <p className="mt-2 font-mono text-xs text-ink-muted">
               run_key: {preset.run_key}
               {preset.workflow_file ? ` · ${preset.workflow_file}` : ""}
             </p>
@@ -269,7 +269,7 @@ export function StudioPage() {
               >
                 {jobLoading ? t("common:studio.running") : t("common:studio.run")}
               </button>
-              <code className="text-xs text-surface-muted">POST /v1/studio/jobs</code>
+              <code className="text-xs text-ink-muted">POST /v1/studio/jobs</code>
             </div>
 
             {jobError ? (
@@ -280,7 +280,7 @@ export function StudioPage() {
 
             {previewUrl ? (
               <div className="mt-6">
-                <p className="mb-2 text-sm text-neutral-300">{t("common:studio.result")}</p>
+                <p className="mb-2 text-sm text-ink-secondary">{t("common:studio.result")}</p>
                 <img
                   src={previewUrl}
                   alt={t("common:studio.generatedImageAlt")}
@@ -288,13 +288,13 @@ export function StudioPage() {
                 />
               </div>
             ) : jobResult ? (
-              <pre className="mt-4 max-h-64 overflow-auto rounded-lg border border-surface-border bg-[#111] p-3 text-xs text-neutral-300">
+              <pre className="mt-4 max-h-64 overflow-auto rounded-lg border border-surface-border bg-[#111] p-3 text-xs text-ink-secondary">
                 {JSON.stringify(jobResult, null, 2)}
               </pre>
             ) : null}
           </div>
         ) : catalog && !catalogError ? (
-          <p className="mt-8 text-surface-muted">{t("common:studio.noPresetSelected")}</p>
+          <p className="mt-8 text-ink-muted">{t("common:studio.noPresetSelected")}</p>
         ) : null}
       </div>
     </CollapsibleSidebarShell>

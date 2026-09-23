@@ -68,8 +68,8 @@ export function ProfileSettings() {
   return (
     <div className="mx-auto max-w-xl space-y-8">
       <div>
-        <h1 className="text-lg font-semibold text-white">{t("settings:profileTitle")}</h1>
-        <p className="mt-2 text-sm text-surface-muted">
+        <h1 className="text-lg font-semibold text-ink-primary">{t("settings:profileTitle")}</h1>
+        <p className="mt-2 text-sm text-ink-muted">
           {t("settings:profileIntroLead")}{" "}
           <code className="rounded bg-white/5 px-1 text-xs">GET /auth/me</code>.{" "}
           {t("settings:profileIntroConnectionsBefore")}{" "}
@@ -81,30 +81,30 @@ export function ProfileSettings() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-surface-muted">{t("settings:profileLoading")}</p>
+        <p className="text-sm text-ink-muted">{t("settings:profileLoading")}</p>
       ) : err ? (
         <p className="text-sm text-amber-400">{err}</p>
       ) : (
         <div className="rounded-xl border border-surface-border bg-card p-5">
           <dl className="space-y-4 text-sm">
             <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-surface-muted">{t("settings:profileEmail")}</dt>
-              <dd className="mt-1 text-white">{email}</dd>
+              <dt className="text-xs font-medium uppercase tracking-wide text-ink-muted">{t("settings:profileEmail")}</dt>
+              <dd className="mt-1 text-ink-primary">{email}</dd>
             </div>
             <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-surface-muted">{t("settings:profileUserId")}</dt>
-              <dd className="mt-1 break-all font-mono text-xs text-neutral-300">{id}</dd>
+              <dt className="text-xs font-medium uppercase tracking-wide text-ink-muted">{t("settings:profileUserId")}</dt>
+              <dd className="mt-1 break-all font-mono text-xs text-ink-secondary">{id}</dd>
             </div>
             <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-surface-muted">{t("settings:profileDiscordLinked")}</dt>
-              <dd className="mt-1 font-mono text-xs text-neutral-300">{discordLinked ?? empty}</dd>
+              <dt className="text-xs font-medium uppercase tracking-wide text-ink-muted">{t("settings:profileDiscordLinked")}</dt>
+              <dd className="mt-1 font-mono text-xs text-ink-secondary">{discordLinked ?? empty}</dd>
             </div>
             <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-surface-muted">{t("settings:profileTelegramLinked")}</dt>
-              <dd className="mt-1 font-mono text-xs text-neutral-300">{telegramLinked ?? empty}</dd>
+              <dt className="text-xs font-medium uppercase tracking-wide text-ink-muted">{t("settings:profileTelegramLinked")}</dt>
+              <dd className="mt-1 font-mono text-xs text-ink-secondary">{telegramLinked ?? empty}</dd>
             </div>
             <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-surface-muted">{t("settings:profileRole")}</dt>
+              <dt className="text-xs font-medium uppercase tracking-wide text-ink-muted">{t("settings:profileRole")}</dt>
               <dd className="mt-1">
                 <span
                   className={
@@ -119,8 +119,8 @@ export function ProfileSettings() {
             </div>
             {created ? (
               <div>
-                <dt className="text-xs font-medium uppercase tracking-wide text-surface-muted">{t("settings:profileMemberSince")}</dt>
-                <dd className="mt-1 text-neutral-300">{created}</dd>
+                <dt className="text-xs font-medium uppercase tracking-wide text-ink-muted">{t("settings:profileMemberSince")}</dt>
+                <dd className="mt-1 text-ink-secondary">{created}</dd>
               </div>
             ) : null}
           </dl>
@@ -135,11 +135,11 @@ export function ProfileSettings() {
       )}
 
       <div className="rounded-xl border border-surface-border bg-black/20 p-5">
-        <h2 className="text-sm font-medium text-white">{t("settings:sessionTitle")}</h2>
-        <p className="mt-1 text-xs text-surface-muted">{t("settings:profileSessionHint")}</p>
+        <h2 className="text-sm font-medium text-ink-primary">{t("settings:sessionTitle")}</h2>
+        <p className="mt-1 text-xs text-ink-muted">{t("settings:profileSessionHint")}</p>
         <button
           type="button"
-          className="mt-4 rounded-md border border-white/15 bg-white/5 px-4 py-2 text-sm text-neutral-200 hover:bg-white/10"
+          className="mt-4 rounded-md border border-white/15 bg-white/5 px-4 py-2 text-sm text-ink-primary hover:bg-white/10"
           onClick={() => void logout()}
         >
           {t("settings:signOut")}

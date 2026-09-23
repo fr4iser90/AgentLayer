@@ -47,9 +47,9 @@ export function UserMessageBubble({ message, timeLabel, showRetry, onCopy, onRet
   const { t } = useTranslation(["chat"]);
 
   return (
-    <div className="group relative max-w-[min(100%,42rem)] rounded-2xl border border-sky-900/40 bg-[#1a2a3d] px-4 py-3 text-sm text-neutral-100 shadow-sm">
+    <div className="group relative max-w-[min(100%,42rem)] rounded-2xl border border-sky-900/40 bg-[#1a2a3d] px-4 py-3 text-sm text-ink-primary shadow-sm">
       <div className="mb-1 flex items-center justify-between gap-2">
-        <span className="text-meta font-medium uppercase tracking-wide text-surface-muted">
+        <span className="text-meta font-medium uppercase tracking-wide text-ink-muted">
           {t("chat:roleYou")}
           {timeLabel ? (
             <span className="ml-2 font-normal normal-case">{timeLabel}</span>

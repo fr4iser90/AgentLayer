@@ -98,16 +98,16 @@ export function OrgKnowledgePublishSection({ onPublished }: { onPublished?: () =
 
   return (
     <section className="rounded-xl border border-surface-border bg-card p-5">
-      <h2 className="text-sm font-medium text-white">{t("org:knowledgePublishTitle")}</h2>
-      <p className="mt-2 text-xs text-surface-muted">{t("org:cmsSetupHint")}</p>
+      <h2 className="text-sm font-medium text-ink-primary">{t("org:knowledgePublishTitle")}</h2>
+      <p className="mt-2 text-xs text-ink-muted">{t("org:cmsSetupHint")}</p>
 
       <div className="mt-4">
-        <label className="block text-xs text-surface-muted" htmlFor="org-knowledge-title">
+        <label className="block text-xs text-ink-muted" htmlFor="org-knowledge-title">
           {t("org:knowledgeTitleLabel")}
         </label>
         <input
           id="org-knowledge-title"
-          className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-white"
+          className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder={t("org:knowledgeTitlePlaceholder")}
@@ -115,12 +115,12 @@ export function OrgKnowledgePublishSection({ onPublished }: { onPublished?: () =
         />
       </div>
 
-      <label className="mt-4 block text-xs text-surface-muted" htmlFor="org-knowledge-text">
+      <label className="mt-4 block text-xs text-ink-muted" htmlFor="org-knowledge-text">
         {t("org:knowledgeTextLabel")}
       </label>
       <textarea
         id="org-knowledge-text"
-        className="mt-1 min-h-48 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
+        className="mt-1 min-h-48 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={t("org:knowledgeTextPlaceholder")}
@@ -136,7 +136,7 @@ export function OrgKnowledgePublishSection({ onPublished }: { onPublished?: () =
         />
         <button
           type="button"
-          className="rounded-md border border-surface-border px-3 py-1.5 text-sm text-neutral-200 hover:bg-white/5"
+          className="rounded-md border border-surface-border px-3 py-1.5 text-sm text-ink-primary hover:bg-white/5"
           onClick={() => fileInputRef.current?.click()}
         >
           {t("org:knowledgeFileButton")}
@@ -144,7 +144,7 @@ export function OrgKnowledgePublishSection({ onPublished }: { onPublished?: () =
         <button
           type="button"
           disabled={busy}
-          className="rounded-md bg-sky-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+          className="rounded-md bg-sky-600 px-4 py-1.5 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
           onClick={() => void publish()}
         >
           {busy ? t("org:knowledgePublishing") : t("org:cmsPublish")}

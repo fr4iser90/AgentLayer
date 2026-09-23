@@ -115,14 +115,14 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
           <div className="flex rounded-md border border-white/10 p-0.5 text-meta">
             <button
               type="button"
-              className={`rounded px-2 py-1 ${tab === "queue" ? "bg-white/15 text-white" : "text-surface-muted hover:text-neutral-200"}`}
+              className={`rounded px-2 py-1 ${tab === "queue" ? "bg-white/15 text-white" : "text-ink-muted hover:text-neutral-200"}`}
               onClick={() => setTab("queue")}
             >
               {t("dashboard:mediaFooterTabQueue")} ({media.queue.items.length})
             </button>
             <button
               type="button"
-              className={`rounded px-2 py-1 ${tab === "library" ? "bg-white/15 text-white" : "text-surface-muted hover:text-neutral-200"}`}
+              className={`rounded px-2 py-1 ${tab === "library" ? "bg-white/15 text-white" : "text-ink-muted hover:text-neutral-200"}`}
               onClick={() => setTab("library")}
             >
               {t("dashboard:mediaFooterTabLibrary")}
@@ -131,14 +131,14 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
           <div className="ml-auto flex gap-1">
             <button
               type="button"
-              className={`rounded px-2 py-0.5 text-meta ${media.queue.shuffle ? "bg-sky-600/40 text-white" : "text-surface-muted hover:bg-white/5"}`}
+              className={`rounded px-2 py-0.5 text-meta ${media.queue.shuffle ? "bg-sky-600/40 text-white" : "text-ink-muted hover:bg-white/5"}`}
               onClick={media.toggleShuffle}
             >
               {t("dashboard:mediaFooterShuffle")}
             </button>
             <button
               type="button"
-              className="rounded px-2 py-0.5 text-meta text-surface-muted hover:bg-white/5"
+              className="rounded px-2 py-0.5 text-meta text-ink-muted hover:bg-white/5"
               onClick={() => {
                 const next =
                   media.queue.repeat === "off"
@@ -161,7 +161,7 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
         {tab === "queue" ? (
           <ul className="space-y-0.5">
             {media.queue.items.length === 0 ? (
-              <li className="py-2 text-xs text-surface-muted">{t("dashboard:mediaQueueEmpty")}</li>
+              <li className="py-2 text-xs text-ink-muted">{t("dashboard:mediaQueueEmpty")}</li>
             ) : (
               media.queue.items.map((it, idx) => {
                 const id = itemId(it);
@@ -170,7 +170,7 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
                   <li
                     key={`${id ?? idx}-${idx}`}
                     className={`flex items-center gap-2 rounded px-2 py-1.5 text-xs ${
-                      playing ? "bg-sky-800/50 text-sky-50" : "text-neutral-200 hover:bg-white/5"
+                      playing ? "bg-sky-800/50 text-sky-50" : "text-ink-primary hover:bg-white/5"
                     }`}
                   >
                     <button
@@ -180,7 +180,7 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
                     >
                       {itemLabel(it, t("dashboard:mediaUntitledTrack"))}
                       {!mediaCanPlay(it) ? (
-                        <span className="ml-1 text-meta text-surface-muted">({t("dashboard:mediaFooterFilterEmbed")})</span>
+                        <span className="ml-1 text-meta text-ink-muted">({t("dashboard:mediaFooterFilterEmbed")})</span>
                       ) : null}
                     </button>
                     <Button
@@ -206,8 +206,8 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
                   type="button"
                   className={`rounded-full px-2 py-0.5 text-meta ${
                     media.libraryFilter === f
-                      ? "bg-sky-600/50 text-white"
-                      : "border border-white/10 text-surface-muted hover:bg-white/5"
+                      ? "bg-sky-600/50 text-ink-primary"
+                      : "border border-white/10 text-ink-muted hover:bg-white/5"
                   }`}
                   onClick={() => media.setLibraryFilter(f)}
                 >
@@ -217,7 +217,7 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
             </div>
 
             <div className="space-y-1.5 rounded-lg border border-white/10 bg-black/30 p-2">
-              <p className="text-meta font-medium uppercase tracking-wide text-surface-muted">
+              <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">
                 {t("dashboard:mediaFooterAddRadio")}
               </p>
               <div className="flex flex-wrap gap-1">
@@ -226,19 +226,19 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
                   value={streamUrl}
                   onChange={(e) => setStreamUrl(e.target.value)}
                   placeholder={t("dashboard:mediaFooterStreamPlaceholder")}
-                  className="min-w-[10rem] flex-1 rounded border border-white/10 bg-field px-2 py-1 font-mono text-meta text-neutral-100"
+                  className="min-w-[10rem] flex-1 rounded border border-white/10 bg-field px-2 py-1 font-mono text-meta text-ink-primary"
                 />
                 <input
                   type="text"
                   value={addTitle}
                   onChange={(e) => setAddTitle(e.target.value)}
                   placeholder={t("dashboard:mediaFooterTitlePlaceholder")}
-                  className="w-28 rounded border border-white/10 bg-field px-2 py-1 text-meta text-neutral-100"
+                  className="w-28 rounded border border-white/10 bg-field px-2 py-1 text-meta text-ink-primary"
                 />
                 <button
                   type="button"
                   disabled={busy || !streamUrl.trim()}
-                  className="rounded bg-sky-700/60 px-2 py-1 text-meta text-white hover:bg-sky-600/60 disabled:opacity-40"
+                  className="rounded bg-sky-700/60 px-2 py-1 text-meta text-ink-primary hover:bg-sky-600/60 disabled:opacity-40"
                   onClick={onAddStream}
                 >
                   {t("dashboard:mediaFooterAddPlay")}
@@ -250,12 +250,12 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
                   value={embedUrl}
                   onChange={(e) => setEmbedUrl(e.target.value)}
                   placeholder={t("dashboard:embedUrlPlaceholder")}
-                  className="min-w-[10rem] flex-1 rounded border border-white/10 bg-field px-2 py-1 font-mono text-meta text-neutral-100"
+                  className="min-w-[10rem] flex-1 rounded border border-white/10 bg-field px-2 py-1 font-mono text-meta text-ink-primary"
                 />
                 <button
                   type="button"
                   disabled={busy || !embedUrl.trim()}
-                  className="rounded border border-white/15 px-2 py-1 text-meta text-neutral-200 hover:bg-white/5 disabled:opacity-40"
+                  className="rounded border border-white/15 px-2 py-1 text-meta text-ink-primary hover:bg-white/5 disabled:opacity-40"
                   onClick={onAddEmbed}
                 >
                   {t("dashboard:mediaAddEmbed")}
@@ -263,7 +263,7 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
                 <button
                   type="button"
                   disabled={busy}
-                  className="rounded border border-white/15 px-2 py-1 text-meta text-neutral-200 hover:bg-white/5 disabled:opacity-40"
+                  className="rounded border border-white/15 px-2 py-1 text-meta text-ink-primary hover:bg-white/5 disabled:opacity-40"
                   onClick={() => fileRef.current?.click()}
                 >
                   {t("dashboard:mediaUploadTrack")}
@@ -284,14 +284,14 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
 
             <ul className="space-y-0.5">
               {media.libraryLoading ? (
-                <li className="py-2 text-xs text-surface-muted">{t("dashboard:loading")}</li>
+                <li className="py-2 text-xs text-ink-muted">{t("dashboard:loading")}</li>
               ) : media.libraryItems.length === 0 ? (
-                <li className="py-2 text-xs text-surface-muted">{t("dashboard:mediaFooterLibraryEmpty")}</li>
+                <li className="py-2 text-xs text-ink-muted">{t("dashboard:mediaFooterLibraryEmpty")}</li>
               ) : (
                 media.libraryItems.map((item) => (
                   <li
                     key={item.id}
-                    className="flex items-center gap-2 rounded px-2 py-1.5 text-xs text-neutral-200 hover:bg-white/5"
+                    className="flex items-center gap-2 rounded px-2 py-1.5 text-xs text-ink-primary hover:bg-white/5"
                   >
                     <button
                       type="button"
@@ -304,7 +304,7 @@ export function MediaMiniPlayerPanel(props: { media: GlobalMediaContextValue }) 
                       }}
                     >
                       {libraryItemLabel(item, t("dashboard:mediaUntitledTrack"))}
-                      <span className="ml-1 text-meta uppercase text-surface-muted">
+                      <span className="ml-1 text-meta uppercase text-ink-muted">
                         {item.source_kind === "external_link"
                           ? t("dashboard:mediaFooterFilterRadio")
                           : item.source_kind === "upload"

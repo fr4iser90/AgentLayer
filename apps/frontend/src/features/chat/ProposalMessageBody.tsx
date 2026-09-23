@@ -64,8 +64,8 @@ export function ProposalCard({
                       <span
                         className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-meta font-bold ${
                           isSelected
-                            ? "border-sky-400 bg-sky-500 text-white"
-                            : "border-surface-border text-surface-muted"
+                            ? "border-sky-400 bg-sky-500 text-ink-on-fill"
+                            : "border-surface-border text-ink-muted"
                         }`}
                       >
                         {isSelected ? (
@@ -74,12 +74,12 @@ export function ProposalCard({
                           proposal.options.indexOf(opt) + 1
                         )}
                       </span>
-                      <span className="text-sm font-medium text-neutral-200">{opt.label}</span>
+                      <span className="text-sm font-medium text-ink-primary">{opt.label}</span>
                     </div>
                     {opt.confidence != null ? <ConfidenceBadge value={opt.confidence} /> : null}
                   </div>
                   {opt.description ? (
-                    <p className="mt-1.5 pl-7 text-xs leading-relaxed text-neutral-400">
+                    <p className="mt-1.5 pl-7 text-xs leading-relaxed text-ink-muted">
                       {opt.description}
                     </p>
                   ) : null}
@@ -88,9 +88,9 @@ export function ProposalCard({
                       {opt.actions.map((action, ai) => (
                         <li
                           key={ai}
-                          className="flex items-center gap-1.5 text-meta text-neutral-500"
+                          className="flex items-center gap-1.5 text-meta text-ink-muted"
                         >
-                          <span className="text-surface-muted">→</span>
+                          <span className="text-ink-muted">→</span>
                           {action}
                         </li>
                       ))}

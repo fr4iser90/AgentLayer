@@ -92,7 +92,7 @@ export function ModelCatalogSelect({
     <div ref={rootRef} className="relative">
       <button
         type="button"
-        className={`mt-0.5 flex w-full items-center justify-between gap-2 rounded-lg border border-surface-border bg-[#1a1a1a] ${buttonPadding} text-left text-neutral-100 shadow-sm outline-none transition hover:border-sky-500/45 hover:bg-[#202020] focus:border-sky-400/70 focus:ring-2 focus:ring-sky-500/20 disabled:cursor-not-allowed disabled:opacity-60 ${buttonTextSize}`}
+        className={`mt-0.5 flex w-full items-center justify-between gap-2 rounded-lg border border-surface-border bg-[#1a1a1a] ${buttonPadding} text-left text-ink-primary shadow-sm outline-none transition hover:border-sky-500/45 hover:bg-[#202020] focus:border-sky-400/70 focus:ring-2 focus:ring-sky-500/20 disabled:cursor-not-allowed disabled:opacity-60 ${buttonTextSize}`}
         disabled={isDisabled}
         aria-haspopup="listbox"
         aria-expanded={open}
@@ -103,7 +103,7 @@ export function ModelCatalogSelect({
             {loading ? loadingLabel : rows.length === 0 ? emptyLabel : selectedLabel(selected, value)}
           </span>
           {selectedProvider ? (
-            <span className="block truncate text-meta text-surface-muted">{selectedProvider}</span>
+            <span className="block truncate text-meta text-ink-muted">{selectedProvider}</span>
           ) : null}
         </span>
         {selectedBadges.length > 0 ? (
@@ -113,7 +113,7 @@ export function ModelCatalogSelect({
             ))}
           </span>
         ) : null}
-        <span className="shrink-0 text-surface-muted">v</span>
+        <span className="shrink-0 text-ink-muted">v</span>
       </button>
       {open && !isDisabled ? (
         <div className="absolute z-50 mt-1 max-h-72 w-full overflow-auto rounded-xl border border-surface-border bg-[#111] p-1 shadow-2xl shadow-black/50">
@@ -144,8 +144,8 @@ export function ModelCatalogSelect({
                   }}
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-neutral-100">{row.id}</span>
-                    <span className="block truncate text-meta text-surface-muted">{provider}</span>
+                    <span className="block truncate text-sm font-medium text-ink-primary">{row.id}</span>
+                    <span className="block truncate text-meta text-ink-muted">{provider}</span>
                   </span>
                   <span className="flex max-w-[48%] shrink-0 flex-wrap justify-end gap-1 pt-0.5">
                     {modelCapabilityBadges(row).map((badge) => (

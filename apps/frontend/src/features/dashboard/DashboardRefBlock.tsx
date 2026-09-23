@@ -77,7 +77,7 @@ export function DashboardRefBlockBody(props: {
   }, [load]);
 
   if (loading && !payload) {
-    return <p className="text-sm text-surface-muted">{t("dashboard:refLoading")}</p>;
+    return <p className="text-sm text-ink-muted">{t("dashboard:refLoading")}</p>;
   }
   if (err) {
     return (
@@ -92,7 +92,7 @@ export function DashboardRefBlockBody(props: {
     );
   }
   if (!payload?.block) {
-    return <p className="text-sm text-surface-muted">{t("dashboard:refEmpty")}</p>;
+    return <p className="text-sm text-ink-muted">{t("dashboard:refEmpty")}</p>;
   }
 
   const noop = () => {};
@@ -100,7 +100,7 @@ export function DashboardRefBlockBody(props: {
   return (
     <div className="space-y-2">
       {p.sourceLabel || payload.source_title ? (
-        <p className="text-meta uppercase tracking-wide text-surface-muted">
+        <p className="text-meta uppercase tracking-wide text-ink-muted">
           {t("dashboard:refFrom", {
             title: String(p.sourceLabel || payload.source_title),
           })}

@@ -300,8 +300,8 @@ export function ToolsSettings() {
   return (
     <div className="mx-auto max-w-4xl space-y-8 pb-12">
       <div>
-        <h1 className="text-lg font-semibold text-white">{t("settings:toolsTitle")}</h1>
-        <p className="mt-2 text-sm text-surface-muted">
+        <h1 className="text-lg font-semibold text-ink-primary">{t("settings:toolsTitle")}</h1>
+        <p className="mt-2 text-sm text-ink-muted">
           {t("settings:toolsIntro")}{" "}
           <Link to="/settings/connections" className="text-sky-400 hover:text-sky-300 hover:underline">
             {t("settings:toolsConnectionsLink")}
@@ -311,7 +311,7 @@ export function ToolsSettings() {
       </div>
 
       {msg ? <p className="text-sm text-amber-400">{msg}</p> : null}
-      {loading ? <p className="text-sm text-surface-muted">{t("settings:toolsLoading")}</p> : null}
+      {loading ? <p className="text-sm text-ink-muted">{t("settings:toolsLoading")}</p> : null}
 
       {!loading && recommendations.length > 0 ? (
         <section
@@ -321,7 +321,7 @@ export function ToolsSettings() {
           <p className="text-xs font-semibold uppercase tracking-wide text-sky-200/90">
             {t("settings:toolsSuggestedNextSteps")}
           </p>
-          <ul className="mt-2 space-y-2 text-sm text-neutral-200">
+          <ul className="mt-2 space-y-2 text-sm text-ink-primary">
             {recommendations.map((r) => (
               <li key={r.id} className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between">
                 <span>{r.body}</span>
@@ -339,14 +339,14 @@ export function ToolsSettings() {
 
       {!loading && meta.length > 0 ? (
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <label className="block max-w-md flex-1 text-sm text-surface-muted">
+          <label className="block max-w-md flex-1 text-sm text-ink-muted">
             {t("settings:toolsSearchLabel")}
             <input
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("settings:toolsSearchPlaceholder")}
-              className="mt-1 w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-white placeholder:text-neutral-600"
+              className="mt-1 w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary placeholder:text-neutral-600"
             />
           </label>
           <div
@@ -369,7 +369,7 @@ export function ToolsSettings() {
                 aria-selected={tab === id}
                 onClick={() => setTab(id)}
                 className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                  tab === id ? "bg-sky-600 text-white" : "bg-white/5 text-surface-muted hover:bg-white/10"
+                  tab === id ? "bg-sky-600 text-ink-on-fill" : "bg-white/5 text-ink-muted hover:bg-white/10"
                 }`}
               >
                 {label}
@@ -391,8 +391,8 @@ export function ToolsSettings() {
                 className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-white/[0.04]"
               >
                 <div>
-                  <h2 className="text-sm font-semibold text-white">{g.label}</h2>
-                  <p className="text-meta text-surface-muted">
+                  <h2 className="text-sm font-semibold text-ink-primary">{g.label}</h2>
+                  <p className="text-meta text-ink-muted">
                     {t("settings:toolsCategoryStats", {
                       total: stats.total,
                       ready: stats.ready,
@@ -401,7 +401,7 @@ export function ToolsSettings() {
                     })}
                   </p>
                 </div>
-                <span className="text-surface-muted">{open ? "▲" : "▼"}</span>
+                <span className="text-ink-muted">{open ? "▲" : "▼"}</span>
               </button>
               {open ? (
                 <div className="border-t border-white/5 px-3 pb-4 pt-2">
@@ -425,10 +425,10 @@ export function ToolsSettings() {
                           <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
                             <div className="min-w-0">
                               {m.domain ? (
-                                <p className="text-meta uppercase tracking-wide text-neutral-500">{m.domain}</p>
+                                <p className="text-meta uppercase tracking-wide text-ink-muted">{m.domain}</p>
                               ) : null}
-                              <h3 className="font-semibold text-white">{title}</h3>
-                              <p className="font-mono text-meta text-neutral-500">{pid}</p>
+                              <h3 className="font-semibold text-ink-primary">{title}</h3>
+                              <p className="font-mono text-meta text-ink-muted">{pid}</p>
                             </div>
                             <div className="flex flex-wrap justify-end gap-1">
                               {enabled ? (
@@ -436,7 +436,7 @@ export function ToolsSettings() {
                                   {t("settings:toolsBadgeOn")}
                                 </span>
                               ) : (
-                                <span className="rounded bg-neutral-500/20 px-1.5 py-0.5 text-meta text-neutral-400">
+                                <span className="rounded bg-neutral-500/20 px-1.5 py-0.5 text-meta text-ink-muted">
                                   {t("settings:toolsBadgeOff")}
                                 </span>
                               )}
@@ -449,7 +449,7 @@ export function ToolsSettings() {
                                   {t("settings:toolsBadgeReady")}
                                 </span>
                               ) : (
-                                <span className="rounded bg-white/5 px-1.5 py-0.5 text-meta text-neutral-400">
+                                <span className="rounded bg-white/5 px-1.5 py-0.5 text-meta text-ink-muted">
                                   {t("settings:toolsBadgeNoSecrets")}
                                 </span>
                               )}
@@ -458,27 +458,27 @@ export function ToolsSettings() {
                                   {t("settings:toolsRiskHigh", { level: risk || "high" })}
                                 </span>
                               ) : risk ? (
-                                <span className="rounded bg-white/10 px-1.5 py-0.5 text-meta text-neutral-400">
+                                <span className="rounded bg-white/10 px-1.5 py-0.5 text-meta text-ink-muted">
                                   {t("settings:toolsRiskLevel", { level: risk })}
                                 </span>
                               ) : null}
                             </div>
                           </div>
-                          {tagline ? <p className="mb-3 text-xs leading-relaxed text-surface-muted">{tagline}</p> : null}
-                          <p className="mb-3 text-meta text-neutral-500">
-                            <span className="text-surface-muted">{t("settings:toolsToolsCount", { count: names.length })}</span>{" "}
-                            <span className="font-mono text-meta text-neutral-400">{names.join(", ")}</span>
+                          {tagline ? <p className="mb-3 text-xs leading-relaxed text-ink-muted">{tagline}</p> : null}
+                          <p className="mb-3 text-meta text-ink-muted">
+                            <span className="text-ink-muted">{t("settings:toolsToolsCount", { count: names.length })}</span>{" "}
+                            <span className="font-mono text-meta text-ink-muted">{names.join(", ")}</span>
                           </p>
                           <div className="mb-3 flex flex-wrap gap-2 border-t border-white/5 pt-3">
                             <Link
                               to={`/chat?try=${tryEnc}`}
-                              className="rounded-md bg-white/10 px-2.5 py-1 text-meta font-medium text-neutral-100 hover:bg-white/15"
+                              className="rounded-md bg-white/10 px-2.5 py-1 text-meta font-medium text-ink-primary hover:bg-white/15"
                             >
                               {t("settings:toolsTest")}
                             </Link>
                             <Link
                               to="/docs"
-                              className="rounded-md bg-white/5 px-2.5 py-1 text-meta text-surface-muted hover:bg-white/10 hover:text-neutral-200"
+                              className="rounded-md bg-white/5 px-2.5 py-1 text-meta text-ink-muted hover:bg-white/10 hover:text-neutral-200"
                             >
                               {t("settings:toolsDocs")}
                             </Link>
@@ -503,14 +503,14 @@ export function ToolsSettings() {
                             </button>
                             <button
                               type="button"
-                              className="rounded-md border border-white/15 px-2.5 py-1 text-meta text-neutral-200 hover:bg-white/10"
+                              className="rounded-md border border-white/15 px-2.5 py-1 text-meta text-ink-primary hover:bg-white/10"
                               onClick={() => setDrawerPkg(m)}
                             >
                               {t("settings:toolsDetails")}
                             </button>
                           </div>
                           <div className="flex flex-wrap items-center gap-3 border-t border-white/5 pt-3">
-                            <label className="flex cursor-pointer items-center gap-2 text-xs text-neutral-200">
+                            <label className="flex cursor-pointer items-center gap-2 text-xs text-ink-primary">
                               <input
                                 type="checkbox"
                                 className="h-4 w-4 rounded border-surface-border bg-field"
@@ -536,11 +536,11 @@ export function ToolsSettings() {
       </div>
 
       {!loading && meta.length === 0 ? (
-        <p className="text-sm text-surface-muted">{t("settings:toolsNoPackages")}</p>
+        <p className="text-sm text-ink-muted">{t("settings:toolsNoPackages")}</p>
       ) : null}
 
       {!loading && meta.length > 0 && searched.length === 0 ? (
-        <p className="text-sm text-surface-muted">{t("settings:toolsNoMatchFilter")}</p>
+        <p className="text-sm text-ink-muted">{t("settings:toolsNoMatchFilter")}</p>
       ) : null}
 
       <button
@@ -589,15 +589,15 @@ function PackageDrawer({
       <div className="relative flex h-full w-full max-w-lg flex-col border-l border-white/10 bg-[#141414] shadow-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-xl">
         <div className="flex items-start justify-between gap-3 border-b border-white/10 px-5 py-4">
           <div>
-            <p className="text-meta uppercase text-neutral-500">{pid}</p>
-            <h2 className="text-lg font-semibold text-white">{title}</h2>
+            <p className="text-meta uppercase text-ink-muted">{pid}</p>
+            <h2 className="text-lg font-semibold text-ink-primary">{title}</h2>
             {(pkg.ui?.tagline || pkg.TOOL_DESCRIPTION) && (
-              <p className="mt-1 text-sm text-surface-muted">{(pkg.ui?.tagline || pkg.TOOL_DESCRIPTION || "").slice(0, 400)}</p>
+              <p className="mt-1 text-sm text-ink-muted">{(pkg.ui?.tagline || pkg.TOOL_DESCRIPTION || "").slice(0, 400)}</p>
             )}
           </div>
           <button
             type="button"
-            className="rounded-lg px-2 py-1 text-sm text-surface-muted hover:bg-white/10 hover:text-white"
+            className="rounded-lg px-2 py-1 text-sm text-ink-muted hover:bg-white/10 hover:text-white"
             onClick={onClose}
           >
             <X aria-hidden className="h-4 w-4" />
@@ -606,7 +606,7 @@ function PackageDrawer({
         <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-4">
           <section>
             <h3 className="text-xs font-semibold uppercase tracking-wide text-sky-200/80">{t("settings:toolsExamplePrompt")}</h3>
-            <p className="mt-1 text-sm text-neutral-300">{example}</p>
+            <p className="mt-1 text-sm text-ink-secondary">{example}</p>
           </section>
           <section>
             <h3 className="text-xs font-semibold uppercase tracking-wide text-sky-200/80">{t("settings:toolsFunctionsInPackage")}</h3>
@@ -618,13 +618,13 @@ function PackageDrawer({
                 return (
                   <li key={n} className="rounded-lg border border-white/10 bg-black/30 p-3">
                     <p className="font-mono text-sm font-medium text-sky-200">{n}</p>
-                    <p className="mt-1 text-xs text-surface-muted">{desc}</p>
+                    <p className="mt-1 text-xs text-ink-muted">{desc}</p>
                     {params ? (
-                      <pre className="mt-2 max-h-40 overflow-auto rounded border border-white/5 bg-black/40 p-2 text-meta text-neutral-400">
+                      <pre className="mt-2 max-h-40 overflow-auto rounded border border-white/5 bg-black/40 p-2 text-meta text-ink-muted">
                         {params}
                       </pre>
                     ) : (
-                      <p className="mt-1 text-meta text-neutral-600">{t("settings:toolsNoParamSchema")}</p>
+                      <p className="mt-1 text-meta text-ink-faint">{t("settings:toolsNoParamSchema")}</p>
                     )}
                   </li>
                 );
@@ -632,21 +632,21 @@ function PackageDrawer({
             </ul>
           </section>
           <section className="rounded-lg border border-dashed border-white/15 bg-white/[0.02] p-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{t("settings:toolsLogsLastUsed")}</h3>
-            <p className="mt-1 text-xs text-surface-muted">{t("settings:toolsLogsNotExposed")}</p>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{t("settings:toolsLogsLastUsed")}</h3>
+            <p className="mt-1 text-xs text-ink-muted">{t("settings:toolsLogsNotExposed")}</p>
           </section>
         </div>
         <div className="flex gap-2 border-t border-white/10 px-5 py-4">
           <Link
             to="/settings/connections"
-            className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
+            className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500"
             onClick={onClose}
           >
             {t("settings:connectionsTitle")}
           </Link>
           <button
             type="button"
-            className="rounded-lg border border-white/15 px-4 py-2 text-sm text-neutral-200 hover:bg-white/10"
+            className="rounded-lg border border-white/15 px-4 py-2 text-sm text-ink-primary hover:bg-white/10"
             onClick={onClose}
           >
             {t("settings:toolsDrawerClose")}

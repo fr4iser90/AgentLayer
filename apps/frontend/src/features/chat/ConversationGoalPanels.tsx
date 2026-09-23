@@ -95,7 +95,7 @@ export function OngoingGoalBar(props: GoalActions) {
           {paused ? ` · ${t("chat:ongoingGoalPaused")}` : ""}
           {blocked ? ` · ${t("chat:ongoingGoalBlocked")}` : ""}
         </div>
-        <p className="truncate text-sm text-neutral-100" title={goal.objective}>
+        <p className="truncate text-sm text-ink-primary" title={goal.objective}>
           {goal.objective}
         </p>
         {blocked && goal.blocked_reason ? (
@@ -164,7 +164,7 @@ export function SessionGoalTodosStrip({
                 </span>
               ) : null}
             </div>
-            <p className="truncate text-sm text-neutral-100" title={liveGoal.objective}>
+            <p className="truncate text-sm text-ink-primary" title={liveGoal.objective}>
               {liveGoal.objective}
             </p>
             {blocked && liveGoal.blocked_reason ? (
@@ -187,7 +187,7 @@ export function SessionGoalTodosStrip({
         <div className="px-3 py-2">
           <div className="mb-1 text-meta font-semibold uppercase tracking-wide text-amber-200/60">
             {t("chat:sessionTodosHeading")}{" "}
-            <span className="font-medium normal-case tracking-normal text-neutral-400">
+            <span className="font-medium normal-case tracking-normal text-ink-muted">
               {done}/{todos.length}
             </span>
           </div>
@@ -197,10 +197,10 @@ export function SessionGoalTodosStrip({
                 key={`${item.status}:${item.content}`}
                 className={`flex min-w-0 max-w-full items-center gap-1.5 text-xs ${
                   item.status === "completed"
-                    ? "text-neutral-500 line-through"
+                    ? "text-ink-muted line-through"
                     : item.status === "in_progress"
                       ? "text-amber-100"
-                      : "text-neutral-300"
+                      : "text-ink-secondary"
                 }`}
                 title={item.content}
               >
@@ -211,7 +211,7 @@ export function SessionGoalTodosStrip({
               </li>
             ))}
             {overflow > 0 ? (
-              <li className="text-xs text-neutral-500">(+{overflow})</li>
+              <li className="text-xs text-ink-muted">(+{overflow})</li>
             ) : null}
           </ul>
         </div>
@@ -229,18 +229,18 @@ export function ConversationTodosPanel({ todos }: { todos: ConversationTodo[] })
   const done = todos.filter((x) => x.status === "completed").length;
   return (
     <div className="mt-2 rounded-lg border border-white/10 bg-black/25 px-2.5 py-2">
-      <div className="mb-1.5 text-meta font-semibold uppercase tracking-wide text-surface-muted">
+      <div className="mb-1.5 text-meta font-semibold uppercase tracking-wide text-ink-muted">
         {t("chat:sessionTodosHeading")} · {inProg} {t("chat:sessionTodosInProgress")} · {pending}{" "}
         {t("chat:sessionTodosPending")}
         {done ? ` · ${done} ${t("chat:sessionTodosDone")}` : ""}
       </div>
       <ul className="space-y-1">
         {todos.map((item) => (
-          <li key={item.content} className="flex items-start gap-2 text-xs text-neutral-200">
+          <li key={item.content} className="flex items-start gap-2 text-xs text-ink-primary">
             <span className="mt-0.5 shrink-0" aria-hidden>
               {todoGlyph(item.status)}
             </span>
-            <span className={item.status === "completed" ? "text-neutral-500 line-through" : ""}>
+            <span className={item.status === "completed" ? "text-ink-muted line-through" : ""}>
               {item.content}
             </span>
           </li>

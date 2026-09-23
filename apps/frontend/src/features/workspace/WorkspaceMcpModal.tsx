@@ -180,20 +180,20 @@ export function WorkspaceMcpModal({
     >
       <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-white/15 bg-[#141414] shadow-xl">
         <div className="shrink-0 border-b border-white/10 px-4 py-3">
-          <h2 className="text-sm font-semibold text-white">{t("workspace:mcpModalTitle")}</h2>
-          <p className="mt-1 text-meta leading-snug text-surface-muted">
+          <h2 className="text-sm font-semibold text-ink-primary">{t("workspace:mcpModalTitle")}</h2>
+          <p className="mt-1 text-meta leading-snug text-ink-muted">
             {t("workspace:mcpModalDescription", { workspaceName })}
           </p>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
           <section className="rounded-lg border border-white/10 bg-black/25 p-3">
-            <p className="text-meta font-semibold uppercase tracking-wide text-surface-muted">{t("workspace:addViaUv")}</p>
+            <p className="text-meta font-semibold uppercase tracking-wide text-ink-muted">{t("workspace:addViaUv")}</p>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
               <label className="block sm:col-span-2">
-                <span className="text-meta text-surface-muted">{t("workspace:presetLabel")}</span>
+                <span className="text-meta text-ink-muted">{t("workspace:presetLabel")}</span>
                 <select
-                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-field px-2 py-1.5 text-xs text-neutral-100"
+                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-field px-2 py-1.5 text-xs text-ink-primary"
                   value={presetId}
                   onChange={(e) => applyPreset(e.target.value)}
                 >
@@ -205,9 +205,9 @@ export function WorkspaceMcpModal({
                 </select>
               </label>
               <label className="block">
-                <span className="text-meta text-surface-muted">{t("workspace:serverIdLabel")}</span>
+                <span className="text-meta text-ink-muted">{t("workspace:serverIdLabel")}</span>
                 <input
-                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-field px-2 py-1.5 font-mono text-xs text-neutral-100"
+                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-field px-2 py-1.5 font-mono text-xs text-ink-primary"
                   value={serverId}
                   onChange={(e) => {
                     setServerId(e.target.value);
@@ -217,17 +217,17 @@ export function WorkspaceMcpModal({
                 />
               </label>
               <label className="block">
-                <span className="text-meta text-surface-muted">{t("workspace:packageLabel")}</span>
+                <span className="text-meta text-ink-muted">{t("workspace:packageLabel")}</span>
                 <input
-                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-field px-2 py-1.5 font-mono text-xs text-neutral-100"
+                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-field px-2 py-1.5 font-mono text-xs text-ink-primary"
                   value={packageSpec}
                   onChange={(e) => handlePackageSpecChange(e.target.value)}
                   placeholder={t("workspace:packagePlaceholder")}
                 />
               </label>
               <fieldset className="sm:col-span-2">
-                <legend className="text-meta text-surface-muted">{t("workspace:launchOnServer")}</legend>
-                <div className="mt-1 flex flex-wrap gap-3 text-xs text-neutral-200">
+                <legend className="text-meta text-ink-muted">{t("workspace:launchOnServer")}</legend>
+                <div className="mt-1 flex flex-wrap gap-3 text-xs text-ink-primary">
                   <label className="inline-flex items-center gap-1.5">
                     <input
                       type="radio"
@@ -259,11 +259,11 @@ export function WorkspaceMcpModal({
                 </p>
               ) : null}
               <label className="block">
-                <span className="text-meta text-surface-muted">
+                <span className="text-meta text-ink-muted">
                   {launchMode === "uvx" ? t("workspace:binaryAfterFromLabel") : t("workspace:binaryOnPathLabel")}
                 </span>
                 <input
-                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-field px-2 py-1.5 font-mono text-xs text-neutral-100"
+                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-field px-2 py-1.5 font-mono text-xs text-ink-primary"
                   value={binary}
                   onChange={(e) => {
                     setBinary(e.target.value);
@@ -273,9 +273,9 @@ export function WorkspaceMcpModal({
                 />
               </label>
               <label className="block">
-                <span className="text-meta text-surface-muted">{t("workspace:argsLabel")}</span>
+                <span className="text-meta text-ink-muted">{t("workspace:argsLabel")}</span>
                 <input
-                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-field px-2 py-1.5 font-mono text-xs text-neutral-100"
+                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-field px-2 py-1.5 font-mono text-xs text-ink-primary"
                   value={mcpArgsText}
                   onChange={(e) => {
                     setMcpArgsText(e.target.value);
@@ -284,15 +284,15 @@ export function WorkspaceMcpModal({
                   placeholder={t("workspace:argsPlaceholder")}
                 />
               </label>
-              <label className="flex items-center gap-2 sm:col-span-2 text-xs text-neutral-300">
+              <label className="flex items-center gap-2 sm:col-span-2 text-xs text-ink-secondary">
                 <input
                   type="checkbox"
                   checked={useWorkspaceCwd}
                   onChange={(e) => setUseWorkspaceCwd(e.target.checked)}
                 />
-                {t("workspace:workspaceCwdLabel")} <code className="text-neutral-400">cwd</code>
+                {t("workspace:workspaceCwdLabel")} <code className="text-ink-muted">cwd</code>
                 {workspacePath ? (
-                  <span className="truncate text-meta text-surface-muted" title={workspacePath}>
+                  <span className="truncate text-meta text-ink-muted" title={workspacePath}>
                     ({workspacePath})
                   </span>
                 ) : (
@@ -301,7 +301,7 @@ export function WorkspaceMcpModal({
               </label>
             </div>
             {previewRow ? (
-              <pre className="mt-2 max-h-20 overflow-auto rounded border border-white/5 bg-black/40 p-2 text-meta text-neutral-400">
+              <pre className="mt-2 max-h-20 overflow-auto rounded border border-white/5 bg-black/40 p-2 text-meta text-ink-muted">
                 {JSON.stringify(previewRow, null, 2)}
               </pre>
             ) : null}
@@ -314,7 +314,7 @@ export function WorkspaceMcpModal({
               {t("workspace:addToJsonList")}
             </button>
             {preset.toolInstallHint ? (
-              <p className="mt-2 text-meta text-surface-muted">
+              <p className="mt-2 text-meta text-ink-muted">
                 {t("workspace:optionalPersistentInstallHint", {
                   hint: preset.toolInstallHint,
                   binary: preset.binary,
@@ -323,21 +323,21 @@ export function WorkspaceMcpModal({
             ) : null}
           </section>
 
-          <p className="mt-3 text-meta font-semibold uppercase tracking-wide text-surface-muted">{t("workspace:serversJsonTitle")}</p>
+          <p className="mt-3 text-meta font-semibold uppercase tracking-wide text-ink-muted">{t("workspace:serversJsonTitle")}</p>
           <textarea
-            className="mt-1 h-48 w-full resize-y rounded-lg border border-surface-border bg-field px-3 py-2 font-mono text-xs text-neutral-100"
+            className="mt-1 h-48 w-full resize-y rounded-lg border border-surface-border bg-field px-3 py-2 font-mono text-xs text-ink-primary"
             spellCheck={false}
             value={text}
             onChange={(e) => setText(e.target.value)}
             aria-label={t("workspace:serversJsonAria")}
           />
-          <p className="mt-2 text-meta leading-snug text-surface-muted">
+          <p className="mt-2 text-meta leading-snug text-ink-muted">
             {t("workspace:schemaHint")}{" "}
-            <code className="text-neutral-500">id</code>, <code className="text-neutral-500">command</code>,{" "}
-            <code className="text-neutral-500">args</code>, optional <code className="text-neutral-500">env</code>,{" "}
-            <code className="text-neutral-500">cwd</code>. {t("workspace:cwdHint")}
+            <code className="text-ink-muted">id</code>, <code className="text-ink-muted">command</code>,{" "}
+            <code className="text-ink-muted">args</code>, optional <code className="text-ink-muted">env</code>,{" "}
+            <code className="text-ink-muted">cwd</code>. {t("workspace:cwdHint")}
           </p>
-          <pre className="mt-1 max-h-24 overflow-auto rounded border border-white/5 bg-black/30 p-2 text-meta text-neutral-400">
+          <pre className="mt-1 max-h-24 overflow-auto rounded border border-white/5 bg-black/30 p-2 text-meta text-ink-muted">
             {EXAMPLE}
           </pre>
         </div>
@@ -355,7 +355,7 @@ export function WorkspaceMcpModal({
           </Button>
           <button
             type="button"
-            className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+            className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
             onClick={() => void handleSave()}
             disabled={saving}
           >

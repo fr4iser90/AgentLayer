@@ -3239,7 +3239,7 @@ export function ChatPage() {
 
   if (!hydrated || !userId) {
     return (
-      <div className="flex h-full min-h-0 flex-1 items-center justify-center overflow-hidden text-sm text-surface-muted">
+      <div className="flex h-full min-h-0 flex-1 items-center justify-center overflow-hidden text-sm text-ink-muted">
         {t("chat:loadingChats")}
       </div>
     );
@@ -3261,17 +3261,17 @@ export function ChatPage() {
                 void startNewChat();
                 setThreadSidebarOpen(false);
               }}
-              className="w-full rounded-lg border border-surface-border bg-white/5 px-3 py-2 text-left text-sm text-neutral-200 hover:bg-white/10"
+              className="w-full rounded-lg border border-surface-border bg-white/5 px-3 py-2 text-left text-sm text-ink-primary hover:bg-white/10"
             >
               {t("chat:newChat")}
             </button>
           </div>
 
           <div className="flex-1 overflow-y-auto px-2 py-2">
-            <p className="px-2 pb-1 text-xs font-medium uppercase tracking-wide text-surface-muted">
+            <p className="px-2 pb-1 text-xs font-medium uppercase tracking-wide text-ink-muted">
               {t("chat:sidebarTitle")}
             </p>
-            <p className="mb-2 px-2 text-meta leading-snug text-surface-muted/80">
+            <p className="mb-2 px-2 text-meta leading-snug text-ink-muted/80">
               {t("chat:sidebarHint")}{" "}
               <span className="text-amber-200/90">{t("chat:sharedBadge")}</span>
             </p>
@@ -3281,7 +3281,7 @@ export function ChatPage() {
                   key={g.kind === "dashboard" ? `ws-${g.dashboardId}` : `src-${g.source}`}
                   className="min-w-0"
                 >
-                  <p className="px-2 pb-1 text-meta font-medium uppercase tracking-wide text-surface-muted/90">
+                  <p className="px-2 pb-1 text-meta font-medium uppercase tracking-wide text-ink-muted/90">
                     {g.label}
                   </p>
                   <ul className="flex flex-col gap-1">
@@ -3294,14 +3294,14 @@ export function ChatPage() {
                         >
                           <button
                             type="button"
-                            className="min-w-0 flex-1 text-left text-sm text-neutral-200"
+                            className="min-w-0 flex-1 text-left text-sm text-ink-primary"
                             onClick={() => void handleSelectThread(thread.id)}
                           >
                             <span className="flex flex-wrap items-start gap-1.5">
                               <span className="line-clamp-2 min-w-0 flex-1 text-left">{thread.title}</span>
                               <DashboardChatVisibilityBadge thread={thread} />
                             </span>
-                            <span className="mt-0.5 block text-meta text-surface-muted">
+                            <span className="mt-0.5 block text-meta text-ink-muted">
                               {new Date(thread.updatedAt).toLocaleString(undefined, {
                                 month: "short",
                                 day: "numeric",
@@ -3313,7 +3313,7 @@ export function ChatPage() {
                           <div className="flex shrink-0 flex-col gap-0.5 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
                             <button
                               type="button"
-                              className="rounded px-1 text-meta text-surface-muted hover:text-white"
+                              className="rounded px-1 text-meta text-ink-muted hover:text-white"
                               title={t("chat:rename")}
                               onClick={() => renameThread(thread.id)}
                             >
@@ -3321,7 +3321,7 @@ export function ChatPage() {
                             </button>
                             <button
                               type="button"
-                              className="rounded px-1 text-meta text-surface-muted hover:text-white"
+                              className="rounded px-1 text-meta text-ink-muted hover:text-white"
                               title={t("chat:copyLinkJson")}
                               onClick={() => void shareThread(thread)}
                             >
@@ -3354,7 +3354,7 @@ export function ChatPage() {
             <div className="flex shrink-0 items-center gap-2 border-b border-surface-border px-4 py-2 md:hidden">
               <button
                 type="button"
-                className="rounded-lg border border-surface-border bg-black/30 px-2.5 py-1.5 text-meta font-medium text-neutral-300 hover:bg-white/10"
+                className="rounded-lg border border-surface-border bg-black/30 px-2.5 py-1.5 text-meta font-medium text-ink-secondary hover:bg-white/10"
                 aria-expanded={threadSidebarOpen}
                 onClick={() => setThreadSidebarOpen(true)}
               >
@@ -3363,8 +3363,8 @@ export function ChatPage() {
             </div>
             <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-4 py-12 text-center sm:px-6">
             <div className="max-w-md">
-              <p className="text-sm font-medium text-white">{t("chat:noConversationOpenTitle")}</p>
-              <p className="mt-1 text-sm text-surface-muted">{t("chat:noConversationOpenBody")}</p>
+              <p className="text-sm font-medium text-ink-primary">{t("chat:noConversationOpenTitle")}</p>
+              <p className="mt-1 text-sm text-ink-muted">{t("chat:noConversationOpenBody")}</p>
             </div>
             <button
               type="button"
@@ -3372,7 +3372,7 @@ export function ChatPage() {
                 void startNewChat();
                 setThreadSidebarOpen(false);
               }}
-              className="rounded-lg border border-surface-border bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/15"
+              className="rounded-lg border border-surface-border bg-white/10 px-4 py-2 text-sm text-ink-primary hover:bg-white/15"
             >
               {t("chat:newChat")}
             </button>
@@ -3394,20 +3394,20 @@ export function ChatPage() {
           >
             <button
               type="button"
-              className="shrink-0 rounded-lg border border-surface-border bg-black/30 px-2.5 py-1.5 text-meta font-medium text-neutral-300 hover:bg-white/10 md:hidden"
+              className="shrink-0 rounded-lg border border-surface-border bg-black/30 px-2.5 py-1.5 text-meta font-medium text-ink-secondary hover:bg-white/10 md:hidden"
               aria-expanded={threadSidebarOpen}
               aria-label={t("chat:openChatsSidebar")}
               onClick={() => setThreadSidebarOpen(true)}
             >
               {t("chat:openChatsSidebarShort")}
             </button>
-            <p className="min-w-0 flex-1 truncate text-sm font-medium text-white">
+            <p className="min-w-0 flex-1 truncate text-sm font-medium text-ink-primary">
               {activeThread?.title ?? t("chat:defaultThreadTitle")}
             </p>
             {activeThread ? <DashboardChatVisibilityBadge thread={activeThread} /> : null}
             <button
               type="button"
-              className="shrink-0 rounded-lg border border-surface-border bg-black/30 px-2 py-1 text-meta font-medium text-neutral-300 hover:bg-white/10"
+              className="shrink-0 rounded-lg border border-surface-border bg-black/30 px-2 py-1 text-meta font-medium text-ink-secondary hover:bg-white/10"
               aria-expanded={!composerHeaderCollapsed}
               aria-controls="chat-composer-header-panel"
               title={
@@ -3421,7 +3421,7 @@ export function ChatPage() {
             </button>
           </div>
           {composerHeaderCollapsed ? (
-            <p className="mt-1 truncate text-meta leading-snug text-surface-muted" title={composerHeaderSummary}>
+            <p className="mt-1 truncate text-meta leading-snug text-ink-muted" title={composerHeaderSummary}>
               {composerHeaderSummary}
             </p>
           ) : null}
@@ -3430,7 +3430,7 @@ export function ChatPage() {
               <p className="min-w-0 flex-1 text-meta leading-snug text-amber-100/95">{workspaceScopeHint}</p>
               <button
                 type="button"
-                className="shrink-0 text-meta text-surface-muted hover:text-neutral-200"
+                className="shrink-0 text-meta text-ink-muted hover:text-neutral-200"
                 onClick={() => setWorkspaceScopeHint(null)}
               >
                 {t("chat:dismiss")}
@@ -3456,24 +3456,24 @@ export function ChatPage() {
             <div className="min-w-0 space-y-2">
               <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
                 <div className="min-w-0 flex-1 sm:min-w-[10rem] sm:max-w-[20rem]">
-                  <label className="block text-meta font-medium uppercase tracking-wide text-surface-muted">
+                  <label className="block text-meta font-medium uppercase tracking-wide text-ink-muted">
                     {t("chat:assistantLabel")}
                   </label>
-                  <p className="mt-0.5 rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-neutral-300">
+                  <p className="mt-0.5 rounded-lg border border-surface-border bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-ink-secondary">
                     {t("chat:generalAssistant")}
                   </p>
-                  <p className="mt-1 text-meta leading-snug text-surface-muted">
+                  <p className="mt-1 text-meta leading-snug text-ink-muted">
                     {t("chat:generalAssistantHint")}
                   </p>
                 </div>
                 {workspaces.length > 0 ? (
                   <div className="min-w-0 flex-1 sm:min-w-[10rem] sm:max-w-[24rem]">
-                    <label className="block text-meta font-medium uppercase tracking-wide text-surface-muted">
+                    <label className="block text-meta font-medium uppercase tracking-wide text-ink-muted">
                       {t("chat:projectLabel")}
                     </label>
                     <div className="mt-0.5 flex flex-wrap gap-1.5">
                       <select
-                        className="min-w-0 flex-1 rounded-lg border border-surface-border bg-field px-2.5 py-1.5 text-sm text-neutral-100"
+                        className="min-w-0 flex-1 rounded-lg border border-surface-border bg-field px-2.5 py-1.5 text-sm text-ink-primary"
                         value={selectedWorkspaceId ?? ""}
                         onChange={(e) => setComposerWorkspace(e.target.value || null)}
                       >
@@ -3491,7 +3491,7 @@ export function ChatPage() {
                           "shrink-0 rounded-lg border px-2.5 py-1.5 text-meta font-medium",
                           projectPanelOpen
                             ? "border-sky-500/60 bg-sky-950/50 text-sky-100"
-                            : "border-surface-border bg-black/30 text-neutral-300 hover:bg-white/10",
+                            : "border-surface-border bg-black/30 text-ink-secondary hover:bg-white/10",
                         ].join(" ")}
                         disabled={!selectedWorkspaceId}
                         title={selectedWorkspaceId ? t("chat:showProjectTree") : t("chat:selectProjectFirst")}
@@ -3535,7 +3535,7 @@ export function ChatPage() {
               </div>
               {workspaces.length === 0 ? (
                 <div className="rounded-lg border border-surface-border bg-black/25 px-3 py-2">
-                  <p className="text-xs leading-snug text-surface-muted">
+                  <p className="text-xs leading-snug text-ink-muted">
                     {isAdminUser ? t("chat:noProjectsAdmin") : t("chat:noProjectsUser")}
                   </p>
                 </div>
@@ -3545,17 +3545,17 @@ export function ChatPage() {
                   <p className="min-w-0 flex-1 text-meta leading-snug text-amber-100/95">{workspaceScopeHint}</p>
                   <button
                     type="button"
-                    className="shrink-0 text-meta text-surface-muted hover:text-neutral-200"
+                    className="shrink-0 text-meta text-ink-muted hover:text-neutral-200"
                     onClick={() => setWorkspaceScopeHint(null)}
                   >
                     {t("chat:dismiss")}
                   </button>
                 </div>
               ) : null}
-              <p className="text-meta leading-snug text-surface-muted">{t("chat:titlesHint")}</p>
+              <p className="text-meta leading-snug text-ink-muted">{t("chat:titlesHint")}</p>
               {!activeThread?.shared && activeThreadId ? (
                 <div className="mt-2 rounded-lg border border-violet-500/25 bg-violet-950/15 px-3 py-2">
-                  <label className="flex cursor-pointer items-center gap-2 text-sm text-neutral-200">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
                     <input
                       type="checkbox"
                       className="rounded border-surface-border"
@@ -3571,15 +3571,15 @@ export function ChatPage() {
                     />
                     {t("chat:delegateAutoRespond")}
                   </label>
-                  <p className="mt-1 text-meta text-surface-muted">{t("chat:delegateAutoRespondHint")}</p>
+                  <p className="mt-1 text-meta text-ink-muted">{t("chat:delegateAutoRespondHint")}</p>
                   {activeThread?.delegateAutoRespondEnabled ? (
-                    <label className="mt-2 block text-meta text-surface-muted">
+                    <label className="mt-2 block text-meta text-ink-muted">
                       {t("chat:delegateAutoRespondDelay")}
                       <input
                         type="number"
                         min={15}
                         max={600}
-                        className="ml-2 w-16 rounded border border-surface-border bg-field px-1.5 py-0.5 text-sm text-white"
+                        className="ml-2 w-16 rounded border border-surface-border bg-field px-1.5 py-0.5 text-sm text-ink-primary"
                         value={activeThread.delegateAutoRespondAfterSec ?? 60}
                         onChange={(e) => {
                           const sec = Number(e.target.value);
@@ -3618,7 +3618,7 @@ export function ChatPage() {
                     {t("chat:tasksLink")}
                     {activeTaskId ? t("chat:tasksBoundHint") : ""}
                   </Link>
-                  <span className="text-meta text-surface-muted">{t("chat:tasksBacklogHint")}</span>
+                  <span className="text-meta text-ink-muted">{t("chat:tasksBacklogHint")}</span>
                 </div>
                 <ChatLiveActivityPanel
                   store={agentLiveTurn}
@@ -3636,7 +3636,7 @@ export function ChatPage() {
               </div>
             ) : (
               <div className="flex min-h-0 items-center rounded-lg border border-white/10 bg-black/30 px-2.5 py-2">
-                <p className="text-meta leading-snug text-surface-muted">
+                <p className="text-meta leading-snug text-ink-muted">
                   {t("chat:switchToAgentModeHint")}
                 </p>
               </div>
@@ -3654,11 +3654,11 @@ export function ChatPage() {
                 />
               ) : null}
               <div className="w-full">
-                <label className="block text-meta font-medium uppercase tracking-wide text-surface-muted">
+                <label className="block text-meta font-medium uppercase tracking-wide text-ink-muted">
                   {t("chat:replyModeLabel")}
                 </label>
                 <select
-                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-field px-2.5 py-1.5 text-sm text-neutral-100"
+                  className="mt-0.5 w-full rounded-lg border border-surface-border bg-field px-2.5 py-1.5 text-sm text-ink-primary"
                   value={mode}
                   onChange={(e) => setMode(e.target.value as ChatMode)}
                   title={t("chat:replyModeTitle")}
@@ -3666,10 +3666,10 @@ export function ChatPage() {
                   <option value="agent">{t("chat:replyModeAgent")}</option>
                   <option value="chat">{t("chat:replyModeChat")}</option>
                 </select>
-                <p className="mt-1 text-meta leading-snug text-surface-muted">{t("chat:replyModeChatHint")}</p>
+                <p className="mt-1 text-meta leading-snug text-ink-muted">{t("chat:replyModeChatHint")}</p>
               </div>
               <div className="w-full">
-                <label className="flex cursor-pointer items-center gap-2 text-meta font-medium uppercase tracking-wide text-surface-muted">
+                <label className="flex cursor-pointer items-center gap-2 text-meta font-medium uppercase tracking-wide text-ink-muted">
                   <input
                     type="checkbox"
                     className="rounded border-surface-border bg-field text-sky-500"
@@ -3688,7 +3688,7 @@ export function ChatPage() {
                   />
                   <span>{t("chat:agentLlmStreamLabel")}</span>
                 </label>
-                <p className="mt-1 pl-6 text-meta leading-snug text-surface-muted">
+                <p className="mt-1 pl-6 text-meta leading-snug text-ink-muted">
                   {t("chat:agentLlmStreamHint")}
                 </p>
               </div>
@@ -3698,7 +3698,7 @@ export function ChatPage() {
                 onVoiceStatusChange={setVoiceStatus}
               />
               <div className="w-full">
-                <label className="block text-meta font-medium uppercase tracking-wide text-surface-muted">
+                <label className="block text-meta font-medium uppercase tracking-wide text-ink-muted">
                   {t("chat:modelLabel")}
                 </label>
                 <ModelCatalogSelect
@@ -3799,14 +3799,14 @@ export function ChatPage() {
             >
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full border border-surface-border bg-white/5 text-lg font-semibold text-neutral-300">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full border border-surface-border bg-white/5 text-lg font-semibold text-ink-secondary">
                   AL
                 </div>
-                <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white">
+                <h1 className="mt-4 text-2xl font-semibold tracking-tight text-ink-primary">
                   {t("chat:emptyHello", { name: displayName })}
                 </h1>
-                <p className="mt-2 max-w-md text-sm text-surface-muted">{t("chat:emptyIntro")}</p>
-                <ul className="mt-6 max-w-md space-y-2 text-left text-sm text-surface-muted">
+                <p className="mt-2 max-w-md text-sm text-ink-muted">{t("chat:emptyIntro")}</p>
+                <ul className="mt-6 max-w-md space-y-2 text-left text-sm text-ink-muted">
                   <li className="rounded-md border border-surface-border/80 bg-black/20 px-3 py-2">
                     {t("chat:emptyStarterBind")}
                   </li>
@@ -3929,7 +3929,7 @@ export function ChatPage() {
                         <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-sky-400" />
                         {t("chat:roleAssistant")}
                       </span>
-                      <p className="text-neutral-300">{t("chat:generatingReply")}</p>
+                      <p className="text-ink-secondary">{t("chat:generatingReply")}</p>
                     </div>
                   </li>
                 ) : null}
@@ -3946,7 +3946,7 @@ export function ChatPage() {
               <button
                 type="button"
                 onClick={() => scrollToBottom("smooth")}
-                className="absolute -top-12 right-0 z-10 rounded-full border border-surface-border bg-[#1a1a1a] px-3 py-1.5 text-xs text-neutral-200 shadow-lg hover:bg-[#252525]"
+                className="absolute -top-12 right-0 z-10 rounded-full border border-surface-border bg-[#1a1a1a] px-3 py-1.5 text-xs text-ink-primary shadow-lg hover:bg-[#252525]"
                 aria-label={t("chat:scrollToBottomAria")}
               >
                 {t("chat:newMessages")}
@@ -3978,8 +3978,8 @@ export function ChatPage() {
               </div>
             ) : null}
             {stepPaused ? (
-              <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-sky-500/40 bg-sky-500/10 px-4 py-2.5 text-sm text-white">
-                <span className="text-surface-muted">{t("chat:pausedStepModeHint")}</span>
+              <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-sky-500/40 bg-sky-500/10 px-4 py-2.5 text-sm text-ink-primary">
+                <span className="text-ink-muted">{t("chat:pausedStepModeHint")}</span>
                 <button
                   type="button"
                   className="shrink-0 rounded-md bg-sky-500/90 px-3 py-1.5 text-xs font-medium text-black"
@@ -4103,7 +4103,7 @@ export function ChatPage() {
                   aria-live="polite"
                   aria-busy="true"
                 >
-                  <div className="flex items-center gap-2.5 rounded-lg border border-white/10 bg-black/70 px-4 py-2.5 text-sm text-neutral-100">
+                  <div className="flex items-center gap-2.5 rounded-lg border border-white/10 bg-black/70 px-4 py-2.5 text-sm text-ink-primary">
                     <svg
                       className="h-4 w-4 shrink-0 animate-spin text-sky-400"
                       xmlns="http://www.w3.org/2000/svg"
@@ -4146,7 +4146,7 @@ export function ChatPage() {
                   {activeComposerQueue.map((item, idx) => (
                     <li
                       key={item.id}
-                      className="flex items-start gap-2 text-meta text-neutral-300"
+                      className="flex items-start gap-2 text-meta text-ink-secondary"
                     >
                       <span className="shrink-0 tabular-nums text-violet-300/70">{idx + 1}.</span>
                       <span className="min-w-0 flex-1 truncate" title={queueItemPreview(item)}>
@@ -4165,7 +4165,7 @@ export function ChatPage() {
                       ) : null}
                       <button
                         type="button"
-                        className="shrink-0 rounded px-1 text-surface-muted hover:text-white"
+                        className="shrink-0 rounded px-1 text-ink-muted hover:text-white"
                         aria-label={t("chat:composerQueueRemove")}
                         onClick={() => removeFromComposerQueue(item.id)}
                       >
@@ -4180,7 +4180,7 @@ export function ChatPage() {
                   {pendingAttachments.map((a, idx) => (
                     <li
                       key={`${a.name}-${idx}`}
-                      className="flex max-w-full items-center gap-1 rounded-lg border border-white/10 bg-black/30 px-2 py-1 text-xs text-neutral-300"
+                      className="flex max-w-full items-center gap-1 rounded-lg border border-white/10 bg-black/30 px-2 py-1 text-xs text-ink-secondary"
                     >
                       <span className="truncate" title={a.kind === "unsupported" ? a.hint : a.name}>
                         {a.name}
@@ -4188,7 +4188,7 @@ export function ChatPage() {
                       </span>
                       <button
                         type="button"
-                        className="shrink-0 rounded px-1 text-surface-muted hover:text-white"
+                        className="shrink-0 rounded px-1 text-ink-muted hover:text-white"
                         aria-label={t("chat:removeAttachment")}
                         onClick={() => setPendingAttachments((prev) => prev.filter((_, i) => i !== idx))}
                       >
@@ -4216,7 +4216,7 @@ export function ChatPage() {
                 }}
               />
               {loading ? (
-                <p className="mt-1.5 text-meta leading-snug text-surface-muted">
+                <p className="mt-1.5 text-meta leading-snug text-ink-muted">
                   {t("chat:composerBusyHint", {
                     enter: "↵",
                     modEnter: composerModEnter,
@@ -4231,7 +4231,7 @@ export function ChatPage() {
                     (chatRuntime?.vision?.available === false &&
                       /* still allow non-image files */ false)
                   }
-                  className="rounded-lg border border-white/10 bg-black/20 p-2 text-surface-muted hover:bg-white/5 hover:text-neutral-200 disabled:opacity-40"
+                  className="rounded-lg border border-white/10 bg-black/20 p-2 text-ink-muted hover:bg-white/5 hover:text-neutral-200 disabled:opacity-40"
                   title={
                     chatRuntime?.vision?.available === false
                       ? t("chat:attachVisionUnavailable")
@@ -4293,7 +4293,7 @@ export function ChatPage() {
                     {canForceSend ? (
                       <button
                         type="button"
-                        className="inline-flex items-center rounded-lg bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-500"
+                        className="inline-flex items-center rounded-lg bg-sky-600 px-3 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500"
                         title={t("chat:composerForceSendTitle", { modEnter: composerModEnter })}
                         onClick={() => onForceSend()}
                       >
@@ -4313,7 +4313,7 @@ export function ChatPage() {
                   <button
                     type="button"
                     disabled={!canSend || voiceTranscribing}
-                    className="inline-flex items-center rounded-lg bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-40"
+                    className="inline-flex items-center rounded-lg bg-sky-600 px-3 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-40"
                     title={t("chat:composerSendTitle")}
                     onClick={() => onSend()}
                   >
@@ -4326,7 +4326,7 @@ export function ChatPage() {
 
             {messages.length === 0 ? (
               <div className="mt-6">
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-surface-muted">
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-muted">
                   Suggested
                 </p>
                 <ul className="flex flex-col gap-2">
@@ -4334,7 +4334,7 @@ export function ChatPage() {
                     <li key={s}>
                       <button
                         type="button"
-                        className="w-full rounded-lg border border-surface-border bg-[#141414] px-4 py-3 text-left text-sm text-neutral-300 hover:bg-white/5"
+                        className="w-full rounded-lg border border-surface-border bg-[#141414] px-4 py-3 text-left text-sm text-ink-secondary hover:bg-white/5"
                         onClick={() => setDraft(s)}
                       >
                         {s}

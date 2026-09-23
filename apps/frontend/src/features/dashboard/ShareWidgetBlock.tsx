@@ -116,10 +116,10 @@ export function ShareWidgetBlockBody(props: { block: UiBlock }) {
 
   return (
     <section className="rounded-xl border border-surface-border bg-card p-4">
-      <h3 className="text-sm font-medium text-white">
+      <h3 className="text-sm font-medium text-ink-primary">
         {label || t("dashboard:shareWidgetTitle")}
       </h3>
-      <p className="mt-1 text-meta uppercase tracking-wide text-surface-muted">
+      <p className="mt-1 text-meta uppercase tracking-wide text-ink-muted">
         {resourceType}
         {kind ? ` · ${kind}` : ""} · {t("dashboard:shareWidgetDays", { count: effectiveDays })}
         {preview?.projection_stale ? ` · ${t("dashboard:shareWidgetStale")}` : ""}
@@ -127,7 +127,7 @@ export function ShareWidgetBlockBody(props: { block: UiBlock }) {
       {err ? (
         <p className="mt-3 text-sm text-amber-300">{err}</p>
       ) : (
-        <pre className="mt-3 whitespace-pre-wrap text-sm text-neutral-200 font-sans">{summary}</pre>
+        <pre className="mt-3 whitespace-pre-wrap text-sm text-ink-primary font-sans">{summary}</pre>
       )}
       {publicShareToken ? null : (
         <button type="button" className="mt-2 text-xs text-sky-400 hover:underline" onClick={() => void load()}>

@@ -46,7 +46,7 @@ export const ChatComposerTextarea = forwardRef<HTMLTextAreaElement, Props>(funct
     <textarea
       ref={innerRef}
       disabled={disabled}
-      className="min-h-[52px] w-full resize-none bg-transparent text-sm leading-relaxed text-neutral-100 placeholder:text-neutral-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+      className="min-h-[52px] w-full resize-none bg-transparent text-sm leading-relaxed text-ink-primary placeholder:text-neutral-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
       placeholder={placeholder}
       value={value}
       onChange={(e) => onChange(e.target.value)}

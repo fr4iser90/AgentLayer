@@ -45,12 +45,12 @@ export function LegalPage() {
           </Link>
         </p>
         {loading ? (
-          <p className="text-sm text-surface-muted">{t("nav.loading")}</p>
+          <p className="text-sm text-ink-muted">{t("nav.loading")}</p>
         ) : missing || !page ? (
-          <p className="text-sm text-surface-muted">{t("legal.notFound")}</p>
+          <p className="text-sm text-ink-muted">{t("legal.notFound")}</p>
         ) : (
           <>
-            <h1 className="mb-6 text-2xl font-semibold text-white">{page.title}</h1>
+            <h1 className="mb-6 text-2xl font-semibold text-ink-primary">{page.title}</h1>
             <LegalMarkdown markdown={page.body_md} />
           </>
         )}

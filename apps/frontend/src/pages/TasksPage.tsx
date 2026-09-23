@@ -34,7 +34,7 @@ function TaskList({
 }) {
   const { t } = useTranslation(["tasks"]);
   if (tasks.length === 0) {
-    return <p className="text-sm text-surface-muted">{t("tasks:noTasksYet")}</p>;
+    return <p className="text-sm text-ink-muted">{t("tasks:noTasksYet")}</p>;
   }
   return (
     <ul className="space-y-2">
@@ -50,15 +50,15 @@ function TaskList({
         >
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <span className="text-meta font-semibold uppercase tracking-wide text-surface-muted">
+              <span className="text-meta font-semibold uppercase tracking-wide text-ink-muted">
                 {task.status}
               </span>
-              <p className="mt-0.5 text-sm text-neutral-200">{task.goal}</p>
+              <p className="mt-0.5 text-sm text-ink-primary">{task.goal}</p>
             </div>
             <div className="flex shrink-0 flex-col gap-1">
               <button
                 type="button"
-                className="rounded border border-white/10 px-2 py-1 text-meta text-neutral-300 hover:bg-white/5"
+                className="rounded border border-white/10 px-2 py-1 text-meta text-ink-secondary hover:bg-white/5"
                 onClick={() => onBind(task.id)}
               >
                 {activeTaskId === task.id ? t("tasks:boundToChat") : t("tasks:bindToChat")}
@@ -175,8 +175,8 @@ export function TasksPage() {
       <div className="mx-auto max-w-4xl px-6 py-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-white">{t_0("tasks:pageTitle")}</h1>
-            <p className="mt-1 text-sm text-surface-muted">{t_0("tasks:pageSubtitle")}</p>
+            <h1 className="text-2xl font-semibold text-ink-primary">{t_0("tasks:pageTitle")}</h1>
+            <p className="mt-1 text-sm text-ink-muted">{t_0("tasks:pageSubtitle")}</p>
           </div>
           <Link
             to={conversationId ? `/chat?c=${encodeURIComponent(conversationId)}` : "/chat"}
@@ -192,7 +192,7 @@ export function TasksPage() {
             {activeTaskId ? (
               <button
                 type="button"
-                className="ml-3 text-xs text-surface-muted underline hover:text-neutral-300"
+                className="ml-3 text-xs text-ink-muted underline hover:text-neutral-300"
                 onClick={() => void clearBind()}
               >
                 {t_0("tasks:clearBinding")}
@@ -204,17 +204,17 @@ export function TasksPage() {
         {error ? <p className="mt-4 text-sm text-red-400">{error}</p> : null}
 
         <section className="mt-8">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-surface-muted">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">
             {t_0("tasks:globalTasks")}
           </h2>
-          <p className="mt-1 text-xs text-surface-muted">{t_0("tasks:globalTasksHint")}</p>
+          <p className="mt-1 text-xs text-ink-muted">{t_0("tasks:globalTasksHint")}</p>
           <div className="mt-3 flex gap-2">
             <input
               type="text"
               value={globalGoal}
               onChange={(e) => setGlobalGoal(e.target.value)}
               placeholder={t_0("tasks:newGlobalGoalPlaceholder")}
-              className="min-w-0 flex-1 rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-neutral-200"
+              className="min-w-0 flex-1 rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
             />
             <button
               type="button"
@@ -235,7 +235,7 @@ export function TasksPage() {
           </div>
           <div className="mt-4">
             {loading ? (
-              <p className="text-sm text-surface-muted">{t_0("tasks:loading")}</p>
+              <p className="text-sm text-ink-muted">{t_0("tasks:loading")}</p>
             ) : (
               <TaskList
                 tasks={globalTasks}
@@ -250,14 +250,14 @@ export function TasksPage() {
         </section>
 
         <section className="mt-10 border-t border-surface-border pt-8">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-surface-muted">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">
             {t_0("tasks:projectTasks")}
           </h2>
-          <p className="mt-1 text-xs text-surface-muted">{t_0("tasks:projectTasksHint")}</p>
-          <label className="mt-3 block text-xs text-surface-muted">
+          <p className="mt-1 text-xs text-ink-muted">{t_0("tasks:projectTasksHint")}</p>
+          <label className="mt-3 block text-xs text-ink-muted">
             {t_0("tasks:workspaceLabel")}
             <select
-              className="mt-1 block w-full max-w-md rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-neutral-200"
+              className="mt-1 block w-full max-w-md rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
               value={selectedWorkspaceId ?? ""}
               onChange={(e) => onWorkspaceChange(e.target.value)}
             >
@@ -281,7 +281,7 @@ export function TasksPage() {
                       ? t_0("tasks:newProjectTaskFor", { name: selectedWorkspace.name })
                       : t_0("tasks:newProjectTask")
                   }
-                  className="min-w-0 flex-1 rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-neutral-200"
+                  className="min-w-0 flex-1 rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
                 />
                 <button
                   type="button"
@@ -307,7 +307,7 @@ export function TasksPage() {
               </div>
               <div className="mt-4">
                 {loading ? (
-                  <p className="text-sm text-surface-muted">{t_0("tasks:loading")}</p>
+                  <p className="text-sm text-ink-muted">{t_0("tasks:loading")}</p>
                 ) : (
                   <TaskList
                     tasks={workspaceTasks}
@@ -321,7 +321,7 @@ export function TasksPage() {
               </div>
             </>
           ) : (
-            <p className="mt-4 text-sm text-surface-muted">
+            <p className="mt-4 text-sm text-ink-muted">
               {t_0("tasks:chooseWorkspaceHint")}
             </p>
           )}

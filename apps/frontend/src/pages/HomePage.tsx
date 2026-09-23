@@ -39,17 +39,17 @@ export function HomePage() {
   return (
     <div className="h-full min-h-0 overflow-y-auto">
       <div className="mx-auto max-w-2xl px-6 py-12">
-        <h1 className="text-2xl font-semibold text-white">{t("common:home.hubTitle")}</h1>
-        <p className="mt-2 text-sm text-surface-muted">{t("common:home.hubIntro")}</p>
+        <h1 className="text-2xl font-semibold text-ink-primary">{t("common:home.hubTitle")}</h1>
+        <p className="mt-2 text-sm text-ink-muted">{t("common:home.hubIntro")}</p>
         <ul className="mt-8 flex flex-col gap-3">
           {cards.map((c) => (
             <li key={c.nav}>
               <Link
                 to={c.to}
-                className="block rounded-xl border border-surface-border bg-card px-5 py-4 text-white hover:bg-white/5"
+                className="block rounded-xl border border-surface-border bg-card px-5 py-4 text-ink-primary hover:bg-white/5"
               >
                 <span className="font-medium">{c.title}</span>
-                <span className="mt-1 block text-sm text-surface-muted">{c.desc}</span>
+                <span className="mt-1 block text-sm text-ink-muted">{c.desc}</span>
               </Link>
             </li>
           ))}

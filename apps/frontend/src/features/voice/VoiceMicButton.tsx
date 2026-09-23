@@ -95,7 +95,7 @@ export function VoiceMicButton({
         className={`relative rounded-lg border p-2 transition-colors disabled:opacity-40 ${
           recording
             ? "border-rose-500/70 bg-rose-950/50 text-rose-100 shadow-[0_0_12px_rgba(244,63,94,0.25)]"
-            : "border-white/10 bg-black/20 text-surface-muted hover:bg-white/5 hover:text-neutral-200"
+            : "border-white/10 bg-black/20 text-ink-muted hover:bg-white/5 hover:text-neutral-200"
         }`}
         title={resolvedTitle}
         aria-label={recording ? `${resolvedAria} — ${t("chat:voiceMicRec")}` : resolvedAria}

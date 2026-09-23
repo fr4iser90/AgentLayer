@@ -26,9 +26,9 @@ function accessHint(role: string | undefined, t: (key: string) => string): strin
 function StatCard(props: { label: string; value: string; sub?: string }) {
   return (
     <div className="rounded-xl border border-surface-border bg-card px-4 py-3">
-      <p className="text-meta font-semibold uppercase tracking-wide text-surface-muted">{props.label}</p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums text-white">{props.value}</p>
-      {props.sub ? <p className="mt-0.5 text-xs text-surface-muted">{props.sub}</p> : null}
+      <p className="text-meta font-semibold uppercase tracking-wide text-ink-muted">{props.label}</p>
+      <p className="mt-1 text-2xl font-semibold tabular-nums text-ink-primary">{props.value}</p>
+      {props.sub ? <p className="mt-0.5 text-xs text-ink-muted">{props.sub}</p> : null}
     </div>
   );
 }
@@ -67,8 +67,8 @@ export function DashboardOverviewPanel(props: {
     return (
       <div className="mx-auto max-w-3xl space-y-4 py-6">
         <div>
-          <h1 className="text-xl font-semibold text-white">{t("dashboard:overviewTitle")}</h1>
-          <p className="mt-1 text-sm text-surface-muted">{t("dashboard:overviewEmpty")}</p>
+          <h1 className="text-xl font-semibold text-ink-primary">{t("dashboard:overviewTitle")}</h1>
+          <p className="mt-1 text-sm text-ink-muted">{t("dashboard:overviewEmpty")}</p>
         </div>
       </div>
     );
@@ -77,8 +77,8 @@ export function DashboardOverviewPanel(props: {
   return (
     <div className="mx-auto max-w-5xl space-y-8 py-6">
       <div>
-        <h1 className="text-xl font-semibold text-white">{t("dashboard:overviewTitle")}</h1>
-        <p className="mt-1 text-sm text-surface-muted">
+        <h1 className="text-xl font-semibold text-ink-primary">{t("dashboard:overviewTitle")}</h1>
+        <p className="mt-1 text-sm text-ink-muted">
           {t("dashboard:overviewSubtitle")}
         </p>
       </div>
@@ -99,15 +99,15 @@ export function DashboardOverviewPanel(props: {
       </div>
 
       <div>
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-surface-muted">{t("dashboard:byTemplateKind")}</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{t("dashboard:byTemplateKind")}</h2>
         <ul className="mt-2 flex flex-wrap gap-2">
           {kindCounts.map(([kind, n]) => (
             <li
               key={kind}
-              className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-neutral-200"
+              className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-ink-primary"
             >
-              <span className="text-white">{kindLabelFor(kind, undefined)}</span>
-              <span className="text-surface-muted"> · {n}</span>
+              <span className="text-ink-primary">{kindLabelFor(kind, undefined)}</span>
+              <span className="text-ink-muted"> · {n}</span>
             </li>
           ))}
         </ul>
@@ -118,7 +118,7 @@ export function DashboardOverviewPanel(props: {
         if (items.length === 0) return null;
         return (
           <section key={hub.id} className="space-y-3">
-            <h2 className="text-sm font-medium text-white">{hub.label}</h2>
+            <h2 className="text-sm font-medium text-ink-primary">{hub.label}</h2>
             <ul className="grid gap-3 sm:grid-cols-2">
               {items.map((w) => (
                 <li key={w.id}>
@@ -127,7 +127,7 @@ export function DashboardOverviewPanel(props: {
                     onClick={() => onOpenDashboard(w.id)}
                     className="flex w-full flex-col rounded-xl border border-surface-border bg-card p-4 text-left transition hover:border-sky-500/35 hover:bg-white/[0.03]"
                   >
-                    <span className="font-medium text-white">
+                    <span className="font-medium text-ink-primary">
                       {w.title || w.kind}
                       {(dashboardUnreadCount?.(w.id) ?? 0) > 0 ? (
                         <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-meta font-bold text-black align-middle">
@@ -135,7 +135,7 @@ export function DashboardOverviewPanel(props: {
                         </span>
                       ) : null}
                     </span>
-                    <span className="mt-1 text-xs text-surface-muted">
+                    <span className="mt-1 text-xs text-ink-muted">
                       {kindLabelFor(w.kind, w.template_id)}
                     </span>
                     <span className="mt-2 flex flex-wrap items-center gap-2 text-meta text-white/45">

@@ -88,20 +88,20 @@ export function SectionBlockBody(props: {
         {editMode && !contentReadOnly ? (
           <input
             type="text"
-            className="min-w-0 flex-1 rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-white outline-none focus:border-sky-500/50"
+            className="min-w-0 flex-1 rounded-md border border-surface-border bg-field px-2 py-1 text-sm text-ink-primary outline-none focus:border-sky-500/50"
             value={block.props.title ?? ""}
             placeholder={t("dashboard:sectionTitlePlaceholder")}
             onChange={(e) => patchSectionProps({ title: e.target.value })}
           />
         ) : (
-          <h3 className="min-w-0 flex-1 truncate text-sm font-medium text-white">{title}</h3>
+          <h3 className="min-w-0 flex-1 truncate text-sm font-medium text-ink-primary">{title}</h3>
         )}
         {sectionUnread && !collapsed ? (
           <AgentUpdateBadge variant="inline" title={t("notifications:agentUpdateBadgeSection")} />
         ) : null}
         <button
           type="button"
-          className="dashboard-grid-no-drag rounded-md border border-surface-border px-2 py-1 text-meta text-surface-muted hover:bg-white/5"
+          className="dashboard-grid-no-drag rounded-md border border-surface-border px-2 py-1 text-meta text-ink-muted hover:bg-white/5"
           onClick={() => {
             const next = !collapsed;
             setCollapsed(next);
@@ -114,7 +114,7 @@ export function SectionBlockBody(props: {
       {!collapsed ? (
         <div className="min-h-0 flex-1 overflow-auto p-2">
           {nested.blocks.length === 0 && !editMode ? (
-            <p className="px-2 py-4 text-xs text-surface-muted">{t("dashboard:sectionEmpty")}</p>
+            <p className="px-2 py-4 text-xs text-ink-muted">{t("dashboard:sectionEmpty")}</p>
           ) : (
             <DashboardGridInner
               layout={nested.blocks.length ? nested : emptyNestedLayout()}

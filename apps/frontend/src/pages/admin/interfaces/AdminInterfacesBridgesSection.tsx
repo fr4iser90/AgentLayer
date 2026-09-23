@@ -53,29 +53,29 @@ export function AdminInterfacesBridgesSection() {
 
   const modelOptions = modelRows;
   if (s.loading) {
-    return <p className="text-sm text-surface-muted">{t("admin:loading")}</p>;
+    return <p className="text-sm text-ink-muted">{t("admin:loading")}</p>;
   }
   return (
     <>
       <section className="mt-6 rounded-xl border border-surface-border bg-card p-5">
-        <h2 className="text-sm font-medium text-white">{t("admin:discord")}</h2>
-        <p className="mt-2 text-xs text-surface-muted">{t("admin:ifBridgeDiscordIntro")}</p>
-        <label className="mt-4 block text-xs text-surface-muted" htmlFor="discord-id">
+        <h2 className="text-sm font-medium text-ink-primary">{t("admin:discord")}</h2>
+        <p className="mt-2 text-xs text-ink-muted">{t("admin:ifBridgeDiscordIntro")}</p>
+        <label className="mt-4 block text-xs text-ink-muted" htmlFor="discord-id">
           {t("admin:ifBridgeDiscordAppIdLabel")}
         </label>
         <input
           id="discord-id"
-          className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
+          className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
           value={s.discordAppId}
           onChange={(e) => s.setDiscordAppId(e.target.value)}
           autoComplete="off"
           inputMode="numeric"
         />
 
-        <h3 className="mt-6 text-xs font-medium uppercase tracking-wide text-surface-muted">
+        <h3 className="mt-6 text-xs font-medium uppercase tracking-wide text-ink-muted">
           {t("admin:ifBridgeInProcessBridge")}
         </h3>
-        <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-white">
+        <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
           <input
             type="checkbox"
             className="rounded border-surface-border"
@@ -84,33 +84,33 @@ export function AdminInterfacesBridgesSection() {
           />
           {t("admin:enableDiscordBridge")}
         </label>
-        <p className="mt-2 text-xs text-surface-muted">
+        <p className="mt-2 text-xs text-ink-muted">
           {t("admin:tokenStoredLabel")}: {s.tokenConfigured ? t("admin:yes") : t("admin:no")}
         </p>
-        <label className="mt-3 block text-xs text-surface-muted" htmlFor="d-token">
+        <label className="mt-3 block text-xs text-ink-muted" htmlFor="d-token">
           {t("admin:discordBotTokenLabel")}
         </label>
         <input
           id="d-token"
           type="password"
           autoComplete="off"
-          className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
+          className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
           value={s.discordToken}
           onChange={(e) => s.setDiscordToken(e.target.value)}
           placeholder={s.tokenConfigured ? t("admin:tokenReplacePlaceholder") : t("admin:pasteTokenPlaceholder")}
         />
-        <label className="mt-3 block text-xs text-surface-muted" htmlFor="prefix">
-          {t("admin:messagePrefixLabel")} <strong className="text-neutral-300">{t("admin:empty")}</strong>{" "}
+        <label className="mt-3 block text-xs text-ink-muted" htmlFor="prefix">
+          {t("admin:messagePrefixLabel")} <strong className="text-ink-secondary">{t("admin:empty")}</strong>{" "}
           {t("admin:messagePrefixEmptyHint")}
         </label>
         <input
           id="prefix"
-          className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
+          className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
           value={s.triggerPrefix}
           onChange={(e) => s.setTriggerPrefix(e.target.value)}
           placeholder={t("admin:messagePrefixPlaceholder")}
         />
-        <label className="mt-3 block text-xs text-surface-muted" htmlFor="model">
+        <label className="mt-3 block text-xs text-ink-muted" htmlFor="model">
           {t("admin:catalogModelIdLabel")}
         </label>
         <div id="model" className="mt-1 w-full max-w-md">
@@ -132,7 +132,7 @@ export function AdminInterfacesBridgesSection() {
         </div>
         <button
           type="button"
-          className="mt-3 rounded-md border border-white/15 bg-white/5 px-3 py-1.5 text-sm text-neutral-200 hover:bg-white/10 disabled:opacity-40"
+          className="mt-3 rounded-md border border-white/15 bg-white/5 px-3 py-1.5 text-sm text-ink-primary hover:bg-white/10 disabled:opacity-40"
           disabled={!s.tokenConfigured}
           onClick={() => void s.clearDiscordToken()}
         >
@@ -141,24 +141,24 @@ export function AdminInterfacesBridgesSection() {
       </section>
 
       <section className="mt-6 rounded-xl border border-surface-border bg-card p-5">
-        <h2 className="text-sm font-medium text-white">{t("admin:telegram")}</h2>
-        <p className="mt-2 text-xs text-surface-muted">{t("admin:ifBridgeTelegramIntro")}</p>
-        <label className="mt-4 block text-xs text-surface-muted" htmlFor="telegram-app-hint">
+        <h2 className="text-sm font-medium text-ink-primary">{t("admin:telegram")}</h2>
+        <p className="mt-2 text-xs text-ink-muted">{t("admin:ifBridgeTelegramIntro")}</p>
+        <label className="mt-4 block text-xs text-ink-muted" htmlFor="telegram-app-hint">
           {t("admin:ifBridgeTelegramUsernameOptional")}
         </label>
         <input
           id="telegram-app-hint"
-          className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
+          className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
           value={s.telegramAppId}
           onChange={(e) => s.setTelegramAppId(e.target.value)}
           autoComplete="off"
           placeholder={t("admin:ifDiscordBotNamePlaceholder")}
         />
 
-        <h3 className="mt-6 text-xs font-medium uppercase tracking-wide text-surface-muted">
+        <h3 className="mt-6 text-xs font-medium uppercase tracking-wide text-ink-muted">
           {t("admin:ifBridgeInProcessBridge")}
         </h3>
-        <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-white">
+        <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
           <input
             type="checkbox"
             className="rounded border-surface-border"
@@ -167,33 +167,33 @@ export function AdminInterfacesBridgesSection() {
           />
           {t("admin:enableTelegramBridge")}
         </label>
-        <p className="mt-2 text-xs text-surface-muted">
+        <p className="mt-2 text-xs text-ink-muted">
           {t("admin:tokenStoredLabel")}: {s.tgTokenConfigured ? t("admin:yes") : t("admin:no")}
         </p>
-        <label className="mt-3 block text-xs text-surface-muted" htmlFor="tg-token">
+        <label className="mt-3 block text-xs text-ink-muted" htmlFor="tg-token">
           {t("admin:telegramBotTokenLabel")}
         </label>
         <input
           id="tg-token"
           type="password"
           autoComplete="off"
-          className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
+          className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
           value={s.telegramToken}
           onChange={(e) => s.setTelegramToken(e.target.value)}
           placeholder={s.tgTokenConfigured ? t("admin:tokenReplacePlaceholder") : t("admin:pasteTokenPlaceholder")}
         />
-        <label className="mt-3 block text-xs text-surface-muted" htmlFor="tg-prefix">
-          {t("admin:messagePrefixLabel")} <strong className="text-neutral-300">{t("admin:empty")}</strong>{" "}
+        <label className="mt-3 block text-xs text-ink-muted" htmlFor="tg-prefix">
+          {t("admin:messagePrefixLabel")} <strong className="text-ink-secondary">{t("admin:empty")}</strong>{" "}
           {t("admin:messagePrefixEmptyHintTelegram")}
         </label>
         <input
           id="tg-prefix"
-          className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
+          className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
           value={s.tgTriggerPrefix}
           onChange={(e) => s.setTgTriggerPrefix(e.target.value)}
           placeholder={t("admin:messagePrefixPlaceholder")}
         />
-        <label className="mt-3 block text-xs text-surface-muted" htmlFor="tg-model">
+        <label className="mt-3 block text-xs text-ink-muted" htmlFor="tg-model">
           {t("admin:catalogModelIdLabel")}
         </label>
         <div id="tg-model" className="mt-1 w-full max-w-md">
@@ -215,18 +215,18 @@ export function AdminInterfacesBridgesSection() {
         </div>
         <button
           type="button"
-          className="mt-3 rounded-md border border-white/15 bg-white/5 px-3 py-1.5 text-sm text-neutral-200 hover:bg-white/10 disabled:opacity-40"
+          className="mt-3 rounded-md border border-white/15 bg-white/5 px-3 py-1.5 text-sm text-ink-primary hover:bg-white/10 disabled:opacity-40"
           disabled={!s.tgTokenConfigured}
           onClick={() => void s.clearTelegramToken()}
         >
           {t("admin:clearTelegramToken")}
         </button>
-        <label className="mt-6 block text-xs text-surface-muted" htmlFor="http-client-log-level">
+        <label className="mt-6 block text-xs text-ink-muted" htmlFor="http-client-log-level">
           {t("admin:ifBridgeHttpClientLogLabel")}
         </label>
         <select
           id="http-client-log-level"
-          className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-white"
+          className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
           value={s.httpClientLogLevel}
           onChange={(e) => s.setHttpClientLogLevel(e.target.value)}
         >

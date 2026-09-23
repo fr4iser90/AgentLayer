@@ -27,8 +27,8 @@ export function TurnElapsedRuntime({ startedAtMs, className = "" }: Props) {
   }, [startedAtMs]);
 
   return (
-    <p className={`tabular-nums text-meta text-neutral-400 ${className}`}>
-      <span className="font-semibold uppercase tracking-wide text-surface-muted">
+    <p className={`tabular-nums text-meta text-ink-muted ${className}`}>
+      <span className="font-semibold uppercase tracking-wide text-ink-muted">
         {t("chat:messageRuntimeLabel")}{" "}
       </span>
       {formatElapsed(elapsedMs)}
