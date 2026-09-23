@@ -12,6 +12,7 @@ import {
   type ModelCapabilityBadge,
   type ModelRow,
 } from "../../lib/modelCatalog";
+import { Tooltip } from "../../ui/Tooltip";
 
 type ModelCatalogSelectProps = {
   rows: ModelRow[];
@@ -127,32 +128,33 @@ export function ModelCatalogSelect({
                 ? catalogModelOptionUnreachableTitle(row, agentlayer)
                 : `${row.id} (${provider})`;
               return (
+                <Tooltip label={title}>
                 <button
-                  key={rowValue}
-                  type="button"
-                  role="option"
-                  aria-selected={active}
-                  disabled={rowDisabled}
-                  title={title}
-                  className={`flex w-full items-start gap-base rounded-card px-base py-base text-left transition ${
-                    active ? "bg-sky-500/15 ring-1 ring-sky-400/30" : "hover:bg-white/5"
-                  } ${rowDisabled ? "cursor-not-allowed opacity-45" : ""}`}
-                  onClick={() => {
-                    if (rowDisabled) return;
-                    onChange(rowValue);
-                    setOpen(false);
-                  }}
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-ink-primary">{row.id}</span>
-                    <span className="block truncate text-meta text-ink-muted">{provider}</span>
-                  </span>
-                  <span className="flex max-w-[48%] shrink-0 flex-wrap justify-end gap-tight pt-hair">
-                    {modelCapabilityBadges(row).map((badge) => (
-                      <ModelBadge key={badge.key} badge={badge} compact />
-                    ))}
-                  </span>
-                </button>
+                    key={rowValue}
+                    type="button"
+                    role="option"
+                    aria-selected={active}
+                    disabled={rowDisabled}
+                    className={`flex w-full items-start gap-base rounded-card px-base py-base text-left transition ${
+                      active ? "bg-sky-500/15 ring-1 ring-sky-400/30" : "hover:bg-white/5"
+                    } ${rowDisabled ? "cursor-not-allowed opacity-45" : ""}`}
+                    onClick={() => {
+                      if (rowDisabled) return;
+                      onChange(rowValue);
+                      setOpen(false);
+                    }}
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium text-ink-primary">{row.id}</span>
+                      <span className="block truncate text-meta text-ink-muted">{provider}</span>
+                    </span>
+                    <span className="flex max-w-[48%] shrink-0 flex-wrap justify-end gap-tight pt-hair">
+                      {modelCapabilityBadges(row).map((badge) => (
+                        <ModelBadge key={badge.key} badge={badge} compact />
+                      ))}
+                    </span>
+                  </button>
+                </Tooltip>
               );
             })}
           </div>

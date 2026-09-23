@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import type { UiMessage } from "./chatThreadStorage";
 import { parseContentParts } from "./messageFormat";
+import { Tooltip } from "../../ui/Tooltip";
 
 type Part = { type?: string; text?: string; image_url?: { url?: string } };
 
@@ -56,23 +57,25 @@ export function UserMessageBubble({ message, timeLabel, showRetry, onCopy, onRet
           ) : null}
         </span>
         <div className="flex shrink-0 items-center gap-tight opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+          <Tooltip label={t("chat:messageCopyTitle")}>
           <button
-            type="button"
-            onClick={onCopy}
-            className="rounded-tile px-base py-hair text-meta font-medium uppercase tracking-wide text-sky-200/80 hover:bg-white/10 hover:text-sky-100"
-            title={t("chat:messageCopyTitle")}
-          >
-            {t("chat:messageCopy")}
-          </button>
-          {showRetry ? (
-            <button
               type="button"
-              onClick={onRetry}
-              className="rounded-tile px-base py-hair text-meta font-medium uppercase tracking-wide text-violet-200/80 hover:bg-white/10 hover:text-violet-100"
-              title={t("chat:messageRetryTitle")}
+              onClick={onCopy}
+              className="rounded-tile px-base py-hair text-meta font-medium uppercase tracking-wide text-sky-200/80 hover:bg-white/10 hover:text-sky-100"
             >
-              {t("chat:messageRetry")}
+              {t("chat:messageCopy")}
             </button>
+          </Tooltip>
+          {showRetry ? (
+            <Tooltip label={t("chat:messageRetryTitle")}>
+            <button
+                type="button"
+                onClick={onRetry}
+                className="rounded-tile px-base py-hair text-meta font-medium uppercase tracking-wide text-violet-200/80 hover:bg-white/10 hover:text-violet-100"
+              >
+                {t("chat:messageRetry")}
+              </button>
+            </Tooltip>
           ) : null}
         </div>
       </div>

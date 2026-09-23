@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Bell } from "lucide-react";
 import { useNotificationContext } from "../features/notifications/NotificationProvider";
+import { Tooltip } from "../ui/Tooltip";
 
 function severityDot(severity: string): string {
   if (severity === "error" || severity === "action_required") return "bg-red-400";
@@ -57,21 +58,22 @@ export function NotificationBell() {
 
   return (
     <div className="relative" ref={rootRef}>
+      <Tooltip label={t("notifications:bellTitle")}>
       <button
-        type="button"
-        className="relative flex h-9 w-9 items-center justify-center rounded-pill text-ink-primary outline-none ring-sky-500/40 hover:bg-white/10 focus-visible:ring-2"
-        aria-expanded={open}
-        aria-haspopup="menu"
-        title={t("notifications:bellTitle")}
-        onClick={() => setOpen((v) => !v)}
-      >
-        <Bell aria-hidden className="h-[18px] w-[18px]" />
-        {unread > 0 ? (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-pill bg-orange-500 px-tight text-meta font-semibold text-black">
-            {unread > 99 ? "99+" : unread}
-          </span>
-        ) : null}
-      </button>
+          type="button"
+          className="relative flex h-9 w-9 items-center justify-center rounded-pill text-ink-primary outline-none ring-sky-500/40 hover:bg-white/10 focus-visible:ring-2"
+          aria-expanded={open}
+          aria-haspopup="menu"
+          onClick={() => setOpen((v) => !v)}
+        >
+          <Bell aria-hidden className="h-[18px] w-[18px]" />
+          {unread > 0 ? (
+            <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-pill bg-orange-500 px-tight text-meta font-semibold text-black">
+              {unread > 99 ? "99+" : unread}
+            </span>
+          ) : null}
+        </button>
+      </Tooltip>
       {open ? (
         <div
           role="menu"

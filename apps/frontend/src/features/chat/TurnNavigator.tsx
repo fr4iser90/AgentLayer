@@ -1,6 +1,7 @@
 import type { UiMessage } from "./chatThreadStorage";
 import { titleFromFirstMessage } from "./chatThreadStorage";
 import { useTranslation } from "react-i18next";
+import { Tooltip } from "../../ui/Tooltip";
 
 export type TurnItem = { id: string; label: string; index: number };
 
@@ -44,19 +45,20 @@ export function TurnNavigator({ userTurns, activeId, onSelect, className = "" }:
           const active = turn.id === activeId;
           return (
             <li key={turn.id}>
+              <Tooltip label={turn.label}>
               <button
-                type="button"
-                onClick={() => onSelect(turn.id)}
-                title={turn.label}
-                className={`w-full rounded-card border px-base py-snug text-left text-meta leading-snug transition-colors ${
-                  active
-                    ? "border-sky-500/50 bg-sky-950/40 text-sky-100"
-                    : "border-transparent text-ink-muted hover:border-line hover:bg-white/5 hover:text-neutral-200"
-                }`}
-              >
-                <span className="mr-snug tabular-nums text-meta text-ink-muted">{turn.index}</span>
-                <span className="line-clamp-2">{turn.label}</span>
-              </button>
+                  type="button"
+                  onClick={() => onSelect(turn.id)}
+                  className={`w-full rounded-card border px-base py-snug text-left text-meta leading-snug transition-colors ${
+                    active
+                      ? "border-sky-500/50 bg-sky-950/40 text-sky-100"
+                      : "border-transparent text-ink-muted hover:border-line hover:bg-white/5 hover:text-neutral-200"
+                  }`}
+                >
+                  <span className="mr-snug tabular-nums text-meta text-ink-muted">{turn.index}</span>
+                  <span className="line-clamp-2">{turn.label}</span>
+                </button>
+              </Tooltip>
             </li>
           );
         })}
@@ -74,20 +76,21 @@ export function TurnNavigatorHorizontal({ userTurns, activeId, onSelect, classNa
       {userTurns.map((turn) => {
         const active = turn.id === activeId;
         return (
+          <Tooltip label={turn.label}>
           <button
-            key={turn.id}
-            type="button"
-            onClick={() => onSelect(turn.id)}
-            title={turn.label}
-            className={`shrink-0 rounded-pill border px-firm py-tight text-meta transition-colors ${
-              active
-                ? "border-sky-500/50 bg-sky-950/40 text-sky-100"
-                : "border-line text-ink-muted hover:bg-white/5"
-            }`}
-          >
-            <span className="mr-tight tabular-nums text-meta opacity-70">{turn.index}</span>
-            <span className="max-w-[8rem] truncate">{turn.label}</span>
-          </button>
+              key={turn.id}
+              type="button"
+              onClick={() => onSelect(turn.id)}
+              className={`shrink-0 rounded-pill border px-firm py-tight text-meta transition-colors ${
+                active
+                  ? "border-sky-500/50 bg-sky-950/40 text-sky-100"
+                  : "border-line text-ink-muted hover:bg-white/5"
+              }`}
+            >
+              <span className="mr-tight tabular-nums text-meta opacity-70">{turn.index}</span>
+              <span className="max-w-[8rem] truncate">{turn.label}</span>
+            </button>
+          </Tooltip>
         );
       })}
     </div>

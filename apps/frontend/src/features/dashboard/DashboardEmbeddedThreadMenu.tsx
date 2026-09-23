@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ChatThread } from "../chat/chatThreadStorage";
+import { Tooltip } from "../../ui/Tooltip";
 
 type LabelPack = { shared: string; personal: string; untitled: string };
 
@@ -56,22 +57,23 @@ export function DashboardEmbeddedThreadMenu({
 
   return (
     <div ref={rootRef} className="relative min-w-0 max-w-[58%]">
+      <Tooltip label={t("dashboard:embeddedChatThreadMenuHint")}>
       <button
-        type="button"
-        disabled={!canPick}
-        className="flex max-w-full items-center gap-hair truncate text-left text-meta text-ink-secondary hover:text-white disabled:opacity-50"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-controls={menuId}
-        title={t("dashboard:embeddedChatThreadMenuHint")}
-        onClick={() => {
-          if (!canPick) return;
-          setOpen((o) => !o);
-        }}
-      >
-        <span className="truncate">{triggerLabel}</span>
-        {canPick ? <span className="shrink-0 text-ink-muted">▾</span> : null}
-      </button>
+          type="button"
+          disabled={!canPick}
+          className="flex max-w-full items-center gap-hair truncate text-left text-meta text-ink-secondary hover:text-white disabled:opacity-50"
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-controls={menuId}
+          onClick={() => {
+            if (!canPick) return;
+            setOpen((o) => !o);
+          }}
+        >
+          <span className="truncate">{triggerLabel}</span>
+          {canPick ? <span className="shrink-0 text-ink-muted">▾</span> : null}
+        </button>
+      </Tooltip>
       {open ? (
         <ul
           id={menuId}

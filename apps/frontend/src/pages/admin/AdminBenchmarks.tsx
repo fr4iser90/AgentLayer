@@ -76,6 +76,7 @@ import {
 } from "../../features/admin/benchmarks/benchProfileSelection";
 import { formatBenchmarkProviderModel } from "../../features/admin/benchmarks/benchDisplayUtils";
 import { Button } from "../../ui/Button";
+import { Tooltip } from "../../ui/Tooltip";
 
 const benchCheckboxClass =
   "h-4 w-4 shrink-0 rounded-tile border-2 border-sky-400/70 bg-black/60 text-sky-500 accent-sky-500 focus:ring-2 focus:ring-sky-400/70 focus:ring-offset-0";
@@ -446,28 +447,29 @@ function BenchmarkScenarioDetailWithAttempts({
             const active = idx === selectedAttemptIndex;
             const label = `${snap.attempt}/${res.run_metrics?.attempts_max ?? hist.length}`;
             return (
-              <button
-                key={`${snap.attempt}-${idx}`}
-                type="button"
-                onClick={() => onSelectAttempt(idx)}
-                className={`rounded-tile px-base py-hair font-mono text-meta ${
-                  active
-                    ? "bg-sky-600 text-ink-on-fill"
-                    : "border border-line-strong bg-black/30 text-white/80 hover:bg-white/10"
-                }`}
-                title={
+              <Tooltip label={
                   snap.passed
                     ? t("admin:benchAttemptPass")
                     : String(snap.failure_reason || snap.rubric_failure_reason || "FAIL")
-                }
-              >
-                {label}{" "}
-                {snap.passed ? (
-                  <Check aria-hidden className="inline h-3 w-3 align-[-1px]" />
-                ) : (
-                  <X aria-hidden className="inline h-3 w-3 align-[-1px]" />
-                )}
-              </button>
+                }>
+              <button
+                  key={`${snap.attempt}-${idx}`}
+                  type="button"
+                  onClick={() => onSelectAttempt(idx)}
+                  className={`rounded-tile px-base py-hair font-mono text-meta ${
+                    active
+                      ? "bg-sky-600 text-ink-on-fill"
+                      : "border border-line-strong bg-black/30 text-white/80 hover:bg-white/10"
+                  }`}
+                >
+                  {label}{" "}
+                  {snap.passed ? (
+                    <Check aria-hidden className="inline h-3 w-3 align-[-1px]" />
+                  ) : (
+                    <X aria-hidden className="inline h-3 w-3 align-[-1px]" />
+                  )}
+                </button>
+              </Tooltip>
             );
           })}
         </div>
@@ -2466,17 +2468,18 @@ export function AdminBenchmarks() {
                           ) : null}
                         </div>
                         <div className="flex shrink-0 flex-wrap gap-base">
+                          <Tooltip label={reviewerModelLabel || tLoose("admin:benchTuneReviewerNeedsModel")}>
                           <button
-                            type="button"
-                            disabled={!canReview || reviewingTuneId === session.id}
-                            className="rounded-tile border border-violet-500/40 px-base py-tight text-violet-200 hover:bg-violet-500/10 disabled:opacity-40"
-                            onClick={() => void onReviewTune(session)}
-                            title={reviewerModelLabel || tLoose("admin:benchTuneReviewerNeedsModel")}
-                          >
-                            {reviewingTuneId === session.id
-                              ? tLoose("admin:benchTuneReviewing")
-                              : tLoose("admin:benchTuneRunReviewer")}
-                          </button>
+                              type="button"
+                              disabled={!canReview || reviewingTuneId === session.id}
+                              className="rounded-tile border border-violet-500/40 px-base py-tight text-violet-200 hover:bg-violet-500/10 disabled:opacity-40"
+                              onClick={() => void onReviewTune(session)}
+                            >
+                              {reviewingTuneId === session.id
+                                ? tLoose("admin:benchTuneReviewing")
+                                : tLoose("admin:benchTuneRunReviewer")}
+                            </button>
+                          </Tooltip>
                           {session.best_run_id ? (
                             <button
                               type="button"
@@ -2881,16 +2884,17 @@ export function AdminBenchmarks() {
                       </div>
                     </button>
                     {r.status === "queued" || r.status === "running" ? (
+                      <Tooltip label={t("admin:benchCancelRun")}>
                       <button
-                        type="button"
-                        disabled={cancellingRunId === r.id}
-                        title={t("admin:benchCancelRun")}
-                        aria-label={t("admin:benchCancelRun")}
-                        onClick={() => void onCancelRun(r)}
-                        className="shrink-0 px-base text-rose-400/90 hover:bg-rose-950/40 hover:text-rose-300 disabled:opacity-50"
-                      >
-                        {cancellingRunId === r.id ? "…" : "■"}
-                      </button>
+                          type="button"
+                          disabled={cancellingRunId === r.id}
+                          aria-label={t("admin:benchCancelRun")}
+                          onClick={() => void onCancelRun(r)}
+                          className="shrink-0 px-base text-rose-400/90 hover:bg-rose-950/40 hover:text-rose-300 disabled:opacity-50"
+                        >
+                          {cancellingRunId === r.id ? "…" : "■"}
+                        </button>
+                      </Tooltip>
                     ) : null}
                     <Button
                       type="button"
@@ -3167,21 +3171,22 @@ export function AdminBenchmarks() {
                             <td className="py-snug pr-tight align-top">
                               <div className="flex flex-col items-start gap-hair">
                                 {canExpand ? (
-                                  <button
-                                    type="button"
-                                    className="rounded-tile px-tight text-ink-muted hover:bg-white/5 hover:text-white"
-                                    aria-expanded={expanded}
-                                    title={
+                                  <Tooltip label={
                                       expanded
                                         ? t("admin:benchDetailCollapse")
                                         : t("admin:benchDetailExpand")
-                                    }
-                                    onClick={() =>
-                                      setExpandedResultKey(expanded ? null : rowKey)
-                                    }
-                                  >
-                                    {expanded ? "▾" : "▸"}
-                                  </button>
+                                    }>
+                                  <button
+                                      type="button"
+                                      className="rounded-tile px-tight text-ink-muted hover:bg-white/5 hover:text-white"
+                                      aria-expanded={expanded}
+                                      onClick={() =>
+                                        setExpandedResultKey(expanded ? null : rowKey)
+                                      }
+                                    >
+                                      {expanded ? "▾" : "▸"}
+                                    </button>
+                                  </Tooltip>
                                 ) : null}
                                 <CopyScenarioDetailsButton res={res} compact />
                               </div>

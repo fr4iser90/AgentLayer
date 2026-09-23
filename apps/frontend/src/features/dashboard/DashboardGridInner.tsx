@@ -42,6 +42,7 @@ import {
   updateBlockById,
 } from "./layoutTree";
 import { Button } from "../../ui/Button";
+import { Tooltip } from "../../ui/Tooltip";
 
 function usedDataPaths(blocks: UiBlock[]): Set<string> {
   const s = new Set<string>();
@@ -345,56 +346,60 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                       </span>
                       <div className="flex shrink-0 gap-tight">
                         {canExpand ? (
+                          <Tooltip label={t("dashboard:blockExpand")}>
                           <button
-                            type="button"
-                            className="dashboard-grid-no-drag rounded-tile px-base py-hair text-xs text-sky-200 hover:bg-sky-950/50"
-                            title={t("dashboard:blockExpand")}
-                            aria-label={t("dashboard:blockExpand")}
-                            onClick={() => {
-                              acknowledgeBlock(b.id);
-                              setExpandedBlockId(b.id);
-                            }}
-                          >
-                            {t("dashboard:blockExpand")}
-                          </button>
+                              type="button"
+                              className="dashboard-grid-no-drag rounded-tile px-base py-hair text-xs text-sky-200 hover:bg-sky-950/50"
+                              aria-label={t("dashboard:blockExpand")}
+                              onClick={() => {
+                                acknowledgeBlock(b.id);
+                                setExpandedBlockId(b.id);
+                              }}
+                            >
+                              {t("dashboard:blockExpand")}
+                            </button>
+                          </Tooltip>
                         ) : null}
                         {onPinBlockToChat && b.type !== "dashboard_ref" ? (
+                          <Tooltip label={t("dashboard:pinBlockToChatHint")}>
                           <button
-                            type="button"
-                            className={[
-                              "dashboard-grid-no-drag rounded-tile px-base py-hair text-xs",
-                              chatFocusedBlockId === b.id
-                                ? "bg-emerald-900/60 text-emerald-100"
-                                : "text-emerald-200 hover:bg-emerald-950/50",
-                            ].join(" ")}
-                            title={t("dashboard:pinBlockToChatHint")}
-                            onClick={() => onPinBlockToChat(b.id)}
-                          >
-                            {chatFocusedBlockId === b.id
-                              ? t("dashboard:pinBlockToChatActive")
-                              : t("dashboard:pinBlockToChat")}
-                          </button>
+                              type="button"
+                              className={[
+                                "dashboard-grid-no-drag rounded-tile px-base py-hair text-xs",
+                                chatFocusedBlockId === b.id
+                                  ? "bg-emerald-900/60 text-emerald-100"
+                                  : "text-emerald-200 hover:bg-emerald-950/50",
+                              ].join(" ")}
+                              onClick={() => onPinBlockToChat(b.id)}
+                            >
+                              {chatFocusedBlockId === b.id
+                                ? t("dashboard:pinBlockToChatActive")
+                                : t("dashboard:pinBlockToChat")}
+                            </button>
+                          </Tooltip>
                         ) : null}
                         {canConfigureBlock ? (
+                          <Tooltip label={t("dashboard:blockSettingsTitle")}>
                           <button
-                            type="button"
-                            className="dashboard-grid-no-drag rounded-tile px-base py-hair text-xs text-amber-200 hover:bg-amber-950/50"
-                            title={t("dashboard:blockSettingsTitle")}
-                            aria-label={t("dashboard:blockSettingsTitle")}
-                            onClick={() => setSettingsBlockId(b.id)}
-                          >
-                            <Settings aria-hidden className="h-3.5 w-3.5" />
-                          </button>
+                              type="button"
+                              className="dashboard-grid-no-drag rounded-tile px-base py-hair text-xs text-amber-200 hover:bg-amber-950/50"
+                              aria-label={t("dashboard:blockSettingsTitle")}
+                              onClick={() => setSettingsBlockId(b.id)}
+                            >
+                              <Settings aria-hidden className="h-3.5 w-3.5" />
+                            </button>
+                          </Tooltip>
                         ) : null}
                         {onPinBlock && b.type !== "dashboard_ref" ? (
+                          <Tooltip label={t("dashboard:pinBlockHint")}>
                           <button
-                            type="button"
-                            className="dashboard-grid-no-drag rounded-tile px-base py-hair text-xs text-violet-200 hover:bg-violet-950/50"
-                            title={t("dashboard:pinBlockHint")}
-                            onClick={() => onPinBlock(b.id)}
-                          >
-                            {t("dashboard:pinBlock")}
-                          </button>
+                              type="button"
+                              className="dashboard-grid-no-drag rounded-tile px-base py-hair text-xs text-violet-200 hover:bg-violet-950/50"
+                              onClick={() => onPinBlock(b.id)}
+                            >
+                              {t("dashboard:pinBlock")}
+                            </button>
+                          </Tooltip>
                         ) : null}
                         {editMode ? (
                           <Button

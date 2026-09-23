@@ -60,6 +60,7 @@ import {
 } from "./gallery/galleryUpload";
 import { ModelCatalogSelect } from "../chat/ModelCatalogSelect";
 import { Button } from "../../ui/Button";
+import { Tooltip } from "../../ui/Tooltip";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type GalleryTarget = { blockId: string; dataPath: string; title: string };
@@ -954,35 +955,38 @@ export function DashboardEmbeddedChat({
                   <span className="truncate text-meta text-ink-secondary">{compactThreadLabel}</span>
                 )}
                 <span className="shrink-0 text-meta text-white/25">·</span>
+                <Tooltip label={t("dashboard:embeddedChatSessionToggleHint")}>
                 <button
-                  type="button"
-                  className="min-w-0 truncate text-meta text-ink-muted hover:text-white"
-                  title={t("dashboard:embeddedChatSessionToggleHint")}
-                  onClick={() => setSessionOpenPersisted((o) => !o)}
-                >
-                  {compactModelLabel}
-                </button>
+                    type="button"
+                    className="min-w-0 truncate text-meta text-ink-muted hover:text-white"
+                    onClick={() => setSessionOpenPersisted((o) => !o)}
+                  >
+                    {compactModelLabel}
+                  </button>
+                </Tooltip>
               </div>
               {!readOnly ? (
+                <Tooltip label={t("dashboard:embeddedChatNewThreadHint")}>
                 <button
-                  type="button"
-                  disabled={sendLoading || newChatBusy}
-                  title={t("dashboard:embeddedChatNewThreadHint")}
-                  className="shrink-0 rounded-tile border border-line px-base py-hair text-meta text-ink-primary hover:bg-white/5 disabled:opacity-40"
-                  onClick={() => void startNewDashboardChat()}
-                >
-                  {newChatBusy ? t("dashboard:loading") : t("dashboard:embeddedChatNewThread")}
-                </button>
+                    type="button"
+                    disabled={sendLoading || newChatBusy}
+                    className="shrink-0 rounded-tile border border-line px-base py-hair text-meta text-ink-primary hover:bg-white/5 disabled:opacity-40"
+                    onClick={() => void startNewDashboardChat()}
+                  >
+                    {newChatBusy ? t("dashboard:loading") : t("dashboard:embeddedChatNewThread")}
+                  </button>
+                </Tooltip>
               ) : null}
+              <Tooltip label={t("dashboard:embeddedChatSessionToggleHint")}>
               <button
-                type="button"
-                className="shrink-0 rounded-tile border border-line px-base py-hair text-meta text-ink-secondary hover:bg-white/5"
-                aria-expanded={sessionOpen}
-                title={t("dashboard:embeddedChatSessionToggleHint")}
-                onClick={() => setSessionOpenPersisted((o) => !o)}
-              >
-                {sessionOpen ? t("dashboard:embeddedChatSessionHide") : t("dashboard:embeddedChatSessionShow")}
-              </button>
+                  type="button"
+                  className="shrink-0 rounded-tile border border-line px-base py-hair text-meta text-ink-secondary hover:bg-white/5"
+                  aria-expanded={sessionOpen}
+                  onClick={() => setSessionOpenPersisted((o) => !o)}
+                >
+                  {sessionOpen ? t("dashboard:embeddedChatSessionHide") : t("dashboard:embeddedChatSessionShow")}
+                </button>
+              </Tooltip>
             </div>
           ) : null}
           {initLoading ? (
@@ -1134,20 +1138,21 @@ export function DashboardEmbeddedChat({
                       <span>{pinFilesToBoard ? t("dashboard:pinFilesToBoard") : t("dashboard:chatOnlyFiles")}</span>
                     </label>
                     <div className="relative">
+                      <Tooltip label={t("dashboard:boardFilesLibraryHint")}>
                       <button
-                        type="button"
-                        disabled={sendLoading || boardFilesBusy}
-                        className="rounded-tile border border-line bg-black/25 px-base py-tight text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
-                        title={t("dashboard:boardFilesLibraryHint")}
-                        onClick={() => {
-                          const next = !boardLibraryOpen;
-                          setBoardLibraryOpen(next);
-                          if (next) void refreshBoardFiles();
-                        }}
-                      >
-                        {t("dashboard:boardFilesLibrary")}
-                        {boardFiles.length > 0 ? ` (${boardFiles.length})` : ""}
-                      </button>
+                          type="button"
+                          disabled={sendLoading || boardFilesBusy}
+                          className="rounded-tile border border-line bg-black/25 px-base py-tight text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
+                          onClick={() => {
+                            const next = !boardLibraryOpen;
+                            setBoardLibraryOpen(next);
+                            if (next) void refreshBoardFiles();
+                          }}
+                        >
+                          {t("dashboard:boardFilesLibrary")}
+                          {boardFiles.length > 0 ? ` (${boardFiles.length})` : ""}
+                        </button>
+                      </Tooltip>
                       {boardLibraryOpen ? (
                         <div className="absolute bottom-full left-0 z-20 mb-tight max-h-48 w-64 overflow-y-auto rounded-tile border border-line bg-raised p-tight shadow-lg">
                           {boardFilesBusy ? (
@@ -1188,15 +1193,16 @@ export function DashboardEmbeddedChat({
                       {focusedBlockLabel?.trim() || focusedBlockId}
                     </span>
                     {onClearFocusedBlock ? (
+                      <Tooltip label={t("dashboard:chatFocusedBlockClear")}>
                       <button
-                        type="button"
-                        className="shrink-0 rounded-tile px-tight text-emerald-200/70 hover:bg-emerald-900/40 hover:text-white"
-                        onClick={onClearFocusedBlock}
-                        title={t("dashboard:chatFocusedBlockClear")}
-                        aria-label={t("dashboard:chatFocusedBlockClear")}
-                      >
-                        ×
-                      </button>
+                          type="button"
+                          className="shrink-0 rounded-tile px-tight text-emerald-200/70 hover:bg-emerald-900/40 hover:text-white"
+                          onClick={onClearFocusedBlock}
+                          aria-label={t("dashboard:chatFocusedBlockClear")}
+                        >
+                          ×
+                        </button>
+                      </Tooltip>
                     ) : null}
                   </div>
                 ) : null}
@@ -1224,16 +1230,17 @@ export function DashboardEmbeddedChat({
                   </ul>
                 ) : null}
                 <div className="flex items-end gap-base rounded-card border border-line bg-black/30 p-base">
+                  <Tooltip label={t("dashboard:attachTitle")}>
                   <button
-                    type="button"
-                    disabled={readOnly || sendLoading}
-                    className="shrink-0 rounded-card border border-line px-firm py-base text-ink-muted hover:bg-white/5 hover:text-white disabled:opacity-40"
-                    title={t("dashboard:attachTitle")}
-                    aria-label={t("dashboard:attach")}
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    +
-                  </button>
+                      type="button"
+                      disabled={readOnly || sendLoading}
+                      className="shrink-0 rounded-card border border-line px-firm py-base text-ink-muted hover:bg-white/5 hover:text-white disabled:opacity-40"
+                      aria-label={t("dashboard:attach")}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      +
+                    </button>
+                  </Tooltip>
                   <textarea
                     ref={draftTextareaRef}
                     value={draft}

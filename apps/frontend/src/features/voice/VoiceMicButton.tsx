@@ -1,6 +1,7 @@
 import type { PointerEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useVoiceCapture } from "./useVoiceCapture";
+import { Tooltip } from "../../ui/Tooltip";
 
 export type VoiceMicInteraction = "hold" | "toggle";
 
@@ -89,65 +90,66 @@ export function VoiceMicButton({
 
   return (
     <div className="relative shrink-0">
+      <Tooltip label={resolvedTitle}>
       <button
-        type="button"
-        disabled={disabled || busy}
-        className={`relative rounded-card border p-base transition-colors disabled:opacity-40 ${
-          recording
-            ? "border-rose-500/70 bg-rose-950/50 text-rose-100 shadow-[0_0_12px_rgba(244,63,94,0.25)]"
-            : "border-line bg-black/20 text-ink-muted hover:bg-white/5 hover:text-neutral-200"
-        }`}
-        title={resolvedTitle}
-        aria-label={recording ? `${resolvedAria} — ${t("chat:voiceMicRec")}` : resolvedAria}
-        aria-pressed={recording}
-        onClick={interaction === "toggle" ? () => void handleToggleClick() : undefined}
-        onPointerDown={interaction === "hold" ? (e) => void handleHoldPointerDown(e) : undefined}
-        onPointerUp={interaction === "hold" ? () => void handleHoldPointerUp() : undefined}
-        onPointerLeave={
-          interaction === "hold"
-            ? () => {
-                if (recording) void cancel();
-              }
-            : undefined
-        }
-        onPointerCancel={interaction === "hold" ? () => cancel() : undefined}
-      >
-        {recording ? (
-          <>
-            <span
-              className="pointer-events-none absolute -inset-0.5 animate-pulse rounded-card border border-rose-400/50"
-              aria-hidden
-            />
-            <span
-              className="pointer-events-none absolute -right-1 -top-1 z-10 flex items-center gap-hair rounded-tile border border-rose-400/60 bg-rose-950 px-tight py-px text-meta font-bold uppercase leading-none tracking-wide text-rose-100 shadow-sm"
-              aria-live="polite"
-            >
-              <span className="relative flex h-1.5 w-1.5 shrink-0">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-pill bg-rose-400 opacity-80" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-pill bg-rose-400" />
-              </span>
-              {t("chat:voiceMicRec")}
-            </span>
-          </>
-        ) : null}
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="relative"
-          aria-hidden
+          type="button"
+          disabled={disabled || busy}
+          className={`relative rounded-card border p-base transition-colors disabled:opacity-40 ${
+            recording
+              ? "border-rose-500/70 bg-rose-950/50 text-rose-100 shadow-[0_0_12px_rgba(244,63,94,0.25)]"
+              : "border-line bg-black/20 text-ink-muted hover:bg-white/5 hover:text-neutral-200"
+          }`}
+          aria-label={recording ? `${resolvedAria} — ${t("chat:voiceMicRec")}` : resolvedAria}
+          aria-pressed={recording}
+          onClick={interaction === "toggle" ? () => void handleToggleClick() : undefined}
+          onPointerDown={interaction === "hold" ? (e) => void handleHoldPointerDown(e) : undefined}
+          onPointerUp={interaction === "hold" ? () => void handleHoldPointerUp() : undefined}
+          onPointerLeave={
+            interaction === "hold"
+              ? () => {
+                  if (recording) void cancel();
+                }
+              : undefined
+          }
+          onPointerCancel={interaction === "hold" ? () => cancel() : undefined}
         >
-          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-          <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-          <line x1="12" x2="12" y1="19" y2="22" />
-        </svg>
-      </button>
+          {recording ? (
+            <>
+              <span
+                className="pointer-events-none absolute -inset-0.5 animate-pulse rounded-card border border-rose-400/50"
+                aria-hidden
+              />
+              <span
+                className="pointer-events-none absolute -right-1 -top-1 z-10 flex items-center gap-hair rounded-tile border border-rose-400/60 bg-rose-950 px-tight py-px text-meta font-bold uppercase leading-none tracking-wide text-rose-100 shadow-sm"
+                aria-live="polite"
+              >
+                <span className="relative flex h-1.5 w-1.5 shrink-0">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-pill bg-rose-400 opacity-80" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-pill bg-rose-400" />
+                </span>
+                {t("chat:voiceMicRec")}
+              </span>
+            </>
+          ) : null}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="relative"
+            aria-hidden
+          >
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+            <line x1="12" x2="12" y1="19" y2="22" />
+          </svg>
+        </button>
+      </Tooltip>
     </div>
   );
 }
