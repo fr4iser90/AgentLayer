@@ -346,7 +346,7 @@ export function ToolsSettings() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("settings:toolsSearchPlaceholder")}
-              className="mt-1 w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary placeholder:text-neutral-600"
+              className="mt-1 w-full rounded-lg border border-line bg-field px-3 py-2 text-sm text-ink-primary placeholder:text-neutral-600"
             />
           </label>
           <div
@@ -384,7 +384,7 @@ export function ToolsSettings() {
           const open = openCats[g.cat] !== false;
           const stats = categoryAnalytics(g.items, services);
           return (
-            <section key={g.cat} className="overflow-hidden rounded-2xl border border-surface-border bg-card">
+            <section key={g.cat} className="overflow-hidden rounded-2xl border border-line bg-card">
               <button
                 type="button"
                 onClick={() => toggleCat(g.cat)}
@@ -404,7 +404,7 @@ export function ToolsSettings() {
                 <span className="text-ink-muted">{open ? "▲" : "▼"}</span>
               </button>
               {open ? (
-                <div className="border-t border-white/5 px-3 pb-4 pt-2">
+                <div className="border-t border-line-subtle px-3 pb-4 pt-2">
                   <div className="grid gap-3 sm:grid-cols-2">
                     {g.items.map((m) => {
                       const pid = (m.id || "").trim();
@@ -420,7 +420,7 @@ export function ToolsSettings() {
                       return (
                         <div
                           key={pid}
-                          className="flex flex-col rounded-xl border border-white/10 bg-black/25 p-4 shadow-sm shadow-black/20"
+                          className="flex flex-col rounded-xl border border-line bg-black/25 p-4 shadow-sm shadow-black/20"
                         >
                           <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
                             <div className="min-w-0">
@@ -469,7 +469,7 @@ export function ToolsSettings() {
                             <span className="text-ink-muted">{t("settings:toolsToolsCount", { count: names.length })}</span>{" "}
                             <span className="font-mono text-meta text-ink-muted">{names.join(", ")}</span>
                           </p>
-                          <div className="mb-3 flex flex-wrap gap-2 border-t border-white/5 pt-3">
+                          <div className="mb-3 flex flex-wrap gap-2 border-t border-line-subtle pt-3">
                             <Link
                               to={`/chat?try=${tryEnc}`}
                               className="rounded-md bg-white/10 px-2.5 py-1 text-meta font-medium text-ink-primary hover:bg-white/15"
@@ -503,17 +503,17 @@ export function ToolsSettings() {
                             </button>
                             <button
                               type="button"
-                              className="rounded-md border border-white/15 px-2.5 py-1 text-meta text-ink-primary hover:bg-white/10"
+                              className="rounded-md border border-line-strong px-2.5 py-1 text-meta text-ink-primary hover:bg-white/10"
                               onClick={() => setDrawerPkg(m)}
                             >
                               {t("settings:toolsDetails")}
                             </button>
                           </div>
-                          <div className="flex flex-wrap items-center gap-3 border-t border-white/5 pt-3">
+                          <div className="flex flex-wrap items-center gap-3 border-t border-line-subtle pt-3">
                             <label className="flex cursor-pointer items-center gap-2 text-xs text-ink-primary">
                               <input
                                 type="checkbox"
-                                className="h-4 w-4 rounded border-surface-border bg-field"
+                                className="h-4 w-4 rounded border-line bg-field"
                                 checked={enabled}
                                 disabled={!names.length}
                                 onChange={(e) => {
@@ -586,8 +586,8 @@ function PackageDrawer({
         aria-label={t("settings:close")}
         onClick={onClose}
       />
-      <div className="relative flex h-full w-full max-w-lg flex-col border-l border-white/10 bg-[#141414] shadow-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-xl">
-        <div className="flex items-start justify-between gap-3 border-b border-white/10 px-5 py-4">
+      <div className="relative flex h-full w-full max-w-lg flex-col border-l border-line bg-[#141414] shadow-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-xl">
+        <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
           <div>
             <p className="text-meta uppercase text-ink-muted">{pid}</p>
             <h2 className="text-lg font-semibold text-ink-primary">{title}</h2>
@@ -616,11 +616,11 @@ function PackageDrawer({
                 const desc = (fn?.description || fn?.TOOL_DESCRIPTION || "").trim() || "—";
                 const params = summarizeParams(fn?.parameters);
                 return (
-                  <li key={n} className="rounded-lg border border-white/10 bg-black/30 p-3">
+                  <li key={n} className="rounded-lg border border-line bg-black/30 p-3">
                     <p className="font-mono text-sm font-medium text-sky-200">{n}</p>
                     <p className="mt-1 text-xs text-ink-muted">{desc}</p>
                     {params ? (
-                      <pre className="mt-2 max-h-40 overflow-auto rounded border border-white/5 bg-black/40 p-2 text-meta text-ink-muted">
+                      <pre className="mt-2 max-h-40 overflow-auto rounded border border-line-subtle bg-black/40 p-2 text-meta text-ink-muted">
                         {params}
                       </pre>
                     ) : (
@@ -631,12 +631,12 @@ function PackageDrawer({
               })}
             </ul>
           </section>
-          <section className="rounded-lg border border-dashed border-white/15 bg-white/[0.02] p-3">
+          <section className="rounded-lg border border-dashed border-line-strong bg-white/[0.02] p-3">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{t("settings:toolsLogsLastUsed")}</h3>
             <p className="mt-1 text-xs text-ink-muted">{t("settings:toolsLogsNotExposed")}</p>
           </section>
         </div>
-        <div className="flex gap-2 border-t border-white/10 px-5 py-4">
+        <div className="flex gap-2 border-t border-line px-5 py-4">
           <Link
             to="/settings/connections"
             className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500"
@@ -646,7 +646,7 @@ function PackageDrawer({
           </Link>
           <button
             type="button"
-            className="rounded-lg border border-white/15 px-4 py-2 text-sm text-ink-primary hover:bg-white/10"
+            className="rounded-lg border border-line-strong px-4 py-2 text-sm text-ink-primary hover:bg-white/10"
             onClick={onClose}
           >
             {t("settings:toolsDrawerClose")}

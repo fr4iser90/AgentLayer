@@ -232,19 +232,19 @@ export function ProjectsImportModal({
       <div
         role="dialog"
         aria-modal="true"
-        className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-surface-border bg-card shadow-2xl"
+        className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-line bg-card shadow-2xl"
       >
-        <div className="border-b border-surface-border px-5 py-4">
+        <div className="border-b border-line px-5 py-4">
           <h2 className="text-lg font-semibold text-ink-primary">{t("dashboard:importFromGithub")}</h2>
           <p className="mt-1 text-xs text-ink-muted">{t("dashboard:importFromGithubHint")}</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 border-b border-surface-border px-5 py-3">
+        <div className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-3">
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t("dashboard:importSearchRepos")}
-            className="min-w-[200px] flex-1 rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary outline-none focus:border-sky-500/50"
+            className="min-w-[200px] flex-1 rounded-lg border border-line bg-field px-3 py-2 text-sm text-ink-primary outline-none focus:border-sky-500/50"
           />
           <label className="flex items-center gap-2 text-xs text-ink-primary">
             <input
@@ -289,7 +289,7 @@ export function ProjectsImportModal({
               {filtered.map((r) => (
                 <li
                   key={r.full_name}
-                  className="flex items-start gap-2 rounded-lg border border-white/5 px-3 py-2 hover:bg-white/[0.03]"
+                  className="flex items-start gap-2 rounded-lg border border-line-subtle px-3 py-2 hover:bg-white/[0.03]"
                 >
                   <input
                     type="checkbox"
@@ -316,18 +316,18 @@ export function ProjectsImportModal({
           )}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-surface-border px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-5 py-4">
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              className="rounded-lg border border-surface-border px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5"
+              className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5"
               onClick={() => toggleAllVisible(true)}
             >
               {t("dashboard:importSelectAll")}
             </button>
             <button
               type="button"
-              className="rounded-lg border border-surface-border px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5"
+              className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5"
               onClick={() => toggleAllVisible(false)}
             >
               {t("dashboard:importSelectNone")}

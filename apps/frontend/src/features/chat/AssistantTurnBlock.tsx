@@ -46,7 +46,7 @@ const ReasoningPanel = memo(function ReasoningPanel({
           {t("chat:thinkingBadgeCollapseHint")}
         </span>
       </summary>
-      <pre className="mt-2 max-h-64 overflow-y-auto whitespace-pre-wrap break-words rounded-md border border-white/5 bg-black/30 px-3 py-2 font-sans text-xs leading-relaxed text-ink-muted">
+      <pre className="mt-2 max-h-64 overflow-y-auto whitespace-pre-wrap break-words rounded-md border border-line-subtle bg-black/30 px-3 py-2 font-sans text-xs leading-relaxed text-ink-muted">
         {trimmed}
       </pre>
     </details>
@@ -188,7 +188,7 @@ export const AssistantTurnBlock = memo(function AssistantTurnBlock({
 
   return (
     <li className="flex w-full justify-end scroll-mt-4">
-      <div className="max-w-[min(100%,42rem)] rounded-2xl border border-white/10 bg-[#1e1e1e] px-4 py-3 text-sm text-ink-primary shadow-sm">
+      <div className="max-w-[min(100%,42rem)] rounded-2xl border border-line bg-[#1e1e1e] px-4 py-3 text-sm text-ink-primary shadow-sm">
         <span className="mb-1 flex items-center gap-2 text-meta font-medium uppercase tracking-wide text-ink-muted">
           <Mascot character="volt" state={mascotState} size={20} ariaLabel={null} />
           {t("chat:roleAssistant")}

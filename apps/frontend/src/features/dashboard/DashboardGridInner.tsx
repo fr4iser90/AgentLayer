@@ -329,7 +329,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                       ? "border-orange-500/50 ring-2 ring-orange-500/40"
                       : hasUnread
                         ? "border-orange-500/25"
-                        : "border-surface-border",
+                        : "border-line",
                 ].join(" ")}
                 onClick={() => {
                   if (editMode) setSelectedBlockId(b.id);
@@ -339,7 +339,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                 {hasUnread ? <AgentUpdateBadge title={badgeTitle} pulse={isHighlighted} /> : null}
                 <div className={blockShellClassForBlock(b)}>
                   {showBlockToolbar || editMode ? (
-                    <div className="dashboard-grid-drag-handle sticky top-0 z-10 flex cursor-grab items-center gap-2 border-b border-white/5 bg-card px-2 py-1 active:cursor-grabbing">
+                    <div className="dashboard-grid-drag-handle sticky top-0 z-10 flex cursor-grab items-center gap-2 border-b border-line-subtle bg-card px-2 py-1 active:cursor-grabbing">
                       <span className="min-w-0 flex-1 truncate text-meta font-medium uppercase tracking-wide text-ink-muted">
                         {blockTitle(b)}
                       </span>

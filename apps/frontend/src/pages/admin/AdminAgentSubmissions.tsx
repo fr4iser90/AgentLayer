@@ -175,7 +175,7 @@ export function AdminAgentSubmissions() {
           </span>
           <select
             id="agents-submissions-filter"
-            className="rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-ink-primary"
+            className="rounded-md border border-line bg-field px-2 py-1.5 text-xs text-ink-primary"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
           >
@@ -212,7 +212,7 @@ export function AdminAgentSubmissions() {
                   className={`w-full rounded-xl border px-3 py-3 text-left transition-colors ${
                     selectedId === s.id
                       ? "border-sky-500/40 bg-sky-950/20"
-                      : "border-surface-border bg-card hover:border-white/15"
+                      : "border-line bg-card hover:border-line-strong"
                   }`}
                 >
                   <div className="flex items-center gap-2">
@@ -237,7 +237,7 @@ export function AdminAgentSubmissions() {
           </ul>
 
           {selected ? (
-            <div className="rounded-xl border border-surface-border bg-card p-4">
+            <div className="rounded-xl border border-line bg-card p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-semibold text-ink-primary">
@@ -325,13 +325,13 @@ export function AdminAgentSubmissions() {
               ) : null}
 
               {selected.status === "pending" ? (
-                <div className="mt-4 border-t border-surface-border pt-4">
+                <div className="mt-4 border-t border-line pt-4">
                   <label className="block text-xs text-ink-muted" htmlFor="agents-submissions-notes">
                     {t("admin:agentSubmissionsReviewNotes")}
                   </label>
                   <textarea
                     id="agents-submissions-notes"
-                    className="mt-1 min-h-20 w-full rounded-md border border-surface-border bg-field px-3 py-2 text-xs text-ink-primary placeholder:text-neutral-500"
+                    className="mt-1 min-h-20 w-full rounded-md border border-line bg-field px-3 py-2 text-xs text-ink-primary placeholder:text-neutral-500"
                     value={reviewNotes}
                     onChange={(e) => setReviewNotes(e.target.value)}
                     placeholder={t("admin:agentSubmissionsReviewNotesPlaceholder")}

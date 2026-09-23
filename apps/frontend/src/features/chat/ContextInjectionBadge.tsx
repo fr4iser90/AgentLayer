@@ -49,7 +49,7 @@ export const ContextInjectionBadge = memo(function ContextInjectionBadge({
         </span>
       </summary>
       {trimmed ? (
-        <pre className="mt-2 max-h-64 overflow-y-auto whitespace-pre-wrap break-words rounded-md border border-white/5 bg-black/30 px-3 py-2 font-sans text-xs leading-relaxed text-ink-muted">
+        <pre className="mt-2 max-h-64 overflow-y-auto whitespace-pre-wrap break-words rounded-md border border-line-subtle bg-black/30 px-3 py-2 font-sans text-xs leading-relaxed text-ink-muted">
           {trimmed}
         </pre>
       ) : (

@@ -171,10 +171,10 @@ export function MediaPlayerBlockBody(props: {
   };
 
   return (
-    <section className="rounded-xl border border-surface-border bg-card p-3 md:p-4">
+    <section className="rounded-xl border border-line bg-card p-3 md:p-4">
       <h3 className="mb-3 text-sm font-medium text-ink-primary">{sectionTitle}</h3>
 
-      <div className="mb-4 min-h-[4rem] rounded-lg border border-white/10 bg-black/40 p-3">
+      <div className="mb-4 min-h-[4rem] rounded-lg border border-line bg-black/40 p-3">
         {!nowItem ? (
           <p className="text-sm text-ink-muted">{t("dashboard:mediaQueueEmpty")}</p>
         ) : nowEmbed ? (
@@ -221,7 +221,7 @@ export function MediaPlayerBlockBody(props: {
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              className="rounded-lg border border-surface-border bg-black/30 px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5 disabled:opacity-50"
+              className="rounded-lg border border-line bg-black/30 px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5 disabled:opacity-50"
               disabled={uploading || !dashboardId}
               onClick={() => fileRef.current?.click()}
             >
@@ -242,7 +242,7 @@ export function MediaPlayerBlockBody(props: {
           <div className="flex flex-wrap gap-2">
             <input
               type="url"
-              className="min-w-[12rem] flex-1 rounded-lg border border-surface-border bg-field px-3 py-2 font-mono text-xs text-ink-primary"
+              className="min-w-[12rem] flex-1 rounded-lg border border-line bg-field px-3 py-2 font-mono text-xs text-ink-primary"
               placeholder={t("dashboard:embedUrlPlaceholder")}
               value={embedUrl}
               onChange={(e) => setEmbedUrl(e.target.value)}

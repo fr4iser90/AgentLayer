@@ -146,7 +146,7 @@ export function OrgGrantsPage() {
       <h1 className="text-2xl font-semibold text-ink-primary">{t("org:grantsTitle")}</h1>
       <p className="mt-2 max-w-3xl text-sm text-ink-muted">{t("org:grantsIntro")}</p>
 
-      <div className="mt-4 rounded-lg border border-surface-border bg-card px-4 py-3 text-xs text-ink-muted">
+      <div className="mt-4 rounded-lg border border-line bg-card px-4 py-3 text-xs text-ink-muted">
         {t("org:grantsImplicitAdmins")}
       </div>
 
@@ -175,7 +175,7 @@ export function OrgGrantsPage() {
       {!loading && rows.length > 0 ? (
         <table className="mt-6 w-full border-collapse text-sm">
           <thead>
-            <tr className="border-b border-surface-border text-left text-xs uppercase tracking-wide text-ink-muted">
+            <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-muted">
               <th className="py-2 pr-4 font-medium">{t("org:grantsColWorkspace")}</th>
               <th className="py-2 pr-4 font-medium">{t("org:grantsColMemberAccess")}</th>
               <th className="py-2 font-medium">{t("org:grantsColStatus")}</th>
@@ -183,7 +183,7 @@ export function OrgGrantsPage() {
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.id} className="border-b border-surface-border/60 align-top">
+              <tr key={row.id} className="border-b border-line/60 align-top">
                 <td className="py-3 pr-4">
                   <span className="font-medium text-ink-primary">{row.name}</span>
                   {row.visibility !== "tenant" ? (
@@ -198,7 +198,7 @@ export function OrgGrantsPage() {
                   </label>
                   <select
                     id={`grant-${row.id}`}
-                    className="rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-ink-primary disabled:opacity-50"
+                    className="rounded-md border border-line bg-field px-2 py-1.5 text-xs text-ink-primary disabled:opacity-50"
                     value={row.level === null ? "" : row.level}
                     disabled={row.saving || row.visibility !== "tenant"}
                     onChange={(e) => {

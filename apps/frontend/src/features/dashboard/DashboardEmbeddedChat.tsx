@@ -920,7 +920,7 @@ export function DashboardEmbeddedChat({
     !!(modelSelectValue || defaultSelectValue).trim();
 
   return (
-    <div className="flex h-full min-h-0 flex-col rounded-xl border border-surface-border bg-card">
+    <div className="flex h-full min-h-0 flex-col rounded-xl border border-line bg-card">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -935,9 +935,9 @@ export function DashboardEmbeddedChat({
         <span className="text-ink-muted">{open ? "▼" : "▶"}</span>
       </button>
       {open ? (
-        <div className="flex min-h-0 flex-1 flex-col border-t border-surface-border">
+        <div className="flex min-h-0 flex-1 flex-col border-t border-line">
           {!initLoading && !initErr && !(noSharedChatYet && !thread) ? (
-            <div className="flex shrink-0 items-center gap-2 border-b border-white/5 px-3 py-1.5">
+            <div className="flex shrink-0 items-center gap-2 border-b border-line-subtle px-3 py-1.5">
               <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
                 {showThreadPicker ? (
                   <DashboardEmbeddedThreadMenu
@@ -968,7 +968,7 @@ export function DashboardEmbeddedChat({
                   type="button"
                   disabled={sendLoading || newChatBusy}
                   title={t("dashboard:embeddedChatNewThreadHint")}
-                  className="shrink-0 rounded border border-white/10 px-2 py-0.5 text-meta text-ink-primary hover:bg-white/5 disabled:opacity-40"
+                  className="shrink-0 rounded border border-line px-2 py-0.5 text-meta text-ink-primary hover:bg-white/5 disabled:opacity-40"
                   onClick={() => void startNewDashboardChat()}
                 >
                   {newChatBusy ? t("dashboard:loading") : t("dashboard:embeddedChatNewThread")}
@@ -976,7 +976,7 @@ export function DashboardEmbeddedChat({
               ) : null}
               <button
                 type="button"
-                className="shrink-0 rounded border border-white/10 px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5"
+                className="shrink-0 rounded border border-line px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5"
                 aria-expanded={sessionOpen}
                 title={t("dashboard:embeddedChatSessionToggleHint")}
                 onClick={() => setSessionOpenPersisted((o) => !o)}
@@ -1008,7 +1008,7 @@ export function DashboardEmbeddedChat({
                 </div>
               ) : null}
               <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
-                <div className="min-h-[120px] rounded-lg border border-white/10 bg-black/20 px-2 py-2 text-sm">
+                <div className="min-h-[120px] rounded-lg border border-line bg-black/20 px-2 py-2 text-sm">
                   {messages.length === 0 ? (
                     <p className="text-xs text-ink-muted">
                       {thread
@@ -1023,7 +1023,7 @@ export function DashboardEmbeddedChat({
                           className={`rounded-md px-2 py-1.5 text-xs ${
                             m.role === "user"
                               ? "border border-sky-900/40 bg-sky-950/20 text-ink-primary"
-                              : "border border-white/10 bg-[#1a1a1a] text-ink-primary"
+                              : "border border-line bg-[#1a1a1a] text-ink-primary"
                           }`}
                         >
                           <span className="mb-0.5 block text-meta font-medium uppercase text-ink-muted">
@@ -1033,7 +1033,7 @@ export function DashboardEmbeddedChat({
                         </li>
                       ))}
                       {sendLoading ? (
-                        <li className="rounded-md border border-white/10 bg-[#1a1a1a] px-2 py-1.5 text-xs text-ink-primary">
+                        <li className="rounded-md border border-line bg-[#1a1a1a] px-2 py-1.5 text-xs text-ink-primary">
                           <span className="mb-0.5 block text-meta font-medium uppercase text-ink-muted">
                             {t("dashboard:assistant")}
                           </span>
@@ -1069,7 +1069,7 @@ export function DashboardEmbeddedChat({
                 </div>
               </div>
               {sessionOpen ? (
-                <div className="shrink-0 space-y-2 border-t border-white/5 bg-black/20 px-3 py-2">
+                <div className="shrink-0 space-y-2 border-t border-line-subtle bg-black/20 px-3 py-2">
                   <label className="block">
                     <span className="mb-0.5 block text-meta text-ink-muted">{t("dashboard:modelLabel")}</span>
                     <ModelCatalogSelect
@@ -1106,7 +1106,7 @@ export function DashboardEmbeddedChat({
                   </label>
                 </div>
               ) : null}
-              <div className="shrink-0 border-t border-surface-border p-3">
+              <div className="shrink-0 border-t border-line p-3">
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -1122,12 +1122,12 @@ export function DashboardEmbeddedChat({
                 {!readOnly ? (
                   <div className="mb-2 flex flex-wrap items-center gap-2">
                     <label
-                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-white/10 bg-black/25 px-2 py-1 text-meta text-ink-secondary"
+                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-line bg-black/25 px-2 py-1 text-meta text-ink-secondary"
                       title={t("dashboard:pinFilesToBoardHint")}
                     >
                       <input
                         type="checkbox"
-                        className="rounded border-white/20"
+                        className="rounded border-line-strong"
                         checked={pinFilesToBoard}
                         onChange={(e) => setPinFilesToBoard(e.target.checked)}
                       />
@@ -1137,7 +1137,7 @@ export function DashboardEmbeddedChat({
                       <button
                         type="button"
                         disabled={sendLoading || boardFilesBusy}
-                        className="rounded-md border border-white/10 bg-black/25 px-2 py-1 text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
+                        className="rounded-md border border-line bg-black/25 px-2 py-1 text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
                         title={t("dashboard:boardFilesLibraryHint")}
                         onClick={() => {
                           const next = !boardLibraryOpen;
@@ -1149,7 +1149,7 @@ export function DashboardEmbeddedChat({
                         {boardFiles.length > 0 ? ` (${boardFiles.length})` : ""}
                       </button>
                       {boardLibraryOpen ? (
-                        <div className="absolute bottom-full left-0 z-20 mb-1 max-h-48 w-64 overflow-y-auto rounded-md border border-surface-border bg-raised p-1 shadow-lg">
+                        <div className="absolute bottom-full left-0 z-20 mb-1 max-h-48 w-64 overflow-y-auto rounded-md border border-line bg-raised p-1 shadow-lg">
                           {boardFilesBusy ? (
                             <p className="px-2 py-1 text-meta text-ink-muted">{t("dashboard:loading")}</p>
                           ) : boardFiles.length === 0 ? (
@@ -1205,7 +1205,7 @@ export function DashboardEmbeddedChat({
                     {pendingAttachments.map((a, idx) => (
                       <li
                         key={`${a.name}-${idx}`}
-                        className="flex max-w-full items-center gap-1 rounded border border-white/10 bg-black/30 px-2 py-0.5 text-meta text-ink-secondary"
+                        className="flex max-w-full items-center gap-1 rounded border border-line bg-black/30 px-2 py-0.5 text-meta text-ink-secondary"
                       >
                         <span className="truncate" title={a.kind === "unsupported" ? a.hint : a.name}>
                           {a.name}
@@ -1223,11 +1223,11 @@ export function DashboardEmbeddedChat({
                     ))}
                   </ul>
                 ) : null}
-                <div className="flex items-end gap-2 rounded-lg border border-surface-border bg-black/30 p-2">
+                <div className="flex items-end gap-2 rounded-lg border border-line bg-black/30 p-2">
                   <button
                     type="button"
                     disabled={readOnly || sendLoading}
-                    className="shrink-0 rounded-lg border border-white/10 px-2.5 py-2 text-ink-muted hover:bg-white/5 hover:text-white disabled:opacity-40"
+                    className="shrink-0 rounded-lg border border-line px-2.5 py-2 text-ink-muted hover:bg-white/5 hover:text-white disabled:opacity-40"
                     title={t("dashboard:attachTitle")}
                     aria-label={t("dashboard:attach")}
                     onClick={() => fileInputRef.current?.click()}

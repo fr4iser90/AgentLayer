@@ -37,7 +37,7 @@ function newRowId(): string {
 function scheduleEnabledPill(enabled: boolean): string {
   return enabled
     ? "bg-emerald-600/25 text-emerald-200 border-emerald-500/40"
-    : "bg-white/10 text-ink-muted border-surface-border";
+    : "bg-white/10 text-ink-muted border-line";
 }
 
 export function DashboardBlocks(props: {
@@ -194,7 +194,7 @@ function HeroBlockBody(props: {
   };
 
   const imageArea = (
-    <div className="relative isolate min-h-[200px] w-full overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-sky-950/40 via-black/50 to-violet-950/30 aspect-[2.2/1] max-h-[min(420px,55vh)]">
+    <div className="relative isolate min-h-[200px] w-full overflow-hidden rounded-xl border border-line bg-gradient-to-br from-sky-950/40 via-black/50 to-violet-950/30 aspect-[2.2/1] max-h-[min(420px,55vh)]">
       {hero.url ? (
         <>
           <div className="absolute inset-0">
@@ -220,7 +220,7 @@ function HeroBlockBody(props: {
 
   if (readOnly) {
     return (
-      <section className="rounded-xl border border-surface-border bg-card p-3 md:p-4">
+      <section className="rounded-xl border border-line bg-card p-3 md:p-4">
         <h3 className="mb-3 text-xs font-medium uppercase tracking-wide text-ink-muted">
           {sectionTitle}
         </h3>
@@ -233,7 +233,7 @@ function HeroBlockBody(props: {
   }
 
   return (
-    <section className="rounded-xl border border-surface-border bg-card p-3 md:p-4">
+    <section className="rounded-xl border border-line bg-card p-3 md:p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-medium text-ink-primary">{sectionTitle}</h3>
         <label className="dashboard-grid-no-drag cursor-pointer rounded-md bg-violet-600/80 px-3 py-1.5 text-xs font-medium text-ink-primary hover:bg-violet-500">
@@ -260,7 +260,7 @@ function HeroBlockBody(props: {
           <input
             type="url"
             placeholder={t("dashboard:fileUrlPlaceholder")}
-            className="dashboard-grid-no-drag w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary placeholder:text-white/25"
+            className="dashboard-grid-no-drag w-full rounded-lg border border-line bg-field px-3 py-2 text-sm text-ink-primary placeholder:text-white/25"
             value={hero.url}
             onChange={(e) => patchHero({ url: e.target.value })}
           />
@@ -272,7 +272,7 @@ function HeroBlockBody(props: {
           <input
             type="text"
             placeholder={t("dashboard:heroHeadlinePlaceholder")}
-            className="dashboard-grid-no-drag w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+            className="dashboard-grid-no-drag w-full rounded-lg border border-line bg-field px-3 py-2 text-sm text-ink-primary"
             value={hero.headline}
             onChange={(e) => patchHero({ headline: e.target.value })}
           />
@@ -282,7 +282,7 @@ function HeroBlockBody(props: {
             {t("dashboard:heroCaptionLabel")}
           </label>
           <textarea
-            className="dashboard-grid-no-drag min-h-[72px] w-full resize-y rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+            className="dashboard-grid-no-drag min-h-[72px] w-full resize-y rounded-lg border border-line bg-field px-3 py-2 text-sm text-ink-primary"
             placeholder={t("dashboard:heroCaptionPlaceholder")}
             value={hero.caption}
             onChange={(e) => patchHero({ caption: e.target.value })}
@@ -343,7 +343,7 @@ function StatBlockBody(props: {
     ) : null;
 
   return (
-    <section className="flex h-full min-h-[140px] flex-col rounded-xl border border-surface-border bg-gradient-to-br from-slate-900/80 to-black/50 p-4">
+    <section className="flex h-full min-h-[140px] flex-col rounded-xl border border-line bg-gradient-to-br from-slate-900/80 to-black/50 p-4">
       <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">
         {sectionTitle}
       </p>
@@ -362,11 +362,11 @@ function StatBlockBody(props: {
         </div>
       </div>
       {!readOnly ? (
-        <div className="mt-4 space-y-2 border-t border-white/5 pt-3">
+        <div className="mt-4 space-y-2 border-t border-line-subtle pt-3">
           <input
             type="text"
             placeholder={t("dashboard:kpiLabelOptional")}
-            className="dashboard-grid-no-drag w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-ink-primary"
+            className="dashboard-grid-no-drag w-full rounded-md border border-line bg-field px-2 py-1.5 text-xs text-ink-primary"
             value={stat.label}
             onChange={(e) => patchStat({ label: e.target.value })}
           />
@@ -374,20 +374,20 @@ function StatBlockBody(props: {
             <input
               type="text"
               placeholder={t("dashboard:kpiValuePlaceholder")}
-              className="dashboard-grid-no-drag min-w-0 flex-1 rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-ink-primary"
+              className="dashboard-grid-no-drag min-w-0 flex-1 rounded-md border border-line bg-field px-2 py-1.5 text-xs text-ink-primary"
               value={stat.value}
               onChange={(e) => patchStat({ value: e.target.value })}
             />
             <input
               type="text"
               placeholder={t("dashboard:kpiSuffixPlaceholder")}
-              className="dashboard-grid-no-drag w-20 shrink-0 rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-ink-primary"
+              className="dashboard-grid-no-drag w-20 shrink-0 rounded-md border border-line bg-field px-2 py-1.5 text-xs text-ink-primary"
               value={stat.suffix}
               onChange={(e) => patchStat({ suffix: e.target.value })}
             />
           </div>
           <select
-            className="dashboard-grid-no-drag w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-ink-primary"
+            className="dashboard-grid-no-drag w-full rounded-md border border-line bg-field px-2 py-1.5 text-xs text-ink-primary"
             value={stat.trend}
             onChange={(e) => patchStat({ trend: e.target.value as StatTrend })}
           >
@@ -482,7 +482,7 @@ function TimelineBlockBody(props: {
   };
 
   return (
-    <section className="rounded-xl border border-surface-border bg-card p-4">
+    <section className="rounded-xl border border-line bg-card p-4">
       <div className="mb-4 flex items-center justify-between gap-2">
         <h3 className="text-sm font-medium text-ink-primary">{sectionTitle}</h3>
         {!readOnly ? (
@@ -496,7 +496,7 @@ function TimelineBlockBody(props: {
         ) : null}
       </div>
       {sorted.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-white/15 py-8 text-center text-sm text-ink-muted">
+        <p className="rounded-lg border border-dashed border-line-strong py-8 text-center text-sm text-ink-muted">
           {readOnly ? t("dashboard:timelineEmptyReadOnly") : t("dashboard:timelineEmptyEditable")}
         </p>
       ) : (
@@ -509,7 +509,7 @@ function TimelineBlockBody(props: {
           {sorted.map((row, si) => (
             <li key={String(row.id ?? si)} className="relative flex gap-3 pb-6 last:pb-0">
               <div className="relative z-[1] mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full border-2 border-sky-500/80 bg-black shadow-[0_0_12px_rgba(56,189,248,0.35)]" />
-              <div className="min-w-0 flex-1 rounded-lg border border-white/5 bg-black/20 px-3 py-2">
+              <div className="min-w-0 flex-1 rounded-lg border border-line-subtle bg-black/20 px-3 py-2">
                 <p className="text-meta font-medium uppercase tracking-wide text-sky-400/90">
                   {formatEventDate(String(row.date ?? ""))}
                 </p>
@@ -527,14 +527,14 @@ function TimelineBlockBody(props: {
                     <input
                       type="text"
                       placeholder={t("dashboard:timelineTitlePlaceholder")}
-                      className="dashboard-grid-no-drag w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-sm text-ink-primary"
+                      className="dashboard-grid-no-drag w-full rounded-md border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
                       value={String(row.title ?? "")}
                       onChange={(e) => updateRow(si, "title", e.target.value)}
                     />
                     <div className="flex flex-wrap gap-2">
                       <input
                         type="date"
-                        className="dashboard-grid-no-drag rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-ink-primary"
+                        className="dashboard-grid-no-drag rounded-md border border-line bg-field px-2 py-1.5 text-xs text-ink-primary"
                         value={String(row.date ?? "").slice(0, 10)}
                         onChange={(e) => updateRow(si, "date", e.target.value)}
                       />
@@ -550,7 +550,7 @@ function TimelineBlockBody(props: {
                     </div>
                     <textarea
                       placeholder={t("dashboard:timelineNoteOptional")}
-                      className="dashboard-grid-no-drag min-h-[56px] w-full resize-y rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-ink-primary"
+                      className="dashboard-grid-no-drag min-h-[56px] w-full resize-y rounded-md border border-line bg-field px-2 py-1.5 text-xs text-ink-primary"
                       value={String(row.note ?? "")}
                       onChange={(e) => updateRow(si, "note", e.target.value)}
                     />
@@ -745,13 +745,13 @@ function BlockView(props: {
     const raw = getPath(data, dp);
     const text = typeof raw === "string" ? raw : "";
     return (
-      <section className="rounded-xl border border-surface-border bg-card p-4">
+      <section className="rounded-xl border border-line bg-card p-4">
         <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-ink-muted">
           {block.props.placeholder || dp || "Text"}
         </label>
         <textarea
           readOnly={readOnly}
-          className="min-h-[120px] w-full resize-y rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary outline-none focus:border-sky-500/50 read-only:cursor-default read-only:opacity-90"
+          className="min-h-[120px] w-full resize-y rounded-lg border border-line bg-field px-3 py-2 text-sm text-ink-primary outline-none focus:border-sky-500/50 read-only:cursor-default read-only:opacity-90"
           value={text}
           placeholder={block.props.placeholder || ""}
           onChange={(e) =>
@@ -908,7 +908,7 @@ function BlockView(props: {
     };
 
     return (
-      <section className="rounded-xl border border-surface-border bg-card p-4">
+      <section className="rounded-xl border border-line bg-card p-4">
         <div className="mb-3 flex items-center justify-between gap-2">
           <span className="text-xs font-medium uppercase tracking-wide text-ink-muted">
             {t("dashboard:tableTitle", { path: dp })}
@@ -919,7 +919,7 @@ function BlockView(props: {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={searchPlaceholder}
-                className="w-56 rounded-md border border-surface-border bg-field px-3 py-1.5 text-xs text-ink-primary outline-none focus:border-sky-500/50"
+                className="w-56 rounded-md border border-line bg-field px-3 py-1.5 text-xs text-ink-primary outline-none focus:border-sky-500/50"
               />
             ) : null}
             {!structureLocked ? (
@@ -936,7 +936,7 @@ function BlockView(props: {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[480px] border-collapse text-left text-sm">
             <thead>
-              <tr className="border-b border-surface-border text-ink-muted">
+              <tr className="border-b border-line text-ink-muted">
                 {cols.map((c) => (
                   <th key={c.field} className="px-2 py-2 font-medium">
                     {c.label || c.field}
@@ -962,7 +962,7 @@ function BlockView(props: {
                 </tr>
               ) : (
                 filteredRows.map((row, ri) => (
-                  <tr key={String(row.id ?? ri)} className="border-b border-white/5">
+                  <tr key={String(row.id ?? ri)} className="border-b border-line-subtle">
                     {cols.map((c) => (
                       <td key={c.field} className="px-2 py-1 align-middle">
                         <CellInput
@@ -1148,7 +1148,7 @@ function BlockView(props: {
     };
 
     return (
-      <section className="rounded-xl border border-surface-border bg-card p-4">
+      <section className="rounded-xl border border-line bg-card p-4">
         <div className="mb-3 flex items-center justify-between gap-2">
           <span className="text-xs font-medium uppercase tracking-wide text-ink-muted">
             {t("admin:schedulesTitle")}
@@ -1156,7 +1156,7 @@ function BlockView(props: {
           {publicShareToken ? null : (
             <button
               type="button"
-              className="rounded-md border border-surface-border px-2 py-1 text-meta text-ink-primary hover:bg-white/5"
+              className="rounded-md border border-line px-2 py-1 text-meta text-ink-primary hover:bg-white/5"
               onClick={() => void refresh()}
               disabled={loading}
             >
@@ -1177,7 +1177,7 @@ function BlockView(props: {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] border-collapse text-left text-sm">
               <thead>
-                <tr className="border-b border-surface-border text-ink-muted">
+                <tr className="border-b border-line text-ink-muted">
                   <th className="px-2 py-2 font-medium">{t("admin:schedulesEnabledFilter")}</th>
                   <th className="px-2 py-2 font-medium">{t("admin:schedulesTarget")}</th>
                   <th className="px-2 py-2 font-medium">{t("admin:schedulesColTitle")}</th>
@@ -1189,7 +1189,7 @@ function BlockView(props: {
               </thead>
               <tbody>
                 {jobs.map((j) => (
-                  <tr key={j.id} className="border-b border-white/5">
+                  <tr key={j.id} className="border-b border-line-subtle">
                     <td className="px-2 py-2">
                       <span className={`rounded-md border px-2 py-0.5 text-xs ${scheduleEnabledPill(j.enabled)}`}>
                         {j.enabled ? t("admin:schedulesEnabledLabel") : t("admin:schedulesDisabledLabel")}
@@ -1215,7 +1215,7 @@ function BlockView(props: {
                       {!readOnly ? (
                         <button
                           type="button"
-                          className="rounded-md border border-surface-border px-2 py-1 text-xs text-ink-primary hover:bg-white/5"
+                          className="rounded-md border border-line px-2 py-1 text-xs text-ink-primary hover:bg-white/5"
                           onClick={() => void toggleEnabled(j.id, !j.enabled)}
                         >
                           {j.enabled ? t("admin:schedulesDisable") : t("admin:schedulesEnable")}
@@ -1251,7 +1251,7 @@ function CellInput(props: {
       <input
         type="checkbox"
         disabled={readOnly}
-        className="h-4 w-4 rounded border-surface-border disabled:cursor-not-allowed disabled:opacity-60"
+        className="h-4 w-4 rounded border-line disabled:cursor-not-allowed disabled:opacity-60"
         checked={Boolean(value)}
         onChange={(e) => onChange(e.target.checked)}
       />
@@ -1262,7 +1262,7 @@ function CellInput(props: {
       <input
         type="number"
         readOnly={readOnly}
-        className="w-full min-w-[4rem] rounded border border-surface-border bg-field px-2 py-1 text-ink-primary read-only:cursor-default read-only:border-transparent read-only:bg-transparent"
+        className="w-full min-w-[4rem] rounded border border-line bg-field px-2 py-1 text-ink-primary read-only:cursor-default read-only:border-transparent read-only:bg-transparent"
         value={typeof value === "number" ? value : Number(value) || 0}
         onChange={(e) => onChange(Number(e.target.value))}
       />
@@ -1272,7 +1272,7 @@ function CellInput(props: {
     return (
       <select
         disabled={readOnly}
-        className="w-full rounded border border-surface-border bg-field px-2 py-1 text-ink-primary disabled:cursor-not-allowed disabled:opacity-60"
+        className="w-full rounded border border-line bg-field px-2 py-1 text-ink-primary disabled:cursor-not-allowed disabled:opacity-60"
         value={String(value ?? "")}
         onChange={(e) => onChange(e.target.value)}
       >
@@ -1288,7 +1288,7 @@ function CellInput(props: {
     <input
       type="text"
       readOnly={readOnly}
-      className="w-full rounded border border-surface-border bg-field px-2 py-1 text-ink-primary read-only:cursor-default read-only:border-transparent read-only:bg-transparent"
+      className="w-full rounded border border-line bg-field px-2 py-1 text-ink-primary read-only:cursor-default read-only:border-transparent read-only:bg-transparent"
       value={value == null ? "" : String(value)}
       onChange={(e) => onChange(e.target.value)}
     />

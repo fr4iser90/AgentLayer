@@ -262,10 +262,10 @@ export function BlockSettingsModal({
       onClick={onClose}
     >
       <aside
-        className="flex h-full w-full max-w-md flex-col border-l border-surface-border bg-panel shadow-2xl sm:max-w-lg"
+        className="flex h-full w-full max-w-md flex-col border-l border-line bg-panel shadow-2xl sm:max-w-lg"
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="shrink-0 border-b border-surface-border px-4 py-3">
+        <header className="shrink-0 border-b border-line px-4 py-3">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <h2 id="block-settings-title" className="text-sm font-semibold text-ink-primary">
@@ -285,7 +285,7 @@ export function BlockSettingsModal({
               ×
             </button>
           </div>
-          <nav className="mt-3 flex gap-1 border-b border-white/5 pb-0" aria-label={t("dashboard:blockSettingsTabsAria")}>
+          <nav className="mt-3 flex gap-1 border-b border-line-subtle pb-0" aria-label={t("dashboard:blockSettingsTabsAria")}>
             {tabs.map((item) => (
               <button
                 key={item.id}
@@ -293,7 +293,7 @@ export function BlockSettingsModal({
                 className={[
                   "rounded-t-md px-3 py-1.5 text-xs font-medium transition-colors",
                   tab === item.id
-                    ? "border border-b-0 border-white/15 bg-black/40 text-ink-primary"
+                    ? "border border-b-0 border-line-strong bg-black/40 text-ink-primary"
                     : "text-ink-muted hover:text-white",
                 ].join(" ")}
                 onClick={() => setTab(item.id)}
@@ -317,14 +317,14 @@ export function BlockSettingsModal({
                   {t("dashboard:blockSettingsTitleLabel")}
                 </span>
                 <input
-                  className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-ink-primary outline-none focus:border-sky-500/50"
+                  className="w-full rounded-lg border border-line bg-field px-3 py-2 text-ink-primary outline-none focus:border-sky-500/50"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                 />
               </label>
               <div className="space-y-1">
                 <span className="text-meta text-ink-muted">{t("dashboard:blockSettingsBlockId")}</span>
-                <p className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 font-mono text-meta text-ink-secondary">
+                <p className="rounded-lg border border-line bg-black/30 px-3 py-2 font-mono text-meta text-ink-secondary">
                   {block.id}
                 </p>
               </div>
@@ -336,7 +336,7 @@ export function BlockSettingsModal({
               <label className="block space-y-1">
                 <span className="text-meta text-ink-muted">{t("dashboard:blockSettingsDataPath")}</span>
                 <input
-                  className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 font-mono text-xs text-ink-primary outline-none focus:border-sky-500/50"
+                  className="w-full rounded-lg border border-line bg-field px-3 py-2 font-mono text-xs text-ink-primary outline-none focus:border-sky-500/50"
                   value={dataPath}
                   onChange={(e) => setDataPath(e.target.value)}
                   placeholder={t("dashboard:blockSettingsDataPathPlaceholder")}
@@ -355,7 +355,7 @@ export function BlockSettingsModal({
                   <ul className="flex flex-wrap gap-2">
                     {columnFields.map((field) => (
                       <li key={field}>
-                        <label className="flex cursor-pointer items-center gap-1.5 rounded border border-white/10 bg-black/30 px-2 py-1 text-xs">
+                        <label className="flex cursor-pointer items-center gap-1.5 rounded border border-line bg-black/30 px-2 py-1 text-xs">
                           <input
                             type="checkbox"
                             checked={cardFields.includes(field)}
@@ -379,7 +379,7 @@ export function BlockSettingsModal({
               {shareLoading ? (
                 <p className="text-xs text-ink-muted">{t("dashboard:blockSettingsShareLoading")}</p>
               ) : shareCandidates.length === 0 ? (
-                <p className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-ink-muted">
+                <p className="rounded-lg border border-line bg-black/30 px-3 py-2 text-xs text-ink-muted">
                   {t("dashboard:blockSettingsShareNone")}
                 </p>
               ) : (
@@ -392,7 +392,7 @@ export function BlockSettingsModal({
                   </label>
                   <select
                     id="block-settings-share-target"
-                    className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-ink-primary outline-none focus:border-sky-500/50"
+                    className="w-full rounded-lg border border-line bg-field px-3 py-2 text-ink-primary outline-none focus:border-sky-500/50"
                     value={shareKey}
                     onChange={(e) => setShareKey(e.target.value)}
                   >
@@ -425,7 +425,7 @@ export function BlockSettingsModal({
                   type="number"
                   min={1}
                   max={90}
-                  className="w-24 rounded-lg border border-surface-border bg-field px-3 py-2 text-ink-primary"
+                  className="w-24 rounded-lg border border-line bg-field px-3 py-2 text-ink-primary"
                   value={daysAhead}
                   onChange={(e) =>
                     setDaysAhead(Math.min(90, Math.max(1, Number(e.target.value) || 7)))
@@ -448,7 +448,7 @@ export function BlockSettingsModal({
                       <button
                         key={preset}
                         type="button"
-                        className="rounded-lg border border-white/15 bg-black/30 px-3 py-1.5 text-xs text-ink-primary hover:border-sky-500/40 hover:bg-sky-950/30"
+                        className="rounded-lg border border-line-strong bg-black/30 px-3 py-1.5 text-xs text-ink-primary hover:border-sky-500/40 hover:bg-sky-950/30"
                         onClick={() => applyPreset(preset)}
                       >
                         {t(`dashboard:blockSettingsPreset_${preset}`)}
@@ -481,7 +481,7 @@ export function BlockSettingsModal({
                       type="number"
                       min={1}
                       max={5}
-                      className="w-24 rounded-lg border border-surface-border bg-field px-3 py-2 text-ink-primary"
+                      className="w-24 rounded-lg border border-line bg-field px-3 py-2 text-ink-primary"
                       value={gridColumns}
                       onChange={(e) => setGridColumns(Number(e.target.value) || 3)}
                     />
@@ -528,7 +528,7 @@ export function BlockSettingsModal({
           ) : null}
         </div>
 
-        <footer className="flex shrink-0 justify-end gap-2 border-t border-surface-border px-4 py-3">
+        <footer className="flex shrink-0 justify-end gap-2 border-t border-line px-4 py-3">
           <Button
             type="button"
             variant="secondary"

@@ -25,7 +25,7 @@ function ProviderModelSelect({
   return (
     <select
       id={id}
-      className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary disabled:opacity-50"
+      className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary disabled:opacity-50"
       value={current}
       disabled={loading || options.length === 0}
       onChange={(e) => onChange(e.target.value)}
@@ -76,7 +76,7 @@ export function AdminInterfacesMemorySection() {
 
   return (
     <>
-      <section className="rounded-xl border border-surface-border bg-card p-5">
+      <section className="rounded-xl border border-line bg-card p-5">
         <h2 className="text-sm font-medium text-ink-primary">{t("admin:ifMemEmbedTitle")}</h2>
         <p className="mt-2 text-xs text-ink-muted">{t("admin:ifMemEmbedIntro")}</p>
         {pendingEmbeddingEnvProviders.length > 0 ? (
@@ -101,7 +101,7 @@ export function AdminInterfacesMemorySection() {
             </div>
             <div className="mt-3 space-y-2">
               {pendingEmbeddingEnvProviders.map((p) => (
-                <details key={p.provider_id} className="rounded-md border border-white/10 bg-black/25 p-3">
+                <details key={p.provider_id} className="rounded-md border border-line bg-black/25 p-3">
                   <summary className="cursor-pointer text-xs text-amber-100">
                     <span className="font-mono">{p.provider_id}</span> · {p.label}
                     {p.already_in_db ? ` · ${t("admin:envLlmAlreadyInDb")}` : ""}
@@ -155,7 +155,7 @@ export function AdminInterfacesMemorySection() {
         </datalist>
 
         <div className="mt-6 space-y-6">
-            <div className="rounded-lg border border-white/10 bg-black/15 p-4">
+            <div className="rounded-lg border border-line bg-black/15 p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs font-medium text-ink-muted">{t("admin:ifMemEndpointN", { n: 1 })}</span>
                 {s.embeddingApiBaseSource === "env" ? (
@@ -171,7 +171,7 @@ export function AdminInterfacesMemorySection() {
                   </label>
                   <select
                     id="embedding-provider-id"
-                    className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary disabled:opacity-50"
+                    className="mt-1 w-full max-w-md rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary disabled:opacity-50"
                     value={s.ragEmbeddingProviderId || s.ragEmbeddingProviderIdEffective || ""}
                     onChange={(e) => s.setRagEmbeddingProviderId(e.target.value)}
                   >
@@ -198,7 +198,7 @@ export function AdminInterfacesMemorySection() {
             </label>
             <input
               id="embedding-base-url"
-              className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary disabled:opacity-50"
+              className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary disabled:opacity-50"
               value={
                 s.embeddingApiBaseSource === "env"
                   ? (s.embeddingApiBaseEffective ?? "")
@@ -235,7 +235,7 @@ export function AdminInterfacesMemorySection() {
               id="embedding-api-key"
               type="password"
               autoComplete="off"
-              className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary disabled:opacity-50"
+              className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary disabled:opacity-50"
               value={s.embeddingApiKey}
               onChange={(e) => s.setEmbeddingApiKey(e.target.value)}
               placeholder={
@@ -255,7 +255,7 @@ export function AdminInterfacesMemorySection() {
             </label>
             <input
               id="embedding-header-name"
-              className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary disabled:opacity-50"
+              className="mt-1 w-full max-w-md rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary disabled:opacity-50"
               value={s.embeddingApiHeaderName}
               onChange={(e) => s.setEmbeddingApiHeaderName(e.target.value)}
               placeholder={t("admin:ifMemoryApiKeyPlaceholder")}
@@ -295,7 +295,7 @@ export function AdminInterfacesMemorySection() {
                   type="number"
                   min={32}
                   max={4096}
-                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+                  className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
                   value={s.ragEmbeddingDim}
                   onChange={(e) => s.setRagEmbeddingDim(e.target.value)}
                 />
@@ -303,7 +303,7 @@ export function AdminInterfacesMemorySection() {
             </div>
             <p className="mt-2 text-xs text-ink-muted">{t("admin:ifMemSaveSyncHint")}</p>
           </div>
-          <div className="rounded-lg border border-white/10 bg-black/15 p-4">
+          <div className="rounded-lg border border-line bg-black/15 p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-xs font-medium text-ink-muted">{t("admin:ifMemExtractorTitle")}</span>
               {s.extractorProviders.length > 0 ? (
@@ -335,7 +335,7 @@ export function AdminInterfacesMemorySection() {
                 </div>
                 <div className="mt-3 space-y-2">
                   {pendingExtractorEnvProviders.map((p) => (
-                    <details key={p.provider_id} className="rounded-md border border-white/10 bg-black/25 p-3">
+                    <details key={p.provider_id} className="rounded-md border border-line bg-black/25 p-3">
                       <summary className="cursor-pointer text-xs text-amber-100">
                         <span className="font-mono">{p.provider_id}</span> · {p.label}
                         {p.already_in_db ? ` · ${t("admin:envLlmAlreadyInDb")}` : ""}
@@ -361,7 +361,7 @@ export function AdminInterfacesMemorySection() {
                 </label>
                 <select
                   id="extractor-provider-id"
-                  className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+                  className="mt-1 w-full max-w-md rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
                   value={s.extractorProviderId || s.extractorProviderIdEffective || ""}
                   onChange={(e) => s.setExtractorProviderId(e.target.value)}
                 >
@@ -391,7 +391,7 @@ export function AdminInterfacesMemorySection() {
             </label>
             <input
               id="extractor-base-url"
-              className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+              className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
               value={s.extractorApiBaseUrl}
               onChange={(e) => s.setExtractorApiBaseUrl(e.target.value)}
               placeholder={t("admin:ifMemExtractorUrlPlaceholder")}
@@ -419,7 +419,7 @@ export function AdminInterfacesMemorySection() {
               id="extractor-api-key"
               type="password"
               autoComplete="off"
-              className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+              className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
               value={s.extractorApiKey}
               onChange={(e) => s.setExtractorApiKey(e.target.value)}
               placeholder={s.extractorApiKeyConfigured ? t("admin:tokenReplacePlaceholder") : t("admin:ifMemPasteKey")}
@@ -431,7 +431,7 @@ export function AdminInterfacesMemorySection() {
                 </label>
                 <input
                   id="extractor-header-name"
-                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+                  className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
                   value={s.extractorApiHeaderName}
                   onChange={(e) => s.setExtractorApiHeaderName(e.target.value)}
                   placeholder={t("admin:ifMemoryApiKeyPlaceholder")}
@@ -465,7 +465,7 @@ export function AdminInterfacesMemorySection() {
                   type="number"
                   min={1}
                   max={1800}
-                  className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+                  className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
                   value={s.extractorTimeoutSec}
                   onChange={(e) => s.setExtractorTimeoutSec(e.target.value)}
                 />
@@ -481,13 +481,13 @@ export function AdminInterfacesMemorySection() {
         ) : null}
       </section>
 
-      <section className="mt-6 rounded-xl border border-surface-border bg-card p-5">
+      <section className="mt-6 rounded-xl border border-line bg-card p-5">
         <h2 className="text-sm font-medium text-ink-primary">{t("admin:memoryRagTitle")}</h2>
         <p className="mt-2 text-xs text-ink-muted">{t("admin:ifMemMemoryRagIntro")}</p>
         <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
           <input
             type="checkbox"
-            className="rounded border-surface-border"
+            className="rounded border-line"
             checked={s.exposeInternalErrors}
             onChange={(e) => s.setExposeInternalErrors(e.target.checked)}
           />
@@ -496,7 +496,7 @@ export function AdminInterfacesMemorySection() {
         <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
           <input
             type="checkbox"
-            className="rounded border-surface-border"
+            className="rounded border-line"
             checked={s.memoryEnabled}
             onChange={(e) => s.setMemoryEnabled(e.target.checked)}
           />
@@ -505,7 +505,7 @@ export function AdminInterfacesMemorySection() {
         <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
           <input
             type="checkbox"
-            className="rounded border-surface-border"
+            className="rounded border-line"
             checked={s.ragEnabled}
             onChange={(e) => s.setRagEnabled(e.target.checked)}
           />
@@ -521,7 +521,7 @@ export function AdminInterfacesMemorySection() {
               type="number"
               min={200}
               max={8000}
-              className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+              className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
               value={s.ragChunkSize}
               onChange={(e) => s.setRagChunkSize(e.target.value)}
             />
@@ -535,7 +535,7 @@ export function AdminInterfacesMemorySection() {
               type="number"
               min={0}
               max={2000}
-              className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+              className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
               value={s.ragChunkOverlap}
               onChange={(e) => s.setRagChunkOverlap(e.target.value)}
             />
@@ -549,7 +549,7 @@ export function AdminInterfacesMemorySection() {
               type="number"
               min={1}
               max={50}
-              className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+              className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
               value={s.ragTopK}
               onChange={(e) => s.setRagTopK(e.target.value)}
             />
@@ -564,7 +564,7 @@ export function AdminInterfacesMemorySection() {
               min={5}
               max={600}
               step="1"
-              className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+              className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
               value={s.ragEmbedTimeout}
               onChange={(e) => s.setRagEmbedTimeout(e.target.value)}
             />
@@ -575,7 +575,7 @@ export function AdminInterfacesMemorySection() {
         </label>
         <input
           id="rag-domains"
-          className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+          className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
           value={s.ragTenantDomains}
           onChange={(e) => s.setRagTenantDomains(e.target.value)}
           placeholder={t("admin:ifMemoryCollectionPlaceholder")}
@@ -591,7 +591,7 @@ export function AdminInterfacesMemorySection() {
         </label>
         <input
           id="docs-root"
-          className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+          className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
           value={s.docsRoot}
           onChange={(e) => s.setDocsRoot(e.target.value)}
           placeholder={t("admin:ifMemoryDocsPathPlaceholder")}
@@ -599,13 +599,13 @@ export function AdminInterfacesMemorySection() {
         />
       </section>
 
-      <section className="mt-6 rounded-xl border border-surface-border bg-card p-5">
+      <section className="mt-6 rounded-xl border border-line bg-card p-5">
         <h2 className="text-sm font-medium text-ink-primary">{t("admin:ifMemGraphTitle")}</h2>
         <p className="mt-2 text-xs text-ink-muted">{t("admin:ifMemGraphIntro")}</p>
         <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
           <input
             type="checkbox"
-            className="rounded border-surface-border"
+            className="rounded border-line"
             checked={s.memGraphEnabled}
             onChange={(e) => s.setMemGraphEnabled(e.target.checked)}
           />
@@ -614,7 +614,7 @@ export function AdminInterfacesMemorySection() {
         <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
           <input
             type="checkbox"
-            className="rounded border-surface-border"
+            className="rounded border-line"
             checked={s.memGraphLogActivations}
             onChange={(e) => s.setMemGraphLogActivations(e.target.checked)}
           />
@@ -630,7 +630,7 @@ export function AdminInterfacesMemorySection() {
               type="number"
               min={0}
               max={4}
-              className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+              className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
               value={s.memGraphMaxHops}
               onChange={(e) => s.setMemGraphMaxHops(e.target.value)}
             />
@@ -645,7 +645,7 @@ export function AdminInterfacesMemorySection() {
               step="0.01"
               min={0}
               max={1}
-              className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+              className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
               value={s.memGraphMinScore}
               onChange={(e) => s.setMemGraphMinScore(e.target.value)}
             />
@@ -659,7 +659,7 @@ export function AdminInterfacesMemorySection() {
               type="number"
               min={1}
               max={50}
-              className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+              className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
               value={s.memGraphMaxBullets}
               onChange={(e) => s.setMemGraphMaxBullets(e.target.value)}
             />
@@ -673,7 +673,7 @@ export function AdminInterfacesMemorySection() {
               type="number"
               min={200}
               max={50000}
-              className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+              className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
               value={s.memGraphMaxPromptChars}
               onChange={(e) => s.setMemGraphMaxPromptChars(e.target.value)}
             />

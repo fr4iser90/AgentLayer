@@ -311,7 +311,7 @@ export function ConnectionsSettings() {
 
       {loading ? <p className="text-sm text-ink-muted">{t("settings:agentLoading")}</p> : null}
 
-      <section className="rounded-xl border border-surface-border bg-card p-5">
+      <section className="rounded-xl border border-line bg-card p-5">
         <h2 className="text-sm font-medium text-ink-primary">{t("admin:discord")}</h2>
         <p className="mt-2 text-xs text-ink-muted">{t("settings:connectionsDiscordIntro")}</p>
         <label className="mt-4 block text-xs text-ink-muted" htmlFor="discord-user-id">
@@ -319,7 +319,7 @@ export function ConnectionsSettings() {
         </label>
         <input
           id="discord-user-id"
-          className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+          className="mt-1 w-full max-w-md rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
           value={discordUserId}
           onChange={(e) => setDiscordUserId(e.target.value.replace(/\D/g, ""))}
           autoComplete="off"
@@ -339,7 +339,7 @@ export function ConnectionsSettings() {
           <button
             type="button"
             disabled={discordSaving || !discordUserId}
-            className="rounded-md border border-white/15 bg-white/5 px-4 py-2 text-sm text-ink-primary hover:bg-white/10 disabled:opacity-40"
+            className="rounded-md border border-line-strong bg-white/5 px-4 py-2 text-sm text-ink-primary hover:bg-white/10 disabled:opacity-40"
             onClick={() => {
               setDiscordUserId("");
               void (async () => {
@@ -370,7 +370,7 @@ export function ConnectionsSettings() {
         </div>
       </section>
 
-      <section className="rounded-xl border border-surface-border bg-card p-5">
+      <section className="rounded-xl border border-line bg-card p-5">
         <h2 className="text-sm font-medium text-ink-primary">{t("admin:telegram")}</h2>
         <p className="mt-2 text-xs text-ink-muted">{t("settings:connectionsTelegramIntro")}</p>
         <label className="mt-4 block text-xs text-ink-muted" htmlFor="telegram-user-id">
@@ -378,7 +378,7 @@ export function ConnectionsSettings() {
         </label>
         <input
           id="telegram-user-id"
-          className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+          className="mt-1 w-full max-w-md rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
           value={telegramUserId}
           onChange={(e) => setTelegramUserId(e.target.value.replace(/\D/g, ""))}
           autoComplete="off"
@@ -398,7 +398,7 @@ export function ConnectionsSettings() {
           <button
             type="button"
             disabled={telegramSaving || !telegramUserId}
-            className="rounded-md border border-white/15 bg-white/5 px-4 py-2 text-sm text-ink-primary hover:bg-white/10 disabled:opacity-40"
+            className="rounded-md border border-line-strong bg-white/5 px-4 py-2 text-sm text-ink-primary hover:bg-white/10 disabled:opacity-40"
             onClick={() => {
               setTelegramUserId("");
               void (async () => {
@@ -446,12 +446,12 @@ export function ConnectionsSettings() {
         </p>
       ) : null}
 
-      <section className="rounded-xl border border-surface-border bg-card">
-        <div className="border-b border-surface-border px-4 py-3">
+      <section className="rounded-xl border border-line bg-card">
+        <div className="border-b border-line px-4 py-3">
           <h2 className="text-sm font-medium text-ink-primary">{t("settings:connectionsCatalogTitle")}</h2>
           <p className="mt-0.5 text-xs text-ink-muted">{t("settings:connectionsCatalogHint")}</p>
         </div>
-        <ul className="divide-y divide-white/5">
+        <ul className="divide-y divide-line-subtle">
           {keyUsage.length === 0 && !loading ? (
             <li className="px-4 py-6 text-sm text-ink-muted">{t("settings:connectionsCatalogEmpty")}</li>
           ) : (
@@ -498,7 +498,7 @@ export function ConnectionsSettings() {
                   </button>
 
                   {open ? (
-                    <div className="space-y-4 border-t border-white/5 bg-black/20 px-4 py-4">
+                    <div className="space-y-4 border-t border-line-subtle bg-black/20 px-4 py-4">
                       {saved && !secretsUnavailable ? (
                         <div className="flex justify-end">
                           <Button
@@ -516,7 +516,7 @@ export function ConnectionsSettings() {
                       ) : null}
 
                         {activeForm?.help || activeForm?.title ? (
-                        <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs leading-relaxed text-ink-secondary">
+                        <div className="rounded-lg border border-line bg-white/[0.03] px-3 py-2 text-xs leading-relaxed text-ink-secondary">
                           {activeForm.title ? (
                             <p className="mb-1 font-medium text-ink-primary">{activeForm.title}</p>
                           ) : null}
@@ -539,7 +539,7 @@ export function ConnectionsSettings() {
                                   id={id}
                                   type={inputType}
                                   autoComplete="off"
-                                  className="mt-1 block w-full rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary placeholder:text-neutral-600"
+                                  className="mt-1 block w-full rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary placeholder:text-neutral-600"
                                   value={fieldValues[f.name] ?? ""}
                                   onChange={(e) => setFieldValues((prev) => ({ ...prev, [f.name]: e.target.value }))}
                                   disabled={secretsUnavailable}
@@ -552,7 +552,7 @@ export function ConnectionsSettings() {
                         <label className="block text-xs text-ink-muted">
                           {t("settings:connectionsSecretLabel")}
                           <textarea
-                            className="mt-1 min-h-[7rem] w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-xs text-ink-primary placeholder:text-neutral-600"
+                            className="mt-1 min-h-[7rem] w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-xs text-ink-primary placeholder:text-neutral-600"
                             placeholder={t("settings:connectionsSecretJsonPlaceholder")}
                             value={rawJson}
                             onChange={(e) => setRawJson(e.target.value)}
@@ -580,10 +580,10 @@ export function ConnectionsSettings() {
       </section>
 
       {orphanServices.length > 0 ? (
-        <section className="rounded-xl border border-surface-border bg-black/20 p-5">
+        <section className="rounded-xl border border-line bg-black/20 p-5">
           <h2 className="text-sm font-medium text-ink-primary">{t("settings:connectionsOrphanTitle")}</h2>
           <p className="mt-1 text-xs text-ink-muted">{t("settings:connectionsOrphanIntro")}</p>
-          <ul className="mt-3 divide-y divide-white/5 rounded-lg border border-white/10">
+          <ul className="mt-3 divide-y divide-line-subtle rounded-lg border border-line">
             {orphanServices.map((k) => {
               const open = activeKey === k;
               return (
@@ -597,11 +597,11 @@ export function ConnectionsSettings() {
                     <span className="text-xs text-ink-muted">{open ? "▲" : "▼"}</span>
                   </button>
                   {open ? (
-                    <div className="space-y-3 border-t border-white/5 px-3 py-3">
+                    <div className="space-y-3 border-t border-line-subtle px-3 py-3">
                       <label className="block text-xs text-ink-muted">
                         {t("settings:connectionsSecretLabel")}
                         <textarea
-                          className="mt-1 min-h-[6rem] w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-xs text-ink-primary"
+                          className="mt-1 min-h-[6rem] w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-xs text-ink-primary"
                           value={rawJson}
                           onChange={(e) => setRawJson(e.target.value)}
                           disabled={secretsUnavailable}

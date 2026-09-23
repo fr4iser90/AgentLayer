@@ -77,7 +77,7 @@ export function EmbedBlockBody(props: {
   const title = st.title.trim() || sectionTitle;
 
   return (
-    <section className="rounded-xl border border-surface-border bg-card p-3 md:p-4">
+    <section className="rounded-xl border border-line bg-card p-3 md:p-4">
       <h3 className="mb-2 text-sm font-medium text-ink-primary">{title}</h3>
       {!readOnly ? (
         <div className="dashboard-grid-no-drag mb-3 space-y-2">
@@ -87,7 +87,7 @@ export function EmbedBlockBody(props: {
             </label>
             <input
               type="text"
-              className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+              className="w-full rounded-lg border border-line bg-field px-3 py-2 text-sm text-ink-primary"
               placeholder={sectionTitle}
               value={st.title}
               onChange={(e) => patch({ title: e.target.value })}
@@ -99,7 +99,7 @@ export function EmbedBlockBody(props: {
             </label>
             <input
               type="url"
-              className="w-full rounded-lg border border-surface-border bg-field px-3 py-2 font-mono text-xs text-ink-primary"
+              className="w-full rounded-lg border border-line bg-field px-3 py-2 font-mono text-xs text-ink-primary"
               placeholder={t("dashboard:embedUrlPlaceholder")}
               value={st.url}
               onChange={(e) => patch({ url: e.target.value })}
@@ -115,7 +115,7 @@ export function EmbedBlockBody(props: {
                 min={120}
                 max={2000}
                 step={20}
-                className="w-28 rounded-lg border border-surface-border bg-field px-2 py-1.5 text-sm text-ink-primary"
+                className="w-28 rounded-lg border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
                 value={st.height}
                 onChange={(e) => patch({ height: Number(e.target.value) || 480 })}
               />
@@ -134,7 +134,7 @@ export function EmbedBlockBody(props: {
       ) : null}
       {allowed ? (
         <div
-          className="overflow-hidden rounded-lg border border-white/10 bg-black/40"
+          className="overflow-hidden rounded-lg border border-line bg-black/40"
           style={{ height: st.height }}
         >
           <iframe
@@ -151,7 +151,7 @@ export function EmbedBlockBody(props: {
           {t("dashboard:embedUnavailableReadOnly")}
         </p>
       ) : !st.url ? (
-        <p className="rounded-lg border border-dashed border-white/15 py-10 text-center text-sm text-ink-muted">
+        <p className="rounded-lg border border-dashed border-line-strong py-10 text-center text-sm text-ink-muted">
           {readOnly
             ? t("dashboard:embedEmptyReadOnly")
             : t("dashboard:embedEmptyEditable")}

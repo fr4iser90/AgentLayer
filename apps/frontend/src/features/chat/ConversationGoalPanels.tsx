@@ -228,7 +228,7 @@ export function ConversationTodosPanel({ todos }: { todos: ConversationTodo[] })
   const inProg = todos.filter((x) => x.status === "in_progress").length;
   const done = todos.filter((x) => x.status === "completed").length;
   return (
-    <div className="mt-2 rounded-lg border border-white/10 bg-black/25 px-2.5 py-2">
+    <div className="mt-2 rounded-lg border border-line bg-black/25 px-2.5 py-2">
       <div className="mb-1.5 text-meta font-semibold uppercase tracking-wide text-ink-muted">
         {t("chat:sessionTodosHeading")} · {inProg} {t("chat:sessionTodosInProgress")} · {pending}{" "}
         {t("chat:sessionTodosPending")}

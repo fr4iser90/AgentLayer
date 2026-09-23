@@ -131,7 +131,7 @@ export function MediaMiniPlayer() {
             {isEmbed && media.embedUrl ? (
               <button
                 type="button"
-                className="rounded-md border border-white/10 px-2 py-1.5 text-xs text-sky-100 hover:bg-white/10"
+                className="rounded-md border border-line px-2 py-1.5 text-xs text-sky-100 hover:bg-white/10"
                 onClick={() => setEmbedExpanded((open) => !open)}
                 aria-expanded={embedExpanded}
                 aria-label={
@@ -182,7 +182,7 @@ export function MediaMiniPlayer() {
             {dashboardHref ? (
               <Link
                 to={dashboardHref}
-                className="rounded-md border border-white/10 px-2 py-1 text-meta text-sky-100 hover:bg-white/5"
+                className="rounded-md border border-line px-2 py-1 text-meta text-sky-100 hover:bg-white/5"
               >
                 {t("dashboard:mediaMiniPlayerOpenDashboard")}
               </Link>

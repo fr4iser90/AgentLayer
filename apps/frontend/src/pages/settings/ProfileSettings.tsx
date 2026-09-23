@@ -85,7 +85,7 @@ export function ProfileSettings() {
       ) : err ? (
         <p className="text-sm text-amber-400">{err}</p>
       ) : (
-        <div className="rounded-xl border border-surface-border bg-card p-5">
+        <div className="rounded-xl border border-line bg-card p-5">
           <dl className="space-y-4 text-sm">
             <div>
               <dt className="text-xs font-medium uppercase tracking-wide text-ink-muted">{t("settings:profileEmail")}</dt>
@@ -134,12 +134,12 @@ export function ProfileSettings() {
         </div>
       )}
 
-      <div className="rounded-xl border border-surface-border bg-black/20 p-5">
+      <div className="rounded-xl border border-line bg-black/20 p-5">
         <h2 className="text-sm font-medium text-ink-primary">{t("settings:sessionTitle")}</h2>
         <p className="mt-1 text-xs text-ink-muted">{t("settings:profileSessionHint")}</p>
         <button
           type="button"
-          className="mt-4 rounded-md border border-white/15 bg-white/5 px-4 py-2 text-sm text-ink-primary hover:bg-white/10"
+          className="mt-4 rounded-md border border-line-strong bg-white/5 px-4 py-2 text-sm text-ink-primary hover:bg-white/10"
           onClick={() => void logout()}
         >
           {t("settings:signOut")}

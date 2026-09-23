@@ -55,7 +55,7 @@ export function ProposalCard({
                   className={`w-full rounded-lg border px-4 py-3 text-left transition-all ${
                     isSelected
                       ? "border-sky-500 bg-sky-950/50 ring-1 ring-sky-500/50"
-                      : "border-surface-border bg-black/20 hover:border-sky-700/50 hover:bg-white/5"
+                      : "border-line bg-black/20 hover:border-sky-700/50 hover:bg-white/5"
                   }`}
                   onClick={() => onSelect(opt)}
                 >
@@ -65,7 +65,7 @@ export function ProposalCard({
                         className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-meta font-bold ${
                           isSelected
                             ? "border-sky-400 bg-sky-500 text-ink-on-fill"
-                            : "border-surface-border text-ink-muted"
+                            : "border-line text-ink-muted"
                         }`}
                       >
                         {isSelected ? (

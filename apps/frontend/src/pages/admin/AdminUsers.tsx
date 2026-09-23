@@ -571,9 +571,9 @@ export function AdminUsers() {
       <section className="mt-8">
         <h2 className="text-sm font-medium text-ink-primary">{t("admin:usersAllAccounts")}</h2>
         <p className="mt-1 text-xs text-ink-muted">{t("admin:usersApiHint")}</p>
-        <div className="mt-3 overflow-x-auto rounded-xl border border-surface-border">
+        <div className="mt-3 overflow-x-auto rounded-xl border border-line">
           <table className="w-full min-w-[36rem] text-left text-sm">
-            <thead className="border-b border-surface-border bg-black/20 text-ink-muted">
+            <thead className="border-b border-line bg-black/20 text-ink-muted">
               <tr>
                 <th className="px-4 py-3 font-medium">{t("admin:usersColEmail")}</th>
                 {showTenantUi && (
@@ -626,7 +626,7 @@ export function AdminUsers() {
                     site_role: r.site_role,
                   });
                   return (
-                    <tr key={r.id} className="border-b border-surface-border/80 hover:bg-white/[0.03]">
+                    <tr key={r.id} className="border-b border-line/80 hover:bg-white/[0.03]">
                       <td className="px-4 py-3 text-ink-primary">
                         <span className="font-medium">{rowLabel(r)}</span>
                         {r.email?.trim() ? null : (
@@ -638,7 +638,7 @@ export function AdminUsers() {
                       {showTenantUi && (
                         <td className="px-4 py-3">
                           <select
-                            className="max-w-[14rem] rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-ink-primary"
+                            className="max-w-[14rem] rounded-md border border-line bg-field px-2 py-1.5 text-xs text-ink-primary"
                             value={tid}
                             disabled={saving || !targetEditable}
                             onChange={(e) => {
@@ -684,7 +684,7 @@ export function AdminUsers() {
                           type="number"
                           min={1}
                           max={1000}
-                          className="w-16 rounded-md border border-surface-border bg-field px-2 py-1 text-xs text-ink-primary"
+                          className="w-16 rounded-md border border-line bg-field px-2 py-1 text-xs text-ink-primary"
                           value={r.workspace_quota ?? 10}
                           disabled={saving || !targetEditable}
                           onChange={(e) => {
@@ -699,7 +699,7 @@ export function AdminUsers() {
                           type="number"
                           min={1}
                           max={50000}
-                          className="w-20 rounded-md border border-surface-border bg-field px-2 py-1 text-xs text-ink-primary"
+                          className="w-20 rounded-md border border-line bg-field px-2 py-1 text-xs text-ink-primary"
                           value={r.media_storage_quota_mb ?? ""}
                           placeholder={t("admin:usersMediaQuotaPlaceholder")}
                           disabled={saving || !targetEditable}
@@ -716,7 +716,7 @@ export function AdminUsers() {
                           type="number"
                           min={0}
                           max={1000}
-                          className="w-16 rounded-md border border-surface-border bg-field px-2 py-1 text-xs text-ink-primary"
+                          className="w-16 rounded-md border border-line bg-field px-2 py-1 text-xs text-ink-primary"
                           value={r.llm_queue_priority ?? ""}
                           placeholder={t("admin:usersLlmPrioDefault")}
                           disabled={saving || !targetEditable}
@@ -735,7 +735,7 @@ export function AdminUsers() {
                       </td>
                       <td className="px-4 py-3">
                         <select
-                          className="rounded-md border border-surface-border bg-field px-2 py-1 text-xs text-ink-primary"
+                          className="rounded-md border border-line bg-field px-2 py-1 text-xs text-ink-primary"
                           value={
                             r.media_enabled === true ? "on" : r.media_enabled === false ? "off" : "inherit"
                           }
@@ -754,7 +754,7 @@ export function AdminUsers() {
                       <td className="px-4 py-3">
                         <input
                           type="checkbox"
-                          className="rounded border-surface-border"
+                          className="rounded border-line"
                           checked={r.workspace_self_allowed ?? false}
                           disabled={saving || !targetEditable}
                           onChange={(e) => void patchWorkspaceSelfAllowed(r.id, e.target.checked)}
@@ -763,7 +763,7 @@ export function AdminUsers() {
                       <td className="px-4 py-3">
                         <input
                           type="checkbox"
-                          className="rounded border-surface-border"
+                          className="rounded border-line"
                           checked={r.schedules_allowed ?? false}
                           disabled={saving || !targetEditable}
                           title={t("admin:usersSchedulesHint")}
@@ -773,7 +773,7 @@ export function AdminUsers() {
                       <td className="px-4 py-3">
                         <input
                           type="checkbox"
-                          className="rounded border-surface-border"
+                          className="rounded border-line"
                           checked={r.dashboards_allowed ?? false}
                           disabled={saving || !targetEditable}
                           title={t("admin:usersDashboardsHint")}
@@ -785,7 +785,7 @@ export function AdminUsers() {
                           type="number"
                           min={1}
                           max={1000}
-                          className="w-16 rounded-md border border-surface-border bg-field px-2 py-1 text-xs text-ink-primary"
+                          className="w-16 rounded-md border border-line bg-field px-2 py-1 text-xs text-ink-primary"
                           value={r.dashboard_quota ?? 1}
                           placeholder={t("admin:usersDashboardsQuotaPlaceholder")}
                           title={t("admin:usersDashboardsQuotaPlaceholder")}
@@ -812,7 +812,7 @@ export function AdminUsers() {
                               >
                                 <input
                                   type="checkbox"
-                                  className="rounded border-surface-border"
+                                  className="rounded border-line"
                                   checked={userAllowedAgents[r.id]?.has(a.id) ?? false}
                                   disabled={
                                     saving ||
@@ -864,7 +864,7 @@ export function AdminUsers() {
       </section>
 
       {showTenantUi && (
-        <section className="mt-10 rounded-xl border border-surface-border bg-card p-5">
+        <section className="mt-10 rounded-xl border border-line bg-card p-5">
           <h2 className="text-sm font-medium text-ink-primary">{t("admin:usersCreateTenant")}</h2>
         <p className="mt-1 text-xs text-ink-muted">{t("admin:usersCreateTenantApi")}</p>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
@@ -872,7 +872,7 @@ export function AdminUsers() {
             {t("settings:displayName", { ns: "settings" })}
             <input
               type="text"
-              className="mt-1 block w-full min-w-[12rem] rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+              className="mt-1 block w-full min-w-[12rem] rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary"
               value={newTenantName}
               onChange={(e) => setNewTenantName(e.target.value)}
               placeholder={t("admin:tenantDisplayNamePlaceholder")}
@@ -882,7 +882,7 @@ export function AdminUsers() {
           <label className="block text-xs text-ink-muted">
             {t("admin:usersTenantTemplate")}
             <select
-              className="mt-1 block w-full min-w-[14rem] rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+              className="mt-1 block w-full min-w-[14rem] rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary"
               value={newTenantTemplateId}
               onChange={(e) => setNewTenantTemplateId(e.target.value)}
             >
@@ -897,7 +897,7 @@ export function AdminUsers() {
           <label className="flex items-center gap-2 text-xs text-ink-muted sm:mb-2">
             <input
               type="checkbox"
-              className="rounded border-surface-border"
+              className="rounded border-line"
               checked={seedDemoContent}
               disabled={!newTenantTemplateId}
               onChange={(e) => setSeedDemoContent(e.target.checked)}
@@ -923,7 +923,7 @@ export function AdminUsers() {
       </section>
       )}
 
-      <section className="mt-10 rounded-xl border border-surface-border bg-card p-5">
+      <section className="mt-10 rounded-xl border border-line bg-card p-5">
         <h2 className="text-sm font-medium text-ink-primary">{t("admin:usersCreateUser")}</h2>
         <p className="mt-1 text-xs text-ink-muted">{t("admin:usersCreateUserApi")}</p>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
@@ -931,7 +931,7 @@ export function AdminUsers() {
             {t("admin:usersEmailLabel")}
             <input
               type="email"
-              className="mt-1 block w-full min-w-[12rem] rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+              className="mt-1 block w-full min-w-[12rem] rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary"
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
               autoComplete="off"
@@ -941,7 +941,7 @@ export function AdminUsers() {
             {t("admin:usersPasswordLabel")}
             <input
               type="password"
-              className="mt-1 block w-full min-w-[12rem] rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+              className="mt-1 block w-full min-w-[12rem] rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               autoComplete="new-password"
@@ -951,7 +951,7 @@ export function AdminUsers() {
             <label className="block text-xs text-ink-muted">
               {t("admin:usersTenantLabel")}
               <select
-                className="mt-1 block rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+                className="mt-1 block rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary"
                 value={newTenantId}
                 onChange={(e) => setNewTenantId(e.target.value)}
               >
@@ -966,7 +966,7 @@ export function AdminUsers() {
           <label className="block text-xs text-ink-muted">
             {t("admin:usersRoleLabel")}
             <select
-              className="mt-1 block rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+              className="mt-1 block rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary"
               value={newRole}
               onChange={(e) => setNewRole(e.target.value as "user" | "admin")}
             >

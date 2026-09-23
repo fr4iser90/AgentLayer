@@ -57,7 +57,7 @@ export function MessageFeedbackButtons({
   if (!conversationId) return null;
 
   return (
-    <div className="mt-2 flex items-center gap-1 border-t border-white/5 pt-2">
+    <div className="mt-2 flex items-center gap-1 border-t border-line-subtle pt-2">
       <span className="mr-1 text-meta text-ink-muted">{t("chat:feedbackPrompt")}</span>
       <button
         type="button"

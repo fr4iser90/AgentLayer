@@ -74,7 +74,7 @@ export function VoiceSettings() {
       ) : null}
       {msg ? <p className="mt-3 text-sm text-ink-secondary">{msg}</p> : null}
 
-      <div className="mt-6 space-y-4 rounded-xl border border-surface-border bg-card p-5">
+      <div className="mt-6 space-y-4 rounded-xl border border-line bg-card p-5">
         <label className="flex items-center gap-2 text-sm text-ink-primary">
           <input
             type="checkbox"
@@ -104,7 +104,7 @@ export function VoiceSettings() {
         <label className="block text-xs text-ink-muted">
           {t("settings:voiceModeWeb")}
           <select
-            className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+            className="mt-1 w-full max-w-md rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary"
             value={prefs.mode_web}
             onChange={(e) => setPrefs((p) => ({ ...p, mode_web: e.target.value }))}
           >
@@ -117,7 +117,7 @@ export function VoiceSettings() {
         <label className="block text-xs text-ink-muted">
           {t("settings:voiceLanguage")}
           <input
-            className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+            className="mt-1 w-full max-w-xs rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary"
             value={prefs.language}
             onChange={(e) => setPrefs((p) => ({ ...p, language: e.target.value }))}
             placeholder={t("settings:voiceLanguagePlaceholder")}
@@ -126,7 +126,7 @@ export function VoiceSettings() {
         <label className="block text-xs text-ink-muted">
           {t("settings:voiceTtsVoice")}
           <input
-            className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+            className="mt-1 w-full max-w-xs rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary"
             value={prefs.voice_id ?? ""}
             onChange={(e) =>
               setPrefs((p) => ({ ...p, voice_id: e.target.value.trim() || null }))
@@ -137,7 +137,7 @@ export function VoiceSettings() {
         <label className="block text-xs text-ink-muted">
           {t("settings:voiceModeTelegram")}
           <select
-            className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+            className="mt-1 w-full max-w-md rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary"
             value={prefs.mode_telegram}
             onChange={(e) => setPrefs((p) => ({ ...p, mode_telegram: e.target.value }))}
           >
@@ -149,7 +149,7 @@ export function VoiceSettings() {
         <label className="block text-xs text-ink-muted">
           {t("settings:voiceModeDiscord")}
           <select
-            className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+            className="mt-1 w-full max-w-md rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary"
             value={prefs.mode_discord}
             onChange={(e) => setPrefs((p) => ({ ...p, mode_discord: e.target.value }))}
           >

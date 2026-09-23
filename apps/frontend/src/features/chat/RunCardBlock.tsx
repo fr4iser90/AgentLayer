@@ -394,7 +394,7 @@ export function RunCardBlock({
             </button>
           ) : null}
           {expanded ? (
-            <ul className="mt-2 space-y-1 border-t border-white/5 pt-2">
+            <ul className="mt-2 space-y-1 border-t border-line-subtle pt-2">
               {card.kind === "compaction"
                 ? compactionDetailLines.map((line, i) => (
                     <li key={`cmp-${i}`} className="text-meta leading-snug text-ink-muted">

@@ -44,7 +44,7 @@ function PublicPhotoTile(props: {
         />
       </button>
       {caption ? (
-        <figcaption className="border-t border-white/5 px-3 py-2 text-xs leading-relaxed text-ink-secondary">
+        <figcaption className="border-t border-line-subtle px-3 py-2 text-xs leading-relaxed text-ink-secondary">
           {caption}
         </figcaption>
       ) : null}

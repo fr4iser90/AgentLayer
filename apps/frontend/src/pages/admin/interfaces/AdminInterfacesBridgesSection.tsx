@@ -57,7 +57,7 @@ export function AdminInterfacesBridgesSection() {
   }
   return (
     <>
-      <section className="mt-6 rounded-xl border border-surface-border bg-card p-5">
+      <section className="mt-6 rounded-xl border border-line bg-card p-5">
         <h2 className="text-sm font-medium text-ink-primary">{t("admin:discord")}</h2>
         <p className="mt-2 text-xs text-ink-muted">{t("admin:ifBridgeDiscordIntro")}</p>
         <label className="mt-4 block text-xs text-ink-muted" htmlFor="discord-id">
@@ -65,7 +65,7 @@ export function AdminInterfacesBridgesSection() {
         </label>
         <input
           id="discord-id"
-          className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+          className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
           value={s.discordAppId}
           onChange={(e) => s.setDiscordAppId(e.target.value)}
           autoComplete="off"
@@ -78,7 +78,7 @@ export function AdminInterfacesBridgesSection() {
         <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
           <input
             type="checkbox"
-            className="rounded border-surface-border"
+            className="rounded border-line"
             checked={s.bridgeEnabled}
             onChange={(e) => s.setBridgeEnabled(e.target.checked)}
           />
@@ -94,7 +94,7 @@ export function AdminInterfacesBridgesSection() {
           id="d-token"
           type="password"
           autoComplete="off"
-          className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+          className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
           value={s.discordToken}
           onChange={(e) => s.setDiscordToken(e.target.value)}
           placeholder={s.tokenConfigured ? t("admin:tokenReplacePlaceholder") : t("admin:pasteTokenPlaceholder")}
@@ -105,7 +105,7 @@ export function AdminInterfacesBridgesSection() {
         </label>
         <input
           id="prefix"
-          className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+          className="mt-1 w-full max-w-md rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
           value={s.triggerPrefix}
           onChange={(e) => s.setTriggerPrefix(e.target.value)}
           placeholder={t("admin:messagePrefixPlaceholder")}
@@ -132,7 +132,7 @@ export function AdminInterfacesBridgesSection() {
         </div>
         <button
           type="button"
-          className="mt-3 rounded-md border border-white/15 bg-white/5 px-3 py-1.5 text-sm text-ink-primary hover:bg-white/10 disabled:opacity-40"
+          className="mt-3 rounded-md border border-line-strong bg-white/5 px-3 py-1.5 text-sm text-ink-primary hover:bg-white/10 disabled:opacity-40"
           disabled={!s.tokenConfigured}
           onClick={() => void s.clearDiscordToken()}
         >
@@ -140,7 +140,7 @@ export function AdminInterfacesBridgesSection() {
         </button>
       </section>
 
-      <section className="mt-6 rounded-xl border border-surface-border bg-card p-5">
+      <section className="mt-6 rounded-xl border border-line bg-card p-5">
         <h2 className="text-sm font-medium text-ink-primary">{t("admin:telegram")}</h2>
         <p className="mt-2 text-xs text-ink-muted">{t("admin:ifBridgeTelegramIntro")}</p>
         <label className="mt-4 block text-xs text-ink-muted" htmlFor="telegram-app-hint">
@@ -148,7 +148,7 @@ export function AdminInterfacesBridgesSection() {
         </label>
         <input
           id="telegram-app-hint"
-          className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+          className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
           value={s.telegramAppId}
           onChange={(e) => s.setTelegramAppId(e.target.value)}
           autoComplete="off"
@@ -161,7 +161,7 @@ export function AdminInterfacesBridgesSection() {
         <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
           <input
             type="checkbox"
-            className="rounded border-surface-border"
+            className="rounded border-line"
             checked={s.tgBridgeEnabled}
             onChange={(e) => s.setTgBridgeEnabled(e.target.checked)}
           />
@@ -177,7 +177,7 @@ export function AdminInterfacesBridgesSection() {
           id="tg-token"
           type="password"
           autoComplete="off"
-          className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+          className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
           value={s.telegramToken}
           onChange={(e) => s.setTelegramToken(e.target.value)}
           placeholder={s.tgTokenConfigured ? t("admin:tokenReplacePlaceholder") : t("admin:pasteTokenPlaceholder")}
@@ -188,7 +188,7 @@ export function AdminInterfacesBridgesSection() {
         </label>
         <input
           id="tg-prefix"
-          className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+          className="mt-1 w-full max-w-md rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
           value={s.tgTriggerPrefix}
           onChange={(e) => s.setTgTriggerPrefix(e.target.value)}
           placeholder={t("admin:messagePrefixPlaceholder")}
@@ -215,7 +215,7 @@ export function AdminInterfacesBridgesSection() {
         </div>
         <button
           type="button"
-          className="mt-3 rounded-md border border-white/15 bg-white/5 px-3 py-1.5 text-sm text-ink-primary hover:bg-white/10 disabled:opacity-40"
+          className="mt-3 rounded-md border border-line-strong bg-white/5 px-3 py-1.5 text-sm text-ink-primary hover:bg-white/10 disabled:opacity-40"
           disabled={!s.tgTokenConfigured}
           onClick={() => void s.clearTelegramToken()}
         >
@@ -226,7 +226,7 @@ export function AdminInterfacesBridgesSection() {
         </label>
         <select
           id="http-client-log-level"
-          className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+          className="mt-1 w-full max-w-xs rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
           value={s.httpClientLogLevel}
           onChange={(e) => s.setHttpClientLogLevel(e.target.value)}
         >

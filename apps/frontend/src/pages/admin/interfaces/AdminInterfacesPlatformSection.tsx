@@ -29,7 +29,7 @@ function ProviderModelSelect({
   return (
     <select
       id={id}
-      className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary disabled:opacity-50"
+      className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary disabled:opacity-50"
       value={current}
       disabled={loading || options.length === 0}
       onChange={(e) => onChange(e.target.value)}
@@ -96,7 +96,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
     <>
           {showPlatform ? (
           <>
-          <section className="mt-8 rounded-xl border border-surface-border bg-card p-5">
+          <section className="mt-8 rounded-xl border border-line bg-card p-5">
             <h2 className="text-sm font-medium text-ink-primary">{t("admin:ifPlatformAgentModeTitle")}</h2>
             <p className="mt-2 text-xs text-ink-muted">{t("admin:ifPlatformAgentModeIntro")}</p>
             <p className="mt-2 text-xs text-ink-muted">
@@ -110,7 +110,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             </label>
             <select
               id="agent-mode"
-              className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+              className="mt-1 w-full max-w-md rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary"
               value={s.agentMode}
               onChange={(e) => s.setAgentMode(e.target.value as "env" | "sandbox" | "host")}
             >
@@ -119,7 +119,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               <option value="host">{t("admin:ifPlatformAgentModeHost")}</option>
             </select>
           </section>
-          <section className="mt-8 rounded-xl border border-surface-border bg-card p-5">
+          <section className="mt-8 rounded-xl border border-line bg-card p-5">
             <h2 className="text-sm font-medium text-ink-primary">{t("admin:ifPlatformDashboardUploadsTitle")}</h2>
             <p className="mt-2 text-xs text-ink-muted">{t("admin:ifPlatformUploadIntro")}</p>
             {s.uploadEffBytes != null ? (
@@ -138,7 +138,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               type="number"
               min={1}
               max={512}
-              className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+              className="mt-1 w-full max-w-xs rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
               value={s.uploadMaxMb}
               onChange={(e) => s.setUploadMaxMb(e.target.value)}
               placeholder={t("admin:ifPlatformUploadMbPlaceholder")}
@@ -148,14 +148,14 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             </label>
             <input
               id="wu-mime"
-              className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+              className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
               value={s.uploadMime}
               onChange={(e) => s.setUploadMime(e.target.value)}
               placeholder={t("admin:ifPlatformMimePlaceholder")}
             />
           </section>
 
-          <section className="mt-8 rounded-xl border border-surface-border bg-card p-5">
+          <section className="mt-8 rounded-xl border border-line bg-card p-5">
             <h2 className="text-sm font-medium text-ink-primary">{t("admin:ifPlatformMediaTitle")}</h2>
             <p className="mt-2 text-xs text-ink-muted">{t("admin:ifPlatformMediaIntro")}</p>
             {s.mediaEffUploadBytes != null ? (
@@ -170,7 +170,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
               <input
                 type="checkbox"
-                className="rounded border-surface-border"
+                className="rounded border-line"
                 checked={s.mediaLibraryEnabled}
                 onChange={(e) => s.setMediaLibraryEnabled(e.target.checked)}
               />
@@ -179,7 +179,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
               <input
                 type="checkbox"
-                className="rounded border-surface-border"
+                className="rounded border-line"
                 checked={s.mediaUserUploadEnabled}
                 onChange={(e) => s.setMediaUserUploadEnabled(e.target.checked)}
               />
@@ -188,7 +188,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
               <input
                 type="checkbox"
-                className="rounded border-surface-border"
+                className="rounded border-line"
                 checked={s.mediaSharingEnabled}
                 onChange={(e) => s.setMediaSharingEnabled(e.target.checked)}
               />
@@ -202,7 +202,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               type="number"
               min={1}
               max={50000}
-              className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+              className="mt-1 w-full max-w-xs rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
               value={s.mediaDefaultQuotaMb}
               onChange={(e) => s.setMediaDefaultQuotaMb(e.target.value)}
               placeholder={t("admin:ifPlatformMediaQuotaPlaceholder")}
@@ -215,7 +215,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               type="number"
               min={1}
               max={512}
-              className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+              className="mt-1 w-full max-w-xs rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
               value={s.mediaUploadMaxMb}
               onChange={(e) => s.setMediaUploadMaxMb(e.target.value)}
               placeholder={t("admin:ifPlatformUploadMbPlaceholder")}
@@ -225,7 +225,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             </label>
             <input
               id="media-mime"
-              className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+              className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
               value={s.mediaUploadMime}
               onChange={(e) => s.setMediaUploadMime(e.target.value)}
               placeholder={t("admin:ifPlatformMimePlaceholder")}
@@ -235,14 +235,14 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             </label>
             <input
               id="media-embed-hosts"
-              className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+              className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
               value={s.mediaEmbedHosts}
               onChange={(e) => s.setMediaEmbedHosts(e.target.value)}
               placeholder={t("admin:ifPlatformMediaEmbedHostsPlaceholder")}
             />
           </section>
 
-          <section className="mt-8 rounded-xl border border-surface-border bg-card p-5">
+          <section className="mt-8 rounded-xl border border-line bg-card p-5">
             <h2 className="text-sm font-medium text-ink-primary">{t("admin:ifPlatformChatQuotaTitle")}</h2>
             <p className="mt-2 text-xs text-ink-muted">{t("admin:ifPlatformChatQuotaIntro")}</p>
             <label className="mt-4 block text-xs text-ink-muted" htmlFor="chat-max-mb">
@@ -253,7 +253,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               type="number"
               min={1}
               max={50000}
-              className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+              className="mt-1 w-full max-w-xs rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
               value={s.chatMaxConversationMb}
               onChange={(e) => s.setChatMaxConversationMb(e.target.value)}
             />
@@ -265,7 +265,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               type="number"
               min={1}
               max={10000}
-              className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+              className="mt-1 w-full max-w-xs rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
               value={s.chatMaxPersonalSessions}
               onChange={(e) => s.setChatMaxPersonalSessions(e.target.value)}
             />
@@ -277,7 +277,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               type="number"
               min={1}
               max={10000}
-              className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+              className="mt-1 w-full max-w-xs rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
               value={s.chatMaxDashboardSessions}
               onChange={(e) => s.setChatMaxDashboardSessions(e.target.value)}
             />
@@ -290,7 +290,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
           ) : null}
 
           {showVoice ? (
-          <section className="mt-8 rounded-xl border border-surface-border bg-card p-5">
+          <section className="mt-8 rounded-xl border border-line bg-card p-5">
             <h2 className="text-sm font-medium text-ink-primary">{t("admin:ifPlatformVoiceTitle")}</h2>
             <p className="mt-2 text-xs text-ink-muted">{t("admin:ifPlatformVoiceIntro")}</p>
             {pendingVoiceEnvGroups.length > 0 ? (
@@ -318,7 +318,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
                       </div>
                       <div className="mt-3 space-y-2">
                         {providers.map((p) => (
-                          <details key={p.provider_id} className="rounded-md border border-white/10 bg-black/25 p-3">
+                          <details key={p.provider_id} className="rounded-md border border-line bg-black/25 p-3">
                             <summary className="cursor-pointer text-xs text-amber-100">
                               <span className="font-mono">{p.provider_id}</span> · {p.label}
                               {p.already_in_db ? ` · ${t("admin:envLlmAlreadyInDb")}` : ""}
@@ -346,13 +346,13 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
               <input
                 type="checkbox"
-                className="rounded border-surface-border"
+                className="rounded border-line"
                 checked={s.voiceEnabled}
                 onChange={(e) => s.setVoiceEnabled(e.target.checked)}
               />
               {t("admin:ifPlatformVoiceEnabled")}
             </label>
-            <div className="mt-4 rounded-lg border border-white/10 bg-black/15 p-4">
+            <div className="mt-4 rounded-lg border border-line bg-black/15 p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs font-medium text-ink-muted">{t("admin:ifPlatformVoiceEndpoint")}</span>
                 {s.voiceApiBaseSource === "env" ? (
@@ -368,7 +368,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
                   </label>
                   <select
                     id="voice-stt-provider-id"
-                    className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+                    className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
                     value={s.voiceSttProviderId || s.voiceSttProviderIdEffective || ""}
                     onChange={(e) => s.setVoiceSttProviderId(e.target.value)}
                     disabled={s.voiceSttProviders.length === 0}
@@ -390,7 +390,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
                   </label>
                   <select
                     id="voice-tts-provider-id"
-                    className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+                    className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
                     value={s.voiceTtsProviderId || s.voiceTtsProviderIdEffective || ""}
                     onChange={(e) => s.setVoiceTtsProviderId(e.target.value)}
                     disabled={s.voiceTtsProviders.length === 0}
@@ -413,7 +413,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               </label>
               <input
                 id="voice-api-base"
-                className="mt-1 w-full rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary disabled:opacity-50"
+                className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary disabled:opacity-50"
                 value={
                   s.voiceApiBaseSource === "env"
                     ? (s.voiceApiBaseEffective ?? "")
@@ -453,7 +453,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
               <input
                 id="voice-api-key"
                 type="password"
-                className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary disabled:opacity-50"
+                className="mt-1 w-full max-w-md rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary disabled:opacity-50"
                 value={s.voiceApiKey}
                 onChange={(e) => s.setVoiceApiKey(e.target.value)}
                 placeholder={t("admin:ifPlatformVoiceApiKeyPlaceholder")}
@@ -490,7 +490,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             <label className="mt-4 block text-xs text-ink-muted">
               {t("admin:ifPlatformVoiceTtsVoice")}
               <input
-                className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+                className="mt-1 w-full max-w-xs rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
                 value={s.voiceTtsVoice}
                 onChange={(e) => s.setVoiceTtsVoice(e.target.value)}
               />
@@ -498,7 +498,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
               <input
                 type="checkbox"
-                className="rounded border-surface-border"
+                className="rounded border-line"
                 checked={s.voiceBridgeTelegram}
                 onChange={(e) => s.setVoiceBridgeTelegram(e.target.checked)}
               />
@@ -507,7 +507,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
               <input
                 type="checkbox"
-                className="rounded border-surface-border"
+                className="rounded border-line"
                 checked={s.voiceBridgeDiscord}
                 onChange={(e) => s.setVoiceBridgeDiscord(e.target.checked)}
               />
@@ -516,7 +516,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
               <input
                 type="checkbox"
-                className="rounded border-surface-border"
+                className="rounded border-line"
                 checked={s.voiceRealtimeEnabled}
                 onChange={(e) => s.setVoiceRealtimeEnabled(e.target.checked)}
               />
@@ -525,7 +525,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
               <input
                 type="checkbox"
-                className="rounded border-surface-border"
+                className="rounded border-line"
                 checked={s.voiceDiscordVcEnabled}
                 onChange={(e) => s.setVoiceDiscordVcEnabled(e.target.checked)}
               />
@@ -535,7 +535,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
           ) : null}
 
           {showPlatform ? (
-          <section className="mt-6 rounded-lg border border-surface-border p-4">
+          <section className="mt-6 rounded-lg border border-line p-4">
             <h3 className="text-sm font-medium text-ink-primary">{t("admin:ifPlatformSurfacesTitle")}</h3>
             <p className="mt-1 text-xs text-ink-muted">{t("admin:ifPlatformSurfacesIntro")}</p>
             <label className="mt-4 block text-xs text-ink-muted" htmlFor="surface-preset">
@@ -543,7 +543,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             </label>
             <select
               id="surface-preset"
-              className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+              className="mt-1 w-full max-w-md rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary"
               value={s.surfacePreset}
               onChange={(e) => {
                 const preset = e.target.value as "WEB_ONLY" | "WEB_AND_TUI" | "TUI_ONLY";
@@ -567,7 +567,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
               <input
                 type="checkbox"
-                className="rounded border-surface-border"
+                className="rounded border-line"
                 checked={s.webUiEnabled}
                 onChange={(e) => {
                   const on = e.target.checked;
@@ -582,7 +582,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
               <input
                 type="checkbox"
-                className="rounded border-surface-border"
+                className="rounded border-line"
                 checked={s.apiKeyClientsEnabled}
                 onChange={(e) => {
                   const on = e.target.checked;
@@ -599,7 +599,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             </label>
             <select
               id="api-key-ws-modes"
-              className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+              className="mt-1 w-full max-w-md rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary"
               value={s.apiKeyWorkspaceModes}
               onChange={(e) =>
                 s.setApiKeyWorkspaceModes(e.target.value as "server" | "client" | "both")
@@ -614,7 +614,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
               <input
                 type="checkbox"
-                className="rounded border-surface-border"
+                className="rounded border-line"
                 checked={s.serverWorkspacesAdminOnly}
                 onChange={(e) => s.setServerWorkspacesAdminOnly(e.target.checked)}
               />
@@ -628,7 +628,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             </label>
             <select
               id="ws-index-consent-max"
-              className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+              className="mt-1 w-full max-w-md rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary"
               value={s.workspaceIndexConsentMax}
               onChange={(e) => s.setWorkspaceIndexConsentMax(e.target.value)}
             >
@@ -641,13 +641,13 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
           ) : null}
 
           {showPlatform ? (
-          <section className="mt-6 rounded-lg border border-surface-border p-4">
+          <section className="mt-6 rounded-lg border border-line p-4">
             <h3 className="text-sm font-medium text-ink-primary">{t("admin:ifPlatformWorkspacesTitle")}</h3>
             <p className="mt-1 text-xs text-ink-muted">{t("admin:ifPlatformWorkspacesIntro")}</p>
             <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
               <input
                 type="checkbox"
-                className="rounded border-surface-border"
+                className="rounded border-line"
                 checked={s.workspaceAllowSelfEditing}
                 onChange={(e) => s.setWorkspaceAllowSelfEditing(e.target.checked)}
               />
@@ -659,7 +659,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             </label>
             <select
               id="ws-index-on-write-default"
-              className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+              className="mt-1 w-full max-w-md rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary"
               value={s.workspaceIndexOnWriteDefault}
               onChange={(e) => s.setWorkspaceIndexOnWriteDefault(e.target.value)}
             >
@@ -670,7 +670,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
               <input
                 type="checkbox"
-                className="rounded border-surface-border"
+                className="rounded border-line"
                 checked={s.workspaceReindexAfterGitPull}
                 onChange={(e) => s.setWorkspaceReindexAfterGitPull(e.target.checked)}
               />
@@ -679,7 +679,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
               <input
                 type="checkbox"
-                className="rounded border-surface-border"
+                className="rounded border-line"
                 checked={s.workspaceNightlyReindexEnabled}
                 onChange={(e) => s.setWorkspaceNightlyReindexEnabled(e.target.checked)}
               />
@@ -688,7 +688,7 @@ export function AdminInterfacesPlatformSection({ mode = "all" }: { mode?: "all" 
             <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
               <input
                 type="checkbox"
-                className="rounded border-surface-border"
+                className="rounded border-line"
                 checked={s.workspaceIndexOnAttachEnabled}
                 onChange={(e) => s.setWorkspaceIndexOnAttachEnabled(e.target.checked)}
               />

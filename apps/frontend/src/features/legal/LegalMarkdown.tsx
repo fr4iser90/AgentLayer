@@ -12,10 +12,10 @@ const mdClass = {
   a: "text-sky-400 underline hover:text-sky-300",
   code: "rounded bg-white/10 px-1 py-0.5 font-mono text-[0.9em] text-ink-primary",
   pre: "mb-3 overflow-x-auto rounded-lg bg-black/40 p-3 text-sm text-ink-primary",
-  blockquote: "mb-3 border-l-2 border-white/20 pl-3 text-ink-secondary",
+  blockquote: "mb-3 border-l-2 border-line-strong pl-3 text-ink-secondary",
   table: "my-3 w-full border-collapse text-sm",
-  th: "border border-white/10 bg-white/5 px-2 py-1 text-left text-ink-primary",
-  td: "border border-white/10 px-2 py-1 text-ink-primary",
+  th: "border border-line bg-white/5 px-2 py-1 text-left text-ink-primary",
+  td: "border border-line px-2 py-1 text-ink-primary",
 };
 
 export function LegalMarkdown(props: { markdown: string }) {

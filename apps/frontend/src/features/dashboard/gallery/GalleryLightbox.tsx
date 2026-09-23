@@ -99,7 +99,7 @@ export function GalleryLightbox(props: {
         </button>
       ) : null}
 
-      <footer className="shrink-0 border-t border-white/10 px-4 py-3 text-center sm:px-6">
+      <footer className="shrink-0 border-t border-line px-4 py-3 text-center sm:px-6">
         {current.caption ? (
           <p className="text-sm text-ink-primary">{current.caption}</p>
         ) : null}

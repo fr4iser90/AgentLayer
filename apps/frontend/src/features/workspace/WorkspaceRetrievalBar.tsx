@@ -35,7 +35,7 @@ function fmtIndexTime(iso: string | null | undefined, t: (key: string) => string
 function pill(on: boolean) {
   return on
     ? `rounded border border-emerald-500/40 bg-emerald-950/50 px-1.5 py-0.5 text-meta font-medium uppercase tracking-wide text-emerald-200/95`
-    : `rounded border border-white/15 bg-white/5 px-1.5 py-0.5 text-meta font-medium uppercase tracking-wide text-ink-muted`;
+    : `rounded border border-line-strong bg-white/5 px-1.5 py-0.5 text-meta font-medium uppercase tracking-wide text-ink-muted`;
 }
 
 function indexJobRunning(job: WorkspaceIndexJob | null | undefined): boolean {
@@ -259,7 +259,7 @@ export function WorkspaceRetrievalBar({
 
   return (
     <div
-      className={`rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-meta leading-snug text-ink-secondary ${className}`}
+      className={`rounded-lg border border-line bg-black/30 px-2.5 py-1.5 text-meta leading-snug text-ink-secondary ${className}`}
     >
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className="font-semibold uppercase tracking-wide text-ink-muted">{t("workspace:codeIndex")}</span>
@@ -326,7 +326,7 @@ export function WorkspaceRetrievalBar({
           </label>
           <select
             id={`idx-write-${workspace.id}`}
-            className="rounded border border-white/15 bg-field px-1.5 py-0.5 text-meta text-ink-primary"
+            className="rounded border border-line-strong bg-field px-1.5 py-0.5 text-meta text-ink-primary"
             disabled={busy !== null}
             value={workspace.index_on_write ?? ""}
             title={`Effective: ${indexOnWriteEffective}`}

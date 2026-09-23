@@ -23,7 +23,7 @@ function badgeClass(status: string): string {
   if (s === "fail" || s === "critical" || s === "vulnerable") {
     return "bg-red-600/25 text-red-200 border-red-500/30";
   }
-  return "bg-white/10 text-ink-muted border-white/10";
+  return "bg-white/10 text-ink-muted border-line";
 }
 
 function gridColsClass(n: number): string {
@@ -121,7 +121,7 @@ export function CardGridBlockBody(props: {
   const sectionTitle = block.props.title?.trim() || t("dashboard:cardGridFallback");
 
   return (
-    <section className="rounded-xl border border-surface-border bg-card p-4">
+    <section className="rounded-xl border border-line bg-card p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <span className="text-xs font-medium uppercase tracking-wide text-ink-muted">
           {sectionTitle}
@@ -131,7 +131,7 @@ export function CardGridBlockBody(props: {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={searchPlaceholder}
-            className="w-full min-w-[12rem] max-w-xs rounded-md border border-surface-border bg-field px-3 py-1.5 text-xs text-ink-primary outline-none focus:border-sky-500/50 sm:w-56"
+            className="w-full min-w-[12rem] max-w-xs rounded-md border border-line bg-field px-3 py-1.5 text-xs text-ink-primary outline-none focus:border-sky-500/50 sm:w-56"
           />
         ) : null}
       </div>
@@ -155,7 +155,7 @@ export function CardGridBlockBody(props: {
                 type="button"
                 disabled={!enableRowDetail}
                 className={[
-                  "dashboard-grid-no-drag flex min-h-[120px] flex-col rounded-xl border border-surface-border bg-gradient-to-br from-slate-900/90 to-black/60 p-4 text-left shadow-sm transition-colors",
+                  "dashboard-grid-no-drag flex min-h-[120px] flex-col rounded-xl border border-line bg-gradient-to-br from-slate-900/90 to-black/60 p-4 text-left shadow-sm transition-colors",
                   enableRowDetail ? "hover:border-sky-500/40 hover:bg-slate-900" : "cursor-default",
                 ].join(" ")}
                 onClick={() => {

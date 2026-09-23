@@ -396,7 +396,7 @@ export function AdminTools() {
     return (
       <li
         key={pid}
-        className="rounded-lg border border-surface-border bg-card p-3 text-xs text-ink-primary"
+        className="rounded-lg border border-line bg-card p-3 text-xs text-ink-primary"
       >
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1 space-y-2">
@@ -516,11 +516,11 @@ export function AdminTools() {
             {t("admin:toolsPolicyEnabled")}
           </label>
         </div>
-        <div className="mt-3 grid grid-cols-1 gap-3 border-t border-white/10 pt-3 sm:grid-cols-2">
+        <div className="mt-3 grid grid-cols-1 gap-3 border-t border-line pt-3 sm:grid-cols-2">
           <label className="flex min-w-0 flex-col gap-1 text-meta text-ink-muted">
             <span className="text-ink-muted">{t("admin:toolsPolicyMinRole")}</span>
             <select
-              className="w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-ink-primary"
+              className="w-full rounded-md border border-line bg-field px-2 py-1.5 text-xs text-ink-primary"
               value={pol.min_role}
               onChange={(e) =>
                 updatePolicy(pid, { min_role: e.target.value === "admin" ? "admin" : "user" })
@@ -536,7 +536,7 @@ export function AdminTools() {
             </span>
             <input
               type="text"
-              className="w-full rounded-md border border-surface-border bg-field px-2 py-1.5 font-mono text-xs text-ink-primary placeholder:text-neutral-500"
+              className="w-full rounded-md border border-line bg-field px-2 py-1.5 font-mono text-xs text-ink-primary placeholder:text-neutral-500"
               placeholder={t("admin:toolsPolicyTenantIdsPlaceholder")}
               value={tenantInputByPkg[pid] ?? ""}
               onChange={(e) => {
@@ -558,7 +558,7 @@ export function AdminTools() {
         <span className="text-ink-muted">{t("admin:toolsRegistryAssignUsers")}</span>
       </p>
 
-      <section className="mt-6 rounded-xl border border-surface-border bg-card p-4">
+      <section className="mt-6 rounded-xl border border-line bg-card p-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-sm font-semibold text-ink-primary">{t("admin:toolsImportTitle")}</h2>
@@ -571,7 +571,7 @@ export function AdminTools() {
           </label>
           <select
             id="tools-import-source-type"
-            className="w-full rounded-md border border-surface-border bg-field px-2 py-1.5 text-xs text-ink-primary sm:w-56"
+            className="w-full rounded-md border border-line bg-field px-2 py-1.5 text-xs text-ink-primary sm:w-56"
             value={importSourceType}
             onChange={(e) => setImportSourceType(e.target.value)}
           >
@@ -586,13 +586,13 @@ export function AdminTools() {
           <label className="flex flex-col gap-1 text-xs text-ink-muted">
             <span>{t("admin:toolsImportPaste")}</span>
             <textarea
-              className="min-h-40 rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-xs text-ink-primary placeholder:text-neutral-500"
+              className="min-h-40 rounded-md border border-line bg-field px-3 py-2 font-mono text-xs text-ink-primary placeholder:text-neutral-500"
               value={importMarkdown}
               onChange={(e) => setImportMarkdown(e.target.value)}
               placeholder={t("admin:toolsImportPastePlaceholder")}
             />
           </label>
-          <div className="rounded-md border border-white/10 bg-black/20 p-3 text-xs text-ink-muted">
+          <div className="rounded-md border border-line bg-black/20 p-3 text-xs text-ink-muted">
             <label className="block">
               <span>{t("admin:toolsImportUpload")}</span>
               <input
@@ -622,7 +622,7 @@ export function AdminTools() {
         {importMsg ? <p className="mt-3 text-sm text-ink-muted">{importMsg}</p> : null}
         {importResult ? (
           <div className="mt-4 space-y-3">
-            <div className="rounded-md border border-white/10 bg-black/20 p-3 text-xs text-ink-secondary">
+            <div className="rounded-md border border-line bg-black/20 p-3 text-xs text-ink-secondary">
               {t("admin:toolsImportDetected")}: <span className="font-mono text-ink-primary">{importResult.source_type}</span>{" "}
               <span className="text-ink-muted">
                 ({Math.round(importResult.source_type_confidence * 100)}%)
@@ -637,7 +637,7 @@ export function AdminTools() {
             </div>
             <div className="grid gap-3 lg:grid-cols-2">
               {importResult.candidates.map((c) => (
-                <article key={`${c.kind}:${c.name}`} className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-ink-primary">
+                <article key={`${c.kind}:${c.name}`} className="rounded-lg border border-line bg-black/20 p-3 text-xs text-ink-primary">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-sm font-semibold text-ink-primary">{c.name}</span>
                     <span className="rounded bg-sky-900/60 px-1.5 py-0.5 text-meta text-sky-100">{c.kind}</span>
@@ -697,8 +697,8 @@ export function AdminTools() {
       {loading ? (
         <p className="mt-8 text-sm text-ink-muted">{t("admin:toolsRegistryLoading")}</p>
       ) : (
-        <div className="mt-6 max-h-[min(72vh,calc(100dvh-11rem))] overflow-y-auto overscroll-contain rounded-lg border border-surface-border bg-black/20 pr-1">
-          <div className="flex flex-col divide-y divide-white/10">
+        <div className="mt-6 max-h-[min(72vh,calc(100dvh-11rem))] overflow-y-auto overscroll-contain rounded-lg border border-line bg-black/20 pr-1">
+          <div className="flex flex-col divide-y divide-line">
             {ADMIN_BUCKET_ORDER.map((bucket) => {
               const raw = groupedPackages[bucket] ?? [];
               const sectionPkgs = sortPackagesById(raw);

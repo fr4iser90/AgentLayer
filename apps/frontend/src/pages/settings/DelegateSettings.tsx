@@ -142,7 +142,7 @@ function LevelSelect({
       <span className="text-ink-muted">{label}</span>
       <select
         id={id}
-        className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+        className="mt-1 w-full max-w-xs rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary"
         value={value}
         onChange={(e) => onChange(e.target.value as Level)}
       >
@@ -266,7 +266,7 @@ function ConfigEditor({
         </label>
         <select
           id={`${idPrefix}-primary-goal`}
-          className="mt-1 w-full max-w-xs rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+          className="mt-1 w-full max-w-xs rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary"
           value={config.engineering.primary_goal}
           onChange={(e) =>
             onChange({
@@ -286,7 +286,7 @@ function ConfigEditor({
         </select>
         <p className="mt-3 text-xs text-ink-muted">{t("settings:delegatePrioritiesHelp")}</p>
         <textarea
-          className="mt-1 min-h-[72px] w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 font-mono text-xs text-ink-primary"
+          className="mt-1 min-h-[72px] w-full max-w-md rounded-md border border-line bg-field px-3 py-2 font-mono text-xs text-ink-primary"
           value={prioritiesText}
           onChange={(e) => {
             const priorities = e.target.value
@@ -363,7 +363,7 @@ function ConfigEditor({
         <h3 className="text-sm font-medium text-ink-primary">{t("settings:delegateSectionGoals")}</h3>
         <p className="mt-1 text-xs text-ink-muted">{t("settings:delegateGoalsHelp")}</p>
         <textarea
-          className="mt-2 min-h-[100px] w-full max-w-2xl rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+          className="mt-2 min-h-[100px] w-full max-w-2xl rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary"
           value={goalsText}
           onChange={(e) =>
             onChange({
@@ -517,7 +517,7 @@ export function DelegateSettings() {
 
       {msg ? <p className="mt-4 text-sm text-ink-secondary">{msg}</p> : null}
 
-      <section className="mt-8 rounded-lg border border-surface-border bg-card p-4">
+      <section className="mt-8 rounded-lg border border-line bg-card p-4">
         <h2 className="text-sm font-medium text-ink-primary">{t("settings:delegateGlobalTitle")}</h2>
         <ConfigEditor config={globalConfig} onChange={setGlobalConfig} idPrefix="global" />
         <label className="mt-4 block text-sm text-ink-primary" htmlFor="delegate-notes">
@@ -525,7 +525,7 @@ export function DelegateSettings() {
         </label>
         <textarea
           id="delegate-notes"
-          className="mt-1 min-h-[72px] w-full max-w-2xl rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+          className="mt-1 min-h-[72px] w-full max-w-2xl rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder={t("settings:delegateNotesPlaceholder")}
@@ -540,7 +540,7 @@ export function DelegateSettings() {
         </button>
       </section>
 
-      <section className="mt-8 rounded-lg border border-surface-border bg-card p-4">
+      <section className="mt-8 rounded-lg border border-line bg-card p-4">
         <h2 className="text-sm font-medium text-ink-primary">{t("settings:delegateWorkspaceTitle")}</h2>
         <p className="mt-1 text-xs text-ink-muted">{t("settings:delegateWorkspaceHelp")}</p>
         {workspaces.length === 0 ? (
@@ -552,7 +552,7 @@ export function DelegateSettings() {
             </label>
             <select
               id="delegate-ws"
-              className="mt-1 w-full max-w-md rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+              className="mt-1 w-full max-w-md rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary"
               value={workspaceId}
               onChange={(e) => setWorkspaceId(e.target.value)}
             >

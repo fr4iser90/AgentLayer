@@ -34,7 +34,7 @@ function Toggle(props: {
   return (
     <label
       className={[
-        "flex cursor-pointer items-start gap-3 rounded-lg border border-surface-border px-3 py-2.5",
+        "flex cursor-pointer items-start gap-3 rounded-lg border border-line px-3 py-2.5",
         props.disabled ? "cursor-not-allowed opacity-50" : "hover:bg-white/[0.03]",
       ].join(" ")}
     >
@@ -165,7 +165,7 @@ export function NotificationsSettings() {
           onChange={(v) => setPrefs((p) => ({ ...p, telegram_enabled: v }))}
         />
         {prefs.telegram_enabled ? (
-          <div className="ml-2 space-y-2 border-l border-white/10 pl-3">
+          <div className="ml-2 space-y-2 border-l border-line pl-3">
             <Toggle
               label={t("settings:notificationsSchedules")}
               checked={prefs.telegram_schedules}
@@ -198,7 +198,7 @@ export function NotificationsSettings() {
           onChange={(v) => setPrefs((p) => ({ ...p, discord_enabled: v }))}
         />
         {prefs.discord_enabled ? (
-          <div className="ml-2 space-y-2 border-l border-white/10 pl-3">
+          <div className="ml-2 space-y-2 border-l border-line pl-3">
             <Toggle
               label={t("settings:notificationsSchedules")}
               checked={prefs.discord_schedules}
@@ -233,7 +233,7 @@ export function NotificationsSettings() {
         </button>
         <button
           type="button"
-          className="rounded-lg border border-surface-border px-4 py-2 text-sm text-ink-primary hover:bg-white/5"
+          className="rounded-lg border border-line px-4 py-2 text-sm text-ink-primary hover:bg-white/5"
           onClick={() => void load()}
         >
           {t("settings:reloadFromServer")}

@@ -49,7 +49,7 @@ export function DashboardLayoutProposalInline({
 
   if (loading) {
     return (
-      <div className="mt-2 rounded-lg border border-white/10 bg-black/30 px-2 py-3 text-meta text-ink-muted">
+      <div className="mt-2 rounded-lg border border-line bg-black/30 px-2 py-3 text-meta text-ink-muted">
         {t("dashboard:layoutProposalsLoading")}
       </div>
     );
@@ -81,7 +81,7 @@ export function DashboardLayoutProposalInline({
               key={p.id}
               className="overflow-hidden rounded-lg border border-emerald-500/25 bg-[#0d1210]"
             >
-              <div className="border-b border-white/5 px-2 py-1.5">
+              <div className="border-b border-line-subtle px-2 py-1.5">
                 <div className="text-meta font-semibold text-ink-primary">{p.title}</div>
                 {p.summary ? (
                   <div className="mt-0.5 text-meta leading-snug text-ink-muted">{p.summary}</div>
@@ -110,10 +110,10 @@ export function DashboardLayoutProposalInline({
                   </div>
                 </div>
               </button>
-              <div className="flex items-center justify-end gap-1.5 border-t border-white/5 px-2 py-1.5">
+              <div className="flex items-center justify-end gap-1.5 border-t border-line-subtle px-2 py-1.5">
                 <button
                   type="button"
-                  className="rounded border border-surface-border px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5"
+                  className="rounded border border-line px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5"
                   onClick={() => onEnlarge(p.id)}
                 >
                   {t("dashboard:layoutProposalsEnlargeShort")}

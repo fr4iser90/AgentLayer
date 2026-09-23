@@ -80,7 +80,7 @@ export function OrgTeamPage() {
       <h1 className="text-xl font-semibold text-ink-primary">{t("org:teamPageTitle")}</h1>
       <p className="mt-2 text-sm text-ink-muted">{t("org:teamPageIntro")}</p>
 
-      <section className="mt-8 rounded-xl border border-surface-border bg-card p-5">
+      <section className="mt-8 rounded-xl border border-line bg-card p-5">
         <h2 className="text-sm font-medium text-ink-primary">{t("org:teamDepartments")}</h2>
         <ul className="mt-3 space-y-1 text-sm text-ink-secondary">
           {departments.map((d) => (
@@ -91,7 +91,7 @@ export function OrgTeamPage() {
         </ul>
       </section>
 
-      <section className="mt-6 rounded-xl border border-surface-border bg-card p-5">
+      <section className="mt-6 rounded-xl border border-line bg-card p-5">
         <h2 className="text-sm font-medium text-ink-primary">{t("org:teamProfessionRoles")}</h2>
         <ul className="mt-3 space-y-1 text-sm text-ink-secondary">
           {roles.map((r) => (
@@ -103,7 +103,7 @@ export function OrgTeamPage() {
         </ul>
       </section>
 
-      <section className="mt-6 rounded-xl border border-surface-border bg-card p-5">
+      <section className="mt-6 rounded-xl border border-line bg-card p-5">
         <h2 className="text-sm font-medium text-ink-primary">{t("org:teamAssignments")}</h2>
         <ul className="mt-3 space-y-2 text-sm text-ink-secondary">
           {assignments.map((a) => (
@@ -116,13 +116,13 @@ export function OrgTeamPage() {
 
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <input
-            className="rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+            className="rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary"
             placeholder={t("org:teamUserIdPlaceholder")}
             value={assignUserId}
             onChange={(e) => setAssignUserId(e.target.value)}
           />
           <select
-            className="rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+            className="rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary"
             value={assignRoleId}
             onChange={(e) => setAssignRoleId(e.target.value)}
           >
@@ -134,7 +134,7 @@ export function OrgTeamPage() {
             ))}
           </select>
           <select
-            className="rounded-md border border-surface-border bg-field px-3 py-2 text-sm text-ink-primary"
+            className="rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary"
             value={assignDeptId}
             onChange={(e) => setAssignDeptId(e.target.value)}
           >
@@ -155,7 +155,7 @@ export function OrgTeamPage() {
         </button>
       </section>
 
-      <section className="mt-6 rounded-xl border border-surface-border bg-card p-5">
+      <section className="mt-6 rounded-xl border border-line bg-card p-5">
         <h2 className="text-sm font-medium text-ink-primary">{t("org:teamPolicyPreview")}</h2>
         <pre className="mt-3 overflow-x-auto rounded bg-black/30 p-3 text-xs text-ink-secondary">
           {policyPreview}

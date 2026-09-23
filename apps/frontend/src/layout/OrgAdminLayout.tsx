@@ -6,7 +6,7 @@ import { canManageWorkspaceGrants } from "../pages/admin/accessGating";
 
 const item =
   "block rounded-lg border border-transparent px-3 py-2 text-sm transition-colors";
-const itemActive = "border-white/10 bg-white/10 text-ink-primary";
+const itemActive = "border-line bg-white/10 text-ink-primary";
 const itemIdle = "text-ink-muted hover:bg-white/5 hover:text-neutral-200";
 
 function NavGroup({ label, children }: { label: string; children: ReactNode }) {
@@ -26,7 +26,7 @@ export function OrgAdminLayout() {
   const { user } = useAuth();
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-canvas md:flex-row">
-      <aside className="shrink-0 border-b border-surface-border bg-panel px-3 py-4 md:w-56 md:border-b-0 md:border-r">
+      <aside className="shrink-0 border-b border-line bg-panel px-3 py-4 md:w-56 md:border-b-0 md:border-r">
         <p className="mb-1 px-2 text-meta font-medium uppercase tracking-wide text-ink-muted">
           {t("org:sidebarTitle")}
         </p>
