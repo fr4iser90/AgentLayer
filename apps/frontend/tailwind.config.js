@@ -221,6 +221,22 @@ export default {
         fast: "110ms",
         normal: "170ms",
       },
+
+      // A tooltip mounts on open, so it needs a keyframe rather than a
+      // transition — there is no previous state to animate from. Kept at the
+      // `fast` duration and the `standard` curve so it matches the rest of
+      // the motion tokens, and the global prefers-reduced-motion rule in
+      // index.css collapses it to an instant appearance without any
+      // per-component handling.
+      keyframes: {
+        "tooltip-in": {
+          from: { opacity: "0", transform: "translateY(2px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+      },
+      animation: {
+        "tooltip-in": "tooltip-in 110ms cubic-bezier(0.2, 0.7, 0.3, 1)",
+      },
     },
   },
   plugins: [],
