@@ -597,6 +597,7 @@ function PackageDrawer({
           </div>
           <button
             type="button"
+            aria-label={t("settings:close")}
             className="rounded-card px-base py-tight text-sm text-ink-muted hover:bg-white/10 hover:text-white"
             onClick={onClose}
           >
