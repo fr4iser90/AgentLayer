@@ -147,7 +147,7 @@ export function StudioPage() {
 
   const presetButtonClass = (runKey: string, extra = "") =>
     [
-      "w-full rounded-lg border px-3 py-2 text-left text-sm",
+      "w-full rounded-card border px-3 py-2 text-left text-sm",
       selectedRunKey === runKey
         ? "border-white/30 bg-white/10 text-ink-primary"
         : "border-transparent text-ink-muted hover:bg-white/5",
@@ -200,7 +200,7 @@ export function StudioPage() {
         <div className="flex flex-wrap items-start gap-2">
           <button
             type="button"
-            className="shrink-0 rounded-lg border border-line bg-black/30 px-2.5 py-1.5 text-meta font-medium text-ink-secondary hover:bg-white/10 md:hidden"
+            className="shrink-0 rounded-card border border-line bg-black/30 px-2.5 py-1.5 text-meta font-medium text-ink-secondary hover:bg-white/10 md:hidden"
             aria-expanded={presetSidebarOpen}
             aria-label={t("common:studio.openPresetsSidebar")}
             onClick={() => setPresetSidebarOpen(true)}
@@ -214,14 +214,14 @@ export function StudioPage() {
         </div>
 
         {catalogError ? (
-          <p className="mt-4 rounded-lg border border-red-900/50 bg-red-950/40 px-3 py-2 text-sm text-red-200">
+          <p className="mt-4 rounded-card border border-red-900/50 bg-red-950/40 px-3 py-2 text-sm text-red-200">
             {catalogError}
           </p>
         ) : null}
 
         {catalog && !catalogError ? (
           <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
-            <span className="rounded-full bg-emerald-950/80 px-2 py-0.5 text-emerald-300">
+            <span className="rounded-pill bg-emerald-950/80 px-2 py-0.5 text-emerald-300">
               {t("common:studio.catalogFromServer")}
             </span>
             <span className="text-ink-muted">v{catalog.studio_version ?? "?"}</span>
@@ -265,7 +265,7 @@ export function StudioPage() {
                 type="button"
                 disabled={jobLoading}
                 onClick={() => void runJob()}
-                className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-black hover:bg-neutral-200 disabled:opacity-50"
+                className="rounded-sheet bg-white px-5 py-2.5 text-sm font-semibold text-black hover:bg-neutral-200 disabled:opacity-50"
               >
                 {jobLoading ? t("common:studio.running") : t("common:studio.run")}
               </button>
@@ -273,7 +273,7 @@ export function StudioPage() {
             </div>
 
             {jobError ? (
-              <p className="mt-4 rounded-lg border border-red-900/50 bg-red-950/40 px-3 py-2 text-sm text-red-200">
+              <p className="mt-4 rounded-card border border-red-900/50 bg-red-950/40 px-3 py-2 text-sm text-red-200">
                 {jobError}
               </p>
             ) : null}
@@ -284,11 +284,11 @@ export function StudioPage() {
                 <img
                   src={previewUrl}
                   alt={t("common:studio.generatedImageAlt")}
-                  className="max-h-[480px] max-w-full rounded-lg border border-line"
+                  className="max-h-[480px] max-w-full rounded-card border border-line"
                 />
               </div>
             ) : jobResult ? (
-              <pre className="mt-4 max-h-64 overflow-auto rounded-lg border border-line bg-[#111] p-3 text-xs text-ink-secondary">
+              <pre className="mt-4 max-h-64 overflow-auto rounded-card border border-line bg-[#111] p-3 text-xs text-ink-secondary">
                 {JSON.stringify(jobResult, null, 2)}
               </pre>
             ) : null}

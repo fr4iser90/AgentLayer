@@ -5,7 +5,7 @@ import { useAuth } from "../auth/AuthContext";
 import { canManageWorkspaceGrants } from "../pages/admin/accessGating";
 
 const item =
-  "block rounded-lg border border-transparent px-3 py-2 text-sm transition-colors";
+  "block rounded-card border border-transparent px-3 py-2 text-sm transition-colors";
 const itemActive = "border-line bg-white/10 text-ink-primary";
 const itemIdle = "text-ink-muted hover:bg-white/5 hover:text-neutral-200";
 

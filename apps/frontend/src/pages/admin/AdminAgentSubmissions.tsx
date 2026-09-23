@@ -175,7 +175,7 @@ export function AdminAgentSubmissions() {
           </span>
           <select
             id="agents-submissions-filter"
-            className="rounded-md border border-line bg-field px-2 py-1.5 text-xs text-ink-primary"
+            className="rounded-tile border border-line bg-field px-2 py-1.5 text-xs text-ink-primary"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
           >
@@ -187,7 +187,7 @@ export function AdminAgentSubmissions() {
         </label>
         <button
           type="button"
-          className="rounded-md bg-white/10 px-4 py-1.5 text-xs font-medium text-ink-primary hover:bg-white/15 disabled:opacity-50"
+          className="rounded-tile bg-white/10 px-4 py-1.5 text-xs font-medium text-ink-primary hover:bg-white/15 disabled:opacity-50"
           disabled={loading}
           onClick={() => void loadList()}
         >
@@ -209,7 +209,7 @@ export function AdminAgentSubmissions() {
                 <button
                   type="button"
                   onClick={() => setSelectedId(s.id)}
-                  className={`w-full rounded-xl border px-3 py-3 text-left transition-colors ${
+                  className={`w-full rounded-sheet border px-3 py-3 text-left transition-colors ${
                     selectedId === s.id
                       ? "border-sky-500/40 bg-sky-950/20"
                       : "border-line bg-card hover:border-line-strong"
@@ -217,10 +217,10 @@ export function AdminAgentSubmissions() {
                 >
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-ink-primary">{s.title || s.agent_id}</span>
-                    <span className={`rounded px-1.5 py-0.5 text-meta ${riskClassName(s.risk_level)}`}>
+                    <span className={`rounded-tile px-1.5 py-0.5 text-meta ${riskClassName(s.risk_level)}`}>
                       {t(`admin:agentSubmissionsRisk${s.risk_level.charAt(0).toUpperCase()}${s.risk_level.slice(1)}`)}
                     </span>
-                    <span className={`rounded px-1.5 py-0.5 text-meta ${statusClassName(s.status)}`}>
+                    <span className={`rounded-tile px-1.5 py-0.5 text-meta ${statusClassName(s.status)}`}>
                       {t(`admin:agentSubmissionsStatus${s.status.charAt(0).toUpperCase()}${s.status.slice(1)}`)}
                     </span>
                   </div>
@@ -237,7 +237,7 @@ export function AdminAgentSubmissions() {
           </ul>
 
           {selected ? (
-            <div className="rounded-xl border border-line bg-card p-4">
+            <div className="rounded-sheet border border-line bg-card p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-semibold text-ink-primary">
@@ -246,7 +246,7 @@ export function AdminAgentSubmissions() {
                   </h2>
                   <p className="mt-1 text-xs text-ink-muted">{selected.description || "—"}</p>
                 </div>
-                <span className={`rounded px-2 py-1 text-xs ${statusClassName(selected.status)}`}>
+                <span className={`rounded-tile px-2 py-1 text-xs ${statusClassName(selected.status)}`}>
                   {t(`admin:agentSubmissionsStatus${selected.status.charAt(0).toUpperCase()}${selected.status.slice(1)}`)}
                 </span>
               </div>
@@ -255,7 +255,7 @@ export function AdminAgentSubmissions() {
                 <div>
                   <dt className="text-ink-muted">{t("admin:agentSubmissionsRisk")}</dt>
                   <dd className="mt-1">
-                    <span className={`rounded px-2 py-0.5 text-xs ${riskClassName(selected.risk_level)}`}>
+                    <span className={`rounded-tile px-2 py-0.5 text-xs ${riskClassName(selected.risk_level)}`}>
                       {t(`admin:agentSubmissionsRisk${selected.risk_level.charAt(0).toUpperCase()}${selected.risk_level.slice(1)}`)}
                     </span>
                   </dd>
@@ -284,7 +284,7 @@ export function AdminAgentSubmissions() {
                 <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">
                   {t("admin:agentSubmissionsSystemPrompt")}
                 </p>
-                <pre className="mt-1 max-h-40 overflow-auto rounded bg-black/40 p-2 text-meta text-ink-secondary whitespace-pre-wrap">
+                <pre className="mt-1 max-h-40 overflow-auto rounded-tile bg-black/40 p-2 text-meta text-ink-secondary whitespace-pre-wrap">
                   {selected.system_prompt || "—"}
                 </pre>
               </div>
@@ -294,7 +294,7 @@ export function AdminAgentSubmissions() {
                   {t("admin:agentSubmissionsYaml")}
                 </p>
                 {preview ? (
-                  <pre className="mt-1 max-h-56 overflow-auto rounded bg-black/40 p-2 text-meta text-ink-secondary">
+                  <pre className="mt-1 max-h-56 overflow-auto rounded-tile bg-black/40 p-2 text-meta text-ink-secondary">
                     {preview.yaml_text}
                   </pre>
                 ) : (
@@ -331,7 +331,7 @@ export function AdminAgentSubmissions() {
                   </label>
                   <textarea
                     id="agents-submissions-notes"
-                    className="mt-1 min-h-20 w-full rounded-md border border-line bg-field px-3 py-2 text-xs text-ink-primary placeholder:text-neutral-500"
+                    className="mt-1 min-h-20 w-full rounded-tile border border-line bg-field px-3 py-2 text-xs text-ink-primary placeholder:text-neutral-500"
                     value={reviewNotes}
                     onChange={(e) => setReviewNotes(e.target.value)}
                     placeholder={t("admin:agentSubmissionsReviewNotesPlaceholder")}
@@ -339,14 +339,14 @@ export function AdminAgentSubmissions() {
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
                       type="button"
-                      className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-emerald-500 disabled:opacity-50"
+                      className="rounded-tile bg-emerald-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-emerald-500 disabled:opacity-50"
                       onClick={() => setConfirm({ decision: "approve" })}
                     >
                       {t("admin:agentSubmissionsApprove")}
                     </button>
                     <button
                       type="button"
-                      className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-red-500 disabled:opacity-50"
+                      className="rounded-tile bg-red-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-red-500 disabled:opacity-50"
                       onClick={() => setConfirm({ decision: "reject" })}
                     >
                       {t("admin:agentSubmissionsReject")}

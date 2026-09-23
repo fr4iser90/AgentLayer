@@ -76,7 +76,7 @@ export function MediaMiniPlayer() {
           }
           aria-hidden={!embedExpanded}
         >
-          <div className="mx-auto aspect-video max-h-36 max-w-md overflow-hidden rounded-md">
+          <div className="mx-auto aspect-video max-h-36 max-w-md overflow-hidden rounded-tile">
             <iframe
               title={label}
               src={media.embedUrl}
@@ -91,7 +91,7 @@ export function MediaMiniPlayer() {
         <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-3">
           <button
             type="button"
-            className={`shrink-0 rounded-md px-2 py-1.5 text-xs font-medium ${
+            className={`shrink-0 rounded-tile px-2 py-1.5 text-xs font-medium ${
               media.panelOpen
                 ? "bg-sky-600/50 text-ink-primary"
                 : "border border-sky-500/30 text-sky-100 hover:bg-sky-900/40"
@@ -131,7 +131,7 @@ export function MediaMiniPlayer() {
             {isEmbed && media.embedUrl ? (
               <button
                 type="button"
-                className="rounded-md border border-line px-2 py-1.5 text-xs text-sky-100 hover:bg-white/10"
+                className="rounded-tile border border-line px-2 py-1.5 text-xs text-sky-100 hover:bg-white/10"
                 onClick={() => setEmbedExpanded((open) => !open)}
                 aria-expanded={embedExpanded}
                 aria-label={
@@ -147,7 +147,7 @@ export function MediaMiniPlayer() {
             ) : null}
             <button
               type="button"
-              className="rounded-md px-2 py-1.5 text-xs text-ink-primary hover:bg-white/10 disabled:opacity-40"
+              className="rounded-tile px-2 py-1.5 text-xs text-ink-primary hover:bg-white/10 disabled:opacity-40"
               onClick={media.playPrev}
               disabled={!canPlay}
               aria-label={t("dashboard:mediaMiniPlayerPrev")}
@@ -156,7 +156,7 @@ export function MediaMiniPlayer() {
             </button>
             <button
               type="button"
-              className="rounded-md bg-white/15 px-3 py-1.5 text-xs font-medium text-ink-primary hover:bg-white/20 disabled:opacity-40"
+              className="rounded-tile bg-white/15 px-3 py-1.5 text-xs font-medium text-ink-primary hover:bg-white/20 disabled:opacity-40"
               onClick={media.togglePause}
               disabled={!canPlay || (isPersistentAudio && media.streamLoading)}
               aria-label={
@@ -169,7 +169,7 @@ export function MediaMiniPlayer() {
             </button>
             <button
               type="button"
-              className="rounded-md px-2 py-1.5 text-xs text-ink-primary hover:bg-white/10 disabled:opacity-40"
+              className="rounded-tile px-2 py-1.5 text-xs text-ink-primary hover:bg-white/10 disabled:opacity-40"
               onClick={media.playNext}
               disabled={!canPlay}
               aria-label={t("dashboard:mediaMiniPlayerNext")}
@@ -182,14 +182,14 @@ export function MediaMiniPlayer() {
             {dashboardHref ? (
               <Link
                 to={dashboardHref}
-                className="rounded-md border border-line px-2 py-1 text-meta text-sky-100 hover:bg-white/5"
+                className="rounded-tile border border-line px-2 py-1 text-meta text-sky-100 hover:bg-white/5"
               >
                 {t("dashboard:mediaMiniPlayerOpenDashboard")}
               </Link>
             ) : null}
             <button
               type="button"
-              className="rounded-md px-2 py-1 text-meta text-ink-muted hover:bg-white/5 hover:text-neutral-200 disabled:opacity-40"
+              className="rounded-tile px-2 py-1 text-meta text-ink-muted hover:bg-white/5 hover:text-neutral-200 disabled:opacity-40"
               onClick={media.stop}
               disabled={!hasTrack}
               aria-label={t("dashboard:mediaMiniPlayerStop")}

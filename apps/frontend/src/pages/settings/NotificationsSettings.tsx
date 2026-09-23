@@ -34,7 +34,7 @@ function Toggle(props: {
   return (
     <label
       className={[
-        "flex cursor-pointer items-start gap-3 rounded-lg border border-line px-3 py-2.5",
+        "flex cursor-pointer items-start gap-3 rounded-card border border-line px-3 py-2.5",
         props.disabled ? "cursor-not-allowed opacity-50" : "hover:bg-white/[0.03]",
       ].join(" ")}
     >
@@ -130,12 +130,12 @@ export function NotificationsSettings() {
       </div>
 
       {error ? (
-        <div className="rounded-lg border border-red-500/40 bg-red-950/30 px-3 py-2 text-sm text-red-200">
+        <div className="rounded-card border border-red-500/40 bg-red-950/30 px-3 py-2 text-sm text-red-200">
           {error}
         </div>
       ) : null}
       {saved ? (
-        <div className="rounded-lg border border-emerald-500/30 bg-emerald-950/20 px-3 py-2 text-sm text-emerald-200">
+        <div className="rounded-card border border-emerald-500/30 bg-emerald-950/20 px-3 py-2 text-sm text-emerald-200">
           {t("settings:notificationsSaved")}
         </div>
       ) : null}
@@ -226,14 +226,14 @@ export function NotificationsSettings() {
         <button
           type="button"
           disabled={saving}
-          className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+          className="rounded-card bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
           onClick={() => void save()}
         >
           {saving ? t("settings:notificationsSaving") : t("settings:notificationsSave")}
         </button>
         <button
           type="button"
-          className="rounded-lg border border-line px-4 py-2 text-sm text-ink-primary hover:bg-white/5"
+          className="rounded-card border border-line px-4 py-2 text-sm text-ink-primary hover:bg-white/5"
           onClick={() => void load()}
         >
           {t("settings:reloadFromServer")}

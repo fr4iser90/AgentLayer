@@ -76,7 +76,7 @@ export function DashboardEmbeddedThreadMenu({
         <ul
           id={menuId}
           role="listbox"
-          className="absolute left-0 top-full z-30 mt-1 max-h-[min(240px,40vh)] w-[min(280px,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-line bg-[#141414] py-1 shadow-xl"
+          className="absolute left-0 top-full z-30 mt-1 max-h-[min(240px,40vh)] w-[min(280px,calc(100vw-2rem))] overflow-y-auto rounded-card border border-line bg-[#141414] py-1 shadow-xl"
         >
           {!readOnly ? (
             <li role="option" aria-selected={!activeThreadId}>

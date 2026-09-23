@@ -32,7 +32,7 @@ export function UserMenu() {
     <div className="relative" ref={rootRef}>
       <button
         type="button"
-        className="flex h-9 w-9 items-center justify-center rounded-full outline-none ring-sky-500/40 transition-transform duration-fast ease-standard hover:scale-105 focus-visible:ring-2"
+        className="flex h-9 w-9 items-center justify-center rounded-pill outline-none ring-sky-500/40 transition-transform duration-fast ease-standard hover:scale-105 focus-visible:ring-2"
         aria-expanded={open}
         aria-haspopup="menu"
         title={email || t("userMenu.account")}
@@ -43,7 +43,7 @@ export function UserMenu() {
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 z-50 mt-1 min-w-[12rem] rounded-lg border border-line bg-[#1a1a1a] py-1 shadow-xl"
+          className="absolute right-0 z-50 mt-1 min-w-[12rem] rounded-card border border-line bg-[#1a1a1a] py-1 shadow-xl"
         >
           {email ? (
             <p className="truncate border-b border-line px-3 py-2 text-xs text-ink-muted" title={email}>
@@ -91,7 +91,7 @@ export function UserMenu() {
                     key={lng}
                     type="button"
                     className={[
-                      "rounded px-2 py-1 text-xs",
+                      "rounded-tile px-2 py-1 text-xs",
                       active
                         ? "bg-white/15 text-ink-primary"
                         : "text-ink-muted hover:bg-white/10 hover:text-neutral-200",

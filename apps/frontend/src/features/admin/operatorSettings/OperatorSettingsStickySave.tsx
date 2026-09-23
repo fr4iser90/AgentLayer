@@ -16,7 +16,7 @@ export function OperatorSettingsStickySave() {
         </div>
         <button
           type="button"
-          className="shrink-0 rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500"
+          className="shrink-0 rounded-tile bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500"
           onClick={() => void save()}
         >
           {t("admin:save")}

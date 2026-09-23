@@ -37,7 +37,7 @@ function GoalActionButtons({
       {paused ? (
         <button
           type="button"
-          className="rounded px-1.5 py-0.5 text-xs text-amber-100 hover:bg-white/10 disabled:opacity-40"
+          className="rounded-tile px-1.5 py-0.5 text-xs text-amber-100 hover:bg-white/10 disabled:opacity-40"
           disabled={disabled}
           onClick={onResume}
           title={t("chat:goalResume")}
@@ -47,7 +47,7 @@ function GoalActionButtons({
       ) : (
         <button
           type="button"
-          className="rounded px-1.5 py-0.5 text-xs text-amber-100 hover:bg-white/10 disabled:opacity-40"
+          className="rounded-tile px-1.5 py-0.5 text-xs text-amber-100 hover:bg-white/10 disabled:opacity-40"
           disabled={disabled || blocked}
           onClick={onPause}
           title={t("chat:goalPause")}
@@ -57,7 +57,7 @@ function GoalActionButtons({
       )}
       <button
         type="button"
-        className="rounded px-1.5 py-0.5 text-xs text-amber-100 hover:bg-white/10 disabled:opacity-40"
+        className="rounded-tile px-1.5 py-0.5 text-xs text-amber-100 hover:bg-white/10 disabled:opacity-40"
         disabled={disabled}
         onClick={onEdit}
         title={t("chat:goalEdit")}
@@ -66,7 +66,7 @@ function GoalActionButtons({
       </button>
       <button
         type="button"
-        className="rounded px-1.5 py-0.5 text-xs text-rose-200 hover:bg-white/10 disabled:opacity-40"
+        className="rounded-tile px-1.5 py-0.5 text-xs text-rose-200 hover:bg-white/10 disabled:opacity-40"
         disabled={disabled}
         onClick={onClear}
         title={t("chat:goalClear")}
@@ -85,7 +85,7 @@ export function OngoingGoalBar(props: GoalActions) {
   const paused = goal.phase === "paused";
   const blocked = goal.phase === "blocked";
   return (
-    <div className="mb-2 flex items-center gap-2 rounded-lg border border-amber-500/25 bg-amber-950/30 px-3 py-2">
+    <div className="mb-2 flex items-center gap-2 rounded-card border border-amber-500/25 bg-amber-950/30 px-3 py-2">
       <span className="text-amber-200/90" aria-hidden>
         ◎
       </span>
@@ -113,7 +113,7 @@ export function PlanModeBanner({ active }: { active: boolean }) {
   const { t } = useTranslation(["chat"]);
   if (!active) return null;
   return (
-    <div className="mb-2 rounded-lg border border-sky-500/30 bg-sky-950/25 px-3 py-1.5 text-xs text-sky-100/90">
+    <div className="mb-2 rounded-card border border-sky-500/30 bg-sky-950/25 px-3 py-1.5 text-xs text-sky-100/90">
       {t("chat:planModeActive")}
     </div>
   );
@@ -147,7 +147,7 @@ export function SessionGoalTodosStrip({
       : null;
 
   return (
-    <div className="mb-2 overflow-hidden rounded-lg border border-amber-500/25 bg-amber-950/25">
+    <div className="mb-2 overflow-hidden rounded-card border border-amber-500/25 bg-amber-950/25">
       {liveGoal ? (
         <div className="flex items-start gap-2 border-b border-amber-500/15 px-3 py-2">
           <span className="mt-0.5 text-amber-200/90" aria-hidden>
@@ -228,7 +228,7 @@ export function ConversationTodosPanel({ todos }: { todos: ConversationTodo[] })
   const inProg = todos.filter((x) => x.status === "in_progress").length;
   const done = todos.filter((x) => x.status === "completed").length;
   return (
-    <div className="mt-2 rounded-lg border border-line bg-black/25 px-2.5 py-2">
+    <div className="mt-2 rounded-card border border-line bg-black/25 px-2.5 py-2">
       <div className="mb-1.5 text-meta font-semibold uppercase tracking-wide text-ink-muted">
         {t("chat:sessionTodosHeading")} · {inProg} {t("chat:sessionTodosInProgress")} · {pending}{" "}
         {t("chat:sessionTodosPending")}

@@ -163,7 +163,7 @@ export function AgentSettings() {
   }
 
   const input =
-    "mt-1 block w-full rounded-md border border-line bg-black/25 px-3 py-2 text-sm text-ink-primary placeholder:text-neutral-600";
+    "mt-1 block w-full rounded-tile border border-line bg-black/25 px-3 py-2 text-sm text-ink-primary placeholder:text-neutral-600";
   const label = "block text-xs text-ink-muted";
 
   return (
@@ -191,13 +191,13 @@ export function AgentSettings() {
         </p>
       ) : null}
 
-      <section className="rounded-xl border border-line bg-black/20 p-5">
+      <section className="rounded-sheet border border-line bg-black/20 p-5">
         <h2 className="text-sm font-medium text-ink-primary">{t("settings:showReasoningTitle")}</h2>
         <p className="mt-1 text-xs text-ink-muted">{t("settings:showReasoningHelp")}</p>
         <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
           <input
             type="checkbox"
-            className="h-4 w-4 rounded border-line bg-field"
+            className="h-4 w-4 rounded-tile border-line bg-field"
             checked={showReasoning}
             onChange={(e) => {
               const on = e.target.checked;
@@ -209,7 +209,7 @@ export function AgentSettings() {
         </label>
       </section>
 
-      <section className="rounded-xl border border-line bg-card p-5">
+      <section className="rounded-sheet border border-line bg-card p-5">
         <h2 className="text-sm font-medium text-ink-primary">{t("settings:personaTitle")}</h2>
         <p className="mt-1 text-xs text-ink-muted">
           {t("settings:personaHelp")}
@@ -232,7 +232,7 @@ export function AgentSettings() {
             <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
               <input
                 type="checkbox"
-                className="h-4 w-4 rounded border-line bg-field"
+                className="h-4 w-4 rounded-tile border-line bg-field"
                 checked={injectPersona}
                 onChange={(e) => setInjectPersona(e.target.checked)}
               />
@@ -241,7 +241,7 @@ export function AgentSettings() {
             <button
               type="button"
               disabled={savingPersona}
-              className="mt-4 rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-violet-500 disabled:opacity-50"
+              className="mt-4 rounded-tile bg-violet-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-violet-500 disabled:opacity-50"
               onClick={() => void savePersona()}
             >
               {savingPersona ? t("settings:saving") : t("settings:savePersona")}
@@ -250,7 +250,7 @@ export function AgentSettings() {
         )}
       </section>
 
-      <section className="rounded-xl border border-line bg-black/20 p-5">
+      <section className="rounded-sheet border border-line bg-black/20 p-5">
         <h2 className="text-sm font-medium text-ink-primary">{t("settings:structuredProfileTitle")}</h2>
         <p className="mt-1 text-xs text-ink-muted">
           {t("settings:structuredProfileSubtitle")}
@@ -330,7 +330,7 @@ export function AgentSettings() {
             <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-primary sm:col-span-2">
               <input
                 type="checkbox"
-                className="h-4 w-4 rounded border-line bg-field"
+                className="h-4 w-4 rounded-tile border-line bg-field"
                 checked={injectStructured}
                 onChange={(e) => setInjectStructured(e.target.checked)}
               />
@@ -339,7 +339,7 @@ export function AgentSettings() {
             <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-primary sm:col-span-2">
               <input
                 type="checkbox"
-                className="h-4 w-4 rounded border-line bg-field"
+                className="h-4 w-4 rounded-tile border-line bg-field"
                 checked={proactiveMode}
                 onChange={(e) => setProactiveMode(e.target.checked)}
               />
@@ -349,7 +349,7 @@ export function AgentSettings() {
               <button
                 type="button"
                 disabled={savingProfile}
-                className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+                className="rounded-tile bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
                 onClick={() => void saveProfile()}
               >
                 {savingProfile ? t("settings:saving") : t("settings:saveProfile")}

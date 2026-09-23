@@ -4,7 +4,7 @@ import { OperatorSettingsProvider } from "../features/admin/operatorSettings/Ope
 import { OperatorSettingsStickySave } from "../features/admin/operatorSettings/OperatorSettingsStickySave";
 
 const subLink =
-  "block rounded-lg border border-transparent px-3 py-2 text-sm transition-colors";
+  "block rounded-card border border-transparent px-3 py-2 text-sm transition-colors";
 const subActive = "border-line bg-white/10 text-ink-primary";
 const subIdle = "text-ink-muted hover:bg-white/5 hover:text-neutral-200";
 

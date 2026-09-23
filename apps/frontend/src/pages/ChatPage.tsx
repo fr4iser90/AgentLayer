@@ -88,7 +88,7 @@ function DashboardChatVisibilityBadge({ thread }: { thread: Pick<ChatThread, "da
   if (shared) {
     return (
       <span
-        className="inline-flex shrink-0 items-center rounded-full border border-amber-400/40 bg-amber-950/60 px-2 py-0.5 text-meta font-semibold uppercase tracking-wide text-amber-100/95"
+        className="inline-flex shrink-0 items-center rounded-pill border border-amber-400/40 bg-amber-950/60 px-2 py-0.5 text-meta font-semibold uppercase tracking-wide text-amber-100/95"
         title={t("chat:visibilitySharedTitle")}
       >
         {t("chat:visibilitySharedLabel")}
@@ -97,7 +97,7 @@ function DashboardChatVisibilityBadge({ thread }: { thread: Pick<ChatThread, "da
   }
   return (
     <span
-      className="inline-flex shrink-0 items-center rounded-full border border-emerald-500/35 bg-emerald-950/45 px-2 py-0.5 text-meta font-semibold uppercase tracking-wide text-emerald-100/90"
+      className="inline-flex shrink-0 items-center rounded-pill border border-emerald-500/35 bg-emerald-950/45 px-2 py-0.5 text-meta font-semibold uppercase tracking-wide text-emerald-100/90"
       title={t("chat:visibilityPersonalTitle")}
     >
       {t("chat:visibilityPersonalLabel")}
@@ -378,7 +378,7 @@ function composerModEnterLabel(): string {
 
 function ComposerKbd({ children }: { children: string }) {
   return (
-    <kbd className="ml-1.5 inline-flex items-center rounded border border-line-strong bg-black/35 px-1 py-px font-mono text-meta font-normal leading-none text-white/65">
+    <kbd className="ml-1.5 inline-flex items-center rounded-tile border border-line-strong bg-black/35 px-1 py-px font-mono text-meta font-normal leading-none text-white/65">
       {children}
     </kbd>
   );
@@ -834,7 +834,7 @@ export function ChatPage() {
     return (
       <button
         type="button"
-        className="ml-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded border border-line-strong px-1 text-meta font-medium text-sky-300/95 hover:bg-white/10"
+        className="ml-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-tile border border-line-strong px-1 text-meta font-medium text-sky-300/95 hover:bg-white/10"
         title={t("workspace:editMcpServersWorkspaceOnlyTitle")}
         onClick={() => setShowWorkspaceMcpModal(true)}
       >
@@ -3261,7 +3261,7 @@ export function ChatPage() {
                 void startNewChat();
                 setThreadSidebarOpen(false);
               }}
-              className="w-full rounded-lg border border-line bg-white/5 px-3 py-2 text-left text-sm text-ink-primary hover:bg-white/10"
+              className="w-full rounded-card border border-line bg-white/5 px-3 py-2 text-left text-sm text-ink-primary hover:bg-white/10"
             >
               {t("chat:newChat")}
             </button>
@@ -3288,7 +3288,7 @@ export function ChatPage() {
                     {g.threads.map((thread) => (
                       <li key={thread.id}>
                         <div
-                          className={`group flex items-start gap-1 rounded-md px-2 py-2 ${
+                          className={`group flex items-start gap-1 rounded-tile px-2 py-2 ${
                             thread.id === activeThreadId ? "bg-white/10" : "hover:bg-white/5"
                           }`}
                         >
@@ -3313,7 +3313,7 @@ export function ChatPage() {
                           <div className="flex shrink-0 flex-col gap-0.5 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
                             <button
                               type="button"
-                              className="rounded px-1 text-meta text-ink-muted hover:text-white"
+                              className="rounded-tile px-1 text-meta text-ink-muted hover:text-white"
                               title={t("chat:rename")}
                               onClick={() => renameThread(thread.id)}
                             >
@@ -3321,7 +3321,7 @@ export function ChatPage() {
                             </button>
                             <button
                               type="button"
-                              className="rounded px-1 text-meta text-ink-muted hover:text-white"
+                              className="rounded-tile px-1 text-meta text-ink-muted hover:text-white"
                               title={t("chat:copyLinkJson")}
                               onClick={() => void shareThread(thread)}
                             >
@@ -3354,7 +3354,7 @@ export function ChatPage() {
             <div className="flex shrink-0 items-center gap-2 border-b border-line px-4 py-2 md:hidden">
               <button
                 type="button"
-                className="rounded-lg border border-line bg-black/30 px-2.5 py-1.5 text-meta font-medium text-ink-secondary hover:bg-white/10"
+                className="rounded-card border border-line bg-black/30 px-2.5 py-1.5 text-meta font-medium text-ink-secondary hover:bg-white/10"
                 aria-expanded={threadSidebarOpen}
                 onClick={() => setThreadSidebarOpen(true)}
               >
@@ -3372,7 +3372,7 @@ export function ChatPage() {
                 void startNewChat();
                 setThreadSidebarOpen(false);
               }}
-              className="rounded-lg border border-line bg-white/10 px-4 py-2 text-sm text-ink-primary hover:bg-white/15"
+              className="rounded-card border border-line bg-white/10 px-4 py-2 text-sm text-ink-primary hover:bg-white/15"
             >
               {t("chat:newChat")}
             </button>
@@ -3394,7 +3394,7 @@ export function ChatPage() {
           >
             <button
               type="button"
-              className="shrink-0 rounded-lg border border-line bg-black/30 px-2.5 py-1.5 text-meta font-medium text-ink-secondary hover:bg-white/10 md:hidden"
+              className="shrink-0 rounded-card border border-line bg-black/30 px-2.5 py-1.5 text-meta font-medium text-ink-secondary hover:bg-white/10 md:hidden"
               aria-expanded={threadSidebarOpen}
               aria-label={t("chat:openChatsSidebar")}
               onClick={() => setThreadSidebarOpen(true)}
@@ -3407,7 +3407,7 @@ export function ChatPage() {
             {activeThread ? <DashboardChatVisibilityBadge thread={activeThread} /> : null}
             <button
               type="button"
-              className="shrink-0 rounded-lg border border-line bg-black/30 px-2 py-1 text-meta font-medium text-ink-secondary hover:bg-white/10"
+              className="shrink-0 rounded-card border border-line bg-black/30 px-2 py-1 text-meta font-medium text-ink-secondary hover:bg-white/10"
               aria-expanded={!composerHeaderCollapsed}
               aria-controls="chat-composer-header-panel"
               title={
@@ -3426,7 +3426,7 @@ export function ChatPage() {
             </p>
           ) : null}
           {composerHeaderCollapsed && workspaceScopeHint && selectedWorkspaceId ? (
-            <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-amber-600/40 bg-amber-950/30 px-3 py-2">
+            <div className="mt-2 flex flex-wrap items-center gap-2 rounded-card border border-amber-600/40 bg-amber-950/30 px-3 py-2">
               <p className="min-w-0 flex-1 text-meta leading-snug text-amber-100/95">{workspaceScopeHint}</p>
               <button
                 type="button"
@@ -3459,7 +3459,7 @@ export function ChatPage() {
                   <label className="block text-meta font-medium uppercase tracking-wide text-ink-muted">
                     {t("chat:assistantLabel")}
                   </label>
-                  <p className="mt-0.5 rounded-lg border border-line bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-ink-secondary">
+                  <p className="mt-0.5 rounded-card border border-line bg-[#1a1a1a] px-2.5 py-1.5 text-sm text-ink-secondary">
                     {t("chat:generalAssistant")}
                   </p>
                   <p className="mt-1 text-meta leading-snug text-ink-muted">
@@ -3473,7 +3473,7 @@ export function ChatPage() {
                     </label>
                     <div className="mt-0.5 flex flex-wrap gap-1.5">
                       <select
-                        className="min-w-0 flex-1 rounded-lg border border-line bg-field px-2.5 py-1.5 text-sm text-ink-primary"
+                        className="min-w-0 flex-1 rounded-card border border-line bg-field px-2.5 py-1.5 text-sm text-ink-primary"
                         value={selectedWorkspaceId ?? ""}
                         onChange={(e) => setComposerWorkspace(e.target.value || null)}
                       >
@@ -3488,7 +3488,7 @@ export function ChatPage() {
                       <button
                         type="button"
                         className={[
-                          "shrink-0 rounded-lg border px-2.5 py-1.5 text-meta font-medium",
+                          "shrink-0 rounded-card border px-2.5 py-1.5 text-meta font-medium",
                           projectPanelOpen
                             ? "border-sky-500/60 bg-sky-950/50 text-sky-100"
                             : "border-line bg-black/30 text-ink-secondary hover:bg-white/10",
@@ -3534,14 +3534,14 @@ export function ChatPage() {
                 ) : null}
               </div>
               {workspaces.length === 0 ? (
-                <div className="rounded-lg border border-line bg-black/25 px-3 py-2">
+                <div className="rounded-card border border-line bg-black/25 px-3 py-2">
                   <p className="text-xs leading-snug text-ink-muted">
                     {isAdminUser ? t("chat:noProjectsAdmin") : t("chat:noProjectsUser")}
                   </p>
                 </div>
               ) : null}
               {workspaceScopeHint && selectedWorkspaceId ? (
-                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-600/40 bg-amber-950/30 px-3 py-2">
+                <div className="flex flex-wrap items-center gap-2 rounded-card border border-amber-600/40 bg-amber-950/30 px-3 py-2">
                   <p className="min-w-0 flex-1 text-meta leading-snug text-amber-100/95">{workspaceScopeHint}</p>
                   <button
                     type="button"
@@ -3554,11 +3554,11 @@ export function ChatPage() {
               ) : null}
               <p className="text-meta leading-snug text-ink-muted">{t("chat:titlesHint")}</p>
               {!activeThread?.shared && activeThreadId ? (
-                <div className="mt-2 rounded-lg border border-violet-500/25 bg-violet-950/15 px-3 py-2">
+                <div className="mt-2 rounded-card border border-violet-500/25 bg-violet-950/15 px-3 py-2">
                   <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
                     <input
                       type="checkbox"
-                      className="rounded border-line"
+                      className="rounded-tile border-line"
                       checked={!!activeThread?.delegateAutoRespondEnabled}
                       onChange={(e) => {
                         const enabled = e.target.checked;
@@ -3579,7 +3579,7 @@ export function ChatPage() {
                         type="number"
                         min={15}
                         max={600}
-                        className="ml-2 w-16 rounded border border-line bg-field px-1.5 py-0.5 text-sm text-ink-primary"
+                        className="ml-2 w-16 rounded-tile border border-line bg-field px-1.5 py-0.5 text-sm text-ink-primary"
                         value={activeThread.delegateAutoRespondAfterSec ?? 60}
                         onChange={(e) => {
                           const sec = Number(e.target.value);
@@ -3602,7 +3602,7 @@ export function ChatPage() {
             </div>
             {mode === "agent" ? (
               <div className="flex min-h-0 w-full flex-col gap-1.5">
-                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line bg-black/30 px-2.5 py-1.5">
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-card border border-line bg-black/30 px-2.5 py-1.5">
                   <Link
                     to={
                       activeThreadId
@@ -3635,7 +3635,7 @@ export function ChatPage() {
                 />
               </div>
             ) : (
-              <div className="flex min-h-0 items-center rounded-lg border border-line bg-black/30 px-2.5 py-2">
+              <div className="flex min-h-0 items-center rounded-card border border-line bg-black/30 px-2.5 py-2">
                 <p className="text-meta leading-snug text-ink-muted">
                   {t("chat:switchToAgentModeHint")}
                 </p>
@@ -3658,7 +3658,7 @@ export function ChatPage() {
                   {t("chat:replyModeLabel")}
                 </label>
                 <select
-                  className="mt-0.5 w-full rounded-lg border border-line bg-field px-2.5 py-1.5 text-sm text-ink-primary"
+                  className="mt-0.5 w-full rounded-card border border-line bg-field px-2.5 py-1.5 text-sm text-ink-primary"
                   value={mode}
                   onChange={(e) => setMode(e.target.value as ChatMode)}
                   title={t("chat:replyModeTitle")}
@@ -3672,7 +3672,7 @@ export function ChatPage() {
                 <label className="flex cursor-pointer items-center gap-2 text-meta font-medium uppercase tracking-wide text-ink-muted">
                   <input
                     type="checkbox"
-                    className="rounded border-line bg-field text-sky-500"
+                    className="rounded-tile border-line bg-field text-sky-500"
                     checked={agentStreamLlmUi}
                     disabled={mode === "chat"}
                     onChange={(e) => {
@@ -3799,7 +3799,7 @@ export function ChatPage() {
             >
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full border border-line bg-white/5 text-lg font-semibold text-ink-secondary">
+                <div className="flex h-14 w-14 items-center justify-center rounded-pill border border-line bg-white/5 text-lg font-semibold text-ink-secondary">
                   AL
                 </div>
                 <h1 className="mt-4 text-2xl font-semibold tracking-tight text-ink-primary">
@@ -3807,13 +3807,13 @@ export function ChatPage() {
                 </h1>
                 <p className="mt-2 max-w-md text-sm text-ink-muted">{t("chat:emptyIntro")}</p>
                 <ul className="mt-6 max-w-md space-y-2 text-left text-sm text-ink-muted">
-                  <li className="rounded-md border border-line/80 bg-black/20 px-3 py-2">
+                  <li className="rounded-tile border border-line/80 bg-black/20 px-3 py-2">
                     {t("chat:emptyStarterBind")}
                   </li>
-                  <li className="rounded-md border border-line/80 bg-black/20 px-3 py-2">
+                  <li className="rounded-tile border border-line/80 bg-black/20 px-3 py-2">
                     {t("chat:emptyStarterContinue")}
                   </li>
-                  <li className="rounded-md border border-line/80 bg-black/20 px-3 py-2">
+                  <li className="rounded-tile border border-line/80 bg-black/20 px-3 py-2">
                     {t("chat:suggested1")}
                   </li>
                 </ul>
@@ -3924,9 +3924,9 @@ export function ChatPage() {
                   chatMessageHasVisibleContent(displayMessages[displayMessages.length - 1]!)
                 ) ? (
                   <li className="flex w-full justify-end">
-                    <div className="max-w-[min(100%,42rem)] rounded-2xl border border-sky-900/50 bg-sky-950/25 px-4 py-3 text-sm text-sky-100/90 shadow-sm">
+                    <div className="max-w-[min(100%,42rem)] rounded-sheet border border-sky-900/50 bg-sky-950/25 px-4 py-3 text-sm text-sky-100/90 shadow-sm">
                       <span className="mb-1 flex items-center gap-2 text-meta font-medium uppercase tracking-wide text-sky-300/80">
-                        <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-sky-400" />
+                        <span className="inline-flex h-2 w-2 animate-pulse rounded-pill bg-sky-400" />
                         {t("chat:roleAssistant")}
                       </span>
                       <p className="text-ink-secondary">{t("chat:generatingReply")}</p>
@@ -3946,7 +3946,7 @@ export function ChatPage() {
               <button
                 type="button"
                 onClick={() => scrollToBottom("smooth")}
-                className="absolute -top-12 right-0 z-10 rounded-full border border-line bg-[#1a1a1a] px-3 py-1.5 text-xs text-ink-primary shadow-lg hover:bg-[#252525]"
+                className="absolute -top-12 right-0 z-10 rounded-pill border border-line bg-[#1a1a1a] px-3 py-1.5 text-xs text-ink-primary shadow-lg hover:bg-[#252525]"
                 aria-label={t("chat:scrollToBottomAria")}
               >
                 {t("chat:newMessages")}
@@ -3978,11 +3978,11 @@ export function ChatPage() {
               </div>
             ) : null}
             {stepPaused ? (
-              <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-sky-500/40 bg-sky-500/10 px-4 py-2.5 text-sm text-ink-primary">
+              <div className="mb-3 flex items-center justify-between gap-3 rounded-card border border-sky-500/40 bg-sky-500/10 px-4 py-2.5 text-sm text-ink-primary">
                 <span className="text-ink-muted">{t("chat:pausedStepModeHint")}</span>
                 <button
                   type="button"
-                  className="shrink-0 rounded-md bg-sky-500/90 px-3 py-1.5 text-xs font-medium text-black"
+                  className="shrink-0 rounded-tile bg-sky-500/90 px-3 py-1.5 text-xs font-medium text-black"
                   onClick={handleContinueStep}
                 >
                   {t("chat:continueStep")}
@@ -4061,7 +4061,7 @@ export function ChatPage() {
             <div
               role="group"
               aria-label={t("chat:composerAria")}
-              className={`relative rounded-2xl border bg-[#141414] p-3 shadow-xl transition-colors ${
+              className={`relative rounded-sheet border bg-[#141414] p-3 shadow-xl transition-colors ${
                 composerDragActive
                   ? "border-sky-500/70 ring-2 ring-sky-500/25"
                   : "border-line"
@@ -4088,22 +4088,22 @@ export function ChatPage() {
             >
               {composerDragActive ? (
                 <div
-                  className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-sky-950/50 backdrop-blur-[1px]"
+                  className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-sheet bg-sky-950/50 backdrop-blur-[1px]"
                   aria-hidden
                 >
-                  <p className="rounded-lg border border-sky-500/40 bg-black/50 px-4 py-2 text-sm font-medium text-sky-100">
+                  <p className="rounded-card border border-sky-500/40 bg-black/50 px-4 py-2 text-sm font-medium text-sky-100">
                     {t("chat:dropFilesToAttach")}
                   </p>
                 </div>
               ) : null}
               {voiceTranscribing ? (
                 <div
-                  className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl bg-black/60 backdrop-blur-[2px]"
+                  className="absolute inset-0 z-20 flex items-center justify-center rounded-sheet bg-black/60 backdrop-blur-[2px]"
                   role="status"
                   aria-live="polite"
                   aria-busy="true"
                 >
-                  <div className="flex items-center gap-2.5 rounded-lg border border-line bg-black/70 px-4 py-2.5 text-sm text-ink-primary">
+                  <div className="flex items-center gap-2.5 rounded-card border border-line bg-black/70 px-4 py-2.5 text-sm text-ink-primary">
                     <svg
                       className="h-4 w-4 shrink-0 animate-spin text-sky-400"
                       xmlns="http://www.w3.org/2000/svg"
@@ -4139,7 +4139,7 @@ export function ChatPage() {
                 />
               ) : null}
               {activeComposerQueue.length > 0 ? (
-                <ul className="mb-2 space-y-1 rounded-lg border border-violet-500/25 bg-violet-950/20 px-2 py-1.5">
+                <ul className="mb-2 space-y-1 rounded-card border border-violet-500/25 bg-violet-950/20 px-2 py-1.5">
                   <li className="text-meta font-medium uppercase tracking-wide text-violet-200/80">
                     {t("chat:composerQueueTitle", { count: activeComposerQueue.length })}
                   </li>
@@ -4155,7 +4155,7 @@ export function ChatPage() {
                       {loading ? (
                         <button
                           type="button"
-                          className="shrink-0 rounded px-1.5 text-meta font-medium uppercase tracking-wide text-sky-300/90 hover:bg-sky-500/15 hover:text-sky-100"
+                          className="shrink-0 rounded-tile px-1.5 text-meta font-medium uppercase tracking-wide text-sky-300/90 hover:bg-sky-500/15 hover:text-sky-100"
                           title={t("chat:composerQueueSendNow")}
                           aria-label={t("chat:composerQueueSendNow")}
                           onClick={() => onForceSendQueuedItem(item.id)}
@@ -4165,7 +4165,7 @@ export function ChatPage() {
                       ) : null}
                       <button
                         type="button"
-                        className="shrink-0 rounded px-1 text-ink-muted hover:text-white"
+                        className="shrink-0 rounded-tile px-1 text-ink-muted hover:text-white"
                         aria-label={t("chat:composerQueueRemove")}
                         onClick={() => removeFromComposerQueue(item.id)}
                       >
@@ -4180,7 +4180,7 @@ export function ChatPage() {
                   {pendingAttachments.map((a, idx) => (
                     <li
                       key={`${a.name}-${idx}`}
-                      className="flex max-w-full items-center gap-1 rounded-lg border border-line bg-black/30 px-2 py-1 text-xs text-ink-secondary"
+                      className="flex max-w-full items-center gap-1 rounded-card border border-line bg-black/30 px-2 py-1 text-xs text-ink-secondary"
                     >
                       <span className="truncate" title={a.kind === "unsupported" ? a.hint : a.name}>
                         {a.name}
@@ -4188,7 +4188,7 @@ export function ChatPage() {
                       </span>
                       <button
                         type="button"
-                        className="shrink-0 rounded px-1 text-ink-muted hover:text-white"
+                        className="shrink-0 rounded-tile px-1 text-ink-muted hover:text-white"
                         aria-label={t("chat:removeAttachment")}
                         onClick={() => setPendingAttachments((prev) => prev.filter((_, i) => i !== idx))}
                       >
@@ -4231,7 +4231,7 @@ export function ChatPage() {
                     (chatRuntime?.vision?.available === false &&
                       /* still allow non-image files */ false)
                   }
-                  className="rounded-lg border border-line bg-black/20 p-2 text-ink-muted hover:bg-white/5 hover:text-neutral-200 disabled:opacity-40"
+                  className="rounded-card border border-line bg-black/20 p-2 text-ink-muted hover:bg-white/5 hover:text-neutral-200 disabled:opacity-40"
                   title={
                     chatRuntime?.vision?.available === false
                       ? t("chat:attachVisionUnavailable")
@@ -4282,7 +4282,7 @@ export function ChatPage() {
                     {canQueue ? (
                       <button
                         type="button"
-                        className="inline-flex items-center rounded-lg border border-violet-500/50 bg-violet-950/40 px-3 py-2 text-sm font-medium text-violet-100 hover:bg-violet-900/50"
+                        className="inline-flex items-center rounded-card border border-violet-500/50 bg-violet-950/40 px-3 py-2 text-sm font-medium text-violet-100 hover:bg-violet-900/50"
                         title={t("chat:composerQueueAddTitle")}
                         onClick={() => onQueue()}
                       >
@@ -4293,7 +4293,7 @@ export function ChatPage() {
                     {canForceSend ? (
                       <button
                         type="button"
-                        className="inline-flex items-center rounded-lg bg-sky-600 px-3 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500"
+                        className="inline-flex items-center rounded-card bg-sky-600 px-3 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500"
                         title={t("chat:composerForceSendTitle", { modEnter: composerModEnter })}
                         onClick={() => onForceSend()}
                       >
@@ -4303,7 +4303,7 @@ export function ChatPage() {
                     ) : null}
                     <button
                       type="button"
-                      className="rounded-lg border border-amber-500/60 bg-amber-950/50 px-4 py-2 text-sm font-medium text-amber-100 hover:bg-amber-900/40"
+                      className="rounded-card border border-amber-500/60 bg-amber-950/50 px-4 py-2 text-sm font-medium text-amber-100 hover:bg-amber-900/40"
                       onClick={() => onCancelInFlight()}
                     >
                       {t("admin:cancel")}
@@ -4313,7 +4313,7 @@ export function ChatPage() {
                   <button
                     type="button"
                     disabled={!canSend || voiceTranscribing}
-                    className="inline-flex items-center rounded-lg bg-sky-600 px-3 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-40"
+                    className="inline-flex items-center rounded-card bg-sky-600 px-3 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-40"
                     title={t("chat:composerSendTitle")}
                     onClick={() => onSend()}
                   >
@@ -4334,7 +4334,7 @@ export function ChatPage() {
                     <li key={s}>
                       <button
                         type="button"
-                        className="w-full rounded-lg border border-line bg-[#141414] px-4 py-3 text-left text-sm text-ink-secondary hover:bg-white/5"
+                        className="w-full rounded-card border border-line bg-[#141414] px-4 py-3 text-left text-sm text-ink-secondary hover:bg-white/5"
                         onClick={() => setDraft(s)}
                       >
                         {s}

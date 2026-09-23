@@ -65,7 +65,7 @@ export function MessageFeedbackButtons({
         aria-pressed={rating === "up"}
         aria-label={t("chat:feedbackUp")}
         className={[
-          "rounded px-1.5 py-0.5 text-sm transition-colors",
+          "rounded-tile px-1.5 py-0.5 text-sm transition-colors",
           rating === "up"
             ? "bg-emerald-900/50 text-emerald-300"
             : "text-ink-muted hover:bg-white/5 hover:text-neutral-300",
@@ -80,7 +80,7 @@ export function MessageFeedbackButtons({
         aria-pressed={rating === "down"}
         aria-label={t("chat:feedbackDown")}
         className={[
-          "rounded px-1.5 py-0.5 text-sm transition-colors",
+          "rounded-tile px-1.5 py-0.5 text-sm transition-colors",
           rating === "down"
             ? "bg-red-900/40 text-red-300"
             : "text-ink-muted hover:bg-white/5 hover:text-neutral-300",

@@ -149,13 +149,13 @@ export function DashboardPublicSharePage() {
             value={passwordInput}
             onChange={(e) => setPasswordInput(e.target.value)}
             placeholder={t("dashboard:publicSharePasswordPlaceholder")}
-            className="w-full rounded-lg border border-line-strong bg-field px-3 py-2 text-sm text-ink-primary outline-none focus:border-violet-500/50"
+            className="w-full rounded-card border border-line-strong bg-field px-3 py-2 text-sm text-ink-primary outline-none focus:border-violet-500/50"
             autoComplete="current-password"
           />
           {passwordError ? <p className="text-xs text-red-300">{passwordError}</p> : null}
           <button
             type="submit"
-            className="w-full rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-violet-500"
+            className="w-full rounded-card bg-violet-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-violet-500"
           >
             {t("dashboard:publicShareUnlock")}
           </button>

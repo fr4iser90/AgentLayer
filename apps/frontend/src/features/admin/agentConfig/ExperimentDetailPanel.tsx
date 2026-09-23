@@ -20,7 +20,7 @@ function verdictTone(verdict: string | undefined): string {
 
 function ReviewCard({ review }: { review: BenchmarkReview }) {
   return (
-    <li className={`rounded border p-3 ${verdictTone(review.verdict)}`}>
+    <li className={`rounded-tile border p-3 ${verdictTone(review.verdict)}`}>
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <span className="font-medium uppercase">{review.verdict ?? "—"}</span>
         {review.mode ? <span className="opacity-70">· {review.mode}</span> : null}
@@ -114,7 +114,7 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
 
   return (
     <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(200px,280px)_1fr]">
-      <section className="min-h-0 overflow-auto rounded-lg border border-line bg-[#111] p-2">
+      <section className="min-h-0 overflow-auto rounded-card border border-line bg-[#111] p-2">
         <h2 className="mb-2 px-1 text-xs font-medium uppercase text-ink-muted">
           {t("admin:agentConfigExperimentsList")}
         </h2>
@@ -127,7 +127,7 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
                 <button
                   type="button"
                   onClick={() => setSelectedId(exp.id)}
-                  className={`w-full rounded px-2 py-2 text-left text-xs ${
+                  className={`w-full rounded-tile px-2 py-2 text-left text-xs ${
                     selectedId === exp.id ? "bg-white/10 text-ink-primary" : "text-ink-muted hover:bg-white/5"
                   }`}
                 >
@@ -145,7 +145,7 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
         )}
       </section>
 
-      <section className="min-h-0 overflow-auto rounded-lg border border-line bg-[#111] p-4">
+      <section className="min-h-0 overflow-auto rounded-card border border-line bg-[#111] p-4">
         {!selected ? (
           <p className="text-sm text-ink-muted">{t("admin:agentConfigExperimentSelect")}</p>
         ) : (
@@ -153,12 +153,12 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
             <header className="mb-4 border-b border-line pb-3">
               <h2 className="text-base font-medium text-ink-primary">{selected.label}</h2>
               <div className="mt-2 flex flex-wrap gap-2 text-xs text-ink-muted">
-                <span className="rounded bg-white/5 px-2 py-0.5">{selected.status ?? "open"}</span>
+                <span className="rounded-tile bg-white/5 px-2 py-0.5">{selected.status ?? "open"}</span>
                 {selected.suite_preset ? (
-                  <span className="rounded bg-white/5 px-2 py-0.5">suite: {selected.suite_preset}</span>
+                  <span className="rounded-tile bg-white/5 px-2 py-0.5">suite: {selected.suite_preset}</span>
                 ) : null}
                 {selected.harness_preset ? (
-                  <span className="rounded bg-white/5 px-2 py-0.5">harness: {selected.harness_preset}</span>
+                  <span className="rounded-tile bg-white/5 px-2 py-0.5">harness: {selected.harness_preset}</span>
                 ) : null}
               </div>
               {selected.hypothesis ? (
@@ -172,7 +172,7 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
             </header>
 
             {error ? (
-              <p className="mb-3 rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+              <p className="mb-3 rounded-tile border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
                 {error}
               </p>
             ) : null}
@@ -186,7 +186,7 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
                     <h3 className="mb-2 text-xs font-medium uppercase text-ink-muted">
                       {t("admin:agentConfigExperimentPendingPatches")}
                     </h3>
-                    <pre className="max-h-40 overflow-auto rounded border border-line bg-black/30 p-2 text-meta text-ink-muted">
+                    <pre className="max-h-40 overflow-auto rounded-tile border border-line bg-black/30 p-2 text-meta text-ink-muted">
                       {JSON.stringify(report.experiment.pending_patches_json, null, 2)}
                     </pre>
                   </section>
@@ -202,7 +202,7 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
                         <li key={rid}>
                           <Link
                             to={`/admin/benchmarks?run=${encodeURIComponent(rid)}`}
-                            className="rounded border border-line bg-black/30 px-2 py-1 font-mono text-meta text-indigo-300 hover:bg-white/5"
+                            className="rounded-tile border border-line bg-black/30 px-2 py-1 font-mono text-meta text-indigo-300 hover:bg-white/5"
                             title={rid}
                           >
                             {rid.slice(0, 8)}…
@@ -229,10 +229,10 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
                   <h3 className="mb-2 text-xs font-medium uppercase text-ink-muted">
                     {t("admin:agentConfigExperimentReviews")}
                   </h3>
-                  <div className="mb-4 rounded-lg border border-line bg-black/20 p-3">
+                  <div className="mb-4 rounded-card border border-line bg-black/20 p-3">
                     <p className="mb-2 text-xs text-ink-muted">{t("admin:agentConfigReviewSubmitHint")}</p>
                     <textarea
-                      className="mb-2 min-h-[72px] w-full rounded border border-line bg-field p-2 text-sm text-ink-primary"
+                      className="mb-2 min-h-[72px] w-full rounded-tile border border-line bg-field p-2 text-sm text-ink-primary"
                       placeholder={t("admin:agentConfigReviewSummaryPlaceholder")}
                       value={reviewSummary}
                       onChange={(e) => setReviewSummary(e.target.value)}
@@ -244,7 +244,7 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
                       type="button"
                       disabled={reviewBusy || runIds.length === 0}
                       onClick={() => void onSubmitReview()}
-                      className="rounded bg-indigo-700 px-3 py-1.5 text-xs text-ink-on-fill hover:bg-indigo-600 disabled:opacity-50"
+                      className="rounded-tile bg-indigo-700 px-3 py-1.5 text-xs text-ink-on-fill hover:bg-indigo-600 disabled:opacity-50"
                     >
                       {reviewBusy ? t("admin:agentConfigReviewSubmitting") : t("admin:agentConfigReviewSubmit")}
                     </button>

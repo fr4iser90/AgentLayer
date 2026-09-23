@@ -80,7 +80,7 @@ function PanelTabs({
 }) {
   const { t } = useTranslation(["dashboard", "errors"]);
   const tabClass = (active: boolean) =>
-    `rounded-md px-2.5 py-1 text-meta font-medium transition-colors ${
+    `rounded-tile px-2.5 py-1 text-meta font-medium transition-colors ${
       active ? "bg-white/15 text-ink-primary" : "text-ink-muted hover:bg-white/10 hover:text-neutral-200"
     }`;
 
@@ -93,7 +93,7 @@ function PanelTabs({
         <button type="button" className={tabClass(panelTab === "changes")} onClick={() => onTab("changes")}>
           Changes
           {changesBadge ? (
-            <span className="ml-1 rounded bg-amber-600/40 px-1 py-px text-meta text-amber-100">{changesBadge}</span>
+            <span className="ml-1 rounded-tile bg-amber-600/40 px-1 py-px text-meta text-amber-100">{changesBadge}</span>
           ) : null}
         </button>
       ) : null}
@@ -326,7 +326,7 @@ export function CodingWorkspacePanels({
           <p className="min-w-0 truncate text-sm font-medium text-ink-primary">{t("workspace:projectFilesTitle")}</p>
           <button
             type="button"
-            className="shrink-0 rounded-md px-2 py-1 text-xs text-ink-muted hover:bg-white/5 hover:text-neutral-200"
+            className="shrink-0 rounded-tile px-2 py-1 text-xs text-ink-muted hover:bg-white/5 hover:text-neutral-200"
             onClick={onMobileClose}
           >
             {t("dashboard:close")}
@@ -349,7 +349,7 @@ export function CodingWorkspacePanels({
               <div className="mt-1 flex flex-wrap items-center gap-1 text-meta text-ink-muted">
                 <button
                   type="button"
-                  className="rounded px-1.5 py-0.5 hover:bg-white/10 disabled:opacity-40"
+                  className="rounded-tile px-1.5 py-0.5 hover:bg-white/10 disabled:opacity-40"
                   onClick={() => {
                     setBrowsePath("");
                     setSelectedFile(null);
@@ -368,7 +368,7 @@ export function CodingWorkspacePanels({
                       <span className="text-white/20">/</span>
                       <button
                         type="button"
-                        className="max-w-[5rem] truncate rounded px-1.5 py-0.5 hover:bg-white/10"
+                        className="max-w-[5rem] truncate rounded-tile px-1.5 py-0.5 hover:bg-white/10"
                         title={prefix}
                         onClick={() => {
                           setBrowsePath(prefix);
@@ -387,7 +387,7 @@ export function CodingWorkspacePanels({
               <div className="mt-1 flex items-center gap-2">
                 <button
                   type="button"
-                  className="rounded border border-line px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
+                  className="rounded-tile border border-line px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
                   onClick={goUp}
                   disabled={!browsePath}
                 >
@@ -395,7 +395,7 @@ export function CodingWorkspacePanels({
                 </button>
                 <button
                   type="button"
-                  className="rounded border border-line px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
+                  className="rounded-tile border border-line px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
                   onClick={() => void loadList()}
                   disabled={listLoading}
                 >
@@ -414,7 +414,7 @@ export function CodingWorkspacePanels({
               <div className="mt-1">
                 <button
                   type="button"
-                  className="rounded border border-line px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
+                  className="rounded-tile border border-line px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
                   onClick={() => void loadChangesSummary()}
                   disabled={changesLoading}
                 >
@@ -437,7 +437,7 @@ export function CodingWorkspacePanels({
                   <li key={e.path}>
                     <button
                       type="button"
-                      className={`flex w-full items-center gap-1 rounded px-2 py-1 text-left hover:bg-white/10 ${
+                      className={`flex w-full items-center gap-1 rounded-tile px-2 py-1 text-left hover:bg-white/10 ${
                         selectedFile === e.path && !e.is_dir ? "bg-white/10" : ""
                       }`}
                       onClick={() => {
@@ -479,7 +479,7 @@ export function CodingWorkspacePanels({
               <li key={f.path}>
                 <button
                   type="button"
-                  className={`flex w-full flex-col rounded px-2 py-1 text-left hover:bg-white/10 ${
+                  className={`flex w-full flex-col rounded-tile px-2 py-1 text-left hover:bg-white/10 ${
                     selectedChangePath === f.path ? "bg-white/10" : ""
                   }`}
                   onClick={() => void loadChangeDiff(f.path)}

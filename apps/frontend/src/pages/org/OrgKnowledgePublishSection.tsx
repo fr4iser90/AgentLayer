@@ -97,7 +97,7 @@ export function OrgKnowledgePublishSection({ onPublished }: { onPublished?: () =
   }, [auth, base, onPublished, t, text, title]);
 
   return (
-    <section className="rounded-xl border border-line bg-card p-5">
+    <section className="rounded-sheet border border-line bg-card p-5">
       <h2 className="text-sm font-medium text-ink-primary">{t("org:knowledgePublishTitle")}</h2>
       <p className="mt-2 text-xs text-ink-muted">{t("org:cmsSetupHint")}</p>
 
@@ -107,7 +107,7 @@ export function OrgKnowledgePublishSection({ onPublished }: { onPublished?: () =
         </label>
         <input
           id="org-knowledge-title"
-          className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+          className="mt-1 w-full rounded-tile border border-line bg-field px-3 py-2 text-sm text-ink-primary"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder={t("org:knowledgeTitlePlaceholder")}
@@ -120,7 +120,7 @@ export function OrgKnowledgePublishSection({ onPublished }: { onPublished?: () =
       </label>
       <textarea
         id="org-knowledge-text"
-        className="mt-1 min-h-48 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+        className="mt-1 min-h-48 w-full rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={t("org:knowledgeTextPlaceholder")}
@@ -136,7 +136,7 @@ export function OrgKnowledgePublishSection({ onPublished }: { onPublished?: () =
         />
         <button
           type="button"
-          className="rounded-md border border-line px-3 py-1.5 text-sm text-ink-primary hover:bg-white/5"
+          className="rounded-tile border border-line px-3 py-1.5 text-sm text-ink-primary hover:bg-white/5"
           onClick={() => fileInputRef.current?.click()}
         >
           {t("org:knowledgeFileButton")}
@@ -144,7 +144,7 @@ export function OrgKnowledgePublishSection({ onPublished }: { onPublished?: () =
         <button
           type="button"
           disabled={busy}
-          className="rounded-md bg-sky-600 px-4 py-1.5 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+          className="rounded-tile bg-sky-600 px-4 py-1.5 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
           onClick={() => void publish()}
         >
           {busy ? t("org:knowledgePublishing") : t("org:cmsPublish")}

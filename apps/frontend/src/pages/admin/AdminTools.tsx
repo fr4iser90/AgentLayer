@@ -396,7 +396,7 @@ export function AdminTools() {
     return (
       <li
         key={pid}
-        className="rounded-lg border border-line bg-card p-3 text-xs text-ink-primary"
+        className="rounded-card border border-line bg-card p-3 text-xs text-ink-primary"
       >
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1 space-y-2">
@@ -404,17 +404,17 @@ export function AdminTools() {
               <span className="font-mono text-sm font-semibold text-ink-primary">{pid}</span>
               {p.version ? <span className="text-meta text-ink-muted">v{p.version}</span> : null}
               {p.admin_bucket ? (
-                <span className="rounded bg-emerald-950/60 px-1.5 py-0.5 text-meta text-emerald-200/90">
+                <span className="rounded-tile bg-emerald-950/60 px-1.5 py-0.5 text-meta text-emerald-200/90">
                   {t("admin:toolsBadgeBucket", { name: p.admin_bucket })}
                 </span>
               ) : null}
               {p.domain ? (
-                <span className="rounded bg-white/10 px-1.5 py-0.5 text-meta text-ink-secondary">
+                <span className="rounded-tile bg-white/10 px-1.5 py-0.5 text-meta text-ink-secondary">
                   {t("admin:toolsBadgeDomain", { name: p.domain })}
                 </span>
               ) : null}
               <span
-                className="rounded bg-violet-900/50 px-1.5 py-0.5 text-meta text-violet-100"
+                className="rounded-tile bg-violet-900/50 px-1.5 py-0.5 text-meta text-violet-100"
                 title={t("admin:effectiveRunContextTitle")}
               >
                 {t("admin:toolsBadgeRun", { ctx: effCtx })}
@@ -426,25 +426,25 @@ export function AdminTools() {
               </span>
               {effMr ? (
                 <span
-                  className="rounded bg-amber-950/50 px-1.5 py-0.5 text-meta text-amber-100"
+                  className="rounded-tile bg-amber-950/50 px-1.5 py-0.5 text-meta text-amber-100"
                   title={t("admin:effectiveMinRoleTitle")}
                 >
                   {t("admin:toolsBadgeAccess", { role: effMr })}
                 </span>
               ) : null}
               {effTenants?.length ? (
-                <span className="rounded bg-slate-800 px-1.5 py-0.5 text-meta text-slate-200">
+                <span className="rounded-tile bg-slate-800 px-1.5 py-0.5 text-meta text-slate-200">
                   {t("admin:toolsBadgeTenants", { ids: effTenants.join(",") })}
                 </span>
               ) : null}
               {p.os_support?.length ? (
-                <span className="rounded bg-white/10 px-1.5 py-0.5 text-meta text-ink-secondary">
+                <span className="rounded-tile bg-white/10 px-1.5 py-0.5 text-meta text-ink-secondary">
                   {t("admin:toolsBadgeOs", { list: p.os_support.join(",") })}
                 </span>
               ) : null}
               {p.risk_level ? (
                 <span
-                  className={`rounded px-1.5 py-0.5 text-meta font-medium ${riskBadgeClass(p.risk_level)}`}
+                  className={`rounded-tile px-1.5 py-0.5 text-meta font-medium ${riskBadgeClass(p.risk_level)}`}
                 >
                   {t("admin:toolsBadgeRisk", { level: p.risk_level })}
                 </span>
@@ -520,7 +520,7 @@ export function AdminTools() {
           <label className="flex min-w-0 flex-col gap-1 text-meta text-ink-muted">
             <span className="text-ink-muted">{t("admin:toolsPolicyMinRole")}</span>
             <select
-              className="w-full rounded-md border border-line bg-field px-2 py-1.5 text-xs text-ink-primary"
+              className="w-full rounded-tile border border-line bg-field px-2 py-1.5 text-xs text-ink-primary"
               value={pol.min_role}
               onChange={(e) =>
                 updatePolicy(pid, { min_role: e.target.value === "admin" ? "admin" : "user" })
@@ -536,7 +536,7 @@ export function AdminTools() {
             </span>
             <input
               type="text"
-              className="w-full rounded-md border border-line bg-field px-2 py-1.5 font-mono text-xs text-ink-primary placeholder:text-neutral-500"
+              className="w-full rounded-tile border border-line bg-field px-2 py-1.5 font-mono text-xs text-ink-primary placeholder:text-neutral-500"
               placeholder={t("admin:toolsPolicyTenantIdsPlaceholder")}
               value={tenantInputByPkg[pid] ?? ""}
               onChange={(e) => {
@@ -558,7 +558,7 @@ export function AdminTools() {
         <span className="text-ink-muted">{t("admin:toolsRegistryAssignUsers")}</span>
       </p>
 
-      <section className="mt-6 rounded-xl border border-line bg-card p-4">
+      <section className="mt-6 rounded-sheet border border-line bg-card p-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-sm font-semibold text-ink-primary">{t("admin:toolsImportTitle")}</h2>
@@ -571,7 +571,7 @@ export function AdminTools() {
           </label>
           <select
             id="tools-import-source-type"
-            className="w-full rounded-md border border-line bg-field px-2 py-1.5 text-xs text-ink-primary sm:w-56"
+            className="w-full rounded-tile border border-line bg-field px-2 py-1.5 text-xs text-ink-primary sm:w-56"
             value={importSourceType}
             onChange={(e) => setImportSourceType(e.target.value)}
           >
@@ -586,17 +586,17 @@ export function AdminTools() {
           <label className="flex flex-col gap-1 text-xs text-ink-muted">
             <span>{t("admin:toolsImportPaste")}</span>
             <textarea
-              className="min-h-40 rounded-md border border-line bg-field px-3 py-2 font-mono text-xs text-ink-primary placeholder:text-neutral-500"
+              className="min-h-40 rounded-tile border border-line bg-field px-3 py-2 font-mono text-xs text-ink-primary placeholder:text-neutral-500"
               value={importMarkdown}
               onChange={(e) => setImportMarkdown(e.target.value)}
               placeholder={t("admin:toolsImportPastePlaceholder")}
             />
           </label>
-          <div className="rounded-md border border-line bg-black/20 p-3 text-xs text-ink-muted">
+          <div className="rounded-tile border border-line bg-black/20 p-3 text-xs text-ink-muted">
             <label className="block">
               <span>{t("admin:toolsImportUpload")}</span>
               <input
-                className="mt-2 block w-full text-xs text-ink-primary file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-xs file:text-white hover:file:bg-white/15"
+                className="mt-2 block w-full text-xs text-ink-primary file:mr-3 file:rounded-tile file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-xs file:text-white hover:file:bg-white/15"
                 type="file"
                 multiple
                 accept=".md,.markdown,.txt,.yaml,.yml,.json,.zip"
@@ -612,7 +612,7 @@ export function AdminTools() {
             <button
               type="button"
               disabled={importBusy || (!importMarkdown.trim() && !(importFiles?.length))}
-              className="mt-4 rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+              className="mt-4 rounded-tile bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
               onClick={() => void analyzeImport()}
             >
               {importBusy ? t("admin:toolsImportAnalyzing") : t("admin:toolsImportAnalyze")}
@@ -622,14 +622,14 @@ export function AdminTools() {
         {importMsg ? <p className="mt-3 text-sm text-ink-muted">{importMsg}</p> : null}
         {importResult ? (
           <div className="mt-4 space-y-3">
-            <div className="rounded-md border border-line bg-black/20 p-3 text-xs text-ink-secondary">
+            <div className="rounded-tile border border-line bg-black/20 p-3 text-xs text-ink-secondary">
               {t("admin:toolsImportDetected")}: <span className="font-mono text-ink-primary">{importResult.source_type}</span>{" "}
               <span className="text-ink-muted">
                 ({Math.round(importResult.source_type_confidence * 100)}%)
               </span>
               <div className="mt-2 flex flex-wrap gap-2">
                 {importResult.sources.map((s) => (
-                  <span key={s.path} className="rounded bg-white/5 px-2 py-1 font-mono text-meta">
+                  <span key={s.path} className="rounded-tile bg-white/5 px-2 py-1 font-mono text-meta">
                     {s.path} · {t("admin:toolsImportChars", { count: s.chars })}
                   </span>
                 ))}
@@ -637,15 +637,15 @@ export function AdminTools() {
             </div>
             <div className="grid gap-3 lg:grid-cols-2">
               {importResult.candidates.map((c) => (
-                <article key={`${c.kind}:${c.name}`} className="rounded-lg border border-line bg-black/20 p-3 text-xs text-ink-primary">
+                <article key={`${c.kind}:${c.name}`} className="rounded-card border border-line bg-black/20 p-3 text-xs text-ink-primary">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-sm font-semibold text-ink-primary">{c.name}</span>
-                    <span className="rounded bg-sky-900/60 px-1.5 py-0.5 text-meta text-sky-100">{c.kind}</span>
-                    <span className="rounded bg-amber-900/60 px-1.5 py-0.5 text-meta text-amber-100">
+                    <span className="rounded-tile bg-sky-900/60 px-1.5 py-0.5 text-meta text-sky-100">{c.kind}</span>
+                    <span className="rounded-tile bg-amber-900/60 px-1.5 py-0.5 text-meta text-amber-100">
                       {t("admin:toolsImportRisk", { risk: c.risk ?? t("admin:toolsImportUnknown") })}
                     </span>
                     {typeof c.confidence === "number" ? (
-                      <span className="rounded bg-white/10 px-1.5 py-0.5 text-meta">
+                      <span className="rounded-tile bg-white/10 px-1.5 py-0.5 text-meta">
                         {Math.round(c.confidence * 100)}%
                       </span>
                     ) : null}
@@ -669,7 +669,7 @@ export function AdminTools() {
         <button
           type="button"
           disabled={busy}
-          className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+          className="rounded-tile bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
           onClick={() => void loadAdmin()}
         >
           {t("admin:toolsRegistryRefresh")}
@@ -677,7 +677,7 @@ export function AdminTools() {
         <button
           type="button"
           disabled={busy}
-          className="rounded-md bg-white/10 px-4 py-2 text-sm font-medium text-ink-primary hover:bg-white/15 disabled:opacity-50"
+          className="rounded-tile bg-white/10 px-4 py-2 text-sm font-medium text-ink-primary hover:bg-white/15 disabled:opacity-50"
           onClick={() => void reloadRegistry()}
         >
           {t("admin:toolsRegistryReload")}
@@ -685,7 +685,7 @@ export function AdminTools() {
         <button
           type="button"
           disabled={busy || loading}
-          className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-emerald-600 disabled:opacity-50"
+          className="rounded-tile bg-emerald-700 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-emerald-600 disabled:opacity-50"
           onClick={() => void savePolicies()}
         >
           {t("admin:toolsRegistrySavePolicy")}
@@ -697,7 +697,7 @@ export function AdminTools() {
       {loading ? (
         <p className="mt-8 text-sm text-ink-muted">{t("admin:toolsRegistryLoading")}</p>
       ) : (
-        <div className="mt-6 max-h-[min(72vh,calc(100dvh-11rem))] overflow-y-auto overscroll-contain rounded-lg border border-line bg-black/20 pr-1">
+        <div className="mt-6 max-h-[min(72vh,calc(100dvh-11rem))] overflow-y-auto overscroll-contain rounded-card border border-line bg-black/20 pr-1">
           <div className="flex flex-col divide-y divide-line">
             {ADMIN_BUCKET_ORDER.map((bucket) => {
               const raw = groupedPackages[bucket] ?? [];

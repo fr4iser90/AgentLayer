@@ -24,7 +24,7 @@ export function DashboardSettingsDrawer(props: {
           <p className="min-w-0 truncate text-sm font-medium text-ink-primary">{title}</p>
           <button
             type="button"
-            className="rounded-md px-2 py-1 text-xs text-ink-muted hover:bg-white/5 hover:text-neutral-200"
+            className="rounded-tile px-2 py-1 text-xs text-ink-muted hover:bg-white/5 hover:text-neutral-200"
             onClick={onClose}
           >
             {t("dashboard:close")}

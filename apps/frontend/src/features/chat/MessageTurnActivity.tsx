@@ -36,13 +36,13 @@ export function MessageTurnActivity({ entries, running = false, waitHint = null 
   if (steps.length === 0 && !running) return null;
 
   return (
-    <div className="mb-2 rounded-lg border border-white/8 bg-black/25 px-2.5 py-2">
+    <div className="mb-2 rounded-card border border-white/8 bg-black/25 px-2.5 py-2">
       <p className="mb-1.5 text-meta font-semibold uppercase tracking-wide text-ink-muted">
         {t("chat:messageRuntimeLabel")}
       </p>
       {steps.length === 0 ? (
         <p className="flex items-center gap-1.5 text-meta text-violet-200/85">
-          <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400" />
+          <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-pill bg-violet-400" />
           {waitHint?.trim() || t("chat:agentRunning")}
         </p>
       ) : (
@@ -86,7 +86,7 @@ export function MessageTurnActivity({ entries, running = false, waitHint = null 
           ))}
           {running ? (
             <li className="flex items-center gap-1.5 border-l-2 border-violet-500/30 pl-2 text-meta text-violet-200/80">
-              <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400" />
+              <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-pill bg-violet-400" />
               {waitHint?.trim() || t("chat:running")}
             </li>
           ) : null}

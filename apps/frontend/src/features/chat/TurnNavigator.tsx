@@ -48,7 +48,7 @@ export function TurnNavigator({ userTurns, activeId, onSelect, className = "" }:
                 type="button"
                 onClick={() => onSelect(turn.id)}
                 title={turn.label}
-                className={`w-full rounded-lg border px-2 py-1.5 text-left text-meta leading-snug transition-colors ${
+                className={`w-full rounded-card border px-2 py-1.5 text-left text-meta leading-snug transition-colors ${
                   active
                     ? "border-sky-500/50 bg-sky-950/40 text-sky-100"
                     : "border-transparent text-ink-muted hover:border-line hover:bg-white/5 hover:text-neutral-200"
@@ -79,7 +79,7 @@ export function TurnNavigatorHorizontal({ userTurns, activeId, onSelect, classNa
             type="button"
             onClick={() => onSelect(turn.id)}
             title={turn.label}
-            className={`shrink-0 rounded-full border px-2.5 py-1 text-meta transition-colors ${
+            className={`shrink-0 rounded-pill border px-2.5 py-1 text-meta transition-colors ${
               active
                 ? "border-sky-500/50 bg-sky-950/40 text-sky-100"
                 : "border-line text-ink-muted hover:bg-white/5"

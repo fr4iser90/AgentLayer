@@ -118,7 +118,7 @@ export function OrgSetupPage() {
           </label>
           <input
             id="org-name"
-            className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+            className="w-full rounded-tile border border-line bg-field px-3 py-2 text-sm text-ink-primary"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
@@ -128,7 +128,7 @@ export function OrgSetupPage() {
           </label>
           <input
             id="org-vertical"
-            className="w-full rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+            className="w-full rounded-tile border border-line bg-field px-3 py-2 text-sm text-ink-primary"
             value={verticalProfile}
             onChange={(e) => setVerticalProfile(e.target.value)}
             required
@@ -138,7 +138,7 @@ export function OrgSetupPage() {
           <button
             type="submit"
             disabled={busy}
-            className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+            className="rounded-tile bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
           >
             {t("org:setupContinue")}
           </button>
@@ -150,20 +150,20 @@ export function OrgSetupPage() {
           <label className="flex cursor-pointer items-start gap-2 text-sm text-ink-primary">
             <input
               type="checkbox"
-              className="mt-1 rounded border-line"
+              className="mt-1 rounded-tile border-line"
               checked={disclaimerAccepted}
               onChange={(e) => setDisclaimerAccepted(e.target.checked)}
             />
             <span>{t("org:setupDisclaimer")}</span>
           </label>
 
-          <div className="rounded-lg border border-line p-4">
+          <div className="rounded-card border border-line p-4">
             <p className="text-sm font-medium text-ink-primary">{t("org:setupContentStep")}</p>
             <p className="mt-1 text-xs text-ink-muted">{t("org:setupContentHint")}</p>
             <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
               <input
                 type="checkbox"
-                className="rounded border-line"
+                className="rounded-tile border-line"
                 checked={startEmpty}
                 onChange={(e) => {
                   setStartEmpty(e.target.checked);
@@ -183,7 +183,7 @@ export function OrgSetupPage() {
           <button
             type="button"
             disabled={busy}
-            className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+            className="rounded-tile bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
             onClick={() => void finishSetup()}
           >
             {busy ? t("org:setupFinishing") : t("org:setupFinish")}

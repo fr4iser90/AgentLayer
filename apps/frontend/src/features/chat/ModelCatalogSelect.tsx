@@ -36,7 +36,7 @@ const CHIP_TONES: Record<ModelCapabilityBadge["tone"], string> = {
 function ModelBadge({ badge, compact = false }: { badge: ModelCapabilityBadge; compact?: boolean }) {
   return (
     <span
-      className={`inline-flex shrink-0 items-center rounded-full border px-1.5 py-0.5 font-medium ${compact ? "text-meta" : "text-meta"} ${CHIP_TONES[badge.tone]}`}
+      className={`inline-flex shrink-0 items-center rounded-pill border px-1.5 py-0.5 font-medium ${compact ? "text-meta" : "text-meta"} ${CHIP_TONES[badge.tone]}`}
     >
       {badge.label}
     </span>
@@ -92,7 +92,7 @@ export function ModelCatalogSelect({
     <div ref={rootRef} className="relative">
       <button
         type="button"
-        className={`mt-0.5 flex w-full items-center justify-between gap-2 rounded-lg border border-line bg-[#1a1a1a] ${buttonPadding} text-left text-ink-primary shadow-sm outline-none transition hover:border-sky-500/45 hover:bg-[#202020] focus:border-sky-400/70 focus:ring-2 focus:ring-sky-500/20 disabled:cursor-not-allowed disabled:opacity-60 ${buttonTextSize}`}
+        className={`mt-0.5 flex w-full items-center justify-between gap-2 rounded-card border border-line bg-[#1a1a1a] ${buttonPadding} text-left text-ink-primary shadow-sm outline-none transition hover:border-sky-500/45 hover:bg-[#202020] focus:border-sky-400/70 focus:ring-2 focus:ring-sky-500/20 disabled:cursor-not-allowed disabled:opacity-60 ${buttonTextSize}`}
         disabled={isDisabled}
         aria-haspopup="listbox"
         aria-expanded={open}
@@ -116,7 +116,7 @@ export function ModelCatalogSelect({
         <span className="shrink-0 text-ink-muted">v</span>
       </button>
       {open && !isDisabled ? (
-        <div className="absolute z-50 mt-1 max-h-72 w-full overflow-auto rounded-xl border border-line bg-[#111] p-1 shadow-2xl shadow-black/50">
+        <div className="absolute z-50 mt-1 max-h-72 w-full overflow-auto rounded-sheet border border-line bg-[#111] p-1 shadow-2xl shadow-black/50">
           <div role="listbox" aria-label={ariaLabel} className="space-y-1">
             {rows.map((row) => {
               const rowValue = modelCatalogSelectValue(row);
@@ -134,7 +134,7 @@ export function ModelCatalogSelect({
                   aria-selected={active}
                   disabled={rowDisabled}
                   title={title}
-                  className={`flex w-full items-start gap-2 rounded-lg px-2 py-2 text-left transition ${
+                  className={`flex w-full items-start gap-2 rounded-card px-2 py-2 text-left transition ${
                     active ? "bg-sky-500/15 ring-1 ring-sky-400/30" : "hover:bg-white/5"
                   } ${rowDisabled ? "cursor-not-allowed opacity-45" : ""}`}
                   onClick={() => {

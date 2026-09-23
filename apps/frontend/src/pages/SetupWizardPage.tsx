@@ -478,12 +478,12 @@ export function SetupWizardPage() {
                     value={setupToken}
                     onChange={(ev) => setSetupToken(ev.target.value)}
                     required
-                    className="rounded-lg border border-line bg-field px-3 py-2 text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                    className="rounded-card border border-line bg-field px-3 py-2 text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                   />
                 </label>
               ) : null}
               <fieldset className="space-y-3">
-                <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-line p-4">
+                <label className="flex cursor-pointer items-start gap-3 rounded-card border border-line p-4">
                   <input
                     type="radio"
                     name="deployment_mode"
@@ -497,7 +497,7 @@ export function SetupWizardPage() {
                     <span className="mt-1 block text-xs text-ink-muted">{t("setup:modeSingleDesc")}</span>
                   </span>
                 </label>
-                <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-line p-4">
+                <label className="flex cursor-pointer items-start gap-3 rounded-card border border-line p-4">
                   <input
                     type="radio"
                     name="deployment_mode"
@@ -511,7 +511,7 @@ export function SetupWizardPage() {
                     <span className="mt-1 block text-xs text-ink-muted">{t("setup:modeAgentDesc")}</span>
                   </span>
                 </label>
-                <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-line p-4">
+                <label className="flex cursor-pointer items-start gap-3 rounded-card border border-line p-4">
                   <input
                     type="radio"
                     name="deployment_mode"
@@ -534,7 +534,7 @@ export function SetupWizardPage() {
               <button
                 type="submit"
                 disabled={deploymentPending}
-                className="rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+                className="rounded-card bg-sky-600 px-4 py-2.5 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
               >
                 {deploymentPending ? t("setup:deploymentPending") : t("setup:continueBtn")}
               </button>
@@ -557,7 +557,7 @@ export function SetupWizardPage() {
                     value={setupToken}
                     onChange={(ev) => setSetupToken(ev.target.value)}
                     required
-                    className="rounded-lg border border-line bg-field px-3 py-2 text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                    className="rounded-card border border-line bg-field px-3 py-2 text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                   />
                   <p className="text-xs text-ink-muted">
                     {setupStatus.setup_token_source === "env"
@@ -575,7 +575,7 @@ export function SetupWizardPage() {
                   value={email}
                   onChange={(ev) => setEmail(ev.target.value)}
                   required
-                  className="rounded-lg border border-line bg-field px-3 py-2 text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                  className="rounded-card border border-line bg-field px-3 py-2 text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                 />
               </label>
               <label className="flex flex-col gap-1.5 text-sm">
@@ -588,7 +588,7 @@ export function SetupWizardPage() {
                   onChange={(ev) => setPassword(ev.target.value)}
                   required
                   minLength={8}
-                  className="rounded-lg border border-line bg-field px-3 py-2 text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                  className="rounded-card border border-line bg-field px-3 py-2 text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                 />
               </label>
               <label className="flex flex-col gap-1.5 text-sm">
@@ -601,7 +601,7 @@ export function SetupWizardPage() {
                   onChange={(ev) => setPasswordConfirm(ev.target.value)}
                   required
                   minLength={8}
-                  className="rounded-lg border border-line bg-field px-3 py-2 text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                  className="rounded-card border border-line bg-field px-3 py-2 text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                 />
               </label>
               <p className="text-xs text-ink-muted">
@@ -615,7 +615,7 @@ export function SetupWizardPage() {
               <button
                 type="submit"
                 disabled={adminPending}
-                className="rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+                className="rounded-card bg-sky-600 px-4 py-2.5 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
               >
                 {adminPending ? t("setup:adminPending") : t("setup:continueBtn")}
               </button>
@@ -645,7 +645,7 @@ export function SetupWizardPage() {
                     {catalog.providers.map((p) => (
                       <li
                         key={p.provider_id}
-                        className="rounded-lg border border-line bg-card px-3 py-2 text-sm"
+                        className="rounded-card border border-line bg-card px-3 py-2 text-sm"
                       >
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-medium text-ink-primary">{p.label}</span>
@@ -674,7 +674,7 @@ export function SetupWizardPage() {
                   </ul>
                 </section>
 
-                <section className="rounded-lg border border-line bg-card px-3 py-2 text-sm">
+                <section className="rounded-card border border-line bg-card px-3 py-2 text-sm">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium text-ink-primary">{t("setup:embeddingsTitle")}</span>
                     <span
@@ -709,7 +709,7 @@ export function SetupWizardPage() {
                         type="button"
                         disabled={chatEmbedPending || prefsPending}
                         onClick={() => void onEnableChatProviderEmbedding()}
-                        className="self-start rounded-lg border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-sm text-sky-200 hover:bg-sky-500/20 disabled:opacity-50"
+                        className="self-start rounded-card border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-sm text-sky-200 hover:bg-sky-500/20 disabled:opacity-50"
                       >
                         {chatEmbedPending ? t("setup:chatEmbedPending") : t("setup:chatEmbedBtn")}
                       </button>
@@ -732,7 +732,7 @@ export function SetupWizardPage() {
                           setModelCoding(prov.chat_models[1] ?? prov.chat_models[0]);
                         }
                       }}
-                      className="rounded-lg border border-line bg-field px-3 py-2 text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                      className="rounded-card border border-line bg-field px-3 py-2 text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                     >
                       <option value="">{t("setup:selectProvider")}</option>
                       {catalog.providers.map((p) => (
@@ -754,7 +754,7 @@ export function SetupWizardPage() {
                       value={modelAgent}
                       onChange={(ev) => setModelAgent(ev.target.value)}
                       disabled={!chatModels.length}
-                      className="rounded-lg border border-line bg-field px-3 py-2 text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50"
+                      className="rounded-card border border-line bg-field px-3 py-2 text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50"
                     >
                       {chatModels.length === 0 ? (
                         <option value="">{t("setup:noChatModels")}</option>
@@ -774,7 +774,7 @@ export function SetupWizardPage() {
                       value={modelCoding}
                       onChange={(ev) => setModelCoding(ev.target.value)}
                       disabled={!chatModels.length}
-                      className="rounded-lg border border-line bg-field px-3 py-2 text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50"
+                      className="rounded-card border border-line bg-field px-3 py-2 text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50"
                     >
                       {chatModels.map((m) => (
                         <option key={`c-${m}`} value={m}>
@@ -790,7 +790,7 @@ export function SetupWizardPage() {
                       value={modelDefault}
                       onChange={(ev) => setModelDefault(ev.target.value)}
                       disabled={!chatModels.length}
-                      className="rounded-lg border border-line bg-field px-3 py-2 text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50"
+                      className="rounded-card border border-line bg-field px-3 py-2 text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50"
                     >
                       {chatModels.map((m) => (
                         <option key={`d-${m}`} value={m}>
@@ -810,7 +810,7 @@ export function SetupWizardPage() {
                         <select
                           value={ragEmbedding}
                           onChange={(ev) => setRagEmbedding(ev.target.value)}
-                          className="rounded-lg border border-line bg-field px-3 py-2 text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                          className="rounded-card border border-line bg-field px-3 py-2 text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                         >
                           <option value="">{t("setup:optionalDash")}</option>
                           {embedOptions.map((m) => (
@@ -824,7 +824,7 @@ export function SetupWizardPage() {
                         type="button"
                         disabled={embedTestPending || !ragEmbedding.trim()}
                         onClick={() => void onTestEmbedding()}
-                        className="self-start rounded-lg border border-line px-3 py-2 text-sm text-ink-primary hover:bg-white/5 disabled:opacity-50"
+                        className="self-start rounded-card border border-line px-3 py-2 text-sm text-ink-primary hover:bg-white/5 disabled:opacity-50"
                       >
                         {embedTestPending ? t("setup:embedTestPending") : t("setup:embedTestBtn")}
                       </button>
@@ -852,7 +852,7 @@ export function SetupWizardPage() {
                       type="button"
                       disabled={catalogLoading}
                       onClick={() => void loadCatalog()}
-                      className="rounded-lg border border-line px-4 py-2.5 text-sm text-ink-primary hover:bg-white/5 disabled:opacity-50"
+                      className="rounded-card border border-line px-4 py-2.5 text-sm text-ink-primary hover:bg-white/5 disabled:opacity-50"
                     >
                       {t("setup:refresh")}
                     </button>
@@ -863,7 +863,7 @@ export function SetupWizardPage() {
                         !primaryProviderId ||
                         !selectedProvider?.reachable
                       }
-                      className="rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+                      className="rounded-card bg-sky-600 px-4 py-2.5 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
                     >
                       {prefsPending ? t("setup:savePending") : t("setup:saveAndContinue")}
                     </button>
@@ -887,7 +887,7 @@ export function SetupWizardPage() {
                     <select
                       value={preset}
                       onChange={(ev) => onPresetChange(ev.target.value as LlmPresetId)}
-                      className="rounded-lg border border-line bg-field px-3 py-2 text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                      className="rounded-card border border-line bg-field px-3 py-2 text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                     >
                       {LLM_PRESETS.map((p) => (
                         <option key={p.id} value={p.id}>
@@ -908,7 +908,7 @@ export function SetupWizardPage() {
                         setLlmTestOk(null);
                       }}
                       required
-                      className="rounded-lg border border-line bg-field px-3 py-2 text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                      className="rounded-card border border-line bg-field px-3 py-2 text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                     />
                   </label>
                   <label className="flex flex-col gap-1.5 text-sm">
@@ -925,7 +925,7 @@ export function SetupWizardPage() {
                       }}
                       autoComplete="off"
                       required={presetConfig.apiKeyRequired}
-                      className="rounded-lg border border-line bg-field px-3 py-2 text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                      className="rounded-card border border-line bg-field px-3 py-2 text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                     />
                     <p className="text-xs text-ink-muted">{t(`setup:${presetConfig.apiKeyHintKey}`)}</p>
                   </label>
@@ -936,7 +936,7 @@ export function SetupWizardPage() {
                       value={modelDefaultManual}
                       onChange={(ev) => setModelDefaultManual(ev.target.value)}
                       placeholder={t(`setup:${presetConfig.modelPlaceholderKey}`)}
-                      className="rounded-lg border border-line bg-field px-3 py-2 text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                      className="rounded-card border border-line bg-field px-3 py-2 text-ink-primary focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                     />
                   </label>
                   {llmError ? (
@@ -954,14 +954,14 @@ export function SetupWizardPage() {
                       type="button"
                       disabled={llmPending}
                       onClick={(ev) => void onLlmTest(ev as unknown as FormEvent)}
-                      className="rounded-lg border border-line px-4 py-2.5 text-sm text-ink-primary hover:bg-white/5 disabled:opacity-50"
+                      className="rounded-card border border-line px-4 py-2.5 text-sm text-ink-primary hover:bg-white/5 disabled:opacity-50"
                     >
                       {t("setup:testConnection")}
                     </button>
                     <button
                       type="submit"
                       disabled={llmPending}
-                      className="rounded-lg border border-line px-4 py-2.5 text-sm text-ink-primary hover:bg-white/5 disabled:opacity-50"
+                      className="rounded-card border border-line px-4 py-2.5 text-sm text-ink-primary hover:bg-white/5 disabled:opacity-50"
                     >
                       {t("setup:saveEndpoint")}
                     </button>
@@ -988,13 +988,13 @@ export function SetupWizardPage() {
             <div className="mt-8 flex flex-col gap-3">
               <Link
                 to="/chat"
-                className="rounded-lg bg-sky-600 px-4 py-2.5 text-center text-sm font-medium text-ink-on-fill hover:bg-sky-500"
+                className="rounded-card bg-sky-600 px-4 py-2.5 text-center text-sm font-medium text-ink-on-fill hover:bg-sky-500"
               >
                 {t("setup:goToChat")}
               </Link>
               <Link
                 to="/admin"
-                className="rounded-lg border border-line px-4 py-2.5 text-center text-sm text-ink-primary hover:bg-white/5"
+                className="rounded-card border border-line px-4 py-2.5 text-center text-sm text-ink-primary hover:bg-white/5"
               >
                 {t("setup:goToAdmin")}
               </Link>

@@ -42,14 +42,14 @@ export function BlockExpandModal(props: {
         <h2 className="min-w-0 truncate text-sm font-medium text-ink-primary sm:text-base">{title}</h2>
         <button
           type="button"
-          className="shrink-0 rounded-lg bg-white/10 px-3 py-1.5 text-sm text-ink-primary hover:bg-white/20"
+          className="shrink-0 rounded-card bg-white/10 px-3 py-1.5 text-sm text-ink-primary hover:bg-white/20"
           onClick={onClose}
         >
           {t("dashboard:blockExpandClose")}
         </button>
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4 sm:p-6">
-        <div className="mx-auto max-w-6xl rounded-xl border border-line bg-card p-3 sm:p-4">
+        <div className="mx-auto max-w-6xl rounded-sheet border border-line bg-card p-3 sm:p-4">
           <DashboardBlockTile
             block={block}
             data={data}

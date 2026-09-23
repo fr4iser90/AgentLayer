@@ -18,7 +18,7 @@ export function DocsPage() {
         <h1 className="text-lg font-semibold text-ink-primary">{t("common:docs.title")}</h1>
         <p className="mt-2 text-sm text-ink-muted">
           {t("common:docs.intro")}{" "}
-          <code className="rounded bg-white/5 px-1 py-0.5 text-xs text-ink-secondary">docs/</code>.
+          <code className="rounded-tile bg-white/5 px-1 py-0.5 text-xs text-ink-secondary">docs/</code>.
         </p>
         <ul className="mt-6 flex flex-col gap-2">
           {LINKS.map((item) => (

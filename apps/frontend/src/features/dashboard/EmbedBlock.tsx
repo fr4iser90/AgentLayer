@@ -77,7 +77,7 @@ export function EmbedBlockBody(props: {
   const title = st.title.trim() || sectionTitle;
 
   return (
-    <section className="rounded-xl border border-line bg-card p-3 md:p-4">
+    <section className="rounded-sheet border border-line bg-card p-3 md:p-4">
       <h3 className="mb-2 text-sm font-medium text-ink-primary">{title}</h3>
       {!readOnly ? (
         <div className="dashboard-grid-no-drag mb-3 space-y-2">
@@ -87,7 +87,7 @@ export function EmbedBlockBody(props: {
             </label>
             <input
               type="text"
-              className="w-full rounded-lg border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+              className="w-full rounded-card border border-line bg-field px-3 py-2 text-sm text-ink-primary"
               placeholder={sectionTitle}
               value={st.title}
               onChange={(e) => patch({ title: e.target.value })}
@@ -99,7 +99,7 @@ export function EmbedBlockBody(props: {
             </label>
             <input
               type="url"
-              className="w-full rounded-lg border border-line bg-field px-3 py-2 font-mono text-xs text-ink-primary"
+              className="w-full rounded-card border border-line bg-field px-3 py-2 font-mono text-xs text-ink-primary"
               placeholder={t("dashboard:embedUrlPlaceholder")}
               value={st.url}
               onChange={(e) => patch({ url: e.target.value })}
@@ -115,14 +115,14 @@ export function EmbedBlockBody(props: {
                 min={120}
                 max={2000}
                 step={20}
-                className="w-28 rounded-lg border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
+                className="w-28 rounded-card border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
                 value={st.height}
                 onChange={(e) => patch({ height: Number(e.target.value) || 480 })}
               />
             </div>
           </div>
           {st.url && !allowed ? (
-            <p className="rounded-lg border border-amber-500/40 bg-amber-950/30 px-2 py-1.5 text-xs text-amber-200">
+            <p className="rounded-card border border-amber-500/40 bg-amber-950/30 px-2 py-1.5 text-xs text-amber-200">
               {t("dashboard:embedUrlNotAllowed")}{" "}
               {EMBED_ALLOWED_HOSTNAMES.slice(0, 4).join(", ")} …
             </p>
@@ -134,7 +134,7 @@ export function EmbedBlockBody(props: {
       ) : null}
       {allowed ? (
         <div
-          className="overflow-hidden rounded-lg border border-line bg-black/40"
+          className="overflow-hidden rounded-card border border-line bg-black/40"
           style={{ height: st.height }}
         >
           <iframe
@@ -147,11 +147,11 @@ export function EmbedBlockBody(props: {
           />
         </div>
       ) : st.url && readOnly ? (
-        <p className="rounded-lg border border-red-500/30 bg-red-950/20 px-3 py-4 text-sm text-red-200">
+        <p className="rounded-card border border-red-500/30 bg-red-950/20 px-3 py-4 text-sm text-red-200">
           {t("dashboard:embedUnavailableReadOnly")}
         </p>
       ) : !st.url ? (
-        <p className="rounded-lg border border-dashed border-line-strong py-10 text-center text-sm text-ink-muted">
+        <p className="rounded-card border border-dashed border-line-strong py-10 text-center text-sm text-ink-muted">
           {readOnly
             ? t("dashboard:embedEmptyReadOnly")
             : t("dashboard:embedEmptyEditable")}

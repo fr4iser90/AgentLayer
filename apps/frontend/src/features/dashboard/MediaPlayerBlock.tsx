@@ -171,14 +171,14 @@ export function MediaPlayerBlockBody(props: {
   };
 
   return (
-    <section className="rounded-xl border border-line bg-card p-3 md:p-4">
+    <section className="rounded-sheet border border-line bg-card p-3 md:p-4">
       <h3 className="mb-3 text-sm font-medium text-ink-primary">{sectionTitle}</h3>
 
-      <div className="mb-4 min-h-[4rem] rounded-lg border border-line bg-black/40 p-3">
+      <div className="mb-4 min-h-[4rem] rounded-card border border-line bg-black/40 p-3">
         {!nowItem ? (
           <p className="text-sm text-ink-muted">{t("dashboard:mediaQueueEmpty")}</p>
         ) : nowEmbed ? (
-          <div className="aspect-video max-h-48 overflow-hidden rounded-md">
+          <div className="aspect-video max-h-48 overflow-hidden rounded-tile">
             <iframe title={itemLabel(nowItem, sectionTitle)} src={nowEmbed} className="h-full w-full border-0" />
           </div>
         ) : nowMediaId || nowExternalStream ? (
@@ -193,7 +193,7 @@ export function MediaPlayerBlockBody(props: {
               ) : null}
               <button
                 type="button"
-                className="rounded-lg border border-sky-500/40 bg-sky-950/40 px-3 py-1.5 text-xs text-sky-100 hover:bg-sky-900/40"
+                className="rounded-card border border-sky-500/40 bg-sky-950/40 px-3 py-1.5 text-xs text-sky-100 hover:bg-sky-900/40"
                 onClick={() => (globalPlayingNow ? globalMedia.togglePause() : startPlayback(nowItem))}
               >
                 {globalPlayingNow && !globalMedia.paused
@@ -221,7 +221,7 @@ export function MediaPlayerBlockBody(props: {
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              className="rounded-lg border border-line bg-black/30 px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5 disabled:opacity-50"
+              className="rounded-card border border-line bg-black/30 px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5 disabled:opacity-50"
               disabled={uploading || !dashboardId}
               onClick={() => fileRef.current?.click()}
             >
@@ -242,14 +242,14 @@ export function MediaPlayerBlockBody(props: {
           <div className="flex flex-wrap gap-2">
             <input
               type="url"
-              className="min-w-[12rem] flex-1 rounded-lg border border-line bg-field px-3 py-2 font-mono text-xs text-ink-primary"
+              className="min-w-[12rem] flex-1 rounded-card border border-line bg-field px-3 py-2 font-mono text-xs text-ink-primary"
               placeholder={t("dashboard:embedUrlPlaceholder")}
               value={embedUrl}
               onChange={(e) => setEmbedUrl(e.target.value)}
             />
             <button
               type="button"
-              className="rounded-lg border border-sky-500/40 bg-sky-950/40 px-3 py-2 text-xs text-sky-100 hover:bg-sky-900/40 disabled:opacity-50"
+              className="rounded-card border border-sky-500/40 bg-sky-950/40 px-3 py-2 text-xs text-sky-100 hover:bg-sky-900/40 disabled:opacity-50"
               disabled={uploading || !embedUrl.trim()}
               onClick={() => void onAddEmbed()}
             >
@@ -268,7 +268,7 @@ export function MediaPlayerBlockBody(props: {
             return (
               <li
                 key={`${id ?? idx}-${idx}`}
-                className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm ${
+                className={`flex items-center gap-2 rounded-card px-2 py-1.5 text-sm ${
                   active ? "bg-sky-950/40 text-sky-100" : "text-ink-primary hover:bg-white/5"
                 }`}
               >

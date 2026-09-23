@@ -97,7 +97,7 @@ function AddBlockToolbar(props: {
         <button
           key={definition.type}
           type="button"
-          className="dashboard-grid-no-drag rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-ink-on-fill hover:bg-sky-500"
+          className="dashboard-grid-no-drag rounded-card bg-sky-600 px-3 py-1.5 text-xs font-medium text-ink-on-fill hover:bg-sky-500"
           onClick={() => onAdd(definition.type)}
         >
           {t(definition.addLabelKey as "dashboard:addList")}
@@ -322,7 +322,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                 key={b.id}
                 data-block-id={b.id}
                 className={[
-                  "relative overflow-hidden rounded-xl border bg-card shadow-sm transition-colors",
+                  "relative overflow-hidden rounded-sheet border bg-card shadow-sm transition-colors",
                   isSelected && editMode
                     ? "border-sky-500/60 ring-1 ring-sky-500/30"
                     : isHighlighted
@@ -347,7 +347,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                         {canExpand ? (
                           <button
                             type="button"
-                            className="dashboard-grid-no-drag rounded px-2 py-0.5 text-xs text-sky-200 hover:bg-sky-950/50"
+                            className="dashboard-grid-no-drag rounded-tile px-2 py-0.5 text-xs text-sky-200 hover:bg-sky-950/50"
                             title={t("dashboard:blockExpand")}
                             aria-label={t("dashboard:blockExpand")}
                             onClick={() => {
@@ -362,7 +362,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                           <button
                             type="button"
                             className={[
-                              "dashboard-grid-no-drag rounded px-2 py-0.5 text-xs",
+                              "dashboard-grid-no-drag rounded-tile px-2 py-0.5 text-xs",
                               chatFocusedBlockId === b.id
                                 ? "bg-emerald-900/60 text-emerald-100"
                                 : "text-emerald-200 hover:bg-emerald-950/50",
@@ -378,7 +378,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                         {canConfigureBlock ? (
                           <button
                             type="button"
-                            className="dashboard-grid-no-drag rounded px-2 py-0.5 text-xs text-amber-200 hover:bg-amber-950/50"
+                            className="dashboard-grid-no-drag rounded-tile px-2 py-0.5 text-xs text-amber-200 hover:bg-amber-950/50"
                             title={t("dashboard:blockSettingsTitle")}
                             aria-label={t("dashboard:blockSettingsTitle")}
                             onClick={() => setSettingsBlockId(b.id)}
@@ -389,7 +389,7 @@ export function DashboardGridInner(props: DashboardGridInnerProps) {
                         {onPinBlock && b.type !== "dashboard_ref" ? (
                           <button
                             type="button"
-                            className="dashboard-grid-no-drag rounded px-2 py-0.5 text-xs text-violet-200 hover:bg-violet-950/50"
+                            className="dashboard-grid-no-drag rounded-tile px-2 py-0.5 text-xs text-violet-200 hover:bg-violet-950/50"
                             title={t("dashboard:pinBlockHint")}
                             onClick={() => onPinBlock(b.id)}
                           >

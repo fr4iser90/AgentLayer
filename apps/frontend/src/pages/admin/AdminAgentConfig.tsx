@@ -228,7 +228,7 @@ export function AdminAgentConfig() {
 
   const knobEditor = (
     <div className="grid min-h-0 flex-1 gap-4 md:grid-cols-2">
-      <section className="min-h-0 overflow-auto rounded-lg border border-line bg-[#111] p-3">
+      <section className="min-h-0 overflow-auto rounded-card border border-line bg-[#111] p-3">
         <h2 className="mb-2 text-sm font-medium text-ink-primary">{t("admin:agentConfigKnobs")}</h2>
         <ul className="space-y-1">
           {knobs.map((k) => (
@@ -236,7 +236,7 @@ export function AdminAgentConfig() {
               <button
                 type="button"
                 onClick={() => setSelectedId(k.id)}
-                className={`w-full rounded px-2 py-1.5 text-left text-sm ${
+                className={`w-full rounded-tile px-2 py-1.5 text-left text-sm ${
                   selectedId === k.id ? "bg-white/10 text-ink-primary" : "text-ink-muted hover:bg-white/5"
                 }`}
               >
@@ -253,7 +253,7 @@ export function AdminAgentConfig() {
         </ul>
       </section>
 
-      <section className="flex min-h-0 flex-col gap-3 overflow-auto rounded-lg border border-line bg-[#111] p-3">
+      <section className="flex min-h-0 flex-col gap-3 overflow-auto rounded-card border border-line bg-[#111] p-3">
         <h2 className="text-sm font-medium text-ink-primary">{t("admin:agentConfigApply")}</h2>
         {selected ? (
           <>
@@ -261,7 +261,7 @@ export function AdminAgentConfig() {
               {selected.layer ? `[${selected.layer}] ` : ""}
               {selected.doc}
             </p>
-            <div className="rounded border border-line/60 bg-black/20 p-2 text-xs text-ink-muted">
+            <div className="rounded-tile border border-line/60 bg-black/20 p-2 text-xs text-ink-muted">
               <p className="font-medium text-white/90">{t("admin:agentConfigEffectiveNow")}</p>
               <p className="mt-1 font-mono">{formatKnobValue(selected)}</p>
               <p className="mt-2">
@@ -278,7 +278,7 @@ export function AdminAgentConfig() {
                 </p>
               ) : null}
             </div>
-            <div className="rounded border border-blue-500/30 bg-blue-500/5 p-2 text-xs text-blue-100/90">
+            <div className="rounded-tile border border-blue-500/30 bg-blue-500/5 p-2 text-xs text-blue-100/90">
               {t(`admin:${knobHelpKey(selected.id)}`, {
                 defaultValue: selected.doc || selected.id,
               })}
@@ -288,7 +288,7 @@ export function AdminAgentConfig() {
             ) : null}
             <label className="text-xs text-ink-muted">{t("admin:agentConfigValue")}</label>
             <textarea
-              className="min-h-[80px] w-full rounded border border-line bg-field p-2 font-mono text-sm text-ink-primary disabled:opacity-50"
+              className="min-h-[80px] w-full rounded-tile border border-line bg-field p-2 font-mono text-sm text-ink-primary disabled:opacity-50"
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
               disabled={selected.writable === false}
@@ -296,7 +296,7 @@ export function AdminAgentConfig() {
             <label className="text-xs text-ink-muted">{t("admin:agentConfigHypothesis")}</label>
             <p className="text-meta text-ink-muted/80">{t("admin:agentConfigHypothesisHint")}</p>
             <input
-              className="w-full rounded border border-line bg-field p-2 text-sm text-ink-primary disabled:opacity-50"
+              className="w-full rounded-tile border border-line bg-field p-2 text-sm text-ink-primary disabled:opacity-50"
               value={hypothesis}
               onChange={(e) => setHypothesis(e.target.value)}
               disabled={selected.writable === false}
@@ -305,7 +305,7 @@ export function AdminAgentConfig() {
               type="button"
               disabled={applyBusy || selected.writable === false}
               onClick={() => void onApply()}
-              className="rounded bg-emerald-700 px-3 py-2 text-sm text-ink-on-fill hover:bg-emerald-600 disabled:opacity-50"
+              className="rounded-tile bg-emerald-700 px-3 py-2 text-sm text-ink-on-fill hover:bg-emerald-600 disabled:opacity-50"
             >
               {applyBusy ? t("admin:agentConfigApplying") : t("admin:agentConfigApplyBtn")}
             </button>
@@ -319,7 +319,7 @@ export function AdminAgentConfig() {
             <h3 className="mt-4 text-sm font-medium text-ink-primary">{t("admin:agentConfigChangelog")}</h3>
             <ul className="space-y-2 text-xs text-ink-muted">
               {(events as { id?: string; at?: string; patches?: unknown[] }[]).slice(0, 10).map((ev) => (
-                <li key={ev.id} className="rounded border border-line/60 p-2">
+                <li key={ev.id} className="rounded-tile border border-line/60 p-2">
                   <div>{ev.at}</div>
                   <pre className="mt-1 overflow-auto whitespace-pre-wrap">{JSON.stringify(ev.patches, null, 2)}</pre>
                 </li>
@@ -350,7 +350,7 @@ export function AdminAgentConfig() {
               key={id}
               type="button"
               onClick={() => setTab(id)}
-              className={`rounded px-3 py-1 text-xs ${
+              className={`rounded-tile px-3 py-1 text-xs ${
                 tab === id ? "bg-white/15 text-ink-primary" : "text-ink-muted hover:bg-white/5"
               }`}
             >
@@ -361,7 +361,7 @@ export function AdminAgentConfig() {
       </header>
 
       {error ? (
-        <p className="mb-3 rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+        <p className="mb-3 rounded-tile border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
           {error}
         </p>
       ) : null}
@@ -372,7 +372,7 @@ export function AdminAgentConfig() {
         <div className="flex min-h-0 flex-1 flex-col gap-4">
           <p className="text-xs text-ink-muted">{t("admin:agentConfigModelsHint")}</p>
           <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[240px_1fr]">
-            <section className="min-h-0 overflow-auto rounded-lg border border-line bg-[#111] p-3">
+            <section className="min-h-0 overflow-auto rounded-card border border-line bg-[#111] p-3">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <h2 className="text-sm font-medium text-ink-primary">{t("admin:agentConfigModelsList")}</h2>
                 <button
@@ -392,7 +392,7 @@ export function AdminAgentConfig() {
                       <button
                         type="button"
                         onClick={() => selectModelOverride(row)}
-                        className={`w-full rounded px-2 py-1.5 text-left ${
+                        className={`w-full rounded-tile px-2 py-1.5 text-left ${
                           active ? "bg-white/10 text-ink-primary" : "text-ink-muted hover:bg-white/5"
                         }`}
                       >
@@ -407,7 +407,7 @@ export function AdminAgentConfig() {
             </section>
 
             <div className="flex min-h-0 flex-1 flex-col gap-3">
-              <section className="shrink-0 rounded-lg border border-line bg-[#111] p-3">
+              <section className="shrink-0 rounded-card border border-line bg-[#111] p-3">
                 <div className="grid gap-3 md:grid-cols-3">
                   <label className="block text-sm">
                     <span className="text-xs text-ink-muted">{t("admin:agentConfigModelsProvider")}</span>
@@ -417,7 +417,7 @@ export function AdminAgentConfig() {
                         setModelScopeOverrideId(null);
                         setModelScopeCatalog(e.target.value);
                       }}
-                      className="mt-1 w-full rounded border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
+                      className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
                     >
                       <option value="">—</option>
                       {benchProviders.map((p) => (
@@ -436,7 +436,7 @@ export function AdminAgentConfig() {
                         setModelScopeModel(e.target.value);
                       }}
                       placeholder={t("admin:agentConfigModelsModelHint")}
-                      className="mt-1 w-full rounded border border-line bg-field px-2 py-1.5 font-mono text-sm text-ink-primary"
+                      className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1.5 font-mono text-sm text-ink-primary"
                     />
                   </label>
                   <label className="block text-sm">
@@ -444,7 +444,7 @@ export function AdminAgentConfig() {
                     <input
                       value={modelScopeLabel}
                       onChange={(e) => setModelScopeLabel(e.target.value)}
-                      className="mt-1 w-full rounded border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
+                      className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
                     />
                   </label>
                 </div>

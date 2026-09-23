@@ -51,15 +51,15 @@ export function AgentRunningBadge() {
   return (
     <Link
       to={href}
-      className="ml-1 inline-flex max-w-[min(100%,18rem)] items-center gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-meta font-medium text-amber-100/95 hover:bg-amber-500/20"
+      className="ml-1 inline-flex max-w-[min(100%,18rem)] items-center gap-1.5 rounded-tile border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-meta font-medium text-amber-100/95 hover:bg-amber-500/20"
       title={label}
     >
       <span
         className="relative flex h-1.5 w-1.5 shrink-0"
         aria-hidden
       >
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400/70 opacity-75" />
-        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-amber-300" />
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-pill bg-amber-400/70 opacity-75" />
+        <span className="relative inline-flex h-1.5 w-1.5 rounded-pill bg-amber-300" />
       </span>
       <span className="min-w-0 truncate">{label}</span>
       <span className="shrink-0 tabular-nums text-amber-200/70">{timeLabel}</span>
