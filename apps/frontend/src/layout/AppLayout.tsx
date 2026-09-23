@@ -17,17 +17,17 @@ const GITHUB_REPO =
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   [
-    "rounded-tile px-3 py-2 text-sm transition-colors",
+    "rounded-tile px-soft py-base text-sm transition-colors",
     isActive
       ? "bg-white/10 text-ink-primary"
       : "text-ink-muted hover:bg-white/5 hover:text-neutral-200",
   ].join(" ");
 
 const menuItemClass =
-  "block w-full px-3 py-2 text-left text-sm text-ink-primary hover:bg-white/10";
+  "block w-full px-soft py-base text-left text-sm text-ink-primary hover:bg-white/10";
 
 const signInClass =
-  "rounded-tile px-3 py-2 text-sm text-ink-muted hover:bg-white/5 hover:text-neutral-200";
+  "rounded-tile px-soft py-base text-sm text-ink-muted hover:bg-white/5 hover:text-neutral-200";
 
 function MoreNavMenu({
   showSchedulesMobile,
@@ -81,7 +81,7 @@ function MoreNavMenu({
       {open ? (
         <div
           role="menu"
-          className="absolute left-0 z-50 mt-1 min-w-[11rem] rounded-card border border-line bg-raised py-1 shadow-xl"
+          className="absolute left-0 z-50 mt-tight min-w-[11rem] rounded-card border border-line bg-raised py-tight shadow-xl"
         >
           {hasMobileExtras ? (
             <div className="md:hidden">
@@ -105,7 +105,7 @@ function MoreNavMenu({
                   {t("nav.connections")}
                 </NavLink>
               ) : null}
-              {hasDesktopExtras ? <div className="my-1 border-t border-line" /> : null}
+              {hasDesktopExtras ? <div className="my-tight border-t border-line" /> : null}
             </div>
           ) : null}
           {showDashboard ? (
@@ -192,13 +192,13 @@ export function AppLayout() {
 
   const shell = (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden">
-      <header className="flex shrink-0 items-center gap-3 border-b border-line bg-panel px-4 py-2">
+      <header className="flex shrink-0 items-center gap-soft border-b border-line bg-panel px-wide py-base">
         <span className="shrink-0 text-sm font-semibold tracking-tight text-ink-primary">
           {t("app.title")}
         </span>
-        <nav className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+        <nav className="flex min-w-0 flex-1 flex-wrap items-center gap-tight">
           {loading ? (
-            <span className="px-3 py-2 text-xs text-ink-muted">{t("nav.loading")}</span>
+            <span className="px-soft py-base text-xs text-ink-muted">{t("nav.loading")}</span>
           ) : signedIn ? (
             <>
               {navItemAllowed(user, "chat") ? (
@@ -238,8 +238,8 @@ export function AppLayout() {
               />
             </>
           ) : (
-            <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <div className="flex gap-1" aria-label={t("language.label")}>
+            <div className="flex min-w-0 flex-wrap items-center gap-base">
+              <div className="flex gap-tight" aria-label={t("language.label")}>
                 {SUPPORTED.map((lng) => {
                   const active =
                     i18n.resolvedLanguage?.startsWith(lng) ?? i18n.language.startsWith(lng);
@@ -248,7 +248,7 @@ export function AppLayout() {
                       key={lng}
                       type="button"
                       className={[
-                        "rounded-tile px-2 py-1 text-meta font-medium",
+                        "rounded-tile px-base py-tight text-meta font-medium",
                         active
                           ? "bg-white/15 text-ink-primary"
                           : "text-ink-muted hover:bg-white/5 hover:text-neutral-200",
@@ -267,7 +267,7 @@ export function AppLayout() {
           )}
         </nav>
         {loading ? null : signedIn ? (
-          <div className="ml-auto flex shrink-0 items-center gap-1">
+          <div className="ml-auto flex shrink-0 items-center gap-tight">
             <NotificationBell />
             <UserMenu />
           </div>
@@ -277,8 +277,8 @@ export function AppLayout() {
         <Outlet />
       </div>
       <MediaMiniPlayer />
-      <footer className="shrink-0 border-t border-line bg-panel px-4 py-2">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-4 gap-y-1 text-meta text-ink-muted">
+      <footer className="shrink-0 border-t border-line bg-panel px-wide py-base">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-wide gap-y-tight text-meta text-ink-muted">
           <LegalFooterLinks />
           {showDocsFooter && !signedIn ? (
             <>

@@ -5,9 +5,9 @@ import { useAuth } from "../auth/AuthContext";
 import { friendSystemEnabled } from "../auth/tenantSurface";
 
 const subLinkBase =
-  "rounded-card px-3 py-2 text-sm transition-colors border border-transparent";
+  "rounded-card px-soft py-base text-sm transition-colors border border-transparent";
 const subLink = `${subLinkBase} block`;
-const subLinkIcon = `${subLinkBase} flex items-center gap-1.5`;
+const subLinkIcon = `${subLinkBase} flex items-center gap-snug`;
 
 const subLinkActive = "bg-white/10 text-ink-primary border-line";
 const subLinkIdle = "text-ink-muted hover:bg-white/5 hover:text-neutral-200";
@@ -18,12 +18,12 @@ export function SettingsLayout() {
   const friendsOn = friendSystemEnabled(user);
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden md:flex-row">
-      <aside className="shrink-0 border-b border-line bg-panel px-3 py-4 md:w-52 md:border-b-0 md:border-r">
-        <p className="mb-3 px-2 text-meta font-medium uppercase tracking-wide text-ink-muted">
+      <aside className="shrink-0 border-b border-line bg-panel px-soft py-wide md:w-52 md:border-b-0 md:border-r">
+        <p className="mb-soft px-base text-meta font-medium uppercase tracking-wide text-ink-muted">
           {t("common:settings")}
         </p>
         <nav
-          className="flex flex-row flex-wrap gap-1 md:flex-col md:gap-0.5"
+          className="flex flex-row flex-wrap gap-tight md:flex-col md:gap-hair"
           aria-label={t("settings:settingsSectionsAria")}
         >
           <NavLink
@@ -86,7 +86,7 @@ export function SettingsLayout() {
           </NavLink>
         </nav>
       </aside>
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-8">
+      <div className="min-h-0 flex-1 overflow-y-auto px-broad py-deep">
         <Outlet />
       </div>
     </div>

@@ -49,23 +49,23 @@ export function PublicGalleryShareView(props: {
 
   return (
     <div className="min-h-dvh bg-neutral-950 text-ink-primary">
-      <header className="sticky top-0 z-20 border-b border-line bg-neutral-950/85 px-4 py-4 backdrop-blur-md sm:px-8 sm:py-5">
+      <header className="sticky top-0 z-20 border-b border-line bg-neutral-950/85 px-wide py-wide backdrop-blur-md sm:px-deep sm:py-roomy">
         <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{title}</h1>
-        {subtitle ? <p className="mt-1 text-sm text-ink-muted">{subtitle}</p> : null}
+        {subtitle ? <p className="mt-tight text-sm text-ink-muted">{subtitle}</p> : null}
         {introTexts.length > 0 ? (
-          <div className="mt-3 max-w-2xl whitespace-pre-wrap text-sm leading-relaxed text-ink-secondary">
+          <div className="mt-soft max-w-2xl whitespace-pre-wrap text-sm leading-relaxed text-ink-secondary">
             {introTexts.join("\n\n")}
           </div>
         ) : null}
       </header>
 
-      <main className="mx-auto w-full max-w-[1600px] px-3 py-4 sm:px-6 sm:py-8">
+      <main className="mx-auto w-full max-w-[1600px] px-soft py-wide sm:px-broad sm:py-deep">
         {heroBlocks.map((block) => {
           const dp = block.props.dataPath || "hero";
           const hero = readHero(getPath(data, dp));
           if (!hero.url) return null;
           return (
-            <section key={block.id} className="mb-6 sm:mb-10">
+            <section key={block.id} className="mb-broad sm:mb-page">
               <div className="relative aspect-[2.1/1] max-h-[min(520px,70vh)] w-full overflow-hidden rounded-sheet sm:rounded-sheet">
                 <GalleryImage
                   url={hero.url}
@@ -73,12 +73,12 @@ export function PublicGalleryShareView(props: {
                   className="h-full w-full object-cover"
                 />
                 {hero.headline || hero.caption ? (
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent px-5 pb-5 pt-20">
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent px-roomy pb-roomy pt-20">
                     {hero.headline ? (
                       <p className="text-lg font-medium sm:text-xl">{hero.headline}</p>
                     ) : null}
                     {hero.caption ? (
-                      <p className="mt-1 text-sm text-ink-secondary">{hero.caption}</p>
+                      <p className="mt-tight text-sm text-ink-secondary">{hero.caption}</p>
                     ) : null}
                   </div>
                 ) : null}

@@ -67,7 +67,7 @@ export function NotificationBell() {
       >
         <Bell aria-hidden className="h-[18px] w-[18px]" />
         {unread > 0 ? (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-pill bg-orange-500 px-1 text-meta font-semibold text-black">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-pill bg-orange-500 px-tight text-meta font-semibold text-black">
             {unread > 99 ? "99+" : unread}
           </span>
         ) : null}
@@ -75,9 +75,9 @@ export function NotificationBell() {
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 z-50 mt-1 flex w-[min(22rem,calc(100vw-2rem))] flex-col rounded-card border border-line bg-raised shadow-xl"
+          className="absolute right-0 z-50 mt-tight flex w-[min(22rem,calc(100vw-2rem))] flex-col rounded-card border border-line bg-raised shadow-xl"
         >
-          <div className="flex items-center justify-between gap-2 border-b border-line px-3 py-2">
+          <div className="flex items-center justify-between gap-base border-b border-line px-soft py-base">
             <p className="text-sm font-medium text-ink-primary">{t("notifications:inboxTitle")}</p>
             {unread > 0 ? (
               <button
@@ -89,33 +89,33 @@ export function NotificationBell() {
               </button>
             ) : null}
           </div>
-          <div className="max-h-[min(60vh,420px)] overflow-y-auto py-1">
+          <div className="max-h-[min(60vh,420px)] overflow-y-auto py-tight">
             {loading && items.length === 0 ? (
-              <p className="px-3 py-6 text-center text-sm text-ink-muted">{t("common:nav.loading")}</p>
+              <p className="px-soft py-broad text-center text-sm text-ink-muted">{t("common:nav.loading")}</p>
             ) : items.length === 0 ? (
-              <p className="px-3 py-6 text-center text-sm text-ink-muted">{t("notifications:empty")}</p>
+              <p className="px-soft py-broad text-center text-sm text-ink-muted">{t("notifications:empty")}</p>
             ) : (
               items.map((n) => (
                 <div
                   key={n.id}
                   role="menuitem"
                   className={[
-                    "border-b border-line-subtle px-3 py-2.5 last:border-b-0",
+                    "border-b border-line-subtle px-soft py-firm last:border-b-0",
                     n.read ? "opacity-70" : "bg-white/[0.02]",
                   ].join(" ")}
                 >
-                  <div className="flex items-start gap-2">
+                  <div className="flex items-start gap-base">
                     <span
-                      className={["mt-1.5 h-2 w-2 shrink-0 rounded-pill", severityDot(n.severity)].join(" ")}
+                      className={["mt-snug h-2 w-2 shrink-0 rounded-pill", severityDot(n.severity)].join(" ")}
                       aria-hidden
                     />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-ink-primary">{n.title}</p>
                       {n.body ? (
-                        <p className="mt-0.5 line-clamp-2 text-xs text-ink-muted">{n.body}</p>
+                        <p className="mt-hair line-clamp-2 text-xs text-ink-muted">{n.body}</p>
                       ) : null}
-                      <p className="mt-1 text-meta text-white/30">{relativeTime(n.created_at, t)}</p>
-                      <div className="mt-2 flex flex-wrap gap-2">
+                      <p className="mt-tight text-meta text-white/30">{relativeTime(n.created_at, t)}</p>
+                      <div className="mt-base flex flex-wrap gap-base">
                         {n.link_path ? (
                           <Link
                             to={toAppPath(n.link_path)}
@@ -144,7 +144,7 @@ export function NotificationBell() {
               ))
             )}
           </div>
-          <div className="border-t border-line px-3 py-2">
+          <div className="border-t border-line px-soft py-base">
             <Link
               to="/settings/notifications"
               className="text-xs text-sky-400 hover:text-sky-300"

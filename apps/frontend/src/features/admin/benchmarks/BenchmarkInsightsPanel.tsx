@@ -35,10 +35,10 @@ function PatternBars({
   }
   const max = Math.max(...entries.map(([, c]) => c), 1);
   return (
-    <ul className="space-y-2">
+    <ul className="space-y-base">
       {entries.map(([pid, count]) => (
         <li key={pid}>
-          <div className="mb-0.5 flex justify-between text-xs">
+          <div className="mb-hair flex justify-between text-xs">
             <span className="font-mono text-white/90">{pid}</span>
             <span className="text-ink-muted">{count}</span>
           </div>
@@ -66,29 +66,29 @@ function AnalysisSummary({
   const scenarios = analysis.by_scenario ?? [];
   const weak = scenarios.filter((s) => s.pass_rate < 0.6).length;
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <div className="rounded-card border border-line bg-black/20 p-3">
+    <div className="grid gap-soft sm:grid-cols-2 lg:grid-cols-4">
+      <div className="rounded-card border border-line bg-black/20 p-soft">
         <p className="text-meta uppercase text-ink-muted">{t("admin:agentConfigAnalysisRuns")}</p>
-        <p className="mt-1 text-xl font-semibold text-ink-primary">{analysis.run_count}</p>
+        <p className="mt-tight text-xl font-semibold text-ink-primary">{analysis.run_count}</p>
       </div>
-      <div className="rounded-card border border-line bg-black/20 p-3">
+      <div className="rounded-card border border-line bg-black/20 p-soft">
         <p className="text-meta uppercase text-ink-muted">{t("admin:agentConfigAnalysisTopModel")}</p>
-        <p className="mt-1 truncate text-sm font-mono text-ink-primary">
+        <p className="mt-tight truncate text-sm font-mono text-ink-primary">
           {topModel ? formatBenchmarkProviderModel(topModel) : "—"}
         </p>
         {topModel ? (
-          <p className={`mt-0.5 text-xs ${passRateTone(topModel.pass_rate ?? 0)}`}>
+          <p className={`mt-hair text-xs ${passRateTone(topModel.pass_rate ?? 0)}`}>
             {formatPassRate(topModel.pass_rate)}
           </p>
         ) : null}
       </div>
-      <div className="rounded-card border border-line bg-black/20 p-3">
+      <div className="rounded-card border border-line bg-black/20 p-soft">
         <p className="text-meta uppercase text-ink-muted">{t("admin:agentConfigAnalysisScenarios")}</p>
-        <p className="mt-1 text-xl font-semibold text-ink-primary">{scenarios.length}</p>
+        <p className="mt-tight text-xl font-semibold text-ink-primary">{scenarios.length}</p>
       </div>
-      <div className="rounded-card border border-line bg-black/20 p-3">
+      <div className="rounded-card border border-line bg-black/20 p-soft">
         <p className="text-meta uppercase text-ink-muted">{t("admin:agentConfigAnalysisWeakScenarios")}</p>
-        <p className="mt-1 text-xl font-semibold text-rose-300">{weak}</p>
+        <p className="mt-tight text-xl font-semibold text-rose-300">{weak}</p>
       </div>
     </div>
   );
@@ -169,14 +169,14 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
   const patterns = analysis?.top_patterns ?? {};
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3">
+    <div className="space-y-wide">
+      <div className="flex flex-wrap items-end gap-soft">
         <label className="block text-xs">
           <span className="text-ink-muted">{t("admin:agentConfigAnalysisCohortFilter")}</span>
           <select
             value={cohortFilter}
             onChange={(e) => setCohortFilter(e.target.value)}
-            className="mt-1 block min-w-[160px] rounded-tile border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
+            className="mt-tight block min-w-[160px] rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
           >
             <option value="">{t("admin:agentConfigAnalysisAllCohorts")}</option>
             {cohorts.map((c) => (
@@ -190,19 +190,19 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
           type="button"
           onClick={() => void loadAnalysis()}
           disabled={loading}
-          className="rounded-tile border border-line-strong bg-black/30 px-3 py-1.5 text-xs text-ink-primary hover:bg-white/10 disabled:opacity-50"
+          className="rounded-tile border border-line-strong bg-black/30 px-soft py-snug text-xs text-ink-primary hover:bg-white/10 disabled:opacity-50"
         >
           {loading ? t("admin:loading") : t("admin:agentConfigAnalysisRefresh")}
         </button>
       </div>
 
-      <section className="rounded-sheet border border-line bg-card p-4">
+      <section className="rounded-sheet border border-line bg-card p-wide">
         <h2 className="text-sm font-medium text-ink-primary">{t("admin:agentConfigAnalysisCompare")}</h2>
-        <div className="mt-3 flex flex-wrap items-end gap-2">
+        <div className="mt-soft flex flex-wrap items-end gap-base">
           <select
             value={compareA}
             onChange={(e) => setCompareA(e.target.value)}
-            className="rounded-tile border border-line bg-field px-2 py-1.5 text-xs text-ink-primary"
+            className="rounded-tile border border-line bg-field px-base py-snug text-xs text-ink-primary"
           >
             <option value="">{t("admin:agentConfigAnalysisCohortA")}</option>
             {cohorts.map((c) => (
@@ -215,7 +215,7 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
           <select
             value={compareB}
             onChange={(e) => setCompareB(e.target.value)}
-            className="rounded-tile border border-line bg-field px-2 py-1.5 text-xs text-ink-primary"
+            className="rounded-tile border border-line bg-field px-base py-snug text-xs text-ink-primary"
           >
             <option value="">{t("admin:agentConfigAnalysisCohortB")}</option>
             {cohorts.map((c) => (
@@ -228,19 +228,19 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
             type="button"
             onClick={() => void onCompare()}
             disabled={!compareA || !compareB || compareA === compareB || loading}
-            className="rounded-tile bg-indigo-700/80 px-3 py-1.5 text-xs text-ink-primary hover:bg-indigo-600 disabled:opacity-50"
+            className="rounded-tile bg-indigo-700/80 px-soft py-snug text-xs text-ink-primary hover:bg-indigo-600 disabled:opacity-50"
           >
             {t("admin:agentConfigAnalysisCompareBtn")}
           </button>
         </div>
         {compareResult ? (
-          <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <div className="mt-soft grid gap-soft md:grid-cols-2">
             {(["a", "b"] as const).map((side) => {
               const block = compareResult[side];
               const label = side === "a" ? compareA : compareB;
               return (
-                <div key={side} className="rounded-tile border border-line p-2">
-                  <p className="mb-2 text-xs font-medium text-ink-primary">{label}</p>
+                <div key={side} className="rounded-tile border border-line p-base">
+                  <p className="mb-base text-xs font-medium text-ink-primary">{label}</p>
                   <p className="text-xs text-ink-muted">
                     {t("admin:agentConfigAnalysisRuns")}: {block.run_count}
                   </p>
@@ -260,38 +260,38 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
         <>
           <AnalysisSummary analysis={analysis} t={t} />
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            <section className="rounded-sheet border border-line bg-card p-4">
+          <div className="grid gap-wide lg:grid-cols-2">
+            <section className="rounded-sheet border border-line bg-card p-wide">
               <h2 className="text-sm font-medium text-ink-primary">
                 {t("admin:agentConfigAnalysisFailurePatterns")}
               </h2>
-              <div className="mt-3">
+              <div className="mt-soft">
                 <PatternBars patterns={patterns} t={t} />
               </div>
             </section>
 
             {(analysis.by_scenario?.length ?? 0) > 0 ? (
-              <section className="rounded-sheet border border-line bg-card p-4">
+              <section className="rounded-sheet border border-line bg-card p-wide">
                 <h2 className="text-sm font-medium text-ink-primary">
                   {t("admin:agentConfigAnalysisByScenario")}
                 </h2>
-                <div className="mt-3 overflow-x-auto">
+                <div className="mt-soft overflow-x-auto">
                   <table className="w-full min-w-[420px] text-left text-xs">
                     <thead>
                       <tr className="text-ink-muted">
-                        <th className="py-1 pr-3">{t("admin:benchColScenario")}</th>
-                        <th className="py-1 pr-3">{t("admin:benchStatsPassRate")}</th>
-                        <th className="py-1 pr-3">{t("admin:agentConfigAnalysisPatterns")}</th>
+                        <th className="py-tight pr-soft">{t("admin:benchColScenario")}</th>
+                        <th className="py-tight pr-soft">{t("admin:benchStatsPassRate")}</th>
+                        <th className="py-tight pr-soft">{t("admin:agentConfigAnalysisPatterns")}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {(analysis.by_scenario ?? []).map((row) => (
                         <tr key={row.scenario_id} className="border-t border-line-subtle">
-                          <td className="py-1.5 pr-3 font-mono">{row.scenario_id}</td>
-                          <td className={`py-1.5 pr-3 ${passRateTone(row.pass_rate)}`}>
+                          <td className="py-snug pr-soft font-mono">{row.scenario_id}</td>
+                          <td className={`py-snug pr-soft ${passRateTone(row.pass_rate)}`}>
                             {formatPassRate(row.pass_rate)}
                           </td>
-                          <td className="py-1.5 pr-3 font-mono text-meta text-ink-muted">
+                          <td className="py-snug pr-soft font-mono text-meta text-ink-muted">
                             {row.patterns.length ? row.patterns.join(", ") : "—"}
                           </td>
                         </tr>

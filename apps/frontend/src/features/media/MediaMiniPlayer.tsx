@@ -71,7 +71,7 @@ export function MediaMiniPlayer() {
         <div
           className={
             embedExpanded
-              ? "border-b border-sky-500/20 bg-black/60 px-3 py-2"
+              ? "border-b border-sky-500/20 bg-black/60 px-soft py-base"
               : "fixed h-0 w-0 overflow-hidden opacity-0 pointer-events-none"
           }
           aria-hidden={!embedExpanded}
@@ -87,11 +87,11 @@ export function MediaMiniPlayer() {
           </div>
         </div>
       ) : null}
-      <div className="px-3 py-2">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-3">
+      <div className="px-soft py-base">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-soft">
           <button
             type="button"
-            className={`shrink-0 rounded-tile px-2 py-1.5 text-xs font-medium ${
+            className={`shrink-0 rounded-tile px-base py-snug text-xs font-medium ${
               media.panelOpen
                 ? "bg-sky-600/50 text-ink-primary"
                 : "border border-sky-500/30 text-sky-100 hover:bg-sky-900/40"
@@ -112,7 +112,7 @@ export function MediaMiniPlayer() {
             </p>
           </div>
 
-          <label className="flex shrink-0 items-center gap-2 text-meta text-ink-muted">
+          <label className="flex shrink-0 items-center gap-base text-meta text-ink-muted">
             <span className="hidden sm:inline">{t("dashboard:mediaMiniPlayerVolume")}</span>
             <Volume2 aria-hidden className="h-3.5 w-3.5" />
             <input
@@ -127,11 +127,11 @@ export function MediaMiniPlayer() {
             />
           </label>
 
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex shrink-0 items-center gap-tight">
             {isEmbed && media.embedUrl ? (
               <button
                 type="button"
-                className="rounded-tile border border-line px-2 py-1.5 text-xs text-sky-100 hover:bg-white/10"
+                className="rounded-tile border border-line px-base py-snug text-xs text-sky-100 hover:bg-white/10"
                 onClick={() => setEmbedExpanded((open) => !open)}
                 aria-expanded={embedExpanded}
                 aria-label={
@@ -147,7 +147,7 @@ export function MediaMiniPlayer() {
             ) : null}
             <button
               type="button"
-              className="rounded-tile px-2 py-1.5 text-xs text-ink-primary hover:bg-white/10 disabled:opacity-40"
+              className="rounded-tile px-base py-snug text-xs text-ink-primary hover:bg-white/10 disabled:opacity-40"
               onClick={media.playPrev}
               disabled={!canPlay}
               aria-label={t("dashboard:mediaMiniPlayerPrev")}
@@ -156,7 +156,7 @@ export function MediaMiniPlayer() {
             </button>
             <button
               type="button"
-              className="rounded-tile bg-white/15 px-3 py-1.5 text-xs font-medium text-ink-primary hover:bg-white/20 disabled:opacity-40"
+              className="rounded-tile bg-white/15 px-soft py-snug text-xs font-medium text-ink-primary hover:bg-white/20 disabled:opacity-40"
               onClick={media.togglePause}
               disabled={!canPlay || (isPersistentAudio && media.streamLoading)}
               aria-label={
@@ -169,7 +169,7 @@ export function MediaMiniPlayer() {
             </button>
             <button
               type="button"
-              className="rounded-tile px-2 py-1.5 text-xs text-ink-primary hover:bg-white/10 disabled:opacity-40"
+              className="rounded-tile px-base py-snug text-xs text-ink-primary hover:bg-white/10 disabled:opacity-40"
               onClick={media.playNext}
               disabled={!canPlay}
               aria-label={t("dashboard:mediaMiniPlayerNext")}
@@ -178,18 +178,18 @@ export function MediaMiniPlayer() {
             </button>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-base">
             {dashboardHref ? (
               <Link
                 to={dashboardHref}
-                className="rounded-tile border border-line px-2 py-1 text-meta text-sky-100 hover:bg-white/5"
+                className="rounded-tile border border-line px-base py-tight text-meta text-sky-100 hover:bg-white/5"
               >
                 {t("dashboard:mediaMiniPlayerOpenDashboard")}
               </Link>
             ) : null}
             <button
               type="button"
-              className="rounded-tile px-2 py-1 text-meta text-ink-muted hover:bg-white/5 hover:text-neutral-200 disabled:opacity-40"
+              className="rounded-tile px-base py-tight text-meta text-ink-muted hover:bg-white/5 hover:text-neutral-200 disabled:opacity-40"
               onClick={media.stop}
               disabled={!hasTrack}
               aria-label={t("dashboard:mediaMiniPlayerStop")}

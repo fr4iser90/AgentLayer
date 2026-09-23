@@ -46,11 +46,11 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
 
   if (!operatorOn || !anyConfigured) {
     return (
-      <div className="w-full rounded-card border border-amber-500/20 bg-amber-950/20 px-2.5 py-2">
+      <div className="w-full rounded-card border border-amber-500/20 bg-amber-950/20 px-firm py-base">
         <p className="text-meta leading-snug text-amber-100/90">{t("chat:voiceComposerDisabled")}</p>
         <Link
           to="/settings/voice"
-          className="mt-1 inline-block text-meta text-sky-400/90 hover:text-sky-300 hover:underline"
+          className="mt-tight inline-block text-meta text-sky-400/90 hover:text-sky-300 hover:underline"
         >
           {t("chat:voiceComposerSettingsLink")}
         </Link>
@@ -59,8 +59,8 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
   }
 
   return (
-    <div className="w-full space-y-2">
-      <div className="flex items-center justify-between gap-2">
+    <div className="w-full space-y-base">
+      <div className="flex items-center justify-between gap-base">
         <span className="text-meta font-medium uppercase tracking-wide text-ink-muted">
           {t("chat:voiceComposerTitle")}
         </span>
@@ -72,7 +72,7 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
         </Link>
       </div>
       <label
-        className={`flex cursor-pointer items-center gap-2 text-meta font-medium uppercase tracking-wide ${
+        className={`flex cursor-pointer items-center gap-base text-meta font-medium uppercase tracking-wide ${
           ttsOk ? "text-ink-muted" : "text-ink-muted"
         }`}
         title={ttsOk ? t("chat:voiceComposerReadAloudHint") : t("chat:voiceComposerTtsOff")}
@@ -86,11 +86,11 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
         />
         <span>{t("chat:voiceComposerReadAloud")}</span>
       </label>
-      <p className="pl-6 text-meta leading-snug text-ink-muted">
+      <p className="pl-broad text-meta leading-snug text-ink-muted">
         {ttsOk ? t("chat:voiceComposerReadAloudHint") : t("chat:voiceComposerTtsOff")}
       </p>
       <label
-        className={`flex cursor-pointer items-center gap-2 text-meta font-medium uppercase tracking-wide ${
+        className={`flex cursor-pointer items-center gap-base text-meta font-medium uppercase tracking-wide ${
           sttOk ? "text-ink-muted" : "text-ink-muted"
         }`}
         title={sttOk ? t("chat:voiceComposerInputHint") : t("chat:voiceComposerSttOff")}
@@ -104,7 +104,7 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
         />
         <span>{t("chat:voiceComposerInput")}</span>
       </label>
-      <p className="pl-6 text-meta leading-snug text-ink-muted">
+      <p className="pl-broad text-meta leading-snug text-ink-muted">
         {sttOk ? t("chat:voiceComposerInputHint") : t("chat:voiceComposerSttOff")}
       </p>
       {sttOk &&
@@ -114,7 +114,7 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
         <label className="block text-meta text-ink-muted">
           {t("chat:voiceComposerMicMode")}
           <select
-            className="mt-1 w-full rounded-card border border-line bg-field px-2.5 py-1.5 text-sm text-ink-primary"
+            className="mt-tight w-full rounded-card border border-line bg-field px-firm py-snug text-sm text-ink-primary"
             value={
               voiceStatus.prefs.mode_web === "toggle" ? "toggle" : "push_to_talk"
             }
@@ -129,7 +129,7 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
             <option value="push_to_talk">{t("chat:voiceComposerMicHold")}</option>
             <option value="toggle">{t("chat:voiceComposerMicToggle")}</option>
           </select>
-          <span className="mt-1 block leading-snug">{t("chat:voiceComposerMicModeHint")}</span>
+          <span className="mt-tight block leading-snug">{t("chat:voiceComposerMicModeHint")}</span>
         </label>
       ) : null}
     </div>

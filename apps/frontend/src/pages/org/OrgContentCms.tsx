@@ -369,9 +369,9 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
   const visibleItems = listFilter === "review" ? reviewQueue : items;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,14rem)_1fr]">
-      <aside className="rounded-sheet border border-line bg-card p-3">
-        <div className="flex items-center justify-between gap-2">
+    <div className="grid gap-broad lg:grid-cols-[minmax(0,14rem)_1fr]">
+      <aside className="rounded-sheet border border-line bg-card p-soft">
+        <div className="flex items-center justify-between gap-base">
           <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
             {t("org:cmsNotes")}
           </p>
@@ -384,11 +384,11 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
           </button>
         </div>
         {canReview ? (
-          <div className="mt-2 flex gap-1 text-meta">
+          <div className="mt-base flex gap-tight text-meta">
             <button
               type="button"
               className={[
-                "rounded-tile px-2 py-1",
+                "rounded-tile px-base py-tight",
                 listFilter === "all" ? "bg-white/10 text-ink-primary" : "text-ink-muted hover:bg-white/5",
               ].join(" ")}
               onClick={() => setListFilter("all")}
@@ -398,7 +398,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
             <button
               type="button"
               className={[
-                "rounded-tile px-2 py-1",
+                "rounded-tile px-base py-tight",
                 listFilter === "review" ? "bg-white/10 text-ink-primary" : "text-ink-muted hover:bg-white/5",
               ].join(" ")}
               onClick={() => setListFilter("review")}
@@ -407,13 +407,13 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
             </button>
           </div>
         ) : null}
-        <ul className="mt-3 max-h-[28rem] space-y-1 overflow-y-auto">
+        <ul className="mt-soft max-h-[28rem] space-y-tight overflow-y-auto">
           {visibleItems.map((item) => (
             <li key={item.id}>
               <button
                 type="button"
                 className={[
-                  "w-full rounded-tile px-2 py-2 text-left text-sm",
+                  "w-full rounded-tile px-base py-base text-left text-sm",
                   item.id === selectedId
                     ? "bg-white/10 text-ink-primary"
                     : "text-ink-secondary hover:bg-white/5",
@@ -428,46 +428,46 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
             </li>
           ))}
           {visibleItems.length === 0 ? (
-            <li className="px-2 py-4 text-xs text-ink-muted">{t("org:cmsEmpty")}</li>
+            <li className="px-base py-wide text-xs text-ink-muted">{t("org:cmsEmpty")}</li>
           ) : null}
         </ul>
       </aside>
 
-      <form onSubmit={(e) => void saveDraft(e)} className="rounded-sheet border border-line bg-card p-5">
+      <form onSubmit={(e) => void saveDraft(e)} className="rounded-sheet border border-line bg-card p-roomy">
         <h2 className="text-sm font-medium text-ink-primary">
           {selectedId ? t("org:cmsEditNote") : t("org:cmsNewNote")}
         </h2>
-        <p className="mt-1 text-xs text-ink-muted">{t("org:cmsIntro")}</p>
+        <p className="mt-tight text-xs text-ink-muted">{t("org:cmsIntro")}</p>
 
         {selected ? (
-          <p className="mt-2 text-xs text-ink-muted">
+          <p className="mt-base text-xs text-ink-muted">
             {t("org:cmsStatusLabel")}: {statusBadge(status, t)}
             {selected.last_review_comment ? (
-              <span className="mt-1 block text-amber-400/90">
+              <span className="mt-tight block text-amber-400/90">
                 {t("org:cmsLastReviewComment")}: {selected.last_review_comment}
               </span>
             ) : null}
           </p>
         ) : null}
 
-        <label className="mt-4 block text-xs text-ink-muted" htmlFor="cms-title">
+        <label className="mt-wide block text-xs text-ink-muted" htmlFor="cms-title">
           {t("org:knowledgeTitleLabel")}
         </label>
         <input
           id="cms-title"
-          className="mt-1 w-full rounded-tile border border-line bg-field px-3 py-2 text-sm text-ink-primary disabled:opacity-60"
+          className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary disabled:opacity-60"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           required
           disabled={readOnly}
         />
 
-        <label className="mt-4 block text-xs text-ink-muted" htmlFor="cms-body">
+        <label className="mt-wide block text-xs text-ink-muted" htmlFor="cms-body">
           {t("org:knowledgeTextLabel")}
         </label>
         <textarea
           id="cms-body"
-          className="mt-1 min-h-56 w-full rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary disabled:opacity-60"
+          className="mt-tight min-h-56 w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary disabled:opacity-60"
           value={bodyMd}
           onChange={(e) => setBodyMd(e.target.value)}
           required
@@ -475,25 +475,25 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
         />
 
         {status === "in_review" && canReview ? (
-          <label className="mt-4 block text-xs text-ink-muted" htmlFor="cms-reject-comment">
+          <label className="mt-wide block text-xs text-ink-muted" htmlFor="cms-reject-comment">
             {t("org:cmsRejectCommentLabel")}
           </label>
         ) : null}
         {status === "in_review" && canReview ? (
           <textarea
             id="cms-reject-comment"
-            className="mt-1 min-h-20 w-full rounded-tile border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+            className="mt-tight min-h-20 w-full rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
             value={rejectComment}
             onChange={(e) => setRejectComment(e.target.value)}
             placeholder={t("org:cmsRejectCommentPlaceholder")}
           />
         ) : null}
 
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-wide flex flex-wrap gap-base">
           <button
             type="submit"
             disabled={busy || readOnly}
-            className="rounded-tile border border-line px-4 py-1.5 text-sm text-ink-primary hover:bg-white/5 disabled:opacity-50"
+            className="rounded-tile border border-line px-wide py-snug text-sm text-ink-primary hover:bg-white/5 disabled:opacity-50"
           >
             {busy ? t("org:cmsSaving") : t("org:cmsSaveDraft")}
           </button>
@@ -501,7 +501,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
             <button
               type="button"
               disabled={busy}
-              className="rounded-tile border border-sky-500/40 px-4 py-1.5 text-sm text-sky-300 hover:bg-sky-500/10 disabled:opacity-50"
+              className="rounded-tile border border-sky-500/40 px-wide py-snug text-sm text-sky-300 hover:bg-sky-500/10 disabled:opacity-50"
               onClick={() => void submitForReview()}
             >
               {t("org:cmsSubmitForReview")}
@@ -512,7 +512,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
               <button
                 type="button"
                 disabled={busy}
-                className="rounded-tile bg-emerald-600 px-4 py-1.5 text-sm font-medium text-ink-on-fill hover:bg-emerald-500 disabled:opacity-50"
+                className="rounded-tile bg-emerald-600 px-wide py-snug text-sm font-medium text-ink-on-fill hover:bg-emerald-500 disabled:opacity-50"
                 onClick={() => void approveSelected()}
               >
                 {t("org:cmsApprove")}
@@ -520,7 +520,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
               <button
                 type="button"
                 disabled={busy}
-                className="rounded-tile border border-amber-500/40 px-4 py-1.5 text-sm text-amber-300 hover:bg-amber-500/10 disabled:opacity-50"
+                className="rounded-tile border border-amber-500/40 px-wide py-snug text-sm text-amber-300 hover:bg-amber-500/10 disabled:opacity-50"
                 onClick={() => void rejectSelected()}
               >
                 {t("org:cmsReject")}
@@ -531,7 +531,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
             <button
               type="button"
               disabled={busy}
-              className="rounded-tile bg-sky-600 px-4 py-1.5 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+              className="rounded-tile bg-sky-600 px-wide py-snug text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
               onClick={() => void publishSelected()}
             >
               {busy ? t("org:knowledgePublishing") : t("org:cmsPublish")}
@@ -554,9 +554,9 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
         </div>
 
         {versions.length > 0 ? (
-          <div className="mt-4 rounded-tile border border-line/60 bg-black/10 p-3">
+          <div className="mt-wide rounded-tile border border-line/60 bg-black/10 p-soft">
             <p className="text-xs font-medium text-ink-muted">{t("org:cmsVersionHistory")}</p>
-            <ul className="mt-2 space-y-1 text-xs text-ink-secondary">
+            <ul className="mt-base space-y-tight text-xs text-ink-secondary">
               {versions.map((v) => (
                 <li key={v.version}>
                   v{v.version} — {v.title}
@@ -567,8 +567,8 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
           </div>
         ) : null}
 
-        {msg ? <p className="mt-3 text-sm text-emerald-400/90">{msg}</p> : null}
-        {err ? <p className="mt-3 text-sm text-red-400/90">{err}</p> : null}
+        {msg ? <p className="mt-soft text-sm text-emerald-400/90">{msg}</p> : null}
+        {err ? <p className="mt-soft text-sm text-red-400/90">{err}</p> : null}
       </form>
     </div>
   );

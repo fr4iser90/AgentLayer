@@ -163,6 +163,39 @@ export default {
         ],
       },
 
+      // Spacing ramp, named by density role rather than by number. Numeric
+      // names would have been a no-op rename: Tailwind's own scale is already
+      // 4px-based, so `space-2` = 8px = `p-2`. Only semantic names make the
+      // ramp project-owned and the guard able to tell an on-ramp step from an
+      // off-ramp one.
+      //
+      // Measured from the app's 5248 spacing classes rather than invented:
+      // 8px alone is 23.7 %, 4/8/12/16 together 62.1 %. The twelve steps
+      // below cover every value that recurs; the six one-off values above
+      // 48px are tolerated as guard baseline rather than named.
+      //
+      // Not a strict 4px grid, deliberately: hair (2px) and snug (6px) sit
+      // between the multiples because dense rows need them. `firm` exists so
+      // the Button primitive's sm/md/lg horizontal rhythm (10/12/16px)
+      // survives the migration without moving a single pixel.
+      //
+      // `spacing` feeds p-*, m-*, gap-*, space-* and inset-* together, so one
+      // definition covers the whole family.
+      spacing: {
+        hair: "2px", // icon to label, inline chip insets
+        tight: "4px", // inside a control
+        snug: "6px", // dense rows: chat activity, turn navigator
+        base: "8px", // the app's default rhythm
+        firm: "10px", // button sm horizontal padding
+        soft: "12px", // card internals, list rows
+        wide: "16px", // section padding, form groups
+        roomy: "20px", // panel padding
+        broad: "24px", // large containers
+        deep: "32px", // oversized containers
+        page: "40px", // page container vertical padding
+        grand: "48px", // full-page shells: login, wizard, home
+      },
+
       // Radii are named by what they wrap, so a card and a button cannot drift.
       borderRadius: {
         tile: "6px",

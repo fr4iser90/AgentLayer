@@ -67,8 +67,8 @@ export function AgentActivityPanel({
   const { t } = useTranslation(["chat"]);
   const scrollClass =
     layout === "header"
-      ? "min-h-[7rem] max-h-[min(11rem,28vh)] overflow-y-auto overscroll-contain px-2.5 py-1.5"
-      : "min-h-0 max-h-32 overflow-y-auto overscroll-contain px-2.5 py-1.5";
+      ? "min-h-[7rem] max-h-[min(11rem,28vh)] overflow-y-auto overscroll-contain px-firm py-snug"
+      : "min-h-0 max-h-32 overflow-y-auto overscroll-contain px-firm py-snug";
 
   const visible = (showSubagents ? entries : entries.filter(
         (e) =>
@@ -85,12 +85,12 @@ export function AgentActivityPanel({
     <div
       className={`flex min-h-0 flex-col overflow-hidden rounded-card border border-line bg-black/30 ${className}`}
     >
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line-subtle px-2.5 py-1.5">
+      <div className="flex shrink-0 items-center justify-between gap-base border-b border-line-subtle px-firm py-snug">
         <span className="text-meta font-semibold uppercase tracking-wide text-ink-muted">
           {t("chat:agentActivity")}
         </span>
         {showSubagentToggle ? (
-          <label className="flex cursor-pointer items-center gap-1.5 text-meta text-ink-muted">
+          <label className="flex cursor-pointer items-center gap-snug text-meta text-ink-muted">
             <input
               type="checkbox"
               className="rounded-tile border-line bg-field text-indigo-500"
@@ -107,17 +107,17 @@ export function AgentActivityPanel({
             {emptyHint ?? t("chat:noActivityYet")}
           </p>
         ) : (
-          <ul className="space-y-1">
+          <ul className="space-y-tight">
             {visible.map((e) => (
               <li
                 key={e.id}
                 className={[
                   "border-l-2 text-meta leading-snug",
                   borderForKind(e.kind),
-                  e.nested ? "ml-3 pl-2" : "pl-2",
+                  e.nested ? "ml-soft pl-base" : "pl-base",
                 ].join(" ")}
               >
-                <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0">
+                <div className="flex flex-wrap items-baseline gap-x-snug gap-y-0">
                   <span className="text-meta font-medium uppercase tracking-wide text-ink-muted">
                     {labelForKind(e.kind, t)}
                   </span>
@@ -136,7 +136,7 @@ export function AgentActivityPanel({
               </li>
             ))}
             {loading ? (
-              <li className="flex items-center gap-1.5 border-l-2 border-violet-500/40 pl-2 text-meta text-violet-200/80">
+              <li className="flex items-center gap-snug border-l-2 border-violet-500/40 pl-base text-meta text-violet-200/80">
                 <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-pill bg-violet-400" />
                 {loadingHint?.trim() || t("chat:running")}
               </li>

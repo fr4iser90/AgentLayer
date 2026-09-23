@@ -59,7 +59,7 @@ export function DashboardEmbeddedThreadMenu({
       <button
         type="button"
         disabled={!canPick}
-        className="flex max-w-full items-center gap-0.5 truncate text-left text-meta text-ink-secondary hover:text-white disabled:opacity-50"
+        className="flex max-w-full items-center gap-hair truncate text-left text-meta text-ink-secondary hover:text-white disabled:opacity-50"
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={menuId}
@@ -76,14 +76,14 @@ export function DashboardEmbeddedThreadMenu({
         <ul
           id={menuId}
           role="listbox"
-          className="absolute left-0 top-full z-30 mt-1 max-h-[min(240px,40vh)] w-[min(280px,calc(100vw-2rem))] overflow-y-auto rounded-card border border-line bg-[#141414] py-1 shadow-xl"
+          className="absolute left-0 top-full z-30 mt-tight max-h-[min(240px,40vh)] w-[min(280px,calc(100vw-2rem))] overflow-y-auto rounded-card border border-line bg-[#141414] py-tight shadow-xl"
         >
           {!readOnly ? (
             <li role="option" aria-selected={!activeThreadId}>
               <button
                 type="button"
                 className={[
-                  "w-full px-3 py-2 text-left text-xs hover:bg-white/5",
+                  "w-full px-soft py-base text-left text-xs hover:bg-white/5",
                   !activeThreadId ? "bg-sky-950/40 text-sky-100" : "text-ink-primary",
                 ].join(" ")}
                 onClick={() => {
@@ -102,7 +102,7 @@ export function DashboardEmbeddedThreadMenu({
                 <button
                   type="button"
                   className={[
-                    "w-full px-3 py-2 text-left text-xs hover:bg-white/5",
+                    "w-full px-soft py-base text-left text-xs hover:bg-white/5",
                     selected ? "bg-sky-950/40 text-sky-100" : "text-ink-primary",
                   ].join(" ")}
                   onClick={() => {

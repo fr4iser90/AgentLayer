@@ -4,7 +4,7 @@ import { OperatorSettingsProvider } from "../features/admin/operatorSettings/Ope
 import { OperatorSettingsStickySave } from "../features/admin/operatorSettings/OperatorSettingsStickySave";
 
 const subLink =
-  "block rounded-card border border-transparent px-3 py-2 text-sm transition-colors";
+  "block rounded-card border border-transparent px-soft py-base text-sm transition-colors";
 const subActive = "border-line bg-white/10 text-ink-primary";
 const subIdle = "text-ink-muted hover:bg-white/5 hover:text-neutral-200";
 
@@ -24,12 +24,12 @@ export function InterfacesLayout() {
   return (
     <OperatorSettingsProvider>
       <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
-        <aside className="shrink-0 border-b border-line bg-panel px-3 py-4 md:w-48 md:border-b-0 md:border-r">
-          <p className="mb-2 px-2 text-meta font-medium uppercase tracking-wide text-ink-muted">
+        <aside className="shrink-0 border-b border-line bg-panel px-soft py-wide md:w-48 md:border-b-0 md:border-r">
+          <p className="mb-base px-base text-meta font-medium uppercase tracking-wide text-ink-muted">
             {t("admin:interfacesTitle")}
           </p>
           <nav
-            className="flex flex-row flex-wrap gap-1 md:flex-col md:gap-0.5"
+            className="flex flex-row flex-wrap gap-tight md:flex-col md:gap-hair"
             aria-label={t("admin:interfaceSettingsAria")}
           >
             {NAV.map((item) => (

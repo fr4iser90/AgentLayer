@@ -37,28 +37,28 @@ function TaskList({
     return <p className="text-sm text-ink-muted">{t("tasks:noTasksYet")}</p>;
   }
   return (
-    <ul className="space-y-2">
+    <ul className="space-y-base">
       {tasks.map((task) => (
         <li
           key={task.id}
           className={[
-            "rounded-card border px-3 py-2.5",
+            "rounded-card border px-soft py-firm",
             activeTaskId === task.id
               ? "border-indigo-500/50 bg-indigo-950/30"
               : "border-line bg-card",
           ].join(" ")}
         >
-          <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="flex flex-wrap items-start justify-between gap-base">
             <div className="min-w-0 flex-1">
               <span className="text-meta font-semibold uppercase tracking-wide text-ink-muted">
                 {task.status}
               </span>
-              <p className="mt-0.5 text-sm text-ink-primary">{task.goal}</p>
+              <p className="mt-hair text-sm text-ink-primary">{task.goal}</p>
             </div>
-            <div className="flex shrink-0 flex-col gap-1">
+            <div className="flex shrink-0 flex-col gap-tight">
               <button
                 type="button"
-                className="rounded-tile border border-line px-2 py-1 text-meta text-ink-secondary hover:bg-white/5"
+                className="rounded-tile border border-line px-base py-tight text-meta text-ink-secondary hover:bg-white/5"
                 onClick={() => onBind(task.id)}
               >
                 {activeTaskId === task.id ? t("tasks:boundToChat") : t("tasks:bindToChat")}
@@ -66,7 +66,7 @@ function TaskList({
               {task.status !== "done" ? (
                 <button
                   type="button"
-                  className="rounded-tile border border-emerald-500/30 px-2 py-1 text-meta text-emerald-300/90 hover:bg-emerald-950/40"
+                  className="rounded-tile border border-emerald-500/30 px-base py-tight text-meta text-emerald-300/90 hover:bg-emerald-950/40"
                   onClick={() => onDone(task.id)}
                 >
                   {t("tasks:markDone")}
@@ -172,27 +172,27 @@ export function TasksPage() {
 
   return (
     <div className="h-full min-h-0 overflow-y-auto">
-      <div className="mx-auto max-w-4xl px-6 py-8">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="mx-auto max-w-4xl px-broad py-deep">
+        <div className="flex flex-wrap items-start justify-between gap-wide">
           <div>
             <h1 className="text-2xl font-semibold text-ink-primary">{t_0("tasks:pageTitle")}</h1>
-            <p className="mt-1 text-sm text-ink-muted">{t_0("tasks:pageSubtitle")}</p>
+            <p className="mt-tight text-sm text-ink-muted">{t_0("tasks:pageSubtitle")}</p>
           </div>
           <Link
             to={conversationId ? `/chat?c=${encodeURIComponent(conversationId)}` : "/chat"}
-            className="rounded-card border border-line px-3 py-2 text-sm text-sky-400/90 hover:bg-white/5"
+            className="rounded-card border border-line px-soft py-base text-sm text-sky-400/90 hover:bg-white/5"
           >
             {t_0("tasks:backToChat")}
           </Link>
         </div>
 
         {conversationId ? (
-          <div className="mt-4 rounded-card border border-indigo-500/35 bg-indigo-950/25 px-4 py-3 text-sm text-indigo-100/90">
+          <div className="mt-wide rounded-card border border-indigo-500/35 bg-indigo-950/25 px-wide py-soft text-sm text-indigo-100/90">
             {t_0("tasks:bindingToChat", { id: `${conversationId.slice(0, 8)}…` })}
             {activeTaskId ? (
               <button
                 type="button"
-                className="ml-3 text-xs text-ink-muted underline hover:text-neutral-300"
+                className="ml-soft text-xs text-ink-muted underline hover:text-neutral-300"
                 onClick={() => void clearBind()}
               >
                 {t_0("tasks:clearBinding")}
@@ -201,24 +201,24 @@ export function TasksPage() {
           </div>
         ) : null}
 
-        {error ? <p className="mt-4 text-sm text-red-400">{error}</p> : null}
+        {error ? <p className="mt-wide text-sm text-red-400">{error}</p> : null}
 
-        <section className="mt-8">
+        <section className="mt-deep">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">
             {t_0("tasks:globalTasks")}
           </h2>
-          <p className="mt-1 text-xs text-ink-muted">{t_0("tasks:globalTasksHint")}</p>
-          <div className="mt-3 flex gap-2">
+          <p className="mt-tight text-xs text-ink-muted">{t_0("tasks:globalTasksHint")}</p>
+          <div className="mt-soft flex gap-base">
             <input
               type="text"
               value={globalGoal}
               onChange={(e) => setGlobalGoal(e.target.value)}
               placeholder={t_0("tasks:newGlobalGoalPlaceholder")}
-              className="min-w-0 flex-1 rounded-card border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+              className="min-w-0 flex-1 rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary"
             />
             <button
               type="button"
-              className="shrink-0 rounded-card border border-indigo-500/40 bg-indigo-500/15 px-4 py-2 text-sm text-indigo-200"
+              className="shrink-0 rounded-card border border-indigo-500/40 bg-indigo-500/15 px-wide py-base text-sm text-indigo-200"
               onClick={() => {
                 const g = globalGoal.trim();
                 if (!g) return;
@@ -233,7 +233,7 @@ export function TasksPage() {
               {t_0("tasks:add")}
             </button>
           </div>
-          <div className="mt-4">
+          <div className="mt-wide">
             {loading ? (
               <p className="text-sm text-ink-muted">{t_0("tasks:loading")}</p>
             ) : (
@@ -249,15 +249,15 @@ export function TasksPage() {
           </div>
         </section>
 
-        <section className="mt-10 border-t border-line pt-8">
+        <section className="mt-page border-t border-line pt-deep">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">
             {t_0("tasks:projectTasks")}
           </h2>
-          <p className="mt-1 text-xs text-ink-muted">{t_0("tasks:projectTasksHint")}</p>
-          <label className="mt-3 block text-xs text-ink-muted">
+          <p className="mt-tight text-xs text-ink-muted">{t_0("tasks:projectTasksHint")}</p>
+          <label className="mt-soft block text-xs text-ink-muted">
             {t_0("tasks:workspaceLabel")}
             <select
-              className="mt-1 block w-full max-w-md rounded-card border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+              className="mt-tight block w-full max-w-md rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary"
               value={selectedWorkspaceId ?? ""}
               onChange={(e) => onWorkspaceChange(e.target.value)}
             >
@@ -271,7 +271,7 @@ export function TasksPage() {
           </label>
           {selectedWorkspaceId ? (
             <>
-              <div className="mt-3 flex gap-2">
+              <div className="mt-soft flex gap-base">
                 <input
                   type="text"
                   value={projectGoal}
@@ -281,11 +281,11 @@ export function TasksPage() {
                       ? t_0("tasks:newProjectTaskFor", { name: selectedWorkspace.name })
                       : t_0("tasks:newProjectTask")
                   }
-                  className="min-w-0 flex-1 rounded-card border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+                  className="min-w-0 flex-1 rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary"
                 />
                 <button
                   type="button"
-                  className="shrink-0 rounded-card border border-sky-500/40 bg-sky-500/15 px-4 py-2 text-sm text-sky-200"
+                  className="shrink-0 rounded-card border border-sky-500/40 bg-sky-500/15 px-wide py-base text-sm text-sky-200"
                   onClick={() => {
                     const g = projectGoal.trim();
                     if (!g || !selectedWorkspaceId) return;
@@ -305,7 +305,7 @@ export function TasksPage() {
                   {t_0("tasks:add")}
                 </button>
               </div>
-              <div className="mt-4">
+              <div className="mt-wide">
                 {loading ? (
                   <p className="text-sm text-ink-muted">{t_0("tasks:loading")}</p>
                 ) : (
@@ -321,7 +321,7 @@ export function TasksPage() {
               </div>
             </>
           ) : (
-            <p className="mt-4 text-sm text-ink-muted">
+            <p className="mt-wide text-sm text-ink-muted">
               {t_0("tasks:chooseWorkspaceHint")}
             </p>
           )}

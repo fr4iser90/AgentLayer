@@ -152,7 +152,7 @@ function CollapsibleMono({
   const long = text.length > 900 || text.split("\n").length > 14;
   if (!text.trim()) {
     return (
-      <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-tile bg-black/30 p-2 font-mono text-meta text-white/90">
+      <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-tile bg-black/30 p-base font-mono text-meta text-white/90">
         {t("admin:benchDetailNone")}
       </pre>
     );
@@ -160,7 +160,7 @@ function CollapsibleMono({
   return (
     <div>
       <pre
-        className={`overflow-auto whitespace-pre-wrap rounded-tile bg-black/30 p-2 font-mono text-meta text-white/90 ${
+        className={`overflow-auto whitespace-pre-wrap rounded-tile bg-black/30 p-base font-mono text-meta text-white/90 ${
           expanded || !long ? "max-h-[32rem]" : collapsedClass
         }`}
       >
@@ -169,7 +169,7 @@ function CollapsibleMono({
       {long ? (
         <button
           type="button"
-          className="mt-1 text-sky-400 hover:underline"
+          className="mt-tight text-sky-400 hover:underline"
           onClick={() => setExpanded((v) => !v)}
         >
           {expanded ? t("admin:benchDetailShowLess") : t("admin:benchDetailShowFull")}
@@ -370,35 +370,35 @@ function BenchmarkFailuresSummary({
 }) {
   if (rows.length === 0) return null;
   return (
-    <div className="mt-4 rounded-card border border-rose-500/25 bg-rose-950/15 p-3">
-      <div className="mb-2 text-sm font-medium text-rose-200">
+    <div className="mt-wide rounded-card border border-rose-500/25 bg-rose-950/15 p-soft">
+      <div className="mb-base text-sm font-medium text-rose-200">
         {t("admin:benchFailuresSummary")} ({rows.length})
       </div>
       <div className="max-h-64 overflow-auto">
         <table className="w-full text-left text-meta">
           <thead className="sticky top-0 bg-rose-950/80 text-ink-muted">
             <tr>
-              <th className="py-1 pr-2">{t("admin:benchFailuresSummaryColScenario")}</th>
-              <th className="py-1 pr-2">{t("admin:benchColProviderModel")}</th>
-              <th className="py-1 pr-2">{t("admin:benchFailuresSummaryColTransport")}</th>
-              <th className="py-1 pr-2">{t("admin:benchFailuresSummaryColRubric")}</th>
-              <th className="py-1 pr-2">{t("admin:benchFailuresSummaryColInsights")}</th>
+              <th className="py-tight pr-base">{t("admin:benchFailuresSummaryColScenario")}</th>
+              <th className="py-tight pr-base">{t("admin:benchColProviderModel")}</th>
+              <th className="py-tight pr-base">{t("admin:benchFailuresSummaryColTransport")}</th>
+              <th className="py-tight pr-base">{t("admin:benchFailuresSummaryColRubric")}</th>
+              <th className="py-tight pr-base">{t("admin:benchFailuresSummaryColInsights")}</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row, i) => (
               <tr key={`${row.scenario_id}-${row.profile_label}-${i}`} className="border-t border-line-subtle">
-                <td className="py-1 pr-2 font-mono align-top">{row.scenario_id}</td>
-                <td className="py-1 pr-2 font-mono align-top text-meta">
+                <td className="py-tight pr-base font-mono align-top">{row.scenario_id}</td>
+                <td className="py-tight pr-base font-mono align-top text-meta">
                   {formatBenchmarkProviderModel(row)}
                 </td>
-                <td className="py-1 pr-2 align-top text-amber-200/90 max-w-[10rem]">
+                <td className="py-tight pr-base align-top text-amber-200/90 max-w-[10rem]">
                   {row.transport_error || "—"}
                 </td>
-                <td className="py-1 pr-2 align-top text-rose-200/90 max-w-[12rem]">
+                <td className="py-tight pr-base align-top text-rose-200/90 max-w-[12rem]">
                   {row.rubric_failure || "—"}
                 </td>
-                <td className="py-1 pr-2 align-top text-sky-200/80 max-w-[16rem]">
+                <td className="py-tight pr-base align-top text-sky-200/80 max-w-[16rem]">
                   {row.insights || "—"}
                 </td>
               </tr>
@@ -438,10 +438,10 @@ function BenchmarkScenarioDetailWithAttempts({
   const prior = res.run_metrics?.prior_failure_reasons;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-base">
       {hist.length > 1 ? (
-        <div className="flex flex-wrap items-center gap-1">
-          <span className="mr-1 text-meta text-ink-muted">{t("admin:benchAttemptTabs")}:</span>
+        <div className="flex flex-wrap items-center gap-tight">
+          <span className="mr-tight text-meta text-ink-muted">{t("admin:benchAttemptTabs")}:</span>
           {hist.map((snap, idx) => {
             const active = idx === selectedAttemptIndex;
             const label = `${snap.attempt}/${res.run_metrics?.attempts_max ?? hist.length}`;
@@ -450,7 +450,7 @@ function BenchmarkScenarioDetailWithAttempts({
                 key={`${snap.attempt}-${idx}`}
                 type="button"
                 onClick={() => onSelectAttempt(idx)}
-                className={`rounded-tile px-2 py-0.5 font-mono text-meta ${
+                className={`rounded-tile px-base py-hair font-mono text-meta ${
                   active
                     ? "bg-sky-600 text-ink-on-fill"
                     : "border border-line-strong bg-black/30 text-white/80 hover:bg-white/10"
@@ -473,9 +473,9 @@ function BenchmarkScenarioDetailWithAttempts({
         </div>
       ) : null}
       {Array.isArray(prior) && prior.length > 0 ? (
-        <div className="rounded-tile border border-line bg-black/25 p-2 text-meta">
-          <div className="mb-1 font-medium text-ink-muted">{t("admin:benchPriorAttempts")}</div>
-          <ul className="list-inside list-disc space-y-0.5 text-white/75">
+        <div className="rounded-tile border border-line bg-black/25 p-base text-meta">
+          <div className="mb-tight font-medium text-ink-muted">{t("admin:benchPriorAttempts")}</div>
+          <ul className="list-inside list-disc space-y-hair text-white/75">
             {prior.map((reason, i) => (
               <li key={`prior-${i}`}>
                 #{i + 1} — {reason}
@@ -522,8 +522,8 @@ function BenchmarkScenarioDetail({
   const streamOnly = responseFromStreamOnly(res);
 
   return (
-    <div className="space-y-3 rounded-card border border-line bg-black/20 p-3 text-xs">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="space-y-soft rounded-card border border-line bg-black/20 p-soft text-xs">
+      <div className="flex flex-wrap items-center justify-between gap-base">
         <span className="font-mono text-meta text-white/70">{res.scenario_id}</span>
         <CopyScenarioDetailsButton res={res} />
       </div>
@@ -536,23 +536,23 @@ function BenchmarkScenarioDetail({
       {legacy && !response ? (
         <p className="text-ink-muted">{t("admin:benchDetailLegacyHint")}</p>
       ) : null}
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-soft md:grid-cols-2">
         <div>
-          <div className="mb-1 font-medium text-ink-muted">{t("admin:benchDetailPrompt")}</div>
-          <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-tile bg-black/30 p-2 font-mono text-meta text-white/90">
+          <div className="mb-tight font-medium text-ink-muted">{t("admin:benchDetailPrompt")}</div>
+          <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-tile bg-black/30 p-base font-mono text-meta text-white/90">
             {res.scenario_prompt?.trim() || t("admin:benchDetailNone")}
           </pre>
         </div>
         <div>
-          <div className="mb-1 font-medium text-ink-muted">
+          <div className="mb-tight font-medium text-ink-muted">
             {t("admin:benchDetailResponse")}
             {res.assistant_content_truncated ? (
-              <span className="ml-2 font-normal text-amber-400/80">
+              <span className="ml-base font-normal text-amber-400/80">
                 ({t("admin:benchDetailTruncated")})
               </span>
             ) : null}
             {streamOnly ? (
-              <span className="ml-2 font-normal text-amber-400/80">
+              <span className="ml-base font-normal text-amber-400/80">
                 ({t("admin:benchDetailResponseFromStream")})
               </span>
             ) : null}
@@ -560,12 +560,12 @@ function BenchmarkScenarioDetail({
           <CollapsibleMono text={response || ""} t={t} />
         </div>
       </div>
-      <div className="flex flex-wrap gap-x-6 gap-y-1 text-ink-muted">
+      <div className="flex flex-wrap gap-x-broad gap-y-tight text-ink-muted">
         <span>
           {t("admin:benchDetailTools")}:{" "}
           <span className="font-mono text-white/80">{toolsDisplay}</span>
           {(res.tool_names?.length ?? 0) === 0 && toolRounds.length > 0 ? (
-            <span className="ml-1 text-amber-400/80">({t("admin:benchDetailToolsFromWs")})</span>
+            <span className="ml-tight text-amber-400/80">({t("admin:benchDetailToolsFromWs")})</span>
           ) : null}
         </span>
         {res.run_metrics?.capture_mode ? (
@@ -603,18 +603,18 @@ function BenchmarkScenarioDetail({
       </div>
       {sessionInfo?.forwarded_tools?.length ? (
         <div>
-          <div className="mb-1 font-medium text-ink-muted">{t("admin:benchDetailToolCatalog")}</div>
-          <pre className="max-h-24 overflow-auto whitespace-pre-wrap rounded-tile bg-black/30 p-2 font-mono text-meta text-white/80">
+          <div className="mb-tight font-medium text-ink-muted">{t("admin:benchDetailToolCatalog")}</div>
+          <pre className="max-h-24 overflow-auto whitespace-pre-wrap rounded-tile bg-black/30 p-base font-mono text-meta text-white/80">
             {sessionInfo.forwarded_tools.join(", ")}
           </pre>
         </div>
       ) : null}
       {llmStream?.reasoning || llmStream?.text ? (
-        <div className="space-y-2">
+        <div className="space-y-base">
           <div className="font-medium text-ink-muted">{t("admin:benchDetailLlmStream")}</div>
           {llmStream.reasoning ? (
             <div>
-              <div className="mb-1 text-meta text-ink-muted">
+              <div className="mb-tight text-meta text-ink-muted">
                 {t("admin:benchDetailLlmReasoning")}
                 {typeof llmStream.reasoning_chars === "number"
                   ? ` · ${llmStream.reasoning_chars} chars`
@@ -626,7 +626,7 @@ function BenchmarkScenarioDetail({
           ) : null}
           {llmStream.text ? (
             <div>
-              <div className="mb-1 text-meta text-ink-muted">
+              <div className="mb-tight text-meta text-ink-muted">
                 {t("admin:benchDetailLlmText")}
                 {typeof llmStream.text_chars === "number" ? ` · ${llmStream.text_chars} chars` : ""}
                 {llmStream.text_truncated ? ` · ${t("admin:benchDetailTruncated")}` : ""}
@@ -637,38 +637,38 @@ function BenchmarkScenarioDetail({
         </div>
       ) : null}
       {(res.transport_error || res.error) ? (
-        <div className="rounded-tile border border-amber-500/25 bg-amber-950/20 p-2">
+        <div className="rounded-tile border border-amber-500/25 bg-amber-950/20 p-base">
           <div className="font-medium text-amber-300">{t("admin:benchDetailTransportError")}</div>
-          <pre className="mt-1 whitespace-pre-wrap font-mono text-meta text-amber-100/90">
+          <pre className="mt-tight whitespace-pre-wrap font-mono text-meta text-amber-100/90">
             {res.transport_error || res.error}
           </pre>
           {res.run_metrics?.http_status != null ? (
-            <p className="mt-1 text-ink-muted">
+            <p className="mt-tight text-ink-muted">
               HTTP {res.run_metrics.http_status}
             </p>
           ) : null}
         </div>
       ) : null}
       {res.rubric_failure_reason ? (
-        <div className="rounded-tile border border-red-500/30 bg-red-950/30 p-2">
+        <div className="rounded-tile border border-red-500/30 bg-red-950/30 p-base">
           <div className="font-medium text-red-300">{t("admin:benchDetailRubricFailure")}</div>
-          <pre className="mt-1 whitespace-pre-wrap font-mono text-meta text-red-200/90">
+          <pre className="mt-tight whitespace-pre-wrap font-mono text-meta text-red-200/90">
             {res.rubric_failure_reason}
           </pre>
         </div>
       ) : null}
       {!res.rubric_failure_reason && res.failure_reason && !(res.transport_error || res.error) ? (
-        <div className="rounded-tile border border-red-500/30 bg-red-950/30 p-2">
+        <div className="rounded-tile border border-red-500/30 bg-red-950/30 p-base">
           <div className="font-medium text-red-300">{t("admin:benchDetailFailure")}</div>
-          <pre className="mt-1 whitespace-pre-wrap font-mono text-meta text-red-200/90">
+          <pre className="mt-tight whitespace-pre-wrap font-mono text-meta text-red-200/90">
             {res.failure_reason}
           </pre>
         </div>
       ) : null}
       {(benchDiag?.insights?.length ?? 0) > 0 ? (
-        <div className="rounded-tile border border-sky-500/25 bg-sky-950/25 p-2">
+        <div className="rounded-tile border border-sky-500/25 bg-sky-950/25 p-base">
           <div className="font-medium text-sky-300">{t("admin:benchDetailInsights")}</div>
-          <ul className="mt-1 list-inside list-disc text-meta text-sky-100/90">
+          <ul className="mt-tight list-inside list-disc text-meta text-sky-100/90">
             {benchDiag!.insights!.map((line, i) => (
               <li key={i}>{line}</li>
             ))}
@@ -677,18 +677,18 @@ function BenchmarkScenarioDetail({
       ) : null}
       {toolRounds.length > 0 ? (
         <div>
-          <div className="mb-1 font-medium text-ink-muted">{t("admin:benchDetailToolRounds")}</div>
+          <div className="mb-tight font-medium text-ink-muted">{t("admin:benchDetailToolRounds")}</div>
           <div className="max-h-56 overflow-auto rounded-tile bg-black/30">
             <table className="w-full font-mono text-meta text-white/85">
               <thead className="sticky top-0 bg-black/60 text-ink-muted">
                 <tr>
-                  <th className="px-2 py-1 text-left">{t("admin:benchDetailToolRoundCol")}</th>
-                  <th className="px-2 py-1 text-left">{t("admin:benchDetailToolNameCol")}</th>
-                  <th className="px-2 py-1 text-left">{t("admin:benchDetailToolArgsCol")}</th>
-                  <th className="px-2 py-1 text-left">{t("admin:benchDetailToolWireCol")}</th>
-                  <th className="px-2 py-1 text-left">{t("admin:benchDetailToolMissingCol")}</th>
-                  <th className="px-2 py-1 text-left">{t("admin:benchDetailToolPromotedCol")}</th>
-                  <th className="px-2 py-1 text-left">{t("admin:benchDetailToolResultCol")}</th>
+                  <th className="px-base py-tight text-left">{t("admin:benchDetailToolRoundCol")}</th>
+                  <th className="px-base py-tight text-left">{t("admin:benchDetailToolNameCol")}</th>
+                  <th className="px-base py-tight text-left">{t("admin:benchDetailToolArgsCol")}</th>
+                  <th className="px-base py-tight text-left">{t("admin:benchDetailToolWireCol")}</th>
+                  <th className="px-base py-tight text-left">{t("admin:benchDetailToolMissingCol")}</th>
+                  <th className="px-base py-tight text-left">{t("admin:benchDetailToolPromotedCol")}</th>
+                  <th className="px-base py-tight text-left">{t("admin:benchDetailToolResultCol")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -716,19 +716,19 @@ function BenchmarkScenarioDetail({
                   else if (row.ok === true) result = t("admin:benchDetailToolOk");
                   return (
                     <tr key={i} className="border-t border-line-subtle">
-                      <td className="px-2 py-1">{row.round ?? "—"}</td>
-                      <td className="px-2 py-1">{row.name || "—"}</td>
-                      <td className="max-w-[10rem] truncate px-2 py-1" title={args}>
+                      <td className="px-base py-tight">{row.round ?? "—"}</td>
+                      <td className="px-base py-tight">{row.name || "—"}</td>
+                      <td className="max-w-[10rem] truncate px-base py-tight" title={args}>
                         {args}
                       </td>
-                      <td className="max-w-[10rem] truncate px-2 py-1 text-amber-100/80" title={wire}>
+                      <td className="max-w-[10rem] truncate px-base py-tight text-amber-100/80" title={wire}>
                         {wire}
                       </td>
-                      <td className="max-w-[10rem] truncate px-2 py-1 text-red-200/90" title={missing}>
+                      <td className="max-w-[10rem] truncate px-base py-tight text-red-200/90" title={missing}>
                         {missing}
                       </td>
-                      <td className="px-2 py-1">{promoted}</td>
-                      <td className="max-w-[10rem] truncate px-2 py-1 text-amber-200/90" title={result}>
+                      <td className="px-base py-tight">{promoted}</td>
+                      <td className="max-w-[10rem] truncate px-base py-tight text-amber-200/90" title={result}>
                         {result}
                       </td>
                     </tr>
@@ -741,8 +741,8 @@ function BenchmarkScenarioDetail({
       ) : null}
       {schemaRounds.length > 0 ? (
         <div>
-          <div className="mb-1 font-medium text-ink-muted">{t("admin:benchDetailSchemaRounds")}</div>
-          <pre className="max-h-24 overflow-auto whitespace-pre-wrap rounded-tile bg-black/30 p-2 font-mono text-meta text-white/80">
+          <div className="mb-tight font-medium text-ink-muted">{t("admin:benchDetailSchemaRounds")}</div>
+          <pre className="max-h-24 overflow-auto whitespace-pre-wrap rounded-tile bg-black/30 p-base font-mono text-meta text-white/80">
             {schemaRounds
               .map((sr) => {
                 const tools = (sr.full_schema_tools ?? []).join(", ");
@@ -754,8 +754,8 @@ function BenchmarkScenarioDetail({
       ) : null}
       {traceInvocations.length > 0 ? (
         <div>
-          <div className="mb-1 font-medium text-ink-muted">{t("admin:benchDetailToolTrace")}</div>
-          <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded-tile bg-black/30 p-2 font-mono text-meta text-white/80">
+          <div className="mb-tight font-medium text-ink-muted">{t("admin:benchDetailToolTrace")}</div>
+          <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded-tile bg-black/30 p-base font-mono text-meta text-white/80">
             {traceInvocations
               .map((inv) => {
                 const name = String(inv.tool_name || "?");
@@ -770,9 +770,9 @@ function BenchmarkScenarioDetail({
         </div>
       ) : null}
       {res.run_metrics?.bench_diagnostics?.ws_errors?.length ? (
-        <div className="rounded-tile border border-amber-500/20 bg-amber-950/20 p-2">
+        <div className="rounded-tile border border-amber-500/20 bg-amber-950/20 p-base">
           <div className="font-medium text-amber-300">{t("admin:benchDetailWsErrors")}</div>
-          <ul className="mt-1 list-inside list-disc font-mono text-meta text-amber-100/90">
+          <ul className="mt-tight list-inside list-disc font-mono text-meta text-amber-100/90">
             {res.run_metrics.bench_diagnostics.ws_errors.map((row, i) => (
               <li key={i}>
                 {row.type || "error"}
@@ -785,8 +785,8 @@ function BenchmarkScenarioDetail({
       ) : null}
       {(res.run_metrics?.bench_diagnostics?.timeline_tail?.length ?? 0) > 0 ? (
         <div>
-          <div className="mb-1 font-medium text-ink-muted">{t("admin:benchDetailTimeline")}</div>
-          <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded-tile bg-black/30 p-2 font-mono text-meta text-white/80">
+          <div className="mb-tight font-medium text-ink-muted">{t("admin:benchDetailTimeline")}</div>
+          <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded-tile bg-black/30 p-base font-mono text-meta text-white/80">
             {res.run_metrics!.bench_diagnostics!.timeline_tail!
               .map((ev) => {
                 const typ = String(ev.type || "?");
@@ -1770,11 +1770,11 @@ export function AdminBenchmarks() {
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden p-4">
+    <div className="flex h-full min-h-0 flex-col gap-wide overflow-hidden p-wide">
       <div className="shrink-0">
         <h1 className="text-lg font-semibold text-ink-primary">{t("admin:benchTitle")}</h1>
-        <p className="mt-1 text-sm text-ink-muted">{t("admin:benchSubtitle")}</p>
-        <p className="mt-2 text-xs text-ink-muted">
+        <p className="mt-tight text-sm text-ink-muted">{t("admin:benchSubtitle")}</p>
+        <p className="mt-base text-xs text-ink-muted">
           {t("admin:benchDbProfilesHint")}{" "}
           <Link to="/admin/interfaces/providers" className="text-sky-400/90 hover:underline">
             {t("admin:interfacesProvidersTitle")}
@@ -1783,11 +1783,11 @@ export function AdminBenchmarks() {
         </p>
       </div>
 
-      <div className="flex shrink-0 gap-2">
+      <div className="flex shrink-0 gap-base">
         <button
           type="button"
           onClick={() => setTab("run")}
-          className={`rounded-card px-3 py-1.5 text-sm ${
+          className={`rounded-card px-soft py-snug text-sm ${
             tab === "run" ? "bg-white/15 text-ink-primary" : "text-ink-muted hover:bg-white/5"
           }`}
         >
@@ -1796,7 +1796,7 @@ export function AdminBenchmarks() {
         <button
           type="button"
           onClick={() => setTab("history")}
-          className={`rounded-card px-3 py-1.5 text-sm ${
+          className={`rounded-card px-soft py-snug text-sm ${
             tab === "history" ? "bg-white/15 text-ink-primary" : "text-ink-muted hover:bg-white/5"
           }`}
         >
@@ -1805,7 +1805,7 @@ export function AdminBenchmarks() {
         <button
           type="button"
           onClick={() => setTab("stats")}
-          className={`rounded-card px-3 py-1.5 text-sm ${
+          className={`rounded-card px-soft py-snug text-sm ${
             tab === "stats" ? "bg-white/15 text-ink-primary" : "text-ink-muted hover:bg-white/5"
           }`}
         >
@@ -1820,18 +1820,18 @@ export function AdminBenchmarks() {
       ) : null}
 
       {tab === "run" && !loading ? (
-        <div className="min-h-0 flex-1 overflow-y-auto space-y-4">
-          <section className="rounded-sheet border border-line bg-card p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-h-0 flex-1 overflow-y-auto space-y-wide">
+          <section className="rounded-sheet border border-line bg-card p-wide">
+            <div className="flex flex-wrap items-start justify-between gap-soft">
               <div>
                 <h2 className="text-sm font-medium text-ink-primary">{t("admin:benchRunModeTitle")}</h2>
-                <p className="mt-1 text-xs text-ink-muted">{t("admin:benchRunModeHint")}</p>
+                <p className="mt-tight text-xs text-ink-muted">{t("admin:benchRunModeHint")}</p>
               </div>
-              <div className="inline-flex rounded-card border border-line bg-black/30 p-1">
+              <div className="inline-flex rounded-card border border-line bg-black/30 p-tight">
                 <button
                   type="button"
                   onClick={() => setRunMode("manual")}
-                  className={`rounded-tile px-3 py-1.5 text-xs font-medium ${
+                  className={`rounded-tile px-soft py-snug text-xs font-medium ${
                     runMode === "manual"
                       ? "bg-sky-600 text-ink-on-fill"
                       : "text-ink-muted hover:bg-white/5 hover:text-white"
@@ -1842,7 +1842,7 @@ export function AdminBenchmarks() {
                 <button
                   type="button"
                   onClick={() => setRunMode("autotune")}
-                  className={`rounded-tile px-3 py-1.5 text-xs font-medium ${
+                  className={`rounded-tile px-soft py-snug text-xs font-medium ${
                     runMode === "autotune"
                       ? "bg-violet-600 text-ink-on-fill"
                       : "text-ink-muted hover:bg-white/5 hover:text-white"
@@ -1854,15 +1854,15 @@ export function AdminBenchmarks() {
             </div>
           </section>
 
-          <section className="rounded-sheet border border-line bg-card p-4">
+          <section className="rounded-sheet border border-line bg-card p-wide">
             <h2 className="text-sm font-medium text-ink-primary">{t("admin:benchRunIdentity")}</h2>
-            <p className="mt-1 text-xs text-ink-muted">{t("admin:benchRunIdentityDesc")}</p>
-            <label className="mt-3 block text-xs text-ink-muted">{t("admin:benchRunAs")}</label>
-            <div className="mt-1 flex flex-wrap items-center gap-2">
+            <p className="mt-tight text-xs text-ink-muted">{t("admin:benchRunIdentityDesc")}</p>
+            <label className="mt-soft block text-xs text-ink-muted">{t("admin:benchRunAs")}</label>
+            <div className="mt-tight flex flex-wrap items-center gap-base">
               <select
                 value={runAsUserId}
                 onChange={(e) => setRunAsUserId(e.target.value)}
-                className="min-w-[16rem] flex-1 rounded-card border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+                className="min-w-[16rem] flex-1 rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary"
               >
                 {tenantUsers.map((u) => (
                   <option key={u.id} value={u.id}>
@@ -1879,13 +1879,13 @@ export function AdminBenchmarks() {
             </div>
             {showFriendPicker ? (
               <>
-                <label className="mt-3 block text-xs text-ink-muted">
+                <label className="mt-soft block text-xs text-ink-muted">
                   {t("admin:benchFriendUser")}
                 </label>
                 <select
                   value={friendUserId}
                   onChange={(e) => setFriendUserId(e.target.value)}
-                  className="mt-1 w-full max-w-md rounded-card border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+                  className="mt-tight w-full max-w-md rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary"
                 >
                   {friendCandidates.length === 0 ? (
                     <option value="">{t("admin:benchFriendUserEmpty")}</option>
@@ -1897,15 +1897,15 @@ export function AdminBenchmarks() {
                     ))
                   )}
                 </select>
-                <p className="mt-1 text-meta text-ink-muted">{t("admin:benchFriendUserHint")}</p>
+                <p className="mt-tight text-meta text-ink-muted">{t("admin:benchFriendUserHint")}</p>
               </>
             ) : null}
-            <div className="mt-4 border-t border-line-subtle pt-3">
+            <div className="mt-wide border-t border-line-subtle pt-soft">
               <p className="text-xs font-medium text-ink-primary">{t("admin:benchSecretReadiness")}</p>
               {readinessLoading ? (
-                <p className="mt-2 text-xs text-ink-muted">{t("admin:loading")}</p>
+                <p className="mt-base text-xs text-ink-muted">{t("admin:loading")}</p>
               ) : readiness ? (
-                <ul className="mt-2 space-y-1 text-xs">
+                <ul className="mt-base space-y-tight text-xs">
                   <li className={readiness.secrets.gmail ? "text-emerald-300/90" : "text-amber-400/90"}>
                     Gmail: {readiness.secrets.gmail ? t("admin:benchSecretOk") : t("admin:benchSecretMissing")}
                   </li>
@@ -1953,42 +1953,42 @@ export function AdminBenchmarks() {
                   ) : null}
                 </ul>
               ) : (
-                <p className="mt-2 text-xs text-ink-muted">{t("admin:benchReadinessUnavailable")}</p>
+                <p className="mt-base text-xs text-ink-muted">{t("admin:benchReadinessUnavailable")}</p>
               )}
               {runAsUserId ? (
                 <button
                   type="button"
                   disabled={cleaningWorkspaces || readinessLoading}
                   onClick={() => void onCleanupBenchWorkspaces()}
-                  className="mt-3 rounded-card border border-line-strong bg-black/30 px-3 py-1.5 text-xs font-medium text-ink-primary hover:bg-white/10 disabled:opacity-50"
+                  className="mt-soft rounded-card border border-line-strong bg-black/30 px-soft py-snug text-xs font-medium text-ink-primary hover:bg-white/10 disabled:opacity-50"
                 >
                   {cleaningWorkspaces
                     ? t("admin:benchCleanupRunning")
                     : t("admin:benchCleanupResources")}
                 </button>
               ) : null}
-              <p className="mt-2 text-meta text-ink-muted">
+              <p className="mt-base text-meta text-ink-muted">
                 {t("admin:benchCleanupWorkspacesHint")}
               </p>
               {cleanupFeedback ? (
-                <p className="mt-2 text-xs text-emerald-300/90">{cleanupFeedback}</p>
+                <p className="mt-base text-xs text-emerald-300/90">{cleanupFeedback}</p>
               ) : null}
-              <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-card border border-line bg-black/20 p-2 text-xs text-ink-muted hover:border-sky-400/40 hover:bg-sky-950/10">
+              <label className="mt-soft flex cursor-pointer items-start gap-soft rounded-card border border-line bg-black/20 p-base text-xs text-ink-muted hover:border-sky-400/40 hover:bg-sky-950/10">
                 <input
                   type="checkbox"
                   checked={retainWorkspaces}
                   onChange={(e) => setRetainWorkspaces(e.target.checked)}
-                  className={`${benchCheckboxClass} mt-0.5`}
+                  className={`${benchCheckboxClass} mt-hair`}
                 />
                 <span>
                   <span className="font-medium text-white/90">{t("admin:benchRetainWorkspaces")}</span>
-                  <span className="mt-0.5 block text-meta">{t("admin:benchRetainWorkspacesHint")}</span>
+                  <span className="mt-hair block text-meta">{t("admin:benchRetainWorkspacesHint")}</span>
                 </span>
               </label>
-              <p className="mt-2 text-meta text-ink-muted">
+              <p className="mt-base text-meta text-ink-muted">
                 {t("admin:benchSecretsAutoHint")}
               </p>
-              <p className="mt-2 text-meta text-ink-muted">
+              <p className="mt-base text-meta text-ink-muted">
                 {t("admin:benchSecretsManageHint")}{" "}
                 <Link to="/settings/connections" className="text-sky-400/90 hover:underline">
                   {t("admin:benchSecretsSettingsLink")}
@@ -1997,13 +1997,13 @@ export function AdminBenchmarks() {
             </div>
           </section>
 
-          <section className="rounded-sheet border border-line bg-card p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+          <section className="rounded-sheet border border-line bg-card p-wide">
+            <div className="flex flex-wrap items-center justify-between gap-base">
               <div>
                 <h2 className="text-sm font-medium text-ink-primary">{t("admin:benchProfiles")}</h2>
                 <p className="text-xs text-ink-muted">{t("admin:benchDbProfilesSelectHint")}</p>
                 {benchProviders.length ? (
-                  <p className="mt-1 text-meta text-ink-muted">
+                  <p className="mt-tight text-meta text-ink-muted">
                     {t("admin:benchProfileCount", {
                       count: selectedProfileCount,
                     })}
@@ -2025,7 +2025,7 @@ export function AdminBenchmarks() {
             </div>
 
             {benchProviders.length ? (
-              <div className="mt-3 space-y-2">
+              <div className="mt-soft space-y-base">
                 {benchProviders.map((p) => {
                   const checked = selectedProviderIds.has(p.catalog_owned_by);
                   const selectedModels = modelsByProviderId.get(p.catalog_owned_by) ?? [];
@@ -2048,25 +2048,25 @@ export function AdminBenchmarks() {
                   return (
                     <div
                       key={p.catalog_owned_by}
-                      className={`rounded-card border p-3 ${
+                      className={`rounded-card border p-soft ${
                         checked ? "border-sky-500/30 bg-sky-950/20" : "border-line bg-black/20"
                       }`}
                     >
-                      <label className="flex cursor-pointer items-start gap-3 rounded-tile p-1 hover:bg-white/5">
+                      <label className="flex cursor-pointer items-start gap-soft rounded-tile p-tight hover:bg-white/5">
                         <input
                           type="checkbox"
                           checked={checked}
                           onChange={() => toggleProvider(p.catalog_owned_by)}
-                          className={`${benchCheckboxLargeClass} mt-0.5`}
+                          className={`${benchCheckboxLargeClass} mt-hair`}
                         />
                         <div className="min-w-0 flex-1 text-xs">
-                          <div className="flex flex-wrap items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-base">
                             <span className="font-medium text-ink-primary">
                               {p.label || p.base_url}
                             </span>
                             <span className="font-mono text-ink-muted">{p.catalog_owned_by}</span>
                             {p.source === "env" ? (
-                              <span className="rounded-tile bg-emerald-950/40 px-1.5 py-0.5 text-meta text-emerald-200">
+                              <span className="rounded-tile bg-emerald-950/40 px-snug py-hair text-meta text-emerald-200">
                                 .env
                               </span>
                             ) : null}
@@ -2074,17 +2074,17 @@ export function AdminBenchmarks() {
                               <span className="font-mono text-ink-muted">db id={p.endpoint_id}</span>
                             ) : null}
                             {checked && selectedModels.length ? (
-                              <span className="rounded-tile bg-sky-950/50 px-1.5 py-0.5 text-meta text-sky-200">
+                              <span className="rounded-tile bg-sky-950/50 px-snug py-hair text-meta text-sky-200">
                                 {t("admin:benchModelsSelected", { count: selectedModels.length })}
                               </span>
                             ) : null}
                           </div>
-                          <p className="mt-1 text-ink-muted">{p.base_url}</p>
+                          <p className="mt-tight text-ink-muted">{p.base_url}</p>
                         </div>
                       </label>
                       {checked ? (
-                        <div className="mt-3 text-xs">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="mt-soft text-xs">
+                          <div className="flex flex-wrap items-center justify-between gap-base">
                             <span className="text-ink-muted">{t("admin:benchModels")}</span>
                             {catalogModels.length > 1 ? (
                               <button
@@ -2099,13 +2099,13 @@ export function AdminBenchmarks() {
                             ) : null}
                           </div>
                           {catalogModels.length > 0 ? (
-                            <div className="mt-2 max-h-52 space-y-1 overflow-y-auto rounded-tile border border-line-subtle bg-black/20 p-2">
+                            <div className="mt-base max-h-52 space-y-tight overflow-y-auto rounded-tile border border-line-subtle bg-black/20 p-base">
                               {catalogModels.map((id) => {
                                 const isOn = selectedModels.includes(id);
                                 return (
                                   <label
                                     key={id}
-                                    className={`flex cursor-pointer items-center gap-3 rounded-tile border px-2 py-1 ${
+                                    className={`flex cursor-pointer items-center gap-soft rounded-tile border px-base py-tight ${
                                       isOn
                                         ? "border-sky-400/40 bg-sky-950/40 text-ink-primary"
                                         : "border-transparent hover:border-line hover:bg-white/5"
@@ -2123,9 +2123,9 @@ export function AdminBenchmarks() {
                               })}
                             </div>
                           ) : (
-                            <div className="mt-2 space-y-2">
+                            <div className="mt-base space-y-base">
                               {(selectedModels.length ? selectedModels : [""]).map((model, idx) => (
-                                <div key={`${p.catalog_owned_by}-${idx}`} className="flex gap-2">
+                                <div key={`${p.catalog_owned_by}-${idx}`} className="flex gap-base">
                                   <input
                                     value={model}
                                     onChange={(e) =>
@@ -2135,7 +2135,7 @@ export function AdminBenchmarks() {
                                         e.target.value
                                       )
                                     }
-                                    className="min-w-0 flex-1 rounded-tile border border-line bg-field px-2 py-1.5 text-sm font-mono"
+                                    className="min-w-0 flex-1 rounded-tile border border-line bg-field px-base py-snug text-sm font-mono"
                                     placeholder={
                                       defaultProviderModel(p) || t("admin:benchModelMissing")
                                     }
@@ -2174,14 +2174,14 @@ export function AdminBenchmarks() {
                           )}
                           {runMode === "autotune" && reviewerMode === "patch_and_test" ? (
                             <div
-                              className={`mt-3 rounded-card border p-3 ${
+                              className={`mt-soft rounded-card border p-soft ${
                                 isReviewerProvider
                                   ? "border-violet-500/35 bg-violet-950/20"
                                   : "border-line bg-black/20"
                               }`}
                             >
-                              <div className="flex flex-wrap items-center justify-between gap-3">
-                                <label className="flex cursor-pointer items-center gap-3 rounded-tile px-2 py-1 text-xs text-violet-100 hover:bg-violet-950/20">
+                              <div className="flex flex-wrap items-center justify-between gap-soft">
+                                <label className="flex cursor-pointer items-center gap-soft rounded-tile px-base py-tight text-xs text-violet-100 hover:bg-violet-950/20">
                                   <input
                                     type="radio"
                                     name="bench-tune-reviewer-provider"
@@ -2203,13 +2203,13 @@ export function AdminBenchmarks() {
                                   {tLoose("admin:benchTuneReviewerOptional")}
                                 </span>
                               </div>
-                              <label className="mt-2 block text-meta text-ink-muted">
+                              <label className="mt-base block text-meta text-ink-muted">
                                 {tLoose("admin:benchTuneReviewerModel")}
                                 <select
                                   value={reviewerValue}
                                   disabled={!isReviewerProvider || reviewerOptions.length === 0}
                                   onChange={(e) => setReviewerModel(e.target.value)}
-                                  className="mt-1 w-full rounded-card border border-line bg-field px-3 py-2 text-xs text-ink-primary disabled:opacity-50"
+                                  className="mt-tight w-full rounded-card border border-line bg-field px-soft py-base text-xs text-ink-primary disabled:opacity-50"
                                 >
                                   {reviewerValue && !reviewerOptions.includes(reviewerValue) ? (
                                     <option value={reviewerValue}>{reviewerValue}</option>
@@ -2222,7 +2222,7 @@ export function AdminBenchmarks() {
                                 </select>
                               </label>
                               {reviewerOptions.length === 0 ? (
-                                <p className="mt-2 text-meta text-amber-300">
+                                <p className="mt-base text-meta text-amber-300">
                                   {tLoose("admin:benchTuneReviewerNoModels")}
                                 </p>
                               ) : null}
@@ -2235,7 +2235,7 @@ export function AdminBenchmarks() {
                 })}
               </div>
             ) : (
-              <p className="mt-3 text-xs text-amber-200/90">
+              <p className="mt-soft text-xs text-amber-200/90">
                 {t("admin:benchDbProfilesEmpty")}{" "}
                 <Link to="/admin/interfaces/providers" className="text-sky-400 hover:underline">
                   {t("admin:interfacesProvidersTitle")}
@@ -2245,25 +2245,25 @@ export function AdminBenchmarks() {
           </section>
 
           {runMode === "autotune" ? (
-          <section className="rounded-sheet border border-violet-500/25 bg-violet-950/10 p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
+          <section className="rounded-sheet border border-violet-500/25 bg-violet-950/10 p-wide">
+            <div className="flex flex-wrap items-start justify-between gap-soft">
               <div>
                 <h2 className="text-sm font-medium text-ink-primary">{t("admin:benchTuneTitle")}</h2>
-                <p className="mt-1 text-xs text-ink-muted">{t("admin:benchTuneIntro")}</p>
-                <p className="mt-1 text-meta text-ink-muted">
+                <p className="mt-tight text-xs text-ink-muted">{t("admin:benchTuneIntro")}</p>
+                <p className="mt-tight text-meta text-ink-muted">
                   {selectedProfileCount > 1
                     ? t("admin:benchTuneFirstProfileHint")
                     : t("admin:benchTuneSingleProfileHint")}
                 </p>
               </div>
             </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <div className="mt-wide grid gap-soft md:grid-cols-3">
               <label className="block text-xs text-ink-muted">
                 {tLoose("admin:benchTuneDepth")}
                 <select
                   value={tuningMode}
                   onChange={(e) => setTuningMode(e.target.value)}
-                  className="mt-1 w-full rounded-card border border-line bg-field px-3 py-2 text-xs text-ink-primary"
+                  className="mt-tight w-full rounded-card border border-line bg-field px-soft py-base text-xs text-ink-primary"
                 >
                   <option value="fast">{t("admin:benchTuneModeFast")}</option>
                   <option value="standard">{t("admin:benchTuneModeStandard")}</option>
@@ -2275,7 +2275,7 @@ export function AdminBenchmarks() {
                 <select
                   value={reviewerMode}
                   onChange={(e) => setReviewerMode(e.target.value as "off" | "patch_and_test")}
-                  className="mt-1 w-full rounded-card border border-line bg-field px-3 py-2 text-xs text-ink-primary"
+                  className="mt-tight w-full rounded-card border border-line bg-field px-soft py-base text-xs text-ink-primary"
                 >
                   <option value="off">{tLoose("admin:benchTuneReviewerOff")}</option>
                   <option value="patch_and_test">{tLoose("admin:benchTuneReviewerPatchAndTest")}</option>
@@ -2290,18 +2290,18 @@ export function AdminBenchmarks() {
                   disabled={reviewerMode !== "patch_and_test"}
                   value={maxPatchRounds}
                   onChange={(e) => setMaxPatchRounds(e.target.value)}
-                  className="mt-1 w-full rounded-card border border-line bg-field px-3 py-2 text-xs text-ink-primary disabled:opacity-50"
+                  className="mt-tight w-full rounded-card border border-line bg-field px-soft py-base text-xs text-ink-primary disabled:opacity-50"
                 />
               </label>
             </div>
-            <p className="mt-2 text-meta text-ink-muted">
+            <p className="mt-base text-meta text-ink-muted">
               {reviewerMode === "patch_and_test"
                 ? tLoose("admin:benchTuneReviewerSelectProviderHint")
                 : tLoose("admin:benchTuneReviewerPatchHint")}
             </p>
-            {reviewNotice ? <p className="mt-3 text-meta text-emerald-300">{reviewNotice}</p> : null}
+            {reviewNotice ? <p className="mt-soft text-meta text-emerald-300">{reviewNotice}</p> : null}
             {tuningSessions.length ? (
-              <div className="mt-4 space-y-2">
+              <div className="mt-wide space-y-base">
                 {tuningSessions.slice(0, 5).map((session) => {
                   const bestScore =
                     typeof session.best_score === "number" ? session.best_score.toFixed(1) : "—";
@@ -2337,12 +2337,12 @@ export function AdminBenchmarks() {
                   return (
                     <div
                       key={session.id}
-                      className="rounded-card border border-line bg-black/20 p-3 text-xs"
+                      className="rounded-card border border-line bg-black/20 p-soft text-xs"
                     >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center justify-between gap-base">
                         <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-tile bg-violet-500/15 px-1.5 py-0.5 font-medium text-violet-100">
+                          <div className="flex flex-wrap items-center gap-base">
+                            <span className="rounded-tile bg-violet-500/15 px-snug py-hair font-medium text-violet-100">
                               {session.status}
                             </span>
                             <span className="font-mono text-ink-primary">
@@ -2355,7 +2355,7 @@ export function AdminBenchmarks() {
                               {t("admin:benchTuneScore", { score: bestScore })}
                             </span>
                             <span
-                              className={`rounded-tile px-1.5 py-0.5 ${
+                              className={`rounded-tile px-snug py-hair ${
                                 autoPromoted
                                   ? "bg-emerald-500/15 text-emerald-100"
                                   : "bg-white/10 text-ink-muted"
@@ -2367,7 +2367,7 @@ export function AdminBenchmarks() {
                             </span>
                           </div>
                           {bestAttempt ? (
-                            <p className="mt-1 text-meta text-ink-muted">
+                            <p className="mt-tight text-meta text-ink-muted">
                               {t("admin:benchTuneBestPreset", {
                                 preset: bestAttempt.label || bestAttempt.preset_id,
                               })}{" "}
@@ -2388,26 +2388,26 @@ export function AdminBenchmarks() {
                             </p>
                           ) : null}
                           {bestPatches.length > 0 ? (
-                            <p className="mt-1 text-meta text-violet-100/90">
+                            <p className="mt-tight text-meta text-violet-100/90">
                               {t("admin:benchTuneBestPatches", { count: bestPatches.length })}:{" "}
                               {bestPatches.map((p) => p.knob_id).join(", ")}
                             </p>
                           ) : (
-                            <p className="mt-1 text-meta text-ink-muted">
+                            <p className="mt-tight text-meta text-ink-muted">
                               {t("admin:benchTuneNoPatches")}
                             </p>
                           )}
                           {attempts.length ? (
-                            <div className="mt-2 overflow-x-auto rounded-tile border border-line-subtle bg-black/20">
+                            <div className="mt-base overflow-x-auto rounded-tile border border-line-subtle bg-black/20">
                               <table className="w-full min-w-[560px] text-left text-meta">
                                 <thead className="text-ink-muted">
                                   <tr>
-                                    <th className="px-2 py-1">{t("admin:benchTunePreset")}</th>
-                                    <th className="px-2 py-1">{t("admin:benchTuneResultCol")}</th>
-                                    <th className="px-2 py-1">{t("admin:benchTunePassRate")}</th>
-                                    <th className="px-2 py-1">{t("admin:benchTuneScoreCol")}</th>
-                                    <th className="px-2 py-1">{t("admin:benchTuneFailures")}</th>
-                                    <th className="px-2 py-1">{t("admin:benchTuneRuns")}</th>
+                                    <th className="px-base py-tight">{t("admin:benchTunePreset")}</th>
+                                    <th className="px-base py-tight">{t("admin:benchTuneResultCol")}</th>
+                                    <th className="px-base py-tight">{t("admin:benchTunePassRate")}</th>
+                                    <th className="px-base py-tight">{t("admin:benchTuneScoreCol")}</th>
+                                    <th className="px-base py-tight">{t("admin:benchTuneFailures")}</th>
+                                    <th className="px-base py-tight">{t("admin:benchTuneRuns")}</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -2420,17 +2420,17 @@ export function AdminBenchmarks() {
                                           : ""
                                       }`}
                                     >
-                                      <td className="px-2 py-1 font-medium text-ink-primary">
+                                      <td className="px-base py-tight font-medium text-ink-primary">
                                         {a.label || a.preset_id}
                                       </td>
-                                      <td className="px-2 py-1">
+                                      <td className="px-base py-tight">
                                         {a.passed ?? 0}/{a.total ?? 0}
                                       </td>
-                                      <td className="px-2 py-1">{formatTunePct(a.pass_rate)}</td>
-                                      <td className="px-2 py-1">
+                                      <td className="px-base py-tight">{formatTunePct(a.pass_rate)}</td>
+                                      <td className="px-base py-tight">
                                         {typeof a.score === "number" ? a.score.toFixed(1) : "—"}
                                       </td>
-                                      <td className="px-2 py-1 text-ink-muted">
+                                      <td className="px-base py-tight text-ink-muted">
                                         {formatTuneClusters(
                                           (a.runs ?? []).reduce<Record<string, number>>((acc, r) => {
                                             for (const [k, n] of Object.entries(r.failure_clusters ?? {})) {
@@ -2440,12 +2440,12 @@ export function AdminBenchmarks() {
                                           }, {})
                                         )}
                                       </td>
-                                      <td className="px-2 py-1">
+                                      <td className="px-base py-tight">
                                         {(a.runs ?? []).map((r) => (
                                           <button
                                             key={r.run_id}
                                             type="button"
-                                            className="mr-2 text-sky-300 hover:underline"
+                                            className="mr-base text-sky-300 hover:underline"
                                             onClick={() => {
                                               setTab("history");
                                               setSelectedId(r.run_id);
@@ -2462,14 +2462,14 @@ export function AdminBenchmarks() {
                             </div>
                           ) : null}
                           {session.error_text ? (
-                            <p className="mt-1 text-meta text-rose-300">{session.error_text}</p>
+                            <p className="mt-tight text-meta text-rose-300">{session.error_text}</p>
                           ) : null}
                         </div>
-                        <div className="flex shrink-0 flex-wrap gap-2">
+                        <div className="flex shrink-0 flex-wrap gap-base">
                           <button
                             type="button"
                             disabled={!canReview || reviewingTuneId === session.id}
-                            className="rounded-tile border border-violet-500/40 px-2 py-1 text-violet-200 hover:bg-violet-500/10 disabled:opacity-40"
+                            className="rounded-tile border border-violet-500/40 px-base py-tight text-violet-200 hover:bg-violet-500/10 disabled:opacity-40"
                             onClick={() => void onReviewTune(session)}
                             title={reviewerModelLabel || tLoose("admin:benchTuneReviewerNeedsModel")}
                           >
@@ -2492,7 +2492,7 @@ export function AdminBenchmarks() {
                           <button
                             type="button"
                             disabled={!canPromote || promotingTuneId === session.id}
-                            className="rounded-tile border border-emerald-500/40 px-2 py-1 text-emerald-200 hover:bg-emerald-500/10 disabled:opacity-40"
+                            className="rounded-tile border border-emerald-500/40 px-base py-tight text-emerald-200 hover:bg-emerald-500/10 disabled:opacity-40"
                             onClick={() => void onPromoteTune(session)}
                           >
                             {session.promoted_at
@@ -2508,19 +2508,19 @@ export function AdminBenchmarks() {
                 })}
               </div>
             ) : (
-              <p className="mt-3 text-xs text-ink-muted">{t("admin:benchTuneNoSessions")}</p>
+              <p className="mt-soft text-xs text-ink-muted">{t("admin:benchTuneNoSessions")}</p>
             )}
           </section>
           ) : null}
 
           {runMode === "manual" ? (
           <>
-          <section className="rounded-sheet border border-line bg-card p-4">
+          <section className="rounded-sheet border border-line bg-card p-wide">
             <label className="block text-xs text-ink-muted">{t("admin:benchSuite")}</label>
             <select
               value={suite}
               onChange={(e) => onSuiteChange(e.target.value)}
-              className="mt-1 w-full max-w-md rounded-card border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+              className="mt-tight w-full max-w-md rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary"
             >
               {suites.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -2529,12 +2529,12 @@ export function AdminBenchmarks() {
               ))}
             </select>
             {suiteDetail?.description ? (
-              <p className="mt-2 text-xs text-ink-muted">{suiteDetail.description}</p>
+              <p className="mt-base text-xs text-ink-muted">{suiteDetail.description}</p>
             ) : null}
           </section>
 
-          <section className="rounded-sheet border border-line bg-card p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+          <section className="rounded-sheet border border-line bg-card p-wide">
+            <div className="flex flex-wrap items-center justify-between gap-base">
               <div>
                 <h2 className="text-sm font-medium text-ink-primary">{t("admin:benchScenarios")}</h2>
                 <p className="text-xs text-ink-muted">{t("admin:benchScenariosHint")}</p>
@@ -2548,54 +2548,54 @@ export function AdminBenchmarks() {
               </button>
             </div>
             {activeFixtures.length > 0 ? (
-              <p className="mt-2 text-meta text-ink-muted">
+              <p className="mt-base text-meta text-ink-muted">
                 {t("admin:benchAutoSetup")}:{" "}
                 {activeFixtures.map((fx) => fx.title).join(" · ")}
               </p>
             ) : null}
-            <div className="mt-3 space-y-2">
+            <div className="mt-soft space-y-base">
               {(suiteDetail?.scenarios ?? []).map((sc: BenchmarkScenario) => {
                 const checked = selectedScenarioIds.has(sc.id);
                 const expanded = expandedScenarioId === sc.id;
                 return (
                   <div
                     key={sc.id}
-                    className={`rounded-card border p-3 ${
+                    className={`rounded-card border p-soft ${
                       checked ? "border-sky-500/30 bg-sky-950/20" : "border-line bg-black/20"
                     }`}
                   >
-                    <div className="flex items-start gap-3">
+                    <div className="flex items-start gap-soft">
                       <input
                         type="checkbox"
                         checked={checked}
                         onChange={() => toggleScenario(sc.id)}
-                        className={`${benchCheckboxLargeClass} mt-0.5`}
+                        className={`${benchCheckboxLargeClass} mt-hair`}
                       />
                       <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-base">
                           <span className="font-mono text-xs text-sky-300/90">{sc.id}</span>
                           <span className="text-sm text-ink-primary">{sc.title}</span>
-                          <span className="rounded-tile bg-white/10 px-1.5 py-0.5 text-meta text-ink-muted">
+                          <span className="rounded-tile bg-white/10 px-snug py-hair text-meta text-ink-muted">
                             {t("admin:benchTier", { n: sc.tier })}
                           </span>
-                          <span className="rounded-tile bg-white/10 px-1.5 py-0.5 text-meta text-ink-muted">
+                          <span className="rounded-tile bg-white/10 px-snug py-hair text-meta text-ink-muted">
                             {sc.agent_id}
                           </span>
                           {sc.execution && sc.execution !== "chat" ? (
-                            <span className="rounded-tile bg-violet-950/50 px-1.5 py-0.5 text-meta text-violet-200">
+                            <span className="rounded-tile bg-violet-950/50 px-snug py-hair text-meta text-violet-200">
                               {sc.execution}
                             </span>
                           ) : null}
                         </div>
-                        <p className="mt-1 text-xs text-ink-muted">{sc.summary}</p>
+                        <p className="mt-tight text-xs text-ink-muted">{sc.summary}</p>
                         {sc.expected_tools.length ? (
-                          <p className="mt-1 text-meta text-ink-muted">
+                          <p className="mt-tight text-meta text-ink-muted">
                             {t("admin:benchExpectedTools")}:{" "}
                             {sc.expected_tools.join(", ")}
                           </p>
                         ) : null}
                         {sc.requires.length ? (
-                          <p className="mt-0.5 text-meta text-ink-muted">
+                          <p className="mt-hair text-meta text-ink-muted">
                             {t("admin:benchFixturesRequired")}: {sc.requires.join(", ")}
                           </p>
                         ) : null}
@@ -2603,14 +2603,14 @@ export function AdminBenchmarks() {
                           const secretWarn = scenarioSecretWarning(sc);
                           if (secretWarn) {
                             return (
-                              <p className="mt-0.5 text-meta text-amber-400/90">
+                              <p className="mt-hair text-meta text-amber-400/90">
                                 {t("admin:benchWillSkip")}: {secretWarn}
                               </p>
                             );
                           }
                           if (sc.skip_without_env) {
                             return (
-                              <p className="mt-0.5 text-meta text-amber-400/90">
+                              <p className="mt-hair text-meta text-amber-400/90">
                                 {t("admin:benchEnvSkip")}: {sc.skip_without_env}
                               </p>
                             );
@@ -2622,12 +2622,12 @@ export function AdminBenchmarks() {
                           onClick={() =>
                             setExpandedScenarioId(expanded ? null : sc.id)
                           }
-                          className="mt-1 text-meta text-sky-400 hover:underline"
+                          className="mt-tight text-meta text-sky-400 hover:underline"
                         >
                           {expanded ? t("admin:benchHidePrompt") : t("admin:benchShowPrompt")}
                         </button>
                         {expanded ? (
-                          <div className="mt-2 space-y-1 rounded-tile border border-line-subtle bg-black/30 p-2 text-meta">
+                          <div className="mt-base space-y-tight rounded-tile border border-line-subtle bg-black/30 p-base text-meta">
                             <p className="text-ink-muted">{t("admin:benchPrompt")}</p>
                             <p className="whitespace-pre-wrap text-white/90">
                               {benchmarkScenarioPrompt(sc, promptLocale, promptVariant)}
@@ -2643,14 +2643,14 @@ export function AdminBenchmarks() {
             </div>
           </section>
 
-          <details className="rounded-sheet border border-line bg-card p-4">
+          <details className="rounded-sheet border border-line bg-card p-wide">
             <summary className="cursor-pointer text-sm font-medium text-ink-primary">
               {t("admin:benchAdvancedOptions")}
-              <span className="ml-2 text-xs font-normal text-ink-muted">
+              <span className="ml-base text-xs font-normal text-ink-muted">
                 {t("admin:benchRunOptionsHint")}
               </span>
             </summary>
-            <div className="mt-4 space-y-4">
+            <div className="mt-wide space-y-wide">
           <HarnessRunContextBar auth={auth} />
 
           <BenchmarkRunOverridePanel
@@ -2659,14 +2659,14 @@ export function AdminBenchmarks() {
             onChange={setRunOverrides}
           />
 
-          <section className="rounded-sheet border border-line bg-raised p-4 space-y-3">
+          <section className="rounded-sheet border border-line bg-raised p-wide space-y-soft">
             <div>
               <h3 className="text-xs font-medium uppercase text-ink-muted">
                 {t("admin:benchRunOptionsTitle")}
               </h3>
-              <p className="mt-1 text-meta text-ink-muted">{t("admin:benchRunOptionsHint")}</p>
+              <p className="mt-tight text-meta text-ink-muted">{t("admin:benchRunOptionsHint")}</p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-soft sm:grid-cols-2 lg:grid-cols-3">
               <label className="block text-sm sm:col-span-2 lg:col-span-3">
                 <span className="text-ink-muted">{t("admin:benchCohortLabel")}</span>
                 <input
@@ -2675,9 +2675,9 @@ export function AdminBenchmarks() {
                   value={cohortLabel}
                   onChange={(e) => setCohortLabel(e.target.value)}
                   placeholder={t("admin:benchCohortLabelPlaceholder")}
-                  className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
+                  className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
                 />
-                <span className="mt-1 block text-meta text-ink-muted">
+                <span className="mt-tight block text-meta text-ink-muted">
                   {t("admin:benchCohortLabelHint")}
                 </span>
               </label>
@@ -2686,7 +2686,7 @@ export function AdminBenchmarks() {
                 <select
                   value={promptVariant}
                   onChange={(e) => setPromptVariant(e.target.value)}
-                  className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
+                  className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
                 >
                   {availablePromptVariants.map((variant) => (
                     <option key={variant} value={variant}>
@@ -2694,7 +2694,7 @@ export function AdminBenchmarks() {
                     </option>
                   ))}
                 </select>
-                <span className="mt-1 block text-meta text-ink-muted">
+                <span className="mt-tight block text-meta text-ink-muted">
                   {t("admin:benchPromptVariantHint")}
                 </span>
               </label>
@@ -2703,7 +2703,7 @@ export function AdminBenchmarks() {
                 <select
                   value={promptLocale}
                   onChange={(e) => setPromptLocale(e.target.value)}
-                  className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
+                  className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
                 >
                   {availablePromptLocales.map((loc) => (
                     <option key={loc} value={loc}>
@@ -2711,7 +2711,7 @@ export function AdminBenchmarks() {
                     </option>
                   ))}
                 </select>
-                <span className="mt-1 block text-meta text-ink-muted">
+                <span className="mt-tight block text-meta text-ink-muted">
                   {t("admin:benchPromptLocaleHint")}
                 </span>
               </label>
@@ -2724,9 +2724,9 @@ export function AdminBenchmarks() {
                   value={scenarioTimeoutSec}
                   onChange={(e) => setScenarioTimeoutSec(e.target.value)}
                   placeholder={t("admin:benchScenarioTimeoutPlaceholder")}
-                  className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
+                  className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
                 />
-                <span className="mt-1 block text-meta text-ink-muted">
+                <span className="mt-tight block text-meta text-ink-muted">
                   {t("admin:benchScenarioTimeoutHint")}
                 </span>
               </label>
@@ -2739,9 +2739,9 @@ export function AdminBenchmarks() {
                   value={maxToolRoundsOverride}
                   onChange={(e) => setMaxToolRoundsOverride(e.target.value)}
                   placeholder={t("admin:benchMaxToolRoundsPlaceholder")}
-                  className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
+                  className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
                 />
-                <span className="mt-1 block text-meta text-ink-muted">
+                <span className="mt-tight block text-meta text-ink-muted">
                   {t("admin:benchMaxToolRoundsHint")}
                 </span>
               </label>
@@ -2754,9 +2754,9 @@ export function AdminBenchmarks() {
                   value={scenarioFailureRetries}
                   onChange={(e) => setScenarioFailureRetries(e.target.value)}
                   placeholder={t("admin:benchScenarioFailureRetriesPlaceholder")}
-                  className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
+                  className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
                 />
-                <span className="mt-1 block text-meta text-ink-muted">
+                <span className="mt-tight block text-meta text-ink-muted">
                   {t("admin:benchScenarioFailureRetriesHint")}
                 </span>
               </label>
@@ -2768,11 +2768,11 @@ export function AdminBenchmarks() {
           </>
           ) : null}
 
-          <section className="sticky bottom-0 z-10 rounded-sheet border border-line bg-[#101010]/95 p-4 shadow-2xl shadow-black/40 backdrop-blur">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+          <section className="sticky bottom-0 z-10 rounded-sheet border border-line bg-[#101010]/95 p-wide shadow-2xl shadow-black/40 backdrop-blur">
+            <div className="flex flex-wrap items-center justify-between gap-soft">
               <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className="rounded-tile bg-white/10 px-2 py-1 font-medium text-ink-primary">
+                <div className="flex flex-wrap items-center gap-base text-xs">
+                  <span className="rounded-tile bg-white/10 px-base py-tight font-medium text-ink-primary">
                     {runMode === "autotune"
                       ? t("admin:benchRunModeAutotune")
                       : t("admin:benchRunModeManual")}
@@ -2796,7 +2796,7 @@ export function AdminBenchmarks() {
                     <span className="text-amber-300">{t("admin:benchWorkspaceQuotaFull")}</span>
                   ) : null}
                 </div>
-                <p className="mt-1 text-meta text-ink-muted">
+                <p className="mt-tight text-meta text-ink-muted">
                   {t("admin:benchRunNote", {
                     user: runAsUser ? userOptionLabel(runAsUser) : runAsUserId || "—",
                   })}
@@ -2806,7 +2806,7 @@ export function AdminBenchmarks() {
                 type="button"
                 disabled={actionBusy || !canStartRun}
                 onClick={() => void (runMode === "autotune" ? onStartAutotune() : onStart())}
-                className={`rounded-card px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50 ${
+                className={`rounded-card px-wide py-base text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50 ${
                   runMode === "autotune"
                     ? "bg-violet-600 hover:bg-violet-500"
                     : "bg-sky-600 hover:bg-sky-500"
@@ -2828,13 +2828,13 @@ export function AdminBenchmarks() {
       ) : null}
 
       {tab === "history" ? (
-        <div className="flex min-h-0 flex-1 gap-4 overflow-hidden">
+        <div className="flex min-h-0 flex-1 gap-wide overflow-hidden">
           <div className="flex w-80 shrink-0 flex-col overflow-hidden rounded-sheet border border-line bg-card">
-            <div className="flex items-center justify-between gap-2 border-b border-line-subtle px-3 py-2">
+            <div className="flex items-center justify-between gap-base border-b border-line-subtle px-soft py-base">
               <span className="text-xs font-medium uppercase text-ink-muted">
                 {t("admin:benchHistory")}
               </span>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-base">
                 <Button
                   type="button"
                   variant="danger"
@@ -2855,7 +2855,7 @@ export function AdminBenchmarks() {
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto">
               {runs.length === 0 ? (
-                <p className="p-3 text-xs text-ink-muted">{t("admin:benchNone")}</p>
+                <p className="p-soft text-xs text-ink-muted">{t("admin:benchNone")}</p>
               ) : (
                 runs.map((r) => (
                   <div
@@ -2867,7 +2867,7 @@ export function AdminBenchmarks() {
                     <button
                       type="button"
                       onClick={() => setSelectedId(r.id)}
-                      className="min-w-0 flex-1 px-3 py-2 text-left text-sm hover:bg-white/5"
+                      className="min-w-0 flex-1 px-soft py-base text-left text-sm hover:bg-white/5"
                     >
                       <div className="font-medium text-ink-primary">{r.suite}</div>
                       <div className="text-xs text-ink-muted">
@@ -2887,7 +2887,7 @@ export function AdminBenchmarks() {
                         title={t("admin:benchCancelRun")}
                         aria-label={t("admin:benchCancelRun")}
                         onClick={() => void onCancelRun(r)}
-                        className="shrink-0 px-2 text-rose-400/90 hover:bg-rose-950/40 hover:text-rose-300 disabled:opacity-50"
+                        className="shrink-0 px-base text-rose-400/90 hover:bg-rose-950/40 hover:text-rose-300 disabled:opacity-50"
                       >
                         {cancellingRunId === r.id ? "…" : "■"}
                       </button>
@@ -2933,7 +2933,7 @@ export function AdminBenchmarks() {
               )}
             </div>
           </div>
-          <div className="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-sheet border border-line bg-card p-4">
+          <div className="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-sheet border border-line bg-card p-wide">
             {!detail ? (
               <p className="text-sm text-ink-muted">{t("admin:benchSelectRun")}</p>
             ) : (
@@ -2941,23 +2941,23 @@ export function AdminBenchmarks() {
                 <h2 className="text-sm font-medium text-ink-primary">
                   {detail.suite} · {detail.status}
                   {!Array.isArray(detail.profiles_json) && detail.profiles_json?.prompt_locale ? (
-                    <span className="ml-2 text-xs font-normal text-ink-muted">
+                    <span className="ml-base text-xs font-normal text-ink-muted">
                       · {String(detail.profiles_json.prompt_locale).toUpperCase()}
                     </span>
                   ) : null}
                   {!Array.isArray(detail.profiles_json) && detail.profiles_json?.prompt_variant ? (
-                    <span className="ml-2 text-xs font-normal text-ink-muted">
+                    <span className="ml-base text-xs font-normal text-ink-muted">
                       · {String(detail.profiles_json.prompt_variant)}
                     </span>
                   ) : null}
                   {detail.cohort_json?.harness_preset ? (
-                    <span className="ml-2 text-xs font-normal text-ink-muted">
+                    <span className="ml-base text-xs font-normal text-ink-muted">
                       · {String(detail.cohort_json.harness_preset)}
                     </span>
                   ) : null}
                 </h2>
                 {detail.cohort_json?.fingerprint || detail.cohort_json?.cohort_label ? (
-                  <p className="mt-1 font-mono text-meta text-ink-muted break-all">
+                  <p className="mt-tight font-mono text-meta text-ink-muted break-all">
                     {detail.cohort_json?.cohort_label ? (
                       <span>{String(detail.cohort_json.cohort_label)} · </span>
                     ) : null}
@@ -2971,7 +2971,7 @@ export function AdminBenchmarks() {
                     type="button"
                     disabled={cancellingRunId === detail.id}
                     onClick={() => void onCancelRun(detail)}
-                    className="mt-2 rounded-card border border-rose-500/40 bg-rose-950/30 px-3 py-1.5 text-xs font-medium text-rose-300 hover:bg-rose-950/50 disabled:opacity-50"
+                    className="mt-base rounded-card border border-rose-500/40 bg-rose-950/30 px-soft py-snug text-xs font-medium text-rose-300 hover:bg-rose-950/50 disabled:opacity-50"
                   >
                     {cancellingRunId === detail.id
                       ? t("admin:benchCancelling")
@@ -2979,16 +2979,16 @@ export function AdminBenchmarks() {
                   </button>
                 ) : null}
                 {detail.error_text ? (
-                  <p className="mt-2 text-sm text-red-400">{detail.error_text}</p>
+                  <p className="mt-base text-sm text-red-400">{detail.error_text}</p>
                 ) : null}
                 {detail.resource_prefix ? (
-                  <p className="mt-1 text-xs font-mono text-ink-muted">
+                  <p className="mt-tight text-xs font-mono text-ink-muted">
                     prefix: {detail.resource_prefix}
                   </p>
                 ) : null}
                 {detail.report_json?.bench_cleanup ||
                 detail.report_json?.bench_cleanup_finish ? (
-                  <div className="mt-2 space-y-1 text-meta text-ink-muted">
+                  <div className="mt-base space-y-tight text-meta text-ink-muted">
                     {detail.report_json.bench_cleanup ? (
                       <p>
                         {t("admin:benchCleanupStart")}:{" "}
@@ -3010,7 +3010,7 @@ export function AdminBenchmarks() {
                   </div>
                 ) : null}
                 {detail.status === "running" || detail.status === "queued" ? (
-                  <div className="mt-2 space-y-1 text-xs text-sky-400/90">
+                  <div className="mt-base space-y-tight text-xs text-sky-400/90">
                     <p>
                       {t("admin:benchRunLive")}
                       {(detail.summary_json?.executed ?? 0) > 0
@@ -3050,31 +3050,31 @@ export function AdminBenchmarks() {
                   </div>
                 ) : null}
                 {(detail.report_json?.results?.length ?? 0) > 0 ? (
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="mt-soft flex flex-wrap gap-base">
                     <button
                       type="button"
-                      className="rounded-tile border border-line-strong bg-black/30 px-2.5 py-1 text-meta text-white/90 hover:bg-white/10"
+                      className="rounded-tile border border-line-strong bg-black/30 px-firm py-tight text-meta text-white/90 hover:bg-white/10"
                       onClick={() => downloadAttemptsCsv(detail)}
                     >
                       {t("admin:benchExportAttemptsCsv")}
                     </button>
                     <button
                       type="button"
-                      className="rounded-tile border border-line-strong bg-black/30 px-2.5 py-1 text-meta text-white/90 hover:bg-white/10"
+                      className="rounded-tile border border-line-strong bg-black/30 px-firm py-tight text-meta text-white/90 hover:bg-white/10"
                       onClick={() => downloadFailuresCsv(detail)}
                     >
                       {t("admin:benchExportFailuresCsv")}
                     </button>
                     <button
                       type="button"
-                      className="rounded-tile border border-line-strong bg-black/30 px-2.5 py-1 text-meta text-white/90 hover:bg-white/10"
+                      className="rounded-tile border border-line-strong bg-black/30 px-firm py-tight text-meta text-white/90 hover:bg-white/10"
                       onClick={() => downloadFailuresJson(detail)}
                     >
                       {t("admin:benchExportFailuresJson")}
                     </button>
                     <button
                       type="button"
-                      className="rounded-tile border border-line-strong bg-black/30 px-2.5 py-1 text-meta text-white/90 hover:bg-white/10"
+                      className="rounded-tile border border-line-strong bg-black/30 px-firm py-tight text-meta text-white/90 hover:bg-white/10"
                       onClick={() => downloadFullReportJson(detail)}
                     >
                       {t("admin:benchExportFullJson")}
@@ -3088,17 +3088,17 @@ export function AdminBenchmarks() {
                   )}
                   t={t}
                 />
-                <table className="mt-4 w-full text-left text-xs">
+                <table className="mt-wide w-full text-left text-xs">
                   <thead>
                     <tr className="text-ink-muted">
-                      <th className="py-1 pr-2 w-8" aria-label={t("admin:benchColDetail")} />
-                      <th className="py-1 pr-2">{t("admin:benchColScenario")}</th>
-                      <th className="py-1 pr-2">{t("admin:benchColProviderModel")}</th>
-                      <th className="py-1 pr-2">{t("admin:benchColResult")}</th>
-                      <th className="py-1 pr-2">{t("admin:benchColTools")}</th>
-                      <th className="py-1 pr-2">{t("admin:benchColCompaction")}</th>
-                      <th className="py-1 pr-2">{t("admin:benchColCtx")}</th>
-                      <th className="py-1 pr-2">{t("admin:benchColMs")}</th>
+                      <th className="py-tight pr-base w-8" aria-label={t("admin:benchColDetail")} />
+                      <th className="py-tight pr-base">{t("admin:benchColScenario")}</th>
+                      <th className="py-tight pr-base">{t("admin:benchColProviderModel")}</th>
+                      <th className="py-tight pr-base">{t("admin:benchColResult")}</th>
+                      <th className="py-tight pr-base">{t("admin:benchColTools")}</th>
+                      <th className="py-tight pr-base">{t("admin:benchColCompaction")}</th>
+                      <th className="py-tight pr-base">{t("admin:benchColCtx")}</th>
+                      <th className="py-tight pr-base">{t("admin:benchColMs")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -3106,37 +3106,37 @@ export function AdminBenchmarks() {
                     !detail.report_json?.in_flight &&
                     (detail.status === "running" || detail.status === "queued") ? (
                       <tr>
-                        <td colSpan={8} className="py-3 text-ink-muted">
+                        <td colSpan={8} className="py-soft text-ink-muted">
                           {t("admin:benchRunWaitingResults")}
                         </td>
                       </tr>
                     ) : null}
                     {detail.report_json?.in_flight ? (
                       <tr className="border-t border-sky-500/20 bg-sky-500/5">
-                        <td className="py-1.5 pr-1 align-top text-sky-400" aria-hidden>
+                        <td className="py-snug pr-tight align-top text-sky-400" aria-hidden>
                           ◉
                         </td>
-                        <td className="py-1.5 pr-2 font-mono text-sky-300">
+                        <td className="py-snug pr-base font-mono text-sky-300">
                           {detail.report_json.in_flight.scenario_id}
                         </td>
-                        <td className="py-1.5 pr-2 font-mono text-meta text-sky-300/90">
+                        <td className="py-snug pr-base font-mono text-meta text-sky-300/90">
                           {formatInFlightProviderModel(detail.report_json.in_flight)}
                         </td>
-                        <td className="py-1.5 pr-2 text-sky-300">
+                        <td className="py-snug pr-base text-sky-300">
                           {t("admin:benchInFlightRunning")} —{" "}
                           {formatInFlightActivity(detail.report_json.in_flight, t)}
                         </td>
-                        <td className="py-1.5 pr-2 text-sky-300/90">
+                        <td className="py-snug pr-base text-sky-300/90">
                           {formatInFlightToolsColumn(detail.report_json.in_flight, t)}
                           {(detail.report_json.in_flight.tool_names?.length ?? 0) > 0 ? (
-                            <span className="ml-1 text-ink-muted">
+                            <span className="ml-tight text-ink-muted">
                               ({detail.report_json.in_flight.tool_names!.slice(-3).join(", ")})
                             </span>
                           ) : null}
                           {typeof detail.report_json.in_flight.forwarded_tool_count ===
                             "number" &&
                           detail.report_json.in_flight.forwarded_tool_count > 0 ? (
-                            <span className="ml-1 block text-meta text-ink-muted">
+                            <span className="ml-tight block text-meta text-ink-muted">
                               → {detail.report_json.in_flight.forwarded_tool_count}{" "}
                               {t("admin:benchInFlightForwardedTools")}
                               {detail.report_json.in_flight.routed_category
@@ -3145,11 +3145,11 @@ export function AdminBenchmarks() {
                             </span>
                           ) : null}
                         </td>
-                        <td className="py-1.5 pr-2 text-ink-muted">—</td>
-                        <td className="py-1.5 pr-2 font-mono text-meta text-sky-300/90">
+                        <td className="py-snug pr-base text-ink-muted">—</td>
+                        <td className="py-snug pr-base font-mono text-meta text-sky-300/90">
                           {formatInFlightPromptTokens(detail.report_json.in_flight) ?? "—"}
                         </td>
-                        <td className="py-1.5 pr-2 text-sky-300/90">
+                        <td className="py-snug pr-base text-sky-300/90">
                           {formatInFlightElapsed(detail.report_json.in_flight) ?? "…"}
                         </td>
                       </tr>
@@ -3164,12 +3164,12 @@ export function AdminBenchmarks() {
                       return (
                         <Fragment key={rowKey}>
                           <tr className="border-t border-line-subtle">
-                            <td className="py-1.5 pr-1 align-top">
-                              <div className="flex flex-col items-start gap-0.5">
+                            <td className="py-snug pr-tight align-top">
+                              <div className="flex flex-col items-start gap-hair">
                                 {canExpand ? (
                                   <button
                                     type="button"
-                                    className="rounded-tile px-1 text-ink-muted hover:bg-white/5 hover:text-white"
+                                    className="rounded-tile px-tight text-ink-muted hover:bg-white/5 hover:text-white"
                                     aria-expanded={expanded}
                                     title={
                                       expanded
@@ -3186,40 +3186,40 @@ export function AdminBenchmarks() {
                                 <CopyScenarioDetailsButton res={res} compact />
                               </div>
                             </td>
-                            <td className="py-1.5 pr-2 font-mono">{res.scenario_id}</td>
-                            <td className="py-1.5 pr-2 font-mono text-meta">
+                            <td className="py-snug pr-base font-mono">{res.scenario_id}</td>
+                            <td className="py-snug pr-base font-mono text-meta">
                               {formatBenchmarkProviderModel(res)}
                             </td>
-                            <td className="py-1.5 pr-2">
+                            <td className="py-snug pr-base">
                               {res.run_metrics?.project_run_status
                                 ? `${res.run_metrics.project_run_status} · `
                                 : ""}
                               {formatBenchmarkResultStatus(res)}
                               {!res.skipped && !res.passed ? (
-                                <span className="ml-1 text-ink-muted">
+                                <span className="ml-tight text-ink-muted">
                                   — {formatResultFailureLine(res, t)}
                                 </span>
                               ) : res.failure_reason && res.skipped ? (
-                                <span className="ml-1 text-ink-muted">
+                                <span className="ml-tight text-ink-muted">
                                   — {res.failure_reason}
                                 </span>
                               ) : null}
                               {hasMultipleAttempts(res) && res.passed && res.run_metrics?.pass_at_1 === false ? (
-                                <span className="ml-1 text-amber-400/90">
+                                <span className="ml-tight text-amber-400/90">
                                   ({t("admin:benchPassAt1Miss")})
                                 </span>
                               ) : null}
                             </td>
-                            <td className="py-1.5 pr-2">
+                            <td className="py-snug pr-base">
                               {res.tool_call_count ?? 0}
                               {res.run_metrics?.llm_round_count != null
                                 ? ` · ${res.run_metrics.llm_round_count} llm`
                                 : ""}
                             </td>
-                            <td className="py-1.5 pr-2">
+                            <td className="py-snug pr-base">
                               {res.run_metrics?.compaction_count ?? 0}
                               {(res.run_metrics?.compaction_events?.length ?? 0) > 0 ? (
-                                <span className="ml-1 text-ink-muted">
+                                <span className="ml-tight text-ink-muted">
                                   (
                                   {(res.run_metrics?.compaction_events ?? [])
                                     .map((e) => e.phase)
@@ -3229,16 +3229,16 @@ export function AdminBenchmarks() {
                                 </span>
                               ) : null}
                             </td>
-                            <td className="py-1.5 pr-2">
+                            <td className="py-snug pr-base">
                               {res.run_metrics?.context_utilization_pct != null
                                 ? `${res.run_metrics.context_utilization_pct}%`
                                 : "—"}
                             </td>
-                            <td className="py-1.5 pr-2">{Math.round(res.latency_ms)}</td>
+                            <td className="py-snug pr-base">{Math.round(res.latency_ms)}</td>
                           </tr>
                           {expanded ? (
                             <tr className="border-t border-line-subtle">
-                              <td colSpan={8} className="py-2 pr-2">
+                              <td colSpan={8} className="py-base pr-base">
                                 <BenchmarkScenarioDetailWithAttempts
                                   res={res}
                                   t={t}
@@ -3292,7 +3292,7 @@ export function AdminBenchmarks() {
 
       {bulkDeleteOpen ? (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-wide"
           role="presentation"
           onClick={() => {
             if (!bulkDeleting) setBulkDeleteOpen(false);
@@ -3301,17 +3301,17 @@ export function AdminBenchmarks() {
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-md rounded-sheet border border-line bg-[#1a1a1a] p-5 shadow-2xl"
+            className="w-full max-w-md rounded-sheet border border-line bg-[#1a1a1a] p-roomy shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-base font-semibold text-ink-primary">{t("admin:benchBulkDeleteTitle")}</h2>
-            <p className="mt-2 text-sm text-ink-secondary">{t("admin:benchBulkDeleteHint")}</p>
-            <label className="mt-4 block text-xs text-ink-muted">
+            <p className="mt-base text-sm text-ink-secondary">{t("admin:benchBulkDeleteHint")}</p>
+            <label className="mt-wide block text-xs text-ink-muted">
               {t("admin:benchSuite")}
               <select
                 value={bulkDeleteSuite}
                 onChange={(e) => setBulkDeleteSuite(e.target.value)}
-                className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
+                className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
               >
                 <option value="">{t("admin:benchStatsAllSuites")}</option>
                 {historySuiteOptions.map((s) => (
@@ -3321,12 +3321,12 @@ export function AdminBenchmarks() {
                 ))}
               </select>
             </label>
-            <label className="mt-3 block text-xs text-ink-muted">
+            <label className="mt-soft block text-xs text-ink-muted">
               {t("admin:benchBulkDeleteOlderThan")}
               <select
                 value={bulkDeleteOlderThanDays}
                 onChange={(e) => setBulkDeleteOlderThanDays(e.target.value)}
-                className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
+                className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
               >
                 <option value="">{t("admin:benchBulkDeleteAnyAge")}</option>
                 <option value="30">{t("admin:benchBulkDeleteOlder30d")}</option>
@@ -3334,13 +3334,13 @@ export function AdminBenchmarks() {
                 <option value="180">{t("admin:benchBulkDeleteOlder180d")}</option>
               </select>
             </label>
-            <p className="mt-3 text-sm text-amber-200/90">
+            <p className="mt-soft text-sm text-amber-200/90">
               {bulkDeletePreviewLoading
                 ? t("admin:benchBulkDeletePreviewLoading")
                 : t("admin:benchBulkDeletePreview", { count: bulkDeletePreviewCount })}
             </p>
-            <p className="mt-1 text-meta text-ink-muted">{t("admin:benchBulkDeleteActiveSkipped")}</p>
-            <div className="mt-5 flex flex-wrap justify-end gap-2">
+            <p className="mt-tight text-meta text-ink-muted">{t("admin:benchBulkDeleteActiveSkipped")}</p>
+            <div className="mt-roomy flex flex-wrap justify-end gap-base">
               <Button
                 type="button"
                 variant="secondary"
@@ -3352,7 +3352,7 @@ export function AdminBenchmarks() {
               </Button>
               <button
                 type="button"
-                className="rounded-card border border-red-600/50 bg-red-950/60 px-4 py-2 text-sm font-medium text-red-100 hover:bg-red-900/50 disabled:opacity-50"
+                className="rounded-card border border-red-600/50 bg-red-950/60 px-wide py-base text-sm font-medium text-red-100 hover:bg-red-900/50 disabled:opacity-50"
                 disabled={
                   bulkDeleting || bulkDeletePreviewLoading || bulkDeletePreviewCount === 0
                 }

@@ -87,24 +87,24 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
         : null;
 
   return (
-    <div className="w-full max-w-[min(100%,42rem)] rounded-sheet border border-amber-900/45 bg-amber-950/20 px-3 py-3 text-sm shadow-sm">
-      <div className="flex items-start gap-2">
-        <KeyRound aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
+    <div className="w-full max-w-[min(100%,42rem)] rounded-sheet border border-amber-900/45 bg-amber-950/20 px-soft py-soft text-sm shadow-sm">
+      <div className="flex items-start gap-base">
+        <KeyRound aria-hidden className="mt-hair h-4 w-4 shrink-0" />
         <div className="min-w-0 flex-1">
           <p className="font-medium text-amber-100/95">
             {prompt.title || prompt.serviceKey}
           </p>
           {prompt.reason ? (
-            <p className="mt-0.5 text-meta text-amber-200/70">{prompt.reason}</p>
+            <p className="mt-hair text-meta text-amber-200/70">{prompt.reason}</p>
           ) : null}
           {prompt.help ? (
-            <p className="mt-1 text-meta leading-snug text-ink-muted">{prompt.help}</p>
+            <p className="mt-tight text-meta leading-snug text-ink-muted">{prompt.help}</p>
           ) : null}
 
           {prompt.status === "saved" ? (
-            <p className="mt-2 text-xs text-emerald-400/90">{statusLabel}</p>
+            <p className="mt-base text-xs text-emerald-400/90">{statusLabel}</p>
           ) : (
-            <div className="mt-2 space-y-2">
+            <div className="mt-base space-y-base">
               {hasFields ? (
                 fields.map((f) => (
                   <label key={f.name} className="block">
@@ -120,7 +120,7 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
                       onChange={(e) =>
                         setFieldValues((prev) => ({ ...prev, [f.name]: e.target.value }))
                       }
-                      className="mt-0.5 w-full rounded-card border border-line bg-field px-2.5 py-1.5 text-sm text-ink-primary outline-none focus:border-amber-600/50"
+                      className="mt-hair w-full rounded-card border border-line bg-field px-firm py-snug text-sm text-ink-primary outline-none focus:border-amber-600/50"
                     />
                   </label>
                 ))
@@ -133,19 +133,19 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
                     disabled={disabled}
                     value={rawSecret}
                     onChange={(e) => setRawSecret(e.target.value)}
-                    className="mt-0.5 w-full rounded-card border border-line bg-field px-2.5 py-1.5 text-sm text-ink-primary outline-none focus:border-amber-600/50"
+                    className="mt-hair w-full rounded-card border border-line bg-field px-firm py-snug text-sm text-ink-primary outline-none focus:border-amber-600/50"
                   />
                 </label>
               )}
               {localError ? (
                 <p className="text-xs text-red-400/90">{localError}</p>
               ) : null}
-              <div className="flex flex-wrap items-center gap-2 pt-1">
+              <div className="flex flex-wrap items-center gap-base pt-tight">
                 <button
                   type="button"
                   disabled={disabled}
                   onClick={() => void save()}
-                  className="rounded-card bg-amber-700/80 px-3 py-1.5 text-xs font-medium text-ink-primary hover:bg-amber-600/90 disabled:opacity-50"
+                  className="rounded-card bg-amber-700/80 px-soft py-snug text-xs font-medium text-ink-primary hover:bg-amber-600/90 disabled:opacity-50"
                 >
                   {saving ? t("chat:secretCardSaving") : t("chat:secretCardSave")}
                 </button>

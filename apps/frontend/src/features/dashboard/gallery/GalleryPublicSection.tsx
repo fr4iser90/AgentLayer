@@ -44,7 +44,7 @@ function PublicPhotoTile(props: {
         />
       </button>
       {caption ? (
-        <figcaption className="border-t border-line-subtle px-3 py-2 text-xs leading-relaxed text-ink-secondary">
+        <figcaption className="border-t border-line-subtle px-soft py-base text-xs leading-relaxed text-ink-secondary">
           {caption}
         </figcaption>
       ) : null}
@@ -76,9 +76,9 @@ export function GalleryPublicSection(props: {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   return (
-    <section className="mb-8 last:mb-4 sm:mb-12">
+    <section className="mb-deep last:mb-wide sm:mb-grand">
       {sectionTitle ? (
-        <h2 className="mb-3 text-sm font-medium uppercase tracking-wide text-ink-muted sm:mb-4">
+        <h2 className="mb-soft text-sm font-medium uppercase tracking-wide text-ink-muted sm:mb-wide">
           {sectionTitle}
         </h2>
       ) : null}

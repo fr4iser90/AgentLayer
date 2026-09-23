@@ -181,13 +181,13 @@ export function ChatRuntimeBar({
 
   return (
     <div
-      className={`rounded-card border border-line bg-black/30 px-2.5 py-1.5 text-meta leading-snug text-ink-secondary ${className}`}
+      className={`rounded-card border border-line bg-black/30 px-firm py-snug text-meta leading-snug text-ink-secondary ${className}`}
     >
-      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+      <div className="flex flex-wrap items-center gap-x-soft gap-y-tight">
         <span className="font-semibold uppercase tracking-wide text-ink-muted">{t("workspace:mcp")}</span>
         {scope === "workspace" ? (
           <span
-            className="rounded-tile border border-sky-500/35 bg-sky-950/40 px-1 py-0.5 text-meta font-medium uppercase tracking-wide text-sky-200/90"
+            className="rounded-tile border border-sky-500/35 bg-sky-950/40 px-tight py-hair text-meta font-medium uppercase tracking-wide text-sky-200/90"
             title={t("workspace:mcpWorkspaceScopeTitle")}
           >
             {t("workspace:scopeWorkspace")}
@@ -215,7 +215,7 @@ export function ChatRuntimeBar({
           >
             <span className={connected > 0 ? "text-emerald-400/95" : "text-amber-300/90"}>{connected}</span>
             <span className="text-ink-muted">/{servers.length}</span>
-            <span className="ml-1 text-ink-muted">{t("workspace:servers")}</span>
+            <span className="ml-tight text-ink-muted">{t("workspace:servers")}</span>
           </span>
         )}
         {showContext ? (
@@ -236,13 +236,13 @@ export function ChatRuntimeBar({
             >
               {contextLine}
               {mergedMeta?.summary_active ? (
-                <span className="ml-1 text-violet-300/85">{t("chat:contextCompacted")}</span>
+                <span className="ml-tight text-violet-300/85">{t("chat:contextCompacted")}</span>
               ) : null}
               {mergedMeta?.loop_compaction_applied ? (
-                <span className="ml-1 text-amber-300/85">{t("chat:contextLoopCompacted")}</span>
+                <span className="ml-tight text-amber-300/85">{t("chat:contextLoopCompacted")}</span>
               ) : null}
               {mergedMeta?.messages_dropped ? (
-                <span className="ml-1 text-ink-muted">
+                <span className="ml-tight text-ink-muted">
                   {t("chat:contextDropped", { count: mergedMeta.messages_dropped })}
                 </span>
               ) : null}

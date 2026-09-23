@@ -208,7 +208,7 @@ function ProviderModelSelect({
   return (
     <select
       id={id}
-      className="mt-1 w-full rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary disabled:opacity-50"
+      className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary disabled:opacity-50"
       value={current}
       disabled={options.length === 0}
       onChange={(e) => onChange(e.target.value)}
@@ -241,7 +241,7 @@ function AccessStateControl({
         <button
           key={state}
           type="button"
-          className={`px-2 py-1 ${
+          className={`px-base py-tight ${
             value === state
               ? state === "allow"
                 ? "bg-emerald-500/25 text-emerald-100"
@@ -737,37 +737,37 @@ export function AdminInterfacesLlmSection({
   return (
     <>
           {showProviders ? (
-          <section className="rounded-sheet border border-line bg-card p-5">
+          <section className="rounded-sheet border border-line bg-card p-roomy">
             <h2 className="text-sm font-medium text-ink-primary">{t("admin:ifLlmEndpointsTitle")}</h2>
-            <p className="mt-2 text-xs text-ink-muted">{t("admin:ifLlmEndpointsIntro")}</p>
-            <div className="mt-4 rounded-card border border-sky-400/25 bg-sky-500/10 p-4">
+            <p className="mt-base text-xs text-ink-muted">{t("admin:ifLlmEndpointsIntro")}</p>
+            <div className="mt-wide rounded-card border border-sky-400/25 bg-sky-500/10 p-wide">
               <h3 className="text-sm font-medium text-sky-100">{t("admin:ifLlmActiveCatalogTitle")}</h3>
-              <p className="mt-1 text-xs text-sky-100/75">{t("admin:ifLlmActiveCatalogIntro")}</p>
-              <div className="mt-3 grid gap-3 xl:grid-cols-2">
+              <p className="mt-tight text-xs text-sky-100/75">{t("admin:ifLlmActiveCatalogIntro")}</p>
+              <div className="mt-soft grid gap-soft xl:grid-cols-2">
                 {accessProviderGroups.map((group) => (
-                  <div key={group.id} className="rounded-tile border border-line bg-black/25 p-3">
-                    <div className="flex items-start justify-between gap-3">
+                  <div key={group.id} className="rounded-tile border border-line bg-black/25 p-soft">
+                    <div className="flex items-start justify-between gap-soft">
                       <div>
                         <h4 className="text-xs font-semibold text-ink-primary">{group.title}</h4>
-                        <p className="mt-1 text-meta text-sky-100/70">{group.intro}</p>
+                        <p className="mt-tight text-meta text-sky-100/70">{group.intro}</p>
                       </div>
-                      <span className="rounded-tile bg-white/10 px-1.5 py-0.5 font-mono text-meta text-ink-secondary">
+                      <span className="rounded-tile bg-white/10 px-snug py-hair font-mono text-meta text-ink-secondary">
                         {group.providers.length}
                       </span>
                     </div>
                     {group.providers.length === 0 ? (
-                      <p className="mt-3 text-xs text-amber-200">{group.empty}</p>
+                      <p className="mt-soft text-xs text-amber-200">{group.empty}</p>
                     ) : (
-                      <div className="mt-3 space-y-2">
+                      <div className="mt-soft space-y-base">
                         {group.providers.map((provider) => {
                           const visibleModels = provider.models ?? [];
                           return (
-                            <div key={capabilityAccessKey(provider.capability, provider.providerId)} className="rounded-tile border border-line bg-black/25 p-3">
-                              <div className="flex flex-wrap items-center gap-2">
+                            <div key={capabilityAccessKey(provider.capability, provider.providerId)} className="rounded-tile border border-line bg-black/25 p-soft">
+                              <div className="flex flex-wrap items-center gap-base">
                                 <span className="text-xs font-semibold text-ink-primary">{provider.label}</span>
                                 <span className="font-mono text-xs text-ink-muted">{provider.providerId}</span>
                                 {provider.source ? (
-                                  <span className="rounded-tile bg-white/10 px-1.5 py-0.5 text-meta uppercase tracking-wide text-ink-secondary">
+                                  <span className="rounded-tile bg-white/10 px-snug py-hair text-meta uppercase tracking-wide text-ink-secondary">
                                     {provider.source}
                                   </span>
                                 ) : null}
@@ -776,14 +776,14 @@ export function AdminInterfacesLlmSection({
                                 ) : null}
                               </div>
                               {provider.baseUrl ? (
-                                <p className="mt-1 break-all font-mono text-meta text-ink-muted">{provider.baseUrl}</p>
+                                <p className="mt-tight break-all font-mono text-meta text-ink-muted">{provider.baseUrl}</p>
                               ) : null}
                               {visibleModels.length > 0 ? (
-                                <div className="mt-2 flex flex-wrap gap-1">
+                                <div className="mt-base flex flex-wrap gap-tight">
                                   {visibleModels.map((model) => (
                                     <span
                                       key={model}
-                                      className="rounded-tile border border-line bg-black/30 px-1.5 py-0.5 font-mono text-meta text-ink-primary"
+                                      className="rounded-tile border border-line bg-black/30 px-snug py-hair font-mono text-meta text-ink-primary"
                                     >
                                       {model}
                                     </span>
@@ -800,34 +800,34 @@ export function AdminInterfacesLlmSection({
               </div>
             </div>
             {operatorEnvImportGroups.map((group) => (
-              <div key={group.kind} className="mt-4 rounded-card border border-amber-400/25 bg-amber-500/10 p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div key={group.kind} className="mt-wide rounded-card border border-amber-400/25 bg-amber-500/10 p-wide">
+                <div className="flex flex-col gap-soft sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <h3 className="text-sm font-medium text-amber-100">
                       {t("admin:envProviderFoundTitle", { count: group.providers.length })}
                     </h3>
-                    <p className="mt-1 text-xs text-amber-100/75">
+                    <p className="mt-tight text-xs text-amber-100/75">
                       {t("admin:envProviderFoundIntro", { prefix: group.envPrefix })}
                     </p>
                   </div>
                   <button
                     type="button"
                     disabled={s.envOperatorImporting === group.kind}
-                    className="rounded-tile bg-amber-500 px-3 py-1.5 text-sm font-medium text-black hover:bg-amber-400 disabled:opacity-50"
+                    className="rounded-tile bg-amber-500 px-soft py-snug text-sm font-medium text-black hover:bg-amber-400 disabled:opacity-50"
                     onClick={() => void s.importOperatorEnvProviders(group.kind)}
                   >
                     {s.envOperatorImporting === group.kind ? t("admin:envLlmImporting") : t("admin:envLlmImportButton")}
                   </button>
                 </div>
-                <div className="mt-3 space-y-2">
+                <div className="mt-soft space-y-base">
                   {group.providers.map((p) => (
-                    <details key={p.provider_id} className="rounded-tile border border-line bg-black/25 p-3">
+                    <details key={p.provider_id} className="rounded-tile border border-line bg-black/25 p-soft">
                       <summary className="cursor-pointer text-xs text-amber-100">
                         <span className="font-mono">{p.provider_id}</span> · {p.label}
                         {p.already_in_db ? ` · ${t("admin:envLlmAlreadyInDb")}` : ""}
                       </summary>
-                      <p className="mt-2 break-all font-mono text-meta text-ink-muted">{p.base_url}</p>
-                      <div className="mt-2 grid gap-2 text-meta text-ink-secondary sm:grid-cols-2">
+                      <p className="mt-base break-all font-mono text-meta text-ink-muted">{p.base_url}</p>
+                      <div className="mt-base grid gap-base text-meta text-ink-secondary sm:grid-cols-2">
                         <p>
                           {t("admin:envLlmModels")}: <span className="font-mono">{p.model_default || "—"}</span>
                         </p>
@@ -841,11 +841,11 @@ export function AdminInterfacesLlmSection({
                           {t("admin:envLlmHeader")}: <span className="font-mono">{p.api_header_name}</span>
                         </p>
                       </div>
-                      <details className="mt-2">
+                      <details className="mt-base">
                         <summary className="cursor-pointer text-meta text-amber-100/80">
                           {t("admin:envLlmCleanupChecklist")}
                         </summary>
-                        <ul className="mt-1 grid gap-1 sm:grid-cols-2">
+                        <ul className="mt-tight grid gap-tight sm:grid-cols-2">
                           {p.cleanup_keys.map((key) => (
                             <li key={key} className="font-mono text-meta text-amber-100/70">
                               {key}
@@ -857,33 +857,33 @@ export function AdminInterfacesLlmSection({
                   ))}
                 </div>
                 {s.envOperatorCleanupNotes[group.kind] ? (
-                  <p className="mt-3 text-xs text-amber-100/75">{s.envOperatorCleanupNotes[group.kind]}</p>
+                  <p className="mt-soft text-xs text-amber-100/75">{s.envOperatorCleanupNotes[group.kind]}</p>
                 ) : null}
               </div>
             ))}
             {operatorDbEndpointGroups.length > 0 ? (
-              <div className="mt-6 grid gap-4 xl:grid-cols-2">
+              <div className="mt-broad grid gap-wide xl:grid-cols-2">
                 {operatorDbEndpointGroups.map((group) => (
-                  <div key={group.kind} className="rounded-card border border-line bg-black/15 p-4">
-                    <div className="flex items-start justify-between gap-3">
+                  <div key={group.kind} className="rounded-card border border-line bg-black/15 p-wide">
+                    <div className="flex items-start justify-between gap-soft">
                       <div>
                         <h4 className="text-sm font-medium text-ink-primary">{group.title}</h4>
-                        <p className="mt-1 text-xs text-ink-muted">{group.intro}</p>
+                        <p className="mt-tight text-xs text-ink-muted">{group.intro}</p>
                       </div>
-                      <span className="rounded-tile bg-white/10 px-1.5 py-0.5 font-mono text-meta text-ink-secondary">
+                      <span className="rounded-tile bg-white/10 px-snug py-hair font-mono text-meta text-ink-secondary">
                         {group.endpoints.length}
                       </span>
                     </div>
                     <button
                       type="button"
-                      className="mt-3 rounded-tile border border-sky-500/40 bg-sky-500/10 px-3 py-1.5 text-xs text-sky-200 hover:bg-sky-500/20"
+                      className="mt-soft rounded-tile border border-sky-500/40 bg-sky-500/10 px-soft py-snug text-xs text-sky-200 hover:bg-sky-500/20"
                       onClick={() => addOperatorEndpoint(group.kind)}
                     >
                       {t("admin:ifMemAddEndpoint")}
                     </button>
-                    <div className="mt-3 space-y-3">
+                    <div className="mt-soft space-y-soft">
                       {group.endpoints.length === 0 ? (
-                        <p className="rounded-tile border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                        <p className="rounded-tile border border-amber-400/20 bg-amber-500/10 px-soft py-base text-xs text-amber-100">
                           {adminText(group.metadata.empty_i18n_key)}
                         </p>
                       ) : null}
@@ -896,10 +896,10 @@ export function AdminInterfacesLlmSection({
                         return (
                         <div
                           key={`${group.kind}-${endpoint.id ?? endpointIdx}`}
-                          className="rounded-tile border border-line bg-black/25 p-3"
+                          className="rounded-tile border border-line bg-black/25 p-soft"
                         >
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex flex-wrap items-center gap-2">
+                          <div className="flex flex-wrap items-center justify-between gap-base">
+                            <div className="flex flex-wrap items-center gap-base">
                             <span className="text-xs font-semibold text-ink-primary">
                               {endpoint.label || endpoint.baseUrl || t("admin:ifMemEndpointN", { n: endpointIdx + 1 })}
                             </span>
@@ -908,11 +908,11 @@ export function AdminInterfacesLlmSection({
                                 {t("admin:dbEndpointBadge", { id: endpoint.id })}
                               </span>
                             ) : null}
-                            <span className="rounded-tile bg-white/10 px-1.5 py-0.5 text-meta uppercase tracking-wide text-ink-secondary">
+                            <span className="rounded-tile bg-white/10 px-snug py-hair text-meta uppercase tracking-wide text-ink-secondary">
                               db
                             </span>
                             {endpoint.enabled ? null : (
-                              <span className="rounded-tile bg-amber-500/15 px-1.5 py-0.5 text-meta text-amber-100">
+                              <span className="rounded-tile bg-amber-500/15 px-snug py-hair text-meta text-amber-100">
                                 {t("admin:off")}
                               </span>
                             )}
@@ -926,7 +926,7 @@ export function AdminInterfacesLlmSection({
                               {t("admin:ifLlmRemove")}
                             </Button>
                           </div>
-                          <label className="mt-3 flex cursor-pointer items-center gap-2 text-xs text-ink-primary">
+                          <label className="mt-soft flex cursor-pointer items-center gap-base text-xs text-ink-primary">
                             <input
                               type="checkbox"
                               className="rounded-tile border-line"
@@ -935,35 +935,35 @@ export function AdminInterfacesLlmSection({
                             />
                             {t("admin:on")}
                           </label>
-                          <label className="mt-2 block text-xs text-ink-muted" htmlFor={`provider-label-${group.kind}-${endpointIdx}`}>
+                          <label className="mt-base block text-xs text-ink-muted" htmlFor={`provider-label-${group.kind}-${endpointIdx}`}>
                             {t("admin:ifLlmLabelOptional")}
                           </label>
                           <input
                             id={`provider-label-${group.kind}-${endpointIdx}`}
-                            className="mt-1 w-full rounded-tile border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+                            className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
                             value={endpoint.label}
                             onChange={(e) => updateOperatorEndpoint(group.kind, endpointIdx, { label: e.target.value })}
                             placeholder={group.title}
                           />
-                          <label className="mt-3 block text-xs text-ink-muted" htmlFor={`provider-url-${group.kind}-${endpointIdx}`}>
+                          <label className="mt-soft block text-xs text-ink-muted" htmlFor={`provider-url-${group.kind}-${endpointIdx}`}>
                             {t("admin:ifMemBaseUrlLabel")}
                           </label>
                           <input
                             id={`provider-url-${group.kind}-${endpointIdx}`}
-                            className="mt-1 w-full rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+                            className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
                             value={endpoint.baseUrl}
                             onChange={(e) => updateOperatorEndpoint(group.kind, endpointIdx, { baseUrl: e.target.value })}
                             placeholder={t("admin:ifLlmBaseUrlPlaceholder")}
                             autoComplete="off"
                           />
-                          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                          <div className="mt-soft grid gap-soft sm:grid-cols-2">
                             <div>
                               <label className="block text-xs text-ink-muted" htmlFor={`provider-header-${group.kind}-${endpointIdx}`}>
                                 {t("admin:envLlmHeader")}
                               </label>
                               <input
                                 id={`provider-header-${group.kind}-${endpointIdx}`}
-                                className="mt-1 w-full rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+                                className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
                                 value={endpoint.apiHeaderName}
                                 onChange={(e) => updateOperatorEndpoint(group.kind, endpointIdx, { apiHeaderName: e.target.value })}
                                 placeholder={endpoint.apiHeaderName || "Authorization"}
@@ -982,7 +982,7 @@ export function AdminInterfacesLlmSection({
                               />
                             </div>
                           </div>
-                          <label className="mt-3 block text-xs text-ink-muted" htmlFor={`provider-parallel-${group.kind}-${endpointIdx}`}>
+                          <label className="mt-soft block text-xs text-ink-muted" htmlFor={`provider-parallel-${group.kind}-${endpointIdx}`}>
                             {t("admin:ifLlmMaxParallelLabel")}
                           </label>
                           <input
@@ -991,7 +991,7 @@ export function AdminInterfacesLlmSection({
                             min={1}
                             max={64}
                             step={1}
-                            className="mt-1 w-full max-w-xs rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+                            className="mt-tight w-full max-w-xs rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
                             value={endpoint.maxParallel}
                             onChange={(e) =>
                               updateOperatorEndpoint(group.kind, endpointIdx, {
@@ -999,8 +999,8 @@ export function AdminInterfacesLlmSection({
                               })
                             }
                           />
-                          <p className="mt-1 text-xs text-ink-muted">{t("admin:ifLlmMaxParallelHint")}</p>
-                          <p className="mt-3 text-xs text-ink-muted">
+                          <p className="mt-tight text-xs text-ink-muted">{t("admin:ifLlmMaxParallelHint")}</p>
+                          <p className="mt-soft text-xs text-ink-muted">
                             {t("admin:envLlmKey")}:{" "}
                             {endpoint.apiKeyConfigured
                               ? t("admin:envLlmKeyRedacted", {
@@ -1008,14 +1008,14 @@ export function AdminInterfacesLlmSection({
                                 })
                               : t("admin:envLlmKeyEmpty")}
                           </p>
-                          <label className="mt-2 block text-xs text-ink-muted" htmlFor={`provider-key-${group.kind}-${endpointIdx}`}>
+                          <label className="mt-base block text-xs text-ink-muted" htmlFor={`provider-key-${group.kind}-${endpointIdx}`}>
                             {t("admin:ifMemApiKeyLabel")}
                           </label>
                           <input
                             id={`provider-key-${group.kind}-${endpointIdx}`}
                             type="password"
                             autoComplete="off"
-                            className="mt-1 w-full rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+                            className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
                             value={endpoint.apiKey ?? ""}
                             onChange={(e) => updateOperatorEndpoint(group.kind, endpointIdx, { apiKey: e.target.value })}
                             placeholder={endpoint.apiKeyConfigured ? t("admin:tokenReplacePlaceholder") : t("admin:ifMemPasteKey")}
@@ -1032,18 +1032,18 @@ export function AdminInterfacesLlmSection({
           ) : null}
 
           {showPolicies ? (
-          <section className="mt-6 rounded-sheet border border-line bg-card p-5">
+          <section className="mt-broad rounded-sheet border border-line bg-card p-roomy">
             <h2 className="text-sm font-medium text-ink-primary">{t("admin:ifLlmChatVisibilityTitle")}</h2>
-            <p className="mt-2 text-xs text-ink-muted">{t("admin:ifLlmChatVisibilityIntro")}</p>
-            <div className="mt-4 rounded-card border border-line bg-black/15 p-3">
-              <div className="grid gap-3 lg:grid-cols-3">
+            <p className="mt-base text-xs text-ink-muted">{t("admin:ifLlmChatVisibilityIntro")}</p>
+            <div className="mt-wide rounded-card border border-line bg-black/15 p-soft">
+              <div className="grid gap-soft lg:grid-cols-3">
                 <div>
                   <label className="block text-xs text-ink-muted" htmlFor="model-access-scope">
                     {t("admin:modelAccessScope")}
                   </label>
                   <select
                     id="model-access-scope"
-                    className="mt-1 w-full rounded-tile border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+                    className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
                     value={accessScope}
                     onChange={(e) => setAccessScope(e.target.value as AccessScope)}
                   >
@@ -1061,7 +1061,7 @@ export function AdminInterfacesLlmSection({
                     </label>
                     <select
                       id="model-access-tenant"
-                      className="mt-1 w-full rounded-tile border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+                      className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
                       value={accessTenantId}
                       onChange={(e) => setAccessTenantId(e.target.value)}
                     >
@@ -1080,7 +1080,7 @@ export function AdminInterfacesLlmSection({
                     </label>
                     <select
                       id="model-access-user"
-                      className="mt-1 w-full rounded-tile border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+                      className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
                       value={accessUserId}
                       onChange={(e) => setAccessUserId(e.target.value)}
                     >
@@ -1093,7 +1093,7 @@ export function AdminInterfacesLlmSection({
                   </div>
                 ) : null}
               </div>
-              <div className="mt-4 grid gap-3 lg:grid-cols-4">
+              <div className="mt-wide grid gap-soft lg:grid-cols-4">
                 {catalogRuntimeModelDefaults.map(({ metadata, profile }) => (
                   <div key={metadata.profile}>
                     <label className="block text-xs text-ink-muted" htmlFor={`model-default-${profile}`}>
@@ -1101,7 +1101,7 @@ export function AdminInterfacesLlmSection({
                     </label>
                     <select
                       id={`model-default-${profile}`}
-                      className="mt-1 w-full rounded-tile border border-line bg-field px-3 py-2 font-mono text-xs text-ink-primary"
+                      className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-xs text-ink-primary"
                       value={modelDefaults[profile]}
                       onChange={(e) => setModelDefaults((prev) => ({ ...prev, [profile]: e.target.value }))}
                     >
@@ -1116,7 +1116,7 @@ export function AdminInterfacesLlmSection({
                 ))}
               </div>
               {nonChatRuntimeModelDefaults.length > 0 ? (
-                <div className="mt-4 grid gap-3 lg:grid-cols-4">
+                <div className="mt-wide grid gap-soft lg:grid-cols-4">
                   {nonChatRuntimeModelDefaults.map(({ metadata, profile, models }) => (
                     <div key={metadata.kind}>
                       <label className="block text-xs text-ink-muted" htmlFor={`runtime-default-${metadata.kind}`}>
@@ -1124,7 +1124,7 @@ export function AdminInterfacesLlmSection({
                       </label>
                       <select
                         id={`runtime-default-${metadata.kind}`}
-                        className="mt-1 w-full rounded-tile border border-line bg-field px-3 py-2 font-mono text-xs text-ink-primary"
+                        className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-xs text-ink-primary"
                         value={modelDefaults[profile] ?? ""}
                         onChange={(e) => setModelDefaults((prev) => ({ ...prev, [profile]: e.target.value }))}
                       >
@@ -1139,10 +1139,10 @@ export function AdminInterfacesLlmSection({
                   ))}
                 </div>
               ) : null}
-              <div className="mt-4 flex flex-wrap items-center gap-3">
+              <div className="mt-wide flex flex-wrap items-center gap-soft">
                 <button
                   type="button"
-                  className="rounded-tile bg-sky-500 px-3 py-1.5 text-sm font-medium text-ink-on-fill hover:bg-sky-400 disabled:opacity-50"
+                  className="rounded-tile bg-sky-500 px-soft py-snug text-sm font-medium text-ink-on-fill hover:bg-sky-400 disabled:opacity-50"
                   disabled={policySaving || policyLoading}
                   onClick={() => void saveModelAccessPolicy()}
                 >
@@ -1155,49 +1155,49 @@ export function AdminInterfacesLlmSection({
                 ) : null}
               </div>
             </div>
-            <div className="mt-4 grid gap-3 xl:grid-cols-2">
+            <div className="mt-wide grid gap-soft xl:grid-cols-2">
               {accessProviderGroups.map((group) => (
-                <div key={group.id} className="rounded-card border border-line bg-black/15 p-3">
-                  <div className="flex items-start justify-between gap-3">
+                <div key={group.id} className="rounded-card border border-line bg-black/15 p-soft">
+                  <div className="flex items-start justify-between gap-soft">
                     <div>
                       <h3 className="text-sm font-medium text-ink-primary">{group.title}</h3>
-                      <p className="mt-1 text-xs text-ink-muted">{group.intro}</p>
+                      <p className="mt-tight text-xs text-ink-muted">{group.intro}</p>
                     </div>
-                    <span className="rounded-tile bg-white/10 px-1.5 py-0.5 font-mono text-meta text-ink-secondary">
+                    <span className="rounded-tile bg-white/10 px-snug py-hair font-mono text-meta text-ink-secondary">
                       {group.providers.length}
                     </span>
                   </div>
                   {group.providers.length === 0 ? (
-                    <p className="mt-3 rounded-tile border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                    <p className="mt-soft rounded-tile border border-amber-400/20 bg-amber-500/10 px-soft py-base text-xs text-amber-100">
                       {group.empty}
                     </p>
                   ) : (
-                    <div className="mt-3 space-y-2">
+                    <div className="mt-soft space-y-base">
                       {group.providers.map((provider) => {
                         const key = capabilityAccessKey(provider.capability, provider.providerId);
                         const state = capabilityAccess[key] ?? defaultProviderCapabilityState;
                         return (
                           <div
                             key={key}
-                            className="flex items-center gap-3 rounded-card border border-line-subtle bg-black/20 px-3 py-2"
+                            className="flex items-center gap-soft rounded-card border border-line-subtle bg-black/20 px-soft py-base"
                           >
                             <span className="min-w-0 flex-1">
-                              <span className="flex flex-wrap items-center gap-2 text-xs font-medium text-ink-primary">
+                              <span className="flex flex-wrap items-center gap-base text-xs font-medium text-ink-primary">
                                 <span>{provider.label}</span>
                                 <span className="font-mono text-meta text-ink-muted">{provider.providerId}</span>
                                 {provider.source ? (
-                                  <span className="rounded-tile bg-white/10 px-1.5 py-0.5 text-meta uppercase tracking-wide text-ink-secondary">
+                                  <span className="rounded-tile bg-white/10 px-snug py-hair text-meta uppercase tracking-wide text-ink-secondary">
                                     {provider.source}
                                   </span>
                                 ) : null}
                               </span>
                               {provider.baseUrl ? (
-                                <span className="mt-1 block truncate font-mono text-meta text-ink-muted">
+                                <span className="mt-tight block truncate font-mono text-meta text-ink-muted">
                                   {provider.baseUrl}
                                 </span>
                               ) : null}
                               {provider.meta ? (
-                                <span className="mt-1 block truncate text-meta text-ink-secondary">{provider.meta}</span>
+                                <span className="mt-tight block truncate text-meta text-ink-secondary">{provider.meta}</span>
                               ) : null}
                             </span>
                             <AccessStateControl
@@ -1223,16 +1223,16 @@ export function AdminInterfacesLlmSection({
               ))}
             </div>
             {modelAccessProviderGroups.length === 0 ? (
-              <p className="mt-4 text-xs text-amber-300/90">{t("admin:ifLlmChatVisibilityEmpty")}</p>
+              <p className="mt-wide text-xs text-amber-300/90">{t("admin:ifLlmChatVisibilityEmpty")}</p>
             ) : (
-              <div className="mt-4 max-h-96 space-y-3 overflow-auto rounded-card border border-line bg-black/15 p-2">
+              <div className="mt-wide max-h-96 space-y-soft overflow-auto rounded-card border border-line bg-black/15 p-base">
                 {modelAccessProviderGroups.map((provider) => {
                   return (
-                    <div key={provider.providerId} className="rounded-card border border-line bg-black/20 p-3">
-                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <div key={provider.providerId} className="rounded-card border border-line bg-black/20 p-soft">
+                      <div className="mb-base flex flex-wrap items-center gap-base">
                         <span className="text-xs font-semibold text-ink-primary">{provider.label}</span>
                         <span className="font-mono text-meta text-ink-muted">{provider.providerId}</span>
-                        <span className="rounded-tile bg-white/10 px-1.5 py-0.5 text-meta uppercase tracking-wide text-ink-secondary">
+                        <span className="rounded-tile bg-white/10 px-snug py-hair text-meta uppercase tracking-wide text-ink-secondary">
                           {provider.source}
                         </span>
                         {provider.endpointId != null ? (
@@ -1241,7 +1241,7 @@ export function AdminInterfacesLlmSection({
                           </span>
                         ) : null}
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-base">
                         {provider.rows.map((row) => {
                           const providerId = (row.owned_by ?? provider.providerId).trim().toLowerCase();
                           const modelId = row.id.trim();
@@ -1255,7 +1255,7 @@ export function AdminInterfacesLlmSection({
                           return (
                             <div
                               key={key}
-                              className="flex items-start gap-3 rounded-card border border-line-subtle bg-black/20 px-3 py-2"
+                              className="flex items-start gap-soft rounded-card border border-line-subtle bg-black/20 px-soft py-base"
                             >
                               <span className="min-w-0 flex-1">
                                 <span className="block truncate font-mono text-xs text-ink-primary">{modelId}</span>
@@ -1275,11 +1275,11 @@ export function AdminInterfacesLlmSection({
                                   }))
                                 }
                               />
-                              <span className="flex max-w-[48%] shrink-0 flex-wrap justify-end gap-1 pt-0.5">
+                              <span className="flex max-w-[48%] shrink-0 flex-wrap justify-end gap-tight pt-hair">
                                 {profileBadges.map((badge) => (
                                   <span
                                     key={badge}
-                                    className="inline-flex rounded-pill border border-sky-400/30 bg-sky-500/10 px-1.5 py-0.5 text-meta font-medium text-sky-100"
+                                    className="inline-flex rounded-pill border border-sky-400/30 bg-sky-500/10 px-snug py-hair text-meta font-medium text-sky-100"
                                   >
                                     {badge}
                                   </span>
@@ -1287,13 +1287,13 @@ export function AdminInterfacesLlmSection({
                                 {modelCapabilityBadges(row).map((badge) => (
                                   <span
                                     key={badge.key}
-                                    className="inline-flex rounded-pill border border-line bg-white/5 px-1.5 py-0.5 text-meta font-medium text-ink-primary"
+                                    className="inline-flex rounded-pill border border-line bg-white/5 px-snug py-hair text-meta font-medium text-ink-primary"
                                   >
                                     {badge.label}
                                   </span>
                                 ))}
                                 <span
-                                  className={`inline-flex rounded-pill border px-1.5 py-0.5 text-meta font-medium ${
+                                  className={`inline-flex rounded-pill border px-snug py-hair text-meta font-medium ${
                                     visible
                                       ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
                                       : "border-rose-400/30 bg-rose-500/10 text-rose-100"
@@ -1311,16 +1311,16 @@ export function AdminInterfacesLlmSection({
                 })}
               </div>
             )}
-            <p className="mt-2 text-xs text-ink-muted">{t("admin:modelAccessSaveHint")}</p>
+            <p className="mt-base text-xs text-ink-muted">{t("admin:modelAccessSaveHint")}</p>
           </section>
           ) : null}
 
           {showRouting ? (
           <>
-          <section className="mt-6 rounded-sheet border border-line bg-card p-5">
+          <section className="mt-broad rounded-sheet border border-line bg-card p-roomy">
             <h2 className="text-sm font-medium text-ink-primary">{t("admin:ifLlmSmartRoutingTitle")}</h2>
-            <p className="mt-2 text-xs text-ink-muted">{t("admin:ifLlmSmartRoutingIntro")}</p>
-            <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
+            <p className="mt-base text-xs text-ink-muted">{t("admin:ifLlmSmartRoutingIntro")}</p>
+            <label className="mt-wide flex cursor-pointer items-center gap-base text-sm text-ink-primary">
               <input
                 type="checkbox"
                 className="rounded-tile border-line"
@@ -1329,12 +1329,12 @@ export function AdminInterfacesLlmSection({
               />
               {t("admin:ifLlmSmartRoutingEnable")}
             </label>
-            <label className="mt-4 block text-xs text-ink-muted" htmlFor="llm-router-model">
+            <label className="mt-wide block text-xs text-ink-muted" htmlFor="llm-router-model">
               {t("admin:ifLlmRouterModel")}
             </label>
             <select
               id="llm-router-model"
-              className="mt-1 w-full max-w-md rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary disabled:opacity-50"
+              className="mt-tight w-full max-w-md rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary disabled:opacity-50"
               value={
                 s.llmRouterModelProvider && s.llmRouterModel
                   ? `${s.llmRouterModelProvider}:${s.llmRouterModel}`
@@ -1359,7 +1359,7 @@ export function AdminInterfacesLlmSection({
                 );
               })}
             </select>
-            <div className="mt-4 grid max-w-xl gap-3 sm:grid-cols-2">
+            <div className="mt-wide grid max-w-xl gap-soft sm:grid-cols-2">
               <div>
                 <label className="block text-xs text-ink-muted" htmlFor="llm-router-conf">
                   {t("admin:ifLlmRouterConfMin")}
@@ -1370,7 +1370,7 @@ export function AdminInterfacesLlmSection({
                   step="0.05"
                   min={0}
                   max={1}
-                  className="mt-1 w-full rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+                  className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
                   value={s.llmRouterConfMin}
                   onChange={(e) => s.setLlmRouterConfMin(e.target.value)}
                 />
@@ -1385,7 +1385,7 @@ export function AdminInterfacesLlmSection({
                   min={1}
                   max={120}
                   step="1"
-                  className="mt-1 w-full rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+                  className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
                   value={s.llmRouterTimeoutSec}
                   onChange={(e) => s.setLlmRouterTimeoutSec(e.target.value)}
                 />
@@ -1399,7 +1399,7 @@ export function AdminInterfacesLlmSection({
                   type="number"
                   min={100}
                   max={500000}
-                  className="mt-1 w-full rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+                  className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
                   value={s.llmRouteLongChars}
                   onChange={(e) => s.setLlmRouteLongChars(e.target.value)}
                 />
@@ -1413,7 +1413,7 @@ export function AdminInterfacesLlmSection({
                   type="number"
                   min={1}
                   max={50000}
-                  className="mt-1 w-full rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+                  className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
                   value={s.llmRouteShortChars}
                   onChange={(e) => s.setLlmRouteShortChars(e.target.value)}
                 />
@@ -1427,7 +1427,7 @@ export function AdminInterfacesLlmSection({
                   type="number"
                   min={1}
                   max={100}
-                  className="mt-1 w-full rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+                  className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
                   value={s.llmRouteManyFences}
                   onChange={(e) => s.setLlmRouteManyFences(e.target.value)}
                 />
@@ -1441,7 +1441,7 @@ export function AdminInterfacesLlmSection({
                   type="number"
                   min={1}
                   max={500}
-                  className="mt-1 w-full rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+                  className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
                   value={s.llmRouteManyMsgs}
                   onChange={(e) => s.setLlmRouteManyMsgs(e.target.value)}
                 />
@@ -1449,17 +1449,17 @@ export function AdminInterfacesLlmSection({
             </div>
           </section>
 
-          <section className="rounded-sheet border border-line bg-card p-5">
+          <section className="rounded-sheet border border-line bg-card p-roomy">
             <h2 className="text-sm font-medium text-ink-primary">{t("admin:ifLlmQueueTitle")}</h2>
-            <p className="mt-2 text-xs text-ink-muted">{t("admin:ifLlmQueueIntro")}</p>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <p className="mt-base text-xs text-ink-muted">{t("admin:ifLlmQueueIntro")}</p>
+            <div className="mt-wide grid gap-wide sm:grid-cols-2">
               <div>
                 <label className="block text-xs text-ink-muted" htmlFor="llm-queue-policy">
                   {t("admin:ifLlmQueuePolicyLabel")}
                 </label>
                 <select
                   id="llm-queue-policy"
-                  className="mt-1 w-full rounded-tile border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+                  className="mt-tight w-full rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
                   value={s.llmQueuePolicy}
                   onChange={(e) =>
                     s.setLlmQueuePolicy(
@@ -1471,7 +1471,7 @@ export function AdminInterfacesLlmSection({
                   <option value="fifo">{t("admin:ifLlmQueuePolicyFifo")}</option>
                   <option value="round_robin">{t("admin:ifLlmQueuePolicyRoundRobin")}</option>
                 </select>
-                <p className="mt-1 text-xs text-ink-muted">{t("admin:ifLlmQueuePolicyHint")}</p>
+                <p className="mt-tight text-xs text-ink-muted">{t("admin:ifLlmQueuePolicyHint")}</p>
               </div>
               <div>
                 <label className="block text-xs text-ink-muted" htmlFor="llm-queue-user-prio">
@@ -1482,7 +1482,7 @@ export function AdminInterfacesLlmSection({
                   type="number"
                   min={0}
                   max={1000}
-                  className="mt-1 w-full max-w-xs rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+                  className="mt-tight w-full max-w-xs rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
                   value={s.llmQueueUserPriority}
                   onChange={(e) => s.setLlmQueueUserPriority(e.target.value)}
                 />
@@ -1496,11 +1496,11 @@ export function AdminInterfacesLlmSection({
                   type="number"
                   min={0}
                   max={1000}
-                  className="mt-1 w-full max-w-xs rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+                  className="mt-tight w-full max-w-xs rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
                   value={s.llmQueueBenchmarkPriority}
                   onChange={(e) => s.setLlmQueueBenchmarkPriority(e.target.value)}
                 />
-                <p className="mt-1 text-xs text-ink-muted">{t("admin:ifLlmQueueBenchmarkHint")}</p>
+                <p className="mt-tight text-xs text-ink-muted">{t("admin:ifLlmQueueBenchmarkHint")}</p>
               </div>
               <div>
                 <label className="block text-xs text-ink-muted" htmlFor="llm-queue-sched-prio">
@@ -1511,7 +1511,7 @@ export function AdminInterfacesLlmSection({
                   type="number"
                   min={0}
                   max={1000}
-                  className="mt-1 w-full max-w-xs rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+                  className="mt-tight w-full max-w-xs rounded-tile border border-line bg-field px-soft py-base font-mono text-sm text-ink-primary"
                   value={s.llmQueueSchedulerPriority}
                   onChange={(e) => s.setLlmQueueSchedulerPriority(e.target.value)}
                 />

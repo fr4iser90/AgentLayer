@@ -5,8 +5,8 @@ export function OperatorSettingsStickySave() {
   const { t } = useTranslation(["admin"]);
   const { save, saveMsg } = useOperatorSettings();
   return (
-    <div className="sticky bottom-0 z-10 -mx-6 border-t border-line bg-[#0d0d0d]/95 px-6 py-3 backdrop-blur-sm">
-      <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3">
+    <div className="sticky bottom-0 z-10 -mx-broad border-t border-line bg-[#0d0d0d]/95 px-broad py-soft backdrop-blur-sm">
+      <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-soft">
         <div className="min-w-0 flex-1 text-xs text-ink-muted">
           {saveMsg ? (
             <span className={saveMsg.ok ? "text-emerald-400" : "text-red-400"}>{saveMsg.text}</span>
@@ -16,7 +16,7 @@ export function OperatorSettingsStickySave() {
         </div>
         <button
           type="button"
-          className="shrink-0 rounded-tile bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500"
+          className="shrink-0 rounded-tile bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500"
           onClick={() => void save()}
         >
           {t("admin:save")}

@@ -76,13 +76,13 @@ export function OrgTeamPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-10">
+    <div className="mx-auto max-w-4xl px-broad py-page">
       <h1 className="text-xl font-semibold text-ink-primary">{t("org:teamPageTitle")}</h1>
-      <p className="mt-2 text-sm text-ink-muted">{t("org:teamPageIntro")}</p>
+      <p className="mt-base text-sm text-ink-muted">{t("org:teamPageIntro")}</p>
 
-      <section className="mt-8 rounded-sheet border border-line bg-card p-5">
+      <section className="mt-deep rounded-sheet border border-line bg-card p-roomy">
         <h2 className="text-sm font-medium text-ink-primary">{t("org:teamDepartments")}</h2>
-        <ul className="mt-3 space-y-1 text-sm text-ink-secondary">
+        <ul className="mt-soft space-y-tight text-sm text-ink-secondary">
           {departments.map((d) => (
             <li key={d.id}>
               <span className="font-mono text-xs text-ink-muted">{d.slug}</span> — {d.name}
@@ -91,9 +91,9 @@ export function OrgTeamPage() {
         </ul>
       </section>
 
-      <section className="mt-6 rounded-sheet border border-line bg-card p-5">
+      <section className="mt-broad rounded-sheet border border-line bg-card p-roomy">
         <h2 className="text-sm font-medium text-ink-primary">{t("org:teamProfessionRoles")}</h2>
-        <ul className="mt-3 space-y-1 text-sm text-ink-secondary">
+        <ul className="mt-soft space-y-tight text-sm text-ink-secondary">
           {roles.map((r) => (
             <li key={r.id}>
               <span className="font-mono text-xs text-ink-muted">{r.slug}</span> — {r.name}{" "}
@@ -103,9 +103,9 @@ export function OrgTeamPage() {
         </ul>
       </section>
 
-      <section className="mt-6 rounded-sheet border border-line bg-card p-5">
+      <section className="mt-broad rounded-sheet border border-line bg-card p-roomy">
         <h2 className="text-sm font-medium text-ink-primary">{t("org:teamAssignments")}</h2>
-        <ul className="mt-3 space-y-2 text-sm text-ink-secondary">
+        <ul className="mt-soft space-y-base text-sm text-ink-secondary">
           {assignments.map((a) => (
             <li key={a.user_id}>
               {a.user_email ?? a.user_id} → {a.profession_role_slug ?? "?"}
@@ -114,15 +114,15 @@ export function OrgTeamPage() {
           ))}
         </ul>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div className="mt-wide grid gap-soft sm:grid-cols-3">
           <input
-            className="rounded-tile border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+            className="rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
             placeholder={t("org:teamUserIdPlaceholder")}
             value={assignUserId}
             onChange={(e) => setAssignUserId(e.target.value)}
           />
           <select
-            className="rounded-tile border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+            className="rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
             value={assignRoleId}
             onChange={(e) => setAssignRoleId(e.target.value)}
           >
@@ -134,7 +134,7 @@ export function OrgTeamPage() {
             ))}
           </select>
           <select
-            className="rounded-tile border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+            className="rounded-tile border border-line bg-field px-soft py-base text-sm text-ink-primary"
             value={assignDeptId}
             onChange={(e) => setAssignDeptId(e.target.value)}
           >
@@ -148,22 +148,22 @@ export function OrgTeamPage() {
         </div>
         <button
           type="button"
-          className="mt-3 rounded-tile bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500"
+          className="mt-soft rounded-tile bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500"
           onClick={() => void saveAssignment()}
         >
           {t("org:teamSaveAssignment")}
         </button>
       </section>
 
-      <section className="mt-6 rounded-sheet border border-line bg-card p-5">
+      <section className="mt-broad rounded-sheet border border-line bg-card p-roomy">
         <h2 className="text-sm font-medium text-ink-primary">{t("org:teamPolicyPreview")}</h2>
-        <pre className="mt-3 overflow-x-auto rounded-tile bg-black/30 p-3 text-xs text-ink-secondary">
+        <pre className="mt-soft overflow-x-auto rounded-tile bg-black/30 p-soft text-xs text-ink-secondary">
           {policyPreview}
         </pre>
       </section>
 
-      {msg ? <p className="mt-4 text-sm text-emerald-400">{msg}</p> : null}
-      {err ? <p className="mt-4 text-sm text-red-400">{err}</p> : null}
+      {msg ? <p className="mt-wide text-sm text-emerald-400">{msg}</p> : null}
+      {err ? <p className="mt-wide text-sm text-red-400">{err}</p> : null}
     </div>
   );
 }

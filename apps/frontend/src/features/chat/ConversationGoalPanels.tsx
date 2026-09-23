@@ -33,11 +33,11 @@ function GoalActionButtons({
   const paused = goal.phase === "paused";
   const blocked = goal.phase === "blocked";
   return (
-    <div className="flex shrink-0 items-center gap-1">
+    <div className="flex shrink-0 items-center gap-tight">
       {paused ? (
         <button
           type="button"
-          className="rounded-tile px-1.5 py-0.5 text-xs text-amber-100 hover:bg-white/10 disabled:opacity-40"
+          className="rounded-tile px-snug py-hair text-xs text-amber-100 hover:bg-white/10 disabled:opacity-40"
           disabled={disabled}
           onClick={onResume}
           title={t("chat:goalResume")}
@@ -47,7 +47,7 @@ function GoalActionButtons({
       ) : (
         <button
           type="button"
-          className="rounded-tile px-1.5 py-0.5 text-xs text-amber-100 hover:bg-white/10 disabled:opacity-40"
+          className="rounded-tile px-snug py-hair text-xs text-amber-100 hover:bg-white/10 disabled:opacity-40"
           disabled={disabled || blocked}
           onClick={onPause}
           title={t("chat:goalPause")}
@@ -57,7 +57,7 @@ function GoalActionButtons({
       )}
       <button
         type="button"
-        className="rounded-tile px-1.5 py-0.5 text-xs text-amber-100 hover:bg-white/10 disabled:opacity-40"
+        className="rounded-tile px-snug py-hair text-xs text-amber-100 hover:bg-white/10 disabled:opacity-40"
         disabled={disabled}
         onClick={onEdit}
         title={t("chat:goalEdit")}
@@ -66,7 +66,7 @@ function GoalActionButtons({
       </button>
       <button
         type="button"
-        className="rounded-tile px-1.5 py-0.5 text-xs text-rose-200 hover:bg-white/10 disabled:opacity-40"
+        className="rounded-tile px-snug py-hair text-xs text-rose-200 hover:bg-white/10 disabled:opacity-40"
         disabled={disabled}
         onClick={onClear}
         title={t("chat:goalClear")}
@@ -85,7 +85,7 @@ export function OngoingGoalBar(props: GoalActions) {
   const paused = goal.phase === "paused";
   const blocked = goal.phase === "blocked";
   return (
-    <div className="mb-2 flex items-center gap-2 rounded-card border border-amber-500/25 bg-amber-950/30 px-3 py-2">
+    <div className="mb-base flex items-center gap-base rounded-card border border-amber-500/25 bg-amber-950/30 px-soft py-base">
       <span className="text-amber-200/90" aria-hidden>
         ◎
       </span>
@@ -113,7 +113,7 @@ export function PlanModeBanner({ active }: { active: boolean }) {
   const { t } = useTranslation(["chat"]);
   if (!active) return null;
   return (
-    <div className="mb-2 rounded-card border border-sky-500/30 bg-sky-950/25 px-3 py-1.5 text-xs text-sky-100/90">
+    <div className="mb-base rounded-card border border-sky-500/30 bg-sky-950/25 px-soft py-snug text-xs text-sky-100/90">
       {t("chat:planModeActive")}
     </div>
   );
@@ -147,14 +147,14 @@ export function SessionGoalTodosStrip({
       : null;
 
   return (
-    <div className="mb-2 overflow-hidden rounded-card border border-amber-500/25 bg-amber-950/25">
+    <div className="mb-base overflow-hidden rounded-card border border-amber-500/25 bg-amber-950/25">
       {liveGoal ? (
-        <div className="flex items-start gap-2 border-b border-amber-500/15 px-3 py-2">
-          <span className="mt-0.5 text-amber-200/90" aria-hidden>
+        <div className="flex items-start gap-base border-b border-amber-500/15 px-soft py-base">
+          <span className="mt-hair text-amber-200/90" aria-hidden>
             ◎
           </span>
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-meta font-semibold uppercase tracking-wide text-amber-200/70">
+            <div className="flex flex-wrap items-center gap-x-base gap-y-hair text-meta font-semibold uppercase tracking-wide text-amber-200/70">
               <span>{t("chat:ongoingGoal")}</span>
               {paused ? <span>· {t("chat:ongoingGoalPaused")}</span> : null}
               {blocked ? <span>· {t("chat:ongoingGoalBlocked")}</span> : null}
@@ -184,18 +184,18 @@ export function SessionGoalTodosStrip({
         </div>
       ) : null}
       {todos.length > 0 ? (
-        <div className="px-3 py-2">
-          <div className="mb-1 text-meta font-semibold uppercase tracking-wide text-amber-200/60">
+        <div className="px-soft py-base">
+          <div className="mb-tight text-meta font-semibold uppercase tracking-wide text-amber-200/60">
             {t("chat:sessionTodosHeading")}{" "}
             <span className="font-medium normal-case tracking-normal text-ink-muted">
               {done}/{todos.length}
             </span>
           </div>
-          <ul className="flex flex-wrap gap-x-3 gap-y-1">
+          <ul className="flex flex-wrap gap-x-soft gap-y-tight">
             {visible.map((item) => (
               <li
                 key={`${item.status}:${item.content}`}
-                className={`flex min-w-0 max-w-full items-center gap-1.5 text-xs ${
+                className={`flex min-w-0 max-w-full items-center gap-snug text-xs ${
                   item.status === "completed"
                     ? "text-ink-muted line-through"
                     : item.status === "in_progress"
@@ -228,16 +228,16 @@ export function ConversationTodosPanel({ todos }: { todos: ConversationTodo[] })
   const inProg = todos.filter((x) => x.status === "in_progress").length;
   const done = todos.filter((x) => x.status === "completed").length;
   return (
-    <div className="mt-2 rounded-card border border-line bg-black/25 px-2.5 py-2">
-      <div className="mb-1.5 text-meta font-semibold uppercase tracking-wide text-ink-muted">
+    <div className="mt-base rounded-card border border-line bg-black/25 px-firm py-base">
+      <div className="mb-snug text-meta font-semibold uppercase tracking-wide text-ink-muted">
         {t("chat:sessionTodosHeading")} · {inProg} {t("chat:sessionTodosInProgress")} · {pending}{" "}
         {t("chat:sessionTodosPending")}
         {done ? ` · ${done} ${t("chat:sessionTodosDone")}` : ""}
       </div>
-      <ul className="space-y-1">
+      <ul className="space-y-tight">
         {todos.map((item) => (
-          <li key={item.content} className="flex items-start gap-2 text-xs text-ink-primary">
-            <span className="mt-0.5 shrink-0" aria-hidden>
+          <li key={item.content} className="flex items-start gap-base text-xs text-ink-primary">
+            <span className="mt-hair shrink-0" aria-hidden>
               {todoGlyph(item.status)}
             </span>
             <span className={item.status === "completed" ? "text-ink-muted line-through" : ""}>

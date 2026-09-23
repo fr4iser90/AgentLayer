@@ -20,17 +20,17 @@ function verdictTone(verdict: string | undefined): string {
 
 function ReviewCard({ review }: { review: BenchmarkReview }) {
   return (
-    <li className={`rounded-tile border p-3 ${verdictTone(review.verdict)}`}>
-      <div className="flex flex-wrap items-center gap-2 text-xs">
+    <li className={`rounded-tile border p-soft ${verdictTone(review.verdict)}`}>
+      <div className="flex flex-wrap items-center gap-base text-xs">
         <span className="font-medium uppercase">{review.verdict ?? "—"}</span>
         {review.mode ? <span className="opacity-70">· {review.mode}</span> : null}
         {review.created_at ? (
           <span className="opacity-60">{new Date(review.created_at).toLocaleString()}</span>
         ) : null}
       </div>
-      {review.summary ? <p className="mt-2 text-sm whitespace-pre-wrap">{review.summary}</p> : null}
+      {review.summary ? <p className="mt-base text-sm whitespace-pre-wrap">{review.summary}</p> : null}
       {review.patterns_json && Object.keys(review.patterns_json).length > 0 ? (
-        <p className="mt-2 font-mono text-meta opacity-80">
+        <p className="mt-base font-mono text-meta opacity-80">
           {Object.entries(review.patterns_json)
             .map(([k, v]) => `${k}:${v}`)
             .join(" · ")}
@@ -113,26 +113,26 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
   }
 
   return (
-    <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(200px,280px)_1fr]">
-      <section className="min-h-0 overflow-auto rounded-card border border-line bg-[#111] p-2">
-        <h2 className="mb-2 px-1 text-xs font-medium uppercase text-ink-muted">
+    <div className="grid min-h-0 flex-1 gap-wide lg:grid-cols-[minmax(200px,280px)_1fr]">
+      <section className="min-h-0 overflow-auto rounded-card border border-line bg-[#111] p-base">
+        <h2 className="mb-base px-tight text-xs font-medium uppercase text-ink-muted">
           {t("admin:agentConfigExperimentsList")}
         </h2>
         {experiments.length === 0 ? (
-          <p className="px-1 text-xs text-ink-muted">{t("admin:agentConfigExperimentsEmpty")}</p>
+          <p className="px-tight text-xs text-ink-muted">{t("admin:agentConfigExperimentsEmpty")}</p>
         ) : (
-          <ul className="space-y-1">
+          <ul className="space-y-tight">
             {experiments.map((exp) => (
               <li key={exp.id}>
                 <button
                   type="button"
                   onClick={() => setSelectedId(exp.id)}
-                  className={`w-full rounded-tile px-2 py-2 text-left text-xs ${
+                  className={`w-full rounded-tile px-base py-base text-left text-xs ${
                     selectedId === exp.id ? "bg-white/10 text-ink-primary" : "text-ink-muted hover:bg-white/5"
                   }`}
                 >
                   <div className="font-medium">{exp.label}</div>
-                  <div className="mt-0.5 opacity-70">
+                  <div className="mt-hair opacity-70">
                     {exp.status ?? "open"}
                     {(exp.run_ids_json?.length ?? 0) > 0
                       ? ` · ${exp.run_ids_json!.length} ${t("admin:agentConfigExperimentRuns")}`
@@ -145,34 +145,34 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
         )}
       </section>
 
-      <section className="min-h-0 overflow-auto rounded-card border border-line bg-[#111] p-4">
+      <section className="min-h-0 overflow-auto rounded-card border border-line bg-[#111] p-wide">
         {!selected ? (
           <p className="text-sm text-ink-muted">{t("admin:agentConfigExperimentSelect")}</p>
         ) : (
           <>
-            <header className="mb-4 border-b border-line pb-3">
+            <header className="mb-wide border-b border-line pb-soft">
               <h2 className="text-base font-medium text-ink-primary">{selected.label}</h2>
-              <div className="mt-2 flex flex-wrap gap-2 text-xs text-ink-muted">
-                <span className="rounded-tile bg-white/5 px-2 py-0.5">{selected.status ?? "open"}</span>
+              <div className="mt-base flex flex-wrap gap-base text-xs text-ink-muted">
+                <span className="rounded-tile bg-white/5 px-base py-hair">{selected.status ?? "open"}</span>
                 {selected.suite_preset ? (
-                  <span className="rounded-tile bg-white/5 px-2 py-0.5">suite: {selected.suite_preset}</span>
+                  <span className="rounded-tile bg-white/5 px-base py-hair">suite: {selected.suite_preset}</span>
                 ) : null}
                 {selected.harness_preset ? (
-                  <span className="rounded-tile bg-white/5 px-2 py-0.5">harness: {selected.harness_preset}</span>
+                  <span className="rounded-tile bg-white/5 px-base py-hair">harness: {selected.harness_preset}</span>
                 ) : null}
               </div>
               {selected.hypothesis ? (
-                <p className="mt-2 text-sm text-ink-muted">{selected.hypothesis}</p>
+                <p className="mt-base text-sm text-ink-muted">{selected.hypothesis}</p>
               ) : null}
               {selected.fingerprint_at_start ? (
-                <p className="mt-2 font-mono text-meta text-ink-muted break-all">
+                <p className="mt-base font-mono text-meta text-ink-muted break-all">
                   {t("admin:agentConfigExperimentFingerprint")}: {selected.fingerprint_at_start}
                 </p>
               ) : null}
             </header>
 
             {error ? (
-              <p className="mb-3 rounded-tile border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+              <p className="mb-soft rounded-tile border border-red-500/40 bg-red-500/10 px-soft py-base text-sm text-red-200">
                 {error}
               </p>
             ) : null}
@@ -180,13 +180,13 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
             {loading ? (
               <p className="text-sm text-ink-muted">{t("admin:loading")}</p>
             ) : report ? (
-              <div className="space-y-6">
+              <div className="space-y-broad">
                 {(report.experiment.pending_patches_json?.length ?? 0) > 0 ? (
                   <section>
-                    <h3 className="mb-2 text-xs font-medium uppercase text-ink-muted">
+                    <h3 className="mb-base text-xs font-medium uppercase text-ink-muted">
                       {t("admin:agentConfigExperimentPendingPatches")}
                     </h3>
-                    <pre className="max-h-40 overflow-auto rounded-tile border border-line bg-black/30 p-2 text-meta text-ink-muted">
+                    <pre className="max-h-40 overflow-auto rounded-tile border border-line bg-black/30 p-base text-meta text-ink-muted">
                       {JSON.stringify(report.experiment.pending_patches_json, null, 2)}
                     </pre>
                   </section>
@@ -194,15 +194,15 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
 
                 {runIds.length > 0 ? (
                   <section>
-                    <h3 className="mb-2 text-xs font-medium uppercase text-ink-muted">
+                    <h3 className="mb-base text-xs font-medium uppercase text-ink-muted">
                       {t("admin:agentConfigExperimentRuns")}
                     </h3>
-                    <ul className="flex flex-wrap gap-2">
+                    <ul className="flex flex-wrap gap-base">
                       {runIds.map((rid) => (
                         <li key={rid}>
                           <Link
                             to={`/admin/benchmarks?run=${encodeURIComponent(rid)}`}
-                            className="rounded-tile border border-line bg-black/30 px-2 py-1 font-mono text-meta text-indigo-300 hover:bg-white/5"
+                            className="rounded-tile border border-line bg-black/30 px-base py-tight font-mono text-meta text-indigo-300 hover:bg-white/5"
                             title={rid}
                           >
                             {rid.slice(0, 8)}…
@@ -210,14 +210,14 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
                         </li>
                       ))}
                     </ul>
-                    <p className="mt-1 text-meta text-ink-muted">
+                    <p className="mt-tight text-meta text-ink-muted">
                       {t("admin:agentConfigExperimentRunsHint")}
                     </p>
                   </section>
                 ) : null}
 
                 <section>
-                  <h3 className="mb-3 text-xs font-medium uppercase text-ink-muted">
+                  <h3 className="mb-soft text-xs font-medium uppercase text-ink-muted">
                     {t("admin:agentConfigTab_analysis")}
                   </h3>
                   <p className="text-xs text-ink-muted">
@@ -226,36 +226,36 @@ export function ExperimentDetailPanel({ auth, experiments }: Props) {
                 </section>
 
                 <section>
-                  <h3 className="mb-2 text-xs font-medium uppercase text-ink-muted">
+                  <h3 className="mb-base text-xs font-medium uppercase text-ink-muted">
                     {t("admin:agentConfigExperimentReviews")}
                   </h3>
-                  <div className="mb-4 rounded-card border border-line bg-black/20 p-3">
-                    <p className="mb-2 text-xs text-ink-muted">{t("admin:agentConfigReviewSubmitHint")}</p>
+                  <div className="mb-wide rounded-card border border-line bg-black/20 p-soft">
+                    <p className="mb-base text-xs text-ink-muted">{t("admin:agentConfigReviewSubmitHint")}</p>
                     <textarea
-                      className="mb-2 min-h-[72px] w-full rounded-tile border border-line bg-field p-2 text-sm text-ink-primary"
+                      className="mb-base min-h-[72px] w-full rounded-tile border border-line bg-field p-base text-sm text-ink-primary"
                       placeholder={t("admin:agentConfigReviewSummaryPlaceholder")}
                       value={reviewSummary}
                       onChange={(e) => setReviewSummary(e.target.value)}
                     />
                     {reviewError ? (
-                      <p className="mb-2 text-xs text-red-300">{reviewError}</p>
+                      <p className="mb-base text-xs text-red-300">{reviewError}</p>
                     ) : null}
                     <button
                       type="button"
                       disabled={reviewBusy || runIds.length === 0}
                       onClick={() => void onSubmitReview()}
-                      className="rounded-tile bg-indigo-700 px-3 py-1.5 text-xs text-ink-on-fill hover:bg-indigo-600 disabled:opacity-50"
+                      className="rounded-tile bg-indigo-700 px-soft py-snug text-xs text-ink-on-fill hover:bg-indigo-600 disabled:opacity-50"
                     >
                       {reviewBusy ? t("admin:agentConfigReviewSubmitting") : t("admin:agentConfigReviewSubmit")}
                     </button>
                     {runIds.length === 0 ? (
-                      <p className="mt-2 text-meta text-ink-muted">{t("admin:agentConfigReviewNeedsRuns")}</p>
+                      <p className="mt-base text-meta text-ink-muted">{t("admin:agentConfigReviewNeedsRuns")}</p>
                     ) : null}
                   </div>
                   {report.reviews.length === 0 ? (
                     <p className="text-xs text-ink-muted">{t("admin:agentConfigExperimentNoReviews")}</p>
                   ) : (
-                    <ul className="space-y-2">
+                    <ul className="space-y-base">
                       {report.reviews.map((rev) => (
                         <ReviewCard key={rev.id} review={rev} />
                       ))}

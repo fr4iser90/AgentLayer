@@ -12,10 +12,10 @@ export function AdminInterfacesPageShell({
   children: ReactNode;
 }) {
   return (
-    <div className={`mx-auto px-6 py-8 ${wide ? "max-w-4xl" : "max-w-2xl"}`}>
+    <div className={`mx-auto px-broad py-deep ${wide ? "max-w-4xl" : "max-w-2xl"}`}>
       <h1 className="text-2xl font-semibold text-ink-primary">{title}</h1>
-      {description ? <div className="mt-2 text-sm text-ink-muted">{description}</div> : null}
-      <div className="mt-6 pb-24">{children}</div>
+      {description ? <div className="mt-base text-sm text-ink-muted">{description}</div> : null}
+      <div className="mt-broad pb-24">{children}</div>
     </div>
   );
 }

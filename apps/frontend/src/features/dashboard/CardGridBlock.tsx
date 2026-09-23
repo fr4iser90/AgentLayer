@@ -121,8 +121,8 @@ export function CardGridBlockBody(props: {
   const sectionTitle = block.props.title?.trim() || t("dashboard:cardGridFallback");
 
   return (
-    <section className="rounded-sheet border border-line bg-card p-4">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+    <section className="rounded-sheet border border-line bg-card p-wide">
+      <div className="mb-soft flex flex-wrap items-center justify-between gap-base">
         <span className="text-xs font-medium uppercase tracking-wide text-ink-muted">
           {sectionTitle}
         </span>
@@ -131,15 +131,15 @@ export function CardGridBlockBody(props: {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={searchPlaceholder}
-            className="w-full min-w-[12rem] max-w-xs rounded-tile border border-line bg-field px-3 py-1.5 text-xs text-ink-primary outline-none focus:border-sky-500/50 sm:w-56"
+            className="w-full min-w-[12rem] max-w-xs rounded-tile border border-line bg-field px-soft py-snug text-xs text-ink-primary outline-none focus:border-sky-500/50 sm:w-56"
           />
         ) : null}
       </div>
 
       {filteredRows.length === 0 ? (
-        <p className="py-8 text-center text-sm text-ink-muted">{t("dashboard:cardGridEmpty")}</p>
+        <p className="py-deep text-center text-sm text-ink-muted">{t("dashboard:cardGridEmpty")}</p>
       ) : (
-        <div className={`grid gap-3 ${gridColsClass(gridColumns)}`}>
+        <div className={`grid gap-soft ${gridColsClass(gridColumns)}`}>
           {filteredRows.map((row) => {
             const id = String((row as any)?.id ?? "");
             const title = String((row as any)?.title ?? "").trim() || t("dashboard:untitled");
@@ -155,14 +155,14 @@ export function CardGridBlockBody(props: {
                 type="button"
                 disabled={!enableRowDetail}
                 className={[
-                  "dashboard-grid-no-drag flex min-h-[120px] flex-col rounded-sheet border border-line bg-gradient-to-br from-slate-900/90 to-black/60 p-4 text-left shadow-sm transition-colors",
+                  "dashboard-grid-no-drag flex min-h-[120px] flex-col rounded-sheet border border-line bg-gradient-to-br from-slate-900/90 to-black/60 p-wide text-left shadow-sm transition-colors",
                   enableRowDetail ? "hover:border-sky-500/40 hover:bg-slate-900" : "cursor-default",
                 ].join(" ")}
                 onClick={() => {
                   if (enableRowDetail && id) setDetailRowId(id);
                 }}
               >
-                <div className="mb-2 flex items-start justify-between gap-2">
+                <div className="mb-base flex items-start justify-between gap-base">
                   <h4 className="line-clamp-2 text-sm font-semibold text-ink-primary">{title}</h4>
                   {pinned ? (
                     <span className="shrink-0" title={t("dashboard:pinned")}>
@@ -175,28 +175,28 @@ export function CardGridBlockBody(props: {
                   ) : null}
                 </div>
                 {cardFields.includes("remote_url") && remote ? (
-                  <p className="mb-2 truncate font-mono text-meta text-sky-300/90">{remote}</p>
+                  <p className="mb-base truncate font-mono text-meta text-sky-300/90">{remote}</p>
                 ) : null}
                 {cardFields.includes("tags") && tags ? (
-                  <p className="mb-2 line-clamp-2 text-xs text-ink-muted">{tags}</p>
+                  <p className="mb-base line-clamp-2 text-xs text-ink-muted">{tags}</p>
                 ) : null}
-                <div className="mt-auto flex flex-wrap gap-1.5 pt-2">
+                <div className="mt-auto flex flex-wrap gap-snug pt-base">
                   {cardFields.includes("status") && status ? (
                     <span
-                      className={`rounded-pill border px-2 py-0.5 text-meta font-medium uppercase ${badgeClass(status)}`}
+                      className={`rounded-pill border px-base py-hair text-meta font-medium uppercase ${badgeClass(status)}`}
                     >
                       {status}
                     </span>
                   ) : null}
                   {cardFields.includes("security") && security ? (
                     <span
-                      className={`rounded-pill border px-2 py-0.5 text-meta font-medium uppercase ${badgeClass(security)}`}
+                      className={`rounded-pill border px-base py-hair text-meta font-medium uppercase ${badgeClass(security)}`}
                     >
                       {security}
                     </span>
                   ) : null}
                   {enableRunNow && String((row as any)?.workspace_id ?? "").trim() ? (
-                    <span className="rounded-pill border border-violet-500/30 bg-violet-600/20 px-2 py-0.5 text-meta text-violet-200">
+                    <span className="rounded-pill border border-violet-500/30 bg-violet-600/20 px-base py-hair text-meta text-violet-200">
                       {t("dashboard:workspaceLinked")}
                     </span>
                   ) : null}

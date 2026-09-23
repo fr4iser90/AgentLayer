@@ -215,7 +215,7 @@ export function ProjectsImportModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="presentation">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-wide" role="presentation">
       <div
         className="absolute inset-0 bg-black/70"
         role="button"
@@ -234,19 +234,19 @@ export function ProjectsImportModal({
         aria-modal="true"
         className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-sheet border border-line bg-card shadow-2xl"
       >
-        <div className="border-b border-line px-5 py-4">
+        <div className="border-b border-line px-roomy py-wide">
           <h2 className="text-lg font-semibold text-ink-primary">{t("dashboard:importFromGithub")}</h2>
-          <p className="mt-1 text-xs text-ink-muted">{t("dashboard:importFromGithubHint")}</p>
+          <p className="mt-tight text-xs text-ink-muted">{t("dashboard:importFromGithubHint")}</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-3">
+        <div className="flex flex-wrap items-center gap-soft border-b border-line px-roomy py-soft">
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t("dashboard:importSearchRepos")}
-            className="min-w-[200px] flex-1 rounded-card border border-line bg-field px-3 py-2 text-sm text-ink-primary outline-none focus:border-sky-500/50"
+            className="min-w-[200px] flex-1 rounded-card border border-line bg-field px-soft py-base text-sm text-ink-primary outline-none focus:border-sky-500/50"
           />
-          <label className="flex items-center gap-2 text-xs text-ink-primary">
+          <label className="flex items-center gap-base text-xs text-ink-primary">
             <input
               type="checkbox"
               checked={skipExisting}
@@ -254,7 +254,7 @@ export function ProjectsImportModal({
             />
             {t("dashboard:importSkipExisting")}
           </label>
-          <label className="flex items-center gap-2 text-xs text-ink-primary">
+          <label className="flex items-center gap-base text-xs text-ink-primary">
             <input
               type="checkbox"
               checked={createWorkspaces}
@@ -263,7 +263,7 @@ export function ProjectsImportModal({
             {t("dashboard:importCreateWorkspaces")}
           </label>
           {createWorkspaces && hasOrgSurface(user) ? (
-            <label className="flex items-center gap-2 text-xs text-ink-primary">
+            <label className="flex items-center gap-base text-xs text-ink-primary">
               <input
                 type="checkbox"
                 checked={shareWithCompany}
@@ -274,26 +274,26 @@ export function ProjectsImportModal({
           ) : null}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-3">
+        <div className="min-h-0 flex-1 overflow-y-auto px-roomy py-soft">
           {loading ? (
             <p className="text-sm text-ink-muted">{t("dashboard:loading")}</p>
           ) : error && repos.length === 0 ? (
-            <div className="space-y-2 text-sm">
+            <div className="space-y-base text-sm">
               <p className="text-red-300">{error}</p>
               <p className="text-ink-muted">{t("dashboard:importGithubTokenHint")}</p>
             </div>
           ) : filtered.length === 0 ? (
             <p className="text-sm text-ink-muted">{t("dashboard:importNoRepos")}</p>
           ) : (
-            <ul className="space-y-1">
+            <ul className="space-y-tight">
               {filtered.map((r) => (
                 <li
                   key={r.full_name}
-                  className="flex items-start gap-2 rounded-card border border-line-subtle px-3 py-2 hover:bg-white/[0.03]"
+                  className="flex items-start gap-base rounded-card border border-line-subtle px-soft py-base hover:bg-white/[0.03]"
                 >
                   <input
                     type="checkbox"
-                    className="mt-1"
+                    className="mt-tight"
                     checked={!!selected[r.full_name]}
                     onChange={(e) =>
                       setSelected((prev) => ({ ...prev, [r.full_name]: e.target.checked }))
@@ -306,7 +306,7 @@ export function ProjectsImportModal({
                     ) : null}
                   </div>
                   {r.private ? (
-                    <span className="shrink-0 rounded-tile bg-white/10 px-1.5 py-0.5 text-meta text-ink-muted">
+                    <span className="shrink-0 rounded-tile bg-white/10 px-snug py-hair text-meta text-ink-muted">
                       private
                     </span>
                   ) : null}
@@ -316,18 +316,18 @@ export function ProjectsImportModal({
           )}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-5 py-4">
-          <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-base border-t border-line px-roomy py-wide">
+          <div className="flex flex-wrap gap-base">
             <button
               type="button"
-              className="rounded-card border border-line px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5"
+              className="rounded-card border border-line px-soft py-snug text-xs text-ink-primary hover:bg-white/5"
               onClick={() => toggleAllVisible(true)}
             >
               {t("dashboard:importSelectAll")}
             </button>
             <button
               type="button"
-              className="rounded-card border border-line px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5"
+              className="rounded-card border border-line px-soft py-snug text-xs text-ink-primary hover:bg-white/5"
               onClick={() => toggleAllVisible(false)}
             >
               {t("dashboard:importSelectNone")}
@@ -336,7 +336,7 @@ export function ProjectsImportModal({
               {t("dashboard:importSelectedCount", { count: selectedCount })}
             </span>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-base">
             {resultMsg ? <span className="self-center text-xs text-emerald-300">{resultMsg}</span> : null}
             {error && repos.length > 0 ? (
               <span className="self-center text-xs text-amber-300">{error}</span>
@@ -352,7 +352,7 @@ export function ProjectsImportModal({
             <button
               type="button"
               disabled={importing || selectedCount === 0}
-              className="rounded-card bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+              className="rounded-card bg-sky-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
               onClick={() => void runImport()}
             >
               {importing ? t("dashboard:importing") : t("dashboard:importRun")}

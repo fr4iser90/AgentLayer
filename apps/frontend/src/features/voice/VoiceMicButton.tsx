@@ -92,7 +92,7 @@ export function VoiceMicButton({
       <button
         type="button"
         disabled={disabled || busy}
-        className={`relative rounded-card border p-2 transition-colors disabled:opacity-40 ${
+        className={`relative rounded-card border p-base transition-colors disabled:opacity-40 ${
           recording
             ? "border-rose-500/70 bg-rose-950/50 text-rose-100 shadow-[0_0_12px_rgba(244,63,94,0.25)]"
             : "border-line bg-black/20 text-ink-muted hover:bg-white/5 hover:text-neutral-200"
@@ -119,7 +119,7 @@ export function VoiceMicButton({
               aria-hidden
             />
             <span
-              className="pointer-events-none absolute -right-1 -top-1 z-10 flex items-center gap-0.5 rounded-tile border border-rose-400/60 bg-rose-950 px-1 py-px text-meta font-bold uppercase leading-none tracking-wide text-rose-100 shadow-sm"
+              className="pointer-events-none absolute -right-1 -top-1 z-10 flex items-center gap-hair rounded-tile border border-rose-400/60 bg-rose-950 px-tight py-px text-meta font-bold uppercase leading-none tracking-wide text-rose-100 shadow-sm"
               aria-live="polite"
             >
               <span className="relative flex h-1.5 w-1.5 shrink-0">

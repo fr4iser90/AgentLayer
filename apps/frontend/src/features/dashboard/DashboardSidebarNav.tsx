@@ -60,12 +60,12 @@ function DashboardNavRow(props: {
   const note = accessNote(w.access_role);
 
   return (
-    <li className="flex items-stretch gap-0.5">
+    <li className="flex items-stretch gap-hair">
       <button
         ref={buttonRef}
         type="button"
         className={[
-          "min-w-0 flex-1 rounded-tile px-2 py-1.5 text-left text-xs outline-none",
+          "min-w-0 flex-1 rounded-tile px-base py-snug text-left text-xs outline-none",
           selected ? "bg-white/10 text-ink-primary" : "text-ink-primary",
           active && !selected ? "bg-white/[0.06]" : "",
           !selected && !active ? "hover:bg-white/5" : "",
@@ -75,7 +75,7 @@ function DashboardNavRow(props: {
         <span className="block truncate font-medium leading-snug">
           {w.title || w.kind}
           {unread > 0 ? (
-            <span className="ml-1 inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-pill bg-orange-500 px-0.5 text-meta font-bold text-black align-middle">
+            <span className="ml-tight inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-pill bg-orange-500 px-hair text-meta font-bold text-black align-middle">
               {unread > 9 ? "9+" : unread}
             </span>
           ) : null}
@@ -89,7 +89,7 @@ function DashboardNavRow(props: {
         type="button"
         title={fav ? t("dashboard:unfavorite") : t("dashboard:favorite")}
         className={[
-          "shrink-0 rounded-tile px-1.5 text-xs",
+          "shrink-0 rounded-tile px-snug text-xs",
           fav ? "text-amber-300/90 hover:bg-amber-950/30" : "text-white/20 hover:bg-white/5 hover:text-white/45",
         ].join(" ")}
         onClick={onToggleFav}
@@ -289,9 +289,9 @@ export function DashboardSidebarNav(props: {
   return (
     <div className="flex min-h-0 flex-1 flex-col" onKeyDown={onKeyDown}>
       {showSearch ? (
-        <div className="shrink-0 border-b border-line px-2 py-2">
+        <div className="shrink-0 border-b border-line px-base py-base">
           <input
-            className="dashboard-grid-no-drag w-full rounded-tile border border-line bg-field px-2.5 py-1.5 text-xs text-ink-primary outline-none focus:border-sky-500/50"
+            className="dashboard-grid-no-drag w-full rounded-tile border border-line bg-field px-firm py-snug text-xs text-ink-primary outline-none focus:border-sky-500/50"
             placeholder={t("dashboard:searchPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -299,24 +299,24 @@ export function DashboardSidebarNav(props: {
         </div>
       ) : null}
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-1.5 py-2">
+      <div className="min-h-0 flex-1 overflow-y-auto px-snug py-base">
         {favorites.length > 0 && !query.trim() ? (
-          <section className="mb-3">
-            <p className="mb-1 px-1.5 text-meta font-semibold uppercase tracking-wide text-white/40">
+          <section className="mb-soft">
+            <p className="mb-tight px-snug text-meta font-semibold uppercase tracking-wide text-white/40">
               {t("dashboard:favorites")}
             </p>
-            <ul className="space-y-0.5">
+            <ul className="space-y-hair">
               {favorites.map((w) => renderShortcutRow(w, `fav-${w.id}`))}
             </ul>
           </section>
         ) : null}
 
         {showRecent ? (
-          <section className="mb-3">
-            <p className="mb-1 px-1.5 text-meta font-semibold uppercase tracking-wide text-white/40">
+          <section className="mb-soft">
+            <p className="mb-tight px-snug text-meta font-semibold uppercase tracking-wide text-white/40">
               {t("dashboard:recent")}
             </p>
-            <ul className="space-y-0.5">
+            <ul className="space-y-hair">
               {recents.map((w) => renderShortcutRow(w, `recent-${w.id}`))}
             </ul>
           </section>
@@ -324,13 +324,13 @@ export function DashboardSidebarNav(props: {
 
         {searchResults ? (
           <section>
-            <p className="mb-1 px-1.5 text-meta font-semibold uppercase tracking-wide text-white/40">
+            <p className="mb-tight px-snug text-meta font-semibold uppercase tracking-wide text-white/40">
               {t("dashboard:matches", { count: searchResults.length })}
             </p>
             {searchResults.length === 0 ? (
-              <p className="px-2 py-4 text-center text-xs text-ink-muted">{t("dashboard:noDashboardsInHub")}</p>
+              <p className="px-base py-wide text-center text-xs text-ink-muted">{t("dashboard:noDashboardsInHub")}</p>
             ) : (
-              <ul className="space-y-0.5">
+              <ul className="space-y-hair">
                 {searchResults.map((w, idx) => renderPrimaryRow(w, idx))}
               </ul>
             )}
@@ -338,16 +338,16 @@ export function DashboardSidebarNav(props: {
         ) : flatItems ? (
           <section>
             {!useFlatList || list.length > 1 ? (
-              <p className="mb-1 px-1.5 text-meta font-semibold uppercase tracking-wide text-white/40">
+              <p className="mb-tight px-snug text-meta font-semibold uppercase tracking-wide text-white/40">
                 {t("dashboard:allDashboards", { count: flatItems.length })}
               </p>
             ) : null}
-            <ul className="space-y-0.5">
+            <ul className="space-y-hair">
               {flatItems.map((w, idx) => renderPrimaryRow(w, idx))}
             </ul>
           </section>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-base">
             {hubsWithItems.map((h) => {
               const items = grouped[h.id]?.items ?? [];
               const collapsed = collapsedHubs.has(h.id);
@@ -355,7 +355,7 @@ export function DashboardSidebarNav(props: {
                 <section key={h.id}>
                   <button
                     type="button"
-                    className="flex w-full items-center gap-1 rounded-tile px-1.5 py-1 text-left text-meta font-semibold uppercase tracking-wide text-white/45 hover:bg-white/5 hover:text-white/70"
+                    className="flex w-full items-center gap-tight rounded-tile px-snug py-tight text-left text-meta font-semibold uppercase tracking-wide text-white/45 hover:bg-white/5 hover:text-white/70"
                     onClick={() => toggleHub(h.id)}
                     aria-expanded={!collapsed}
                   >
@@ -364,7 +364,7 @@ export function DashboardSidebarNav(props: {
                     <span className="shrink-0 text-white/25">({items.length})</span>
                   </button>
                   {!collapsed ? (
-                    <ul className="mt-0.5 space-y-0.5">
+                    <ul className="mt-hair space-y-hair">
                       {items.map((w) => {
                         const idx = navigableItems.findIndex((x) => x.id === w.id);
                         return renderPrimaryRow(w, idx >= 0 ? idx : 0);

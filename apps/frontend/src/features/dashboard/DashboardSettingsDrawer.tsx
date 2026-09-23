@@ -20,17 +20,17 @@ export function DashboardSettingsDrawer(props: {
         onClick={onClose}
       />
       <aside className="relative flex h-full max-h-[100dvh] w-full max-w-xl flex-col overflow-hidden border-l border-line bg-panel shadow-xl">
-        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 py-3">
+        <div className="flex shrink-0 items-center justify-between gap-soft border-b border-line px-wide py-soft">
           <p className="min-w-0 truncate text-sm font-medium text-ink-primary">{title}</p>
           <button
             type="button"
-            className="rounded-tile px-2 py-1 text-xs text-ink-muted hover:bg-white/5 hover:text-neutral-200"
+            className="rounded-tile px-base py-tight text-xs text-ink-muted hover:bg-white/5 hover:text-neutral-200"
             onClick={onClose}
           >
             {t("dashboard:close")}
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain p-4">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain p-wide">{children}</div>
       </aside>
     </div>
   );

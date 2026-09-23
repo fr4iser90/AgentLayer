@@ -431,14 +431,14 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
   };
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col space-y-3">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col space-y-soft">
       {editMode && !hideToolbar ? (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-base">
           {ROOT_GRID_TOOLBAR_DEFINITIONS.map((definition) => (
             <button
               key={definition.type}
               type="button"
-              className="rounded-card bg-sky-600 px-3 py-1.5 text-xs font-medium text-ink-on-fill hover:bg-sky-500"
+              className="rounded-card bg-sky-600 px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-sky-500"
               onClick={() => addBlock(definition.type)}
             >
               {t(definition.addLabelKey as "dashboard:addList")}
@@ -447,11 +447,11 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-2 text-meta text-ink-muted">
+      <div className="flex flex-wrap items-center gap-base text-meta text-ink-muted">
         <span>{t("dashboard:canvasHint")}</span>
         <button
           type="button"
-          className="rounded-tile border border-line px-2 py-0.5 text-ink-primary hover:bg-white/5"
+          className="rounded-tile border border-line px-base py-hair text-ink-primary hover:bg-white/5"
           title={t("dashboard:canvasZoomOut")}
           onClick={() => nudgeZoom(0.9)}
         >
@@ -459,7 +459,7 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
         </button>
         <button
           type="button"
-          className="rounded-tile border border-line px-2 py-0.5 text-ink-primary hover:bg-white/5"
+          className="rounded-tile border border-line px-base py-hair text-ink-primary hover:bg-white/5"
           title={t("dashboard:canvasZoomIn")}
           onClick={() => nudgeZoom(1.1)}
         >
@@ -467,14 +467,14 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
         </button>
         <button
           type="button"
-          className="rounded-tile border border-line px-2 py-0.5 text-ink-primary hover:bg-white/5"
+          className="rounded-tile border border-line px-base py-hair text-ink-primary hover:bg-white/5"
           onClick={() => fitAll()}
         >
           {t("dashboard:canvasFit")}
         </button>
         <button
           type="button"
-          className="rounded-tile border border-line px-2 py-0.5 text-ink-primary hover:bg-white/5"
+          className="rounded-tile border border-line px-base py-hair text-ink-primary hover:bg-white/5"
           onClick={() => {
             setZoom(1);
             if (editMode) persistViewport({ zoom: 1 });
@@ -563,7 +563,7 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
                   {showBlockToolbar || editMode ? (
                     <div
                       className={[
-                        "flex shrink-0 select-none items-center gap-2 border-b border-line-subtle bg-card px-2 py-1",
+                        "flex shrink-0 select-none items-center gap-base border-b border-line-subtle bg-card px-base py-tight",
                         editMode
                           ? "cursor-grab active:cursor-grabbing"
                           : "",
@@ -577,7 +577,7 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
                     >
                       {editMode ? (
                         <span
-                          className="shrink-0 cursor-grab px-0.5 text-xs leading-none text-ink-muted active:cursor-grabbing"
+                          className="shrink-0 cursor-grab px-hair text-xs leading-none text-ink-muted active:cursor-grabbing"
                           title={t("dashboard:canvasDragHandle")}
                           aria-hidden="true"
                         >
@@ -587,11 +587,11 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
                       <span className="min-w-0 flex-1 truncate text-meta font-medium uppercase tracking-wide text-ink-muted">
                         {blockTitle(b)}
                       </span>
-                      <div className="flex shrink-0 gap-1">
+                      <div className="flex shrink-0 gap-tight">
                         {canExpand ? (
                           <button
                             type="button"
-                            className="rounded-tile px-2 py-0.5 text-xs text-sky-200 hover:bg-sky-950/50"
+                            className="rounded-tile px-base py-hair text-xs text-sky-200 hover:bg-sky-950/50"
                             title={t("dashboard:blockExpand")}
                             onClick={() => {
                               acknowledgeBlock(b.id);
@@ -605,7 +605,7 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
                           <button
                             type="button"
                             className={[
-                              "rounded-tile px-2 py-0.5 text-xs",
+                              "rounded-tile px-base py-hair text-xs",
                               chatFocusedBlockId === b.id
                                 ? "bg-emerald-900/60 text-emerald-100"
                                 : "text-emerald-200 hover:bg-emerald-950/50",
@@ -621,7 +621,7 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
                         {canConfigureBlock ? (
                           <button
                             type="button"
-                            className="rounded-tile px-2 py-0.5 text-xs text-amber-200 hover:bg-amber-950/50"
+                            className="rounded-tile px-base py-hair text-xs text-amber-200 hover:bg-amber-950/50"
                             title={t("dashboard:blockSettingsTitle")}
                             onClick={() => setSettingsBlockId(b.id)}
                           >
@@ -631,7 +631,7 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
                         {onPinBlock && b.type !== "dashboard_ref" ? (
                           <button
                             type="button"
-                            className="rounded-tile px-2 py-0.5 text-xs text-violet-200 hover:bg-violet-950/50"
+                            className="rounded-tile px-base py-hair text-xs text-violet-200 hover:bg-violet-950/50"
                             title={t("dashboard:pinBlockHint")}
                             onClick={() => onPinBlock(b.id)}
                           >
@@ -651,7 +651,7 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
                       </div>
                     </div>
                   ) : null}
-                  <div className="min-h-0 flex-1 overflow-auto p-2">
+                  <div className="min-h-0 flex-1 overflow-auto p-base">
                     <DashboardBlockTile
                       block={b}
                       data={data}

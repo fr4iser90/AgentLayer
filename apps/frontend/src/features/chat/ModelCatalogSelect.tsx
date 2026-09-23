@@ -36,7 +36,7 @@ const CHIP_TONES: Record<ModelCapabilityBadge["tone"], string> = {
 function ModelBadge({ badge, compact = false }: { badge: ModelCapabilityBadge; compact?: boolean }) {
   return (
     <span
-      className={`inline-flex shrink-0 items-center rounded-pill border px-1.5 py-0.5 font-medium ${compact ? "text-meta" : "text-meta"} ${CHIP_TONES[badge.tone]}`}
+      className={`inline-flex shrink-0 items-center rounded-pill border px-snug py-hair font-medium ${compact ? "text-meta" : "text-meta"} ${CHIP_TONES[badge.tone]}`}
     >
       {badge.label}
     </span>
@@ -70,7 +70,7 @@ export function ModelCatalogSelect({
   const selectedBadges = selected ? modelCapabilityBadges(selected) : [];
   const isDisabled = disabled || loading || rows.length === 0;
   const buttonTextSize = size === "sm" ? "text-xs" : "text-sm";
-  const buttonPadding = size === "sm" ? "px-2 py-1.5" : "px-2.5 py-1.5";
+  const buttonPadding = size === "sm" ? "px-base py-snug" : "px-firm py-snug";
 
   useEffect(() => {
     if (!open) return;
@@ -92,7 +92,7 @@ export function ModelCatalogSelect({
     <div ref={rootRef} className="relative">
       <button
         type="button"
-        className={`mt-0.5 flex w-full items-center justify-between gap-2 rounded-card border border-line bg-[#1a1a1a] ${buttonPadding} text-left text-ink-primary shadow-sm outline-none transition hover:border-sky-500/45 hover:bg-[#202020] focus:border-sky-400/70 focus:ring-2 focus:ring-sky-500/20 disabled:cursor-not-allowed disabled:opacity-60 ${buttonTextSize}`}
+        className={`mt-hair flex w-full items-center justify-between gap-base rounded-card border border-line bg-[#1a1a1a] ${buttonPadding} text-left text-ink-primary shadow-sm outline-none transition hover:border-sky-500/45 hover:bg-[#202020] focus:border-sky-400/70 focus:ring-2 focus:ring-sky-500/20 disabled:cursor-not-allowed disabled:opacity-60 ${buttonTextSize}`}
         disabled={isDisabled}
         aria-haspopup="listbox"
         aria-expanded={open}
@@ -107,7 +107,7 @@ export function ModelCatalogSelect({
           ) : null}
         </span>
         {selectedBadges.length > 0 ? (
-          <span className="hidden max-w-[45%] shrink-0 flex-wrap justify-end gap-1 sm:flex">
+          <span className="hidden max-w-[45%] shrink-0 flex-wrap justify-end gap-tight sm:flex">
             {selectedBadges.map((badge) => (
               <ModelBadge key={badge.key} badge={badge} compact={size === "sm"} />
             ))}
@@ -116,8 +116,8 @@ export function ModelCatalogSelect({
         <span className="shrink-0 text-ink-muted">v</span>
       </button>
       {open && !isDisabled ? (
-        <div className="absolute z-50 mt-1 max-h-72 w-full overflow-auto rounded-sheet border border-line bg-[#111] p-1 shadow-2xl shadow-black/50">
-          <div role="listbox" aria-label={ariaLabel} className="space-y-1">
+        <div className="absolute z-50 mt-tight max-h-72 w-full overflow-auto rounded-sheet border border-line bg-[#111] p-tight shadow-2xl shadow-black/50">
+          <div role="listbox" aria-label={ariaLabel} className="space-y-tight">
             {rows.map((row) => {
               const rowValue = modelCatalogSelectValue(row);
               const rowDisabled = isCatalogModelOptionDisabled(row, agentlayer);
@@ -134,7 +134,7 @@ export function ModelCatalogSelect({
                   aria-selected={active}
                   disabled={rowDisabled}
                   title={title}
-                  className={`flex w-full items-start gap-2 rounded-card px-2 py-2 text-left transition ${
+                  className={`flex w-full items-start gap-base rounded-card px-base py-base text-left transition ${
                     active ? "bg-sky-500/15 ring-1 ring-sky-400/30" : "hover:bg-white/5"
                   } ${rowDisabled ? "cursor-not-allowed opacity-45" : ""}`}
                   onClick={() => {
@@ -147,7 +147,7 @@ export function ModelCatalogSelect({
                     <span className="block truncate text-sm font-medium text-ink-primary">{row.id}</span>
                     <span className="block truncate text-meta text-ink-muted">{provider}</span>
                   </span>
-                  <span className="flex max-w-[48%] shrink-0 flex-wrap justify-end gap-1 pt-0.5">
+                  <span className="flex max-w-[48%] shrink-0 flex-wrap justify-end gap-tight pt-hair">
                     {modelCapabilityBadges(row).map((badge) => (
                       <ModelBadge key={badge.key} badge={badge} compact />
                     ))}

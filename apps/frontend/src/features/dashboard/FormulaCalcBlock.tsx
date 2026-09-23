@@ -109,14 +109,14 @@ export function FormulaCalcBlockBody({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 overflow-auto p-1 text-sm">
+    <div className="flex h-full min-h-0 flex-col gap-soft overflow-auto p-tight text-sm">
       {title ? <h3 className="font-medium text-ink-primary">{title}</h3> : null}
       {(disclaimer || t("dashboard:formulaDisclaimer")) && (
-        <p className="rounded-tile border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs text-amber-100">
+        <p className="rounded-tile border border-amber-500/30 bg-amber-500/10 px-base py-tight text-xs text-amber-100">
           {disclaimer || t("dashboard:formulaDisclaimer")}
         </p>
       )}
-      <form onSubmit={onSubmit} className="space-y-2">
+      <form onSubmit={onSubmit} className="space-y-base">
         {inputDefs.map((inp) => {
           const control = inp.control || "number";
           if (control === "select" && Array.isArray(inp.options) && inp.options.length > 0) {
@@ -124,7 +124,7 @@ export function FormulaCalcBlockBody({
               <label key={inp.key} className="block text-xs text-ink-muted">
                 {inp.label}
                 <select
-                  className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
+                  className="mt-tight w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
                   disabled={readOnly}
                   value={values[inp.key] ?? ""}
                   onChange={(e) => setValues((v) => ({ ...v, [inp.key]: e.target.value }))}
@@ -144,11 +144,11 @@ export function FormulaCalcBlockBody({
             <label key={inp.key} className="block text-xs text-ink-muted">
               {inp.label}
               {control === "percent" ? (
-                <span className="ml-1 text-meta opacity-70">{t("dashboard:formulaPercentHint")}</span>
+                <span className="ml-tight text-meta opacity-70">{t("dashboard:formulaPercentHint")}</span>
               ) : null}
-              <div className="relative mt-1">
+              <div className="relative mt-tight">
                 <input
-                  className="w-full rounded-tile border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
+                  className="w-full rounded-tile border border-line bg-field px-base py-snug text-sm text-ink-primary"
                   type="number"
                   step={inp.step ?? (control === "percent" ? 1 : "any")}
                   disabled={readOnly}
@@ -169,7 +169,7 @@ export function FormulaCalcBlockBody({
         {!readOnly ? (
           <button
             type="submit"
-            className="rounded-tile bg-sky-600 px-3 py-1.5 text-xs font-medium text-ink-on-fill hover:bg-sky-500"
+            className="rounded-tile bg-sky-600 px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-sky-500"
           >
             {t("dashboard:formulaCalculate")}
           </button>
@@ -178,12 +178,12 @@ export function FormulaCalcBlockBody({
       {formulaNote ? <p className="font-mono text-meta text-ink-muted">{formulaNote}</p> : null}
       {error ? <p className="text-xs text-red-300">{error}</p> : null}
       {results ? (
-        <ul className="space-y-1 text-ink-primary">
+        <ul className="space-y-tight text-ink-primary">
           {outputDefs.map((o) => (
             <li key={o.key}>
               <span className="text-ink-muted">{o.label}: </span>
               {Number.isFinite(results[o.key]) ? results[o.key].toFixed(4).replace(/\.?0+$/, "") : "—"}
-              <span className="ml-2 font-mono text-meta text-ink-muted">{o.expr}</span>
+              <span className="ml-base font-mono text-meta text-ink-muted">{o.expr}</span>
             </li>
           ))}
         </ul>

@@ -81,7 +81,7 @@ export function DashboardRefBlockBody(props: {
   }
   if (err) {
     return (
-      <div className="space-y-2 text-sm">
+      <div className="space-y-base text-sm">
         <p className="text-amber-300">{err}</p>
         {publicShareToken ? null : (
           <button type="button" className="text-sky-400 hover:underline" onClick={() => void load()}>
@@ -98,7 +98,7 @@ export function DashboardRefBlockBody(props: {
   const noop = () => {};
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-base">
       {p.sourceLabel || payload.source_title ? (
         <p className="text-meta uppercase tracking-wide text-ink-muted">
           {t("dashboard:refFrom", {

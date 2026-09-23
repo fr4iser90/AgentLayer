@@ -66,12 +66,12 @@ export function ProfileSettings() {
     : null;
 
   return (
-    <div className="mx-auto max-w-xl space-y-8">
+    <div className="mx-auto max-w-xl space-y-deep">
       <div>
         <h1 className="text-lg font-semibold text-ink-primary">{t("settings:profileTitle")}</h1>
-        <p className="mt-2 text-sm text-ink-muted">
+        <p className="mt-base text-sm text-ink-muted">
           {t("settings:profileIntroLead")}{" "}
-          <code className="rounded-tile bg-white/5 px-1 text-xs">GET /auth/me</code>.{" "}
+          <code className="rounded-tile bg-white/5 px-tight text-xs">GET /auth/me</code>.{" "}
           {t("settings:profileIntroConnectionsBefore")}{" "}
           <Link to="/settings/connections" className="text-sky-400 hover:underline">
             {t("settings:profileIntroConnectionsLink")}
@@ -85,32 +85,32 @@ export function ProfileSettings() {
       ) : err ? (
         <p className="text-sm text-amber-400">{err}</p>
       ) : (
-        <div className="rounded-sheet border border-line bg-card p-5">
-          <dl className="space-y-4 text-sm">
+        <div className="rounded-sheet border border-line bg-card p-roomy">
+          <dl className="space-y-wide text-sm">
             <div>
               <dt className="text-xs font-medium uppercase tracking-wide text-ink-muted">{t("settings:profileEmail")}</dt>
-              <dd className="mt-1 text-ink-primary">{email}</dd>
+              <dd className="mt-tight text-ink-primary">{email}</dd>
             </div>
             <div>
               <dt className="text-xs font-medium uppercase tracking-wide text-ink-muted">{t("settings:profileUserId")}</dt>
-              <dd className="mt-1 break-all font-mono text-xs text-ink-secondary">{id}</dd>
+              <dd className="mt-tight break-all font-mono text-xs text-ink-secondary">{id}</dd>
             </div>
             <div>
               <dt className="text-xs font-medium uppercase tracking-wide text-ink-muted">{t("settings:profileDiscordLinked")}</dt>
-              <dd className="mt-1 font-mono text-xs text-ink-secondary">{discordLinked ?? empty}</dd>
+              <dd className="mt-tight font-mono text-xs text-ink-secondary">{discordLinked ?? empty}</dd>
             </div>
             <div>
               <dt className="text-xs font-medium uppercase tracking-wide text-ink-muted">{t("settings:profileTelegramLinked")}</dt>
-              <dd className="mt-1 font-mono text-xs text-ink-secondary">{telegramLinked ?? empty}</dd>
+              <dd className="mt-tight font-mono text-xs text-ink-secondary">{telegramLinked ?? empty}</dd>
             </div>
             <div>
               <dt className="text-xs font-medium uppercase tracking-wide text-ink-muted">{t("settings:profileRole")}</dt>
-              <dd className="mt-1">
+              <dd className="mt-tight">
                 <span
                   className={
                     String(roleRaw).toLowerCase() === "admin"
-                      ? "rounded-tile bg-emerald-500/20 px-2 py-0.5 text-xs text-emerald-300"
-                      : "rounded-tile bg-sky-500/20 px-2 py-0.5 text-xs text-sky-300"
+                      ? "rounded-tile bg-emerald-500/20 px-base py-hair text-xs text-emerald-300"
+                      : "rounded-tile bg-sky-500/20 px-base py-hair text-xs text-sky-300"
                   }
                 >
                   {roleLabel}
@@ -120,13 +120,13 @@ export function ProfileSettings() {
             {created ? (
               <div>
                 <dt className="text-xs font-medium uppercase tracking-wide text-ink-muted">{t("settings:profileMemberSince")}</dt>
-                <dd className="mt-1 text-ink-secondary">{created}</dd>
+                <dd className="mt-tight text-ink-secondary">{created}</dd>
               </div>
             ) : null}
           </dl>
           <button
             type="button"
-            className="mt-6 text-xs text-sky-400 hover:text-sky-300 hover:underline"
+            className="mt-broad text-xs text-sky-400 hover:text-sky-300 hover:underline"
             onClick={() => void load()}
           >
             {t("settings:profileRefresh")}
@@ -134,12 +134,12 @@ export function ProfileSettings() {
         </div>
       )}
 
-      <div className="rounded-sheet border border-line bg-black/20 p-5">
+      <div className="rounded-sheet border border-line bg-black/20 p-roomy">
         <h2 className="text-sm font-medium text-ink-primary">{t("settings:sessionTitle")}</h2>
-        <p className="mt-1 text-xs text-ink-muted">{t("settings:profileSessionHint")}</p>
+        <p className="mt-tight text-xs text-ink-muted">{t("settings:profileSessionHint")}</p>
         <button
           type="button"
-          className="mt-4 rounded-tile border border-line-strong bg-white/5 px-4 py-2 text-sm text-ink-primary hover:bg-white/10"
+          className="mt-wide rounded-tile border border-line-strong bg-white/5 px-wide py-base text-sm text-ink-primary hover:bg-white/10"
           onClick={() => void logout()}
         >
           {t("settings:signOut")}

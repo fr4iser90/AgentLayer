@@ -73,13 +73,13 @@ export function DashboardLayoutProposalPanel({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-wide"
       role="dialog"
       aria-modal="true"
       aria-label={t("dashboard:layoutProposalsTitle")}
     >
       <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-t-sheet border border-line bg-[#111] shadow-2xl sm:rounded-sheet">
-        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 py-3">
+        <header className="flex shrink-0 items-center justify-between gap-soft border-b border-line px-wide py-soft">
           <div>
             <h2 className="text-sm font-semibold text-ink-primary">{t("dashboard:layoutProposalsTitle")}</h2>
             <p className="text-xs text-ink-muted">{t("dashboard:layoutProposalsSubtitle")}</p>
@@ -87,21 +87,21 @@ export function DashboardLayoutProposalPanel({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-card border border-line px-2.5 py-1 text-xs text-ink-secondary hover:bg-white/5"
+            className="rounded-card border border-line px-firm py-tight text-xs text-ink-secondary hover:bg-white/5"
           >
             {t("dashboard:layoutProposalsClose")}
           </button>
         </header>
 
         {loading ? (
-          <div className="px-4 py-8 text-sm text-ink-muted">{t("dashboard:layoutProposalsLoading")}</div>
+          <div className="px-wide py-deep text-sm text-ink-muted">{t("dashboard:layoutProposalsLoading")}</div>
         ) : errText && !proposalSet ? (
-          <div className="mx-4 my-4 rounded-card border border-red-500/40 bg-red-950/30 px-3 py-2 text-sm text-red-200">
+          <div className="mx-wide my-wide rounded-card border border-red-500/40 bg-red-950/30 px-soft py-base text-sm text-red-200">
             {errText}
           </div>
         ) : proposalSet ? (
           <>
-            <div className="flex shrink-0 gap-2 overflow-x-auto border-b border-line px-4 py-2">
+            <div className="flex shrink-0 gap-base overflow-x-auto border-b border-line px-wide py-base">
               {proposalSet.proposals.map((p) => (
                 <button
                   key={p.id}
@@ -110,7 +110,7 @@ export function DashboardLayoutProposalPanel({
                     setSelectedId(p.id);
                     setConfirmId(null);
                   }}
-                  className={`shrink-0 rounded-card border px-3 py-2 text-left text-xs transition ${
+                  className={`shrink-0 rounded-card border px-soft py-base text-left text-xs transition ${
                     selectedId === p.id
                       ? "border-emerald-500/60 bg-emerald-950/30 text-ink-primary"
                       : "border-line bg-black/20 text-ink-secondary hover:bg-white/5"
@@ -118,13 +118,13 @@ export function DashboardLayoutProposalPanel({
                 >
                   <div className="font-medium">{p.title}</div>
                   {p.summary ? (
-                    <div className="mt-0.5 max-w-[14rem] truncate text-ink-muted">{p.summary}</div>
+                    <div className="mt-hair max-w-[14rem] truncate text-ink-muted">{p.summary}</div>
                   ) : null}
                 </button>
               ))}
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+            <div className="min-h-0 flex-1 overflow-y-auto p-wide">
               {selected ? (
                 <div className="overflow-hidden rounded-sheet border border-line bg-[#0a0a0a]">
                   <div className="origin-top-left scale-[0.72] sm:scale-[0.82]">
@@ -146,12 +146,12 @@ export function DashboardLayoutProposalPanel({
             </div>
 
             {applyErr ? (
-              <div className="mx-4 mb-2 rounded-tile border border-red-500/40 bg-red-950/30 px-3 py-2 text-xs text-red-200">
+              <div className="mx-wide mb-base rounded-tile border border-red-500/40 bg-red-950/30 px-soft py-base text-xs text-red-200">
                 {applyErr}
               </div>
             ) : null}
 
-            <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-line px-4 py-3">
+            <footer className="flex shrink-0 items-center justify-end gap-base border-t border-line px-wide py-soft">
               {confirmId === selectedId && selected ? (
                 <>
                   <span className="mr-auto text-xs text-amber-200/90">
@@ -170,7 +170,7 @@ export function DashboardLayoutProposalPanel({
                     type="button"
                     disabled={applyBusy}
                     onClick={() => void applyProposal(selected.id)}
-                    className="rounded-card bg-emerald-600 px-3 py-1.5 text-xs font-medium text-ink-on-fill hover:bg-emerald-500 disabled:opacity-50"
+                    className="rounded-card bg-emerald-600 px-soft py-snug text-xs font-medium text-ink-on-fill hover:bg-emerald-500 disabled:opacity-50"
                   >
                     {applyBusy ? t("dashboard:saving") : t("dashboard:layoutProposalsApply")}
                   </button>
@@ -180,7 +180,7 @@ export function DashboardLayoutProposalPanel({
                   type="button"
                   disabled={!selected || applyBusy}
                   onClick={() => selected && setConfirmId(selected.id)}
-                  className="rounded-card bg-emerald-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-emerald-500 disabled:opacity-50"
+                  className="rounded-card bg-emerald-600 px-wide py-base text-sm font-medium text-ink-on-fill hover:bg-emerald-500 disabled:opacity-50"
                 >
                   {t("dashboard:layoutProposalsApply")}
                 </button>
