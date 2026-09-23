@@ -1,0 +1,22 @@
+{
+  "fonts": {
+    "ibm-plex-sans-latin-400.woff2": {
+      "sha256": "3b646991d30055a93a4ecc499713d4347953a74a947ecab435ab72070cbdab0e",
+      "copyright": "Copyright © 2017 IBM Corp. with Reserved Font Name \"Plex\"",
+      "license": "SIL Open Font License 1.1",
+      "source": "@fontsource/ibm-plex-sans@5.2.5 files/ibm-plex-sans-latin-400-normal.woff2"
+    },
+    "ibm-plex-sans-latin-600.woff2": {
+      "sha256": "8960851d691c054ed38e259bdcf1a6190d157b4203ed5bb32c632a863fb8ec2f",
+      "copyright": "Copyright © 2017 IBM Corp. with Reserved Font Name \"Plex\"",
+      "license": "SIL Open Font License 1.1",
+      "source": "@fontsource/ibm-plex-sans@5.2.5 files/ibm-plex-sans-latin-600-normal.woff2"
+    },
+    "ibm-plex-mono-latin-400.woff2": {
+      "sha256": "3c5a451f9ec27a354b0c2bcca636c6ec17a651281aabf29f8427e210a1d31e85",
+      "copyright": "Copyright © 2017 IBM Corp. with Reserved Font Name \"Plex\"",
+      "license": "SIL Open Font License 1.1",
+      "source": "@fontsource/ibm-plex-mono@5.2.5 files/ibm-plex-mono-latin-400-normal.woff2"
+    }
+  }
+}
