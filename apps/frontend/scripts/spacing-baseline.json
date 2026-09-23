@@ -1,0 +1,12 @@
+{
+  "classes": [
+    "src/features/chat/ProposalMessageBody.tsx::pl-7",
+    "src/features/dashboard/DashboardBlocks.tsx::pt-16",
+    "src/features/dashboard/PublicGalleryShareView.tsx::pt-20",
+    "src/features/dashboard/gallery/GalleryLightbox.tsx::py-14",
+    "src/features/dashboard/gallery/GalleryLightbox.tsx::sm:px-16",
+    "src/features/dashboard/gallery/GalleryPublicSection.tsx::py-16",
+    "src/pages/admin/interfaces/AdminInterfacesPageShell.tsx::pb-24"
+  ],
+  "note": "Off-ramp spacing classes tolerated until someone decides what they should be. Re-record with --update after an intentional migration; new ones fail."
+}
