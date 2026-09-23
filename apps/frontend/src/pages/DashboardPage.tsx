@@ -46,6 +46,7 @@ import type {
   DashboardSummary,
 } from "../features/dashboard/types";
 import { layoutModeOf, parseUiLayout, withLayoutMode } from "../features/dashboard/layoutMode";
+import { Tooltip } from "../ui/Tooltip";
 
 function asUiLayout(raw: unknown): UiLayout | null {
   return parseUiLayout(raw);
@@ -1295,14 +1296,15 @@ export function DashboardPage() {
           >
             {t("dashboard:overviewTitle")}
           </button>
+          <Tooltip label={t("dashboard:comingSoon")}>
           <button
-            type="button"
-            disabled
-            className="cursor-not-allowed rounded-tile px-base py-snug text-left text-xs text-white/30"
-            title={t("dashboard:comingSoon")}
-          >
-            {t("dashboard:import")}
-          </button>
+              type="button"
+              disabled
+              className="cursor-not-allowed rounded-tile px-base py-snug text-left text-xs text-white/30"
+            >
+              {t("dashboard:import")}
+            </button>
+          </Tooltip>
           <button
             type="button"
             onClick={() => openCatalog()}

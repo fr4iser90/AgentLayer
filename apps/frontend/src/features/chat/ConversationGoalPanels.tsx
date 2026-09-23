@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { ConversationGoal, ConversationTodo } from "../../lib/api";
 import { useTranslation } from "react-i18next";
 import { Check, Circle, Pause, Pencil, Play, X } from "lucide-react";
+import { Tooltip } from "../../ui/Tooltip";
 
 type GoalActions = {
   goal: ConversationGoal | null;
@@ -35,44 +36,48 @@ function GoalActionButtons({
   return (
     <div className="flex shrink-0 items-center gap-tight">
       {paused ? (
+        <Tooltip label={t("chat:goalResume")}>
         <button
+            type="button"
+            className="rounded-tile px-snug py-hair text-xs text-amber-100 hover:bg-white/10 disabled:opacity-40"
+            disabled={disabled}
+            onClick={onResume}
+          >
+            <Play aria-hidden className="h-3.5 w-3.5" />
+          </button>
+        </Tooltip>
+      ) : (
+        <Tooltip label={t("chat:goalPause")}>
+        <button
+            type="button"
+            className="rounded-tile px-snug py-hair text-xs text-amber-100 hover:bg-white/10 disabled:opacity-40"
+            disabled={disabled || blocked}
+            onClick={onPause}
+          >
+            <Pause aria-hidden className="h-3.5 w-3.5" />
+          </button>
+        </Tooltip>
+      )}
+      <Tooltip label={t("chat:goalEdit")}>
+      <button
           type="button"
           className="rounded-tile px-snug py-hair text-xs text-amber-100 hover:bg-white/10 disabled:opacity-40"
           disabled={disabled}
-          onClick={onResume}
-          title={t("chat:goalResume")}
+          onClick={onEdit}
         >
-          <Play aria-hidden className="h-3.5 w-3.5" />
+          <Pencil aria-hidden className="h-3.5 w-3.5" />
         </button>
-      ) : (
-        <button
+      </Tooltip>
+      <Tooltip label={t("chat:goalClear")}>
+      <button
           type="button"
-          className="rounded-tile px-snug py-hair text-xs text-amber-100 hover:bg-white/10 disabled:opacity-40"
-          disabled={disabled || blocked}
-          onClick={onPause}
-          title={t("chat:goalPause")}
+          className="rounded-tile px-snug py-hair text-xs text-rose-200 hover:bg-white/10 disabled:opacity-40"
+          disabled={disabled}
+          onClick={onClear}
         >
-          <Pause aria-hidden className="h-3.5 w-3.5" />
+          <X aria-hidden className="h-3.5 w-3.5" />
         </button>
-      )}
-      <button
-        type="button"
-        className="rounded-tile px-snug py-hair text-xs text-amber-100 hover:bg-white/10 disabled:opacity-40"
-        disabled={disabled}
-        onClick={onEdit}
-        title={t("chat:goalEdit")}
-      >
-        <Pencil aria-hidden className="h-3.5 w-3.5" />
-      </button>
-      <button
-        type="button"
-        className="rounded-tile px-snug py-hair text-xs text-rose-200 hover:bg-white/10 disabled:opacity-40"
-        disabled={disabled}
-        onClick={onClear}
-        title={t("chat:goalClear")}
-      >
-        <X aria-hidden className="h-3.5 w-3.5" />
-      </button>
+      </Tooltip>
     </div>
   );
 }

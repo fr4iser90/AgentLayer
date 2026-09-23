@@ -27,6 +27,7 @@ import {
   parseSchedulesBlockExecutionTargetFilter,
   type ExecutionTargetCatalogRow,
 } from "../../lib/schedulerExecutionTarget";
+import { Tooltip } from "../../ui/Tooltip";
 
 type Row = Record<string, unknown>;
 
@@ -980,14 +981,15 @@ function BlockView(props: {
                     ))}
                     {enableRowDetail ? (
                       <td className="px-tight">
+                        <Tooltip label={t("dashboard:details")}>
                         <button
-                          type="button"
-                          className="rounded-tile px-base py-tight text-xs text-sky-200 hover:bg-white/5"
-                          onClick={() => setDetailRowId(String(row.id ?? ""))}
-                          title={t("dashboard:details")}
-                        >
-                          ↗
-                        </button>
+                            type="button"
+                            className="rounded-tile px-base py-tight text-xs text-sky-200 hover:bg-white/5"
+                            onClick={() => setDetailRowId(String(row.id ?? ""))}
+                          >
+                            ↗
+                          </button>
+                        </Tooltip>
                       </td>
                     ) : null}
                     {!structureLocked ? (

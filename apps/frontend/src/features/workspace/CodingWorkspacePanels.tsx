@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { File, Folder } from "lucide-react";
 import type { AuthContextValue } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/api";
+import { Tooltip } from "../../ui/Tooltip";
 
 type FsEntry = { name: string; path: string; is_dir: boolean; is_symlink: boolean };
 
@@ -366,20 +367,21 @@ export function CodingWorkspacePanels({
                   return (
                     <span key={prefix} className="flex items-center gap-tight">
                       <span className="text-white/20">/</span>
+                      <Tooltip label={prefix}>
                       <button
-                        type="button"
-                        className="max-w-[5rem] truncate rounded-tile px-snug py-hair hover:bg-white/10"
-                        title={prefix}
-                        onClick={() => {
-                          setBrowsePath(prefix);
-                          setSelectedFile(null);
-                          setFileContent(null);
-                          setFileMeta(null);
-                          setFileError(null);
-                        }}
-                      >
-                        {seg}
-                      </button>
+                          type="button"
+                          className="max-w-[5rem] truncate rounded-tile px-snug py-hair hover:bg-white/10"
+                          onClick={() => {
+                            setBrowsePath(prefix);
+                            setSelectedFile(null);
+                            setFileContent(null);
+                            setFileMeta(null);
+                            setFileError(null);
+                          }}
+                        >
+                          {seg}
+                        </button>
+                      </Tooltip>
                     </span>
                   );
                 })}

@@ -40,6 +40,7 @@ import {
   updateBlockById,
 } from "./layoutTree";
 import { Button } from "../../ui/Button";
+import { Tooltip } from "../../ui/Tooltip";
 
 function usedDataPaths(blocks: UiBlock[]): Set<string> {
   const s = new Set<string>();
@@ -449,22 +450,24 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
 
       <div className="flex flex-wrap items-center gap-base text-meta text-ink-muted">
         <span>{t("dashboard:canvasHint")}</span>
+        <Tooltip label={t("dashboard:canvasZoomOut")}>
         <button
-          type="button"
-          className="rounded-tile border border-line px-base py-hair text-ink-primary hover:bg-white/5"
-          title={t("dashboard:canvasZoomOut")}
-          onClick={() => nudgeZoom(0.9)}
-        >
-          −
-        </button>
+            type="button"
+            className="rounded-tile border border-line px-base py-hair text-ink-primary hover:bg-white/5"
+            onClick={() => nudgeZoom(0.9)}
+          >
+            −
+          </button>
+        </Tooltip>
+        <Tooltip label={t("dashboard:canvasZoomIn")}>
         <button
-          type="button"
-          className="rounded-tile border border-line px-base py-hair text-ink-primary hover:bg-white/5"
-          title={t("dashboard:canvasZoomIn")}
-          onClick={() => nudgeZoom(1.1)}
-        >
-          +
-        </button>
+            type="button"
+            className="rounded-tile border border-line px-base py-hair text-ink-primary hover:bg-white/5"
+            onClick={() => nudgeZoom(1.1)}
+          >
+            +
+          </button>
+        </Tooltip>
         <button
           type="button"
           className="rounded-tile border border-line px-base py-hair text-ink-primary hover:bg-white/5"
@@ -589,54 +592,58 @@ export function DashboardCanvasSurface(props: DashboardCanvasSurfaceProps) {
                       </span>
                       <div className="flex shrink-0 gap-tight">
                         {canExpand ? (
+                          <Tooltip label={t("dashboard:blockExpand")}>
                           <button
-                            type="button"
-                            className="rounded-tile px-base py-hair text-xs text-sky-200 hover:bg-sky-950/50"
-                            title={t("dashboard:blockExpand")}
-                            onClick={() => {
-                              acknowledgeBlock(b.id);
-                              setExpandedBlockId(b.id);
-                            }}
-                          >
-                            {t("dashboard:blockExpand")}
-                          </button>
+                              type="button"
+                              className="rounded-tile px-base py-hair text-xs text-sky-200 hover:bg-sky-950/50"
+                              onClick={() => {
+                                acknowledgeBlock(b.id);
+                                setExpandedBlockId(b.id);
+                              }}
+                            >
+                              {t("dashboard:blockExpand")}
+                            </button>
+                          </Tooltip>
                         ) : null}
                         {onPinBlockToChat && b.type !== "dashboard_ref" ? (
+                          <Tooltip label={t("dashboard:pinBlockToChatHint")}>
                           <button
-                            type="button"
-                            className={[
-                              "rounded-tile px-base py-hair text-xs",
-                              chatFocusedBlockId === b.id
-                                ? "bg-emerald-900/60 text-emerald-100"
-                                : "text-emerald-200 hover:bg-emerald-950/50",
-                            ].join(" ")}
-                            title={t("dashboard:pinBlockToChatHint")}
-                            onClick={() => onPinBlockToChat(b.id)}
-                          >
-                            {chatFocusedBlockId === b.id
-                              ? t("dashboard:pinBlockToChatActive")
-                              : t("dashboard:pinBlockToChat")}
-                          </button>
+                              type="button"
+                              className={[
+                                "rounded-tile px-base py-hair text-xs",
+                                chatFocusedBlockId === b.id
+                                  ? "bg-emerald-900/60 text-emerald-100"
+                                  : "text-emerald-200 hover:bg-emerald-950/50",
+                              ].join(" ")}
+                              onClick={() => onPinBlockToChat(b.id)}
+                            >
+                              {chatFocusedBlockId === b.id
+                                ? t("dashboard:pinBlockToChatActive")
+                                : t("dashboard:pinBlockToChat")}
+                            </button>
+                          </Tooltip>
                         ) : null}
                         {canConfigureBlock ? (
+                          <Tooltip label={t("dashboard:blockSettingsTitle")}>
                           <button
-                            type="button"
-                            className="rounded-tile px-base py-hair text-xs text-amber-200 hover:bg-amber-950/50"
-                            title={t("dashboard:blockSettingsTitle")}
-                            onClick={() => setSettingsBlockId(b.id)}
-                          >
-                            <Settings aria-hidden className="h-3.5 w-3.5" />
-                          </button>
+                              type="button"
+                              className="rounded-tile px-base py-hair text-xs text-amber-200 hover:bg-amber-950/50"
+                              onClick={() => setSettingsBlockId(b.id)}
+                            >
+                              <Settings aria-hidden className="h-3.5 w-3.5" />
+                            </button>
+                          </Tooltip>
                         ) : null}
                         {onPinBlock && b.type !== "dashboard_ref" ? (
+                          <Tooltip label={t("dashboard:pinBlockHint")}>
                           <button
-                            type="button"
-                            className="rounded-tile px-base py-hair text-xs text-violet-200 hover:bg-violet-950/50"
-                            title={t("dashboard:pinBlockHint")}
-                            onClick={() => onPinBlock(b.id)}
-                          >
-                            {t("dashboard:pinBlock")}
-                          </button>
+                              type="button"
+                              className="rounded-tile px-base py-hair text-xs text-violet-200 hover:bg-violet-950/50"
+                              onClick={() => onPinBlock(b.id)}
+                            >
+                              {t("dashboard:pinBlock")}
+                            </button>
+                          </Tooltip>
                         ) : null}
                         {editMode ? (
                           <Button

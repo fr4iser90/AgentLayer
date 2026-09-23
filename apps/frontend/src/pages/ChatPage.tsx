@@ -175,6 +175,7 @@ import { confirmNewChatForWorkspace } from "../features/workspace/confirmWorkspa
 import { streamOpenAiChatChunks } from "../features/chat/openaiSseStream";
 import { formatMessageTime, inferMissingMessageTimestamps } from "../features/chat/messageTimestamps";
 import { Button } from "../ui/Button";
+import { Tooltip } from "../ui/Tooltip";
 /** `?dashboard=<uuid>` — validated; server re-checks access. */
 function parseDashboardQueryParam(raw: string | null): string | null {
   if (!raw || !raw.trim()) return null;
@@ -832,14 +833,15 @@ export function ChatPage() {
       return null;
     }
     return (
+      <Tooltip label={t("workspace:editMcpServersWorkspaceOnlyTitle")}>
       <button
-        type="button"
-        className="ml-hair inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-tile border border-line-strong px-tight text-meta font-medium text-sky-300/95 hover:bg-white/10"
-        title={t("workspace:editMcpServersWorkspaceOnlyTitle")}
-        onClick={() => setShowWorkspaceMcpModal(true)}
-      >
-        +
-      </button>
+          type="button"
+          className="ml-hair inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-tile border border-line-strong px-tight text-meta font-medium text-sky-300/95 hover:bg-white/10"
+          onClick={() => setShowWorkspaceMcpModal(true)}
+        >
+          +
+        </button>
+      </Tooltip>
     );
   }, [selectedWorkspaceId, selectedWorkspace, t]);
 
@@ -3311,22 +3313,24 @@ export function ChatPage() {
                             </span>
                           </button>
                           <div className="flex shrink-0 flex-col gap-hair opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
+                            <Tooltip label={t("chat:rename")}>
                             <button
-                              type="button"
-                              className="rounded-tile px-tight text-meta text-ink-muted hover:text-white"
-                              title={t("chat:rename")}
-                              onClick={() => renameThread(thread.id)}
-                            >
-                              Ren
-                            </button>
+                                type="button"
+                                className="rounded-tile px-tight text-meta text-ink-muted hover:text-white"
+                                onClick={() => renameThread(thread.id)}
+                              >
+                                Ren
+                              </button>
+                            </Tooltip>
+                            <Tooltip label={t("chat:copyLinkJson")}>
                             <button
-                              type="button"
-                              className="rounded-tile px-tight text-meta text-ink-muted hover:text-white"
-                              title={t("chat:copyLinkJson")}
-                              onClick={() => void shareThread(thread)}
-                            >
-                              Share
-                            </button>
+                                type="button"
+                                className="rounded-tile px-tight text-meta text-ink-muted hover:text-white"
+                                onClick={() => void shareThread(thread)}
+                              >
+                                Share
+                              </button>
+                            </Tooltip>
                             <Button
                               type="button"
                               variant="danger"
@@ -3405,20 +3409,21 @@ export function ChatPage() {
               {activeThread?.title ?? t("chat:defaultThreadTitle")}
             </p>
             {activeThread ? <DashboardChatVisibilityBadge thread={activeThread} /> : null}
-            <button
-              type="button"
-              className="shrink-0 rounded-card border border-line bg-black/30 px-base py-tight text-meta font-medium text-ink-secondary hover:bg-white/10"
-              aria-expanded={!composerHeaderCollapsed}
-              aria-controls="chat-composer-header-panel"
-              title={
+            <Tooltip label={
                 composerHeaderCollapsed
                   ? t("chat:expandComposerHeader")
                   : t("chat:collapseComposerHeader")
-              }
-              onClick={toggleComposerHeaderCollapsed}
-            >
-              {composerHeaderCollapsed ? "▼" : "▲"}
-            </button>
+              }>
+            <button
+                type="button"
+                className="shrink-0 rounded-card border border-line bg-black/30 px-base py-tight text-meta font-medium text-ink-secondary hover:bg-white/10"
+                aria-expanded={!composerHeaderCollapsed}
+                aria-controls="chat-composer-header-panel"
+                onClick={toggleComposerHeaderCollapsed}
+              >
+                {composerHeaderCollapsed ? "▼" : "▲"}
+              </button>
+            </Tooltip>
           </div>
           {composerHeaderCollapsed ? (
             <p className="mt-tight truncate text-meta leading-snug text-ink-muted" title={composerHeaderSummary}>
@@ -3485,24 +3490,25 @@ export function ChatPage() {
                           </option>
                         ))}
                       </select>
+                      <Tooltip label={selectedWorkspaceId ? t("chat:showProjectTree") : t("chat:selectProjectFirst")}>
                       <button
-                        type="button"
-                        className={[
-                          "shrink-0 rounded-card border px-firm py-snug text-meta font-medium",
-                          projectPanelOpen
-                            ? "border-sky-500/60 bg-sky-950/50 text-sky-100"
-                            : "border-line bg-black/30 text-ink-secondary hover:bg-white/10",
-                        ].join(" ")}
-                        disabled={!selectedWorkspaceId}
-                        title={selectedWorkspaceId ? t("chat:showProjectTree") : t("chat:selectProjectFirst")}
-                        onClick={() => {
-                          const next = !projectPanelOpen;
-                          setProjectPanelOpen(next);
-                          setChatProjectPanelOpen(userId, next);
-                        }}
-                      >
-                        {projectPanelOpen ? t("chat:hideTree") : t("chat:showTree")}
-                      </button>
+                          type="button"
+                          className={[
+                            "shrink-0 rounded-card border px-firm py-snug text-meta font-medium",
+                            projectPanelOpen
+                              ? "border-sky-500/60 bg-sky-950/50 text-sky-100"
+                              : "border-line bg-black/30 text-ink-secondary hover:bg-white/10",
+                          ].join(" ")}
+                          disabled={!selectedWorkspaceId}
+                          onClick={() => {
+                            const next = !projectPanelOpen;
+                            setProjectPanelOpen(next);
+                            setChatProjectPanelOpen(userId, next);
+                          }}
+                        >
+                          {projectPanelOpen ? t("chat:hideTree") : t("chat:showTree")}
+                        </button>
+                      </Tooltip>
                       {selectedWorkspace &&
                       selectedWorkspace.access_role !== "viewer" &&
                       !isAgentlayerSelfWorkspace(selectedWorkspace) ? (
@@ -4153,15 +4159,16 @@ export function ChatPage() {
                         {queueItemPreview(item)}
                       </span>
                       {loading ? (
+                        <Tooltip label={t("chat:composerQueueSendNow")}>
                         <button
-                          type="button"
-                          className="shrink-0 rounded-tile px-snug text-meta font-medium uppercase tracking-wide text-sky-300/90 hover:bg-sky-500/15 hover:text-sky-100"
-                          title={t("chat:composerQueueSendNow")}
-                          aria-label={t("chat:composerQueueSendNow")}
-                          onClick={() => onForceSendQueuedItem(item.id)}
-                        >
-                          {t("chat:composerForceSend")}
-                        </button>
+                            type="button"
+                            className="shrink-0 rounded-tile px-snug text-meta font-medium uppercase tracking-wide text-sky-300/90 hover:bg-sky-500/15 hover:text-sky-100"
+                            aria-label={t("chat:composerQueueSendNow")}
+                            onClick={() => onForceSendQueuedItem(item.id)}
+                          >
+                            {t("chat:composerForceSend")}
+                          </button>
+                        </Tooltip>
                       ) : null}
                       <button
                         type="button"
@@ -4224,31 +4231,32 @@ export function ChatPage() {
                 </p>
               ) : null}
               <div className="mt-base flex items-center justify-between gap-base">
-                <button
-                  type="button"
-                  disabled={
-                    voiceTranscribing ||
-                    (chatRuntime?.vision?.available === false &&
-                      /* still allow non-image files */ false)
-                  }
-                  className="rounded-card border border-line bg-black/20 p-base text-ink-muted hover:bg-white/5 hover:text-neutral-200 disabled:opacity-40"
-                  title={
+                <Tooltip label={
                     chatRuntime?.vision?.available === false
                       ? t("chat:attachVisionUnavailable")
                       : t("chat:attachTitle")
-                  }
-                  aria-label={t("chat:attachFiles")}
-                  onClick={() => {
-                    if (chatRuntime?.vision?.available === false) {
-                      // Images disabled; still open picker for text/zip via accept filter.
+                  }>
+                <button
+                    type="button"
+                    disabled={
+                      voiceTranscribing ||
+                      (chatRuntime?.vision?.available === false &&
+                        /* still allow non-image files */ false)
                     }
-                    fileInputRef.current?.click();
-                  }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-                  </svg>
-                </button>
+                    className="rounded-card border border-line bg-black/20 p-base text-ink-muted hover:bg-white/5 hover:text-neutral-200 disabled:opacity-40"
+                    aria-label={t("chat:attachFiles")}
+                    onClick={() => {
+                      if (chatRuntime?.vision?.available === false) {
+                        // Images disabled; still open picker for text/zip via accept filter.
+                      }
+                      fileInputRef.current?.click();
+                    }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                    </svg>
+                  </button>
+                </Tooltip>
                 {mode === "agent" &&
                 voiceStatus?.input_web &&
                 (voiceStatus.prefs.mode_web === "push_to_talk" ||
@@ -4280,26 +4288,28 @@ export function ChatPage() {
                 {loading ? (
                   <div className="flex flex-wrap items-center justify-end gap-base">
                     {canQueue ? (
+                      <Tooltip label={t("chat:composerQueueAddTitle")}>
                       <button
-                        type="button"
-                        className="inline-flex items-center rounded-card border border-violet-500/50 bg-violet-950/40 px-soft py-base text-sm font-medium text-violet-100 hover:bg-violet-900/50"
-                        title={t("chat:composerQueueAddTitle")}
-                        onClick={() => onQueue()}
-                      >
-                        {t("chat:composerQueueAdd")}
-                        <ComposerKbd>↵</ComposerKbd>
-                      </button>
+                          type="button"
+                          className="inline-flex items-center rounded-card border border-violet-500/50 bg-violet-950/40 px-soft py-base text-sm font-medium text-violet-100 hover:bg-violet-900/50"
+                          onClick={() => onQueue()}
+                        >
+                          {t("chat:composerQueueAdd")}
+                          <ComposerKbd>↵</ComposerKbd>
+                        </button>
+                      </Tooltip>
                     ) : null}
                     {canForceSend ? (
+                      <Tooltip label={t("chat:composerForceSendTitle", { modEnter: composerModEnter })}>
                       <button
-                        type="button"
-                        className="inline-flex items-center rounded-card bg-sky-600 px-soft py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500"
-                        title={t("chat:composerForceSendTitle", { modEnter: composerModEnter })}
-                        onClick={() => onForceSend()}
-                      >
-                        {t("chat:composerForceSend")}
-                        <ComposerKbd>{composerModEnter}</ComposerKbd>
-                      </button>
+                          type="button"
+                          className="inline-flex items-center rounded-card bg-sky-600 px-soft py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500"
+                          onClick={() => onForceSend()}
+                        >
+                          {t("chat:composerForceSend")}
+                          <ComposerKbd>{composerModEnter}</ComposerKbd>
+                        </button>
+                      </Tooltip>
                     ) : null}
                     <button
                       type="button"
@@ -4310,16 +4320,17 @@ export function ChatPage() {
                     </button>
                   </div>
                 ) : (
+                  <Tooltip label={t("chat:composerSendTitle")}>
                   <button
-                    type="button"
-                    disabled={!canSend || voiceTranscribing}
-                    className="inline-flex items-center rounded-card bg-sky-600 px-soft py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-40"
-                    title={t("chat:composerSendTitle")}
-                    onClick={() => onSend()}
-                  >
-                    {t("chat:composerSend")}
-                    <ComposerKbd>↵</ComposerKbd>
-                  </button>
+                      type="button"
+                      disabled={!canSend || voiceTranscribing}
+                      className="inline-flex items-center rounded-card bg-sky-600 px-soft py-base text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-40"
+                      onClick={() => onSend()}
+                    >
+                      {t("chat:composerSend")}
+                      <ComposerKbd>↵</ComposerKbd>
+                    </button>
+                  </Tooltip>
                 )}
               </div>
             </div>

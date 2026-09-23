@@ -5,6 +5,7 @@ import { useAuth } from "../auth/AuthContext";
 import { hasOrgSurface } from "../auth/deploymentMode";
 import { SUPPORTED } from "../i18n/config";
 import { Mascot, pickCharacter } from "../ui/Mascot";
+import { Tooltip } from "../ui/Tooltip";
 
 export function UserMenu() {
   const { t, i18n } = useTranslation();
@@ -30,16 +31,17 @@ export function UserMenu() {
 
   return (
     <div className="relative" ref={rootRef}>
+      <Tooltip label={email || t("userMenu.account")}>
       <button
-        type="button"
-        className="flex h-9 w-9 items-center justify-center rounded-pill outline-none ring-sky-500/40 transition-transform duration-fast ease-standard hover:scale-105 focus-visible:ring-2"
-        aria-expanded={open}
-        aria-haspopup="menu"
-        title={email || t("userMenu.account")}
-        onClick={() => setOpen((v) => !v)}
-      >
-        <Mascot character={pickCharacter(email)} state={open ? "happy" : "idle"} size={30} ariaLabel={null} />
-      </button>
+          type="button"
+          className="flex h-9 w-9 items-center justify-center rounded-pill outline-none ring-sky-500/40 transition-transform duration-fast ease-standard hover:scale-105 focus-visible:ring-2"
+          aria-expanded={open}
+          aria-haspopup="menu"
+          onClick={() => setOpen((v) => !v)}
+        >
+          <Mascot character={pickCharacter(email)} state={open ? "happy" : "idle"} size={30} ariaLabel={null} />
+        </button>
+      </Tooltip>
       {open ? (
         <div
           role="menu"

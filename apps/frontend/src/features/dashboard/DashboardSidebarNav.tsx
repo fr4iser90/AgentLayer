@@ -11,6 +11,7 @@ import {
   type HubGroup,
   hubForSelectedId,
 } from "./dashboardHubNav";
+import { Tooltip } from "../../ui/Tooltip";
 
 const LS_FAV_KEY = "dashboard_nav_favorites_v1";
 
@@ -85,21 +86,22 @@ function DashboardNavRow(props: {
           {note ? ` · ${note}` : ""}
         </span>
       </button>
+      <Tooltip label={fav ? t("dashboard:unfavorite") : t("dashboard:favorite")}>
       <button
-        type="button"
-        title={fav ? t("dashboard:unfavorite") : t("dashboard:favorite")}
-        className={[
-          "shrink-0 rounded-tile px-snug text-xs",
-          fav ? "text-amber-300/90 hover:bg-amber-950/30" : "text-white/20 hover:bg-white/5 hover:text-white/45",
-        ].join(" ")}
-        onClick={onToggleFav}
-      >
-        {fav ? (
-          <Star aria-hidden fill="currentColor" className="h-3.5 w-3.5" />
-        ) : (
-          <Star aria-hidden className="h-3.5 w-3.5" />
-        )}
-      </button>
+          type="button"
+          className={[
+            "shrink-0 rounded-tile px-snug text-xs",
+            fav ? "text-amber-300/90 hover:bg-amber-950/30" : "text-white/20 hover:bg-white/5 hover:text-white/45",
+          ].join(" ")}
+          onClick={onToggleFav}
+        >
+          {fav ? (
+            <Star aria-hidden fill="currentColor" className="h-3.5 w-3.5" />
+          ) : (
+            <Star aria-hidden className="h-3.5 w-3.5" />
+          )}
+        </button>
+      </Tooltip>
     </li>
   );
 }
