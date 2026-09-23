@@ -32,7 +32,7 @@ export function HarnessRunContextBar({ auth }: Props) {
   }, [reload]);
 
   return (
-    <section className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-black/20 px-3 py-2">
+    <section className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-line bg-black/20 px-3 py-2">
       <div className="min-w-0">
         <p className="text-meta text-ink-muted">{t("admin:benchHarnessContextHint")}</p>
         {loading ? (
@@ -47,7 +47,7 @@ export function HarnessRunContextBar({ auth }: Props) {
       </div>
       <Link
         to="/admin/agent-config"
-        className="shrink-0 rounded border border-sky-500/40 bg-sky-950/30 px-2.5 py-1 text-meta text-sky-200 hover:bg-sky-950/50"
+        className="shrink-0 rounded-tile border border-sky-500/40 bg-sky-950/30 px-2.5 py-1 text-meta text-sky-200 hover:bg-sky-950/50"
       >
         {t("admin:benchHarnessContextEdit")}
       </Link>

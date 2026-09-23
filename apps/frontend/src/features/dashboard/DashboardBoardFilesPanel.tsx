@@ -33,7 +33,7 @@ export function DashboardBoardFilesPanel(props: { dashboardId: string }) {
   }, [reload]);
 
   return (
-    <div className="rounded-xl border border-line bg-black/20 p-4">
+    <div className="rounded-sheet border border-line bg-black/20 p-4">
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
           {t("dashboard:boardFilesLibrary")}
@@ -41,7 +41,7 @@ export function DashboardBoardFilesPanel(props: { dashboardId: string }) {
         <button
           type="button"
           disabled={busy}
-          className="rounded-md border border-line px-2 py-1 text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
+          className="rounded-tile border border-line px-2 py-1 text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
           onClick={() => void reload()}
         >
           {t("dashboard:boardFilesRefresh")}
@@ -58,7 +58,7 @@ export function DashboardBoardFilesPanel(props: { dashboardId: string }) {
           {files.map((f) => (
             <li
               key={f.id}
-              className="rounded-md border border-line-subtle bg-black/30 px-2 py-1.5 text-xs text-ink-primary"
+              className="rounded-tile border border-line-subtle bg-black/30 px-2 py-1.5 text-xs text-ink-primary"
             >
               <p className="truncate font-medium">{f.original_name || f.id}</p>
               <p className="truncate text-meta text-ink-muted">

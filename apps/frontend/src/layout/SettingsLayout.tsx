@@ -5,7 +5,7 @@ import { useAuth } from "../auth/AuthContext";
 import { friendSystemEnabled } from "../auth/tenantSurface";
 
 const subLinkBase =
-  "rounded-lg px-3 py-2 text-sm transition-colors border border-transparent";
+  "rounded-card px-3 py-2 text-sm transition-colors border border-transparent";
 const subLink = `${subLinkBase} block`;
 const subLinkIcon = `${subLinkBase} flex items-center gap-1.5`;
 

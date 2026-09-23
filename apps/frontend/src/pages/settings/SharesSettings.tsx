@@ -337,7 +337,7 @@ export default function SharesSettings() {
    */
   function renderPolicyField(field: string, resourceId: string, draft: SharePolicy) {
     const cls =
-      "mt-1 w-full rounded-md border border-line bg-canvas px-2 py-1.5 text-ink-primary text-sm";
+      "mt-1 w-full rounded-tile border border-line bg-canvas px-2 py-1.5 text-ink-primary text-sm";
     switch (field) {
       case "days_ahead":
         return (
@@ -491,7 +491,7 @@ export default function SharesSettings() {
             return (
               <div
                 key={userId}
-                className="rounded-xl border border-line bg-card p-4 cursor-pointer hover:bg-white/[0.02] transition-colors"
+                className="rounded-sheet border border-line bg-card p-4 cursor-pointer hover:bg-white/[0.02] transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
                   void loadFriendShares(friend);
@@ -513,7 +513,7 @@ export default function SharesSettings() {
           })}
 
           {Object.keys(groupByUser(outgoing)).length === 0 && (
-            <div className="p-8 text-center text-ink-muted rounded-xl border border-line bg-card">
+            <div className="p-8 text-center text-ink-muted rounded-sheet border border-line bg-card">
               {t("settings:sharesNoneOutgoing")}
             </div>
           )}
@@ -528,7 +528,7 @@ export default function SharesSettings() {
             return (
               <div
                 key={userId}
-                className="rounded-xl border border-line bg-card p-4"
+                className="rounded-sheet border border-line bg-card p-4"
               >
                 <div className="flex items-center justify-between">
                   <div>
@@ -544,7 +544,7 @@ export default function SharesSettings() {
           })}
 
           {Object.keys(groupByUser(incoming)).length === 0 && (
-            <div className="p-8 text-center text-ink-muted rounded-xl border border-line bg-card">
+            <div className="p-8 text-center text-ink-muted rounded-sheet border border-line bg-card">
               {t("settings:sharesNoneIncoming")}
             </div>
           )}
@@ -552,7 +552,7 @@ export default function SharesSettings() {
       )}
 
       {!loading && (
-        <div className="rounded-xl border border-line bg-card p-4">
+        <div className="rounded-sheet border border-line bg-card p-4">
           <h3 className="font-medium text-ink-primary">
             {t("settings:sharesPublishedTitle")}
           </h3>
@@ -573,7 +573,7 @@ export default function SharesSettings() {
                 return (
                   <div
                     key={key}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line/60 p-3"
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-line/60 p-3"
                   >
                     <div className="min-w-[10rem]">
                       <div className="text-ink-primary">
@@ -602,7 +602,7 @@ export default function SharesSettings() {
                           onChange={(e) =>
                             setKindDraft((prev) => ({ ...prev, [key]: e.target.value }))
                           }
-                          className="rounded-md border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
+                          className="rounded-tile border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
                         >
                           {row.available_kinds.map((kind) => (
                             <option key={kind} value={kind}>
@@ -614,7 +614,7 @@ export default function SharesSettings() {
                           type="button"
                           disabled={publishing || unchanged || !draft}
                           onClick={() => void publishKind(row)}
-                          className="rounded-md bg-emerald-700 px-3 py-1.5 text-sm text-ink-on-fill disabled:opacity-50"
+                          className="rounded-tile bg-emerald-700 px-3 py-1.5 text-sm text-ink-on-fill disabled:opacity-50"
                         >
                           {t("settings:sharesPublishButton")}
                         </button>
@@ -633,7 +633,7 @@ export default function SharesSettings() {
       )}
 
       {selectedFriend && friendShares && (
-        <div className="rounded-xl border border-line bg-card overflow-hidden mt-8">
+        <div className="rounded-sheet border border-line bg-card overflow-hidden mt-8">
           <div className="p-4 border-b border-line">
             <h3 className="font-medium text-ink-primary">
               {selectedFriend.display_name || selectedFriend.email}
@@ -653,7 +653,7 @@ export default function SharesSettings() {
                   return (
                     <div
                       key={resourceId}
-                      className="rounded-lg border border-line/60 p-3 space-y-3"
+                      className="rounded-card border border-line/60 p-3 space-y-3"
                     >
                       <div className="flex items-center justify-between">
                         <span className="text-ink-primary">{displayResourceName(resourceId, catalog)}</span>
@@ -665,7 +665,7 @@ export default function SharesSettings() {
                             disabled={saving}
                             className="sr-only peer"
                           />
-                          <div className="w-9 h-5 bg-neutral-700 peer-checked:bg-emerald-600 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all" />
+                          <div className="w-9 h-5 bg-neutral-700 peer-checked:bg-emerald-600 rounded-pill peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-pill after:h-4 after:w-4 after:transition-all" />
                         </label>
                       </div>
 
@@ -704,7 +704,7 @@ export default function SharesSettings() {
                     <select
                       value={newResourceType}
                       onChange={(e) => setNewResourceType(e.target.value)}
-                      className="mt-1 w-full rounded-md border border-line bg-field px-2 py-1.5 text-ink-primary text-sm"
+                      className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1.5 text-ink-primary text-sm"
                     >
                       <option value="" disabled>
                         {t("settings:sharesSelectTypePlaceholder")}
@@ -726,7 +726,7 @@ export default function SharesSettings() {
                         value={newResourceIdentifier}
                         placeholder={t("settings:sharesIdentifierPlaceholder")}
                         onChange={(e) => setNewResourceIdentifier(e.target.value)}
-                        className="mt-1 w-full rounded-md border border-line bg-field px-2 py-1.5 text-ink-primary text-sm"
+                        className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1.5 text-ink-primary text-sm"
                       />
                     </label>
                   )}
@@ -743,7 +743,7 @@ export default function SharesSettings() {
                       setNewResourceType("");
                       setNewResourceIdentifier("");
                     }}
-                    className="rounded-md bg-emerald-700 px-3 py-1.5 text-sm text-ink-on-fill disabled:opacity-50"
+                    className="rounded-tile bg-emerald-700 px-3 py-1.5 text-sm text-ink-on-fill disabled:opacity-50"
                   >
                     {t("settings:sharesAddResource")}
                   </button>

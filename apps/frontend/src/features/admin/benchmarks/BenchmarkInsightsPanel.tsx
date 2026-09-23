@@ -42,9 +42,9 @@ function PatternBars({
             <span className="font-mono text-white/90">{pid}</span>
             <span className="text-ink-muted">{count}</span>
           </div>
-          <div className="h-2 overflow-hidden rounded bg-white/5">
+          <div className="h-2 overflow-hidden rounded-tile bg-white/5">
             <div
-              className="h-full rounded bg-rose-500/70"
+              className="h-full rounded-tile bg-rose-500/70"
               style={{ width: `${Math.max(8, (count / max) * 100)}%` }}
             />
           </div>
@@ -67,11 +67,11 @@ function AnalysisSummary({
   const weak = scenarios.filter((s) => s.pass_rate < 0.6).length;
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <div className="rounded-lg border border-line bg-black/20 p-3">
+      <div className="rounded-card border border-line bg-black/20 p-3">
         <p className="text-meta uppercase text-ink-muted">{t("admin:agentConfigAnalysisRuns")}</p>
         <p className="mt-1 text-xl font-semibold text-ink-primary">{analysis.run_count}</p>
       </div>
-      <div className="rounded-lg border border-line bg-black/20 p-3">
+      <div className="rounded-card border border-line bg-black/20 p-3">
         <p className="text-meta uppercase text-ink-muted">{t("admin:agentConfigAnalysisTopModel")}</p>
         <p className="mt-1 truncate text-sm font-mono text-ink-primary">
           {topModel ? formatBenchmarkProviderModel(topModel) : "—"}
@@ -82,11 +82,11 @@ function AnalysisSummary({
           </p>
         ) : null}
       </div>
-      <div className="rounded-lg border border-line bg-black/20 p-3">
+      <div className="rounded-card border border-line bg-black/20 p-3">
         <p className="text-meta uppercase text-ink-muted">{t("admin:agentConfigAnalysisScenarios")}</p>
         <p className="mt-1 text-xl font-semibold text-ink-primary">{scenarios.length}</p>
       </div>
-      <div className="rounded-lg border border-line bg-black/20 p-3">
+      <div className="rounded-card border border-line bg-black/20 p-3">
         <p className="text-meta uppercase text-ink-muted">{t("admin:agentConfigAnalysisWeakScenarios")}</p>
         <p className="mt-1 text-xl font-semibold text-rose-300">{weak}</p>
       </div>
@@ -176,7 +176,7 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
           <select
             value={cohortFilter}
             onChange={(e) => setCohortFilter(e.target.value)}
-            className="mt-1 block min-w-[160px] rounded border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
+            className="mt-1 block min-w-[160px] rounded-tile border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
           >
             <option value="">{t("admin:agentConfigAnalysisAllCohorts")}</option>
             {cohorts.map((c) => (
@@ -190,19 +190,19 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
           type="button"
           onClick={() => void loadAnalysis()}
           disabled={loading}
-          className="rounded border border-line-strong bg-black/30 px-3 py-1.5 text-xs text-ink-primary hover:bg-white/10 disabled:opacity-50"
+          className="rounded-tile border border-line-strong bg-black/30 px-3 py-1.5 text-xs text-ink-primary hover:bg-white/10 disabled:opacity-50"
         >
           {loading ? t("admin:loading") : t("admin:agentConfigAnalysisRefresh")}
         </button>
       </div>
 
-      <section className="rounded-xl border border-line bg-card p-4">
+      <section className="rounded-sheet border border-line bg-card p-4">
         <h2 className="text-sm font-medium text-ink-primary">{t("admin:agentConfigAnalysisCompare")}</h2>
         <div className="mt-3 flex flex-wrap items-end gap-2">
           <select
             value={compareA}
             onChange={(e) => setCompareA(e.target.value)}
-            className="rounded border border-line bg-field px-2 py-1.5 text-xs text-ink-primary"
+            className="rounded-tile border border-line bg-field px-2 py-1.5 text-xs text-ink-primary"
           >
             <option value="">{t("admin:agentConfigAnalysisCohortA")}</option>
             {cohorts.map((c) => (
@@ -215,7 +215,7 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
           <select
             value={compareB}
             onChange={(e) => setCompareB(e.target.value)}
-            className="rounded border border-line bg-field px-2 py-1.5 text-xs text-ink-primary"
+            className="rounded-tile border border-line bg-field px-2 py-1.5 text-xs text-ink-primary"
           >
             <option value="">{t("admin:agentConfigAnalysisCohortB")}</option>
             {cohorts.map((c) => (
@@ -228,7 +228,7 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
             type="button"
             onClick={() => void onCompare()}
             disabled={!compareA || !compareB || compareA === compareB || loading}
-            className="rounded bg-indigo-700/80 px-3 py-1.5 text-xs text-ink-primary hover:bg-indigo-600 disabled:opacity-50"
+            className="rounded-tile bg-indigo-700/80 px-3 py-1.5 text-xs text-ink-primary hover:bg-indigo-600 disabled:opacity-50"
           >
             {t("admin:agentConfigAnalysisCompareBtn")}
           </button>
@@ -239,7 +239,7 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
               const block = compareResult[side];
               const label = side === "a" ? compareA : compareB;
               return (
-                <div key={side} className="rounded border border-line p-2">
+                <div key={side} className="rounded-tile border border-line p-2">
                   <p className="mb-2 text-xs font-medium text-ink-primary">{label}</p>
                   <p className="text-xs text-ink-muted">
                     {t("admin:agentConfigAnalysisRuns")}: {block.run_count}
@@ -261,7 +261,7 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
           <AnalysisSummary analysis={analysis} t={t} />
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <section className="rounded-xl border border-line bg-card p-4">
+            <section className="rounded-sheet border border-line bg-card p-4">
               <h2 className="text-sm font-medium text-ink-primary">
                 {t("admin:agentConfigAnalysisFailurePatterns")}
               </h2>
@@ -271,7 +271,7 @@ export function BenchmarkInsightsPanel({ auth, suiteFilter = "", refreshToken = 
             </section>
 
             {(analysis.by_scenario?.length ?? 0) > 0 ? (
-              <section className="rounded-xl border border-line bg-card p-4">
+              <section className="rounded-sheet border border-line bg-card p-4">
                 <h2 className="text-sm font-medium text-ink-primary">
                   {t("admin:agentConfigAnalysisByScenario")}
                 </h2>

@@ -23,7 +23,7 @@ function MessageBody({ content }: { content: string }) {
                 key={i}
                 src={p.image_url.url}
                 alt=""
-                className="max-h-64 max-w-full rounded-md border border-line object-contain"
+                className="max-h-64 max-w-full rounded-tile border border-line object-contain"
               />
             );
           }
@@ -47,7 +47,7 @@ export function UserMessageBubble({ message, timeLabel, showRetry, onCopy, onRet
   const { t } = useTranslation(["chat"]);
 
   return (
-    <div className="group relative max-w-[min(100%,42rem)] rounded-2xl border border-sky-900/40 bg-[#1a2a3d] px-4 py-3 text-sm text-ink-primary shadow-sm">
+    <div className="group relative max-w-[min(100%,42rem)] rounded-sheet border border-sky-900/40 bg-[#1a2a3d] px-4 py-3 text-sm text-ink-primary shadow-sm">
       <div className="mb-1 flex items-center justify-between gap-2">
         <span className="text-meta font-medium uppercase tracking-wide text-ink-muted">
           {t("chat:roleYou")}
@@ -59,7 +59,7 @@ export function UserMessageBubble({ message, timeLabel, showRetry, onCopy, onRet
           <button
             type="button"
             onClick={onCopy}
-            className="rounded-md px-2 py-0.5 text-meta font-medium uppercase tracking-wide text-sky-200/80 hover:bg-white/10 hover:text-sky-100"
+            className="rounded-tile px-2 py-0.5 text-meta font-medium uppercase tracking-wide text-sky-200/80 hover:bg-white/10 hover:text-sky-100"
             title={t("chat:messageCopyTitle")}
           >
             {t("chat:messageCopy")}
@@ -68,7 +68,7 @@ export function UserMessageBubble({ message, timeLabel, showRetry, onCopy, onRet
             <button
               type="button"
               onClick={onRetry}
-              className="rounded-md px-2 py-0.5 text-meta font-medium uppercase tracking-wide text-violet-200/80 hover:bg-white/10 hover:text-violet-100"
+              className="rounded-tile px-2 py-0.5 text-meta font-medium uppercase tracking-wide text-violet-200/80 hover:bg-white/10 hover:text-violet-100"
               title={t("chat:messageRetryTitle")}
             >
               {t("chat:messageRetry")}

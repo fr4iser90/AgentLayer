@@ -27,7 +27,7 @@ function AgentIcon({ icon, name }: { icon?: string; name: string }): ReactNode {
   if (isKey || !raw) {
     return (
       <span
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-border/60 text-xs font-medium text-ink-muted"
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-card bg-surface-border/60 text-xs font-medium text-ink-muted"
         aria-hidden
         title={isKey ? raw : undefined}
       >
@@ -366,7 +366,7 @@ export function AdminAgents() {
       <h1 className="text-2xl font-semibold text-ink-primary">{t("admin:agentsTitle")}</h1>
       <p className="mt-2 max-w-3xl text-sm text-ink-muted">{t("admin:agentsIntro")}</p>
 
-      <section className="mt-6 rounded-xl border border-line bg-card p-4">
+      <section className="mt-6 rounded-sheet border border-line bg-card p-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-sm font-semibold text-ink-primary">{t("admin:agentsImportTitle")}</h2>
@@ -377,7 +377,7 @@ export function AdminAgents() {
           </label>
           <select
             id="agents-import-source-type"
-            className="w-full rounded-md border border-line bg-field px-2 py-1.5 text-xs text-ink-primary sm:w-56"
+            className="w-full rounded-tile border border-line bg-field px-2 py-1.5 text-xs text-ink-primary sm:w-56"
             value={importSourceType}
             onChange={(e) => setImportSourceType(e.target.value)}
           >
@@ -395,17 +395,17 @@ export function AdminAgents() {
           <label className="flex flex-col gap-1 text-xs text-ink-muted">
             <span>{t("admin:agentsImportPaste")}</span>
             <textarea
-              className="min-h-40 rounded-md border border-line bg-field px-3 py-2 font-mono text-xs text-ink-primary placeholder:text-neutral-500"
+              className="min-h-40 rounded-tile border border-line bg-field px-3 py-2 font-mono text-xs text-ink-primary placeholder:text-neutral-500"
               value={importText}
               onChange={(e) => setImportText(e.target.value)}
               placeholder={t("admin:agentsImportPastePlaceholder")}
             />
           </label>
-          <div className="rounded-md border border-line bg-black/20 p-3 text-xs text-ink-muted">
+          <div className="rounded-tile border border-line bg-black/20 p-3 text-xs text-ink-muted">
             <label className="block">
               <span>{t("admin:agentsImportUpload")}</span>
               <input
-                className="mt-2 block w-full text-xs text-ink-primary file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-xs file:text-white hover:file:bg-white/15"
+                className="mt-2 block w-full text-xs text-ink-primary file:mr-3 file:rounded-tile file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-xs file:text-white hover:file:bg-white/15"
                 type="file"
                 multiple
                 accept=".md,.markdown,.txt,.yaml,.yml,.json,.zip"
@@ -421,7 +421,7 @@ export function AdminAgents() {
             <button
               type="button"
               disabled={importBusy || (!importText.trim() && !(importFiles?.length))}
-              className="mt-4 rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+              className="mt-4 rounded-tile bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
               onClick={() => void analyzeImport()}
             >
               {importBusy ? t("admin:agentsImportAnalyzing") : t("admin:agentsImportAnalyze")}
@@ -432,7 +432,7 @@ export function AdminAgents() {
         {importMsg ? <p className="mt-3 text-sm text-ink-muted">{importMsg}</p> : null}
         {importResult ? (
           <div className="mt-4 space-y-3">
-            <div className="rounded-md border border-line bg-black/20 p-3 text-xs text-ink-secondary">
+            <div className="rounded-tile border border-line bg-black/20 p-3 text-xs text-ink-secondary">
               {t("admin:toolsImportDetected")}:{" "}
               <span className="font-mono text-ink-primary">{importResult.source_type}</span>{" "}
               <span className="text-ink-muted">
@@ -440,7 +440,7 @@ export function AdminAgents() {
               </span>
               <div className="mt-2 flex flex-wrap gap-2">
                 {importResult.sources.map((s) => (
-                  <span key={s.path} className="rounded bg-white/5 px-2 py-1 font-mono text-meta">
+                  <span key={s.path} className="rounded-tile bg-white/5 px-2 py-1 font-mono text-meta">
                     {s.path} · {t("admin:toolsImportChars", { count: s.chars })}
                   </span>
                 ))}
@@ -448,33 +448,33 @@ export function AdminAgents() {
             </div>
 
             <div className="grid gap-3 lg:grid-cols-2">
-              <article className="rounded-lg border border-line bg-black/20 p-3 text-xs text-ink-primary">
+              <article className="rounded-card border border-line bg-black/20 p-3 text-xs text-ink-primary">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-sm font-semibold text-ink-primary">
                     {String(importResult.agent_draft.agent_yaml.id ?? "")}
                   </span>
-                  <span className="rounded bg-amber-900/60 px-1.5 py-0.5 text-meta text-amber-100">
+                  <span className="rounded-tile bg-amber-900/60 px-1.5 py-0.5 text-meta text-amber-100">
                     {t("admin:toolsImportRisk", { risk: importResult.agent_draft.risk })}
                   </span>
                 </div>
                 <p className="mt-2 font-mono text-meta text-ink-muted">
                   {importResult.agent_draft.target_dir}
                 </p>
-                <pre className="mt-3 max-h-56 overflow-auto rounded bg-black/40 p-2 text-meta text-ink-secondary">
+                <pre className="mt-3 max-h-56 overflow-auto rounded-tile bg-black/40 p-2 text-meta text-ink-secondary">
                   {JSON.stringify(importResult.agent_draft.agent_yaml, null, 2)}
                 </pre>
               </article>
 
-              <article className="rounded-lg border border-line bg-black/20 p-3 text-xs text-ink-primary">
+              <article className="rounded-card border border-line bg-black/20 p-3 text-xs text-ink-primary">
                 <h3 className="text-sm font-semibold text-ink-primary">{t("admin:agentsImportSystemPrompt")}</h3>
-                <pre className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap rounded bg-black/40 p-2 text-meta text-ink-secondary">
+                <pre className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap rounded-tile bg-black/40 p-2 text-meta text-ink-secondary">
                   {importResult.agent_draft.system_prompt_preview || "—"}
                 </pre>
               </article>
             </div>
 
             <div className="grid gap-3 lg:grid-cols-2">
-              <article className="rounded-lg border border-line bg-black/20 p-3 text-xs text-ink-primary">
+              <article className="rounded-card border border-line bg-black/20 p-3 text-xs text-ink-primary">
                 <h3 className="text-sm font-semibold text-ink-primary">{t("admin:agentsImportToolMapping")}</h3>
                 <ul className="mt-2 space-y-1">
                   {importResult.tool_mapping.matched_existing.map((m) => (
@@ -491,11 +491,11 @@ export function AdminAgents() {
                 ) : null}
               </article>
 
-              <article className="rounded-lg border border-line bg-black/20 p-3 text-xs text-ink-primary">
+              <article className="rounded-card border border-line bg-black/20 p-3 text-xs text-ink-primary">
                 <h3 className="text-sm font-semibold text-ink-primary">{t("admin:agentsImportConfigPatches")}</h3>
                 <ul className="mt-2 space-y-2">
                   {importResult.config_patches.map((p) => (
-                    <li key={p.knob_id} className="rounded bg-white/5 p-2">
+                    <li key={p.knob_id} className="rounded-tile bg-white/5 p-2">
                       <p className="font-mono text-meta text-ink-primary">
                         {p.knob_id} = {JSON.stringify(p.value)}
                       </p>
@@ -515,14 +515,14 @@ export function AdminAgents() {
       <div className="mt-4 flex flex-wrap gap-2">
         <button
           type="button"
-          className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500"
+          className="rounded-tile bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500"
           onClick={() => void loadList()}
         >
           {t("admin:agentsRefresh")}
         </button>
         <Link
           to="/admin/tools"
-          className="rounded-md bg-white/10 px-4 py-2 text-sm font-medium text-ink-primary hover:bg-white/15"
+          className="rounded-tile bg-white/10 px-4 py-2 text-sm font-medium text-ink-primary hover:bg-white/15"
         >
           {t("admin:agentsOpenTools")}
         </Link>
@@ -543,7 +543,7 @@ export function AdminAgents() {
                 <button
                   type="button"
                   onClick={() => setSelectedId(a.id)}
-                  className={`w-full rounded-xl border px-3 py-3 text-left transition-colors ${
+                  className={`w-full rounded-sheet border px-3 py-3 text-left transition-colors ${
                     selectedId === a.id
                       ? "border-sky-500/40 bg-sky-950/20"
                       : "border-line bg-card hover:border-line-strong"
@@ -568,7 +568,7 @@ export function AdminAgents() {
           </ul>
 
           {selected ? (
-            <div className="rounded-xl border border-line bg-card p-4">
+            <div className="rounded-sheet border border-line bg-card p-4">
               <h2 className="flex items-center gap-2 text-lg font-semibold text-ink-primary">
                 <AgentIcon icon={selected.icon} name={selected.name} />
                 {selected.name}
@@ -609,7 +609,7 @@ export function AdminAgents() {
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 <label className="text-xs text-ink-muted">{t("admin:agentsEffectivePreview")}</label>
                 <select
-                  className="rounded border border-line bg-field px-2 py-1 text-xs text-ink-primary"
+                  className="rounded-tile border border-line bg-field px-2 py-1 text-xs text-ink-primary"
                   value={previewRole}
                   onChange={(e) => setPreviewRole(e.target.value as "admin" | "user")}
                 >
@@ -617,7 +617,7 @@ export function AdminAgents() {
                   <option value="user">{t("admin:toolsMinRoleUser")}</option>
                 </select>
                 <input
-                  className="w-72 rounded border border-line bg-field px-2 py-1 text-xs text-ink-primary placeholder:text-neutral-500"
+                  className="w-72 rounded-tile border border-line bg-field px-2 py-1 text-xs text-ink-primary placeholder:text-neutral-500"
                   value={previewUserId}
                   onChange={(e) => setPreviewUserId(e.target.value)}
                   placeholder={t("admin:agentsPreviewUserIdPlaceholder")}
@@ -628,7 +628,7 @@ export function AdminAgents() {
                 <p className="mt-3 text-xs text-ink-muted">{t("admin:agentsLoadingDetail")}</p>
               ) : (
                 <>
-                  <div className="mt-4 rounded-lg border border-line bg-black/20 p-3">
+                  <div className="mt-4 rounded-card border border-line bg-black/20 p-3">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">
@@ -671,7 +671,7 @@ export function AdminAgents() {
                       <label className="text-xs text-ink-muted">
                         {t("admin:agentsPolicyScope")}
                         <select
-                          className="mt-1 w-full rounded border border-line bg-field px-2 py-1 text-xs text-ink-primary"
+                          className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1 text-xs text-ink-primary"
                           value={policyScope}
                           onChange={(e) => setPolicyScope(e.target.value as "global" | "tenant" | "user")}
                         >
@@ -686,7 +686,7 @@ export function AdminAgents() {
                         <label className="text-xs text-ink-muted">
                           {t("admin:agentsTenantId")}
                           <input
-                            className="mt-1 w-full rounded border border-line bg-field px-2 py-1 text-xs text-ink-primary placeholder:text-neutral-500"
+                            className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1 text-xs text-ink-primary placeholder:text-neutral-500"
                             value={policyTenantId}
                             onChange={(e) => setPolicyTenantId(e.target.value)}
                             placeholder={t("admin:agentsTenantIdPlaceholder")}
@@ -696,7 +696,7 @@ export function AdminAgents() {
                       <label className="text-xs text-ink-muted">
                         {t("admin:agentsUserId")}
                         <input
-                          className="mt-1 w-full rounded border border-line bg-field px-2 py-1 text-xs text-ink-primary placeholder:text-neutral-500"
+                          className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1 text-xs text-ink-primary placeholder:text-neutral-500"
                           value={policyUserId}
                           onChange={(e) => setPolicyUserId(e.target.value)}
                           placeholder={t("admin:agentsUserIdPlaceholder")}
@@ -705,7 +705,7 @@ export function AdminAgents() {
                       <label className="text-xs text-ink-muted">
                         {t("admin:agentsDirectAccess")}
                         <select
-                          className="mt-1 w-full rounded border border-line bg-field px-2 py-1 text-xs text-ink-primary"
+                          className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1 text-xs text-ink-primary"
                           value={directState}
                           onChange={(e) => setDirectState(e.target.value as "inherit" | "allow" | "deny")}
                         >
@@ -717,7 +717,7 @@ export function AdminAgents() {
                       <label className="text-xs text-ink-muted">
                         {t("admin:agentsDelegateAccess")}
                         <select
-                          className="mt-1 w-full rounded border border-line bg-field px-2 py-1 text-xs text-ink-primary"
+                          className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1 text-xs text-ink-primary"
                           value={delegateState}
                           onChange={(e) => setDelegateState(e.target.value as "inherit" | "allow" | "deny")}
                         >
@@ -731,7 +731,7 @@ export function AdminAgents() {
                       <button
                         type="button"
                         disabled={policyBusy}
-                        className="rounded-md bg-sky-600 px-3 py-1.5 text-xs font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+                        className="rounded-tile bg-sky-600 px-3 py-1.5 text-xs font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
                         onClick={() => void saveAccessPolicy()}
                       >
                         {t("admin:agentsSavePolicy")}
@@ -739,7 +739,7 @@ export function AdminAgents() {
                       <button
                         type="button"
                         disabled={policyBusy}
-                        className="rounded-md bg-white/10 px-3 py-1.5 text-xs font-medium text-ink-primary hover:bg-white/15 disabled:opacity-50"
+                        className="rounded-tile bg-white/10 px-3 py-1.5 text-xs font-medium text-ink-primary hover:bg-white/15 disabled:opacity-50"
                         onClick={() => void deleteAccessPolicy()}
                       >
                         {t("admin:agentsDeletePolicy")}
@@ -765,7 +765,7 @@ export function AdminAgents() {
                     </div>
                   </div>
 
-                  <div className="mt-4 rounded-lg border border-line bg-black/20 p-3">
+                  <div className="mt-4 rounded-card border border-line bg-black/20 p-3">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">
@@ -783,7 +783,7 @@ export function AdminAgents() {
                       </p>
                     </div>
                     <textarea
-                      className="mt-3 min-h-52 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-xs text-ink-primary placeholder:text-neutral-500"
+                      className="mt-3 min-h-52 w-full rounded-tile border border-line bg-field px-3 py-2 font-mono text-xs text-ink-primary placeholder:text-neutral-500"
                       value={promptText}
                       onChange={(e) => setPromptText(e.target.value)}
                       maxLength={12000}
@@ -797,7 +797,7 @@ export function AdminAgents() {
                         <button
                           type="button"
                           disabled={promptBusy || !promptText.trim()}
-                          className="rounded-md bg-sky-600 px-3 py-1.5 text-xs font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+                          className="rounded-tile bg-sky-600 px-3 py-1.5 text-xs font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
                           onClick={() => void savePromptDraft()}
                         >
                           {t("admin:agentsSavePromptDraft")}
@@ -816,7 +816,7 @@ export function AdminAgents() {
                           promptVersions.map((v) => (
                             <div
                               key={v.id}
-                              className="flex flex-wrap items-center justify-between gap-2 rounded border border-line bg-white/[0.03] px-2 py-2"
+                              className="flex flex-wrap items-center justify-between gap-2 rounded-tile border border-line bg-white/[0.03] px-2 py-2"
                             >
                               <div>
                                 <p className="font-mono text-xs text-ink-primary">
@@ -830,7 +830,7 @@ export function AdminAgents() {
                               <button
                                 type="button"
                                 disabled={promptBusy || v.status === "published"}
-                                className="rounded-md bg-white/10 px-3 py-1.5 text-xs font-medium text-ink-primary hover:bg-white/15 disabled:opacity-50"
+                                className="rounded-tile bg-white/10 px-3 py-1.5 text-xs font-medium text-ink-primary hover:bg-white/15 disabled:opacity-50"
                                 onClick={() => void publishPromptVersion(v.id)}
                               >
                                 {t("admin:agentsPublishPrompt")}

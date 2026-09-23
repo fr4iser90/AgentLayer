@@ -30,13 +30,13 @@ const ReasoningPanel = memo(function ReasoningPanel({
   const defaultOpen = getAgentShowReasoning();
   return (
     <details className="mb-3 group" defaultOpen={defaultOpen}>
-      <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-md border border-sky-500/35 bg-sky-950/40 px-2 py-1 text-meta font-medium text-sky-100/90 marker:content-none [&::-webkit-details-marker]:hidden hover:bg-sky-950/55">
+      <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-tile border border-sky-500/35 bg-sky-950/40 px-2 py-1 text-meta font-medium text-sky-100/90 marker:content-none [&::-webkit-details-marker]:hidden hover:bg-sky-950/55">
         <span
           className={`relative flex h-1.5 w-1.5 shrink-0 ${running ? "animate-pulse" : ""}`}
           aria-hidden
         >
-          <span className="absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75" />
-          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-sky-300" />
+          <span className="absolute inline-flex h-full w-full rounded-pill bg-sky-400 opacity-75" />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-pill bg-sky-300" />
         </span>
         {t("chat:thinkingBadge")}
         <span className="text-meta font-normal text-sky-200/60 group-open:hidden">
@@ -46,7 +46,7 @@ const ReasoningPanel = memo(function ReasoningPanel({
           {t("chat:thinkingBadgeCollapseHint")}
         </span>
       </summary>
-      <pre className="mt-2 max-h-64 overflow-y-auto whitespace-pre-wrap break-words rounded-md border border-line-subtle bg-black/30 px-3 py-2 font-sans text-xs leading-relaxed text-ink-muted">
+      <pre className="mt-2 max-h-64 overflow-y-auto whitespace-pre-wrap break-words rounded-tile border border-line-subtle bg-black/30 px-3 py-2 font-sans text-xs leading-relaxed text-ink-muted">
         {trimmed}
       </pre>
     </details>
@@ -188,12 +188,12 @@ export const AssistantTurnBlock = memo(function AssistantTurnBlock({
 
   return (
     <li className="flex w-full justify-end scroll-mt-4">
-      <div className="max-w-[min(100%,42rem)] rounded-2xl border border-line bg-[#1e1e1e] px-4 py-3 text-sm text-ink-primary shadow-sm">
+      <div className="max-w-[min(100%,42rem)] rounded-sheet border border-line bg-[#1e1e1e] px-4 py-3 text-sm text-ink-primary shadow-sm">
         <span className="mb-1 flex items-center gap-2 text-meta font-medium uppercase tracking-wide text-ink-muted">
           <Mascot character="volt" state={mascotState} size={20} ariaLabel={null} />
           {t("chat:roleAssistant")}
           {standInAuto ? (
-            <span className="rounded bg-violet-900/40 px-1.5 py-0.5 text-meta font-normal normal-case text-violet-200">
+            <span className="rounded-tile bg-violet-900/40 px-1.5 py-0.5 text-meta font-normal normal-case text-violet-200">
               {t("chat:standInAutoBadge")}
             </span>
           ) : null}
@@ -220,7 +220,7 @@ export const AssistantTurnBlock = memo(function AssistantTurnBlock({
         ) : null}
         {turnCancelled && !running ? (
           <div className="mt-3 flex justify-start">
-            <span className="inline-flex items-center rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-meta font-medium uppercase tracking-wide text-amber-100/95">
+            <span className="inline-flex items-center rounded-tile border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-meta font-medium uppercase tracking-wide text-amber-100/95">
               {t("chat:turnCancelledBadge")}
             </span>
           </div>

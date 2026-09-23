@@ -17,7 +17,7 @@ const GITHUB_REPO =
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   [
-    "rounded-md px-3 py-2 text-sm transition-colors",
+    "rounded-tile px-3 py-2 text-sm transition-colors",
     isActive
       ? "bg-white/10 text-ink-primary"
       : "text-ink-muted hover:bg-white/5 hover:text-neutral-200",
@@ -27,7 +27,7 @@ const menuItemClass =
   "block w-full px-3 py-2 text-left text-sm text-ink-primary hover:bg-white/10";
 
 const signInClass =
-  "rounded-md px-3 py-2 text-sm text-ink-muted hover:bg-white/5 hover:text-neutral-200";
+  "rounded-tile px-3 py-2 text-sm text-ink-muted hover:bg-white/5 hover:text-neutral-200";
 
 function MoreNavMenu({
   showSchedulesMobile,
@@ -81,7 +81,7 @@ function MoreNavMenu({
       {open ? (
         <div
           role="menu"
-          className="absolute left-0 z-50 mt-1 min-w-[11rem] rounded-lg border border-line bg-raised py-1 shadow-xl"
+          className="absolute left-0 z-50 mt-1 min-w-[11rem] rounded-card border border-line bg-raised py-1 shadow-xl"
         >
           {hasMobileExtras ? (
             <div className="md:hidden">
@@ -248,7 +248,7 @@ export function AppLayout() {
                       key={lng}
                       type="button"
                       className={[
-                        "rounded px-2 py-1 text-meta font-medium",
+                        "rounded-tile px-2 py-1 text-meta font-medium",
                         active
                           ? "bg-white/15 text-ink-primary"
                           : "text-ink-muted hover:bg-white/5 hover:text-neutral-200",

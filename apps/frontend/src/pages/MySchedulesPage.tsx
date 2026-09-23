@@ -366,14 +366,14 @@ export function MySchedulesPage() {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            className="rounded-md border border-line px-3 py-2 text-sm text-ink-primary hover:bg-white/5"
+            className="rounded-tile border border-line px-3 py-2 text-sm text-ink-primary hover:bg-white/5"
             onClick={() => setCreateOpen(true)}
           >
             {t("settings:schedulesCreate")}
           </button>
           <button
             type="button"
-            className="rounded-md border border-line px-3 py-2 text-sm text-ink-primary hover:bg-white/5 disabled:opacity-60"
+            className="rounded-tile border border-line px-3 py-2 text-sm text-ink-primary hover:bg-white/5 disabled:opacity-60"
             onClick={() => void refresh()}
             disabled={loading}
           >
@@ -382,9 +382,9 @@ export function MySchedulesPage() {
         </div>
       </div>
 
-      {err ? <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">{err}</div> : null}
+      {err ? <div className="mt-4 rounded-card border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">{err}</div> : null}
 
-      <div className="mt-6 overflow-x-auto rounded-xl border border-line">
+      <div className="mt-6 overflow-x-auto rounded-sheet border border-line">
         <table className="min-w-full text-left text-sm">
           <thead className="bg-white/5 text-xs uppercase tracking-wide text-ink-muted">
             <tr>
@@ -415,7 +415,7 @@ export function MySchedulesPage() {
               jobs.map((j) => (
                 <tr key={j.id} className="hover:bg-white/2">
                   <td className="px-3 py-3">
-                    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${pill(j.enabled)}`}>
+                    <span className={`inline-flex items-center rounded-pill border px-2 py-0.5 text-xs ${pill(j.enabled)}`}>
                       {j.enabled ? t("settings:schedulesEnabled") : t("settings:schedulesDisabled")}
                     </span>
                   </td>
@@ -435,7 +435,7 @@ export function MySchedulesPage() {
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        className="rounded-md border border-line px-2 py-1 text-xs text-ink-primary hover:bg-white/5"
+                        className="rounded-tile border border-line px-2 py-1 text-xs text-ink-primary hover:bg-white/5"
                         onClick={() => void toggleEnabled(j.id, !j.enabled)}
                       >
                         {j.enabled ? t("admin:schedulesDisable") : t("admin:schedulesEnable")}
@@ -443,7 +443,7 @@ export function MySchedulesPage() {
                       {executionTargetRequiresWorkspace(j.execution_target, targetCatalog) ? (
                         <button
                           type="button"
-                          className="rounded-md border border-line px-2 py-1 text-xs text-ink-primary hover:bg-white/5"
+                          className="rounded-tile border border-line px-2 py-1 text-xs text-ink-primary hover:bg-white/5"
                           onClick={() => void openRuns(j)}
                         >
                           {t("settings:schedulesRuns")}
@@ -451,7 +451,7 @@ export function MySchedulesPage() {
                       ) : null}
                       <button
                         type="button"
-                        className="rounded-md border border-line px-2 py-1 text-xs text-ink-primary hover:bg-white/5"
+                        className="rounded-tile border border-line px-2 py-1 text-xs text-ink-primary hover:bg-white/5"
                         onClick={() => openEdit(j)}
                       >
                         {t("admin:schedulesEdit")}
@@ -475,7 +475,7 @@ export function MySchedulesPage() {
 
       {createOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-2xl rounded-xl border border-line bg-card p-4">
+          <div className="w-full max-w-2xl rounded-sheet border border-line bg-card p-4">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
                 <div className="text-lg font-semibold text-ink-primary">{t("admin:createScheduleTitle")}</div>
@@ -483,7 +483,7 @@ export function MySchedulesPage() {
               </div>
               <button
                 type="button"
-                className="rounded-md border border-line px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5"
+                className="rounded-tile border border-line px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5"
                 onClick={() => setCreateOpen(false)}
               >
                 {t("admin:close")}
@@ -494,7 +494,7 @@ export function MySchedulesPage() {
               <label className="text-xs text-ink-muted md:col-span-2">
                 {t("admin:schedulesPresetOptional")}
                 <select
-                  className="mt-1 w-full rounded-md border border-line bg-field px-2 py-1 text-sm text-ink-primary"
+                  className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1 text-sm text-ink-primary"
                   value={createPresetId}
                   onChange={(e) => {
                     const pid = e.target.value;
@@ -519,7 +519,7 @@ export function MySchedulesPage() {
               <label className="text-xs text-ink-muted">
                 {t("admin:schedulesTarget")}
                 <select
-                  className="mt-1 w-full rounded-md border border-line bg-field px-2 py-1 text-sm text-ink-primary"
+                  className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1 text-sm text-ink-primary"
                   value={createTarget}
                   onChange={(e) =>
                     setCreateTarget(normalizeExecutionTargetInput(e.target.value, targetCatalog))
@@ -536,7 +536,7 @@ export function MySchedulesPage() {
                 <label className="text-xs text-ink-muted md:col-span-2">
                   {t("settings:schedulesWorkspaceRequired")}
                   <select
-                    className="mt-1 w-full rounded-md border border-line bg-field px-2 py-1 text-sm text-ink-primary disabled:opacity-60"
+                    className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1 text-sm text-ink-primary disabled:opacity-60"
                     value={createWorkspaceId}
                     onChange={(e) => setCreateWorkspaceId(e.target.value)}
                     disabled={workspacesLoading}
@@ -570,7 +570,7 @@ export function MySchedulesPage() {
                 {t("settings:schedulesIntervalHeader")} (minutes)
                 <input
                   type="number"
-                  className="mt-1 w-full rounded-md border border-line bg-field px-2 py-1 text-sm text-ink-primary"
+                  className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1 text-sm text-ink-primary"
                   value={createInterval}
                   onChange={(e) => setCreateInterval(Number(e.target.value))}
                   min={5}
@@ -580,7 +580,7 @@ export function MySchedulesPage() {
               <label className="text-xs text-ink-muted md:col-span-2">
                 Title
                 <input
-                  className="mt-1 w-full rounded-md border border-line bg-field px-2 py-1 text-sm text-ink-primary"
+                  className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1 text-sm text-ink-primary"
                   value={createTitle}
                   onChange={(e) => setCreateTitle(e.target.value)}
                   placeholder={t("admin:optional")}
@@ -589,7 +589,7 @@ export function MySchedulesPage() {
               <label className="text-xs text-ink-muted md:col-span-2">
                 {t("admin:schedulesDashboardIdOptional")}
                 <input
-                  className="mt-1 w-full rounded-md border border-line bg-field px-2 py-1 text-sm text-ink-primary"
+                  className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1 text-sm text-ink-primary"
                   value={createDashboardId}
                   onChange={(e) => setCreateDashboardId(e.target.value)}
                   placeholder={t("admin:optional")}
@@ -598,7 +598,7 @@ export function MySchedulesPage() {
               <label className="text-xs text-ink-muted md:col-span-2">
                 <span>{t("admin:instructionsPlaceholder")}</span>
                 <textarea
-                  className="mt-1 min-h-[120px] w-full resize-y rounded-md border border-line bg-field px-2 py-2 text-sm text-ink-primary"
+                  className="mt-1 min-h-[120px] w-full resize-y rounded-tile border border-line bg-field px-2 py-2 text-sm text-ink-primary"
                   value={createInstructions}
                   onChange={(e) => setCreateInstructions(e.target.value)}
                   placeholder={t("admin:instructionsPlaceholder")}
@@ -607,7 +607,7 @@ export function MySchedulesPage() {
               <label className="flex items-center gap-2 text-xs text-ink-muted">
                 <input
                   type="checkbox"
-                  className="h-4 w-4 rounded border-line"
+                  className="h-4 w-4 rounded-tile border-line"
                   checked={createEnabled}
                   onChange={(e) => setCreateEnabled(e.target.checked)}
                 />
@@ -626,7 +626,7 @@ export function MySchedulesPage() {
               </Button>
               <button
                 type="button"
-                className="rounded-md bg-violet-600/80 px-3 py-2 text-sm font-medium text-ink-primary hover:bg-violet-500 disabled:opacity-60"
+                className="rounded-tile bg-violet-600/80 px-3 py-2 text-sm font-medium text-ink-primary hover:bg-violet-500 disabled:opacity-60"
                 onClick={() => void createJob()}
                 disabled={
                   !createInstructions.trim() ||
@@ -642,7 +642,7 @@ export function MySchedulesPage() {
 
       {editJob ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-2xl rounded-xl border border-line bg-card p-4">
+          <div className="w-full max-w-2xl rounded-sheet border border-line bg-card p-4">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
                 <div className="text-lg font-semibold text-ink-primary">{t("settings:schedulesEditTitle")}</div>
@@ -650,7 +650,7 @@ export function MySchedulesPage() {
               </div>
               <button
                 type="button"
-                className="rounded-md border border-line px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5"
+                className="rounded-tile border border-line px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5"
                 onClick={() => setEditJob(null)}
               >
                 {t("admin:close")}
@@ -660,7 +660,7 @@ export function MySchedulesPage() {
               <label className="text-xs text-ink-muted">
                 Title
                 <input
-                  className="mt-1 w-full rounded-md border border-line bg-field px-2 py-1 text-sm text-ink-primary"
+                  className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1 text-sm text-ink-primary"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
                 />
@@ -669,7 +669,7 @@ export function MySchedulesPage() {
                 {t("settings:schedulesIntervalHeader")} (minutes)
                 <input
                   type="number"
-                  className="mt-1 w-full rounded-md border border-line bg-field px-2 py-1 text-sm text-ink-primary"
+                  className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1 text-sm text-ink-primary"
                   value={editInterval}
                   onChange={(e) => setEditInterval(Number(e.target.value))}
                   min={5}
@@ -679,7 +679,7 @@ export function MySchedulesPage() {
               <label className="text-xs text-ink-muted">
                 Instructions
                 <textarea
-                  className="mt-1 min-h-[140px] w-full resize-y rounded-md border border-line bg-field px-2 py-2 text-sm text-ink-primary"
+                  className="mt-1 min-h-[140px] w-full resize-y rounded-tile border border-line bg-field px-2 py-2 text-sm text-ink-primary"
                   value={editInstructions}
                   onChange={(e) => setEditInstructions(e.target.value)}
                 />
@@ -696,7 +696,7 @@ export function MySchedulesPage() {
               </Button>
               <button
                 type="button"
-                className="rounded-md bg-violet-600/80 px-3 py-2 text-sm font-medium text-ink-primary hover:bg-violet-500 disabled:opacity-60"
+                className="rounded-tile bg-violet-600/80 px-3 py-2 text-sm font-medium text-ink-primary hover:bg-violet-500 disabled:opacity-60"
                 onClick={() => void saveEdit()}
                 disabled={!editInstructions.trim()}
               >
@@ -709,7 +709,7 @@ export function MySchedulesPage() {
 
       {runsJob ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-xl border border-line bg-card p-4">
+          <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-sheet border border-line bg-card p-4">
             <div className="mb-3 flex shrink-0 items-start justify-between gap-3">
               <div>
                 <div className="text-lg font-semibold text-ink-primary">{t("settings:schedulesRunHistoryTitle")}</div>
@@ -718,7 +718,7 @@ export function MySchedulesPage() {
               </div>
               <button
                 type="button"
-                className="rounded-md border border-line px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5"
+                className="rounded-tile border border-line px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5"
                 onClick={() => {
                   setRunsJob(null);
                   setSelectedRun(null);
@@ -729,11 +729,11 @@ export function MySchedulesPage() {
             </div>
 
             {runsErr ? (
-              <div className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-100">{runsErr}</div>
+              <div className="mb-3 rounded-card border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-100">{runsErr}</div>
             ) : null}
 
             <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-2">
-              <div className="min-h-0 overflow-auto rounded-lg border border-line">
+              <div className="min-h-0 overflow-auto rounded-card border border-line">
                 <table className="min-w-full text-left text-xs">
                   <thead className="sticky top-0 bg-raised text-ink-muted">
                     <tr>
@@ -764,7 +764,7 @@ export function MySchedulesPage() {
                         >
                           <td className="px-2 py-2">
                             <span
-                              className={`inline-flex rounded-full border px-2 py-0.5 ${runStatusPill(r.status)}`}
+                              className={`inline-flex rounded-pill border px-2 py-0.5 ${runStatusPill(r.status)}`}
                             >
                               {r.status}
                             </span>
@@ -782,13 +782,13 @@ export function MySchedulesPage() {
                 </table>
               </div>
 
-              <div className="min-h-0 overflow-auto rounded-lg border border-line p-3 text-xs">
+              <div className="min-h-0 overflow-auto rounded-card border border-line p-3 text-xs">
                 {!selectedRun ? (
                 <p className="text-ink-muted">{t("settings:schedulesRunSelectHint")}</p>
                 ) : (
                   <div className="space-y-3">
                     <div>
-                      <span className={`inline-flex rounded-full border px-2 py-0.5 ${runStatusPill(selectedRun.status)}`}>
+                      <span className={`inline-flex rounded-pill border px-2 py-0.5 ${runStatusPill(selectedRun.status)}`}>
                         {selectedRun.status}
                       </span>
                       {selectedRun.summary_json?.outcome ? (
@@ -801,7 +801,7 @@ export function MySchedulesPage() {
                       ) : null}
                     </div>
                     {selectedRun.error ? (
-                      <div className="rounded border border-red-500/30 bg-red-500/10 p-2 text-red-100">{selectedRun.error}</div>
+                      <div className="rounded-tile border border-red-500/30 bg-red-500/10 p-2 text-red-100">{selectedRun.error}</div>
                     ) : null}
                     {selectedRun.summary_json?.git ? (
                       <div>
@@ -844,7 +844,7 @@ export function MySchedulesPage() {
                     {selectedRun.summary_json?.final_reply_excerpt ? (
                       <div>
                         <div className="font-medium text-ink-primary">{t("settings:schedulesRunReplyExcerpt")}</div>
-                        <pre className="mt-1 whitespace-pre-wrap rounded bg-black/30 p-2 text-meta text-ink-muted">
+                        <pre className="mt-1 whitespace-pre-wrap rounded-tile bg-black/30 p-2 text-meta text-ink-muted">
                           {selectedRun.summary_json.final_reply_excerpt}
                         </pre>
                       </div>

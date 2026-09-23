@@ -71,7 +71,7 @@ export function ProfileSettings() {
         <h1 className="text-lg font-semibold text-ink-primary">{t("settings:profileTitle")}</h1>
         <p className="mt-2 text-sm text-ink-muted">
           {t("settings:profileIntroLead")}{" "}
-          <code className="rounded bg-white/5 px-1 text-xs">GET /auth/me</code>.{" "}
+          <code className="rounded-tile bg-white/5 px-1 text-xs">GET /auth/me</code>.{" "}
           {t("settings:profileIntroConnectionsBefore")}{" "}
           <Link to="/settings/connections" className="text-sky-400 hover:underline">
             {t("settings:profileIntroConnectionsLink")}
@@ -85,7 +85,7 @@ export function ProfileSettings() {
       ) : err ? (
         <p className="text-sm text-amber-400">{err}</p>
       ) : (
-        <div className="rounded-xl border border-line bg-card p-5">
+        <div className="rounded-sheet border border-line bg-card p-5">
           <dl className="space-y-4 text-sm">
             <div>
               <dt className="text-xs font-medium uppercase tracking-wide text-ink-muted">{t("settings:profileEmail")}</dt>
@@ -109,8 +109,8 @@ export function ProfileSettings() {
                 <span
                   className={
                     String(roleRaw).toLowerCase() === "admin"
-                      ? "rounded bg-emerald-500/20 px-2 py-0.5 text-xs text-emerald-300"
-                      : "rounded bg-sky-500/20 px-2 py-0.5 text-xs text-sky-300"
+                      ? "rounded-tile bg-emerald-500/20 px-2 py-0.5 text-xs text-emerald-300"
+                      : "rounded-tile bg-sky-500/20 px-2 py-0.5 text-xs text-sky-300"
                   }
                 >
                   {roleLabel}
@@ -134,12 +134,12 @@ export function ProfileSettings() {
         </div>
       )}
 
-      <div className="rounded-xl border border-line bg-black/20 p-5">
+      <div className="rounded-sheet border border-line bg-black/20 p-5">
         <h2 className="text-sm font-medium text-ink-primary">{t("settings:sessionTitle")}</h2>
         <p className="mt-1 text-xs text-ink-muted">{t("settings:profileSessionHint")}</p>
         <button
           type="button"
-          className="mt-4 rounded-md border border-line-strong bg-white/5 px-4 py-2 text-sm text-ink-primary hover:bg-white/10"
+          className="mt-4 rounded-tile border border-line-strong bg-white/5 px-4 py-2 text-sm text-ink-primary hover:bg-white/10"
           onClick={() => void logout()}
         >
           {t("settings:signOut")}

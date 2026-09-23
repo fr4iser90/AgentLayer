@@ -315,7 +315,7 @@ export function ToolsSettings() {
 
       {!loading && recommendations.length > 0 ? (
         <section
-          className="rounded-xl border border-sky-500/25 bg-sky-500/5 px-4 py-3"
+          className="rounded-sheet border border-sky-500/25 bg-sky-500/5 px-4 py-3"
           aria-label={t("settings:toolsSetupSuggestionsAria")}
         >
           <p className="text-xs font-semibold uppercase tracking-wide text-sky-200/90">
@@ -346,7 +346,7 @@ export function ToolsSettings() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("settings:toolsSearchPlaceholder")}
-              className="mt-1 w-full rounded-lg border border-line bg-field px-3 py-2 text-sm text-ink-primary placeholder:text-neutral-600"
+              className="mt-1 w-full rounded-card border border-line bg-field px-3 py-2 text-sm text-ink-primary placeholder:text-neutral-600"
             />
           </label>
           <div
@@ -368,7 +368,7 @@ export function ToolsSettings() {
                 role="tab"
                 aria-selected={tab === id}
                 onClick={() => setTab(id)}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                className={`rounded-pill px-3 py-1.5 text-xs font-medium transition ${
                   tab === id ? "bg-sky-600 text-ink-on-fill" : "bg-white/5 text-ink-muted hover:bg-white/10"
                 }`}
               >
@@ -384,7 +384,7 @@ export function ToolsSettings() {
           const open = openCats[g.cat] !== false;
           const stats = categoryAnalytics(g.items, services);
           return (
-            <section key={g.cat} className="overflow-hidden rounded-2xl border border-line bg-card">
+            <section key={g.cat} className="overflow-hidden rounded-sheet border border-line bg-card">
               <button
                 type="button"
                 onClick={() => toggleCat(g.cat)}
@@ -420,7 +420,7 @@ export function ToolsSettings() {
                       return (
                         <div
                           key={pid}
-                          className="flex flex-col rounded-xl border border-line bg-black/25 p-4 shadow-sm shadow-black/20"
+                          className="flex flex-col rounded-sheet border border-line bg-black/25 p-4 shadow-sm shadow-black/20"
                         >
                           <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
                             <div className="min-w-0">
@@ -432,33 +432,33 @@ export function ToolsSettings() {
                             </div>
                             <div className="flex flex-wrap justify-end gap-1">
                               {enabled ? (
-                                <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-meta text-emerald-200">
+                                <span className="rounded-tile bg-emerald-500/15 px-1.5 py-0.5 text-meta text-emerald-200">
                                   {t("settings:toolsBadgeOn")}
                                 </span>
                               ) : (
-                                <span className="rounded bg-neutral-500/20 px-1.5 py-0.5 text-meta text-ink-muted">
+                                <span className="rounded-tile bg-neutral-500/20 px-1.5 py-0.5 text-meta text-ink-muted">
                                   {t("settings:toolsBadgeOff")}
                                 </span>
                               )}
                               {missing.length ? (
-                                <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-meta text-amber-200">
+                                <span className="rounded-tile bg-amber-500/20 px-1.5 py-0.5 text-meta text-amber-200">
                                   {t("settings:toolsBadgeNeedsSecret")}
                                 </span>
                               ) : reqs.length ? (
-                                <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-meta text-emerald-200/90">
+                                <span className="rounded-tile bg-emerald-500/10 px-1.5 py-0.5 text-meta text-emerald-200/90">
                                   {t("settings:toolsBadgeReady")}
                                 </span>
                               ) : (
-                                <span className="rounded bg-white/5 px-1.5 py-0.5 text-meta text-ink-muted">
+                                <span className="rounded-tile bg-white/5 px-1.5 py-0.5 text-meta text-ink-muted">
                                   {t("settings:toolsBadgeNoSecrets")}
                                 </span>
                               )}
                               {high ? (
-                                <span className="rounded bg-orange-500/20 px-1.5 py-0.5 text-meta text-orange-200">
+                                <span className="rounded-tile bg-orange-500/20 px-1.5 py-0.5 text-meta text-orange-200">
                                   {t("settings:toolsRiskHigh", { level: risk || "high" })}
                                 </span>
                               ) : risk ? (
-                                <span className="rounded bg-white/10 px-1.5 py-0.5 text-meta text-ink-muted">
+                                <span className="rounded-tile bg-white/10 px-1.5 py-0.5 text-meta text-ink-muted">
                                   {t("settings:toolsRiskLevel", { level: risk })}
                                 </span>
                               ) : null}
@@ -472,20 +472,20 @@ export function ToolsSettings() {
                           <div className="mb-3 flex flex-wrap gap-2 border-t border-line-subtle pt-3">
                             <Link
                               to={`/chat?try=${tryEnc}`}
-                              className="rounded-md bg-white/10 px-2.5 py-1 text-meta font-medium text-ink-primary hover:bg-white/15"
+                              className="rounded-tile bg-white/10 px-2.5 py-1 text-meta font-medium text-ink-primary hover:bg-white/15"
                             >
                               {t("settings:toolsTest")}
                             </Link>
                             <Link
                               to="/docs"
-                              className="rounded-md bg-white/5 px-2.5 py-1 text-meta text-ink-muted hover:bg-white/10 hover:text-neutral-200"
+                              className="rounded-tile bg-white/5 px-2.5 py-1 text-meta text-ink-muted hover:bg-white/10 hover:text-neutral-200"
                             >
                               {t("settings:toolsDocs")}
                             </Link>
                             {reqs.length ? (
                               <Link
                                 to="/settings/connections"
-                                className="rounded-md bg-white/5 px-2.5 py-1 text-meta text-sky-400 hover:bg-white/10"
+                                className="rounded-tile bg-white/5 px-2.5 py-1 text-meta text-sky-400 hover:bg-white/10"
                               >
                                 {t("settings:toolsConfigure")}
                               </Link>
@@ -493,7 +493,7 @@ export function ToolsSettings() {
                             <button
                               type="button"
                               disabled={!names.length}
-                              className="rounded-md bg-white/5 px-2.5 py-1 text-meta text-amber-200/90 hover:bg-white/10 disabled:opacity-40"
+                              className="rounded-tile bg-white/5 px-2.5 py-1 text-meta text-amber-200/90 hover:bg-white/10 disabled:opacity-40"
                               onClick={() => {
                                 setPackageEnabledForChat(names, false);
                                 refreshToggles();
@@ -503,7 +503,7 @@ export function ToolsSettings() {
                             </button>
                             <button
                               type="button"
-                              className="rounded-md border border-line-strong px-2.5 py-1 text-meta text-ink-primary hover:bg-white/10"
+                              className="rounded-tile border border-line-strong px-2.5 py-1 text-meta text-ink-primary hover:bg-white/10"
                               onClick={() => setDrawerPkg(m)}
                             >
                               {t("settings:toolsDetails")}
@@ -513,7 +513,7 @@ export function ToolsSettings() {
                             <label className="flex cursor-pointer items-center gap-2 text-xs text-ink-primary">
                               <input
                                 type="checkbox"
-                                className="h-4 w-4 rounded border-line bg-field"
+                                className="h-4 w-4 rounded-tile border-line bg-field"
                                 checked={enabled}
                                 disabled={!names.length}
                                 onChange={(e) => {
@@ -586,7 +586,7 @@ function PackageDrawer({
         aria-label={t("settings:close")}
         onClick={onClose}
       />
-      <div className="relative flex h-full w-full max-w-lg flex-col border-l border-line bg-[#141414] shadow-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-xl">
+      <div className="relative flex h-full w-full max-w-lg flex-col border-l border-line bg-[#141414] shadow-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-sheet">
         <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
           <div>
             <p className="text-meta uppercase text-ink-muted">{pid}</p>
@@ -597,7 +597,7 @@ function PackageDrawer({
           </div>
           <button
             type="button"
-            className="rounded-lg px-2 py-1 text-sm text-ink-muted hover:bg-white/10 hover:text-white"
+            className="rounded-card px-2 py-1 text-sm text-ink-muted hover:bg-white/10 hover:text-white"
             onClick={onClose}
           >
             <X aria-hidden className="h-4 w-4" />
@@ -616,11 +616,11 @@ function PackageDrawer({
                 const desc = (fn?.description || fn?.TOOL_DESCRIPTION || "").trim() || "—";
                 const params = summarizeParams(fn?.parameters);
                 return (
-                  <li key={n} className="rounded-lg border border-line bg-black/30 p-3">
+                  <li key={n} className="rounded-card border border-line bg-black/30 p-3">
                     <p className="font-mono text-sm font-medium text-sky-200">{n}</p>
                     <p className="mt-1 text-xs text-ink-muted">{desc}</p>
                     {params ? (
-                      <pre className="mt-2 max-h-40 overflow-auto rounded border border-line-subtle bg-black/40 p-2 text-meta text-ink-muted">
+                      <pre className="mt-2 max-h-40 overflow-auto rounded-tile border border-line-subtle bg-black/40 p-2 text-meta text-ink-muted">
                         {params}
                       </pre>
                     ) : (
@@ -631,7 +631,7 @@ function PackageDrawer({
               })}
             </ul>
           </section>
-          <section className="rounded-lg border border-dashed border-line-strong bg-white/[0.02] p-3">
+          <section className="rounded-card border border-dashed border-line-strong bg-white/[0.02] p-3">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{t("settings:toolsLogsLastUsed")}</h3>
             <p className="mt-1 text-xs text-ink-muted">{t("settings:toolsLogsNotExposed")}</p>
           </section>
@@ -639,14 +639,14 @@ function PackageDrawer({
         <div className="flex gap-2 border-t border-line px-5 py-4">
           <Link
             to="/settings/connections"
-            className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500"
+            className="rounded-card bg-sky-600 px-4 py-2 text-sm font-medium text-ink-on-fill hover:bg-sky-500"
             onClick={onClose}
           >
             {t("settings:connectionsTitle")}
           </Link>
           <button
             type="button"
-            className="rounded-lg border border-line-strong px-4 py-2 text-sm text-ink-primary hover:bg-white/10"
+            className="rounded-card border border-line-strong px-4 py-2 text-sm text-ink-primary hover:bg-white/10"
             onClick={onClose}
           >
             {t("settings:toolsDrawerClose")}

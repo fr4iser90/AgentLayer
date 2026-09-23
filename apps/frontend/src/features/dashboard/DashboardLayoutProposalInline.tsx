@@ -49,7 +49,7 @@ export function DashboardLayoutProposalInline({
 
   if (loading) {
     return (
-      <div className="mt-2 rounded-lg border border-line bg-black/30 px-2 py-3 text-meta text-ink-muted">
+      <div className="mt-2 rounded-card border border-line bg-black/30 px-2 py-3 text-meta text-ink-muted">
         {t("dashboard:layoutProposalsLoading")}
       </div>
     );
@@ -57,7 +57,7 @@ export function DashboardLayoutProposalInline({
 
   if (notFound || error || !proposalSet) {
     return (
-      <div className="mt-2 rounded-lg border border-red-500/30 bg-red-950/20 px-2 py-2 text-meta text-red-200">
+      <div className="mt-2 rounded-card border border-red-500/30 bg-red-950/20 px-2 py-2 text-meta text-red-200">
         {t("dashboard:layoutProposalsEmpty")}
       </div>
     );
@@ -69,7 +69,7 @@ export function DashboardLayoutProposalInline({
         {t("dashboard:layoutProposalsInlineHint")}
       </p>
       {applyErr ? (
-        <p className="rounded border border-red-500/30 bg-red-950/20 px-2 py-1 text-meta text-red-200">
+        <p className="rounded-tile border border-red-500/30 bg-red-950/20 px-2 py-1 text-meta text-red-200">
           {applyErr}
         </p>
       ) : null}
@@ -79,7 +79,7 @@ export function DashboardLayoutProposalInline({
           return (
             <article
               key={p.id}
-              className="overflow-hidden rounded-lg border border-emerald-500/25 bg-[#0d1210]"
+              className="overflow-hidden rounded-card border border-emerald-500/25 bg-[#0d1210]"
             >
               <div className="border-b border-line-subtle px-2 py-1.5">
                 <div className="text-meta font-semibold text-ink-primary">{p.title}</div>
@@ -113,7 +113,7 @@ export function DashboardLayoutProposalInline({
               <div className="flex items-center justify-end gap-1.5 border-t border-line-subtle px-2 py-1.5">
                 <button
                   type="button"
-                  className="rounded border border-line px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5"
+                  className="rounded-tile border border-line px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5"
                   onClick={() => onEnlarge(p.id)}
                 >
                   {t("dashboard:layoutProposalsEnlargeShort")}
@@ -132,7 +132,7 @@ export function DashboardLayoutProposalInline({
                     <button
                       type="button"
                       disabled={applyBusy}
-                      className="rounded bg-emerald-600 px-2 py-0.5 text-meta font-medium text-ink-on-fill hover:bg-emerald-500 disabled:opacity-50"
+                      className="rounded-tile bg-emerald-600 px-2 py-0.5 text-meta font-medium text-ink-on-fill hover:bg-emerald-500 disabled:opacity-50"
                       onClick={() => void handleApply(p.id)}
                     >
                       {applyBusy ? t("dashboard:saving") : t("dashboard:layoutProposalsApplyConfirm")}
@@ -142,7 +142,7 @@ export function DashboardLayoutProposalInline({
                   <button
                     type="button"
                     disabled={applyBusy}
-                    className="rounded bg-emerald-600 px-2 py-0.5 text-meta font-medium text-ink-on-fill hover:bg-emerald-500 disabled:opacity-50"
+                    className="rounded-tile bg-emerald-600 px-2 py-0.5 text-meta font-medium text-ink-on-fill hover:bg-emerald-500 disabled:opacity-50"
                     onClick={() => setConfirmId(p.id)}
                   >
                     {t("dashboard:layoutProposalsApply")}

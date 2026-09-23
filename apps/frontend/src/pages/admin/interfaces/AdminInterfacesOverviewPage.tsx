@@ -18,7 +18,7 @@ function StatusCard({
   return (
     <Link
       to={to}
-      className="block rounded-xl border border-line bg-card p-4 transition-colors hover:border-line-strong hover:bg-white/5"
+      className="block rounded-sheet border border-line bg-card p-4 transition-colors hover:border-line-strong hover:bg-white/5"
     >
       <p className="text-meta font-medium uppercase tracking-wide text-ink-muted">{title}</p>
       <p className="mt-2 text-sm font-medium text-ink-primary">{status}</p>

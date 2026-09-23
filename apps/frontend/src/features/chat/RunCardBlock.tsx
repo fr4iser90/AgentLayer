@@ -264,7 +264,7 @@ export function RunCardBlock({
 
   return (
     <div
-      className={`w-full max-w-[min(100%,42rem)] rounded-xl border ${borderForKind(card.kind)} ${bgForKind(card.kind)} px-3 py-2.5 text-sm shadow-sm`}
+      className={`w-full max-w-[min(100%,42rem)] rounded-sheet border ${borderForKind(card.kind)} ${bgForKind(card.kind)} px-3 py-2.5 text-sm shadow-sm`}
     >
       <div className="flex items-start gap-2">
         <span className="mt-0.5 text-base leading-none" aria-hidden>
@@ -275,7 +275,7 @@ export function RunCardBlock({
             <span className="font-medium text-ink-primary">{title}</span>
             <span className="text-meta text-ink-muted">{meta.join(" · ")}</span>
             {card.status === "running" ? (
-              <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400" />
+              <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-pill bg-violet-400" />
             ) : null}
           </div>
           {compactionSubtitle ?? card.subtitle ? (
@@ -305,7 +305,7 @@ export function RunCardBlock({
                       {t("chat:contextInjectExpandHint")}
                     </span>
                   </summary>
-                  <pre className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap break-words rounded border border-sky-500/20 bg-black/25 px-2 py-1.5 font-sans text-meta leading-relaxed text-ink-muted">
+                  <pre className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap break-words rounded-tile border border-sky-500/20 bg-black/25 px-2 py-1.5 font-sans text-meta leading-relaxed text-ink-muted">
                     {card.reasoningExcerpt.trim()}
                   </pre>
                 </details>
@@ -318,7 +318,7 @@ export function RunCardBlock({
                       {t("chat:contextInjectExpandHint")}
                     </span>
                   </summary>
-                  <pre className="mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap break-words rounded border border-indigo-500/20 bg-black/25 px-2 py-1.5 font-sans text-meta leading-relaxed text-ink-secondary">
+                  <pre className="mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap break-words rounded-tile border border-indigo-500/20 bg-black/25 px-2 py-1.5 font-sans text-meta leading-relaxed text-ink-secondary">
                     {card.assistantExcerpt.trim()}
                   </pre>
                 </details>
@@ -376,7 +376,7 @@ export function RunCardBlock({
                   {t("chat:contextInjectExpandHint")}
                 </span>
               </summary>
-              <pre className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded border border-emerald-500/20 bg-black/30 px-2 py-1.5 font-mono text-meta leading-relaxed text-ink-secondary">
+              <pre className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-tile border border-emerald-500/20 bg-black/30 px-2 py-1.5 font-mono text-meta leading-relaxed text-ink-secondary">
                 {lastOutputRow?.resultDisplay || toolCardOutput}
               </pre>
             </details>
@@ -427,7 +427,7 @@ export function RunCardBlock({
                               {t("chat:contextInjectExpandHint")}
                             </span>
                           </summary>
-                          <pre className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded border border-emerald-500/20 bg-black/30 px-2 py-1.5 font-mono text-meta leading-relaxed text-ink-secondary">
+                          <pre className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-tile border border-emerald-500/20 bg-black/30 px-2 py-1.5 font-mono text-meta leading-relaxed text-ink-secondary">
                             {row.resultDisplay}
                           </pre>
                         </details>
@@ -451,7 +451,7 @@ export function RunCardBlock({
                               {t("chat:contextInjectExpandHint")}
                             </span>
                           </summary>
-                          <pre className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded border border-emerald-500/20 bg-black/30 px-2 py-1.5 font-mono text-meta leading-relaxed text-ink-secondary">
+                          <pre className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-tile border border-emerald-500/20 bg-black/30 px-2 py-1.5 font-mono text-meta leading-relaxed text-ink-secondary">
                             {d.resultDisplay.trim()}
                           </pre>
                         </details>

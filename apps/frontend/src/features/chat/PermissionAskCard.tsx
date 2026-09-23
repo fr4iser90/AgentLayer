@@ -17,7 +17,7 @@ type Props = {
 export function PermissionAskCard({ request, onReply, disabled }: Props) {
   const { t } = useTranslation(["chat"]);
   return (
-    <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-ink-primary">
+    <div className="rounded-card border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-ink-primary">
       <p className="font-medium">
         {t("chat:permissionAskTitle", { tool: request.toolName })}
         {request.round != null ? (
@@ -27,7 +27,7 @@ export function PermissionAskCard({ request, onReply, disabled }: Props) {
         ) : null}
       </p>
       {request.argsPreview ? (
-        <pre className="mt-2 max-h-32 overflow-auto whitespace-pre-wrap break-all rounded bg-black/30 p-2 font-mono text-xs text-ink-muted">
+        <pre className="mt-2 max-h-32 overflow-auto whitespace-pre-wrap break-all rounded-tile bg-black/30 p-2 font-mono text-xs text-ink-muted">
           {request.argsPreview.slice(0, 1200)}
         </pre>
       ) : null}
@@ -35,7 +35,7 @@ export function PermissionAskCard({ request, onReply, disabled }: Props) {
         <button
           type="button"
           disabled={disabled}
-          className="rounded-md bg-amber-500/90 px-3 py-1.5 text-xs font-medium text-black disabled:opacity-50"
+          className="rounded-tile bg-amber-500/90 px-3 py-1.5 text-xs font-medium text-black disabled:opacity-50"
           onClick={() => onReply("once")}
         >
           {t("chat:permissionAllowOnce")}
@@ -43,7 +43,7 @@ export function PermissionAskCard({ request, onReply, disabled }: Props) {
         <button
           type="button"
           disabled={disabled}
-          className="rounded-md border border-line bg-black/20 px-3 py-1.5 text-xs text-ink-primary disabled:opacity-50"
+          className="rounded-tile border border-line bg-black/20 px-3 py-1.5 text-xs text-ink-primary disabled:opacity-50"
           onClick={() => onReply("always")}
         >
           {t("chat:permissionAllowAlways")}

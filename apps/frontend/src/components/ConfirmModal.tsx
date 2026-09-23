@@ -55,7 +55,7 @@ export function ConfirmModal({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descId}
-        className="w-full max-w-md rounded-xl border border-line bg-[#1a1a1a] p-5 shadow-2xl"
+        className="w-full max-w-md rounded-sheet border border-line bg-[#1a1a1a] p-5 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id={titleId} className="text-base font-semibold text-ink-primary">
@@ -67,7 +67,7 @@ export function ConfirmModal({
         <div className="mt-5 flex flex-wrap justify-end gap-2">
           <button
             type="button"
-            className="rounded-lg border border-line px-4 py-2 text-sm text-ink-primary hover:bg-white/5 disabled:opacity-50"
+            className="rounded-card border border-line px-4 py-2 text-sm text-ink-primary hover:bg-white/5 disabled:opacity-50"
             disabled={busy}
             onClick={onCancel}
           >
@@ -75,7 +75,7 @@ export function ConfirmModal({
           </button>
           <button
             type="button"
-            className={`rounded-lg border px-4 py-2 text-sm font-medium ${confirmClass}`}
+            className={`rounded-card border px-4 py-2 text-sm font-medium ${confirmClass}`}
             disabled={busy}
             onClick={onConfirm}
           >

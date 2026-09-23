@@ -147,7 +147,7 @@ export function MediaSharePanel() {
   const ownedUploads = uploads.filter((u) => u.access !== "shared");
 
   return (
-    <div className="dashboard-grid-no-drag mt-4 rounded-lg border border-line bg-black/30 p-3">
+    <div className="dashboard-grid-no-drag mt-4 rounded-card border border-line bg-black/30 p-3">
       <h4 className="text-xs font-medium uppercase tracking-wide text-ink-muted">
         {t("dashboard:mediaSharePanelTitle")}
       </h4>
@@ -161,7 +161,7 @@ export function MediaSharePanel() {
             const label = u.title?.trim() || u.original_name?.trim() || u.id.slice(0, 8);
             const open = expandedId === u.id;
             return (
-              <li key={u.id} className="rounded-md border border-line p-2">
+              <li key={u.id} className="rounded-tile border border-line p-2">
                 <button
                   type="button"
                   className="flex w-full items-center justify-between text-left text-sm text-ink-primary"
@@ -177,7 +177,7 @@ export function MediaSharePanel() {
                     <label className="block text-meta uppercase text-ink-muted">
                       {t("dashboard:mediaLicenseLabel")}
                       <select
-                        className="mt-1 block w-full rounded border border-line bg-field px-2 py-1 text-xs text-ink-primary"
+                        className="mt-1 block w-full rounded-tile border border-line bg-field px-2 py-1 text-xs text-ink-primary"
                         value={license}
                         onChange={(e) => setLicense(e.target.value)}
                       >
@@ -190,7 +190,7 @@ export function MediaSharePanel() {
                     </label>
                     <input
                       type="text"
-                      className="w-full rounded border border-line bg-field px-2 py-1 text-xs text-ink-primary"
+                      className="w-full rounded-tile border border-line bg-field px-2 py-1 text-xs text-ink-primary"
                       placeholder={t("dashboard:mediaLicenseNotePlaceholder")}
                       value={licenseNote}
                       onChange={(e) => setLicenseNote(e.target.value)}
@@ -198,7 +198,7 @@ export function MediaSharePanel() {
                     <button
                       type="button"
                       disabled={busy}
-                      className="rounded border border-line px-2 py-1 text-meta text-ink-primary hover:bg-white/5"
+                      className="rounded-tile border border-line px-2 py-1 text-meta text-ink-primary hover:bg-white/5"
                       onClick={() => void saveLicense(u.id)}
                     >
                       {t("dashboard:mediaSaveLicense")}
@@ -208,13 +208,13 @@ export function MediaSharePanel() {
                         <div className="flex flex-wrap gap-2 pt-2">
                           <input
                             type="email"
-                            className="min-w-[10rem] flex-1 rounded border border-line bg-field px-2 py-1 text-xs text-ink-primary"
+                            className="min-w-[10rem] flex-1 rounded-tile border border-line bg-field px-2 py-1 text-xs text-ink-primary"
                             placeholder={t("dashboard:mediaShareEmailPlaceholder")}
                             value={shareEmail}
                             onChange={(e) => setShareEmail(e.target.value)}
                           />
                           <select
-                            className="rounded border border-line bg-field px-2 py-1 text-xs text-ink-primary"
+                            className="rounded-tile border border-line bg-field px-2 py-1 text-xs text-ink-primary"
                             value={sharePerm}
                             onChange={(e) =>
                               setSharePerm(e.target.value as "play" | "play_and_download")
@@ -226,7 +226,7 @@ export function MediaSharePanel() {
                           <button
                             type="button"
                             disabled={busy || !shareEmail.trim()}
-                            className="rounded border border-sky-500/40 bg-sky-950/40 px-2 py-1 text-meta text-sky-100"
+                            className="rounded-tile border border-sky-500/40 bg-sky-950/40 px-2 py-1 text-meta text-sky-100"
                             onClick={() => void shareItem(u.id)}
                           >
                             {t("dashboard:mediaShareAction")}

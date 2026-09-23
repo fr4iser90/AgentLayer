@@ -102,7 +102,7 @@ export function ProjectWorkspaceControls({
   };
 
   return (
-    <div className="mb-4 rounded-xl border border-line bg-black/15 p-3">
+    <div className="mb-4 rounded-sheet border border-line bg-black/15 p-3">
       <div className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-muted">
         {t("dashboard:linkedWorkspace")}
       </div>
@@ -116,7 +116,7 @@ export function ProjectWorkspaceControls({
               value={workspaceId}
               disabled={readOnly}
               onChange={(e) => linkExisting(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-line bg-field px-3 py-1.5 text-xs text-ink-primary outline-none focus:border-violet-400/60 disabled:opacity-70"
+              className="mt-1 w-full rounded-card border border-line bg-field px-3 py-1.5 text-xs text-ink-primary outline-none focus:border-violet-400/60 disabled:opacity-70"
             >
               <option value="">{t("dashboard:workspacePickerNone")}</option>
               {workspaces.map((w) => (
@@ -149,7 +149,7 @@ export function ProjectWorkspaceControls({
                 type="button"
                 disabled={creating}
                 onClick={() => void createFromRemote()}
-                className="rounded-md border border-violet-500/40 bg-violet-950/30 px-3 py-1.5 text-xs text-violet-100 hover:bg-violet-900/40 disabled:opacity-60"
+                className="rounded-tile border border-violet-500/40 bg-violet-950/30 px-3 py-1.5 text-xs text-violet-100 hover:bg-violet-900/40 disabled:opacity-60"
               >
                 {creating ? t("dashboard:workspaceCreating") : t("dashboard:workspaceCreateFromRemote")}
               </button>

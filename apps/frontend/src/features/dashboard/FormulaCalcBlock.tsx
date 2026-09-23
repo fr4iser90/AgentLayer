@@ -112,7 +112,7 @@ export function FormulaCalcBlockBody({
     <div className="flex h-full min-h-0 flex-col gap-3 overflow-auto p-1 text-sm">
       {title ? <h3 className="font-medium text-ink-primary">{title}</h3> : null}
       {(disclaimer || t("dashboard:formulaDisclaimer")) && (
-        <p className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs text-amber-100">
+        <p className="rounded-tile border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs text-amber-100">
           {disclaimer || t("dashboard:formulaDisclaimer")}
         </p>
       )}
@@ -124,7 +124,7 @@ export function FormulaCalcBlockBody({
               <label key={inp.key} className="block text-xs text-ink-muted">
                 {inp.label}
                 <select
-                  className="mt-1 w-full rounded border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
+                  className="mt-1 w-full rounded-tile border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
                   disabled={readOnly}
                   value={values[inp.key] ?? ""}
                   onChange={(e) => setValues((v) => ({ ...v, [inp.key]: e.target.value }))}
@@ -148,7 +148,7 @@ export function FormulaCalcBlockBody({
               ) : null}
               <div className="relative mt-1">
                 <input
-                  className="w-full rounded border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
+                  className="w-full rounded-tile border border-line bg-field px-2 py-1.5 text-sm text-ink-primary"
                   type="number"
                   step={inp.step ?? (control === "percent" ? 1 : "any")}
                   disabled={readOnly}
@@ -169,7 +169,7 @@ export function FormulaCalcBlockBody({
         {!readOnly ? (
           <button
             type="submit"
-            className="rounded bg-sky-600 px-3 py-1.5 text-xs font-medium text-ink-on-fill hover:bg-sky-500"
+            className="rounded-tile bg-sky-600 px-3 py-1.5 text-xs font-medium text-ink-on-fill hover:bg-sky-500"
           >
             {t("dashboard:formulaCalculate")}
           </button>

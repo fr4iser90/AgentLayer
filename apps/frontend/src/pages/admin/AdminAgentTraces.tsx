@@ -69,14 +69,14 @@ export function AdminAgentTraces() {
         <button
           type="button"
           onClick={() => void loadRuns()}
-          className="rounded-lg border border-line bg-white/5 px-3 py-1.5 text-sm text-ink-primary hover:bg-white/10"
+          className="rounded-card border border-line bg-white/5 px-3 py-1.5 text-sm text-ink-primary hover:bg-white/10"
         >
           {t("admin:agentTracesRefresh")}
         </button>
       </div>
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
       <div className="flex min-h-0 flex-1 gap-4 overflow-hidden">
-        <div className="flex w-72 shrink-0 flex-col overflow-hidden rounded-xl border border-line bg-card">
+        <div className="flex w-72 shrink-0 flex-col overflow-hidden rounded-sheet border border-line bg-card">
           <div className="border-b border-line-subtle px-3 py-2 text-xs font-medium uppercase tracking-wide text-ink-muted">
             {t("admin:agentTracesRecentRuns")}
           </div>
@@ -92,7 +92,7 @@ export function AdminAgentTraces() {
                     type="button"
                     onClick={() => setSelectedId(r.id)}
                     className={[
-                      "w-full rounded-lg px-2 py-1.5 text-left",
+                      "w-full rounded-card px-2 py-1.5 text-left",
                       selectedId === r.id ? "bg-indigo-500/20 text-ink-primary" : "text-ink-secondary hover:bg-white/5",
                     ].join(" ")}
                   >
@@ -105,12 +105,12 @@ export function AdminAgentTraces() {
             )}
           </ul>
         </div>
-        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-xl border border-line bg-black/30 p-4">
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-sheet border border-line bg-black/30 p-4">
           {!selectedId || !detail ? (
             <p className="text-sm text-ink-muted">{t("admin:agentTracesSelectHint")}</p>
           ) : (
             <div className="space-y-4 text-sm">
-              <pre className="overflow-x-auto rounded-lg bg-black/50 p-3 text-xs text-ink-secondary">
+              <pre className="overflow-x-auto rounded-card bg-black/50 p-3 text-xs text-ink-secondary">
                 {JSON.stringify(detail.run, null, 2)}
               </pre>
               {detail.child_runs.length > 0 ? (
@@ -135,7 +135,7 @@ export function AdminAgentTraces() {
                   {detail.tool_invocations.map((inv) => (
                     <li
                       key={String(inv.id)}
-                      className="rounded-lg border border-line-subtle bg-white/[0.02] px-3 py-2"
+                      className="rounded-card border border-line-subtle bg-white/[0.02] px-3 py-2"
                     >
                       <span className="font-medium text-sky-300">{String(inv.tool_name)}</span>
                       <span className={inv.ok ? " text-emerald-400" : " text-red-400"}>

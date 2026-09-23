@@ -165,13 +165,13 @@ export function ProjectsPage() {
       </header>
 
       {error ? (
-        <p className="shrink-0 rounded-lg border border-rose-500/30 bg-rose-950/30 px-3 py-2 text-sm text-rose-200">
+        <p className="shrink-0 rounded-card border border-rose-500/30 bg-rose-950/30 px-3 py-2 text-sm text-rose-200">
           {error}
         </p>
       ) : null}
 
       <div className="grid min-h-0 flex-1 gap-4 md:grid-cols-[minmax(14rem,20rem)_1fr]">
-        <section className="flex min-h-0 flex-col rounded-xl border border-line bg-card">
+        <section className="flex min-h-0 flex-col rounded-sheet border border-line bg-card">
           <div className="flex items-center justify-between gap-2 border-b border-line px-3 py-2">
             {hasOrgSurface(auth.user) ? (
               <div
@@ -189,7 +189,7 @@ export function ProjectsPage() {
                       aria-selected={active}
                       onClick={() => switchScope(tab.id)}
                       className={[
-                        "rounded-md px-2 py-1 text-xs font-semibold uppercase tracking-wide transition-colors",
+                        "rounded-tile px-2 py-1 text-xs font-semibold uppercase tracking-wide transition-colors",
                         active
                           ? "border-b-2 border-sky-500 text-sky-300"
                           : "border-b-2 border-transparent text-ink-muted hover:text-neutral-200",
@@ -207,7 +207,7 @@ export function ProjectsPage() {
             )}
             <button
               type="button"
-              className="rounded-md border border-line px-2 py-1 text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
+              className="rounded-tile border border-line px-2 py-1 text-meta text-ink-secondary hover:bg-white/5 disabled:opacity-40"
               disabled={loading}
               onClick={() => void reload()}
             >
@@ -232,7 +232,7 @@ export function ProjectsPage() {
                       <button
                         type="button"
                         className={[
-                          "w-full rounded-lg px-2.5 py-2 text-left transition-colors",
+                          "w-full rounded-card px-2.5 py-2 text-left transition-colors",
                           active
                             ? "border border-sky-500/40 bg-sky-950/30"
                             : "border border-transparent hover:bg-white/5",
@@ -242,7 +242,7 @@ export function ProjectsPage() {
                         <span className="flex items-center gap-1.5">
                           <span className="min-w-0 flex-1 truncate text-sm text-ink-primary">{w.name}</span>
                           {scope === "mine" && w.visibility === "tenant" ? (
-                            <span className="shrink-0 rounded bg-sky-950/60 px-1 py-0.5 text-meta uppercase tracking-wide text-sky-300">
+                            <span className="shrink-0 rounded-tile bg-sky-950/60 px-1 py-0.5 text-meta uppercase tracking-wide text-sky-300">
                               {t("workspace:visibilityCompanyTag")}
                             </span>
                           ) : null}
@@ -260,7 +260,7 @@ export function ProjectsPage() {
           </div>
         </section>
 
-        <section className="flex min-h-0 flex-col rounded-xl border border-line bg-card">
+        <section className="flex min-h-0 flex-col rounded-sheet border border-line bg-card">
           {!selected ? (
             <p className="p-4 text-sm text-ink-muted">{t("workspace:selectProjectBrowseFiles")}</p>
           ) : (
@@ -276,7 +276,7 @@ export function ProjectsPage() {
                   <div className="flex flex-wrap gap-2">
                     <Link
                       to={`/chat?workspace=${encodeURIComponent(selected.id)}`}
-                      className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5"
+                      className="rounded-card border border-line px-3 py-1.5 text-xs text-ink-primary hover:bg-white/5"
                     >
                       {t("workspace:projectsOpenChat")}
                     </Link>
@@ -322,7 +322,7 @@ export function ProjectsPage() {
                     {browsePath ? (
                       <button
                         type="button"
-                        className="rounded border border-line px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5"
+                        className="rounded-tile border border-line px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5"
                         onClick={() => setBrowsePath(parentPath(browsePath))}
                       >
                         {t("workspace:projectsTreeUp")}
@@ -330,7 +330,7 @@ export function ProjectsPage() {
                     ) : null}
                     <button
                       type="button"
-                      className="rounded border border-line px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5"
+                      className="rounded-tile border border-line px-2 py-0.5 text-meta text-ink-secondary hover:bg-white/5"
                       disabled={treeLoading}
                       onClick={() => void loadTree()}
                     >
@@ -355,7 +355,7 @@ export function ProjectsPage() {
                           {e.is_dir ? (
                             <button
                               type="button"
-                              className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-xs text-sky-200 hover:bg-white/5"
+                              className="flex w-full items-center gap-2 rounded-tile px-2 py-1 text-left text-xs text-sky-200 hover:bg-white/5"
                               onClick={() => setBrowsePath(e.path)}
                             >
                               <span className="text-ink-muted">/</span>
@@ -367,7 +367,7 @@ export function ProjectsPage() {
                               ) : null}
                             </button>
                           ) : (
-                            <div className="flex items-center gap-2 rounded px-2 py-1 text-xs text-ink-secondary">
+                            <div className="flex items-center gap-2 rounded-tile px-2 py-1 text-xs text-ink-secondary">
                               <span className="text-ink-muted">·</span>
                               <span className="truncate">{e.name}</span>
                               {e.is_symlink ? (

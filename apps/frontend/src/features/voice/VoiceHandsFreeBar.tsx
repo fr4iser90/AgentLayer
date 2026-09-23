@@ -11,11 +11,11 @@ type Props = {
 export function VoiceHandsFreeBar({ active, listening, busy, onToggle, error }: Props) {
   const { t } = useTranslation(["chat"]);
   return (
-    <div className="mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-violet-500/30 bg-violet-950/30 px-3 py-2 text-xs">
+    <div className="mb-2 flex flex-wrap items-center gap-2 rounded-card border border-violet-500/30 bg-violet-950/30 px-3 py-2 text-xs">
       <button
         type="button"
         onClick={onToggle}
-        className={`rounded-md px-3 py-1.5 font-medium ${
+        className={`rounded-tile px-3 py-1.5 font-medium ${
           active
             ? "bg-violet-600 text-ink-on-fill hover:bg-violet-500"
             : "border border-line-strong text-violet-100 hover:bg-white/5"

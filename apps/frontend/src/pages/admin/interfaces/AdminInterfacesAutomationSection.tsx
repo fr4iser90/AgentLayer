@@ -9,13 +9,13 @@ export function AdminInterfacesAutomationSection() {
   }
   return (
     <>
-      <section className="mt-8 rounded-xl border border-line bg-card p-5">
+      <section className="mt-8 rounded-sheet border border-line bg-card p-5">
         <h2 className="text-sm font-medium text-ink-primary">{t("admin:ifAutoSchedulerTitle")}</h2>
         <p className="mt-2 text-xs text-ink-muted">{t("admin:ifAutoSchedulerIntro")}</p>
         <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
           <input
             type="checkbox"
-            className="rounded border-line"
+            className="rounded-tile border-line"
             checked={s.schedulerEnabled}
             onChange={(e) => s.setSchedulerEnabled(e.target.checked)}
           />
@@ -29,7 +29,7 @@ export function AdminInterfacesAutomationSection() {
           type="number"
           min={5}
           max={1440}
-          className="mt-1 w-full max-w-xs rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+          className="mt-1 w-full max-w-xs rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
           value={s.schedulerIntervalMin}
           onChange={(e) => s.setSchedulerIntervalMin(e.target.value)}
         />
@@ -38,7 +38,7 @@ export function AdminInterfacesAutomationSection() {
         </label>
         <select
           id="hb-user"
-          className="mt-1 w-full max-w-xl rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+          className="mt-1 w-full max-w-xl rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
           value={s.schedulerUserId}
           onChange={(e) => s.setSchedulerUserId(e.target.value)}
         >
@@ -54,7 +54,7 @@ export function AdminInterfacesAutomationSection() {
         </label>
         <input
           id="hb-model"
-          className="mt-1 w-full max-w-md rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+          className="mt-1 w-full max-w-md rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
           value={s.schedulerModel}
           onChange={(e) => s.setSchedulerModel(e.target.value)}
           placeholder={t("admin:ifAutomationModelPlaceholder")}
@@ -67,7 +67,7 @@ export function AdminInterfacesAutomationSection() {
           type="number"
           min={1}
           max={64}
-          className="mt-1 w-full max-w-xs rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+          className="mt-1 w-full max-w-xs rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
           value={s.schedulerMaxRounds}
           onChange={(e) => s.setSchedulerMaxRounds(e.target.value)}
           placeholder={t("admin:ifAutomationConcurrencyPlaceholder")}
@@ -75,7 +75,7 @@ export function AdminInterfacesAutomationSection() {
         <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
           <input
             type="checkbox"
-            className="rounded border-line"
+            className="rounded-tile border-line"
             checked={s.schedulerNotifyOnlyIfNotOk}
             onChange={(e) => s.setSchedulerNotifyOnlyIfNotOk(e.target.checked)}
           />
@@ -89,7 +89,7 @@ export function AdminInterfacesAutomationSection() {
           type="number"
           min={0}
           max={100000}
-          className="mt-1 w-full max-w-xs rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+          className="mt-1 w-full max-w-xs rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
           value={s.schedulerMaxOutbound}
           onChange={(e) => s.setSchedulerMaxOutbound(e.target.value)}
         />
@@ -98,7 +98,7 @@ export function AdminInterfacesAutomationSection() {
         </label>
         <input
           id="hb-pkg"
-          className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+          className="mt-1 w-full rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
           value={s.schedulerPackages}
           onChange={(e) => s.setSchedulerPackages(e.target.value)}
           placeholder={t("admin:ifAutomationPluginsPlaceholder")}
@@ -108,7 +108,7 @@ export function AdminInterfacesAutomationSection() {
         </label>
         <select
           id="hb-llm"
-          className="mt-1 w-full max-w-xs rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+          className="mt-1 w-full max-w-xs rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
           value={s.schedulerLlmBackend}
           onChange={(e) => s.setSchedulerLlmBackend(e.target.value)}
         >
@@ -121,7 +121,7 @@ export function AdminInterfacesAutomationSection() {
         </label>
         <select
           id="hb-tools"
-          className="mt-1 w-full max-w-xs rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+          className="mt-1 w-full max-w-xs rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
           value={s.schedulerToolsMode}
           onChange={(e) => s.setSchedulerToolsMode(e.target.value)}
         >
@@ -129,7 +129,7 @@ export function AdminInterfacesAutomationSection() {
           <option value="allowlist">{t("admin:ifAutoToolsAllowlist")}</option>
           <option value="full">{t("admin:ifAutoToolsFull")}</option>
         </select>
-        <p className="mt-4 rounded-md border border-line bg-black/20 px-3 py-2 text-xs text-ink-muted">
+        <p className="mt-4 rounded-tile border border-line bg-black/20 px-3 py-2 text-xs text-ink-muted">
           {t("admin:ifAutoLegacyNote")}
         </p>
         <label className="mt-4 block text-xs text-ink-muted" htmlFor="hb-instr">
@@ -138,7 +138,7 @@ export function AdminInterfacesAutomationSection() {
         <textarea
           id="hb-instr"
           rows={4}
-          className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
+          className="mt-1 w-full rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary"
           value={s.schedulerInstructions}
           onChange={(e) => s.setSchedulerInstructions(e.target.value)}
           placeholder={t("admin:ifAutomationHeartbeatPlaceholder")}
@@ -152,7 +152,7 @@ export function AdminInterfacesAutomationSection() {
         <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-ink-primary">
           <input
             type="checkbox"
-            className="rounded border-line"
+            className="rounded-tile border-line"
             checked={s.schedulerJobsWorkerEnabled}
             onChange={(e) => s.setSchedulerJobsWorkerEnabled(e.target.checked)}
           />

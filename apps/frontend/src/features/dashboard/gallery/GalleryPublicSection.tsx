@@ -31,7 +31,7 @@ function PublicPhotoTile(props: {
   const { url, caption } = photo;
   if (!url) return null;
   return (
-    <figure className="group overflow-hidden rounded-lg bg-black/40 sm:rounded-xl">
+    <figure className="group overflow-hidden rounded-card bg-black/40 sm:rounded-sheet">
       <button
         type="button"
         className={`block w-full overflow-hidden bg-neutral-900 ${aspectCls} cursor-zoom-in`}

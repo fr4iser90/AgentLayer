@@ -83,7 +83,7 @@ export function AgentActivityPanel({
 
   return (
     <div
-      className={`flex min-h-0 flex-col overflow-hidden rounded-lg border border-line bg-black/30 ${className}`}
+      className={`flex min-h-0 flex-col overflow-hidden rounded-card border border-line bg-black/30 ${className}`}
     >
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line-subtle px-2.5 py-1.5">
         <span className="text-meta font-semibold uppercase tracking-wide text-ink-muted">
@@ -93,7 +93,7 @@ export function AgentActivityPanel({
           <label className="flex cursor-pointer items-center gap-1.5 text-meta text-ink-muted">
             <input
               type="checkbox"
-              className="rounded border-line bg-field text-indigo-500"
+              className="rounded-tile border-line bg-field text-indigo-500"
               checked={showSubagents}
               onChange={(e) => onShowSubagentsChange?.(e.target.checked)}
             />
@@ -137,7 +137,7 @@ export function AgentActivityPanel({
             ))}
             {loading ? (
               <li className="flex items-center gap-1.5 border-l-2 border-violet-500/40 pl-2 text-meta text-violet-200/80">
-                <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400" />
+                <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-pill bg-violet-400" />
                 {loadingHint?.trim() || t("chat:running")}
               </li>
             ) : null}

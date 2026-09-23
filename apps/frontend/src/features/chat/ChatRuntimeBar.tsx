@@ -181,13 +181,13 @@ export function ChatRuntimeBar({
 
   return (
     <div
-      className={`rounded-lg border border-line bg-black/30 px-2.5 py-1.5 text-meta leading-snug text-ink-secondary ${className}`}
+      className={`rounded-card border border-line bg-black/30 px-2.5 py-1.5 text-meta leading-snug text-ink-secondary ${className}`}
     >
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
         <span className="font-semibold uppercase tracking-wide text-ink-muted">{t("workspace:mcp")}</span>
         {scope === "workspace" ? (
           <span
-            className="rounded border border-sky-500/35 bg-sky-950/40 px-1 py-0.5 text-meta font-medium uppercase tracking-wide text-sky-200/90"
+            className="rounded-tile border border-sky-500/35 bg-sky-950/40 px-1 py-0.5 text-meta font-medium uppercase tracking-wide text-sky-200/90"
             title={t("workspace:mcpWorkspaceScopeTitle")}
           >
             {t("workspace:scopeWorkspace")}

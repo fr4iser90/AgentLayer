@@ -66,7 +66,7 @@ export function PublicGalleryShareView(props: {
           if (!hero.url) return null;
           return (
             <section key={block.id} className="mb-6 sm:mb-10">
-              <div className="relative aspect-[2.1/1] max-h-[min(520px,70vh)] w-full overflow-hidden rounded-xl sm:rounded-2xl">
+              <div className="relative aspect-[2.1/1] max-h-[min(520px,70vh)] w-full overflow-hidden rounded-sheet sm:rounded-sheet">
                 <GalleryImage
                   url={hero.url}
                   alt={hero.headline || hero.caption || title}

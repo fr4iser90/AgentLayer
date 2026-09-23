@@ -25,7 +25,7 @@ function accessHint(role: string | undefined, t: (key: string) => string): strin
 
 function StatCard(props: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-xl border border-line bg-card px-4 py-3">
+    <div className="rounded-sheet border border-line bg-card px-4 py-3">
       <p className="text-meta font-semibold uppercase tracking-wide text-ink-muted">{props.label}</p>
       <p className="mt-1 text-2xl font-semibold tabular-nums text-ink-primary">{props.value}</p>
       {props.sub ? <p className="mt-0.5 text-xs text-ink-muted">{props.sub}</p> : null}
@@ -104,7 +104,7 @@ export function DashboardOverviewPanel(props: {
           {kindCounts.map(([kind, n]) => (
             <li
               key={kind}
-              className="rounded-lg border border-line bg-white/[0.03] px-3 py-1.5 text-sm text-ink-primary"
+              className="rounded-card border border-line bg-white/[0.03] px-3 py-1.5 text-sm text-ink-primary"
             >
               <span className="text-ink-primary">{kindLabelFor(kind, undefined)}</span>
               <span className="text-ink-muted"> · {n}</span>
@@ -125,12 +125,12 @@ export function DashboardOverviewPanel(props: {
                   <button
                     type="button"
                     onClick={() => onOpenDashboard(w.id)}
-                    className="flex w-full flex-col rounded-xl border border-line bg-card p-4 text-left transition hover:border-sky-500/35 hover:bg-white/[0.03]"
+                    className="flex w-full flex-col rounded-sheet border border-line bg-card p-4 text-left transition hover:border-sky-500/35 hover:bg-white/[0.03]"
                   >
                     <span className="font-medium text-ink-primary">
                       {w.title || w.kind}
                       {(dashboardUnreadCount?.(w.id) ?? 0) > 0 ? (
-                        <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-meta font-bold text-black align-middle">
+                        <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-pill bg-orange-500 px-1 text-meta font-bold text-black align-middle">
                           !
                         </span>
                       ) : null}
@@ -139,7 +139,7 @@ export function DashboardOverviewPanel(props: {
                       {kindLabelFor(w.kind, w.template_id)}
                     </span>
                     <span className="mt-2 flex flex-wrap items-center gap-2 text-meta text-white/45">
-                      <span className="rounded border border-line px-1.5 py-0.5">{accessHint(w.access_role, t)}</span>
+                      <span className="rounded-tile border border-line px-1.5 py-0.5">{accessHint(w.access_role, t)}</span>
                       <span>{t("dashboard:updatedPrefix")} {relativeActivity(w.updated_at, t)}</span>
                     </span>
                   </button>

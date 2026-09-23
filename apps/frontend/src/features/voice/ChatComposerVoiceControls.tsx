@@ -46,7 +46,7 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
 
   if (!operatorOn || !anyConfigured) {
     return (
-      <div className="w-full rounded-lg border border-amber-500/20 bg-amber-950/20 px-2.5 py-2">
+      <div className="w-full rounded-card border border-amber-500/20 bg-amber-950/20 px-2.5 py-2">
         <p className="text-meta leading-snug text-amber-100/90">{t("chat:voiceComposerDisabled")}</p>
         <Link
           to="/settings/voice"
@@ -79,7 +79,7 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
       >
         <input
           type="checkbox"
-          className="rounded border-line bg-field text-sky-500"
+          className="rounded-tile border-line bg-field text-sky-500"
           checked={voiceStatus.prefs.output_enabled}
           disabled={!ttsOk || saving}
           onChange={(e) => void patchPrefs({ output_enabled: e.target.checked })}
@@ -97,7 +97,7 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
       >
         <input
           type="checkbox"
-          className="rounded border-line bg-field text-sky-500"
+          className="rounded-tile border-line bg-field text-sky-500"
           checked={voiceStatus.prefs.input_enabled}
           disabled={!sttOk || saving}
           onChange={(e) => void patchPrefs({ input_enabled: e.target.checked })}
@@ -114,7 +114,7 @@ export function ChatComposerVoiceControls({ auth, voiceStatus, onVoiceStatusChan
         <label className="block text-meta text-ink-muted">
           {t("chat:voiceComposerMicMode")}
           <select
-            className="mt-1 w-full rounded-lg border border-line bg-field px-2.5 py-1.5 text-sm text-ink-primary"
+            className="mt-1 w-full rounded-card border border-line bg-field px-2.5 py-1.5 text-sm text-ink-primary"
             value={
               voiceStatus.prefs.mode_web === "toggle" ? "toggle" : "push_to_talk"
             }

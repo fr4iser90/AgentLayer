@@ -59,7 +59,7 @@ export function NotificationBell() {
     <div className="relative" ref={rootRef}>
       <button
         type="button"
-        className="relative flex h-9 w-9 items-center justify-center rounded-full text-ink-primary outline-none ring-sky-500/40 hover:bg-white/10 focus-visible:ring-2"
+        className="relative flex h-9 w-9 items-center justify-center rounded-pill text-ink-primary outline-none ring-sky-500/40 hover:bg-white/10 focus-visible:ring-2"
         aria-expanded={open}
         aria-haspopup="menu"
         title={t("notifications:bellTitle")}
@@ -67,7 +67,7 @@ export function NotificationBell() {
       >
         <Bell aria-hidden className="h-[18px] w-[18px]" />
         {unread > 0 ? (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-meta font-semibold text-black">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-pill bg-orange-500 px-1 text-meta font-semibold text-black">
             {unread > 99 ? "99+" : unread}
           </span>
         ) : null}
@@ -75,7 +75,7 @@ export function NotificationBell() {
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 z-50 mt-1 flex w-[min(22rem,calc(100vw-2rem))] flex-col rounded-lg border border-line bg-raised shadow-xl"
+          className="absolute right-0 z-50 mt-1 flex w-[min(22rem,calc(100vw-2rem))] flex-col rounded-card border border-line bg-raised shadow-xl"
         >
           <div className="flex items-center justify-between gap-2 border-b border-line px-3 py-2">
             <p className="text-sm font-medium text-ink-primary">{t("notifications:inboxTitle")}</p>
@@ -106,7 +106,7 @@ export function NotificationBell() {
                 >
                   <div className="flex items-start gap-2">
                     <span
-                      className={["mt-1.5 h-2 w-2 shrink-0 rounded-full", severityDot(n.severity)].join(" ")}
+                      className={["mt-1.5 h-2 w-2 shrink-0 rounded-pill", severityDot(n.severity)].join(" ")}
                       aria-hidden
                     />
                     <div className="min-w-0 flex-1">

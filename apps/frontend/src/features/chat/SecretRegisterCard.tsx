@@ -87,7 +87,7 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
         : null;
 
   return (
-    <div className="w-full max-w-[min(100%,42rem)] rounded-xl border border-amber-900/45 bg-amber-950/20 px-3 py-3 text-sm shadow-sm">
+    <div className="w-full max-w-[min(100%,42rem)] rounded-sheet border border-amber-900/45 bg-amber-950/20 px-3 py-3 text-sm shadow-sm">
       <div className="flex items-start gap-2">
         <KeyRound aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
         <div className="min-w-0 flex-1">
@@ -120,7 +120,7 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
                       onChange={(e) =>
                         setFieldValues((prev) => ({ ...prev, [f.name]: e.target.value }))
                       }
-                      className="mt-0.5 w-full rounded-lg border border-line bg-field px-2.5 py-1.5 text-sm text-ink-primary outline-none focus:border-amber-600/50"
+                      className="mt-0.5 w-full rounded-card border border-line bg-field px-2.5 py-1.5 text-sm text-ink-primary outline-none focus:border-amber-600/50"
                     />
                   </label>
                 ))
@@ -133,7 +133,7 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
                     disabled={disabled}
                     value={rawSecret}
                     onChange={(e) => setRawSecret(e.target.value)}
-                    className="mt-0.5 w-full rounded-lg border border-line bg-field px-2.5 py-1.5 text-sm text-ink-primary outline-none focus:border-amber-600/50"
+                    className="mt-0.5 w-full rounded-card border border-line bg-field px-2.5 py-1.5 text-sm text-ink-primary outline-none focus:border-amber-600/50"
                   />
                 </label>
               )}
@@ -145,7 +145,7 @@ export function SecretRegisterCard({ prompt, auth, onSaved }: Props) {
                   type="button"
                   disabled={disabled}
                   onClick={() => void save()}
-                  className="rounded-lg bg-amber-700/80 px-3 py-1.5 text-xs font-medium text-ink-primary hover:bg-amber-600/90 disabled:opacity-50"
+                  className="rounded-card bg-amber-700/80 px-3 py-1.5 text-xs font-medium text-ink-primary hover:bg-amber-600/90 disabled:opacity-50"
                 >
                   {saving ? t("chat:secretCardSaving") : t("chat:secretCardSave")}
                 </button>

@@ -146,14 +146,14 @@ export function OrgGrantsPage() {
       <h1 className="text-2xl font-semibold text-ink-primary">{t("org:grantsTitle")}</h1>
       <p className="mt-2 max-w-3xl text-sm text-ink-muted">{t("org:grantsIntro")}</p>
 
-      <div className="mt-4 rounded-lg border border-line bg-card px-4 py-3 text-xs text-ink-muted">
+      <div className="mt-4 rounded-card border border-line bg-card px-4 py-3 text-xs text-ink-muted">
         {t("org:grantsImplicitAdmins")}
       </div>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <button
           type="button"
-          className="rounded-md bg-white/10 px-4 py-1.5 text-xs font-medium text-ink-primary hover:bg-white/15 disabled:opacity-50"
+          className="rounded-tile bg-white/10 px-4 py-1.5 text-xs font-medium text-ink-primary hover:bg-white/15 disabled:opacity-50"
           disabled={loading}
           onClick={() => void load()}
         >
@@ -187,7 +187,7 @@ export function OrgGrantsPage() {
                 <td className="py-3 pr-4">
                   <span className="font-medium text-ink-primary">{row.name}</span>
                   {row.visibility !== "tenant" ? (
-                    <span className="ml-2 rounded bg-amber-950/50 px-1.5 py-0.5 text-meta text-amber-300">
+                    <span className="ml-2 rounded-tile bg-amber-950/50 px-1.5 py-0.5 text-meta text-amber-300">
                       {t("org:grantsPrivateTag")}
                     </span>
                   ) : null}
@@ -198,7 +198,7 @@ export function OrgGrantsPage() {
                   </label>
                   <select
                     id={`grant-${row.id}`}
-                    className="rounded-md border border-line bg-field px-2 py-1.5 text-xs text-ink-primary disabled:opacity-50"
+                    className="rounded-tile border border-line bg-field px-2 py-1.5 text-xs text-ink-primary disabled:opacity-50"
                     value={row.level === null ? "" : row.level}
                     disabled={row.saving || row.visibility !== "tenant"}
                     onChange={(e) => {

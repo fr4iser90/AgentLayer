@@ -34,8 +34,8 @@ function fmtIndexTime(iso: string | null | undefined, t: (key: string) => string
 
 function pill(on: boolean) {
   return on
-    ? `rounded border border-emerald-500/40 bg-emerald-950/50 px-1.5 py-0.5 text-meta font-medium uppercase tracking-wide text-emerald-200/95`
-    : `rounded border border-line-strong bg-white/5 px-1.5 py-0.5 text-meta font-medium uppercase tracking-wide text-ink-muted`;
+    ? `rounded-tile border border-emerald-500/40 bg-emerald-950/50 px-1.5 py-0.5 text-meta font-medium uppercase tracking-wide text-emerald-200/95`
+    : `rounded-tile border border-line-strong bg-white/5 px-1.5 py-0.5 text-meta font-medium uppercase tracking-wide text-ink-muted`;
 }
 
 function indexJobRunning(job: WorkspaceIndexJob | null | undefined): boolean {
@@ -73,7 +73,7 @@ function indexProgressLabel(job: WorkspaceIndexJob | null | undefined, t: (key: 
 }
 
 const INDEX_BTN =
-  "rounded border px-1.5 py-0.5 text-meta font-medium disabled:opacity-50";
+  "rounded-tile border px-1.5 py-0.5 text-meta font-medium disabled:opacity-50";
 
 export function WorkspaceRetrievalBar({
   auth,
@@ -259,7 +259,7 @@ export function WorkspaceRetrievalBar({
 
   return (
     <div
-      className={`rounded-lg border border-line bg-black/30 px-2.5 py-1.5 text-meta leading-snug text-ink-secondary ${className}`}
+      className={`rounded-card border border-line bg-black/30 px-2.5 py-1.5 text-meta leading-snug text-ink-secondary ${className}`}
     >
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className="font-semibold uppercase tracking-wide text-ink-muted">{t("workspace:codeIndex")}</span>
@@ -326,7 +326,7 @@ export function WorkspaceRetrievalBar({
           </label>
           <select
             id={`idx-write-${workspace.id}`}
-            className="rounded border border-line-strong bg-field px-1.5 py-0.5 text-meta text-ink-primary"
+            className="rounded-tile border border-line-strong bg-field px-1.5 py-0.5 text-meta text-ink-primary"
             disabled={busy !== null}
             value={workspace.index_on_write ?? ""}
             title={`Effective: ${indexOnWriteEffective}`}
@@ -382,9 +382,9 @@ export function WorkspaceRetrievalBar({
             <span className="truncate">{progressLabel || t("workspace:indexingEllipsis")}</span>
             {progressPct != null ? <span className="shrink-0 tabular-nums">{progressPct}%</span> : null}
           </div>
-          <div className="h-1 overflow-hidden rounded-full bg-white/10">
+          <div className="h-1 overflow-hidden rounded-pill bg-white/10">
             <div
-              className="h-full rounded-full bg-violet-500/70 transition-[width] duration-300"
+              className="h-full rounded-pill bg-violet-500/70 transition-[width] duration-300"
               style={{ width: progressPct != null ? `${progressPct}%` : "30%" }}
             />
           </div>

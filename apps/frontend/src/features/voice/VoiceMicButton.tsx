@@ -92,7 +92,7 @@ export function VoiceMicButton({
       <button
         type="button"
         disabled={disabled || busy}
-        className={`relative rounded-lg border p-2 transition-colors disabled:opacity-40 ${
+        className={`relative rounded-card border p-2 transition-colors disabled:opacity-40 ${
           recording
             ? "border-rose-500/70 bg-rose-950/50 text-rose-100 shadow-[0_0_12px_rgba(244,63,94,0.25)]"
             : "border-line bg-black/20 text-ink-muted hover:bg-white/5 hover:text-neutral-200"
@@ -115,16 +115,16 @@ export function VoiceMicButton({
         {recording ? (
           <>
             <span
-              className="pointer-events-none absolute -inset-0.5 animate-pulse rounded-lg border border-rose-400/50"
+              className="pointer-events-none absolute -inset-0.5 animate-pulse rounded-card border border-rose-400/50"
               aria-hidden
             />
             <span
-              className="pointer-events-none absolute -right-1 -top-1 z-10 flex items-center gap-0.5 rounded border border-rose-400/60 bg-rose-950 px-1 py-px text-meta font-bold uppercase leading-none tracking-wide text-rose-100 shadow-sm"
+              className="pointer-events-none absolute -right-1 -top-1 z-10 flex items-center gap-0.5 rounded-tile border border-rose-400/60 bg-rose-950 px-1 py-px text-meta font-bold uppercase leading-none tracking-wide text-rose-100 shadow-sm"
               aria-live="polite"
             >
               <span className="relative flex h-1.5 w-1.5 shrink-0">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-80" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-rose-400" />
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-pill bg-rose-400 opacity-80" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-pill bg-rose-400" />
               </span>
               {t("chat:voiceMicRec")}
             </span>

@@ -65,7 +65,7 @@ function DashboardNavRow(props: {
         ref={buttonRef}
         type="button"
         className={[
-          "min-w-0 flex-1 rounded-md px-2 py-1.5 text-left text-xs outline-none",
+          "min-w-0 flex-1 rounded-tile px-2 py-1.5 text-left text-xs outline-none",
           selected ? "bg-white/10 text-ink-primary" : "text-ink-primary",
           active && !selected ? "bg-white/[0.06]" : "",
           !selected && !active ? "hover:bg-white/5" : "",
@@ -75,7 +75,7 @@ function DashboardNavRow(props: {
         <span className="block truncate font-medium leading-snug">
           {w.title || w.kind}
           {unread > 0 ? (
-            <span className="ml-1 inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-orange-500 px-0.5 text-meta font-bold text-black align-middle">
+            <span className="ml-1 inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-pill bg-orange-500 px-0.5 text-meta font-bold text-black align-middle">
               {unread > 9 ? "9+" : unread}
             </span>
           ) : null}
@@ -89,7 +89,7 @@ function DashboardNavRow(props: {
         type="button"
         title={fav ? t("dashboard:unfavorite") : t("dashboard:favorite")}
         className={[
-          "shrink-0 rounded-md px-1.5 text-xs",
+          "shrink-0 rounded-tile px-1.5 text-xs",
           fav ? "text-amber-300/90 hover:bg-amber-950/30" : "text-white/20 hover:bg-white/5 hover:text-white/45",
         ].join(" ")}
         onClick={onToggleFav}
@@ -291,7 +291,7 @@ export function DashboardSidebarNav(props: {
       {showSearch ? (
         <div className="shrink-0 border-b border-line px-2 py-2">
           <input
-            className="dashboard-grid-no-drag w-full rounded-md border border-line bg-field px-2.5 py-1.5 text-xs text-ink-primary outline-none focus:border-sky-500/50"
+            className="dashboard-grid-no-drag w-full rounded-tile border border-line bg-field px-2.5 py-1.5 text-xs text-ink-primary outline-none focus:border-sky-500/50"
             placeholder={t("dashboard:searchPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -355,7 +355,7 @@ export function DashboardSidebarNav(props: {
                 <section key={h.id}>
                   <button
                     type="button"
-                    className="flex w-full items-center gap-1 rounded-md px-1.5 py-1 text-left text-meta font-semibold uppercase tracking-wide text-white/45 hover:bg-white/5 hover:text-white/70"
+                    className="flex w-full items-center gap-1 rounded-tile px-1.5 py-1 text-left text-meta font-semibold uppercase tracking-wide text-white/45 hover:bg-white/5 hover:text-white/70"
                     onClick={() => toggleHub(h.id)}
                     aria-expanded={!collapsed}
                   >

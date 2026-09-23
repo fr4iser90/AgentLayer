@@ -370,7 +370,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,14rem)_1fr]">
-      <aside className="rounded-xl border border-line bg-card p-3">
+      <aside className="rounded-sheet border border-line bg-card p-3">
         <div className="flex items-center justify-between gap-2">
           <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
             {t("org:cmsNotes")}
@@ -388,7 +388,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
             <button
               type="button"
               className={[
-                "rounded px-2 py-1",
+                "rounded-tile px-2 py-1",
                 listFilter === "all" ? "bg-white/10 text-ink-primary" : "text-ink-muted hover:bg-white/5",
               ].join(" ")}
               onClick={() => setListFilter("all")}
@@ -398,7 +398,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
             <button
               type="button"
               className={[
-                "rounded px-2 py-1",
+                "rounded-tile px-2 py-1",
                 listFilter === "review" ? "bg-white/10 text-ink-primary" : "text-ink-muted hover:bg-white/5",
               ].join(" ")}
               onClick={() => setListFilter("review")}
@@ -413,7 +413,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
               <button
                 type="button"
                 className={[
-                  "w-full rounded-md px-2 py-2 text-left text-sm",
+                  "w-full rounded-tile px-2 py-2 text-left text-sm",
                   item.id === selectedId
                     ? "bg-white/10 text-ink-primary"
                     : "text-ink-secondary hover:bg-white/5",
@@ -433,7 +433,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
         </ul>
       </aside>
 
-      <form onSubmit={(e) => void saveDraft(e)} className="rounded-xl border border-line bg-card p-5">
+      <form onSubmit={(e) => void saveDraft(e)} className="rounded-sheet border border-line bg-card p-5">
         <h2 className="text-sm font-medium text-ink-primary">
           {selectedId ? t("org:cmsEditNote") : t("org:cmsNewNote")}
         </h2>
@@ -455,7 +455,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
         </label>
         <input
           id="cms-title"
-          className="mt-1 w-full rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary disabled:opacity-60"
+          className="mt-1 w-full rounded-tile border border-line bg-field px-3 py-2 text-sm text-ink-primary disabled:opacity-60"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           required
@@ -467,7 +467,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
         </label>
         <textarea
           id="cms-body"
-          className="mt-1 min-h-56 w-full rounded-md border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary disabled:opacity-60"
+          className="mt-1 min-h-56 w-full rounded-tile border border-line bg-field px-3 py-2 font-mono text-sm text-ink-primary disabled:opacity-60"
           value={bodyMd}
           onChange={(e) => setBodyMd(e.target.value)}
           required
@@ -482,7 +482,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
         {status === "in_review" && canReview ? (
           <textarea
             id="cms-reject-comment"
-            className="mt-1 min-h-20 w-full rounded-md border border-line bg-field px-3 py-2 text-sm text-ink-primary"
+            className="mt-1 min-h-20 w-full rounded-tile border border-line bg-field px-3 py-2 text-sm text-ink-primary"
             value={rejectComment}
             onChange={(e) => setRejectComment(e.target.value)}
             placeholder={t("org:cmsRejectCommentPlaceholder")}
@@ -493,7 +493,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
           <button
             type="submit"
             disabled={busy || readOnly}
-            className="rounded-md border border-line px-4 py-1.5 text-sm text-ink-primary hover:bg-white/5 disabled:opacity-50"
+            className="rounded-tile border border-line px-4 py-1.5 text-sm text-ink-primary hover:bg-white/5 disabled:opacity-50"
           >
             {busy ? t("org:cmsSaving") : t("org:cmsSaveDraft")}
           </button>
@@ -501,7 +501,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
             <button
               type="button"
               disabled={busy}
-              className="rounded-md border border-sky-500/40 px-4 py-1.5 text-sm text-sky-300 hover:bg-sky-500/10 disabled:opacity-50"
+              className="rounded-tile border border-sky-500/40 px-4 py-1.5 text-sm text-sky-300 hover:bg-sky-500/10 disabled:opacity-50"
               onClick={() => void submitForReview()}
             >
               {t("org:cmsSubmitForReview")}
@@ -512,7 +512,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
               <button
                 type="button"
                 disabled={busy}
-                className="rounded-md bg-emerald-600 px-4 py-1.5 text-sm font-medium text-ink-on-fill hover:bg-emerald-500 disabled:opacity-50"
+                className="rounded-tile bg-emerald-600 px-4 py-1.5 text-sm font-medium text-ink-on-fill hover:bg-emerald-500 disabled:opacity-50"
                 onClick={() => void approveSelected()}
               >
                 {t("org:cmsApprove")}
@@ -520,7 +520,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
               <button
                 type="button"
                 disabled={busy}
-                className="rounded-md border border-amber-500/40 px-4 py-1.5 text-sm text-amber-300 hover:bg-amber-500/10 disabled:opacity-50"
+                className="rounded-tile border border-amber-500/40 px-4 py-1.5 text-sm text-amber-300 hover:bg-amber-500/10 disabled:opacity-50"
                 onClick={() => void rejectSelected()}
               >
                 {t("org:cmsReject")}
@@ -531,7 +531,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
             <button
               type="button"
               disabled={busy}
-              className="rounded-md bg-sky-600 px-4 py-1.5 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
+              className="rounded-tile bg-sky-600 px-4 py-1.5 text-sm font-medium text-ink-on-fill hover:bg-sky-500 disabled:opacity-50"
               onClick={() => void publishSelected()}
             >
               {busy ? t("org:knowledgePublishing") : t("org:cmsPublish")}
@@ -554,7 +554,7 @@ export function OrgContentCms({ onPublished }: { onPublished?: () => void }) {
         </div>
 
         {versions.length > 0 ? (
-          <div className="mt-4 rounded-md border border-line/60 bg-black/10 p-3">
+          <div className="mt-4 rounded-tile border border-line/60 bg-black/10 p-3">
             <p className="text-xs font-medium text-ink-muted">{t("org:cmsVersionHistory")}</p>
             <ul className="mt-2 space-y-1 text-xs text-ink-secondary">
               {versions.map((v) => (

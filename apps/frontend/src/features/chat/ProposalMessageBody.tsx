@@ -25,7 +25,7 @@ export function ProposalCard({
   onSelect: (option: ProposalOption) => void;
 }) {
   return (
-    <div className="my-4 rounded-xl border border-sky-800/40 bg-[#111827] shadow-lg">
+    <div className="my-4 rounded-sheet border border-sky-800/40 bg-[#111827] shadow-lg">
       <div className="border-b border-sky-800/30 px-4 py-3">
         <div className="flex items-center gap-2">
           <svg
@@ -52,7 +52,7 @@ export function ProposalCard({
               <li key={opt.id}>
                 <button
                   type="button"
-                  className={`w-full rounded-lg border px-4 py-3 text-left transition-all ${
+                  className={`w-full rounded-card border px-4 py-3 text-left transition-all ${
                     isSelected
                       ? "border-sky-500 bg-sky-950/50 ring-1 ring-sky-500/50"
                       : "border-line bg-black/20 hover:border-sky-700/50 hover:bg-white/5"
@@ -62,7 +62,7 @@ export function ProposalCard({
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
                       <span
-                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-meta font-bold ${
+                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-pill border text-meta font-bold ${
                           isSelected
                             ? "border-sky-400 bg-sky-500 text-ink-on-fill"
                             : "border-line text-ink-muted"
@@ -116,7 +116,7 @@ function ProposalParseErrorBanner({ count }: { count: number }) {
   const { t } = useTranslation(["chat"]);
   return (
     <p
-      className="my-2 rounded-lg border border-amber-700/40 bg-amber-950/35 px-3 py-2 text-xs text-amber-100/90"
+      className="my-2 rounded-card border border-amber-700/40 bg-amber-950/35 px-3 py-2 text-xs text-amber-100/90"
       role="status"
     >
       {t("chat:proposalParseError", { count })}
