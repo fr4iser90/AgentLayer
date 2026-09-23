@@ -139,6 +139,30 @@ export default {
         meta: ["11px", { lineHeight: "14px", fontWeight: "400" }],
       },
 
+      // Self-hosted, so the stack after the family name is the fallback that
+      // paints during the swap window. Kept short and generic on purpose: the
+      // faces are small enough to arrive fast, and a long stack of
+      // metric-mismatched candidates is what makes a swap visible.
+      fontFamily: {
+        sans: [
+          '"IBM Plex Sans"',
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          '"Segoe UI"',
+          "Roboto",
+          "sans-serif",
+        ],
+        mono: [
+          '"IBM Plex Mono"',
+          "ui-monospace",
+          "SFMono-Regular",
+          "Menlo",
+          "Consolas",
+          "monospace",
+        ],
+      },
+
       // Radii are named by what they wrap, so a card and a button cannot drift.
       borderRadius: {
         tile: "6px",
